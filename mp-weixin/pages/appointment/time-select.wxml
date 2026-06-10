@@ -1,0 +1,51 @@
+<view class="page data-v-93083005"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-93083005"
+    u-i="93083005-0"
+    bind:__l="__l"
+    u-p="{{a}}"
+  /><view class="page-content data-v-93083005"
+    ><hj-schedule-calendar
+      wx:if="{{c}}"
+      class="data-v-93083005"
+      bindselect="{{b}}"
+      u-i="93083005-1"
+      bind:__l="__l"
+      u-p="{{c}}"
+    /><view wx:if="{{d}}" class="schedule-section data-v-93083005"
+      ><text class="schedule-date data-v-93083005">{{e}}</text
+      ><block wx:if="{{f}}"
+        ><view
+          wx:for="{{g}}"
+          wx:for-item="schedule"
+          wx:key="i"
+          class="schedule-group data-v-93083005"
+          ><view
+            class="{{['schedule-header', 'data-v-93083005', schedule.e && 'schedule-header--full']}}"
+            bindtap="{{schedule.f}}"
+            ><text class="schedule-period data-v-93083005">{{schedule.a}}</text
+            ><text class="schedule-time data-v-93083005"
+              >{{schedule.b}}-{{schedule.c}}</text
+            ><text class="schedule-avail data-v-93083005"
+              >{{schedule.d}}</text
+            ></view
+          ><view wx:if="{{schedule.g}}" class="slot-grid data-v-93083005"
+            ><view
+              wx:for="{{schedule.h}}"
+              wx:for-item="slot"
+              wx:key="b"
+              class="{{['slot', 'data-v-93083005', slot.c && 'slot--available', slot.d && 'slot--booked', slot.e && 'slot--disabled']}}"
+              bindtap="{{slot.f}}"
+              ><text class="slot-time data-v-93083005">{{slot.a}}</text></view
+            ></view
+          ></view
+        ></block
+      ><view wx:else class="empty-text data-v-93083005"
+        >该日期暂无可约时段</view
+      ></view
+    ><view wx:else class="select-hint data-v-93083005"
+      ><text class="data-v-93083005">👆 请先选择就诊日期</text></view
+    ></view
+  ></view
+>

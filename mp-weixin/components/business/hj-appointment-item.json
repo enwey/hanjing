@@ -1,0 +1,6 @@
+{
+  "component": true,
+  "usingComponents": {
+    "hj-tag": "../base/hj-tag"
+  }
+}

@@ -1,0 +1,58 @@
+<view class="page data-v-baa6e4ef"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-baa6e4ef"
+    u-i="baa6e4ef-0"
+    bind:__l="__l"
+    u-p="{{a}}"
+  /><view class="page-content data-v-baa6e4ef"
+    ><view class="success-icon data-v-baa6e4ef"
+      ><text class="success-emoji data-v-baa6e4ef">✅</text></view
+    ><text class="success-title data-v-baa6e4ef">预约成功！</text
+    ><text class="success-desc data-v-baa6e4ef">您的预约已提交，请按时就诊</text
+    ><view class="summary-card data-v-baa6e4ef"
+      ><view class="summary-row data-v-baa6e4ef"
+        ><text class="summary-label data-v-baa6e4ef">预约单号</text
+        ><text class="summary-value summary-value--no data-v-baa6e4ef"
+          >{{b}}</text
+        ></view
+      ><view class="summary-row data-v-baa6e4ef"
+        ><text class="summary-label data-v-baa6e4ef">就诊门店</text
+        ><text class="summary-value data-v-baa6e4ef">{{c}}</text></view
+      ><view class="summary-row data-v-baa6e4ef"
+        ><text class="summary-label data-v-baa6e4ef">就诊医生</text
+        ><text class="summary-value data-v-baa6e4ef">{{d}}</text></view
+      ><view class="summary-row data-v-baa6e4ef"
+        ><text class="summary-label data-v-baa6e4ef">就诊时间</text
+        ><text class="summary-value summary-value--bold data-v-baa6e4ef"
+          >{{e}} {{f}}</text
+        ></view
+      ></view
+    ><view class="actions data-v-baa6e4ef"
+      ><hj-button
+        wx:if="{{h}}"
+        class="data-v-baa6e4ef"
+        u-s="{{['d']}}"
+        bindclick="{{g}}"
+        u-i="baa6e4ef-1"
+        bind:__l="__l"
+        u-p="{{h}}"
+        >查看预约详情</hj-button
+      ><hj-button
+        wx:if="{{j}}"
+        class="data-v-baa6e4ef"
+        u-s="{{['d']}}"
+        bindclick="{{i}}"
+        style="margin-top: 12px"
+        u-i="baa6e4ef-2"
+        bind:__l="__l"
+        u-p="{{j}}"
+        >返回首页</hj-button
+      ></view
+    ><view class="remind data-v-baa6e4ef"
+      ><text class="remind-text data-v-baa6e4ef"
+        >📱 就诊当天将通过微信消息提醒您</text
+      ></view
+    ></view
+  ></view
+>

@@ -1,0 +1,8 @@
+<button
+  class="{{['hj-button', 'data-v-f6f93744', b, c, d]}}"
+  disabled="{{e}}"
+  hover-class="{{f}}"
+  bindtap="{{g}}"
+>
+  <text wx:if="{{a}}" class="hj-button-loading data-v-f6f93744" /><slot />
+</button>

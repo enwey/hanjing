@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "个人信息",
+  "usingComponents": {
+    "hj-navbar": "../../../../components/base/hj-navbar"
+  }
+}

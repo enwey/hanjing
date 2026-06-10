@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "直播中心",
+  "usingComponents": {
+    "hj-empty": "../../../components/base/hj-empty/hj-empty"
+  }
+}

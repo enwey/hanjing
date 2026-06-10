@@ -1,0 +1,25 @@
+<view class="calendar data-v-70d02435"
+  ><view class="calendar-header data-v-70d02435"
+    ><text class="calendar-month data-v-70d02435">{{a}}</text
+    ><text class="calendar-hint data-v-70d02435">蓝色日期可预约</text></view
+  ><view class="calendar-weekdays data-v-70d02435"
+    ><text
+      wx:for="{{b}}"
+      wx:for-item="wd"
+      wx:key="b"
+      class="calendar-weekday data-v-70d02435"
+      >{{wd.a}}</text
+    ></view
+  ><view class="calendar-grid data-v-70d02435"
+    ><view
+      wx:for="{{c}}"
+      wx:for-item="day"
+      wx:key="d"
+      class="{{['calendar-day', 'data-v-70d02435', day.e && 'calendar-day--empty', day.f && 'calendar-day--today', day.g && 'calendar-day--past', day.h && 'calendar-day--has-schedule', day.i && 'calendar-day--disabled', day.j && 'calendar-day--selected']}}"
+      bindtap="{{day.k}}"
+      ><text wx:if="{{day.a}}" class="calendar-day-text data-v-70d02435"
+        >{{day.b}}</text
+      ><view
+        wx:if="{{day.c}}"
+        class="calendar-day-dot data-v-70d02435" /></view></view
+></view>

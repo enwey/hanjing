@@ -1,0 +1,412 @@
+:root {
+  --primary-500: #3B6BF5;
+  --primary-100: #EEF4FF;
+  --success-500: #1A9D5C;
+  --success-100: #D3F5E3;
+  --warning-500: #F59E0B;
+  --warning-100: #FFFBEB;
+  --error-500: #EF4444;
+  --error-100: #FEF2F2;
+  --gold-400: #F5A623;
+  --gold-100: #FFF9E6;
+
+  /* TDesign Theme Overrides */
+  --td-brand-color: var(--primary-500);
+  --td-brand-color-light: var(--primary-100);
+  --td-brand-color-focus: var(--primary-100);
+  --td-brand-color-hover: #5A85F5;
+  --td-brand-color-active: #2A52D4;
+  
+  --td-success-color: var(--success-500);
+  --td-success-color-light: var(--success-100);
+  
+  --td-warning-color: var(--warning-500);
+  --td-warning-color-light: var(--warning-100);
+  
+  --td-error-color: var(--error-500);
+  --td-error-color-light: var(--error-100);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  font-family: 'PingFang SC', 'HarmonyOS Sans', 'Noto Sans SC', -apple-system, sans-serif;
+  background-color: #F9FAFB;
+}
+
+.kpi-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.kpi-label {
+  font-size: 13px;
+  color: #9CA3AF;
+  margin-top: 4px;
+}
+
+.kpi-trend-up {
+  color: #22C55E;
+  font-size: 12px;
+}
+
+.section-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 16px;
+}
+
+/* Page Layout & Container */
+.page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Consistent Page Title Header */
+.page-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1F2937;
+  line-height: 1.2;
+}
+
+.page-title-sub {
+  font-size: 13px;
+  color: #9CA3AF;
+  margin-top: 4px;
+}
+
+/* --- Resizable & Sticky Native HTML Tables --- */
+.data-table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100%;
+}
+
+.data-table th {
+  position: relative;
+  text-align: left;
+  padding: 12px 16px !important;
+  background-color: #F9FAFB !important; /* var(--color-gray-50) */
+  color: #9CA3AF !important; /* var(--color-gray-400) */
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid #F3F4F6 !important; /* var(--color-gray-100) */
+  white-space: nowrap !important;
+  letter-spacing: 0.5px !important;
+}
+
+.data-table td {
+  padding: 14px 16px !important; /* UI Mockup: 14px 16px */
+  color: #374151 !important; /* var(--color-gray-700) */
+  font-size: 13px !important;
+  vertical-align: middle !important;
+  border-bottom: 1px solid #F9FAFB !important; /* var(--color-gray-50) */
+}
+
+.data-table tr {
+  background-color: #fff;
+  transition: background-color 150ms ease;
+}
+
+.data-table tr:hover td {
+  background-color: #F9FAFB !important;
+}
+
+/* Align with UI mockup - no stripe tables */
+.data-table.stripe tbody tr:nth-child(even) {
+  background-color: #fff !important;
+}
+
+.data-table.stripe tbody tr:nth-child(even):hover td {
+  background-color: #F9FAFB !important;
+}
+
+.resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  background-color: transparent;
+  transition: background-color 150ms;
+  z-index: 10;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background-color: var(--primary-500) !important;
+}
+
+/* Sticky last column (actions column) ONLY when content overflows and table is scrollable */
+.data-table.is-scrollable th:last-child {
+  position: sticky !important;
+  right: 0;
+  background-color: #F9FAFB !important;
+  z-index: 6;
+  box-shadow: -3px 0 6px rgba(0, 0, 0, 0.04);
+  white-space: nowrap !important;
+  border-left: 1px solid #F3F4F6 !important; /* Visual boundary line for sticky header */
+}
+
+.data-table.is-scrollable td:last-child {
+  position: sticky !important;
+  right: 0;
+  background-color: #fff !important;
+  z-index: 5;
+  box-shadow: -3px 0 6px rgba(0, 0, 0, 0.04);
+  white-space: nowrap !important;
+  border-left: 1px solid #F3F4F6 !important; /* Visual boundary line for sticky cells */
+}
+
+.data-table.is-scrollable tr:hover td:last-child {
+  background-color: #F9FAFB !important;
+}
+
+/* Custom premium scrollbar styling for scrollable containers */
+.panel-body::-webkit-scrollbar,
+div::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.panel-body::-webkit-scrollbar-track,
+div::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-body::-webkit-scrollbar-thumb,
+div::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.25);
+  border-radius: 99px;
+  transition: background-color 150ms;
+}
+
+.panel-body::-webkit-scrollbar-thumb:hover,
+div::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.45);
+}
+
+/* Prevent buttons inside action columns from wrapping or shrinking */
+.data-table td:last-child .btn,
+.data-table td:last-child button,
+.data-table td:last-child a,
+.data-table td.actions .btn,
+.data-table td.actions button {
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  white-space: nowrap !important;
+}
+
+/* Also for TDesign table action cells */
+.t-table th[colkey="actions"],
+.t-table td[colkey="actions"] {
+  white-space: nowrap !important;
+}
+
+.t-table td[colkey="actions"] .t-link {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* Styling TDesign's column resize handles to match our native tables */
+.t-table .t-table__cell-resizable .t-table__cell--resizer {
+  width: 6px !important;
+  background-color: transparent !important;
+  transition: background-color 150ms !important;
+  z-index: 10 !important;
+}
+
+.t-table .t-table__cell-resizable:hover .t-table__cell--resizer,
+.t-table .t-table__cell-resizable .t-table__cell--resizer:hover,
+.t-table .t-table__cell-resizable .t-table__cell--resizer:active {
+  background-color: var(--primary-500) !important;
+}
+
+/* --- Global Button Styles --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 8px; /* UI Mockup: var(--radius-sm) (8px) */
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 150ms ease;
+  font-family: inherit;
+  white-space: nowrap;
+  text-decoration: none !important;
+}
+.btn-primary {
+  background: var(--primary-500);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: #2A52D4;
+}
+.btn-outline {
+  background: #fff;
+  color: #374151;
+  border: 1px solid #E5E7EB;
+}
+.btn-outline:hover {
+  border-color: #BCCFFF;
+  color: var(--primary-500);
+}
+.btn-danger {
+  background: #FEF2F2;
+  color: #EF4444;
+  border: 1px solid #FECACA;
+}
+.btn-danger:hover {
+  background: #FEE2E2;
+}
+.btn-success {
+  background: #ECFDF5;
+  color: #16A34A;
+  border: 1px solid #BBF7D0;
+}
+.btn-success:hover {
+  background: #D3F5E3;
+}
+.btn-sm,
+.btn.btn-sm,
+.btn-outline.btn-sm,
+.btn-primary.btn-sm,
+.btn-success.btn-sm,
+.btn-danger.btn-sm {
+  padding: 5px 12px !important;
+  font-size: 12px !important;
+  border-radius: 6px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1.2 !important;
+}
+/* btn-xs is redefined to match UI mockup btn-sm size for unified compact lists */
+.btn-xs,
+.btn.btn-xs,
+.btn-outline.btn-xs,
+.btn-primary.btn-xs,
+.btn-success.btn-xs,
+.btn-danger.btn-xs {
+  padding: 5px 12px !important;
+  font-size: 12px !important;
+  border-radius: 6px !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1.2 !important;
+}
+
+/* --- Common Panel & Filter Components for Unified List Style --- */
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #F3F4F6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  margin-bottom: 0;
+}
+.filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F3F4F6;
+  background: #fff;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.filter-tabs {
+  display: flex;
+  gap: 0;
+}
+.filter-tab {
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  cursor: pointer;
+  border: 1px solid #E5E7EB;
+  background: #fff;
+  transition: all 150ms;
+}
+.filter-tab:first-child {
+  border-radius: 8px 0 0 8px; /* UI Mockup: var(--radius-sm) (8px) */
+}
+.filter-tab:last-child {
+  border-radius: 0 8px 8px 0; /* UI Mockup: var(--radius-sm) (8px) */
+}
+.filter-tab + .filter-tab {
+  border-left: none;
+}
+.filter-tab.active {
+  background: var(--primary-500);
+  color: #fff;
+  border-color: var(--primary-500);
+}
+.filter-input, .filter-select {
+  padding: 6px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px; /* UI Mockup: var(--radius-sm) (8px) */
+  font-size: 13px;
+  color: #374151;
+  background: #fff;
+  outline: none;
+  transition: border-color 150ms;
+  height: 32px;
+  box-sizing: border-box;
+}
+.filter-input:focus, .filter-select:focus {
+  border-color: var(--primary-500);
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-label {
+  font-size: 13px;
+  color: #6B7280;
+}
+.panel-body {
+  overflow-x: auto;
+  width: 100%;
+}
+.pagination-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #F3F4F6;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}

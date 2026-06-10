@@ -1,0 +1,26 @@
+<view class="page data-v-17829149"
+  ><view class="list data-v-17829149"
+    ><view
+      wx:for="{{a}}"
+      wx:for-item="p"
+      wx:key="f"
+      class="item data-v-17829149"
+      bindtap="{{p.g}}"
+      ><image
+        class="item-img data-v-17829149"
+        src="{{p.a}}"
+        mode="aspectFill"
+      /><view class="item-info data-v-17829149"
+        ><text class="item-name data-v-17829149">{{p.b}}</text
+        ><text class="item-price data-v-17829149">{{p.c}}</text
+        ><text class="item-rate data-v-17829149"
+          >佣金 {{p.d}}% · {{p.e}}</text
+        ></view
+      ><text class="item-arrow data-v-17829149">&gt;</text></view
+    ><hj-empty
+      wx:if="{{b}}"
+      class="data-v-17829149"
+      u-i="17829149-0"
+      bind:__l="__l"
+      u-p="{{c}}" /></view
+></view>

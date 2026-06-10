@@ -1,0 +1,52 @@
+<view class="page data-v-466378e0"
+  ><view class="banner data-v-466378e0"
+    ><view class="banner-bg data-v-466378e0"></view
+    ><view class="banner-content data-v-466378e0"
+      ><text class="banner-title data-v-466378e0">邀请好友，一起赚钱</text
+      ><text class="banner-desc data-v-466378e0"
+        >好友通过您的邀请码购买，您可获得佣金奖励</text
+      ><view class="code-box data-v-466378e0"
+        ><text class="code-label data-v-466378e0">我的邀请码</text
+        ><text class="code-value data-v-466378e0">{{a}}</text
+        ><text class="copy-btn data-v-466378e0" bindtap="{{b}}"
+          >复制</text
+        ></view
+      ></view
+    ></view
+  ><view class="poster-section data-v-466378e0"
+    ><text class="section-title data-v-466378e0">推广海报</text
+    ><view class="poster-preview data-v-466378e0"
+      ><view class="poster data-v-466378e0"
+        ><view class="poster-top data-v-466378e0">鼾静健康</view
+        ><view class="poster-body data-v-466378e0"
+          ><text class="poster-slogan data-v-466378e0"
+            >告别打鼾<view class="data-v-466378e0"></view
+            >让每一晚都睡得安稳</text
+          ><view class="poster-qr data-v-466378e0"
+            ><text class="data-v-466378e0">扫码咨询</text></view
+          ></view
+        ><view class="poster-bottom data-v-466378e0"
+          >长按保存海报，分享给好友</view
+        ></view
+      ></view
+    ><view class="poster-actions data-v-466378e0"
+      ><view class="pa-btn data-v-466378e0" bindtap="{{c}}">保存海报</view
+      ><button class="pa-btn share data-v-466378e0" open-type="share">
+        分享好友
+      </button></view
+    ></view
+  ><view class="steps data-v-466378e0"
+    ><text class="section-title data-v-466378e0">如何推广</text
+    ><view
+      wx:for="{{d}}"
+      wx:for-item="s"
+      wx:key="d"
+      class="step-item data-v-466378e0"
+      ><view class="step-num data-v-466378e0">{{s.a}}</view
+      ><view class="step-info data-v-466378e0"
+        ><text class="step-title data-v-466378e0">{{s.b}}</text
+        ><text class="step-desc data-v-466378e0">{{s.c}}</text></view
+      ></view
+    ></view
+  ></view
+>

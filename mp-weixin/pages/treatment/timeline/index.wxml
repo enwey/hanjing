@@ -1,0 +1,50 @@
+<view class="page data-v-50b7be62"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-50b7be62"
+    u-i="50b7be62-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view wx:if="{{b}}" class="page-content data-v-50b7be62"
+    ><view wx:if="{{c}}" class="status-card data-v-50b7be62"
+      ><text class="status-title data-v-50b7be62">当前治疗</text
+      ><view class="status-row data-v-50b7be62"
+        ><text class="status-label data-v-50b7be62">设备型号</text
+        ><text class="status-value data-v-50b7be62">{{d}}</text></view
+      ><view class="status-row data-v-50b7be62"
+        ><text class="status-label data-v-50b7be62">下颌前移量</text
+        ><text class="status-value data-v-50b7be62">{{e}}mm</text></view
+      ><view class="status-row data-v-50b7be62"
+        ><text class="status-label data-v-50b7be62">下次调整</text
+        ><text class="status-value data-v-50b7be62" style="color: #f59e0b"
+          >{{f}}</text
+        ></view
+      ></view
+    ><view class="section-title data-v-50b7be62">治疗历程</view
+    ><view class="timeline data-v-50b7be62"
+      ><view
+        wx:for="{{g}}"
+        wx:for-item="event"
+        wx:key="j"
+        class="{{['tl-item', 'data-v-50b7be62', event.k && 'tl-item--last']}}"
+        ><view class="tl-left data-v-50b7be62"
+          ><text class="tl-date data-v-50b7be62">{{event.a}}</text
+          ><text class="tl-type data-v-50b7be62">{{event.b}}</text></view
+        ><view class="tl-middle data-v-50b7be62"
+          ><view
+            class="tl-dot data-v-50b7be62"
+            style="{{'background:' + event.c}}" /><view
+            wx:if="{{event.d}}"
+            class="tl-line data-v-50b7be62"
+            style="{{'background:' + event.e}}" /></view
+        ><view class="tl-right data-v-50b7be62"
+          ><view class="tl-card data-v-50b7be62"
+            ><text class="tl-title data-v-50b7be62">{{event.f}}</text
+            ><text class="tl-desc data-v-50b7be62">{{event.g}}</text
+            ><text wx:if="{{event.h}}" class="tl-doctor data-v-50b7be62"
+              >{{event.i}} 医生</text
+            ></view
+          ></view
+        ></view
+      ></view
+    ><view class="safe-bottom data-v-50b7be62" /></view
+></view>

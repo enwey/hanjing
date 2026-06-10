@@ -1,0 +1,25 @@
+<view
+  wx:if="{{showNavbar}}"
+  class="{{['hj-navbar', 'data-v-1529c78d', g ? 'is-fixed' : '', h ? 'is-transparent' : '']}}"
+  style="{{'height:' + i + ';' + 'background:' + k}}"
+>
+  <view class="data-v-1529c78d" style="{{'height:' + j}}"></view>
+  <view class="hj-navbar-inner data-v-1529c78d" style="{{'height:' + f}}">
+    <view
+      wx:if="{{a}}"
+      class="hj-navbar-back data-v-1529c78d"
+      style="{{'color:' + b}}"
+      bindtap="{{c}}"
+    >
+      <text class="hj-navbar-back-icon data-v-1529c78d">‹</text>
+    </view>
+    <view class="hj-navbar-title data-v-1529c78d" style="{{'color:' + e}}"
+      >{{d}}</view
+    >
+  </view>
+</view>
+<view
+  wx:if="{{showNavbar && l}}"
+  class="data-v-1529c78d"
+  style="{{'height:' + m}}"
+></view>

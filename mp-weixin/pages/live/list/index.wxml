@@ -1,0 +1,52 @@
+<view class="page data-v-b8fa8280"
+  ><view class="tabs data-v-b8fa8280"
+    ><view class="{{['tab', 'data-v-b8fa8280', a && 'active']}}" bindtap="{{b}}"
+      >全部</view
+    ><view class="{{['tab', 'data-v-b8fa8280', c && 'active']}}" bindtap="{{d}}"
+      >回放</view
+    ><view class="{{['tab', 'data-v-b8fa8280', e && 'active']}}" bindtap="{{f}}"
+      >预告</view
+    ></view
+  ><view class="list data-v-b8fa8280"
+    ><view
+      wx:for="{{g}}"
+      wx:for-item="room"
+      wx:key="l"
+      class="card data-v-b8fa8280"
+      bindtap="{{room.m}}"
+      ><view class="cover-wrap data-v-b8fa8280"
+        ><image
+          class="cover data-v-b8fa8280"
+          src="{{room.a}}"
+          mode="aspectFill"
+        /><view class="{{['cover-tag', 'data-v-b8fa8280', room.c]}}"
+          >{{room.b}}</view
+        ><view wx:if="{{room.d}}" class="cover-time data-v-b8fa8280"
+          >{{room.e}}</view
+        ></view
+      ><view class="card-body data-v-b8fa8280"
+        ><text class="card-title data-v-b8fa8280">{{room.f}}</text
+        ><view class="card-meta data-v-b8fa8280"
+          ><view class="anchor data-v-b8fa8280"
+            ><text class="anchor-avatar data-v-b8fa8280">{{room.g}}</text
+            ><text class="anchor-name data-v-b8fa8280">{{room.h}}</text></view
+          ><text wx:if="{{room.i}}" class="views data-v-b8fa8280"
+            >{{room.j}}人观看</text
+          ><text class="tags data-v-b8fa8280"
+            ><text
+              wx:for="{{room.k}}"
+              wx:for-item="t"
+              wx:key="b"
+              class="tag data-v-b8fa8280"
+              >{{t.a}}</text
+            ></text
+          ></view
+        ></view
+      ></view
+    ><hj-empty
+      wx:if="{{h}}"
+      class="data-v-b8fa8280"
+      u-i="b8fa8280-0"
+      bind:__l="__l"
+      u-p="{{i}}" /></view
+></view>

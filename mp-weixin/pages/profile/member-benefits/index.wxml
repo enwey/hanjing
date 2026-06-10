@@ -1,0 +1,76 @@
+<view class="page data-v-bf62d399"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-bf62d399"
+    u-i="bf62d399-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-bf62d399"
+    ><view wx:if="{{b}}" class="loading-wrap data-v-bf62d399"
+      ><text class="data-v-bf62d399">加载中...</text></view
+    ><block wx:elif="{{c}}"
+      ><view class="level-card data-v-bf62d399" style="{{'background:' + k}}"
+        ><text class="level-title data-v-bf62d399">{{d}}</text
+        ><view class="level-stats data-v-bf62d399"
+          ><view class="stat-item data-v-bf62d399"
+            ><text class="stat-val data-v-bf62d399">{{e}}</text
+            ><text class="stat-label data-v-bf62d399">累计消费</text></view
+          ><view class="stat-item data-v-bf62d399"
+            ><text class="stat-val data-v-bf62d399">{{f}}</text
+            ><text class="stat-label data-v-bf62d399">积分</text></view
+          ></view
+        ><view wx:if="{{g}}" class="progress-section data-v-bf62d399"
+          ><text class="progress-hint data-v-bf62d399"
+            >再消费 {{h}} 升级{{i}}</text
+          ><view class="progress-bar data-v-bf62d399"
+            ><view
+              class="progress-fill data-v-bf62d399"
+              style="{{'width:' + j}}" /></view></view></view
+      ><view class="section data-v-bf62d399"
+        ><text class="section-title data-v-bf62d399">当前权益</text
+        ><view class="benefit-list data-v-bf62d399"
+          ><block wx:for="{{l}}" wx:for-item="level" wx:key="e"
+            ><block wx:if="{{level.a}}"
+              ><view
+                wx:for="{{level.b}}"
+                wx:for-item="ben"
+                wx:key="d"
+                class="benefit-item data-v-bf62d399"
+                ><view
+                  class="{{['benefit-icon', 'data-v-bf62d399', level.c && 'owned']}}"
+                  ><text class="data-v-bf62d399">{{ben.a}}</text></view
+                ><view class="benefit-body data-v-bf62d399"
+                  ><text class="benefit-title data-v-bf62d399">{{ben.b}}</text
+                  ><text class="benefit-desc data-v-bf62d399"
+                    >{{ben.c}}</text
+                  ></view
+                ><text wx:if="{{level.d}}" class="benefit-check data-v-bf62d399"
+                  >V</text
+                ></view
+              ></block
+            ></block
+          ></view
+        ></view
+      ><view class="section data-v-bf62d399"
+        ><text class="section-title data-v-bf62d399">等级体系</text
+        ><view class="level-list data-v-bf62d399"
+          ><view
+            wx:for="{{m}}"
+            wx:for-item="level"
+            wx:key="f"
+            class="level-row data-v-bf62d399"
+            ><view
+              class="level-dot data-v-bf62d399"
+              style="{{'background:' + level.a}}"
+            /><view class="level-body data-v-bf62d399"
+              ><text class="level-name data-v-bf62d399">{{level.b}}</text
+              ><text class="level-require data-v-bf62d399"
+                >累计消费满 {{level.c}} {{level.d}}</text
+              ></view
+            ><text wx:if="{{level.e}}" class="level-badge data-v-bf62d399"
+              >当前</text
+            ></view
+          ></view
+        ></view
+      ></block
+    ><view class="safe-bottom data-v-bf62d399" /></view
+></view>

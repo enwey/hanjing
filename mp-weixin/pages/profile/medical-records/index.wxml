@@ -1,0 +1,37 @@
+<view class="page data-v-04031480"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-04031480"
+    u-i="04031480-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-04031480"
+    ><view wx:if="{{b}}" class="loading-wrap data-v-04031480"
+      ><text class="loading-text data-v-04031480">加载中...</text></view
+    ><block wx:else
+      ><view
+        wx:for="{{c}}"
+        wx:for-item="record"
+        wx:key="l"
+        class="record-card data-v-04031480"
+        ><view class="record-header data-v-04031480"
+          ><view
+            class="record-type data-v-04031480"
+            style="{{'background:' + record.b + ';' + ('color:' + record.c)}}"
+            ><text class="data-v-04031480">{{record.a}}</text></view
+          ><text class="record-date data-v-04031480">{{record.d}}</text></view
+        ><text class="record-doctor data-v-04031480"
+          >{{record.e}} 医生 | {{record.f}}</text
+        ><view class="record-section data-v-04031480"
+          ><text class="record-label data-v-04031480">诊断</text
+          ><text class="record-value data-v-04031480">{{record.g}}</text></view
+        ><view wx:if="{{record.h}}" class="record-section data-v-04031480"
+          ><text class="record-label data-v-04031480">处方/方案</text
+          ><text class="record-value data-v-04031480">{{record.i}}</text></view
+        ><view wx:if="{{record.j}}" class="record-note data-v-04031480"
+          ><text class="data-v-04031480">{{record.k}}</text></view
+        ></view
+      ><view wx:if="{{d}}" class="empty-state data-v-04031480"
+        ><text class="empty-text data-v-04031480">暂无就诊记录</text></view
+      ></block
+    ><view class="safe-bottom data-v-04031480" /></view
+></view>

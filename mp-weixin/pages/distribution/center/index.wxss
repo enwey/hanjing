@@ -1,0 +1,285 @@
+.data-v-6a5afdbe:root {
+  --color-primary-50: #eef4ff;
+  --color-primary-100: #d9e6ff;
+  --color-primary-300: #8eafff;
+  --color-primary-500: #3b6bf5;
+  --color-primary-600: #2a52d4;
+  --color-primary-800: #1a3580;
+  --color-secondary-100: #d3f5e3;
+  --color-secondary-500: #1a9d5c;
+  --color-success-500: #22c55e;
+  --color-warning-500: #f59e0b;
+  --color-error-500: #ef4444;
+  --color-gold-400: #f5a623;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --gradient-primary: linear-gradient(
+    135deg,
+    #3b6bf5 0%,
+    #5a85f5 50%,
+    #8eafff 100%
+  );
+  --gradient-hero: linear-gradient(
+    160deg,
+    #1a3580 0%,
+    #3b6bf5 40%,
+    #8eafff 100%
+  );
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
+  --font-sans:
+    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+.page.data-v-6a5afdbe {
+  min-height: 100vh;
+  background: #f5f6f8;
+  padding-bottom: 32rpx;
+}
+.banner.data-v-6a5afdbe {
+  margin: 24rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  position: relative;
+}
+.banner-bg.data-v-6a5afdbe {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(135deg, #f5a623, #f7c948);
+}
+.banner-content.data-v-6a5afdbe {
+  position: relative;
+  padding: 32rpx 28rpx;
+}
+.banner-title.data-v-6a5afdbe {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+.banner-stats.data-v-6a5afdbe {
+  display: flex;
+  align-items: center;
+  margin-top: 20rpx;
+}
+.stat-item.data-v-6a5afdbe {
+  flex: 1;
+  text-align: center;
+}
+.stat-val.data-v-6a5afdbe {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+  display: block;
+}
+.stat-val.highlight.data-v-6a5afdbe {
+  font-size: 44rpx;
+}
+.stat-label.data-v-6a5afdbe {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 4rpx;
+  display: block;
+}
+.stat-divider.data-v-6a5afdbe {
+  width: 2rpx;
+  height: 50rpx;
+  background: rgba(255, 255, 255, 0.3);
+}
+.actions.data-v-6a5afdbe {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 0 24rpx 24rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx 0;
+}
+.action-item.data-v-6a5afdbe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.action-icon.data-v-6a5afdbe {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #fff;
+}
+.action-icon.gold.data-v-6a5afdbe {
+  background: linear-gradient(135deg, #f5a623, #ffd040);
+}
+.action-icon.blue.data-v-6a5afdbe {
+  background: linear-gradient(135deg, #3b6bf5, #6b9bff);
+}
+.action-icon.green.data-v-6a5afdbe {
+  background: linear-gradient(135deg, #1a9d5c, #4cd68d);
+}
+.action-icon.purple.data-v-6a5afdbe {
+  background: linear-gradient(135deg, #8b5cf6, #b794ff);
+}
+.action-label.data-v-6a5afdbe {
+  font-size: 24rpx;
+  color: #4b5563;
+  margin-top: 10rpx;
+}
+.section.data-v-6a5afdbe {
+  background: #fff;
+  margin: 0 24rpx 24rpx;
+  border-radius: 16rpx;
+  padding: 24rpx;
+}
+.section-hd.data-v-6a5afdbe {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+.section-title.data-v-6a5afdbe {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+.section-more.data-v-6a5afdbe {
+  font-size: 26rpx;
+  color: #3b6bf5;
+}
+.product-scroll.data-v-6a5afdbe {
+  white-space: nowrap;
+}
+.product-card.data-v-6a5afdbe {
+  display: inline-block;
+  width: 240rpx;
+  margin-right: 16rpx;
+}
+.product-img.data-v-6a5afdbe {
+  width: 240rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  background: #f3f4f6;
+}
+.product-info.data-v-6a5afdbe {
+  padding: 12rpx 4rpx;
+}
+.product-name.data-v-6a5afdbe {
+  font-size: 24rpx;
+  color: #1f2937;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.product-price.data-v-6a5afdbe {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #ef4444;
+  margin-top: 4rpx;
+  display: block;
+}
+.product-commission.data-v-6a5afdbe {
+  font-size: 22rpx;
+  color: #f5a623;
+  margin-top: 2rpx;
+  display: block;
+}
+.order-item.data-v-6a5afdbe {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+.order-item.data-v-6a5afdbe:last-child {
+  border: none;
+}
+.order-img.data-v-6a5afdbe {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 10rpx;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+.order-info.data-v-6a5afdbe {
+  flex: 1;
+  margin: 0 16rpx;
+  overflow: hidden;
+}
+.order-name.data-v-6a5afdbe {
+  font-size: 26rpx;
+  color: #1f2937;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.order-meta.data-v-6a5afdbe {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 4rpx;
+  display: block;
+}
+.order-amount.data-v-6a5afdbe {
+  text-align: right;
+  flex-shrink: 0;
+}
+.amount-val.data-v-6a5afdbe {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1a9d5c;
+  display: block;
+}
+.amount-tag.data-v-6a5afdbe {
+  font-size: 20rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  display: inline-block;
+  margin-top: 4rpx;
+}
+.amount-tag.settled.data-v-6a5afdbe {
+  background: #d3f5e3;
+  color: #1a9d5c;
+}
+.amount-tag.pending.data-v-6a5afdbe {
+  background: #fff9e6;
+  color: #f5a623;
+}
+.amount-tag.cancelled.data-v-6a5afdbe {
+  background: #fee2e2;
+  color: #ef4444;
+}
+.rule-entry.data-v-6a5afdbe {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 26rpx;
+  color: #6b7280;
+}
+.arrow.data-v-6a5afdbe {
+  color: #d1d5db;
+}

@@ -1,0 +1,71 @@
+<view class="page data-v-e9eb3795"
+  ><view class="hero data-v-e9eb3795"
+    ><hj-navbar
+      wx:if="{{a}}"
+      class="data-v-e9eb3795"
+      u-i="e9eb3795-0"
+      bind:__l="__l"
+      u-p="{{a}}"
+    /><view class="hero-content data-v-e9eb3795"
+      ><text class="hero-title data-v-e9eb3795">鼾静健康诊所</text
+      ><text class="hero-subtitle data-v-e9eb3795"
+        >专注睡眠呼吸健康 · 让每一个夜晚安宁无声</text
+      ><view class="hero-stats data-v-e9eb3795"
+        ><view class="hero-stat data-v-e9eb3795"
+          ><text class="hero-stat-num data-v-e9eb3795">10,000+</text
+          ><text class="hero-stat-label data-v-e9eb3795">累计患者</text></view
+        ><view class="hero-stat data-v-e9eb3795"
+          ><text class="hero-stat-num data-v-e9eb3795">98%</text
+          ><text class="hero-stat-label data-v-e9eb3795">满意率</text></view
+        ><view class="hero-stat data-v-e9eb3795"
+          ><text class="hero-stat-num data-v-e9eb3795">3</text
+          ><text class="hero-stat-label data-v-e9eb3795">家门店</text></view
+        ></view
+      ><button class="hero-btn data-v-e9eb3795" bindtap="{{b}}">
+        <text class="data-v-e9eb3795">立即预约</text
+        ><text class="hero-btn-arrow data-v-e9eb3795">→</text>
+      </button></view
+    ></view
+  ><view class="section quick-actions data-v-e9eb3795"
+    ><view class="quick-action data-v-e9eb3795" bindtap="{{c}}"
+      ><view class="quick-action-icon data-v-e9eb3795">📅</view
+      ><text class="quick-action-text data-v-e9eb3795">预约挂号</text></view
+    ><view class="quick-action data-v-e9eb3795" bindtap="{{d}}"
+      ><view class="quick-action-icon data-v-e9eb3795">📊</view
+      ><text class="quick-action-text data-v-e9eb3795">睡眠评估</text></view
+    ><view class="quick-action data-v-e9eb3795" bindtap="{{e}}"
+      ><view class="quick-action-icon data-v-e9eb3795">💊</view
+      ><text class="quick-action-text data-v-e9eb3795">治疗追踪</text></view
+    ><view class="quick-action data-v-e9eb3795" bindtap="{{f}}"
+      ><view class="quick-action-icon data-v-e9eb3795">👤</view
+      ><text class="quick-action-text data-v-e9eb3795">我的档案</text></view
+    ></view
+  ><view class="section data-v-e9eb3795"
+    ><view class="section-header data-v-e9eb3795"
+      ><text class="section-title data-v-e9eb3795">推荐医生</text
+      ><text class="section-more data-v-e9eb3795" bindtap="{{g}}"
+        >全部 ›</text
+      ></view
+    ><hj-doctor-card
+      wx:for="{{h}}"
+      wx:for-item="doctor"
+      wx:key="a"
+      class="data-v-e9eb3795"
+      bindclick="{{doctor.b}}"
+      u-i="{{doctor.c}}"
+      bind:__l="__l"
+      u-p="{{doctor.d}}" /></view
+  ><view class="section data-v-e9eb3795"
+    ><view class="section-header data-v-e9eb3795"
+      ><text class="section-title data-v-e9eb3795">我们的门店</text></view
+    ><hj-store-card
+      wx:for="{{i}}"
+      wx:for-item="store"
+      wx:key="a"
+      class="data-v-e9eb3795"
+      bindclick="{{store.b}}"
+      u-i="{{store.c}}"
+      bind:__l="__l"
+      u-p="{{store.d}}" /></view
+  ><view class="safe-bottom data-v-e9eb3795"
+/></view>

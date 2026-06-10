@@ -1,0 +1,50 @@
+<view class="page data-v-5e948475"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-5e948475"
+    u-i="5e948475-0"
+    bind:__l="__l"
+    u-p="{{a}}"
+  /><view wx:if="{{b}}" class="loading-wrap data-v-5e948475"
+    ><text class="data-v-5e948475">加载中...</text></view
+  ><block wx:elif="{{c}}"
+    ><swiper
+      class="img-swiper data-v-5e948475"
+      current="{{e}}"
+      bindchange="{{f}}"
+      indicator-dots
+      indicator-color="rgba(255,255,255,0.5)"
+      indicator-active-color="#3B6BF5"
+      ><swiper-item
+        wx:for="{{d}}"
+        wx:for-item="img"
+        wx:key="b"
+        class="data-v-5e948475"
+        ><image
+          class="swiper-img data-v-5e948475"
+          src="{{img.a}}"
+          mode="aspectFill" /></swiper-item></swiper
+    ><view class="body data-v-5e948475"
+      ><view class="header data-v-5e948475"
+        ><view class="price-row data-v-5e948475"
+          ><text class="price data-v-5e948475">{{g}}</text
+          ><text wx:if="{{h}}" class="price-original data-v-5e948475"
+            >{{i}}</text
+          ><text wx:if="{{j}}" class="discount-tag data-v-5e948475"
+            >{{k}}% OFF</text
+          ></view
+        ><text class="name data-v-5e948475">{{l}}</text
+        ><text class="sales data-v-5e948475">已售 {{m}}</text></view
+      ><view class="section data-v-5e948475"
+        ><text class="section-title data-v-5e948475">商品详情</text
+        ><text class="desc data-v-5e948475">{{n}}</text></view
+      ></view
+    ><view class="bottom-bar data-v-5e948475"
+      ><view class="bottom-price data-v-5e948475"
+        ><text class="bottom-price-val data-v-5e948475">{{o}}</text></view
+      ><view class="btn-buy data-v-5e948475" bindtap="{{p}}"
+        ><text class="data-v-5e948475">立即购买</text></view
+      ></view
+    ></block
+  ></view
+>

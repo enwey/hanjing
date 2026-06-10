@@ -1,0 +1,188 @@
+<view class="page data-v-8badcb8c"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-8badcb8c"
+    u-i="8badcb8c-0"
+    bind:__l="__l"
+    u-p="{{a}}"
+  /><view wx:if="{{b}}" class="page-content data-v-8badcb8c"
+    ><view class="hero-card data-v-8badcb8c"
+      ><view class="hero-top data-v-8badcb8c"
+        ><view class="hero-badge data-v-8badcb8c">治疗中</view
+        ><text class="hero-sub data-v-8badcb8c">已佩戴 {{c}} 天</text></view
+      ><text class="hero-device data-v-8badcb8c">{{d}}</text
+      ><text class="hero-doctor data-v-8badcb8c">主治：{{e}} 医生</text
+      ><view class="hero-progress-wrap data-v-8badcb8c"
+        ><view class="hero-progress-bar data-v-8badcb8c"
+          ><view
+            class="hero-progress-fill data-v-8badcb8c"
+            style="{{'width:' + f}}" /></view
+        ><text class="hero-progress-num data-v-8badcb8c"
+          >依从率 {{g}}%</text
+        ></view
+      ><text class="hero-start data-v-8badcb8c">初配日期：{{h}}</text></view
+    ><view class="section-header data-v-8badcb8c"
+      ><text class="section-title data-v-8badcb8c">打卡日历</text
+      ><text class="section-link data-v-8badcb8c" bindtap="{{i}}"
+        >完整日历 &gt;</text
+      ></view
+    ><view class="calendar-strip data-v-8badcb8c"
+      ><view
+        wx:for="{{j}}"
+        wx:for-item="day"
+        wx:key="e"
+        class="{{['cal-day', 'data-v-8badcb8c', day.f && 'cal-day--today']}}"
+        ><text class="cal-dow data-v-8badcb8c">{{day.a}}</text
+        ><view
+          class="cal-bar data-v-8badcb8c"
+          style="{{'background:' + day.b}}"
+          title="{{day.c}}"
+        /><text class="cal-num data-v-8badcb8c">{{day.d}}</text></view
+      ></view
+    ><view class="calendar-legend data-v-8badcb8c"
+      ><text class="legend-item data-v-8badcb8c"
+        ><view class="legend-dot data-v-8badcb8c" style="background: #86efac" />
+        充足</text
+      ><text class="legend-item data-v-8badcb8c"
+        ><view class="legend-dot data-v-8badcb8c" style="background: #fde68a" />
+        一般</text
+      ><text class="legend-item data-v-8badcb8c"
+        ><view class="legend-dot data-v-8badcb8c" style="background: #fecaca" />
+        未佩戴</text
+      ></view
+    ><view class="stats-row data-v-8badcb8c"
+      ><view class="stat-card data-v-8badcb8c"
+        ><text class="stat-value data-v-8badcb8c">{{k}}/7</text
+        ><text class="stat-label data-v-8badcb8c">本周佩戴</text></view
+      ><view class="stat-card data-v-8badcb8c"
+        ><text class="stat-value data-v-8badcb8c">{{l}}h</text
+        ><text class="stat-label data-v-8badcb8c">平均时长</text></view
+      ><view class="stat-card data-v-8badcb8c"
+        ><text class="stat-value data-v-8badcb8c">{{m}}/5</text
+        ><text class="stat-label data-v-8badcb8c">舒适度</text></view
+      ><view class="stat-card data-v-8badcb8c"
+        ><text class="stat-value data-v-8badcb8c">{{n}}天</text
+        ><text class="stat-label data-v-8badcb8c">连续天数</text></view
+      ></view
+    ><view class="checkin-btn-wrap data-v-8badcb8c"
+      ><view class="checkin-btn data-v-8badcb8c" bindtap="{{o}}"
+        ><text class="checkin-btn-text data-v-8badcb8c">今日打卡</text
+        ><text class="checkin-btn-hint data-v-8badcb8c"
+          >记录佩戴时长和感受</text
+        ></view
+      ></view
+    ><view class="section-header data-v-8badcb8c" style="margin-top: 20px"
+      ><text class="section-title data-v-8badcb8c">更多功能</text></view
+    ><view class="menu-grid data-v-8badcb8c"
+      ><view class="menu-item data-v-8badcb8c" bindtap="{{p}}"
+        ><view class="menu-icon menu-icon--trend data-v-8badcb8c">T</view
+        ><text class="menu-title data-v-8badcb8c">睡眠趋势</text
+        ><text class="menu-desc data-v-8badcb8c">佩戴与睡眠数据</text></view
+      ><view class="menu-item data-v-8badcb8c" bindtap="{{q}}"
+        ><view class="menu-icon menu-icon--report data-v-8badcb8c">📊</view
+        ><text class="menu-title data-v-8badcb8c">睡眠报告</text
+        ><text class="menu-desc data-v-8badcb8c">AI智能分析与建议</text></view
+      ><view class="menu-item data-v-8badcb8c" bindtap="{{r}}"
+        ><view class="menu-icon menu-icon--timeline data-v-8badcb8c">TL</view
+        ><text class="menu-title data-v-8badcb8c">治疗时间线</text
+        ><text class="menu-desc data-v-8badcb8c">就诊全记录</text></view
+      ><view class="menu-item data-v-8badcb8c" bindtap="{{s}}"
+        ><view class="menu-icon menu-icon--advice data-v-8badcb8c">D</view
+        ><text class="menu-title data-v-8badcb8c">医嘱建议</text
+        ><text class="menu-desc data-v-8badcb8c">医生指导方案</text></view
+      ><view class="menu-item data-v-8badcb8c" bindtap="{{t}}"
+        ><view class="menu-icon menu-icon--adjust data-v-8badcb8c">A</view
+        ><text class="menu-title data-v-8badcb8c">设备调整</text
+        ><text class="menu-desc data-v-8badcb8c">参数与调整记录</text></view
+      ><view class="menu-item data-v-8badcb8c" bindtap="{{v}}"
+        ><view class="menu-icon menu-icon--community data-v-8badcb8c">👥</view
+        ><text class="menu-title data-v-8badcb8c">医患社区</text
+        ><text class="menu-desc data-v-8badcb8c">交流经验与心得</text></view
+      ></view
+    ><view class="section-header data-v-8badcb8c" style="margin-top: 20px"
+      ><text class="section-title data-v-8badcb8c">治疗动态</text
+      ><text class="section-link data-v-8badcb8c" bindtap="{{w}}"
+        >全部 &gt;</text
+      ></view
+    ><view class="timeline-preview data-v-8badcb8c"
+      ><view
+        wx:for="{{x}}"
+        wx:for-item="event"
+        wx:key="f"
+        class="{{['tl-item', 'data-v-8badcb8c', event.g && 'tl-item--last']}}"
+        ><view
+          class="tl-dot data-v-8badcb8c"
+          style="{{'background:' + event.a}}"
+        /><view wx:if="{{event.b}}" class="tl-line data-v-8badcb8c" /><view
+          class="tl-content data-v-8badcb8c"
+          ><text class="tl-date data-v-8badcb8c">{{event.c}}</text
+          ><text class="tl-title data-v-8badcb8c">{{event.d}}</text
+          ><text class="tl-desc data-v-8badcb8c">{{event.e}}</text></view
+        ></view
+      ></view
+    ><view class="safe-bottom data-v-8badcb8c" /></view
+  ><view wx:if="{{y}}" class="page-content data-v-8badcb8c"
+    ><hj-empty
+      wx:if="{{z}}"
+      class="data-v-8badcb8c"
+      u-s="{{['d']}}"
+      u-i="8badcb8c-1"
+      bind:__l="__l"
+      u-p="{{z}}"
+      ><text
+        class="data-v-8badcb8c"
+        style="
+          font-size: 13px;
+          color: #d1d5db;
+          text-align: center;
+          display: block;
+        "
+      >
+        完成初诊适配后，治疗追踪将在此显示
+      </text></hj-empty
+    ></view
+  ><view wx:if="{{A}}" class="checkin-overlay data-v-8badcb8c" bindtap="{{K}}"
+    ><view class="checkin-panel data-v-8badcb8c" catchtap="{{J}}"
+      ><text class="checkin-panel-title data-v-8badcb8c">今日佩戴打卡</text
+      ><text class="checkin-panel-date data-v-8badcb8c">2026年6月4日 周四</text
+      ><text class="checkin-label data-v-8badcb8c">佩戴时长（小时）</text
+      ><view class="duration-grid data-v-8badcb8c"
+        ><view
+          wx:for="{{B}}"
+          wx:for-item="h"
+          wx:key="b"
+          class="{{['duration-chip', 'data-v-8badcb8c', h.c && 'duration-chip--active']}}"
+          bindtap="{{h.d}}"
+          ><text class="data-v-8badcb8c">{{h.a}}h</text></view
+        ></view
+      ><text class="checkin-label data-v-8badcb8c">舒适度评分</text
+      ><view class="comfort-row data-v-8badcb8c"
+        ><view
+          wx:for="{{C}}"
+          wx:for-item="s"
+          wx:key="b"
+          class="{{['comfort-star', 'data-v-8badcb8c', s.c && 'comfort-star--active']}}"
+          bindtap="{{s.d}}"
+          ><text class="data-v-8badcb8c">{{s.a}}</text></view
+        ></view
+      ><text class="checkin-label data-v-8badcb8c">备注（选填）</text
+      ><block wx:if="{{r0}}">
+        <textarea
+          class="checkin-textarea data-v-8badcb8c"
+          placeholder="记录今日感受，如：轻微牙齿酸胀、睡眠质量改善..."
+          maxlength="200"
+          value="{{D}}"
+          bindinput="{{E}}"
+        /></block
+      ><view class="checkin-actions data-v-8badcb8c"
+        ><view class="checkin-btn-cancel data-v-8badcb8c" bindtap="{{F}}"
+          ><text class="data-v-8badcb8c">取消</text></view
+        ><view
+          class="{{['checkin-btn-submit', 'data-v-8badcb8c', H && 'checkin-btn-submit--loading']}}"
+          bindtap="{{I}}"
+          ><text class="data-v-8badcb8c">{{G}}</text></view
+        ></view
+      ></view
+    ></view
+  ></view
+>

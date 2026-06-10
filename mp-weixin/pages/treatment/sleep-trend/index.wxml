@@ -1,0 +1,65 @@
+<view class="page data-v-eb41b617"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-eb41b617"
+    u-i="eb41b617-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view wx:if="{{b}}" class="page-content data-v-eb41b617"
+    ><view class="mode-switch data-v-eb41b617"
+      ><view
+        class="{{['mode-btn', 'data-v-eb41b617', c && 'mode-btn--active']}}"
+        bindtap="{{d}}"
+        >本周</view
+      ><view
+        class="{{['mode-btn', 'data-v-eb41b617', e && 'mode-btn--active']}}"
+        bindtap="{{f}}"
+        >全部</view
+      ></view
+    ><view class="summary-row data-v-eb41b617"
+      ><view class="summary-item data-v-eb41b617"
+        ><text class="summary-val data-v-eb41b617">{{g}}天</text
+        ><text class="summary-lbl data-v-eb41b617">佩戴天数</text></view
+      ><view class="summary-item data-v-eb41b617"
+        ><text class="summary-val data-v-eb41b617">{{h}}h</text
+        ><text class="summary-lbl data-v-eb41b617">日均时长</text></view
+      ><view class="summary-item data-v-eb41b617"
+        ><text class="summary-val data-v-eb41b617">{{i}}%</text
+        ><text class="summary-lbl data-v-eb41b617">依从率</text></view
+      ></view
+    ><view class="chart-card data-v-eb41b617"
+      ><text class="chart-title data-v-eb41b617">每日佩戴时长</text
+      ><view class="chart-bars data-v-eb41b617"
+        ><view
+          wx:for="{{j}}"
+          wx:for-item="d"
+          wx:key="f"
+          class="bar-col data-v-eb41b617"
+          ><text wx:if="{{d.a}}" class="bar-value data-v-eb41b617"
+            >{{d.b}}h</text
+          ><text wx:else class="bar-value bar-value--zero data-v-eb41b617"
+            >-</text
+          ><view
+            class="bar-fill data-v-eb41b617"
+            style="{{'height:' + d.c + ';' + ('background:' + d.d)}}"
+          /><text class="bar-label data-v-eb41b617">{{d.e}}</text></view
+        ></view
+      ><text class="chart-hint data-v-eb41b617">参考线：目标 7h</text></view
+    ><view class="chart-card data-v-eb41b617"
+      ><text class="chart-title data-v-eb41b617">舒适度评分</text
+      ><view class="comfort-grid data-v-eb41b617"
+        ><view
+          wx:for="{{k}}"
+          wx:for-item="d"
+          wx:key="c"
+          class="{{['comfort-cell', 'data-v-eb41b617', d.d && 'comfort-cell--empty']}}"
+          ><view class="comfort-dots data-v-eb41b617"
+            ><view
+              wx:for="{{d.a}}"
+              wx:for-item="dot"
+              wx:key="a"
+              class="{{['comfort-dot', 'data-v-eb41b617', dot.b && 'comfort-dot--on']}}" /></view
+          ><text class="comfort-date data-v-eb41b617">{{d.b}}</text></view
+        ></view
+      ></view
+    ><view class="safe-bottom data-v-eb41b617" /></view
+></view>

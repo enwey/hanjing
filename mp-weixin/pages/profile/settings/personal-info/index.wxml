@@ -1,0 +1,64 @@
+<view class="page data-v-acab1652"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-acab1652"
+    u-i="acab1652-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-acab1652"
+    ><view wx:if="{{b}}" class="loading-wrap data-v-acab1652"
+      ><text class="data-v-acab1652">加载中...</text></view
+    ><block wx:else
+      ><view class="form-card data-v-acab1652"
+        ><view class="form-row data-v-acab1652"
+          ><text class="form-label data-v-acab1652">头像</text
+          ><view class="avatar data-v-acab1652"
+            ><text class="data-v-acab1652">{{c}}</text></view
+          ></view
+        ><view class="form-row data-v-acab1652"
+          ><text class="form-label data-v-acab1652">昵称</text
+          ><input
+            wx:if="{{d}}"
+            class="form-value-input data-v-acab1652"
+            value="{{e}}"
+            bindinput="{{f}}"
+          /><text wx:else class="form-value data-v-acab1652">{{g}}</text></view
+        ><view class="form-row data-v-acab1652"
+          ><text class="form-label data-v-acab1652">手机号</text
+          ><text class="form-value disabled data-v-acab1652">{{h}}</text></view
+        ><view class="form-row data-v-acab1652"
+          ><text class="form-label data-v-acab1652">性别</text
+          ><text wx:if="{{i}}" class="form-value data-v-acab1652">{{j}}</text
+          ><view wx:else class="form-chips data-v-acab1652"
+            ><view
+              class="{{['chip', 'data-v-acab1652', k && 'active']}}"
+              bindtap="{{l}}"
+              ><text class="data-v-acab1652">男</text></view
+            ><view
+              class="{{['chip', 'data-v-acab1652', m && 'active']}}"
+              bindtap="{{n}}"
+              ><text class="data-v-acab1652">女</text></view
+            ></view
+          ></view
+        ><view class="form-row data-v-acab1652"
+          ><text class="form-label data-v-acab1652">生日</text
+          ><input
+            wx:if="{{o}}"
+            class="form-value-input data-v-acab1652"
+            placeholder="YYYY-MM-DD"
+            value="{{p}}"
+            bindinput="{{q}}"
+          /><text wx:else class="form-value data-v-acab1652">{{r}}</text></view
+        ></view
+      ><view class="actions data-v-acab1652"
+        ><view wx:if="{{s}}" class="btn-edit data-v-acab1652" bindtap="{{t}}"
+          ><text class="data-v-acab1652">编辑资料</text></view
+        ><block wx:else
+          ><view class="btn-save data-v-acab1652" bindtap="{{v}}"
+            ><text class="data-v-acab1652">保存</text></view
+          ><view class="btn-cancel data-v-acab1652" bindtap="{{w}}"
+            ><text class="data-v-acab1652">取消</text></view
+          ></block
+        ></view
+      ></block
+    ><view class="safe-bottom data-v-acab1652" /></view
+></view>

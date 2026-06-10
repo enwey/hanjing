@@ -1,0 +1,124 @@
+.data-v-74fd48b7:root {
+  --color-primary-50: #eef4ff;
+  --color-primary-100: #d9e6ff;
+  --color-primary-300: #8eafff;
+  --color-primary-500: #3b6bf5;
+  --color-primary-600: #2a52d4;
+  --color-primary-800: #1a3580;
+  --color-secondary-100: #d3f5e3;
+  --color-secondary-500: #1a9d5c;
+  --color-success-500: #22c55e;
+  --color-warning-500: #f59e0b;
+  --color-error-500: #ef4444;
+  --color-gold-400: #f5a623;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --gradient-primary: linear-gradient(
+    135deg,
+    #3b6bf5 0%,
+    #5a85f5 50%,
+    #8eafff 100%
+  );
+  --gradient-hero: linear-gradient(
+    160deg,
+    #1a3580 0%,
+    #3b6bf5 40%,
+    #8eafff 100%
+  );
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
+  --font-sans:
+    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+.apt-item.data-v-74fd48b7 {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+.apt-header.data-v-74fd48b7 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.apt-no.data-v-74fd48b7 {
+  font-size: 13px;
+  color: #9ca3af;
+}
+.apt-body.data-v-74fd48b7 {
+  margin-bottom: 4px;
+}
+.apt-info-row.data-v-74fd48b7 {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.apt-label.data-v-74fd48b7 {
+  font-size: 13px;
+  color: #9ca3af;
+  width: 56px;
+  flex-shrink: 0;
+}
+.apt-value.data-v-74fd48b7 {
+  font-size: 14px;
+  color: #374151;
+  flex: 1;
+}
+.apt-value--bold.data-v-74fd48b7 {
+  font-weight: 600;
+  color: #1f2937;
+}
+.apt-value--desc.data-v-74fd48b7 {
+  line-height: 1.5;
+}
+.apt-actions.data-v-74fd48b7 {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f3f4f6;
+}
+.apt-btn.data-v-74fd48b7 {
+  font-size: 13px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #6b7280;
+  line-height: 1;
+}
+.apt-btn.data-v-74fd48b7:after {
+  border: none;
+}
+.apt-btn--danger.data-v-74fd48b7 {
+  border-color: #fca5a5;
+  color: #ef4444;
+}

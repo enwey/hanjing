@@ -1,0 +1,36 @@
+<view class="page data-v-72504f8b"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-72504f8b"
+    u-i="72504f8b-0"
+    bind:__l="__l"
+    u-p="{{a}}"
+  /><scroll-view
+    class="chat-area data-v-72504f8b"
+    scroll-y
+    scroll-into-view="{{c}}"
+    ><view class="chat-list data-v-72504f8b"
+      ><view
+        wx:for="{{b}}"
+        wx:for-item="msg"
+        wx:key="d"
+        id="{{msg.e}}"
+        class="{{['chat-msg', 'data-v-72504f8b', msg.f]}}"
+        ><view class="{{['msg-bubble', 'data-v-72504f8b', msg.c]}}"
+          ><text class="msg-text data-v-72504f8b">{{msg.a}}</text
+          ><text class="msg-time data-v-72504f8b">{{msg.b}}</text></view
+        ></view
+      ></view
+    ></scroll-view
+  ><view class="input-bar data-v-72504f8b"
+    ><input
+      class="chat-input data-v-72504f8b"
+      placeholder="输入您的问题..."
+      bindconfirm="{{d}}"
+      value="{{e}}"
+      bindinput="{{f}}"
+    /><view class="btn-send data-v-72504f8b" bindtap="{{g}}"
+      ><text class="data-v-72504f8b">发送</text></view
+    ></view
+  ></view
+>

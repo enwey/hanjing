@@ -1,0 +1,46 @@
+<view class="page data-v-02d25a67"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-02d25a67"
+    u-i="02d25a67-0"
+    bind:__l="__l"
+    u-p="{{a}}"
+  /><scroll-view class="page-content data-v-02d25a67" scroll-y
+    ><view class="product-hero data-v-02d25a67" style="{{'background:' + g}}"
+      ><image
+        wx:if="{{b}}"
+        src="{{c}}"
+        mode="aspectFill"
+        class="hero-img data-v-02d25a67"
+      /><view wx:else class="hero-placeholder data-v-02d25a67"
+        ><text class="placeholder-icon data-v-02d25a67">{{d}}</text></view
+      ><view wx:if="{{e}}" class="hero-badge data-v-02d25a67">{{f}}</view></view
+    ><view class="info-card data-v-02d25a67"
+      ><view class="price-row data-v-02d25a67"
+        ><text class="price data-v-02d25a67">{{h}}</text
+        ><text wx:if="{{i}}" class="price-original data-v-02d25a67">{{j}}</text
+        ><text class="sales data-v-02d25a67">已售 {{k}}</text></view
+      ><text class="product-name data-v-02d25a67">{{l}}</text
+      ><text class="product-desc data-v-02d25a67">{{m}}</text></view
+    ><view class="section-card data-v-02d25a67"
+      ><text class="section-title data-v-02d25a67">产品规格</text
+      ><view
+        wx:for="{{n}}"
+        wx:for-item="spec"
+        wx:key="c"
+        class="spec-row data-v-02d25a67"
+        ><text class="spec-label data-v-02d25a67">{{spec.a}}</text
+        ><text class="spec-value data-v-02d25a67">{{spec.b}}</text></view
+      ></view
+    ><view class="section-card data-v-02d25a67"
+      ><text class="section-title data-v-02d25a67">产品详情</text
+      ><text class="detail-text data-v-02d25a67">{{o}}</text></view
+    ><view class="safe-bottom data-v-02d25a67" /></scroll-view
+  ><view class="buy-bar data-v-02d25a67"
+    ><view class="cart-btn data-v-02d25a67" bindtap="{{q}}"
+      ><text class="cart-btn-text data-v-02d25a67">{{p}}</text></view
+    ><view class="buy-btn data-v-02d25a67" bindtap="{{r}}"
+      ><text class="buy-btn-text data-v-02d25a67">立即购买</text></view
+    ></view
+  ></view
+>

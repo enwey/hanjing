@@ -1,0 +1,100 @@
+<view class="page data-v-6a5afdbe"
+  ><view class="banner data-v-6a5afdbe"
+    ><view class="banner-bg data-v-6a5afdbe"></view
+    ><view class="banner-content data-v-6a5afdbe"
+      ><text class="banner-title data-v-6a5afdbe">我的推广</text
+      ><view class="banner-stats data-v-6a5afdbe"
+        ><view class="stat-item data-v-6a5afdbe"
+          ><text class="stat-val data-v-6a5afdbe">{{a}}</text
+          ><text class="stat-label data-v-6a5afdbe">累计佣金</text></view
+        ><view class="stat-divider data-v-6a5afdbe"></view
+        ><view class="stat-item data-v-6a5afdbe"
+          ><text class="stat-val highlight data-v-6a5afdbe">{{b}}</text
+          ><text class="stat-label data-v-6a5afdbe">可提现</text></view
+        ><view class="stat-divider data-v-6a5afdbe"></view
+        ><view class="stat-item data-v-6a5afdbe"
+          ><text class="stat-val data-v-6a5afdbe">{{c}}</text
+          ><text class="stat-label data-v-6a5afdbe">团队成员</text></view
+        ></view
+      ></view
+    ></view
+  ><view class="actions data-v-6a5afdbe"
+    ><view class="action-item data-v-6a5afdbe" bindtap="{{d}}"
+      ><view class="action-icon gold data-v-6a5afdbe">T</view
+      ><text class="action-label data-v-6a5afdbe">提现</text></view
+    ><view class="action-item data-v-6a5afdbe" bindtap="{{e}}"
+      ><view class="action-icon blue data-v-6a5afdbe">$</view
+      ><text class="action-label data-v-6a5afdbe">佣金明细</text></view
+    ><view class="action-item data-v-6a5afdbe" bindtap="{{f}}"
+      ><view class="action-icon green data-v-6a5afdbe">G</view
+      ><text class="action-label data-v-6a5afdbe">团队成员</text></view
+    ><view class="action-item data-v-6a5afdbe" bindtap="{{g}}"
+      ><view class="action-icon purple data-v-6a5afdbe">S</view
+      ><text class="action-label data-v-6a5afdbe">邀请好友</text></view
+    ></view
+  ><view class="section data-v-6a5afdbe"
+    ><view class="section-hd data-v-6a5afdbe"
+      ><text class="section-title data-v-6a5afdbe">推广商品</text
+      ><text class="section-more data-v-6a5afdbe" bindtap="{{h}}"
+        >全部</text
+      ></view
+    ><scroll-view scroll-x class="product-scroll data-v-6a5afdbe"
+      ><view
+        wx:for="{{i}}"
+        wx:for-item="p"
+        wx:key="e"
+        class="product-card data-v-6a5afdbe"
+        bindtap="{{p.f}}"
+        ><image
+          class="product-img data-v-6a5afdbe"
+          src="{{p.a}}"
+          mode="aspectFill"
+        /><view class="product-info data-v-6a5afdbe"
+          ><text class="product-name data-v-6a5afdbe">{{p.b}}</text
+          ><text class="product-price data-v-6a5afdbe">{{p.c}}</text
+          ><text class="product-commission data-v-6a5afdbe"
+            >佣金 {{p.d}}</text
+          ></view
+        ></view
+      ></scroll-view
+    ></view
+  ><view class="section data-v-6a5afdbe"
+    ><view class="section-hd data-v-6a5afdbe"
+      ><text class="section-title data-v-6a5afdbe">近期推广订单</text
+      ><text class="section-more data-v-6a5afdbe" bindtap="{{j}}"
+        >全部</text
+      ></view
+    ><view class="order-list data-v-6a5afdbe"
+      ><view
+        wx:for="{{k}}"
+        wx:for-item="o"
+        wx:key="h"
+        class="order-item data-v-6a5afdbe"
+        ><image
+          class="order-img data-v-6a5afdbe"
+          src="{{o.a}}"
+          mode="aspectFill"
+        /><view class="order-info data-v-6a5afdbe"
+          ><text class="order-name data-v-6a5afdbe">{{o.b}}</text
+          ><text class="order-meta data-v-6a5afdbe"
+            >{{o.c}} | {{o.d}}</text
+          ></view
+        ><view class="order-amount data-v-6a5afdbe"
+          ><text class="amount-val data-v-6a5afdbe">+{{o.e}}</text
+          ><text class="{{['amount-tag', 'data-v-6a5afdbe', o.g]}}"
+            >{{o.f}}</text
+          ></view
+        ></view
+      ><hj-empty
+        wx:if="{{l}}"
+        class="data-v-6a5afdbe"
+        u-i="6a5afdbe-0"
+        bind:__l="__l"
+        u-p="{{m}}" /></view></view
+  ><view class="section data-v-6a5afdbe"
+    ><view class="rule-entry data-v-6a5afdbe" bindtap="{{n}}"
+      ><text class="data-v-6a5afdbe">分销规则与说明</text
+      ><text class="arrow data-v-6a5afdbe">&gt;</text></view
+    ></view
+  ></view
+>

@@ -1,0 +1,34 @@
+<view class="page data-v-75e661b4"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-75e661b4"
+    u-i="75e661b4-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-75e661b4"
+    ><view class="device-card data-v-75e661b4"
+      ><text class="device-model data-v-75e661b4">HJ-MAD-03</text
+      ><text class="device-name data-v-75e661b4">定制式可调舌型阻鼾器</text
+      ><view class="device-status data-v-75e661b4"
+        ><view class="status-dot data-v-75e661b4" /><text
+          class="status-text data-v-75e661b4"
+          >使用中</text
+        ></view
+      ></view
+    ><view class="menu-list data-v-75e661b4"
+      ><view
+        wx:for="{{b}}"
+        wx:for-item="item"
+        wx:key="f"
+        class="menu-item data-v-75e661b4"
+        bindtap="{{item.g}}"
+        ><view
+          class="menu-icon data-v-75e661b4"
+          style="{{'background:' + item.b + ';' + ('color:' + item.c)}}"
+          ><text class="data-v-75e661b4">{{item.a}}</text></view
+        ><view class="menu-body data-v-75e661b4"
+          ><text class="menu-label data-v-75e661b4">{{item.d}}</text
+          ><text class="menu-desc data-v-75e661b4">{{item.e}}</text></view
+        ><text class="menu-arrow data-v-75e661b4">&gt;</text></view
+      ></view
+    ><view class="safe-bottom data-v-75e661b4" /></view
+></view>

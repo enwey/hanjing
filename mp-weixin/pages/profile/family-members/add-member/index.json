@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "添加成员",
+  "usingComponents": {
+    "hj-navbar": "../../../../components/base/hj-navbar"
+  }
+}

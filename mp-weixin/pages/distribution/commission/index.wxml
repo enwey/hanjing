@@ -1,0 +1,50 @@
+<view class="page data-v-8fd26dea"
+  ><view class="summary data-v-8fd26dea"
+    ><view class="sum-item data-v-8fd26dea"
+      ><text class="sum-val data-v-8fd26dea">{{a}}</text
+      ><text class="sum-label data-v-8fd26dea">累计佣金</text></view
+    ><view class="sum-item data-v-8fd26dea"
+      ><text class="sum-val highlight data-v-8fd26dea">{{b}}</text
+      ><text class="sum-label data-v-8fd26dea">待结算</text></view
+    ><view class="sum-item data-v-8fd26dea"
+      ><text class="sum-val data-v-8fd26dea">{{c}}</text
+      ><text class="sum-label data-v-8fd26dea">已结算</text></view
+    ></view
+  ><scroll-view scroll-x class="tabs data-v-8fd26dea"
+    ><text
+      wx:for="{{d}}"
+      wx:for-item="t"
+      wx:key="b"
+      class="{{['tab', 'data-v-8fd26dea', t.c && 'active']}}"
+      bindtap="{{t.d}}"
+      >{{t.a}}</text
+    ></scroll-view
+  ><view class="list data-v-8fd26dea"
+    ><view
+      wx:for="{{e}}"
+      wx:for-item="o"
+      wx:key="i"
+      class="item data-v-8fd26dea"
+      ><image
+        class="item-img data-v-8fd26dea"
+        src="{{o.a}}"
+        mode="aspectFill"
+      /><view class="item-info data-v-8fd26dea"
+        ><text class="item-name data-v-8fd26dea">{{o.b}}</text
+        ><text class="item-meta data-v-8fd26dea">{{o.c}} | {{o.d}}</text
+        ><text wx:if="{{o.e}}" class="item-level data-v-8fd26dea"
+          >二级佣金</text
+        ></view
+      ><view class="item-right data-v-8fd26dea"
+        ><text class="item-amount data-v-8fd26dea">+{{o.f}}</text
+        ><text class="{{['item-tag', 'data-v-8fd26dea', o.h]}}"
+          >{{o.g}}</text
+        ></view
+      ></view
+    ><hj-empty
+      wx:if="{{f}}"
+      class="data-v-8fd26dea"
+      u-i="8fd26dea-0"
+      bind:__l="__l"
+      u-p="{{g}}" /></view
+></view>

@@ -1,0 +1,128 @@
+<view class="page data-v-72813ef9"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-72813ef9"
+    u-i="72813ef9-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view wx:if="{{b}}" class="page-content data-v-72813ef9"
+    ><view class="period-switch data-v-72813ef9"
+      ><view
+        class="{{['period-btn', 'data-v-72813ef9', c && 'active']}}"
+        bindtap="{{d}}"
+        >过去7天</view
+      ><view
+        class="{{['period-btn', 'data-v-72813ef9', e && 'active']}}"
+        bindtap="{{f}}"
+        >过去30天</view
+      ></view
+    ><view class="score-card data-v-72813ef9" style="{{'background:' + n}}"
+      ><view class="score-ring data-v-72813ef9"
+        ><view class="score-num data-v-72813ef9" style="{{'color:' + h}}"
+          >{{g}}</view
+        ><view class="score-unit data-v-72813ef9">分</view></view
+      ><view class="score-info data-v-72813ef9"
+        ><text class="score-level data-v-72813ef9" style="{{'color:' + j}}"
+          >{{i}}</text
+        ><text class="score-period data-v-72813ef9">基于{{k}}数据</text></view
+      ><view class="score-bar-wrap data-v-72813ef9"
+        ><view
+          class="score-bar data-v-72813ef9"
+          style="{{'width:' + l + ';' + ('background:' + m)}}" /></view></view
+    ><view class="section-title data-v-72813ef9">核心指标</view
+    ><view class="metrics-grid data-v-72813ef9"
+      ><view class="metric-card data-v-72813ef9"
+        ><text class="metric-val data-v-72813ef9">{{o}}h</text
+        ><text class="metric-label data-v-72813ef9">平均佩戴时长</text
+        ><view class="metric-bar data-v-72813ef9"
+          ><view
+            class="metric-fill data-v-72813ef9"
+            style="{{'width:' + p}}" /></view></view
+      ><view class="metric-card data-v-72813ef9"
+        ><text class="metric-val data-v-72813ef9">{{q}}%</text
+        ><text class="metric-label data-v-72813ef9">佩戴依从率</text
+        ><view class="metric-bar data-v-72813ef9"
+          ><view
+            class="metric-fill green data-v-72813ef9"
+            style="{{'width:' + r}}" /></view></view
+      ><view class="metric-card data-v-72813ef9"
+        ><text class="metric-val data-v-72813ef9">{{s}}/5</text
+        ><text class="metric-label data-v-72813ef9">平均舒适度</text
+        ><view class="metric-bar data-v-72813ef9"
+          ><view
+            class="metric-fill orange data-v-72813ef9"
+            style="{{'width:' + t}}" /></view></view
+      ><view class="metric-card data-v-72813ef9"
+        ><text class="metric-val data-v-72813ef9">{{v}}天</text
+        ><text class="metric-label data-v-72813ef9">连续佩戴</text
+        ><view class="metric-bar data-v-72813ef9"
+          ><view
+            class="metric-fill blue data-v-72813ef9"
+            style="{{'width:' + w}}" /></view></view></view
+    ><view class="section-title data-v-72813ef9">每日评分趋势</view
+    ><view class="trend-chart data-v-72813ef9"
+      ><view class="trend-bars data-v-72813ef9"
+        ><view
+          wx:for="{{x}}"
+          wx:for-item="score"
+          wx:key="a"
+          class="trend-bar data-v-72813ef9"
+          style="{{'height:' + score.b + ';' + ('background:' + score.c)}}" /></view
+      ><view class="trend-labels data-v-72813ef9"
+        ><text
+          wx:for="{{y}}"
+          wx:for-item="day"
+          wx:key="b"
+          class="trend-label data-v-72813ef9"
+          >{{day.a}}</text
+        ></view
+      ></view
+    ><view class="section-title data-v-72813ef9">同类患者对比</view
+    ><view class="peer-card data-v-72813ef9"
+      ><view class="peer-header data-v-72813ef9"
+        ><text class="peer-title data-v-72813ef9"
+          >您超过了 {{z}}% 的同类患者</text
+        ><text class="peer-sub data-v-72813ef9"
+          >基于相同治疗方案的用户数据</text
+        ></view
+      ><view class="peer-bars data-v-72813ef9"
+        ><view class="peer-row data-v-72813ef9"
+          ><text class="peer-label data-v-72813ef9">平均佩戴时长</text
+          ><view class="peer-bar-wrap data-v-72813ef9"
+            ><view
+              class="peer-bar you data-v-72813ef9"
+              style="{{'width:' + A}}" /><view
+              class="peer-bar avg data-v-72813ef9"
+              style="{{'width:' + B}}" /></view
+          ><text class="peer-val data-v-72813ef9">{{C}}h vs {{D}}h</text></view
+        ><view class="peer-row data-v-72813ef9"
+          ><text class="peer-label data-v-72813ef9">依从率</text
+          ><view class="peer-bar-wrap data-v-72813ef9"
+            ><view
+              class="peer-bar you green data-v-72813ef9"
+              style="{{'width:' + E}}" /><view
+              class="peer-bar avg data-v-72813ef9"
+              style="{{'width:' + F}}" /></view
+          ><text class="peer-val data-v-72813ef9">{{G}}% vs {{H}}%</text></view
+        ></view
+      ><view class="peer-legend data-v-72813ef9"
+        ><text class="legend-dot you data-v-72813ef9" /> 您
+        <text class="legend-dot avg data-v-72813ef9" /> 平均水平
+      </view></view
+    ><view class="section-title data-v-72813ef9">AI 健康洞察</view
+    ><view class="insights data-v-72813ef9"
+      ><view
+        wx:for="{{I}}"
+        wx:for-item="insight"
+        wx:key="c"
+        class="{{['insight-card', 'data-v-72813ef9', insight.d]}}"
+        ><text class="insight-icon data-v-72813ef9">{{insight.a}}</text
+        ><text class="insight-text data-v-72813ef9">{{insight.b}}</text></view
+      ></view
+    ><view wx:if="{{J}}" class="book-btn-wrap data-v-72813ef9"
+      ><view class="book-btn data-v-72813ef9" bindtap="{{K}}"
+        ><text class="book-btn-text data-v-72813ef9"
+          >预约医生调整设备</text
+        ></view
+      ></view
+    ><view class="safe-bottom data-v-72813ef9" /></view
+></view>

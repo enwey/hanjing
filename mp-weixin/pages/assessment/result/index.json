@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "评估结果",
+  "usingComponents": {
+    "hj-navbar": "../../../components/base/hj-navbar"
+  }
+}

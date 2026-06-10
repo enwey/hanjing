@@ -1,0 +1,152 @@
+.data-v-e9b2690b:root {
+  --color-primary-50: #eef4ff;
+  --color-primary-100: #d9e6ff;
+  --color-primary-300: #8eafff;
+  --color-primary-500: #3b6bf5;
+  --color-primary-600: #2a52d4;
+  --color-primary-800: #1a3580;
+  --color-secondary-100: #d3f5e3;
+  --color-secondary-500: #1a9d5c;
+  --color-success-500: #22c55e;
+  --color-warning-500: #f59e0b;
+  --color-error-500: #ef4444;
+  --color-gold-400: #f5a623;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --gradient-primary: linear-gradient(
+    135deg,
+    #3b6bf5 0%,
+    #5a85f5 50%,
+    #8eafff 100%
+  );
+  --gradient-hero: linear-gradient(
+    160deg,
+    #1a3580 0%,
+    #3b6bf5 40%,
+    #8eafff 100%
+  );
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
+  --font-sans:
+    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+.page.data-v-e9b2690b {
+  min-height: 100vh;
+  background: #f5f6f8;
+}
+.stats-bar.data-v-e9b2690b {
+  display: flex;
+  background: #fff;
+  margin: 24rpx;
+  border-radius: 16rpx;
+  padding: 28rpx 0;
+}
+.stat.data-v-e9b2690b {
+  flex: 1;
+  text-align: center;
+}
+.sv.data-v-e9b2690b {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1f2937;
+  display: block;
+}
+.sl.data-v-e9b2690b {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 4rpx;
+  display: block;
+}
+.list.data-v-e9b2690b {
+  background: #fff;
+  margin: 0 24rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+.item.data-v-e9b2690b {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+.item.data-v-e9b2690b:last-child {
+  border: none;
+}
+.avatar.data-v-e9b2690b {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 36rpx;
+  background: linear-gradient(135deg, #3b6bf5, #8eafff);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.info.data-v-e9b2690b {
+  flex: 1;
+  margin: 0 16rpx;
+}
+.name.data-v-e9b2690b {
+  font-size: 28rpx;
+  color: #1f2937;
+  display: block;
+}
+.meta.data-v-e9b2690b {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 4rpx;
+  display: block;
+}
+.right.data-v-e9b2690b {
+  text-align: right;
+}
+.level.data-v-e9b2690b {
+  font-size: 20rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  display: inline-block;
+  margin-bottom: 4rpx;
+}
+.level.gold.data-v-e9b2690b {
+  background: #fff9e6;
+  color: #f5a623;
+}
+.level.silver.data-v-e9b2690b {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.level.diamond.data-v-e9b2690b {
+  background: #eef4ff;
+  color: #3b6bf5;
+}
+.sales.data-v-e9b2690b {
+  font-size: 24rpx;
+  color: #1a9d5c;
+  display: block;
+  font-weight: 500;
+}

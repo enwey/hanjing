@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "鼾静健康诊所",
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": false,
+  "usingComponents": {
+    "hj-navbar": "../../components/base/hj-navbar",
+    "hj-store-card": "../../components/business/hj-store-card",
+    "hj-doctor-card": "../../components/business/hj-doctor-card"
+  }
+}

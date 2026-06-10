@@ -1,0 +1,20 @@
+<view class="page data-v-c4ad3ae9"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-c4ad3ae9"
+    u-i="c4ad3ae9-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-c4ad3ae9"
+    ><view class="section-header data-v-c4ad3ae9"
+      ><text class="section-title data-v-c4ad3ae9">请选择就诊门店</text
+      ><text class="section-hint data-v-c4ad3ae9">共 {{b}} 家门店</text></view
+    ><hj-store-card
+      wx:for="{{c}}"
+      wx:for-item="store"
+      wx:key="a"
+      class="data-v-c4ad3ae9"
+      bindclick="{{store.b}}"
+      u-i="{{store.c}}"
+      bind:__l="__l"
+      u-p="{{store.d}}" /></view
+></view>

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "AI鼾声分析",
+  "usingComponents": {
+    "hj-navbar": "../../../components/base/hj-navbar"
+  }
+}

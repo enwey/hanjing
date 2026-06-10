@@ -1,0 +1,66 @@
+<view class="page data-v-86cd8c34"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-86cd8c34"
+    u-i="86cd8c34-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-86cd8c34"
+    ><view wx:if="{{b}}" class="loading-wrap data-v-86cd8c34"
+      ><text class="data-v-86cd8c34">加载中...</text></view
+    ><block wx:else
+      ><view
+        wx:for="{{c}}"
+        wx:for-item="fb"
+        wx:key="f"
+        class="feedback-card data-v-86cd8c34"
+        ><view class="fb-header data-v-86cd8c34"
+          ><text class="fb-date data-v-86cd8c34">{{fb.a}}</text
+          ><view class="fb-stars data-v-86cd8c34"
+            ><text
+              wx:for="{{fb.b}}"
+              wx:for-item="i"
+              wx:key="b"
+              class="{{['star', 'data-v-86cd8c34', i.c && 'active']}}"
+              >{{i.a}}</text
+            ></view
+          ></view
+        ><text class="fb-content data-v-86cd8c34">{{fb.c}}</text
+        ><view wx:if="{{fb.d}}" class="fb-reply data-v-86cd8c34"
+          ><text class="reply-label data-v-86cd8c34">医生回复：</text
+          ><text class="data-v-86cd8c34">{{fb.e}}</text></view
+        ></view
+      ><view wx:if="{{d}}" class="empty data-v-86cd8c34"
+        ><text class="data-v-86cd8c34">暂无反馈记录</text></view
+      ></block
+    ><view class="btn-add data-v-86cd8c34" bindtap="{{e}}"
+      ><text class="data-v-86cd8c34">+ 写反馈</text></view
+    ><view wx:if="{{f}}" class="form-overlay data-v-86cd8c34" bindtap="{{m}}"
+      ><view class="form-card data-v-86cd8c34" catchtap="{{l}}"
+        ><text class="form-title data-v-86cd8c34">使用反馈</text
+        ><view class="form-stars data-v-86cd8c34"
+          ><text
+            wx:for="{{g}}"
+            wx:for-item="i"
+            wx:key="b"
+            class="{{['form-star', 'data-v-86cd8c34', i.c && 'active']}}"
+            bindtap="{{i.d}}"
+            >{{i.a}}</text
+          ></view
+        ><block wx:if="{{r0}}">
+          <textarea
+            class="form-textarea data-v-86cd8c34"
+            placeholder="请描述您的使用感受..."
+            maxlength="500"
+            value="{{h}}"
+            bindinput="{{i}}"
+          /></block
+        ><view class="form-actions data-v-86cd8c34"
+          ><view class="btn-cancel data-v-86cd8c34" bindtap="{{j}}"
+            ><text class="data-v-86cd8c34">取消</text></view
+          ><view class="btn-submit data-v-86cd8c34" bindtap="{{k}}"
+            ><text class="data-v-86cd8c34">提交</text></view
+          ></view
+        ></view
+      ></view
+    ><view class="safe-bottom data-v-86cd8c34" /></view
+></view>

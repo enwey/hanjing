@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "医嘱建议",
+  "usingComponents": {
+    "hj-navbar": "../../../components/base/hj-navbar"
+  }
+}

@@ -1,0 +1,21 @@
+<view class="page data-v-1157dc5a"
+  ><view class="list data-v-1157dc5a"
+    ><view
+      wx:for="{{a}}"
+      wx:for-item="r"
+      wx:key="f"
+      class="item data-v-1157dc5a"
+      ><view class="item-left data-v-1157dc5a"
+        ><text class="item-amount data-v-1157dc5a">-{{r.a}}</text
+        ><text class="item-meta data-v-1157dc5a">{{r.b}}</text></view
+      ><view class="item-right data-v-1157dc5a"
+        ><text class="{{['item-tag', 'data-v-1157dc5a', r.d]}}">{{r.c}}</text
+        ><text class="item-date data-v-1157dc5a">{{r.e}}</text></view
+      ></view
+    ><hj-empty
+      wx:if="{{b}}"
+      class="data-v-1157dc5a"
+      u-i="1157dc5a-0"
+      bind:__l="__l"
+      u-p="{{c}}" /></view
+></view>

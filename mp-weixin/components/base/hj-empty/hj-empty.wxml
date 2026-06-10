@@ -1,0 +1,4 @@
+<view class="hj-empty data-v-39c3b333"
+  ><view class="hj-empty-icon data-v-39c3b333">{{a}}</view
+  ><text class="hj-empty-text data-v-39c3b333">{{b}}</text><slot
+/></view>

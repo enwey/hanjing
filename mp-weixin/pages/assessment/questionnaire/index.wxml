@@ -1,0 +1,52 @@
+<view class="page data-v-c4ff781e"
+  ><hj-navbar
+    wx:if="{{b}}"
+    class="data-v-c4ff781e"
+    bindback="{{a}}"
+    u-i="c4ff781e-0"
+    bind:__l="__l"
+    u-p="{{b}}" /><view class="page-content data-v-c4ff781e"
+    ><view class="progress-section data-v-c4ff781e"
+      ><view class="progress-bar data-v-c4ff781e"
+        ><view
+          class="progress-fill data-v-c4ff781e"
+          style="{{'width:' + c}}" /></view
+      ><text class="progress-text data-v-c4ff781e">{{d}} / {{e}}</text></view
+    ><view wx:if="{{f}}" class="question-card data-v-c4ff781e"
+      ><text class="question-emoji data-v-c4ff781e">{{g}}</text
+      ><text class="question-title data-v-c4ff781e">第{{h}}题</text
+      ><text class="question-situation data-v-c4ff781e">{{i}}</text
+      ><text class="question-hint data-v-c4ff781e">💡 {{j}}</text
+      ><view class="options-list data-v-c4ff781e"
+        ><view
+          wx:for="{{k}}"
+          wx:for-item="opt"
+          wx:key="e"
+          class="{{['option-item', 'data-v-c4ff781e', opt.f && 'is-selected']}}"
+          bindtap="{{opt.g}}"
+          ><text class="option-emoji data-v-c4ff781e">{{opt.a}}</text
+          ><text class="option-label data-v-c4ff781e">{{opt.b}}</text
+          ><view
+            class="{{['option-radio', 'data-v-c4ff781e', opt.d && 'checked']}}"
+            ><text wx:if="{{opt.c}}" class="data-v-c4ff781e">✓</text></view
+          ></view
+        ></view
+      ></view
+    ><view class="dots data-v-c4ff781e"
+      ><view
+        wx:for="{{l}}"
+        wx:for-item="i"
+        wx:key="a"
+        class="{{['dot', 'data-v-c4ff781e', i.b && 'completed', i.c && 'current']}}"
+        bindtap="{{i.d}}" /></view
+    ><view class="bottom-actions data-v-c4ff781e"
+      ><view wx:if="{{m}}" class="btn-prev data-v-c4ff781e" bindtap="{{n}}"
+        ><text class="data-v-c4ff781e">‹ 上一题</text></view
+      ><view wx:if="{{o}}" class="btn-next data-v-c4ff781e" bindtap="{{p}}"
+        ><text class="data-v-c4ff781e">下一题 ›</text></view
+      ><view wx:if="{{q}}" class="btn-submit data-v-c4ff781e" bindtap="{{r}}"
+        ><text class="data-v-c4ff781e">提交评估</text></view
+      ></view
+    ></view
+  ><view class="safe-bottom data-v-c4ff781e"
+/></view>

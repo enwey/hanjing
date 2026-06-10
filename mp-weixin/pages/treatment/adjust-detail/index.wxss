@@ -1,0 +1,190 @@
+.data-v-64c0d952:root {
+  --color-primary-50: #eef4ff;
+  --color-primary-100: #d9e6ff;
+  --color-primary-300: #8eafff;
+  --color-primary-500: #3b6bf5;
+  --color-primary-600: #2a52d4;
+  --color-primary-800: #1a3580;
+  --color-secondary-100: #d3f5e3;
+  --color-secondary-500: #1a9d5c;
+  --color-success-500: #22c55e;
+  --color-warning-500: #f59e0b;
+  --color-error-500: #ef4444;
+  --color-gold-400: #f5a623;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --gradient-primary: linear-gradient(
+    135deg,
+    #3b6bf5 0%,
+    #5a85f5 50%,
+    #8eafff 100%
+  );
+  --gradient-hero: linear-gradient(
+    160deg,
+    #1a3580 0%,
+    #3b6bf5 40%,
+    #8eafff 100%
+  );
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
+  --font-sans:
+    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+.page.data-v-64c0d952 {
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+.page-content.data-v-64c0d952 {
+  padding: 0 16px;
+}
+.param-card.data-v-64c0d952 {
+  background: linear-gradient(135deg, #d3f5e3, #aceac8);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 12px;
+}
+.param-title.data-v-64c0d952 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #065f46;
+  display: block;
+  margin-bottom: 14px;
+}
+.param-grid.data-v-64c0d952 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.param-item.data-v-64c0d952 {
+  text-align: left;
+}
+.param-label.data-v-64c0d952 {
+  font-size: 12px;
+  color: #065f46;
+  opacity: 0.7;
+  display: block;
+  margin-bottom: 2px;
+}
+.param-val.data-v-64c0d952 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #065f46;
+}
+.param-val--big.data-v-64c0d952 {
+  font-size: 28px;
+  font-weight: 700;
+}
+.advice-card.data-v-64c0d952 {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+  border-left: 4px solid #ef4444;
+}
+.advice-title.data-v-64c0d952 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ef4444;
+  display: block;
+  margin-bottom: 8px;
+}
+.advice-text.data-v-64c0d952 {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.7;
+}
+.section-title.data-v-64c0d952 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 10px;
+  display: block;
+}
+.history-list.data-v-64c0d952 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.history-item.data-v-64c0d952 {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  gap: 14px;
+}
+.history-left.data-v-64c0d952 {
+  width: 56px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.history-date.data-v-64c0d952 {
+  font-size: 13px;
+  color: #1f2937;
+  font-weight: 600;
+  display: block;
+}
+.history-val.data-v-64c0d952 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a9d5c;
+  display: block;
+  margin-top: 4px;
+}
+.history-right.data-v-64c0d952 {
+  flex: 1;
+}
+.history-note.data-v-64c0d952 {
+  font-size: 14px;
+  color: #1f2937;
+  line-height: 1.5;
+  display: block;
+  margin-bottom: 4px;
+}
+.history-doctor.data-v-64c0d952 {
+  font-size: 12px;
+  color: #6b7280;
+}
+.history-comfort.data-v-64c0d952 {
+  font-size: 13px;
+  color: #f59e0b;
+  margin-top: 4px;
+}
+.history-comfort-label.data-v-64c0d952 {
+  color: #9ca3af;
+}
+.history-badge.data-v-64c0d952 {
+  display: inline-block;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 4px;
+}
+.safe-bottom.data-v-64c0d952 {
+  height: 32px;
+}

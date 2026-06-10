@@ -1,0 +1,85 @@
+<view class="page data-v-801bfeef"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-801bfeef"
+    u-i="801bfeef-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-801bfeef"
+    ><view class="booking-banner data-v-801bfeef"
+      ><view class="booking-banner-text data-v-801bfeef"
+        ><text class="booking-banner-title data-v-801bfeef">在线预约</text
+        ><text class="booking-banner-desc data-v-801bfeef"
+          >选择门店、医生和时段，轻松完成预约</text
+        ></view
+      ><hj-button
+        wx:if="{{c}}"
+        class="data-v-801bfeef"
+        u-s="{{['d']}}"
+        bindclick="{{b}}"
+        u-i="801bfeef-1"
+        bind:__l="__l"
+        u-p="{{c}}"
+        >立即预约</hj-button
+      ></view
+    ><view class="tabs data-v-801bfeef"
+      ><view
+        class="{{['tab', 'data-v-801bfeef', d && 'tab--active']}}"
+        bindtap="{{e}}"
+        ><text class="data-v-801bfeef">进行中</text></view
+      ><view
+        class="{{['tab', 'data-v-801bfeef', f && 'tab--active']}}"
+        bindtap="{{g}}"
+        ><text class="data-v-801bfeef">历史记录</text></view
+      ></view
+    ><view wx:if="{{h}}" class="apt-list data-v-801bfeef"
+      ><block wx:if="{{i}}"
+        ><hj-appointment-item
+          wx:for="{{j}}"
+          wx:for-item="apt"
+          wx:key="a"
+          class="data-v-801bfeef"
+          bindclick="{{apt.b}}"
+          bindcancel="{{apt.c}}"
+          bindreschedule="{{apt.d}}"
+          u-i="{{apt.e}}"
+          bind:__l="__l"
+          u-p="{{apt.f}}" /></block
+      ><hj-empty
+        wx:else
+        class="data-v-801bfeef"
+        u-s="{{['d']}}"
+        u-i="801bfeef-3"
+        bind:__l="__l"
+        u-p="{{m||''}}"
+        ><hj-button
+          wx:if="{{l}}"
+          class="data-v-801bfeef"
+          u-s="{{['d']}}"
+          bindclick="{{k}}"
+          style="margin-top: 16px"
+          u-i="801bfeef-4,801bfeef-3"
+          bind:__l="__l"
+          u-p="{{l}}"
+        >
+          去预约
+        </hj-button></hj-empty
+      ></view
+    ><view wx:if="{{n}}" class="apt-list data-v-801bfeef"
+      ><block wx:if="{{o}}"
+        ><hj-appointment-item
+          wx:for="{{p}}"
+          wx:for-item="apt"
+          wx:key="a"
+          class="data-v-801bfeef"
+          bindclick="{{apt.b}}"
+          u-i="{{apt.c}}"
+          bind:__l="__l"
+          u-p="{{apt.d}}" /></block
+      ><hj-empty
+        wx:else
+        class="data-v-801bfeef"
+        u-i="801bfeef-6"
+        bind:__l="__l"
+        u-p="{{q||''}}" /></view></view
+  ><view class="safe-bottom data-v-801bfeef"
+/></view>

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "鼾声分析报告",
+  "usingComponents": {
+    "hj-navbar": "../../../components/base/hj-navbar"
+  }
+}

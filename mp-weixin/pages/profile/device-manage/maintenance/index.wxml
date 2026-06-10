@@ -1,0 +1,30 @@
+<view class="page data-v-6756cb81"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-6756cb81"
+    u-i="6756cb81-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-6756cb81"
+    ><view wx:if="{{b}}" class="loading-wrap data-v-6756cb81"
+      ><text class="data-v-6756cb81">加载中...</text></view
+    ><block wx:else
+      ><view
+        wx:for="{{c}}"
+        wx:for-item="rec"
+        wx:key="h"
+        class="record-card data-v-6756cb81"
+        ><view class="record-header data-v-6756cb81"
+          ><view
+            class="record-type data-v-6756cb81"
+            style="{{'background:' + rec.b + ';' + ('color:' + rec.c)}}"
+            ><text class="data-v-6756cb81">{{rec.a}}</text></view
+          ><text class="record-date data-v-6756cb81">{{rec.d}}</text></view
+        ><text class="record-desc data-v-6756cb81">{{rec.e}}</text
+        ><text wx:if="{{rec.f}}" class="record-cost data-v-6756cb81"
+          >¥{{rec.g}}</text
+        ></view
+      ><view wx:if="{{d}}" class="empty data-v-6756cb81"
+        ><text class="data-v-6756cb81">暂无维护记录</text></view
+      ></block
+    ><view class="safe-bottom data-v-6756cb81" /></view
+></view>

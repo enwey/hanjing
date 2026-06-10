@@ -1,0 +1,41 @@
+<view class="apt-item data-v-74fd48b7" bindtap="{{m}}"
+  ><view class="apt-header data-v-74fd48b7"
+    ><text class="apt-no data-v-74fd48b7">{{a}}</text
+    ><hj-tag
+      wx:if="{{b}}"
+      class="data-v-74fd48b7"
+      u-i="74fd48b7-0"
+      bind:__l="__l"
+      u-p="{{b}}" /></view
+  ><view class="apt-body data-v-74fd48b7"
+    ><view class="apt-info-row data-v-74fd48b7"
+      ><text class="apt-label data-v-74fd48b7">🏥 门店</text
+      ><text class="apt-value data-v-74fd48b7">{{c}}</text></view
+    ><view class="apt-info-row data-v-74fd48b7"
+      ><text class="apt-label data-v-74fd48b7">👨‍⚕️ 医生</text
+      ><text class="apt-value data-v-74fd48b7">{{d}}</text></view
+    ><view class="apt-info-row data-v-74fd48b7"
+      ><text class="apt-label data-v-74fd48b7">📅 时间</text
+      ><text class="apt-value apt-value--bold data-v-74fd48b7"
+        >{{e}} {{f}}</text
+      ></view
+    ><view class="apt-info-row data-v-74fd48b7"
+      ><text class="apt-label data-v-74fd48b7">📋 类型</text
+      ><text class="apt-value data-v-74fd48b7">{{g}}</text></view
+    ><view wx:if="{{h}}" class="apt-info-row data-v-74fd48b7"
+      ><text class="apt-label data-v-74fd48b7">💬 主诉</text
+      ><text class="apt-value apt-value--desc data-v-74fd48b7"
+        >{{i}}</text
+      ></view
+    ></view
+  ><view wx:if="{{j}}" class="apt-actions data-v-74fd48b7"
+    ><button class="apt-btn apt-btn--ghost data-v-74fd48b7" catchtap="{{k}}">
+      改约</button
+    ><button
+      class="apt-btn apt-btn--ghost apt-btn--danger data-v-74fd48b7"
+      catchtap="{{l}}"
+    >
+      取消
+    </button></view
+  ></view
+>

@@ -1,0 +1,37 @@
+<view class="page data-v-30acdad2"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-30acdad2"
+    u-i="30acdad2-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-30acdad2"
+    ><view wx:if="{{b}}" class="loading-wrap data-v-30acdad2"
+      ><text class="data-v-30acdad2">加载中...</text></view
+    ><block wx:else
+      ><view
+        wx:for="{{c}}"
+        wx:for-item="m"
+        wx:key="k"
+        class="member-card data-v-30acdad2"
+        ><view class="member-avatar data-v-30acdad2"
+          ><text class="data-v-30acdad2">{{m.a}}</text></view
+        ><view class="member-info data-v-30acdad2"
+          ><view class="member-name-row data-v-30acdad2"
+            ><text class="member-name data-v-30acdad2">{{m.b}}</text
+            ><text class="member-relation data-v-30acdad2">{{m.c}}</text></view
+          ><text class="member-detail data-v-30acdad2"
+            >{{m.d}} | {{m.e}}岁 | {{m.f}}</text
+          ><text wx:if="{{m.g}}" class="member-tag data-v-30acdad2">有打鼾</text
+          ><text wx:if="{{m.h}}" class="member-visit data-v-30acdad2"
+            >上次就诊: {{m.i}}</text
+          ></view
+        ><text class="member-delete data-v-30acdad2" bindtap="{{m.j}}"
+          >X</text
+        ></view
+      ><view wx:if="{{d}}" class="empty data-v-30acdad2"
+        ><text class="data-v-30acdad2">暂无家庭成员</text></view
+      ></block
+    ><view class="btn-add data-v-30acdad2" bindtap="{{e}}"
+      ><text class="data-v-30acdad2">+ 添加成员</text></view
+    ><view class="safe-bottom data-v-30acdad2" /></view
+></view>

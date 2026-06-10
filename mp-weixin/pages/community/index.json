@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "医患社区",
+  "usingComponents": {
+    "hj-navbar": "../../components/base/hj-navbar"
+  }
+}

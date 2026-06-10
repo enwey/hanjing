@@ -1,0 +1,47 @@
+<view class="page data-v-7e5a1194"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-7e5a1194"
+    u-i="7e5a1194-0"
+    bind:__l="__l"
+    u-p="{{a}}"
+  /><view wx:if="{{b}}" class="page-content data-v-7e5a1194"
+    ><view class="status-bar data-v-7e5a1194"
+      ><hj-tag
+        wx:if="{{c}}"
+        class="data-v-7e5a1194"
+        u-i="7e5a1194-1"
+        bind:__l="__l"
+        u-p="{{c}}"
+      /><text class="status-no data-v-7e5a1194">{{d}}</text></view
+    ><view class="card data-v-7e5a1194"
+      ><text class="card-title data-v-7e5a1194">就诊信息</text
+      ><view class="info-row data-v-7e5a1194"
+        ><text class="info-label data-v-7e5a1194">🏥 门店</text
+        ><text class="info-value data-v-7e5a1194">{{e}}</text></view
+      ><view class="info-row data-v-7e5a1194"
+        ><text class="info-label data-v-7e5a1194">📍 地址</text
+        ><text class="info-value info-value--small data-v-7e5a1194"
+          >{{f}}</text
+        ></view
+      ><view class="info-row data-v-7e5a1194"
+        ><text class="info-label data-v-7e5a1194">👨‍⚕️ 医生</text
+        ><text class="info-value data-v-7e5a1194">{{g}} · {{h}}</text></view
+      ><view class="info-row data-v-7e5a1194"
+        ><text class="info-label data-v-7e5a1194">📅 时间</text
+        ><text class="info-value info-value--bold data-v-7e5a1194"
+          >{{i}} {{j}}</text
+        ></view
+      ><view class="info-row data-v-7e5a1194"
+        ><text class="info-label data-v-7e5a1194">📋 类型</text
+        ><text class="info-value data-v-7e5a1194">{{k}}</text></view
+      ></view
+    ><view wx:if="{{l}}" class="card data-v-7e5a1194"
+      ><text class="card-title data-v-7e5a1194">症状描述</text
+      ><text class="symptom-text data-v-7e5a1194">{{m}}</text></view
+    ><view wx:if="{{n}}" class="card data-v-7e5a1194"
+      ><text class="card-title data-v-7e5a1194">取消原因</text
+      ><text class="cancel-text data-v-7e5a1194">{{o}}</text></view
+    ></view
+  ></view
+>

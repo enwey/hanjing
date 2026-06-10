@@ -1,0 +1,23 @@
+<view class="page data-v-2c4614d4"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-2c4614d4"
+    u-i="2c4614d4-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-2c4614d4"
+    ><view class="menu-list data-v-2c4614d4"
+      ><view
+        wx:for="{{b}}"
+        wx:for-item="item"
+        wx:key="e"
+        class="menu-item data-v-2c4614d4"
+        bindtap="{{item.f}}"
+        ><view
+          class="menu-icon data-v-2c4614d4"
+          style="{{'background:' + item.b + ';' + ('color:' + item.c)}}"
+          ><text class="data-v-2c4614d4">{{item.a}}</text></view
+        ><text class="menu-label data-v-2c4614d4">{{item.d}}</text
+        ><text class="menu-arrow data-v-2c4614d4">&gt;</text></view
+      ></view
+    ><view class="safe-bottom data-v-2c4614d4" /></view
+></view>

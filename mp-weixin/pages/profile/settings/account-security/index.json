@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "账号安全",
+  "usingComponents": {
+    "hj-navbar": "../../../../components/base/hj-navbar"
+  }
+}

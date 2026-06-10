@@ -1,0 +1,66 @@
+<view class="page data-v-789c78ca"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-789c78ca"
+    u-i="789c78ca-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-789c78ca"
+    ><scroll-view class="tab-scroll data-v-789c78ca" scroll-x enable-flex
+      ><view
+        wx:for="{{b}}"
+        wx:for-item="cat"
+        wx:key="c"
+        class="{{['tab-item', 'data-v-789c78ca', cat.d && 'active']}}"
+        bindtap="{{cat.e}}"
+        ><text class="tab-label data-v-789c78ca">{{cat.a}}</text
+        ><view
+          wx:if="{{cat.b}}"
+          class="tab-indicator data-v-789c78ca" /></view></scroll-view
+    ><view wx:if="{{c}}" class="loading-state data-v-789c78ca"
+      ><text class="loading-text data-v-789c78ca">加载中...</text></view
+    ><view wx:else class="product-grid data-v-789c78ca"
+      ><view
+        wx:for="{{d}}"
+        wx:for-item="product"
+        wx:key="n"
+        class="product-card data-v-789c78ca"
+        bindtap="{{product.o}}"
+        ><view
+          class="product-img-wrap data-v-789c78ca"
+          style="{{'background:' + product.h}}"
+          ><image
+            wx:if="{{product.a}}"
+            class="product-img data-v-789c78ca"
+            src="{{product.b}}"
+            mode="aspectFill"
+          /><view wx:else class="product-img-placeholder data-v-789c78ca"
+            ><text class="placeholder-icon data-v-789c78ca"
+              >{{product.c}}</text
+            ></view
+          ><view
+            wx:if="{{product.d}}"
+            class="product-badge product-badge--custom data-v-789c78ca"
+            ><text class="data-v-789c78ca">{{product.e}}</text></view
+          ><view wx:elif="{{product.f}}" class="product-badge data-v-789c78ca"
+            ><text class="data-v-789c78ca">{{product.g}}% OFF</text></view
+          ></view
+        ><view class="product-body data-v-789c78ca"
+          ><text class="product-name data-v-789c78ca">{{product.i}}</text
+          ><view class="product-footer data-v-789c78ca"
+            ><view class="product-price-row data-v-789c78ca"
+              ><text class="price data-v-789c78ca">{{product.j}}</text
+              ><text
+                wx:if="{{product.k}}"
+                class="price-original data-v-789c78ca"
+                >{{product.l}}</text
+              ></view
+            ><text class="product-sales data-v-789c78ca"
+              >已售 {{product.m}}</text
+            ></view
+          ></view
+        ></view
+      ></view
+    ><view wx:if="{{e}}" class="empty-state data-v-789c78ca"
+      ><text class="empty-text data-v-789c78ca">暂无商品</text></view
+    ><view class="safe-bottom data-v-789c78ca" /></view
+></view>

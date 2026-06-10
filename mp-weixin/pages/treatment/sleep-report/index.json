@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "睡眠报告",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "hj-navbar": "../../../components/base/hj-navbar"
+  }
+}

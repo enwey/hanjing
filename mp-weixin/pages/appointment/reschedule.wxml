@@ -1,0 +1,52 @@
+<view class="page data-v-54e72399"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-54e72399"
+    u-i="54e72399-0"
+    bind:__l="__l"
+    u-p="{{a}}"
+  /><view class="page-content data-v-54e72399"
+    ><hj-schedule-calendar
+      wx:if="{{c}}"
+      class="data-v-54e72399"
+      bindselect="{{b}}"
+      u-i="54e72399-1"
+      bind:__l="__l"
+      u-p="{{c}}"
+    /><view wx:if="{{d}}" class="data-v-54e72399"
+      ><view
+        wx:for="{{e}}"
+        wx:for-item="schedule"
+        wx:key="g"
+        class="data-v-54e72399"
+        ><view class="schedule-header data-v-54e72399" bindtap="{{schedule.d}}"
+          ><text class="schedule-period data-v-54e72399">{{schedule.a}}</text
+          ><text class="schedule-time data-v-54e72399"
+            >{{schedule.b}}-{{schedule.c}}</text
+          ></view
+        ><view wx:if="{{schedule.e}}" class="slot-grid data-v-54e72399"
+          ><view
+            wx:for="{{schedule.f}}"
+            wx:for-item="slot"
+            wx:key="b"
+            class="{{['slot', 'data-v-54e72399', slot.c && 'slot--available', slot.d && 'slot--selected', slot.e && 'slot--booked']}}"
+            bindtap="{{slot.f}}"
+            ><text class="data-v-54e72399">{{slot.a}}</text></view
+          ></view
+        ></view
+      ></view
+    ><view wx:if="{{f}}" class="submit-area data-v-54e72399"
+      ><hj-button
+        wx:if="{{j}}"
+        class="data-v-54e72399"
+        u-s="{{['d']}}"
+        bindclick="{{i}}"
+        u-i="54e72399-2"
+        bind:__l="__l"
+        u-p="{{j}}"
+      >
+        确认改约至 {{g}} {{h}}</hj-button
+      ></view
+    ></view
+  ></view
+>

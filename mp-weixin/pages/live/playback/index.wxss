@@ -1,0 +1,191 @@
+.data-v-e4fc628d:root {
+  --color-primary-50: #eef4ff;
+  --color-primary-100: #d9e6ff;
+  --color-primary-300: #8eafff;
+  --color-primary-500: #3b6bf5;
+  --color-primary-600: #2a52d4;
+  --color-primary-800: #1a3580;
+  --color-secondary-100: #d3f5e3;
+  --color-secondary-500: #1a9d5c;
+  --color-success-500: #22c55e;
+  --color-warning-500: #f59e0b;
+  --color-error-500: #ef4444;
+  --color-gold-400: #f5a623;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --gradient-primary: linear-gradient(
+    135deg,
+    #3b6bf5 0%,
+    #5a85f5 50%,
+    #8eafff 100%
+  );
+  --gradient-hero: linear-gradient(
+    160deg,
+    #1a3580 0%,
+    #3b6bf5 40%,
+    #8eafff 100%
+  );
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
+  --font-sans:
+    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+.page.data-v-e4fc628d {
+  min-height: 100vh;
+  background: #1a1a2e;
+}
+.player.data-v-e4fc628d {
+  width: 100%;
+  height: 420rpx;
+  position: relative;
+}
+.player-placeholder.data-v-e4fc628d {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #16213e;
+}
+.play-icon.data-v-e4fc628d {
+  font-size: 64rpx;
+  color: rgba(255, 255, 255, 0.3);
+}
+.play-text.data-v-e4fc628d {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 16rpx;
+}
+.play-duration.data-v-e4fc628d {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.25);
+  margin-top: 8rpx;
+}
+.info.data-v-e4fc628d {
+  background: #16213e;
+  padding: 28rpx 24rpx;
+}
+.info-title.data-v-e4fc628d {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+  line-height: 1.4;
+}
+.info-meta.data-v-e4fc628d {
+  display: flex;
+  align-items: center;
+  margin-top: 16rpx;
+}
+.anchor.data-v-e4fc628d {
+  display: flex;
+  align-items: center;
+}
+.anchor-avatar.data-v-e4fc628d {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 22rpx;
+  background: #eef4ff;
+  color: #3b6bf5;
+  font-size: 22rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10rpx;
+}
+.anchor-name.data-v-e4fc628d {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+}
+.info-time.data-v-e4fc628d {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: 20rpx;
+}
+.info-stats.data-v-e4fc628d {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+.info-desc.data-v-e4fc628d {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 16rpx;
+  line-height: 1.6;
+  display: block;
+}
+.section.data-v-e4fc628d {
+  background: #16213e;
+  padding: 24rpx;
+  margin-top: 16rpx;
+}
+.section-title.data-v-e4fc628d {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+  margin-bottom: 20rpx;
+}
+.product-list.data-v-e4fc628d {
+  display: flex;
+  gap: 16rpx;
+  overflow-x: auto;
+}
+.product-item.data-v-e4fc628d {
+  width: 220rpx;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+.p-img.data-v-e4fc628d {
+  width: 220rpx;
+  height: 140rpx;
+  background: rgba(255, 255, 255, 0.1);
+}
+.p-info.data-v-e4fc628d {
+  padding: 14rpx;
+}
+.p-name.data-v-e4fc628d {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.p-price.data-v-e4fc628d {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #f5a623;
+  margin-top: 6rpx;
+  display: block;
+}

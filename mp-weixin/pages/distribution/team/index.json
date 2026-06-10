@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "团队成员",
+  "navigationBarBackgroundColor": "#FFF9E6",
+  "navigationBarTextStyle": "black",
+  "usingComponents": {
+    "hj-empty": "../../../components/base/hj-empty/hj-empty"
+  }
+}

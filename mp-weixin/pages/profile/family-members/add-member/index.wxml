@@ -1,0 +1,59 @@
+<view class="page data-v-33d45858"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-33d45858"
+    u-i="33d45858-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-33d45858"
+    ><view class="form-group data-v-33d45858"
+      ><text class="form-label data-v-33d45858">姓名</text
+      ><input
+        class="form-input data-v-33d45858"
+        placeholder="请输入姓名"
+        value="{{b}}"
+        bindinput="{{c}}" /></view
+    ><view class="form-group data-v-33d45858"
+      ><text class="form-label data-v-33d45858">关系</text
+      ><view class="form-chips data-v-33d45858"
+        ><view
+          wx:for="{{d}}"
+          wx:for-item="r"
+          wx:key="b"
+          class="{{['chip', 'data-v-33d45858', r.c && 'active']}}"
+          bindtap="{{r.d}}"
+          ><text class="data-v-33d45858">{{r.a}}</text></view
+        ></view
+      ></view
+    ><view class="form-group data-v-33d45858"
+      ><text class="form-label data-v-33d45858">性别</text
+      ><view class="form-chips data-v-33d45858"
+        ><view
+          class="{{['chip', 'data-v-33d45858', e && 'active']}}"
+          bindtap="{{f}}"
+          ><text class="data-v-33d45858">男</text></view
+        ><view
+          class="{{['chip', 'data-v-33d45858', g && 'active']}}"
+          bindtap="{{h}}"
+          ><text class="data-v-33d45858">女</text></view
+        ></view
+      ></view
+    ><view class="form-group data-v-33d45858"
+      ><text class="form-label data-v-33d45858">年龄</text
+      ><input
+        class="form-input data-v-33d45858"
+        type="number"
+        placeholder="请输入年龄"
+        value="{{i}}"
+        bindinput="{{j}}" /></view
+    ><view class="form-group data-v-33d45858"
+      ><text class="form-label data-v-33d45858">手机号</text
+      ><input
+        class="form-input data-v-33d45858"
+        type="number"
+        placeholder="选填"
+        value="{{k}}"
+        bindinput="{{l}}" /></view
+    ><view class="btn-submit data-v-33d45858" bindtap="{{m}}"
+      ><text class="data-v-33d45858">确认添加</text></view
+    ><view class="safe-bottom data-v-33d45858" /></view
+></view>

@@ -1,0 +1,1201 @@
+"use strict";
+const t = [
+    {
+      id: "store-001",
+      name: "鼾静健康·深圳旗舰中心",
+      logo: "/static/demo/store-1.jpg",
+      address: "深圳市福田区福华三路卓越世纪中心1号楼18层",
+      city: "深圳",
+      district: "福田区",
+      lat: 22.5362,
+      lng: 114.0554,
+      phone: "0755-88886666",
+      businessHours: "09:00-18:00",
+      isOpen: !0,
+      hasParking: !0,
+      doctorCount: 6,
+      deviceCount: 12,
+      tags: ["旗舰店", "地铁直达", "免费停车"],
+      images: [],
+      createdAt: "2025-01-01T00:00:00Z",
+    },
+    {
+      id: "store-002",
+      name: "鼾静健康·南山分中心",
+      logo: "/static/demo/store-2.jpg",
+      address: "深圳市南山区科技园南区科苑路15号科兴科学园B栋2层",
+      city: "深圳",
+      district: "南山区",
+      lat: 22.5429,
+      lng: 113.9498,
+      phone: "0755-88887777",
+      businessHours: "09:00-17:30",
+      isOpen: !0,
+      hasParking: !0,
+      doctorCount: 4,
+      deviceCount: 8,
+      tags: ["科技园区", "免费停车"],
+      images: [],
+      createdAt: "2025-03-15T00:00:00Z",
+    },
+    {
+      id: "store-003",
+      name: "鼾静健康·宝安分中心",
+      logo: "/static/demo/store-3.jpg",
+      address: "深圳市宝安区新安街道宝安大道4004号旭生大厦5层",
+      city: "深圳",
+      district: "宝安区",
+      lat: 22.5697,
+      lng: 113.8846,
+      phone: "0755-88888888",
+      businessHours: "09:00-18:00",
+      isOpen: !0,
+      hasParking: !0,
+      doctorCount: 3,
+      deviceCount: 6,
+      tags: ["新店"],
+      images: [],
+      createdAt: "2025-06-01T00:00:00Z",
+    },
+  ],
+  e = [
+    {
+      id: "doc-001",
+      name: "李明辉",
+      avatar: "/static/demo/doctor-1.jpg",
+      title: "主任医师",
+      specialty: "睡眠呼吸",
+      hospital: "原深圳市人民医院",
+      intro:
+        "从事睡眠呼吸障碍诊疗20余年，累计接诊鼾症患者超过10000例。擅长各类阻鼾器的个性化适配与调整，在OSAS非手术治疗领域具有丰富经验。",
+      expertise: [
+        "睡眠呼吸暂停综合症",
+        "鼾症非手术治疗",
+        "阻鼾器适配",
+        "下颌前移治疗",
+      ],
+      experience: 22,
+      storeIds: ["store-001", "store-002"],
+      rating: 4.9,
+      reviewCount: 326,
+      consultCount: 10280,
+      isOnline: !0,
+      consultFee: 2e4,
+      createdAt: "2025-01-01T00:00:00Z",
+    },
+    {
+      id: "doc-002",
+      name: "王芳",
+      avatar: "/static/demo/doctor-2.jpg",
+      title: "副主任医师",
+      specialty: "口腔正畸",
+      hospital: "原北京大学深圳医院",
+      intro:
+        "口腔正畸学博士，专注口腔矫治器治疗阻塞性睡眠呼吸暂停10余年。在个性化口腔矫治器设计与下颌前移量精准控制方面有深入研究。",
+      expertise: [
+        "口腔矫治器治疗OSAS",
+        "下颌前移量精准控制",
+        "儿童鼾症",
+        "颞下颌关节保护",
+      ],
+      experience: 15,
+      storeIds: ["store-001", "store-003"],
+      rating: 4.8,
+      reviewCount: 218,
+      consultCount: 6520,
+      isOnline: !0,
+      consultFee: 15e3,
+      createdAt: "2025-01-15T00:00:00Z",
+    },
+    {
+      id: "doc-003",
+      name: "张伟",
+      avatar: "/static/demo/doctor-3.jpg",
+      title: "副主任医师",
+      specialty: "耳鼻喉科",
+      hospital: "原深圳市第二人民医院",
+      intro:
+        "耳鼻喉科临床工作18年，擅长通过内镜检查精准评估上气道阻塞部位，为阻鼾器治疗提供精准诊断依据。",
+      expertise: [
+        "鼻内镜诊断",
+        "上气道评估",
+        "过敏性鼻炎与鼾症",
+        "多导睡眠监测",
+      ],
+      experience: 18,
+      storeIds: ["store-001", "store-002", "store-003"],
+      rating: 4.7,
+      reviewCount: 185,
+      consultCount: 8430,
+      isOnline: !0,
+      consultFee: 15e3,
+      createdAt: "2025-02-01T00:00:00Z",
+    },
+    {
+      id: "doc-004",
+      name: "陈思雨",
+      avatar: "/static/demo/doctor-4.jpg",
+      title: "主治医师",
+      specialty: "睡眠呼吸",
+      hospital: "",
+      intro:
+        "专注阻鼾器临床适配与随访管理，擅长根据患者反馈精准微调器械参数，提升治疗舒适度与依从性。",
+      expertise: ["阻鼾器临床适配", "治疗随访管理", "舒适度优化", "患者教育"],
+      experience: 8,
+      storeIds: ["store-002", "store-003"],
+      rating: 4.9,
+      reviewCount: 142,
+      consultCount: 3210,
+      isOnline: !0,
+      consultFee: 8e3,
+      createdAt: "2025-04-01T00:00:00Z",
+    },
+  ];
+function o(t, e, o) {
+  const i = [],
+    r = new Date();
+  for (let a = 1; a <= o; a++) {
+    const o = new Date(r);
+    o.setDate(o.getDate() + a);
+    const s = o.toISOString().split("T")[0];
+    if (0 === o.getDay()) continue;
+    const n = {
+      id: `sch-${t}-${e}-${s}-am`,
+      doctorId: t,
+      storeId: e,
+      date: s,
+      period: "morning",
+      startTime: "09:00",
+      endTime: "12:00",
+      totalSlots: 6,
+      bookedSlots: Math.floor(4 * Math.random()),
+      status: "available",
+    };
+    ((n.status = n.bookedSlots >= n.totalSlots ? "full" : "available"),
+      i.push(n));
+    const d = {
+      id: `sch-${t}-${e}-${s}-pm`,
+      doctorId: t,
+      storeId: e,
+      date: s,
+      period: "afternoon",
+      startTime: "14:00",
+      endTime: "17:00",
+      totalSlots: 6,
+      bookedSlots: Math.floor(5 * Math.random()),
+      status: "available",
+    };
+    ((d.status = d.bookedSlots >= d.totalSlots ? "full" : "available"),
+      i.push(d));
+  }
+  return i;
+}
+function i() {
+  const t = [];
+  for (const i of e) for (const e of i.storeIds) t.push(...o(i.id, e, 14));
+  return t;
+}
+const r = [
+  {
+    id: "apt-001",
+    appointmentNo: "AP20260601001",
+    patientId: "pat-001",
+    userId: "user-001",
+    storeId: "store-001",
+    doctorId: "doc-001",
+    scheduleId: "sch-doc-001-store-001-2026-06-05-am",
+    appointmentDate: "2026-06-05",
+    appointmentTime: "09:00-09:30",
+    type: "first",
+    status: "confirmed",
+    symptomDesc: "夜间打鼾严重，偶有呼吸暂停，白天嗜睡",
+    source: "mini_app",
+    createdAt: "2026-06-01T10:30:00Z",
+    updatedAt: "2026-06-01T10:30:00Z",
+  },
+  {
+    id: "apt-002",
+    appointmentNo: "AP20260528002",
+    patientId: "pat-001",
+    userId: "user-001",
+    storeId: "store-001",
+    doctorId: "doc-002",
+    scheduleId: "sch-doc-002-store-001-2026-05-30-pm",
+    appointmentDate: "2026-05-30",
+    appointmentTime: "14:30-15:00",
+    type: "followup",
+    status: "completed",
+    symptomDesc: "阻鼾器佩戴2周后复诊",
+    source: "mini_app",
+    completedAt: "2026-05-30T15:30:00Z",
+    createdAt: "2026-05-28T09:00:00Z",
+    updatedAt: "2026-05-30T15:30:00Z",
+  },
+];
+const a = (function () {
+  const t = [],
+    e = new Date("2026-05-30"),
+    o = new Date("2026-06-04"),
+    i = Math.floor((o.getTime() - e.getTime()) / 864e5) + 1,
+    r = [5, 6, 7, 0, 6.5, 7.5],
+    a = [3, 4, 4, 0, 4, 5],
+    s = [
+      "首次佩戴，有轻微异物感",
+      "逐渐适应，无不适",
+      "佩戴感良好，睡眠质量改善",
+      "",
+      "颞下颌关节略有酸胀",
+      "调整后舒适度提升",
+    ];
+  for (let n = 0; n < i; n++) {
+    const o = new Date(e);
+    o.setDate(o.getDate() + n);
+    const i = o.toISOString().split("T")[0],
+      d = Math.min(n, r.length - 1),
+      c = r[d] || 0,
+      l = a[d] || 0;
+    t.push({
+      id: `wear-${i}`,
+      patientId: "pat-001",
+      date: i,
+      wearDuration: c,
+      comfort: l || 3,
+      note: s[d] || "",
+      createdAt: `${i}T08:00:00Z`,
+    });
+  }
+  return t;
+})();
+const s = [
+    {
+      id: "prod-001",
+      name: "定制式可调舌型阻鼾器 HJ-MAD-03",
+      image: "/static/product/hj-mad-03.png",
+      images: [
+        "/static/product/hj-mad-03.png",
+        "/static/product/hj-mad-03-2.png",
+      ],
+      price: 298e3,
+      originalPrice: 358e3,
+      description:
+        "NMPA二类医疗器械 | 下颌前移技术 | 个性化定制 | 舒适佩戴\n\n采用医用级硅胶材质，根据口腔结构3D扫描定制，精准调整下颌前移量，有效扩大上气道，减少睡眠呼吸暂停。\n\n适用人群：\n- 轻中度阻塞性睡眠呼吸暂停（OSAS）患者\n- 习惯性打鼾人群\n- 不耐受CPAP呼吸机治疗者",
+      category: "device",
+      sales: 1283,
+      commissionRate: 0.08,
+      isDistribution: !0,
+      status: "on",
+    },
+    {
+      id: "prod-002",
+      name: "阻鼾器深度清洁套装",
+      image: "/static/product/clean-kit.png",
+      images: ["/static/product/clean-kit.png"],
+      price: 7900,
+      originalPrice: 9900,
+      description:
+        "医用级清洁泡腾片（30片）+ 专用软毛清洁刷 + 便携消毒盒\n\n每日一片，有效去除99.9%细菌和异味，延长阻鼾器使用寿命。建议每月更换清洁套装。",
+      category: "accessory",
+      sales: 4521,
+      commissionRate: 0.12,
+      isDistribution: !0,
+      status: "on",
+    },
+    {
+      id: "prod-003",
+      name: "睡眠呼吸初筛服务套餐",
+      image: "/static/product/screening.png",
+      images: ["/static/product/screening.png"],
+      price: 9900,
+      description:
+        "含：ESS嗜睡量表评估 + AI鼾声分析 + 医生1v1解读 + 睡眠改善方案\n\n线上完成，足不出户即可获得专业睡眠呼吸风险评估。适合初次关注睡眠健康的人群。",
+      category: "service",
+      sales: 892,
+      commissionRate: 0.15,
+      isDistribution: !0,
+      status: "on",
+    },
+    {
+      id: "prod-004",
+      name: "鼾静健康专用记忆枕",
+      image: "/static/product/pillow.png",
+      images: ["/static/product/pillow.png", "/static/product/pillow-2.png"],
+      price: 29900,
+      originalPrice: 39900,
+      description:
+        "人体工学曲面设计 | 侧卧导向 | 透气慢回弹\n\n专为打鼾人群设计的侧卧引导枕，配合阻鼾器使用效果更佳。分区支撑头颈，保持气道通畅。",
+      category: "accessory",
+      sales: 2105,
+      isDistribution: !1,
+      status: "on",
+    },
+  ],
+  n = s.filter((t) => t.isDistribution);
+((exports.essQuestions = [
+  {
+    id: 1,
+    situation: "坐着看书或读报时",
+    emoji: "📖",
+    hint: "请回想您近期的日常状态",
+  },
+  { id: 2, situation: "看电视时", emoji: "📺", hint: "放松状态下是否容易睡着" },
+  {
+    id: 3,
+    situation: "在公共场所坐着不动（如在剧院或开会）",
+    emoji: "🏛️",
+    hint: "在安静的公共场合",
+  },
+  {
+    id: 4,
+    situation: "作为乘客乘坐汽车1小时以上",
+    emoji: "🚗",
+    hint: "作为乘客而非驾驶员",
+  },
+  {
+    id: 5,
+    situation: "下午躺下休息时",
+    emoji: "🛋️",
+    hint: "环境允许时是否能保持清醒",
+  },
+  { id: 6, situation: "坐着与人交谈时", emoji: "💬", hint: "与他人面对面聊天" },
+  {
+    id: 7,
+    situation: "午餐后安静坐着（未饮酒）",
+    emoji: "🍽️",
+    hint: "饭后不喝酒的情况下",
+  },
+  {
+    id: 8,
+    situation: "在车中，因交通堵塞停车几分钟",
+    emoji: "🚦",
+    hint: "作为驾驶员短暂停车时",
+  },
+]),
+  (exports.generateTimeSlots = function (t) {
+    const e = [],
+      o = parseInt(t.startTime.split(":")[0]),
+      i = 60 * (parseInt(t.endTime.split(":")[0]) - o),
+      r = t.totalSlots,
+      a = Math.floor(i / r);
+    let s = 0;
+    for (let n = 0; n < r; n++) {
+      const i = n * a,
+        r = (n + 1) * a,
+        d = Math.floor(i / 60) + o,
+        c = i % 60,
+        l = Math.floor(r / 60) + o,
+        p = r % 60,
+        m = s < t.bookedSlots;
+      (m && s++,
+        e.push({
+          id: `slot-${t.id}-${n}`,
+          scheduleId: t.id,
+          startTime: `${String(d).padStart(2, "0")}:${String(c).padStart(2, "0")}`,
+          endTime: `${String(l).padStart(2, "0")}:${String(p).padStart(2, "0")}`,
+          status: m ? "booked" : "available",
+          label: `${String(d).padStart(2, "0")}:${String(c).padStart(2, "0")}-${String(l).padStart(2, "0")}:${String(p).padStart(2, "0")}`,
+        }));
+    }
+    return e;
+  }),
+  (exports.getAllSchedules = i),
+  (exports.getAppointmentsByUser = function (t) {
+    return r.filter((e) => e.userId === t);
+  }),
+  (exports.getDoctorById = function (t) {
+    return e.find((e) => e.id === t);
+  }),
+  (exports.getDoctorsByStore = function (t) {
+    return e.filter((e) => e.storeIds.includes(t));
+  }),
+  (exports.getESSLevel = function (t) {
+    return t <= 5
+      ? {
+          level: "正常（低嗜睡倾向）",
+          color: "#1A9D5C",
+          desc: "您的日间嗜睡程度在正常范围内，白天精神状态良好。",
+          advice:
+            "保持现有作息规律，定期关注睡眠质量变化。如仍存在打鼾问题，建议进行睡眠评估。",
+        }
+      : t <= 10
+        ? {
+            level: "正常偏高",
+            color: "#3B6BF5",
+            desc: "您的日间嗜睡程度略高于正常范围，可能存在轻度睡眠质量下降。",
+            advice:
+              "注意保持规律作息，避免熬夜。建议使用APP内的AI鼾声分析功能，了解夜间睡眠状况。",
+          }
+        : t <= 12
+          ? {
+              level: "轻度嗜睡",
+              color: "#F59E0B",
+              desc: "您存在轻度日间过度嗜睡，可能影响日常工作和生活质量。",
+              advice:
+                "建议在线预约睡眠呼吸门诊，进行专业的睡眠评估。及早干预可有效改善睡眠质量。",
+            }
+          : t <= 15
+            ? {
+                level: "中度嗜睡",
+                color: "#F97316",
+                desc: "您存在中度日间嗜睡，日常活动受到明显影响，需引起重视。",
+                advice:
+                  "强烈建议尽快预约专业门诊。可能需要进行睡眠监测，评估是否存在睡眠呼吸暂停。",
+              }
+            : {
+                level: "重度嗜睡",
+                color: "#EF4444",
+                desc: "您存在重度日间嗜睡，可能对健康和安全造成严重影响（如驾驶风险）。",
+                advice:
+                  "请立即预约鼾静健康门诊进行专业诊断。建议避免长途驾驶，尽快进行多导睡眠监测（PSG）。",
+              };
+  }),
+  (exports.getScheduleDates = function (t, e) {
+    const o = (function (t, e) {
+      return i().filter((o) => o.doctorId === t && o.storeId === e);
+    })(t, e);
+    return [...new Set(o.map((t) => t.date))].sort();
+  }),
+  (exports.getSchedulesByDateRange = function (t, e, o, r) {
+    return i().filter(
+      (i) => i.doctorId === t && i.storeId === e && i.date >= o && i.date <= r,
+    );
+  }),
+  (exports.getSnoreAnalysisResult = function () {
+    const t = Math.random();
+    return t < 0.2
+      ? {
+          avgDecibel: 35 + Math.floor(10 * Math.random()),
+          peakDecibel: 52 + Math.floor(8 * Math.random()),
+          snoreRate: 15 + Math.floor(15 * Math.random()),
+          apneaEvents: Math.floor(2 * Math.random()),
+          riskLevel: "low",
+        }
+      : t < 0.7
+        ? {
+            avgDecibel: 48 + Math.floor(10 * Math.random()),
+            peakDecibel: 68 + Math.floor(15 * Math.random()),
+            snoreRate: 35 + Math.floor(20 * Math.random()),
+            apneaEvents: 3 + Math.floor(5 * Math.random()),
+            riskLevel: "medium",
+          }
+        : {
+            avgDecibel: 58 + Math.floor(15 * Math.random()),
+            peakDecibel: 82 + Math.floor(20 * Math.random()),
+            snoreRate: 60 + Math.floor(25 * Math.random()),
+            apneaEvents: 8 + Math.floor(12 * Math.random()),
+            riskLevel: "high",
+          };
+  }),
+  (exports.getSnoreRiskInfo = function (t) {
+    const e = {
+      low: {
+        title: "低风险",
+        color: "#1A9D5C",
+        bgColor: "#D3F5E3",
+        desc: "您的鼾声测试结果良好，未检测到明显的睡眠呼吸暂停风险。",
+        advice:
+          "建议保持健康生活习惯，定期关注睡眠质量。如家人反馈仍有明显鼾声，可3个月后复测。",
+        tips: ["保持规律作息", "避免睡前饮酒", "侧卧睡眠", "控制体重"],
+      },
+      medium: {
+        title: "中风险",
+        color: "#F59E0B",
+        bgColor: "#FFFBEB",
+        desc: "检测到中度鼾声和少量呼吸暂停事件，建议引起关注并及时进行专业评估。",
+        advice: "建议预约鼾静健康门诊进行面诊和睡眠监测，早期干预效果最佳。",
+        tips: [
+          "尽快预约门诊",
+          "监测睡眠姿势",
+          "减少酒精和安眠药",
+          "记录夜间醒来次数",
+        ],
+      },
+      high: {
+        title: "高风险",
+        color: "#EF4444",
+        bgColor: "#FEF2F2",
+        desc: "检测到重度鼾声和较多呼吸暂停事件，可能存在中度至重度睡眠呼吸暂停综合征。",
+        advice:
+          "请尽快到鼾静健康门诊进行多导睡眠监测（PSG）和上气道评估，及早治疗可避免心脑血管并发症风险。",
+        tips: [
+          "立即预约门诊",
+          "避免长途驾驶",
+          "告知家属观察",
+          "记录日间嗜睡情况",
+        ],
+      },
+    };
+    return e[t] || e.low;
+  }),
+  (exports.getStoreById = function (e) {
+    return t.find((t) => t.id === e);
+  }),
+  (exports.getWearingSummary = function () {
+    const t = a,
+      e = t.filter((t) => t.wearDuration > 0),
+      o = t.length,
+      i = e.length,
+      r = Math.round((i / o) * 100),
+      s =
+        e.length > 0
+          ? Math.round(
+              (e.reduce((t, e) => t + e.wearDuration, 0) / e.length) * 10,
+            ) / 10
+          : 0,
+      n =
+        e.length > 0
+          ? Math.round(
+              (e.reduce((t, e) => t + (e.comfort || 3), 0) / e.length) * 10,
+            ) / 10
+          : 0;
+    let d = 0;
+    for (let a = t.length - 1; a >= 0 && t[a].wearDuration > 0; a--) d++;
+    const c = t.slice(-7),
+      l = c.filter((t) => t.wearDuration > 0).length;
+    return {
+      totalDays: o,
+      wornDays: i,
+      compliance: r,
+      avgDuration: s,
+      avgComfort: n,
+      streak: d,
+      weekWorn: l,
+      weekAvg:
+        l > 0
+          ? Math.round((c.reduce((t, e) => t + e.wearDuration, 0) / l) * 10) /
+            10
+          : 0,
+    };
+  }),
+  (exports.memberLevels = [
+    {
+      level: "normal",
+      title: "普通会员",
+      color: "#9CA3AF",
+      bgColor: "#F3F4F6",
+      spentRequired: 0,
+      benefits: [
+        { icon: "appointment", title: "在线预约", desc: "随时预约睡眠门诊" },
+        { icon: "assess", title: "免费初筛", desc: "ESS量表 + AI鼾声分析" },
+      ],
+    },
+    {
+      level: "silver",
+      title: "白银会员",
+      color: "#6B7280",
+      bgColor: "#F3F4F6",
+      spentRequired: 1e5,
+      benefits: [
+        { icon: "appointment", title: "在线预约", desc: "优先时段选择" },
+        { icon: "assess", title: "免费初筛", desc: "ESS量表 + AI鼾声分析" },
+        { icon: "discount", title: "购物9.5折", desc: "商城商品享95折优惠" },
+      ],
+    },
+    {
+      level: "gold",
+      title: "黄金会员",
+      color: "#F5A623",
+      bgColor: "#FFF9E6",
+      spentRequired: 3e5,
+      benefits: [
+        { icon: "appointment", title: "在线预约", desc: "VIP优先预约通道" },
+        { icon: "assess", title: "免费初筛", desc: "ESS量表 + AI鼾声分析" },
+        { icon: "discount", title: "购物9折", desc: "商城商品享9折优惠" },
+        { icon: "service", title: "专属客服", desc: "1v1健康顾问服务" },
+        { icon: "channel", title: "分销权限", desc: "可申请成为推广员" },
+      ],
+    },
+    {
+      level: "diamond",
+      title: "钻石会员",
+      color: "#3B6BF5",
+      bgColor: "#EEF4FF",
+      spentRequired: 1e6,
+      benefits: [
+        { icon: "appointment", title: "在线预约", desc: "院长级专家优先约" },
+        { icon: "assess", title: "免费初筛", desc: "ESS量表 + AI鼾声分析" },
+        { icon: "discount", title: "购物8.5折", desc: "商城商品享85折优惠" },
+        { icon: "service", title: "专属客服", desc: "1v1健康顾问服务" },
+        { icon: "channel", title: "分销权限", desc: "推广员+高佣金比例" },
+        { icon: "free", title: "年度免费检查", desc: "每年1次免费睡眠监测" },
+      ],
+    },
+  ]),
+  (exports.mockAccountSecurity = {
+    phone: "138****1234",
+    hasPassword: !0,
+    lastLogin: "2026-06-04T08:30:00Z",
+    loginDevice: "iPhone 16 Pro Max",
+    realNameVerified: !0,
+    realName: "张**",
+  }),
+  (exports.mockAppointments = r),
+  (exports.mockAssessments = []),
+  (exports.mockDeviceFeedbacks = [
+    {
+      id: "df-001",
+      date: "2026-06-03",
+      rating: 4,
+      content: "佩戴后睡眠质量确实改善了，但刚戴上有轻微异物感，适应中。",
+      reply:
+        "您好，轻微异物感是正常适应反应，通常1-2周后会逐渐减弱。如仍有不适请联系我们调整。",
+    },
+  ]),
+  (exports.mockDeviceMaintenance = [
+    {
+      id: "dm-001",
+      date: "2026-06-02",
+      type: "clean",
+      description: "首次使用后用专用清洁套装进行深度清洁",
+      cost: 0,
+    },
+    {
+      id: "dm-002",
+      date: "2026-05-30",
+      type: "adjust",
+      description: "初次适配调整，设置前移量3mm",
+      cost: 0,
+    },
+  ]),
+  (exports.mockDistributionOrders = [
+    {
+      id: "do-001",
+      orderNo: "OR20260603001",
+      productName: "定制式可调舌型阻鼾器 HJ-MAD-03",
+      productImage: "/static/product/hj-mad-03.png",
+      amount: 298e3,
+      commission: 23840,
+      commissionLevel: 1,
+      buyerName: "王**",
+      status: "settled",
+      settledAt: "2026-06-03T22:00:00Z",
+      createdAt: "2026-06-03T20:30:00Z",
+    },
+    {
+      id: "do-002",
+      orderNo: "OR20260602001",
+      productName: "阻鼾器深度清洁套装",
+      productImage: "/static/product/clean-kit.png",
+      amount: 7900,
+      commission: 948,
+      commissionLevel: 1,
+      buyerName: "李**",
+      status: "settled",
+      settledAt: "2026-06-02T18:00:00Z",
+      createdAt: "2026-06-02T16:00:00Z",
+    },
+    {
+      id: "do-003",
+      orderNo: "OR20260602002",
+      productName: "睡眠呼吸初筛服务套餐",
+      productImage: "/static/product/screening.png",
+      amount: 9900,
+      commission: 1485,
+      commissionLevel: 1,
+      buyerName: "赵**",
+      status: "settled",
+      settledAt: "2026-06-02T18:00:00Z",
+      createdAt: "2026-06-02T14:30:00Z",
+    },
+    {
+      id: "do-004",
+      orderNo: "OR20260601002",
+      productName: "鼾静健康专用记忆枕",
+      productImage: "/static/product/pillow.png",
+      amount: 29900,
+      commission: 1196,
+      commissionLevel: 2,
+      buyerName: "陈*",
+      status: "pending",
+      createdAt: "2026-06-01T11:00:00Z",
+    },
+    {
+      id: "do-005",
+      orderNo: "OR20260531001",
+      productName: "定制式可调舌型阻鼾器 HJ-MAD-03",
+      productImage: "/static/product/hj-mad-03.png",
+      amount: 298e3,
+      commission: 23840,
+      commissionLevel: 1,
+      buyerName: "刘**",
+      status: "settled",
+      settledAt: "2026-06-01T12:00:00Z",
+      createdAt: "2026-05-31T09:00:00Z",
+    },
+    {
+      id: "do-006",
+      orderNo: "OR20260530002",
+      productName: "阻鼾器深度清洁套装",
+      productImage: "/static/product/clean-kit.png",
+      amount: 15800,
+      commission: 948,
+      commissionLevel: 2,
+      buyerName: "孙*",
+      status: "settled",
+      settledAt: "2026-06-01T12:00:00Z",
+      createdAt: "2026-05-30T14:00:00Z",
+    },
+    {
+      id: "do-007",
+      orderNo: "OR20260529001",
+      productName: "定制式可调舌型阻鼾器 HJ-MAD-03",
+      productImage: "/static/product/hj-mad-03.png",
+      amount: 298e3,
+      commission: 23840,
+      commissionLevel: 1,
+      buyerName: "周**",
+      status: "cancelled",
+      createdAt: "2026-05-29T10:00:00Z",
+    },
+  ]),
+  (exports.mockDistributionProducts = n),
+  (exports.mockDistributionRules =
+    "\n## 鼾静健康·推广员计划\n\n### 一、推广员等级\n| 等级 | 升级条件 | 佣金比例 |\n|------|---------|---------|\n| 白银推广员 | 注册即可 | 8% |\n| 黄金推广员 | 累计佣金≥3,000元 | 12% |\n| 钻石推广员 | 累计佣金≥10,000元 | 15% |\n\n### 二、佣金规则\n1. 一级佣金：您直接推广成交的订单，按对应等级比例获得佣金\n2. 二级佣金：您的推广员推广成交的订单，您可获得一级佣金的20%作为二级奖励\n3. 佣金结算：用户确认收货7天后自动结算，可提现至微信零钱或银行卡\n\n### 三、推广方式\n1. 分享小程序商品页给微信好友/微信群\n2. 生成专属推广海报，引导扫码购买\n3. 通过朋友圈分享治疗案例（需脱敏处理）\n\n### 四、注意事项\n- 禁止虚假宣传、夸大疗效\n- 禁止诱导用户进行不必要的消费\n- 违规推广将冻结佣金并取消推广资格\n"),
+  (exports.mockDistributor = {
+    id: "dis-001",
+    userId: "user-001",
+    nickname: "张先生",
+    avatar: "",
+    level: "gold",
+    totalCommission: 128500,
+    availableCommission: 35200,
+    withdrawnAmount: 93300,
+    inviteCode: "SH2026ZS001",
+    inviteQrCode: "/static/demo/qrcode.png",
+    teamCount: 47,
+    teamLevel2Count: 312,
+    orderCount: 89,
+    totalSales: 1258e3,
+    status: "active",
+    createdAt: "2026-04-15T10:00:00Z",
+  }),
+  (exports.mockDoctors = e),
+  (exports.mockFamilyMembers = [
+    {
+      id: "fm-001",
+      name: "李丽",
+      relation: "配偶",
+      gender: "2",
+      age: 34,
+      phone: "138****5678",
+      hasSnore: !0,
+      lastVisit: "2026-05-30",
+    },
+    {
+      id: "fm-002",
+      name: "张小明",
+      relation: "儿子",
+      gender: "1",
+      age: 8,
+      phone: "",
+      hasSnore: !1,
+    },
+  ]),
+  (exports.mockLiveRooms = [
+    {
+      id: "live-001",
+      title: "打鼾就是睡得香？王芳医生揭秘睡眠呼吸暂停",
+      cover: "/static/demo/live-1.jpg",
+      anchorName: "王芳",
+      anchorAvatar: "",
+      status: "replay",
+      startTime: "2026-05-28T19:30:00Z",
+      endTime: "2026-05-28T21:00:00Z",
+      viewerCount: 3421,
+      replayUrl: "https://example.com/live/replay/001",
+      productIds: ["prod-001", "prod-003"],
+      description:
+        "中西医结合主任医师王芳医生在线解答打鼾问题，教你如何分辨普通打鼾和睡眠呼吸暂停。",
+      tags: ["科普", "义诊", "专家答疑"],
+    },
+    {
+      id: "live-002",
+      title: "阻鼾器怎么选？多品牌实测对比",
+      cover: "/static/demo/live-2.jpg",
+      anchorName: "陈思雨",
+      anchorAvatar: "",
+      status: "replay",
+      startTime: "2026-05-25T20:00:00Z",
+      endTime: "2026-05-25T21:30:00Z",
+      viewerCount: 2156,
+      replayUrl: "https://example.com/live/replay/002",
+      productIds: ["prod-001", "prod-002"],
+      description:
+        "睡眠技师陈思雨带你了解不同类型的阻鼾器，从材质、舒适度、效果多维度对比。",
+      tags: ["产品测评", "选购指南"],
+    },
+    {
+      id: "live-003",
+      title: "618睡眠好物专场：阻鼾器配件超值秒杀",
+      cover: "/static/demo/live-3.jpg",
+      anchorName: "王芳",
+      anchorAvatar: "",
+      status: "upcoming",
+      startTime: "2026-06-10T20:00:00Z",
+      viewerCount: 0,
+      productIds: ["prod-002", "prod-004"],
+      description:
+        "618大促专场！阻鼾器清洁套装、专业记忆枕限时秒杀，更有神秘优惠券放送。",
+      tags: ["618大促", "秒杀", "福利"],
+    },
+    {
+      id: "live-004",
+      title: "您睡得好吗？AI鼾声分析在线体验",
+      cover: "/static/demo/live-4.jpg",
+      anchorName: "张伟",
+      anchorAvatar: "",
+      status: "upcoming",
+      startTime: "2026-06-15T19:00:00Z",
+      viewerCount: 0,
+      productIds: ["prod-003"],
+      description:
+        "睡眠医学专家张伟医生带你体验AI鼾声分析黑科技，现场解读鼾声数据。",
+      tags: ["AI黑科技", "互动体验"],
+    },
+  ]),
+  (exports.mockMedicalRecords = [
+    {
+      id: "mr-001",
+      visitDate: "2026-05-30",
+      doctorName: "王芳",
+      hospital: "鼾静健康诊所（南山店）",
+      dept: "睡眠呼吸中心",
+      diagnosis:
+        "轻度阻塞性睡眠呼吸暂停（OSAS），AHI 12次/小时。夜间打鼾影响睡眠质量，白天轻度嗜睡。",
+      prescription:
+        "定制式可调舌型阻鼾器 HJ-MAD-03，下颌前移量3mm，每晚佩戴不少于6小时。",
+      note: "建议侧卧睡眠，控制体重。2周后复诊调整阻鼾器位置。",
+      type: "first",
+    },
+    {
+      id: "mr-002",
+      visitDate: "2026-04-15",
+      doctorName: "陈思雨",
+      hospital: "鼾静健康诊所（南山店）",
+      dept: "睡眠呼吸中心",
+      diagnosis:
+        "日间嗜睡明显，ESS量表评分9分。建议进行睡眠监测排查睡眠呼吸暂停。",
+      note: "安排AI鼾声初筛，根据结果推荐进一步检查。",
+      type: "first",
+    },
+  ]),
+  (exports.mockMemberInfo = {
+    userId: "user-001",
+    currentLevel: "gold",
+    totalSpent: 324500,
+    nextLevel: "diamond",
+    nextLevelSpent: 1e6,
+    points: 3245,
+    joinDate: "2026-04-01",
+  }),
+  (exports.mockNotifications = [
+    {
+      id: "nf-001",
+      type: "appointment",
+      title: "预约确认",
+      content: "您6月5日（周五）09:00的王芳医生预约已确认，请按时就诊。",
+      isRead: !1,
+      createdAt: "2026-06-03T10:00:00Z",
+      payload: { type: "appointment", id: "apt-001" },
+    },
+    {
+      id: "nf-002",
+      type: "treatment",
+      title: "佩戴提醒",
+      content: "今日尚未记录阻鼾器佩戴情况，请记得打卡哦~",
+      isRead: !1,
+      createdAt: "2026-06-04T08:00:00Z",
+    },
+    {
+      id: "nf-003",
+      type: "order",
+      title: "订单已发货",
+      content: "您的阻鼾器深度清洁套装已发货，预计1-3天送达。",
+      isRead: !0,
+      createdAt: "2026-05-31T16:00:00Z",
+      payload: { type: "order", id: "ord-002" },
+    },
+    {
+      id: "nf-004",
+      type: "treatment",
+      title: "治疗随访提醒",
+      content: "您已完成阻鼾器初配近1周，请关注佩戴感受，如有不适可提前复诊。",
+      isRead: !0,
+      createdAt: "2026-06-02T09:00:00Z",
+    },
+    {
+      id: "nf-005",
+      type: "system",
+      title: "会员权益升级提示",
+      content: "您距离钻石会员还差675,500消费额，升级后可享更多专属权益。",
+      isRead: !0,
+      createdAt: "2026-06-01T12:00:00Z",
+    },
+    {
+      id: "nf-006",
+      type: "promo",
+      title: "限时活动",
+      content: "618健康睡眠节：阻鼾器配件全场满199减50，活动截止6月20日。",
+      isRead: !0,
+      createdAt: "2026-05-28T10:00:00Z",
+    },
+    {
+      id: "nf-007",
+      type: "appointment",
+      title: "改约成功",
+      content: "您的复诊已改约至6月12日（周五）14:00。",
+      isRead: !0,
+      createdAt: "2026-05-29T15:00:00Z",
+    },
+  ]),
+  (exports.mockOrders = [
+    {
+      id: "ord-001",
+      orderNo: "OR20260528001",
+      userId: "user-001",
+      type: "product",
+      items: [
+        {
+          productId: "prod-001",
+          productName: "定制式可调舌型阻鼾器 HJ-MAD-03",
+          productImage: "/static/product/hj-mad-03.png",
+          quantity: 1,
+          price: 298e3,
+        },
+      ],
+      totalAmount: 298e3,
+      discountAmount: 3e4,
+      payAmount: 268e3,
+      status: "completed",
+      payMethod: "wechat",
+      payAt: "2026-05-28T15:30:00Z",
+      createdAt: "2026-05-28T14:20:00Z",
+    },
+    {
+      id: "ord-002",
+      orderNo: "OR20260530001",
+      userId: "user-001",
+      type: "product",
+      items: [
+        {
+          productId: "prod-002",
+          productName: "阻鼾器深度清洁套装",
+          productImage: "/static/product/clean-kit.png",
+          quantity: 2,
+          price: 7900,
+        },
+      ],
+      totalAmount: 15800,
+      discountAmount: 0,
+      payAmount: 15800,
+      status: "shipped",
+      payMethod: "wechat",
+      payAt: "2026-05-30T09:15:00Z",
+      createdAt: "2026-05-30T09:10:00Z",
+    },
+    {
+      id: "ord-003",
+      orderNo: "OR20260601001",
+      userId: "user-001",
+      type: "product",
+      items: [
+        {
+          productId: "prod-003",
+          productName: "睡眠呼吸初筛服务套餐",
+          productImage: "/static/product/screening.png",
+          quantity: 1,
+          price: 9900,
+        },
+      ],
+      totalAmount: 9900,
+      discountAmount: 0,
+      payAmount: 9900,
+      status: "completed",
+      payMethod: "wechat",
+      payAt: "2026-06-01T11:00:00Z",
+      createdAt: "2026-06-01T10:55:00Z",
+    },
+    {
+      id: "ord-004",
+      orderNo: "OR20260603001",
+      userId: "user-001",
+      type: "product",
+      items: [
+        {
+          productId: "prod-004",
+          productName: "鼾静健康专用记忆枕",
+          productImage: "/static/product/pillow.png",
+          quantity: 1,
+          price: 29900,
+        },
+      ],
+      totalAmount: 29900,
+      discountAmount: 0,
+      payAmount: 29900,
+      status: "pending",
+      createdAt: "2026-06-03T20:30:00Z",
+    },
+    {
+      id: "ord-005",
+      orderNo: "OR20260604001",
+      userId: "user-001",
+      type: "appointment",
+      items: [
+        {
+          productId: "apt-002",
+          productName: "复诊-王芳医生",
+          productImage: "",
+          quantity: 1,
+          price: 0,
+        },
+      ],
+      totalAmount: 0,
+      discountAmount: 0,
+      payAmount: 0,
+      status: "confirmed",
+      createdAt: "2026-05-28T09:00:00Z",
+    },
+  ]),
+  (exports.mockProducts = s),
+  (exports.mockStores = t),
+  (exports.mockTeamMembers = [
+    {
+      id: "tm-001",
+      nickname: "李医生",
+      avatar: "",
+      level: "gold",
+      orderCount: 23,
+      totalSales: 356e3,
+      joinedAt: "2026-05-01",
+    },
+    {
+      id: "tm-002",
+      nickname: "王小姐",
+      avatar: "",
+      level: "silver",
+      orderCount: 12,
+      totalSales: 182e3,
+      joinedAt: "2026-05-10",
+    },
+    {
+      id: "tm-003",
+      nickname: "赵先生",
+      avatar: "",
+      level: "silver",
+      orderCount: 8,
+      totalSales: 96e3,
+      joinedAt: "2026-05-15",
+    },
+    {
+      id: "tm-004",
+      nickname: "刘姐",
+      avatar: "",
+      level: "silver",
+      orderCount: 5,
+      totalSales: 54e3,
+      joinedAt: "2026-05-20",
+    },
+    {
+      id: "tm-005",
+      nickname: "陈总",
+      avatar: "",
+      level: "gold",
+      orderCount: 18,
+      totalSales: 298e3,
+      joinedAt: "2026-05-05",
+    },
+  ]),
+  (exports.mockTimeline = [
+    {
+      id: "tl-001",
+      date: "2026-05-30",
+      type: "visit",
+      title: "初次适配",
+      description: "完成阻鼾器HJ-MAD-03初配，下颌前移量3mm，佩戴指导完成",
+      doctorName: "王芳",
+      icon: "start",
+      color: "#1A9D5C",
+    },
+    {
+      id: "tl-002",
+      date: "2026-06-02",
+      type: "followup",
+      title: "48小时电话随访",
+      description:
+        "患者反馈佩戴初期有轻微牙齿酸胀感，属正常适应反应。建议继续佩戴，如3天后仍不适可提前复诊。",
+      doctorName: "陈思雨",
+      icon: "phone",
+      color: "#3B6BF5",
+    },
+    {
+      id: "tl-003",
+      date: "2026-06-05",
+      type: "adjust",
+      title: "首次调整预约",
+      description: "已预约首次调整，评估佩戴适应情况和治疗效果",
+      doctorName: "王芳",
+      icon: "adjust",
+      color: "#F59E0B",
+    },
+  ]),
+  (exports.mockTreatmentRecord = {
+    id: "trt-001",
+    patientId: "pat-001",
+    appointmentId: "apt-002",
+    doctorId: "doc-002",
+    diagnosis: "轻度阻塞性睡眠呼吸暂停（OSAS），AHI 12次/小时",
+    treatmentPlan: "下颌前移式阻鼾器治疗，初始前移量3mm，逐步调整至最佳位置",
+    deviceModel: "HJ-MAD-03",
+    adjustmentValue: 3,
+    nextAdjustDate: "2026-06-12",
+    doctorAdvice:
+      "每晚佩戴不少于6小时，初期有轻微不适属正常现象。如出现明显颞下颌关节疼痛或牙齿酸胀，请及时联系调整。建议侧卧睡眠，控制体重。",
+    followupDate: "2026-06-12",
+    createdAt: "2026-05-30T15:30:00Z",
+  }),
+  (exports.mockUserProfile = {
+    id: "user-001",
+    nickname: "张先生",
+    avatar: "",
+    phone: "138****1234",
+    gender: 1,
+    birthday: "1990-03-15",
+    memberLevel: "gold",
+    isDistributor: !1,
+    createdAt: "2026-04-01T08:00:00Z",
+  }),
+  (exports.mockWearingRecords = a),
+  (exports.mockWithdrawRecords = [
+    {
+      id: "wd-001",
+      userId: "user-001",
+      amount: 5e4,
+      fee: 50,
+      actualAmount: 49950,
+      status: "success",
+      accountInfo: "微信零钱 ****8888",
+      createdAt: "2026-05-28T10:00:00Z",
+      completedAt: "2026-05-28T12:00:00Z",
+    },
+    {
+      id: "wd-002",
+      userId: "user-001",
+      amount: 3e4,
+      fee: 30,
+      actualAmount: 29970,
+      status: "success",
+      accountInfo: "微信零钱 ****8888",
+      createdAt: "2026-05-15T09:00:00Z",
+      completedAt: "2026-05-15T11:00:00Z",
+    },
+    {
+      id: "wd-003",
+      userId: "user-001",
+      amount: 13300,
+      fee: 13,
+      actualAmount: 13287,
+      status: "success",
+      accountInfo: "银行 ****5678",
+      createdAt: "2026-04-28T14:00:00Z",
+      completedAt: "2026-04-29T10:00:00Z",
+    },
+  ]));

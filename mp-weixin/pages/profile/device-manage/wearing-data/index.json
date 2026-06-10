@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "佩戴数据",
+  "usingComponents": {
+    "hj-navbar": "../../../../components/base/hj-navbar"
+  }
+}

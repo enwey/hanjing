@@ -1,0 +1,37 @@
+<view class="page data-v-c3158b61"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-c3158b61"
+    u-i="c3158b61-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="top-bar data-v-c3158b61"
+    ><text class="unread-text data-v-c3158b61">{{b}} 条未读</text
+    ><text wx:if="{{c}}" class="read-all data-v-c3158b61" bindtap="{{d}}"
+      >全部已读</text
+    ></view
+  ><view class="page-content data-v-c3158b61"
+    ><view wx:if="{{e}}" class="loading-wrap data-v-c3158b61"
+      ><text class="data-v-c3158b61">加载中...</text></view
+    ><block wx:else
+      ><view
+        wx:for="{{f}}"
+        wx:for-item="n"
+        wx:key="h"
+        class="{{['noti-card', 'data-v-c3158b61', n.i && 'unread']}}"
+        bindtap="{{n.j}}"
+        ><view
+          class="{{['noti-dot', 'data-v-c3158b61', n.a && 'active']}}"
+        /><view
+          class="noti-icon data-v-c3158b61"
+          style="{{'background:' + n.c + ';' + ('color:' + n.d)}}"
+          ><text class="data-v-c3158b61">{{n.b}}</text></view
+        ><view class="noti-body data-v-c3158b61"
+          ><text class="noti-title data-v-c3158b61">{{n.e}}</text
+          ><text class="noti-content data-v-c3158b61">{{n.f}}</text
+          ><text class="noti-time data-v-c3158b61">{{n.g}}</text></view
+        ></view
+      ><view wx:if="{{g}}" class="empty data-v-c3158b61"
+        ><text class="data-v-c3158b61">暂无消息</text></view
+      ></block
+    ><view class="safe-bottom data-v-c3158b61" /></view
+></view>

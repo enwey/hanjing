@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "治疗追踪",
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "hj-navbar": "../../components/base/hj-navbar",
+    "hj-empty": "../../components/base/hj-empty"
+  }
+}

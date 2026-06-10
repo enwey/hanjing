@@ -1,0 +1,32 @@
+<view class="store-card data-v-3c596062" bindtap="{{i}}"
+  ><view class="store-card-image data-v-3c596062"
+    ><view class="store-card-image-placeholder data-v-3c596062"
+      ><text class="store-card-emoji data-v-3c596062">🏥</text></view
+    ><view wx:if="{{a}}" class="store-card-closed data-v-3c596062"
+      ><text class="data-v-3c596062">休息中</text></view
+    ></view
+  ><view class="store-card-body data-v-3c596062"
+    ><view class="store-card-header data-v-3c596062"
+      ><text class="store-card-name data-v-3c596062">{{b}}</text
+      ><view class="store-card-tags data-v-3c596062"
+        ><text
+          wx:for="{{c}}"
+          wx:for-item="tag"
+          wx:key="b"
+          class="store-card-tag data-v-3c596062"
+          >{{tag.a}}</text
+        ></view
+      ></view
+    ><text class="store-card-address data-v-3c596062">📍 {{d}}</text
+    ><view class="store-card-footer data-v-3c596062"
+      ><view class="store-card-meta data-v-3c596062"
+        ><text class="store-card-meta-item data-v-3c596062">👨‍⚕️ {{e}}位医生</text
+        ><text class="store-card-meta-item data-v-3c596062"
+          >🕐 {{f}}</text
+        ></view
+      ><text wx:if="{{g}}" class="store-card-distance data-v-3c596062"
+        >{{h}}</text
+      ></view
+    ></view
+  ></view
+>

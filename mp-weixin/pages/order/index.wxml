@@ -1,0 +1,58 @@
+<view class="page data-v-a92287bc"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-a92287bc"
+    u-i="a92287bc-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-a92287bc"
+    ><scroll-view class="tab-scroll data-v-a92287bc" scroll-x enable-flex
+      ><view
+        wx:for="{{b}}"
+        wx:for-item="tab"
+        wx:key="c"
+        class="{{['tab-item', 'data-v-a92287bc', tab.d && 'active']}}"
+        bindtap="{{tab.e}}"
+        ><text class="tab-label data-v-a92287bc">{{tab.a}}</text
+        ><view
+          wx:if="{{tab.b}}"
+          class="tab-indicator data-v-a92287bc" /></view></scroll-view
+    ><view wx:if="{{c}}" class="loading-state data-v-a92287bc"
+      ><text class="loading-text data-v-a92287bc">加载中...</text></view
+    ><view wx:else class="order-list data-v-a92287bc"
+      ><view
+        wx:for="{{d}}"
+        wx:for-item="order"
+        wx:key="g"
+        class="order-card data-v-a92287bc"
+        bindtap="{{order.h}}"
+        ><view class="order-header data-v-a92287bc"
+          ><text class="order-no data-v-a92287bc">{{order.a}}</text
+          ><text
+            class="order-status data-v-a92287bc"
+            style="{{'color:' + order.c}}"
+            >{{order.b}}</text
+          ></view
+        ><view
+          wx:for="{{order.d}}"
+          wx:for-item="item"
+          wx:key="f"
+          class="order-item data-v-a92287bc"
+          ><image
+            wx:if="{{item.a}}"
+            class="item-img data-v-a92287bc"
+            src="{{item.b}}"
+            mode="aspectFill"
+          /><view wx:else class="item-img-placeholder data-v-a92287bc" /><view
+            class="item-info data-v-a92287bc"
+            ><text class="item-name data-v-a92287bc">{{item.c}}</text
+            ><text class="item-qty data-v-a92287bc">x{{item.d}}</text></view
+          ><text class="item-price data-v-a92287bc">{{item.e}}</text></view
+        ><view class="order-footer data-v-a92287bc"
+          ><text class="order-amount data-v-a92287bc"
+            >共 {{order.e}} 件，合计</text
+          ><text class="order-total data-v-a92287bc">{{order.f}}</text></view
+        ></view
+      ><view wx:if="{{e}}" class="empty-state data-v-a92287bc"
+        ><text class="empty-text data-v-a92287bc">暂无订单</text></view
+      ><view class="safe-bottom data-v-a92287bc" /></view></view
+></view>

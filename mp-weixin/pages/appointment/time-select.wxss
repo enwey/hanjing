@@ -1,0 +1,147 @@
+.data-v-93083005:root {
+  --color-primary-50: #eef4ff;
+  --color-primary-100: #d9e6ff;
+  --color-primary-300: #8eafff;
+  --color-primary-500: #3b6bf5;
+  --color-primary-600: #2a52d4;
+  --color-primary-800: #1a3580;
+  --color-secondary-100: #d3f5e3;
+  --color-secondary-500: #1a9d5c;
+  --color-success-500: #22c55e;
+  --color-warning-500: #f59e0b;
+  --color-error-500: #ef4444;
+  --color-gold-400: #f5a623;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --gradient-primary: linear-gradient(
+    135deg,
+    #3b6bf5 0%,
+    #5a85f5 50%,
+    #8eafff 100%
+  );
+  --gradient-hero: linear-gradient(
+    160deg,
+    #1a3580 0%,
+    #3b6bf5 40%,
+    #8eafff 100%
+  );
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
+  --font-sans:
+    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+.page.data-v-93083005 {
+  min-height: 100vh;
+  background: #f9fafb;
+}
+.page-content.data-v-93083005 {
+  padding: 0 16px;
+}
+.schedule-section.data-v-93083005 {
+  margin-bottom: 16px;
+}
+.schedule-date.data-v-93083005 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 12px;
+}
+.schedule-group.data-v-93083005 {
+  margin-bottom: 12px;
+}
+.schedule-header.data-v-93083005 {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.schedule-header--full.data-v-93083005 {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.schedule-period.data-v-93083005 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-right: 12px;
+}
+.schedule-time.data-v-93083005 {
+  font-size: 14px;
+  color: #6b7280;
+  flex: 1;
+}
+.schedule-avail.data-v-93083005 {
+  font-size: 13px;
+  color: #1a9d5c;
+  font-weight: 500;
+}
+.slot-grid.data-v-93083005 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 4px;
+}
+.slot.data-v-93083005 {
+  width: calc((100% - 16px) / 3);
+  text-align: center;
+  padding: 12px 0;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 14px;
+}
+.slot--available.data-v-93083005 {
+  color: #3b6bf5;
+  border-color: #3b6bf5;
+}
+.slot--booked.data-v-93083005 {
+  color: #d1d5db;
+  background: #f9fafb;
+  pointer-events: none;
+}
+.slot--disabled.data-v-93083005 {
+  color: #d1d5db;
+  pointer-events: none;
+}
+.slot-time.data-v-93083005 {
+  font-weight: 500;
+}
+.empty-text.data-v-93083005 {
+  text-align: center;
+  font-size: 14px;
+  color: #9ca3af;
+  padding: 40px 0;
+}
+.select-hint.data-v-93083005 {
+  text-align: center;
+  font-size: 15px;
+  color: #9ca3af;
+  padding: 60px 0;
+}

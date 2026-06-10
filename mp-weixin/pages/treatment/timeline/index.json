@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "治疗时间线",
+  "usingComponents": {
+    "hj-navbar": "../../../components/base/hj-navbar"
+  }
+}

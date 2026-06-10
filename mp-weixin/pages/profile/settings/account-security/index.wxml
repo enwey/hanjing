@@ -1,0 +1,32 @@
+<view class="page data-v-ecc58349"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-ecc58349"
+    u-i="ecc58349-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-ecc58349"
+    ><view wx:if="{{b}}" class="loading-wrap data-v-ecc58349"
+      ><text class="data-v-ecc58349">加载中...</text></view
+    ><block wx:elif="{{c}}"
+      ><view class="info-group data-v-ecc58349"
+        ><view class="info-row data-v-ecc58349"
+          ><text class="info-label data-v-ecc58349">绑定手机</text
+          ><text class="info-val data-v-ecc58349">{{d}}</text></view
+        ><view class="info-row data-v-ecc58349"
+          ><text class="info-label data-v-ecc58349">登录密码</text
+          ><text class="info-val data-v-ecc58349">{{e}}</text></view
+        ><view class="info-row data-v-ecc58349"
+          ><text class="info-label data-v-ecc58349">实名认证</text
+          ><text class="info-val success data-v-ecc58349">{{f}}</text></view
+        ></view
+      ><view class="info-group data-v-ecc58349"
+        ><view class="info-row data-v-ecc58349"
+          ><text class="info-label data-v-ecc58349">最近登录</text
+          ><text class="info-val data-v-ecc58349">{{g}}</text></view
+        ><view class="info-row data-v-ecc58349"
+          ><text class="info-label data-v-ecc58349">登录设备</text
+          ><text class="info-val data-v-ecc58349">{{h}}</text></view
+        ></view
+      ></block
+    ><view class="safe-bottom data-v-ecc58349" /></view
+></view>

@@ -1,0 +1,32 @@
+<view class="doctor-card data-v-906afe6e" bindtap="{{j}}"
+  ><view class="doctor-avatar data-v-906afe6e"
+    ><text class="doctor-avatar-text data-v-906afe6e">{{a}}</text></view
+  ><view class="doctor-info data-v-906afe6e"
+    ><view class="doctor-header data-v-906afe6e"
+      ><text class="doctor-name data-v-906afe6e">{{b}}</text
+      ><hj-tag
+        wx:if="{{c}}"
+        class="data-v-906afe6e"
+        u-i="906afe6e-0"
+        bind:__l="__l"
+        u-p="{{c}}" /></view
+    ><text class="doctor-specialty data-v-906afe6e">{{d}} · {{e}}年经验</text
+    ><view class="doctor-expertise data-v-906afe6e"
+      ><text
+        wx:for="{{f}}"
+        wx:for-item="exp"
+        wx:key="b"
+        class="doctor-expertise-tag data-v-906afe6e"
+        >{{exp.a}}</text
+      ></view
+    ><view class="doctor-stats data-v-906afe6e"
+      ><view class="doctor-rating data-v-906afe6e"
+        ><text class="doctor-rating-star data-v-906afe6e">⭐</text
+        ><text class="doctor-rating-value data-v-906afe6e">{{g}}</text
+        ><text class="doctor-rating-count data-v-906afe6e"
+          >({{h}}评)</text
+        ></view
+      ><text class="doctor-consult data-v-906afe6e">已接诊 {{i}}+</text></view
+    ></view
+  ><view class="doctor-arrow data-v-906afe6e">›</view></view
+>

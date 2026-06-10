@@ -1,0 +1,52 @@
+<view class="page data-v-1973d3c1"
+  ><hj-navbar
+    wx:if="{{b}}"
+    class="data-v-1973d3c1"
+    bindback="{{a}}"
+    u-i="1973d3c1-0"
+    bind:__l="__l"
+    u-p="{{b}}" /><view class="page-content data-v-1973d3c1"
+    ><view wx:if="{{c}}" class="empty-state data-v-1973d3c1"
+      ><text class="empty-icon data-v-1973d3c1">📋</text
+      ><text class="empty-title data-v-1973d3c1">暂无评估结果</text
+      ><text class="empty-desc data-v-1973d3c1">请先完成ESS嗜睡量表评估</text
+      ><view class="btn-retake data-v-1973d3c1" bindtap="{{d}}"
+        ><text class="data-v-1973d3c1">开始评估</text></view
+      ></view
+    ><block wx:else
+      ><view class="score-card data-v-1973d3c1" style="{{'background:' + g}}"
+        ><text class="score-label data-v-1973d3c1">ESS 评分</text
+        ><text class="score-value data-v-1973d3c1">{{e}}</text
+        ><text class="score-unit data-v-1973d3c1">/ 24 分</text
+        ><text class="score-level data-v-1973d3c1">{{f}}</text></view
+      ><view class="result-card data-v-1973d3c1"
+        ><text class="result-title data-v-1973d3c1">📊 评分解读</text
+        ><text class="result-desc data-v-1973d3c1">{{h}}</text></view
+      ><view class="result-card data-v-1973d3c1"
+        ><text class="result-title data-v-1973d3c1">📝 答案回顾</text
+        ><view class="answer-list data-v-1973d3c1"
+          ><view
+            wx:for="{{i}}"
+            wx:for-item="q"
+            wx:key="d"
+            class="answer-item data-v-1973d3c1"
+            ><text class="answer-q data-v-1973d3c1">{{q.a}} {{q.b}}</text
+            ><text class="answer-s data-v-1973d3c1">— {{q.c}}</text></view
+          ></view
+        ></view
+      ><view class="advice-card data-v-1973d3c1"
+        ><text class="advice-icon data-v-1973d3c1">💡</text
+        ><text class="advice-title data-v-1973d3c1">专业建议</text
+        ><text class="advice-text data-v-1973d3c1">{{j}}</text></view
+      ><view class="action-buttons data-v-1973d3c1"
+        ><view class="btn-primary data-v-1973d3c1" bindtap="{{k}}"
+          ><text class="data-v-1973d3c1">立即预约门诊</text></view
+        ><view class="btn-secondary data-v-1973d3c1" bindtap="{{l}}"
+          ><text class="data-v-1973d3c1">返回首页</text></view
+        ><view class="btn-outline data-v-1973d3c1" bindtap="{{m}}"
+          ><text class="data-v-1973d3c1">重新评估</text></view
+        ></view
+      ></block
+    ></view
+  ><view class="safe-bottom data-v-1973d3c1"
+/></view>

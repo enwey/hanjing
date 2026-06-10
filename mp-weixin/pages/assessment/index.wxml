@@ -1,0 +1,62 @@
+<view class="page data-v-35dabd14"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-35dabd14"
+    u-i="35dabd14-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-35dabd14"
+    ><view class="hero-card data-v-35dabd14"
+      ><text class="hero-emoji data-v-35dabd14">🌙</text
+      ><text class="hero-title data-v-35dabd14">了解您的睡眠质量</text
+      ><text class="hero-desc data-v-35dabd14">
+        通过专业的ESS嗜睡量表和AI鼾声分析，全面评估您的睡眠呼吸健康状况
+      </text></view
+    ><view class="eval-card data-v-35dabd14" bindtap="{{b}}"
+      ><view class="eval-icon data-v-35dabd14">📊</view
+      ><view class="eval-info data-v-35dabd14"
+        ><text class="eval-title data-v-35dabd14">ESS嗜睡量表</text
+        ><text class="eval-desc data-v-35dabd14"
+          >8道情境题 · 约3分钟 · 国际通用标准</text
+        ></view
+      ><text class="eval-arrow data-v-35dabd14">›</text></view
+    ><view class="eval-card data-v-35dabd14" bindtap="{{c}}"
+      ><view class="eval-icon data-v-35dabd14">🎤</view
+      ><view class="eval-info data-v-35dabd14"
+        ><text class="eval-title data-v-35dabd14">AI鼾声分析</text
+        ><text class="eval-desc data-v-35dabd14"
+          >录制鼾声 · AI分析 · 风险评级</text
+        ><view class="new-tag data-v-35dabd14">新增上线</view></view
+      ><text class="eval-arrow data-v-35dabd14">›</text></view
+    ><view class="section-header data-v-35dabd14"
+      ><text class="section-title data-v-35dabd14">我的评估记录</text></view
+    ><view wx:if="{{d}}" class="data-v-35dabd14"
+      ><view
+        wx:for="{{e}}"
+        wx:for-item="r"
+        wx:key="g"
+        class="record-card data-v-35dabd14"
+        bindtap="{{r.h}}"
+        ><view class="record-left data-v-35dabd14"
+          ><view
+            class="record-type-dot data-v-35dabd14"
+            style="{{'background:' + r.a}}"
+          /><view class="record-info data-v-35dabd14"
+            ><text class="record-type data-v-35dabd14">{{r.b}}</text
+            ><text class="record-desc data-v-35dabd14">{{r.c}}</text
+            ><text class="record-date data-v-35dabd14">{{r.d}}</text></view
+          ></view
+        ><view class="record-right data-v-35dabd14"
+          ><text class="record-level data-v-35dabd14" style="{{'color:' + r.f}}"
+            >{{r.e}}</text
+          ><text class="record-arrow data-v-35dabd14">›</text></view
+        ></view
+      ></view
+    ><view wx:else class="empty-card data-v-35dabd14"
+      ><text class="empty-icon data-v-35dabd14">📋</text
+      ><text class="empty-text data-v-35dabd14">暂无评估记录</text
+      ><text class="empty-hint data-v-35dabd14"
+        >完成评估后可在此查看报告</text
+      ></view
+    ></view
+  ><view class="safe-bottom data-v-35dabd14"
+/></view>

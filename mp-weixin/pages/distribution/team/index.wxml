@@ -1,0 +1,35 @@
+<view class="page data-v-e9b2690b"
+  ><view class="stats-bar data-v-e9b2690b"
+    ><view class="stat data-v-e9b2690b"
+      ><text class="sv data-v-e9b2690b">{{a}}</text
+      ><text class="sl data-v-e9b2690b">一级成员</text></view
+    ><view class="stat data-v-e9b2690b"
+      ><text class="sv data-v-e9b2690b">{{b}}</text
+      ><text class="sl data-v-e9b2690b">二级成员</text></view
+    ><view class="stat data-v-e9b2690b"
+      ><text class="sv data-v-e9b2690b">{{c}}w</text
+      ><text class="sl data-v-e9b2690b">团队销售额</text></view
+    ></view
+  ><view class="list data-v-e9b2690b"
+    ><view
+      wx:for="{{d}}"
+      wx:for-item="m"
+      wx:key="g"
+      class="item data-v-e9b2690b"
+      ><view class="avatar data-v-e9b2690b">{{m.a}}</view
+      ><view class="info data-v-e9b2690b"
+        ><text class="name data-v-e9b2690b">{{m.b}}</text
+        ><text class="meta data-v-e9b2690b"
+          >{{m.c}}单 · 加入{m.joinedAt}</text
+        ></view
+      ><view class="right data-v-e9b2690b"
+        ><text class="{{['level', 'data-v-e9b2690b', m.e]}}">{{m.d}}</text
+        ><text class="sales data-v-e9b2690b">{{m.f}}w</text></view
+      ></view
+    ><hj-empty
+      wx:if="{{e}}"
+      class="data-v-e9b2690b"
+      u-i="e9b2690b-0"
+      bind:__l="__l"
+      u-p="{{f}}" /></view
+></view>

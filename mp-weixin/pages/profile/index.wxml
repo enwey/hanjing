@@ -1,0 +1,37 @@
+<view class="page data-v-093cfe40"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-093cfe40"
+    u-i="093cfe40-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-093cfe40"
+    ><view class="user-card data-v-093cfe40"
+      ><view class="user-avatar data-v-093cfe40"
+        ><text class="user-avatar-text data-v-093cfe40">{{b}}</text></view
+      ><view class="user-info data-v-093cfe40"
+        ><text class="user-name data-v-093cfe40">{{c}}</text
+        ><view class="user-level data-v-093cfe40"
+          ><text class="user-level-tag data-v-093cfe40">黄金会员</text></view
+        ></view
+      ><text class="user-arrow data-v-093cfe40">›</text></view
+    ><view
+      wx:for="{{d}}"
+      wx:for-item="group"
+      wx:key="c"
+      class="menu-group data-v-093cfe40"
+      ><text class="menu-group-title data-v-093cfe40">{{group.a}}</text
+      ><view class="menu-list data-v-093cfe40"
+        ><view
+          wx:for="{{group.b}}"
+          wx:for-item="item"
+          wx:key="c"
+          class="menu-item data-v-093cfe40"
+          bindtap="{{item.d}}"
+          ><text class="menu-icon data-v-093cfe40">{{item.a}}</text
+          ><text class="menu-label data-v-093cfe40">{{item.b}}</text
+          ><text class="menu-arrow data-v-093cfe40">›</text></view
+        ></view
+      ></view
+    ></view
+  ><view class="safe-bottom data-v-093cfe40"
+/></view>

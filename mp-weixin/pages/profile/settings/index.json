@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "设置",
+  "usingComponents": {
+    "hj-navbar": "../../../components/base/hj-navbar"
+  }
+}

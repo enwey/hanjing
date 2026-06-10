@@ -1,0 +1,59 @@
+<view class="page data-v-64c0d952"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-64c0d952"
+    u-i="64c0d952-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view wx:if="{{b}}" class="page-content data-v-64c0d952"
+    ><view class="param-card data-v-64c0d952"
+      ><text class="param-title data-v-64c0d952">当前设备参数</text
+      ><view class="param-grid data-v-64c0d952"
+        ><view class="param-item data-v-64c0d952"
+          ><text class="param-label data-v-64c0d952">设备型号</text
+          ><text class="param-val data-v-64c0d952">{{c}}</text></view
+        ><view class="param-item data-v-64c0d952"
+          ><text class="param-label data-v-64c0d952">下颌前移量</text
+          ><text class="param-val param-val--big data-v-64c0d952"
+            >{{d}}mm</text
+          ></view
+        ><view class="param-item data-v-64c0d952"
+          ><text class="param-label data-v-64c0d952">调整次数</text
+          ><text class="param-val data-v-64c0d952">{{e}}次</text></view
+        ><view class="param-item data-v-64c0d952"
+          ><text class="param-label data-v-64c0d952">下次调整</text
+          ><text class="param-val data-v-64c0d952" style="color: #f59e0b"
+            >{{f}}</text
+          ></view
+        ></view
+      ></view
+    ><view class="advice-card data-v-64c0d952"
+      ><text class="advice-title data-v-64c0d952">调整建议</text
+      ><text class="advice-text data-v-64c0d952">
+        每次调整增量通常为 0.5-1mm，根据患者适应情况和治疗效果进行个性化调整。
+        请勿自行调整阻鼾器参数，必须在医生指导下进行。
+      </text></view
+    ><text class="section-title data-v-64c0d952">调整历史</text
+    ><view class="history-list data-v-64c0d952"
+      ><view
+        wx:for="{{g}}"
+        wx:for-item="item"
+        wx:key="h"
+        class="history-item data-v-64c0d952"
+        ><view class="history-left data-v-64c0d952"
+          ><text class="history-date data-v-64c0d952">{{item.a}}</text
+          ><text class="history-val data-v-64c0d952">{{item.b}}mm</text></view
+        ><view class="history-right data-v-64c0d952"
+          ><text class="history-note data-v-64c0d952">{{item.c}}</text
+          ><text wx:if="{{item.d}}" class="history-doctor data-v-64c0d952"
+            >{{item.e}} 医生</text
+          ><view wx:if="{{item.f}}" class="history-comfort data-v-64c0d952"
+            ><text class="history-comfort-label data-v-64c0d952"
+              >佩戴感受：</text
+            ><text class="data-v-64c0d952">{{item.g}}/5</text></view
+          ><view wx:else class="history-badge data-v-64c0d952"
+            >即将进行</view
+          ></view
+        ></view
+      ></view
+    ><view class="safe-bottom data-v-64c0d952" /></view
+></view>

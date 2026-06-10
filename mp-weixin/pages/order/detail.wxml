@@ -1,0 +1,65 @@
+<view class="page data-v-e129e068"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-e129e068"
+    u-i="e129e068-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view wx:if="{{b}}" class="loading-wrap data-v-e129e068"
+    ><text class="data-v-e129e068">加载中...</text></view
+  ><block wx:elif="{{c}}"
+    ><view class="body data-v-e129e068"
+      ><view class="status-card data-v-e129e068"
+        ><text class="status-label data-v-e129e068">{{d}}</text
+        ><view class="status-progress data-v-e129e068"
+          ><block wx:for="{{e}}" wx:for-item="step" wx:key="d"
+            ><view
+              class="{{['step-dot', 'data-v-e129e068', step.a && 'done']}}" /><view
+              wx:if="{{step.b}}"
+              class="{{['step-line', 'data-v-e129e068', step.c && 'done']}}" /></block></view></view
+      ><view class="section data-v-e129e068"
+        ><text class="section-title data-v-e129e068">商品信息</text
+        ><view
+          wx:for="{{f}}"
+          wx:for-item="item"
+          wx:key="f"
+          class="item-row data-v-e129e068"
+          ><image
+            wx:if="{{item.a}}"
+            class="item-img data-v-e129e068"
+            src="{{item.b}}"
+            mode="aspectFill"
+          /><view wx:else class="item-img-placeholder data-v-e129e068" /><view
+            class="item-info data-v-e129e068"
+            ><text class="item-name data-v-e129e068">{{item.c}}</text
+            ><text class="item-qty data-v-e129e068">x{{item.d}}</text></view
+          ><text class="item-price data-v-e129e068">{{item.e}}</text></view
+        ></view
+      ><view class="section data-v-e129e068"
+        ><text class="section-title data-v-e129e068">金额明细</text
+        ><view class="amount-row data-v-e129e068"
+          ><text class="amount-label data-v-e129e068">商品总价</text
+          ><text class="amount-val data-v-e129e068">{{g}}</text></view
+        ><view wx:if="{{h}}" class="amount-row data-v-e129e068"
+          ><text class="amount-label data-v-e129e068">优惠减免</text
+          ><text class="amount-val discount data-v-e129e068">-{{i}}</text></view
+        ><view class="amount-row total data-v-e129e068"
+          ><text class="amount-label data-v-e129e068">实付金额</text
+          ><text class="amount-val total-val data-v-e129e068">{{j}}</text></view
+        ></view
+      ><view class="section data-v-e129e068"
+        ><text class="section-title data-v-e129e068">订单信息</text
+        ><view class="info-row data-v-e129e068"
+          ><text class="info-label data-v-e129e068">订单编号</text
+          ><text class="info-val data-v-e129e068">{{k}}</text></view
+        ><view class="info-row data-v-e129e068"
+          ><text class="info-label data-v-e129e068">下单时间</text
+          ><text class="info-val data-v-e129e068">{{l}}</text></view
+        ><view wx:if="{{m}}" class="info-row data-v-e129e068"
+          ><text class="info-label data-v-e129e068">支付时间</text
+          ><text class="info-val data-v-e129e068">{{n}}</text></view
+        ><view wx:if="{{o}}" class="info-row data-v-e129e068"
+          ><text class="info-label data-v-e129e068">支付方式</text
+          ><text class="info-val data-v-e129e068">微信支付</text></view
+        ></view
+      ><view class="safe-bottom data-v-e129e068" /></view></block
+></view>

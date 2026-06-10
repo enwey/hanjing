@@ -1,0 +1,90 @@
+<view class="page data-v-d95e15f4"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-d95e15f4"
+    u-i="d95e15f4-0"
+    bind:__l="__l"
+    u-p="{{a}}"
+  /><view wx:if="{{b}}" class="page-content data-v-d95e15f4"
+    ><view class="post-card data-v-d95e15f4"
+      ><view class="post-header data-v-d95e15f4"
+        ><view class="post-avatar data-v-d95e15f4" style="{{'background:' + d}}"
+          >{{c}}</view
+        ><view class="post-author-info data-v-d95e15f4"
+          ><view class="post-author-row data-v-d95e15f4"
+            ><text class="post-author data-v-d95e15f4">{{e}}</text
+            ><text class="{{['post-role', 'data-v-d95e15f4', g]}}"
+              >{{f}}</text
+            ></view
+          ><text class="post-time data-v-d95e15f4">{{h}}</text></view
+        ></view
+      ><text class="post-title data-v-d95e15f4">{{i}}</text
+      ><text class="post-content data-v-d95e15f4">{{j}}</text
+      ><view wx:if="{{k}}" class="post-tags data-v-d95e15f4"
+        ><text
+          wx:for="{{l}}"
+          wx:for-item="tag"
+          wx:key="b"
+          class="post-tag data-v-d95e15f4"
+          >{{tag.a}}</text
+        ></view
+      ><view class="post-actions data-v-d95e15f4"
+        ><view class="action-item data-v-d95e15f4" bindtap="{{p}}"
+          ><text class="{{['data-v-d95e15f4', n]}}">{{m}}</text
+          ><text class="action-count data-v-d95e15f4">{{o}}</text></view
+        ><view class="action-item data-v-d95e15f4"
+          ><text class="action-icon data-v-d95e15f4">💬</text
+          ><text class="action-count data-v-d95e15f4">{{q}}</text></view
+        ><view class="action-item data-v-d95e15f4"
+          ><text class="action-icon data-v-d95e15f4">↗️</text
+          ><text class="action-count data-v-d95e15f4">分享</text></view
+        ></view
+      ></view
+    ><view class="comment-section data-v-d95e15f4"
+      ><text class="comment-title data-v-d95e15f4">评论 ({{r}})</text
+      ><view class="comment-list data-v-d95e15f4"
+        ><view
+          wx:for="{{s}}"
+          wx:for-item="c"
+          wx:key="k"
+          class="comment-item data-v-d95e15f4"
+          ><view class="comment-header data-v-d95e15f4"
+            ><view class="comment-avatar data-v-d95e15f4">{{c.a}}</view
+            ><view class="comment-info data-v-d95e15f4"
+              ><text class="comment-author data-v-d95e15f4">{{c.b}}</text
+              ><text class="comment-time data-v-d95e15f4">{{c.c}}</text></view
+            ></view
+          ><text class="comment-content data-v-d95e15f4">{{c.d}}</text
+          ><view wx:if="{{c.e}}" class="reply-list data-v-d95e15f4"
+            ><view
+              wx:for="{{c.f}}"
+              wx:for-item="r"
+              wx:key="c"
+              class="reply-item data-v-d95e15f4"
+              ><text class="reply-author data-v-d95e15f4">{{r.a}}：</text
+              ><text class="reply-content data-v-d95e15f4">{{r.b}}</text></view
+            ></view
+          ><view class="comment-actions data-v-d95e15f4"
+            ><text class="data-v-d95e15f4" bindtap="{{c.i}}"
+              >{{c.g}} {{c.h}}</text
+            ><text class="data-v-d95e15f4" bindtap="{{c.j}}">回复</text></view
+          ></view
+        ></view
+      ></view
+    ><view class="safe-bottom data-v-d95e15f4" /></view
+  ><view class="comment-bar data-v-d95e15f4"
+    ><input
+      class="comment-input data-v-d95e15f4"
+      placeholder="写评论..."
+      confirm-type="send"
+      bindconfirm="{{t}}"
+      value="{{v}}"
+      bindinput="{{w}}"
+    /><view
+      class="{{['comment-send', 'data-v-d95e15f4', x && 'disabled']}}"
+      bindtap="{{y}}"
+    >
+      发送
+    </view></view
+  ></view
+>
