@@ -38,12 +38,16 @@ erDiagram
     ADMIN_USERS }|--|| ROLES : "拥有角色"
     ROLES ||--o{ PERMISSIONS : "关联权限"
     ADMIN_USERS ||--o{ FOLLOW_UP_TASKS : "执行随访"
+    ESS_ASSESSMENTS ||--o{ APPOINTMENTS : "转化预约"
+    SNORE_ASSESSMENTS ||--o{ APPOINTMENTS : "转化预约"
+    APPOINTMENTS ||--o| MEDICAL_RECORDS : "诊断生成"
+    MEDICAL_RECORDS ||--o| TREATMENT_RECORDS : "引发治疗"
 ```
 
 ### 1. 用户核心模块
 
 #### 1.1 用户表 (`users`)
-存储小程序注册的微信用户基本信息。
+存储小程序注册 of 微信用户基本信息。
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 用户唯一ID |
@@ -161,6 +165,8 @@ erDiagram
 | `symptom_desc` | `TEXT` | - | NULL | 症状/主诉描述 |
 | `cancel_reason` | `VARCHAR(255)` | - | NULL | 取消预约原因 |
 | `source` | `VARCHAR(20)` | - | `'mini_app'` | 预约来源：mini_app-小程序, telephone-电话, walk_in-直接到店 |
+| `ess_assessment_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | NULL | 关联的 ESS 嗜睡自测报告ID（用于医生接诊时查看初筛背景） |
+| `snore_assessment_id`| `BIGINT UNSIGNED` | `FOREIGN KEY` | NULL | 关联的 AI 鼾声录音分析报告ID（用于医生接诊时查看初筛背景） |
 | `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 创建时间 |
 | `updated_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 更新时间 |
 
@@ -203,6 +209,7 @@ erDiagram
 | `patient_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 患者ID |
 | `doctor_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 主治医生ID |
 | `store_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 就诊门店ID |
+| `appointment_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | NULL | 对应的挂号预约ID（串联就诊挂号与实际诊疗病历） |
 | `visit_date` | `DATE` | `NOT NULL` | - | 就诊日期 |
 | `diagnosis` | `TEXT` | `NOT NULL` | - | 诊断意见（如 轻度OSAS，AHI 12次/小时） |
 | `prescription` | `TEXT` | - | NULL | 治疗处方（如 定制HJ-MAD-03） |
@@ -216,6 +223,7 @@ erDiagram
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 治疗档案ID |
 | `patient_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 关联患者ID |
 | `doctor_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 负责随访医生ID |
+| `medical_record_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | NULL | 关联的诊断病历ID（追溯阻鼾器物理配戴处方的临床来源） |
 | `device_model` | `VARCHAR(50)` | `NOT NULL` | - | 配戴阻鼾器型号 (如 HJ-MAD-03) |
 | `initial_advancement` | `DECIMAL(3,1)` | `NOT NULL` | `0.0` | 初始下颌前移调节量 (mm) |
 | `current_advancement` | `DECIMAL(3,1)` | `NOT NULL` | `0.0` | 当前下颌前移调节量 (mm) |
