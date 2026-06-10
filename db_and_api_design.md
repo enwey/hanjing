@@ -1,39 +1,39 @@
-# 鼾静健康诊所 · 数据库与接口设计规范 (Database & API Design Specification)
+# 鼾静健康诊所 · 数据库与接口设计规范
 
 > [!NOTE]
-> 本规范结合了微信小程序客户端与管理后台（Admin Panel）的业务需求，针对用户管理、门店与预约、睡眠评估与AI鼾声分析、OSAS治疗追踪、分销返利商城以及医患社区等核心业务模块，设计了关系型数据库（如 MySQL）表结构与标准 RESTful API 接口规范。
+> 本规范结合了微信小程序客户端与管理后台（Admin Panel）的业务需求，针对用户管理、门店与预约、睡眠评估与AI鼾声分析、OSAS治疗追踪、分销返利商城以及医患社区等核心业务模块，设计了关系型数据库表结构与标准 API 接口规范。
 
 ---
 
-## 💾 一、 数据库及数据表设计 (Database Schema Design)
+## 💾 一、 数据库与数据表设计
 
-以下设计采用标准关系型数据库（如 MySQL / PostgreSQL）结构，主键统一为 `BIGINT UNSIGNED AUTO_INCREMENT`，部分特定关联键（如 `UUID` 或特定字符编码）除外。
+以下设计采用关系型数据库（如 MySQL / PostgreSQL）结构，主键统一为 `BIGINT UNSIGNED AUTO_INCREMENT`，部分特定关联键除外。
 
 ```mermaid
 erDiagram
-    USERS ||--o{ PATIENTS : "manages"
-    USERS ||--o| DISTRIBUTORS : "promoted_as"
-    STORES ||--o{ DOCTORS : "employs"
-    STORES ||--o{ DOCTOR_SCHEDULES : "hosts"
-    STORES ||--o{ APPOINTMENTS : "location"
-    DOCTORS ||--o{ DOCTOR_SCHEDULES : "has"
-    DOCTORS ||--o{ APPOINTMENTS : "assigned_to"
-    PATIENTS ||--o{ APPOINTMENTS : "books"
-    PATIENTS ||--o{ MEDICAL_RECORDS : "diagnosed"
-    PATIENTS ||--o{ TREATMENT_RECORDS : "receives"
-    TREATMENT_RECORDS ||--o{ WEARING_LOGS : "logs"
-    TREATMENT_RECORDS ||--o{ DEVICE_ADJUSTMENTS : "adjusts"
-    USERS ||--o{ ESS_ASSESSMENTS : "takes"
-    USERS ||--o{ SNORE_ASSESSMENTS : "records"
-    USERS ||--o{ ORDERS : "places"
-    ORDERS ||--o{ ORDER_ITEMS : "contains"
-    DISTRIBUTORS ||--o{ DISTRIBUTION_ORDERS : "earns"
-    USERS ||--o{ WITHDRAW_RECORDS : "requests"
-    USERS ||--o{ COMMUNITY_POSTS : "publishes"
-    COMMUNITY_POSTS ||--o{ POST_COMMENTS : "receives"
+    USERS ||--o{ PATIENTS : "管理"
+    USERS ||--o| DISTRIBUTORS : "成为推广员"
+    STORES ||--o{ DOCTORS : "雇佣"
+    STORES ||--o{ DOCTOR_SCHEDULES : "排班门店"
+    STORES ||--o{ APPOINTMENTS : "就诊门店"
+    DOCTORS ||--o{ DOCTOR_SCHEDULES : "排班医生"
+    DOCTORS ||--o{ APPOINTMENTS : "就诊医生"
+    PATIENTS ||--o{ APPOINTMENTS : "预约就诊人"
+    PATIENTS ||--o{ MEDICAL_RECORDS : "诊疗病历"
+    PATIENTS ||--o{ TREATMENT_RECORDS : "治疗建档"
+    TREATMENT_RECORDS ||--o{ WEARING_LOGS : "打卡日志"
+    TREATMENT_RECORDS ||--o{ DEVICE_ADJUSTMENTS : "器械微调"
+    USERS ||--o{ ESS_ASSESSMENTS : "自测评估"
+    USERS ||--o{ SNORE_ASSESSMENTS : "鼾声测试"
+    USERS ||--o{ ORDERS : "商城下单"
+    ORDERS ||--o{ ORDER_ITEMS : "订单明细"
+    DISTRIBUTORS ||--o{ DISTRIBUTION_ORDERS : "分销提成"
+    USERS ||--o{ WITHDRAW_RECORDS : "申请提现"
+    USERS ||--o{ COMMUNITY_POSTS : "发表帖子"
+    COMMUNITY_POSTS ||--o{ POST_COMMENTS : "发表评论"
 ```
 
-### 1. 核心用户模块 (Users & Profile)
+### 1. 用户核心模块
 
 #### 1.1 用户表 (`users`)
 存储小程序注册的微信用户基本信息。
@@ -70,7 +70,7 @@ erDiagram
 
 ---
 
-### 2. 门店、医生与排班模块 (Stores, Doctors & Schedules)
+### 2. 门店、医生与排班模块
 
 #### 2.1 门店表 (`stores`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
@@ -135,7 +135,7 @@ erDiagram
 
 ---
 
-### 3. 预约模块 (Appointments)
+### 3. 预约就诊模块
 
 #### 3.1 预约记录表 (`appointments`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
@@ -159,7 +159,7 @@ erDiagram
 
 ---
 
-### 4. 睡眠评估与 AI 鼾声录制模块 (Assessments & AI Snoring)
+### 4. 睡眠评估与 AI 鼾声录音模块
 
 #### 4.1 ESS 嗜睡量表结果表 (`ess_assessments`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
@@ -187,7 +187,7 @@ erDiagram
 
 ---
 
-### 5. OSAS 治疗追踪模块 (OSAS Treatment Tracking)
+### 5. 阻鼾治疗随访模块
 
 #### 5.1 门诊电子病历表 (`medical_records`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
@@ -241,12 +241,12 @@ erDiagram
 
 ---
 
-### 6. 商城与订单管理模块 (Shop & Orders)
+### 6. 商品商城与订单模块
 
 #### 6.1 商品表 (`products`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
-| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 商品ID |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT |商品ID |
 | `name` | `VARCHAR(150)` | `NOT NULL` | - | 商品名称 |
 | `category` | `VARCHAR(20)` | `NOT NULL` | - | 类别：device-阻鼾器/器械, accessory-配件耗材, service-医疗服务套餐 |
 | `image_url` | `VARCHAR(255)` | `NOT NULL` | - | 主图地址 |
@@ -291,7 +291,7 @@ erDiagram
 
 ---
 
-### 7. 二级分销返利模块 (Distribution & Commission)
+### 7. 二级分销推广模块
 
 #### 7.1 推广员主表 (`distributors`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
@@ -347,7 +347,7 @@ erDiagram
 
 ---
 
-### 8. 内容营销与社区论坛模块 (Marketing, Live & Forum)
+### 8. 营销直播与社区发帖模块
 
 #### 8.1 直播回放与预告表 (`live_rooms`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
@@ -396,7 +396,7 @@ erDiagram
 
 ---
 
-## 🌐 二、 核心 RESTful API 接口设计 (RESTful API Design)
+## 🌐 二、 核心 API 接口设计
 
 后端接口交互默认请求头带上授权凭证：`Authorization: Bearer <JWT_TOKEN>`。数据返回体采用统一 JSON 格式：
 ```json
@@ -407,7 +407,7 @@ erDiagram
 }
 ```
 
-### 1. 认证与基本信息模块 (Authentication & User Profile)
+### 1. 身份认证与个人信息接口
 
 #### 1.1 微信授权一键登录 (微信小程序端)
 * **接口地址**：`POST /api/v1/auth/wx-login`
@@ -468,7 +468,7 @@ erDiagram
 
 ---
 
-### 2. 预约挂号服务模块 (Appointments Booking)
+### 2. 门诊预约挂号接口
 
 #### 2.1 查询门店列表 (支持定位距离排序)
 * **接口地址**：`GET /api/v1/stores`
@@ -536,7 +536,7 @@ erDiagram
 
 ---
 
-### 3. 睡眠自测与 AI 鼾声分析模块 (Sleep Assessments & AI)
+### 3. 睡眠自测与 AI 鼾声分析接口
 
 #### 3.1 提交 ESS 嗜睡量表测试答案
 * **接口地址**：`POST /api/v1/assessments/ess`
@@ -578,7 +578,7 @@ erDiagram
 
 ---
 
-### 4. OSAS 疗效随访与治疗追踪模块 (OSAS Treatment Progress)
+### 4. 佩戴日志与疗效随访接口
 
 #### 4.1 获取当前的治疗进度/配戴器械大纲
 * **接口地址**：`GET /api/v1/treatment/current`
@@ -599,7 +599,7 @@ erDiagram
   }
   ```
 
-#### 4.2 每日配戴打卡签到 (WeChat 端录入)
+#### 4.2 每日配戴打卡签到 (小程序端录入)
 * **接口地址**：`POST /api/v1/treatment/checkin`
 * **请求体**：
   ```json
@@ -622,7 +622,7 @@ erDiagram
 
 ---
 
-### 5. 商城、分销及提现模块 (Mall, Referral & Withdraw)
+### 5. 商城购物与分销提现接口
 
 #### 5.1 获取商品列表与分类筛选
 * **接口地址**：`GET /api/v1/products`
@@ -648,7 +648,7 @@ erDiagram
       "orderId": 230912,
       "orderNo": "OR20260611003",
       "payAmount": 305800,  // 需要支付 3058.00 元
-      "paySignData": {      // 直接调用微信支付 wx.requestPayment 所需的签名串
+      "paySignData": {      // 直接调用微信支付所需签名串
         "timeStamp": "1618...",
         "nonceStr": "e65...",
         "package": "prepay_id=...",
@@ -661,7 +661,7 @@ erDiagram
 
 #### 5.3 推广员（分销商）获取专属裂变海报与邀请码
 * **接口地址**：`GET /api/v1/distribution/invite-info`
-* **返回数据**：包含邀请码 `SH2026ZS001` 与用于生成海报的个人小程序码 [qrcode.png](file:///Users/apple/Desktop/WorkSpace/hanjing/mp-weixin/static/demo/qrcode.png)。
+* **返回数据**：包含邀请码 `SH2026ZS001` 与用于生成海报的个人小程序码。
 
 #### 5.4 查询推广分销佣金报表与推广订单明细
 * **接口地址**：`GET /api/v1/distribution/orders`
@@ -680,7 +680,7 @@ erDiagram
 
 ---
 
-### 6. 医患互动社区交流模块 (Community Forum)
+### 6. 医患论坛发帖互动接口
 
 #### 6.1 获取社区帖子列表 (支持热门/最新/专家筛选)
 * **接口地址**：`GET /api/v1/community/posts`
@@ -704,9 +704,9 @@ erDiagram
 
 ---
 
-## 🖥️ 三、 管理后台专属高级 API 接口 (Admin Console Exclusive APIs)
+## 🖥️ 三、 管理后台专属高级接口
 
-管理后台通过特权账户 Token 执行大屏监控和全量实体修改，默认路由路径以 `/api/v1/admin/` 为前缀。
+管理后台通过特权账户 Token 执行大屏监控 and 全量实体修改，默认路由路径以 `/api/v1/admin/` 为前缀。
 
 ### 1. 监控看板核心指标 API
 * **接口地址**：`GET /api/v1/admin/dashboard/kpi`
