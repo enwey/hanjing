@@ -1,7 +1,7 @@
 # 鼾静健康诊所 · 数据库与接口设计规范
 
 > [!NOTE]
-> 本规范结合了微信小程序客户端与管理后台（Admin Panel）的业务需求，针对用户管理、门店与预约、睡眠评估与AI鼾声分析、OSAS治疗追踪、分销返利商城以及医患社区等核心业务模块，设计了关系型数据库表结构与标准 API 接口规范。
+> 本规范结合了微信小程序客户端与管理后台（Admin Panel）的业务需求，针对用户管理、门店与预约、睡眠评估与AI鼾声分析、OSAS治疗追踪、分销返利商城以及医患社区等核心业务模块，设计了关系型数据库表结构与分类 API 接口规范。
 
 ---
 
@@ -406,8 +406,6 @@ erDiagram
 
 ### 9. 管理后台、系统随访与优惠券模块
 
-本模块补全了管理后台登录、权限分配、医生技术员对患者日常的随访服务任务、商城优惠券促销折扣管理以及系统横向轮播图广告等核心业务底层建表。
-
 #### 9.1 后台管理员账号表 (`admin_users`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -437,7 +435,6 @@ erDiagram
 | `permission_resource`| `VARCHAR(100)` | `NOT NULL` | 授权的菜单或API资源标识符（如 `appointment:edit`, `withdraw:approve`） |
 
 #### 9.4 医护随访任务表 (`follow_up_tasks`)
-对应管理后台的“随访任务”模块，记录医生/睡眠专家为佩戴阻鼾器患者制定的随访工作计划。
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 任务ID |
@@ -463,7 +460,6 @@ erDiagram
 | `stock` | `INT` | `NOT NULL` | `100` | 允许领取的剩余券数 |
 
 #### 9.6 用户系统通知与订阅消息表 (`user_notifications`)
-记录系统给用户推送的历史通知，对应小程序个人中心的通知列表。
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 通知ID |
@@ -476,7 +472,6 @@ erDiagram
 | `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 通知发送时间 |
 
 #### 9.7 系统广告轮播图表 (`banners`)
-用于配置小程序首页、商城详情页等醒目展示的轮播广告。
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 轮播图ID |
@@ -488,362 +483,135 @@ erDiagram
 
 ---
 
-## 🌐 二、 核心 API 接口设计
+## 🌐 二、 微信小程序端接口清单
 
-后端接口交互默认请求头带上授权凭证：`Authorization: Bearer <JWT_TOKEN>`。数据返回体采用统一 JSON 格式：
-```json
-{
-  "code": 200,      // 业务状态码：200-成功，401-身份过期，403-权限不足，404-资源不存在，500-系统异常
-  "message": "success",
-  "data": {}        // 返回的实体对象、列表或统计信息
-}
-```
+本组接口主要面向小程序前端（C端患者/用户群体），需要进行标准的微信登录态及 JWT Bearer Token 验证。
 
-### 1. 身份认证与个人信息接口
+### 1. 身份认证与就诊人接口
 
-#### 1.1 微信授权一键登录 (微信小程序端)
-* **接口地址**：`POST /api/v1/auth/wx-login`
-* **接口说明**：小程序通过 `wx.login` 获取 code 发送给后端换取 Token 与个人基本信息。
-* **请求体**：
-  ```json
-  {
-    "code": "061xyz123...",
-    "nickname": "张先生",      // 授权头像与昵称 (可选)
-    "avatarUrl": "https://thirdwx.qlogo.cn/..."
-  }
-  ```
-* **返回数据**：
-  ```json
-  {
-    "code": 200,
-    "message": "success",
-    "data": {
-      "access_token": "eyJhbGciOiJIUzI1NiIsIn...",
-      "refresh_token": "r_189237198a...",
-      "expires_in": 7200,
-      "user": {
-        "id": 1,
-        "nickname": "张先生",
-        "avatar": "/static/demo/avatar.jpg",
-        "phone": "138****8888",
-        "memberLevel": "gold",
-        "isDistributor": false
-      }
-    }
-  }
-  ```
+* **微信授权快捷登录**：`POST /api/v1/auth/wx-login`
+  * 换取小程序登录 Token 凭证及创建/更新基本账户。
+* **获取当前用户详细信息**：`GET /api/v1/user/profile`
+* **更新用户个人资料**：`PUT /api/v1/user/profile`
+* **查询就诊患者/家庭成员列表**：`GET /api/v1/patients`
+* **绑定并创建新的就诊家庭成员**：`POST /api/v1/patients`
+* **解绑/删除就诊家庭成员**：`DELETE /api/v1/patients/{id}`
 
-#### 1.2 获取或更新个人基本资料
-* **接口地址**：`GET /api/v1/user/profile` | `PUT /api/v1/user/profile`
-* **请求体 (PUT)**：
-  ```json
-  {
-    "nickname": "张小帅",
-    "gender": 1,
-    "birthday": "1995-06-15"
-  }
-  ```
+### 2. 门店与医生预约挂号接口
 
-#### 1.3 就诊人/家庭成员管理列表 (多就诊人架构)
-* **接口地址**：`GET /api/v1/patients` | `POST /api/v1/patients` | `DELETE /api/v1/patients/{id}`
-* **请求体 (POST 新建就诊人)**：
-  ```json
-  {
-    "name": "李丽",
-    "relation": "spouse",
-    "gender": 2,
-    "age": 34,
-    "phone": "13888885678",
-    "hasSnore": true
-  }
-  ```
+* **查询服务门店列表**（定位排序与距离计算）：`GET /api/v1/stores`
+* **查询特定门店的坐诊医生列表**：`GET /api/v1/stores/{storeId}/doctors`
+* **查询医生的可预约日期列表**：`GET /api/v1/schedules/available-dates`
+* **查询特定排班日期下的预约号源时段**：`GET /api/v1/schedules/slots`
+* **提交就诊预约挂号申请**：`POST /api/v1/appointments`
+* **取消就诊预约预约记录**：`POST /api/v1/appointments/{id}/cancel`
+* **预约改约修改号段**：`POST /api/v1/appointments/{id}/reschedule`
+* **获取当前用户的历史预约挂号记录**：`GET /api/v1/appointments`
 
----
+### 3. 睡眠评估与 AI 鼾声分析接口
 
-### 2. 门诊预约挂号接口
+* **提交 ESS 嗜睡自测量表答卷**：`POST /api/v1/assessments/ess`
+* **上传鼾声录音做 AI 呼吸暂停事件分析**：`POST /api/v1/assessments/snore-analyze`
+* **查询个人历史睡眠/鼾声自测诊断报告**：`GET /api/v1/assessments/history`
 
-#### 2.1 查询门店列表 (支持定位距离排序)
-* **接口地址**：`GET /api/v1/stores`
-* **查询参数**：`lat` (纬度), `lng` (经度), `city` (筛选城市), `search` (搜索名称关键字)
-* **返回数据**：
-  ```json
-  {
-    "code": 200,
-    "data": [
-      {
-        "id": 1,
-        "name": "鼾静健康·南山旗舰中心",
-        "address": "深圳市南山区科兴科学园...",
-        "phone": "0755-88886666",
-        "distance": "1.2km", // 经纬度计算出的距离
-        "tags": ["旗舰店", "免费停车", "地铁直达"]
-      }
-    ]
-  }
-  ```
+### 4. 阻鼾器配戴与治疗追踪接口
 
-#### 2.2 查询对应门店的可出诊医生列表
-* **接口地址**：`GET /api/v1/stores/{storeId}/doctors`
-* **返回数据**：医生数组，包括姓名、头像、职称、好评率、已接诊数、出诊科室。
+* **获取当前患者的阻鼾器治疗建档概要**：`GET /api/v1/treatment/current`
+* **每日配戴时长与舒适度打卡记录**：`POST /api/v1/treatment/checkin`
+* **获取配戴依从率及舒适度折线走势图**：`GET /api/v1/treatment/wearing-summary`
+* **获取周期性睡眠健康报告（同类比对与医嘱总结）**：`GET /api/v1/treatment/sleep-report`
+* **获取阻鼾器治疗关联的时间线动态事件**：`GET /api/v1/treatment/timeline`
 
-#### 2.3 获取医生可预约的日期区间号源
-* **接口地址**：`GET /api/v1/schedules/available-dates`
-* **查询参数**：`doctorId` (医生ID), `storeId` (执业门店ID)
-* **返回数据**：`["2026-06-12", "2026-06-13", "2026-06-15"]`
+### 5. 商城购物与订单交易接口
 
-#### 2.4 查询选定日期下的预约时段明细 (分号源号段)
-* **接口地址**：`GET /api/v1/schedules/slots`
-* **查询参数**：`doctorId`, `storeId`, `date`
-* **返回数据**：
-  ```json
-  {
-    "code": 200,
-    "data": [
-      { "id": "slot-001", "startTime": "09:00", "endTime": "09:30", "status": "available" },
-      { "id": "slot-002", "startTime": "09:30", "endTime": "10:00", "status": "booked" }
-    ]
-  }
-  ```
+* **获取商城可销售的商品列表**：`GET /api/v1/products`
+* **获取商品规格与详情信息**：`GET /api/v1/products/{id}`
+* **提交商品购物车结算订单并调用微信预支付接口**：`POST /api/v1/orders`
+* **查询个人历史商城订单列表**：`GET /api/v1/orders`
+* **查询特定商城订单明细**：`GET /api/v1/orders/{id}`
+* **取消待付款的商城订单**：`POST /api/v1/orders/{id}/cancel`
 
-#### 2.5 提交预约订单
-* **接口地址**：`POST /api/v1/appointments`
-* **请求体**：
-  ```json
-  {
-    "patientId": 2,
-    "storeId": 1,
-    "doctorId": 3,
-    "scheduleId": 12,
-    "appointmentDate": "2026-06-12",
-    "appointmentTime": "09:00-09:30",
-    "type": "first",
-    "symptomDesc": "长期夜间憋醒打鼾"
-  }
-  ```
+### 6. 分销裂变与提现接口
 
-#### 2.6 取消或修改(改约)预约记录
-* **接口地址**：`POST /api/v1/appointments/{id}/cancel` | `POST /api/v1/appointments/{id}/reschedule`
-* **请求体 (Cancel)**：`{ "reason": "计划有变" }`
-* **请求体 (Reschedule)**：`{ "newScheduleId": 13, "newTime": "10:00-10:30" }`
+* **获取推广员分销资格及专属裂变码海报**：`GET /api/v1/distribution/invite-info`
+* **查询分销提成收益明细及累计推广订单**：`GET /api/v1/distribution/orders`
+* **查询推广团下线成员结构**：`GET /api/v1/distribution/team`
+* **提交佣金提现申请（微信零钱/银行卡）**：`POST /api/v1/distribution/withdraw`
+* **查询提现打款历史记录**：`GET /api/v1/distribution/withdraw-records`
+
+### 7. 直播展示与社区互动接口
+
+* **查询科普/义诊直播间列表（含预告及精彩回放点播）**：`GET /api/v1/live/rooms`
+* **查询社区论坛帖子列表（最新、热门、专家贴筛选）**：`GET /api/v1/community/posts`
+* **浏览社区发帖正文及评论回复区**：`GET /api/v1/community/posts/{id}`
+* **发表个人阻鼾/打鼾改善日常讨论帖子**：`POST /api/v1/community/posts`
+* **在帖子内发表评论/回复他人评论**：`POST /api/v1/community/posts/{postId}/comments`
+
+### 8. 系统通知与广告接口
+
+* **获取主页及商城的活动轮播 Banner 广告位**：`GET /api/v1/system/banners`
+* **查询用户收到的系统通知与订阅消息历史列表**：`GET /api/v1/system/notifications`
+* **将系统消息/通知标记为已读**：`PUT /api/v1/system/notifications/{id}/read`
 
 ---
 
-### 3. 睡眠自测与 AI 鼾声分析接口
+## 🖥️ 三、 管理后台端接口清单
 
-#### 3.1 提交 ESS 嗜睡量表测试答案
-* **接口地址**：`POST /api/v1/assessments/ess`
-* **请求体**：
-  ```json
-  {
-    "answers": [3, 2, 0, 1, 3, 2, 2, 1] // 8题得分数组 (0-3分)
-  }
-  ```
-* **返回数据**：本次测试得分、划分风险区间（如：中度嗜睡倾向）、诊断指引和建议。
+本组接口专门服务于管理后台（Admin Console），由诊所前台、医生、技术员、内容运营以及系统管理员使用。访问以 `/api/v1/admin/` 开头，需要相应的后台管理角色权限（RBAC）。
 
-#### 3.2 上传鼾声录音进行 AI 自动诊断
-* **接口地址**：`POST /api/v1/assessments/snore-analyze`
-* **请求体**：采用 `multipart/form-data` 传输音频原文件（如 `.m4a` / `.wav`）。
-* **返回数据**：
-  ```json
-  {
-    "code": 200,
-    "data": {
-      "assessmentId": 128,
-      "avgDecibel": 54,
-      "peakDecibel": 78,
-      "snoreRate": 45,
-      "apneaEvents": 5,
-      "riskLevel": "medium",
-      "riskInfo": {
-        "title": "中风险",
-        "color": "#F59E0B",
-        "desc": "检测到中度鼾声和少量呼吸暂停事件...",
-        "tips": ["尽快预约门诊", "记录夜间醒来次数"]
-      }
-    }
-  }
-  ```
+### 1. 管理员登录与系统角色接口
 
-#### 3.3 获取历史睡眠测评档案记录 (量表+鼾声)
-* **接口地址**：`GET /api/v1/assessments/history`
-* **查询参数**：`page`, `pageSize`
+* **后台人员账号密码登录**：`POST /api/v1/admin/auth/login`
+* **获取当前登录后台管理员的资源权限路由树**：`GET /api/v1/admin/auth/routes`
+* **查询系统角色及权限配置矩阵**：`GET /api/v1/admin/system/roles`
+* **添加、修改及注销后台管理员账号**：`POST` / `PUT` / `DELETE /api/v1/admin/system/users`
 
----
+### 2. 监控看板与运营数据接口
 
-### 4. 佩戴日志与疗效随访接口
+* **获取首页核心运营 KPI 看板指标（多维度时段过滤切换）**：`GET /api/v1/admin/dashboard/kpi`
+* **获取各分店本月营收排行与接诊负荷统计报表**：`GET /api/v1/admin/dashboard/reports`
+* **导出患者、订单、分销提现 Excel 数据表格**：`GET /api/v1/admin/data/export`
 
-#### 4.1 获取当前的治疗进度/配戴器械大纲
-* **接口地址**：`GET /api/v1/treatment/current`
-* **返回数据**：
-  ```json
-  {
-    "code": 200,
-    "data": {
-      "treatmentId": 4,
-      "patientName": "张先生",
-      "deviceModel": "HJ-MAD-03",
-      "doctorName": "王芳",
-      "currentAdvancement": 3.0, // 当前下颌前移调整毫米数
-      "startDate": "2026-05-30",
-      "nextAdjustDate": "2026-06-12",
-      "complianceRate": 85.7 // 依从率达标情况
-    }
-  }
-  ```
+### 3. 门店与医生基础档案接口
 
-#### 4.2 每日配戴打卡签到 (小程序端录入)
-* **接口地址**：`POST /api/v1/treatment/checkin`
-* **请求体**：
-  ```json
-  {
-    "treatmentId": 4,
-    "wearDuration": 6.5,  // 佩戴时长（小时）
-    "comfort": 4,         // 1-5舒适度
-    "note": "清晨起来牙齿无酸痛，比较习惯"
-  }
-  ```
+* **新增、修改或关闭门店基本信息**：`POST` / `PUT` / `DELETE /api/v1/admin/stores`
+* **医生档案管理与启用状态设置**：`POST` / `PUT` / `DELETE /api/v1/admin/doctors`
+* **配置医生与执业门店关联执照**：`POST /api/v1/admin/doctors/bind-stores`
 
-#### 4.3 获取历史配戴打卡及舒适度折线图趋势
-* **接口地址**：`GET /api/v1/treatment/wearing-summary`
-* **查询参数**：`days` (最近多少天趋势，可选 7 / 30)
-* **返回数据**：包含每日实际打卡时长、平均舒适度变化曲线。
+### 4. 门诊挂号排班与预约管理接口
 
-#### 4.4 睡眠大健康报告
-* **接口地址**：`GET /api/v1/treatment/sleep-report`
-* **返回数据**：包括打卡依从率达标判定、打鼾改善情况、医生诊断总结、下次复查预约提醒。
+* **批量复制与录入医生工作排班号源**：`POST /api/v1/admin/doctors/schedules/batch-save`
+* **查询排班列表与已约满号源预警**：`GET /api/v1/admin/doctors/schedules`
+* **查询全店预约挂号列表（支持门店/就诊状态过滤）**：`GET /api/v1/admin/appointments`
+* **更新挂号就诊预约状态（已确认、呼叫叫号候诊、确认到诊等状态流转）**：`PUT /api/v1/admin/appointments/{id}/status`
 
----
+### 5. 随访服务任务分发与执行接口
 
-### 5. 商城购物与分销提现接口
+* **制定并派发出诊后随访任务单给对应医生/睡眠专家**：`POST /api/v1/admin/treatment/follow-up-tasks`
+* **录入电话/微信随访患者的打卡依从性沟通总结反馈**：`PUT /api/v1/admin/treatment/follow-up-tasks/{id}/feedback`
+* **查询随访人员的历史任务追踪列表**：`GET /api/v1/admin/treatment/follow-up-tasks`
 
-#### 5.1 获取商品列表与分类筛选
-* **接口地址**：`GET /api/v1/products`
-* **查询参数**：`category` (筛选分类：device/accessory/service), `page`, `pageSize`
+### 6. 诊所病历与阻鼾参数微调接口
 
-#### 5.2 提交购买订单 (商场下单)
-* **接口地址**：`POST /api/v1/orders`
-* **请求体**：
-  ```json
-  {
-    "items": [
-      { "productId": 1, "quantity": 1 },
-      { "productId": 2, "quantity": 2 }
-    ],
-    "couponId": 3,            // 抵扣优惠券ID (可选)
-    "addressId": 5            // 送货地址ID
-  }
-  ```
-* **返回数据**：
-  ```json
-  {
-    "code": 200,
-    "data": {
-      "orderId": 230912,
-      "orderNo": "OR20260611003",
-      "payAmount": 305800,  // 需要支付 3058.00 元
-      "paySignData": {      // 直接调用微信支付所需签名串
-        "timeStamp": "1618...",
-        "nonceStr": "e65...",
-        "package": "prepay_id=...",
-        "signType": "MD5",
-        "paySign": "..."
-      }
-    }
-  }
-  ```
+* **新建或更新门诊电子病历，开具阻鼾器疗程处方**：`POST` / `PUT /api/v1/admin/medical-records`
+* **新建患者阻鼾治疗器械配戴建档档案**：`POST /api/v1/admin/treatment/register`
+* **录入医生对阻鼾器下颌前移量（advancement mm）的实体微调刻度记录**：`POST /api/v1/admin/treatment/adjustments`
 
-#### 5.3 推广员（分销商）获取专属裂变海报与邀请码
-* **接口地址**：`GET /api/v1/distribution/invite-info`
-* **返回数据**：包含邀请码 `SH2026ZS001` 与用于生成海报的个人小程序码。
+### 7. 商城订单与发货管理接口
 
-#### 5.4 查询推广分销佣金报表与推广订单明细
-* **接口地址**：`GET /api/v1/distribution/orders`
-* **查询参数**：`status` (筛选：settled/pending/cancelled), `page`
+* **商城实物商品及医疗服务卡券上架、下架及库存录入**：`POST` / `PUT` / `DELETE /api/v1/admin/products`
+* **查询全网商城购物订单明细列表**：`GET /api/v1/admin/orders`
+* **录入订单物流单号进行发货标记**：`POST /api/v1/admin/orders/{id}/ship`
+* **审核用户的商城退款申请订单**：`POST /api/v1/admin/orders/{id}/refund-audit`
 
-#### 5.5 提交提现申请
-* **接口地址**：`POST /api/v1/distribution/withdraw`
-* **请求体**：
-  ```json
-  {
-    "amount": 10000,          // 提现金额 100.00 元（分）
-    "accountType": "wechat",   // wechat-微信钱包，bank-银行卡
-    "accountInfo": "微信绑定的实名账户..."
-  }
-  ```
+### 8. 佣金结算与提现批量审批接口
 
----
+* **批量审批并下发推广员提现打款流水至微信零钱/银行卡**：`POST /api/v1/admin/withdrawals/batch-approve`
+* **冻结或解封违规推广分销人员资格**：`PUT /api/v1/admin/distributors/{id}/status`
+* **查询全网分销提成收益及分销账单明细汇总**：`GET /api/v1/admin/distribution/bills`
 
-### 6. 医患论坛发帖互动接口
+### 9. 论坛运营审核与营销广告接口
 
-#### 6.1 获取社区帖子列表 (支持热门/最新/专家筛选)
-* **接口地址**：`GET /api/v1/community/posts`
-* **查询参数**：`filter` (筛选：hot-热门, latest-最新, expert-认证专家贴), `page`, `pageSize`
-
-#### 6.2 浏览帖子详情与多级评论楼层
-* **接口地址**：`GET /api/v1/community/posts/{id}`
-* **返回数据**：帖子详情、发帖医患档案、评论数组。
-
-#### 6.3 发表新讨论帖子
-* **接口地址**：`POST /api/v1/community/posts`
-* **请求体**：
-  ```json
-  {
-    "title": "配戴阻鼾器2周经验分享",
-    "content": "刚开始确实有异物感，但是通过调整前移刻度感觉好多了...",
-    "imageUrls": ["/static/product/hj-mad-03.png"],
-    "tags": ["阻鼾器配戴", "经验交流"]
-  }
-  ```
-
----
-
-## 🖥️ 三、 管理后台专属高级接口
-
-管理后台通过特权账户 Token 执行大屏监控 and 全量实体修改，默认路由路径以 `/api/v1/admin/` 为前缀。
-
-### 1. 监控看板核心指标 API
-* **接口地址**：`GET /api/v1/admin/dashboard/kpi`
-* **查询参数**：`timeRange` (时间范围：today-今日, week-本周, month-本月)
-* **返回数据**：
-  ```json
-  {
-    "code": 200,
-    "data": {
-      "appointmentsCount": 156,      // 挂号预约数
-      "revenue": 38600000,           // 营业营收金额
-      "newPatients": 2847,           // 建档患者数
-      "attendanceRate": 92.3,        // 到诊率
-      "distributionCommission": 1285000,// 产生佣金
-      "liveViewers": 5577            // 直播观看数
-    }
-  }
-  ```
-
-### 2. 医生出诊排班管理 API (批量复制与保存)
-* **接口地址**：`POST /api/v1/admin/doctors/schedules/batch-save`
-* **请求体**：
-  ```json
-  {
-    "doctorId": 3,
-    "storeId": 1,
-    "schedules": [
-      { "date": "2026-06-15", "period": "morning", "totalSlots": 6 },
-      { "date": "2026-06-15", "period": "afternoon", "totalSlots": 6 }
-    ]
-  }
-  ```
-
-### 3. 提现申请批量审核打卡 API
-* **接口地址**：`POST /api/v1/admin/withdrawals/batch-approve`
-* **请求体**：
-  ```json
-  {
-    "withdrawIds": [102, 103, 105],
-    "action": "approve", // approve-通过打款, reject-拒绝驳回
-    "reason": "批量初审放行"
-  }
-  ```
-
-### 4. 门店运营状况多维报表查询
-* **接口地址**：`GET /api/v1/admin/stores/{id}/report`
-* **返回数据**：门店多月预约走势折线图、接诊医生业务贡献度饼图、本月营收与高增产品类目数据。
+* **人工审核用户社区发帖或屏蔽违规敏感言论**：`PUT /api/v1/admin/community/posts/{id}/status`
+* **执行社区热帖置顶或删除违规言论回复**：`POST /api/v1/admin/community/posts/{id}/action`
+* **更新微信小程序首页活动轮播 Banner 图片广告位资源**：`POST` / `PUT` / `DELETE /api/v1/system/banners`
