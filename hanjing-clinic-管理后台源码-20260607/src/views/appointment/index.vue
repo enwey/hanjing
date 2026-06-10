@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 
@@ -39,22 +40,34 @@ const baseAppointments = [
   { id: '5', no: 'BK20260529005', patient: '吴佳佳', phone: '13778903456', avatarChar: '吴', avatarColor: '#EC4899', store: '龙岗总店', doctor: '王志远', date: '2026-05-29', time: '14:00', type: '复诊', source: '分销推广', status: 'waiting' }
 ]
 
-const appointments = ref<Appointment[]>(
-  Array.from({ length: 42 }, (_, index) => {
-    const base = baseAppointments[index % baseAppointments.length]
-    // Generate dates: first 15 items on '2026-05-29' for default active 'today' filter
-    const isToday = index < 15
-    const date = isToday ? '2026-05-29' : `2026-05-${String(30 + (index % 2)).padStart(2, '0')}`
-    return {
-      ...base,
-      id: String(index + 1),
-      no: `BK202605${isToday ? '29' : '30'}0${String(index + 1).padStart(2, '0')}`,
-      patient: base.patient + (index === 0 ? '' : `-${index + 1}`),
-      date,
-      status: index % 6 === 0 ? 'arrived' : (index % 6 === 1 || index % 6 === 4 ? 'waiting' : (index % 6 === 2 ? 'pending' : 'cancelled'))
-    }
-  })
-)
+const appointments = ref<Appointment[]>([])
+
+const fetchAppointments = async () => {
+  try {
+    const res: any = await request.get('/api/admin/appointments')
+    appointments.value = res.data.map((item: any) => ({
+      id: item.id.toString(),
+      no: item.appointment_no,
+      patient: item.patient_name,
+      phone: item.patient_phone,
+      avatarChar: item.patient_name[0] || '患',
+      avatarColor: item.patient_gender === 1 ? '#3B6BF5' : '#EC4899',
+      store: item.store_name,
+      doctor: item.doctor_name,
+      date: item.appointment_date,
+      time: item.appointment_time,
+      type: item.type === 'first' ? '初诊' : '复诊',
+      source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
+      status: item.status === 'completed' ? 'arrived' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : 'cancelled'
+    }))
+  } catch (error) {
+    console.error('Failed to load appointments:', error)
+  }
+}
+
+onMounted(() => {
+  fetchAppointments()
+})
 
 const storeOptions = [
   { label: '全部门店', value: '全部门店' },
@@ -157,19 +170,23 @@ function formatDateTime(dateStr: string, timeStr: string) {
   return `${dateStr} ${timeStr}`
 }
 
-function confirmStatus(id: string) {
-  const idx = appointments.value.findIndex(a => a.id === id)
-  if (idx >= 0) {
-    appointments.value[idx].status = 'arrived'
-    MessagePlugin.success(`已成功确认预约单号 ${appointments.value[idx].no}`)
+async function confirmStatus(id: string) {
+  try {
+    await request.put(`/api/admin/appointments/${id}`, { status: 'confirmed' })
+    MessagePlugin.success('已确认该预约')
+    fetchAppointments()
+  } catch (error) {
+    console.error(error)
   }
 }
 
-function cancelStatus(id: string) {
-  const idx = appointments.value.findIndex(a => a.id === id)
-  if (idx >= 0) {
-    appointments.value[idx].status = 'cancelled'
-    MessagePlugin.success(`已取消预约单号 ${appointments.value[idx].no}`)
+async function cancelStatus(id: string) {
+  try {
+    await request.put(`/api/admin/appointments/${id}`, { status: 'cancelled', cancel_reason: '后台管理员手动取消' })
+    MessagePlugin.success('已取消该预约')
+    fetchAppointments()
+  } catch (error) {
+    console.error(error)
   }
 }
 

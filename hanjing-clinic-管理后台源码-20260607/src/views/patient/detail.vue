@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import * as echarts from 'echarts'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,52 +23,179 @@ const patient = ref({
   source: '小程序',
   referrer: '赵芳芳（钻石推广员）',
   regDate: '2024-01-15',
-  totalVisits: 8,
-  totalSpent: 18640,
-  commissionRate: '15%',
-  nextFollowup: '3天',
+  totalVisits: 0,
+  totalSpent: 0,
+  commissionRate: '10%',
+  nextFollowup: '待定',
   diagnosis: '阻塞性睡眠呼吸暂停综合征（OSAHS）',
-  plan: 'CPAP治疗 + 定期PSG监测',
-  lastVisit: '5/29 龙岗总店 古堪民'
+  plan: '定制阻鼾器 HJ-MAD-03',
+  lastVisit: '暂无就诊'
 })
 
 /* ---- Departments Progress ---- */
-const depts = [
-  { name: '睡眠呼吸科', visits: 5, percentage: 62, color: 'var(--primary-500)' },
-  { name: '耳鼻喉科', visits: 2, percentage: 25, color: '#5A85F5' },
-  { name: '心理科', visits: 1, percentage: 12, color: 'var(--success-500)' },
-]
+const depts = ref([
+  { name: '睡眠呼吸科', visits: 0, percentage: 100, color: 'var(--primary-500)' },
+  { name: '耳鼻喉科', visits: 0, percentage: 0, color: '#5A85F5' },
+  { name: '心理科', visits: 0, percentage: 0, color: 'var(--success-500)' },
+])
 
 /* ---- Timeline Events ---- */
-const timelineEvents = [
-  { id: '1', date: '5/29 · 龙岗总店 · 古堪民', title: '第8次就诊', content: '睡眠呼吸科复诊，PSG监测数据复查，AHI指数从32降至8，效果良好。建议继续CPAP治疗3个月后再复查。', color: 'green' },
-  { id: '2', date: '4/15 · 龙岗总店 · 古堪民', title: '第7次就诊', content: 'CPAP使用1个月随访，依从性良好，白天嗜睡改善明显。调整压力至10cmH2O。', color: 'green' },
-  { id: '3', date: '3/20 · 龙岗总店 · 王志远', title: '第6次就诊', content: '耳鼻喉科，鼻中隔偏曲评估，建议保守治疗暂不手术。', color: 'green' },
-  { id: '4', date: '2/25 · 南山分院', title: '取消预约', content: '患者因出差取消', color: 'red' },
-  { id: '5', date: '1/10 · 龙岗总店 · 古堪民', title: '第5次就诊', content: '首次佩戴CPAP呼吸机，压力滴定测试完成，处方压力12cmH2O。开具CPAP设备（¥8,900）', color: 'gold' },
-]
+const timelineEvents = ref<any[]>([])
 
 /* ---- Orders Records ---- */
-const orders = [
-  { id: '1', no: 'OD20260529003', productName: '瑞思迈 AirSense 10 自动呼吸机', price: 8900, date: '2026-05-29', status: '已发货' },
-  { id: '2', no: 'OD20260110001', productName: '多导睡眠监测 (PSG) 诊断服务', price: 3680, date: '2026-01-10', status: '已就诊' },
-]
+const orders = ref<any[]>([])
 
 /* ---- Followup Tasks ---- */
-const followups = [
-  { type: '电话随访', time: '6/1 (3天后)', executor: '古堪民', content: 'CPAP使用1周回访，询问依从性、面罩舒适度、副作用', status: '待执行' },
-  { type: '到店复查', time: '8/29 (3个月后)', executor: '古堪民', content: 'CPAP治疗3个月复查PSG，评估长期疗效', status: '待执行' }
-]
+const followups = ref<any[]>([])
 
 /* ---- ECharts for Sleep Trends ---- */
 const chartRef = ref<HTMLDivElement | null>(null)
+let myChart: echarts.ECharts | null = null
+
+const loadPatientDetails = async () => {
+  try {
+    const res: any = await request.get(`/api/admin/patients/${patientId.value}`)
+    const p = res.data
+
+    const levelMap: Record<string, string> = {
+      normal: '普通',
+      silver: 'VIP',
+      gold: 'VIP',
+      diamond: 'SVIP'
+    }
+
+    patient.value = {
+      id: p.id.toString(),
+      no: `P2026${String(p.id).padStart(4, '0')}`,
+      name: p.name,
+      phone: p.phone || p.user_phone || '未绑定',
+      gender: p.gender === 1 ? '男' : '女',
+      age: p.age || 30,
+      level: levelMap[p.member_level] || '普通',
+      source: p.source === 'walk_in' ? '门店' : '小程序',
+      referrer: '系统分配',
+      regDate: p.created_at ? p.created_at.substring(0, 10) : '2026-06-01',
+      totalVisits: p.appointments ? p.appointments.length : 0,
+      totalSpent: (p.total_spent || 0) / 100,
+      commissionRate: p.member_level === 'diamond' ? '15%' : '10%',
+      nextFollowup: '待随访',
+      diagnosis: '阻塞性睡眠呼吸暂停 (OSAHS)',
+      plan: '配戴阻鼾器 HJ-MAD-03 进行下颌前移微调治疗',
+      lastVisit: p.appointments && p.appointments[0] ? `${p.appointments[0].appointment_date} ${p.appointments[0].store_name} ${p.appointments[0].doctor_name}` : '暂无记录'
+    }
+
+    // Map departments progress
+    if (p.appointments) {
+      const sleepCount = p.appointments.filter((a: any) => a.doctor_specialty === '睡眠呼吸科').length
+      const entCount = p.appointments.filter((a: any) => a.doctor_specialty === '耳鼻喉科').length
+      const psychCount = p.appointments.filter((a: any) => a.doctor_specialty === '心理科').length
+      const total = sleepCount + entCount + psychCount || 1
+
+      depts.value = [
+        { name: '睡眠呼吸科', visits: sleepCount, percentage: Math.round((sleepCount / total) * 100), color: 'var(--primary-500)' },
+        { name: '耳鼻喉科', visits: entCount, percentage: Math.round((entCount / total) * 100), color: '#5A85F5' },
+        { name: '心理科', visits: psychCount, percentage: Math.round((psychCount / total) * 100), color: 'var(--success-500)' },
+      ]
+
+      // Map timeline events
+      timelineEvents.value = p.appointments.map((a: any) => {
+        let title = '预约记录'
+        let color = 'gold'
+        if (a.status === 'completed') {
+          title = '完成就诊'
+          color = 'green'
+        } else if (a.status === 'confirmed') {
+          title = '确认待就诊'
+          color = 'blue'
+        } else if (a.status === 'cancelled') {
+          title = '已取消预约'
+          color = 'red'
+        }
+        return {
+          id: a.id.toString(),
+          date: `${a.appointment_date} · ${a.store_name} · ${a.doctor_name}`,
+          title,
+          content: a.symptom_desc || '无主诉描述',
+          color
+        }
+      })
+    }
+
+    // Load orders
+    if (p.user_id) {
+      fetchOrders(p.user_id)
+    }
+  } catch (error) {
+    console.error('Failed to load patient detail:', error)
+  }
+}
+
+const fetchOrders = async (userId: number) => {
+  try {
+    const res: any = await request.get('/api/admin/orders')
+    orders.value = res.data.filter((o: any) => o.user_id === userId).map((o: any) => {
+      const prodName = o.items && o.items[0] ? o.items[0].product_name : '健康包/配件'
+      return {
+        id: o.id.toString(),
+        no: o.order_no,
+        productName: prodName,
+        price: o.pay_amount / 100,
+        date: o.created_at ? o.created_at.substring(0, 10) : '2026-06-01',
+        status: o.status === 'completed' ? '已完成' : o.status === 'paid' ? '已付款' : o.status === 'pending' ? '待支付' : '已退款'
+      }
+    })
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const fetchFollowups = async () => {
+  try {
+    const res: any = await request.get(`/api/admin/patients/${patientId.value}/follow-ups`)
+    const { tasks } = res.data
+    followups.value = tasks.map((t: any) => ({
+      type: t.title,
+      time: t.due_date,
+      executor: t.doctor_name,
+      content: t.description || '物理阻鼾随访',
+      status: t.status === 'completed' ? '已完成' : '待执行'
+    }))
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const loadTreatmentAndChart = async () => {
+  try {
+    const res: any = await request.get(`/api/admin/patients/${patientId.value}/treatment`)
+    if (res.data) {
+      const { logs } = res.data
+      if (logs && logs.length > 0 && myChart) {
+        const sortedLogs = [...logs].reverse()
+        const dates = sortedLogs.map((l: any) => l.date.substring(5))
+        const durations = sortedLogs.map((l: any) => l.wear_duration)
+        const comfortToAHI = sortedLogs.map((l: any) => 30 - l.comfort * 4) // Mock index from comfort rating
+
+        myChart.setOption({
+          xAxis: { data: dates },
+          series: [
+            { data: durations },
+            { data: comfortToAHI }
+          ]
+        })
+      }
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
 
 onMounted(() => {
   if (chartRef.value) {
-    const myChart = echarts.init(chartRef.value)
+    myChart = echarts.init(chartRef.value)
     const option = {
       title: {
-        text: '设备佩戴时长与 AHI 监测趋势 (近7次佩戴)',
+        text: '设备佩戴时长与 AHI 监测趋势 (历史记录)',
         left: 'left',
         textStyle: { fontSize: 14, color: '#111827', fontWeight: 600 }
       },
@@ -131,9 +259,13 @@ onMounted(() => {
     myChart.setOption(option)
     
     window.addEventListener('resize', () => {
-      myChart.resize()
+      myChart?.resize()
     })
   }
+
+  loadPatientDetails()
+  fetchFollowups()
+  loadTreatmentAndChart()
 })
 
 function handleBack() {

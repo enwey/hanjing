@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 const currentPage = ref(1)
@@ -31,17 +33,43 @@ const initialStores: Store[] = [
     features: ['睡眠监测'], icon: '🏬', iconBg: 'linear-gradient(135deg, #FFF7ED, #FFEDD5)' }
 ]
 
-const stores = ref<Store[]>(
-  Array.from({ length: 35 }, (_, index) => {
-    const base = initialStores[index % initialStores.length]
-    return {
-      ...base,
-      id: String(index + 1),
-      name: index < 3 ? base.name : base.name.replace(/(总店|分院|门诊部)/, '') + `分院${index + 1}`,
-      code: `${base.code}-${index + 1}`
-    }
-  })
-)
+const stores = ref<Store[]>([])
+
+const fetchStores = async () => {
+  try {
+    const res: any = await request.get('/api/admin/stores')
+    const icons = ['🏥', '🏡', '🏬']
+    const iconBgs = [
+      'linear-gradient(135deg, #EEF4FF, #D9E6FF)',
+      'linear-gradient(135deg, #EDFBF5, #D3F5E3)',
+      'linear-gradient(135deg, #FFF7ED, #FFEDD5)'
+    ]
+    stores.value = res.data.map((s: any, index: number) => ({
+      id: s.id.toString(),
+      name: s.name,
+      code: s.code,
+      address: s.address,
+      phone: s.phone,
+      openTime: s.open_time ? s.open_time.substring(0, 5) : '09:00',
+      closeTime: s.close_time ? s.close_time.substring(0, 5) : '18:00',
+      doctors: s.id === 1 ? 4 : (s.id === 2 ? 3 : 5),
+      devices: s.id === 1 ? 8 : (s.id === 2 ? 4 : 10),
+      monthBookings: s.id === 1 ? 156 : (s.id === 2 ? 98 : 213),
+      monthRevenue: s.id === 1 ? '¥22.8w' : (s.id === 2 ? '¥10.5w' : '¥5.3w'),
+      status: s.status,
+      manager: s.id === 1 ? '陈经理' : (s.id === 2 ? '张经理' : '赵经理'),
+      features: s.features || [],
+      icon: icons[index % icons.length],
+      iconBg: iconBgs[index % iconBgs.length]
+    }))
+  } catch (error) {
+    console.error('Failed to load stores:', error)
+  }
+}
+
+onMounted(() => {
+  fetchStores()
+})
 
 const paginatedStores = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
@@ -54,10 +82,21 @@ function openEdit(store: Store) {
   editVisible.value = true
 }
 
-function saveEdit() {
-  const idx = stores.value.findIndex(s => s.id === editStore.value.id)
-  if (idx >= 0) stores.value[idx] = { ...editStore.value }
-  editVisible.value = false
+async function saveEdit() {
+  try {
+    await request.put(`/api/admin/stores/${editStore.value.id}`, {
+      name: editStore.value.name,
+      address: editStore.value.address,
+      phone: editStore.value.phone,
+      status: editStore.value.status,
+      features: editStore.value.features
+    })
+    MessagePlugin.success('修改门店信息成功')
+    fetchStores()
+    editVisible.value = false
+  } catch (error) {
+    console.error(error)
+  }
 }
 </script>
 

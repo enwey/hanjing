@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 const searchKeyword = ref('')
@@ -172,17 +173,44 @@ const initialPatients: Patient[] = [
   },
 ]
 
-const patients = ref<Patient[]>(
-  Array.from({ length: 35 }, (_, index) => {
-    const base = initialPatients[index % initialPatients.length]
-    return {
-      ...base,
-      id: String(index + 1),
-      no: `P2024${String(index + 1).padStart(4, '0')}`,
-      name: base.name.substring(0, 2) + (index + 1)
-    }
-  })
-)
+const patients = ref<Patient[]>([])
+
+const fetchPatients = async () => {
+  try {
+    const res: any = await request.get('/api/admin/patients')
+    patients.value = res.data.map((item: any) => {
+      const levelMap: Record<string, string> = {
+        normal: '普通',
+        silver: 'VIP',
+        gold: 'VIP',
+        diamond: 'SVIP'
+      }
+      return {
+        id: item.id.toString(),
+        no: `P2026${String(item.id).padStart(4, '0')}`,
+        name: item.name,
+        phone: item.phone || item.user_phone || '未绑定',
+        gender: item.gender === 1 ? '男' : '女',
+        age: item.age || 30,
+        level: levelMap[item.member_level] || '普通',
+        lastVisit: item.visit_count > 0 ? '2026-05-29' : '暂无',
+        totalVisits: item.visit_count || 0,
+        totalSpent: (item.total_spent || 0) / 100, // Format to yuan
+        source: item.source === 'walk_in' ? '门店' : '小程序',
+        status: 'active',
+        tags: item.has_snore === 1 ? ['有鼾症记录'] : [],
+        medicalHistory: item.has_snore === 1 ? ['自建档鼾症历史'] : [],
+        records: []
+      }
+    })
+  } catch (error) {
+    console.error('Failed to load patients:', error)
+  }
+}
+
+onMounted(() => {
+  fetchPatients()
+})
 
 const genderOptions = [
   { label: '全部性别', value: '' },

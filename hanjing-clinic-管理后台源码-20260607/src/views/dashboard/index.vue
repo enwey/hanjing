@@ -2,51 +2,22 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
+import request from '@/utils/request'
 
 const router = useRouter()
 const filterTime = ref('month')
 
-// Mock datasets for different time intervals
-const dashboardData = {
-  today: {
-    kpi: [
-      { label: '今日预约', value: '156', trend: '↑ 18%', trendType: 'up', icon: '📅', color: 'blue' },
-      { label: '今日营收', value: '¥1.24w', trend: '↑ 12%', trendType: 'up', icon: '💰', color: 'green' },
-      { label: '今日新增患者', value: '28', trend: '↑ 5%', trendType: 'up', icon: '👥', color: 'gold' },
-      { label: '今日到诊率', value: '92.3%', trend: '↓ 3%', trendType: 'down', icon: '🔄', color: 'red' }
-    ],
-    chartX: ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
-    chartY: [12, 24, 32, 15, 8, 22, 28, 18, 15, 10],
-    updateTime: '2026-06-09 18:00'
-  },
-  week: {
-    kpi: [
-      { label: '本周预约', value: '842', trend: '↑ 15%', trendType: 'up', icon: '📅', color: 'blue' },
-      { label: '本周营收', value: '¥8.75w', trend: '↑ 19%', trendType: 'up', icon: '💰', color: 'green' },
-      { label: '本周新增患者', value: '185', trend: '↑ 10%', trendType: 'up', icon: '👥', color: 'gold' },
-      { label: '本周到诊率', value: '94.1%', trend: '↑ 2%', trendType: 'up', icon: '🔄', color: 'green' }
-    ],
-    chartX: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
-    chartY: [98, 115, 120, 138, 145, 110, 116],
-    updateTime: '2026-06-09 18:00'
-  },
-  month: {
-    kpi: [
-      { label: '本月预约', value: '3,420', trend: '↑ 22%', trendType: 'up', icon: '📅', color: 'blue' },
-      { label: '本月营收', value: '¥38.6w', trend: '↑ 23%', trendType: 'up', icon: '💰', color: 'green' },
-      { label: '累计患者', value: '2,847', trend: '↑ 8%', trendType: 'up', icon: '👥', color: 'gold' },
-      { label: '当月到诊率', value: '93.5%', trend: '↑ 1.5%', trendType: 'up', icon: '🔄', color: 'green' }
-    ],
-    chartX: ['5/18', '5/19', '5/20', '5/21', '5/22', '5/23', '5/24', '5/25', '5/26', '5/27', '5/28', '5/29'],
-    chartY: [110, 138, 85, 156, 128, 165, 120, 147, 102, 175, 132, 162],
-    updateTime: '2026-06-09 18:00'
-  }
-}
+// KPI cards ref
+const kpiCards = ref([
+  { label: '今日预约', value: '0', trend: '↑ 实时', trendType: 'up', icon: '📅', color: 'blue' },
+  { label: '今日营收', value: '¥0', trend: '↑ 实时', trendType: 'up', icon: '💰', color: 'green' },
+  { label: '今日新增患者', value: '0', trend: '↑ 实时', trendType: 'up', icon: '👥', color: 'gold' },
+  { label: '今日到诊率', value: '0%', trend: '↑ 实时', trendType: 'up', icon: '🔄', color: 'red' }
+])
 
-const kpiCards = ref([...dashboardData.month.kpi])
-const updateTimeStr = ref(dashboardData.month.updateTime)
+const updateTimeStr = ref('2026-06-09 18:00')
 
-// Departments Distribution
+// Departments Distribution (keep mock static as it is simple and doesn't affect main operations)
 const depts = ref([
   { name: '睡眠呼吸科', percent: 42, color: '#3B6BF5' },
   { name: '耳鼻喉科', percent: 28, color: '#5A85F5' },
@@ -55,22 +26,10 @@ const depts = ref([
 ])
 
 // Today Appointments
-const todayAppointments = ref([
-  { patient: '张明华', avatarColor: '#5A85F5', doctor: '古堪民', time: '09:30', status: '已到诊', statusTheme: 'green' },
-  { patient: '李雪琴', avatarColor: '#9333EA', doctor: '王志远', time: '10:00', status: '候诊中', statusTheme: 'blue' },
-  { patient: '陈建国', avatarColor: '#F5A623', doctor: '古堪民', time: '10:30', status: '待确认', statusTheme: 'gold' },
-  { patient: '周小燕', avatarColor: '#1A9D5C', doctor: '刘婉清', time: '11:00', status: '已取消', statusTheme: 'gray' },
-  { patient: '吴佳佳', avatarColor: '#EC4899', doctor: '王志远', time: '14:00', status: '候诊中', statusTheme: 'blue' }
-])
+const todayAppointments = ref<any[]>([])
 
 // Latest Orders
-const latestOrders = ref([
-  { orderNo: '#2026052901', product: '睡眠监测套餐', amount: '¥3,680', status: '已完成', statusTheme: 'green' },
-  { orderNo: '#2026052902', product: '止鼾器定制', amount: '¥1,280', status: '处理中', statusTheme: 'blue' },
-  { orderNo: '#2026052903', product: 'CPAP呼吸机', amount: '¥8,900', status: '待发货', statusTheme: 'gold' },
-  { orderNo: '#2026052904', product: '初诊挂号', amount: '¥200', status: '已完成', statusTheme: 'green' },
-  { orderNo: '#2026052905', product: '初诊挂号', amount: '¥200', status: '已完成', statusTheme: 'green' }
-])
+const latestOrders = ref<any[]>([])
 
 const trendChartRef = ref<HTMLDivElement | null>(null)
 let chart: echarts.ECharts | null = null
@@ -90,17 +49,70 @@ const updateChart = (xData: string[], yData: number[]) => {
   }
 }
 
-watch(filterTime, (newVal) => {
-  const data = dashboardData[newVal as 'today' | 'week' | 'month']
-  kpiCards.value = [...data.kpi]
-  updateTimeStr.value = data.updateTime
-  updateChart(data.chartX, data.chartY)
+// Fetch Stats from Real API
+const fetchStats = async () => {
+  try {
+    const res: any = await request.get('/api/admin/dashboard/stats')
+    const { totalRevenue, totalAppointments, totalPatients, onlineDoctors, appointmentTrends } = res.data
+
+    kpiCards.value = [
+      { label: '累计预约', value: totalAppointments.toString(), trend: '↑ 实时', trendType: 'up', icon: '📅', color: 'blue' },
+      { label: '累计营收', value: '¥' + (totalRevenue / 100).toFixed(2), trend: '↑ 实时', trendType: 'up', icon: '💰', color: 'green' },
+      { label: '累计患者', value: totalPatients.toString(), trend: '↑ 实时', trendType: 'up', icon: '👥', color: 'gold' },
+      { label: '在线医生', value: onlineDoctors.toString(), trend: '↑ 实时', trendType: 'up', icon: '🔄', color: 'green' }
+    ]
+
+    const now = new Date()
+    updateTimeStr.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+
+    if (appointmentTrends && appointmentTrends.length > 0) {
+      const xData = appointmentTrends.map((t: any) => t.date.substring(5)) // e.g. "05-29"
+      const yData = appointmentTrends.map((t: any) => t.count)
+      updateChart(xData, yData)
+    }
+  } catch (error) {
+    console.error('Failed to fetch stats:', error)
+  }
+}
+
+// Fetch Lists
+const fetchDataLists = async () => {
+  try {
+    // 1. Fetch appointments
+    const apptsRes: any = await request.get('/api/admin/appointments?tab=today')
+    todayAppointments.value = apptsRes.data.slice(0, 5).map((a: any) => ({
+      patient: a.patient_name,
+      avatarColor: a.patient_gender === 1 ? '#5A85F5' : '#EC4899',
+      doctor: a.doctor_name,
+      time: a.appointment_time,
+      status: a.status === 'completed' ? '已到诊' : a.status === 'confirmed' ? '候诊中' : a.status === 'pending' ? '待确认' : '已取消',
+      statusTheme: a.status === 'completed' ? 'green' : a.status === 'confirmed' ? 'blue' : a.status === 'pending' ? 'gold' : 'gray'
+    }))
+
+    // 2. Fetch orders
+    const ordersRes: any = await request.get('/api/admin/orders')
+    latestOrders.value = ordersRes.data.slice(0, 5).map((o: any) => {
+      const prodName = o.items && o.items[0] ? o.items[0].product_name : '健康包/产品'
+      return {
+        orderNo: '#' + o.order_no.substring(o.order_no.length - 8),
+        product: prodName.length > 12 ? prodName.substring(0, 12) + '...' : prodName,
+        amount: '¥' + (o.pay_amount / 100).toFixed(2),
+        status: o.status === 'completed' ? '已完成' : o.status === 'paid' ? '已支付' : o.status === 'pending' ? '待付款' : '退款中',
+        statusTheme: o.status === 'completed' ? 'green' : o.status === 'paid' ? 'blue' : o.status === 'pending' ? 'gold' : 'red'
+      }
+    })
+  } catch (error) {
+    console.error('Failed to fetch dashboard lists:', error)
+  }
+}
+
+watch(filterTime, () => {
+  fetchStats()
 })
 
 onMounted(() => {
   if (trendChartRef.value) {
     chart = echarts.init(trendChartRef.value)
-    const activeData = dashboardData[filterTime.value as 'today' | 'week' | 'month']
     chart.setOption({
       tooltip: {
         trigger: 'axis',
@@ -115,7 +127,7 @@ onMounted(() => {
       },
       xAxis: {
         type: 'category',
-        data: activeData.chartX,
+        data: [],
         axisLine: { lineStyle: { color: '#E5E7EB' } },
         axisLabel: { color: '#9CA3AF', fontSize: 11 }
       },
@@ -131,7 +143,7 @@ onMounted(() => {
           name: '预约数',
           type: 'bar',
           barWidth: '40%',
-          data: activeData.chartY,
+          data: [],
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: '#3B6BF5' },
@@ -147,6 +159,10 @@ onMounted(() => {
       chart?.resize()
     })
   }
+
+  // Load real data
+  fetchStats()
+  fetchDataLists()
 })
 </script>
 

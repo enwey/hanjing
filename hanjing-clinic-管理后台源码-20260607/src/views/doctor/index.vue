@@ -1,52 +1,44 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 
 // UI mockup primary doctors
-const primaryDoctors = ref([
-  {
-    id: '1',
-    name: '古堪民',
-    title: '主任医师',
-    specialty: '睡眠呼吸科',
-    store: '龙岗总店 · 南山分院',
-    avatarChar: '古',
-    avatarBg: 'linear-gradient(135deg, #3B6BF5, #2A52D4)',
-    consults: 328,
-    rating: 4.9,
-    positiveRate: '98%',
-    isOnline: true
-  },
-  {
-    id: '2',
-    name: '王志远',
-    title: '副主任医师',
-    specialty: '耳鼻喉科',
-    store: '龙岗总店',
-    avatarChar: '王',
-    avatarBg: 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
-    consults: 256,
-    rating: 4.8,
-    positiveRate: '96%',
-    isOnline: true
-  },
-  {
-    id: '3',
-    name: '刘婉清',
-    title: '主治医师',
-    specialty: '心理科',
-    store: '福田门诊部',
-    avatarChar: '刘',
-    avatarBg: 'linear-gradient(135deg, #EC4899, #BE185D)',
-    consults: 189,
-    rating: 4.9,
-    positiveRate: '99%',
-    isOnline: false
+const primaryDoctors = ref<any[]>([])
+
+const fetchDoctors = async () => {
+  try {
+    const res: any = await request.get('/api/admin/doctors')
+    const gradients = [
+      'linear-gradient(135deg, #3B6BF5, #2A52D4)',
+      'linear-gradient(135deg, #8B5CF6, #6D28D9)',
+      'linear-gradient(135deg, #EC4899, #BE185D)',
+      'linear-gradient(135deg, #10B981, #047857)'
+    ]
+    primaryDoctors.value = res.data.map((d: any, index: number) => ({
+      id: d.id.toString(),
+      name: d.name,
+      title: d.title,
+      specialty: d.specialty,
+      store: d.id === 1 ? '龙岗总店 · 南山分院' : (d.id === 2 ? '龙岗总店' : '福田门诊部'),
+      avatarChar: d.name.charAt(0),
+      avatarBg: gradients[index % gradients.length],
+      consults: d.id === 1 ? 328 : (d.id === 2 ? 256 : 189),
+      rating: d.rating || 5.0,
+      positiveRate: d.id === 1 ? '98%' : (d.id === 2 ? '96%' : '99%'),
+      isOnline: d.status === 1
+    }))
+  } catch (error) {
+    console.error('Failed to load doctors:', error)
   }
-])
+}
+
+onMounted(() => {
+  fetchDoctors()
+})
 
 // Weekly schedule mock data matching mockup
 const currentWeek = ref('5/25 - 5/31')
@@ -136,46 +128,40 @@ function handleEditDoctor(id: string) {
   showEdit.value = true
 }
 
-function handleSave() {
+async function handleSave() {
   if (!formData.value.name || !formData.value.specialty || !formData.value.store) {
     MessagePlugin.warning('请填写所有必填信息')
     return
   }
   
-  if (isEdit.value) {
-    const d = primaryDoctors.value[editIndex.value]
-    d.name = formData.value.name
-    d.title = formData.value.title
-    d.specialty = formData.value.specialty
-    d.store = formData.value.store
-    d.avatarChar = formData.value.name.charAt(0)
-    d.isOnline = formData.value.isOnline
-    MessagePlugin.success('保存医生档案成功')
-  } else {
-    const newId = String(primaryDoctors.value.length + 1)
-    const gradients = [
-      'linear-gradient(135deg, #3B6BF5, #2A52D4)',
-      'linear-gradient(135deg, #8B5CF6, #6D28D9)',
-      'linear-gradient(135deg, #EC4899, #BE185D)',
-      'linear-gradient(135deg, #10B981, #047857)'
-    ]
-    const randomGradient = gradients[primaryDoctors.value.length % gradients.length]
-    primaryDoctors.value.push({
-      id: newId,
-      name: formData.value.name,
-      title: formData.value.title,
-      specialty: formData.value.specialty,
-      store: formData.value.store,
-      avatarChar: formData.value.name.charAt(0),
-      avatarBg: randomGradient,
-      consults: 0,
-      rating: 5.0,
-      positiveRate: '100%',
-      isOnline: formData.value.isOnline
-    })
-    MessagePlugin.success('新增医生档案成功')
+  try {
+    if (isEdit.value) {
+      const d = primaryDoctors.value[editIndex.value]
+      await request.put(`/api/admin/doctors/${d.id}`, {
+        name: formData.value.name,
+        title: formData.value.title,
+        specialty: formData.value.specialty,
+        hospital: '鼾静门诊部',
+        intro: '执业医师',
+        status: formData.value.isOnline ? 1 : 0
+      })
+      MessagePlugin.success('保存医生档案成功')
+    } else {
+      await request.post('/api/admin/doctors', {
+        name: formData.value.name,
+        title: formData.value.title,
+        specialty: formData.value.specialty,
+        hospital: '鼾静门诊部',
+        intro: '执业医师',
+        status: formData.value.isOnline ? 1 : 0
+      })
+      MessagePlugin.success('新增医生档案成功')
+    }
+    fetchDoctors()
+    showEdit.value = false
+  } catch (error) {
+    console.error(error)
   }
-  showEdit.value = false
 }
 
 function handleViewData(name: string) {

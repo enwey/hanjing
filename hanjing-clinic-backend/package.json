@@ -1,0 +1,17 @@
+{
+  "name": "hanjing-clinic-backend",
+  "version": "1.0.0",
+  "description": "鼾静健康诊所后台服务",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "sqlite3": "^5.1.7"
+  }
+}

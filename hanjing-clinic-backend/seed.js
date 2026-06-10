@@ -1,0 +1,619 @@
+import { run, query } from './db.js';
+import crypto from 'crypto';
+
+export const seedData = async () => {
+  const adminCount = await query('SELECT count(*) as count FROM admin_users');
+  if (adminCount[0].count > 0) {
+    console.log('Database already has data. Skipping seeding.');
+    return;
+  }
+
+  console.log('Seeding mock data into database...');
+
+  // 1. Roles
+  const { id: superAdminRoleId } = await run(
+    `INSERT INTO roles (name, code) VALUES (?, ?)`,
+    ['超级管理员', 'super_admin']
+  );
+  const { id: storeMgrRoleId } = await run(
+    `INSERT INTO roles (name, code) VALUES (?, ?)`,
+    ['门店店长', 'store_mgr']
+  );
+  const { id: doctorRoleId } = await run(
+    `INSERT INTO roles (name, code) VALUES (?, ?)`,
+    ['就诊医生', 'doctor']
+  );
+
+  // 2. Permissions
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [superAdminRoleId, '*']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [storeMgrRoleId, 'appointment:view']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [storeMgrRoleId, 'appointment:edit']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [storeMgrRoleId, 'patient:view']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [storeMgrRoleId, 'store:view']);
+
+  // 3. Stores
+  const store1 = await run(
+    `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ['龙岗总店', 'SZ-LG', '深圳市龙岗区中心路123号鼾静大厦1楼', '深圳', '龙岗区', 22.7214, 114.2568, '0755-12345678', '09:00:00', '18:00:00', 'open', 1]
+  );
+  const store2 = await run(
+    `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ['南山分院', 'SZ-NS', '深圳市南山区科技园高新南一道88号', '深圳', '南山区', 22.5401, 113.9345, '0755-87654321', '09:00:00', '21:00:00', 'open', 1]
+  );
+  const store3 = await run(
+    `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ['福田门诊部', 'SZ-FT', '深圳市福田区深南大道6008号深圳特区报业大厦西侧', '深圳', '福田区', 22.5367, 114.0556, '0755-11223344', '09:00:00', '18:00:00', 'open', 0]
+  );
+
+  // Store Features
+  await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store1.id, '智能排队']);
+  await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store1.id, '特设VIP室']);
+  await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store1.id, '睡眠呼吸监测']);
+  await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store2.id, '夜间监测套房']);
+  await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store2.id, '免费停车']);
+
+  // 4. Admin Users
+  const passwordHash = crypto.createHash('sha256').update('admin123').digest('hex');
+  await run(
+    `INSERT INTO admin_users (username, password_hash, name, phone, role_id, store_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ['admin', passwordHash, '系统管理员', '13888888888', superAdminRoleId, null, 'online']
+  );
+  await run(
+    `INSERT INTO admin_users (username, password_hash, name, phone, role_id, store_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ['lg_mgr', passwordHash, '龙岗店长', '13999999999', storeMgrRoleId, store1.id, 'online']
+  );
+
+  // 5. Doctors
+  const doc1 = await run(
+    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      '古堪民',
+      '/static/demo/doctor-1.jpg',
+      '主任医师',
+      '睡眠呼吸科',
+      '深圳市第一人民医院',
+      '从事睡眠呼吸障碍诊疗工作20余年，擅长成人及儿童鼾症、睡眠呼吸暂停综合征的无创气道正压治疗及阻鼾器微调治疗。主持多项睡眠障碍课题研究，在国内外期刊发表论文30余篇。',
+      25,
+      4.9,
+      10000, // 100元
+      1
+    ]
+  );
+  const doc2 = await run(
+    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      '王志远',
+      '/static/demo/doctor-2.jpg',
+      '副主任医师',
+      '耳鼻喉科',
+      '深圳市第二人民医院',
+      '深耕耳鼻喉科及睡眠障碍研究，在鼾症物理治疗及患者习惯养成随访方面拥有丰富经验。特别在下颌前移矫治器(MAD)的适应症筛选与疗效评估方面见解独到。',
+      18,
+      4.8,
+      8000, // 80元
+      1
+    ]
+  );
+  const doc3 = await run(
+    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      '刘婉清',
+      '/static/demo/doctor-3.jpg',
+      '主治医师',
+      '心理科',
+      '北京大学深圳医院',
+      '结合睡眠行为学与心理干预，提供定制化的OSAS物理器械治疗前心理适应辅导。擅长认知行为疗法治疗失眠症(CBT-I)及睡眠呼吸暂停综合征患者的长期依从性管理。',
+      12,
+      4.9,
+      5000, // 50元
+      1
+    ]
+  );
+
+  // Doctor Store Mapping
+  await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc1.id, store1.id]);
+  await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc1.id, store2.id]);
+  await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc2.id, store1.id]);
+  await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc3.id, store3.id]);
+
+  // 6. Users & Patients
+  const user1 = await run(
+    `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ['openid_user_1', '微信用户-张华', '13800138001', '/static/demo/avatar.jpg', 'gold', 1500, 298000]
+  );
+  const user2 = await run(
+    `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ['openid_user_2', '微信用户-李明', '13900139002', null, 'normal', 0, 0]
+  );
+  const user3 = await run(
+    `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ['openid_user_3', '微信用户-王芳', '13700137003', null, 'silver', 490, 4900]
+  );
+
+  const patient1 = await run(
+    `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [user1.id, '张华', 'self', 1, 45, '13800138001', 1]
+  );
+  const patient2 = await run(
+    `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [user1.id, '张小华', 'child', 1, 10, '13800138001', 0]
+  );
+  const patient3 = await run(
+    `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [user2.id, '李明', 'self', 1, 38, '13900139002', 1]
+  );
+  const patient4 = await run(
+    `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [user3.id, '王芳', 'self', 2, 52, '13700137003', 1]
+  );
+
+  // 7. Doctor Schedules (May 29, 2026 matches default filter)
+  const schedDates = ['2026-05-29', '2026-05-30', '2026-05-31', '2026-06-11', '2026-06-12', '2026-06-13'];
+  const schedIds = [];
+  for (const date of schedDates) {
+    const s1 = await run(
+      `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, booked_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [doc1.id, store1.id, date, 'morning', '09:00:00', '12:00:00', 6, 2]
+    );
+    const s2 = await run(
+      `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, booked_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [doc1.id, store1.id, date, 'afternoon', '14:00:00', '18:00:00', 6, 1]
+    );
+    const s3 = await run(
+      `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, booked_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [doc2.id, store1.id, date, 'morning', '09:00:00', '12:00:00', 6, 3]
+    );
+    const s4 = await run(
+      `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, booked_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [doc3.id, store3.id, date, 'afternoon', '14:00:00', '18:00:00', 6, 0]
+    );
+    schedIds.push(s1.id, s2.id, s3.id, s4.id);
+  }
+
+  // 8. Assessments (ESS and Snore)
+  const ess1 = await run(
+    `INSERT INTO ess_assessments (user_id, total_score, risk_level, answers) VALUES (?, ?, ?, ?)`,
+    [
+      user1.id,
+      14,
+      '中度嗜睡',
+      JSON.stringify([
+        { question_id: 1, score: 2 },
+        { question_id: 2, score: 3 },
+        { question_id: 3, score: 1 },
+        { question_id: 4, score: 2 },
+        { question_id: 5, score: 2 },
+        { question_id: 6, score: 3 },
+        { question_id: 7, score: 1 },
+        { question_id: 8, score: 0 }
+      ])
+    ]
+  );
+
+  const snore1 = await run(
+    `INSERT INTO snore_assessments (user_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [user1.id, '/static/demo/snore-demo.mp4', 1800, 58, 85, 35, 12, 'medium']
+  );
+
+  // 9. Appointments (Matches UI mockups for date 2026-05-29)
+  const appt1 = await run(
+    `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc, ess_assessment_id, snore_assessment_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      'APPT202605290001',
+      user1.id,
+      patient1.id,
+      store1.id,
+      doc1.id,
+      1, // First schedule created above
+      '2026-05-29',
+      '09:00 - 09:30',
+      'first',
+      'completed',
+      '经常打鼾，夜间容易憋醒，白天嗜睡严重，头昏脑涨。',
+      ess1.id,
+      snore1.id
+    ]
+  );
+
+  const appt2 = await run(
+    `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      'APPT202605290002',
+      user2.id,
+      patient3.id,
+      store1.id,
+      doc2.id,
+      3, // Third schedule
+      '2026-05-29',
+      '10:30 - 11:00',
+      'first',
+      'confirmed',
+      '鼾声特别响，爱人反映有呼吸暂停现象，睡醒口干。'
+    ]
+  );
+
+  const appt3 = await run(
+    `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      'APPT202605300001',
+      user1.id,
+      patient1.id,
+      store1.id,
+      doc1.id,
+      2,
+      '2026-05-30',
+      '14:30 - 15:00',
+      'followup',
+      'pending',
+      '配戴HJ-MAD-03阻鼾器四周，预约复诊微调参数。'
+    ]
+  );
+
+  // 10. Medical Records
+  const mr1 = await run(
+    `INSERT INTO medical_records (patient_id, doctor_id, store_id, appointment_id, visit_date, diagnosis, prescription, doctor_advice, note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      patient1.id,
+      doc1.id,
+      store1.id,
+      appt1.id,
+      '2026-05-29',
+      '中度阻塞性睡眠呼吸暂停综合征 (OSAHS)，伴随白天重度嗜睡。AHI: 18次/小时，最低血氧饱和度: 82%。',
+      '定制 HJ-MAD-03 智能下颌前移阻鼾器，初始调节下颌前移量为 4.0mm。',
+      '1. 每晚夜间持续配戴阻鼾器。\n2. 每日清晨使用专用清洁泡腾片清洗阻鼾器。\n3. 控制体重，避免侧卧改为侧仰卧位睡姿。\n4. 戒烟限酒，尤其是睡前避免饮酒。',
+      '患者比较配合，首诊已完成，下颌前移耐受性良好。四周后预约复诊微调。'
+    ]
+  );
+
+  // 11. Treatment Records
+  const tr1 = await run(
+    `INSERT INTO treatment_records (patient_id, doctor_id, medical_record_id, device_model, initial_advancement, current_advancement, start_date, next_adjust_date, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      patient1.id,
+      doc1.id,
+      mr1.id,
+      'HJ-MAD-03',
+      4.0,
+      5.5,
+      '2026-05-29',
+      '2026-06-25',
+      'active'
+    ]
+  );
+
+  // Wearing Logs
+  const wearingDates = ['2026-06-01', '2026-06-02', '2026-06-03', '2026-06-04', '2026-06-05', '2026-06-06', '2026-06-07'];
+  const durations = [6.8, 7.2, 5.5, 8.0, 7.5, 6.0, 7.0];
+  const comforts = [3, 4, 3, 4, 5, 4, 4];
+  const notes = ['牙齿轻微发胀', '逐渐适应中', '半夜取下了', '佩戴感觉良好', '非常舒服，打鼾明显减少', '口水稍微多一些', '已经适应佩戴'];
+  for (let i = 0; i < wearingDates.length; i++) {
+    await run(
+      `INSERT INTO wearing_logs (treatment_id, date, wear_duration, comfort, note) VALUES (?, ?, ?, ?, ?)`,
+      [tr1.id, wearingDates[i], durations[i], comforts[i], notes[i]]
+    );
+  }
+
+  // Device Adjustments
+  await run(
+    `INSERT INTO device_adjustments (treatment_id, adjust_date, operator_id, adjusted_advancement, patient_feedback, instructions)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      tr1.id,
+      '2026-06-08',
+      doc1.id,
+      5.5,
+      '感觉打鼾声确实变小了，只是清晨颞下颌关节有点酸胀，约10分钟后消失。',
+      '将前移量微调增加至5.5mm，建议清晨醒来做几下张口运动以缓解关节酸胀。若持续疼痛请及时联系。'
+    ]
+  );
+
+  // 12. Follow Up Tasks
+  const fut1 = await run(
+    `INSERT INTO follow_up_tasks (patient_id, doctor_id, title, description, due_date, status)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      patient1.id,
+      doc1.id,
+      '首周佩戴适应性随访',
+      '致电确认患者收到阻鼾器后，配戴第一周的牙齿酸胀及口水分泌情况，排查是否有严重的颞下颌关节不适。',
+      '2026-06-05',
+      'completed'
+    ]
+  );
+  const fut2 = await run(
+    `INSERT INTO follow_up_tasks (patient_id, doctor_id, title, description, due_date, status)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      patient1.id,
+      doc1.id,
+      '复诊前佩戴习惯及数据核对随访',
+      '打卡数据显示患者本周有两次未满5小时，电话回访原因，并指导在小程序内上传打卡记录。',
+      '2026-06-15',
+      'pending'
+    ]
+  );
+
+  // Follow Up Records
+  await run(
+    `INSERT INTO follow_up_records (task_id, patient_id, doctor_id, contact_type, summary)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      fut1.id,
+      patient1.id,
+      doc1.id,
+      'phone',
+      '电话沟通完毕，患者反馈收到产品后前两晚确实有牙胀、流口水，第三天起明显减轻，未出现颞下颌关节持续剧痛。指导了清晨放松活动，随访任务已完成。'
+    ]
+  );
+
+  // 13. Products
+  const prod1 = await run(
+    `INSERT INTO products (name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      'HJ-MAD-03 鼾静智能下颌前移阻鼾器',
+      'device',
+      '/static/product/hj-mad-03.png',
+      JSON.stringify(['/static/product/hj-mad-03.png', '/static/product/hj-mad-03-2.png']),
+      298000, // 2980元
+      368000,
+      '针对中轻度阻塞性睡眠呼吸暂停(OSAHS)及顽固打鼾设计，采用食品级高分子材质，下颌前移微调精度达0.5mm，智能监测传感器自动上传睡眠佩戴时长与质量数据。',
+      120,
+      58,
+      1,
+      0.12, // 12%
+      'on'
+    ]
+  );
+  const prod2 = await run(
+    `INSERT INTO products (name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      '鼾静阻鼾器专用清洁泡腾片 (60片/盒)',
+      'accessory',
+      '/static/product/pillow.png', // Reusing placeholder
+      JSON.stringify(['/static/product/pillow.png', '/static/product/pillow-2.png']),
+      4900, // 49元
+      6900,
+      '专为阻鼾器高分子材料研发 of 温和除菌清洁片。能有效杀灭99.9%的口腔常见细菌，防止异味积聚，不损伤阻鼾器金属调节螺丝与树脂基托。',
+      800,
+      340,
+      1,
+      0.10, // 10%
+      'on'
+    ]
+  );
+  const prod3 = await run(
+    `INSERT INTO products (name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      '专业睡眠呼吸多导初筛服务套餐',
+      'service',
+      '/static/product/screening.png',
+      JSON.stringify(['/static/product/screening.png']),
+      19900, // 199元
+      29900,
+      '包含一次线上睡眠嗜睡问卷评估、三晚鼾声监测报告、以及一次门诊专家面对面的物理阻鼾器适应性筛查与出诊挂号费用。',
+      9999,
+      125,
+      0,
+      0.0,
+      'on'
+    ]
+  );
+
+  // 14. Coupons
+  const cp1 = await run(
+    `INSERT INTO coupons (title, type, value, min_spend, status, valid_start, valid_end)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ['新用户专享首诊抵扣券', 'cash', 3000, 5000, 'active', '2026-05-01', '2026-12-31']
+  );
+  const cp2 = await run(
+    `INSERT INTO coupons (title, type, value, min_spend, status, valid_start, valid_end)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ['阻鼾器商城九折券', 'discount', 10, 0, 'active', '2026-05-01', '2026-12-31'] // 10% off
+  );
+
+  // User Coupons
+  await run(`INSERT INTO user_coupons (user_id, coupon_id, status) VALUES (?, ?, ?)`, [user1.id, cp2.id, 'active']);
+
+  // 15. Orders
+  const order1 = await run(
+    `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, shipping_address)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      'ORD202606010001',
+      user1.id,
+      'product',
+      298000,
+      0,
+      null,
+      298000,
+      'wechat',
+      '2026-06-01 10:15:30',
+      'paid',
+      JSON.stringify({ receiver: '张华', phone: '13800138001', province: '广东省', city: '深圳市', district: '龙岗区', detail: '中心路123号科苑花园3栋201' })
+    ]
+  );
+  await run(
+    `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [order1.id, prod1.id, 'HJ-MAD-03 鼾静智能下颌前移阻鼾器', '/static/product/hj-mad-03.png', 298000, 1]
+  );
+
+  const order2 = await run(
+    `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, shipping_address)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      'ORD202606020001',
+      user3.id,
+      'product',
+      4900,
+      0,
+      null,
+      4900,
+      'wechat',
+      '2026-06-02 14:20:11',
+      'completed',
+      JSON.stringify({ receiver: '王芳', phone: '13700137003', province: '广东省', city: '深圳市', district: '福田区', detail: '深南大道6008号报业大厦西侧高层' })
+    ]
+  );
+  await run(
+    `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [order2.id, prod2.id, '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', '/static/product/pillow.png', 4900, 1]
+  );
+
+  // 16. Distributors & Distribution Orders
+  const dist1 = await run(
+    `INSERT INTO distributors (user_id, nickname, avatar_url, level, invite_code, invite_qr_url, total_commission, available_commission, withdrawn_amount, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      user1.id,
+      '睡眠推广员-张华',
+      '/static/demo/avatar.jpg',
+      'gold',
+      'ZHANG888',
+      '/static/demo/qrcode.png',
+      35760, // 357.60元
+      12000, // 120.00元
+      23760, // 237.60元
+      'active'
+    ]
+  );
+
+  // Distribution Relationships: User1 (张华) recommended User3 (王芳)
+  await run(
+    `INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, ?)`,
+    [user1.id, user3.id, 1]
+  );
+
+  // Commission bill: user3 bought prod2 (foam tablets) for 4900, user1 got 10% -> 490 commission
+  await run(
+    `INSERT INTO distribution_orders (order_id, distributor_id, buyer_name, order_amount, commission_amount, commission_level, status, settled_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      order2.id,
+      dist1.id,
+      '王* (137****7003)',
+      4900,
+      490,
+      1,
+      'settled',
+      '2026-06-02 14:35:00'
+    ]
+  );
+
+  // 17. Withdraw Records
+  await run(
+    `INSERT INTO withdraw_records (user_id, amount, fee, actual_amount, status, account_info, completed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      user1.id,
+      23760,
+      0,
+      23760,
+      'success',
+      '微信零钱 (绑定的微信钱包)',
+      '2026-05-20 18:00:00'
+    ]
+  );
+  await run(
+    `INSERT INTO withdraw_records (user_id, amount, fee, actual_amount, status, account_info)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      user1.id,
+      12000,
+      0,
+      12000,
+      'pending',
+      '微信零钱 (绑定的微信钱包)'
+    ]
+  );
+
+  // 18. Live Rooms
+  await run(
+    `INSERT INTO live_rooms (title, cover_url, anchor_name, anchor_avatar, status, start_time, end_time, viewer_count, replay_url, product_ids)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      '远离鼾症，深度睡眠健康公开课',
+      '/static/demo/store-1.jpg',
+      '古堪民 主任医师',
+      '/static/demo/doctor-1.jpg',
+      'replay',
+      '2026-05-28 20:00:00',
+      '2026-05-28 21:30:00',
+      1250,
+      '/static/demo/snore-demo.mp4',
+      JSON.stringify([prod1.id, prod2.id])
+    ]
+  );
+  await run(
+    `INSERT INTO live_rooms (title, cover_url, anchor_name, anchor_avatar, status, start_time, viewer_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      '物理阻鼾器的佩戴与下颌前移微调指南',
+      '/static/demo/store-2.jpg',
+      '王志远 副主任医师',
+      '/static/demo/doctor-2.jpg',
+      'upcoming',
+      '2026-06-18 19:30:00',
+      328
+    ]
+  );
+
+  // 19. Community Posts
+  const post1 = await run(
+    `INSERT INTO community_posts (user_id, user_role, title, content, tags, likes_count, comments_count, is_top, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      user1.id,
+      'patient',
+      '配戴 HJ-MAD-03 阻鼾器四周体验，打鼾明显好转！',
+      '以前睡觉打鼾震天响，经常憋醒。在鼾静诊所定制了HJ-MAD-03。刚配戴的前三天有些流口水，牙齿酸胀，不过按照古医生的建议清晨做做嘴部张合操，第四天就完全适应了。现在老婆说我基本上不打鼾了，白天精神也好了很多，整个人神清气爽！',
+      JSON.stringify(['阻鼾器配戴', '打鼾治疗', 'OSAHS改善']),
+      28,
+      5,
+      1,
+      'approved'
+    ]
+  );
+
+  // Post Comments
+  await run(
+    `INSERT INTO post_comments (post_id, user_id, content, likes_count, status)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      post1.id,
+      user2.id,
+      '真的这么管用吗？我也经常憋醒，感觉每天都睡不饱，准备预约个周末的号去看看。',
+      8,
+      'approved'
+    ]
+  );
+  await run(
+    `INSERT INTO post_comments (post_id, user_id, content, likes_count, status)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      post1.id,
+      user1.id,
+      '管用的，你可以先做个问卷自测和录音评估，然后带着结果去，医生看诊时更针对性。',
+      3,
+      'approved'
+    ]
+  );
+
+  console.log('Database seeded successfully.');
+};

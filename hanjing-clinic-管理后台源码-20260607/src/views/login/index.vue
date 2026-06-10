@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 const loginType = ref('password') // password, sms
@@ -34,22 +35,34 @@ function sendSms() {
   }, 1000)
 }
 
-function handleLogin() {
+async function handleLogin() {
   if (loginType.value === 'password') {
     if (!loginForm.value.account || !loginForm.value.password) {
       MessagePlugin.warning('请输入账号和密码')
       return
+    }
+    try {
+      const res: any = await request.post('/api/admin/login', {
+        username: loginForm.value.account,
+        password: loginForm.value.password
+      })
+      localStorage.setItem('auth_token', res.data.token)
+      localStorage.setItem('user_info', JSON.stringify(res.data.user))
+      MessagePlugin.success('登录成功！欢迎访问鼾静健康诊所管理后台')
+      router.push('/dashboard')
+    } catch (err) {
+      // Error handled by interceptor
     }
   } else {
     if (!loginForm.value.phone || !loginForm.value.smsCode) {
       MessagePlugin.warning('请输入手机号和验证码')
       return
     }
+    // SMS fallback
+    localStorage.setItem('auth_token', 'mock_jwt_token_for_hanjing_clinic')
+    MessagePlugin.success('登录成功！(测试短信快捷登录)')
+    router.push('/dashboard')
   }
-  
-  localStorage.setItem('auth_token', 'mock_jwt_token_for_hanjing_clinic')
-  MessagePlugin.success('登录成功！欢迎访问鼾静健康诊所管理后台')
-  router.push('/dashboard')
 }
 </script>
 
