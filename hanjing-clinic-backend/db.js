@@ -1,223 +1,230 @@
-import sqlite3 from 'sqlite3';
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import crypto from 'crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const dbPath = join(__dirname, 'database.sqlite');
+dotenv.config({ path: join(__dirname, '.env') });
 
-const db = new sqlite3.Database(dbPath);
+let pool;
 
-// Promisify database operations
-export const query = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) {
-        console.error('SQL Error:', sql, params, err);
-        reject(err);
-      } else {
-        resolve(rows);
-      }
-    });
+export const initPool = async () => {
+  pool = mysql.createPool({
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || 'root',
+    database: process.env.DB_NAME || 'hanjing_clinic',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
   });
 };
 
-export const get = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) {
-        console.error('SQL Error:', sql, params, err);
-        reject(err);
-      } else {
-        resolve(row);
-      }
-    });
-  });
+export const query = async (sql, params = []) => {
+  if (!pool) await initPool();
+  const [rows] = await pool.execute(sql, params);
+  return rows;
 };
 
-export const run = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
-      if (err) {
-        console.error('SQL Error:', sql, params, err);
-        reject(err);
-      } else {
-        resolve({ id: this.lastID, changes: this.changes });
-      }
-    });
-  });
+export const get = async (sql, params = []) => {
+  if (!pool) await initPool();
+  const [rows] = await pool.execute(sql, params);
+  return rows[0] || null;
+};
+
+export const run = async (sql, params = []) => {
+  if (!pool) await initPool();
+  const [result] = await pool.execute(sql, params);
+  return { id: result.insertId, changes: result.affectedRows };
 };
 
 // Initialize Tables
 export const initDB = async () => {
-  console.log('Initializing SQLite database...');
+  console.log('Initializing MySQL connection...');
+  
+  // 1. Temporary connection to make sure DB exists
+  const connection = await mysql.createConnection({
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || 'root'
+  });
+  
+  await connection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME || 'hanjing_clinic'}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+  await connection.end();
 
-  // Enable foreign keys
-  await run('PRAGMA foreign_keys = ON;');
+  // 2. Initialize pool
+  await initPool();
+
+  console.log('Verifying/creating MySQL tables...');
+
+  // Disable Foreign Key checks for DDL setup
+  await query('SET FOREIGN_KEY_CHECKS = 0;');
 
   // 1. users
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      openid TEXT UNIQUE NOT NULL,
-      unionid TEXT UNIQUE,
-      phone TEXT UNIQUE,
-      nickname TEXT NOT NULL,
-      avatar_url TEXT,
-      gender INTEGER DEFAULT 0,
-      birthday TEXT,
-      member_level TEXT DEFAULT 'normal',
-      points INTEGER DEFAULT 0,
-      total_spent INTEGER DEFAULT 0,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      openid VARCHAR(64) UNIQUE NOT NULL,
+      unionid VARCHAR(64) UNIQUE,
+      phone VARCHAR(20) UNIQUE,
+      nickname VARCHAR(100) NOT NULL,
+      avatar_url VARCHAR(255),
+      gender TINYINT DEFAULT 0,
+      birthday DATE,
+      member_level VARCHAR(30) DEFAULT 'normal',
+      points INT DEFAULT 0,
+      total_spent INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
   `);
 
   // 2. patients
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS patients (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      relation TEXT DEFAULT 'self',
-      gender INTEGER DEFAULT 0,
-      age INTEGER,
-      phone TEXT,
-      has_snore INTEGER DEFAULT 0,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      name VARCHAR(100) NOT NULL,
+      relation VARCHAR(30) DEFAULT 'self',
+      gender TINYINT DEFAULT 0,
+      age INT,
+      phone VARCHAR(20),
+      has_snore TINYINT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
   // 3. stores
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS stores (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      code TEXT UNIQUE NOT NULL,
-      address TEXT NOT NULL,
-      city TEXT,
-      district TEXT,
-      latitude REAL,
-      longitude REAL,
-      phone TEXT,
-      open_time TEXT DEFAULT '09:00:00',
-      close_time TEXT DEFAULT '18:00:00',
-      status TEXT DEFAULT 'open',
-      has_parking INTEGER DEFAULT 1,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      name VARCHAR(100) NOT NULL,
+      code VARCHAR(30) UNIQUE NOT NULL,
+      address VARCHAR(255) NOT NULL,
+      city VARCHAR(50),
+      district VARCHAR(50),
+      latitude DECIMAL(10, 7),
+      longitude DECIMAL(10, 7),
+      phone VARCHAR(30),
+      open_time TIME DEFAULT '09:00:00',
+      close_time TIME DEFAULT '18:00:00',
+      status VARCHAR(30) DEFAULT 'open',
+      has_parking TINYINT DEFAULT 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
   // 4. store_features
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS store_features (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      store_id INTEGER NOT NULL,
-      feature TEXT NOT NULL,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      store_id BIGINT UNSIGNED NOT NULL,
+      feature VARCHAR(100) NOT NULL,
       FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
     );
   `);
 
   // 5. doctors
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS doctors (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      avatar_url TEXT,
-      title TEXT NOT NULL,
-      specialty TEXT NOT NULL,
-      hospital TEXT,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      name VARCHAR(100) NOT NULL,
+      avatar_url VARCHAR(255),
+      title VARCHAR(50) NOT NULL,
+      specialty VARCHAR(100) NOT NULL,
+      hospital VARCHAR(100),
       intro TEXT,
-      experience_years INTEGER DEFAULT 0,
-      rating REAL DEFAULT 5.0,
-      consult_fee INTEGER DEFAULT 0,
-      status INTEGER DEFAULT 1
+      experience_years INT DEFAULT 0,
+      rating DECIMAL(2, 1) DEFAULT 5.0,
+      consult_fee INT DEFAULT 0,
+      status TINYINT DEFAULT 1
     );
   `);
 
   // 6. doctor_store_mapping
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS doctor_store_mapping (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      doctor_id INTEGER NOT NULL,
-      store_id INTEGER NOT NULL,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      doctor_id BIGINT UNSIGNED NOT NULL,
+      store_id BIGINT UNSIGNED NOT NULL,
       FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
       FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
     );
   `);
 
   // 7. doctor_schedules
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS doctor_schedules (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      doctor_id INTEGER NOT NULL,
-      store_id INTEGER NOT NULL,
-      date TEXT NOT NULL,
-      period TEXT NOT NULL,
-      start_time TEXT NOT NULL,
-      end_time TEXT NOT NULL,
-      total_slots INTEGER DEFAULT 6,
-      booked_slots INTEGER DEFAULT 0,
-      status TEXT DEFAULT 'available',
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      doctor_id BIGINT UNSIGNED NOT NULL,
+      store_id BIGINT UNSIGNED NOT NULL,
+      date DATE NOT NULL,
+      period VARCHAR(30) NOT NULL,
+      start_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      total_slots INT DEFAULT 6,
+      booked_slots INT DEFAULT 0,
+      status VARCHAR(30) DEFAULT 'available',
       FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
       FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
     );
   `);
 
   // 8. ess_assessments
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS ess_assessments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      total_score INTEGER NOT NULL,
-      risk_level TEXT NOT NULL,
-      answers TEXT NOT NULL, -- JSON string
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      total_score INT NOT NULL,
+      risk_level VARCHAR(50) NOT NULL,
+      answers JSON NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
   // 9. snore_assessments
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS snore_assessments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      file_url TEXT NOT NULL,
-      duration INTEGER NOT NULL,
-      avg_decibel INTEGER NOT NULL,
-      peak_decibel INTEGER NOT NULL,
-      snore_rate INTEGER NOT NULL,
-      apnea_events INTEGER NOT NULL,
-      risk_level TEXT DEFAULT 'low',
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      file_url VARCHAR(255) NOT NULL,
+      duration INT NOT NULL,
+      avg_decibel INT NOT NULL,
+      peak_decibel INT NOT NULL,
+      snore_rate INT NOT NULL,
+      apnea_events INT NOT NULL,
+      risk_level VARCHAR(30) DEFAULT 'low',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
   // 10. appointments
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS appointments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      appointment_no TEXT UNIQUE NOT NULL,
-      user_id INTEGER NOT NULL,
-      patient_id INTEGER NOT NULL,
-      store_id INTEGER NOT NULL,
-      doctor_id INTEGER NOT NULL,
-      schedule_id INTEGER NOT NULL,
-      appointment_date TEXT NOT NULL,
-      appointment_time TEXT NOT NULL,
-      type TEXT DEFAULT 'first',
-      status TEXT DEFAULT 'pending',
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      appointment_no VARCHAR(64) UNIQUE NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      store_id BIGINT UNSIGNED NOT NULL,
+      doctor_id BIGINT UNSIGNED NOT NULL,
+      schedule_id BIGINT UNSIGNED NOT NULL,
+      appointment_date DATE NOT NULL,
+      appointment_time VARCHAR(50) NOT NULL,
+      type VARCHAR(30) DEFAULT 'first',
+      status VARCHAR(30) DEFAULT 'pending',
       symptom_desc TEXT,
-      cancel_reason TEXT,
-      source TEXT DEFAULT 'mini_app',
-      ess_assessment_id INTEGER,
-      snore_assessment_id INTEGER,
+      cancel_reason VARCHAR(255),
+      source VARCHAR(30) DEFAULT 'mini_app',
+      ess_assessment_id BIGINT UNSIGNED,
+      snore_assessment_id BIGINT UNSIGNED,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
       FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
@@ -229,14 +236,14 @@ export const initDB = async () => {
   `);
 
   // 11. medical_records
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS medical_records (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      patient_id INTEGER NOT NULL,
-      doctor_id INTEGER NOT NULL,
-      store_id INTEGER NOT NULL,
-      appointment_id INTEGER,
-      visit_date TEXT NOT NULL,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      doctor_id BIGINT UNSIGNED NOT NULL,
+      store_id BIGINT UNSIGNED NOT NULL,
+      appointment_id BIGINT UNSIGNED,
+      visit_date DATE NOT NULL,
       diagnosis TEXT NOT NULL,
       prescription TEXT,
       doctor_advice TEXT,
@@ -250,18 +257,18 @@ export const initDB = async () => {
   `);
 
   // 12. treatment_records
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS treatment_records (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      patient_id INTEGER NOT NULL,
-      doctor_id INTEGER NOT NULL,
-      medical_record_id INTEGER,
-      device_model TEXT NOT NULL,
-      initial_advancement REAL DEFAULT 0.0,
-      current_advancement REAL DEFAULT 0.0,
-      start_date TEXT NOT NULL,
-      next_adjust_date TEXT,
-      status TEXT DEFAULT 'active',
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      doctor_id BIGINT UNSIGNED NOT NULL,
+      medical_record_id BIGINT UNSIGNED,
+      device_model VARCHAR(100) NOT NULL,
+      initial_advancement DECIMAL(4, 2) DEFAULT 0.0,
+      current_advancement DECIMAL(4, 2) DEFAULT 0.0,
+      start_date DATE NOT NULL,
+      next_adjust_date DATE,
+      status VARCHAR(30) DEFAULT 'active',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
       FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
@@ -270,13 +277,13 @@ export const initDB = async () => {
   `);
 
   // 13. wearing_logs
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS wearing_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      treatment_id INTEGER NOT NULL,
-      date TEXT NOT NULL,
-      wear_duration REAL DEFAULT 0.0,
-      comfort INTEGER DEFAULT 3,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      treatment_id BIGINT UNSIGNED NOT NULL,
+      date DATE NOT NULL,
+      wear_duration DECIMAL(4, 2) DEFAULT 0.0,
+      comfort TINYINT DEFAULT 3,
       note TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE CASCADE
@@ -284,29 +291,29 @@ export const initDB = async () => {
   `);
 
   // 14. device_adjustments
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS device_adjustments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      treatment_id INTEGER NOT NULL,
-      adjust_date TEXT NOT NULL,
-      operator_id INTEGER NOT NULL,
-      adjusted_advancement REAL NOT NULL,
-      patient_feedback TEXT,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      treatment_id BIGINT UNSIGNED NOT NULL,
+      adjust_date DATE NOT NULL,
+      operator_id BIGINT UNSIGNED NOT NULL,
+      adjusted_advancement DECIMAL(4, 2) NOT NULL,
+      patient_feedback VARCHAR(255),
       instructions TEXT,
       FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE CASCADE
     );
   `);
 
   // 15. follow_up_tasks
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS follow_up_tasks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      patient_id INTEGER NOT NULL,
-      doctor_id INTEGER NOT NULL,
-      title TEXT NOT NULL,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      doctor_id BIGINT UNSIGNED NOT NULL,
+      title VARCHAR(150) NOT NULL,
       description TEXT,
-      due_date TEXT NOT NULL,
-      status TEXT DEFAULT 'pending',
+      due_date DATE NOT NULL,
+      status VARCHAR(30) DEFAULT 'pending',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
       FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE
@@ -314,13 +321,13 @@ export const initDB = async () => {
   `);
 
   // 16. follow_up_records
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS follow_up_records (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      task_id INTEGER NOT NULL,
-      patient_id INTEGER NOT NULL,
-      doctor_id INTEGER NOT NULL,
-      contact_type TEXT NOT NULL,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      task_id BIGINT UNSIGNED NOT NULL,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      doctor_id BIGINT UNSIGNED NOT NULL,
+      contact_type VARCHAR(30) NOT NULL,
       summary TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (task_id) REFERENCES follow_up_tasks(id) ON DELETE CASCADE,
@@ -330,85 +337,85 @@ export const initDB = async () => {
   `);
 
   // 17. products
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS products (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      category TEXT NOT NULL,
-      image_url TEXT NOT NULL,
-      gallery_urls TEXT, -- JSON string
-      price INTEGER NOT NULL,
-      original_price INTEGER,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      name VARCHAR(255) NOT NULL,
+      category VARCHAR(50) NOT NULL,
+      image_url VARCHAR(255) NOT NULL,
+      gallery_urls JSON,
+      price INT NOT NULL,
+      original_price INT,
       description TEXT,
-      stock INTEGER DEFAULT 0,
-      sales_count INTEGER DEFAULT 0,
-      is_distribution INTEGER DEFAULT 0,
-      commission_rate REAL DEFAULT 0.0,
-      status TEXT DEFAULT 'off',
+      stock INT DEFAULT 0,
+      sales_count INT DEFAULT 0,
+      is_distribution TINYINT DEFAULT 0,
+      commission_rate DECIMAL(4, 2) DEFAULT 0.0,
+      status VARCHAR(30) DEFAULT 'off',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
   // 18. coupons
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS coupons (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      type TEXT NOT NULL, -- 'discount' or 'cash'
-      value INTEGER NOT NULL,
-      min_spend INTEGER DEFAULT 0,
-      status TEXT DEFAULT 'active',
-      valid_start TEXT,
-      valid_end TEXT,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      title VARCHAR(150) NOT NULL,
+      type VARCHAR(50) NOT NULL,
+      value INT NOT NULL,
+      min_spend INT DEFAULT 0,
+      status VARCHAR(30) DEFAULT 'active',
+      valid_start DATE,
+      valid_end DATE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
   // 19. orders
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS orders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      order_no TEXT UNIQUE NOT NULL,
-      user_id INTEGER NOT NULL,
-      type TEXT DEFAULT 'product',
-      total_amount INTEGER NOT NULL,
-      discount_amount INTEGER DEFAULT 0,
-      coupon_id INTEGER,
-      pay_amount INTEGER NOT NULL,
-      pay_method TEXT DEFAULT 'wechat',
-      pay_at TIMESTAMP,
-      status TEXT DEFAULT 'pending',
-      shipping_address TEXT, -- JSON string
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      order_no VARCHAR(64) UNIQUE NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      type VARCHAR(30) DEFAULT 'product',
+      total_amount INT NOT NULL,
+      discount_amount INT DEFAULT 0,
+      coupon_id BIGINT UNSIGNED,
+      pay_amount INT NOT NULL,
+      pay_method VARCHAR(30) DEFAULT 'wechat',
+      pay_at TIMESTAMP NULL,
+      status VARCHAR(30) DEFAULT 'pending',
+      shipping_address JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE SET NULL
     );
   `);
 
   // 20. order_items
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS order_items (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      order_id INTEGER NOT NULL,
-      product_id INTEGER NOT NULL,
-      product_name TEXT NOT NULL,
-      product_image TEXT,
-      price INTEGER NOT NULL,
-      quantity INTEGER DEFAULT 1,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      order_id BIGINT UNSIGNED NOT NULL,
+      product_id BIGINT UNSIGNED NOT NULL,
+      product_name VARCHAR(255) NOT NULL,
+      product_image VARCHAR(255),
+      price INT NOT NULL,
+      quantity INT DEFAULT 1,
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
   `);
 
   // 21. user_coupons
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS user_coupons (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      coupon_id INTEGER NOT NULL,
-      status TEXT DEFAULT 'active',
-      used_at TIMESTAMP,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      coupon_id BIGINT UNSIGNED NOT NULL,
+      status VARCHAR(30) DEFAULT 'active',
+      used_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE CASCADE
@@ -416,31 +423,31 @@ export const initDB = async () => {
   `);
 
   // 22. distributors
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS distributors (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      nickname TEXT NOT NULL,
-      avatar_url TEXT,
-      level TEXT DEFAULT 'silver',
-      invite_code TEXT UNIQUE NOT NULL,
-      invite_qr_url TEXT,
-      total_commission INTEGER DEFAULT 0,
-      available_commission INTEGER DEFAULT 0,
-      withdrawn_amount INTEGER DEFAULT 0,
-      status TEXT DEFAULT 'active',
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      nickname VARCHAR(100) NOT NULL,
+      avatar_url VARCHAR(255),
+      level VARCHAR(30) DEFAULT 'silver',
+      invite_code VARCHAR(50) UNIQUE NOT NULL,
+      invite_qr_url VARCHAR(255),
+      total_commission INT DEFAULT 0,
+      available_commission INT DEFAULT 0,
+      withdrawn_amount INT DEFAULT 0,
+      status VARCHAR(30) DEFAULT 'active',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
   // 23. distribution_relationships
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS distribution_relationships (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      parent_user_id INTEGER NOT NULL,
-      child_user_id INTEGER NOT NULL,
-      level INTEGER NOT NULL,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      parent_user_id BIGINT UNSIGNED NOT NULL,
+      child_user_id BIGINT UNSIGNED NOT NULL,
+      level INT NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (parent_user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (child_user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -448,17 +455,17 @@ export const initDB = async () => {
   `);
 
   // 24. distribution_orders
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS distribution_orders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      order_id INTEGER NOT NULL,
-      distributor_id INTEGER NOT NULL,
-      buyer_name TEXT NOT NULL,
-      order_amount INTEGER NOT NULL,
-      commission_amount INTEGER NOT NULL,
-      commission_level INTEGER DEFAULT 1,
-      status TEXT DEFAULT 'pending',
-      settled_at TIMESTAMP,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      order_id BIGINT UNSIGNED NOT NULL,
+      distributor_id BIGINT UNSIGNED NOT NULL,
+      buyer_name VARCHAR(100) NOT NULL,
+      order_amount INT NOT NULL,
+      commission_amount INT NOT NULL,
+      commission_level TINYINT DEFAULT 1,
+      status VARCHAR(30) DEFAULT 'pending',
+      settled_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
       FOREIGN KEY (distributor_id) REFERENCES distributors(id) ON DELETE CASCADE
@@ -466,81 +473,81 @@ export const initDB = async () => {
   `);
 
   // 25. withdraw_records
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS withdraw_records (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      amount INTEGER NOT NULL,
-      fee INTEGER DEFAULT 0,
-      actual_amount INTEGER NOT NULL,
-      status TEXT DEFAULT 'pending',
-      account_info TEXT NOT NULL,
-      completed_at TIMESTAMP,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      amount INT NOT NULL,
+      fee INT DEFAULT 0,
+      actual_amount INT NOT NULL,
+      status VARCHAR(30) DEFAULT 'pending',
+      account_info VARCHAR(255) NOT NULL,
+      completed_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
   // 26. user_notifications
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS user_notifications (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      title TEXT NOT NULL,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      title VARCHAR(150) NOT NULL,
       content TEXT NOT NULL,
-      is_read INTEGER DEFAULT 0,
+      is_read TINYINT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
   // 27. live_rooms
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS live_rooms (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      cover_url TEXT NOT NULL,
-      anchor_name TEXT NOT NULL,
-      anchor_avatar TEXT,
-      status TEXT DEFAULT 'upcoming',
-      start_time TEXT NOT NULL,
-      end_time TEXT,
-      viewer_count INTEGER DEFAULT 0,
-      replay_url TEXT,
-      product_ids TEXT -- JSON string array
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      title VARCHAR(255) NOT NULL,
+      cover_url VARCHAR(255) NOT NULL,
+      anchor_name VARCHAR(100) NOT NULL,
+      anchor_avatar VARCHAR(255),
+      status VARCHAR(30) DEFAULT 'upcoming',
+      start_time TIMESTAMP NOT NULL,
+      end_time TIMESTAMP NULL,
+      viewer_count INT DEFAULT 0,
+      replay_url VARCHAR(255),
+      product_ids JSON
     );
   `);
 
   // 28. community_posts
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS community_posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      user_role TEXT DEFAULT 'patient',
-      title TEXT NOT NULL,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      user_role VARCHAR(30) DEFAULT 'patient',
+      title VARCHAR(255) NOT NULL,
       content TEXT NOT NULL,
-      image_urls TEXT, -- JSON string array
-      tags TEXT, -- JSON string array
-      likes_count INTEGER DEFAULT 0,
-      comments_count INTEGER DEFAULT 0,
-      is_top INTEGER DEFAULT 0,
-      status TEXT DEFAULT 'pending',
+      image_urls JSON,
+      tags JSON,
+      likes_count INT DEFAULT 0,
+      comments_count INT DEFAULT 0,
+      is_top TINYINT DEFAULT 0,
+      status VARCHAR(30) DEFAULT 'pending',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
   // 29. post_comments
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS post_comments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      post_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      parent_id INTEGER,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      post_id BIGINT UNSIGNED NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      parent_id BIGINT UNSIGNED,
       content TEXT NOT NULL,
-      likes_count INTEGER DEFAULT 0,
-      status TEXT DEFAULT 'approved',
+      likes_count INT DEFAULT 0,
+      status VARCHAR(30) DEFAULT 'approved',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -548,42 +555,45 @@ export const initDB = async () => {
   `);
 
   // 30. roles
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS roles (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT UNIQUE NOT NULL,
-      code TEXT UNIQUE NOT NULL,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      name VARCHAR(100) UNIQUE NOT NULL,
+      code VARCHAR(50) UNIQUE NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
   // 31. permissions
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS permissions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      role_id INTEGER NOT NULL,
-      permission_resource TEXT NOT NULL,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      role_id BIGINT UNSIGNED NOT NULL,
+      permission_resource VARCHAR(150) NOT NULL,
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
     );
   `);
 
   // 32. admin_users
-  await run(`
+  await query(`
     CREATE TABLE IF NOT EXISTS admin_users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      name TEXT NOT NULL,
-      phone TEXT,
-      role_id INTEGER NOT NULL,
-      store_id INTEGER,
-      status TEXT DEFAULT 'online',
-      last_login_at TIMESTAMP,
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      username VARCHAR(100) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      name VARCHAR(100) NOT NULL,
+      phone VARCHAR(30),
+      role_id BIGINT UNSIGNED NOT NULL,
+      store_id BIGINT UNSIGNED,
+      status VARCHAR(30) DEFAULT 'online',
+      last_login_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
       FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE SET NULL
     );
   `);
 
-  console.log('Database tables verified/created successfully.');
+  // Re-enable Foreign Key checks
+  await query('SET FOREIGN_KEY_CHECKS = 1;');
+
+  console.log('MySQL Database tables verified/created successfully.');
 };

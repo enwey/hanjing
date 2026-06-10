@@ -708,9 +708,9 @@ app.get('/api/admin/orders', authenticateToken, async (req, res) => {
       const items = await query(`SELECT * FROM order_items WHERE order_id = ?`, [order.id]);
       order.items = items;
       try {
-        order.shipping_address = JSON.parse(order.shipping_address);
+        order.shipping_address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address;
       } catch (e) {
-        // Keep string
+        // Keep value
       }
     }
 
@@ -845,7 +845,7 @@ app.get('/api/admin/content/live-rooms', authenticateToken, async (req, res) => 
     const list = await query(`SELECT * FROM live_rooms ORDER BY id DESC`);
     for (const room of list) {
       try {
-        room.product_ids = JSON.parse(room.product_ids);
+        room.product_ids = typeof room.product_ids === 'string' ? JSON.parse(room.product_ids) : room.product_ids;
       } catch (e) {
         room.product_ids = [];
       }
