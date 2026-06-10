@@ -13,24 +13,31 @@
 erDiagram
     USERS ||--o{ PATIENTS : "管理"
     USERS ||--o| DISTRIBUTORS : "成为推广员"
+    USERS ||--o{ USER_NOTIFICATIONS : "接收"
+    USERS ||--o{ ORDERS : "商城下单"
     STORES ||--o{ DOCTORS : "雇佣"
     STORES ||--o{ DOCTOR_SCHEDULES : "排班门店"
     STORES ||--o{ APPOINTMENTS : "就诊门店"
+    STORES ||--o{ ADMIN_USERS : "归属管理"
     DOCTORS ||--o{ DOCTOR_SCHEDULES : "排班医生"
     DOCTORS ||--o{ APPOINTMENTS : "就诊医生"
     PATIENTS ||--o{ APPOINTMENTS : "预约就诊人"
     PATIENTS ||--o{ MEDICAL_RECORDS : "诊疗病历"
     PATIENTS ||--o{ TREATMENT_RECORDS : "治疗建档"
+    PATIENTS ||--o{ FOLLOW_UP_TASKS : "随访目标"
     TREATMENT_RECORDS ||--o{ WEARING_LOGS : "打卡日志"
     TREATMENT_RECORDS ||--o{ DEVICE_ADJUSTMENTS : "器械微调"
     USERS ||--o{ ESS_ASSESSMENTS : "自测评估"
     USERS ||--o{ SNORE_ASSESSMENTS : "鼾声测试"
-    USERS ||--o{ ORDERS : "商城下单"
     ORDERS ||--o{ ORDER_ITEMS : "订单明细"
+    ORDERS ||--o| COUPONS : "使用优惠券"
     DISTRIBUTORS ||--o{ DISTRIBUTION_ORDERS : "分销提成"
     USERS ||--o{ WITHDRAW_RECORDS : "申请提现"
     USERS ||--o{ COMMUNITY_POSTS : "发表帖子"
     COMMUNITY_POSTS ||--o{ POST_COMMENTS : "发表评论"
+    ADMIN_USERS }|--|| ROLES : "拥有角色"
+    ROLES ||--o{ PERMISSIONS : "关联权限"
+    ADMIN_USERS ||--o{ FOLLOW_UP_TASKS : "执行随访"
 ```
 
 ### 1. 用户核心模块
@@ -270,6 +277,7 @@ erDiagram
 | `type` | `VARCHAR(20)` | `NOT NULL` | `'product'` | 订单类型：product-实物商品, appointment-挂号挂牌服务 |
 | `total_amount` | `INT` | `NOT NULL` | - | 订单总金额（分） |
 | `discount_amount` | `INT` | `NOT NULL` | `0` | 优惠券等减免金额（分） |
+| `coupon_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | NULL | 所关联抵扣的优惠券ID |
 | `pay_amount` | `INT` | `NOT NULL` | - | 实际支付金额（分） |
 | `pay_method` | `VARCHAR(20)` | - | `'wechat'` | 支付通道：wechat-微信支付 |
 | `pay_at` | `TIMESTAMP` | - | NULL | 支付时间 |
@@ -393,6 +401,90 @@ erDiagram
 | `likes_count` | `INT` | `NOT NULL` | `0` | 评论获得点赞数 |
 | `status` | `VARCHAR(20)` | `NOT NULL` | `'approved'` | 审核状态：pending-审核中, approved-显示, rejected-屏蔽 |
 | `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 回复发表时间 |
+
+---
+
+### 9. 管理后台、系统随访与优惠券模块
+
+本模块补全了管理后台登录、权限分配、医生技术员对患者日常的随访服务任务、商城优惠券促销折扣管理以及系统横向轮播图广告等核心业务底层建表。
+
+#### 9.1 后台管理员账号表 (`admin_users`)
+| 字段名 | 类型 | 约束 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 管理员账户ID |
+| `username` | `VARCHAR(50)` | `UNIQUE`, `NOT NULL` | - | 登录账号 |
+| `password_hash` | `VARCHAR(255)` | `NOT NULL` | - | 密码哈希值 |
+| `name` | `VARCHAR(50)` | `NOT NULL` | - | 用户姓名 |
+| `phone` | `VARCHAR(20)` | - | NULL | 联系手机 |
+| `role_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 绑定角色ID |
+| `store_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | NULL | 归属管理门店ID（NULL表示管理全部门店权限） |
+| `status` | `VARCHAR(20)` | `NOT NULL` | `'online'` | 在线状态/启用状态：online-启用, offline-禁用 |
+| `last_login_at` | `TIMESTAMP` | - | NULL | 最近一次登录时间 |
+| `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 创建时间 |
+
+#### 9.2 系统角色表 (`roles`)
+| 字段名 | 类型 | 约束 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | 角色ID |
+| `name` | `VARCHAR(50)` | `UNIQUE`, `NOT NULL` | 角色名称（如：超级管理员, 门店店长, 财务人员, 内容编辑） |
+| `code` | `VARCHAR(30)` | `UNIQUE`, `NOT NULL` | 角色唯一标识代码（如：super_admin, store_mgr） |
+| `created_at` | `TIMESTAMP` | - | 创建时间 |
+
+#### 9.3 角色权限关联表 (`permissions`)
+| 字段名 | 类型 | 约束 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `role_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | 角色ID |
+| `permission_resource`| `VARCHAR(100)` | `NOT NULL` | 授权的菜单或API资源标识符（如 `appointment:edit`, `withdraw:approve`） |
+
+#### 9.4 医护随访任务表 (`follow_up_tasks`)
+对应管理后台的“随访任务”模块，记录医生/睡眠专家为佩戴阻鼾器患者制定的随访工作计划。
+| 字段名 | 类型 | 约束 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 任务ID |
+| `patient_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 随访患者ID |
+| `doctor_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 责任医护/执行人ID |
+| `plan_date` | `DATE` | `NOT NULL` | - | 计划随访执行日期 |
+| `type` | `VARCHAR(20)` | `NOT NULL` | `'phone'` | 随访方式：phone-电话随访, chat-微信在线沟通, clinic-门诊面诊 |
+| `status` | `VARCHAR(20)` | `NOT NULL` | `'pending'` | 任务状态：pending-待随访, processing-随访中, completed-已完成, expired-超时未随访 |
+| `feedback_content` | `TEXT` | - | NULL | 随访记录总结与患者配戴主诉反馈 |
+| `completed_at` | `TIMESTAMP` | - | NULL | 随访实际执行完成时间 |
+| `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 任务分配建单时间 |
+
+#### 9.5 营销优惠券表 (`coupons`)
+| 字段名 | 类型 | 约束 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 优惠券ID |
+| `title` | `VARCHAR(100)` | `NOT NULL` | - | 优惠券标题（如：618全场满减券） |
+| `type` | `VARCHAR(20)` | `NOT NULL` | `'full_reduction'` | 折扣类型：full_reduction-满减券, discount-打折券 |
+| `min_spend` | `INT` | `NOT NULL` | `0` | 起用门槛金额（分，0表示无门槛） |
+| `discount_value` | `INT` | `NOT NULL` | - | 满减面额（分）或折扣比例（如 90 代表 9 折） |
+| `start_time` | `TIMESTAMP` | `NOT NULL` | - | 优惠有效起始时间 |
+| `end_time` | `TIMESTAMP` | `NOT NULL` | - | 优惠截止时间 |
+| `stock` | `INT` | `NOT NULL` | `100` | 允许领取的剩余券数 |
+
+#### 9.6 用户系统通知与订阅消息表 (`user_notifications`)
+记录系统给用户推送的历史通知，对应小程序个人中心的通知列表。
+| 字段名 | 类型 | 约束 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 通知ID |
+| `user_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 目标用户账户ID |
+| `type` | `VARCHAR(20)` | `NOT NULL` | `'system'` | 通知类别：system-系统公告, appointment-就诊预约提醒, order-商城发货订单提醒, treatment-配戴随访提醒 |
+| `title` | `VARCHAR(100)` | `NOT NULL` | - | 消息标题 |
+| `content` | `TEXT` | `NOT NULL` | - | 消息正文 |
+| `is_read` | `TINYINT(1)` | - | `0` | 状态：0-未读, 1-已读 |
+| `payload` | `JSON` | - | NULL | 携带的关联跳转配置（如 `{ "type": "order", "id": 102 }`） |
+| `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 通知发送时间 |
+
+#### 9.7 系统广告轮播图表 (`banners`)
+用于配置小程序首页、商城详情页等醒目展示的轮播广告。
+| 字段名 | 类型 | 约束 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 轮播图ID |
+| `image_url` | `VARCHAR(255)` | `NOT NULL` | - | 图片网络地址 |
+| `link_url` | `VARCHAR(255)` | - | NULL | 关联的小程序跳转路径 (如 `pages/live/playback/index?id=2`) |
+| `sort_order` | `INT` | `NOT NULL` | `0` | 轮播切换排序权重（值小靠前） |
+| `position` | `VARCHAR(30)` | `NOT NULL` | `'home'` | 展示位置：home-首页头图, mall-商城活动位 |
+| `status` | `TINYINT` | - | `1` | 状态：0-隐藏禁用, 1-显示启用 |
 
 ---
 
@@ -637,7 +729,8 @@ erDiagram
       { "productId": 1, "quantity": 1 },
       { "productId": 2, "quantity": 2 }
     ],
-    "addressId": 5  // 送货地址ID
+    "couponId": 3,            // 抵扣优惠券ID (可选)
+    "addressId": 5            // 送货地址ID
   }
   ```
 * **返回数据**：
