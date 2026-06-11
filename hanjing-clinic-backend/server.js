@@ -1100,6 +1100,813 @@ app.get('/api/admin/roles', authenticateToken, async (req, res) => {
 });
 
 // ----------------------------------------
+// 11. WECHAT MINI PROGRAM API (v1)
+// ----------------------------------------
+
+const authenticateWxToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ code: 401, message: '未授权或登录过期' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(401).json({ code: 401, message: '未授权或登录过期' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// 1. WeChat Login
+app.post('/api/v1/auth/wx-login', async (req, res) => {
+  const { code } = req.body;
+  if (!code) {
+    return res.status(400).json({ code: 400, message: 'code不能为空' });
+  }
+
+  try {
+    const openid = `wx_openid_${code}`;
+    let user = await get(`SELECT * FROM users WHERE openid = ?`, [openid]);
+    
+    if (!user) {
+      const nickname = `微信用户_${code.slice(-4)}`;
+      const result = await run(
+        `INSERT INTO users (openid, nickname, member_level, points, total_spent) VALUES (?, ?, 'normal', 0, 0)`,
+        [openid, nickname]
+      );
+      
+      await run(
+        `INSERT INTO patients (user_id, name, relation, gender, age, phone) VALUES (?, ?, 'self', 1, 30, '13800000000')`,
+        [result.id, nickname]
+      );
+      
+      user = await get(`SELECT * FROM users WHERE id = ?`, [result.id]);
+    }
+
+    const token = jwt.sign(
+      { id: user.id, openid: user.openid },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        access_token: token,
+        refresh_token: `refresh_${crypto.randomBytes(8).toString('hex')}`,
+        user: {
+          id: user.id.toString(),
+          nickname: user.nickname,
+          avatar: user.avatar_url || '/static/demo/avatar.jpg',
+          phone: user.phone || '138****8888',
+          memberLevel: user.member_level,
+          isDistributor: false
+        },
+        expires_in: 2592000
+      }
+    });
+  } catch (error) {
+    console.error('wx-login error:', error);
+    res.status(500).json({ code: 500, message: '登录失败' });
+  }
+});
+
+// 2. User Profile (GET)
+app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
+  try {
+    const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '用户未找到' });
+    }
+    const patient = await get(`SELECT * FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        id: patient ? patient.id.toString() : user.id.toString(),
+        nickname: user.nickname,
+        avatar: user.avatar_url || '/static/demo/avatar.jpg',
+        gender: patient ? patient.gender : 1,
+        age: patient ? patient.age : 30,
+        phone: user.phone || (patient ? patient.phone : '138****8888'),
+        birthday: user.birthday || '1995-01-01'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取个人资料失败' });
+  }
+});
+
+// 3. User Profile (PUT)
+app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
+  const { nickname, phone, gender, age, birthday } = req.body;
+  try {
+    await run(
+      `UPDATE users SET nickname = COALESCE(?, nickname), phone = COALESCE(?, phone), birthday = COALESCE(?, birthday) WHERE id = ?`,
+      [nickname, phone, birthday, req.user.id]
+    );
+    await run(
+      `UPDATE patients SET name = COALESCE(?, name), gender = COALESCE(?, gender), age = COALESCE(?, age), phone = COALESCE(?, phone) 
+       WHERE user_id = ? AND relation = 'self'`,
+      [nickname, gender, age, phone, req.user.id]
+    );
+
+    const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
+    const patient = await get(`SELECT * FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        id: patient ? patient.id.toString() : user.id.toString(),
+        nickname: user.nickname,
+        avatar: user.avatar_url || '/static/demo/avatar.jpg',
+        gender: patient ? patient.gender : 1,
+        age: patient ? patient.age : 30,
+        phone: user.phone,
+        birthday: user.birthday
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '更新资料失败' });
+  }
+});
+
+// 4. Member Info (GET)
+app.get('/api/v1/user/member-info', authenticateWxToken, async (req, res) => {
+  try {
+    const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        memberLevel: user.member_level,
+        points: user.points,
+        totalSpent: user.total_spent
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取会员信息失败' });
+  }
+});
+
+// 5. Family Members (GET)
+app.get('/api/v1/user/family-members', authenticateWxToken, async (req, res) => {
+  try {
+    const list = await query(`SELECT * FROM patients WHERE user_id = ?`, [req.user.id]);
+    const formatted = list.map(p => ({
+      id: p.id.toString(),
+      name: p.name,
+      relation: p.relation,
+      gender: p.gender,
+      age: p.age,
+      phone: p.phone,
+      hasSnore: p.has_snore === 1
+    }));
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        list: formatted,
+        total: formatted.length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取家庭成员失败' });
+  }
+});
+
+// 6. Family Members (POST)
+app.post('/api/v1/user/family-members', authenticateWxToken, async (req, res) => {
+  const { name, relation, gender, age, phone } = req.body;
+  if (!name) {
+    return res.status(400).json({ code: 400, message: '姓名不能为空' });
+  }
+
+  try {
+    const genderVal = gender === '男' || gender === 1 ? 1 : gender === '女' || gender === 2 ? 2 : 0;
+    const result = await run(
+      `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, 0)`,
+      [req.user.id, name, relation || 'other', genderVal, age || null, phone || null]
+    );
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        id: result.id.toString(),
+        name,
+        relation,
+        gender: genderVal,
+        age,
+        phone,
+        hasSnore: false
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '添加家庭成员失败' });
+  }
+});
+
+// 7. Family Member (DELETE)
+app.delete('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const patient = await get(`SELECT * FROM patients WHERE id = ? AND user_id = ?`, [id, req.user.id]);
+    if (!patient) {
+      return res.status(404).json({ code: 404, message: '成员不存在' });
+    }
+    if (patient.relation === 'self') {
+      return res.status(400).json({ code: 400, message: '不能删除本人建档' });
+    }
+    await run(`DELETE FROM patients WHERE id = ?`, [id]);
+    res.json({ code: 0, message: 'success', data: null });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '删除失败' });
+  }
+});
+
+// 8. Stores (GET)
+app.get('/api/v1/stores', async (req, res) => {
+  try {
+    const list = await query(`SELECT * FROM stores WHERE status = 'open'`);
+    const formatted = [];
+    for (const store of list) {
+      const features = await query(`SELECT feature FROM store_features WHERE store_id = ?`, [store.id]);
+      formatted.push({
+        id: store.id,
+        name: store.name,
+        address: store.address,
+        phone: store.phone,
+        city: store.city,
+        district: store.district,
+        latitude: store.latitude,
+        longitude: store.longitude,
+        openTime: store.open_time,
+        closeTime: store.close_time,
+        hasParking: store.has_parking === 1,
+        features: features.map(f => f.feature)
+      });
+    }
+    res.json({ code: 0, message: 'success', data: formatted });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取门店列表失败' });
+  }
+});
+
+// 9. Doctors (GET)
+app.get('/api/v1/doctors', async (req, res) => {
+  const { storeId } = req.query;
+  try {
+    let list;
+    if (storeId) {
+      list = await query(
+        `SELECT d.* FROM doctors d 
+         JOIN doctor_store_mapping m ON d.id = m.doctor_id 
+         WHERE m.store_id = ? AND d.status = 1`,
+        [storeId]
+      );
+    } else {
+      list = await query(`SELECT * FROM doctors WHERE status = 1`);
+    }
+
+    const formatted = [];
+    for (const d of list) {
+      const storesMapping = await query(`SELECT store_id FROM doctor_store_mapping WHERE doctor_id = ?`, [d.id]);
+      formatted.push({
+        id: d.id,
+        name: d.name,
+        avatarUrl: d.avatar_url || '/static/demo/avatar.jpg',
+        title: d.title,
+        specialty: d.specialty,
+        hospital: d.hospital,
+        intro: d.intro,
+        experienceYears: d.experience_years,
+        rating: Number(d.rating),
+        consultFee: d.consult_fee,
+        storeIds: storesMapping.map(m => m.store_id)
+      });
+    }
+    res.json({ code: 0, message: 'success', data: formatted });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取医生列表失败' });
+  }
+});
+
+// 10. Schedule Dates (GET)
+app.get('/api/v1/schedules/dates', async (req, res) => {
+  const { doctorId, storeId } = req.query;
+  if (!doctorId || !storeId) {
+    return res.status(400).json({ code: 400, message: 'doctorId和storeId不能为空' });
+  }
+
+  try {
+    const list = await query(
+      `SELECT DISTINCT date FROM doctor_schedules 
+       WHERE doctor_id = ? AND store_id = ? AND date >= CURRENT_DATE 
+       ORDER BY date ASC`,
+      [doctorId, storeId]
+    );
+    res.json({
+      code: 0,
+      message: 'success',
+      data: list.map(item => item.date)
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取排班日期失败' });
+  }
+});
+
+// 11. Schedules (GET)
+app.get('/api/v1/schedules', async (req, res) => {
+  const { doctorId, storeId, startDate, endDate } = req.query;
+  if (!doctorId || !storeId) {
+    return res.status(400).json({ code: 400, message: 'doctorId和storeId不能为空' });
+  }
+
+  try {
+    let list;
+    if (startDate && endDate) {
+      list = await query(
+        `SELECT * FROM doctor_schedules 
+         WHERE doctor_id = ? AND store_id = ? AND date >= ? AND date <= ? 
+         ORDER BY date ASC, start_time ASC`,
+        [doctorId, storeId, startDate, endDate]
+      );
+    } else {
+      list = await query(
+        `SELECT * FROM doctor_schedules 
+         WHERE doctor_id = ? AND store_id = ? AND date >= CURRENT_DATE 
+         ORDER BY date ASC, start_time ASC`,
+        [doctorId, storeId]
+      );
+    }
+
+    const formatted = list.map(row => ({
+      id: row.id,
+      doctorId: Number(row.doctor_id),
+      storeId: Number(row.store_id),
+      date: row.date,
+      period: row.period,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      totalSlots: row.total_slots,
+      bookedSlots: row.booked_slots,
+      status: row.status
+    }));
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: formatted
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取排班信息失败' });
+  }
+});
+
+// 12. Time Slots (GET)
+app.get('/api/v1/schedules/:id/slots', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const t = await get(`SELECT * FROM doctor_schedules WHERE id = ?`, [id]);
+    if (!t) {
+      return res.status(404).json({ code: 1004, message: '排班不存在' });
+    }
+
+    const slots = [];
+    const o = parseInt(t.start_time.split(':')[0]);
+    const endHour = parseInt(t.end_time.split(':')[0]);
+    const durationMins = 60 * (endHour - o);
+    const r = t.total_slots;
+    const slotDuration = Math.floor(durationMins / r);
+    
+    let bookedCount = 0;
+    for (let n = 0; n < r; n++) {
+      const i = n * slotDuration;
+      const nextIdx = (n + 1) * slotDuration;
+      const startH = Math.floor(i / 60) + o;
+      const startM = i % 60;
+      const endH = Math.floor(nextIdx / 60) + o;
+      const endM = nextIdx % 60;
+      const isBooked = bookedCount < t.booked_slots;
+      if (isBooked) bookedCount++;
+
+      slots.push({
+        id: `slot-${t.id}-${n}`,
+        scheduleId: t.id,
+        startTime: `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`,
+        endTime: `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`,
+        status: isBooked ? 'booked' : 'available',
+        label: `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}-${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
+      });
+    }
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: slots
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取排班分时段失败' });
+  }
+});
+
+// 13. Create Appointment (POST)
+app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
+  const { doctorId, storeId, scheduleId, appointmentDate, appointmentTime, patientId, type, symptomDesc } = req.body;
+  if (!doctorId || !storeId || !scheduleId || !appointmentDate || !appointmentTime || !patientId) {
+    return res.status(400).json({ code: 400, message: '预约关键信息缺失' });
+  }
+
+  try {
+    const apptNo = `AP2026${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+    const schedule = await get(`SELECT * FROM doctor_schedules WHERE id = ?`, [scheduleId]);
+    if (!schedule) {
+      return res.status(400).json({ code: 400, message: '排班时段不存在' });
+    }
+    if (schedule.booked_slots >= schedule.total_slots) {
+      return res.status(400).json({ code: 400, message: '该预约时段已约满' });
+    }
+
+    const result = await run(
+      `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, 'mini_app')`,
+      [
+        apptNo,
+        req.user.id,
+        patientId,
+        storeId,
+        doctorId,
+        scheduleId,
+        appointmentDate,
+        appointmentTime,
+        type || 'first',
+        symptomDesc || ''
+      ]
+    );
+
+    await run(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [scheduleId]);
+
+    const o = {
+      id: result.id,
+      appointmentNo: apptNo,
+      userId: req.user.id.toString(),
+      patientId: Number(patientId),
+      doctorId: Number(doctorId),
+      storeId: Number(storeId),
+      scheduleId: Number(scheduleId),
+      appointmentDate,
+      appointmentTime,
+      type,
+      symptomDesc,
+      status: 'confirmed',
+      source: 'mini_app',
+      createdAt: new Date().toISOString()
+    };
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: o
+    });
+  } catch (error) {
+    console.error('Create appointment error:', error);
+    res.status(500).json({ code: 500, message: '预约创建失败' });
+  }
+});
+
+// 14. List Appointments (GET)
+app.get('/api/v1/appointments', authenticateWxToken, async (req, res) => {
+  const { status } = req.query;
+  try {
+    let sql = `SELECT a.*, p.name as patient_name, d.name as doctor_name, d.title as doctor_title, d.avatar_url as doctor_avatar, s.name as store_name
+               FROM appointments a
+               JOIN patients p ON a.patient_id = p.id
+               JOIN doctors d ON a.doctor_id = d.id
+               JOIN stores s ON a.store_id = s.id
+               WHERE a.user_id = ?`;
+    const params = [req.user.id];
+
+    if (status) {
+      sql += ` AND a.status = ?`;
+      params.push(status);
+    }
+    sql += ` ORDER BY a.appointment_date DESC, a.appointment_time DESC`;
+
+    const list = await query(sql, params);
+    const formatted = list.map(row => ({
+      id: row.id,
+      appointmentNo: row.appointment_no,
+      userId: row.user_id.toString(),
+      patientId: row.patient_id,
+      doctorId: row.doctor_id,
+      storeId: row.store_id,
+      scheduleId: row.schedule_id,
+      appointmentDate: row.appointment_date,
+      appointmentTime: row.appointment_time,
+      type: row.type,
+      status: row.status,
+      symptomDesc: row.symptom_desc,
+      cancelReason: row.cancel_reason,
+      createdAt: row.created_at,
+      patientName: row.patient_name,
+      doctorName: row.doctor_name,
+      doctorTitle: row.doctor_title,
+      doctorAvatar: row.doctor_avatar,
+      storeName: row.store_name
+    }));
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: formatted
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取预约列表失败' });
+  }
+});
+
+// 15. Appointment Detail (GET)
+app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const row = await get(
+      `SELECT a.*, p.name as patient_name, d.name as doctor_name, d.title as doctor_title, d.avatar_url as doctor_avatar, s.name as store_name
+       FROM appointments a
+       JOIN patients p ON a.patient_id = p.id
+       JOIN doctors d ON a.doctor_id = d.id
+       JOIN stores s ON a.store_id = s.id
+       WHERE a.id = ? AND a.user_id = ?`,
+      [id, req.user.id]
+    );
+
+    if (!row) {
+      return res.status(404).json({ code: 404, message: '预约记录不存在' });
+    }
+
+    const appt = {
+      id: row.id,
+      appointmentNo: row.appointment_no,
+      userId: row.user_id.toString(),
+      patientId: row.patient_id,
+      doctorId: row.doctor_id,
+      storeId: row.store_id,
+      scheduleId: row.schedule_id,
+      appointmentDate: row.appointment_date,
+      appointmentTime: row.appointment_time,
+      type: row.type,
+      status: row.status,
+      symptomDesc: row.symptom_desc,
+      cancelReason: row.cancel_reason,
+      createdAt: row.created_at,
+      patientName: row.patient_name,
+      doctorName: row.doctor_name,
+      doctorTitle: row.doctor_title,
+      doctorAvatar: row.doctor_avatar,
+      storeName: row.store_name
+    };
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        appointment: appt,
+        doctor: {
+          id: row.doctor_id,
+          name: row.doctor_name,
+          avatarUrl: row.doctor_avatar,
+          title: row.doctor_title
+        },
+        store: {
+          id: row.store_id,
+          name: row.store_name
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取预约详情失败' });
+  }
+});
+
+// 16. Cancel Appointment (POST)
+app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  try {
+    const appt = await get(`SELECT * FROM appointments WHERE id = ? AND user_id = ?`, [id, req.user.id]);
+    if (!appt) {
+      return res.status(404).json({ code: 404, message: '预约不存在' });
+    }
+    if (appt.status === 'cancelled') {
+      return res.status(400).json({ code: 400, message: '预约已取消' });
+    }
+
+    await run(
+      `UPDATE appointments SET status = 'cancelled', cancel_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [reason || '', id]
+    );
+
+    await run(`UPDATE doctor_schedules SET booked_slots = GREATEST(0, booked_slots - 1) WHERE id = ?`, [appt.schedule_id]);
+
+    const updated = await get(`SELECT * FROM appointments WHERE id = ?`, [id]);
+    res.json({
+      code: 0,
+      message: 'success',
+      data: updated
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '取消预约失败' });
+  }
+});
+
+// 17. Reschedule Appointment (POST)
+app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req, res) => {
+  const { id } = req.params;
+  const { scheduleId, appointmentDate, appointmentTime } = req.body;
+
+  try {
+    const appt = await get(`SELECT * FROM appointments WHERE id = ? AND user_id = ?`, [id, req.user.id]);
+    if (!appt) {
+      return res.status(404).json({ code: 404, message: '预约不存在' });
+    }
+
+    const newSchedule = await get(`SELECT * FROM doctor_schedules WHERE id = ?`, [scheduleId]);
+    if (!newSchedule) {
+      return res.status(400).json({ code: 400, message: '目标排班时段不存在' });
+    }
+    if (newSchedule.booked_slots >= newSchedule.total_slots) {
+      return res.status(400).json({ code: 400, message: '目标预约时段已约满' });
+    }
+
+    await run(`UPDATE doctor_schedules SET booked_slots = GREATEST(0, booked_slots - 1) WHERE id = ?`, [appt.schedule_id]);
+    await run(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [scheduleId]);
+
+    await run(
+      `UPDATE appointments 
+       SET schedule_id = ?, appointment_date = ?, appointment_time = ?, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = ?`,
+      [scheduleId, appointmentDate, appointmentTime, id]
+    );
+
+    const updated = await get(`SELECT * FROM appointments WHERE id = ?`, [id]);
+    res.json({
+      code: 0,
+      message: 'success',
+      data: updated
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '改约失败' });
+  }
+});
+
+// 18. Products (GET)
+app.get('/api/v1/products', async (req, res) => {
+  try {
+    const list = await query(`SELECT * FROM products WHERE status = 'on'`);
+    const formatted = list.map(p => ({
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      imageUrl: p.image_url,
+      galleryUrls: typeof p.gallery_urls === 'string' ? JSON.parse(p.gallery_urls) : p.gallery_urls,
+      price: p.price,
+      originalPrice: p.original_price,
+      description: p.description,
+      stock: p.stock,
+      salesCount: p.sales_count
+    }));
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        list: formatted,
+        total: formatted.length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取商品列表失败' });
+  }
+});
+
+// 19. Product Detail (GET)
+app.get('/api/v1/products/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const p = await get(`SELECT * FROM products WHERE id = ?`, [id]);
+    if (!p) {
+      return res.status(404).json({ code: 404, message: '商品不存在' });
+    }
+    const formatted = {
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      imageUrl: p.image_url,
+      galleryUrls: typeof p.gallery_urls === 'string' ? JSON.parse(p.gallery_urls) : p.gallery_urls,
+      price: p.price,
+      originalPrice: p.original_price,
+      description: p.description,
+      stock: p.stock,
+      salesCount: p.sales_count
+    };
+    res.json({
+      code: 0,
+      message: 'success',
+      data: formatted
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取商品详情失败' });
+  }
+});
+
+// 20. Medical Records (GET)
+app.get('/api/v1/user/medical-records', authenticateWxToken, async (req, res) => {
+  try {
+    const list = await query(
+      `SELECT mr.*, p.name as patient_name, d.name as doctor_name, s.name as store_name
+       FROM medical_records mr
+       JOIN patients p ON mr.patient_id = p.id
+       JOIN doctors d ON mr.doctor_id = d.id
+       JOIN stores s ON mr.store_id = s.id
+       WHERE p.user_id = ?
+       ORDER BY mr.visit_date DESC`,
+      [req.user.id]
+    );
+
+    const formatted = list.map(mr => ({
+      id: mr.id,
+      patientId: mr.patient_id,
+      patientName: mr.patient_name,
+      doctorId: mr.doctor_id,
+      doctorName: mr.doctor_name,
+      storeId: mr.store_id,
+      storeName: mr.store_name,
+      visitDate: mr.visit_date,
+      diagnosis: mr.diagnosis,
+      prescription: mr.prescription,
+      doctorAdvice: mr.doctor_advice,
+      note: mr.note
+    }));
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        list: formatted,
+        total: formatted.length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取病历记录失败' });
+  }
+});
+
+// 21. Active Treatment Record (GET)
+app.get('/api/v1/treatment/record', authenticateWxToken, async (req, res) => {
+  try {
+    const patient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    if (!patient) {
+      return res.status(404).json({ code: 404, message: '患者记录未找到' });
+    }
+    const tr = await get(
+      `SELECT tr.*, mr.diagnosis, mr.doctor_advice 
+       FROM treatment_records tr
+       LEFT JOIN medical_records mr ON tr.medical_record_id = mr.id
+       WHERE tr.patient_id = ? AND tr.status = 'active'
+       LIMIT 1`,
+      [patient.id]
+    );
+
+    if (!tr) {
+      return res.status(404).json({ code: 404, message: '当前无活跃治疗记录' });
+    }
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        id: tr.id.toString(),
+        patientId: tr.patient_id.toString(),
+        appointmentId: tr.medical_record_id ? tr.medical_record_id.toString() : '',
+        doctorId: tr.doctor_id.toString(),
+        diagnosis: tr.diagnosis || '轻度阻塞性睡眠呼吸暂停（OSAS）',
+        treatmentPlan: `下颌前移式阻鼾器治疗，初始前移量${tr.initial_advancement}mm，当前前移量${tr.current_advancement}mm`,
+        deviceModel: tr.device_model,
+        adjustmentValue: Number(tr.current_advancement),
+        nextAdjustDate: tr.next_adjust_date || '',
+        doctorAdvice: tr.doctor_advice || '建议每晚佩戴，如有不适请及时就诊。',
+        followupDate: tr.next_adjust_date || '',
+        createdAt: tr.created_at
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取治疗记录失败' });
+  }
+});
+
+// ----------------------------------------
 // BOOTSTRAP DATABASE & SERVER
 // ----------------------------------------
 const startServer = async () => {

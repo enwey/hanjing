@@ -5,7 +5,7 @@ const miniProgram = accountInfo.miniProgram || {};
 const env = miniProgram.envVersion || "develop";
 
 const apiUrls = {
-  develop: "https://dev-api.hanjing.com/v1",
+  develop: "http://127.0.0.1:5005/api/v1",
   trial: "https://test-api.hanjing.com/v1",
   release: "https://api.hanjing.com/v1",
 };
