@@ -12,7 +12,10 @@ const t = () => "../../components/base/hj-navbar.js",
         s = o.useDoctorStore(),
         r = o.useAppointmentStore(),
         a = e.ref(!0),
-        i = e.ref([]);
+        i = e.ref([]),
+        j = e.ref("10,000+"),
+        k = e.ref("98%"),
+        l = e.ref("3");
       function c() {
         (r.resetFlow(), e.index.switchTab({ url: "/pages/appointment/index" }));
       }
@@ -29,8 +32,28 @@ const t = () => "../../components/base/hj-navbar.js",
       return (
         e.onMounted(async () => {
           (await Promise.all([n.fetchStores(), s.fetchDoctors()]),
-            (i.value = s.doctors.slice(0, 3)),
-            (a.value = !1));
+            (i.value = s.doctors.slice(0, 3)));
+          try {
+            await new Promise((resolve) => {
+              wx.request({
+                url: "http://127.0.0.1:5005/api/v1/home/stats",
+                success: (res) => {
+                  if (res.data && res.data.code === 0) {
+                    j.value = res.data.data.totalPatients.toLocaleString() + "+";
+                    k.value = res.data.data.satisfactionRate + "%";
+                    l.value = res.data.data.storeCount.toString();
+                  }
+                  resolve(null);
+                },
+                fail: () => {
+                  resolve(null);
+                }
+              });
+            });
+          } catch (err) {
+            console.error(err);
+          }
+          a.value = !1;
         }),
         (o, t) => ({
           a: e.p({ transparent: !0, "text-color": "#FFFFFF" }),
@@ -61,6 +84,9 @@ const t = () => "../../components/base/hj-navbar.js",
             c: "e9eb3795-2-" + n,
             d: e.p({ store: o }),
           })),
+          j: e.unref(j),
+          k: e.unref(k),
+          l: e.unref(l)
         })
       );
     },

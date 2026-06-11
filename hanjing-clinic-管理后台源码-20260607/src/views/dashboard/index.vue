@@ -52,15 +52,19 @@ const updateChart = (xData: string[], yData: number[]) => {
 // Fetch Stats from Real API
 const fetchStats = async () => {
   try {
-    const res: any = await request.get('/api/admin/dashboard/stats')
-    const { totalRevenue, totalAppointments, totalPatients, onlineDoctors, appointmentTrends } = res.data
+    const res: any = await request.get(`/api/admin/dashboard/stats?range=${filterTime.value}`)
+    const { totalRevenue, totalAppointments, totalPatients, visitRate, departments, onlineDoctors, periodLabel, appointmentTrends } = res.data
 
     kpiCards.value = [
-      { label: '累计预约', value: totalAppointments.toString(), trend: '↑ 实时', trendType: 'up', icon: '📅', color: 'blue' },
-      { label: '累计营收', value: '¥' + (totalRevenue / 100).toFixed(2), trend: '↑ 实时', trendType: 'up', icon: '💰', color: 'green' },
-      { label: '累计患者', value: totalPatients.toString(), trend: '↑ 实时', trendType: 'up', icon: '👥', color: 'gold' },
-      { label: '在线医生', value: onlineDoctors.toString(), trend: '↑ 实时', trendType: 'up', icon: '🔄', color: 'green' }
+      { label: periodLabel + '预约', value: totalAppointments.toString(), trend: '↑ 实时', trendType: 'up', icon: '📅', color: 'blue' },
+      { label: periodLabel + '营收', value: '¥' + (totalRevenue / 100).toFixed(2), trend: '↑ 实时', trendType: 'up', icon: '💰', color: 'green' },
+      { label: periodLabel + '新增患者', value: totalPatients.toString(), trend: '↑ 实时', trendType: 'up', icon: '👥', color: 'gold' },
+      { label: periodLabel + '到诊率', value: visitRate, trend: '↑ 实时', trendType: 'up', icon: '🔄', color: 'red' }
     ]
+
+    if (departments && departments.length > 0) {
+      depts.value = departments
+    }
 
     const now = new Date()
     updateTimeStr.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
