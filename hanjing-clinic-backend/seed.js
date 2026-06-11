@@ -35,17 +35,22 @@ export const seedData = async () => {
   const store1 = await run(
     `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['龙岗总店', 'SZ-LG', '深圳市龙岗区中心路123号鼾静大厦1楼', '深圳', '龙岗区', 22.7214, 114.2568, '0755-12345678', '09:00:00', '18:00:00', 'open', 1]
+    ['鼾静健康 · 龙岗总店', 'SZ-LG', '深圳市龙岗区吉华路达成工业区3号', '深圳', '龙岗区', 22.7214, 114.2568, '0755-89622999', '08:30:00', '18:00:00', 'open', 1]
   );
   const store2 = await run(
     `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['南山分院', 'SZ-NS', '深圳市南山区科技园高新南一道88号', '深圳', '南山区', 22.5401, 113.9345, '0755-87654321', '09:00:00', '21:00:00', 'open', 1]
+    ['鼾静健康 · 南山分院', 'SZ-NS', '深圳市南山区科技园南区数字大厦2楼', '深圳', '南山区', 22.5401, 113.9345, '0755-86282888', '09:00:00', '17:30:00', 'open', 1]
   );
   const store3 = await run(
     `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['福田门诊部', 'SZ-FT', '深圳市福田区深南大道6008号深圳特区报业大厦西侧', '深圳', '福田区', 22.5367, 114.0556, '0755-11223344', '09:00:00', '18:00:00', 'open', 0]
+    ['鼾静健康 · 福田门诊部', 'SZ-FT', '深圳市福田区深南大道财富大厦A座3楼', '深圳', '福田区', 22.5367, 114.0556, '0755-83511188', '08:30:00', '20:00:00', 'open', 0]
+  );
+  const store4 = await run(
+    `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ['鼾静健康 · 广州天河店', 'GZ-TH', '广州市天河区天河路385号太古汇2座', '广州', '天河区', 23.1342, 113.3352, '020-38688888', '09:00:00', '18:00:00', 'closed', 1]
   );
 
   // Store Features
@@ -54,6 +59,8 @@ export const seedData = async () => {
   await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store1.id, '睡眠呼吸监测']);
   await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store2.id, '夜间监测套房']);
   await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store2.id, '免费停车']);
+  await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store2.id, '地铁直达']);
+  await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store3.id, '热门']);
 
   // 4. Admin Users
   const passwordHash = crypto.createHash('sha256').update('admin123').digest('hex');

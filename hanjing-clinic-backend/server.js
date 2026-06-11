@@ -1409,7 +1409,7 @@ app.delete('/api/v1/user/family-members/:id', authenticateWxToken, async (req, r
 // 8. Stores (GET)
 app.get('/api/v1/stores', async (req, res) => {
   try {
-    const list = await query(`SELECT * FROM stores WHERE status = 'open'`);
+    const list = await query(`SELECT * FROM stores ORDER BY id ASC`);
     const formatted = [];
     for (const store of list) {
       const features = await query(`SELECT feature FROM store_features WHERE store_id = ?`, [store.id]);
@@ -1424,6 +1424,7 @@ app.get('/api/v1/stores', async (req, res) => {
         longitude: store.longitude,
         openTime: store.open_time,
         closeTime: store.close_time,
+        status: store.status,
         hasParking: store.has_parking === 1,
         features: features.map(f => f.feature)
       });
