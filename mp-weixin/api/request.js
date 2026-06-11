@@ -34,6 +34,7 @@ function request(options, mockCallback) {
       method: options.method || "GET",
       data: options.data,
       header: header,
+      timeout: 3000,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);
