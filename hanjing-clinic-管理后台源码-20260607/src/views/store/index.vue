@@ -78,18 +78,24 @@ const paginatedStores = computed(() => {
 })
 
 function openEdit(store: Store) {
-  editStore.value = { ...store }
+  editStore.value = { 
+    ...store,
+    featuresStr: store.features ? store.features.join(',') : ''
+  }
   editVisible.value = true
 }
 
 async function saveEdit() {
   try {
+    const tags = editStore.value.featuresStr
+      ? editStore.value.featuresStr.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
+      : []
     await request.put(`/api/admin/stores/${editStore.value.id}`, {
       name: editStore.value.name,
       address: editStore.value.address,
       phone: editStore.value.phone,
       status: editStore.value.status,
-      features: editStore.value.features
+      features: tags
     })
     MessagePlugin.success('修改门店信息成功')
     fetchStores()
@@ -138,6 +144,15 @@ async function saveEdit() {
               <div style="font-size:12px;color:#6B7280;line-height:1.6;" :title="store.address">{{ store.address }}</div>
               <div style="font-size:12px;color:#9CA3AF;margin-top:4px;">
                 📞 {{ store.phone }} · 🕐 {{ store.status === 'prepare' ? '待定' : store.openTime + '-' + store.closeTime }}
+              </div>
+              <!-- Tags / Features -->
+              <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
+                <span v-for="tag in store.features" :key="tag" style="font-size: 10px; background: #ECFDF5; color: #16A34A; padding: 2px 6px; border-radius: 4px; font-weight: 500;">
+                  {{ tag }}
+                </span>
+                <span v-if="!store.features || store.features.length === 0" style="font-size: 10px; background: #F3F4F6; color: #9CA3AF; padding: 2px 6px; border-radius: 4px;">
+                  暂无特色标签
+                </span>
               </div>
             </div>
           </div>
@@ -213,6 +228,9 @@ async function saveEdit() {
         </t-form-item>
         <t-form-item label="负责人">
           <t-input v-model="editStore.manager" />
+        </t-form-item>
+        <t-form-item label="特色标签">
+          <t-input v-model="editStore.featuresStr" placeholder="请输入特色标签，用中/英文逗号隔开" />
         </t-form-item>
         <t-form-item label="状态">
           <t-radio-group v-model="editStore.status">
