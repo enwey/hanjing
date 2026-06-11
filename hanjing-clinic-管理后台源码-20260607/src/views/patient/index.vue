@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
 
 const router = useRouter()
 const searchKeyword = ref('')
@@ -13,16 +14,6 @@ const detailTab = ref('info')
 const selectedPatient = ref<any>(null)
 
 const createVisible = ref(false)
-const createForm = ref({
-  name: '',
-  phone: '',
-  gender: '男',
-  age: 30,
-  level: '普通',
-  source: '小程序',
-  tagsInput: '',
-  medicalHistoryInput: ''
-})
 
 const levelSelectOptions = [
   { label: '普通', value: '普通' },
@@ -39,61 +30,11 @@ const sourceSelectOptions = [
 ]
 
 function openCreate() {
-  createForm.value = {
-    name: '',
-    phone: '',
-    gender: '男',
-    age: 30,
-    level: '普通',
-    source: '小程序',
-    tagsInput: '',
-    medicalHistoryInput: ''
-  }
   createVisible.value = true
 }
 
-function handleCreate() {
-  if (!createForm.value.name.trim()) {
-    MessagePlugin.warning('请填写患者姓名')
-    return
-  }
-  if (!createForm.value.phone.trim()) {
-    MessagePlugin.warning('请填写患者手机号')
-    return
-  }
-  
-  const ageVal = parseInt(createForm.value.age as any) || 0
-  const tags = createForm.value.tagsInput
-    ? createForm.value.tagsInput.split(/[,，]/).map(t => t.trim()).filter(Boolean)
-    : []
-  const medicalHistory = createForm.value.medicalHistoryInput
-    ? createForm.value.medicalHistoryInput.split(/[,，]/).map(h => h.trim()).filter(Boolean)
-    : []
-
-  const nextId = String(patients.value.length + 1)
-  const nextNo = `P2024${String(nextId).padStart(4, '0')}`
-
-  const newPatient: Patient = {
-    id: nextId,
-    no: nextNo,
-    name: createForm.value.name.trim(),
-    phone: createForm.value.phone.trim(),
-    gender: createForm.value.gender,
-    age: ageVal,
-    level: createForm.value.level,
-    lastVisit: '暂无',
-    totalVisits: 0,
-    totalSpent: 0,
-    source: createForm.value.source,
-    status: 'active',
-    tags,
-    medicalHistory,
-    records: []
-  }
-
-  patients.value.unshift(newPatient)
-  createVisible.value = false
-  MessagePlugin.success(`手动建档成功，病历号为 ${nextNo}`)
+function handleCreateSuccess() {
+  fetchPatients()
 }
 
 interface Record {
@@ -470,61 +411,10 @@ const statusMap: Record<string, { label: string; theme: string }> = {
     </t-drawer>
 
     <!-- 手动建档弹窗 -->
-    <t-dialog
+    <PatientCreateDialog
       v-model:visible="createVisible"
-      header="手动建档"
-      width="520px"
-      @confirm="handleCreate"
-      :cancelBtn="null"
-    >
-      <div class="dialog-body-form" style="padding: 12px 0; display: flex; flex-direction: column; gap: 14px;">
-        <div class="form-group">
-          <label class="form-label">姓名<span class="required">*</span></label>
-          <input type="text" class="form-control" v-model="createForm.name" placeholder="请输入患者姓名">
-        </div>
-        <div class="form-group">
-          <label class="form-label">手机号<span class="required">*</span></label>
-          <input type="text" class="form-control" v-model="createForm.phone" placeholder="请输入手机号">
-        </div>
-        <div class="form-group">
-          <label class="form-label">性别</label>
-          <t-radio-group v-model="createForm.gender">
-            <t-radio value="男">男</t-radio>
-            <t-radio value="女">女</t-radio>
-          </t-radio-group>
-        </div>
-        <div class="form-group">
-          <label class="form-label">年龄</label>
-          <input type="number" class="form-control" v-model.number="createForm.age" placeholder="请输入年龄">
-        </div>
-        <div class="form-group">
-          <label class="form-label">会员等级</label>
-          <select class="form-control" v-model="createForm.level">
-            <option value="普通">普通</option>
-            <option value="VIP">VIP</option>
-            <option value="SVIP">SVIP</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">来源渠道</label>
-          <select class="form-control" v-model="createForm.source">
-            <option value="小程序">小程序</option>
-            <option value="分销">分销</option>
-            <option value="转介绍">转介绍</option>
-            <option value="门店">门店</option>
-            <option value="直播">直播</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">患者标签</label>
-          <input type="text" class="form-control" v-model="createForm.tagsInput" placeholder="请输入标签，英文/中文逗号分隔">
-        </div>
-        <div class="form-group">
-          <label class="form-label">既往病史</label>
-          <textarea class="form-control" style="height: auto; min-height: 80px;" v-model="createForm.medicalHistoryInput" placeholder="请输入既往病史，英文/中文逗号分隔"></textarea>
-        </div>
-      </div>
-    </t-dialog>
+      @success="handleCreateSuccess"
+    />
   </div>
 </template>
 

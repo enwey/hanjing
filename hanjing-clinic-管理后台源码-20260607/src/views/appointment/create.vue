@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
+import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -20,51 +22,87 @@ const visitType = ref('复诊')
 const fee = ref('¥200.00')
 const remarks = ref('患者上次就诊后睡眠监测数据需复查，建议安排PSG监测')
 
-// Simulated patients database
-const patientsDb = [
-  { id: '1', name: '张明华', gender: '男', age: 52, phone: '138****6789', no: 'HZ20240001', level: 'VIP', avatarColor: '#3B6BF5' }
-]
+// Modal/Form States for registering new patient
+const createVisible = ref(false)
 
-onMounted(() => {
+onMounted(async () => {
   if (isReschedule.value) {
-    selectedPatient.value = patientsDb[0] // 张明华
-    selectedStore.value = '🏥 鼾静健康·龙岗总店'
-    selectedDoctor.value = '古堪民 · 主任医师 · 睡眠呼吸科'
-    selectedDate.value = '5月29日 周四'
-    selectedSlot.value = '09:30'
-    visitType.value = '复诊'
-    fee.value = '¥200.00'
-    remarks.value = '患者睡觉打鼾严重，伴随夜间间歇性呼吸暂停，白天偶发性改变，希望复查睡眠数据。'
+    try {
+      const res: any = await request.get(`/api/admin/appointments`)
+      const appt = res.data.find((a: any) => a.id.toString() === rescheduleId.value)
+      if (appt) {
+        selectedPatient.value = {
+          id: appt.patient_id.toString(),
+          name: appt.patient_name,
+          gender: appt.patient_gender === 1 ? '男' : '女',
+          age: appt.patient_age || 30,
+          phone: appt.patient_phone,
+          no: `P2026${String(appt.patient_id).padStart(4, '0')}`,
+          level: '普通',
+          avatarColor: appt.patient_gender === 1 ? '#3B6BF5' : '#EC4899'
+        }
+        selectedStore.value = appt.store_name
+        selectedDoctor.value = appt.doctor_name
+        selectedDate.value = appt.appointment_date
+        selectedSlot.value = appt.appointment_time
+        remarks.value = appt.symptom_desc || ''
+      }
+    } catch (e) {
+      console.error(e)
+    }
   }
 })
 
-function handleSearch() {
+async function handleSearch() {
   const q = searchQuery.value.trim()
   if (!q) {
     MessagePlugin.warning('请输入患者姓名或手机号搜索')
     return
   }
-  const found = patientsDb.find(p => p.name.includes(q) || p.phone.includes(q))
-  if (found) {
-    selectedPatient.value = found
-    MessagePlugin.success(`已找到患者 [${found.name}] 并成功选择`)
-  } else {
-    MessagePlugin.info('未找到匹配的已有患者，您可以点击“新患者建档”')
+  try {
+    const res: any = await request.get(`/api/admin/patients?search=${q}`)
+    if (res.data && res.data.length > 0) {
+      const found = res.data[0]
+      const levelMap: Record<string, string> = {
+        normal: '普通',
+        silver: 'VIP',
+        gold: 'VIP',
+        diamond: 'SVIP'
+      }
+      selectedPatient.value = {
+        id: found.id.toString(),
+        name: found.name,
+        gender: found.gender === 1 ? '男' : '女',
+        age: found.age || 30,
+        phone: found.phone || found.user_phone,
+        no: `P2026${String(found.id).padStart(4, '0')}`,
+        level: levelMap[found.member_level] || '普通',
+        avatarColor: found.gender === 1 ? '#3B6BF5' : '#EC4899'
+      }
+      MessagePlugin.success(`已找到并自动选择已有建档患者 [${found.name}]`)
+    } else {
+      MessagePlugin.info('未找到匹配的已有患者，您可以直接点击下方按钮进行“新患者建档”')
+    }
+  } catch (error) {
+    console.error(error)
   }
 }
 
 function handleAddNewPatient() {
+  createVisible.value = true
+}
+
+function handleCreatePatientSuccess(newP: any) {
   selectedPatient.value = {
-    id: 'new',
-    name: searchQuery.value || '未知患者',
-    gender: '男',
-    age: 30,
-    phone: '138****0000',
-    no: 'HZ' + Date.now().toString().slice(-6),
-    level: '普通',
-    avatarColor: '#10B981'
+    id: newP.id.toString(),
+    name: newP.name,
+    gender: newP.gender,
+    age: newP.age || 30,
+    phone: newP.phone,
+    no: `P2026${String(newP.id).padStart(4, '0')}`,
+    level: newP.level || '普通',
+    avatarColor: newP.gender === '男' ? '#3B6BF5' : '#EC4899'
   }
-  MessagePlugin.success('已新建临时患者档案并选择')
 }
 
 function handleRemovePatient() {
@@ -100,17 +138,50 @@ function handleCancel() {
   }
 }
 
-function handleCreate() {
+async function handleCreate() {
   if (!selectedPatient.value) {
     MessagePlugin.error('请先选择或新建患者')
     return
   }
-  if (isReschedule.value) {
-    MessagePlugin.success(`预约改约成功！已向患者 ${selectedPatient.value.name} 发送改约确认短信。`)
-    router.push(`/appointment/detail/${rescheduleId.value}`)
-  } else {
-    MessagePlugin.success(`预约创建成功！已向患者 ${selectedPatient.value.name} 发送确认短信。`)
-    router.push('/appointment')
+
+  let storeId = 1
+  if (selectedStore.value.includes('南山分院')) storeId = 2
+  else if (selectedStore.value.includes('福田门诊部')) storeId = 3
+
+  let doctorId = 1
+  if (selectedDoctor.value.includes('王志远')) doctorId = 2
+  else if (selectedDoctor.value.includes('刘婉清')) doctorId = 3
+
+  let dateStr = '2026-05-29'
+  if (selectedDate.value.includes('5月30日')) dateStr = '2026-05-30'
+  else if (selectedDate.value.includes('5月31日')) dateStr = '2026-05-31'
+
+  const slotHour = parseInt(selectedSlot.value.split(':')[0])
+  const period = slotHour < 12 ? 'morning' : 'afternoon'
+
+  try {
+    if (isReschedule.value) {
+      await request.put(`/api/admin/appointments/${rescheduleId.value}`, {
+        status: 'confirmed'
+      })
+      MessagePlugin.success(`预约改约成功！已修改就诊时间。`)
+      router.push(`/appointment/detail/${rescheduleId.value}`)
+    } else {
+      await request.post('/api/admin/appointments', {
+        patient_id: parseInt(selectedPatient.value.id),
+        store_id: storeId,
+        doctor_id: doctorId,
+        date: dateStr,
+        period: period,
+        time: selectedSlot.value,
+        type: visitType.value === '初诊' ? 'first' : 'followup',
+        symptom_desc: remarks.value
+      })
+      MessagePlugin.success(`预约创建成功！已写入门诊就诊记录`)
+      router.push('/appointment')
+    }
+  } catch (error) {
+    console.error(error)
   }
 }
 </script>
@@ -251,6 +322,13 @@ function handleCreate() {
         </div>
       </div>
     </div>
+    
+    <!-- 统一共用新患者建档弹窗 -->
+    <PatientCreateDialog
+      v-model:visible="createVisible"
+      :default-name="searchQuery"
+      @success="handleCreatePatientSuccess"
+    />
   </div>
 </template>
 

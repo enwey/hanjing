@@ -243,6 +243,51 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   }
 });
 
+app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
+  const { patient_id, store_id, doctor_id, date, period, time, type, symptom_desc } = req.body;
+  
+  if (!patient_id || !store_id || !doctor_id || !date || !time) {
+    return res.status(400).json({ code: 400, message: '必填参数缺失' });
+  }
+
+  try {
+    const appointment_no = `APPT${date.replace(/-/g, '')}${String(Date.now()).slice(-4)}`;
+    
+    let schedule = await get(
+      `SELECT id FROM doctor_schedules WHERE doctor_id = ? AND date = ? AND period = ?`,
+      [doctor_id, date, period || 'morning']
+    );
+    
+    let schedule_id;
+    if (schedule) {
+      schedule_id = schedule.id;
+      await run(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [schedule_id]);
+    } else {
+      const schedResult = await run(
+        `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, booked_slots)
+         VALUES (?, ?, ?, ?, '09:00:00', '12:00:00', 6, 1)`,
+        [doctor_id, store_id, date, period || 'morning']
+      );
+      schedule_id = schedResult.id;
+    }
+
+    const patientObj = await get(`SELECT user_id FROM patients WHERE id = ?`, [patient_id]);
+    const user_id = patientObj ? patientObj.user_id : 1;
+
+    await run(
+      `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'walk_in')`,
+      [appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, date, time, type || 'first', symptom_desc || '']
+    );
+
+    res.json({ code: 200, message: '新建预约成功', data: { appointment_no } });
+  } catch (error) {
+    console.error('Failed to create appointment:', error);
+    res.status(500).json({ code: 500, message: '新建预约失败' });
+  }
+});
+
+
 // ----------------------------------------
 // 4. PATIENTS & CLINICAL FLOWS
 // ----------------------------------------
@@ -270,6 +315,60 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
     res.status(500).json({ code: 500, message: '获取患者列表失败' });
   }
 });
+
+app.post('/api/admin/patients', authenticateToken, async (req, res) => {
+  const { name, phone, gender, age, level, source } = req.body;
+  if (!name || !phone) {
+    return res.status(400).json({ code: 400, message: '姓名和手机号为必填项' });
+  }
+
+  try {
+    // 1. Create a user entry
+    const openid = `manual_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const genderVal = gender === '男' ? 1 : gender === '女' ? 2 : 0;
+    
+    // Map member level
+    const levelMap = {
+      '普通': 'normal',
+      'VIP': 'silver',
+      'SVIP': 'diamond'
+    };
+    const memberLevel = levelMap[level] || 'normal';
+
+    const userResult = await run(
+      `INSERT INTO users (openid, nickname, phone, gender, member_level) VALUES (?, ?, ?, ?, ?)`,
+      [openid, name, phone, genderVal, memberLevel]
+    );
+
+    // 2. Create the patient entry
+    const patientResult = await run(
+      `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, 'self', ?, ?, ?, 0)`,
+      [userResult.id, name, genderVal, age || null, phone]
+    );
+
+    res.json({
+      code: 200,
+      message: '手动建档成功',
+      data: {
+        id: patientResult.id,
+        name,
+        phone,
+        gender,
+        age,
+        level,
+        source
+      }
+    });
+  } catch (error) {
+    console.error('Failed to create patient:', error);
+    if (error.message && error.message.includes('UNIQUE')) {
+      res.status(400).json({ code: 400, message: '该手机号已在系统中建档' });
+    } else {
+      res.status(500).json({ code: 500, message: '手动建档失败' });
+    }
+  }
+});
+
 
 app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
