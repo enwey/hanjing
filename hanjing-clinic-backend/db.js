@@ -141,9 +141,15 @@ export const initDB = async () => {
       experience_years INT DEFAULT 0,
       rating DECIMAL(2, 1) DEFAULT 5.0,
       consult_fee INT DEFAULT 0,
-      status TINYINT DEFAULT 1
+      status TINYINT DEFAULT 1,
+      expertise JSON DEFAULT NULL
     );
   `);
+  try {
+    await query(`ALTER TABLE doctors ADD COLUMN expertise JSON DEFAULT NULL;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
 
   // 6. doctor_store_mapping
   await query(`

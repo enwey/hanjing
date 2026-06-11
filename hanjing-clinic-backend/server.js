@@ -687,16 +687,16 @@ app.get('/api/admin/doctors', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/doctors', authenticateToken, async (req, res) => {
-  const { name, title, specialty, hospital, intro, consult_fee, status } = req.body;
+  const { name, title, specialty, hospital, intro, consult_fee, status, expertise } = req.body;
   if (!name || !title || !specialty) {
     return res.status(400).json({ code: 400, message: '必填信息缺失（姓名、职称、科室）' });
   }
 
   try {
     const result = await run(
-      `INSERT INTO doctors (name, title, specialty, hospital, intro, consult_fee, status, avatar_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, title, specialty, hospital || '', intro || '', consult_fee || 0, status !== undefined ? status : 1, '/static/demo/doctor-4.jpg']
+      `INSERT INTO doctors (name, title, specialty, hospital, intro, consult_fee, status, avatar_url, expertise)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [name, title, specialty, hospital || '', intro || '', consult_fee || 0, status !== undefined ? status : 1, '/static/demo/doctor-4.jpg', expertise ? JSON.stringify(expertise) : null]
     );
     res.json({ code: 200, message: '添加医生成功', data: { id: result.id } });
   } catch (error) {
@@ -706,14 +706,14 @@ app.post('/api/admin/doctors', authenticateToken, async (req, res) => {
 
 app.put('/api/admin/doctors/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { name, title, specialty, hospital, intro, consult_fee, status } = req.body;
+  const { name, title, specialty, hospital, intro, consult_fee, status, expertise } = req.body;
 
   try {
     await run(
       `UPDATE doctors 
-       SET name = ?, title = ?, specialty = ?, hospital = ?, intro = ?, consult_fee = ?, status = ?
+       SET name = ?, title = ?, specialty = ?, hospital = ?, intro = ?, consult_fee = ?, status = ?, expertise = ?
        WHERE id = ?`,
-      [name, title, specialty, hospital || '', intro || '', consult_fee || 0, status !== undefined ? status : 1, id]
+      [name, title, specialty, hospital || '', intro || '', consult_fee || 0, status !== undefined ? status : 1, expertise ? JSON.stringify(expertise) : null, id]
     );
     res.json({ code: 200, message: '编辑医生成功' });
   } catch (error) {
@@ -1430,13 +1430,28 @@ app.get('/api/v1/doctors', async (req, res) => {
     for (const d of list) {
       const storesMapping = await query(`SELECT store_id FROM doctor_store_mapping WHERE doctor_id = ?`, [d.id]);
       
-      let expertise = ['阻鼾器适配', '睡眠健康辅导'];
-      if (d.specialty === '睡眠呼吸科' || d.specialty === '睡眠呼吸') {
-        expertise = ['睡眠呼吸暂停综合症', '鼾症非手术治疗', '阻鼾器适配', '下颌前移治疗'];
-      } else if (d.specialty === '耳鼻喉科') {
-        expertise = ['鼻内镜诊断', '上气道评估', '过敏性鼻炎与鼾症', '多导睡眠监测'];
-      } else if (d.specialty === '心理科' || d.specialty === '口腔正畸') {
-        expertise = ['正畸辅导', '睡眠行为干预', '情绪焦虑管理', '依从性辅导'];
+      let expertise = null;
+      if (d.expertise) {
+        try {
+          const parsed = typeof d.expertise === 'string' ? JSON.parse(d.expertise) : d.expertise;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            expertise = parsed;
+          }
+        } catch (e) {
+          console.error('Failed to parse expertise JSON:', e);
+        }
+      }
+
+      if (!expertise || expertise.length === 0) {
+        if (d.specialty === '睡眠呼吸科' || d.specialty === '睡眠呼吸') {
+          expertise = ['睡眠呼吸暂停综合症', '鼾症非手术治疗', '阻鼾器适配', '下颌前移治疗'];
+        } else if (d.specialty === '耳鼻喉科') {
+          expertise = ['鼻内镜诊断', '上气道评估', '过敏性鼻炎与鼾症', '多导睡眠监测'];
+        } else if (d.specialty === '心理科' || d.specialty === '口腔正畸') {
+          expertise = ['正畸辅导', '睡眠行为干预', '情绪焦虑管理', '依从性辅导'];
+        } else {
+          expertise = ['阻鼾器适配', '睡眠健康辅导'];
+        }
       }
 
       formatted.push({

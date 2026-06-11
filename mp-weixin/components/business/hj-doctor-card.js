@@ -12,7 +12,7 @@ const o = () => "../base/hj-tag.js",
       c: t.p({ text: o.doctor.title, type: "primary", size: "sm" }),
       d: t.t(o.doctor.specialty),
       e: t.t(o.doctor.experience),
-      f: t.f(o.doctor.expertise.slice(0, 2), (o, e, c) => ({
+      f: t.f((o.doctor.expertise || []).slice(0, 2), (o, e, c) => ({
         a: t.t(o),
         b: o,
       })),

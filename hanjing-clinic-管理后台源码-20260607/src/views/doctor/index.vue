@@ -18,19 +18,30 @@ const fetchDoctors = async () => {
       'linear-gradient(135deg, #EC4899, #BE185D)',
       'linear-gradient(135deg, #10B981, #047857)'
     ]
-    primaryDoctors.value = res.data.map((d: any, index: number) => ({
-      id: d.id.toString(),
-      name: d.name,
-      title: d.title,
-      specialty: d.specialty,
-      store: d.id === 1 ? '龙岗总店 · 南山分院' : (d.id === 2 ? '龙岗总店' : '福田门诊部'),
-      avatarChar: d.name.charAt(0),
-      avatarBg: gradients[index % gradients.length],
-      consults: d.id === 1 ? 328 : (d.id === 2 ? 256 : 189),
-      rating: d.rating || 5.0,
-      positiveRate: d.id === 1 ? '98%' : (d.id === 2 ? '96%' : '99%'),
-      isOnline: d.status === 1
-    }))
+    primaryDoctors.value = res.data.map((d: any, index: number) => {
+      let tags = []
+      if (d.expertise) {
+        try {
+          tags = typeof d.expertise === 'string' ? JSON.parse(d.expertise) : d.expertise
+        } catch (e) {
+          console.error('Failed to parse doctor expertise JSON:', e)
+        }
+      }
+      return {
+        id: d.id.toString(),
+        name: d.name,
+        title: d.title,
+        specialty: d.specialty,
+        store: d.id === 1 ? '龙岗总店 · 南山分院' : (d.id === 2 ? '龙岗总店' : '福田门诊部'),
+        avatarChar: d.name.charAt(0),
+        avatarBg: gradients[index % gradients.length],
+        consults: d.id === 1 ? 328 : (d.id === 2 ? 256 : 189),
+        rating: d.rating || 5.0,
+        positiveRate: d.id === 1 ? '98%' : (d.id === 2 ? '96%' : '99%'),
+        isOnline: d.status === 1,
+        expertise: tags
+      }
+    })
   } catch (error) {
     console.error('Failed to load doctors:', error)
   }
@@ -93,7 +104,8 @@ const formData = ref({
   title: '主任医师',
   specialty: '',
   store: '',
-  isOnline: true
+  isOnline: true,
+  expertiseStr: ''
 })
 
 function openSchedule(doctorId: string) {
@@ -107,7 +119,8 @@ function handleAddDoctor() {
     title: '主任医师',
     specialty: '',
     store: '',
-    isOnline: true
+    isOnline: true,
+    expertiseStr: ''
   }
   showEdit.value = true
 }
@@ -123,7 +136,8 @@ function handleEditDoctor(id: string) {
     title: d.title,
     specialty: d.specialty,
     store: d.store,
-    isOnline: d.isOnline
+    isOnline: d.isOnline,
+    expertiseStr: d.expertise ? d.expertise.join(',') : ''
   }
   showEdit.value = true
 }
@@ -134,6 +148,10 @@ async function handleSave() {
     return
   }
   
+  const tags = formData.value.expertiseStr
+    ? formData.value.expertiseStr.split(/[,，]/).map(s => s.trim()).filter(Boolean)
+    : []
+
   try {
     if (isEdit.value) {
       const d = primaryDoctors.value[editIndex.value]
@@ -143,7 +161,8 @@ async function handleSave() {
         specialty: formData.value.specialty,
         hospital: '鼾静门诊部',
         intro: '执业医师',
-        status: formData.value.isOnline ? 1 : 0
+        status: formData.value.isOnline ? 1 : 0,
+        expertise: tags.length > 0 ? tags : null
       })
       MessagePlugin.success('保存医生档案成功')
     } else {
@@ -153,7 +172,8 @@ async function handleSave() {
         specialty: formData.value.specialty,
         hospital: '鼾静门诊部',
         intro: '执业医师',
-        status: formData.value.isOnline ? 1 : 0
+        status: formData.value.isOnline ? 1 : 0,
+        expertise: tags.length > 0 ? tags : null
       })
       MessagePlugin.success('新增医生档案成功')
     }
@@ -221,6 +241,15 @@ function handleNextWeek() {
           <div style="font-size: 12px; color: #3B6BF5; margin-top: 2px;">{{ dr.title }} · {{ dr.specialty }}</div>
           <!-- Store -->
           <div style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">{{ dr.store }}</div>
+          <!-- Tags / Expertise -->
+          <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 8px; min-height: 20px;">
+            <span v-for="tag in dr.expertise" :key="tag" style="font-size: 10px; background: #EBF2FF; color: #3B6BF5; padding: 2px 6px; border-radius: 4px; font-weight: 500;">
+              {{ tag }}
+            </span>
+            <span v-if="!dr.expertise || dr.expertise.length === 0" style="font-size: 10px; background: #F3F4F6; color: #9CA3AF; padding: 2px 6px; border-radius: 4px; border: 1px dashed #D1D5DB;">
+              默认科室标签
+            </span>
+          </div>
           
           <!-- Statistics Row -->
           <div style="display: flex; justify-content: center; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #F3F4F6;">
@@ -310,6 +339,13 @@ function handleNextWeek() {
         <div class="form-group">
           <label class="form-label">就诊门店<span class="required">*</span></label>
           <input type="text" class="form-control" v-model="formData.store" placeholder="例如：龙岗总店 · 南山分院">
+        </div>
+        <div class="form-group">
+          <label class="form-label">擅长标签</label>
+          <input type="text" class="form-control" v-model="formData.expertiseStr" placeholder="请输入标签，多个以中/英文逗号隔开">
+          <div style="font-size: 11px; color: #9CA3AF; margin-top: 2px;">
+            留空时，将自动根据医生科室匹配默认标签（如“睡眠呼吸暂停综合症”等）。
+          </div>
         </div>
         <div class="form-group" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-top: 4px;">
           <label class="form-label" style="margin-bottom: 0;">是否在岗/在线</label>
