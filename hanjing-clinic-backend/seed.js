@@ -68,8 +68,8 @@ export const seedData = async () => {
 
   // 5. Doctors
   const doc1 = await run(
-    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status, consult_count, review_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       '古堪民',
       '/static/demo/doctor-1.jpg',
@@ -80,12 +80,14 @@ export const seedData = async () => {
       25,
       4.9,
       10000, // 100元
-      1
+      1,
+      4850,
+      325
     ]
   );
   const doc2 = await run(
-    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status, consult_count, review_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       '王志远',
       '/static/demo/doctor-2.jpg',
@@ -96,12 +98,14 @@ export const seedData = async () => {
       18,
       4.8,
       8000, // 80元
-      1
+      1,
+      3590,
+      241
     ]
   );
   const doc3 = await run(
-    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status, consult_count, review_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       '刘婉清',
       '/static/demo/doctor-3.jpg',
@@ -112,7 +116,9 @@ export const seedData = async () => {
       12,
       4.9,
       5000, // 50元
-      1
+      1,
+      2510,
+      169
     ]
   );
 

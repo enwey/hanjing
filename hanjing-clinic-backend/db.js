@@ -142,11 +142,23 @@ export const initDB = async () => {
       rating DECIMAL(2, 1) DEFAULT 5.0,
       consult_fee INT DEFAULT 0,
       status TINYINT DEFAULT 1,
-      expertise JSON DEFAULT NULL
+      expertise JSON DEFAULT NULL,
+      consult_count INT DEFAULT 0,
+      review_count INT DEFAULT 0
     );
   `);
   try {
     await query(`ALTER TABLE doctors ADD COLUMN expertise JSON DEFAULT NULL;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE doctors ADD COLUMN consult_count INT DEFAULT 0;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE doctors ADD COLUMN review_count INT DEFAULT 0;`);
   } catch (err) {
     // Ignore error if column already exists
   }

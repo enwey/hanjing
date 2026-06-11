@@ -680,7 +680,16 @@ app.post('/api/admin/patients/:id/follow-ups/records', authenticateToken, async 
 app.get('/api/admin/doctors', authenticateToken, async (req, res) => {
   try {
     const list = await query(`SELECT * FROM doctors ORDER BY id ASC`);
-    res.json({ code: 200, data: list });
+    const formatted = [];
+    for (const d of list) {
+      const appCountRow = await get(`SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ?`, [d.id]);
+      const appCount = appCountRow ? appCountRow.count : 0;
+      formatted.push({
+        ...d,
+        consult_count: (d.consult_count || 0) + appCount
+      });
+    }
+    res.json({ code: 200, data: formatted });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取医生列表失败' });
   }
@@ -1454,6 +1463,9 @@ app.get('/api/v1/doctors', async (req, res) => {
         }
       }
 
+      const appCountRow = await get(`SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ?`, [d.id]);
+      const appCount = appCountRow ? appCountRow.count : 0;
+
       formatted.push({
         id: d.id,
         name: d.name,
@@ -1467,8 +1479,8 @@ app.get('/api/v1/doctors', async (req, res) => {
         experienceYears: d.experience_years,
         expertise,
         rating: Number(d.rating) || 5.0,
-        reviewCount: d.experience_years * 12 + 25,
-        consultCount: d.experience_years * 180 + 350,
+        reviewCount: d.review_count || 0,
+        consultCount: (d.consult_count || 0) + appCount,
         consultFee: d.consult_fee,
         storeIds: storesMapping.map(m => m.store_id)
       });

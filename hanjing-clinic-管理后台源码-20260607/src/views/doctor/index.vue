@@ -35,9 +35,9 @@ const fetchDoctors = async () => {
         store: d.id === 1 ? '龙岗总店 · 南山分院' : (d.id === 2 ? '龙岗总店' : '福田门诊部'),
         avatarChar: d.name.charAt(0),
         avatarBg: gradients[index % gradients.length],
-        consults: d.id === 1 ? 328 : (d.id === 2 ? 256 : 189),
-        rating: d.rating || 5.0,
-        positiveRate: d.id === 1 ? '98%' : (d.id === 2 ? '96%' : '99%'),
+        consults: d.consult_count || 0,
+        rating: Number(d.rating) || 5.0,
+        positiveRate: d.rating ? Math.round((Number(d.rating) / 5) * 100) + '%' : '100%',
         isOnline: d.status === 1,
         expertise: tags
       }
