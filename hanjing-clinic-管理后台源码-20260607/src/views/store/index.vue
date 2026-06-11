@@ -146,11 +146,11 @@ async function saveEdit() {
                 📞 {{ store.phone }} · 🕐 {{ store.status === 'prepare' ? '待定' : store.openTime + '-' + store.closeTime }}
               </div>
               <!-- Tags / Features -->
-              <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
-                <span v-for="tag in store.features" :key="tag" style="font-size: 10px; background: #ECFDF5; color: #16A34A; padding: 2px 6px; border-radius: 4px; font-weight: 500;">
+              <div style="display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px;">
+                <span v-for="tag in store.features" :key="tag" style="font-size: 9px; background: #ECFDF5; color: #16A34A; padding: 2px 4px; border-radius: 4px; font-weight: 500;">
                   {{ tag }}
                 </span>
-                <span v-if="!store.features || store.features.length === 0" style="font-size: 10px; background: #F3F4F6; color: #9CA3AF; padding: 2px 6px; border-radius: 4px;">
+                <span v-if="!store.features || store.features.length === 0" style="font-size: 9px; background: #F3F4F6; color: #9CA3AF; padding: 2px 4px; border-radius: 4px;">
                   暂无特色标签
                 </span>
               </div>

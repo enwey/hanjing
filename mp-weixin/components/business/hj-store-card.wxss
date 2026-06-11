@@ -101,13 +101,13 @@
 }
 .store-card-tags.data-v-3c596062 {
   display: flex;
-  gap: 4px;
+  gap: 3px;
 }
 .store-card-tag.data-v-3c596062 {
-  font-size: 11px;
+  font-size: 9px;
   color: #3b6bf5;
   background: #eef4ff;
-  padding: 2px 6px;
+  padding: 2px 4px;
   border-radius: 4px;
 }
 .store-card-address.data-v-3c596062 {
