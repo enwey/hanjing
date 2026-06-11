@@ -1413,6 +1413,17 @@ app.get('/api/v1/stores', async (req, res) => {
     const formatted = [];
     for (const store of list) {
       const features = await query(`SELECT feature FROM store_features WHERE store_id = ?`, [store.id]);
+      
+      const docCountRow = await get(`SELECT COUNT(*) as count FROM doctor_store_mapping WHERE store_id = ?`, [store.id]);
+      const doctorCount = docCountRow ? docCountRow.count : 0;
+
+      const formatTime = (t) => {
+        if (!t) return '';
+        const parts = t.split(':');
+        return `${parts[0]}:${parts[1]}`;
+      };
+      const businessHours = `${formatTime(store.open_time)}-${formatTime(store.close_time)}`;
+
       formatted.push({
         id: store.id,
         name: store.name,
@@ -1425,8 +1436,12 @@ app.get('/api/v1/stores', async (req, res) => {
         openTime: store.open_time,
         closeTime: store.close_time,
         status: store.status,
+        isOpen: store.status === 'open',
         hasParking: store.has_parking === 1,
-        features: features.map(f => f.feature)
+        features: features.map(f => f.feature),
+        tags: features.map(f => f.feature),
+        doctorCount,
+        businessHours
       });
     }
     res.json({ code: 0, message: 'success', data: formatted });

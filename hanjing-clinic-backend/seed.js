@@ -124,10 +124,21 @@ export const seedData = async () => {
   );
 
   // Doctor Store Mapping
+  // doc1 (古堪民)执业于: 龙岗总店, 南山分院, 福田门诊部
   await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc1.id, store1.id]);
   await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc1.id, store2.id]);
+  await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc1.id, store3.id]);
+
+  // doc2 (王志远)执业于: 龙岗总店, 南山分院, 福田门诊部, 广州天河店
   await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc2.id, store1.id]);
+  await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc2.id, store2.id]);
+  await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc2.id, store3.id]);
+  await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc2.id, store4.id]);
+
+  // doc3 (刘婉清)执业于: 龙岗总店, 福田门诊部, 广州天河店
+  await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc3.id, store1.id]);
   await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc3.id, store3.id]);
+  await run(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [doc3.id, store4.id]);
 
   // 6. Users & Patients
   const user1 = await run(
