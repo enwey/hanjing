@@ -68,8 +68,8 @@ export const seedData = async () => {
 
   // 5. Doctors
   const doc1 = await run(
-    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status, consult_count, review_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       '古堪民',
       '/static/demo/doctor-1.jpg',
@@ -80,14 +80,12 @@ export const seedData = async () => {
       25,
       4.9,
       10000, // 100元
-      1,
-      4850,
-      325
+      1
     ]
   );
   const doc2 = await run(
-    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status, consult_count, review_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       '王志远',
       '/static/demo/doctor-2.jpg',
@@ -98,14 +96,12 @@ export const seedData = async () => {
       18,
       4.8,
       8000, // 80元
-      1,
-      3590,
-      241
+      1
     ]
   );
   const doc3 = await run(
-    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status, consult_count, review_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO doctors (name, avatar_url, title, specialty, hospital, intro, experience_years, rating, consult_fee, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       '刘婉清',
       '/static/demo/doctor-3.jpg',
@@ -116,9 +112,7 @@ export const seedData = async () => {
       12,
       4.9,
       5000, // 50元
-      1,
-      2510,
-      169
+      1
     ]
   );
 
@@ -620,6 +614,129 @@ export const seedData = async () => {
       'approved'
     ]
   );
+
+  // 31. Seed Historical Doctor Appointments & Evaluations
+  console.log('Seeding extra historical appointments and evaluations...');
+  
+  // Doctor 1: 古堪民 (12 appointments, 8 evaluations)
+  const doc1ApptIds = [];
+  for (let i = 1; i <= 12; i++) {
+    const apptNo = `APPT_SEED_D1_${String(i).padStart(4, '0')}`;
+    const result = await run(
+      `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        apptNo,
+        user1.id,
+        patient1.id,
+        store1.id,
+        doc1.id,
+        1,
+        '2026-05-28',
+        '09:00 - 09:30',
+        'first',
+        i <= 10 ? 'completed' : 'pending',
+        `打鼾评估与常规咨询 #${i}`
+      ]
+    );
+    doc1ApptIds.push(result.id);
+  }
+  
+  // Seed evaluations for Doctor 1 (Target average: 4.9)
+  const d1Ratings = [5, 5, 4.8, 5, 4.9, 5, 5, 4.8];
+  for (let i = 0; i < d1Ratings.length; i++) {
+    await run(
+      `INSERT INTO appointment_evaluations (appointment_id, doctor_id, user_id, rating, content)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        doc1ApptIds[i],
+        doc1.id,
+        user1.id,
+        d1Ratings[i],
+        `古医生非常专业，态度很好，给的阻鼾器调节方案非常管用，睡觉不打鼾了。评价 #${i+1}`
+      ]
+    );
+  }
+
+  // Doctor 2: 王志远 (10 appointments, 6 evaluations)
+  const doc2ApptIds = [];
+  for (let i = 1; i <= 10; i++) {
+    const apptNo = `APPT_SEED_D2_${String(i).padStart(4, '0')}`;
+    const result = await run(
+      `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        apptNo,
+        user2.id,
+        patient3.id,
+        store1.id,
+        doc2.id,
+        3,
+        '2026-05-28',
+        '10:30 - 11:00',
+        'first',
+        i <= 8 ? 'completed' : 'pending',
+        `耳鼻喉科阻鼾器筛查咨询 #${i}`
+      ]
+    );
+    doc2ApptIds.push(result.id);
+  }
+
+  // Seed evaluations for Doctor 2 (Target average: 4.8)
+  const d2Ratings = [5, 4.8, 4.5, 5, 4.8, 4.7];
+  for (let i = 0; i < d2Ratings.length; i++) {
+    await run(
+      `INSERT INTO appointment_evaluations (appointment_id, doctor_id, user_id, rating, content)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        doc2ApptIds[i],
+        doc2.id,
+        user2.id,
+        d2Ratings[i],
+        `王医生检查得很细致，分析了上气道阻塞的具体原因，非常有帮助。评价 #${i+1}`
+      ]
+    );
+  }
+
+  // Doctor 3: 刘婉清 (8 appointments, 5 evaluations)
+  const doc3ApptIds = [];
+  for (let i = 1; i <= 8; i++) {
+    const apptNo = `APPT_SEED_D3_${String(i).padStart(4, '0')}`;
+    const result = await run(
+      `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        apptNo,
+        user1.id,
+        patient1.id,
+        store3.id,
+        doc3.id,
+        3,
+        '2026-05-28',
+        '14:30 - 15:00',
+        'first',
+        i <= 6 ? 'completed' : 'pending',
+        `睡眠行为干预与习惯随访 #${i}`
+      ]
+    );
+    doc3ApptIds.push(result.id);
+  }
+
+  // Seed evaluations for Doctor 3 (Target average: 4.9)
+  const d3Ratings = [5, 5, 4.8, 5, 4.7];
+  for (let i = 0; i < d3Ratings.length; i++) {
+    await run(
+      `INSERT INTO appointment_evaluations (appointment_id, doctor_id, user_id, rating, content)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        doc3ApptIds[i],
+        doc3.id,
+        user1.id,
+        d3Ratings[i],
+        `刘医生的睡眠干预方案很管用，帮助我调整了心理依从性，现在佩戴阻鼾器很顺畅。评价 #${i+1}`
+      ]
+    );
+  }
 
   console.log('Database seeded successfully.');
 };

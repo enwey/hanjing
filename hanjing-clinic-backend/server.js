@@ -682,11 +682,26 @@ app.get('/api/admin/doctors', authenticateToken, async (req, res) => {
     const list = await query(`SELECT * FROM doctors ORDER BY id ASC`);
     const formatted = [];
     for (const d of list) {
-      const appCountRow = await get(`SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ?`, [d.id]);
-      const appCount = appCountRow ? appCountRow.count : 0;
+      const consultRow = await get(`SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ?`, [d.id]);
+      const consultCount = consultRow ? consultRow.count : 0;
+      
+      const reviewRow = await get(
+        `SELECT COUNT(*) as count, AVG(rating) as avg_rating 
+         FROM appointment_evaluations 
+         WHERE doctor_id = ?`,
+        [d.id]
+      );
+      const reviewCount = reviewRow ? reviewRow.count : 0;
+      let rating = 5.0;
+      if (reviewRow && reviewRow.avg_rating !== null) {
+        rating = Math.round(Number(reviewRow.avg_rating) * 10) / 10;
+      }
+
       formatted.push({
         ...d,
-        consult_count: (d.consult_count || 0) + appCount
+        consult_count: consultCount,
+        review_count: reviewCount,
+        rating: rating
       });
     }
     res.json({ code: 200, data: formatted });
@@ -1463,8 +1478,22 @@ app.get('/api/v1/doctors', async (req, res) => {
         }
       }
 
-      const appCountRow = await get(`SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ?`, [d.id]);
-      const appCount = appCountRow ? appCountRow.count : 0;
+      // Calculate real consult count (actual appointments in the database)
+      const consultRow = await get(`SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ?`, [d.id]);
+      const consultCount = consultRow ? consultRow.count : 0;
+
+      // Calculate real review count and average rating from actual evaluations
+      const reviewRow = await get(
+        `SELECT COUNT(*) as count, AVG(rating) as avg_rating 
+         FROM appointment_evaluations 
+         WHERE doctor_id = ?`,
+        [d.id]
+      );
+      const reviewCount = reviewRow ? reviewRow.count : 0;
+      let rating = 5.0;
+      if (reviewRow && reviewRow.avg_rating !== null) {
+        rating = Math.round(Number(reviewRow.avg_rating) * 10) / 10;
+      }
 
       formatted.push({
         id: d.id,
@@ -1478,9 +1507,9 @@ app.get('/api/v1/doctors', async (req, res) => {
         experience: d.experience_years,
         experienceYears: d.experience_years,
         expertise,
-        rating: Number(d.rating) || 5.0,
-        reviewCount: d.review_count || 0,
-        consultCount: (d.consult_count || 0) + appCount,
+        rating,
+        reviewCount,
+        consultCount,
         consultFee: d.consult_fee,
         storeIds: storesMapping.map(m => m.store_id)
       });

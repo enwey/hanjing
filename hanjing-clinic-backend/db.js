@@ -142,23 +142,11 @@ export const initDB = async () => {
       rating DECIMAL(2, 1) DEFAULT 5.0,
       consult_fee INT DEFAULT 0,
       status TINYINT DEFAULT 1,
-      expertise JSON DEFAULT NULL,
-      consult_count INT DEFAULT 0,
-      review_count INT DEFAULT 0
+      expertise JSON DEFAULT NULL
     );
   `);
   try {
     await query(`ALTER TABLE doctors ADD COLUMN expertise JSON DEFAULT NULL;`);
-  } catch (err) {
-    // Ignore error if column already exists
-  }
-  try {
-    await query(`ALTER TABLE doctors ADD COLUMN consult_count INT DEFAULT 0;`);
-  } catch (err) {
-    // Ignore error if column already exists
-  }
-  try {
-    await query(`ALTER TABLE doctors ADD COLUMN review_count INT DEFAULT 0;`);
   } catch (err) {
     // Ignore error if column already exists
   }
@@ -607,6 +595,22 @@ export const initDB = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
       FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE SET NULL
+    );
+  `);
+
+  // 33. appointment_evaluations
+  await query(`
+    CREATE TABLE IF NOT EXISTS appointment_evaluations (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      appointment_id BIGINT UNSIGNED UNIQUE NOT NULL,
+      doctor_id BIGINT UNSIGNED NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      rating DECIMAL(2, 1) NOT NULL,
+      content TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+      FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
