@@ -1965,13 +1965,16 @@ app.get('/api/v1/home/stats', async (req, res) => {
   try {
     const patientCountRow = await get(`SELECT COUNT(*) as count FROM patients`);
     const storeCountRow = await get(`SELECT COUNT(*) as count FROM stores WHERE status = 'open'`);
+    const avgRatingRow = await get(`SELECT AVG(rating) as avg FROM doctors WHERE status = 1`);
+    
+    const satisfaction = avgRatingRow.avg ? Math.round((avgRatingRow.avg / 5) * 100) : 98;
     
     res.json({
       code: 0,
       message: 'success',
       data: {
-        totalPatients: 10000 + (patientCountRow.count || 0),
-        satisfactionRate: 98,
+        totalPatients: patientCountRow.count || 0,
+        satisfactionRate: satisfaction,
         storeCount: storeCountRow.count || 0
       }
     });
