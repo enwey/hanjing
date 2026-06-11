@@ -140,11 +140,13 @@
   justify-content: space-around;
   background: #fff;
   margin: -20px 16px 16px;
-  padding: 28px 0;
   border-radius: 16px;
   position: relative;
   z-index: 2;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.section.quick-actions.data-v-e9eb3795 {
+  padding: 28px 16px;
 }
 .quick-action.data-v-e9eb3795 {
   display: flex;
