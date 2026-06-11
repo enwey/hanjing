@@ -1429,16 +1429,31 @@ app.get('/api/v1/doctors', async (req, res) => {
     const formatted = [];
     for (const d of list) {
       const storesMapping = await query(`SELECT store_id FROM doctor_store_mapping WHERE doctor_id = ?`, [d.id]);
+      
+      let expertise = ['阻鼾器适配', '睡眠健康辅导'];
+      if (d.specialty === '睡眠呼吸科' || d.specialty === '睡眠呼吸') {
+        expertise = ['睡眠呼吸暂停综合症', '鼾症非手术治疗', '阻鼾器适配', '下颌前移治疗'];
+      } else if (d.specialty === '耳鼻喉科') {
+        expertise = ['鼻内镜诊断', '上气道评估', '过敏性鼻炎与鼾症', '多导睡眠监测'];
+      } else if (d.specialty === '心理科' || d.specialty === '口腔正畸') {
+        expertise = ['正畸辅导', '睡眠行为干预', '情绪焦虑管理', '依从性辅导'];
+      }
+
       formatted.push({
         id: d.id,
         name: d.name,
-        avatarUrl: d.avatar_url || '/static/demo/avatar.jpg',
+        avatar: d.avatar_url || '/static/demo/doctor-1.jpg',
+        avatarUrl: d.avatar_url || '/static/demo/doctor-1.jpg',
         title: d.title,
         specialty: d.specialty,
-        hospital: d.hospital,
-        intro: d.intro,
+        hospital: d.hospital || '',
+        intro: d.intro || '',
+        experience: d.experience_years,
         experienceYears: d.experience_years,
-        rating: Number(d.rating),
+        expertise,
+        rating: Number(d.rating) || 5.0,
+        reviewCount: d.experience_years * 12 + 25,
+        consultCount: d.experience_years * 180 + 350,
         consultFee: d.consult_fee,
         storeIds: storesMapping.map(m => m.store_id)
       });
