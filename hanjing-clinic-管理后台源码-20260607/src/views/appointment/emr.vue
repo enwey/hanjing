@@ -189,7 +189,7 @@ const handleSubmit = async () => {
         <span class="crumb-current">医生接诊工作台</span>
       </div>
       <div class="header-main">
-        <h1 class="page-title">🩺 门诊诊疗与病历建档</h1>
+        <h1 class="page-title">门诊诊疗与病历建档</h1>
         <div class="header-actions">
           <button class="btn btn-outline" @click="router.push('/queue')">取消</button>
           <button class="btn btn-primary" :disabled="submitting" @click="handleSubmit">

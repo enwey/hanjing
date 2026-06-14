@@ -461,7 +461,7 @@ async function submitCreateAppt() {
     <!-- Header Selector Bar -->
     <div class="page-title-row">
       <div>
-        <div class="page-title">🩺 医生专属接诊工作台</div>
+        <div class="page-title">医生专属接诊工作台</div>
         <div class="page-title-sub">独立诊室呼叫、体征查阅、病历处方录入与费用结算</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">

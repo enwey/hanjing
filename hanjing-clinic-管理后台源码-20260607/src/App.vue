@@ -309,6 +309,19 @@ function logout() {
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                   </svg>
+                  <!-- 排队分诊 📣 -->
+                  <svg v-else-if="item.icon === '📣'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                  </svg>
+                  <!-- 接诊工作台 🩺 -->
+                  <svg v-else-if="item.icon === '🩺'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4.8 3h14.4"></path>
+                    <path d="M4.8 3v4.8c0 4.8 7.2 4.8 7.2 9.6v1.8"></path>
+                    <path d="M19.2 3v4.8c0 3.6-3.6 4.8-4.8 6.4"></path>
+                    <circle cx="12" cy="21" r="2"></circle>
+                  </svg>
                   <!-- 患者管理 🧑‍⚕️ -->
                   <svg v-else-if="item.icon === '🧑‍⚕️'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
