@@ -1,31 +1,83 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
 const appointmentId = ref(route.params.id as string || '1')
 
 /* ---- Appointment Data ---- */
-const appointment = ref({
+const appointment = ref<any>({
   id: appointmentId.value,
-  no: 'BK20260529001',
-  status: 'checked_in', // confirmed, checked_in, completed, cancelled
-  createTime: '2026-05-28 14:32',
-  patient: '张明华',
-  phone: '138****6789',
-  level: 'VIP',
-  isNew: false, // 复诊
-  doctor: '古堪民 主任医师',
+  no: '',
+  status: '',
+  createTime: '',
+  patient: '',
+  phone: '',
+  level: '普通',
+  isNew: false,
+  doctor: '',
   dept: '睡眠呼吸科',
-  store: '龙岗总店',
-  dateTime: '5月29日 周四 09:30',
-  type: '复诊',
-  fee: '200.00',
-  feeStatus: 'paid', // paid
-  source: '小程序',
-  symptom: '睡觉打鼾严重，伴随夜间间歇性呼吸暂停，白天偶发性改变，希望复查睡眠数据。'
+  store: '',
+  dateTime: '',
+  type: '',
+  fee: '0.00',
+  feeStatus: 'paid',
+  source: '',
+  symptom: '',
+  pre_exam: null
+})
+
+const fetchAppointmentDetail = async () => {
+  try {
+    const res: any = await request.get(`/api/admin/appointments/${appointmentId.value}`)
+    if (res.code === 200 && res.data) {
+      const appt = res.data
+      appointment.value = {
+        id: appt.id.toString(),
+        no: appt.appointment_no,
+        status: appt.status,
+        createTime: appt.created_at ? (() => {
+          const d = new Date(appt.created_at);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const date = String(d.getDate()).padStart(2, '0');
+          const h = String(d.getHours()).padStart(2, '0');
+          const min = String(d.getMinutes()).padStart(2, '0');
+          return `${y}-${m}-${date} ${h}:${min}`;
+        })() : '',
+        patient: appt.patient_name,
+        phone: appt.patient_phone,
+        level: appt.patient_age >= 60 ? '老人特需' : '普通',
+        isNew: appt.type === 'first',
+        doctor: appt.doctor_name,
+        dept: appt.doctor_specialty || '睡眠呼吸科',
+        store: appt.store_name,
+        dateTime: appt.appointment_date ? (() => {
+          const d = new Date(appt.appointment_date);
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const date = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${date} ${appt.appointment_time}`;
+        })() : appt.appointment_time,
+        type: appt.type === 'first' ? '初诊' : '复诊',
+        fee: appt.type === 'first' ? '200.00' : '100.00',
+        feeStatus: 'paid',
+        source: appt.source === 'mini_app' ? '小程序' : appt.source === 'telephone' ? '电话' : '到店',
+        symptom: appt.symptom_desc || '无主诉描述',
+        pre_exam: appt.pre_exam
+      }
+    }
+  } catch (error) {
+    console.error('获取预约详情失败:', error)
+    MessagePlugin.error('获取预约详情失败')
+  }
+}
+
+onMounted(() => {
+  fetchAppointmentDetail()
 })
 
 function handleBack() {
@@ -40,13 +92,23 @@ function handleReschedule() {
   router.push(`/appointment/create?reschedule=1&id=${appointmentId.value}`)
 }
 
-function handleCancel() {
-  appointment.value.status = 'cancelled'
-  MessagePlugin.success(`预约单 ${appointment.value.no} 已成功取消。`)
+async function handleCancel() {
+  try {
+    await request.put(`/api/admin/appointments/${appointmentId.value}`, { status: 'cancelled', cancel_reason: '后台管理员手动取消' })
+    MessagePlugin.success(`预约单 ${appointment.value.no} 已成功取消。`)
+    fetchAppointmentDetail()
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('取消预约失败')
+  }
 }
 
 function handleViewProfile() {
-  router.push(`/patient/detail/1`)
+  if (appointment.value.patient_id) {
+    router.push(`/patient/detail/${appointment.value.patient_id}`)
+  } else {
+    MessagePlugin.warning('暂无关联的患者档案ID')
+  }
 }
 </script>
 
@@ -59,12 +121,12 @@ function handleViewProfile() {
       <div>
         <div class="page-title">
           {{ appointment.no }}
-          <span class="status-tag green" v-if="appointment.status === 'checked_in'">已到诊</span>
-          <span class="status-tag blue" v-else-if="appointment.status === 'confirmed'">已确认</span>
-          <span class="status-tag gray" v-else-if="appointment.status === 'completed'">已完成</span>
+          <span class="status-tag green" v-if="appointment.status === 'completed' || appointment.status === 'checked_in'">已到诊</span>
+          <span class="status-tag blue" v-else-if="appointment.status === 'confirmed' || appointment.status === 'waiting'">候诊中</span>
+          <span class="status-tag orange" v-else-if="appointment.status === 'pending'">待确认</span>
           <span class="status-tag red" v-else-if="appointment.status === 'cancelled'">已取消</span>
         </div>
-        <div class="page-title-sub">创建于 {{ appointment.createTime }} · 小程序预约</div>
+        <div class="page-title-sub">创建于 {{ appointment.createTime }} · {{ appointment.source }}预约</div>
       </div>
       <div class="action-buttons">
         <button class="btn btn-outline" @click="handlePrint">🖨️ 打印</button>
@@ -128,6 +190,52 @@ function handleViewProfile() {
           <div class="info-item">
             <div class="info-label">挂号费</div>
             <div class="info-value" style="color: var(--primary-500);">¥{{ appointment.fee }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 预检体征信息 -->
+    <div v-if="appointment.pre_exam" class="panel" style="margin-top: 16px;">
+      <div class="panel-header">
+        <div class="panel-title">🩺 预检体征信息</div>
+      </div>
+      <div class="panel-body">
+        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px;">
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
+            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">身高</div>
+            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.pre_exam.height }} <span style="font-size: 12px; font-weight: normal; color: #6B7280;">cm</span></div>
+          </div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
+            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">体重</div>
+            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.pre_exam.weight }} <span style="font-size: 12px; font-weight: normal; color: #6B7280;">kg</span></div>
+          </div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
+            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">收缩压</div>
+            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.pre_exam.systolic_bp || '--' }} <span style="font-size: 12px; font-weight: normal; color: #6B7280;">mmHg</span></div>
+          </div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
+            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">舒张压</div>
+            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.pre_exam.diastolic_bp || '--' }} <span style="font-size: 12px; font-weight: normal; color: #6B7280;">mmHg</span></div>
+          </div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
+            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">颈围</div>
+            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.pre_exam.neck_circumference || '--' }} <span style="font-size: 12px; font-weight: normal; color: #6B7280;">cm</span></div>
+          </div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
+            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">BMI</div>
+            <div style="font-size: 18px; font-weight: 700; color: #111827; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              {{ appointment.pre_exam.bmi || '--' }}
+              <span v-if="appointment.pre_exam.bmi" :style="{
+                fontSize: '11px',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                color: '#fff',
+                background: parseFloat(appointment.pre_exam.bmi) >= 28 ? '#EF4444' : parseFloat(appointment.pre_exam.bmi) >= 24 ? '#F59E0B' : parseFloat(appointment.pre_exam.bmi) >= 18.5 ? '#10B981' : '#3B6BF5'
+              }">
+                {{ parseFloat(appointment.pre_exam.bmi) >= 28 ? '肥胖' : parseFloat(appointment.pre_exam.bmi) >= 24 ? '超重' : parseFloat(appointment.pre_exam.bmi) >= 18.5 ? '正常' : '偏瘦' }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -433,6 +541,13 @@ function handleViewProfile() {
 }
 .status-tag.red::before {
   background: #EF4444;
+}
+.status-tag.orange {
+  background: #FFFBEB;
+  color: #D97706;
+}
+.status-tag.orange::before {
+  background: #F59E0B;
 }
 
 .tag {

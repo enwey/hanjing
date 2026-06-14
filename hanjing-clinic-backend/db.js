@@ -625,6 +625,22 @@ export const initDB = async () => {
     );
   `);
 
+  // 34. appointment_pre_exams
+  await query(`
+    CREATE TABLE IF NOT EXISTS appointment_pre_exams (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      appointment_id BIGINT UNSIGNED UNIQUE NOT NULL,
+      height DECIMAL(5,2),
+      weight DECIMAL(5,2),
+      systolic_bp INT,
+      diastolic_bp INT,
+      neck_circumference DECIMAL(4,1),
+      bmi DECIMAL(4,1),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+    );
+  `);
+
   // Re-enable Foreign Key checks
   await query('SET FOREIGN_KEY_CHECKS = 1;');
 

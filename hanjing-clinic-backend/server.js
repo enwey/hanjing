@@ -290,6 +290,31 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const appt = await get(
+      `SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.medical_history, p.user_id as patient_user_id,
+              d.name as doctor_name, d.specialty as doctor_specialty, s.name as store_name
+       FROM appointments a
+       JOIN patients p ON a.patient_id = p.id
+       JOIN doctors d ON a.doctor_id = d.id
+       JOIN stores s ON a.store_id = s.id
+       WHERE a.id = ?`,
+      [id]
+    );
+    if (!appt) {
+      return res.status(404).json({ code: 404, message: '预约记录不存在' });
+    }
+    const preExam = await get('SELECT * FROM appointment_pre_exams WHERE appointment_id = ?', [id]);
+    appt.pre_exam = preExam || null;
+    res.json({ code: 200, data: appt });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '获取预约详情失败' });
+  }
+});
+
 app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { status, cancel_reason } = req.body;
@@ -1282,6 +1307,130 @@ app.get('/api/admin/roles', authenticateToken, async (req, res) => {
     res.json({ code: 200, data: roles });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取角色列表失败' });
+  }
+});
+
+// Pre-exam vitals routes
+app.post('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { height, weight, systolicBp, diastolicBp, neckCircumference, bmi } = req.body;
+  try {
+    const existing = await get('SELECT id FROM appointment_pre_exams WHERE appointment_id = ?', [id]);
+    if (existing) {
+      await run(
+        `UPDATE appointment_pre_exams 
+         SET height = ?, weight = ?, systolic_bp = ?, diastolic_bp = ?, neck_circumference = ?, bmi = ?
+         WHERE appointment_id = ?`,
+        [height, weight, systolicBp, diastolicBp, neckCircumference, bmi, id]
+      );
+    } else {
+      await run(
+        `INSERT INTO appointment_pre_exams (appointment_id, height, weight, systolic_bp, diastolic_bp, neck_circumference, bmi)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id, height, weight, systolicBp, diastolicBp, neckCircumference, bmi]
+      );
+    }
+    res.json({ code: 200, message: '保存预检信息成功' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '保存预检信息失败' });
+  }
+});
+
+app.get('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const data = await get('SELECT * FROM appointment_pre_exams WHERE appointment_id = ?', [id]);
+    res.json({ code: 200, data });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取体征信息失败' });
+  }
+});
+
+// Bind distributor to patient
+app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { promoter_user_id } = req.body;
+  try {
+    const patient = await get('SELECT user_id FROM patients WHERE id = ?', [id]);
+    if (!patient) {
+      return res.status(404).json({ code: 404, message: '患者不存在' });
+    }
+    const child_user_id = patient.user_id;
+    const existing = await get('SELECT id FROM distribution_relationships WHERE child_user_id = ?', [child_user_id]);
+    if (existing) {
+      await run('UPDATE distribution_relationships SET parent_user_id = ? WHERE child_user_id = ?', [promoter_user_id, child_user_id]);
+    } else {
+      await run('INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)', [promoter_user_id, child_user_id]);
+    }
+    res.json({ code: 200, message: '绑定推广人成功' });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '操作失败' });
+  }
+});
+
+// Create billing order
+app.post('/api/admin/orders', authenticateToken, async (req, res) => {
+  const { patient_id, items, pay_amount, discount_amount, coupon_id, pay_method } = req.body;
+  if (!patient_id || !items || items.length === 0) {
+    return res.status(400).json({ code: 400, message: '参数缺失' });
+  }
+  try {
+    const patient = await get('SELECT user_id, name, phone FROM patients WHERE id = ?', [patient_id]);
+    if (!patient) {
+      return res.status(404).json({ code: 404, message: '患者不存在' });
+    }
+    const user_id = patient.user_id;
+    const order_no = `ORD${Date.now()}${String(Math.floor(Math.random() * 100)).padStart(2, '0')}`;
+    let total_amount = 0;
+    for (const item of items) {
+      total_amount += item.price * item.quantity;
+    }
+
+    const orderResult = await run(
+      `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, shipping_address)
+       VALUES (?, ?, 'offline', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'paid', ?)`,
+      [order_no, user_id, total_amount, discount_amount || 0, coupon_id || null, pay_amount, pay_method || 'wechat', JSON.stringify({ receiver: patient.name, phone: patient.phone, province: '广东省', city: '深圳市', district: '到店自提', detail: '到店就诊收银' })]
+    );
+
+    for (const item of items) {
+      await run(
+        `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [orderResult.id, item.product_id, item.product_name, item.product_image || '', item.price, item.quantity]
+      );
+    }
+
+    // Process distribution commission if any
+    const relationship = await get(
+      `SELECT parent_user_id FROM distribution_relationships WHERE child_user_id = ?`,
+      [user_id]
+    );
+    if (relationship) {
+      const promoter = await get(
+        `SELECT id FROM distributors WHERE user_id = ?`,
+        [relationship.parent_user_id]
+      );
+      if (promoter) {
+        const commission = Math.round(pay_amount * 0.1);
+        await run(
+          `INSERT INTO distribution_orders (order_id, distributor_id, buyer_name, order_amount, commission_amount, commission_level, status, settled_at)
+           VALUES (?, ?, ?, ?, ?, 1, 'settled', CURRENT_TIMESTAMP)`,
+          [orderResult.id, promoter.id, `${patient.name} (${patient.phone})`, pay_amount, commission]
+        );
+        await run(
+          `UPDATE distributors 
+           SET total_commission = total_commission + ?, available_commission = available_commission + ?
+           WHERE id = ?`,
+          [commission, commission, promoter.id]
+        );
+      }
+    }
+
+    res.json({ code: 200, message: '收费收银成功', data: { order_no, order_id: orderResult.id } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '收银失败' });
   }
 });
 
