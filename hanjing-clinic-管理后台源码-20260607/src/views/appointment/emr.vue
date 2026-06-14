@@ -180,22 +180,17 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="emr-workspace">
-    <!-- Breadcrumb & Title -->
-    <div class="workspace-header">
-      <div class="breadcrumb">
-        <span class="crumb-link" @click="router.push('/queue')">📣 排队分诊</span>
-        <span class="crumb-separator">/</span>
-        <span class="crumb-current">医生接诊工作台</span>
+  <div class="page-container">
+    <div class="page-title-row">
+      <div>
+        <div class="page-title">门诊诊疗与病历建档</div>
+        <div class="page-title-sub">录入患者电子病历、处方方案及同步建档睡眠治疗</div>
       </div>
-      <div class="header-main">
-        <h1 class="page-title">门诊诊疗与病历建档</h1>
-        <div class="header-actions">
-          <button class="btn btn-outline" @click="router.push('/queue')">取消</button>
-          <button class="btn btn-primary" :disabled="submitting" @click="handleSubmit">
-            {{ submitting ? '提交中...' : '💾 保存并结束就诊' }}
-          </button>
-        </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn btn-outline" @click="router.push('/queue')">取消</button>
+        <button class="btn btn-primary" :disabled="submitting" @click="handleSubmit">
+          {{ submitting ? '提交中...' : '💾 保存并结束就诊' }}
+        </button>
       </div>
     </div>
 
@@ -481,55 +476,6 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
-.emr-workspace {
-  padding: 16px;
-  background-color: #F9FAFB;
-  min-height: calc(100vh - 100px);
-}
-
-.workspace-header {
-  margin-bottom: 20px;
-}
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  font-size: 13px;
-  color: #6B7280;
-  margin-bottom: 8px;
-}
-
-.crumb-link {
-  cursor: pointer;
-}
-.crumb-link:hover {
-  color: var(--primary-500);
-}
-.crumb-separator {
-  margin: 0 8px;
-}
-.crumb-current {
-  color: #374151;
-  font-weight: 500;
-}
-
-.header-main {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.page-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-}
 
 .loading-state {
   display: flex;
