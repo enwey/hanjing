@@ -381,9 +381,9 @@ async function submitCheckout() {
     <!-- Panel Wrapper -->
     <div class="panel">
       <!-- Filter panel with Status Tabs (Left) and Dropdowns (Right) -->
-      <div class="filter-bar">
+      <div class="filter-bar" style="flex-wrap: nowrap; overflow-x: auto; gap: 16px;">
         <!-- Left: Filter Tabs -->
-        <div class="filter-tabs">
+        <div class="filter-tabs" style="flex-shrink: 0;">
           <div
             v-for="tab in tabOptions"
             :key="tab.value"
@@ -410,7 +410,7 @@ async function submitCheckout() {
         </div>
 
         <!-- Right: Dropdowns and Search -->
-        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; flex-shrink: 0;">
           <t-input
             v-model="searchKeyword"
             placeholder="搜索患者/预约单号"
