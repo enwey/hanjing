@@ -315,6 +315,10 @@ function closeCheckoutDialog() {
   selectedQueueItem.value = null
 }
 
+function goToEmr(item: QueueItem) {
+  router.push(`/appointment/emr/${item.id}`)
+}
+
 function handlePrintInvoice() {
   MessagePlugin.success('已发送打印指令，正在打印交易凭证小票...')
 }
@@ -599,6 +603,9 @@ const filteredTodayAppointments = computed(() => {
             <div class="action-row">
               <t-button size="extra-small" theme="primary" variant="outline" @click="callPatient(q.current.patientName, q.doctorName)">
                 叫号
+              </t-button>
+              <t-button size="extra-small" theme="success" variant="outline" @click="goToEmr(q.current)">
+                诊疗录入
               </t-button>
               <t-button size="extra-small" theme="warning" variant="outline" @click="openCheckoutDialog(q.current)">
                 收银

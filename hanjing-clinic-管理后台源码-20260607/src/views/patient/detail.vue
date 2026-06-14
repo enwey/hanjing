@@ -202,6 +202,26 @@ const loadTreatmentAndChart = async () => {
   }
 }
 
+const medicalRecords = ref<any[]>([])
+const selectedRecord = ref<any>(null)
+const recordDialogVisible = ref(false)
+
+const fetchMedicalRecords = async () => {
+  try {
+    const res: any = await request.get(`/api/admin/patients/${patientId.value}/medical-records`)
+    if (res.code === 200) {
+      medicalRecords.value = res.data
+    }
+  } catch (error) {
+    console.error('获取门诊病历失败:', error)
+  }
+}
+
+const showMedicalRecordDetail = (record: any) => {
+  selectedRecord.value = record
+  recordDialogVisible.value = true
+}
+
 onMounted(() => {
   if (chartRef.value) {
     myChart = echarts.init(chartRef.value)
@@ -278,6 +298,7 @@ onMounted(() => {
   loadPatientDetails()
   fetchFollowups()
   loadTreatmentAndChart()
+  fetchMedicalRecords()
 })
 
 function handleBack() {
@@ -440,12 +461,15 @@ function handleFollowup() {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="ev in timelineEvents.filter(x => x.color !== 'red')" :key="ev.id">
-                <td>{{ ev.date.split(' · ')[0] }}</td>
+              <tr v-for="mr in medicalRecords" :key="mr.id">
+                <td>{{ mr.visit_date }}</td>
                 <td>睡眠呼吸科</td>
-                <td>{{ ev.date.split(' · ')[2] || '古堪民' }}</td>
-                <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ ev.content }}</td>
-                <td><button class="btn btn-xs btn-outline">看病历</button></td>
+                <td>{{ mr.doctor_name }} ({{ mr.doctor_title || '主任医师' }})</td>
+                <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ mr.diagnosis }}</td>
+                <td><button class="btn btn-xs btn-outline" @click="showMedicalRecordDetail(mr)">看病历</button></td>
+              </tr>
+              <tr v-if="medicalRecords.length === 0">
+                <td colspan="5" style="text-align: center; color: #9CA3AF; padding: 20px;">暂无门诊就诊病历记录</td>
               </tr>
             </tbody>
           </table>
@@ -512,6 +536,50 @@ function handleFollowup() {
         </div>
       </div>
     </div>
+
+    <!-- 电子病历详情查看弹窗 -->
+    <t-dialog
+      v-model:visible="recordDialogVisible"
+      header="门诊电子病历详情"
+      width="600px"
+      :footer="null"
+    >
+      <div v-if="selectedRecord" class="record-detail-modal" style="padding: 10px 0; font-size: 14px; color: #374151; line-height: 1.6;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #E5E7EB;">
+          <div><strong>就诊时间:</strong> {{ selectedRecord.visit_date }}</div>
+          <div><strong>就诊门店:</strong> {{ selectedRecord.store_name }}</div>
+          <div><strong>接诊医生:</strong> {{ selectedRecord.doctor_name }} ({{ selectedRecord.doctor_title || '主任医师' }})</div>
+          <div><strong>就诊科室:</strong> 睡眠呼吸科</div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">🩺 临床诊断：</div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid var(--primary-500); white-space: pre-wrap;">
+            {{ selectedRecord.diagnosis }}
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">💊 治疗方案 / 处方：</div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid var(--success-500); white-space: pre-wrap;">
+            {{ selectedRecord.prescription || '未开具处方' }}
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">📣 医嘱建议：</div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid #F59E0B; white-space: pre-wrap;">
+            {{ selectedRecord.doctor_advice || '无' }}
+          </div>
+        </div>
+        <div v-if="selectedRecord.note" style="margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">📝 备注：</div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; color: #6B7280; white-space: pre-wrap;">
+            {{ selectedRecord.note }}
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+          <t-button theme="default" @click="recordDialogVisible = false">关闭</t-button>
+        </div>
+      </div>
+    </t-dialog>
   </div>
 </template>
 

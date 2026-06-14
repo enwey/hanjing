@@ -38,6 +38,18 @@ const router = createRouter({
       meta: { title: '预约详情', parentPath: '/appointment' }
     },
     {
+      path: '/appointment/checkout',
+      name: 'appointment-checkout',
+      component: () => import('@/views/appointment/checkout.vue'),
+      meta: { title: '收银结账', parentPath: '/appointment' }
+    },
+    {
+      path: '/appointment/emr/:id',
+      name: 'appointment-emr',
+      component: () => import('@/views/appointment/emr.vue'),
+      meta: { title: '诊疗录入', parentPath: '/appointment' }
+    },
+    {
       path: '/queue',
       name: 'queue',
       component: () => import('@/views/appointment/queue.vue'),

@@ -588,6 +588,29 @@ app.post('/api/admin/patients/:id/medical-records', authenticateToken, async (re
   }
 });
 
+// Sleep Assessments (睡眠与鼾声评估详情)
+app.get('/api/admin/assessments/ess/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const ess = await get('SELECT * FROM ess_assessments WHERE id = ?', [id]);
+    if (!ess) return res.status(404).json({ code: 404, message: 'ESS评估记录不存在' });
+    res.json({ code: 200, data: ess });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取ESS评估详情失败' });
+  }
+});
+
+app.get('/api/admin/assessments/snore/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const snore = await get('SELECT * FROM snore_assessments WHERE id = ?', [id]);
+    if (!snore) return res.status(404).json({ code: 404, message: '鼾声评估记录不存在' });
+    res.json({ code: 200, data: snore });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取鼾声评估详情失败' });
+  }
+});
+
 // Treatment Records (治疗建档 & 随访数据)
 app.get('/api/admin/patients/:id/treatment', authenticateToken, async (req, res) => {
   const { id } = req.params;
