@@ -687,5 +687,10 @@ async function submitCheckout() {
   border-color: var(--primary-500, #3B6BF5);
   box-shadow: 0 0 0 2px rgba(59, 107, 245, 0.1);
 }
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 </style>
 
