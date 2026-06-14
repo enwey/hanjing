@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
 
 const router = useRouter()
 
@@ -292,6 +293,135 @@ const delayPatient = (item: QueueItem) => {
 
 onMounted(() => {
   fetchAppointments()
+})
+
+// Walk-in Registration dialog states & actions
+const createApptVisible = ref(false)
+const apptSearchQuery = ref('')
+const apptSelectedPatient = ref<any>(null)
+const apptStore = ref('🏥 鼾静健康·龙岗总店')
+const apptDoctor = ref('古堪民 · 主任医师 · 睡眠呼吸科')
+const apptDate = ref('2026-05-29')
+const apptSlot = ref('09:30')
+const apptVisitType = ref('复诊')
+const apptPromoterId = ref<string | null>(null)
+const apptRemarks = ref('')
+
+const apptPatientCreateVisible = ref(false)
+
+function openCreateApptDialog() {
+  apptSearchQuery.value = ''
+  apptSelectedPatient.value = null
+  apptStore.value = '🏥 鼾静健康·龙岗总店'
+  apptDoctor.value = '古堪民 · 主任医师 · 睡眠呼吸科'
+  apptDate.value = '2026-05-29'
+  apptSlot.value = '09:30'
+  apptVisitType.value = '复诊'
+  apptPromoterId.value = null
+  apptRemarks.value = ''
+  createApptVisible.value = true
+}
+
+function closeCreateApptDialog() {
+  createApptVisible.value = false
+}
+
+async function handlePatientSearch() {
+  const q = apptSearchQuery.value.trim()
+  if (!q) {
+    MessagePlugin.warning('请输入患者姓名或手机号搜索')
+    return
+  }
+  try {
+    const res: any = await request.get(`/api/admin/patients?search=${q}`)
+    if (res.data && res.data.length > 0) {
+      const found = res.data[0]
+      apptSelectedPatient.value = {
+        id: found.id.toString(),
+        name: found.name,
+        gender: found.gender === 1 ? '男' : '女',
+        phone: found.phone || found.user_phone
+      }
+      MessagePlugin.success(`已自动选择患者 [${found.name}]`)
+    } else {
+      MessagePlugin.info('未找到匹配的已有患者，您可以直接点击 “建档” 按钮录入新患者')
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+function openNewPatientCreate() {
+  apptPatientCreateVisible.value = true
+}
+
+function handleNewPatientSuccess(newP: any) {
+  apptSelectedPatient.value = {
+    id: newP.id.toString(),
+    name: newP.name,
+    gender: newP.gender,
+    phone: newP.phone
+  }
+  apptPatientCreateVisible.value = false
+}
+
+async function handleCreateApptSubmit() {
+  if (!apptSelectedPatient.value) {
+    MessagePlugin.error('请先选择或建档患者')
+    return
+  }
+
+  let storeId = 1
+  if (apptStore.value.includes('南山分院')) storeId = 2
+  else if (apptStore.value.includes('福田门诊部')) storeId = 3
+
+  let doctorId = 1
+  if (apptDoctor.value.includes('王志远')) doctorId = 2
+  else if (apptDoctor.value.includes('刘婉清')) doctorId = 3
+
+  const slotHour = parseInt(apptSlot.value.split(':')[0])
+  const period = slotHour < 12 ? 'morning' : 'afternoon'
+
+  try {
+    await request.post('/api/admin/appointments', {
+      patient_id: parseInt(apptSelectedPatient.value.id),
+      store_id: storeId,
+      doctor_id: doctorId,
+      date: apptDate.value,
+      period: period,
+      time: apptSlot.value,
+      type: apptVisitType.value === '初诊' ? 'first' : 'followup',
+      symptom_desc: apptRemarks.value
+    })
+
+    if (apptPromoterId.value) {
+      try {
+        await request.post(`/api/admin/patients/${apptSelectedPatient.value.id}/bind-promoter`, {
+          promoter_user_id: parseInt(apptPromoterId.value)
+        })
+      } catch (bindErr) {
+        console.error('绑定推荐人失败:', bindErr)
+      }
+    }
+
+    MessagePlugin.success('现场挂号新建预约成功')
+    createApptVisible.value = false
+    fetchAppointments()
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('挂号新建预约失败')
+  }
+}
+
+// Today's appointments list search & filter
+const apptListSearch = ref('')
+const filteredTodayAppointments = computed(() => {
+  let list = appointments.value
+  if (apptListSearch.value) {
+    const kw = apptListSearch.value.toLowerCase()
+    list = list.filter(a => a.patientName.includes(kw) || a.no.toLowerCase().includes(kw))
+  }
+  return list
 })
 </script>
 
