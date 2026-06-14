@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鼾静健康诊所 - 管理后台深层页面UI设计</title>
+<style>
+/* ============================================
+   鼾静健康诊所 - 管理后台 L2/L3 深层页面
+   复用 L1 的设计令牌和组件体系
+   ============================================ */
+:root {
+  --color-primary-50:#EEF4FF;--color-primary-100:#D9E6FF;--color-primary-200:#BCCFFF;
+  --color-primary-300:#8EAFFF;--color-primary-400:#5A85F5;--color-primary-500:#3B6BF5;
+  --color-primary-600:#2A52D4;--color-primary-700:#1E3FA8;--color-primary-800:#1A3580;
+  --color-primary-900:#172E66;
+  --color-secondary-500:#1A9D5C;
+  --color-success-50:#ECFDF5;--color-success-500:#22C55E;--color-success-600:#16A34A;
+  --color-warning-50:#FFFBEB;--color-warning-500:#F59E0B;--color-warning-600:#D97706;
+  --color-error-50:#FEF2F2;--color-error-500:#EF4444;--color-error-600:#DC2626;
+  --color-gray-50:#F9FAFB;--color-gray-100:#F3F4F6;--color-gray-200:#E5E7EB;
+  --color-gray-300:#D1D5DB;--color-gray-400:#9CA3AF;--color-gray-500:#6B7280;
+  --color-gray-600:#4B5563;--color-gray-700:#374151;--color-gray-800:#1F2937;
+  --color-gray-900:#111827;
+  --color-gold-400:#F5A623;--color-gold-500:#D4930A;
+  --radius-xs:4px;--radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-full:9999px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.08);--shadow-md:0 4px 12px rgba(0,0,0,0.08);
+  --font-sans:'PingFang SC','HarmonyOS Sans','Noto Sans SC',-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font-sans);background:#F0F2F5;color:var(--color-gray-800);padding:0;}
+
+/* 页面分隔 */
+.screen-section{margin-bottom:48px;background:#fff;border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);}
+.screen-label{font-size:14px;font-weight:700;color:var(--color-primary-500);padding:16px 24px 0;display:flex;align-items:center;gap:8px;}
+.screen-label::before{content:'';width:3px;height:16px;background:var(--color-primary-500);border-radius:2px;}
+.screen-sublabel{font-size:12px;color:var(--color-gray-400);margin-left:8px;font-weight:400;}
+
+/* 面包屑 */
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--color-gray-400);padding:16px 24px 0;}
+.breadcrumb .current{color:var(--color-gray-800);font-weight:600;}
+
+/* 标题行 */
+.page-title-row{display:flex;align-items:center;justify-content:space-between;padding:16px 24px 20px;}
+.page-title{font-size:22px;font-weight:700;color:var(--color-gray-900);}
+.page-title-sub{font-size:13px;color:var(--color-gray-400);margin-top:2px;}
+
+/* 按钮 */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 150ms;font-family:var(--font-sans);}
+.btn-primary{background:var(--color-primary-500);color:#fff;}.btn-primary:hover{background:var(--color-primary-600);}
+.btn-outline{background:#fff;color:var(--color-gray-700);border:1px solid var(--color-gray-200);}.btn-outline:hover{border-color:var(--color-primary-300);color:var(--color-primary-500);}
+.btn-danger{background:var(--color-error-50);color:var(--color-error-600);border:1px solid #FECACA;}
+.btn-success{background:var(--color-success-50);color:var(--color-success-600);border:1px solid #BBF7D0;}
+.btn-warning{background:var(--color-warning-50);color:var(--color-warning-600);border:1px solid #FDE68A;}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-xs{padding:3px 8px;font-size:11px;}
+
+/* 面板 */
+.panel{background:#fff;border-radius:var(--radius-md);border:1px solid var(--color-gray-100);box-shadow:var(--shadow-sm);margin:0 24px 20px;overflow:hidden;}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--color-gray-100);}
+.panel-title{font-size:15px;font-weight:700;color:var(--color-gray-900);}
+.panel-body{padding:20px;}
+
+/* 状态标签 */
+.status-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:600;}
+.status-tag::before{content:'';width:6px;height:6px;border-radius:50%;}
+.status-tag.blue{background:var(--color-primary-50);color:var(--color-primary-600);}.status-tag.blue::before{background:var(--color-primary-500);}
+.status-tag.green{background:var(--color-success-50);color:var(--color-success-600);}.status-tag.green::before{background:var(--color-success-500);}
+.status-tag.gold{background:#FFF9E6;color:var(--color-warning-600);}.status-tag.gold::before{background:var(--color-warning-500);}
+.status-tag.red{background:var(--color-error-50);color:var(--color-error-600);}.status-tag.red::before{background:var(--color-error-500);}
+.status-tag.gray{background:var(--color-gray-100);color:var(--color-gray-500);}.status-tag.gray::before{background:var(--color-gray-400);}
+
+/* 表格 */
+.data-table{width:100%;border-collapse:collapse;}
+.data-table th{text-align:left;padding:10px 14px;font-size:12px;font-weight:600;color:var(--color-gray-400);background:var(--color-gray-50);border-bottom:1px solid var(--color-gray-100);}
+.data-table td{padding:12px 14px;font-size:13px;color:var(--color-gray-700);border-bottom:1px solid var(--color-gray-50);vertical-align:middle;}
+.data-table tr:hover td{background:var(--color-gray-50);}
+
+/* 头像 */
+.avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#fff;flex-shrink:0;}
+.avatar-sm{width:32px;height:32px;font-size:13px;}
+.avatar-lg{width:56px;height:56px;font-size:24px;}
+.name-cell{display:flex;align-items:center;gap:10px;}
+
+/* 表单 */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:span 2;}
+.form-label{font-size:13px;font-weight:600;color:var(--color-gray-700);}
+.form-label .required{color:var(--color-error-500);margin-left:2px;}
+.form-control{padding:10px 14px;border:1px solid var(--color-gray-200);border-radius:var(--radius-sm);font-size:14px;font-family:var(--font-sans);color:var(--color-gray-800);outline:none;transition:border 150ms;}
+.form-control:focus{border-color:var(--color-primary-400);box-shadow:0 0 0 3px rgba(59,107,245,0.08);}
+.form-control::placeholder{color:var(--color-gray-300);}
+textarea.form-control{resize:vertical;min-height:80px;}
+select.form-control{appearance:auto;}
+
+/* 开关 */
+.switch{position:relative;width:40px;height:22px;cursor:pointer;}
+.switch input{display:none;}
+.switch-slider{position:absolute;inset:0;background:var(--color-gray-200);border-radius:11px;transition:200ms;}
+.switch-slider::before{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;transition:200ms;box-shadow:0 1px 3px rgba(0,0,0,0.15);}
+.switch input:checked+.switch-slider{background:var(--color-primary-500);}
+.switch input:checked+.switch-slider::before{transform:translateX(18px);}
+
+/* 标签页 */
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--color-gray-100);margin:0 24px;}
+.tab{padding:12px 20px;font-size:14px;font-weight:500;color:var(--color-gray-500);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 150ms;}
+.tab.active{color:var(--color-primary-500);border-bottom-color:var(--color-primary-500);font-weight:600;}
+.tab:hover:not(.active){color:var(--color-gray-700);}
+
+/* 时间线 */
+.timeline{position:relative;padding-left:24px;}
+.timeline::before{content:'';position:absolute;left:7px;top:8px;bottom:8px;width:2px;background:var(--color-gray-200);}
+.timeline-item{position:relative;padding-bottom:20px;}
+.timeline-item:last-child{padding-bottom:0;}
+.timeline-dot{position:absolute;left:-20px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px var(--color-gray-200);}
+.timeline-dot.blue{background:var(--color-primary-500);box-shadow:0 0 0 2px var(--color-primary-200);}
+.timeline-dot.green{background:var(--color-success-500);box-shadow:0 0 0 2px var(--color-success-200);}
+.timeline-dot.gold{background:var(--color-warning-500);box-shadow:0 0 0 2px var(--color-warning-200);}
+.timeline-dot.red{background:var(--color-error-500);box-shadow:0 0 0 2px var(--color-error-200);}
+.timeline-dot.gray{background:var(--color-gray-300);box-shadow:0 0 0 2px var(--color-gray-100);}
+.timeline-time{font-size:11px;color:var(--color-gray-400);margin-bottom:4px;}
+.timeline-content{font-size:13px;color:var(--color-gray-700);line-height:1.6;}
+
+/* 树形结构 */
+.tree-node{padding:8px 0;display:flex;align-items:center;gap:8px;}
+.tree-children{padding-left:28px;border-left:2px solid var(--color-gray-100);margin-left:12px;}
+.tree-line{position:relative;}
+.tree-line::before{content:'';position:absolute;left:-16px;top:50%;width:16px;height:2px;background:var(--color-gray-100);}
+
+/* 分页 */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--color-gray-100);}
+.pagination-info{font-size:12px;color:var(--color-gray-400);}
+.pagination-btns{display:flex;gap:4px;}
+.pagination-btn{width:32px;height:32px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:13px;border:1px solid var(--color-gray-200);background:#fff;cursor:pointer;color:var(--color-gray-600);font-family:var(--font-sans);}
+.pagination-btn.active{background:var(--color-primary-500);color:#fff;border-color:var(--color-primary-500);}
+
+/* 详情信息行 */
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;}
+.info-item{padding:14px 20px;border-bottom:1px solid var(--color-gray-50);}
+.info-item:nth-child(3n+1),.info-item:nth-child(3n+2){border-right:1px solid var(--color-gray-50);}
+.info-label{font-size:12px;color:var(--color-gray-400);margin-bottom:4px;}
+.info-value{font-size:14px;font-weight:600;color:var(--color-gray-800);}
+
+/* 统计小卡片 */
+.mini-stat{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--color-gray-50);border-radius:var(--radius-sm);}
+.mini-stat-icon{width:36px;height:36px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:18px;}
+.mini-stat-value{font-size:18px;font-weight:800;color:var(--color-gray-900);}
+.mini-stat-label{font-size:11px;color:var(--color-gray-400);}
+
+/* 标签 */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:600;}
+.tag-blue{background:var(--color-primary-50);color:var(--color-primary-600);}
+.tag-green{background:var(--color-success-50);color:var(--color-success-600);}
+.tag-gold{background:#FFF9E6;color:var(--color-warning-600);}
+.tag-red{background:var(--color-error-50);color:var(--color-error-600);}
+.tag-gray{background:var(--color-gray-100);color:var(--color-gray-500);}
+
+/* 模态框 */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:200;}
+.modal{background:#fff;border-radius:var(--radius-lg);width:560px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.15);}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--color-gray-100);}
+.modal-title{font-size:16px;font-weight:700;color:var(--color-gray-900);}
+.modal-close{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--color-gray-400);border:none;background:none;}
+.modal-close:hover{background:var(--color-gray-100);}
+.modal-body{padding:24px;}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;border-top:1px solid var(--color-gray-100);}
+
+/* 进度条 */
+.progress-bar{height:8px;background:var(--color-gray-100);border-radius:4px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:4px;transition:width 300ms;}
+
+/* 空状态 */
+.empty{text-align:center;padding:40px;color:var(--color-gray-400);font-size:14px;}
+
+/* 卡片网格 */
+.card-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:0 24px 20px;}
+.card-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:0 24px 20px;}
+.card-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 24px 20px;}
+
+/* 响应式 */
+@media(max-width:1200px){.info-grid{grid-template-columns:repeat(2,1fr);}.info-item:nth-child(3n+1),.info-item:nth-child(3n+2){border-right:none;}.info-item:nth-child(2n+1){border-right:1px solid var(--color-gray-50);}}
+</style>
+</head>
+<body style="padding:32px 24px;">
+
+
+<!-- ============================================
+     预约详情 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">预约管理 <span>/</span> <span class="current">预约详情</span></div>
+  <div class="screen-label">预约详情 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div>
+      <div class="page-title" style="display:flex;align-items:center;gap:12px;">BK20260529001 <span class="status-tag green">已到诊</span></div>
+      <div class="page-title-sub">创建于 2026-05-28 14:32 · 小程序预约</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline">🖨️ 打印</button>
+      <button class="btn btn-warning">✏️ 改约</button>
+      <button class="btn btn-danger">❌ 取消</button>
+    </div>
+  </div>
+
+  <div class="card-grid-2">
+    <!-- 患者信息 -->
+    <div class="panel" style="margin:0;">
+      <div class="panel-header"><div class="panel-title">🧑‍⚕️ 患者信息</div><button class="btn btn-sm btn-outline">查看档案</button></div>
+      <div class="panel-body">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div class="avatar avatar-lg" style="background:linear-gradient(135deg,var(--color-primary-400),var(--color-primary-600));">张</div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span style="font-size:18px;font-weight:700;color:var(--color-gray-900);">张明华</span>
+              <span class="tag tag-gold">VIP</span>
+              <span class="tag tag-blue">复诊</span>
+            </div>
+            <div style="font-size:13px;color:var(--color-gray-500);line-height:1.8;">
+              男 · 52岁 · 138****6789<br>
+              病历号 HZ20240001 · 累计就诊 8次 · 消费 ¥18,640
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 预约信息 -->
+    <div class="panel" style="margin:0;">
+      <div class="panel-header"><div class="panel-title">📅 预约信息</div></div>
+      <div class="info-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="info-item"><div class="info-label">就诊门店</div><div class="info-value">🏥 龙岗总店</div></div>
+        <div class="info-item"><div class="info-label">就诊医生</div><div class="info-value">👨‍⚕️ 古堪民 主任医师</div></div>
+        <div class="info-item"><div class="info-label">科室</div><div class="info-value">睡眠呼吸科</div></div>
+        <div class="info-item"><div class="info-label">预约时间</div><div class="info-value" style="color:var(--color-primary-500);">5月29日 周四 09:30</div></div>
+        <div class="info-item"><div class="info-label">预约来源</div><div class="info-value"><span class="tag tag-green">小程序</span></div></div>
+        <div class="info-item"><div class="info-label">挂号费</div><div class="info-value" style="color:var(--color-primary-500);">¥200.00</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 预约流程时间线 -->
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">📋 预约流程</div></div>
+    <div class="panel-body">
+      <div class="timeline">
+        <div class="timeline-item"><div class="timeline-dot blue"></div><div class="timeline-time">5/28 14:32</div><div class="timeline-content"><strong>创建预约</strong> — 患者通过小程序自助预约，选择龙岗总店·古堪民·5/29 09:30</div></div>
+        <div class="timeline-item"><div class="timeline-dot green"></div><div class="timeline-time">5/28 14:32</div><div class="timeline-content"><strong>支付挂号费</strong> — ¥200.00 微信支付成功（交易号：wx2905281432001）</div></div>
+        <div class="timeline-item"><div class="timeline-dot green"></div><div class="timeline-time">5/29 08:45</div><div class="timeline-content"><strong>系统提醒</strong> — 就诊前1小时自动提醒已发送</div></div>
+        <div class="timeline-item"><div class="timeline-dot green"></div><div class="timeline-time">5/29 09:15</div><div class="timeline-content"><strong>到店签到</strong> — 前台扫码确认到诊</div></div>
+        <div class="timeline-item"><div class="timeline-dot green"></div><div class="timeline-time">5/29 09:30</div><div class="timeline-content"><strong>开始就诊</strong> — 古堪民医生接诊</div></div>
+        <div class="timeline-item"><div class="timeline-dot gray"></div><div class="timeline-time">待完成</div><div class="timeline-content" style="color:var(--color-gray-400);">完成就诊 → 开具处方/建议 → 随访计划</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 患者历史预约 -->
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">📜 历史预约（8次）</div><button class="btn btn-sm btn-outline">查看全部</button></div>
+    <table class="data-table">
+      <thead><tr><th>预约单号</th><th>日期</th><th>门店</th><th>医生</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td style="font-family:monospace;font-size:12px;color:var(--color-gray-400);">BK20260415001</td><td>4/15</td><td>龙岗总店</td><td>古堪民</td><td><span class="status-tag green">已完成</span></td></tr>
+        <tr><td style="font-family:monospace;font-size:12px;color:var(--color-gray-400);">BK20260320003</td><td>3/20</td><td>龙岗总店</td><td>王志远</td><td><span class="status-tag green">已完成</span></td></tr>
+        <tr><td style="font-family:monospace;font-size:12px;color:var(--color-gray-400);">BK20260225002</td><td>2/25</td><td>南山分院</td><td>古堪民</td><td><span class="status-tag gray">已取消</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ============================================
+     新建预约 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">预约管理 <span>/</span> <span class="current">新建预约</span></div>
+  <div class="screen-label">新建预约 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div><div class="page-title">新建预约</div><div class="page-title-sub">手动为患者创建预约</div></div>
+    <div style="display:flex;gap:8px;"><button class="btn btn-outline">取消</button><button class="btn btn-primary">确认创建</button></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">① 选择患者</div></div>
+    <div class="panel-body">
+      <div style="display:flex;gap:12px;align-items:center;">
+        <input type="text" class="form-control" placeholder="🔍 输入姓名/手机号搜索已有患者" style="flex:1;">
+        <button class="btn btn-outline">➕ 新患者建档</button>
+      </div>
+      <div style="margin-top:12px;padding:12px 16px;background:var(--color-primary-50);border-radius:var(--radius-sm);border:1px solid var(--color-primary-100);display:flex;align-items:center;gap:12px;">
+        <div class="avatar" style="background:var(--color-primary-400);width:36px;height:36px;font-size:14px;">张</div>
+        <div style="flex:1;"><strong>张明华</strong> · 男 · 52岁 · 138****6789 · HZ20240001</div>
+        <span class="tag tag-gold">VIP</span>
+        <button class="btn btn-xs btn-outline">移除</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">② 选择门店 & 医生</div></div>
+    <div class="panel-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">就诊门店<span class="required">*</span></label>
+          <select class="form-control"><option>请选择门店</option><option selected>🏥 鼾静健康·龙岗总店</option><option>🏡 鼾静健康·南山分院</option><option>🏬 鼾静健康·福田门诊部</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">就诊医生<span class="required">*</span></label>
+          <select class="form-control"><option>请选择医生</option><option selected>古堪民 · 主任医师 · 睡眠呼吸科</option><option>王志远 · 副主任医师 · 耳鼻喉科</option><option>刘婉清 · 主治医师 · 心理科</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">③ 选择时间段</div></div>
+    <div class="panel-body">
+      <div style="display:flex;gap:12px;margin-bottom:16px;">
+        <select class="form-control" style="width:200px;"><option>5月29日 周四</option><option>5月30日 周五</option><option>5月31日 周六</option></select>
+        <div style="font-size:13px;color:var(--color-gray-400);display:flex;align-items:center;gap:8px;">
+          <span style="color:var(--color-success-500);">● 可约</span>
+          <span style="color:var(--color-gray-300);">● 已满</span>
+          <span style="color:var(--color-primary-500);">● 已选</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;">
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-gray-50);color:var(--color-gray-300);cursor:not-allowed;">08:30<br><span style="font-size:11px;">已满</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-success-50);color:var(--color-success-600);cursor:pointer;border:1px solid #BBF7D0;">09:00<br><span style="font-size:11px;">可约</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-primary-500);color:#fff;cursor:pointer;font-weight:600;box-shadow:0 2px 8px rgba(59,107,245,0.3);">09:30<br><span style="font-size:11px;">已选</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-success-50);color:var(--color-success-600);cursor:pointer;border:1px solid #BBF7D0;">10:00<br><span style="font-size:11px;">可约</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-success-50);color:var(--color-success-600);cursor:pointer;border:1px solid #BBF7D0;">10:30<br><span style="font-size:11px;">可约</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-success-50);color:var(--color-success-600);cursor:pointer;border:1px solid #BBF7D0;">11:00<br><span style="font-size:11px;">可约</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-success-50);color:var(--color-success-600);cursor:pointer;border:1px solid #BBF7D0;">14:00<br><span style="font-size:11px;">可约</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-success-50);color:var(--color-success-600);cursor:pointer;border:1px solid #BBF7D0;">14:30<br><span style="font-size:11px;">可约</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-gray-50);color:var(--color-gray-300);cursor:not-allowed;">15:00<br><span style="font-size:11px;">已满</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-success-50);color:var(--color-success-600);cursor:pointer;border:1px solid #BBF7D0;">15:30<br><span style="font-size:11px;">可约</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-success-50);color:var(--color-success-600);cursor:pointer;border:1px solid #BBF7D0;">16:00<br><span style="font-size:11px;">可约</span></div>
+        <div style="padding:10px;text-align:center;border-radius:var(--radius-sm);font-size:13px;background:var(--color-success-50);color:var(--color-success-600);cursor:pointer;border:1px solid #BBF7D0;">16:30<br><span style="font-size:11px;">可约</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">④ 补充信息</div></div>
+    <div class="panel-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">初诊/复诊</label>
+          <select class="form-control"><option>初诊</option><option selected>复诊</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">挂号费</label>
+          <input type="text" class="form-control" value="¥200.00" readonly style="background:var(--color-gray-50);">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">备注</label>
+          <textarea class="form-control" placeholder="填写症状描述或其他备注信息">患者上次就诊后睡眠监测数据需复查，建议安排PSG监测</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================
+     患者详情 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">患者管理 <span>/</span> <span class="current">患者详情</span></div>
+  <div class="screen-label">患者详情 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div>
+      <div class="page-title" style="display:flex;align-items:center;gap:12px;">张明华 <span class="tag tag-gold">VIP</span> <span class="tag tag-blue">复诊</span></div>
+      <div class="page-title-sub">病历号 HZ20240001 · 注册于 2024-01-15</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline">✏️ 编辑</button>
+      <button class="btn btn-primary">📅 新建预约</button>
+      <button class="btn btn-success">📞 随访</button>
+    </div>
+  </div>
+
+  <!-- 标签页 -->
+  <div class="tabs">
+    <div class="tab active">基本信息</div>
+    <div class="tab">就诊记录</div>
+    <div class="tab">订单记录</div>
+    <div class="tab">随访计划</div>
+    <div class="tab">病历附件</div>
+  </div>
+
+  <div style="padding-top:20px;">
+    <div class="card-grid-4">
+      <div class="mini-stat"><div class="mini-stat-icon" style="background:var(--color-primary-50);">📅</div><div><div class="mini-stat-value">8</div><div class="mini-stat-label">累计就诊</div></div></div>
+      <div class="mini-stat"><div class="mini-stat-icon" style="background:var(--color-success-50);">💰</div><div><div class="mini-stat-value">¥18,640</div><div class="mini-stat-label">消费总额</div></div></div>
+      <div class="mini-stat"><div class="mini-stat-icon" style="background:#FFF9E6;">🏷️</div><div><div class="mini-stat-value">15%</div><div class="mini-stat-label">分销佣金率</div></div></div>
+      <div class="mini-stat"><div class="mini-stat-icon" style="background:var(--color-error-50);">⏰</div><div><div class="mini-stat-value">3天</div><div class="mini-stat-label">距下次随访</div></div></div>
+    </div>
+
+    <div class="card-grid-2">
+      <div class="panel" style="margin:0;">
+        <div class="panel-header"><div class="panel-title">📋 个人信息</div></div>
+        <div class="info-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="info-item"><div class="info-label">姓名</div><div class="info-value">张明华</div></div>
+          <div class="info-item"><div class="info-label">性别</div><div class="info-value">男</div></div>
+          <div class="info-item"><div class="info-label">年龄</div><div class="info-value">52岁</div></div>
+          <div class="info-item"><div class="info-label">手机号</div><div class="info-value">138****6789</div></div>
+          <div class="info-item"><div class="info-label">来源</div><div class="info-value"><span class="tag tag-green">小程序</span></div></div>
+          <div class="info-item"><div class="info-label">标签</div><div class="info-value"><span class="tag tag-gold">VIP</span> <span class="tag tag-blue">复诊</span></div></div>
+          <div class="info-item"><div class="info-label">推荐人</div><div class="info-value">赵芳芳（钻石推广员）</div></div>
+          <div class="info-item"><div class="info-label">注册时间</div><div class="info-value">2024-01-15</div></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin:0;">
+        <div class="panel-header"><div class="panel-title">🏥 就诊概况</div></div>
+        <div class="panel-body">
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;color:var(--color-gray-700);">睡眠呼吸科</span><span style="font-size:13px;font-weight:600;color:var(--color-primary-500);">5次</span></div><div class="progress-bar"><div class="progress-fill" style="width:62%;background:var(--color-primary-500);"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;color:var(--color-gray-700);">耳鼻喉科</span><span style="font-size:13px;font-weight:600;color:var(--color-primary-400);">2次</span></div><div class="progress-bar"><div class="progress-fill" style="width:25%;background:var(--color-primary-400);"></div></div></div>
+            <div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;color:var(--color-gray-700);">心理科</span><span style="font-size:13px;font-weight:600;color:var(--color-success-500);">1次</span></div><div class="progress-bar"><div class="progress-fill" style="width:12%;background:var(--color-success-500);"></div></div></div>
+          </div>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--color-gray-100);font-size:13px;color:var(--color-gray-500);line-height:1.8;">
+            <strong style="color:var(--color-gray-700);">主诊断：</strong>阻塞性睡眠呼吸暂停综合征（OSAHS）<br>
+            <strong style="color:var(--color-gray-700);">当前方案：</strong>CPAP治疗 + 定期PSG监测<br>
+            <strong style="color:var(--color-gray-700);">上次就诊：</strong>5/29 龙岗总店 古堪民
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 就诊时间线 -->
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">📅 就诊时间线</div></div>
+      <div class="panel-body">
+        <div class="timeline">
+          <div class="timeline-item"><div class="timeline-dot green"></div><div class="timeline-time">5/29 · 龙岗总店 · 古堪民</div><div class="timeline-content"><strong>第8次就诊</strong> — 睡眠呼吸科复诊，PSG监测数据复查，AHI指数从32降至8，效果良好。建议继续CPAP治疗3个月后再复查。</div></div>
+          <div class="timeline-item"><div class="timeline-dot green"></div><div class="timeline-time">4/15 · 龙岗总店 · 古堪民</div><div class="timeline-content"><strong>第7次就诊</strong> — CPAP使用1个月随访，依从性良好，白天嗜睡改善明显。调整压力至10cmH2O。</div></div>
+          <div class="timeline-item"><div class="timeline-dot green"></div><div class="timeline-time">3/20 · 龙岗总店 · 王志远</div><div class="timeline-content"><strong>第6次就诊</strong> — 耳鼻喉科，鼻中隔偏曲评估，建议保守治疗暂不手术。</div></div>
+          <div class="timeline-item"><div class="timeline-dot red"></div><div class="timeline-time">2/25 · 南山分院</div><div class="timeline-content"><strong>取消预约</strong> — 患者因出差取消</div></div>
+          <div class="timeline-item"><div class="timeline-dot gold"></div><div class="timeline-time">1/10 · 龙岗总店 · 古堪民</div><div class="timeline-content"><strong>第5次就诊</strong> — 首次佩戴CPAP呼吸机，压力滴定测试完成，处方压力12cmH2O。开具CPAP设备（¥8,900）</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================
+     随访任务 L3
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">患者管理 <span>/</span> 患者详情 <span>/</span> <span class="current">随访任务</span></div>
+  <div class="screen-label">随访任务 <span class="screen-sublabel">L3</span></div>
+  <div class="page-title-row">
+    <div><div class="page-title">随访任务 — 张明华</div><div class="page-title-sub">3个待完成 · 2个已完成</div></div>
+    <button class="btn btn-primary">➕ 新建随访</button>
+  </div>
+
+  <div class="panel">
+    <table class="data-table">
+      <thead><tr><th>随访类型</th><th>计划时间</th><th>执行人</th><th>内容</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="tag tag-blue">电话随访</span></td>
+          <td style="font-weight:600;">6/1（3天后）</td>
+          <td>古堪民</td>
+          <td style="font-size:12px;max-width:260px;">CPAP使用1周回访，询问依从性、面罩舒适度、副作用</td>
+          <td><span class="status-tag gold">待执行</span></td>
+          <td><button class="btn btn-xs btn-primary">执行</button> <button class="btn btn-xs btn-outline">改期</button></td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-green">到店复查</span></td>
+          <td style="font-weight:600;">8/29（3个月后）</td>
+          <td>古堪民</td>
+          <td style="font-size:12px;max-width:260px;">CPAP治疗3个月复查PSG，评估长期疗效</td>
+          <td><span class="status-tag gold">待执行</span></td>
+          <td><button class="btn btn-xs btn-outline">改期</button> <button class="btn btn-xs btn-danger">取消</button></td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-gold">微信随访</span></td>
+          <td style="font-weight:600;">6/15</td>
+          <td>护理部</td>
+          <td style="font-size:12px;max-width:260px;">满意度调查，收集反馈意见</td>
+          <td><span class="status-tag gold">待执行</span></td>
+          <td><button class="btn btn-xs btn-outline">改期</button> <button class="btn btn-xs btn-danger">取消</button></td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-blue">电话随访</span></td>
+          <td>5/29</td>
+          <td>古堪民</td>
+          <td style="font-size:12px;max-width:260px;">就诊后当天回访，确认患者状态</td>
+          <td><span class="status-tag green">已完成</span></td>
+          <td><button class="btn btn-xs btn-outline">查看</button></td>
+        </tr>
+        <tr>
+          <td><span class="tag tag-green">到店复查</span></td>
+          <td>4/15</td>
+          <td>古堪民</td>
+          <td style="font-size:12px;max-width:260px;">CPAP使用1个月随访</td>
+          <td><span class="status-tag green">已完成</span></td>
+          <td><button class="btn btn-xs btn-outline">查看</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ============================================
+     医生排班编辑 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">医生管理 <span>/</span> <span class="current">排班编辑</span></div>
+  <div class="screen-label">医生排班编辑 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div><div class="page-title">古堪民 · 排班管理</div><div class="page-title-sub">主任医师 · 睡眠呼吸科 · 龙岗总店/南山分院</div></div>
+    <div style="display:flex;gap:8px;"><button class="btn btn-outline">取消</button><button class="btn btn-primary">保存排班</button></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">6月排班 · 6/1 - 6/30</div><div style="display:flex;gap:8px;"><button class="btn btn-sm btn-outline">复制上月排班</button><button class="btn btn-sm btn-outline">清空</button></div></div>
+    <div class="panel-body" style="overflow-x:auto;">
+      <div style="display:grid;grid-template-columns:80px repeat(7,1fr);gap:1px;background:var(--color-gray-200);min-width:800px;">
+        <!-- 表头 -->
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;font-size:12px;font-weight:600;color:var(--color-gray-500);"></div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;font-size:12px;font-weight:600;color:var(--color-gray-500);">周一 6/1</div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;font-size:12px;font-weight:600;color:var(--color-gray-500);">周二 6/2</div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;font-size:12px;font-weight:600;color:var(--color-gray-500);">周三 6/3</div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;font-size:12px;font-weight:600;color:var(--color-gray-500);">周四 6/4</div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;font-size:12px;font-weight:600;color:var(--color-gray-500);">周五 6/5</div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;font-size:12px;font-weight:600;color:var(--color-gray-500);">周六 6/6</div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;font-size:12px;font-weight:600;color:var(--color-gray-500);">周日 6/7</div>
+        <!-- 上午 -->
+        <div style="background:#fff;padding:8px;font-size:12px;font-weight:600;color:var(--color-gray-700);display:flex;align-items:center;">🌅 上午</div>
+        <div style="background:var(--color-success-50);padding:8px;text-align:center;border:2px solid var(--color-success-500);border-radius:4px;cursor:pointer;"><span style="font-size:12px;font-weight:600;color:var(--color-success-600);">龙岗总店</span><br><span style="font-size:10px;color:var(--color-gray-400);">4个时段</span></div>
+        <div style="background:var(--color-success-50);padding:8px;text-align:center;border:2px solid var(--color-success-500);border-radius:4px;cursor:pointer;"><span style="font-size:12px;font-weight:600;color:var(--color-success-600);">龙岗总店</span><br><span style="font-size:10px;color:var(--color-gray-400);">4个时段</span></div>
+        <div style="background:var(--color-success-50);padding:8px;text-align:center;border:2px solid var(--color-success-500);border-radius:4px;cursor:pointer;"><span style="font-size:12px;font-weight:600;color:var(--color-success-600);">南山分院</span><br><span style="font-size:10px;color:var(--color-gray-400);">3个时段</span></div>
+        <div style="background:var(--color-success-50);padding:8px;text-align:center;border:2px solid var(--color-success-500);border-radius:4px;cursor:pointer;"><span style="font-size:12px;font-weight:600;color:var(--color-success-600);">龙岗总店</span><br><span style="font-size:10px;color:var(--color-gray-400);">4个时段</span></div>
+        <div style="background:var(--color-success-50);padding:8px;text-align:center;border:2px solid var(--color-success-500);border-radius:4px;cursor:pointer;"><span style="font-size:12px;font-weight:600;color:var(--color-success-600);">龙岗总店</span><br><span style="font-size:10px;color:var(--color-gray-400);">4个时段</span></div>
+        <div style="background:var(--color-warning-50);padding:8px;text-align:center;border:2px solid var(--color-warning-500);border-radius:4px;cursor:pointer;"><span style="font-size:12px;font-weight:600;color:var(--color-warning-600);">龙岗总店</span><br><span style="font-size:10px;color:var(--color-gray-400);">2个时段</span></div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;border-radius:4px;cursor:pointer;"><span style="font-size:12px;color:var(--color-gray-300);">休息</span></div>
+        <!-- 下午 -->
+        <div style="background:#fff;padding:8px;font-size:12px;font-weight:600;color:var(--color-gray-700);display:flex;align-items:center;">🌇 下午</div>
+        <div style="background:var(--color-success-50);padding:8px;text-align:center;border:2px solid var(--color-success-500);border-radius:4px;cursor:pointer;"><span style="font-size:12px;font-weight:600;color:var(--color-success-600);">龙岗总店</span><br><span style="font-size:10px;color:var(--color-gray-400);">4个时段</span></div>
+        <div style="background:var(--color-success-50);padding:8px;text-align:center;border:2px solid var(--color-success-500);border-radius:4px;cursor:pointer;"><span style="font-size:12px;font-weight:600;color:var(--color-success-600);">龙岗总店</span><br><span style="font-size:10px;color:var(--color-gray-400);">4个时段</span></div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;border-radius:4px;cursor:pointer;"><span style="font-size:12px;color:var(--color-gray-300);">休息</span></div>
+        <div style="background:var(--color-success-50);padding:8px;text-align:center;border:2px solid var(--color-success-500);border-radius:4px;cursor:pointer;"><span style="font-size:12px;font-weight:600;color:var(--color-success-600);">龙岗总店</span><br><span style="font-size:10px;color:var(--color-gray-400);">4个时段</span></div>
+        <div style="background:var(--color-success-50);padding:8px;text-align:center;border:2px solid var(--color-success-500);border-radius:4px;cursor:pointer;"><span style="font-size:12px;font-weight:600;color:var(--color-success-600);">南山分院</span><br><span style="font-size:10px;color:var(--color-gray-400);">3个时段</span></div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;border-radius:4px;cursor:pointer;"><span style="font-size:12px;color:var(--color-gray-300);">休息</span></div>
+        <div style="background:var(--color-gray-50);padding:8px;text-align:center;border-radius:4px;cursor:pointer;"><span style="font-size:12px;color:var(--color-gray-300);">休息</span></div>
+      </div>
+    </div>
+  </div>
+  <div style="padding:0 24px 12px;font-size:12px;color:var(--color-gray-400);">
+    💡 点击格子编辑排班：选择门店、设置时段数，留空为休息
+  </div>
+</div>
+
+
+<!-- ============================================
+     门店数据报表 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">门店管理 <span>/</span> <span class="current">数据报表</span></div>
+  <div class="screen-label">门店数据报表 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div><div class="page-title">龙岗总店 · 数据报表</div><div class="page-title-sub">2026年5月</div></div>
+    <div style="display:flex;gap:8px;"><button class="btn btn-outline">📥 导出报表</button><select class="form-control" style="width:120px;padding:6px 10px;"><option>5月</option><option>4月</option><option>3月</option></select></div>
+  </div>
+
+  <div class="card-grid-4">
+    <div class="mini-stat"><div class="mini-stat-icon" style="background:var(--color-primary-50);">📅</div><div><div class="mini-stat-value">156</div><div class="mini-stat-label">本月预约</div></div></div>
+    <div class="mini-stat"><div class="mini-stat-icon" style="background:var(--color-success-50);">💰</div><div><div class="mini-stat-value">¥22.8w</div><div class="mini-stat-label">本月营收</div></div></div>
+    <div class="mini-stat"><div class="mini-stat-icon" style="background:#FFF9E6;">👥</div><div><div class="mini-stat-value">92.3%</div><div class="mini-stat-label">到诊率</div></div></div>
+    <div class="mini-stat"><div class="mini-stat-icon" style="background:var(--color-error-50);">⭐</div><div><div class="mini-stat-value">4.9</div><div class="mini-stat-label">患者评分</div></div></div>
+  </div>
+
+  <div class="card-grid-2">
+    <div class="panel" style="margin:0;">
+      <div class="panel-header"><div class="panel-title">营收趋势</div></div>
+      <div class="panel-body" style="padding:16px;">
+        <div style="display:flex;align-items:flex-end;gap:6px;height:160px;">
+          <div style="flex:1;background:var(--color-primary-200);border-radius:3px 3px 0 0;height:45%;"></div>
+          <div style="flex:1;background:var(--color-primary-200);border-radius:3px 3px 0 0;height:52%;"></div>
+          <div style="flex:1;background:var(--color-primary-200);border-radius:3px 3px 0 0;height:60%;"></div>
+          <div style="flex:1;background:var(--color-primary-300);border-radius:3px 3px 0 0;height:68%;"></div>
+          <div style="flex:1;background:var(--color-primary-300);border-radius:3px 3px 0 0;height:72%;"></div>
+          <div style="flex:1;background:var(--color-primary-400);border-radius:3px 3px 0 0;height:85%;"></div>
+          <div style="flex:1;background:var(--color-primary-400);border-radius:3px 3px 0 0;height:78%;"></div>
+          <div style="flex:1;background:var(--color-primary-400);border-radius:3px 3px 0 0;height:90%;"></div>
+          <div style="flex:1;background:var(--color-primary-500);border-radius:3px 3px 0 0;height:82%;"></div>
+          <div style="flex:1;background:var(--color-primary-500);border-radius:3px 3px 0 0;height:95%;"></div>
+          <div style="flex:1;background:var(--color-primary-500);border-radius:3px 3px 0 0;height:88%;"></div>
+          <div style="flex:1;background:var(--color-primary-600);border-radius:3px 3px 0 0;height:92%;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--color-gray-400);margin-top:6px;"><span>1月</span><span>2月</span><span>3月</span><span>4月</span><span>5月</span><span>6月</span><span>7月</span><span>8月</span><span>9月</span><span>10月</span><span>11月</span><span>12月</span></div>
+      </div>
+    </div>
+    <div class="panel" style="margin:0;">
+      <div class="panel-header"><div class="panel-title">医生接诊排名</div></div>
+      <table class="data-table">
+        <thead><tr><th>医生</th><th>接诊数</th><th>营收</th><th>好评率</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:600;">古堪民</td><td>68</td><td style="font-weight:600;color:var(--color-primary-500);">¥12.4w</td><td>98%</td></tr>
+          <tr><td style="font-weight:600;">王志远</td><td>52</td><td style="font-weight:600;color:var(--color-primary-500);">¥7.2w</td><td>96%</td></tr>
+          <tr><td style="font-weight:600;">刘婉清</td><td>36</td><td style="font-weight:600;color:var(--color-primary-500);">¥3.2w</td><td>99%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================
+     推广员详情 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">分销管理 <span>/</span> <span class="current">推广员详情</span></div>
+  <div class="screen-label">推广员详情 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div>
+      <div class="page-title" style="display:flex;align-items:center;gap:10px;">赵芳芳 <span style="font-size:12px;padding:3px 10px;border-radius:var(--radius-full);background:linear-gradient(135deg,#8B5CF6,#6D28D9);color:#fff;font-weight:600;">💎 钻石</span></div>
+      <div class="page-title-sub">注册于 2025-08-12 · 推广码 FXY001</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-danger">🚫 冻结账号</button>
+      <button class="btn btn-outline">✏️ 编辑</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active">数据总览</div>
+    <div class="tab">团队关系</div>
+    <div class="tab">推广订单</div>
+    <div class="tab">佣金流水</div>
+  </div>
+
+  <div style="padding-top:20px;">
+    <div class="card-grid-4">
+      <div class="mini-stat"><div class="mini-stat-icon" style="background:var(--color-primary-50);">👥</div><div><div class="mini-stat-value">56</div><div class="mini-stat-label">一级下线</div></div></div>
+      <div class="mini-stat"><div class="mini-stat-icon" style="background:var(--color-success-50);">👥</div><div><div class="mini-stat-value">128</div><div class="mini-stat-label">二级下线</div></div></div>
+      <div class="mini-stat"><div class="mini-stat-icon" style="background:#FFF9E6;">📦</div><div><div class="mini-stat-value">342</div><div class="mini-stat-label">推广订单</div></div></div>
+      <div class="mini-stat"><div class="mini-stat-icon" style="background:var(--color-error-50);">💰</div><div><div class="mini-stat-value" style="color:var(--color-gold-400);">¥18,640</div><div class="mini-stat-label">累计佣金</div></div></div>
+    </div>
+
+    <!-- 团队关系树 -->
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">🌳 团队关系</div></div>
+      <div class="panel-body">
+        <div class="tree-node">
+          <div class="avatar avatar-sm" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9);">赵</div>
+          <strong>赵芳芳</strong> <span style="font-size:11px;padding:2px 8px;border-radius:var(--radius-full);background:linear-gradient(135deg,#8B5CF6,#6D28D9);color:#fff;">💎 钻石</span>
+          <span style="font-size:12px;color:var(--color-gray-400);margin-left:auto;">一级 · 56人</span>
+        </div>
+        <div class="tree-children">
+          <div class="tree-node tree-line">
+            <div class="avatar avatar-sm" style="background:var(--color-warning-500);font-size:11px;">李</div>
+            <strong style="font-size:13px;">李雪琴</strong> <span style="font-size:10px;padding:2px 6px;border-radius:var(--radius-full);background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;">🥇 金</span>
+            <span style="font-size:11px;color:var(--color-gray-400);margin-left:8px;">二级下线 45人</span>
+          </div>
+          <div class="tree-children">
+            <div class="tree-node tree-line">
+              <div class="avatar avatar-sm" style="background:var(--color-gray-300);font-size:10px;">孙</div>
+              <span style="font-size:13px;">孙大鹏</span> <span style="font-size:10px;padding:1px 6px;border-radius:var(--radius-full);background:var(--color-gray-200);color:var(--color-gray-600);">🥉 银</span>
+              <span style="font-size:11px;color:var(--color-gray-400);">3人</span>
+            </div>
+            <div class="tree-node tree-line">
+              <div class="avatar avatar-sm" style="background:#EC4899;font-size:10px;">陈</div>
+              <span style="font-size:13px;">陈小红</span> <span style="font-size:10px;padding:1px 6px;border-radius:var(--radius-full);background:var(--color-gray-200);color:var(--color-gray-600);">🥉 银</span>
+              <span style="font-size:11px;color:var(--color-gray-400);">5人</span>
+            </div>
+          </div>
+          <div class="tree-node tree-line">
+            <div class="avatar avatar-sm" style="background:var(--color-success-500);font-size:11px;">王</div>
+            <strong style="font-size:13px;">王秀兰</strong> <span style="font-size:10px;padding:2px 6px;border-radius:var(--radius-full);background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;">🥇 金</span>
+            <span style="font-size:11px;color:var(--color-gray-400);margin-left:8px;">二级下线 32人</span>
+          </div>
+          <div class="tree-node tree-line">
+            <div class="avatar avatar-sm" style="background:var(--color-gray-300);font-size:11px;">刘</div>
+            <span style="font-size:13px;">刘建国</span> <span style="font-size:10px;padding:1px 6px;border-radius:var(--radius-full);background:var(--color-gray-200);color:var(--color-gray-600);">🥉 银</span>
+            <span style="font-size:11px;color:var(--color-gray-400);">8人</span>
+          </div>
+          <div style="padding:8px 0;font-size:12px;color:var(--color-gray-400);text-align:center;">· · · 还有52位一级下线</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 佣金流水 -->
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">💰 佣金流水</div></div>
+      <table class="data-table">
+        <thead><tr><th>时间</th><th>类型</th><th>来源</th><th>金额</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr><td style="font-size:12px;color:var(--color-gray-500);">5/29 10:22</td><td><span class="tag tag-green">一级佣金</span></td><td>陈建国购买CPAP呼吸机</td><td style="font-weight:700;color:var(--color-gold-400);">+¥1,335</td><td><span class="status-tag green">已结算</span></td></tr>
+          <tr><td style="font-size:12px;color:var(--color-gray-500);">5/29 09:15</td><td><span class="tag tag-blue">二级佣金</span></td><td>李雪琴推广：李雪琴购买止鼾器</td><td style="font-weight:700;color:var(--color-gold-400);">+¥64</td><td><span class="status-tag green">已结算</span></td></tr>
+          <tr><td style="font-size:12px;color:var(--color-gray-500);">5/28 18:32</td><td><span class="tag tag-red">提现</span></td><td>提现至微信零钱</td><td style="font-weight:700;color:var(--color-error-500);">-¥1,500</td><td><span class="status-tag green">已到账</span></td></tr>
+          <tr><td style="font-size:12px;color:var(--color-gray-500);">5/28 08:30</td><td><span class="tag tag-green">一级佣金</span></td><td>张明华购买睡眠监测套餐</td><td style="font-weight:700;color:var(--color-gold-400);">+¥552</td><td><span class="status-tag gold">冻结中</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================
+     推广商品管理 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">分销管理 <span>/</span> <span class="current">推广商品管理</span></div>
+  <div class="screen-label">推广商品管理 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div><div class="page-title">推广商品管理</div><div class="page-title-sub">设置可推广商品及佣金比例</div></div>
+    <button class="btn btn-primary">➕ 添加推广商品</button>
+  </div>
+
+  <div class="panel">
+    <table class="data-table">
+      <thead><tr><th>商品</th><th>价格</th><th>一级佣金</th><th>二级佣金</th><th>推广次数</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:10px;"><div style="width:40px;height:40px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--color-primary-50),var(--color-primary-100));display:flex;align-items:center;justify-content:center;font-size:18px;">🛏️</div><div><div style="font-weight:600;">睡眠监测套餐</div><div style="font-size:11px;color:var(--color-gray-400);">PSG + 初诊 + 报告</div></div></div></td>
+          <td style="font-weight:700;">¥3,680</td>
+          <td style="color:var(--color-gold-400);font-weight:600;">15% (¥552)</td>
+          <td style="color:var(--color-gold-400);font-weight:600;">5% (¥184)</td>
+          <td style="font-weight:600;">246</td>
+          <td><span class="status-tag green">推广中</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button> <button class="btn btn-xs btn-danger">下架</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:10px;"><div style="width:40px;height:40px;border-radius:var(--radius-sm);background:linear-gradient(135deg,#EDFBF5,#D3F5E3);display:flex;align-items:center;justify-content:center;font-size:18px;">😷</div><div><div style="font-weight:600;">止鼾器定制</div><div style="font-size:11px;color:var(--color-gray-400);">口腔止鼾器定制</div></div></div></td>
+          <td style="font-weight:700;">¥1,280</td>
+          <td style="color:var(--color-gold-400);font-weight:600;">15% (¥192)</td>
+          <td style="color:var(--color-gold-400);font-weight:600;">5% (¥64)</td>
+          <td style="font-weight:600;">128</td>
+          <td><span class="status-tag green">推广中</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button> <button class="btn btn-xs btn-danger">下架</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:10px;"><div style="width:40px;height:40px;border-radius:var(--radius-sm);background:linear-gradient(135deg,#FFF7ED,#FFEDD5);display:flex;align-items:center;justify-content:center;font-size:18px;">💨</div><div><div style="font-weight:600;">CPAP呼吸机</div><div style="font-size:11px;color:var(--color-gray-400);">瑞思迈AirSense 10</div></div></div></td>
+          <td style="font-weight:700;">¥8,900</td>
+          <td style="color:var(--color-gold-400);font-weight:600;">12% (¥1,068)</td>
+          <td style="color:var(--color-gold-400);font-weight:600;">3% (¥267)</td>
+          <td style="font-weight:600;">67</td>
+          <td><span class="status-tag green">推广中</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button> <button class="btn btn-xs btn-danger">下架</button></td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:10px;"><div style="width:40px;height:40px;border-radius:var(--radius-sm);background:var(--color-gray-100);display:flex;align-items:center;justify-content:center;font-size:18px;filter:grayscale(0.5);">🩺</div><div><div style="font-weight:600;color:var(--color-gray-400);">初诊挂号</div><div style="font-size:11px;color:var(--color-gray-400);">含基础检查</div></div></div></td>
+          <td style="font-weight:700;color:var(--color-gray-400);">¥200</td>
+          <td style="color:var(--color-gray-400);">10% (¥20)</td>
+          <td style="color:var(--color-gray-400);">3% (¥6)</td>
+          <td style="font-weight:600;color:var(--color-gray-400);">—</td>
+          <td><span class="status-tag gray">已下架</span></td>
+          <td><button class="btn btn-xs btn-success">上架</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ============================================
+     订单详情 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">订单管理 <span>/</span> <span class="current">订单详情</span></div>
+  <div class="screen-label">订单详情 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div>
+      <div class="page-title" style="display:flex;align-items:center;gap:12px;">#2026052903 <span class="status-tag gold">待发货</span></div>
+      <div class="page-title-sub">下单时间 2026-05-29 10:22:35</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline">🖨️ 打印</button>
+      <button class="btn btn-primary">📦 确认发货</button>
+    </div>
+  </div>
+
+  <div class="card-grid-2">
+    <div class="panel" style="margin:0;">
+      <div class="panel-header"><div class="panel-title">📦 商品信息</div></div>
+      <div class="panel-body">
+        <div style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="width:64px;height:64px;border-radius:var(--radius-sm);background:linear-gradient(135deg,#FFF7ED,#FFEDD5);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;">💨</div>
+          <div style="flex:1;">
+            <div style="font-size:16px;font-weight:700;color:var(--color-gray-900);">CPAP呼吸机</div>
+            <div style="font-size:12px;color:var(--color-gray-500);margin-top:2px;">瑞思迈 AirSense 10 自动调压版</div>
+            <div style="font-size:12px;color:var(--color-gray-400);margin-top:4px;">× 1</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:20px;font-weight:800;color:var(--color-primary-500);">¥8,900</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin:0;">
+      <div class="panel-header"><div class="panel-title">🧑‍⚕️ 收货信息</div></div>
+      <div class="info-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="info-item"><div class="info-label">收货人</div><div class="info-value">陈建国</div></div>
+        <div class="info-item"><div class="info-label">联系电话</div><div class="info-value">135****8901</div></div>
+        <div class="info-item" style="grid-column:span 2;"><div class="info-label">收货地址</div><div class="info-value">深圳市福田区深南大道财富大厦A座3楼 鼾静健康福田门诊部</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分销佣金 -->
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">💰 分销佣金</div></div>
+    <div class="panel-body">
+      <div style="display:flex;gap:24px;align-items:center;">
+        <div style="flex:1;padding:16px;background:var(--color-primary-50);border-radius:var(--radius-sm);text-align:center;">
+          <div style="font-size:12px;color:var(--color-gray-500);margin-bottom:4px;">一级推广员</div>
+          <div style="font-size:14px;font-weight:600;color:var(--color-gray-800);">赵芳芳</div>
+          <div style="font-size:20px;font-weight:800;color:var(--color-primary-500);margin-top:4px;">¥1,068</div>
+          <div style="font-size:11px;color:var(--color-gray-400);">12%</div>
+        </div>
+        <div style="font-size:20px;color:var(--color-gray-300);">→</div>
+        <div style="flex:1;padding:16px;background:#FFF9E6;border-radius:var(--radius-sm);text-align:center;">
+          <div style="font-size:12px;color:var(--color-gray-500);margin-bottom:4px;">二级推广员</div>
+          <div style="font-size:14px;font-weight:600;color:var(--color-gray-800);">李雪琴</div>
+          <div style="font-size:20px;font-weight:800;color:var(--color-gold-400);margin-top:4px;">¥267</div>
+          <div style="font-size:11px;color:var(--color-gray-400);">3%</div>
+        </div>
+        <div style="flex:1;padding:16px;background:var(--color-success-50);border-radius:var(--radius-sm);text-align:center;">
+          <div style="font-size:12px;color:var(--color-gray-500);margin-bottom:4px;">平台收入</div>
+          <div style="font-size:14px;font-weight:600;color:var(--color-gray-800);">—</div>
+          <div style="font-size:20px;font-weight:800;color:var(--color-success-500);margin-top:4px;">¥7,565</div>
+          <div style="font-size:11px;color:var(--color-gray-400);">85%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 订单流程 -->
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">📋 订单流程</div></div>
+    <div class="panel-body">
+      <div class="timeline">
+        <div class="timeline-item"><div class="timeline-dot green"></div><div class="timeline-time">5/29 10:22</div><div class="timeline-content"><strong>下单成功</strong> — 微信支付 ¥8,900.00（交易号：wx20260529102235）</div></div>
+        <div class="timeline-item"><div class="timeline-dot green"></div><div class="timeline-time">5/29 10:22</div><div class="timeline-content"><strong>支付成功</strong> — 佣金冻结：一级 ¥1,068 / 二级 ¥267</div></div>
+        <div class="timeline-item"><div class="timeline-dot gold"></div><div class="timeline-time">5/29 10:23</div><div class="timeline-content"><strong>待发货</strong> — 等待仓库发出CPAP设备</div></div>
+        <div class="timeline-item"><div class="timeline-dot gray"></div><div class="timeline-time">待处理</div><div class="timeline-content" style="color:var(--color-gray-400);">发货 → 确认收货 → 佣金解冻 → 7天售后期满</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================
+     退款审核 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">订单管理 <span>/</span> <span class="current">退款审核</span></div>
+  <div class="screen-label">退款审核 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div><div class="page-title">退款审核</div><div class="page-title-sub">3笔待审核退款</div></div>
+  </div>
+
+  <div class="panel">
+    <table class="data-table">
+      <thead><tr><th>退款单号</th><th>原订单</th><th>患者</th><th>商品</th><th>退款金额</th><th>原因</th><th>申请时间</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="font-family:monospace;font-size:12px;color:var(--color-gray-400);">RF20260529001</td>
+          <td style="font-family:monospace;font-size:12px;">#2026052905</td>
+          <td><div class="name-cell"><div class="avatar avatar-sm" style="background:var(--color-success-500);font-size:11px;">周</div>周小燕</div></td>
+          <td>复查+监测</td>
+          <td style="font-weight:700;color:var(--color-error-500);">¥580</td>
+          <td style="font-size:12px;max-width:160px;">临时有事无法到店</td>
+          <td style="font-size:12px;color:var(--color-gray-500);">5/29 13:05</td>
+          <td class="actions" style="display:flex;gap:4px;"><button class="btn btn-xs btn-success">通过</button><button class="btn btn-xs btn-danger">拒绝</button><button class="btn btn-xs btn-outline">详情</button></td>
+        </tr>
+        <tr>
+          <td style="font-family:monospace;font-size:12px;color:var(--color-gray-400);">RF20260528003</td>
+          <td style="font-family:monospace;font-size:12px;">#2026052807</td>
+          <td><div class="name-cell"><div class="avatar avatar-sm" style="background:var(--color-warning-500);font-size:11px;">何</div>何大海</div></td>
+          <td>止鼾器定制</td>
+          <td style="font-weight:700;color:var(--color-error-500);">¥1,280</td>
+          <td style="font-size:12px;max-width:160px;">佩戴不适，要求退货</td>
+          <td style="font-size:12px;color:var(--color-gray-500);">5/28 16:42</td>
+          <td class="actions" style="display:flex;gap:4px;"><button class="btn btn-xs btn-success">通过</button><button class="btn btn-xs btn-danger">拒绝</button><button class="btn btn-xs btn-outline">详情</button></td>
+        </tr>
+        <tr>
+          <td style="font-family:monospace;font-size:12px;color:var(--color-gray-400);">RF20260528001</td>
+          <td style="font-family:monospace;font-size:12px;">#2026052802</td>
+          <td><div class="name-cell"><div class="avatar avatar-sm" style="background:#9333EA;font-size:11px;">黄</div>黄丽华</div></td>
+          <td>初诊挂号</td>
+          <td style="font-weight:700;color:var(--color-error-500);">¥200</td>
+          <td style="font-size:12px;max-width:160px;">预约时间冲突</td>
+          <td style="font-size:12px;color:var(--color-gray-500);">5/28 09:18</td>
+          <td class="actions" style="display:flex;gap:4px;"><button class="btn btn-xs btn-success">通过</button><button class="btn btn-xs btn-danger">拒绝</button><button class="btn btn-xs btn-outline">详情</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 退款详情弹窗（模拟） -->
+  <div style="margin:0 24px 20px;padding:24px;background:var(--color-gray-50);border-radius:var(--radius-md);border:1px solid var(--color-gray-200);">
+    <div style="font-size:14px;font-weight:700;color:var(--color-gray-900);margin-bottom:16px;">💡 退款详情 — RF20260529001</div>
+    <div class="card-grid-2">
+      <div>
+        <div style="font-size:13px;color:var(--color-gray-500);margin-bottom:8px;">
+          <strong style="color:var(--color-gray-700);">退款原因：</strong>临时有事无法到店<br>
+          <strong style="color:var(--color-gray-700);">退款类型：</strong>全额退款<br>
+          <strong style="color:var(--color-gray-700);">原支付方式：</strong>微信支付<br>
+          <strong style="color:var(--color-gray-700);">退款路径：</strong>原路退回
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;color:var(--color-gray-500);margin-bottom:8px;">
+          <strong style="color:var(--color-gray-700);">佣金影响：</strong><br>
+          <span style="color:var(--color-error-500);">→ 一级佣金扣回：¥87 (15%)</span><br>
+          <span style="color:var(--color-error-500);">→ 二级佣金扣回：¥29 (5%)</span><br>
+          <strong style="color:var(--color-gray-700);">预计到账：</strong>1-3个工作日
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-danger">❌ 拒绝退款</button>
+      <button class="btn btn-success">✅ 同意退款</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================
+     角色权限编辑 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">系统设置 <span>/</span> <span class="current">角色权限编辑</span></div>
+  <div class="screen-label">角色权限编辑 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div><div class="page-title">编辑角色 — 门店管理员</div><div class="page-title-sub">4位成员 · 自定义权限</div></div>
+    <div style="display:flex;gap:8px;"><button class="btn btn-outline">取消</button><button class="btn btn-primary">保存权限</button></div>
+  </div>
+
+  <div class="card-grid-2">
+    <div class="panel" style="margin:0;">
+      <div class="panel-header"><div class="panel-title">📝 角色信息</div></div>
+      <div class="panel-body">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">角色名称<span class="required">*</span></label>
+            <input type="text" class="form-control" value="门店管理员">
+          </div>
+          <div class="form-group full">
+            <label class="form-label">角色描述</label>
+            <textarea class="form-control" style="min-height:60px;">负责管理所属门店的预约、患者、医生排班等日常运营事务</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin:0;">
+      <div class="panel-header"><div class="panel-title">👥 成员列表</div><button class="btn btn-sm btn-primary">➕ 添加</button></div>
+      <table class="data-table">
+        <thead><tr><th>成员</th><th>负责门店</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr><td><div class="name-cell"><div class="avatar avatar-sm" style="background:var(--color-success-500);font-size:10px;">陈</div>陈经理</div></td><td>龙岗总店</td><td><button class="btn btn-xs btn-danger">移除</button></td></tr>
+          <tr><td><div class="name-cell"><div class="avatar avatar-sm" style="background:var(--color-primary-500);font-size:10px;">林</div>林主任</div></td><td>南山分院</td><td><button class="btn btn-xs btn-danger">移除</button></td></tr>
+          <tr><td><div class="name-cell"><div class="avatar avatar-sm" style="background:#9333EA;font-size:10px;">赵</div>赵主管</div></td><td>福田门诊部</td><td><button class="btn btn-xs btn-danger">移除</button></td></tr>
+          <tr><td><div class="name-cell"><div class="avatar avatar-sm" style="background:var(--color-warning-500);font-size:10px;">钱</div>钱助理</div></td><td>广州天河店</td><td><button class="btn btn-xs btn-danger">移除</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 权限矩阵 -->
+  <div class="panel">
+    <div class="panel-header"><div class="panel-title">🔐 权限矩阵</div></div>
+    <div class="panel-body" style="padding:0;">
+      <table class="data-table">
+        <thead><tr><th>模块</th><th>查看</th><th>新增</th><th>编辑</th><th>删除</th><th>审核</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:600;">📅 预约管理</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td><td>✅</td></tr>
+          <tr><td style="font-weight:600;">🧑‍⚕️ 患者管理</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td><td>—</td></tr>
+          <tr><td style="font-weight:600;">👨‍⚕️ 医生管理</td><td>✅</td><td>❌</td><td>✅</td><td>❌</td><td>—</td></tr>
+          <tr><td style="font-weight:600;">🏥 门店管理</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td><td>—</td></tr>
+          <tr><td style="font-weight:600;">📦 订单管理</td><td>✅</td><td>—</td><td>✅</td><td>❌</td><td>—</td></tr>
+          <tr><td style="font-weight:600;">💰 分销管理</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+          <tr><td style="font-weight:600;">⚙️ 系统设置</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+          <tr><td style="font-weight:600;">📋 操作日志</td><td>✅</td><td>—</td><td>❌</td><td>❌</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================
+     管理员账号管理 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">系统设置 <span>/</span> <span class="current">管理员账号</span></div>
+  <div class="screen-label">管理员账号管理 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div><div class="page-title">管理员账号</div><div class="page-title-sub">8位管理员</div></div>
+    <button class="btn btn-primary">➕ 添加管理员</button>
+  </div>
+
+  <div class="panel">
+    <table class="data-table">
+      <thead><tr><th>账号</th><th>姓名</th><th>角色</th><th>负责门店</th><th>最近登录</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="font-family:monospace;font-size:12px;">admin</td>
+          <td><div class="name-cell"><div class="avatar avatar-sm" style="background:var(--color-primary-500);font-size:10px;">管</div><strong>管理员</strong></div></td>
+          <td><span class="tag tag-blue">超级管理员</span></td>
+          <td>全部门店</td>
+          <td style="font-size:12px;color:var(--color-gray-500);">5/29 19:32</td>
+          <td><span class="status-tag green">在线</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button></td>
+        </tr>
+        <tr>
+          <td style="font-family:monospace;font-size:12px;">chenmgr</td>
+          <td><div class="name-cell"><div class="avatar avatar-sm" style="background:var(--color-success-500);font-size:10px;">陈</div>陈经理</div></td>
+          <td><span class="tag tag-green">门店管理员</span></td>
+          <td>龙岗总店</td>
+          <td style="font-size:12px;color:var(--color-gray-500);">5/29 18:45</td>
+          <td><span class="status-tag green">在线</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button> <button class="btn btn-xs btn-danger">禁用</button></td>
+        </tr>
+        <tr>
+          <td style="font-family:monospace;font-size:12px;">finance01</td>
+          <td><div class="name-cell"><div class="avatar avatar-sm" style="background:#9333EA;font-size:10px;">财</div>财务王</div></td>
+          <td><span class="tag tag-gold">财务人员</span></td>
+          <td>全部门店</td>
+          <td style="font-size:12px;color:var(--color-gray-500);">5/29 16:33</td>
+          <td><span class="status-tag gray">离线</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button> <button class="btn btn-xs btn-danger">禁用</button></td>
+        </tr>
+        <tr>
+          <td style="font-family:monospace;font-size:12px;">editor01</td>
+          <td><div class="name-cell"><div class="avatar avatar-sm" style="background:#EC4899;font-size:10px;">编</div>编辑小李</div></td>
+          <td><span class="tag tag-gray">内容编辑</span></td>
+          <td>—</td>
+          <td style="font-size:12px;color:var(--color-gray-500);">5/28 14:20</td>
+          <td><span class="status-tag gray">离线</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button> <button class="btn btn-xs btn-danger">禁用</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ============================================
+     科普文章编辑 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">内容管理 <span>/</span> <span class="current">编辑文章</span></div>
+  <div class="screen-label">科普文章编辑 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div><div class="page-title">编辑文章</div><div class="page-title-sub">草稿 · 最后编辑 5/29 16:00</div></div>
+    <div style="display:flex;gap:8px;"><button class="btn btn-outline">预览</button><button class="btn btn-outline">保存草稿</button><button class="btn btn-primary">发布</button></div>
+  </div>
+
+  <div class="card-grid-2">
+    <div style="grid-column:span 2;">
+      <div class="panel" style="margin:0;">
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-group full">
+              <label class="form-label">文章标题<span class="required">*</span></label>
+              <input type="text" class="form-control" value="打呼噜不只是吵！睡眠呼吸暂停的5大危害你必须知道">
+            </div>
+            <div class="form-group">
+              <label class="form-label">分类</label>
+              <select class="form-control"><option>睡眠科普</option><option>治疗知识</option><option>设备介绍</option><option>患者故事</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">标签</label>
+              <input type="text" class="form-control" value="打鼾, 睡眠呼吸暂停, OSAHS, 健康">
+            </div>
+            <div class="form-group">
+              <label class="form-label">封面图</label>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <div style="width:120px;height:80px;border-radius:var(--radius-sm);background:linear-gradient(135deg,#1A2332,#3B6BF5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;">💤</div>
+                <button class="btn btn-sm btn-outline">更换图片</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">摘要</label>
+              <textarea class="form-control" style="min-height:60px;">很多人觉得打呼噜只是睡得香的表现，殊不知这可能是睡眠呼吸暂停综合征的信号。长期不治疗可能引发高血压、心律失常甚至猝死...</textarea>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">正文内容</label>
+              <div style="border:1px solid var(--color-gray-200);border-radius:var(--radius-sm);overflow:hidden;">
+                <div style="display:flex;gap:2px;padding:8px 12px;background:var(--color-gray-50);border-bottom:1px solid var(--color-gray-200);font-size:14px;">
+                  <button style="padding:4px 8px;border:none;background:none;cursor:pointer;font-weight:700;border-radius:3px;">B</button>
+                  <button style="padding:4px 8px;border:none;background:none;cursor:pointer;font-style:italic;border-radius:3px;">I</button>
+                  <button style="padding:4px 8px;border:none;background:none;cursor:pointer;text-decoration:underline;border-radius:3px;">U</button>
+                  <span style="color:var(--color-gray-200);">|</span>
+                  <button style="padding:4px 8px;border:none;background:none;cursor:pointer;border-radius:3px;">H1</button>
+                  <button style="padding:4px 8px;border:none;background:none;cursor:pointer;border-radius:3px;">H2</button>
+                  <span style="color:var(--color-gray-200);">|</span>
+                  <button style="padding:4px 8px;border:none;background:none;cursor:pointer;border-radius:3px;">🖼️</button>
+                  <button style="padding:4px 8px;border:none;background:none;cursor:pointer;border-radius:3px;">🔗</button>
+                  <button style="padding:4px 8px;border:none;background:none;cursor:pointer;border-radius:3px;">📋</button>
+                </div>
+                <div contenteditable="true" style="min-height:200px;padding:16px;font-size:14px;line-height:1.8;outline:none;">
+                  <h2 style="font-size:18px;font-weight:700;margin-bottom:12px;">什么是睡眠呼吸暂停？</h2>
+                  <p>睡眠呼吸暂停综合征（OSAHS）是指在睡眠过程中反复出现呼吸暂停或低通气的疾病。每次暂停持续10秒以上，一晚上可能发生数十次甚至上百次...</p>
+                  <br>
+                  <h2 style="font-size:18px;font-weight:700;margin-bottom:12px;">5大危害不容忽视</h2>
+                  <p><strong>1. 心血管疾病：</strong>长期缺氧导致血管损伤，增加高血压、冠心病、心律失常风险...</p>
+                  <p><strong>2. 认知功能下降：</strong>大脑反复缺氧导致记忆力减退、注意力不集中...</p>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">关联商品</label>
+              <select class="form-control"><option>无</option><option selected>睡眠监测套餐</option><option>CPAP呼吸机</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">关联医生</label>
+              <select class="form-control"><option>无</option><option selected>古堪民 主任医师</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">发布时间</label>
+              <input type="datetime-local" class="form-control" value="2026-05-30T08:00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">排序权重</label>
+              <input type="number" class="form-control" value="100">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================
+     轮播图管理 L2
+     ============================================ -->
+<div class="screen-section">
+  <div class="breadcrumb">内容管理 <span>/</span> <span class="current">轮播图管理</span></div>
+  <div class="screen-label">轮播图管理 <span class="screen-sublabel">L2</span></div>
+  <div class="page-title-row">
+    <div><div class="page-title">轮播图管理</div><div class="page-title-sub">小程序首页轮播Banner</div></div>
+    <button class="btn btn-primary">➕ 添加轮播图</button>
+  </div>
+
+  <div class="panel">
+    <table class="data-table">
+      <thead><tr><th>排序</th><th>预览</th><th>标题</th><th>跳转链接</th><th>有效期</th><th>展示状态</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:700;color:var(--color-primary-500);">1</td>
+          <td><div style="width:80px;height:45px;border-radius:4px;background:linear-gradient(135deg,#1A3580,#3B6BF5);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">💤 睡眠</div></td>
+          <td style="font-weight:600;">世界睡眠日特惠 · 监测套餐立减500</td>
+          <td style="font-size:12px;color:var(--color-primary-500);">→ 商品详情（睡眠监测套餐）</td>
+          <td style="font-size:12px;color:var(--color-gray-500);">5/1 - 6/30</td>
+          <td><span class="status-tag green">展示中</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button> <button class="btn btn-xs btn-outline">↑↓</button> <button class="btn btn-xs btn-danger">下架</button></td>
+        </tr>
+        <tr>
+          <td style="font-weight:700;color:var(--color-primary-500);">2</td>
+          <td><div style="width:80px;height:45px;border-radius:4px;background:linear-gradient(135deg,#F5A623,#FFD700);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">💰 分销</div></td>
+          <td style="font-weight:600;">推荐有礼 · 赚取高额佣金</td>
+          <td style="font-size:12px;color:var(--color-primary-500);">→ 分销中心</td>
+          <td style="font-size:12px;color:var(--color-gray-500);">长期</td>
+          <td><span class="status-tag green">展示中</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button> <button class="btn btn-xs btn-outline">↑↓</button> <button class="btn btn-xs btn-danger">下架</button></td>
+        </tr>
+        <tr>
+          <td style="font-weight:700;color:var(--color-primary-500);">3</td>
+          <td><div style="width:80px;height:45px;border-radius:4px;background:linear-gradient(135deg,#1A9D5C,#3ABE80);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">👨‍⚕️ 医生</div></td>
+          <td style="font-weight:600;">古堪民主任 · 20年鼾症诊疗经验</td>
+          <td style="font-size:12px;color:var(--color-primary-500);">→ 医生详情（古堪民）</td>
+          <td style="font-size:12px;color:var(--color-gray-500);">长期</td>
+          <td><span class="status-tag green">展示中</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button> <button class="btn btn-xs btn-outline">↑↓</button> <button class="btn btn-xs btn-danger">下架</button></td>
+        </tr>
+        <tr>
+          <td style="font-weight:700;color:var(--color-gray-400);">4</td>
+          <td><div style="width:80px;height:45px;border-radius:4px;background:var(--color-gray-100);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--color-gray-400);filter:grayscale(0.5);">🏥 新店</div></td>
+          <td style="font-weight:600;color:var(--color-gray-400);">福田门诊部 · 盛大开业</td>
+          <td style="font-size:12px;color:var(--color-gray-400);">→ 门店详情（福田）</td>
+          <td style="font-size:12px;color:var(--color-gray-400);">4/1 - 4/30</td>
+          <td><span class="status-tag gray">已过期</span></td>
+          <td><button class="btn btn-xs btn-outline">编辑</button> <button class="btn btn-xs btn-danger">删除</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ============================================
+     业务闭环总览图
+     ============================================ -->
+<div class="screen-section" style="background:var(--color-gray-900);padding:40px;">
+  <div style="text-align:center;margin-bottom:32px;">
+    <div style="font-size:24px;font-weight:800;background:linear-gradient(135deg,#8EAFFF,#5A85F5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">鼾静健康 · 管理后台页面层级总览</div>
+    <div style="font-size:14px;color:var(--color-gray-400);margin-top:8px;">完整业务闭环 · 10个L1 + 14个L2 + 4个L3 = 28页</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;max-width:1200px;margin:0 auto;">
+    <!-- 预约闭环 -->
+    <div style="background:var(--color-gray-800);border-radius:var(--radius-md);padding:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--color-primary-400);margin-bottom:12px;">📅 预约闭环</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+        <div style="padding:6px 10px;background:rgba(59,107,245,0.15);border-radius:4px;color:#8EAFFF;">L1 预约管理</div>
+        <div style="padding:6px 10px;background:rgba(59,107,245,0.1);border-radius:4px;color:var(--color-gray-300);">L2 预约详情</div>
+        <div style="padding:6px 10px;background:rgba(59,107,245,0.1);border-radius:4px;color:var(--color-gray-300);">L2 新建预约</div>
+        <div style="padding:6px 10px;background:rgba(59,107,245,0.1);border-radius:4px;color:var(--color-gray-300);">L3 改约/取消</div>
+        <div style="margin-top:8px;padding:8px 10px;background:rgba(34,197,94,0.1);border-radius:4px;font-size:11px;color:var(--color-success-500);line-height:1.5;">
+          创建→确认→到诊→就诊→随访→复诊
+        </div>
+      </div>
+    </div>
+
+    <!-- 患者闭环 -->
+    <div style="background:var(--color-gray-800);border-radius:var(--radius-md);padding:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--color-success-500);margin-bottom:12px;">🧑‍⚕️ 患者闭环</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+        <div style="padding:6px 10px;background:rgba(34,197,94,0.15);border-radius:4px;color:#86EFAC;">L1 患者管理</div>
+        <div style="padding:6px 10px;background:rgba(34,197,94,0.1);border-radius:4px;color:var(--color-gray-300);">L2 患者详情</div>
+        <div style="padding:6px 10px;background:rgba(34,197,94,0.1);border-radius:4px;color:var(--color-gray-300);">L3 随访任务</div>
+        <div style="padding:6px 10px;background:rgba(34,197,94,0.1);border-radius:4px;color:var(--color-gray-300);">L3 病历详情</div>
+        <div style="margin-top:8px;padding:8px 10px;background:rgba(34,197,94,0.1);border-radius:4px;font-size:11px;color:var(--color-success-500);line-height:1.5;">
+          建档→就诊→随访→复诊→VIP升级
+        </div>
+      </div>
+    </div>
+
+    <!-- 订单闭环 -->
+    <div style="background:var(--color-gray-800);border-radius:var(--radius-md);padding:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--color-warning-500);margin-bottom:12px;">📦 订单闭环</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+        <div style="padding:6px 10px;background:rgba(245,158,11,0.15);border-radius:4px;color:#FDE68A;">L1 订单管理</div>
+        <div style="padding:6px 10px;background:rgba(245,158,11,0.1);border-radius:4px;color:var(--color-gray-300);">L2 订单详情</div>
+        <div style="padding:6px 10px;background:rgba(245,158,11,0.1);border-radius:4px;color:var(--color-gray-300);">L2 退款审核</div>
+        <div style="margin-top:8px;padding:8px 10px;background:rgba(245,158,11,0.1);border-radius:4px;font-size:11px;color:var(--color-warning-500);line-height:1.5;">
+          下单→支付→发货→收货→售后→退款
+        </div>
+      </div>
+    </div>
+
+    <!-- 分销闭环 -->
+    <div style="background:var(--color-gray-800);border-radius:var(--radius-md);padding:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--color-gold-400);margin-bottom:12px;">💰 分销闭环</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+        <div style="padding:6px 10px;background:rgba(245,166,35,0.15);border-radius:4px;color:#FFD700;">L1 分销总览</div>
+        <div style="padding:6px 10px;background:rgba(245,166,35,0.1);border-radius:4px;color:var(--color-gray-300);">L1 提现审核</div>
+        <div style="padding:6px 10px;background:rgba(245,166,35,0.1);border-radius:4px;color:var(--color-gray-300);">L2 推广员详情</div>
+        <div style="padding:6px 10px;background:rgba(245,166,35,0.1);border-radius:4px;color:var(--color-gray-300);">L2 推广商品管理</div>
+        <div style="margin-top:8px;padding:8px 10px;background:rgba(245,166,35,0.1);border-radius:4px;font-size:11px;color:var(--color-gold-400);line-height:1.5;">
+          注册→推广→成交→佣金→提现→审核→打款
+        </div>
+      </div>
+    </div>
+
+    <!-- 系统闭环 -->
+    <div style="background:var(--color-gray-800);border-radius:var(--radius-md);padding:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--color-gray-300);margin-bottom:12px;">⚙️ 系统闭环</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+        <div style="padding:6px 10px;background:rgba(255,255,255,0.08);border-radius:4px;color:var(--color-gray-300);">L1 系统设置</div>
+        <div style="padding:6px 10px;background:rgba(255,255,255,0.05);border-radius:4px;color:var(--color-gray-400);">L2 角色权限</div>
+        <div style="padding:6px 10px;background:rgba(255,255,255,0.05);border-radius:4px;color:var(--color-gray-400);">L2 管理员账号</div>
+        <div style="padding:6px 10px;background:rgba(255,255,255,0.05);border-radius:4px;color:var(--color-gray-400);">L2 科普文章编辑</div>
+        <div style="padding:6px 10px;background:rgba(255,255,255,0.05);border-radius:4px;color:var(--color-gray-400);">L2 轮播图管理</div>
+        <div style="margin-top:8px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:4px;font-size:11px;color:var(--color-gray-400);line-height:1.5;">
+          权限→账号→内容→日志→审计
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:32px;font-size:12px;color:var(--color-gray-500);">
+    鼾静健康诊所管理后台 · 完整UI设计 · 2026
+  </div>
+</div>
+
+</body>
+</html>
