@@ -194,7 +194,7 @@ onMounted(() => {
               v-model="item.product_id"
               :options="productOptions.map(p => ({ label: p.name, value: p.id }))"
               style="flex: 1;"
-              @change="(val: any) => onProductChange(idx, val)"
+              @change="val => onProductChange(idx, val)"
             />
             <t-input-number v-model="item.quantity" :min="1" style="width: 100px;" />
             <div class="row-price">¥{{ ((item.price * item.quantity) / 100).toFixed(2) }}</div>
@@ -206,7 +206,7 @@ onMounted(() => {
         <div style="display: flex; gap: 16px; margin-top: 16px;">
           <div class="form-item" style="flex: 1;">
             <label class="form-label">卡券折扣金额 (元)</label>
-            <t-input-number v-model="discountAmount" :min="0" :step="1000" format="(val) => `¥${(val / 100).toFixed(2)}`" />
+            <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="val => `¥${(val / 100).toFixed(2)}`" />
           </div>
           <div class="form-item" style="flex: 1;">
             <label class="form-label">支付方式</label>
