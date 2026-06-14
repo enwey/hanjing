@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>预约成功 - 鼾静小程序</title>
+<style>
+
+:root {
+  --color-primary: #3B6BF5;
+  --color-primary-gradient: linear-gradient(135deg, #3B6BF5 0%, #5A85F5 50%, #8EAFFF 100%);
+  --color-primary-dark: #1A3580;
+  --color-secondary: #1A9D5C;
+  --color-bg: #F9FAFB;
+  --color-card-bg: #FFFFFF;
+  --color-text-main: #1F2937;
+  --color-text-sub: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-gold: #F59E0B;
+  --color-red: #EF4444;
+  --color-border: #E5E7EB;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  font-family: var(--font-family);
+  color: var(--color-text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App Shell container to simulate mobile app */
+.app-screen {
+  width: 100%;
+  max-width: 375px;
+  min-height: 812px;
+  background-color: var(--color-bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0 auto;
+  overflow: hidden;
+  padding-bottom: 64px; /* Space for TabBar */
+}
+
+/* WeChat-style header */
+.wechat-header {
+  background-color: #ffffff;
+  color: #1f2937;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+.wechat-header.transparent {
+  background: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+.status-bar {
+  height: 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.status-bar-icons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.nav-bar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  position: relative;
+}
+.nav-back {
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  width: 40px;
+}
+.nav-title {
+  font-size: 17px;
+  font-weight: 700;
+  flex: 1;
+  text-align: center;
+}
+.nav-capsule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 99px;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  width: 64px;
+  justify-content: space-around;
+}
+.wechat-header.transparent .nav-capsule {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.15);
+}
+.capsule-dot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+}
+.capsule-circle {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.capsule-circle-inner {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+/* WeChat TabBar */
+.wechat-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 375px;
+  height: 56px;
+  background-color: #ffffff;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 100;
+  box-sizing: border-box;
+}
+.tabbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  gap: 3px;
+}
+.tabbar-item.active {
+  color: var(--color-primary);
+}
+.tabbar-icon {
+  font-size: 20px;
+}
+
+/* Common UI Elements */
+.card {
+  background: var(--color-card-bg);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin: 12px 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0,0,0,0.015);
+}
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+.align-center {
+  align-items: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.gap-2 {
+  gap: 8px;
+}
+.gap-3 {
+  gap: 12px;
+}
+.btn {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+.btn:hover {
+  background: #2a52d4;
+}
+.btn-outline {
+  background: #ffffff;
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border);
+}
+.btn-outline:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-bg);
+  color: var(--color-text-sub);
+}
+.tag-blue {
+  background: #EEF4FF;
+  color: var(--color-primary);
+}
+.tag-green {
+  background: #EDFBF5;
+  color: var(--color-secondary);
+}
+.tag-gold {
+  background: #FFFBEB;
+  color: var(--color-gold);
+}
+
+/* Micro-animations */
+.hover-scale {
+  transition: transform 0.2s;
+}
+.hover-scale:hover {
+  transform: translateY(-2px);
+}
+
+</style>
+</head>
+<body>
+
+    <div class="app-screen">
+      <div class="wechat-header">
+        <div class="status-bar">
+          <span>09:41</span>
+          <div class="status-bar-icons">📶 🛜 🔋</div>
+        </div>
+        <div class="nav-bar">
+          <div class="nav-back"></div>
+          <div class="nav-title">预约挂号成功</div>
+          <div class="nav-capsule">
+            <div class="capsule-dot"></div>
+            <div class="nav-capsule-divider" style="width:1px; height:12px; background:rgba(0,0,0,0.1)"></div>
+            <div class="capsule-circle"><div class="capsule-circle-inner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-col align-center" style="flex:1; padding:40px 24px; box-sizing:border-box; justify-content:center;">
+        <div style="width:64px; height:64px; background:#EDFBF5; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--color-secondary); font-size:32px; margin-bottom:16px;">✓</div>
+        <h2 style="margin:0; font-size:20px; font-weight:800;">门诊预约成功</h2>
+        <span style="color:var(--color-text-sub); font-size:12px; margin-top:6px;">就诊号：A012 · 准时签到就诊</span>
+
+        <div class="card flex-col" style="width:100%; margin-top:24px; box-sizing:border-box;">
+          <div class="flex-col gap-2" style="font-size:13px; color:var(--color-text-sub);">
+            <div class="flex-row justify-between"><span>就诊专家:</span><span style="color:var(--color-text-main); font-weight:700;">李明辉 主任医师</span></div>
+            <div class="flex-row justify-between"><span>就诊日期:</span><span style="color:var(--color-text-main); font-weight:700;">2026-06-15 (今天) 09:30</span></div>
+            <div class="flex-row justify-between"><span>就诊中心:</span><span style="color:var(--color-text-main); font-weight:700;">深圳福田旗舰中心 18楼</span></div>
+          </div>
+        </div>
+
+        <div class="flex-row gap-3" style="width:100%; margin-top:24px;">
+          <a href="home.html" class="btn btn-outline" style="flex:1; text-decoration:none; text-align:center;">返回首页</a>
+          <a href="profile_medical_records.html" class="btn" style="flex:1; text-decoration:none; text-align:center;">查看挂号</a>
+        </div>
+      </div>
+    </div>
+  
+</body>
+</html>

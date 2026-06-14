@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>医生详情 - 鼾静小程序</title>
+<style>
+
+:root {
+  --color-primary: #3B6BF5;
+  --color-primary-gradient: linear-gradient(135deg, #3B6BF5 0%, #5A85F5 50%, #8EAFFF 100%);
+  --color-primary-dark: #1A3580;
+  --color-secondary: #1A9D5C;
+  --color-bg: #F9FAFB;
+  --color-card-bg: #FFFFFF;
+  --color-text-main: #1F2937;
+  --color-text-sub: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-gold: #F59E0B;
+  --color-red: #EF4444;
+  --color-border: #E5E7EB;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  font-family: var(--font-family);
+  color: var(--color-text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App Shell container to simulate mobile app */
+.app-screen {
+  width: 100%;
+  max-width: 375px;
+  min-height: 812px;
+  background-color: var(--color-bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0 auto;
+  overflow: hidden;
+  padding-bottom: 64px; /* Space for TabBar */
+}
+
+/* WeChat-style header */
+.wechat-header {
+  background-color: #ffffff;
+  color: #1f2937;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+.wechat-header.transparent {
+  background: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+.status-bar {
+  height: 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.status-bar-icons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.nav-bar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  position: relative;
+}
+.nav-back {
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  width: 40px;
+}
+.nav-title {
+  font-size: 17px;
+  font-weight: 700;
+  flex: 1;
+  text-align: center;
+}
+.nav-capsule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 99px;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  width: 64px;
+  justify-content: space-around;
+}
+.wechat-header.transparent .nav-capsule {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.15);
+}
+.capsule-dot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+}
+.capsule-circle {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.capsule-circle-inner {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+/* WeChat TabBar */
+.wechat-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 375px;
+  height: 56px;
+  background-color: #ffffff;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 100;
+  box-sizing: border-box;
+}
+.tabbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  gap: 3px;
+}
+.tabbar-item.active {
+  color: var(--color-primary);
+}
+.tabbar-icon {
+  font-size: 20px;
+}
+
+/* Common UI Elements */
+.card {
+  background: var(--color-card-bg);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin: 12px 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0,0,0,0.015);
+}
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+.align-center {
+  align-items: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.gap-2 {
+  gap: 8px;
+}
+.gap-3 {
+  gap: 12px;
+}
+.btn {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+.btn:hover {
+  background: #2a52d4;
+}
+.btn-outline {
+  background: #ffffff;
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border);
+}
+.btn-outline:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-bg);
+  color: var(--color-text-sub);
+}
+.tag-blue {
+  background: #EEF4FF;
+  color: var(--color-primary);
+}
+.tag-green {
+  background: #EDFBF5;
+  color: var(--color-secondary);
+}
+.tag-gold {
+  background: #FFFBEB;
+  color: var(--color-gold);
+}
+
+/* Micro-animations */
+.hover-scale {
+  transition: transform 0.2s;
+}
+.hover-scale:hover {
+  transform: translateY(-2px);
+}
+
+</style>
+</head>
+<body>
+
+    <div class="app-screen">
+      <div class="wechat-header">
+        <div class="status-bar">
+          <span>09:41</span>
+          <div class="status-bar-icons">📶 🛜 🔋</div>
+        </div>
+        <div class="nav-bar">
+          <a href="appointment.html" class="nav-back" style="text-decoration:none; color:inherit;">‹</a>
+          <div class="nav-title">医生详情</div>
+          <div class="nav-capsule">
+            <div class="capsule-dot"></div>
+            <div class="nav-capsule-divider" style="width:1px; height:12px; background:rgba(0,0,0,0.1)"></div>
+            <div class="capsule-circle"><div class="capsule-circle-inner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1; overflow-y:auto; padding-bottom:40px;">
+        <!-- Doctor info header -->
+        <div class="card flex-row" style="margin-top:16px;">
+          <div style="width:64px; height:64px; border-radius:50%; background: linear-gradient(135deg, var(--color-primary), #8EAFFF); display:flex; align-items:center; justify-content:center; color:white; font-size:24px; font-weight:700; margin-right:16px;">李</div>
+          <div class="flex-col" style="flex:1;">
+            <div class="flex-row align-center gap-2">
+              <span style="font-size:18px; font-weight:800;">李明辉</span>
+              <span class="tag tag-gold" style="font-size:9px;">主任医师</span>
+            </div>
+            <span style="font-size:12px; color:var(--color-text-sub); margin-top:4px;">临床工作22年 · 睡眠呼吸科</span>
+            <span style="font-size:12px; color:var(--color-text-muted); margin-top:4px;">深圳市第二人民医院 / 门诊中心</span>
+          </div>
+        </div>
+
+        <!-- Bio card -->
+        <div class="card flex-col">
+          <span style="font-size:14px; font-weight:800; color:var(--color-text-main); margin-bottom:8px;">专业擅长</span>
+          <p style="margin:0; font-size:12px; color:var(--color-text-sub); line-height:1.6;">
+            从事睡眠呼吸障碍诊疗20余年，擅长阻塞性睡眠呼吸暂停综合症（OSAS）的非手术治疗，尤其在各类阻鼾器的临床适配、前伸量调整与长期随访管理方面积累了丰富的临床经验。
+          </p>
+        </div>
+
+        <!-- Booking schedule calendar -->
+        <div class="card flex-col">
+          <span style="font-size:14px; font-weight:800; color:var(--color-text-main); margin-bottom:12px;">选择预约时段</span>
+          
+          <div class="flex-row justify-between align-center" style="margin-bottom:12px;">
+            <a href="time_select.html" class="flex-col align-center justify-center hover-scale" style="width:48px; height:58px; background:#EEF4FF; border-radius:8px; text-decoration:none; color:inherit;">
+              <span style="font-size:10px; color:var(--color-primary); font-weight:600;">今天</span>
+              <span style="font-size:14px; font-weight:800; margin-top:4px; color:var(--color-primary);">6/15</span>
+              <span style="font-size:8px; color:var(--color-primary); margin-top:2px;">有号</span>
+            </a>
+            <a href="time_select.html" class="flex-col align-center justify-center hover-scale" style="width:48px; height:58px; background:#EEF4FF; border-radius:8px; text-decoration:none; color:inherit;">
+              <span style="font-size:10px; color:var(--color-primary); font-weight:600;">周二</span>
+              <span style="font-size:14px; font-weight:800; margin-top:4px; color:var(--color-primary);">6/16</span>
+              <span style="font-size:8px; color:var(--color-primary); margin-top:2px;">有号</span>
+            </a>
+            <a href="time_select.html" class="flex-col align-center justify-center hover-scale" style="width:48px; height:58px; background:#F3F4F6; border-radius:8px; text-decoration:none; color:inherit;">
+              <span style="font-size:10px; color:var(--color-text-sub); font-weight:600;">周三</span>
+              <span style="font-size:14px; font-weight:800; margin-top:4px; color:var(--color-text-sub);">6/17</span>
+              <span style="font-size:8px; color:var(--color-text-muted); margin-top:2px;">满诊</span>
+            </a>
+            <a href="time_select.html" class="flex-col align-center justify-center hover-scale" style="width:48px; height:58px; background:#EEF4FF; border-radius:8px; text-decoration:none; color:inherit;">
+              <span style="font-size:10px; color:var(--color-primary); font-weight:600;">周四</span>
+              <span style="font-size:14px; font-weight:800; margin-top:4px; color:var(--color-primary);">6/18</span>
+              <span style="font-size:8px; color:var(--color-primary); margin-top:2px;">有号</span>
+            </a>
+            <a href="time_select.html" class="flex-col align-center justify-center hover-scale" style="width:48px; height:58px; background:#EEF4FF; border-radius:8px; text-decoration:none; color:inherit;">
+              <span style="font-size:10px; color:var(--color-primary); font-weight:600;">周五</span>
+              <span style="font-size:14px; font-weight:800; margin-top:4px; color:var(--color-primary);">6/19</span>
+              <span style="font-size:8px; color:var(--color-primary); margin-top:2px;">有号</span>
+            </a>
+          </div>
+
+          <a href="time_select.html" class="btn" style="text-decoration:none; margin-top:12px;">立即预约门诊</a>
+        </div>
+      </div>
+    </div>
+  
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>预约挂号 - 鼾静小程序</title>
+<style>
+
+:root {
+  --color-primary: #3B6BF5;
+  --color-primary-gradient: linear-gradient(135deg, #3B6BF5 0%, #5A85F5 50%, #8EAFFF 100%);
+  --color-primary-dark: #1A3580;
+  --color-secondary: #1A9D5C;
+  --color-bg: #F9FAFB;
+  --color-card-bg: #FFFFFF;
+  --color-text-main: #1F2937;
+  --color-text-sub: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-gold: #F59E0B;
+  --color-red: #EF4444;
+  --color-border: #E5E7EB;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  font-family: var(--font-family);
+  color: var(--color-text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* App Shell container to simulate mobile app */
+.app-screen {
+  width: 100%;
+  max-width: 375px;
+  min-height: 812px;
+  background-color: var(--color-bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0 auto;
+  overflow: hidden;
+  padding-bottom: 64px; /* Space for TabBar */
+}
+
+/* WeChat-style header */
+.wechat-header {
+  background-color: #ffffff;
+  color: #1f2937;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+.wechat-header.transparent {
+  background: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+.status-bar {
+  height: 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.status-bar-icons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.nav-bar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  position: relative;
+}
+.nav-back {
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  width: 40px;
+}
+.nav-title {
+  font-size: 17px;
+  font-weight: 700;
+  flex: 1;
+  text-align: center;
+}
+.nav-capsule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 99px;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  width: 64px;
+  justify-content: space-around;
+}
+.wechat-header.transparent .nav-capsule {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.15);
+}
+.capsule-dot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+}
+.capsule-circle {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.capsule-circle-inner {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+/* WeChat TabBar */
+.wechat-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 375px;
+  height: 56px;
+  background-color: #ffffff;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 100;
+  box-sizing: border-box;
+}
+.tabbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  gap: 3px;
+}
+.tabbar-item.active {
+  color: var(--color-primary);
+}
+.tabbar-icon {
+  font-size: 20px;
+}
+
+/* Common UI Elements */
+.card {
+  background: var(--color-card-bg);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin: 12px 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0,0,0,0.015);
+}
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+.align-center {
+  align-items: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.gap-2 {
+  gap: 8px;
+}
+.gap-3 {
+  gap: 12px;
+}
+.btn {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+.btn:hover {
+  background: #2a52d4;
+}
+.btn-outline {
+  background: #ffffff;
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border);
+}
+.btn-outline:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--color-bg);
+  color: var(--color-text-sub);
+}
+.tag-blue {
+  background: #EEF4FF;
+  color: var(--color-primary);
+}
+.tag-green {
+  background: #EDFBF5;
+  color: var(--color-secondary);
+}
+.tag-gold {
+  background: #FFFBEB;
+  color: var(--color-gold);
+}
+
+/* Micro-animations */
+.hover-scale {
+  transition: transform 0.2s;
+}
+.hover-scale:hover {
+  transform: translateY(-2px);
+}
+
+</style>
+</head>
+<body>
+
+    <div class="app-screen">
+      <div class="wechat-header">
+        <div class="status-bar">
+          <span>09:41</span>
+          <div class="status-bar-icons">📶 🛜 🔋</div>
+        </div>
+        <div class="nav-bar">
+          <div class="nav-back"></div>
+          <div class="nav-title">选择医生挂号</div>
+          <div class="nav-capsule">
+            <div class="capsule-dot"></div>
+            <div class="nav-capsule-divider" style="width:1px; height:12px; background:rgba(0,0,0,0.1)"></div>
+            <div class="capsule-circle"><div class="capsule-circle-inner"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="flex-row justify-between align-center" style="background:#ffffff; padding: 12px 20px; border-bottom:1px solid var(--color-border); font-size:14px; font-weight:600; color:var(--color-text-sub);">
+        <a href="store_select.html" style="text-decoration:none; color:inherit;" class="flex-row align-center gap-2">深圳旗舰中心 ▾</a>
+        <span>全部科室 ▾</span>
+        <span>智能排序 ▾</span>
+      </div>
+
+      <!-- Search bar -->
+      <div style="padding:12px 16px 4px;">
+        <input type="text" placeholder="🔍 搜索专家、科室、疾病" style="width:100%; border:none; padding:10px 14px; background:#E5E7EB; border-radius:10px; font-size:13px; box-sizing:border-box; outline:none;" />
+      </div>
+
+      <!-- Doctors list -->
+      <div style="flex:1; overflow-y:auto; padding-bottom:20px;">
+        <!-- Doctor 1 -->
+        <a href="doctor_detail.html" class="card flex-row hover-scale" style="text-decoration:none; margin:12px 16px 0; color:inherit;">
+          <div style="width:56px; height:56px; border-radius:50%; background: linear-gradient(135deg, var(--color-primary), #8EAFFF); display:flex; align-items:center; justify-content:center; color:white; font-size:20px; font-weight:700; margin-right:12px;">李</div>
+          <div class="flex-col" style="flex:1;">
+            <div class="flex-row justify-between align-center">
+              <div class="flex-row align-center gap-2">
+                <span style="font-size:16px; font-weight:700;">李明辉</span>
+                <span class="tag tag-gold" style="font-size:9px; padding:1px 4px;">主任医师</span>
+              </div>
+              <span class="btn" style="padding:4px 12px; font-size:12px; border-radius:6px; font-weight:600;">挂号</span>
+            </div>
+            <span style="font-size:12px; color:var(--color-text-sub); margin-top:4px;">原深圳市人民医院 · 22年经验</span>
+            <span style="font-size:11px; color:var(--color-text-muted); margin-top:6px;">⭐ 4.9 (326条评价) · 已接诊 1万+</span>
+            <div class="flex-row gap-2" style="margin-top:8px;">
+              <span class="tag tag-blue" style="font-size:9px;">睡眠呼吸暂停</span>
+              <span class="tag tag-blue" style="font-size:9px;">鼾症非手术</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Doctor 2 -->
+        <a href="doctor_detail.html" class="card flex-row hover-scale" style="text-decoration:none; margin:12px 16px 0; color:inherit;">
+          <div style="width:56px; height:56px; border-radius:50%; background: linear-gradient(135deg, var(--color-secondary), #ACEAC8); display:flex; align-items:center; justify-content:center; color:white; font-size:20px; font-weight:700; margin-right:12px;">王</div>
+          <div class="flex-col" style="flex:1;">
+            <div class="flex-row justify-between align-center">
+              <div class="flex-row align-center gap-2">
+                <span style="font-size:16px; font-weight:700;">王芳</span>
+                <span class="tag tag-gold" style="font-size:9px; padding:1px 4px;">副主任医师</span>
+              </div>
+              <span class="btn" style="padding:4px 12px; font-size:12px; border-radius:6px; font-weight:600;">挂号</span>
+            </div>
+            <span style="font-size:12px; color:var(--color-text-sub); margin-top:4px;">原北京大学深圳医院 · 15年经验</span>
+            <span style="font-size:11px; color:var(--color-text-muted); margin-top:6px;">⭐ 4.8 (218条评价) · 已接诊 6.5k</span>
+            <div class="flex-row gap-2" style="margin-top:8px;">
+              <span class="tag tag-blue" style="font-size:9px;">口腔矫治器</span>
+              <span class="tag tag-blue" style="font-size:9px;">儿童鼾症</span>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- TabBar Navigation -->
+      <div class="wechat-tabbar">
+        <a href="home.html" class="tabbar-item">
+          <div class="tabbar-icon">🏠</div>
+          <span>首页</span>
+        </a>
+        <a href="appointment.html" class="tabbar-item active">
+          <div class="tabbar-icon">📅</div>
+          <span>预约</span>
+        </a>
+        <a href="treatment.html" class="tabbar-item">
+          <div class="tabbar-icon">💊</div>
+          <span>治疗</span>
+        </a>
+        <a href="product.html" class="tabbar-item">
+          <div class="tabbar-icon">🛍️</div>
+          <span>商城</span>
+        </a>
+        <a href="profile.html" class="tabbar-item">
+          <div class="tabbar-icon">👤</div>
+          <span>我的</span>
+        </a>
+      </div>
+    </div>
+  
+</body>
+</html>

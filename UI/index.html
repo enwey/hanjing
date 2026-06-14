@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鼾静健康诊所 - 小程序高保真UI设计展示</title>
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0b0f19;
+  color: #e2e8f0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.dashboard {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.left-panel {
+  width: 340px;
+  background-color: #111827;
+  border-right: 1px solid #1f2937;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.header {
+  padding: 28px 24px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #3b6bf5;
+  letter-spacing: -0.02em;
+}
+
+.header p {
+  margin: 6px 0 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.menu-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 16px;
+}
+
+.menu-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 20px 0 8px 8px;
+}
+
+.menu-item {
+  margin-bottom: 4px;
+}
+
+.menu-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 10px;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.menu-link:hover {
+  background-color: #1f2937;
+  color: #f8fafc;
+}
+
+.menu-item.active .menu-link {
+  background-color: #3b6bf5;
+  color: #ffffff;
+}
+
+.menu-badge {
+  font-size: 11px;
+  color: #4b5563;
+  font-weight: normal;
+}
+
+.menu-item.active .menu-badge {
+  color: rgba(255,255,255,0.7);
+}
+
+.right-panel {
+  flex: 1;
+  background-color: #0b0f19;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.iphone-frame {
+  width: 375px;
+  height: 812px;
+  border: 12px solid #1f2937;
+  border-radius: 46px;
+  background-color: #000;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.8), inset 0 0 4px rgba(255,255,255,0.1);
+  position: relative;
+}
+
+/* Island Notch */
+.iphone-frame::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 28px;
+  background-color: #1f2937;
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
+  z-index: 1000;
+}
+
+iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 34px;
+  background-color: #f9fafb;
+}
+
+.bg-light-glow {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(59,107,245,0.1) 0%, transparent 70%);
+  top: -100px;
+  right: -100px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+</style>
+</head>
+<body>
+
+<div class="dashboard">
+  <div class="left-panel">
+    <div class="header">
+      <h1>鼾静健康诊所</h1>
+      <p>微信小程序高保真 UI 展示面板</p>
+    </div>
+    
+    <ul class="menu-list">
+      <div class="menu-section-title">核心一级页面</div>
+      <li class="menu-item active" onclick="loadPage('home', this)">
+        <a href="#" class="menu-link">
+          <span>🏠 诊所首页</span>
+          <span class="menu-badge">home.html</span>
+        </a>
+      </li>
+      <li class="menu-item" onclick="loadPage('appointment', this)">
+        <a href="#" class="menu-link">
+          <span>📅 预约挂号</span>
+          <span class="menu-badge">appointment.html</span>
+        </a>
+      </li>
+      <li class="menu-item" onclick="loadPage('treatment', this)">
+        <a href="#" class="menu-link">
+          <span>💊 治疗追踪</span>
+          <span class="menu-badge">treatment.html</span>
+        </a>
+      </li>
+      <li class="menu-item" onclick="loadPage('product', this)">
+        <a href="#" class="menu-link">
+          <span>🛍️ 健康商城</span>
+          <span class="menu-badge">product.html</span>
+        </a>
+      </li>
+      <li class="menu-item" onclick="loadPage('profile', this)">
+        <a href="#" class="menu-link">
+          <span>👤 个人中心</span>
+          <span class="menu-badge">profile.html</span>
+        </a>
+      </li>
+
+      <div class="menu-section-title">挂号与就诊流</div>
+      <li class="menu-item" onclick="loadPage('doctor_detail', this)">
+        <a href="#" class="menu-link">
+          <span>👨‍⚕️ 医生详情</span>
+          <span class="menu-badge">doctor_detail.html</span>
+        </a>
+      </li>
+      <li class="menu-item" onclick="loadPage('store_select', this)">
+        <a href="#" class="menu-link">
+          <span>🏥 选择门店</span>
+          <span class="menu-badge">store_select.html</span>
+        </a>
+      </li>
+      <li class="menu-item" onclick="loadPage('time_select', this)">
+        <a href="#" class="menu-link">
+          <span>🕐 选择时段</span>
+          <span class="menu-badge">time_select.html</span>
+        </a>
+      </li>
+      <li class="menu-item" onclick="loadPage('appointment_confirm', this)">
+        <a href="#" class="menu-link">
+          <span>📋 确认信息</span>
+          <span class="menu-badge">appointment_confirm.html</span>
+        </a>
+      </li>
+      <li class="menu-item" onclick="loadPage('appointment_success', this)">
+        <a href="#" class="menu-link">
+          <span>✓ 预约成功</span>
+          <span class="menu-badge">appointment_success.html</span>
+        </a>
+      </li>
+
+      <div class="menu-section-title">量表与评估</div>
+      <li class="menu-item" onclick="loadPage('assessment', this)">
+        <a href="#" class="menu-link">
+          <span>📊 自我评估</span>
+          <span class="menu-badge">assessment.html</span>
+        </a>
+      </li>
+      <li class="menu-item" onclick="loadPage('assessment_questionnaire', this)">
+        <a href="#" class="menu-link">
+          <span>📝 答题评估</span>
+          <span class="menu-badge">assessment_questionnaire.html</span>
+        </a>
+      </li>
+      <li class="menu-item" onclick="loadPage('assessment_result', this)">
+        <a href="#" class="menu-link">
+          <span>📈 测评结果</span>
+          <span class="menu-badge">assessment_result.html</span>
+        </a>
+      </li>
+
+      <div class="menu-section-title">健康营销</div>
+      <li class="menu-item" onclick="loadPage('distribution_center', this)">
+        <a href="#" class="menu-link">
+          <span>🔗 合伙人中心</span>
+          <span class="menu-badge">distribution_center.html</span>
+        </a>
+      </li>
+
+      <div class="menu-section-title">身份与安全</div>
+      <li class="menu-item" onclick="loadPage('login', this)">
+        <a href="#" class="menu-link">
+          <span>🔑 授权登录</span>
+          <span class="menu-badge">login.html</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="right-panel">
+    <div class="bg-light-glow"></div>
+    <div class="iphone-frame">
+      <iframe id="previewIframe" src="pages/home.html"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+function loadPage(pageName, el) {
+  document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('previewIframe').src = 'pages/' + pageName + '.html';
+}
+</script>
+</body>
+</html>
