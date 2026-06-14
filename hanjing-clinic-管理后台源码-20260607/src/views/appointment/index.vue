@@ -449,10 +449,10 @@ async function submitCheckout() {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in paginatedAppointments" :key="row.id" @click="router.push('/appointment/detail/' + row.id)" style="cursor: pointer;">
+            <tr v-for="row in paginatedAppointments" :key="row.id">
               <td style="font-family: monospace; font-weight: 600; color: var(--primary-500);">{{ row.no }}</td>
               <td>
-                <div style="display: flex; align-items: center; gap: 10px;" @click.stop>
+                <div style="display: flex; align-items: center; gap: 10px;">
                   <t-avatar size="32px" :style="{ background: row.avatarColor }">
                     {{ row.avatarChar }}
                   </t-avatar>
@@ -480,7 +480,12 @@ async function submitCheckout() {
                 </t-tag>
               </td>
               <td style="text-align: right;">
-                <div class="actions" style="justify-content: flex-end;" @click.stop>
+                <div class="actions" style="justify-content: flex-end;">
+                  <button
+                    class="btn btn-xs btn-outline"
+                    @click="router.push('/appointment/detail/' + row.id)"
+                  >详情</button>
+
                   <!-- status is pending (待确认) -->
                   <button
                     v-if="row.status === 'pending'"
@@ -499,7 +504,6 @@ async function submitCheckout() {
                     class="btn btn-xs btn-warning"
                     @click="callPatient(row.patient, row.doctor)"
                   >📢 叫号</button>
-
 
                   <!-- status is completed (待结算) -->
                   <button
