@@ -293,20 +293,25 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
 app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const appt = await get(
-      `SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.medical_history, p.user_id as patient_user_id,
-              d.name as doctor_name, d.specialty as doctor_specialty, s.name as store_name
-       FROM appointments a
-       JOIN patients p ON a.patient_id = p.id
-       JOIN doctors d ON a.doctor_id = d.id
-       JOIN stores s ON a.store_id = s.id
-       WHERE a.id = ?`,
-      [id]
-    );
+    let sql = `
+      SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.medical_history, p.user_id as patient_user_id,
+             d.name as doctor_name, d.specialty as doctor_specialty, s.name as store_name
+      FROM appointments a
+      JOIN patients p ON a.patient_id = p.id
+      JOIN doctors d ON a.doctor_id = d.id
+      JOIN stores s ON a.store_id = s.id
+    `;
+    const isNo = isNaN(id) || id.startsWith('BK');
+    if (isNo) {
+      sql += ` WHERE a.appointment_no = ?`;
+    } else {
+      sql += ` WHERE a.id = ?`;
+    }
+    const appt = await get(sql, [id]);
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约记录不存在' });
     }
-    const preExam = await get('SELECT * FROM appointment_pre_exams WHERE appointment_id = ?', [id]);
+    const preExam = await get('SELECT * FROM appointment_pre_exams WHERE appointment_id = ?', [appt.id]);
     appt.pre_exam = preExam || null;
     res.json({ code: 200, data: appt });
   } catch (error) {
@@ -320,25 +325,39 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   const { status, cancel_reason } = req.body;
 
   try {
-    const appt = await get(`SELECT * FROM appointments WHERE id = ?`, [id]);
+    let checkSql = `SELECT * FROM appointments`;
+    const isNo = isNaN(id) || id.startsWith('BK');
+    if (isNo) {
+      checkSql += ` WHERE appointment_no = ?`;
+    } else {
+      checkSql += ` WHERE id = ?`;
+    }
+    const appt = await get(checkSql, [id]);
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约记录不存在' });
     }
 
     if (cancel_reason) {
-      await run(
-        `UPDATE appointments SET status = ?, cancel_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [status, cancel_reason, id]
-      );
+      let updateSql = `UPDATE appointments SET status = ?, cancel_reason = ?, updated_at = CURRENT_TIMESTAMP`;
+      if (isNo) {
+        updateSql += ` WHERE appointment_no = ?`;
+      } else {
+        updateSql += ` WHERE id = ?`;
+      }
+      await run(updateSql, [status, cancel_reason, id]);
     } else {
-      await run(
-        `UPDATE appointments SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [status, id]
-      );
+      let updateSql = `UPDATE appointments SET status = ?, updated_at = CURRENT_TIMESTAMP`;
+      if (isNo) {
+        updateSql += ` WHERE appointment_no = ?`;
+      } else {
+        updateSql += ` WHERE id = ?`;
+      }
+      await run(updateSql, [status, id]);
     }
 
     res.json({ code: 200, message: '更新预约状态成功' });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ code: 500, message: '更新预约状态失败' });
   }
 });
