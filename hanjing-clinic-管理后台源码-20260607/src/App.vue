@@ -21,6 +21,7 @@ const menuGroups = [
     items: [
       { path: '/appointment', label: '预约管理', icon: '📅', badge: '12', badgeColor: 'red' },
       { path: '/queue', label: '排队分诊', icon: '📣' },
+      { path: '/appointment/checkout', label: '收银结账', icon: '💳' },
       { path: '/patient', label: '患者管理', icon: '🧑‍⚕️' },
       { path: '/doctor', label: '医生管理', icon: '👨‍⚕️' },
       { path: '/store', label: '门店管理', icon: '🏥' },
