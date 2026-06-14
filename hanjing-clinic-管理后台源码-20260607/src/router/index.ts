@@ -43,12 +43,7 @@ const router = createRouter({
       component: () => import('@/views/appointment/queue.vue'),
       meta: { title: '排队分诊' }
     },
-    {
-      path: '/checkout',
-      name: 'checkout',
-      component: () => import('@/views/appointment/checkout.vue'),
-      meta: { title: '诊所收银' }
-    },
+
     {
       path: '/patient',
       name: 'patient',
