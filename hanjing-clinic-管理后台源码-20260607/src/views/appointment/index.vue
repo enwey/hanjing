@@ -383,28 +383,27 @@ async function submitCheckout() {
       <!-- Filter panel with Status Tabs (Left) and Dropdowns (Right) -->
       <div class="filter-bar">
         <!-- Left: Filter Tabs -->
-        <div style="display: flex; gap: 8px;">
+        <div class="filter-tabs">
           <div
             v-for="tab in tabOptions"
             :key="tab.value"
+            :class="['filter-tab', activeTab === tab.value ? 'active' : '']"
             @click="activeTab = tab.value"
-            :style="{
-              padding: '6px 14px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: activeTab === tab.value ? '600' : '400',
-              background: activeTab === tab.value ? '#3B6BF5' : '#F3F4F6',
-              color: activeTab === tab.value ? '#FFFFFF' : '#4B5563',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: activeTab === tab.value ? '0 2px 6px rgba(59, 107, 245, 0.2)' : 'none'
-            }"
+            style="display: flex; align-items: center; gap: 6px;"
           >
-            {{ tab.label }}
-            <span :style="{ opacity: activeTab === tab.value ? '0.9' : '0.6', fontSize: '11px', fontWeight: '500' }">
+            <span>{{ tab.label }}</span>
+            <span :style="{ 
+              opacity: activeTab === tab.value ? '0.9' : '0.6', 
+              fontSize: '11px', 
+              fontWeight: '500',
+              background: activeTab === tab.value ? 'rgba(255, 255, 255, 0.25)' : '#F3F4F6',
+              color: activeTab === tab.value ? '#FFF' : '#6B7280',
+              padding: '1px 6px',
+              borderRadius: '10px',
+              marginLeft: '2px',
+              display: 'inline-block',
+              lineHeight: '1.2'
+            }">
               {{ counts[tab.value] }}
             </span>
           </div>
