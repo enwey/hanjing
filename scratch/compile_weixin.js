@@ -356,6 +356,7 @@ function renderNode(node, context) {
   else if (tagName === 'scroll-view') htmlTagName = 'div';
   else if (tagName === 'swiper' || tagName === 'swiper-item') htmlTagName = 'div';
   else if (tagName === 'form') htmlTagName = 'form';
+  else if (tagName === 'view' || tagName === 'block') htmlTagName = 'div';
   else htmlTagName = tagName;
   
   let attrsHtml = '';
@@ -636,6 +637,17 @@ function getRouteTitles() {
   return { ...titles, ...manual };
 }
 
+function translateWxssToCss(wxss) {
+  if (!wxss) return '';
+  // Map page selector to .phone-screen and .phone-standalone
+  wxss = wxss.replace(/\bpage\b/g, '.phone-screen, .phone-standalone');
+  // Map image selector to img
+  wxss = wxss.replace(/\bimage\b/g, 'img');
+  // Map text selector to span
+  wxss = wxss.replace(/\btext\b/g, 'span');
+  return wxss;
+}
+
 const routeTitles = getRouteTitles();
 
 // 8. Compile a specific page
@@ -656,7 +668,7 @@ function compilePage(pagePath, title) {
   // Load local page CSS if exists
   let css = '';
   if (fs.existsSync(wxssPath)) {
-    css = fs.readFileSync(wxssPath, 'utf8');
+    css = translateWxssToCss(fs.readFileSync(wxssPath, 'utf8'));
   }
   
   return { html, css };
@@ -690,7 +702,7 @@ function main() {
   let globalCss = '';
   const appWxssPath = path.join(mpWeixinPath, 'app.wxss');
   if (fs.existsSync(appWxssPath)) {
-    globalCss = fs.readFileSync(appWxssPath, 'utf8');
+    globalCss = translateWxssToCss(fs.readFileSync(appWxssPath, 'utf8'));
   }
   
   const compiledPages = [];
@@ -727,7 +739,7 @@ function main() {
   componentPaths.forEach(cp => {
     const absPath = path.join(mpWeixinPath, cp);
     if (fs.existsSync(absPath)) {
-      componentsCss += fs.readFileSync(absPath, 'utf8') + '\n';
+      componentsCss += translateWxssToCss(fs.readFileSync(absPath, 'utf8')) + '\n';
     }
   });
   

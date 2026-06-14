@@ -52,15 +52,15 @@
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
-page {
+.phone-screen, .phone-standalone {
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,
     Segoe UI, Arial, Roboto, 'PingFang SC', 'miui', 'Hiragino Sans GB', 'Microsoft Yahei',
     sans-serif;
@@ -74,8 +74,8 @@ page {
   -moz-osx-font-smoothing: grayscale;
 }
 view,
-text,
-image,
+span,
+img,
 scroll-view,
 swiper,
 swiper-item {
@@ -111,14 +111,14 @@ swiper-item {
 .justify-center {
   justify-content: center;
 }
-.text-center {
-  text-align: center;
+.span-center {
+  span-align: center;
 }
-.text-left {
-  text-align: left;
+.span-left {
+  span-align: left;
 }
-.text-right {
-  text-align: right;
+.span-right {
+  span-align: right;
 }
 .p-4 {
   padding: 16px;
@@ -156,22 +156,22 @@ swiper-item {
 .gap-4 {
   gap: 16px;
 }
-.text-xs {
+.span-xs {
   font-size: 11px;
 }
-.text-sm {
+.span-sm {
   font-size: 13px;
 }
-.text-base {
+.span-base {
   font-size: 15px;
 }
-.text-lg {
+.span-lg {
   font-size: 17px;
 }
-.text-xl {
+.span-xl {
   font-size: 20px;
 }
-.text-2xl {
+.span-2xl {
   font-size: 24px;
 }
 .font-bold {
@@ -183,28 +183,28 @@ swiper-item {
 .font-medium {
   font-weight: 500;
 }
-.text-primary {
+.span-primary {
   color: #3b6bf5;
 }
-.text-success {
+.span-success {
   color: #22c55e;
 }
-.text-warning {
+.span-warning {
   color: #f59e0b;
 }
-.text-error {
+.span-error {
   color: #ef4444;
 }
-.text-gray-400 {
+.span-gray-400 {
   color: #9ca3af;
 }
-.text-gray-500 {
+.span-gray-500 {
   color: #6b7280;
 }
-.text-gray-600 {
+.span-gray-600 {
   color: #4b5563;
 }
-.text-white {
+.span-white {
   color: #fff;
 }
 .bg-white {
@@ -243,12 +243,12 @@ swiper-item {
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 34px);
 }
-.page-container {
+..phone-screen, .phone-standalone-container {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
-.page-content {
+..phone-screen, .phone-standalone-content {
   flex: 1;
   padding-bottom: env(safe-area-inset-bottom, 34px);
 }
@@ -280,7 +280,7 @@ button:after {
 }
 .ellipsis {
   overflow: hidden;
-  text-overflow: ellipsis;
+  span-overflow: ellipsis;
   white-space: nowrap;
 }
 .ellipsis-2 {
@@ -295,7 +295,7 @@ button:after {
   background-color: #f3f4f6;
   margin: 16px 0;
 }
-page {
+.phone-screen, .phone-standalone {
   --status-bar-height: 25px;
   --top-window-height: 0px;
   --window-top: 0px;
@@ -327,7 +327,7 @@ page {
   background: transparent !important;
 }
 
-page, view, scroll-view {
+.phone-screen, .phone-standalone, view, scroll-view {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
@@ -379,12 +379,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .hj-navbar.data-v-1529c78d {
@@ -429,9 +429,9 @@ page, view, scroll-view {
   font-size: 17px;
   font-weight: 600;
   max-width: 60%;
-  text-align: center;
+  span-align: center;
   overflow: hidden;
-  text-overflow: ellipsis;
+  span-overflow: ellipsis;
   white-space: nowrap;
 }
 .hj-navbar-right.data-v-1529c78d {
@@ -486,12 +486,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .doctor-card.data-v-906afe6e {
@@ -515,7 +515,7 @@ page, view, scroll-view {
   flex-shrink: 0;
   margin-right: 12px;
 }
-.doctor-avatar-text.data-v-906afe6e {
+.doctor-avatar-span.data-v-906afe6e {
   color: #fff;
   font-size: 22px;
   font-weight: 700;
@@ -630,12 +630,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .store-card.data-v-3c596062 {
@@ -645,12 +645,12 @@ page, view, scroll-view {
   box-shadow: var(--card-shadow);
   margin-bottom: 16px;
 }
-.store-card-image.data-v-3c596062 {
+.store-card-img.data-v-3c596062 {
   height: 140px;
   position: relative;
   background: linear-gradient(135deg, #eef4ff, #d9e6ff);
 }
-.store-card-image-placeholder.data-v-3c596062 {
+.store-card-img-placeholder.data-v-3c596062 {
   width: 100%;
   height: 100%;
   display: flex;
@@ -781,12 +781,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .apt-item.data-v-74fd48b7 {
@@ -906,12 +906,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .calendar.data-v-70d02435 {
@@ -941,7 +941,7 @@ page, view, scroll-view {
 }
 .calendar-weekday.data-v-70d02435 {
   flex: 1;
-  text-align: center;
+  span-align: center;
   font-size: 12px;
   color: #9ca3af;
   font-weight: 500;
@@ -966,23 +966,23 @@ page, view, scroll-view {
   opacity: 0.3;
   pointer-events: none;
 }
-.calendar-day-text.data-v-70d02435 {
+.calendar-day-span.data-v-70d02435 {
   font-size: 15px;
   color: #374151;
   font-weight: 500;
 }
-.calendar-day--today .calendar-day-text.data-v-70d02435 {
+.calendar-day--today .calendar-day-span.data-v-70d02435 {
   color: #3b6bf5;
   font-weight: 700;
 }
-.calendar-day--has-schedule .calendar-day-text.data-v-70d02435 {
+.calendar-day--has-schedule .calendar-day-span.data-v-70d02435 {
   color: #3b6bf5;
 }
 .calendar-day--selected.data-v-70d02435 {
   background: #3b6bf5;
   border-radius: 50%;
 }
-.calendar-day--selected .calendar-day-text.data-v-70d02435 {
+.calendar-day--selected .calendar-day-span.data-v-70d02435 {
   color: #fff;
 }
 .calendar-day--selected .calendar-day-dot.data-v-70d02435 {
@@ -1046,12 +1046,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .hj-tag.data-v-822bb649 {
@@ -1116,12 +1116,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .hj-button.data-v-f6f93744 {
@@ -1250,12 +1250,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .hj-empty.data-v-588034c2 {
@@ -1270,7 +1270,7 @@ page, view, scroll-view {
   margin-bottom: 12px;
   opacity: 0.6;
 }
-.hj-empty-text.data-v-588034c2 {
+.hj-empty-span.data-v-588034c2 {
   font-size: 14px;
   color: #9ca3af;
 }
@@ -1322,12 +1322,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .hj-empty.data-v-39c3b333 {
@@ -1342,7 +1342,7 @@ page, view, scroll-view {
   margin-bottom: 12px;
   opacity: 0.6;
 }
-.hj-empty-text.data-v-39c3b333 {
+.hj-empty-span.data-v-39c3b333 {
   font-size: 14px;
   color: #9ca3af;
 }
@@ -1395,15 +1395,15 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
-.page.data-v-1157dc5a {
+..phone-screen, .phone-standalone.data-v-1157dc5a {
   min-height: 100vh;
   background: #f5f6f8;
   padding-bottom: 32rpx;
@@ -1437,7 +1437,7 @@ page, view, scroll-view {
   display: block;
 }
 .item-right.data-v-1157dc5a {
-  text-align: right;
+  span-align: right;
 }
 .item-tag.data-v-1157dc5a {
   font-size: 22rpx;
@@ -1492,7 +1492,7 @@ body {
 </head>
 <body>
 <div class="phone-standalone">
-  <view class="page data-v-1157dc5a"><div class="component-hj-navbar"><view class="hj-navbar data-v-1529c78d is-fixed" style=""><view class="data-v-1529c78d" style=""></view><view class="hj-navbar-inner data-v-1529c78d" style=""><view class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></view><view class="hj-navbar-title data-v-1529c78d" style="">提现记录</view></view></view></div><view class="list data-v-1157dc5a"><div class="hj-empty"><div class="hj-empty-icon">📁</div><div class="hj-empty-text">暂无数据</div></div></view></view>
+  <div class="page data-v-1157dc5a"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">提现记录</div></div></div></div><div class="list data-v-1157dc5a"><div class="hj-empty"><div class="hj-empty-icon">📁</div><div class="hj-empty-text">暂无数据</div></div></div></div>
 </div>
 </body>
 </html>

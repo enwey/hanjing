@@ -52,15 +52,15 @@
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
-page {
+.phone-screen, .phone-standalone {
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,
     Segoe UI, Arial, Roboto, 'PingFang SC', 'miui', 'Hiragino Sans GB', 'Microsoft Yahei',
     sans-serif;
@@ -74,8 +74,8 @@ page {
   -moz-osx-font-smoothing: grayscale;
 }
 view,
-text,
-image,
+span,
+img,
 scroll-view,
 swiper,
 swiper-item {
@@ -111,14 +111,14 @@ swiper-item {
 .justify-center {
   justify-content: center;
 }
-.text-center {
-  text-align: center;
+.span-center {
+  span-align: center;
 }
-.text-left {
-  text-align: left;
+.span-left {
+  span-align: left;
 }
-.text-right {
-  text-align: right;
+.span-right {
+  span-align: right;
 }
 .p-4 {
   padding: 16px;
@@ -156,22 +156,22 @@ swiper-item {
 .gap-4 {
   gap: 16px;
 }
-.text-xs {
+.span-xs {
   font-size: 11px;
 }
-.text-sm {
+.span-sm {
   font-size: 13px;
 }
-.text-base {
+.span-base {
   font-size: 15px;
 }
-.text-lg {
+.span-lg {
   font-size: 17px;
 }
-.text-xl {
+.span-xl {
   font-size: 20px;
 }
-.text-2xl {
+.span-2xl {
   font-size: 24px;
 }
 .font-bold {
@@ -183,28 +183,28 @@ swiper-item {
 .font-medium {
   font-weight: 500;
 }
-.text-primary {
+.span-primary {
   color: #3b6bf5;
 }
-.text-success {
+.span-success {
   color: #22c55e;
 }
-.text-warning {
+.span-warning {
   color: #f59e0b;
 }
-.text-error {
+.span-error {
   color: #ef4444;
 }
-.text-gray-400 {
+.span-gray-400 {
   color: #9ca3af;
 }
-.text-gray-500 {
+.span-gray-500 {
   color: #6b7280;
 }
-.text-gray-600 {
+.span-gray-600 {
   color: #4b5563;
 }
-.text-white {
+.span-white {
   color: #fff;
 }
 .bg-white {
@@ -243,12 +243,12 @@ swiper-item {
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 34px);
 }
-.page-container {
+..phone-screen, .phone-standalone-container {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
-.page-content {
+..phone-screen, .phone-standalone-content {
   flex: 1;
   padding-bottom: env(safe-area-inset-bottom, 34px);
 }
@@ -280,7 +280,7 @@ button:after {
 }
 .ellipsis {
   overflow: hidden;
-  text-overflow: ellipsis;
+  span-overflow: ellipsis;
   white-space: nowrap;
 }
 .ellipsis-2 {
@@ -295,7 +295,7 @@ button:after {
   background-color: #f3f4f6;
   margin: 16px 0;
 }
-page {
+.phone-screen, .phone-standalone {
   --status-bar-height: 25px;
   --top-window-height: 0px;
   --window-top: 0px;
@@ -327,7 +327,7 @@ page {
   background: transparent !important;
 }
 
-page, view, scroll-view {
+.phone-screen, .phone-standalone, view, scroll-view {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
@@ -379,12 +379,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .hj-navbar.data-v-1529c78d {
@@ -429,9 +429,9 @@ page, view, scroll-view {
   font-size: 17px;
   font-weight: 600;
   max-width: 60%;
-  text-align: center;
+  span-align: center;
   overflow: hidden;
-  text-overflow: ellipsis;
+  span-overflow: ellipsis;
   white-space: nowrap;
 }
 .hj-navbar-right.data-v-1529c78d {
@@ -486,12 +486,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .doctor-card.data-v-906afe6e {
@@ -515,7 +515,7 @@ page, view, scroll-view {
   flex-shrink: 0;
   margin-right: 12px;
 }
-.doctor-avatar-text.data-v-906afe6e {
+.doctor-avatar-span.data-v-906afe6e {
   color: #fff;
   font-size: 22px;
   font-weight: 700;
@@ -630,12 +630,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .store-card.data-v-3c596062 {
@@ -645,12 +645,12 @@ page, view, scroll-view {
   box-shadow: var(--card-shadow);
   margin-bottom: 16px;
 }
-.store-card-image.data-v-3c596062 {
+.store-card-img.data-v-3c596062 {
   height: 140px;
   position: relative;
   background: linear-gradient(135deg, #eef4ff, #d9e6ff);
 }
-.store-card-image-placeholder.data-v-3c596062 {
+.store-card-img-placeholder.data-v-3c596062 {
   width: 100%;
   height: 100%;
   display: flex;
@@ -781,12 +781,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .apt-item.data-v-74fd48b7 {
@@ -906,12 +906,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .calendar.data-v-70d02435 {
@@ -941,7 +941,7 @@ page, view, scroll-view {
 }
 .calendar-weekday.data-v-70d02435 {
   flex: 1;
-  text-align: center;
+  span-align: center;
   font-size: 12px;
   color: #9ca3af;
   font-weight: 500;
@@ -966,23 +966,23 @@ page, view, scroll-view {
   opacity: 0.3;
   pointer-events: none;
 }
-.calendar-day-text.data-v-70d02435 {
+.calendar-day-span.data-v-70d02435 {
   font-size: 15px;
   color: #374151;
   font-weight: 500;
 }
-.calendar-day--today .calendar-day-text.data-v-70d02435 {
+.calendar-day--today .calendar-day-span.data-v-70d02435 {
   color: #3b6bf5;
   font-weight: 700;
 }
-.calendar-day--has-schedule .calendar-day-text.data-v-70d02435 {
+.calendar-day--has-schedule .calendar-day-span.data-v-70d02435 {
   color: #3b6bf5;
 }
 .calendar-day--selected.data-v-70d02435 {
   background: #3b6bf5;
   border-radius: 50%;
 }
-.calendar-day--selected .calendar-day-text.data-v-70d02435 {
+.calendar-day--selected .calendar-day-span.data-v-70d02435 {
   color: #fff;
 }
 .calendar-day--selected .calendar-day-dot.data-v-70d02435 {
@@ -1046,12 +1046,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .hj-tag.data-v-822bb649 {
@@ -1116,12 +1116,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .hj-button.data-v-f6f93744 {
@@ -1250,12 +1250,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .hj-empty.data-v-588034c2 {
@@ -1270,7 +1270,7 @@ page, view, scroll-view {
   margin-bottom: 12px;
   opacity: 0.6;
 }
-.hj-empty-text.data-v-588034c2 {
+.hj-empty-span.data-v-588034c2 {
   font-size: 14px;
   color: #9ca3af;
 }
@@ -1322,12 +1322,12 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .hj-empty.data-v-39c3b333 {
@@ -1342,7 +1342,7 @@ page, view, scroll-view {
   margin-bottom: 12px;
   opacity: 0.6;
 }
-.hj-empty-text.data-v-39c3b333 {
+.hj-empty-span.data-v-39c3b333 {
   font-size: 14px;
   color: #9ca3af;
 }
@@ -1395,15 +1395,15 @@ page, view, scroll-view {
   --font-sans:
     PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
+  --span-xs: 11px;
+  --span-sm: 13px;
+  --span-base: 15px;
+  --span-lg: 17px;
+  --span-xl: 20px;
+  --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
-.page.data-v-e9eb3795 {
+..phone-screen, .phone-standalone.data-v-e9eb3795 {
   min-height: 100vh;
   background: #f9fafb;
 }
@@ -1517,7 +1517,7 @@ page, view, scroll-view {
   justify-content: center;
   font-size: 22px;
 }
-.quick-action-text.data-v-e9eb3795 {
+.quick-action-span.data-v-e9eb3795 {
   font-size: 12px;
   color: #4b5563;
   font-weight: 500;
@@ -1572,7 +1572,7 @@ body {
 </head>
 <body>
 <div class="phone-standalone">
-  <view class="page data-v-e9eb3795"><view class="hero data-v-e9eb3795"><div class="component-hj-navbar"><view class="hj-navbar data-v-1529c78d is-fixed" style=""><view class="data-v-1529c78d" style=""></view><view class="hj-navbar-inner data-v-1529c78d" style=""><view class="hj-navbar-title data-v-1529c78d" style="">首页</view></view></view></div><view class="hero-content data-v-e9eb3795"><span class="hero-title data-v-e9eb3795">鼾静健康诊所</span><span class="hero-subtitle data-v-e9eb3795">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</span><view class="hero-stats data-v-e9eb3795"><view class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">12,850+</span><span class="hero-stat-label data-v-e9eb3795">累计患者</span></view><view class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">99.2%</span><span class="hero-stat-label data-v-e9eb3795">满意率</span></view><view class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">3</span><span class="hero-stat-label data-v-e9eb3795">家门店</span></view></view><button class="hero-btn data-v-e9eb3795"><span class="data-v-e9eb3795">立即预约</span><span class="hero-btn-arrow data-v-e9eb3795">→</span></button></view></view><view class="section quick-actions data-v-e9eb3795"><view class="quick-action data-v-e9eb3795"><view class="quick-action-icon data-v-e9eb3795">📅</view><span class="quick-action-text data-v-e9eb3795">预约挂号</span></view><view class="quick-action data-v-e9eb3795"><view class="quick-action-icon data-v-e9eb3795">📊</view><span class="quick-action-text data-v-e9eb3795">睡眠评估</span></view><view class="quick-action data-v-e9eb3795"><view class="quick-action-icon data-v-e9eb3795">💊</view><span class="quick-action-text data-v-e9eb3795">治疗追踪</span></view><view class="quick-action data-v-e9eb3795"><view class="quick-action-icon data-v-e9eb3795">👤</view><span class="quick-action-text data-v-e9eb3795">我的档案</span></view></view><view class="section data-v-e9eb3795"><view class="section-header data-v-e9eb3795"><span class="section-title data-v-e9eb3795">推荐医生</span><span class="section-more data-v-e9eb3795">全部 ›</span></view><div class="component-hj-doctor-card"><view class="doctor-card data-v-906afe6e"><view class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">李</span></view><view class="doctor-info data-v-906afe6e"><view class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">李明辉</span><span class="hj-tag hj-tag-primary"></span></view><span class="doctor-specialty data-v-906afe6e">睡眠呼吸 · 22年经验</span><view class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">睡眠呼吸暂停综合症</span><span class="doctor-expertise-tag data-v-906afe6e">鼾症非手术治疗</span><span class="doctor-expertise-tag data-v-906afe6e">阻鼾器适配</span><span class="doctor-expertise-tag data-v-906afe6e">下颌前移治疗</span></view><view class="doctor-stats data-v-906afe6e"><view class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.9</span><span class="doctor-rating-count data-v-906afe6e">(326评)</span></view><span class="doctor-consult data-v-906afe6e">已接诊 10280+</span></view></view><view class="doctor-arrow data-v-906afe6e">›</view></view></div><div class="component-hj-doctor-card"><view class="doctor-card data-v-906afe6e"><view class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">王</span></view><view class="doctor-info data-v-906afe6e"><view class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">王芳</span><span class="hj-tag hj-tag-primary"></span></view><span class="doctor-specialty data-v-906afe6e">口腔正畸 · 15年经验</span><view class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">口腔矫治器治疗OSAS</span><span class="doctor-expertise-tag data-v-906afe6e">下颌前移量精准控制</span><span class="doctor-expertise-tag data-v-906afe6e">儿童鼾症</span><span class="doctor-expertise-tag data-v-906afe6e">颞下颌关节保护</span></view><view class="doctor-stats data-v-906afe6e"><view class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.8</span><span class="doctor-rating-count data-v-906afe6e">(218评)</span></view><span class="doctor-consult data-v-906afe6e">已接诊 6520+</span></view></view><view class="doctor-arrow data-v-906afe6e">›</view></view></div><div class="component-hj-doctor-card"><view class="doctor-card data-v-906afe6e"><view class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">张</span></view><view class="doctor-info data-v-906afe6e"><view class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">张伟</span><span class="hj-tag hj-tag-primary"></span></view><span class="doctor-specialty data-v-906afe6e">耳鼻喉科 · 18年经验</span><view class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">鼻内镜诊断</span><span class="doctor-expertise-tag data-v-906afe6e">上气道评估</span><span class="doctor-expertise-tag data-v-906afe6e">过敏性鼻炎与鼾症</span><span class="doctor-expertise-tag data-v-906afe6e">多导睡眠监测</span></view><view class="doctor-stats data-v-906afe6e"><view class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.7</span><span class="doctor-rating-count data-v-906afe6e">(185评)</span></view><span class="doctor-consult data-v-906afe6e">已接诊 8430+</span></view></view><view class="doctor-arrow data-v-906afe6e">›</view></view></div></view><view class="section data-v-e9eb3795"><view class="section-header data-v-e9eb3795"><span class="section-title data-v-e9eb3795">我们的门店</span></view><div class="component-hj-store-card"><view class="store-card data-v-3c596062"><view class="store-card-image data-v-3c596062"><view class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></view><view class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></view></view><view class="store-card-body data-v-3c596062"><view class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·深圳旗舰中心</span><view class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">旗舰店</span><span class="store-card-tag data-v-3c596062">地铁直达</span><span class="store-card-tag data-v-3c596062">免费停车</span></view></view><span class="store-card-address data-v-3c596062">📍 深圳市福田区福华三路卓越世纪中心1号楼18层</span><view class="store-card-footer data-v-3c596062"><view class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 6位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-18:00</span></view><span class="store-card-distance data-v-3c596062">1.2km</span></view></view></view></div><div class="component-hj-store-card"><view class="store-card data-v-3c596062"><view class="store-card-image data-v-3c596062"><view class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></view><view class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></view></view><view class="store-card-body data-v-3c596062"><view class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·南山分中心</span><view class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">科技园区</span><span class="store-card-tag data-v-3c596062">免费停车</span></view></view><span class="store-card-address data-v-3c596062">📍 深圳市南山区科技园南区科苑路15号科兴科学园B栋2层</span><view class="store-card-footer data-v-3c596062"><view class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 4位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-17:30</span></view><span class="store-card-distance data-v-3c596062">1.2km</span></view></view></view></div><div class="component-hj-store-card"><view class="store-card data-v-3c596062"><view class="store-card-image data-v-3c596062"><view class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></view><view class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></view></view><view class="store-card-body data-v-3c596062"><view class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·宝安分中心</span><view class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">新店</span></view></view><span class="store-card-address data-v-3c596062">📍 深圳市宝安区新安街道宝安大道4004号旭生大厦5层</span><view class="store-card-footer data-v-3c596062"><view class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 3位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-18:00</span></view><span class="store-card-distance data-v-3c596062">1.2km</span></view></view></view></div></view><view class="safe-bottom data-v-e9eb3795"></view></view>
+  <div class="page data-v-e9eb3795"><div class="hero data-v-e9eb3795"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-title data-v-1529c78d" style="">首页</div></div></div></div><div class="hero-content data-v-e9eb3795"><span class="hero-title data-v-e9eb3795">鼾静健康诊所</span><span class="hero-subtitle data-v-e9eb3795">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</span><div class="hero-stats data-v-e9eb3795"><div class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">12,850+</span><span class="hero-stat-label data-v-e9eb3795">累计患者</span></div><div class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">99.2%</span><span class="hero-stat-label data-v-e9eb3795">满意率</span></div><div class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">3</span><span class="hero-stat-label data-v-e9eb3795">家门店</span></div></div><button class="hero-btn data-v-e9eb3795"><span class="data-v-e9eb3795">立即预约</span><span class="hero-btn-arrow data-v-e9eb3795">→</span></button></div></div><div class="section quick-actions data-v-e9eb3795"><div class="quick-action data-v-e9eb3795"><div class="quick-action-icon data-v-e9eb3795">📅</div><span class="quick-action-text data-v-e9eb3795">预约挂号</span></div><div class="quick-action data-v-e9eb3795"><div class="quick-action-icon data-v-e9eb3795">📊</div><span class="quick-action-text data-v-e9eb3795">睡眠评估</span></div><div class="quick-action data-v-e9eb3795"><div class="quick-action-icon data-v-e9eb3795">💊</div><span class="quick-action-text data-v-e9eb3795">治疗追踪</span></div><div class="quick-action data-v-e9eb3795"><div class="quick-action-icon data-v-e9eb3795">👤</div><span class="quick-action-text data-v-e9eb3795">我的档案</span></div></div><div class="section data-v-e9eb3795"><div class="section-header data-v-e9eb3795"><span class="section-title data-v-e9eb3795">推荐医生</span><span class="section-more data-v-e9eb3795">全部 ›</span></div><div class="component-hj-doctor-card"><div class="doctor-card data-v-906afe6e"><div class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">李</span></div><div class="doctor-info data-v-906afe6e"><div class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">李明辉</span><span class="hj-tag hj-tag-primary"></span></div><span class="doctor-specialty data-v-906afe6e">睡眠呼吸 · 22年经验</span><div class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">睡眠呼吸暂停综合症</span><span class="doctor-expertise-tag data-v-906afe6e">鼾症非手术治疗</span><span class="doctor-expertise-tag data-v-906afe6e">阻鼾器适配</span><span class="doctor-expertise-tag data-v-906afe6e">下颌前移治疗</span></div><div class="doctor-stats data-v-906afe6e"><div class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.9</span><span class="doctor-rating-count data-v-906afe6e">(326评)</span></div><span class="doctor-consult data-v-906afe6e">已接诊 10280+</span></div></div><div class="doctor-arrow data-v-906afe6e">›</div></div></div><div class="component-hj-doctor-card"><div class="doctor-card data-v-906afe6e"><div class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">王</span></div><div class="doctor-info data-v-906afe6e"><div class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">王芳</span><span class="hj-tag hj-tag-primary"></span></div><span class="doctor-specialty data-v-906afe6e">口腔正畸 · 15年经验</span><div class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">口腔矫治器治疗OSAS</span><span class="doctor-expertise-tag data-v-906afe6e">下颌前移量精准控制</span><span class="doctor-expertise-tag data-v-906afe6e">儿童鼾症</span><span class="doctor-expertise-tag data-v-906afe6e">颞下颌关节保护</span></div><div class="doctor-stats data-v-906afe6e"><div class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.8</span><span class="doctor-rating-count data-v-906afe6e">(218评)</span></div><span class="doctor-consult data-v-906afe6e">已接诊 6520+</span></div></div><div class="doctor-arrow data-v-906afe6e">›</div></div></div><div class="component-hj-doctor-card"><div class="doctor-card data-v-906afe6e"><div class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">张</span></div><div class="doctor-info data-v-906afe6e"><div class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">张伟</span><span class="hj-tag hj-tag-primary"></span></div><span class="doctor-specialty data-v-906afe6e">耳鼻喉科 · 18年经验</span><div class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">鼻内镜诊断</span><span class="doctor-expertise-tag data-v-906afe6e">上气道评估</span><span class="doctor-expertise-tag data-v-906afe6e">过敏性鼻炎与鼾症</span><span class="doctor-expertise-tag data-v-906afe6e">多导睡眠监测</span></div><div class="doctor-stats data-v-906afe6e"><div class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.7</span><span class="doctor-rating-count data-v-906afe6e">(185评)</span></div><span class="doctor-consult data-v-906afe6e">已接诊 8430+</span></div></div><div class="doctor-arrow data-v-906afe6e">›</div></div></div></div><div class="section data-v-e9eb3795"><div class="section-header data-v-e9eb3795"><span class="section-title data-v-e9eb3795">我们的门店</span></div><div class="component-hj-store-card"><div class="store-card data-v-3c596062"><div class="store-card-image data-v-3c596062"><div class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></div><div class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></div></div><div class="store-card-body data-v-3c596062"><div class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·深圳旗舰中心</span><div class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">旗舰店</span><span class="store-card-tag data-v-3c596062">地铁直达</span><span class="store-card-tag data-v-3c596062">免费停车</span></div></div><span class="store-card-address data-v-3c596062">📍 深圳市福田区福华三路卓越世纪中心1号楼18层</span><div class="store-card-footer data-v-3c596062"><div class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 6位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-18:00</span></div><span class="store-card-distance data-v-3c596062">1.2km</span></div></div></div></div><div class="component-hj-store-card"><div class="store-card data-v-3c596062"><div class="store-card-image data-v-3c596062"><div class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></div><div class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></div></div><div class="store-card-body data-v-3c596062"><div class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·南山分中心</span><div class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">科技园区</span><span class="store-card-tag data-v-3c596062">免费停车</span></div></div><span class="store-card-address data-v-3c596062">📍 深圳市南山区科技园南区科苑路15号科兴科学园B栋2层</span><div class="store-card-footer data-v-3c596062"><div class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 4位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-17:30</span></div><span class="store-card-distance data-v-3c596062">1.2km</span></div></div></div></div><div class="component-hj-store-card"><div class="store-card data-v-3c596062"><div class="store-card-image data-v-3c596062"><div class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></div><div class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></div></div><div class="store-card-body data-v-3c596062"><div class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·宝安分中心</span><div class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">新店</span></div></div><span class="store-card-address data-v-3c596062">📍 深圳市宝安区新安街道宝安大道4004号旭生大厦5层</span><div class="store-card-footer data-v-3c596062"><div class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 3位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-18:00</span></div><span class="store-card-distance data-v-3c596062">1.2km</span></div></div></div></div></div><div class="safe-bottom data-v-e9eb3795"></div></div>
 </div>
 </body>
 </html>
