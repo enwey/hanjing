@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import fs from 'fs';
 import { initDB, query, get, run } from './db.js';
 import { seedData } from './seed.js';
 
@@ -14,7 +15,13 @@ app.use(express.json());
 
 // Log requests
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  const logMsg = `[${new Date().toISOString()}] ${req.method} ${req.url}\n`;
+  console.log(logMsg.trim());
+  try {
+    fs.appendFileSync('./requests.log', logMsg);
+  } catch (err) {
+    // ignore
+  }
   next();
 });
 
