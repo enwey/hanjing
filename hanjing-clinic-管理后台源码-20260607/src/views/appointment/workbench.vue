@@ -908,41 +908,11 @@ async function submitCreateAppt() {
 </template>
 
 <style scoped>
-.page-container {
-  padding: 20px;
-  background-color: #F9FAFB;
-  min-height: 100vh;
-}
-
-.page-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.page-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.page-title-sub {
-  font-size: 13px;
-  color: #6B7280;
-  margin-top: 4px;
-}
-
 .doctor-selector-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  background: #FFF;
-  border: 1px solid #E5E7EB;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .selector-left {
