@@ -130,11 +130,13 @@ function getSlotCount(slot: string) {
 
 function getBadgeStyle(isActive: boolean) {
   return {
-    background: isActive ? 'var(--primary-600)' : '#E5E7EB',
-    color: isActive ? '#FFF' : '#6B7280',
-    padding: '1px 6px',
-    borderRadius: '10px',
+    opacity: isActive ? '0.9' : '0.6',
     fontSize: '11px',
+    fontWeight: '500',
+    background: isActive ? 'rgba(255, 255, 255, 0.25)' : '#F3F4F6',
+    color: isActive ? '#FFF' : '#6B7280',
+    padding: '1px 5px',
+    borderRadius: '10px',
     display: 'inline-block',
     lineHeight: '1.2',
     marginLeft: '6px'
@@ -473,19 +475,21 @@ async function submitCreateAppt() {
     </div>
 
     <!-- Doctor selector workbench bar -->
-    <div class="doctor-selector-bar panel">
-      <div class="selector-left">
-        <span class="selector-lbl">当前接诊诊室：</span>
-        <select v-model="selectedDoctorId" class="selector-dropdown" @change="activeTimeSlot = 'all'">
-          <option v-for="d in doctorsList" :key="d.id" :value="d.id.toString()">
-            👨‍⚕️ {{ d.name }} · {{ d.title }} ({{ d.specialty }})
-          </option>
-        </select>
-      </div>
-      <div class="selector-right">
-        <span>🏥 当前门店：{{ currentStoreName }}</span>
-        <span class="separator">|</span>
-        <span>科室：睡眠呼吸障碍治疗门诊</span>
+    <div class="panel">
+      <div class="doctor-selector-bar">
+        <div class="selector-left">
+          <span class="selector-lbl">当前接诊诊室：</span>
+          <select v-model="selectedDoctorId" class="selector-dropdown" @change="activeTimeSlot = 'all'">
+            <option v-for="d in doctorsList" :key="d.id" :value="d.id.toString()">
+              👨‍⚕️ {{ d.name }} · {{ d.title }} ({{ d.specialty }})
+            </option>
+          </select>
+        </div>
+        <div class="selector-right">
+          <span>🏥 当前门店：{{ currentStoreName }}</span>
+          <span class="separator">|</span>
+          <span>科室：睡眠呼吸障碍治疗门诊</span>
+        </div>
       </div>
     </div>
 
@@ -581,28 +585,6 @@ async function submitCreateAppt() {
 
       <!-- Right Panel: Queue lists with tabs -->
       <div class="workbench-right panel">
-        <!-- Time slots Filter Bar -->
-        <div v-if="rightPaneTab === 'waiting' && uniqueTimeSlots.length > 0" class="time-filter-wrapper">
-          <div class="time-filter-tabs">
-            <span 
-              class="time-tab" 
-              :class="{ active: activeTimeSlot === 'all' }" 
-              @click="activeTimeSlot = 'all'"
-            >
-              全部时段
-            </span>
-            <span 
-              v-for="slot in uniqueTimeSlots" 
-              :key="slot" 
-              class="time-tab" 
-              :class="{ active: activeTimeSlot === slot }" 
-              @click="activeTimeSlot = slot"
-            >
-              {{ slot }}
-            </span>
-          </div>
-        </div>
-
         <!-- Pane Tabs -->
         <div class="pane-tabs">
           <div 
@@ -623,6 +605,36 @@ async function submitCreateAppt() {
 
         <!-- Tab Content 1: Waiting List -->
         <div v-if="rightPaneTab === 'waiting'" class="queue-tab-content">
+          <!-- Time slots Filter Bar -->
+          <div v-if="uniqueTimeSlots.length > 0" class="time-filter-wrapper">
+            <div class="filter-tabs">
+              <div 
+                class="filter-tab" 
+                :class="{ active: activeTimeSlot === 'all' }" 
+                @click="activeTimeSlot = 'all'"
+                style="display: flex; align-items: center;"
+              >
+                <span>全部</span>
+                <span :style="getBadgeStyle(activeTimeSlot === 'all')">
+                  {{ allWaitingItems.length }}
+                </span>
+              </div>
+              <div 
+                v-for="slot in uniqueTimeSlots" 
+                :key="slot" 
+                class="filter-tab" 
+                :class="{ active: activeTimeSlot === slot }" 
+                @click="activeTimeSlot = slot"
+                style="display: flex; align-items: center;"
+              >
+                <span>{{ slot }}</span>
+                <span :style="getBadgeStyle(activeTimeSlot === slot)">
+                  {{ getSlotCount(slot) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div class="queue-list">
             <div v-for="(item, idx) in waitingQueue" :key="item.id" class="queue-item-row">
               <div class="queue-item-left">
@@ -638,13 +650,13 @@ async function submitCreateAppt() {
                 </div>
               </div>
               <div class="queue-item-right">
-                <t-button v-if="item.status === 'pending'" size="small" theme="warning" variant="outline" @click="openCheckInDialog(item)">
+                <t-button v-if="item.status === 'pending'" size="extra-small" theme="warning" variant="outline" @click="openCheckInDialog(item)">
                   签到
                 </t-button>
-                <t-button v-else size="small" theme="primary" variant="outline" @click="handleCallToConsult(item)">
+                <t-button v-else size="extra-small" theme="primary" variant="outline" @click="handleCallToConsult(item)">
                   呼叫接诊
                 </t-button>
-                <t-button size="small" theme="default" variant="text" @click="delayPatient(item)">
+                <t-button size="extra-small" theme="default" variant="text" @click="delayPatient(item)">
                   顺延
                 </t-button>
               </div>
@@ -668,10 +680,10 @@ async function submitCreateAppt() {
                 </div>
               </div>
               <div class="queue-item-right">
-                <t-button size="small" theme="default" variant="outline" @click="router.push(`/patient/detail/${item.patientId}`)">
+                <t-button size="extra-small" theme="default" variant="outline" @click="router.push(`/patient/detail/${item.patientId}`)">
                   患者详情
                 </t-button>
-                <t-button size="small" theme="success" variant="outline" @click="openCheckoutDialog(item)">
+                <t-button size="extra-small" theme="success" variant="outline" @click="openCheckoutDialog(item)">
                   收费结算
                 </t-button>
               </div>
@@ -698,7 +710,7 @@ async function submitCreateAppt() {
         <div class="form-group" style="margin-bottom: 12px; display: flex; gap: 8px; align-items: flex-end;">
           <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
             <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">检索就诊患者 <span class="required" style="color: #EF4444;">*</span></label>
-            <input v-model="apptSearchQuery" type="text" class="form-control-input" placeholder="输入患者姓名/手机号检索">
+            <input v-model="apptSearchQuery" type="text" class="form-control" placeholder="输入患者姓名/手机号检索">
           </div>
           <t-button theme="primary" style="height: 36px;" @click="handleApptSearch">检索</t-button>
           <t-button theme="default" style="height: 36px;" @click="handleApptNewPatient">新患者建档</t-button>
@@ -713,12 +725,12 @@ async function submitCreateAppt() {
 
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">就诊日期</label>
-          <input v-model="apptDate" type="date" class="form-control-input">
+          <input v-model="apptDate" type="date" class="form-control">
         </div>
 
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">挂号时段</label>
-          <select v-model="apptSlot" class="form-control-select">
+          <select v-model="apptSlot" class="form-control">
             <option>09:00 - 09:30</option>
             <option>09:30 - 10:00</option>
             <option>10:00 - 10:30</option>
@@ -732,7 +744,7 @@ async function submitCreateAppt() {
 
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">初/复诊类别</label>
-          <select v-model="apptVisitType" class="form-control-select">
+          <select v-model="apptVisitType" class="form-control">
             <option>复诊</option>
             <option>初诊</option>
           </select>
@@ -740,7 +752,7 @@ async function submitCreateAppt() {
 
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">挂号主诉 (选填)</label>
-          <textarea v-model="apptRemarks" class="form-control-textarea" rows="2" placeholder="请输入患者主诉打鼾、憋气或其他症状描述"></textarea>
+          <textarea v-model="apptRemarks" class="form-control" rows="2" placeholder="请输入患者主诉打鼾、憋气或其他症状描述"></textarea>
         </div>
       </div>
     </t-dialog>
@@ -758,26 +770,26 @@ async function submitCreateAppt() {
       <div class="dialog-body-form" style="padding: 10px 0;">
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">就诊人姓名</label>
-          <input type="text" class="form-control-input" :value="selectedQueueItem?.patientName" disabled style="background-color: #F3F4F6;">
+          <input type="text" class="form-control" :value="selectedQueueItem?.patientName" disabled style="background-color: #F3F4F6;">
         </div>
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">身高 (cm) <span class="required" style="color: #EF4444;">*</span></label>
-          <input v-model="checkInForm.height" type="number" class="form-control-input" placeholder="输入身高（例如：175）">
+          <input v-model="checkInForm.height" type="number" class="form-control" placeholder="输入身高（例如：175）">
         </div>
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">体重 (kg) <span class="required" style="color: #EF4444;">*</span></label>
-          <input v-model="checkInForm.weight" type="number" class="form-control-input" placeholder="输入体重（例如：70）">
+          <input v-model="checkInForm.weight" type="number" class="form-control" placeholder="输入体重（例如：70）">
         </div>
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">血压 (收缩压/舒张压, mmHg)</label>
           <div style="display: flex; gap: 10px;">
-            <input v-model="checkInForm.systolicBp" type="number" class="form-control-input" placeholder="高压 (如：120)" style="flex: 1;">
-            <input v-model="checkInForm.diastolicBp" type="number" class="form-control-input" placeholder="低压 (如：80)" style="flex: 1;">
+            <input v-model="checkInForm.systolicBp" type="number" class="form-control" placeholder="高压 (如：120)" style="flex: 1;">
+            <input v-model="checkInForm.diastolicBp" type="number" class="form-control" placeholder="低压 (如：80)" style="flex: 1;">
           </div>
         </div>
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">颈围 (cm)</label>
-          <input v-model="checkInForm.neckCircumference" type="number" step="0.1" class="form-control-input" placeholder="输入测量颈围（例如：38）">
+          <input v-model="checkInForm.neckCircumference" type="number" step="0.1" class="form-control" placeholder="输入测量颈围（例如：38）">
         </div>
         <div v-if="computedBmi" style="margin-top: 10px; font-size: 13px; color: #1E40AF; background: #EFF6FF; padding: 10px; border-radius: 6px;">
           💡 自动推算患者 BMI 指数：<strong>{{ computedBmi }}</strong>
@@ -814,8 +826,8 @@ async function submitCreateAppt() {
                 <td style="padding: 8px;">
                   <select 
                     v-model="item.product_id" 
-                    class="form-control-select" 
-                    style="height: 30px; font-size: 12px;"
+                    class="form-control" 
+                    style="height: 30px; font-size: 12px; padding: 0 8px;"
                     @change="onProductChange(idx, item.product_id)"
                   >
                     <option v-for="p in productOptions" :key="p.id" :value="p.id">
@@ -825,7 +837,7 @@ async function submitCreateAppt() {
                 </td>
                 <td style="padding: 8px;">¥{{ (item.price / 100).toFixed(2) }}</td>
                 <td style="padding: 8px;">
-                  <input v-model="item.quantity" type="number" class="form-control-input" style="height: 30px; padding: 2px 6px; text-align: center;" min="1">
+                  <input v-model="item.quantity" type="number" class="form-control" style="height: 30px; padding: 2px 6px; text-align: center;" min="1">
                 </td>
                 <td style="padding: 8px;">
                   <button class="btn-text-del" @click="removeBillingItem(idx)">删除</button>
@@ -912,7 +924,7 @@ async function submitCreateAppt() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
+  padding: 12px 20px;
 }
 
 .selector-left {
@@ -928,15 +940,21 @@ async function submitCreateAppt() {
 }
 
 .selector-dropdown {
-  padding: 6px 12px;
+  height: 32px;
+  padding: 0 12px;
   border-radius: 8px;
   border: 1px solid #D1D5DB;
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
   background: #FFF;
   cursor: pointer;
-  color: #1F2937;
+  color: #374151;
   font-weight: 500;
+  box-sizing: border-box;
+  transition: border-color 150ms;
+}
+.selector-dropdown:focus {
+  border-color: var(--primary-500);
 }
 
 .selector-right {
@@ -961,24 +979,26 @@ async function submitCreateAppt() {
   background: #FFF;
   border: 1px solid #E5E7EB;
   border-radius: 12px;
-  padding: 16px;
+  padding: 0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  min-height: 550px;
+  min-height: 600px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .pane-header {
+  padding: 16px;
+  background: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #F3F4F6;
-  padding-bottom: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .pane-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: #1F2937;
 }
@@ -1005,6 +1025,7 @@ async function submitCreateAppt() {
   display: flex;
   flex-direction: column;
   flex: 1;
+  padding: 16px;
 }
 
 .patient-main-info {
@@ -1162,56 +1183,35 @@ async function submitCreateAppt() {
   margin-bottom: 16px;
 }
 
-.time-filter-tabs {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.time-tab {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: #4B5563;
-  background: #F3F4F6;
-  padding: 4px 10px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.15s ease-in-out;
-}
-.time-tab.active, .time-tab:hover {
-  background: var(--primary-100);
-  color: var(--primary-600);
-  font-weight: 600;
-}
-
 /* Right Tabs Control */
 .pane-tabs {
   display: flex;
-  border-bottom: 2px solid #F3F4F6;
-  margin-bottom: 16px;
+  background: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 0;
 }
 
 .pane-tab {
   flex: 1;
   text-align: center;
-  padding: 10px 0;
+  padding: 16px 0;
   font-size: 14px;
   font-weight: 600;
   color: #6B7280;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   transition: all 0.15s ease-in-out;
 }
 .pane-tab.active {
   color: var(--primary-500);
   border-bottom-color: var(--primary-500);
+  background: #FFFFFF;
 }
 
 .queue-tab-content {
   flex: 1;
   overflow-y: auto;
-  max-height: 440px;
+  padding: 16px;
 }
 
 .queue-list {
@@ -1224,10 +1224,10 @@ async function submitCreateAppt() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
+  padding: 10px;
   background: #F9FAFB;
   border: 1px solid #E5E7EB;
-  border-radius: 10px;
+  border-radius: 6px;
   transition: all 0.15s ease-in-out;
 }
 .queue-item-row:hover {
@@ -1251,12 +1251,12 @@ async function submitCreateAppt() {
   height: 24px;
   border-radius: 50%;
   background: #E5E7EB;
-  color: #6B7280;
+  color: #9CA3AF;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .queue-idx.checked {
@@ -1266,6 +1266,7 @@ async function submitCreateAppt() {
 
 .queue-name {
   font-size: 14px;
+  font-weight: 600;
   color: #1F2937;
 }
 
@@ -1310,45 +1311,27 @@ async function submitCreateAppt() {
   color: #374151;
 }
 
-.form-control-input {
+.form-control {
   width: 100%;
   height: 36px;
   padding: 8px 12px;
   border: 1px solid #D1D5DB;
   border-radius: 8px;
   box-sizing: border-box;
-  font-size: 14px;
+  font-size: 13px;
   color: #1F2937;
   outline: none;
   background-color: #FFF;
+  transition: all 150ms ease;
 }
-
-.form-control-select {
-  width: 100%;
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid #D1D5DB;
-  border-radius: 8px;
-  box-sizing: border-box;
-  font-size: 14px;
-  color: #1F2937;
-  outline: none;
-  background-color: #FFF;
-  cursor: pointer;
+.form-control:focus {
+  border-color: var(--primary-500, #3B6BF5);
+  box-shadow: 0 0 0 2px rgba(59, 107, 245, 0.1);
 }
-
-.form-control-textarea {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #D1D5DB;
-  border-radius: 8px;
-  box-sizing: border-box;
-  font-size: 14px;
-  color: #1F2937;
-  outline: none;
-  background-color: #FFF;
-  font-family: inherit;
+textarea.form-control {
+  height: auto;
   resize: vertical;
+  font-family: inherit;
 }
 
 .pay-method-label {
