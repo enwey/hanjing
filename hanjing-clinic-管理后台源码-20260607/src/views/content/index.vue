@@ -236,13 +236,10 @@ function getAvatarBg(author: string) {
         </div>
 
         <div style="display: flex; gap: 10px; align-items: center;">
-          <div class="filter-group">
-            <span class="filter-label">分类</span>
-            <select v-model="filterCategory" class="filter-select" style="width: 120px; cursor: pointer;">
-              <option value="">全部</option>
-              <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-            </select>
-          </div>
+          <select v-model="filterCategory" class="filter-select" style="width: 120px; cursor: pointer;">
+            <option value="">全部分类</option>
+            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+          </select>
           <input 
             type="text" 
             v-model="searchKeyword" 
