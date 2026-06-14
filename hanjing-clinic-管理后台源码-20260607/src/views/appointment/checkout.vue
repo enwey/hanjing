@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+
+const route = useRoute()
 
 interface PatientOption {
   label: string;
@@ -16,7 +19,7 @@ interface ProductItem {
 }
 
 const patients = ref<PatientOption[]>([])
-const selectedPatientId = ref<string>('')
+const selectedPatientId = ref<string>((route.query.patientId as string) || '')
 const loading = ref(false)
 
 const productOptions: ProductItem[] = [
