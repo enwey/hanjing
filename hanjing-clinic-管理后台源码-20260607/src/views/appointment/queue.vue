@@ -259,6 +259,11 @@ async function submitCheckout() {
     }
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
+      try {
+        await request.put(`/api/admin/appointments/${selectedQueueItem.value.id}`, { status: 'arrived' })
+      } catch (err) {
+        console.error('更新预约结算状态失败:', err)
+      }
       MessagePlugin.success('收银收费结算交易成功！')
       orderResult.value = {
         orderNo: res.data.order_no,

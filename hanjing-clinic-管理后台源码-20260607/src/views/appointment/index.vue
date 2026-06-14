@@ -66,7 +66,7 @@ const fetchAppointments = async () => {
       time: item.appointment_time,
       type: item.type === 'first' ? '初诊' : '复诊',
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
-      status: item.status === 'completed' ? 'arrived' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : 'cancelled'
+      status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : 'cancelled'
     }))
   } catch (error) {
     console.error('Failed to load appointments:', error)
@@ -96,11 +96,13 @@ const tabOptions = [
   { label: '今日', value: 'today' },
   { label: '待确认', value: 'pending' },
   { label: '候诊中', value: 'waiting' },
+  { label: '待结算', value: 'completed' },
   { label: '已取消', value: 'cancelled' },
 ]
 
 const statusMap: Record<string, { label: string; theme: string }> = {
-  arrived: { label: '已到诊', theme: 'success' },
+  arrived: { label: '已结账', theme: 'success' },
+  completed: { label: '待结算', theme: 'danger' },
   waiting: { label: '候诊中', theme: 'primary' },
   pending: { label: '待确认', theme: 'warning' },
   cancelled: { label: '已取消', theme: 'danger' }
@@ -136,6 +138,7 @@ const counts = computed(() => {
     today: list.filter(a => a.date === '2026-05-29').length,
     pending: statusList.filter(a => a.status === 'pending').length,
     waiting: statusList.filter(a => a.status === 'waiting').length,
+    completed: statusList.filter(a => a.status === 'completed').length,
     cancelled: statusList.filter(a => a.status === 'cancelled').length,
   }
 })
@@ -154,6 +157,8 @@ function getFilteredAppointments() {
     list = list.filter(a => a.status === 'pending')
   } else if (activeTab.value === 'waiting') {
     list = list.filter(a => a.status === 'waiting')
+  } else if (activeTab.value === 'completed') {
+    list = list.filter(a => a.status === 'completed')
   } else if (activeTab.value === 'cancelled') {
     list = list.filter(a => a.status === 'cancelled')
   }
@@ -331,6 +336,11 @@ async function submitCheckout() {
     }
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
+      try {
+        await request.put(`/api/admin/appointments/${selectedCheckoutRow.value.id}`, { status: 'arrived' })
+      } catch (err) {
+        console.error('更新预约结算状态失败:', err)
+      }
       MessagePlugin.success('收银收费结算交易成功！')
       orderResult.value = {
         orderNo: res.data.order_no,
@@ -495,9 +505,9 @@ async function submitCheckout() {
                     @click="completeTreatment(row)"
                   >✅ 完成诊疗</button>
 
-                  <!-- status is arrived (已到诊) -->
+                  <!-- status is completed (待结算) -->
                   <button
-                    v-if="row.status === 'arrived'"
+                    v-if="row.status === 'completed'"
                     class="btn btn-xs btn-warning"
                     @click="openCheckoutDialog(row)"
                   >🪙 收银结算</button>
