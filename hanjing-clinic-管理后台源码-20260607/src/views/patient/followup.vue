@@ -114,7 +114,7 @@ function handleCreate() {
             </td>
             <td :style="{ fontWeight: task.status === 'gold' ? '600' : '400' }">{{ task.dueDate }}</td>
             <td>{{ task.executor }}</td>
-            <td style="max-width: 300px; line-height: 1.5; font-size: 12px;">{{ task.content }}</td>
+            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="task.content">{{ task.content }}</td>
             <td>
               <span class="status-tag gold" v-if="task.status === 'gold'">待执行</span>
               <span class="status-tag green" v-else-if="task.status === 'green'">已完成</span>

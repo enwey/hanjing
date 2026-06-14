@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -274,12 +274,18 @@ const checkoutLoading = ref(false)
 const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
 
+const deliveryType = ref<string>('offline_direct')
+const shippingReceiver = ref<string>('')
+const shippingPhone = ref<string>('')
+const shippingAddressStr = ref<string>('')
+
 const productOptions = [
   { id: '1', name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000 },
   { id: '2', name: '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', price: 4900 },
   { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
   { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
-  { id: '5', name: '诊所专家诊断评估费', price: 50000 }
+  { id: '5', name: '诊所专家诊断评估费', price: 50000 },
+  { id: '7', name: '快递运费', price: 1500 }
 ]
 
 const billingItems = ref<Array<{ product_id: string; product_name: string; price: number; quantity: number }>>([])
@@ -304,6 +310,12 @@ function openCheckoutDialog(item: QueueItem) {
   payMethod.value = 'wechat'
   checkoutSuccess.value = false
   orderResult.value = null
+  
+  deliveryType.value = 'offline_direct'
+  shippingReceiver.value = item.patientName || ''
+  shippingPhone.value = item.phone || ''
+  shippingAddressStr.value = ''
+  
   checkoutVisible.value = true
 }
 
@@ -328,6 +340,20 @@ function onProductChange(idx: number, prodId: string) {
   }
 }
 
+watch(deliveryType, (newVal) => {
+  if (newVal === 'online') {
+    const exists = billingItems.value.some(item => item.product_id === '7')
+    if (!exists) {
+      billingItems.value.push({ product_id: '7', product_name: '快递运费', price: 1500, quantity: 1 })
+    }
+  } else {
+    const idx = billingItems.value.findIndex(item => item.product_id === '7')
+    if (idx !== -1) {
+      billingItems.value.splice(idx, 1)
+    }
+  }
+})
+
 async function submitCheckout() {
   if (!selectedQueueItem.value) return
   if (billingItems.value.length === 0) {
@@ -336,12 +362,54 @@ async function submitCheckout() {
   }
   checkoutLoading.value = true
   try {
+    let orderType = 'offline'
+    let orderStatus = 'completed'
+    let shipAddr = null
+
+    if (deliveryType.value === 'online') {
+      orderType = 'online'
+      orderStatus = 'shipping'
+      shipAddr = {
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
+        province: '广东省',
+        city: '深圳市',
+        district: '快递邮寄',
+        detail: shippingAddressStr.value
+      }
+    } else if (deliveryType.value === 'offline_pending') {
+      orderType = 'offline'
+      orderStatus = 'processing'
+      shipAddr = {
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
+        province: '广东省',
+        city: '深圳市',
+        district: '门店自提',
+        detail: '缺货登记（待货通知自提）'
+      }
+    } else {
+      orderType = 'offline'
+      orderStatus = 'completed'
+      shipAddr = {
+        receiver: shippingReceiver.value || '到店客户',
+        phone: shippingPhone.value || '--',
+        province: '广东省',
+        city: '深圳市',
+        district: '到店自提',
+        detail: '现场拿走'
+      }
+    }
+
     const payload = {
       patient_id: parseInt(selectedQueueItem.value.patientId, 10),
       items: billingItems.value,
       pay_amount: payableAmount.value,
       discount_amount: discountAmount.value,
-      pay_method: payMethod.value
+      pay_method: payMethod.value,
+      type: orderType,
+      status: orderStatus,
+      shipping_address: shipAddr
     }
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
@@ -505,15 +573,31 @@ async function submitCreateAppt() {
 
         <div v-if="currentPatient" class="active-patient-card">
           <!-- Vitals Header -->
-          <div class="patient-main-info">
-            <div class="avatar-logo">
-              {{ currentPatient.patientName.charAt(0) }}
-            </div>
-            <div>
-              <div class="active-pat-name">{{ currentPatient.patientName }}</div>
-              <div class="active-pat-sub">
-                {{ currentPatient.phone }} · {{ currentPatient.timeSlot }} 预约挂号
+          <div class="patient-main-info" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div class="avatar-logo">
+                {{ currentPatient.patientName.charAt(0) }}
               </div>
+              <div>
+                <div style="display: flex; align-items: baseline; gap: 8px;">
+                  <span class="active-pat-name">{{ currentPatient.patientName }}</span>
+                  <span style="font-size: 13px; color: #6B7280; font-weight: normal;">{{ currentPatient.phone }}</span>
+                </div>
+                <div style="font-size: 13px; color: #6B7280; margin-top: 2px;">
+                  {{ currentPatient.timeSlot }} 预约挂号
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-shrink: 0;">
+              <t-button size="extra-small" theme="primary" variant="outline" @click="goToEmr(currentPatient)">
+                开始看诊
+              </t-button>
+              <t-button size="extra-small" theme="warning" variant="outline" @click="openCheckoutDialog(currentPatient)">
+                划扣收费
+              </t-button>
+              <t-button size="extra-small" theme="default" variant="outline" @click="callPatient(currentPatient.patientName, currentPatient.doctorName)">
+                接诊
+              </t-button>
             </div>
           </div>
 
@@ -558,27 +642,14 @@ async function submitCreateAppt() {
             <p class="complaint-val">{{ currentPatient.symptom }}</p>
           </div>
 
-          <!-- Consultation Actions -->
-          <div class="consult-actions">
-            <t-button block size="medium" theme="primary" @click="goToEmr(currentPatient)">
-              📝 开始看诊 & 录入病历处方
-            </t-button>
-            <div class="actions-row">
-              <t-button size="medium" theme="warning" variant="outline" style="flex: 1;" @click="openCheckoutDialog(currentPatient)">
-                💰 诊后划扣收费
-              </t-button>
-              <t-button size="medium" theme="default" variant="outline" style="flex: 1;" @click="callPatient(currentPatient.patientName, currentPatient.doctorName)">
-                🔊 再次呼叫叫号
-              </t-button>
-            </div>
-          </div>
+
         </div>
 
         <div v-else class="active-patient-empty">
           <div class="empty-icon">🛋️</div>
           <div class="empty-title">诊室当前空闲中</div>
           <p class="empty-desc">
-            目前没有正在就诊中的患者。请从右侧的“候诊队列”中点击“呼叫接诊”邀请下一位患者进入诊室就诊。
+            目前没有正在就诊中的患者。请从右侧的“候诊队列”中点击“接诊”邀请下一位患者进入诊室就诊。
           </p>
         </div>
       </div>
@@ -654,7 +725,7 @@ async function submitCreateAppt() {
                   签到
                 </t-button>
                 <t-button v-else size="extra-small" theme="primary" variant="outline" @click="handleCallToConsult(item)">
-                  呼叫接诊
+                  接诊
                 </t-button>
                 <t-button size="extra-small" theme="default" variant="text" @click="delayPatient(item)">
                   顺延
@@ -847,6 +918,59 @@ async function submitCreateAppt() {
           </table>
 
           <button class="btn-add-item" style="margin-bottom: 16px;" @click="addBillingItem">➕ 添加诊疗费/项目/药品</button>
+
+          <!-- Discount & Delivery selector -->
+          <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">卡券折扣金额 (元)</label>
+              <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="val => `¥${(val / 100).toFixed(2)}`" style="width: 100%;" />
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">配送/交付方式</label>
+              <t-select v-model="deliveryType" :options="[
+                { label: '现场自提', value: 'offline_direct' },
+                { label: '到店自取 (缺货)', value: 'offline_pending' },
+                { label: '快递邮寄 (邮寄)', value: 'online' }
+              ]" />
+            </div>
+          </div>
+
+          <!-- Shipping Address Form -->
+          <div v-if="deliveryType === 'online'" style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-weight: 700; font-size: 12px; color: #374151;">🚚 快递收货地址</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">收件人</label>
+                <t-input v-model="shippingReceiver" size="small" placeholder="姓名" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">手机号</label>
+                <t-input v-model="shippingPhone" size="small" placeholder="手机号" />
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px;">详细地址</label>
+              <t-input v-model="shippingAddressStr" size="small" placeholder="请输入详细省市区县及门牌号" />
+            </div>
+          </div>
+
+          <!-- Pickup Info Form -->
+          <div v-if="deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 12px; border-radius: 8px; border: 1px solid #FCD34D; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-weight: 700; font-size: 12px; color: #D97706;">🏪 缺货自提预订</div>
+            <div style="font-size: 11px; color: #B45309; line-height: 1.4;">
+              货到后系统将通过微信推送通知该患者到店自提。
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px; color: #B45309;">通知人</label>
+                <t-input v-model="shippingReceiver" size="small" placeholder="姓名" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px; color: #B45309;">通知手机号</label>
+                <t-input v-model="shippingPhone" size="small" placeholder="手机号" />
+              </div>
+            </div>
+          </div>
 
           <!-- Payment Settings -->
           <div style="background: #F9FAFB; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
@@ -1180,7 +1304,41 @@ async function submitCreateAppt() {
 
 /* Time slots filters */
 .time-filter-wrapper {
+  overflow-x: auto;
+  white-space: nowrap;
+  width: 100%;
   margin-bottom: 16px;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.time-filter-wrapper::-webkit-scrollbar {
+  height: 4px;
+}
+
+.time-filter-wrapper::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 2px;
+}
+
+.time-filter-wrapper::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 2px;
+}
+
+.time-filter-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+.time-filter-wrapper .filter-tabs {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0;
+}
+
+.time-filter-wrapper .filter-tab {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Right Tabs Control */
@@ -1210,7 +1368,9 @@ async function submitCreateAppt() {
 
 .queue-tab-content {
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
   padding: 16px;
 }
 
@@ -1218,6 +1378,9 @@ async function submitCreateAppt() {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow-y: auto;
+  max-height: 400px;
+  padding-right: 4px;
 }
 
 .queue-item-row {

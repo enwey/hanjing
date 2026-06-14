@@ -162,6 +162,19 @@ export const initDB = async () => {
     // Ignore error if column already exists
   }
 
+  try {
+    await query(`ALTER TABLE patients ADD COLUMN medical_history TEXT DEFAULT NULL;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+
+  try {
+    await query(`ALTER TABLE patients ADD COLUMN allergy_history TEXT DEFAULT NULL;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+
+
   // 6. doctor_store_mapping
   await query(`
     CREATE TABLE IF NOT EXISTS doctor_store_mapping (
@@ -640,6 +653,30 @@ export const initDB = async () => {
       FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
     );
   `);
+
+  // Ensure default products 1-7 exist for cashier checkout flows
+  try {
+    await query(`
+      INSERT INTO products (id, name, category, image_url, price, original_price, description, stock, sales_count, status)
+      VALUES 
+        (1, '定制式可调舌型阻鼾器 HJ-MAD-03', 'device', '/static/product/hj-mad-03.png', 298000, 368000, '针对中轻度阻塞性睡眠呼吸暂停(OSAHS)及顽固打鼾设计，采用食品级高分子材质，下颌前移微调精度达0.5mm，智能监测传感器自动上传睡眠佩戴时长与质量数据。', 120, 58, 'on'),
+        (2, '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', 'accessory', '/static/product/pillow.png', 4900, 6900, '专为阻鼾器高分子材料研发 of 温和除菌清洁片。能有效杀灭99.9%的口腔常见细菌，防止异味积聚，不损伤阻鼾器金属调节螺丝与树脂基托。', 800, 340, 'on'),
+        (3, '鼾静智能阻鼾舒眠记忆枕', 'accessory', '/static/product/pillow.png', 29900, 39900, '人体工学设计，智能控温与防鼾姿势引导，提升整晚睡眠舒适度与深睡比例。', 150, 85, 'on'),
+        (4, '诊所首诊挂号门诊费', 'service', '/static/product/screening.png', 20000, 20000, '挂号门诊费，包含初次就诊及基础筛查服务。', 99999, 1200, 'on'),
+        (5, '诊所专家诊断评估费', 'service', '/static/product/screening.png', 50000, 50000, '专家诊断评估费，包含专家一对一问诊及阻鼾器物理适配评估。', 99999, 650, 'on'),
+        (6, '专业睡眠呼吸多导初筛服务套餐', 'service', '/static/product/screening.png', 19900, 29900, '包含一次线上睡眠嗜睡问卷评估、三晚鼾声监测报告、以及一次门诊专家面对面的物理阻鼾器适应性筛查与出诊挂号费用。', 9999, 125, 'on'),
+        (7, '快递运费', 'service', '/static/product/screening.png', 1500, 1500, '顺丰快递或挂号邮寄服务费。', 99999, 500, 'on')
+      ON DUPLICATE KEY UPDATE 
+        name = VALUES(name),
+        category = VALUES(category),
+        price = VALUES(price),
+        original_price = VALUES(original_price),
+        status = VALUES(status)
+    `);
+    console.log('Ensured products 1-7 exist in database.');
+  } catch (err) {
+    console.error('Failed to ensure default products exist:', err);
+  }
 
   // Re-enable Foreign Key checks
   await query('SET FOREIGN_KEY_CHECKS = 1;');

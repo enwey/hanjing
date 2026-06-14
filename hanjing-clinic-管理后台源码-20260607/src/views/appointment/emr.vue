@@ -21,13 +21,44 @@ const diagnosis = ref('')
 const prescription = ref('')
 const doctorAdvice = ref('')
 const note = ref('')
+const medicalHistory = ref('')
+const allergyHistory = ref('')
 
-// Treatment Profile States
+// Treatment Profile States (for new treatment creation)
 const syncTreatment = ref(true)
 const deviceModel = ref('HJ-MAD-03')
 const initialAdvancement = ref(4.0)
 const startDate = ref(new Date().toISOString().split('T')[0])
 const nextAdjustDate = ref(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+
+// Device Adjustments States (for existing active treatment adjustment)
+const activeTreatment = ref<any>(null)
+const syncAdjust = ref(true)
+const adjustedAdvancement = ref(4.0)
+const patientFeedback = ref('舒适度良好，无明显下颌酸痛或流涎')
+const adjustInstructions = ref('')
+
+// Historical EMRs States
+const historyRecords = ref<any[]>([])
+const historyDialogVisible = ref(false)
+const selectedHistoryRecord = ref<any>(null)
+
+const showHistoryDetail = (record: any) => {
+  selectedHistoryRecord.value = record
+  historyDialogVisible.value = true
+}
+
+const computedAvgWear = computed(() => {
+  if (!activeTreatment.value || !activeTreatment.value.logs || activeTreatment.value.logs.length === 0) return '0'
+  const total = activeTreatment.value.logs.reduce((sum: number, log: any) => sum + (log.wear_duration || 0), 0)
+  return (total / activeTreatment.value.logs.length).toFixed(1)
+})
+
+const computedAvgComfort = computed(() => {
+  if (!activeTreatment.value || !activeTreatment.value.logs || activeTreatment.value.logs.length === 0) return '0'
+  const total = activeTreatment.value.logs.reduce((sum: number, log: any) => sum + (log.comfort || 0), 0)
+  return (total / activeTreatment.value.logs.length).toFixed(1)
+})
 
 // Templates
 const diagnosisTemplates = [
@@ -59,6 +90,10 @@ const fetchData = async () => {
     if (res.code === 200 && res.data) {
       appt.value = res.data
       
+      // Load patient's medical history and allergy history from appointment data
+      medicalHistory.value = appt.value.patient_medical_history || ''
+      allergyHistory.value = appt.value.patient_allergy_history || ''
+      
       // Pre-fill prescription if symptoms suggest it
       prescription.value = '定制式下颌前移阻鼾器 HJ-MAD-03'
       diagnosis.value = appt.value.symptom_desc ? `初步诊断：${appt.value.symptom_desc}。建议配戴阻鼾器治疗。` : ''
@@ -86,6 +121,28 @@ const fetchData = async () => {
         } catch (e) {
           console.error('获取鼾声报告失败', e)
         }
+      }
+
+      // Fetch historical EMRs
+      try {
+        const historyRes: any = await request.get(`/api/admin/patients/${appt.value.patient_id}/medical-records`)
+        if (historyRes.code === 200) {
+          historyRecords.value = historyRes.data
+        }
+      } catch (e) {
+        console.error('获取历史病历失败', e)
+      }
+
+      // Fetch active treatment profile
+      try {
+        const treatmentRes: any = await request.get(`/api/admin/patients/${appt.value.patient_id}/treatment`)
+        if (treatmentRes.code === 200 && treatmentRes.data) {
+          activeTreatment.value = treatmentRes.data
+          // Set default value for adjustments based on the active treatment
+          adjustedAdvancement.value = activeTreatment.value.current_advancement
+        }
+      } catch (e) {
+        console.error('获取治疗建档信息失败', e)
       }
     } else {
       MessagePlugin.error('预约记录加载失败')
@@ -137,31 +194,57 @@ const handleSubmit = async () => {
       diagnosis: diagnosis.value,
       prescription: prescription.value,
       doctor_advice: doctorAdvice.value,
-      note: note.value
+      note: note.value,
+      medical_history: medicalHistory.value,
+      allergy_history: allergyHistory.value
     }
 
     const emrRes: any = await request.post(`/api/admin/patients/${appt.value.patient_id}/medical-records`, emrPayload)
     
     if (emrRes.code === 200) {
-      // 2. Submit Treatment Profiling if toggled
-      if (syncTreatment.value) {
-        const treatmentPayload = {
-          doctor_id: appt.value.doctor_id,
-          device_model: deviceModel.value,
-          initial_advancement: initialAdvancement.value,
-          start_date: startDate.value
-        }
-        await request.post(`/api/admin/patients/${appt.value.patient_id}/treatment`, treatmentPayload)
-        
-        // Also check if we need to schedule a follow-up task
-        if (nextAdjustDate.value) {
-          const followUpPayload = {
-            doctor_id: appt.value.doctor_id,
-            title: `阻鼾器物理微调 - 2周复查`,
-            description: `初次配戴 ${deviceModel.value} (初始前伸量 ${initialAdvancement.value}mm) 满两周，到店复查微调下颌前伸度。`,
-            due_date: nextAdjustDate.value
+      // 2. Submit Treatment Profiling or Device Adjustment if toggled
+      if (activeTreatment.value) {
+        if (syncAdjust.value) {
+          const adjustPayload = {
+            treatment_id: activeTreatment.value.id,
+            adjust_date: new Date().toISOString().split('T')[0],
+            operator_id: appt.value.doctor_id,
+            adjusted_advancement: adjustedAdvancement.value,
+            patient_feedback: patientFeedback.value,
+            instructions: adjustInstructions.value,
+            next_adjust_date: nextAdjustDate.value
           }
-          await request.post(`/api/admin/patients/${appt.value.patient_id}/follow-ups`, followUpPayload)
+          await request.post(`/api/admin/patients/${appt.value.patient_id}/treatment/adjustments`, adjustPayload)
+          
+          if (nextAdjustDate.value) {
+            const followUpPayload = {
+              doctor_id: appt.value.doctor_id,
+              title: `阻鼾器参数微调 - 复查`,
+              description: `已调至 ${adjustedAdvancement.value}mm (反馈: ${patientFeedback.value})，安排门诊复诊。`,
+              due_date: nextAdjustDate.value
+            }
+            await request.post(`/api/admin/patients/${appt.value.patient_id}/follow-ups`, followUpPayload)
+          }
+        }
+      } else {
+        if (syncTreatment.value) {
+          const treatmentPayload = {
+            doctor_id: appt.value.doctor_id,
+            device_model: deviceModel.value,
+            initial_advancement: initialAdvancement.value,
+            start_date: startDate.value
+          }
+          await request.post(`/api/admin/patients/${appt.value.patient_id}/treatment`, treatmentPayload)
+          
+          if (nextAdjustDate.value) {
+            const followUpPayload = {
+              doctor_id: appt.value.doctor_id,
+              title: `阻鼾器物理微调 - 2周复查`,
+              description: `初次配戴 ${deviceModel.value} (初始前伸量 ${initialAdvancement.value}mm) 满两周，到店复查微调下颌前伸度。`,
+              due_date: nextAdjustDate.value
+            }
+            await request.post(`/api/admin/patients/${appt.value.patient_id}/follow-ups`, followUpPayload)
+          }
         }
       }
       
@@ -234,9 +317,31 @@ const handleSubmit = async () => {
               <div class="info-value">{{ appt.appointment_date }} · {{ appt.appointment_time }}</div>
             </div>
           </div>
-          <div class="symptom-section">
+          <div class="symptom-section" style="margin-top: 12px;">
             <div class="symptom-title">💬 患者主诉：</div>
-            <div class="symptom-desc">{{ appt.symptom_desc || '无主诉描述' }}</div>
+            <div class="symptom-desc" style="margin-bottom: 12px;">{{ appt.symptom_desc || '无主诉描述' }}</div>
+            
+            <!-- Vitals Grid inside info card -->
+            <div v-if="appt.pre_exam" style="border-top: 1px solid #E5E7EB; padding-top: 12px; margin-top: 12px;">
+              <div class="symptom-title" style="margin-bottom: 8px;">🩺 预检体征数据：</div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                <div style="background: #FFF; padding: 6px 10px; border-radius: 6px; border: 1px solid #E5E7EB; text-align: center;">
+                  <div style="font-size: 11px; color: #9CA3AF;">身高/体重</div>
+                  <div style="font-size: 13px; font-weight: 700; color: #374151;">{{ appt.pre_exam.height }}cm / {{ appt.pre_exam.weight }}kg</div>
+                </div>
+                <div style="background: #FFF; padding: 6px 10px; border-radius: 6px; border: 1px solid #E5E7EB; text-align: center;">
+                  <div style="font-size: 11px; color: #9CA3AF;">血压 (高/低)</div>
+                  <div style="font-size: 13px; font-weight: 700; color: #374151;">{{ appt.pre_exam.systolic_bp || '--' }}/{{ appt.pre_exam.diastolic_bp || '--' }}</div>
+                </div>
+                <div style="background: #FFF; padding: 6px 10px; border-radius: 6px; border: 1px solid #E5E7EB; text-align: center;">
+                  <div style="font-size: 11px; color: #9CA3AF;">颈围 / BMI</div>
+                  <div style="font-size: 13px; font-weight: 700; color: #374151;">{{ appt.pre_exam.neck_circumference || '--' }}cm / <span style="color: var(--primary-600);">{{ appt.pre_exam.bmi || '--' }}</span></div>
+                </div>
+              </div>
+            </div>
+            <div v-else style="border-top: 1px dashed #D1D5DB; padding-top: 10px; font-size: 12px; color: #F59E0B;">
+              ⚠️ 本次就诊暂无录入的身高、体重等预检体征数据。
+            </div>
           </div>
         </div>
 
@@ -300,6 +405,63 @@ const handleSubmit = async () => {
             </div>
           </div>
         </div>
+
+        <!-- 阻鼾器治疗监测 (已建档患者可见) -->
+        <div v-if="activeTreatment" class="panel treatment-monitor-card" style="margin-top: 16px;">
+          <div class="panel-header">
+            <div class="panel-title">⚙️ 物理阻鼾治疗监测 (进行中)</div>
+          </div>
+          <div class="panel-body" style="padding: 14px; font-size: 13px; color: #4B5563;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; background: #EFF6FF; padding: 10px; border-radius: 6px; border: 1px solid #BFDBFE;">
+              <div>设备型号: <strong>{{ activeTreatment.device_model }}</strong></div>
+              <div>当前前伸量: <strong style="color: var(--primary-600);">{{ activeTreatment.current_advancement }} mm</strong></div>
+              <div style="grid-column: span 2;">治疗启动: {{ activeTreatment.start_date.substring(0, 10) }}</div>
+            </div>
+            
+            <!-- Average Wear Compliance -->
+            <div v-if="activeTreatment.logs && activeTreatment.logs.length > 0" style="margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 4px;">
+                <span>📊 近30日平均佩戴时长</span>
+                <span style="font-weight: 700; color: #16A34A;">{{ computedAvgWear }} 小时</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 4px;">
+                <span>🙂 近30日均值舒适评分</span>
+                <span style="font-weight: 700; color: #F59E0B;">{{ computedAvgComfort }} / 5 分</span>
+              </div>
+            </div>
+            
+            <!-- Previous Adjustments Timeline -->
+            <div v-if="activeTreatment.adjustments && activeTreatment.adjustments.length > 0">
+              <div style="font-weight: 600; font-size: 12px; color: #374151; margin-bottom: 6px;">📋 历史微调记录 (近3次)：</div>
+              <div style="display: flex; flex-direction: column; gap: 6px; max-height: 120px; overflow-y: auto;">
+                <div v-for="adj in activeTreatment.adjustments.slice(0, 3)" :key="adj.id" style="font-size: 11px; background: #F9FAFB; padding: 6px; border: 1px solid #E5E7EB; border-radius: 4px;">
+                  <span style="font-weight: 600; color: #1F2937;">{{ adj.adjust_date.substring(0, 10) }}</span> · 调至 <strong>{{ adj.adjusted_advancement }}mm</strong> (反馈: {{ adj.patient_feedback || '无' }})
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 历史就诊病历 Panel -->
+        <div class="panel history-card" style="margin-top: 16px;">
+          <div class="panel-header">
+            <div class="panel-title">📚 历史就诊病历 ({{ historyRecords.length }}次)</div>
+          </div>
+          <div class="panel-body" style="padding: 12px; max-height: 240px; overflow-y: auto;">
+            <div v-for="r in historyRecords" :key="r.id" class="history-item" style="padding: 10px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; margin-bottom: 8px; cursor: pointer;" @click="showHistoryDetail(r)">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 4px;">
+                <span>📅 {{ r.visit_date }}</span>
+                <span>👨‍⚕️ {{ r.doctor_name }}</span>
+              </div>
+              <div style="font-size: 13px; font-weight: 600; color: #1F2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                诊断: {{ r.diagnosis }}
+              </div>
+            </div>
+            <div v-if="historyRecords.length === 0" style="text-align: center; color: #9CA3AF; padding: 20px; font-size: 12px;">
+              暂无历史就诊病历记录
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Right Column: Medical Record Form & Treatment Profiling -->
@@ -311,6 +473,28 @@ const handleSubmit = async () => {
           </div>
           
           <div class="form-body">
+            <!-- Patient Archive History -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed #E5E7EB;">
+              <div class="form-group">
+                <label class="form-label">既往病史 (更新至档案)</label>
+                <input 
+                  v-model="medicalHistory" 
+                  type="text" 
+                  class="form-control" 
+                  placeholder="如：高血压（5年）、2型糖尿病"
+                >
+              </div>
+              <div class="form-group">
+                <label class="form-label">过敏史 (更新至档案)</label>
+                <input 
+                  v-model="allergyHistory" 
+                  type="text" 
+                  class="form-control" 
+                  placeholder="如：青霉素过敏，或无过敏史"
+                >
+              </div>
+            </div>
+
             <!-- Diagnosis -->
             <div class="form-group">
               <label class="form-label">
@@ -404,74 +588,196 @@ const handleSubmit = async () => {
           </div>
         </div>
 
-        <!-- Treatment Record Sync (阻鼾器建档专用) -->
+        <!-- Treatment Record Sync (已建档患者微调 / 未建档患者建档) -->
         <div class="panel treatment-panel">
-          <div class="panel-header">
-            <div class="panel-title flex-row">
-              <input 
-                id="sync-treatment" 
-                v-model="syncTreatment" 
-                type="checkbox" 
-                class="checkbox-ctrl"
-              >
-              <label for="sync-treatment" class="checkbox-label font-bold">
-                🛠️ 同步建立/更新物理阻鼾治疗档案
-              </label>
-            </div>
-          </div>
-
-          <div v-show="syncTreatment" class="treatment-form-body">
-            <div class="info-alert">
-              💡 开启此项后，系统将自动为该患者建立物理阻鼾随访档案，以记录设备的日常佩戴打卡日志与物理调节量。
+          <!-- CASE 1: Patient already has active treatment. We support parameter adjustment! -->
+          <template v-if="activeTreatment">
+            <div class="panel-header">
+              <div class="panel-title flex-row">
+                <input 
+                  id="sync-adjust" 
+                  v-model="syncAdjust" 
+                  type="checkbox" 
+                  class="checkbox-ctrl"
+                >
+                <label for="sync-adjust" class="checkbox-label font-bold">
+                  🛠️ 同步记录物理阻鼾器参数微调 (复诊)
+                </label>
+              </div>
             </div>
 
-            <div class="card-grid-2">
-              <div class="form-group">
-                <label class="form-label">物理阻鼾器型号</label>
-                <select v-model="deviceModel" class="form-control select-ctrl">
-                  <option value="HJ-MAD-03">HJ-MAD-03 (可调舌型旗舰款)</option>
-                  <option value="HJ-MAD-02">HJ-MAD-02 (经典可调式)</option>
-                  <option value="HJ-MAD-01">HJ-MAD-01 (标准固定式)</option>
-                </select>
+            <div v-show="syncAdjust" class="treatment-form-body" style="padding: 16px;">
+              <div class="info-alert" style="margin-bottom: 12px;">
+                💡 记录此复诊微调后，系统将更新患者当前阻鼾器的前伸调节量，并添加微调历史记录。
               </div>
 
-              <div class="form-group">
-                <label class="form-label">初始下颌前移量 (mm)</label>
-                <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="card-grid-2">
+                <div class="form-group">
+                  <label class="form-label">当前下颌前移量</label>
+                  <input type="text" class="form-control" :value="activeTreatment.current_advancement + ' mm'" disabled style="background-color: #F3F4F6;">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">微调后下颌前伸量 (mm)</label>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <input 
+                      v-model="adjustedAdvancement" 
+                      type="range" 
+                      min="0" 
+                      max="10" 
+                      step="0.5" 
+                      style="flex: 1;"
+                    >
+                    <span class="adv-value">{{ adjustedAdvancement }} mm</span>
+                  </div>
+                </div>
+
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="form-label">本次配戴后患者反馈</label>
+                  <select v-model="patientFeedback" class="form-control select-ctrl">
+                    <option value="舒适度良好，无明显下颌酸痛或流涎">舒适度良好，无明显下颌酸痛或流涎</option>
+                    <option value="轻微流涎与下颌微酸，配戴2小时后缓解">轻微流涎与下颌微酸，配戴2小时后缓解</option>
+                    <option value="关节酸痛明显，早晨醒来无法完全咬合">关节酸痛明显，早晨醒来无法完全咬合</option>
+                    <option value="舒适，睡眠呼吸改善，晨起无不适">舒适，睡眠呼吸改善，晨起无不适</option>
+                    <option value="自定义反馈（手动填写）">自定义反馈（见下方微调说明）</option>
+                  </select>
+                </div>
+
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="form-label">微调操作建议/说明 (选填)</label>
+                  <textarea 
+                    v-model="adjustInstructions" 
+                    class="form-control text-area" 
+                    placeholder="请输入微调建议或操作指令，例如：增加0.5mm以改善打鼾症状..."
+                    rows="2"
+                  ></textarea>
+                </div>
+
+                <div class="form-group" style="grid-column: span 2;">
+                  <label class="form-label">计划下一次复查/微调日期</label>
                   <input 
-                    v-model="initialAdvancement" 
-                    type="range" 
-                    min="0" 
-                    max="10" 
-                    step="0.5" 
-                    style="flex: 1;"
+                    v-model="nextAdjustDate" 
+                    type="date" 
+                    class="form-control"
                   >
-                  <span class="adv-value">{{ initialAdvancement }} mm</span>
                 </div>
               </div>
+            </div>
+          </template>
 
-              <div class="form-group">
-                <label class="form-label">初配戴/治疗启动日期</label>
+          <!-- CASE 2: Patient has NO active treatment. We support initial profiling! -->
+          <template v-else>
+            <div class="panel-header">
+              <div class="panel-title flex-row">
                 <input 
-                  v-model="startDate" 
-                  type="date" 
-                  class="form-control"
+                  id="sync-treatment" 
+                  v-model="syncTreatment" 
+                  type="checkbox" 
+                  class="checkbox-ctrl"
                 >
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">计划下次微调复诊日期</label>
-                <input 
-                  v-model="nextAdjustDate" 
-                  type="date" 
-                  class="form-control"
-                >
+                <label for="sync-treatment" class="checkbox-label font-bold">
+                  🛠️ 同步建立/更新物理阻鼾治疗档案
+                </label>
               </div>
             </div>
-          </div>
+
+            <div v-show="syncTreatment" class="treatment-form-body" style="padding: 16px;">
+              <div class="info-alert" style="margin-bottom: 12px;">
+                💡 开启此项后，系统将自动为该患者建立物理阻鼾随访档案，以记录设备的日常佩戴打卡日志与物理调节量。
+              </div>
+
+              <div class="card-grid-2">
+                <div class="form-group">
+                  <label class="form-label">物理阻鼾器型号</label>
+                  <select v-model="deviceModel" class="form-control select-ctrl">
+                    <option value="HJ-MAD-03">HJ-MAD-03 (可调舌型旗舰款)</option>
+                    <option value="HJ-MAD-02">HJ-MAD-02 (经典可调式)</option>
+                    <option value="HJ-MAD-01">HJ-MAD-01 (标准固定式)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">初始下颌前移量 (mm)</label>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <input 
+                      v-model="initialAdvancement" 
+                      type="range" 
+                      min="0" 
+                      max="10" 
+                      step="0.5" 
+                      style="flex: 1;"
+                    >
+                    <span class="adv-value">{{ initialAdvancement }} mm</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">初配戴/治疗启动日期</label>
+                  <input 
+                    v-model="startDate" 
+                    type="date" 
+                    class="form-control"
+                  >
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">计划下次微调复诊日期</label>
+                  <input 
+                    v-model="nextAdjustDate" 
+                    type="date" 
+                    class="form-control"
+                  >
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </div>
+
+    <!-- 历史电子病历详情查看弹窗 -->
+    <t-dialog
+      v-model:visible="historyDialogVisible"
+      header="历史门诊病历详情"
+      width="600px"
+      :footer="null"
+    >
+      <div v-if="selectedHistoryRecord" class="record-detail-modal" style="padding: 10px 0; font-size: 14px; color: #374151; line-height: 1.6;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #E5E7EB;">
+          <div><strong>就诊时间:</strong> {{ selectedHistoryRecord.visit_date }}</div>
+          <div><strong>就诊门店:</strong> {{ selectedHistoryRecord.store_name }}</div>
+          <div><strong>接诊医生:</strong> {{ selectedHistoryRecord.doctor_name }} ({{ selectedHistoryRecord.doctor_title || '主任医师' }})</div>
+          <div><strong>就诊科室:</strong> 睡眠呼吸科</div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">🩺 临床诊断：</div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid var(--primary-500); white-space: pre-wrap;">
+            {{ selectedHistoryRecord.diagnosis }}
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">💊 治疗方案 / 处方：</div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid var(--success-500); white-space: pre-wrap;">
+            {{ selectedHistoryRecord.prescription || '未开具处方' }}
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">📣 医嘱建议：</div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid #F59E0B; white-space: pre-wrap;">
+            {{ selectedHistoryRecord.doctor_advice || '无' }}
+          </div>
+        </div>
+        <div v-if="selectedHistoryRecord.note" style="margin-bottom: 16px;">
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">📝 备注：</div>
+          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; color: #6B7280; white-space: pre-wrap;">
+            {{ selectedHistoryRecord.note }}
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+          <t-button theme="default" @click="historyDialogVisible = false">关闭</t-button>
+        </div>
+      </div>
+    </t-dialog>
   </div>
 </template>
 

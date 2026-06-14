@@ -302,6 +302,7 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   try {
     let sql = `
       SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
+             p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history,
              d.name as doctor_name, d.specialty as doctor_specialty, s.name as store_name
       FROM appointments a
       JOIN patients p ON a.patient_id = p.id
@@ -548,7 +549,7 @@ app.get('/api/admin/patients/:id/medical-records', authenticateToken, async (req
 
 app.post('/api/admin/patients/:id/medical-records', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { doctor_id, store_id, appointment_id, visit_date, diagnosis, prescription, doctor_advice, note } = req.body;
+  const { doctor_id, store_id, appointment_id, visit_date, diagnosis, prescription, doctor_advice, note, medical_history, allergy_history } = req.body;
 
   if (!doctor_id || !store_id || !visit_date || !diagnosis) {
     return res.status(400).json({ code: 400, message: '必填信息缺失（医生、门店、就诊日期、诊断结果）' });
@@ -561,6 +562,13 @@ app.post('/api/admin/patients/:id/medical-records', authenticateToken, async (re
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, doctor_id, store_id, appointment_id || null, visit_date, diagnosis, prescription || null, doctor_advice || null, note || null]
     );
+
+    // Update patient's medical history and allergy history
+    await run(
+      `UPDATE patients SET medical_history = ?, allergy_history = ? WHERE id = ?`,
+      [medical_history || null, allergy_history || null, id]
+    );
+
 
     // 2. If appointment_id is supplied, mark appointment as completed
     if (appointment_id) {
@@ -1079,6 +1087,25 @@ app.get('/api/admin/orders', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/admin/orders/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const order = await get(
+      `SELECT o.*, u.nickname as user_name, u.phone as user_phone
+       FROM orders o
+       JOIN users u ON o.user_id = u.id
+       WHERE o.id = ?`,
+      [id]
+    );
+    if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    const items = await query('SELECT * FROM order_items WHERE order_id = ?', [id]);
+    order.items = items;
+    res.json({ code: 200, data: order });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取订单详情失败' });
+  }
+});
+
 app.post('/api/admin/orders/:id/ship', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
@@ -1088,6 +1115,46 @@ app.post('/api/admin/orders/:id/ship', authenticateToken, async (req, res) => {
     res.status(500).json({ code: 500, message: '操作失败' });
   }
 });
+
+// Notify patient for offline self-pickup order arrival
+app.post('/api/admin/orders/:id/notify', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const order = await get('SELECT o.*, u.nickname, u.phone FROM orders o JOIN users u ON o.user_id = u.id WHERE o.id = ?', [id]);
+    if (!order) {
+      return res.status(404).json({ code: 404, message: '订单不存在' });
+    }
+    
+    let addr = {};
+    try {
+      addr = JSON.parse(order.shipping_address || '{}');
+    } catch(e) {}
+    
+    // Update delivery status in shipping_address JSON
+    addr.status = '已到店（待自提）';
+    await run('UPDATE orders SET shipping_address = ? WHERE id = ?', [JSON.stringify(addr), id]);
+    
+    // Simulate Wechat template message push
+    console.log(`[微信订阅消息推送成功] 发送给用户 openid=${order.user_id}，商品已到店通知。`);
+    
+    res.json({ code: 200, message: '到货自提通知已成功推送给患者！' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '推送通知失败' });
+  }
+});
+
+// Complete offline pick-up order
+app.post('/api/admin/orders/:id/complete', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await run(`UPDATE orders SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [id]);
+    res.json({ code: 200, message: '订单交易成功完成' });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '操作失败' });
+  }
+});
+
 
 app.put('/api/admin/orders/:id/refund', authenticateToken, async (req, res) => {
   const { id } = req.params;
@@ -1420,7 +1487,7 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
 
 // Create billing order
 app.post('/api/admin/orders', authenticateToken, async (req, res) => {
-  const { patient_id, items, pay_amount, discount_amount, coupon_id, pay_method } = req.body;
+  const { patient_id, items, pay_amount, discount_amount, coupon_id, pay_method, type, status, shipping_address } = req.body;
   if (!patient_id || !items || items.length === 0) {
     return res.status(400).json({ code: 400, message: '参数缺失' });
   }
@@ -1438,8 +1505,19 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
 
     const orderResult = await run(
       `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, shipping_address)
-       VALUES (?, ?, 'offline', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'paid', ?)`,
-      [order_no, user_id, total_amount, discount_amount || 0, coupon_id || null, pay_amount, pay_method || 'wechat', JSON.stringify({ receiver: patient.name, phone: patient.phone, province: '广东省', city: '深圳市', district: '到店自提', detail: '到店就诊收银' })]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)`,
+      [
+        order_no,
+        user_id,
+        type || 'offline',
+        total_amount,
+        discount_amount || 0,
+        coupon_id || null,
+        pay_amount,
+        pay_method || 'wechat',
+        status || 'completed',
+        shipping_address ? (typeof shipping_address === 'string' ? shipping_address : JSON.stringify(shipping_address)) : JSON.stringify({ receiver: patient.name, phone: patient.phone, province: '广东省', city: '深圳市', district: '到店自提', detail: '到店就诊收银' })
+      ]
     );
 
     for (const item of items) {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 const searchKeyword = ref('')
@@ -10,6 +11,7 @@ const filterStore = ref('全部门店')
 const currentPage = ref(1)
 const pageSize = ref(30)
 const activeTab = ref('全部')
+const loading = ref(false)
 
 interface Order {
   id: string
@@ -22,29 +24,63 @@ interface Order {
   commission: string
   createTime: string
   status: string
+  type: string
+  shipping_address: string
 }
 
-const initialOrders: Order[] = [
-  { id: '1', no: '#2026052901', patient: '张明华', avatarBg: '#5A85F5', product: '睡眠监测套餐', store: '龙岗总店', amount: 3680, commission: '¥552 (15%)', createTime: '5/29 08:30', status: 'completed' },
-  { id: '2', no: '#2026052902', patient: '李雪琴', avatarBg: '#9333EA', product: '止鼾器定制', store: '南山分院', amount: 1280, commission: '¥192 (15%)', createTime: '5/29 09:15', status: 'processing' },
-  { id: '3', no: '#2026052903', patient: '陈建国', avatarBg: '#F59E0B', product: 'CPAP呼吸机', store: '福田门诊部', amount: 8900, commission: '¥1,335 (15%)', createTime: '5/29 10:22', status: 'shipping' },
-  { id: '4', no: '#2026052905', patient: '周小燕', avatarBg: '#22C55E', product: '复查+监测', store: '南山分院', amount: 580, commission: '—', createTime: '5/29 13:05', status: 'refunded' }
-]
+const orders = ref<Order[]>([])
 
-const orders = ref<Order[]>(
-  Array.from({ length: 35 }, (_, index) => {
-    const base = initialOrders[index % initialOrders.length]
-    const orderNum = 2026052901 + index
-    return {
-      ...base,
-      id: String(index + 1),
-      no: `#${orderNum}`,
-      patient: index < 4 ? base.patient : base.patient.substring(0, 1) + '同学' + index
+const fetchOrders = async () => {
+  loading.value = true
+  try {
+    const res: any = await request.get('/api/admin/orders')
+    if (res.code === 200) {
+      orders.value = res.data.map((item: any) => {
+        let addr: any = {}
+        try {
+          addr = JSON.parse(item.shipping_address || '{}')
+        } catch(e) {}
+        
+        const productName = item.items && item.items[0] ? item.items[0].product_name : '服务挂号费'
+        const productDesc = item.items && item.items.length > 1 ? `${productName} 等${item.items.length}件` : productName
+        
+        // Show pick up status in store name
+        let storeLabel = ''
+        if (item.type === 'online') {
+          storeLabel = '快递寄送'
+        } else {
+          storeLabel = `自提 (${addr.status || '现场直接提走'})`
+        }
+        
+        return {
+          id: item.id.toString(),
+          no: item.order_no,
+          patient: addr.receiver || item.user_name || '患者',
+          avatarBg: '#5A85F5',
+          product: productDesc,
+          store: storeLabel,
+          amount: item.pay_amount / 100,
+          commission: `¥${Math.round(item.pay_amount * 0.1 / 100)} (10%)`,
+          createTime: item.created_at ? item.created_at.substring(5, 16).replace('T', ' ') : '',
+          status: item.status,
+          type: item.type,
+          shipping_address: item.shipping_address
+        }
+      })
     }
-  })
-)
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('获取订单列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
-const tabs = ['全部', '待处理', '处理中', '已完成', '退款']
+onMounted(() => {
+  fetchOrders()
+})
+
+const tabs = ['全部', '待发货 (快递)', '待到货 (自提预订)', '已完成', '已退款']
 
 const statusThemeMap: Record<string, string> = {
   completed: 'green',
@@ -55,8 +91,8 @@ const statusThemeMap: Record<string, string> = {
 
 const statusLabelMap: Record<string, string> = {
   completed: '已完成',
-  processing: '处理中',
-  shipping: '待发货',
+  processing: '自提待到货',
+  shipping: '快递待发货',
   refunded: '已退款'
 }
 
@@ -64,13 +100,13 @@ const filteredOrders = computed(() => {
   let list = orders.value
 
   // Horizontal Tabs Filter
-  if (activeTab.value === '待处理') {
-    list = list.filter(o => o.status === 'shipping')
-  } else if (activeTab.value === '处理中') {
-    list = list.filter(o => o.status === 'processing')
+  if (activeTab.value === '待发货 (快递)') {
+    list = list.filter(o => o.type === 'online' && o.status === 'shipping')
+  } else if (activeTab.value === '待到货 (自提预订)') {
+    list = list.filter(o => o.type === 'offline' && o.status === 'processing')
   } else if (activeTab.value === '已完成') {
     list = list.filter(o => o.status === 'completed')
-  } else if (activeTab.value === '退款') {
+  } else if (activeTab.value === '已退款') {
     list = list.filter(o => o.status === 'refunded')
   }
 
@@ -83,11 +119,6 @@ const filteredOrders = computed(() => {
     } else if (filterType.value === '器械') {
       list = list.filter(o => o.product.includes('呼吸机') || o.product.includes('止鼾') || o.product.includes('器'))
     }
-  }
-
-  // Store Filter
-  if (filterStore.value && filterStore.value !== '全部门店') {
-    list = list.filter(o => o.store.includes(filterStore.value))
   }
 
   // Search input filter
@@ -114,9 +145,30 @@ function handleExport() {
   MessagePlugin.success('导出数据成功！')
 }
 
-function handleComplete(row: Order) {
-  row.status = 'completed'
-  MessagePlugin.success(`订单 ${row.no} 已标记为完成`)
+async function handleComplete(row: Order) {
+  try {
+    const res: any = await request.post(`/api/admin/orders/${row.id}/complete`)
+    if (res.code === 200) {
+      MessagePlugin.success(`订单 ${row.no} 已成功核销完成交付！`)
+      fetchOrders()
+    }
+  } catch (err) {
+    console.error(err)
+    MessagePlugin.error('核销操作失败')
+  }
+}
+
+async function handleNotify(row: Order) {
+  try {
+    const res: any = await request.post(`/api/admin/orders/${row.id}/notify`)
+    if (res.code === 200) {
+      MessagePlugin.success('已通过微信模板消息通知该患者到店自提')
+      fetchOrders()
+    }
+  } catch (err) {
+    console.error(err)
+    MessagePlugin.error('通知推送失败')
+  }
 }
 
 function handleShip(row: Order) {
@@ -213,7 +265,8 @@ function handleShip(row: Order) {
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;">
                   <button class="btn btn-xs btn-outline" @click="openOrderDetail(row.id)">详情</button>
-                  <button v-if="row.status === 'processing'" class="btn btn-xs btn-success" @click="handleComplete(row)">完成</button>
+                  <button v-if="row.status === 'processing'" class="btn btn-xs btn-outline" @click="handleNotify(row)" style="margin-right: 4px;">🔔 通知到货</button>
+                  <button v-if="row.status === 'processing'" class="btn btn-xs btn-success" @click="handleComplete(row)">提货核销</button>
                   <button v-if="row.status === 'shipping'" class="btn btn-xs btn-primary" @click="handleShip(row)">发货</button>
                 </div>
               </td>

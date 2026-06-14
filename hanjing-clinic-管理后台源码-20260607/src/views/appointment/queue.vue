@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -261,12 +261,18 @@ const checkoutLoading = ref(false)
 const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
 
+const deliveryType = ref<string>('offline_direct')
+const shippingReceiver = ref<string>('')
+const shippingPhone = ref<string>('')
+const shippingAddressStr = ref<string>('')
+
 const productOptions = [
   { id: '1', name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000 },
   { id: '2', name: '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', price: 4900 },
   { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
   { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
-  { id: '5', name: '诊所专家诊断评估费', price: 50000 }
+  { id: '5', name: '诊所专家诊断评估费', price: 50000 },
+  { id: '7', name: '快递运费', price: 1500 }
 ]
 
 const billingItems = ref<Array<{ product_id: string; product_name: string; price: number; quantity: number }>>([])
@@ -298,6 +304,20 @@ function onProductChange(idx: number, prodId: string) {
   }
 }
 
+watch(deliveryType, (newVal) => {
+  if (newVal === 'online') {
+    const exists = billingItems.value.some(item => item.product_id === '7')
+    if (!exists) {
+      billingItems.value.push({ product_id: '7', product_name: '快递运费', price: 1500, quantity: 1 })
+    }
+  } else {
+    const idx = billingItems.value.findIndex(item => item.product_id === '7')
+    if (idx !== -1) {
+      billingItems.value.splice(idx, 1)
+    }
+  }
+})
+
 function openCheckoutDialog(item: QueueItem) {
   selectedQueueItem.value = item
   billingItems.value = [
@@ -307,6 +327,12 @@ function openCheckoutDialog(item: QueueItem) {
   payMethod.value = 'wechat'
   checkoutSuccess.value = false
   orderResult.value = null
+  
+  deliveryType.value = 'offline_direct'
+  shippingReceiver.value = item.patientName || ''
+  shippingPhone.value = item.phone || ''
+  shippingAddressStr.value = ''
+  
   checkoutVisible.value = true
 }
 
@@ -331,12 +357,54 @@ async function submitCheckout() {
   }
   checkoutLoading.value = true
   try {
+    let orderType = 'offline'
+    let orderStatus = 'completed'
+    let shipAddr: any = null
+
+    if (deliveryType.value === 'online') {
+      orderType = 'online'
+      orderStatus = 'shipping'
+      shipAddr = {
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
+        province: '广东省',
+        city: '深圳市',
+        district: '快递邮寄',
+        detail: shippingAddressStr.value
+      }
+    } else if (deliveryType.value === 'offline_pending') {
+      orderType = 'offline'
+      orderStatus = 'processing'
+      shipAddr = {
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
+        province: '广东省',
+        city: '深圳市',
+        district: '门店自提',
+        detail: '缺货登记（待货通知自提）'
+      }
+    } else {
+      orderType = 'offline'
+      orderStatus = 'completed'
+      shipAddr = {
+        receiver: shippingReceiver.value || '到店客户',
+        phone: shippingPhone.value || '--',
+        province: '广东省',
+        city: '深圳市',
+        district: '到店自提',
+        detail: '现场拿走'
+      }
+    }
+
     const payload = {
       patient_id: parseInt(selectedQueueItem.value.patientId, 10),
       items: billingItems.value,
       pay_amount: payableAmount.value,
       discount_amount: discountAmount.value,
-      pay_method: payMethod.value
+      pay_method: payMethod.value,
+      type: orderType,
+      status: orderStatus,
+      shipping_address: shipAddr
     }
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
@@ -604,9 +672,6 @@ const filteredTodayAppointments = computed(() => {
               <t-button size="extra-small" theme="primary" variant="outline" @click="callPatient(q.current.patientName, q.doctorName)">
                 叫号
               </t-button>
-              <t-button size="extra-small" theme="success" variant="outline" @click="goToEmr(q.current)">
-                诊疗录入
-              </t-button>
               <t-button size="extra-small" theme="warning" variant="outline" @click="openCheckoutDialog(q.current)">
                 收银
               </t-button>
@@ -693,8 +758,8 @@ const filteredTodayAppointments = computed(() => {
     <!-- 收银结算弹窗 -->
     <t-dialog
       v-model:visible="checkoutVisible"
-      header="诊所收银结算"
-      width="680px"
+      header="门诊电子收银结算与划扣"
+      width="540px"
       :footer="false"
       @close="closeCheckoutDialog"
     >
@@ -728,71 +793,139 @@ const filteredTodayAppointments = computed(() => {
         </div>
       </div>
 
-      <div v-else style="display: flex; gap: 20px; padding: 10px 0;">
-        <!-- Left: billing form -->
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 14px;">
-          <div class="form-group">
-            <label class="form-label">就诊患者</label>
-            <input type="text" class="form-control" :value="selectedQueueItem?.patientName" disabled style="background-color: #F3F4F6; outline: none;">
-          </div>
-          
-          <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <label class="form-label" style="margin-bottom: 0;">收费项目明细</label>
-              <t-button size="small" theme="primary" variant="outline" @click="addBillingItem">
-                添加项目
-              </t-button>
-            </div>
-            <div v-for="(item, idx) in billingItems" :key="idx" style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
-              <t-select
-                v-model="item.product_id"
-                :options="productOptions.map(p => ({ label: p.name, value: p.id }))"
-                style="flex: 1;"
-                @change="(val: any) => onProductChange(idx, val)"
-              />
-              <t-input-number v-model="item.quantity" :min="1" style="width: 80px;" />
-              <div style="width: 80px; text-align: right; font-weight: 700; font-size: 13px; color: #1F2937;">
-                ¥{{ ((item.price * item.quantity) / 100).toFixed(2) }}
-              </div>
-              <t-button theme="danger" variant="text" size="small" @click="removeBillingItem(idx)">删除</t-button>
-            </div>
-          </div>
+      <div v-else class="dialog-body-form" style="padding: 10px 0;">
+        <div style="margin-bottom: 16px; font-size: 14px; color: #374151;">
+          正在为患者 <strong>{{ selectedQueueItem?.patientName }}</strong> 开立收费结算账单：
+        </div>
 
-          <div style="display: flex; gap: 16px;">
-            <div class="form-group" style="flex: 1;">
-              <label class="form-label">卡券折扣金额 (元)</label>
-              <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="val => `¥${(val / 100).toFixed(2)}`" style="width: 100%;" />
+        <!-- Checkout Items Table -->
+        <table class="billing-table" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+          <thead>
+            <tr style="background: #F9FAFB; border-bottom: 1px solid #E5E7EB; text-align: left; font-size: 12px; color: #4B5563;">
+              <th style="padding: 8px;">项目/商品名称</th>
+              <th style="padding: 8px; width: 100px;">单价</th>
+              <th style="padding: 8px; width: 60px;">数量</th>
+              <th style="padding: 8px; width: 50px;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, idx) in billingItems" :key="idx" style="border-bottom: 1px solid #F3F4F6; font-size: 13px;">
+              <td style="padding: 8px;">
+                <select 
+                  v-model="item.product_id" 
+                  class="form-control" 
+                  style="height: 30px; font-size: 12px; padding: 0 8px;"
+                  @change="onProductChange(idx, item.product_id)"
+                >
+                  <option v-for="p in productOptions" :key="p.id" :value="p.id">
+                    {{ p.name }}
+                  </option>
+                </select>
+              </td>
+              <td style="padding: 8px;">¥{{ (item.price / 100).toFixed(2) }}</td>
+              <td style="padding: 8px;">
+                <input v-model="item.quantity" type="number" class="form-control" style="height: 30px; padding: 2px 6px; text-align: center;" min="1">
+              </td>
+              <td style="padding: 8px;">
+                <button class="btn-text-del" @click="removeBillingItem(idx)">删除</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <button class="btn-add-item" style="margin-bottom: 16px;" @click="addBillingItem">➕ 添加诊疗费/项目/药品</button>
+
+        <!-- Discount & Delivery selector -->
+        <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">卡券折扣金额 (元)</label>
+            <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="val => `¥${(val / 100).toFixed(2)}`" style="width: 100%;" />
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">配送/交付方式</label>
+            <t-select v-model="deliveryType" :options="[
+              { label: '现场自提', value: 'offline_direct' },
+              { label: '到店自取 (缺货)', value: 'offline_pending' },
+              { label: '快递邮寄 (邮寄)', value: 'online' }
+            ]" />
+          </div>
+        </div>
+
+        <!-- Shipping Address Form -->
+        <div v-if="deliveryType === 'online'" style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-weight: 700; font-size: 12px; color: #374151;">🚚 快递收货地址</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px;">收件人</label>
+              <t-input v-model="shippingReceiver" size="small" placeholder="姓名" />
             </div>
-            <div class="form-group" style="flex: 1;">
-              <label class="form-label">支付方式</label>
-              <t-select v-model="payMethod" :options="[
-                { label: '微信支付', value: 'wechat' },
-                { label: '支付宝', value: 'alipay' },
-                { label: 'POS线下刷卡', value: 'pos' }
-              ]" />
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px;">手机号</label>
+              <t-input v-model="shippingPhone" size="small" placeholder="手机号" />
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 11px;">详细地址</label>
+            <t-input v-model="shippingAddressStr" size="small" placeholder="请输入详细省市区县及门牌号" />
+          </div>
+        </div>
+
+        <!-- Pickup Info Form -->
+        <div v-if="deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 12px; border-radius: 8px; border: 1px solid #FCD34D; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-weight: 700; font-size: 12px; color: #D97706;">🏪 缺货自提预订</div>
+          <div style="font-size: 11px; color: #B45309; line-height: 1.4;">
+            货到后系统将通过微信推送通知该患者到店自提。
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #B45309;">通知人</label>
+              <t-input v-model="shippingReceiver" size="small" placeholder="姓名" />
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #B45309;">通知手机号</label>
+              <t-input v-model="shippingPhone" size="small" placeholder="手机号" />
             </div>
           </div>
         </div>
 
-        <!-- Right: Summary -->
-        <div style="width: 200px; background: #F9FAFB; padding: 16px; border-radius: 8px; border: 1px solid #E5E7EB; display: flex; flex-direction: column;">
-          <div style="font-size: 14px; font-weight: bold; color: #1F2937; margin-bottom: 12px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">结算金额</div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #4B5563; margin-bottom: 8px;">
-            <span>项目总额</span>
+        <!-- Payment Settings Summary Block -->
+        <div style="background: #F9FAFB; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: #4B5563;">
+            <span>项目总额：</span>
             <span>¥{{ (totalAmount / 100).toFixed(2) }}</span>
           </div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #4B5563; margin-bottom: 12px;">
-            <span>折扣金额</span>
-            <span style="color: #EF4444;">-¥{{ (discountAmount / 100).toFixed(2) }}</span>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: #4B5563;">
+            <span>优惠折扣：</span>
+            <span>- ¥{{ (discountAmount / 100).toFixed(2) }}</span>
           </div>
-          <div style="height: 1px; background: #E5E7EB; margin-bottom: 12px;"></div>
-          <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 24px;">
-            <span style="font-size: 11px; color: #9CA3AF;">应收总额</span>
-            <span style="font-size: 22px; font-weight: 800; color: #1A9D5C;">¥{{ (payableAmount / 100).toFixed(2) }}</span>
+          <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; color: #111827; border-top: 1px dashed #D1D5DB; padding-top: 8px;">
+            <span>应付金额：</span>
+            <span style="color: #EF4444;">¥{{ (payableAmount / 100).toFixed(2) }}</span>
           </div>
-          <t-button size="large" theme="success" block :loading="checkoutLoading" @click="submitCheckout" style="margin-top: auto;">
-            确认收款
-          </t-button>
+        </div>
+
+        <!-- Payment Method -->
+        <div style="margin-bottom: 24px;">
+          <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: #374151;">支付方式</div>
+          <div style="display: flex; gap: 12px;">
+            <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
+              <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
+              🟢 微信支付
+            </label>
+            <label class="pay-method-label" :class="{ active: payMethod === 'alipay' }">
+              <input v-model="payMethod" type="radio" value="alipay" style="display: none;">
+              🔵 支付宝
+            </label>
+            <label class="pay-method-label" :class="{ active: payMethod === 'pos' }">
+              <input v-model="payMethod" type="radio" value="pos" style="display: none;">
+              🪙 现金/刷卡
+            </label>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <t-button theme="default" @click="closeCheckoutDialog">取消</t-button>
+          <t-button theme="primary" :loading="checkoutLoading" @click="submitCheckout">确认支付收款</t-button>
         </div>
       </div>
     </t-dialog>
@@ -986,5 +1119,54 @@ const filteredTodayAppointments = computed(() => {
 .form-control:focus {
   border-color: var(--primary-500, #3B6BF5);
   box-shadow: 0 0 0 2px rgba(59, 107, 245, 0.1);
+}
+
+.pay-method-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  user-select: none;
+}
+.pay-method-label.active {
+  border-color: var(--primary-500);
+  background: var(--primary-50);
+  color: var(--primary-600);
+  font-weight: 600;
+}
+
+.btn-add-item {
+  width: 100%;
+  height: 36px;
+  background: #FFF;
+  border: 1px dashed var(--primary-400);
+  color: var(--primary-600);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+.btn-add-item:hover {
+  background: var(--primary-50);
+}
+
+.btn-text-del {
+  background: transparent;
+  border: none;
+  color: #EF4444;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+}
+.btn-text-del:hover {
+  text-decoration: underline;
 }
 </style>

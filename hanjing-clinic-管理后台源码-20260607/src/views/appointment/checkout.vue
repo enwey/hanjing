@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -27,7 +27,8 @@ const productOptions: ProductItem[] = [
   { id: '2', name: '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', price: 4900 },
   { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
   { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
-  { id: '5', name: '诊所专家诊断评估费', price: 50000 }
+  { id: '5', name: '诊所专家诊断评估费', price: 50000 },
+  { id: '7', name: '快递运费', price: 1500 }
 ]
 
 // Billing items chosen
@@ -39,6 +40,33 @@ const discountAmount = ref<number>(3000) // 30 yuan coupon discount
 const payMethod = ref<string>('wechat')
 const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
+
+const deliveryType = ref<string>('offline_direct') // offline_direct (现场提走), online (快递寄送), offline_pending (缺货自提预订)
+const shippingReceiver = ref<string>('')
+const shippingPhone = ref<string>('')
+const shippingAddressStr = ref<string>('')
+
+watch(selectedPatientId, (newVal) => {
+  const p = patients.value.find(item => item.value === newVal)
+  if (p) {
+    shippingReceiver.value = p.label.split(' ')[0]
+    shippingPhone.value = p.phone
+  }
+})
+
+watch(deliveryType, (newVal) => {
+  if (newVal === 'online') {
+    const exists = billingItems.value.some(item => item.product_id === '7')
+    if (!exists) {
+      billingItems.value.push({ product_id: '7', product_name: '快递运费', price: 1500, quantity: 1 })
+    }
+  } else {
+    const idx = billingItems.value.findIndex(item => item.product_id === '7')
+    if (idx !== -1) {
+      billingItems.value.splice(idx, 1)
+    }
+  }
+})
 
 const fetchPatients = async () => {
   try {
@@ -92,12 +120,56 @@ const submitCheckout = async () => {
 
   loading.value = true
   try {
+    // Determine order type and status based on delivery type
+    let orderType = 'offline'
+    let orderStatus = 'completed' // completed for immediate offline delivery
+    let shipAddr: any = null
+
+    if (deliveryType.value === 'online') {
+      orderType = 'online'
+      orderStatus = 'shipping' // shipping in system means "To be shipped / 待发货"
+      shipAddr = {
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
+        province: '广东省',
+        city: '深圳市',
+        district: '快递邮寄',
+        detail: shippingAddressStr.value
+      }
+    } else if (deliveryType.value === 'offline_pending') {
+      orderType = 'offline'
+      orderStatus = 'processing' // processing means "Self-pickup pending arrival / 自提待到货"
+      shipAddr = {
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
+        province: '广东省',
+        city: '深圳市',
+        district: '门店自提',
+        detail: '缺货登记（待货通知自提）'
+      }
+    } else {
+      // offline_direct
+      orderType = 'offline'
+      orderStatus = 'completed'
+      shipAddr = {
+        receiver: shippingReceiver.value || '到店客户',
+        phone: shippingPhone.value || '--',
+        province: '广东省',
+        city: '深圳市',
+        district: '到店自提',
+        detail: '现场拿走'
+      }
+    }
+
     const payload = {
       patient_id: parseInt(selectedPatientId.value, 10),
       items: billingItems.value,
       pay_amount: payableAmount.value,
       discount_amount: discountAmount.value,
-      pay_method: payMethod.value
+      pay_method: payMethod.value,
+      type: orderType,
+      status: orderStatus,
+      shipping_address: shipAddr
     }
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
@@ -127,6 +199,10 @@ const resetCheckout = () => {
   discountAmount.value = 3000
   checkoutSuccess.value = false
   orderResult.value = null
+  deliveryType.value = 'offline_direct'
+  shippingReceiver.value = ''
+  shippingPhone.value = ''
+  shippingAddressStr.value = ''
 }
 
 onMounted(() => {
@@ -218,6 +294,57 @@ onMounted(() => {
               { label: '支付宝', value: 'alipay' },
               { label: 'POS线下刷卡', value: 'pos' }
             ]" />
+          </div>
+        </div>
+
+        <!-- Delivery Type Selection -->
+        <div class="form-item" style="margin-top: 16px; border-top: 1px dashed #E5E7EB; padding-top: 16px;">
+          <label class="form-label">配送/交付方式</label>
+          <t-radio-group v-model="deliveryType" variant="default-filled">
+            <t-radio-button value="offline_direct">现场提走 (有货)</t-radio-button>
+            <t-radio-button value="offline_pending">到店自取 (缺货预订)</t-radio-button>
+            <t-radio-button value="online">快递邮寄 (缺货/定制)</t-radio-button>
+          </t-radio-group>
+        </div>
+
+        <!-- Shipping Address Form (if online delivery or pending offline) -->
+        <div v-if="deliveryType === 'online'" style="background: #F9FAFB; padding: 14px; border-radius: 8px; border: 1px solid #E5E7EB; margin-top: 16px;">
+          <div style="font-weight: 700; font-size: 13px; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 4px;">
+            <span>🚚 快递收货地址</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div class="form-item" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px;">收件人姓名</label>
+              <t-input v-model="shippingReceiver" placeholder="收件人姓名" />
+            </div>
+            <div class="form-item" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px;">联系电话</label>
+              <t-input v-model="shippingPhone" placeholder="收件人电话" />
+            </div>
+          </div>
+          <div class="form-item" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 11px;">详细收货地址 (省市区县及详细门牌号)</label>
+            <t-textarea v-model="shippingAddressStr" placeholder="请输入完整收货地址..." :rows="2" />
+          </div>
+        </div>
+
+        <!-- Pickup Info Form (if pending pickup) -->
+        <div v-if="deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 14px; border-radius: 8px; border: 1px solid #FCD34D; margin-top: 16px;">
+          <div style="font-weight: 700; font-size: 13px; color: #D97706; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+            <span>🏪 缺货自提预订信息</span>
+          </div>
+          <div style="font-size: 12px; color: #B45309; line-height: 1.5; margin-bottom: 10px;">
+            系统将会在后台生成一笔“待到货”的自提记录。当门店到货并在后台点击“货到通知”时，系统将通过微信推送通知该患者到店自提。
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-item" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #B45309;">通知联系人</label>
+              <t-input v-model="shippingReceiver" placeholder="通知姓名" />
+            </div>
+            <div class="form-item" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px; color: #B45309;">通知手机号</label>
+              <t-input v-model="shippingPhone" placeholder="通知电话" />
+            </div>
           </div>
         </div>
       </div>

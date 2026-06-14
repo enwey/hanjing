@@ -1,38 +1,80 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
 const orderId = ref(route.params.id as string || '1')
 
 /* ---- Order Data ---- */
-const order = ref({
+const order = ref<any>({
   id: orderId.value,
-  no: '#2026052903',
-  status: 'paid', // paid (待发货), shipped (已发货)
-  createTime: '2026-05-29 10:22:35',
-  patient: '陈建国',
-  phone: '135****8901',
-  address: '深圳市福田区深南大道财富大厦A座3楼 鼾静健康福田门诊部',
-  price: 8900,
-  productName: 'CPAP呼吸机',
-  productDesc: '瑞思迈 AirSense 10 自动调压版',
-  productIcon: '💨',
-  qty: 1
+  no: '',
+  status: '', // paid (待发货), shipped (已发货)
+  createTime: '',
+  patient: '',
+  phone: '',
+  address: '',
+  price: 0,
+  productName: '',
+  productDesc: '',
+  productIcon: '📦',
+  qty: 1,
+  type: 'offline',
+  shipping_address_raw: ''
 })
 
 const showShip = ref(false)
 const carrier = ref('顺丰速运')
 const trackingNo = ref('')
 
+const fetchOrderDetail = async () => {
+  try {
+    const res: any = await request.get(`/api/admin/orders/${orderId.value}`)
+    if (res.code === 200 && res.data) {
+      const o = res.data
+      let addr: any = {}
+      try {
+        addr = JSON.parse(o.shipping_address || '{}')
+      } catch(e) {}
+
+      const item = o.items && o.items[0] ? o.items[0] : { product_name: '服务费', price: o.pay_amount, quantity: 1 }
+      
+      order.value = {
+        id: o.id.toString(),
+        no: o.order_no,
+        status: o.status,
+        createTime: o.created_at ? o.created_at.replace('T', ' ').substring(0, 19) : '',
+        patient: addr.receiver || o.user_name || '患者',
+        phone: addr.phone || o.user_phone || '未绑定',
+        address: o.type === 'online' ? addr.detail : `门店自提 (${addr.status || '现场直接提走'})`,
+        price: o.pay_amount / 100,
+        productName: item.product_name,
+        productDesc: o.items && o.items.length > 1 ? `共 ${o.items.length} 件商品` : (item.product_desc || '鼾静相关服务商品'),
+        productIcon: '📦',
+        qty: item.quantity || 1,
+        type: o.type,
+        shipping_address_raw: o.shipping_address
+      }
+    }
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('加载订单详情失败')
+  }
+}
+
+onMounted(() => {
+  fetchOrderDetail()
+})
+
 function handleBack() {
   router.push('/order')
 }
 
 function handlePrint() {
-  MessagePlugin.success('打印小票成功')
+  MessagePlugin.success('已打印小票凭证')
 }
 
 function handleConfirmShip() {
@@ -43,14 +85,52 @@ function handleConfirmShip() {
   showShip.value = true
 }
 
-function submitShip() {
+async function submitShip() {
   if (!trackingNo.value.trim()) {
     MessagePlugin.warning('请填写快递单号')
     return
   }
-  order.value.status = 'shipped'
-  showShip.value = false
-  MessagePlugin.success(`发货成功！快递单号：${trackingNo.value}`)
+  try {
+    const res: any = await request.post(`/api/admin/orders/${orderId.value}/ship`, {
+      tracking_number: trackingNo.value,
+      express_company: carrier.value
+    })
+    if (res.code === 200) {
+      order.value.status = 'shipped'
+      showShip.value = false
+      MessagePlugin.success(`发货成功！快递单号：${trackingNo.value}`)
+      fetchOrderDetail()
+    }
+  } catch (e) {
+    console.error(e)
+    MessagePlugin.error('发货失败')
+  }
+}
+
+async function handleCompleteOrder() {
+  try {
+    const res: any = await request.post(`/api/admin/orders/${orderId.value}/complete`)
+    if (res.code === 200) {
+      MessagePlugin.success('订单已核销完成，成功交付自提商品！')
+      fetchOrderDetail()
+    }
+  } catch (err) {
+    console.error(err)
+    MessagePlugin.error('核销失败')
+  }
+}
+
+async function handleNotifyOrder() {
+  try {
+    const res: any = await request.post(`/api/admin/orders/${orderId.value}/notify`)
+    if (res.code === 200) {
+      MessagePlugin.success('已发送微信消息通知患者到店自提')
+      fetchOrderDetail()
+    }
+  } catch (err) {
+    console.error(err)
+    MessagePlugin.error('发送通知失败')
+  }
 }
 </script>
 
@@ -63,14 +143,21 @@ function submitShip() {
       <div>
         <div class="page-title">
           {{ order.no }}
-          <span class="status-tag gold" v-if="order.status === 'paid'">待发货</span>
+          <span class="status-tag gold" v-if="order.status === 'shipping'">待发货</span>
+          <span class="status-tag blue" v-else-if="order.status === 'processing'">自提待到货</span>
+          <span class="status-tag green" v-else-if="order.status === 'completed'">已完成</span>
           <span class="status-tag green" v-else-if="order.status === 'shipped'">已发货</span>
+          <span class="status-tag red" v-else-if="order.status === 'refunded'">已退款</span>
         </div>
         <div class="page-title-sub">下单时间 {{ order.createTime }}</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" @click="handlePrint">🖨️ 打印</button>
-        <button class="btn btn-primary" @click="handleConfirmShip">📦 确认发货</button>
+        <button class="btn btn-outline" @click="handlePrint">🖨️ 打印小票</button>
+        <!-- For online shipping -->
+        <button class="btn btn-primary" v-if="order.type === 'online' && order.status === 'shipping'" @click="handleConfirmShip">📦 确认发货</button>
+        <!-- For offline pending self-pickup -->
+        <button class="btn btn-outline" v-if="order.type === 'offline' && order.status === 'processing'" @click="handleNotifyOrder" style="margin-right: 8px;">🔔 到货通知</button>
+        <button class="btn btn-success" v-if="order.type === 'offline' && order.status === 'processing'" @click="handleCompleteOrder">✅ 完成自提核销</button>
       </div>
     </div>
 

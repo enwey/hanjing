@@ -270,12 +270,18 @@ const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
 const selectedCheckoutRow = ref<Appointment | null>(null)
 
+const deliveryType = ref<string>('offline_direct')
+const shippingReceiver = ref<string>('')
+const shippingPhone = ref<string>('')
+const shippingAddressStr = ref<string>('')
+
 const productOptions = [
   { id: '1', name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000 },
   { id: '2', name: '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', price: 4900 },
   { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
   { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
-  { id: '5', name: '诊所专家诊断评估费', price: 50000 }
+  { id: '5', name: '诊所专家诊断评估费', price: 50000 },
+  { id: '7', name: '快递运费', price: 1500 }
 ]
 
 const billingItems = ref<Array<{ product_id: string; product_name: string; price: number; quantity: number }>>([])
@@ -307,6 +313,21 @@ function onProductChange(idx: number, prodId: string) {
   }
 }
 
+watch(deliveryType, (newVal) => {
+  if (newVal === 'online') {
+    const exists = billingItems.value.some(item => item.product_id === '7')
+    if (!exists) {
+      billingItems.value.push({ product_id: '7', product_name: '快递运费', price: 1500, quantity: 1 })
+    }
+  } else {
+    const idx = billingItems.value.findIndex(item => item.product_id === '7')
+    if (idx !== -1) {
+      billingItems.value.splice(idx, 1)
+    }
+  }
+})
+
+
 function openCheckoutDialog(row: Appointment) {
   selectedCheckoutRow.value = row
   billingItems.value = [
@@ -316,6 +337,12 @@ function openCheckoutDialog(row: Appointment) {
   payMethod.value = 'wechat'
   checkoutSuccess.value = false
   orderResult.value = null
+  
+  deliveryType.value = 'offline_direct'
+  shippingReceiver.value = row.patient || ''
+  shippingPhone.value = row.phone || ''
+  shippingAddressStr.value = ''
+  
   checkoutVisible.value = true
 }
 
@@ -336,12 +363,54 @@ async function submitCheckout() {
   }
   checkoutLoading.value = true
   try {
+    let orderType = 'offline'
+    let orderStatus = 'completed'
+    let shipAddr: any = null
+
+    if (deliveryType.value === 'online') {
+      orderType = 'online'
+      orderStatus = 'shipping'
+      shipAddr = {
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
+        province: '广东省',
+        city: '深圳市',
+        district: '快递邮寄',
+        detail: shippingAddressStr.value
+      }
+    } else if (deliveryType.value === 'offline_pending') {
+      orderType = 'offline'
+      orderStatus = 'processing'
+      shipAddr = {
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
+        province: '广东省',
+        city: '深圳市',
+        district: '门店自提',
+        detail: '缺货登记（待货通知自提）'
+      }
+    } else {
+      orderType = 'offline'
+      orderStatus = 'completed'
+      shipAddr = {
+        receiver: shippingReceiver.value || '到店客户',
+        phone: shippingPhone.value || '--',
+        province: '广东省',
+        city: '深圳市',
+        district: '到店自提',
+        detail: '现场拿走'
+      }
+    }
+
     const payload = {
       patient_id: parseInt(selectedCheckoutRow.value.patientId, 10),
       items: billingItems.value,
       pay_amount: payableAmount.value,
       discount_amount: discountAmount.value,
-      pay_method: payMethod.value
+      pay_method: payMethod.value,
+      type: orderType,
+      status: orderStatus,
+      shipping_address: shipAddr
     }
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
@@ -623,6 +692,53 @@ async function submitCheckout() {
                 { label: '支付宝', value: 'alipay' },
                 { label: 'POS线下刷卡', value: 'pos' }
               ]" />
+            </div>
+          </div>
+
+          <!-- Delivery Type Selection -->
+          <div class="form-group" style="margin-top: 10px; border-top: 1px dashed #E5E7EB; padding-top: 10px;">
+            <label class="form-label">配送/交付方式</label>
+            <t-radio-group v-model="deliveryType" variant="default-filled">
+              <t-radio-button value="offline_direct">现场提货</t-radio-button>
+              <t-radio-button value="offline_pending">到店自取 (缺货)</t-radio-button>
+              <t-radio-button value="online">快递邮寄 (邮寄)</t-radio-button>
+            </t-radio-group>
+          </div>
+
+          <!-- Shipping Address Form -->
+          <div v-if="deliveryType === 'online'" style="background: #F9FAFB; padding: 10px; border-radius: 8px; border: 1px solid #E5E7EB; display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-weight: 700; font-size: 12px; color: #374151;">🚚 快递收件地址</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">收件人</label>
+                <t-input v-model="shippingReceiver" size="small" placeholder="姓名" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">手机号</label>
+                <t-input v-model="shippingPhone" size="small" placeholder="手机号" />
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px;">详细地址</label>
+              <t-input v-model="shippingAddressStr" size="small" placeholder="请输入详细省市区县及门牌号" />
+            </div>
+          </div>
+
+          <!-- Pickup Info Form -->
+          <div v-if="deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 10px; border-radius: 8px; border: 1px solid #FCD34D; display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-weight: 700; font-size: 12px; color: #D97706;">🏪 缺货自提预订</div>
+            <div style="font-size: 11px; color: #B45309; line-height: 1.4;">
+              货到后系统将通过微信推送通知该患者到店自提。
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px; color: #B45309;">通知人</label>
+                <t-input v-model="shippingReceiver" size="small" placeholder="姓名" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px; color: #B45309;">通知手机号</label>
+                <t-input v-model="shippingPhone" size="small" placeholder="手机号" />
+              </div>
             </div>
           </div>
         </div>

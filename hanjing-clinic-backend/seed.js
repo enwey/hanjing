@@ -392,11 +392,14 @@ export const seedData = async () => {
   );
 
   // 13. Products
-  const prod1 = await run(
-    `INSERT INTO products (name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  const prod1 = { id: 1 };
+  await run(
+    `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
     [
-      'HJ-MAD-03 鼾静智能下颌前移阻鼾器',
+      1,
+      '定制式可调舌型阻鼾器 HJ-MAD-03',
       'device',
       '/static/product/hj-mad-03.png',
       JSON.stringify(['/static/product/hj-mad-03.png', '/static/product/hj-mad-03-2.png']),
@@ -410,10 +413,13 @@ export const seedData = async () => {
       'on'
     ]
   );
-  const prod2 = await run(
-    `INSERT INTO products (name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  const prod2 = { id: 2 };
+  await run(
+    `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
     [
+      2,
       '鼾静阻鼾器专用清洁泡腾片 (60片/盒)',
       'accessory',
       '/static/product/pillow.png', // Reusing placeholder
@@ -428,19 +434,106 @@ export const seedData = async () => {
       'on'
     ]
   );
-  const prod3 = await run(
-    `INSERT INTO products (name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  const prod3 = { id: 3 };
+  await run(
+    `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
     [
+      3,
+      '鼾静智能阻鼾舒眠记忆枕',
+      'accessory',
+      '/static/product/pillow.png',
+      JSON.stringify(['/static/product/pillow.png']),
+      29900, // 299元
+      39900,
+      '人体工学设计，智能控温与防鼾姿势引导，提升整晚睡眠舒适度与深睡比例。',
+      150,
+      85,
+      0,
+      0.0,
+      'on'
+    ]
+  );
+  const prod4 = { id: 4 };
+  await run(
+    `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
+    [
+      4,
+      '诊所首诊挂号门诊费',
+      'service',
+      '/static/product/screening.png',
+      JSON.stringify(['/static/product/screening.png']),
+      20000,
+      20000,
+      '挂号门诊费，包含初次就诊及基础筛查服务。',
+      99999,
+      1200,
+      0,
+      0.0,
+      'on'
+    ]
+  );
+  const prod5 = { id: 5 };
+  await run(
+    `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
+    [
+      5,
+      '诊所专家诊断评估费',
+      'service',
+      '/static/product/screening.png',
+      JSON.stringify(['/static/product/screening.png']),
+      50000,
+      50000,
+      '专家诊断评估费，包含专家一对一问诊及阻鼾器物理适配评估。',
+      99999,
+      650,
+      0,
+      0.0,
+      'on'
+    ]
+  );
+  const prod6 = { id: 6 };
+  await run(
+    `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
+    [
+      6,
       '专业睡眠呼吸多导初筛服务套餐',
       'service',
       '/static/product/screening.png',
       JSON.stringify(['/static/product/screening.png']),
-      19900, // 199元
+      19900,
       29900,
       '包含一次线上睡眠嗜睡问卷评估、三晚鼾声监测报告、以及一次门诊专家面对面的物理阻鼾器适应性筛查与出诊挂号费用。',
       9999,
       125,
+      0,
+      0.0,
+      'on'
+    ]
+  );
+  const prod7 = { id: 7 };
+  await run(
+    `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
+    [
+      7,
+      '快递运费',
+      'service',
+      '/static/product/screening.png',
+      JSON.stringify(['/static/product/screening.png']),
+      1500,
+      1500,
+      '顺丰快递或挂号邮寄服务费。',
+      99999,
+      500,
       0,
       0.0,
       'on'

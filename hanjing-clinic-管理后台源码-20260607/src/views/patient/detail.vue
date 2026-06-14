@@ -81,6 +81,8 @@ const loadPatientDetails = async () => {
       nextFollowup: '待随访',
       diagnosis: '阻塞性睡眠呼吸暂停 (OSAHS)',
       plan: '配戴阻鼾器 HJ-MAD-03 进行下颌前移微调治疗',
+      medical_history: p.medical_history || '',
+      allergy_history: p.allergy_history || '',
       lastVisit: p.appointments && p.appointments[0] ? `${(() => {
         const d = new Date(p.appointments[0].appointment_date);
         const year = d.getFullYear();
@@ -147,13 +149,36 @@ const fetchOrders = async (userId: number) => {
     const res: any = await request.get('/api/admin/orders')
     orders.value = res.data.filter((o: any) => o.user_id === userId).map((o: any) => {
       const prodName = o.items && o.items[0] ? o.items[0].product_name : '健康包/配件'
+      const productDesc = o.items && o.items.length > 1 ? `${prodName} 等${o.items.length}件` : prodName
+      
+      let addr: any = {}
+      try {
+        addr = JSON.parse(o.shipping_address || '{}')
+      } catch(e) {}
+      
+      let deliveryLabel = ''
+      if (o.type === 'online') {
+        deliveryLabel = `快递邮寄 (${o.status === 'shipped' ? '已发货' : '待发货'})`
+      } else {
+        deliveryLabel = `到店自提 (${addr.status || '现场直接提走'})`
+      }
+
+      const statusMap: Record<string, string> = {
+        completed: '已完成',
+        processing: '自提待到货',
+        shipping: '快递待发货',
+        shipped: '已发货',
+        refunded: '已退款'
+      }
+
       return {
         id: o.id.toString(),
         no: o.order_no,
-        productName: prodName,
+        productName: productDesc,
         price: o.pay_amount / 100,
         date: o.created_at ? o.created_at.substring(0, 10) : '2026-06-01',
-        status: o.status === 'completed' ? '已完成' : o.status === 'paid' ? '已付款' : o.status === 'pending' ? '待支付' : '已退款'
+        delivery: deliveryLabel,
+        status: statusMap[o.status] || '已支付'
       }
     })
   } catch (error) {
@@ -181,6 +206,9 @@ const loadTreatmentAndChart = async () => {
   try {
     const res: any = await request.get(`/api/admin/patients/${patientId.value}/treatment`)
     if (res.data) {
+      if (res.data.device_model) {
+        patient.value.plan = `定制阻鼾器 ${res.data.device_model} (当前前伸量: ${res.data.current_advancement}mm)`
+      }
       const { logs } = res.data
       if (logs && logs.length > 0 && myChart) {
         const sortedLogs = [...logs].reverse()
@@ -211,6 +239,9 @@ const fetchMedicalRecords = async () => {
     const res: any = await request.get(`/api/admin/patients/${patientId.value}/medical-records`)
     if (res.code === 200) {
       medicalRecords.value = res.data
+      if (res.data && res.data.length > 0) {
+        patient.value.diagnosis = res.data[0].diagnosis
+      }
     }
   } catch (error) {
     console.error('获取门诊病历失败:', error)
@@ -342,6 +373,7 @@ function handleFollowup() {
     <!-- Tabs Header -->
     <div class="tabs">
       <div class="tab" :class="{ active: activeTab === 'info' }" @click="activeTab = 'info'">基本信息</div>
+      <div class="tab" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">病史档案</div>
       <div class="tab" :class="{ active: activeTab === 'visits' }" @click="activeTab = 'visits'">就诊记录</div>
       <div class="tab" :class="{ active: activeTab === 'orders' }" @click="activeTab = 'orders'">订单记录</div>
       <div class="tab" :class="{ active: activeTab === 'followups' }" @click="activeTab = 'followups'">随访计划</div>
@@ -447,6 +479,33 @@ function handleFollowup() {
         </div>
       </div>
 
+      <!-- Tab: History -->
+      <div v-if="activeTab === 'history'">
+        <div class="panel" style="margin: 0; padding: 20px;">
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div>
+              <div style="font-weight: 700; font-size: 14px; color: #374151; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                <span>📋 既往病史</span>
+              </div>
+              <div v-if="patient.medical_history" style="background: #FFFBEB; padding: 14px; border-radius: 8px; border-left: 4px solid #F59E0B; font-size: 13px; color: #D97706; font-weight: 500; text-align: left;">
+                {{ patient.medical_history }}
+              </div>
+              <div v-else style="text-align:center;color:#9CA3AF;background:#F9FAFB;padding:24px;border-radius:8px;font-size:12px;">暂无既往病史记录</div>
+            </div>
+            
+            <div>
+              <div style="font-weight: 700; font-size: 14px; color: #374151; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                <span>🚫 药物与过敏史</span>
+              </div>
+              <div v-if="patient.allergy_history" style="background: #FEF2F2; padding: 14px; border-radius: 8px; border-left: 4px solid #EF4444; font-size: 13px; color: #DC2626; font-weight: 500; text-align: left;">
+                {{ patient.allergy_history }}
+              </div>
+              <div v-else style="text-align:center;color:#9CA3AF;background:#F9FAFB;padding:24px;border-radius:8px;font-size:12px;">暂无药物或过敏史记录</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Tab 2: Visits -->
       <div v-if="activeTab === 'visits'">
         <div class="panel" style="margin: 0;">
@@ -485,6 +544,7 @@ function handleFollowup() {
                 <th>订单单号</th>
                 <th>购买日期</th>
                 <th>商品详情</th>
+                <th>配送/交付方式</th>
                 <th>支付金额</th>
                 <th>交易状态</th>
               </tr>
@@ -494,8 +554,9 @@ function handleFollowup() {
                 <td style="font-family: monospace;">{{ ord.no }}</td>
                 <td>{{ ord.date }}</td>
                 <td>{{ ord.productName }}</td>
+                <td><span style="font-size: 12px; color: #4B5563;">{{ ord.delivery }}</span></td>
                 <td style="font-weight: 700; color: var(--primary-500);">¥{{ ord.price.toLocaleString() }}</td>
-                <td><span class="status-tag green">{{ ord.status }}</span></td>
+                <td><span class="status-tag" :class="ord.status === '已完成' || ord.status === '已发货' ? 'green' : (ord.status === '自提待到货' ? 'blue' : (ord.status === '已退款' ? 'red' : 'gold'))">{{ ord.status }}</span></td>
               </tr>
             </tbody>
           </table>
@@ -520,7 +581,7 @@ function handleFollowup() {
                 <td><span class="tag tag-blue">{{ f.type }}</span></td>
                 <td>{{ f.time }}</td>
                 <td>{{ f.executor }}</td>
-                <td>{{ f.content }}</td>
+                <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="f.content">{{ f.content }}</td>
                 <td><span class="status-tag gold">{{ f.status }}</span></td>
               </tr>
             </tbody>

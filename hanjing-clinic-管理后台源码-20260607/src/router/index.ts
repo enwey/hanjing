@@ -50,10 +50,10 @@ const router = createRouter({
       meta: { title: '诊疗录入', parentPath: '/appointment' }
     },
     {
-      path: '/appointment/workbench',
+      path: '/workbench',
       name: 'appointment-workbench',
       component: () => import('@/views/appointment/workbench.vue'),
-      meta: { title: '接诊工作台', parentPath: '/appointment' }
+      meta: { title: '接诊工作台' }
     },
     {
       path: '/queue',
