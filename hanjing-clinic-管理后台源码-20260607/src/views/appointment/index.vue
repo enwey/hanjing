@@ -416,18 +416,9 @@ async function submitCheckout() {
             clearable
             style="width: 180px;"
           />
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 13px; color: #4B5563;">门店</span>
-            <t-select v-model="filterStore" :options="storeOptions" style="width: 125px;" />
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 13px; color: #4B5563;">医生</span>
-            <t-select v-model="filterDoctor" :options="doctorOptions" style="width: 110px;" />
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 13px; color: #4B5563;">日期</span>
-            <t-date-picker v-model="filterDate" style="width: 135px;" clearable placeholder="选择日期" />
-          </div>
+          <t-select v-model="filterStore" :options="storeOptions" style="width: 125px;" />
+          <t-select v-model="filterDoctor" :options="doctorOptions" style="width: 110px;" />
+          <t-date-picker v-model="filterDate" style="width: 135px;" clearable placeholder="选择日期" />
         </div>
       </div>
 
