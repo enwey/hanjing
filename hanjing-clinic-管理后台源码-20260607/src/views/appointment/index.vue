@@ -389,7 +389,7 @@ async function submitCheckout() {
             :key="tab.value"
             :class="['filter-tab', activeTab === tab.value ? 'active' : '']"
             @click="activeTab = tab.value"
-            style="display: flex; align-items: center; gap: 6px;"
+            style="display: flex; align-items: center; gap: 4px;"
           >
             <span>{{ tab.label }}</span>
             <span :style="{ 
@@ -398,9 +398,8 @@ async function submitCheckout() {
               fontWeight: '500',
               background: activeTab === tab.value ? 'rgba(255, 255, 255, 0.25)' : '#F3F4F6',
               color: activeTab === tab.value ? '#FFF' : '#6B7280',
-              padding: '1px 6px',
+              padding: '1px 5px',
               borderRadius: '10px',
-              marginLeft: '2px',
               display: 'inline-block',
               lineHeight: '1.2'
             }">
