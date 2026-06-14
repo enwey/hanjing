@@ -200,13 +200,14 @@ function formatDateTime(dateStr: string, timeStr: string) {
   return `${dateStr} ${timeStr}`
 }
 
-async function confirmStatus(id: string) {
+async function handleCheckIn(row: Appointment) {
   try {
-    await request.put(`/api/admin/appointments/${id}`, { status: 'confirmed' })
-    MessagePlugin.success('已确认该预约')
+    await request.put(`/api/admin/appointments/${row.id}`, { status: 'confirmed' })
+    MessagePlugin.success(`患者 ${row.patient} 签到成功`)
     fetchAppointments()
   } catch (error) {
     console.error(error)
+    MessagePlugin.error('签到失败')
   }
 }
 
@@ -220,67 +221,6 @@ async function cancelStatus(id: string) {
   }
 }
 
-const checkInVisible = ref(false)
-const selectedAppointment = ref<Appointment | null>(null)
-const checkInForm = ref({
-  height: '',
-  weight: '',
-  systolicBp: '',
-  diastolicBp: '',
-  neckCircumference: ''
-})
-
-const computedBmi = computed(() => {
-  const h = parseFloat(checkInForm.value.height)
-  const w = parseFloat(checkInForm.value.weight)
-  if (h > 0 && w > 0) {
-    return (w / ((h / 100) * (h / 100))).toFixed(1)
-  }
-  return ''
-})
-
-function openCheckInDialog(appt: Appointment) {
-  selectedAppointment.value = appt
-  checkInForm.value = {
-    height: '',
-    weight: '',
-    systolicBp: '',
-    diastolicBp: '',
-    neckCircumference: ''
-  }
-  checkInVisible.value = true
-}
-
-function closeCheckInDialog() {
-  checkInVisible.value = false
-  selectedAppointment.value = null
-}
-
-async function handleCheckInSubmit() {
-  if (!selectedAppointment.value) return
-  const { height, weight, systolicBp, diastolicBp, neckCircumference } = checkInForm.value
-  if (!height || !weight) {
-    MessagePlugin.warning('请填写身高和体重')
-    return
-  }
-  try {
-    await request.post(`/api/admin/appointments/${selectedAppointment.value.id}/pre-exam`, {
-      height: parseFloat(height),
-      weight: parseFloat(weight),
-      systolicBp: systolicBp ? parseInt(systolicBp) : null,
-      diastolicBp: diastolicBp ? parseInt(diastolicBp) : null,
-      neckCircumference: neckCircumference ? parseFloat(neckCircumference) : null,
-      bmi: computedBmi.value ? parseFloat(computedBmi.value) : null
-    })
-    await request.put(`/api/admin/appointments/${selectedAppointment.value.id}`, { status: 'confirmed' })
-    MessagePlugin.success('签到与预检体征录入成功')
-    checkInVisible.value = false
-    fetchAppointments()
-  } catch (error) {
-    console.error(error)
-    MessagePlugin.error('签到保存失败')
-  }
-}
 
 // 呼叫广播叫号
 const callPatient = (patientName: string, doctorName: string) => {
@@ -531,19 +471,12 @@ async function submitCheckout() {
               </td>
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;" @click.stop>
-                  <button class="btn btn-xs btn-outline" @click="router.push('/appointment/detail/' + row.id)">详情</button>
-                  
                   <!-- status is pending (待确认) -->
                   <button
                     v-if="row.status === 'pending'"
                     class="btn btn-xs btn-primary"
-                    @click="openCheckInDialog(row)"
+                    @click="handleCheckIn(row)"
                   >签到</button>
-                  <button
-                    v-if="row.status === 'pending'"
-                    class="btn btn-xs btn-success"
-                    @click="confirmStatus(row.id)"
-                  >确认</button>
                   <button
                     v-if="row.status === 'pending'"
                     class="btn btn-xs btn-danger"
@@ -551,11 +484,6 @@ async function submitCheckout() {
                   >取消</button>
                   
                   <!-- status is waiting (候诊中) -->
-                  <button
-                    v-if="row.status === 'waiting'"
-                    class="btn btn-xs btn-primary"
-                    @click="openCheckInDialog(row)"
-                  >体征录入</button>
                   <button
                     v-if="row.status === 'waiting'"
                     class="btn btn-xs btn-warning"
@@ -570,7 +498,7 @@ async function submitCheckout() {
                   <!-- status is arrived (已到诊) -->
                   <button
                     v-if="row.status === 'arrived'"
-                    class="btn btn-xs btn-warning btn-outline"
+                    class="btn btn-xs btn-warning"
                     @click="openCheckoutDialog(row)"
                   >🪙 收银结算</button>
                 </div>
@@ -595,47 +523,7 @@ async function submitCheckout() {
       </div>
     </div>
 
-    <!-- 签到预检体征录入弹窗 -->
-    <t-dialog
-      v-model:visible="checkInVisible"
-      header="到店签到 & 预检体征录入"
-      width="480px"
-      confirm-btn="确认签到"
-      cancel-btn="取消"
-      @confirm="handleCheckInSubmit"
-      @cancel="closeCheckInDialog"
-    >
-      <div class="dialog-body-form" style="padding: 10px 0;">
-        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">患者姓名</label>
-          <input type="text" class="form-control" :value="selectedAppointment?.patient" disabled style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
-        </div>
-        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">身高 (cm) <span class="required" style="color: #EF4444;">*</span></label>
-          <input type="number" class="form-control" v-model="checkInForm.height" placeholder="请输入身高，如 175" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
-        </div>
-        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">体重 (kg) <span class="required" style="color: #EF4444;">*</span></label>
-          <input type="number" class="form-control" v-model="checkInForm.weight" placeholder="请输入体重，如 70" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
-        </div>
-        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">收缩压 (mmHg)</label>
-          <input type="number" class="form-control" v-model="checkInForm.systolicBp" placeholder="请输入收缩压，如 120" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
-        </div>
-        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">舒张压 (mmHg)</label>
-          <input type="number" class="form-control" v-model="checkInForm.diastolicBp" placeholder="请输入舒张压，如 80" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
-        </div>
-        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">颈围 (cm)</label>
-          <input type="number" class="form-control" v-model="checkInForm.neckCircumference" placeholder="请输入颈围，如 38" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
-        </div>
-        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">BMI</label>
-          <input type="text" class="form-control" :value="computedBmi" disabled placeholder="输入身高体重后自动计算" style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
-        </div>
-      </div>
-    </t-dialog>
+
 
     <!-- 收银结算弹窗 -->
     <t-dialog
