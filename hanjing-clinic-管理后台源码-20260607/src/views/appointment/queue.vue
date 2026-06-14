@@ -668,25 +668,6 @@ const filteredTodayAppointments = computed(() => {
 </template>
 
 <style scoped>
-.page-container {
-  padding: 24px;
-}
-.page-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-.page-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #1F2937;
-}
-.page-title-sub {
-  font-size: 13px;
-  color: #6B7280;
-  margin-top: 4px;
-}
 .empty-state {
   background: #FFFFFF;
   border-radius: 12px;
