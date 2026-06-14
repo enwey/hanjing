@@ -301,7 +301,7 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
     let sql = `
-      SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.medical_history, p.user_id as patient_user_id,
+      SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
              d.name as doctor_name, d.specialty as doctor_specialty, s.name as store_name
       FROM appointments a
       JOIN patients p ON a.patient_id = p.id
