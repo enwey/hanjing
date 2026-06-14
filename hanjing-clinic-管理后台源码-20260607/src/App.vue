@@ -20,8 +20,8 @@ const menuGroups = [
     title: '业务管理',
     items: [
       { path: '/appointment', label: '预约管理', icon: '📅', badge: '12', badgeColor: 'red' },
-      { path: '/appointment/queue', label: '排队分诊', icon: '📣' },
-      { path: '/appointment/checkout', label: '诊所收银', icon: '🧾' },
+      { path: '/queue', label: '排队分诊', icon: '📣' },
+      { path: '/checkout', label: '诊所收银', icon: '🧾' },
       { path: '/patient', label: '患者管理', icon: '🧑‍⚕️' },
       { path: '/doctor', label: '医生管理', icon: '👨‍⚕️' },
       { path: '/store', label: '门店管理', icon: '🏥' },
@@ -435,7 +435,7 @@ function logout() {
       <t-content :class="{ 'app-content': route.name !== 'login' }">
         <router-view v-slot="{ Component }">
           <transition name="fade-transform" mode="out-in">
-            <component :is="Component" />
+            <component :is="Component" :key="route.fullPath" />
           </transition>
         </router-view>
       </t-content>
