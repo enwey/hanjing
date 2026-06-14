@@ -194,6 +194,15 @@ const paginatedAppointments = computed(() => {
   return filtered.slice(start, end)
 })
 
+function getAvatarColor(name: string) {
+  const colors = ['#3B6BF5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+}
+
 function formatDateTime(dateStr: string, timeStr: string) {
   if (!dateStr) return timeStr
   const parts = dateStr.split('-')
@@ -442,9 +451,19 @@ async function submitCheckout() {
               <td style="font-family: monospace; font-weight: 600; color: var(--primary-500);">{{ row.no }}</td>
               <td>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                  <t-avatar size="32px" :style="{ background: row.avatarColor }">
-                    {{ row.avatarChar }}
-                  </t-avatar>
+                  <div :style="{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: getAvatarColor(row.patient),
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    flexShrink: 0
+                  }">{{ row.patient.substring(0, 1) }}</div>
                   <div>
                     <div style="font-weight: 600; color: #1F2937; line-height: 1.4;">{{ row.patient }}</div>
                     <div style="font-size: 11px; color: #9CA3AF; line-height: 1.2;">{{ row.phone }}</div>

@@ -157,6 +157,8 @@ function selectSlot(slot: any) {
 function handleCancel() {
   if (isReschedule.value) {
     router.push(`/appointment/detail/${rescheduleId.value}`)
+  } else if (route.query.from === 'queue') {
+    router.push('/queue')
   } else {
     router.push('/appointment')
   }
@@ -211,7 +213,11 @@ async function handleCreate() {
         }
       }
       MessagePlugin.success(`预约创建成功！已写入门诊就诊记录`)
-      router.push('/appointment')
+      if (route.query.from === 'queue') {
+        router.push('/queue')
+      } else {
+        router.push('/appointment')
+      }
     }
   } catch (error) {
     console.error(error)

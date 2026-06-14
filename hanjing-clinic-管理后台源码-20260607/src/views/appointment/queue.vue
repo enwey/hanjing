@@ -49,6 +49,73 @@ const fetchAppointments = async () => {
   }
 }
 
+// Time slot filter state
+const activeTimeSlot = ref('all')
+
+// Extract all waiting list items globally to count slots and show numbers
+const allWaitingItems = computed(() => {
+  const list: QueueItem[] = []
+  const currentAssigned: Record<string, boolean> = {}
+  
+  appointments.value.forEach(item => {
+    if (item.status === 'completed') return
+    if (item.status === 'confirmed') {
+      if (!currentAssigned[item.doctorId]) {
+        currentAssigned[item.doctorId] = true
+      } else {
+        list.push(item)
+      }
+    } else if (item.status === 'pending') {
+      list.push(item)
+    }
+  })
+  return list
+})
+
+// Dynamically extract and sort unique time slots that have waiting patients
+const uniqueTimeSlots = computed(() => {
+  const slots = new Set<string>()
+  allWaitingItems.value.forEach(item => {
+    if (item.timeSlot) {
+      slots.add(item.timeSlot)
+    }
+  })
+  return Array.from(slots).sort()
+})
+
+// Count waiting patients in a specific time slot
+function getSlotCount(slot: string) {
+  return allWaitingItems.value.filter(item => item.timeSlot === slot).length
+}
+
+// Get doctor avatar background color
+function getDoctorAvatarBg(doctorId: string) {
+  const gradients = [
+    'linear-gradient(135deg, #3B6BF5, #2A52D4)',
+    'linear-gradient(135deg, #8B5CF6, #6D28D9)',
+    'linear-gradient(135deg, #EC4899, #BE185D)',
+    'linear-gradient(135deg, #10B981, #047857)'
+  ]
+  const idx = parseInt(doctorId) || 0
+  return gradients[idx % gradients.length]
+}
+
+// Badge style for filter tabs
+function getBadgeStyle(isActive: boolean) {
+  return {
+    opacity: isActive ? '0.9' : '0.6',
+    fontSize: '11px',
+    fontWeight: '500',
+    background: isActive ? 'rgba(255, 255, 255, 0.25)' : '#F3F4F6',
+    color: isActive ? '#FFF' : '#6B7280',
+    padding: '1px 5px',
+    borderRadius: '10px',
+    display: 'inline-block',
+    lineHeight: '1.2',
+    marginLeft: '6px'
+  }
+}
+
 // Group appointments by doctor
 const doctorQueues = computed(() => {
   const queues: Record<string, { doctorName: string; storeName: string; waitingList: QueueItem[]; current: QueueItem | null }> = {}
@@ -78,10 +145,20 @@ const doctorQueues = computed(() => {
     }
   })
   
-  return Object.entries(queues).map(([id, queue]) => ({
-    doctorId: id,
-    ...queue
-  }))
+  return Object.entries(queues).map(([id, queue]) => {
+    // Filter waitingList by activeTimeSlot
+    let filteredList = queue.waitingList
+    if (activeTimeSlot.value !== 'all') {
+      filteredList = queue.waitingList.filter(item => item.timeSlot === activeTimeSlot.value)
+    }
+    return {
+      doctorId: id,
+      doctorName: queue.doctorName,
+      storeName: queue.storeName,
+      current: queue.current,
+      waitingList: filteredList
+    }
+  })
 })
 
 // Call patient voice broadcast
@@ -437,10 +514,43 @@ const filteredTodayAppointments = computed(() => {
         <div class="page-title">排队分诊控制台</div>
         <div class="page-title-sub">实时呼叫、就诊安排与队列顺延管理</div>
       </div>
-      <div>
+      <div style="display: flex; gap: 8px; align-items: center;">
         <t-button theme="primary" variant="outline" @click="fetchAppointments" :loading="loading">
           🔄 刷新队列
         </t-button>
+        <t-button theme="primary" @click="router.push('/appointment/create?from=queue')">➕ 新建预约</t-button>
+      </div>
+    </div>
+
+    <!-- 时段过滤面板 -->
+    <div class="panel">
+      <div class="filter-bar" style="flex-wrap: nowrap; overflow-x: auto; gap: 16px; border-bottom: none; padding: 12px 20px;">
+        <div class="filter-tabs" style="flex-shrink: 0;">
+          <div
+            class="filter-tab"
+            :class="{ active: activeTimeSlot === 'all' }"
+            @click="activeTimeSlot = 'all'"
+            style="display: flex; align-items: center;"
+          >
+            <span>全部</span>
+            <span :style="getBadgeStyle(activeTimeSlot === 'all')">
+              {{ allWaitingItems.length }}
+            </span>
+          </div>
+          <div
+            v-for="slot in uniqueTimeSlots"
+            :key="slot"
+            class="filter-tab"
+            :class="{ active: activeTimeSlot === slot }"
+            @click="activeTimeSlot = slot"
+            style="display: flex; align-items: center;"
+          >
+            <span>{{ slot }}</span>
+            <span :style="getBadgeStyle(activeTimeSlot === slot)">
+              {{ getSlotCount(slot) }}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -453,9 +563,27 @@ const filteredTodayAppointments = computed(() => {
     <div v-else class="queue-grid">
       <div v-for="q in doctorQueues" :key="q.doctorId" class="doctor-card">
         <div class="doctor-header">
-          <div>
-            <div class="doc-name">{{ q.doctorName }}</div>
-            <div class="doc-sub">{{ q.storeName }} · 睡眠门诊</div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <!-- Doctor Avatar -->
+            <div :style="{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: getDoctorAvatarBg(q.doctorId),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              color: '#fff',
+              fontWeight: '700',
+              flexShrink: 0
+            }">
+              {{ q.doctorName.charAt(0) }}
+            </div>
+            <div>
+              <div class="doc-name">{{ q.doctorName }}</div>
+              <div class="doc-sub">{{ q.storeName }} · 睡眠门诊</div>
+            </div>
           </div>
           <t-tag theme="primary" size="small">就诊室</t-tag>
         </div>
@@ -469,14 +597,11 @@ const filteredTodayAppointments = computed(() => {
               <div class="pat-time">预约时段: {{ q.current.timeSlot }}</div>
             </div>
             <div class="action-row">
-              <t-button size="small" theme="primary" @click="callPatient(q.current.patientName, q.doctorName)">
-                📢 重新呼叫
+              <t-button size="extra-small" theme="primary" variant="outline" @click="callPatient(q.current.patientName, q.doctorName)">
+                叫号
               </t-button>
-              <t-button size="small" theme="success" @click="completeTreatment(q.current)">
-                ✅ 诊疗完成
-              </t-button>
-              <t-button size="small" theme="warning" variant="outline" @click="openCheckoutDialog(q.current)">
-                🪙 收银结算
+              <t-button size="extra-small" theme="warning" variant="outline" @click="openCheckoutDialog(q.current)">
+                收银
               </t-button>
             </div>
           </div>
@@ -499,7 +624,7 @@ const filteredTodayAppointments = computed(() => {
               </div>
               <div class="wait-right">
                 <t-button v-if="item.status === 'pending'" size="extra-small" theme="warning" variant="outline" @click="startTreatment(item)">
-                  签到报到
+                  签到
                 </t-button>
                 <t-button v-else size="extra-small" theme="primary" variant="outline" @click="callPatient(item.patientName, q.doctorName)">
                   叫号
@@ -674,13 +799,11 @@ const filteredTodayAppointments = computed(() => {
   padding: 60px 20px;
   text-align: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  margin-top: 20px;
 }
 .queue-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 20px;
-  margin-top: 20px;
 }
 .doctor-card {
   background: #FFFFFF;
@@ -727,9 +850,12 @@ const filteredTodayAppointments = computed(() => {
   padding: 12px;
   border: 1px solid #BFDBFE;
   box-shadow: 0 2px 4px rgba(59, 107, 245, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 .patient-info {
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 .pat-name {
   font-size: 16px;
