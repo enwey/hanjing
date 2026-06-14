@@ -94,7 +94,7 @@
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 .eval-card--coming.data-v-35dabd14 {
   opacity: 0.7;
@@ -181,7 +181,7 @@
   border-radius: 14px;
   padding: 14px 16px;
   margin-bottom: 10px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--card-shadow);
 }
 .record-left.data-v-35dabd14 {
   display: flex;

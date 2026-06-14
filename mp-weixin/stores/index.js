@@ -3,17 +3,17 @@ const e = require("../common/vendor.js"),
   t = require("../api/index.js"),
   n = require("../mock/index.js"),
   o = e.defineStore("user", () => {
-    const n = e.ref(""),
-      o = e.ref(!1),
+    const n = e.ref(e.index.getStorageSync("access_token") || ""),
+      o = e.ref(!!e.index.getStorageSync("access_token")),
       a = e.ref(null);
     return {
       token: n,
       isLoggedIn: o,
       profile: a,
-      login: async function () {
+      login: async function (phoneCode) {
         try {
           const r = await e.index.login(),
-            l = (await t.wxLogin(r.code)).data;
+            l = (await t.wxLogin(r.code, phoneCode)).data;
           return (
             (n.value = l.access_token),
             (a.value = l.user),

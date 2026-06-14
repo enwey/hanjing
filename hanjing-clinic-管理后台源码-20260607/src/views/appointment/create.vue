@@ -43,7 +43,13 @@ onMounted(async () => {
         }
         selectedStore.value = appt.store_name
         selectedDoctor.value = appt.doctor_name
-        selectedDate.value = appt.appointment_date
+        selectedDate.value = appt.appointment_date ? (() => {
+          const d = new Date(appt.appointment_date);
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        })() : ''
         selectedSlot.value = appt.appointment_time
         remarks.value = appt.symptom_desc || ''
       }

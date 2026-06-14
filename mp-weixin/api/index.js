@@ -358,6 +358,23 @@ exports.getNotifications = async function () {
   );
 };
 
+exports.getOrders = async function (nQuery) {
+  return req.request(
+    {
+      url: "/orders",
+      method: "GET",
+      data: nQuery,
+    },
+    () => {
+      let list = [...e.mockOrders];
+      if (nQuery && nQuery.status && nQuery.status !== "all") {
+        list = list.filter((item) => item.status === nQuery.status);
+      }
+      return t(list);
+    },
+  );
+};
+
 exports.getOrderDetail = async function (oId) {
   return req.request(
     {
@@ -714,23 +731,32 @@ exports.updateUserProfile = async function (nData) {
   );
 };
 
-exports.wxLogin = async function (nCode) {
+exports.wxLogin = async function (nCode, phoneCode) {
   return req.request(
     {
       url: "/auth/wx-login",
       method: "POST",
-      data: { code: nCode },
+      data: { code: nCode, phoneCode: phoneCode },
     },
     () => {
+      let mockPhone = "13800000000";
+      if (phoneCode) {
+        if (/^\d{11}$/.test(phoneCode)) {
+          mockPhone = phoneCode;
+        } else {
+          const digits = phoneCode.replace(/\D/g, '');
+          mockPhone = `138${digits.slice(-8).padEnd(8, '8')}`;
+        }
+      }
       return t({
         access_token: "mock_token_" + Date.now(),
         refresh_token: "mock_refresh_" + Date.now(),
         user: {
           id: "user-001",
-          nickname: "张先生",
+          nickname: "微信用户_" + (nCode ? nCode.slice(-4) : "8888"),
           avatar: "/static/demo/avatar.jpg",
-          phone: "138****8888",
-          memberLevel: "gold",
+          phone: mockPhone,
+          memberLevel: "normal",
           isDistributor: false,
         },
         expires_in: 604800,

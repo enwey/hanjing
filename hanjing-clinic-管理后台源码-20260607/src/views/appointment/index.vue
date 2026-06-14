@@ -7,10 +7,10 @@ import request from '@/utils/request'
 const router = useRouter()
 
 // Filter states matching UI mockup
-const activeTab = ref('today') // Default to 'today' (今日) as per UI mockup
+const activeTab = ref('all') // Default to 'all' (全部)
 const filterStore = ref('全部门店')
 const filterDoctor = ref('全部医生')
-const filterDate = ref('2026-05-29') // Default to '2026-05-29' as per UI mockup
+const filterDate = ref('') // No date filter by default
 const searchKeyword = ref('')
 
 const currentPage = ref(1)
@@ -54,7 +54,13 @@ const fetchAppointments = async () => {
       avatarColor: item.patient_gender === 1 ? '#3B6BF5' : '#EC4899',
       store: item.store_name,
       doctor: item.doctor_name,
-      date: item.appointment_date,
+      date: item.appointment_date ? (() => {
+        const d = new Date(item.appointment_date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      })() : '',
       time: item.appointment_time,
       type: item.type === 'first' ? '初诊' : '复诊',
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
@@ -99,14 +105,36 @@ const statusMap: Record<string, { label: string; theme: string }> = {
 }
 
 const counts = computed(() => {
-  const list = appointments.value
-  const todayStr = '2026-05-29'
+  let list = appointments.value
+
+  // 1. Search Keyword
+  if (searchKeyword.value) {
+    const kw = searchKeyword.value.toLowerCase()
+    list = list.filter(a => a.patient.includes(kw) || a.no.toLowerCase().includes(kw))
+  }
+
+  // 2. Store filter
+  if (filterStore.value && filterStore.value !== '全部门店') {
+    list = list.filter(a => a.store === filterStore.value)
+  }
+
+  // 3. Doctor filter
+  if (filterDoctor.value && filterDoctor.value !== '全部医生') {
+    list = list.filter(a => a.doctor === filterDoctor.value)
+  }
+
+  // If date filter is set, it affects status tabs. Otherwise they show total counts for all dates.
+  let statusList = list
+  if (filterDate.value) {
+    statusList = list.filter(a => a.date === filterDate.value)
+  }
+
   return {
-    all: list.length,
-    today: list.filter(a => a.date === todayStr).length,
-    pending: list.filter(a => a.status === 'pending').length,
-    waiting: list.filter(a => a.status === 'waiting').length,
-    cancelled: list.filter(a => a.status === 'cancelled').length,
+    all: statusList.length,
+    today: list.filter(a => a.date === '2026-05-29').length,
+    pending: statusList.filter(a => a.status === 'pending').length,
+    waiting: statusList.filter(a => a.status === 'waiting').length,
+    cancelled: statusList.filter(a => a.status === 'cancelled').length,
   }
 })
 

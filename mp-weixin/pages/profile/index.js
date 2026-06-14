@@ -7,9 +7,26 @@ const l = () => "../../components/base/hj-navbar.js",
     __name: "index",
     setup(l) {
       const n = i.useUserStore();
-      e.onMounted(async () => {
-        n.profile || (await n.fetchProfile());
+      e.onShow(async () => {
+        const token = e.index.getStorageSync("access_token");
+        if (token) {
+          n.profile || (await n.fetchProfile());
+        }
       });
+      e.onMounted(async () => {
+        const token = e.index.getStorageSync("access_token");
+        if (token) {
+          n.profile || (await n.fetchProfile());
+        }
+      });
+      function onUserCardTap() {
+        const token = e.index.getStorageSync("access_token");
+        if (!token) {
+          e.index.navigateTo({ url: "/pages/auth/login" });
+        } else {
+          e.index.navigateTo({ url: "/pages/profile/settings/index" });
+        }
+      }
       const r = [
         {
           title: "我的健康",
@@ -66,32 +83,42 @@ const l = () => "../../components/base/hj-navbar.js",
         },
       ];
       return (i, l) => {
-        var t, a, o;
         return {
           a: e.p({ title: "我的" }),
           b: e.t(
-            (null ==
-            (a = null == (t = e.unref(n).profile) ? void 0 : t.nickname)
-              ? void 0
-              : a.slice(0, 1)) || "张",
+            (e.unref(n).profile && e.unref(n).profile.nickname
+              ? e.unref(n).profile.nickname.slice(0, 1)
+              : "👤"),
           ),
           c: e.t(
-            (null == (o = e.unref(n).profile) ? void 0 : o.nickname) ||
-              "张先生",
+            (e.unref(n).profile && e.unref(n).profile.nickname
+              ? e.unref(n).profile.nickname
+              : "点击登录"),
           ),
-          d: e.f(r, (i, l, n) => ({
+          d: e.f(r, (i, l, nVal) => ({
             a: e.t(i.title),
-            b: e.f(i.items, (i, l, n) => ({
+            b: e.f(i.items, (i, l, nVal2) => ({
               a: e.t(i.icon),
               b: e.t(i.label),
               c: i.label,
               d: e.o((l) => {
-                return ((n = i.url), void e.index.navigateTo({ url: n }));
-                var n;
+                const token = e.index.getStorageSync("access_token");
+                if (i.label !== "在线客服" && !token) {
+                  e.index.navigateTo({ url: "/pages/auth/login" });
+                  return;
+                }
+                return ((nVal3 = i.url), void e.index.navigateTo({ url: nVal3 }));
+                var nVal3;
               }, i.label),
             })),
             c: i.title,
           })),
+          e: e.o(onUserCardTap),
+          f: e.t(
+            (e.unref(n).profile
+              ? (e.unref(n).profile.memberLevel === "gold" ? "黄金会员" : "普通会员")
+              : "未登录"),
+          ),
         };
       };
     },

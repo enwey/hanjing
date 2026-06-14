@@ -80,7 +80,7 @@
   background: #fff;
   color: #1f2937;
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--card-shadow);
 }
 .summary-row.data-v-eb41b617 {
   display: flex;

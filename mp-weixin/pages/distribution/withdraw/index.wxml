@@ -1,5 +1,5 @@
 <view class="page data-v-6825c219"
-  ><view class="card data-v-6825c219"
+  ><hj-navbar title="提现申请" show-back="{{true}}" /><view class="card data-v-6825c219"
     ><text class="label data-v-6825c219">可提现佣金</text
     ><text class="balance data-v-6825c219">{{a}}</text
     ><view class="info-row data-v-6825c219"

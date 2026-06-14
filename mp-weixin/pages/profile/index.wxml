@@ -5,13 +5,13 @@
     u-i="093cfe40-0"
     bind:__l="__l"
     u-p="{{a}}" /><view class="page-content data-v-093cfe40"
-    ><view class="user-card data-v-093cfe40"
+    ><view class="user-card data-v-093cfe40" bindtap="{{e}}"
       ><view class="user-avatar data-v-093cfe40"
         ><text class="user-avatar-text data-v-093cfe40">{{b}}</text></view
       ><view class="user-info data-v-093cfe40"
         ><text class="user-name data-v-093cfe40">{{c}}</text
         ><view class="user-level data-v-093cfe40"
-          ><text class="user-level-tag data-v-093cfe40">黄金会员</text></view
+          ><text class="user-level-tag data-v-093cfe40">{{f}}</text></view
         ></view
       ><text class="user-arrow data-v-093cfe40">›</text></view
     ><view

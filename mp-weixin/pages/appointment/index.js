@@ -71,6 +71,25 @@ const o = () => "../../components/base/hj-navbar.js",
           url: `/pages/appointment/reschedule?id=${t.id}&doctorId=${t.doctorId}&storeId=${t.storeId}`,
         });
       }
+      async function onGetPhoneNumber(t) {
+        console.log("[Appointment Login] GetPhoneNumber event:", t);
+        const { detail: o } = t;
+        if (!o || !o.code) {
+          e.index.showToast({ title: "授权已取消", icon: "none" });
+          return;
+        }
+        e.index.showLoading({ title: "安全登录中..." });
+        try {
+          await i.login(o.code);
+          e.index.hideLoading();
+          e.index.showToast({ title: "登录成功", icon: "success" });
+          f();
+        } catch (r) {
+          e.index.hideLoading();
+          e.index.showToast({ title: "登录失败，请重试", icon: "none" });
+          console.error(r);
+        }
+      }
       return (
         setTimeout(p, 300),
         (t, o) =>
@@ -79,6 +98,8 @@ const o = () => "../../components/base/hj-navbar.js",
               a: e.p({ title: "预约挂号" }),
               b: e.o(f, "46"),
               c: e.p({ type: "primary", size: "md" }),
+              isLoggedIn: e.unref(i).isLoggedIn,
+              onGetPhoneNumber: e.o(onGetPhoneNumber, "phone"),
               d: "upcoming" === c.value ? 1 : "",
               e: e.o((e) => (c.value = "upcoming"), "c6"),
               f: "history" === c.value ? 1 : "",

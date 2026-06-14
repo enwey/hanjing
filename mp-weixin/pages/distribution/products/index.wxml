@@ -1,5 +1,5 @@
 <view class="page data-v-17829149"
-  ><view class="list data-v-17829149"
+  ><hj-navbar title="推广商品" show-back="{{true}}" /><view class="list data-v-17829149"
     ><view
       wx:for="{{a}}"
       wx:for-item="p"

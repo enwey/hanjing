@@ -9,6 +9,8 @@
     class="chat-area data-v-72504f8b"
     scroll-y
     scroll-into-view="{{c}}"
+    enhanced="{{true}}"
+    show-scrollbar="{{false}}"
     ><view class="chat-list data-v-72504f8b"
       ><view
         wx:for="{{b}}"

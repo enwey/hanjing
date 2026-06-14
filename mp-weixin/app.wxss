@@ -54,16 +54,14 @@
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 page {
-  font-family:
-    PingFang SC,
-    HarmonyOS Sans,
-    Noto Sans SC,
-    -apple-system,
-    BlinkMacSystemFont,
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,
+    Segoe UI, Arial, Roboto, 'PingFang SC', 'miui', 'Hiragino Sans GB', 'Microsoft Yahei',
     sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   color: #1f2937;
   background-color: #f9fafb;
+  box-sizing: border-box;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -230,7 +228,7 @@ swiper-item {
   border-radius: 9999px;
 }
 .shadow-sm {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 .shadow-md {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -251,7 +249,7 @@ swiper-item {
   background: #fff;
   border-radius: 16px;
   padding: 16px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 .list-item {
   display: flex;
@@ -301,4 +299,28 @@ page {
 }
 [data-c-h="true"] {
   display: none !important;
+}
+
+/* Hide scrollbar globally */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  color: transparent !important;
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-thumb {
+  display: none !important;
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-track {
+  display: none !important;
+  background: transparent !important;
+}
+
+page, view, scroll-view {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }

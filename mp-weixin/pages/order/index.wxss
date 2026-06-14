@@ -64,31 +64,46 @@
   padding: 0 12px;
 }
 .tab-scroll.data-v-a92287bc {
+  position: sticky;
+  z-index: 99;
+  background: #ffffff;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.08);
   white-space: nowrap;
-  padding: 10px 4px;
+  padding: 0 12px;
+  margin-left: -12px;
+  margin-right: -12px;
   display: flex;
+  height: 48px;
+  box-sizing: border-box;
 }
 .tab-item.data-v-a92287bc {
+  flex: 1;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 14px;
+  justify-content: center;
+  height: 100%;
+  position: relative;
 }
 .tab-label.data-v-a92287bc {
-  font-size: 14px;
-  color: #6b7280;
+  font-size: 15px;
+  color: rgba(0, 0, 0, 0.55);
   font-weight: 500;
+  line-height: 1;
 }
 .tab-item.active .tab-label.data-v-a92287bc {
   color: #3b6bf5;
-  font-weight: 700;
+  font-weight: 600;
 }
 .tab-indicator.data-v-a92287bc {
-  width: 16px;
+  width: 28px;
   height: 3px;
   background: #3b6bf5;
   border-radius: 3px;
-  margin-top: 4px;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
 }
 .loading-state.data-v-a92287bc,
 .empty-state.data-v-a92287bc {
@@ -102,13 +117,14 @@
 }
 .order-list.data-v-a92287bc {
   padding: 0 4px;
+  margin-top: 12px;
 }
 .order-card.data-v-a92287bc {
   background: #fff;
   border-radius: 14px;
   padding: 16px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--card-shadow);
 }
 .order-header.data-v-a92287bc {
   display: flex;

@@ -95,7 +95,7 @@
   border-radius: 20px;
   padding: 32px 24px;
   text-align: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 .question-emoji.data-v-c4ff781e {
   font-size: 56px;

@@ -1,5 +1,5 @@
 <view class="page data-v-6a5afdbe"
-  ><view class="banner data-v-6a5afdbe"
+  ><hj-navbar title="分销中心" show-back="{{true}}" /><view class="banner data-v-6a5afdbe"
     ><view class="banner-bg data-v-6a5afdbe"></view
     ><view class="banner-content data-v-6a5afdbe"
       ><text class="banner-title data-v-6a5afdbe">我的推广</text
@@ -38,7 +38,7 @@
       ><text class="section-more data-v-6a5afdbe" bindtap="{{h}}"
         >全部</text
       ></view
-    ><scroll-view scroll-x class="product-scroll data-v-6a5afdbe"
+    ><scroll-view scroll-x class="product-scroll data-v-6a5afdbe" enhanced="{{true}}" show-scrollbar="{{false}}"
       ><view
         wx:for="{{i}}"
         wx:for-item="p"

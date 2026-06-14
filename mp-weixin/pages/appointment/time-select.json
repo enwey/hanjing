@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "选择时段",
+  "navigationStyle": "custom",
   "usingComponents": {
     "hj-navbar": "../../components/base/hj-navbar",
     "hj-schedule-calendar": "../../components/business/hj-schedule-calendar"

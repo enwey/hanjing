@@ -78,7 +78,7 @@
   border-radius: 14px;
   padding: 16px;
   margin-bottom: 10px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--card-shadow);
 }
 .data-header.data-v-0ef6c91e {
   display: flex;

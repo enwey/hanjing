@@ -78,7 +78,7 @@
   border-radius: 50%;
 }
 .hero-content.data-v-e9eb3795 {
-  padding: 20px 24px 0;
+  padding: 20px 16px 0;
   position: relative;
   z-index: 1;
 }
@@ -88,17 +88,20 @@
   color: #fff;
   display: block;
   margin-bottom: 8px;
+  margin-left: 12px;
 }
 .hero-subtitle.data-v-e9eb3795 {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.7);
   display: block;
   margin-bottom: 24px;
+  margin-left: 12px;
 }
 .hero-stats.data-v-e9eb3795 {
   display: flex;
   gap: 24px;
   margin-bottom: 28px;
+  margin-left: 12px;
 }
 .hero-stat.data-v-e9eb3795 {
   display: flex;
@@ -143,7 +146,7 @@
   border-radius: 16px;
   position: relative;
   z-index: 2;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--card-shadow);
 }
 .section.quick-actions.data-v-e9eb3795 {
   padding: 14px 16px;

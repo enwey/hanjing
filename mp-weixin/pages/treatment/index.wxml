@@ -23,8 +23,9 @@
       ><text class="hero-start data-v-8badcb8c">初配日期：{{h}}</text></view
     ><view class="section-header data-v-8badcb8c"
       ><text class="section-title data-v-8badcb8c">打卡日历</text
-      ><text class="section-link data-v-8badcb8c" bindtap="{{i}}"
-        >完整日历 &gt;</text
+      ><view class="section-link data-v-8badcb8c" bindtap="{{i}}"
+        ><text class="data-v-8badcb8c">完整日历</text
+        ><view class="more-arrow data-v-8badcb8c" /></view
       ></view
     ><view class="calendar-strip data-v-8badcb8c"
       ><view
@@ -72,10 +73,57 @@
         ></view
       ></view
     ><view class="section-header data-v-8badcb8c" style="margin-top: 20px"
+      ><text class="section-title data-v-8badcb8c">治疗进度</text></view
+    ><view class="treatment-timeline data-v-8badcb8c"
+      ><view class="treatment-phase data-v-8badcb8c"
+        ><view class="phase-indicator data-v-8badcb8c"
+          ><view class="phase-dot completed data-v-8badcb8c">✓</view
+          ><view class="phase-line completed data-v-8badcb8c" /></view
+        ><view class="phase-content data-v-8badcb8c"
+          ><text class="phase-name data-v-8badcb8c">初诊评估</text
+          ><text class="phase-desc data-v-8badcb8c">完成睡眠监测、口腔检查、气道评估</text
+          ><text class="phase-date data-v-8badcb8c">2026-03-15</text></view
+        ></view
+      ><view class="treatment-phase data-v-8badcb8c"
+        ><view class="phase-indicator data-v-8badcb8c"
+          ><view class="phase-dot completed data-v-8badcb8c">✓</view
+          ><view class="phase-line completed data-v-8badcb8c" /></view
+        ><view class="phase-content data-v-8badcb8c"
+          ><text class="phase-name data-v-8badcb8c">方案定制</text
+          ><text class="phase-desc data-v-8badcb8c">取模、设计个性化阻鼾器，确定初始前伸量</text
+          ><text class="phase-date data-v-8badcb8c">2026-03-22</text></view
+        ></view
+      ><view class="treatment-phase data-v-8badcb8c"
+        ><view class="phase-indicator data-v-8badcb8c"
+          ><view class="phase-dot completed data-v-8badcb8c">✓</view
+          ><view class="phase-line active data-v-8badcb8c" /></view
+        ><view class="phase-content data-v-8badcb8c"
+          ><text class="phase-name data-v-8badcb8c">舒适观察期</text
+          ><text class="phase-desc data-v-8badcb8c">逐步适应佩戴，观察舒适度与受力分布</text
+          ><text class="phase-date data-v-8badcb8c">2026-03-29 ~ 2026-04-28</text></view
+        ></view
+      ><view class="treatment-phase data-v-8badcb8c"
+        ><view class="phase-indicator data-v-8badcb8c"
+          ><view class="phase-dot active data-v-8badcb8c">4</view
+          ><view class="phase-line pending data-v-8badcb8c" /></view
+        ><view class="phase-content data-v-8badcb8c"
+          ><text class="phase-name active-name data-v-8badcb8c">增量调节期</text
+          ><text class="phase-desc data-v-8badcb8c">每次调整1/4毫米，逐步前移下颌至最佳位置</text
+          ><text class="phase-date data-v-8badcb8c">预计 2026-05-01 开始</text></view
+        ></view
+      ><view class="treatment-phase data-v-8badcb8c"
+        ><view class="phase-indicator data-v-8badcb8c"
+          ><view class="phase-dot pending data-v-8badcb8c">5</view></view
+        ><view class="phase-content data-v-8badcb8c"
+          ><text class="phase-name data-v-8badcb8c">效果巩固</text
+          ><text class="phase-desc data-v-8badcb8c">鼾声消除确认，长期佩戴维护指导</text></view
+        ></view
+      ></view
+    ><view class="section-header data-v-8badcb8c" style="margin-top: 20px"
       ><text class="section-title data-v-8badcb8c">更多功能</text></view
     ><view class="menu-grid data-v-8badcb8c"
       ><view class="menu-item data-v-8badcb8c" bindtap="{{p}}"
-        ><view class="menu-icon menu-icon--trend data-v-8badcb8c">T</view
+        ><view class="menu-icon menu-icon--trend data-v-8badcb8c">📈</view
         ><text class="menu-title data-v-8badcb8c">睡眠趋势</text
         ><text class="menu-desc data-v-8badcb8c">佩戴与睡眠数据</text></view
       ><view class="menu-item data-v-8badcb8c" bindtap="{{q}}"
@@ -83,15 +131,15 @@
         ><text class="menu-title data-v-8badcb8c">睡眠报告</text
         ><text class="menu-desc data-v-8badcb8c">AI智能分析与建议</text></view
       ><view class="menu-item data-v-8badcb8c" bindtap="{{r}}"
-        ><view class="menu-icon menu-icon--timeline data-v-8badcb8c">TL</view
+        ><view class="menu-icon menu-icon--timeline data-v-8badcb8c">🕒</view
         ><text class="menu-title data-v-8badcb8c">治疗时间线</text
         ><text class="menu-desc data-v-8badcb8c">就诊全记录</text></view
       ><view class="menu-item data-v-8badcb8c" bindtap="{{s}}"
-        ><view class="menu-icon menu-icon--advice data-v-8badcb8c">D</view
+        ><view class="menu-icon menu-icon--advice data-v-8badcb8c">🩺</view
         ><text class="menu-title data-v-8badcb8c">医嘱建议</text
         ><text class="menu-desc data-v-8badcb8c">医生指导方案</text></view
       ><view class="menu-item data-v-8badcb8c" bindtap="{{t}}"
-        ><view class="menu-icon menu-icon--adjust data-v-8badcb8c">A</view
+        ><view class="menu-icon menu-icon--adjust data-v-8badcb8c">🔧</view
         ><text class="menu-title data-v-8badcb8c">设备调整</text
         ><text class="menu-desc data-v-8badcb8c">参数与调整记录</text></view
       ><view class="menu-item data-v-8badcb8c" bindtap="{{v}}"
@@ -101,8 +149,8 @@
       ></view
     ><view class="section-header data-v-8badcb8c" style="margin-top: 20px"
       ><text class="section-title data-v-8badcb8c">治疗动态</text
-      ><text class="section-link data-v-8badcb8c" bindtap="{{w}}"
-        >全部 &gt;</text
+      ><view class="section-link data-v-8badcb8c" bindtap="{{w}}"
+        ><text class="data-v-8badcb8c">全部</text></view
       ></view
     ><view class="timeline-preview data-v-8badcb8c"
       ><view
@@ -131,12 +179,7 @@
       u-p="{{z}}"
       ><text
         class="data-v-8badcb8c"
-        style="
-          font-size: 13px;
-          color: #d1d5db;
-          text-align: center;
-          display: block;
-        "
+        style="font-size: 13px; color: #d1d5db; text-align: center; display: block;"
       >
         完成初诊适配后，治疗追踪将在此显示
       </text></hj-empty

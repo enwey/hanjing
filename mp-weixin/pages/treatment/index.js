@@ -123,20 +123,46 @@ const t = () => "../../components/base/hj-navbar.js",
         e.index.navigateTo({ url: "/pages/treatment/adjust-detail/index" });
       }
       return (
-        e.onMounted(async () => {
+        e.onShow(async () => {
+          const token = e.index.getStorageSync("access_token");
+          if (!token) {
+            e.index.navigateTo({ url: "/pages/auth/login" });
+            return;
+          }
           try {
-            const [e, t, n, i] = await Promise.all([
+            const [res1, res2, res3, res4] = await Promise.all([
               a.getTreatmentRecord(),
               a.getWearingRecords(),
               a.getWearingSummary(),
               a.getTimeline(),
             ]);
-            ((u.value = e.data),
-              (o.value = t.data),
-              (r.value = n.data),
-              (l.value = i.data));
-          } catch (e) {
-            console.error("[Treatment] 加载失败", e);
+            u.value = res1.data;
+            o.value = res2.data;
+            r.value = res3.data;
+            l.value = res4.data;
+          } catch (err) {
+            console.error("[Treatment onShow] 加载失败", err);
+          }
+        }),
+        e.onMounted(async () => {
+          const token = e.index.getStorageSync("access_token");
+          if (!token) {
+            e.index.navigateTo({ url: "/pages/auth/login" });
+            return;
+          }
+          try {
+            const [res1, res2, res3, res4] = await Promise.all([
+              a.getTreatmentRecord(),
+              a.getWearingRecords(),
+              a.getWearingSummary(),
+              a.getTimeline(),
+            ]);
+            u.value = res1.data;
+            o.value = res2.data;
+            r.value = res3.data;
+            l.value = res4.data;
+          } catch (err) {
+            console.error("[Treatment onMounted] 加载失败", err);
           } finally {
             n.value = !1;
           }
@@ -192,7 +218,7 @@ const t = () => "../../components/base/hj-navbar.js",
             { y: !n.value && !u.value },
             n.value || u.value
               ? {}
-              : { z: e.p({ text: "暂无治疗记录", icon: "pill" }) },
+              : { z: e.p({ text: "暂无治疗记录", icon: "💊" }) },
             { A: i.value },
             i.value
               ? {

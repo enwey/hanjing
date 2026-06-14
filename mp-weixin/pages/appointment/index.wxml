@@ -12,7 +12,7 @@
           >选择门店、医生和时段，轻松完成预约</text
         ></view
       ><hj-button
-        wx:if="{{c}}"
+        wx:if="{{c && isLoggedIn}}"
         class="data-v-801bfeef"
         u-s="{{['d']}}"
         bindclick="{{b}}"
@@ -20,6 +20,13 @@
         bind:__l="__l"
         u-p="{{c}}"
         >立即预约</hj-button
+      ><button
+        wx:elif="{{c}}"
+        class="auth-btn-custom data-v-801bfeef"
+        hover-class="auth-btn-custom-hover"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="{{onGetPhoneNumber}}"
+        >立即预约</button
       ></view
     ><view class="tabs data-v-801bfeef"
       ><view
@@ -52,7 +59,7 @@
         bind:__l="__l"
         u-p="{{m||''}}"
         ><hj-button
-          wx:if="{{l}}"
+          wx:if="{{l && isLoggedIn}}"
           class="data-v-801bfeef"
           u-s="{{['d']}}"
           bindclick="{{k}}"
@@ -62,7 +69,17 @@
           u-p="{{l}}"
         >
           去预约
-        </hj-button></hj-empty
+        </hj-button
+        ><button
+          wx:elif="{{l}}"
+          class="auth-btn-custom data-v-801bfeef"
+          hover-class="auth-btn-custom-hover"
+          style="margin-top: 16px"
+          open-type="getPhoneNumber"
+          bindgetphonenumber="{{onGetPhoneNumber}}"
+        >
+          去预约
+        </button></hj-empty
       ></view
     ><view wx:if="{{n}}" class="apt-list data-v-801bfeef"
       ><block wx:if="{{o}}"

@@ -17,7 +17,19 @@ const s = () => "../../components/base/hj-navbar.js",
           }));
       }
       return (
+        e.onShow(async () => {
+          const token = e.index.getStorageSync("access_token");
+          if (!token) {
+            e.index.navigateTo({ url: "/pages/auth/login" });
+            return;
+          }
+        }),
         e.onMounted(async () => {
+          const token = e.index.getStorageSync("access_token");
+          if (!token) {
+            e.index.navigateTo({ url: "/pages/auth/login" });
+            return;
+          }
           (0 === o.stores.length && (await o.fetchStores()), (r.value = !1));
         }),
         (t, s) => ({

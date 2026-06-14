@@ -31,5 +31,9 @@
       ><text class="followup-hint data-v-3fe7702c"
         >请按时复诊，医生将评估治疗效果并调整参数</text
       ></view
+    ><view class="btn-wrap data-v-3fe7702c"
+      ><button class="book-btn data-v-3fe7702c" bindtap="{{g}}"
+        >预约复诊</button
+      ></view
     ><view class="safe-bottom data-v-3fe7702c" /></view
 ></view>

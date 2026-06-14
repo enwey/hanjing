@@ -42,6 +42,8 @@ const a = e.defineComponent({
                 e: e.n(t.level),
                 f: e.t((t.totalSales / 1e4).toFixed(1)),
                 g: t.id,
+                h: e.t(t.statusText || ""),
+                i: e.t(t.statusClass || ""),
               })),
               e: !n.value.length,
             },

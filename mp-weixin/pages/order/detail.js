@@ -68,7 +68,7 @@ const a = () => "../../components/base/hj-navbar.js",
         (t, a) => {
           var s, p;
           return e.e(
-            { a: e.p({ title: "订单详情" }), b: n.value },
+            { a: e.p({ title: "订单详情", "show-back": !0 }), b: n.value },
             n.value
               ? {}
               : l.value

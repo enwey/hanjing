@@ -11,7 +11,7 @@
       style="{{'color:' + b}}"
       bindtap="{{c}}"
     >
-      <text class="hj-navbar-back-icon data-v-1529c78d">‹</text>
+      <text class="hj-navbar-back-icon data-v-1529c78d"></text>
     </view>
     <view class="hj-navbar-title data-v-1529c78d" style="{{'color:' + e}}"
       >{{d}}</view

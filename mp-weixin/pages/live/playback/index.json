@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "直播回放",
-  "usingComponents": {}
+  "usingComponents": {
+    "hj-navbar": "../../../components/base/hj-navbar"
+  }
 }

@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "选择门店",
+  "navigationStyle": "custom",
   "usingComponents": {
     "hj-navbar": "../../components/base/hj-navbar",
     "hj-store-card": "../../components/business/hj-store-card"

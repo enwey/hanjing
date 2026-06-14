@@ -1,5 +1,5 @@
 <view class="page data-v-e9b2690b"
-  ><view class="stats-bar data-v-e9b2690b"
+  ><hj-navbar title="团队成员" show-back="{{true}}" /><view class="stats-bar data-v-e9b2690b"
     ><view class="stat data-v-e9b2690b"
       ><text class="sv data-v-e9b2690b">{{a}}</text
       ><text class="sl data-v-e9b2690b">一级成员</text></view
@@ -18,7 +18,9 @@
       class="item data-v-e9b2690b"
       ><view class="avatar data-v-e9b2690b">{{m.a}}</view
       ><view class="info data-v-e9b2690b"
-        ><text class="name data-v-e9b2690b">{{m.b}}</text
+        ><view class="name-wrap data-v-e9b2690b"
+          ><text class="name data-v-e9b2690b">{{m.b}}</text
+          ><text wx:if="{{m.h}}" class="{{['status-badge', 'data-v-e9b2690b', m.i]}}">{{m.h}}</text></view
         ><text class="meta data-v-e9b2690b"
           >{{m.c}}单 · 加入{m.joinedAt}</text
         ></view

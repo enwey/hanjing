@@ -38,15 +38,25 @@ const t = () => "../../components/base/hj-navbar.js",
         },
       ]);
       function s() {
+        const token = e.index.getStorageSync("access_token");
+        if (!token) {
+          e.index.navigateTo({ url: "/pages/auth/login" });
+          return;
+        }
         e.index.navigateTo({ url: "/pages/assessment/questionnaire/index" });
       }
       function o() {
+        const token = e.index.getStorageSync("access_token");
+        if (!token) {
+          e.index.navigateTo({ url: "/pages/auth/login" });
+          return;
+        }
         e.index.navigateTo({ url: "/pages/assessment/recording/index" });
       }
       return (t, n) =>
         e.e(
           {
-            a: e.p({ title: "睡眠评估" }),
+            a: e.p({ title: "睡眠评估", "show-back": !0 }),
             b: e.o(s, "47"),
             c: e.o(o, "5f"),
             d: a.value.length,
@@ -62,13 +72,18 @@ const t = () => "../../components/base/hj-navbar.js",
                   f: t.levelColor,
                   g: t.id,
                   h: e.o((a) => {
+                    const token = e.index.getStorageSync("access_token");
+                    if (!token) {
+                      e.index.navigateTo({ url: "/pages/auth/login" });
+                      return;
+                    }
                     return (
-                      (s = t),
+                      (sVal = t),
                       void e.index.navigateTo({
-                        url: `/pages/treatment/sleep-report/index?from=assessment&id=${s.id}`,
+                        url: `/pages/treatment/sleep-report/index?from=assessment&id=${sVal.id}`,
                       })
                     );
-                    var s;
+                    var sVal;
                   }, t.id),
                 })),
               }

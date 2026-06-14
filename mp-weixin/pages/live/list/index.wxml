@@ -1,5 +1,5 @@
 <view class="page data-v-b8fa8280"
-  ><view class="tabs data-v-b8fa8280"
+  ><hj-navbar title="直播中心" show-back="{{true}}" /><view class="tabs data-v-b8fa8280"
     ><view class="{{['tab', 'data-v-b8fa8280', a && 'active']}}" bindtap="{{b}}"
       >全部</view
     ><view class="{{['tab', 'data-v-b8fa8280', c && 'active']}}" bindtap="{{d}}"

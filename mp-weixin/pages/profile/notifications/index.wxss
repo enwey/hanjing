@@ -92,7 +92,7 @@
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--card-shadow);
 }
 .noti-card.unread.data-v-c3158b61 {
   background: #f9fcff;

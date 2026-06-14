@@ -1,5 +1,5 @@
 <view class="page data-v-466378e0"
-  ><view class="banner data-v-466378e0"
+  ><hj-navbar title="邀请好友" show-back="{{true}}" /><view class="banner data-v-466378e0"
     ><view class="banner-bg data-v-466378e0"></view
     ><view class="banner-content data-v-466378e0"
       ><text class="banner-title data-v-466378e0">邀请好友，一起赚钱</text

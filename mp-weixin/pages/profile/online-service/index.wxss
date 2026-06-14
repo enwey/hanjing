@@ -89,7 +89,7 @@
 }
 .msg-bubble.assistant.data-v-72504f8b {
   background: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--card-shadow);
 }
 .msg-text.data-v-72504f8b {
   font-size: 15px;

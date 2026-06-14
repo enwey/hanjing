@@ -61,7 +61,7 @@
 }
 .page-content.data-v-093cfe40 {
   flex: 1;
-  padding: 0 16px;
+  padding: 16px 16px 0;
 }
 .user-card.data-v-093cfe40 {
   display: flex;
@@ -70,7 +70,7 @@
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 16px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 .user-avatar.data-v-093cfe40 {
   width: 56px;

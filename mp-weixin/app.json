@@ -6,6 +6,7 @@
     "pages/treatment/index",
     "pages/product/index",
     "pages/profile/index",
+    "pages/auth/login",
     "pages/appointment/store-select",
     "pages/appointment/doctor-detail",
     "pages/appointment/time-select",
@@ -41,7 +42,10 @@
   "subpackages": [
     {
       "root": "pages/order",
-      "pages": ["index", "detail"]
+      "pages": [
+        "index",
+        "detail"
+      ]
     },
     {
       "root": "pages/distribution",
@@ -58,18 +62,26 @@
     },
     {
       "root": "pages/live",
-      "pages": ["list/index", "playback/index"]
+      "pages": [
+        "list/index",
+        "playback/index"
+      ]
     },
     {
       "root": "pages/community",
-      "pages": ["index", "detail/index", "publish/index"]
+      "pages": [
+        "index",
+        "detail/index",
+        "publish/index"
+      ]
     }
   ],
   "window": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "鼾静健康诊所",
     "navigationBarBackgroundColor": "#FFFFFF",
-    "backgroundColor": "#F9FAFB"
+    "backgroundColor": "#F9FAFB",
+    "navigationStyle": "custom"
   },
   "tabBar": {
     "color": "#9CA3AF",
@@ -114,7 +126,11 @@
       "desc": "用于查找离您最近的门店"
     }
   },
-  "requiredPrivateInfos": ["getLocation"],
+  "requiredPrivateInfos": [
+    "getLocation"
+  ],
   "lazyCodeLoading": "requiredComponents",
-  "usingComponents": {}
+  "usingComponents": {
+    "hj-navbar": "/components/base/hj-navbar"
+  }
 }

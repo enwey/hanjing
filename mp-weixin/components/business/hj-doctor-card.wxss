@@ -60,7 +60,7 @@
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
   position: relative;
 }
 .doctor-avatar.data-v-906afe6e {

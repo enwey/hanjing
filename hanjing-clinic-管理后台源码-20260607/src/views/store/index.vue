@@ -52,12 +52,13 @@ const fetchStores = async () => {
       phone: s.phone,
       openTime: s.open_time ? s.open_time.substring(0, 5) : '09:00',
       closeTime: s.close_time ? s.close_time.substring(0, 5) : '18:00',
-      doctors: s.id === 1 ? 4 : (s.id === 2 ? 3 : 5),
-      devices: s.id === 1 ? 8 : (s.id === 2 ? 4 : 10),
-      monthBookings: s.id === 1 ? 156 : (s.id === 2 ? 98 : 213),
-      monthRevenue: s.id === 1 ? '¥22.8w' : (s.id === 2 ? '¥10.5w' : '¥5.3w'),
+      hours: s.hours || [{ openTime: s.open_time ? s.open_time.substring(0, 5) : '09:00', closeTime: s.close_time ? s.close_time.substring(0, 5) : '18:00' }],
+      doctors: s.doctors,
+      devices: s.devices,
+      monthBookings: s.monthBookings,
+      monthRevenue: s.monthRevenue,
       status: s.status,
-      manager: s.id === 1 ? '陈经理' : (s.id === 2 ? '张经理' : '赵经理'),
+      manager: s.manager,
       features: s.features || [],
       icon: icons[index % icons.length],
       iconBg: iconBgs[index % iconBgs.length]
@@ -77,10 +78,11 @@ const paginatedStores = computed(() => {
   return stores.value.slice(start, end)
 })
 
-function openEdit(store: Store) {
+function openEdit(store: any) {
   editStore.value = { 
     ...store,
-    featuresStr: store.features ? store.features.join(',') : ''
+    featuresStr: store.features ? store.features.join(',') : '',
+    hours: store.hours ? JSON.parse(JSON.stringify(store.hours)) : [{ openTime: '09:00', closeTime: '18:00' }]
   }
   editVisible.value = true
 }
@@ -95,7 +97,8 @@ async function saveEdit() {
       address: editStore.value.address,
       phone: editStore.value.phone,
       status: editStore.value.status,
-      features: tags
+      features: tags,
+      hours: editStore.value.hours
     })
     MessagePlugin.success('修改门店信息成功')
     fetchStores()
@@ -143,14 +146,14 @@ async function saveEdit() {
               </div>
               <div style="font-size:12px;color:#6B7280;line-height:1.6;" :title="store.address">{{ store.address }}</div>
               <div style="font-size:12px;color:#9CA3AF;margin-top:4px;">
-                📞 {{ store.phone }} · 🕐 {{ store.status === 'prepare' ? '待定' : store.openTime + '-' + store.closeTime }}
+                📞 {{ store.phone }} · 🕐 {{ store.status === 'prepare' ? '待定' : store.hours.map(h => `${h.openTime}-${h.closeTime}`).join(' ') }}
               </div>
               <!-- Tags / Features -->
-              <div style="display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px;">
-                <span v-for="tag in store.features" :key="tag" style="font-size: 9px; background: #ECFDF5; color: #16A34A; padding: 2px 4px; border-radius: 4px; font-weight: 500;">
+              <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+                <span v-for="tag in store.features" :key="tag" style="font-size: 11px; background: #ECFDF5; color: #16A34A; padding: 2.5px 6px; border-radius: 4px; font-weight: 500;">
                   {{ tag }}
                 </span>
-                <span v-if="!store.features || store.features.length === 0" style="font-size: 9px; background: #F3F4F6; color: #9CA3AF; padding: 2px 4px; border-radius: 4px;">
+                <span v-if="!store.features || store.features.length === 0" style="font-size: 11px; background: #F3F4F6; color: #9CA3AF; padding: 2.5px 6px; border-radius: 4px;">
                   暂无特色标签
                 </span>
               </div>
@@ -217,14 +220,19 @@ async function saveEdit() {
           <t-input v-model="editStore.phone" />
         </t-form-item>
         <t-form-item label="营业时间">
-          <t-row :gutter="8">
-            <t-col :span="6">
-              <t-time-picker v-model="editStore.openTime" format="HH:mm" />
-            </t-col>
-            <t-col :span="6">
-              <t-time-picker v-model="editStore.closeTime" format="HH:mm" />
-            </t-col>
-          </t-row>
+          <div style="width: 100%;">
+            <div v-for="(h, idx) in editStore.hours" :key="idx" style="display:flex; align-items:center; gap:8px; margin-bottom:8px; width: 100%;">
+              <t-time-picker v-model="h.openTime" format="HH:mm" style="flex: 1;" />
+              <span style="color: #9CA3AF;">至</span>
+              <t-time-picker v-model="h.closeTime" format="HH:mm" style="flex: 1;" />
+              <t-button v-if="editStore.hours.length > 1" theme="danger" variant="text" style="padding: 0 4px;" @click="editStore.hours.splice(idx, 1)">
+                删除
+              </t-button>
+            </div>
+            <t-button variant="dashed" style="width:100%;" @click="editStore.hours.push({ openTime: '09:00', closeTime: '18:00' })">
+              + 添加时间段
+            </t-button>
+          </div>
         </t-form-item>
         <t-form-item label="负责人">
           <t-input v-model="editStore.manager" />

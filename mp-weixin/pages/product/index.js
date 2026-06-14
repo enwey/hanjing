@@ -94,7 +94,15 @@ const a = () => "../../components/base/hj-navbar.js",
       function t(e) {
         return "¥" + (e / 100).toFixed(2);
       }
+      const navbarHeight = e.ref(88);
       e.onMounted(() => {
+        try {
+          const windowInfo = e.index.getWindowInfo();
+          const statusBarHeight = windowInfo.statusBarHeight || 44;
+          navbarHeight.value = statusBarHeight + 44;
+        } catch (err) {
+          console.error(err);
+        }
         setTimeout(() => {
           ((c.value = l), (o.value = !1));
         }, 300);
@@ -119,6 +127,7 @@ const a = () => "../../components/base/hj-navbar.js",
               ),
             ),
             c: o.value,
+            f: e.unref(navbarHeight),
           },
           o.value
             ? {}

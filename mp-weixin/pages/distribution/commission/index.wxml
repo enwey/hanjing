@@ -1,5 +1,5 @@
 <view class="page data-v-8fd26dea"
-  ><view class="summary data-v-8fd26dea"
+  ><hj-navbar title="佣金明细" show-back="{{true}}" /><view class="summary data-v-8fd26dea"
     ><view class="sum-item data-v-8fd26dea"
       ><text class="sum-val data-v-8fd26dea">{{a}}</text
       ><text class="sum-label data-v-8fd26dea">累计佣金</text></view
@@ -10,7 +10,7 @@
       ><text class="sum-val data-v-8fd26dea">{{c}}</text
       ><text class="sum-label data-v-8fd26dea">已结算</text></view
     ></view
-  ><scroll-view scroll-x class="tabs data-v-8fd26dea"
+  ><scroll-view scroll-x class="tabs data-v-8fd26dea" enhanced="{{true}}" show-scrollbar="{{false}}"
     ><text
       wx:for="{{d}}"
       wx:for-item="t"

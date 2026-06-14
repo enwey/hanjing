@@ -83,9 +83,13 @@
   z-index: 1;
 }
 .hj-navbar-back-icon.data-v-1529c78d {
-  font-size: 28px;
-  font-weight: 300;
-  line-height: 1;
+  width: 12px;
+  height: 12px;
+  border-left: 2px solid;
+  border-bottom: 2px solid;
+  transform: rotate(45deg);
+  display: block;
+  margin-left: 4px;
 }
 .hj-navbar-title.data-v-1529c78d {
   font-size: 17px;

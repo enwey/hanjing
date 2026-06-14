@@ -1,8 +1,9 @@
 {
   "navigationBarTitleText": "分销中心",
-  "navigationBarBackgroundColor": "#FFF9E6",
+  "navigationBarBackgroundColor": "#FFFFFF",
   "navigationBarTextStyle": "black",
   "usingComponents": {
-    "hj-empty": "../../../components/base/hj-empty/hj-empty"
+    "hj-empty": "../../../components/base/hj-empty/hj-empty",
+    "hj-navbar": "../../../components/base/hj-navbar"
   }
 }

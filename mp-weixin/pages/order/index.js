@@ -1,5 +1,6 @@
 "use strict";
-const e = require("../../common/vendor.js");
+const e = require("../../common/vendor.js"),
+  api = require("../../api/index.js");
 (require("../../mock/index.js"), Math || a());
 const a = () => "../../components/base/hj-navbar.js",
   t = e.defineComponent({
@@ -31,7 +32,7 @@ const a = () => "../../components/base/hj-navbar.js",
         n = e.ref("all"),
         r = e.ref([]),
         u = e.ref(!0),
-        o = computed(() =>
+        o = e.computed(() =>
           "all" === n.value
             ? r.value
             : r.value.filter((e) => e.status === n.value),
@@ -39,10 +40,30 @@ const a = () => "../../components/base/hj-navbar.js",
       function i(e) {
         return "¥" + (e / 100).toFixed(2);
       }
+      const navbarHeight = e.ref(88);
+      e.onMounted(() => {
+        try {
+          const windowInfo = e.index.getWindowInfo();
+          const statusBarHeight = windowInfo.statusBarHeight || 44;
+          navbarHeight.value = statusBarHeight + 44;
+        } catch (err) {
+          console.error(err);
+        }
+      });
+      e.onShow(async () => {
+        try {
+          const res = await api.getOrders();
+          r.value = res.data || res;
+        } catch (err) {
+          console.error(err);
+        } finally {
+          u.value = !1;
+        }
+      });
       return (a, r) =>
         e.e(
           {
-            a: e.p({ title: "我的订单" }),
+            a: e.p({ title: "我的订单", "show-back": !0 }),
             b: e.f(t, (a, t, d) =>
               e.e(
                 { a: e.t(a.label), b: n.value === a.key },
@@ -58,6 +79,7 @@ const a = () => "../../components/base/hj-navbar.js",
               ),
             ),
             c: u.value,
+            f: e.unref(navbarHeight),
           },
           u.value
             ? {}

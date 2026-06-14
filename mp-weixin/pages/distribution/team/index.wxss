@@ -111,10 +111,33 @@
   flex: 1;
   margin: 0 16rpx;
 }
+.name-wrap.data-v-e9b2690b {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4rpx;
+}
 .name.data-v-e9b2690b {
   font-size: 28rpx;
   color: #1f2937;
-  display: block;
+}
+.status-badge.data-v-e9b2690b {
+  font-size: 18rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  margin-left: 12rpx;
+  font-weight: 500;
+}
+.status-badge.booked.data-v-e9b2690b {
+  background: #eef4ff;
+  color: #3b6bf5;
+}
+.status-badge.unpaid.data-v-e9b2690b {
+  background: #fff9e6;
+  color: #f5a623;
+}
+.status-badge.paid.data-v-e9b2690b {
+  background: #d3f5e3;
+  color: #1a9d5c;
 }
 .meta.data-v-e9b2690b {
   font-size: 22rpx;

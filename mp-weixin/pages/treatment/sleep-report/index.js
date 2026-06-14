@@ -66,42 +66,42 @@ const t = () => "../../../components/base/hj-navbar.js",
           return (
             e.compliance >= 85
               ? t.push({
-                  icon: "OK",
+                  icon: "✅",
                   text: `您的佩戴依从率达到 ${e.compliance}%，远超平均水平，继续保持！`,
                   type: "good",
                 })
               : e.compliance < 60 &&
                 t.push({
-                  icon: "!",
+                  icon: "⚠️",
                   text: `依从率仅 ${e.compliance}%，建议设置手机闹钟提醒佩戴。`,
                   type: "warn",
                 }),
             e.weekAvg >= 7
               ? t.push({
-                  icon: "Zzz",
+                  icon: "💤",
                   text: `平均佩戴 ${e.weekAvg}h，已达到理想时长，治疗效果良好。`,
                   type: "good",
                 })
               : e.weekAvg < 5 &&
                 t.push({
-                  icon: "~",
+                  icon: "📉",
                   text: `平均佩戴 ${e.weekAvg}h，建议逐步延长至 6-8h 以获得最佳效果。`,
                   type: "warn",
                 }),
             e.avgComfort >= 4
               ? t.push({
-                  icon: ":)",
+                  icon: "😊",
                   text: `设备舒适度评分 ${e.avgComfort}/5，适配良好。`,
                   type: "good",
                 })
               : e.avgComfort < 3 &&
                 t.push({
-                  icon: "!",
+                  icon: "⚠️",
                   text: `舒适度评分偏低（${e.avgComfort}/5），建议预约医生进行设备调整。`,
                   type: "warn",
                 }),
             t.push({
-              icon: "~",
+              icon: "💡",
               text: "建议每周至少佩戴 6 晚，连续使用 3 个月以上效果最显著。",
               type: "info",
             }),
@@ -113,7 +113,7 @@ const t = () => "../../../components/base/hj-navbar.js",
         o.value = e;
       }
       function w() {
-        e.index.navigateTo({ url: "/pages/treatment/appointment/index" });
+        e.index.switchTab({ url: "/pages/appointment/index" });
       }
       return (
         e.onMounted(() => {

@@ -5,7 +5,7 @@
     u-i="02d25a67-0"
     bind:__l="__l"
     u-p="{{a}}"
-  /><scroll-view class="page-content data-v-02d25a67" scroll-y
+  /><scroll-view class="page-content data-v-02d25a67" scroll-y enhanced="{{true}}" show-scrollbar="{{false}}"
     ><view class="product-hero data-v-02d25a67" style="{{'background:' + g}}"
       ><image
         wx:if="{{b}}"

@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "医生详情",
+  "navigationStyle": "custom",
   "usingComponents": {
     "hj-navbar": "../../components/base/hj-navbar",
     "hj-doctor-card": "../../components/business/hj-doctor-card"

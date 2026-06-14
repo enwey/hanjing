@@ -58,7 +58,7 @@
   border-radius: 16px;
   padding: 16px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
 }
 .apt-header.data-v-74fd48b7 {
   display: flex;

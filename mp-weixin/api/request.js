@@ -40,7 +40,67 @@ function request(options, mockCallback) {
           resolve(res.data);
         } else if (res.statusCode === 401) {
           wx.removeStorageSync("access_token");
-          reject(new Error("未授权或登录过期"));
+          if (options.url === "/auth/wx-login") {
+            reject(new Error("登录授权失败"));
+            return;
+          }
+          console.warn("[Request] 401 Unauthorized, triggering silent login...");
+          wx.login({
+            success: (loginRes) => {
+              if (loginRes.code) {
+                wx.request({
+                  url: `${BASE_URL}/auth/wx-login`,
+                  method: "POST",
+                  data: { code: loginRes.code },
+                  success: (loginApiRes) => {
+                    if (loginApiRes.statusCode === 200 && loginApiRes.data && loginApiRes.data.code === 0) {
+                      const newToken = loginApiRes.data.data.access_token;
+                      wx.setStorageSync("access_token", newToken);
+                      console.log("[Request] Silent login successful, retrying original request...");
+                      const retryHeader = {
+                        "content-type": "application/json",
+                        ...options.header,
+                        "Authorization": `Bearer ${newToken}`,
+                      };
+                      wx.request({
+                        url: `${BASE_URL}${options.url}`,
+                        method: options.method || "GET",
+                        data: options.data,
+                        header: retryHeader,
+                        timeout: 3000,
+                        success: (retryRes) => {
+                          if (retryRes.statusCode >= 200 && retryRes.statusCode < 300) {
+                            resolve(retryRes.data);
+                          } else {
+                            console.warn("[Request Retry Fail] Response status: " + retryRes.statusCode + ". Falling back to mock data...");
+                            mockCallback().then(resolve).catch(reject);
+                          }
+                        },
+                        fail: (err) => {
+                          console.warn("[Request Retry Fail] Connection failed. Falling back to mock data...");
+                          mockCallback().then(resolve).catch(reject);
+                        }
+                      });
+                    } else {
+                      console.warn("[Request Silent Login Fail] Invalid token response. Falling back to mock data...");
+                      mockCallback().then(resolve).catch(reject);
+                    }
+                  },
+                  fail: (err) => {
+                    console.warn("[Request Silent Login Fail] HTTP call failed. Falling back to mock data...");
+                    mockCallback().then(resolve).catch(reject);
+                  }
+                });
+              } else {
+                console.warn("[Request Silent Login Fail] wx.login returned no code. Falling back to mock data...");
+                mockCallback().then(resolve).catch(reject);
+              }
+            },
+            fail: (err) => {
+              console.warn("[Request Silent Login Fail] wx.login call failed. Falling back to mock data...");
+              mockCallback().then(resolve).catch(reject);
+            }
+          });
         } else {
           console.warn(
             `[Request Error] Status ${res.statusCode}. Falling back to mock data...`,

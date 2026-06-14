@@ -56,7 +56,7 @@ const o = () => "../../components/base/hj-navbar.js",
         (t, o) =>
           e.e(
             {
-              a: e.p({ title: "医患社区" }),
+              a: e.p({ title: "医患社区", "show-back": !0 }),
               b: e.o(d, "61"),
               c: e.f(
                 [

@@ -132,7 +132,7 @@
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--card-shadow);
 }
 .result-title.data-v-1973d3c1 {
   font-size: 16px;

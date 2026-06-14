@@ -76,7 +76,7 @@
   margin-bottom: 10px;
   display: flex;
   align-items: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--card-shadow);
 }
 .member-avatar.data-v-30acdad2 {
   width: 48px;

@@ -1,5 +1,5 @@
 <view class="page data-v-1157dc5a"
-  ><view class="list data-v-1157dc5a"
+  ><hj-navbar title="提现记录" show-back="{{true}}" /><view class="list data-v-1157dc5a"
     ><view
       wx:for="{{a}}"
       wx:for-item="r"

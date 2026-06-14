@@ -81,7 +81,13 @@ const loadPatientDetails = async () => {
       nextFollowup: '待随访',
       diagnosis: '阻塞性睡眠呼吸暂停 (OSAHS)',
       plan: '配戴阻鼾器 HJ-MAD-03 进行下颌前移微调治疗',
-      lastVisit: p.appointments && p.appointments[0] ? `${p.appointments[0].appointment_date} ${p.appointments[0].store_name} ${p.appointments[0].doctor_name}` : '暂无记录'
+      lastVisit: p.appointments && p.appointments[0] ? `${(() => {
+        const d = new Date(p.appointments[0].appointment_date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      })()} ${p.appointments[0].store_name} ${p.appointments[0].doctor_name}` : '暂无记录'
     }
 
     // Map departments progress
@@ -113,7 +119,13 @@ const loadPatientDetails = async () => {
         }
         return {
           id: a.id.toString(),
-          date: `${a.appointment_date} · ${a.store_name} · ${a.doctor_name}`,
+          date: `${(() => {
+            const d = new Date(a.appointment_date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          })()} · ${a.store_name} · ${a.doctor_name}`,
           title,
           content: a.symptom_desc || '无主诉描述',
           color

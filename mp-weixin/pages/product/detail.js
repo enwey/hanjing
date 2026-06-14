@@ -13,6 +13,11 @@ const i = () => "../../components/base/hj-navbar.js",
         return "¥" + (e / 100).toFixed(2);
       }
       function o() {
+        const token = e.index.getStorageSync("access_token");
+        if (!token) {
+          e.index.navigateTo({ url: "/pages/auth/login" });
+          return;
+        }
         e.index.showToast({ title: "已加入购物车", icon: "success" });
       }
       return (
@@ -24,7 +29,7 @@ const i = () => "../../components/base/hj-navbar.js",
         }),
         (a, i) =>
           e.e(
-            { a: e.p({ title: "商品详情" }), b: n.value },
+            { a: e.p({ title: "商品详情", "show-back": !0 }), b: n.value },
             n.value
               ? {}
               : t.value

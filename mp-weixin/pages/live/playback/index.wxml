@@ -1,5 +1,5 @@
 <view class="page data-v-e4fc628d"
-  ><view class="player data-v-e4fc628d"
+  ><hj-navbar title="直播回放" show-back="{{true}}" /><view class="player data-v-e4fc628d"
     ><view class="player-placeholder data-v-e4fc628d"
       ><text class="play-icon data-v-e4fc628d">▶</text
       ><text class="play-text data-v-e4fc628d">回放加载中（模拟）</text

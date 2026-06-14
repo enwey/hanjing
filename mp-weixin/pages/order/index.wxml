@@ -5,7 +5,7 @@
     u-i="a92287bc-0"
     bind:__l="__l"
     u-p="{{a}}" /><view class="page-content data-v-a92287bc"
-    ><scroll-view class="tab-scroll data-v-a92287bc" scroll-x enable-flex
+    ><view class="tab-scroll data-v-a92287bc" style="{{'top:' + f + 'px'}}"
       ><view
         wx:for="{{b}}"
         wx:for-item="tab"
@@ -15,7 +15,7 @@
         ><text class="tab-label data-v-a92287bc">{{tab.a}}</text
         ><view
           wx:if="{{tab.b}}"
-          class="tab-indicator data-v-a92287bc" /></view></scroll-view
+          class="tab-indicator data-v-a92287bc" /></view></view
     ><view wx:if="{{c}}" class="loading-state data-v-a92287bc"
       ><text class="loading-text data-v-a92287bc">加载中...</text></view
     ><view wx:else class="order-list data-v-a92287bc"

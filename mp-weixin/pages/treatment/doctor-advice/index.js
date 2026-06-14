@@ -8,6 +8,9 @@ const t = () => "../../../components/base/hj-navbar.js",
     setup(t) {
       const n = e.ref(!0),
         o = e.ref(null);
+      function u() {
+        e.index.switchTab({ url: "/pages/appointment/index" });
+      }
       return (
         e.onMounted(async () => {
           try {
@@ -31,6 +34,7 @@ const t = () => "../../../components/base/hj-navbar.js",
                   d: e.t(o.value.treatmentPlan),
                   e: e.t(o.value.doctorAdvice),
                   f: e.t(o.value.followupDate || "待预约"),
+                  g: e.o(u, "f2"),
                 }
               : {},
           )

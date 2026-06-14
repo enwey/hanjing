@@ -12,12 +12,24 @@ const o = () => "../../components/base/hj-navbar.js",
         s = t.useAppointmentStore(),
         a = e.ref(!0),
         d = e.ref("");
+      e.onShow(async () => {
+        const token = e.index.getStorageSync("access_token");
+        if (!token) {
+          e.index.navigateTo({ url: "/pages/auth/login" });
+          return;
+        }
+      });
       e.onMounted(async () => {
-        var e, t;
+        const token = e.index.getStorageSync("access_token");
+        if (!token) {
+          e.index.navigateTo({ url: "/pages/auth/login" });
+          return;
+        }
+        var eVal, tVal;
         const o = getCurrentPages(),
-          r = (null == (e = o[o.length - 1].$page) ? void 0 : e.options) || {};
+          r = (null == (eVal = o[o.length - 1].$page) ? void 0 : eVal.options) || {};
         ((d.value =
-          r.storeId || (null == (t = s.selectedStore) ? void 0 : t.id) || ""),
+          r.storeId || (null == (tVal = s.selectedStore) ? void 0 : tVal.id) || ""),
           0 === n.doctors.length &&
             (await n.fetchDoctors({ storeId: d.value })),
           (a.value = !1));

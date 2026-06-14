@@ -57,7 +57,7 @@
   background: #fff;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow);
   margin-bottom: 16px;
 }
 .store-card-image.data-v-3c596062 {
@@ -75,15 +75,24 @@
 .store-card-emoji.data-v-3c596062 {
   font-size: 48px;
 }
-.store-card-closed.data-v-3c596062 {
+.store-card-status-badge.data-v-3c596062 {
   position: absolute;
   top: 12px;
   right: 12px;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
   font-size: 11px;
-  padding: 2px 8px;
+  font-weight: 500;
+  padding: 3px 8px;
   border-radius: 4px;
+  color: #fff;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.store-card-status-badge.open.data-v-3c596062 {
+  background: rgba(34, 197, 94, 0.75);
+}
+.store-card-status-badge.closed.data-v-3c596062 {
+  background: rgba(148, 163, 184, 0.75);
 }
 .store-card-body.data-v-3c596062 {
   padding: 16px;
@@ -93,22 +102,27 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .store-card-name.data-v-3c596062 {
   font-size: 17px;
   font-weight: 600;
   color: #1f2937;
+  white-space: nowrap;
 }
 .store-card-tags.data-v-3c596062 {
   display: flex;
-  gap: 3px;
+  gap: 4px;
+  flex-shrink: 0;
 }
 .store-card-tag.data-v-3c596062 {
-  font-size: 9px;
+  font-size: 11px;
   color: #3b6bf5;
   background: #eef4ff;
-  padding: 2px 4px;
+  padding: 2px 6px;
   border-radius: 4px;
+  white-space: nowrap;
 }
 .store-card-address.data-v-3c596062 {
   font-size: 13px;

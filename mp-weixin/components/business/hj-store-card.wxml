@@ -2,8 +2,10 @@
   ><view class="store-card-image data-v-3c596062"
     ><view class="store-card-image-placeholder data-v-3c596062"
       ><text class="store-card-emoji data-v-3c596062">🏥</text></view
-    ><view wx:if="{{a}}" class="store-card-closed data-v-3c596062"
+    ><view wx:if="{{a}}" class="store-card-status-badge closed data-v-3c596062"
       ><text class="data-v-3c596062">休息中</text></view
+    ><view wx:else class="store-card-status-badge open data-v-3c596062"
+      ><text class="data-v-3c596062">营业中</text></view
     ></view
   ><view class="store-card-body data-v-3c596062"
     ><view class="store-card-header data-v-3c596062"

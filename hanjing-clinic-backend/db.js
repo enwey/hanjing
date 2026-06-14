@@ -128,6 +128,17 @@ export const initDB = async () => {
     );
   `);
 
+  // 4.1 store_hours
+  await query(`
+    CREATE TABLE IF NOT EXISTS store_hours (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      store_id BIGINT UNSIGNED NOT NULL,
+      open_time VARCHAR(10) NOT NULL,
+      close_time VARCHAR(10) NOT NULL,
+      FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
+    );
+  `);
+
   // 5. doctors
   await query(`
     CREATE TABLE IF NOT EXISTS doctors (

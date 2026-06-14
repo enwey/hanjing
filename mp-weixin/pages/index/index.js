@@ -29,6 +29,14 @@ const t = () => "../../components/base/hj-navbar.js",
       function p() {
         e.index.navigateTo({ url: "/pages/assessment/index" });
       }
+      function u() {
+        const token = e.index.getStorageSync("access_token");
+        if (!token) {
+          e.index.navigateTo({ url: "/pages/auth/login" });
+          return;
+        }
+        e.index.navigateTo({ url: "/pages/profile/medical-records/index" });
+      }
       return (
         e.onMounted(async () => {
           (await Promise.all([n.fetchStores(), s.fetchDoctors()]),
@@ -64,10 +72,7 @@ const t = () => "../../components/base/hj-navbar.js",
             (o) => e.index.switchTab({ url: "/pages/treatment/index" }),
             "82",
           ),
-          f: e.o(
-            (o) => e.index.switchTab({ url: "/pages/profile/index" }),
-            "04",
-          ),
+          f: e.o(u, "04"),
           g: e.o(
             (o) => e.index.switchTab({ url: "/pages/appointment/index" }),
             "af",

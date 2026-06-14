@@ -5,6 +5,15 @@ export const seedData = async () => {
   const adminCount = await query('SELECT count(*) as count FROM admin_users');
   if (adminCount[0].count > 0) {
     console.log('Database already has data. Skipping seeding.');
+    try {
+      const existingDist = await query("SELECT * FROM distributors WHERE invite_code = 'LIMING666'");
+      if (existingDist.length === 0) {
+        console.log('Injecting new distribution seed data (empty status test)...');
+        await injectNewDistributionSeeds();
+      }
+    } catch (e) {
+      console.error('Failed to inject new distribution seeds:', e);
+    }
     return;
   }
 
@@ -61,6 +70,12 @@ export const seedData = async () => {
   await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store2.id, '免费停车']);
   await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store2.id, '地铁直达']);
   await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [store3.id, '热门']);
+
+  // Store Hours (Default single range)
+  await run(`INSERT INTO store_hours (store_id, open_time, close_time) VALUES (?, ?, ?)`, [store1.id, '08:30', '18:00']);
+  await run(`INSERT INTO store_hours (store_id, open_time, close_time) VALUES (?, ?, ?)`, [store2.id, '09:00', '17:30']);
+  await run(`INSERT INTO store_hours (store_id, open_time, close_time) VALUES (?, ?, ?)`, [store3.id, '08:30', '20:00']);
+  await run(`INSERT INTO store_hours (store_id, open_time, close_time) VALUES (?, ?, ?)`, [store4.id, '09:00', '18:00']);
 
   // 4. Admin Users
   const passwordHash = crypto.createHash('sha256').update('admin123').digest('hex');
@@ -756,5 +771,91 @@ export const seedData = async () => {
     );
   }
 
+  await injectNewDistributionSeeds();
   console.log('Database seeded successfully.');
+};
+
+const injectNewDistributionSeeds = async () => {
+  try {
+    // 1. Get user1 and user2
+    const user1 = await query("SELECT id FROM users WHERE openid = 'openid_user_1'");
+    const user2 = await query("SELECT id FROM users WHERE openid = 'openid_user_2'");
+    if (user1.length === 0 || user2.length === 0) {
+      console.log('Skipping seed injection: seeded users not found.');
+      return;
+    }
+    const user1Id = user1[0].id;
+    const user2Id = user2[0].id;
+
+    // 2. Add User2 as a distributor
+    await run(
+      `INSERT INTO distributors (user_id, nickname, avatar_url, level, invite_code, invite_qr_url, total_commission, available_commission, withdrawn_amount, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        user2Id,
+        '睡眠推广员-李明',
+        '/static/demo/avatar-2.jpg',
+        'silver',
+        'LIMING666',
+        '/static/demo/qrcode.png',
+        0,
+        0,
+        0,
+        'active'
+      ]
+    );
+
+    // 3. Relationship: User1 (张华) recommended User2 (李明)
+    await run(
+      `INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, ?)`,
+      [user1Id, user2Id, 1]
+    );
+
+    // 4. Create new user 4 recommended by User2
+    const user4 = await run(
+      `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['openid_user_4', '微信用户-赵达', '13600136004', null, 'normal', 0, 0]
+    );
+
+    const patient5 = await run(
+      `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [user4.id, '赵达', 'self', 1, 35, '13600136004', 1]
+    );
+
+    // 5. Relationship: User2 (李明) recommended User4 (赵达)
+    await run(
+      `INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, ?)`,
+      [user2Id, user4.id, 1]
+    );
+
+    // 6. Create appointment for User4 (赵达)
+    const store = await query("SELECT id FROM stores LIMIT 1");
+    const doctor = await query("SELECT id FROM doctors LIMIT 1");
+    const schedule = await query("SELECT id FROM doctor_schedules LIMIT 1");
+    
+    if (store.length > 0 && doctor.length > 0 && schedule.length > 0) {
+      await run(
+        `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          'AP202606140001',
+          user4.id,
+          patient5.id,
+          store[0].id,
+          doctor[0].id,
+          schedule[0].id,
+          '2026-06-14',
+          '10:00-10:30',
+          'first',
+          'pending',
+          '经常打鼾，被家人抱怨'
+        ]
+      );
+      console.log('Successfully injected new distribution seed data.');
+    } else {
+      console.log('Skipping appointment seeding: store, doctor or schedule missing.');
+    }
+  } catch (error) {
+    console.error('Failed to inject distribution seeds:', error);
+  }
 };
