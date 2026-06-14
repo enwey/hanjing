@@ -5,7 +5,7 @@ import { MessagePlugin } from 'tdesign-vue-next'
 
 const router = useRouter()
 const searchKeyword = ref('')
-const filterType = ref('全部')
+const filterType = ref('全部类型')
 const filterStore = ref('全部门店')
 const currentPage = ref(1)
 const pageSize = ref(30)
@@ -75,7 +75,7 @@ const filteredOrders = computed(() => {
   }
 
   // Type Filter
-  if (filterType.value && filterType.value !== '全部') {
+  if (filterType.value && filterType.value !== '全部类型') {
     if (filterType.value === '挂号') {
       list = list.filter(o => o.product.includes('诊') || o.product.includes('挂号'))
     } else if (filterType.value === '套餐') {
@@ -153,24 +153,18 @@ function handleShip(row: Order) {
         </div>
         <div style="margin-left:auto;display:flex;gap:10px;align-items:center;">
           <input type="text" v-model="searchKeyword" class="filter-input" placeholder="🔍 搜索订单号/患者名" style="width:200px;">
-          <div class="filter-group">
-            <span class="filter-label">类型</span>
-            <select v-model="filterType" class="filter-select">
-              <option value="全部">全部</option>
-              <option value="挂号">挂号</option>
-              <option value="套餐">套餐</option>
-              <option value="器械">器械</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <span class="filter-label">门店</span>
-            <select v-model="filterStore" class="filter-select">
-              <option value="全部门店">全部门店</option>
-              <option value="龙岗总店">龙岗总店</option>
-              <option value="南山分院">南山分院</option>
-              <option value="福田门诊部">福田门诊部</option>
-            </select>
-          </div>
+          <select v-model="filterType" class="filter-select">
+            <option value="全部类型">全部类型</option>
+            <option value="挂号">挂号</option>
+            <option value="套餐">套餐</option>
+            <option value="器械">器械</option>
+          </select>
+          <select v-model="filterStore" class="filter-select">
+            <option value="全部门店">全部门店</option>
+            <option value="龙岗总店">龙岗总店</option>
+            <option value="南山分院">南山分院</option>
+            <option value="福田门诊部">福田门诊部</option>
+          </select>
         </div>
       </div>
 
