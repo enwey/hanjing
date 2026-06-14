@@ -168,13 +168,114 @@ const startTreatment = (item: QueueItem) => {
 const completeTreatment = async (item: QueueItem) => {
   try {
     await request.put(`/api/admin/appointments/${item.id}`, { status: 'completed' })
-    MessagePlugin.success(`患者 ${item.patientName} 就诊诊断已完成`)
+    MessagePlugin.success(`患者 ${item.patientName} 诊疗已完成`)
     fetchAppointments()
-    if (window.confirm(`患者 ${item.patientName} 诊疗已完成，是否立即跳转到收银结算台？`)) {
-      router.push(`/checkout?patientId=${item.patientId}`)
+    // Directly open checkout cashier dialog
+    openCheckoutDialog(item)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+// Cashier Checkout dialog state & actions inside queue console
+const checkoutVisible = ref(false)
+const checkoutLoading = ref(false)
+const checkoutSuccess = ref(false)
+const orderResult = ref<any>(null)
+
+const productOptions = [
+  { id: '1', name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000 },
+  { id: '2', name: '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', price: 4900 },
+  { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
+  { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
+  { id: '5', name: '诊所专家诊断评估费', price: 50000 }
+]
+
+const billingItems = ref<Array<{ product_id: string; product_name: string; price: number; quantity: number }>>([])
+const discountAmount = ref<number>(3000)
+const payMethod = ref<string>('wechat')
+
+const totalAmount = computed(() => {
+  return billingItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+})
+
+const payableAmount = computed(() => {
+  const diff = totalAmount.value - discountAmount.value
+  return diff > 0 ? diff : 0
+})
+
+function addBillingItem() {
+  billingItems.value.push({ product_id: '1', product_name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000, quantity: 1 })
+}
+
+function removeBillingItem(idx: number) {
+  billingItems.value.splice(idx, 1)
+}
+
+function onProductChange(idx: number, prodId: string) {
+  const prod = productOptions.find(p => p.id === prodId)
+  if (prod) {
+    billingItems.value[idx].product_name = prod.name
+    billingItems.value[idx].price = prod.price
+  }
+}
+
+function openCheckoutDialog(item: QueueItem) {
+  selectedQueueItem.value = item
+  billingItems.value = [
+    { product_id: '4', product_name: '诊所首诊挂号门诊费', price: 20000, quantity: 1 }
+  ]
+  discountAmount.value = 3000
+  payMethod.value = 'wechat'
+  checkoutSuccess.value = false
+  orderResult.value = null
+  checkoutVisible.value = true
+}
+
+function closeCheckoutDialog() {
+  checkoutVisible.value = false
+  selectedQueueItem.value = null
+}
+
+function handlePrintInvoice() {
+  MessagePlugin.success('已发送打印指令，正在打印交易凭证小票...')
+}
+
+async function submitCheckout() {
+  if (!selectedQueueItem.value) return
+  if (billingItems.value.length === 0) {
+    MessagePlugin.warning('结账明细不能为空')
+    return
+  }
+  checkoutLoading.value = true
+  try {
+    const payload = {
+      patient_id: parseInt(selectedQueueItem.value.patientId, 10),
+      items: billingItems.value,
+      pay_amount: payableAmount.value,
+      discount_amount: discountAmount.value,
+      pay_method: payMethod.value
+    }
+    const res: any = await request.post('/api/admin/orders', payload)
+    if (res.code === 200) {
+      MessagePlugin.success('收银收费结算交易成功！')
+      orderResult.value = {
+        orderNo: res.data.order_no,
+        patientName: selectedQueueItem.value.patientName,
+        total: (totalAmount.value / 100).toFixed(2),
+        discount: (discountAmount.value / 100).toFixed(2),
+        payable: (payableAmount.value / 100).toFixed(2),
+        payMethodText: payMethod.value === 'wechat' ? '微信支付' : payMethod.value === 'alipay' ? '支付宝' : 'POS线下刷卡',
+        time: new Date().toLocaleString()
+      }
+      checkoutSuccess.value = true
+      fetchAppointments()
     }
   } catch (error) {
     console.error(error)
+    MessagePlugin.error('结算收费失败')
+  } finally {
+    checkoutLoading.value = false
   }
 }
 
@@ -238,6 +339,9 @@ onMounted(() => {
               </t-button>
               <t-button size="small" theme="success" @click="completeTreatment(q.current)">
                 ✅ 诊疗完成
+              </t-button>
+              <t-button size="small" theme="warning" variant="outline" @click="openCheckoutDialog(q.current)">
+                🪙 收银结算
               </t-button>
             </div>
           </div>
@@ -315,6 +419,113 @@ onMounted(() => {
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">BMI</label>
           <input type="text" class="form-control" :value="computedBmi" disabled placeholder="输入身高体重后自动计算" style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
+        </div>
+      </div>
+    </t-dialog>
+
+    <!-- 收银结算弹窗 -->
+    <t-dialog
+      v-model:visible="checkoutVisible"
+      header="诊所收银结算"
+      width="680px"
+      :footer="false"
+      @close="closeCheckoutDialog"
+    >
+      <div v-if="checkoutSuccess" style="display: flex; flex-direction: column; align-items: center; padding: 10px 0;">
+        <div class="invoice-box" style="width: 100%; background: #FCFCFA; border: 1px solid #E5E7EB; border-radius: 8px; padding: 20px; font-family: monospace;">
+          <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #000;">鼾静健康诊所 · 收费凭证</div>
+          <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">================================</div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>交易单号:</span> <span>{{ orderResult?.orderNo }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>结账客户:</span> <span>{{ orderResult?.patientName }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>交易时间:</span> <span>{{ orderResult?.time }}</span></div>
+          <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">--------------------------------</div>
+          <div v-for="item in billingItems" :key="item.product_id" style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+            <span>{{ item.product_name }} x{{ item.quantity }}</span>
+            <span>¥{{ ((item.price * item.quantity) / 100).toFixed(2) }}</span>
+          </div>
+          <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">--------------------------------</div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>总计金额:</span> <span>¥{{ orderResult?.total }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: #EF4444;"><span>优惠折扣:</span> <span>-¥{{ orderResult?.discount }}</span></div>
+          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; color: #000; margin-bottom: 4px;">
+            <span>实收金额:</span> <span>¥{{ orderResult?.payable }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>支付方式:</span> <span>{{ orderResult?.payMethodText }}</span></div>
+          <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">================================</div>
+          <div style="font-size: 11px; color: #9CA3AF; text-align: center; margin-top: 10px; line-height: 1.4;">
+            谢谢惠顾，定制式舌型阻鼾器会在1-3个工作日内根据您的三维口腔模型制作完成并包邮寄送。
+          </div>
+        </div>
+        <div style="margin-top: 20px; display: flex; gap: 12px;">
+          <t-button variant="outline" @click="handlePrintInvoice">🖨️ 打印小票</t-button>
+          <t-button theme="primary" @click="closeCheckoutDialog">完成结算</t-button>
+        </div>
+      </div>
+
+      <div v-else style="display: flex; gap: 20px; padding: 10px 0;">
+        <!-- Left: billing form -->
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">就诊患者</label>
+            <input type="text" class="form-control" :value="selectedQueueItem?.patientName" disabled style="background-color: #F3F4F6; outline: none;">
+          </div>
+          
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="form-label" style="margin-bottom: 0;">收费项目明细</label>
+              <t-button size="small" theme="primary" variant="outline" @click="addBillingItem">
+                添加项目
+              </t-button>
+            </div>
+            <div v-for="(item, idx) in billingItems" :key="idx" style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+              <t-select
+                v-model="item.product_id"
+                :options="productOptions.map(p => ({ label: p.name, value: p.id }))"
+                style="flex: 1;"
+                @change="(val: any) => onProductChange(idx, val)"
+              />
+              <t-input-number v-model="item.quantity" :min="1" style="width: 80px;" />
+              <div style="width: 80px; text-align: right; font-weight: 700; font-size: 13px; color: #1F2937;">
+                ¥{{ ((item.price * item.quantity) / 100).toFixed(2) }}
+              </div>
+              <t-button theme="danger" variant="text" size="small" @click="removeBillingItem(idx)">删除</t-button>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 16px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">卡券折扣金额 (元)</label>
+              <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="val => `¥${(val / 100).toFixed(2)}`" style="width: 100%;" />
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">支付方式</label>
+              <t-select v-model="payMethod" :options="[
+                { label: '微信支付', value: 'wechat' },
+                { label: '支付宝', value: 'alipay' },
+                { label: 'POS线下刷卡', value: 'pos' }
+              ]" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Summary -->
+        <div style="width: 200px; background: #F9FAFB; padding: 16px; border-radius: 8px; border: 1px solid #E5E7EB; display: flex; flex-direction: column;">
+          <div style="font-size: 14px; font-weight: bold; color: #1F2937; margin-bottom: 12px; border-bottom: 1px solid #E5E7EB; padding-bottom: 8px;">结算金额</div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #4B5563; margin-bottom: 8px;">
+            <span>项目总额</span>
+            <span>¥{{ (totalAmount / 100).toFixed(2) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px; color: #4B5563; margin-bottom: 12px;">
+            <span>折扣金额</span>
+            <span style="color: #EF4444;">-¥{{ (discountAmount / 100).toFixed(2) }}</span>
+          </div>
+          <div style="height: 1px; background: #E5E7EB; margin-bottom: 12px;"></div>
+          <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 24px;">
+            <span style="font-size: 11px; color: #9CA3AF;">应收总额</span>
+            <span style="font-size: 22px; font-weight: 800; color: #1A9D5C;">¥{{ (payableAmount / 100).toFixed(2) }}</span>
+          </div>
+          <t-button size="large" theme="success" block :loading="checkoutLoading" @click="submitCheckout" style="margin-top: auto;">
+            确认收款
+          </t-button>
         </div>
       </div>
     </t-dialog>
