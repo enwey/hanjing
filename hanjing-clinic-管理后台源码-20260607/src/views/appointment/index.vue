@@ -499,11 +499,7 @@ async function submitCheckout() {
                     class="btn btn-xs btn-warning"
                     @click="callPatient(row.patient, row.doctor)"
                   >📢 叫号</button>
-                  <button
-                    v-if="row.status === 'waiting'"
-                    class="btn btn-xs btn-success"
-                    @click="completeTreatment(row)"
-                  >✅ 完成诊疗</button>
+
 
                   <!-- status is completed (待结算) -->
                   <button
