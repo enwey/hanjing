@@ -49,8 +49,8 @@
           <text class="doc-name-large data-v-7e5a1194">{{g}}</text>
           <text class="doc-title-badge data-v-7e5a1194">{{h}}</text>
         </view>
-        <text class="doc-dept data-v-7e5a1194">鼾静健康医疗适配中心 · 门诊医生</text>
-        <text class="doc-hospital data-v-7e5a1194">擅长睡眠呼吸暂停综合症适配调谐与随访</text>
+        <text class="doc-dept data-v-7e5a1194">{{doctorDept}}</text>
+        <text class="doc-hospital data-v-7e5a1194">{{doctorIntro}}</text>
       </view>
     </view>
 
