@@ -84,6 +84,20 @@ const o = () => "../../components/base/hj-navbar.js",
         }
       }
 
+      function navigateToStore() {
+        if (u.value && u.value.latitude && u.value.longitude) {
+          e.index.openLocation({
+            latitude: parseFloat(u.value.latitude),
+            longitude: parseFloat(u.value.longitude),
+            name: u.value.name,
+            address: u.value.address,
+            scale: 18
+          });
+        } else {
+          e.index.showToast({ title: "未配置位置信息", icon: "none" });
+        }
+      }
+
       return (
         e.onMounted(async () => {
           var e, t, n;
@@ -131,6 +145,7 @@ const o = () => "../../components/base/hj-navbar.js",
                     onCopy: e.o(copyNo),
                     onCancel: e.o(cancelAppt),
                     onReschedule: e.o(rescheduleAppt),
+                    onNavigateToStore: e.o(navigateToStore),
                     c: e.p({
                       text: ((v = r.value.status),
                       n.AppointmentStatusMap[v] ||

@@ -309,6 +309,24 @@
   align-items: flex-start;
 }
 
+.detail-row.detail-row--clickable.data-v-7e5a1194:active {
+  opacity: 0.7;
+}
+
+.row-value-group.data-v-7e5a1194 {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+.nav-icon.data-v-7e5a1194 {
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
 .row-label.data-v-7e5a1194 {
   font-size: 13px;
   color: #9ca3af;

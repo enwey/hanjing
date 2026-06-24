@@ -72,9 +72,12 @@
           <text class="row-label data-v-7e5a1194">就诊门诊</text>
           <text class="row-value data-v-7e5a1194">{{e}}</text>
         </view>
-        <view class="detail-row data-v-7e5a1194">
+        <view class="detail-row detail-row--clickable data-v-7e5a1194" bindtap="{{onNavigateToStore}}">
           <text class="row-label data-v-7e5a1194">门店地址</text>
-          <text class="row-value row-value--small data-v-7e5a1194">{{f}}</text>
+          <view class="row-value-group data-v-7e5a1194">
+            <text class="row-value row-value--small data-v-7e5a1194">{{f}}</text>
+            <image class="nav-icon data-v-7e5a1194" src="/static/icons/map-pin.svg" />
+          </view>
         </view>
         <view class="detail-row data-v-7e5a1194">
           <text class="row-label data-v-7e5a1194">门诊类型</text>
