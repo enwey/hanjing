@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>挂号预约成功 - pages/appointment/success</title>
+<title>鼾静健康诊所 - pages/appointment/doctor-list</title>
 <style>
 :root {
   --color-primary-50: #eef4ff;
@@ -1372,7 +1372,7 @@ button:after {
 }
 
 
-.data-v-baa6e4ef:root {
+.data-v-1b135653:root {
   --color-primary-50: #eef4ff;
   --color-primary-100: #d9e6ff;
   --color-primary-300: #8eafff;
@@ -1427,102 +1427,36 @@ button:after {
   --span-2xl: 24px;
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
-..phone-screen, .phone-standalone.data-v-baa6e4ef {
+..phone-screen, .phone-standalone.data-v-1b135653 {
   min-height: 100vh;
   background: #f9fafb;
 }
-..phone-screen, .phone-standalone-content.data-v-baa6e4ef {
-  padding: 0 24px;
+..phone-screen, .phone-standalone-content.data-v-1b135653 {
+  padding: 0 16px;
 }
-.success-icon.data-v-baa6e4ef {
-  display: flex;
-  justify-content: center;
-  padding: 40px 0 20px;
-}
-.success-medical-icon.data-v-baa6e4ef {
-  width: 80px;
-  height: 80px;
-  transform: translateX(-4px);
-}
-.success-title.data-v-baa6e4ef {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1f2937;
-  span-align: center;
-  display: block;
-  margin-bottom: 8px;
-}
-.success-desc.data-v-baa6e4ef {
-  font-size: 14px;
-  color: #6b7280;
-  span-align: center;
-  display: block;
-  margin-bottom: 32px;
-}
-.summary-card.data-v-baa6e4ef {
-  background: #fff;
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 24px;
-  box-shadow: var(--card-shadow);
-}
-.summary-row.data-v-baa6e4ef {
+.section-header.data-v-1b135653 {
   display: flex;
   align-items: center;
-  padding: 10px 0;
+  justify-content: space-between;
+  padding: 16px 0;
 }
-.summary-row.data-v-baa6e4ef:not(:last-child) {
-  border-bottom: 1px solid #f3f4f6;
-}
-.summary-label.data-v-baa6e4ef {
-  font-size: 14px;
-  color: #9ca3af;
-  width: 72px;
-}
-.summary-value.data-v-baa6e4ef {
-  font-size: 15px;
-  color: #1f2937;
-  flex: 1;
-}
-.summary-value--no.data-v-baa6e4ef {
-  color: #3b6bf5;
-  font-family:
-    SF Mono,
-    monospace;
-}
-.summary-value--bold.data-v-baa6e4ef {
+.section-title.data-v-1b135653 {
+  font-size: 17px;
   font-weight: 600;
-  color: #3b6bf5;
+  color: #1f2937;
 }
-.actions.data-v-baa6e4ef {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.actions.data-v-baa6e4ef hj-button {
-  display: block;
-}
-.remind.data-v-baa6e4ef {
-  span-align: center;
-  padding-bottom: 40px;
-}
-.remind-item.data-v-baa6e4ef {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.remind-icon.data-v-baa6e4ef {
-  width: 14px;
-  height: 14px;
-  margin-right: 6px;
-  flex-shrink: 0;
-}
-.remind-span.data-v-baa6e4ef {
+.section-hint.data-v-1b135653 {
   font-size: 13px;
   color: #9ca3af;
 }
-
+.empty-state.data-v-1b135653 {
+  padding: 60px 0;
+  span-align: center;
+}
+.empty-span.data-v-1b135653 {
+  font-size: 14px;
+  color: #9ca3af;
+}
 
 body {
   margin: 0;
@@ -1551,7 +1485,7 @@ body {
 </head>
 <body>
 <div class="phone-standalone">
-  <div class="page data-v-baa6e4ef"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">挂号预约成功</div></div></div></div><div class="page-content data-v-baa6e4ef"><div class="success-icon data-v-baa6e4ef"><img class="success-medical-icon data-v-baa6e4ef" mode="aspectFit" src="../mp-weixin/static/icons/success-medical.svg" /></div><span class="success-title data-v-baa6e4ef">预约成功</span><span class="success-desc data-v-baa6e4ef">您的预约已提交，请按时就诊</span><div class="summary-card data-v-baa6e4ef"><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">预约单号</span><span class="summary-value summary-value--no data-v-baa6e4ef">示例</span></div><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">就诊门店</span><span class="summary-value data-v-baa6e4ef">示例</span></div><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">就诊医生</span><span class="summary-value data-v-baa6e4ef"></span></div><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">就诊时间</span><span class="summary-value summary-value--bold data-v-baa6e4ef"> </span></div></div><div class="actions data-v-baa6e4ef"><button class="hj-btn hj-btn-primary"></button></div><div class="remind data-v-baa6e4ef"><div class="remind-item data-v-baa6e4ef"><img class="remind-icon data-v-baa6e4ef" src="../mp-weixin/static/icons/bell.svg" /><span class="remind-text data-v-baa6e4ef">就诊当天将通过微信消息提醒您</span></div></div></div></div>
+  <div class="page data-v-1b135653"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">鼾静健康诊所</div></div></div></div><div class="page-content data-v-1b135653"><div class="section-header data-v-1b135653"><span class="section-title data-v-1b135653">选择医生</span><span class="section-hint data-v-1b135653">共 示例 位医生</span></div><div class="data-v-1b135653"></div></div></div>
 </div>
 </body>
 </html>

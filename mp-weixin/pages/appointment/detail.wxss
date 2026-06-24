@@ -191,20 +191,27 @@
   box-shadow: var(--shadow-md);
 }
 
+.card-premium.doctor-card.data-v-7e5a1194 {
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--card-shadow);
+  border-radius: 16px;
+}
+
 .doctor-card.data-v-7e5a1194 {
   display: flex;
   align-items: center;
 }
 
 .doc-avatar-large.data-v-7e5a1194 {
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: linear-gradient(135deg, #3b6bf5 0%, #8eafff 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 16px;
+  margin-right: 12px;
   position: relative;
   flex-shrink: 0;
 }
@@ -230,7 +237,7 @@
 
 .doc-name-large.data-v-7e5a1194 {
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
   color: #1f2937;
   margin-right: 8px;
 }
@@ -245,9 +252,10 @@
 }
 
 .doc-dept.data-v-7e5a1194 {
-  font-size: 12px;
-  color: #4b5563;
-  margin-bottom: 2px;
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 6px;
+  display: block;
 }
 
 .doc-hospital.data-v-7e5a1194 {

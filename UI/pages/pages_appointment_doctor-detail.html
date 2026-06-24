@@ -546,6 +546,8 @@ button:after {
   gap: 4px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  height: 20px;
+  overflow: hidden;
 }
 .doctor-expertise-tag.data-v-906afe6e {
   font-size: 11px;
@@ -553,6 +555,7 @@ button:after {
   background: #d3f5e3;
   padding: 2px 6px;
   border-radius: 4px;
+  line-height: 1.2;
 }
 .doctor-stats.data-v-906afe6e {
   display: flex;
@@ -817,9 +820,17 @@ button:after {
   margin-bottom: 8px;
 }
 .apt-label.data-v-74fd48b7 {
+  display: flex;
+  align-items: center;
   font-size: 13px;
   color: #9ca3af;
-  width: 56px;
+  width: 60px;
+  flex-shrink: 0;
+  gap: 6px;
+}
+.apt-label-icon.data-v-74fd48b7 {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 .apt-value.data-v-74fd48b7 {
@@ -997,6 +1008,19 @@ button:after {
 }
 .calendar-day--selected .calendar-day-dot.data-v-70d02435 {
   background: #fff;
+}
+.calendar-month-selector.data-v-70d02435 {
+  display: flex;
+  align-items: center;
+}
+.month-arrow.data-v-70d02435 {
+  font-size: 20px;
+  color: #3b6bf5;
+  padding: 0 10px;
+  font-weight: bold;
+}
+.month-arrow.data-v-70d02435:active {
+  opacity: 0.5;
 }
 
 .data-v-822bb649:root {
@@ -1348,90 +1372,262 @@ button:after {
 }
 
 
-.data-v-1b135653:root {
-  --color-primary-50: #eef4ff;
-  --color-primary-100: #d9e6ff;
-  --color-primary-300: #8eafff;
-  --color-primary-500: #3b6bf5;
-  --color-primary-600: #2a52d4;
-  --color-primary-800: #1a3580;
-  --color-secondary-100: #d3f5e3;
-  --color-secondary-500: #1a9d5c;
-  --color-success-500: #22c55e;
-  --color-warning-500: #f59e0b;
-  --color-error-500: #ef4444;
-  --color-gold-400: #f5a623;
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
-  --gradient-primary: linear-gradient(
-    135deg,
-    #3b6bf5 0%,
-    #5a85f5 50%,
-    #8eafff 100%
-  );
-  --gradient-hero: linear-gradient(
-    160deg,
-    #1a3580 0%,
-    #3b6bf5 40%,
-    #8eafff 100%
-  );
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-full: 9999px;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
-  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
-  --font-sans:
-    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
-    BlinkMacSystemFont, sans-serif;
-  --span-xs: 11px;
-  --span-sm: 13px;
-  --span-base: 15px;
-  --span-lg: 17px;
-  --span-xl: 20px;
-  --span-2xl: 24px;
-  --safe-bottom: env(safe-area-inset-bottom, 34px);
-}
-..phone-screen, .phone-standalone.data-v-1b135653 {
+..phone-screen, .phone-standalone.data-v-detail {
   min-height: 100vh;
-  background: #f9fafb;
+  background: #F9FAFB;
+  box-sizing: border-box;
 }
-..phone-screen, .phone-standalone-content.data-v-1b135653 {
-  padding: 0 16px;
+
+..phone-screen, .phone-standalone-content.data-v-detail {
+  padding-bottom: 90px;
 }
-.section-header.data-v-1b135653 {
+
+.doctor-detail-hero.data-v-detail {
+  background: linear-gradient(160deg, #1a3580 0%, #3b6bf5 40%, #8eafff 100%);
+  padding: 60px 20px 28px;
+  span-align: center;
+  position: relative;
+}
+
+.doctor-detail-hero.data-v-detail .doc-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  margin: 0 auto 12px;
+}
+
+.doctor-detail-hero.data-v-detail .doc-avatar-span {
+  font-size: 36px;
+  font-weight: bold;
+  color: #FFFFFF;
+}
+
+.doctor-detail-hero.data-v-detail .doc-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  display: block;
+}
+
+.doctor-detail-hero.data-v-detail .doc-title-span {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 4px;
+  display: block;
+}
+
+.doctor-detail-hero.data-v-detail .doc-tags {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.doc-hero-tag.data-v-detail {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  padding: 3px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.doc-stats-row.data-v-detail {
+  display: flex;
+  margin: -16px 20px 0;
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 2;
+}
+
+.doc-stat.data-v-detail {
+  flex: 1;
+  span-align: center;
+  border-right: 1px solid #f3f4f6;
+}
+
+.doc-stat.data-v-detail:last-child {
+  border-right: none;
+}
+
+.doc-stat.data-v-detail .val {
+  font-size: 20px;
+  font-weight: 700;
+  color: #3b6bf5;
+}
+
+.doc-stat.data-v-detail .val .unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.doc-stat.data-v-detail .lab {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.doc-section.data-v-detail {
+  padding: 20px;
+}
+
+.doc-section-title.data-v-detail {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.doc-section-icon.data-v-detail {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.doc-intro.data-v-detail {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.8;
+}
+
+.doc-specialties.data-v-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.doc-spec-tag.data-v-detail {
+  background: #eef4ff;
+  color: #3b6bf5;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.doc-schedule.data-v-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-row.data-v-detail {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 12px;
 }
-.section-title.data-v-1b135653 {
-  font-size: 17px;
-  font-weight: 600;
-  color: #1f2937;
-}
-.section-hint.data-v-1b135653 {
-  font-size: 13px;
-  color: #9ca3af;
-}
-.empty-state.data-v-1b135653 {
-  padding: 60px 0;
-  span-align: center;
-}
-.empty-span.data-v-1b135653 {
+
+.schedule-row.data-v-detail .date {
   font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.schedule-row.data-v-detail .period {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.schedule-row.data-v-detail .status {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.status-available.data-v-detail {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.status-full.data-v-detail {
+  background: #f3f4f6;
   color: #9ca3af;
+}
+
+.bottom-fixed-bar.data-v-detail {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+  z-index: 99;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: content-box;
+}
+
+.bar-icon-btn.data-v-detail {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bar-btn-icon.data-v-detail {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.bar-primary-btn.data-v-detail {
+  flex: 1;
+  height: 44px;
+  background: linear-gradient(135deg, #3b6bf5 0%, #5a85f5 50%, #8eafff 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(59, 107, 245, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bar-primary-btn--disabled.data-v-detail {
+  background: #d1d5db !important;
+  color: #9ca3af !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+}
+
+.schedule-empty.data-v-detail {
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 12px;
+  color: #9ca3af;
+  font-size: 14px;
+  span-align: center;
+  border: 1px dashed #e5e7eb;
 }
 
 body {
@@ -1461,7 +1657,7 @@ body {
 </head>
 <body>
 <div class="phone-standalone">
-  <div class="page data-v-1b135653"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">接诊医生详情</div></div></div></div><div class="page-content data-v-1b135653"><div class="section-header data-v-1b135653"><span class="section-title data-v-1b135653">选择医生</span><span class="section-hint data-v-1b135653">共 示例 位医生</span></div><div class="data-v-1b135653"></div></div></div>
+  <div class="page data-v-detail"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">接诊医生详情</div></div></div></div><div class="page-content data-v-detail"><div class="doctor-detail-hero data-v-detail"><div class="doc-avatar data-v-detail"><span class="doc-avatar-text data-v-detail">示例</span></div><div class="doc-name data-v-detail"></div><div class="doc-title-text data-v-detail"> · </div><div class="doc-tags data-v-detail"></div></div><div class="doc-stats-row data-v-detail"><div class="doc-stat data-v-detail"><div class="val data-v-detail"><span class="data-v-detail"></span><span class="unit data-v-detail">年</span></div><div class="lab data-v-detail">临床经验</div></div><div class="doc-stat data-v-detail"><div class="val data-v-detail"><span class="data-v-detail"></span><span class="unit data-v-detail">+</span></div><div class="lab data-v-detail">累计诊疗</div></div><div class="doc-stat data-v-detail"><div class="val data-v-detail"><span class="data-v-detail"></span><span class="unit data-v-detail">%</span></div><div class="lab data-v-detail">好评率</div></div></div><div class="doc-section data-v-detail"><div class="doc-section-title data-v-detail"><img class="doc-section-icon data-v-detail" src="../mp-weixin/static/icons/tab-profile-active.png" /> 个人简介</div><div class="doc-intro data-v-detail"></div></div><div class="doc-section data-v-detail"><div class="doc-section-title data-v-detail"><img class="doc-section-icon data-v-detail" src="../mp-weixin/static/icons/tab-treatment-active.png" /> 擅长领域</div><div class="doc-specialties data-v-detail"></div></div><div class="doc-section data-v-detail" style="padding-bottom: 90px"><div class="doc-section-title data-v-detail"><img class="doc-section-icon data-v-detail" src="../mp-weixin/static/icons/tab-appointment-active.png" /> 近期排班</div><div class="doc-schedule data-v-detail"></div></div></div><div class="bottom-fixed-bar data-v-detail"><button class="bar-primary-btn data-v-detail"></button></div></div>
 </div>
 </body>
 </html>

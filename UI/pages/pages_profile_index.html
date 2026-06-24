@@ -546,6 +546,8 @@ button:after {
   gap: 4px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  height: 20px;
+  overflow: hidden;
 }
 .doctor-expertise-tag.data-v-906afe6e {
   font-size: 11px;
@@ -553,6 +555,7 @@ button:after {
   background: #d3f5e3;
   padding: 2px 6px;
   border-radius: 4px;
+  line-height: 1.2;
 }
 .doctor-stats.data-v-906afe6e {
   display: flex;
@@ -817,9 +820,17 @@ button:after {
   margin-bottom: 8px;
 }
 .apt-label.data-v-74fd48b7 {
+  display: flex;
+  align-items: center;
   font-size: 13px;
   color: #9ca3af;
-  width: 56px;
+  width: 60px;
+  flex-shrink: 0;
+  gap: 6px;
+}
+.apt-label-icon.data-v-74fd48b7 {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 .apt-value.data-v-74fd48b7 {
@@ -997,6 +1008,19 @@ button:after {
 }
 .calendar-day--selected .calendar-day-dot.data-v-70d02435 {
   background: #fff;
+}
+.calendar-month-selector.data-v-70d02435 {
+  display: flex;
+  align-items: center;
+}
+.month-arrow.data-v-70d02435 {
+  font-size: 20px;
+  color: #3b6bf5;
+  padding: 0 10px;
+  font-weight: bold;
+}
+.month-arrow.data-v-70d02435:active {
+  opacity: 0.5;
 }
 
 .data-v-822bb649:root {
@@ -1526,7 +1550,7 @@ body {
 </head>
 <body>
 <div class="phone-standalone">
-  <div class="page data-v-093cfe40"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-title data-v-1529c78d" style="">我的</div></div></div></div><div class="page-content data-v-093cfe40"><div class="user-card data-v-093cfe40"><div class="user-avatar data-v-093cfe40"><span class="user-avatar-text data-v-093cfe40">张</span></div><div class="user-info data-v-093cfe40"><span class="user-name data-v-093cfe40">张明华</span><div class="user-level data-v-093cfe40"><span class="user-level-tag data-v-093cfe40">黄金会员</span></div></div><span class="user-arrow data-v-093cfe40">›</span></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">我的健康</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">📋</span><span class="menu-label data-v-093cfe40">病历档案</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">💊</span><span class="menu-label data-v-093cfe40">阻鼾器管理</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">👨‍👩‍👧</span><span class="menu-label data-v-093cfe40">家庭成员</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">我的服务</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">💰</span><span class="menu-label data-v-093cfe40">会员权益</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">📦</span><span class="menu-label data-v-093cfe40">我的订单</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">🔗</span><span class="menu-label data-v-093cfe40">分销中心</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">🎬</span><span class="menu-label data-v-093cfe40">直播中心</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">其他</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">💬</span><span class="menu-label data-v-093cfe40">在线客服</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">🔔</span><span class="menu-label data-v-093cfe40">消息通知</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">⚙️</span><span class="menu-label data-v-093cfe40">设置</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div></div><div class="safe-bottom data-v-093cfe40"></div></div>
+  <div class="page data-v-093cfe40"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-title data-v-1529c78d" style="">我的</div></div></div></div><div class="page-content data-v-093cfe40"><div class="user-card data-v-093cfe40"><div class="user-avatar data-v-093cfe40"><span class="user-avatar-text data-v-093cfe40">张</span></div><div class="user-info data-v-093cfe40"><span class="user-name data-v-093cfe40">张明华</span><div class="user-level data-v-093cfe40"><span class="user-level-tag data-v-093cfe40">黄金会员</span></div></div><span class="user-arrow data-v-093cfe40">›</span></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">我的健康</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="📋" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">病历档案</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="💊" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">阻鼾器管理</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="👨‍👩‍👧" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">家庭成员</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">我的服务</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="💰" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">会员权益</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="📦" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">我的订单</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="🔗" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">分销中心</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="🎬" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">直播中心</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">其他</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="💬" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">在线客服</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="🔔" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">消息通知</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="⚙️" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">设置</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div></div><div class="safe-bottom data-v-093cfe40"></div></div>
 </div>
 </body>
 </html>

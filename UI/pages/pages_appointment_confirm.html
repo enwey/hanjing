@@ -546,6 +546,8 @@ button:after {
   gap: 4px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  height: 20px;
+  overflow: hidden;
 }
 .doctor-expertise-tag.data-v-906afe6e {
   font-size: 11px;
@@ -553,6 +555,7 @@ button:after {
   background: #d3f5e3;
   padding: 2px 6px;
   border-radius: 4px;
+  line-height: 1.2;
 }
 .doctor-stats.data-v-906afe6e {
   display: flex;
@@ -817,9 +820,17 @@ button:after {
   margin-bottom: 8px;
 }
 .apt-label.data-v-74fd48b7 {
+  display: flex;
+  align-items: center;
   font-size: 13px;
   color: #9ca3af;
-  width: 56px;
+  width: 60px;
+  flex-shrink: 0;
+  gap: 6px;
+}
+.apt-label-icon.data-v-74fd48b7 {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 .apt-value.data-v-74fd48b7 {
@@ -997,6 +1008,19 @@ button:after {
 }
 .calendar-day--selected .calendar-day-dot.data-v-70d02435 {
   background: #fff;
+}
+.calendar-month-selector.data-v-70d02435 {
+  display: flex;
+  align-items: center;
+}
+.month-arrow.data-v-70d02435 {
+  font-size: 20px;
+  color: #3b6bf5;
+  padding: 0 10px;
+  font-weight: bold;
+}
+.month-arrow.data-v-70d02435:active {
+  opacity: 0.5;
 }
 
 .data-v-822bb649:root {
@@ -1408,7 +1432,7 @@ button:after {
   background: #f9fafb;
 }
 ..phone-screen, .phone-standalone-content.data-v-03365e87 {
-  padding: 0 16px;
+  padding: 16px 16px 0;
 }
 .info-card.data-v-03365e87 {
   background: #fff;
@@ -1434,7 +1458,13 @@ button:after {
 .info-label.data-v-03365e87 {
   font-size: 14px;
   color: #6b7280;
-  width: 72px;
+  width: 56px;
+  flex-shrink: 0;
+}
+.row-icon.data-v-03365e87 {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
   flex-shrink: 0;
 }
 .info-value.data-v-03365e87 {
@@ -1465,6 +1495,7 @@ button:after {
 }
 .symptom-textarea.data-v-03365e87 {
   width: 100%;
+  box-sizing: border-box;
   height: 120px;
   background: #f9fafb;
   border-radius: 12px;
@@ -1476,8 +1507,20 @@ button:after {
 .tips.data-v-03365e87 {
   margin-bottom: 24px;
 }
+.tip-item.data-v-03365e87 {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.tip-icon.data-v-03365e87 {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
 .tips-span.data-v-03365e87 {
-  display: block;
+  flex: 1;
   font-size: 13px;
   color: #9ca3af;
   line-height: 1.8;
@@ -1513,7 +1556,7 @@ body {
 </head>
 <body>
 <div class="phone-standalone">
-  <div class="page data-v-03365e87"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">确认挂号信息</div></div></div></div><div class="page-content data-v-03365e87"><div class="info-card data-v-03365e87"><span class="info-title data-v-03365e87">预约信息确认</span><div class="info-row data-v-03365e87"><span class="info-label data-v-03365e87">🏥 门店</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><span class="info-label data-v-03365e87">👨‍⚕️ 医生</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><span class="info-label data-v-03365e87">📅 日期</span><span class="info-value data-v-03365e87">false</span></div><div class="info-row data-v-03365e87"><span class="info-label data-v-03365e87">🕐 时段</span><span class="info-value info-value--bold data-v-03365e87"></span></div></div><div class="symptom-card data-v-03365e87"><span class="symptom-title data-v-03365e87">症状描述（选填）</span></div><div class="tips data-v-03365e87"><span class="tips-text data-v-03365e87">💡 就诊当天会有消息提醒，请保持手机畅通</span><span class="tips-text data-v-03365e87">⚠️ 如需取消，请在就诊前2小时取消</span></div><div class="submit-area data-v-03365e87"></div></div></div>
+  <div class="page data-v-03365e87"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">确认挂号信息</div></div></div></div><div class="page-content data-v-03365e87"><div class="info-card data-v-03365e87"><span class="info-title data-v-03365e87">预约信息确认</span><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/store.svg" /><span class="info-label data-v-03365e87">门店</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/doctor.svg" /><span class="info-label data-v-03365e87">医生</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/calendar.svg" /><span class="info-label data-v-03365e87">日期</span><span class="info-value data-v-03365e87">false</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/clock.svg" /><span class="info-label data-v-03365e87">时段</span><span class="info-value info-value--bold data-v-03365e87"></span></div></div><div class="symptom-card data-v-03365e87"><span class="symptom-title data-v-03365e87">症状描述（选填）</span></div><div class="tips data-v-03365e87"><div class="tip-item data-v-03365e87"><img class="tip-icon data-v-03365e87" src="../mp-weixin/static/icons/info.svg" /><span class="tips-text data-v-03365e87">就诊当天会有消息提醒，请保持手机畅通</span></div><div class="tip-item data-v-03365e87"><img class="tip-icon data-v-03365e87" src="../mp-weixin/static/icons/alert.svg" /><span class="tips-text data-v-03365e87">如需取消，请在就诊前2小时取消</span></div></div><div class="submit-area data-v-03365e87"></div></div></div>
 </div>
 </body>
 </html>

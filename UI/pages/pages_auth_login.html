@@ -546,6 +546,8 @@ button:after {
   gap: 4px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  height: 20px;
+  overflow: hidden;
 }
 .doctor-expertise-tag.data-v-906afe6e {
   font-size: 11px;
@@ -553,6 +555,7 @@ button:after {
   background: #d3f5e3;
   padding: 2px 6px;
   border-radius: 4px;
+  line-height: 1.2;
 }
 .doctor-stats.data-v-906afe6e {
   display: flex;
@@ -817,9 +820,17 @@ button:after {
   margin-bottom: 8px;
 }
 .apt-label.data-v-74fd48b7 {
+  display: flex;
+  align-items: center;
   font-size: 13px;
   color: #9ca3af;
-  width: 56px;
+  width: 60px;
+  flex-shrink: 0;
+  gap: 6px;
+}
+.apt-label-icon.data-v-74fd48b7 {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 .apt-value.data-v-74fd48b7 {
@@ -997,6 +1008,19 @@ button:after {
 }
 .calendar-day--selected .calendar-day-dot.data-v-70d02435 {
   background: #fff;
+}
+.calendar-month-selector.data-v-70d02435 {
+  display: flex;
+  align-items: center;
+}
+.month-arrow.data-v-70d02435 {
+  font-size: 20px;
+  color: #3b6bf5;
+  padding: 0 10px;
+  font-weight: bold;
+}
+.month-arrow.data-v-70d02435:active {
+  opacity: 0.5;
 }
 
 .data-v-822bb649:root {
@@ -1456,10 +1480,21 @@ button:after {
   border: none;
 }
 .protocol-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   font-size: 11px;
   color: #9ca3af;
-  span-align: center;
   margin-top: 30px;
+}
+.protocol-label {
+  display: flex;
+  align-items: center;
+}
+.protocol-checkbox {
+  transform: scale(0.65);
+  margin-right: -2px;
 }
 .protocol-span {
   color: #9ca3af;
@@ -1496,11 +1531,11 @@ body {
 </head>
 <body>
 <div class="phone-standalone">
-  <div class="page-container"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">登录</div></div></div></div><div class="page-content login-page"><div class="brand-section"><div class="logo-container"><span class="logo-emoji">💤</span></div><span class="brand-name">鼾静健康诊所</span><span class="brand-slogan">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</span></div><div class="auth-section"><div class="auth-tip-card"><div class="tip-header"><span class="tip-icon">🔒</span><span class="tip-title">安全授权提示</span></div><span class="tip-content">根据国家网络安全法及就诊真实性要求，预约挂号、病历管理、睡眠监测等功能需绑定您的手机号码。</span></div><button class="auth-btn" open-type="getPhoneNumber">
+  <div class="page-container"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">登录</div></div></div></div><div class="page-content login-page"><div class="brand-section"><div class="logo-container"><span class="logo-emoji">💤</span></div><span class="brand-name">鼾静健康诊所</span><span class="brand-slogan">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</span></div><div class="auth-section"><div class="auth-tip-card"><div class="tip-header"><span class="tip-icon">🔒</span><span class="tip-title">安全授权提示</span></div><span class="tip-content">根据国家网络安全法及就诊真实性要求，预约挂号、病历管理、睡眠监测等功能需绑定您的手机号码。</span></div><button class="auth-btn" open-type="">
         微信手机号一键登录
       </button><button class="cancel-btn">
         暂不登录
-      </button></div><div class="protocol-section"><span class="protocol-text">登录即代表您同意 </span><span class="protocol-link">《用户协议》</span><span class="protocol-text">与</span><span class="protocol-link">《隐私政策》</span></div></div></div>
+      </button></div><div class="protocol-section"><checkbox-group><label class="protocol-label"><checkbox class="protocol-checkbox" value="agree" checked="true" color="#3b6bf5"></checkbox><span class="protocol-text">我已阅读并同意 </span></label></checkbox-group><span class="protocol-link">《用户协议》</span><span class="protocol-text">与</span><span class="protocol-link">《隐私政策》</span></div></div></div>
 </div>
 </body>
 </html>

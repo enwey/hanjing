@@ -549,6 +549,8 @@ button:after {
   gap: 4px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  height: 20px;
+  overflow: hidden;
 }
 .doctor-expertise-tag.data-v-906afe6e {
   font-size: 11px;
@@ -556,6 +558,7 @@ button:after {
   background: #d3f5e3;
   padding: 2px 6px;
   border-radius: 4px;
+  line-height: 1.2;
 }
 .doctor-stats.data-v-906afe6e {
   display: flex;
@@ -820,9 +823,17 @@ button:after {
   margin-bottom: 8px;
 }
 .apt-label.data-v-74fd48b7 {
+  display: flex;
+  align-items: center;
   font-size: 13px;
   color: #9ca3af;
-  width: 56px;
+  width: 60px;
+  flex-shrink: 0;
+  gap: 6px;
+}
+.apt-label-icon.data-v-74fd48b7 {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 .apt-value.data-v-74fd48b7 {
@@ -1000,6 +1011,19 @@ button:after {
 }
 .calendar-day--selected .calendar-day-dot.data-v-70d02435 {
   background: #fff;
+}
+.calendar-month-selector.data-v-70d02435 {
+  display: flex;
+  align-items: center;
+}
+.month-arrow.data-v-70d02435 {
+  font-size: 20px;
+  color: #3b6bf5;
+  padding: 0 10px;
+  font-weight: bold;
+}
+.month-arrow.data-v-70d02435:active {
+  opacity: 0.5;
 }
 
 .data-v-822bb649:root {
@@ -1516,12 +1540,21 @@ button:after {
 .quick-action-icon.data-v-e9eb3795 {
   width: 48px;
   height: 48px;
-  background: #eef4ff;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
+  box-sizing: border-box;
+  padding: 11px;
+}
+.quick-action-icon--appointment.data-v-e9eb3795 {
+  background: #eef4ff;
+}
+.quick-action-icon--assessment.data-v-e9eb3795 {
+  background: #f5f3ff;
+}
+.quick-action-icon--treatment.data-v-e9eb3795 {
+  background: #eaf8f1;
+}
+.quick-action-icon--profile.data-v-e9eb3795 {
+  background: #fffbeb;
 }
 .quick-action-span.data-v-e9eb3795 {
   font-size: 12px;
@@ -1799,10 +1832,8 @@ button:after {
   height: 48px;
   background: #eef4ff;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
+  box-sizing: border-box;
+  padding: 11px;
   margin-right: 12px;
   flex-shrink: 0;
 }
@@ -2201,11 +2232,8 @@ button:after {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
+  box-sizing: border-box;
+  padding: 8px;
   margin-bottom: 8px;
 }
 .menu-icon--trend.data-v-8badcb8c {
@@ -2986,10 +3014,21 @@ button:after {
   border: none;
 }
 .protocol-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   font-size: 11px;
   color: #9ca3af;
-  span-align: center;
   margin-top: 30px;
+}
+.protocol-label {
+  display: flex;
+  align-items: center;
+}
+.protocol-checkbox {
+  transform: scale(0.65);
+  margin-right: -2px;
 }
 .protocol-span {
   color: #9ca3af;
@@ -3079,6 +3118,265 @@ button:after {
 }
 
 /* pages/appointment/doctor-detail CSS */
+..phone-screen, .phone-standalone.data-v-detail {
+  min-height: 100vh;
+  background: #F9FAFB;
+  box-sizing: border-box;
+}
+
+..phone-screen, .phone-standalone-content.data-v-detail {
+  padding-bottom: 90px;
+}
+
+.doctor-detail-hero.data-v-detail {
+  background: linear-gradient(160deg, #1a3580 0%, #3b6bf5 40%, #8eafff 100%);
+  padding: 60px 20px 28px;
+  span-align: center;
+  position: relative;
+}
+
+.doctor-detail-hero.data-v-detail .doc-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  margin: 0 auto 12px;
+}
+
+.doctor-detail-hero.data-v-detail .doc-avatar-span {
+  font-size: 36px;
+  font-weight: bold;
+  color: #FFFFFF;
+}
+
+.doctor-detail-hero.data-v-detail .doc-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  display: block;
+}
+
+.doctor-detail-hero.data-v-detail .doc-title-span {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 4px;
+  display: block;
+}
+
+.doctor-detail-hero.data-v-detail .doc-tags {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.doc-hero-tag.data-v-detail {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  padding: 3px 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.doc-stats-row.data-v-detail {
+  display: flex;
+  margin: -16px 20px 0;
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 2;
+}
+
+.doc-stat.data-v-detail {
+  flex: 1;
+  span-align: center;
+  border-right: 1px solid #f3f4f6;
+}
+
+.doc-stat.data-v-detail:last-child {
+  border-right: none;
+}
+
+.doc-stat.data-v-detail .val {
+  font-size: 20px;
+  font-weight: 700;
+  color: #3b6bf5;
+}
+
+.doc-stat.data-v-detail .val .unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+.doc-stat.data-v-detail .lab {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.doc-section.data-v-detail {
+  padding: 20px;
+}
+
+.doc-section-title.data-v-detail {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.doc-section-icon.data-v-detail {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.doc-intro.data-v-detail {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.8;
+}
+
+.doc-specialties.data-v-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.doc-spec-tag.data-v-detail {
+  background: #eef4ff;
+  color: #3b6bf5;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.doc-schedule.data-v-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-row.data-v-detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 12px;
+}
+
+.schedule-row.data-v-detail .date {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.schedule-row.data-v-detail .period {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.schedule-row.data-v-detail .status {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.status-available.data-v-detail {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.status-full.data-v-detail {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.bottom-fixed-bar.data-v-detail {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+  z-index: 99;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: content-box;
+}
+
+.bar-icon-btn.data-v-detail {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bar-btn-icon.data-v-detail {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.bar-primary-btn.data-v-detail {
+  flex: 1;
+  height: 44px;
+  background: linear-gradient(135deg, #3b6bf5 0%, #5a85f5 50%, #8eafff 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(59, 107, 245, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bar-primary-btn--disabled.data-v-detail {
+  background: #d1d5db !important;
+  color: #9ca3af !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+}
+
+.schedule-empty.data-v-detail {
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 12px;
+  color: #9ca3af;
+  font-size: 14px;
+  span-align: center;
+  border: 1px dashed #e5e7eb;
+}
+
+/* pages/appointment/doctor-list CSS */
 .data-v-1b135653:root {
   --color-primary-50: #eef4ff;
   --color-primary-100: #d9e6ff;
@@ -3375,7 +3673,7 @@ button:after {
   background: #f9fafb;
 }
 ..phone-screen, .phone-standalone-content.data-v-03365e87 {
-  padding: 0 16px;
+  padding: 16px 16px 0;
 }
 .info-card.data-v-03365e87 {
   background: #fff;
@@ -3401,7 +3699,13 @@ button:after {
 .info-label.data-v-03365e87 {
   font-size: 14px;
   color: #6b7280;
-  width: 72px;
+  width: 56px;
+  flex-shrink: 0;
+}
+.row-icon.data-v-03365e87 {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
   flex-shrink: 0;
 }
 .info-value.data-v-03365e87 {
@@ -3432,6 +3736,7 @@ button:after {
 }
 .symptom-textarea.data-v-03365e87 {
   width: 100%;
+  box-sizing: border-box;
   height: 120px;
   background: #f9fafb;
   border-radius: 12px;
@@ -3443,8 +3748,20 @@ button:after {
 .tips.data-v-03365e87 {
   margin-bottom: 24px;
 }
+.tip-item.data-v-03365e87 {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.tip-icon.data-v-03365e87 {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
 .tips-span.data-v-03365e87 {
-  display: block;
+  flex: 1;
   font-size: 13px;
   color: #9ca3af;
   line-height: 1.8;
@@ -3519,10 +3836,12 @@ button:after {
 .success-icon.data-v-baa6e4ef {
   display: flex;
   justify-content: center;
-  padding: 40px 0 16px;
+  padding: 40px 0 20px;
 }
-.success-emoji.data-v-baa6e4ef {
-  font-size: 64px;
+.success-medical-icon.data-v-baa6e4ef {
+  width: 80px;
+  height: 80px;
+  transform: translateX(-4px);
 }
 .success-title.data-v-baa6e4ef {
   font-size: 24px;
@@ -3575,16 +3894,34 @@ button:after {
   color: #3b6bf5;
 }
 .actions.data-v-baa6e4ef {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 20px;
+}
+.actions.data-v-baa6e4ef hj-button {
+  display: block;
 }
 .remind.data-v-baa6e4ef {
   span-align: center;
   padding-bottom: 40px;
 }
+.remind-item.data-v-baa6e4ef {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.remind-icon.data-v-baa6e4ef {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
 .remind-span.data-v-baa6e4ef {
   font-size: 13px;
   color: #9ca3af;
 }
+
 
 /* pages/appointment/detail CSS */
 .data-v-7e5a1194:root {
@@ -3616,99 +3953,382 @@ button:after {
     #5a85f5 50%,
     #8eafff 100%
   );
-  --gradient-hero: linear-gradient(
-    160deg,
-    #1a3580 0%,
-    #3b6bf5 40%,
-    #8eafff 100%
-  );
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-danger: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  --gradient-warning: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-full: 9999px;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
-  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
-  --font-sans:
-    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
-    BlinkMacSystemFont, sans-serif;
-  --span-xs: 11px;
-  --span-sm: 13px;
-  --span-base: 15px;
-  --span-lg: 17px;
-  --span-xl: 20px;
-  --span-2xl: 24px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
+
 ..phone-screen, .phone-standalone.data-v-7e5a1194 {
   min-height: 100vh;
-  background: #f9fafb;
+  background: #f4f6fa;
+  padding-bottom: calc(100px + var(--safe-bottom));
+  box-sizing: border-box;
 }
+
 ..phone-screen, .phone-standalone-content.data-v-7e5a1194 {
-  padding: 0 16px;
+  padding: 16px;
 }
-.status-bar.data-v-7e5a1194 {
+
+/* 1. Status Hero Banner */
+.status-hero.data-v-7e5a1194 {
+  border-radius: var(--radius-xl);
+  padding: 24px 20px;
+  margin-bottom: 16px;
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(59, 107, 245, 0.15);
+  background: var(--gradient-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.status-hero.status--confirmed.data-v-7e5a1194,
+.status-hero.status--reminded.data-v-7e5a1194 {
+  background: var(--gradient-primary);
+  box-shadow: 0 8px 20px rgba(59, 107, 245, 0.18);
+}
+
+.status-hero.status--completed.data-v-7e5a1194,
+.status-hero.status--checked_in.data-v-7e5a1194 {
+  background: var(--gradient-success);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.18);
+}
+
+.status-hero.status--cancelled.data-v-7e5a1194,
+.status-hero.status--no_show.data-v-7e5a1194 {
+  background: var(--gradient-danger);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.18);
+}
+
+.status-hero.status--pending.data-v-7e5a1194 {
+  background: var(--gradient-warning);
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.18);
+}
+
+.status-hero-main.data-v-7e5a1194 {
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.status-icon-wrapper.data-v-7e5a1194 {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+  flex-shrink: 0;
+  backdrop-filter: blur(5px);
+}
+
+.status-icon.data-v-7e5a1194 {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
+}
+
+.status-title-group.data-v-7e5a1194 {
+  display: flex;
+  flex-direction: column;
+}
+
+.status-title.data-v-7e5a1194 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.status-desc.data-v-7e5a1194 {
+  font-size: 12px;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+/* 2. Order No Bar */
+.order-no-bar.data-v-7e5a1194 {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
+  box-shadow: var(--shadow-sm);
 }
-.status-no.data-v-7e5a1194 {
+
+.no-span-group.data-v-7e5a1194 {
+  display: flex;
+  align-items: center;
+}
+
+.no-label.data-v-7e5a1194 {
   font-size: 13px;
-  color: #9ca3af;
-  font-family:
-    SF Mono,
-    monospace;
+  color: #6b7280;
+  margin-right: 8px;
 }
-.card.data-v-7e5a1194 {
-  background: #fff;
-  border-radius: 16px;
+
+.no-value.data-v-7e5a1194 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  font-family: SF Mono, monospace;
+}
+
+.copy-btn-action.data-v-7e5a1194 {
+  margin: 0;
+  padding: 0;
+  width: 52px;
+  height: 24px;
+  line-height: 22px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #3b6bf5;
+  background: rgba(59, 107, 245, 0.08);
+  border: 1px solid rgba(59, 107, 245, 0.15);
+  border-radius: 6px;
+  span-align: center;
+  box-sizing: border-box;
+}
+
+.copy-btn-hover.data-v-7e5a1194 {
+  background: rgba(59, 107, 245, 0.15);
+}
+
+/* 3. Doctor Details Card */
+.card-premium.data-v-7e5a1194 {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
   padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-md);
+}
+
+.card-premium.doctor-card.data-v-7e5a1194 {
+  padding: 16px;
   margin-bottom: 12px;
   box-shadow: var(--card-shadow);
+  border-radius: 16px;
 }
-.card-title.data-v-7e5a1194 {
+
+.doctor-card.data-v-7e5a1194 {
+  display: flex;
+  align-items: center;
+}
+
+.doc-avatar-large.data-v-7e5a1194 {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b6bf5 0%, #8eafff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.doc-avatar-span-large.data-v-7e5a1194 {
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  z-index: 2;
+}
+
+.doc-info-detail.data-v-7e5a1194 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.doc-name-row.data-v-7e5a1194 {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.doc-name-large.data-v-7e5a1194 {
   font-size: 17px;
   font-weight: 600;
   color: #1f2937;
+  margin-right: 8px;
+}
+
+.doc-title-badge.data-v-7e5a1194 {
+  font-size: 10px;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.doc-dept.data-v-7e5a1194 {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 6px;
   display: block;
-  margin-bottom: 12px;
+}
+
+.doc-hospital.data-v-7e5a1194 {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* 4. Schedule & Location Card */
+.card-header-premium.data-v-7e5a1194 {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid #f3f4f6;
 }
-.info-row.data-v-7e5a1194 {
+
+.header-icon.data-v-7e5a1194 {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+}
+
+.header-title.data-v-7e5a1194 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.detail-rows.data-v-7e5a1194 {
   display: flex;
-  padding: 6px 0;
+  flex-direction: column;
+  gap: 12px;
 }
-.info-label.data-v-7e5a1194 {
-  font-size: 14px;
+
+.detail-row.data-v-7e5a1194 {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.row-label.data-v-7e5a1194 {
+  font-size: 13px;
   color: #9ca3af;
-  width: 64px;
   flex-shrink: 0;
+  width: 72px;
 }
-.info-value.data-v-7e5a1194 {
-  font-size: 14px;
+
+.row-value.data-v-7e5a1194 {
+  font-size: 13px;
   color: #374151;
+  span-align: right;
   flex: 1;
 }
-.info-value--bold.data-v-7e5a1194 {
-  font-weight: 600;
+
+.row-value--bold.data-v-7e5a1194 {
+  font-weight: 700;
   color: #3b6bf5;
 }
-.info-value--small.data-v-7e5a1194 {
-  font-size: 13px;
+
+.row-value--small.data-v-7e5a1194 {
+  font-size: 12px;
   color: #6b7280;
+  line-height: 1.4;
 }
-.symptom-span.data-v-7e5a1194 {
-  font-size: 14px;
-  color: #374151;
+
+/* 5. Symptom card styles */
+.symptom-card.data-v-7e5a1194 {
+  border-left: 4px solid #3b6bf5;
+}
+
+.symptom-content-wrapper.data-v-7e5a1194 {
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}
+
+.symptom-span-styled.data-v-7e5a1194 {
+  font-size: 13px;
+  color: #475569;
   line-height: 1.6;
 }
-.cancel-span.data-v-7e5a1194 {
-  font-size: 14px;
+
+/* 6. Cancel card styles */
+.cancel-card-styled.data-v-7e5a1194 {
+  border-left: 4px solid #ef4444;
+}
+
+.cancel-content-wrapper.data-v-7e5a1194 {
+  background: rgba(239, 68, 68, 0.03);
+  border: 1px solid rgba(239, 68, 68, 0.08);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
+}
+
+.cancel-span-styled.data-v-7e5a1194 {
+  font-size: 13px;
   color: #ef4444;
+  line-height: 1.6;
+}
+
+/* 7. Action Footer Panel */
+.action-footer.data-v-7e5a1194 {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  padding: 16px 20px calc(16px + var(--safe-bottom));
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+  display: flex;
+  gap: 12px;
+  z-index: 10;
+}
+
+.footer-btn.data-v-7e5a1194 {
+  flex: 1;
+  height: 46px;
+  line-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 23px;
+  span-align: center;
+  box-sizing: border-box;
+}
+
+.btn-ghost.data-v-7e5a1194 {
+  color: #3b6bf5;
+  background: #ffffff;
+  border: 1.5px solid #3b6bf5;
+}
+
+.btn-danger-ghost.data-v-7e5a1194 {
+  color: #ef4444;
+  background: #ffffff;
+  border: 1.5px solid #ef4444;
+}
+
+.btn-primary-full.data-v-7e5a1194 {
+  color: #ffffff;
+  background: var(--gradient-primary);
+  box-shadow: 0 4px 12px rgba(59, 107, 245, 0.2);
+}
+
+.footer-btn-hover.data-v-7e5a1194 {
+  opacity: 0.85;
 }
 
 /* pages/appointment/reschedule CSS */
@@ -7897,6 +8517,22 @@ button:after {
 .safe-bottom.data-v-ecc58349 {
   height: calc(env(safe-area-inset-bottom, 34px) + 20px);
 }
+.btn-logout.data-v-ecc58349 {
+  margin-top: 24px;
+  background: #ffffff;
+  color: #ef4444;
+  span-align: center;
+  padding: 15px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+}
+.btn-logout.data-v-ecc58349:active {
+  background: #f3f4f6;
+  opacity: 0.9;
+}
 
 /* pages/profile/notifications/index CSS */
 .data-v-c3158b61:root {
@@ -11331,7 +11967,7 @@ body {
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>鼾静健康诊所</h2>
-      <p>编译自小程序开发源码 (53个页面)</p>
+      <p>编译自小程序开发源码 (54个页面)</p>
     </div>
     
     <div class="toolbar">
@@ -11410,309 +12046,316 @@ body {
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-9" data-path="pages/appointment/time-select" data-title="选择预约时段">
+          <li class="menu-item" id="menu-item-9" data-path="pages/appointment/doctor-list" data-title="鼾静健康诊所">
             <a href="#phone-9" class="menu-link" onclick="highlightMenu(9)">
+              <span>鼾静健康诊所</span>
+              <span class="menu-link-badge">pages/appointment/doctor-list</span>
+            </a>
+          </li>
+          
+          <li class="menu-item" id="menu-item-10" data-path="pages/appointment/time-select" data-title="选择预约时段">
+            <a href="#phone-10" class="menu-link" onclick="highlightMenu(10)">
               <span>选择预约时段</span>
               <span class="menu-link-badge">pages/appointment/time-select</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-10" data-path="pages/appointment/confirm" data-title="确认挂号信息">
-            <a href="#phone-10" class="menu-link" onclick="highlightMenu(10)">
+          <li class="menu-item" id="menu-item-11" data-path="pages/appointment/confirm" data-title="确认挂号信息">
+            <a href="#phone-11" class="menu-link" onclick="highlightMenu(11)">
               <span>确认挂号信息</span>
               <span class="menu-link-badge">pages/appointment/confirm</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-11" data-path="pages/appointment/success" data-title="挂号预约成功">
-            <a href="#phone-11" class="menu-link" onclick="highlightMenu(11)">
+          <li class="menu-item" id="menu-item-12" data-path="pages/appointment/success" data-title="挂号预约成功">
+            <a href="#phone-12" class="menu-link" onclick="highlightMenu(12)">
               <span>挂号预约成功</span>
               <span class="menu-link-badge">pages/appointment/success</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-12" data-path="pages/appointment/detail" data-title="门诊预约详情">
-            <a href="#phone-12" class="menu-link" onclick="highlightMenu(12)">
+          <li class="menu-item" id="menu-item-13" data-path="pages/appointment/detail" data-title="门诊预约详情">
+            <a href="#phone-13" class="menu-link" onclick="highlightMenu(13)">
               <span>门诊预约详情</span>
               <span class="menu-link-badge">pages/appointment/detail</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-13" data-path="pages/appointment/reschedule" data-title="就诊预约改期">
-            <a href="#phone-13" class="menu-link" onclick="highlightMenu(13)">
+          <li class="menu-item" id="menu-item-14" data-path="pages/appointment/reschedule" data-title="就诊预约改期">
+            <a href="#phone-14" class="menu-link" onclick="highlightMenu(14)">
               <span>就诊预约改期</span>
               <span class="menu-link-badge">pages/appointment/reschedule</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-14" data-path="pages/assessment/questionnaire/index" data-title="ESS 嗜睡自我量表评估">
-            <a href="#phone-14" class="menu-link" onclick="highlightMenu(14)">
+          <li class="menu-item" id="menu-item-15" data-path="pages/assessment/questionnaire/index" data-title="ESS 嗜睡自我量表评估">
+            <a href="#phone-15" class="menu-link" onclick="highlightMenu(15)">
               <span>ESS 嗜睡自我量表评估</span>
               <span class="menu-link-badge">pages/assessment/questionnaire/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-15" data-path="pages/assessment/result/index" data-title="睡眠呼吸初评报告">
-            <a href="#phone-15" class="menu-link" onclick="highlightMenu(15)">
+          <li class="menu-item" id="menu-item-16" data-path="pages/assessment/result/index" data-title="睡眠呼吸初评报告">
+            <a href="#phone-16" class="menu-link" onclick="highlightMenu(16)">
               <span>睡眠呼吸初评报告</span>
               <span class="menu-link-badge">pages/assessment/result/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-16" data-path="pages/assessment/recording/index" data-title="AI 睡眠鼾声实时录音">
-            <a href="#phone-16" class="menu-link" onclick="highlightMenu(16)">
+          <li class="menu-item" id="menu-item-17" data-path="pages/assessment/recording/index" data-title="AI 睡眠鼾声实时录音">
+            <a href="#phone-17" class="menu-link" onclick="highlightMenu(17)">
               <span>AI 睡眠鼾声实时录音</span>
               <span class="menu-link-badge">pages/assessment/recording/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-17" data-path="pages/assessment/snore-result/index" data-title="AI 睡眠鼾声分析报告">
-            <a href="#phone-17" class="menu-link" onclick="highlightMenu(17)">
+          <li class="menu-item" id="menu-item-18" data-path="pages/assessment/snore-result/index" data-title="AI 睡眠鼾声分析报告">
+            <a href="#phone-18" class="menu-link" onclick="highlightMenu(18)">
               <span>AI 睡眠鼾声分析报告</span>
               <span class="menu-link-badge">pages/assessment/snore-result/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-18" data-path="pages/treatment/sleep-trend/index" data-title="近期睡眠戴镜数据趋势">
-            <a href="#phone-18" class="menu-link" onclick="highlightMenu(18)">
+          <li class="menu-item" id="menu-item-19" data-path="pages/treatment/sleep-trend/index" data-title="近期睡眠戴镜数据趋势">
+            <a href="#phone-19" class="menu-link" onclick="highlightMenu(19)">
               <span>近期睡眠戴镜数据趋势</span>
               <span class="menu-link-badge">pages/treatment/sleep-trend/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-19" data-path="pages/treatment/timeline/index" data-title="临床治疗记录时间轴">
-            <a href="#phone-19" class="menu-link" onclick="highlightMenu(19)">
+          <li class="menu-item" id="menu-item-20" data-path="pages/treatment/timeline/index" data-title="临床治疗记录时间轴">
+            <a href="#phone-20" class="menu-link" onclick="highlightMenu(20)">
               <span>临床治疗记录时间轴</span>
               <span class="menu-link-badge">pages/treatment/timeline/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-20" data-path="pages/treatment/doctor-advice/index" data-title="主诊医生就诊建议书">
-            <a href="#phone-20" class="menu-link" onclick="highlightMenu(20)">
+          <li class="menu-item" id="menu-item-21" data-path="pages/treatment/doctor-advice/index" data-title="主诊医生就诊建议书">
+            <a href="#phone-21" class="menu-link" onclick="highlightMenu(21)">
               <span>主诊医生就诊建议书</span>
               <span class="menu-link-badge">pages/treatment/doctor-advice/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-21" data-path="pages/treatment/adjust-detail/index" data-title="阻鼾器下颌前伸微调记录">
-            <a href="#phone-21" class="menu-link" onclick="highlightMenu(21)">
+          <li class="menu-item" id="menu-item-22" data-path="pages/treatment/adjust-detail/index" data-title="阻鼾器下颌前伸微调记录">
+            <a href="#phone-22" class="menu-link" onclick="highlightMenu(22)">
               <span>阻鼾器下颌前伸微调记录</span>
               <span class="menu-link-badge">pages/treatment/adjust-detail/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-22" data-path="pages/treatment/sleep-report/index" data-title="多导睡眠监测评估报告 (PSG)">
-            <a href="#phone-22" class="menu-link" onclick="highlightMenu(22)">
+          <li class="menu-item" id="menu-item-23" data-path="pages/treatment/sleep-report/index" data-title="多导睡眠监测评估报告 (PSG)">
+            <a href="#phone-23" class="menu-link" onclick="highlightMenu(23)">
               <span>多导睡眠监测评估报告 (PSG)</span>
               <span class="menu-link-badge">pages/treatment/sleep-report/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-23" data-path="pages/product/detail/index" data-title="商品详情">
-            <a href="#phone-23" class="menu-link" onclick="highlightMenu(23)">
+          <li class="menu-item" id="menu-item-24" data-path="pages/product/detail/index" data-title="商品详情">
+            <a href="#phone-24" class="menu-link" onclick="highlightMenu(24)">
               <span>商品详情</span>
               <span class="menu-link-badge">pages/product/detail/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-24" data-path="pages/product/detail" data-title="鼾静健康诊所">
-            <a href="#phone-24" class="menu-link" onclick="highlightMenu(24)">
+          <li class="menu-item" id="menu-item-25" data-path="pages/product/detail" data-title="鼾静健康诊所">
+            <a href="#phone-25" class="menu-link" onclick="highlightMenu(25)">
               <span>鼾静健康诊所</span>
               <span class="menu-link-badge">pages/product/detail</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-25" data-path="pages/profile/medical-records/index" data-title="就诊门诊电子病历">
-            <a href="#phone-25" class="menu-link" onclick="highlightMenu(25)">
+          <li class="menu-item" id="menu-item-26" data-path="pages/profile/medical-records/index" data-title="就诊门诊电子病历">
+            <a href="#phone-26" class="menu-link" onclick="highlightMenu(26)">
               <span>就诊门诊电子病历</span>
               <span class="menu-link-badge">pages/profile/medical-records/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-26" data-path="pages/profile/device-manage/index" data-title="我的定制阻鼾器管理">
-            <a href="#phone-26" class="menu-link" onclick="highlightMenu(26)">
+          <li class="menu-item" id="menu-item-27" data-path="pages/profile/device-manage/index" data-title="我的定制阻鼾器管理">
+            <a href="#phone-27" class="menu-link" onclick="highlightMenu(27)">
               <span>我的定制阻鼾器管理</span>
               <span class="menu-link-badge">pages/profile/device-manage/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-27" data-path="pages/profile/device-manage/wearing-data/index" data-title="佩戴追踪数据图表">
-            <a href="#phone-27" class="menu-link" onclick="highlightMenu(27)">
+          <li class="menu-item" id="menu-item-28" data-path="pages/profile/device-manage/wearing-data/index" data-title="佩戴追踪数据图表">
+            <a href="#phone-28" class="menu-link" onclick="highlightMenu(28)">
               <span>佩戴追踪数据图表</span>
               <span class="menu-link-badge">pages/profile/device-manage/wearing-data/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-28" data-path="pages/profile/device-manage/maintenance/index" data-title="鼾静健康诊所">
-            <a href="#phone-28" class="menu-link" onclick="highlightMenu(28)">
+          <li class="menu-item" id="menu-item-29" data-path="pages/profile/device-manage/maintenance/index" data-title="鼾静健康诊所">
+            <a href="#phone-29" class="menu-link" onclick="highlightMenu(29)">
               <span>鼾静健康诊所</span>
               <span class="menu-link-badge">pages/profile/device-manage/maintenance/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-29" data-path="pages/profile/device-manage/feedback/index" data-title="鼾静健康诊所">
-            <a href="#phone-29" class="menu-link" onclick="highlightMenu(29)">
+          <li class="menu-item" id="menu-item-30" data-path="pages/profile/device-manage/feedback/index" data-title="鼾静健康诊所">
+            <a href="#phone-30" class="menu-link" onclick="highlightMenu(30)">
               <span>鼾静健康诊所</span>
               <span class="menu-link-badge">pages/profile/device-manage/feedback/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-30" data-path="pages/profile/family-members/index" data-title="家庭就诊成员列表">
-            <a href="#phone-30" class="menu-link" onclick="highlightMenu(30)">
+          <li class="menu-item" id="menu-item-31" data-path="pages/profile/family-members/index" data-title="家庭就诊成员列表">
+            <a href="#phone-31" class="menu-link" onclick="highlightMenu(31)">
               <span>家庭就诊成员列表</span>
               <span class="menu-link-badge">pages/profile/family-members/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-31" data-path="pages/profile/family-members/add-member/index" data-title="添加家庭成员卡">
-            <a href="#phone-31" class="menu-link" onclick="highlightMenu(31)">
+          <li class="menu-item" id="menu-item-32" data-path="pages/profile/family-members/add-member/index" data-title="添加家庭成员卡">
+            <a href="#phone-32" class="menu-link" onclick="highlightMenu(32)">
               <span>添加家庭成员卡</span>
               <span class="menu-link-badge">pages/profile/family-members/add-member/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-32" data-path="pages/profile/member-benefits/index" data-title="会员特权与服务权益">
-            <a href="#phone-32" class="menu-link" onclick="highlightMenu(32)">
+          <li class="menu-item" id="menu-item-33" data-path="pages/profile/member-benefits/index" data-title="会员特权与服务权益">
+            <a href="#phone-33" class="menu-link" onclick="highlightMenu(33)">
               <span>会员特权与服务权益</span>
               <span class="menu-link-badge">pages/profile/member-benefits/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-33" data-path="pages/profile/settings/index" data-title="系统设置">
-            <a href="#phone-33" class="menu-link" onclick="highlightMenu(33)">
+          <li class="menu-item" id="menu-item-34" data-path="pages/profile/settings/index" data-title="系统设置">
+            <a href="#phone-34" class="menu-link" onclick="highlightMenu(34)">
               <span>系统设置</span>
               <span class="menu-link-badge">pages/profile/settings/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-34" data-path="pages/profile/settings/personal-info/index" data-title="修改个人基本资料">
-            <a href="#phone-34" class="menu-link" onclick="highlightMenu(34)">
+          <li class="menu-item" id="menu-item-35" data-path="pages/profile/settings/personal-info/index" data-title="修改个人基本资料">
+            <a href="#phone-35" class="menu-link" onclick="highlightMenu(35)">
               <span>修改个人基本资料</span>
               <span class="menu-link-badge">pages/profile/settings/personal-info/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-35" data-path="pages/profile/settings/account-security/index" data-title="账号安全维护中心">
-            <a href="#phone-35" class="menu-link" onclick="highlightMenu(35)">
+          <li class="menu-item" id="menu-item-36" data-path="pages/profile/settings/account-security/index" data-title="账号安全维护中心">
+            <a href="#phone-36" class="menu-link" onclick="highlightMenu(36)">
               <span>账号安全维护中心</span>
               <span class="menu-link-badge">pages/profile/settings/account-security/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-36" data-path="pages/profile/notifications/index" data-title="系统消息与服务通知">
-            <a href="#phone-36" class="menu-link" onclick="highlightMenu(36)">
+          <li class="menu-item" id="menu-item-37" data-path="pages/profile/notifications/index" data-title="系统消息与服务通知">
+            <a href="#phone-37" class="menu-link" onclick="highlightMenu(37)">
               <span>系统消息与服务通知</span>
               <span class="menu-link-badge">pages/profile/notifications/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-37" data-path="pages/profile/online-service/index" data-title="在线客服实时咨询">
-            <a href="#phone-37" class="menu-link" onclick="highlightMenu(37)">
+          <li class="menu-item" id="menu-item-38" data-path="pages/profile/online-service/index" data-title="在线客服实时咨询">
+            <a href="#phone-38" class="menu-link" onclick="highlightMenu(38)">
               <span>在线客服实时咨询</span>
               <span class="menu-link-badge">pages/profile/online-service/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-38" data-path="pages/order/index" data-title="商城购物订单">
-            <a href="#phone-38" class="menu-link" onclick="highlightMenu(38)">
+          <li class="menu-item" id="menu-item-39" data-path="pages/order/index" data-title="商城购物订单">
+            <a href="#phone-39" class="menu-link" onclick="highlightMenu(39)">
               <span>商城购物订单</span>
               <span class="menu-link-badge">pages/order/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-39" data-path="pages/order/detail" data-title="订单详情">
-            <a href="#phone-39" class="menu-link" onclick="highlightMenu(39)">
+          <li class="menu-item" id="menu-item-40" data-path="pages/order/detail" data-title="订单详情">
+            <a href="#phone-40" class="menu-link" onclick="highlightMenu(40)">
               <span>订单详情</span>
               <span class="menu-link-badge">pages/order/detail</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-40" data-path="pages/distribution/center/index" data-title="健康合伙人分销中心">
-            <a href="#phone-40" class="menu-link" onclick="highlightMenu(40)">
+          <li class="menu-item" id="menu-item-41" data-path="pages/distribution/center/index" data-title="健康合伙人分销中心">
+            <a href="#phone-41" class="menu-link" onclick="highlightMenu(41)">
               <span>健康合伙人分销中心</span>
               <span class="menu-link-badge">pages/distribution/center/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-41" data-path="pages/distribution/commission/index" data-title="分销金及推广佣金明细">
-            <a href="#phone-41" class="menu-link" onclick="highlightMenu(41)">
+          <li class="menu-item" id="menu-item-42" data-path="pages/distribution/commission/index" data-title="分销金及推广佣金明细">
+            <a href="#phone-42" class="menu-link" onclick="highlightMenu(42)">
               <span>分销金及推广佣金明细</span>
               <span class="menu-link-badge">pages/distribution/commission/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-42" data-path="pages/distribution/withdraw/index" data-title="佣金余额提现申请">
-            <a href="#phone-42" class="menu-link" onclick="highlightMenu(42)">
+          <li class="menu-item" id="menu-item-43" data-path="pages/distribution/withdraw/index" data-title="佣金余额提现申请">
+            <a href="#phone-43" class="menu-link" onclick="highlightMenu(43)">
               <span>佣金余额提现申请</span>
               <span class="menu-link-badge">pages/distribution/withdraw/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-43" data-path="pages/distribution/withdraw-records/index" data-title="资金提现记录表">
-            <a href="#phone-43" class="menu-link" onclick="highlightMenu(43)">
+          <li class="menu-item" id="menu-item-44" data-path="pages/distribution/withdraw-records/index" data-title="资金提现记录表">
+            <a href="#phone-44" class="menu-link" onclick="highlightMenu(44)">
               <span>资金提现记录表</span>
               <span class="menu-link-badge">pages/distribution/withdraw-records/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-44" data-path="pages/distribution/team/index" data-title="我推荐的合伙人团队">
-            <a href="#phone-44" class="menu-link" onclick="highlightMenu(44)">
+          <li class="menu-item" id="menu-item-45" data-path="pages/distribution/team/index" data-title="我推荐的合伙人团队">
+            <a href="#phone-45" class="menu-link" onclick="highlightMenu(45)">
               <span>我推荐的合伙人团队</span>
               <span class="menu-link-badge">pages/distribution/team/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-45" data-path="pages/distribution/invite/index" data-title="邀请好友加入合伙人">
-            <a href="#phone-45" class="menu-link" onclick="highlightMenu(45)">
+          <li class="menu-item" id="menu-item-46" data-path="pages/distribution/invite/index" data-title="邀请好友加入合伙人">
+            <a href="#phone-46" class="menu-link" onclick="highlightMenu(46)">
               <span>邀请好友加入合伙人</span>
               <span class="menu-link-badge">pages/distribution/invite/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-46" data-path="pages/distribution/products/index" data-title="推广健康包赚佣金">
-            <a href="#phone-46" class="menu-link" onclick="highlightMenu(46)">
+          <li class="menu-item" id="menu-item-47" data-path="pages/distribution/products/index" data-title="推广健康包赚佣金">
+            <a href="#phone-47" class="menu-link" onclick="highlightMenu(47)">
               <span>推广健康包赚佣金</span>
               <span class="menu-link-badge">pages/distribution/products/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-47" data-path="pages/distribution/rules/index" data-title="鼾静分销合伙人规则">
-            <a href="#phone-47" class="menu-link" onclick="highlightMenu(47)">
+          <li class="menu-item" id="menu-item-48" data-path="pages/distribution/rules/index" data-title="鼾静分销合伙人规则">
+            <a href="#phone-48" class="menu-link" onclick="highlightMenu(48)">
               <span>鼾静分销合伙人规则</span>
               <span class="menu-link-badge">pages/distribution/rules/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-48" data-path="pages/live/list/index" data-title="睡眠呼吸健康直播课">
-            <a href="#phone-48" class="menu-link" onclick="highlightMenu(48)">
+          <li class="menu-item" id="menu-item-49" data-path="pages/live/list/index" data-title="睡眠呼吸健康直播课">
+            <a href="#phone-49" class="menu-link" onclick="highlightMenu(49)">
               <span>睡眠呼吸健康直播课</span>
               <span class="menu-link-badge">pages/live/list/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-49" data-path="pages/live/playback/index" data-title="往期直播精彩回放">
-            <a href="#phone-49" class="menu-link" onclick="highlightMenu(49)">
+          <li class="menu-item" id="menu-item-50" data-path="pages/live/playback/index" data-title="往期直播精彩回放">
+            <a href="#phone-50" class="menu-link" onclick="highlightMenu(50)">
               <span>往期直播精彩回放</span>
               <span class="menu-link-badge">pages/live/playback/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-50" data-path="pages/community/index" data-title="睡眠呼吸健康交流圈">
-            <a href="#phone-50" class="menu-link" onclick="highlightMenu(50)">
+          <li class="menu-item" id="menu-item-51" data-path="pages/community/index" data-title="睡眠呼吸健康交流圈">
+            <a href="#phone-51" class="menu-link" onclick="highlightMenu(51)">
               <span>睡眠呼吸健康交流圈</span>
               <span class="menu-link-badge">pages/community/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-51" data-path="pages/community/detail/index" data-title="圈子讨论详情">
-            <a href="#phone-51" class="menu-link" onclick="highlightMenu(51)">
+          <li class="menu-item" id="menu-item-52" data-path="pages/community/detail/index" data-title="圈子讨论详情">
+            <a href="#phone-52" class="menu-link" onclick="highlightMenu(52)">
               <span>圈子讨论详情</span>
               <span class="menu-link-badge">pages/community/detail/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-52" data-path="pages/community/publish/index" data-title="发布科普/提问帖子">
-            <a href="#phone-52" class="menu-link" onclick="highlightMenu(52)">
+          <li class="menu-item" id="menu-item-53" data-path="pages/community/publish/index" data-title="发布科普/提问帖子">
+            <a href="#phone-53" class="menu-link" onclick="highlightMenu(53)">
               <span>发布科普/提问帖子</span>
               <span class="menu-link-badge">pages/community/publish/index</span>
             </a>
@@ -11732,7 +12375,7 @@ body {
       </div>
       <div class="phone">
         <div class="phone-screen">
-          <div class="page data-v-e9eb3795"><div class="hero data-v-e9eb3795"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-title data-v-1529c78d" style="">首页</div></div></div></div><div class="hero-content data-v-e9eb3795"><span class="hero-title data-v-e9eb3795">鼾静健康诊所</span><span class="hero-subtitle data-v-e9eb3795">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</span><div class="hero-stats data-v-e9eb3795"><div class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">12,850+</span><span class="hero-stat-label data-v-e9eb3795">累计患者</span></div><div class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">99.2%</span><span class="hero-stat-label data-v-e9eb3795">满意率</span></div><div class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">3</span><span class="hero-stat-label data-v-e9eb3795">家门店</span></div></div><button class="hero-btn data-v-e9eb3795"><span class="data-v-e9eb3795">立即预约</span><span class="hero-btn-arrow data-v-e9eb3795">→</span></button></div></div><div class="section quick-actions data-v-e9eb3795"><div class="quick-action data-v-e9eb3795"><div class="quick-action-icon data-v-e9eb3795">📅</div><span class="quick-action-text data-v-e9eb3795">预约挂号</span></div><div class="quick-action data-v-e9eb3795"><div class="quick-action-icon data-v-e9eb3795">📊</div><span class="quick-action-text data-v-e9eb3795">睡眠评估</span></div><div class="quick-action data-v-e9eb3795"><div class="quick-action-icon data-v-e9eb3795">💊</div><span class="quick-action-text data-v-e9eb3795">治疗追踪</span></div><div class="quick-action data-v-e9eb3795"><div class="quick-action-icon data-v-e9eb3795">👤</div><span class="quick-action-text data-v-e9eb3795">我的档案</span></div></div><div class="section data-v-e9eb3795"><div class="section-header data-v-e9eb3795"><span class="section-title data-v-e9eb3795">推荐医生</span><span class="section-more data-v-e9eb3795">全部 ›</span></div><div class="component-hj-doctor-card"><div class="doctor-card data-v-906afe6e"><div class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">李</span></div><div class="doctor-info data-v-906afe6e"><div class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">李明辉</span><span class="hj-tag hj-tag-primary"></span></div><span class="doctor-specialty data-v-906afe6e">睡眠呼吸 · 22年经验</span><div class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">睡眠呼吸暂停综合症</span><span class="doctor-expertise-tag data-v-906afe6e">鼾症非手术治疗</span><span class="doctor-expertise-tag data-v-906afe6e">阻鼾器适配</span><span class="doctor-expertise-tag data-v-906afe6e">下颌前移治疗</span></div><div class="doctor-stats data-v-906afe6e"><div class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.9</span><span class="doctor-rating-count data-v-906afe6e">(326评)</span></div><span class="doctor-consult data-v-906afe6e">已接诊 10280+</span></div></div><div class="doctor-arrow data-v-906afe6e">›</div></div></div><div class="component-hj-doctor-card"><div class="doctor-card data-v-906afe6e"><div class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">王</span></div><div class="doctor-info data-v-906afe6e"><div class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">王芳</span><span class="hj-tag hj-tag-primary"></span></div><span class="doctor-specialty data-v-906afe6e">口腔正畸 · 15年经验</span><div class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">口腔矫治器治疗OSAS</span><span class="doctor-expertise-tag data-v-906afe6e">下颌前移量精准控制</span><span class="doctor-expertise-tag data-v-906afe6e">儿童鼾症</span><span class="doctor-expertise-tag data-v-906afe6e">颞下颌关节保护</span></div><div class="doctor-stats data-v-906afe6e"><div class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.8</span><span class="doctor-rating-count data-v-906afe6e">(218评)</span></div><span class="doctor-consult data-v-906afe6e">已接诊 6520+</span></div></div><div class="doctor-arrow data-v-906afe6e">›</div></div></div><div class="component-hj-doctor-card"><div class="doctor-card data-v-906afe6e"><div class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">张</span></div><div class="doctor-info data-v-906afe6e"><div class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">张伟</span><span class="hj-tag hj-tag-primary"></span></div><span class="doctor-specialty data-v-906afe6e">耳鼻喉科 · 18年经验</span><div class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">鼻内镜诊断</span><span class="doctor-expertise-tag data-v-906afe6e">上气道评估</span><span class="doctor-expertise-tag data-v-906afe6e">过敏性鼻炎与鼾症</span><span class="doctor-expertise-tag data-v-906afe6e">多导睡眠监测</span></div><div class="doctor-stats data-v-906afe6e"><div class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.7</span><span class="doctor-rating-count data-v-906afe6e">(185评)</span></div><span class="doctor-consult data-v-906afe6e">已接诊 8430+</span></div></div><div class="doctor-arrow data-v-906afe6e">›</div></div></div></div><div class="section data-v-e9eb3795"><div class="section-header data-v-e9eb3795"><span class="section-title data-v-e9eb3795">我们的门店</span></div><div class="component-hj-store-card"><div class="store-card data-v-3c596062"><div class="store-card-image data-v-3c596062"><div class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></div><div class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></div></div><div class="store-card-body data-v-3c596062"><div class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·深圳旗舰中心</span><div class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">旗舰店</span><span class="store-card-tag data-v-3c596062">地铁直达</span><span class="store-card-tag data-v-3c596062">免费停车</span></div></div><span class="store-card-address data-v-3c596062">📍 深圳市福田区福华三路卓越世纪中心1号楼18层</span><div class="store-card-footer data-v-3c596062"><div class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 6位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-18:00</span></div><span class="store-card-distance data-v-3c596062">1.2km</span></div></div></div></div><div class="component-hj-store-card"><div class="store-card data-v-3c596062"><div class="store-card-image data-v-3c596062"><div class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></div><div class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></div></div><div class="store-card-body data-v-3c596062"><div class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·南山分中心</span><div class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">科技园区</span><span class="store-card-tag data-v-3c596062">免费停车</span></div></div><span class="store-card-address data-v-3c596062">📍 深圳市南山区科技园南区科苑路15号科兴科学园B栋2层</span><div class="store-card-footer data-v-3c596062"><div class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 4位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-17:30</span></div><span class="store-card-distance data-v-3c596062">1.2km</span></div></div></div></div><div class="component-hj-store-card"><div class="store-card data-v-3c596062"><div class="store-card-image data-v-3c596062"><div class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></div><div class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></div></div><div class="store-card-body data-v-3c596062"><div class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·宝安分中心</span><div class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">新店</span></div></div><span class="store-card-address data-v-3c596062">📍 深圳市宝安区新安街道宝安大道4004号旭生大厦5层</span><div class="store-card-footer data-v-3c596062"><div class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 3位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-18:00</span></div><span class="store-card-distance data-v-3c596062">1.2km</span></div></div></div></div></div><div class="safe-bottom data-v-e9eb3795"></div></div>
+          <div class="page data-v-e9eb3795"><div class="hero data-v-e9eb3795"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-title data-v-1529c78d" style="">首页</div></div></div></div><div class="hero-content data-v-e9eb3795"><span class="hero-title data-v-e9eb3795">鼾静健康诊所</span><span class="hero-subtitle data-v-e9eb3795">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</span><div class="hero-stats data-v-e9eb3795"><div class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">12,850+</span><span class="hero-stat-label data-v-e9eb3795">累计患者</span></div><div class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">99.2%</span><span class="hero-stat-label data-v-e9eb3795">满意率</span></div><div class="hero-stat data-v-e9eb3795"><span class="hero-stat-num data-v-e9eb3795">3</span><span class="hero-stat-label data-v-e9eb3795">家门店</span></div></div><button class="hero-btn data-v-e9eb3795"><span class="data-v-e9eb3795">立即预约</span><span class="hero-btn-arrow data-v-e9eb3795">→</span></button></div></div><div class="section quick-actions data-v-e9eb3795"><div class="quick-action data-v-e9eb3795"><img class="quick-action-icon quick-action-icon--appointment data-v-e9eb3795" src="../mp-weixin/static/icons/tab-appointment-active.png" /><span class="quick-action-text data-v-e9eb3795">预约挂号</span></div><div class="quick-action data-v-e9eb3795"><img class="quick-action-icon quick-action-icon--assessment data-v-e9eb3795" src="../mp-weixin/static/icons/assessment_purple.svg" /><span class="quick-action-text data-v-e9eb3795">睡眠评估</span></div><div class="quick-action data-v-e9eb3795"><img class="quick-action-icon quick-action-icon--treatment data-v-e9eb3795" src="../mp-weixin/static/icons/tab-treatment-active.png" /><span class="quick-action-text data-v-e9eb3795">治疗追踪</span></div><div class="quick-action data-v-e9eb3795"><img class="quick-action-icon quick-action-icon--profile data-v-e9eb3795" src="../mp-weixin/static/icons/profile_orange.svg" /><span class="quick-action-text data-v-e9eb3795">我的档案</span></div></div><div class="section data-v-e9eb3795"><div class="section-header data-v-e9eb3795"><span class="section-title data-v-e9eb3795">推荐医生</span><span class="section-more data-v-e9eb3795">全部 ›</span></div><div class="component-hj-doctor-card"><div class="doctor-card data-v-906afe6e"><div class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">李</span></div><div class="doctor-info data-v-906afe6e"><div class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">李明辉</span><span class="hj-tag hj-tag-primary"></span></div><span class="doctor-specialty data-v-906afe6e">睡眠呼吸 · 22年经验</span><div class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">睡眠呼吸暂停综合症</span><span class="doctor-expertise-tag data-v-906afe6e">鼾症非手术治疗</span><span class="doctor-expertise-tag data-v-906afe6e">阻鼾器适配</span><span class="doctor-expertise-tag data-v-906afe6e">下颌前移治疗</span></div><div class="doctor-stats data-v-906afe6e"><div class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.9</span><span class="doctor-rating-count data-v-906afe6e">(326评)</span></div><span class="doctor-consult data-v-906afe6e">已接诊 10280+</span></div></div><div class="doctor-arrow data-v-906afe6e">›</div></div></div><div class="component-hj-doctor-card"><div class="doctor-card data-v-906afe6e"><div class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">王</span></div><div class="doctor-info data-v-906afe6e"><div class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">王芳</span><span class="hj-tag hj-tag-primary"></span></div><span class="doctor-specialty data-v-906afe6e">口腔正畸 · 15年经验</span><div class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">口腔矫治器治疗OSAS</span><span class="doctor-expertise-tag data-v-906afe6e">下颌前移量精准控制</span><span class="doctor-expertise-tag data-v-906afe6e">儿童鼾症</span><span class="doctor-expertise-tag data-v-906afe6e">颞下颌关节保护</span></div><div class="doctor-stats data-v-906afe6e"><div class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.8</span><span class="doctor-rating-count data-v-906afe6e">(218评)</span></div><span class="doctor-consult data-v-906afe6e">已接诊 6520+</span></div></div><div class="doctor-arrow data-v-906afe6e">›</div></div></div><div class="component-hj-doctor-card"><div class="doctor-card data-v-906afe6e"><div class="doctor-avatar data-v-906afe6e"><span class="doctor-avatar-text data-v-906afe6e">张</span></div><div class="doctor-info data-v-906afe6e"><div class="doctor-header data-v-906afe6e"><span class="doctor-name data-v-906afe6e">张伟</span><span class="hj-tag hj-tag-primary"></span></div><span class="doctor-specialty data-v-906afe6e">耳鼻喉科 · 18年经验</span><div class="doctor-expertise data-v-906afe6e"><span class="doctor-expertise-tag data-v-906afe6e">鼻内镜诊断</span><span class="doctor-expertise-tag data-v-906afe6e">上气道评估</span><span class="doctor-expertise-tag data-v-906afe6e">过敏性鼻炎与鼾症</span><span class="doctor-expertise-tag data-v-906afe6e">多导睡眠监测</span></div><div class="doctor-stats data-v-906afe6e"><div class="doctor-rating data-v-906afe6e"><span class="doctor-rating-star data-v-906afe6e">⭐</span><span class="doctor-rating-value data-v-906afe6e">4.7</span><span class="doctor-rating-count data-v-906afe6e">(185评)</span></div><span class="doctor-consult data-v-906afe6e">已接诊 8430+</span></div></div><div class="doctor-arrow data-v-906afe6e">›</div></div></div></div><div class="section data-v-e9eb3795"><div class="section-header data-v-e9eb3795"><span class="section-title data-v-e9eb3795">我们的门店</span></div><div class="component-hj-store-card"><div class="store-card data-v-3c596062"><div class="store-card-image data-v-3c596062"><div class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></div><div class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></div></div><div class="store-card-body data-v-3c596062"><div class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·深圳旗舰中心</span><div class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">旗舰店</span><span class="store-card-tag data-v-3c596062">地铁直达</span><span class="store-card-tag data-v-3c596062">免费停车</span></div></div><span class="store-card-address data-v-3c596062">📍 深圳市福田区福华三路卓越世纪中心1号楼18层</span><div class="store-card-footer data-v-3c596062"><div class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 6位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-18:00</span></div><span class="store-card-distance data-v-3c596062">1.2km</span></div></div></div></div><div class="component-hj-store-card"><div class="store-card data-v-3c596062"><div class="store-card-image data-v-3c596062"><div class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></div><div class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></div></div><div class="store-card-body data-v-3c596062"><div class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·南山分中心</span><div class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">科技园区</span><span class="store-card-tag data-v-3c596062">免费停车</span></div></div><span class="store-card-address data-v-3c596062">📍 深圳市南山区科技园南区科苑路15号科兴科学园B栋2层</span><div class="store-card-footer data-v-3c596062"><div class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 4位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-17:30</span></div><span class="store-card-distance data-v-3c596062">1.2km</span></div></div></div></div><div class="component-hj-store-card"><div class="store-card data-v-3c596062"><div class="store-card-image data-v-3c596062"><div class="store-card-image-placeholder data-v-3c596062"><span class="store-card-emoji data-v-3c596062">🏥</span></div><div class="store-card-status-badge open data-v-3c596062"><span class="data-v-3c596062">营业中</span></div></div><div class="store-card-body data-v-3c596062"><div class="store-card-header data-v-3c596062"><span class="store-card-name data-v-3c596062">鼾静健康·宝安分中心</span><div class="store-card-tags data-v-3c596062"><span class="store-card-tag data-v-3c596062">新店</span></div></div><span class="store-card-address data-v-3c596062">📍 深圳市宝安区新安街道宝安大道4004号旭生大厦5层</span><div class="store-card-footer data-v-3c596062"><div class="store-card-meta data-v-3c596062"><span class="store-card-meta-item data-v-3c596062">👨‍⚕️ 3位医生</span><span class="store-card-meta-item data-v-3c596062">🕐 09:00-18:00</span></div><span class="store-card-distance data-v-3c596062">1.2km</span></div></div></div></div></div><div class="safe-bottom data-v-e9eb3795"></div></div>
         </div>
       </div>
     </div>
@@ -11758,7 +12401,7 @@ body {
         <div class="phone-screen">
           <div class="page data-v-35dabd14"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">鼾静健康诊所</div></div></div></div><div class="page-content data-v-35dabd14"><div class="hero-card data-v-35dabd14"><span class="hero-emoji data-v-35dabd14">🌙</span><span class="hero-title data-v-35dabd14">了解您的睡眠质量</span><span class="hero-desc data-v-35dabd14">
         通过专业的ESS嗜睡量表和AI鼾声分析，全面评估您的睡眠呼吸健康状况
-      </span></div><div class="eval-card data-v-35dabd14"><div class="eval-icon data-v-35dabd14">📊</div><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">ESS嗜睡量表</span><span class="eval-desc data-v-35dabd14">8道情境题 · 约3分钟 · 国际通用标准</span></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="eval-card data-v-35dabd14"><div class="eval-icon data-v-35dabd14">🎤</div><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">AI鼾声分析</span><span class="eval-desc data-v-35dabd14">录制鼾声 · AI分析 · 风险评级</span><div class="new-tag data-v-35dabd14">新增上线</div></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="section-header data-v-35dabd14"><span class="section-title data-v-35dabd14">我的评估记录</span></div><div class="data-v-35dabd14"></div></div><div class="safe-bottom data-v-35dabd14"></div></div>
+      </span></div><div class="eval-card data-v-35dabd14"><img class="eval-icon data-v-35dabd14" src="../mp-weixin/static/icons/assessment.svg" /><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">ESS嗜睡量表</span><span class="eval-desc data-v-35dabd14">8道情境题 · 约3分钟 · 国际通用标准</span></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="eval-card data-v-35dabd14"><img class="eval-icon data-v-35dabd14" src="../mp-weixin/static/icons/microphone.svg" /><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">AI鼾声分析</span><span class="eval-desc data-v-35dabd14">录制鼾声 · AI分析 · 风险评级</span><div class="new-tag data-v-35dabd14">新增上线</div></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="section-header data-v-35dabd14"><span class="section-title data-v-35dabd14">我的评估记录</span></div><div class="data-v-35dabd14"></div></div><div class="safe-bottom data-v-35dabd14"></div></div>
         </div>
       </div>
     </div>
@@ -11773,7 +12416,7 @@ body {
           <div class="page data-v-8badcb8c"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-title data-v-1529c78d" style="">治疗</div></div></div></div><div class="page-content data-v-8badcb8c"><div class="hero-card data-v-8badcb8c"><div class="hero-top data-v-8badcb8c"><div class="hero-badge data-v-8badcb8c">治疗中</div><span class="hero-sub data-v-8badcb8c">已佩戴 深圳旗舰中心 天</span></div><span class="hero-device data-v-8badcb8c">进行中</span><span class="hero-doctor data-v-8badcb8c">主治：当前前伸量: 3.0mm 医生</span><div class="hero-progress-wrap data-v-8badcb8c"><div class="hero-progress-bar data-v-8badcb8c"><div class="hero-progress-fill data-v-8badcb8c" style=""></div></div><span class="hero-progress-num data-v-8badcb8c">依从率 [object Object],[object Object],[object Object]%</span></div><span class="hero-start data-v-8badcb8c">初配日期：</span></div><div class="section-header data-v-8badcb8c"><span class="section-title data-v-8badcb8c">打卡日历</span><div class="section-link data-v-8badcb8c"><span class="data-v-8badcb8c">完整日历</span><div class="more-arrow data-v-8badcb8c"></div></div></div><div class="calendar-strip data-v-8badcb8c"></div><div class="calendar-legend data-v-8badcb8c"><span class="legend-item data-v-8badcb8c"><div class="legend-dot data-v-8badcb8c" style="background: #86efac"></div>
         充足</span><span class="legend-item data-v-8badcb8c"><div class="legend-dot data-v-8badcb8c" style="background: #fde68a"></div>
         一般</span><span class="legend-item data-v-8badcb8c"><div class="legend-dot data-v-8badcb8c" style="background: #fecaca"></div>
-        未佩戴</span></div><div class="stats-row data-v-8badcb8c"><div class="stat-card data-v-8badcb8c"><span class="stat-value data-v-8badcb8c">/7</span><span class="stat-label data-v-8badcb8c">本周佩戴</span></div><div class="stat-card data-v-8badcb8c"><span class="stat-value data-v-8badcb8c">[]h</span><span class="stat-label data-v-8badcb8c">平均时长</span></div><div class="stat-card data-v-8badcb8c"><span class="stat-value data-v-8badcb8c">/5</span><span class="stat-label data-v-8badcb8c">舒适度</span></div><div class="stat-card data-v-8badcb8c"><span class="stat-value data-v-8badcb8c">true天</span><span class="stat-label data-v-8badcb8c">连续天数</span></div></div><div class="checkin-btn-wrap data-v-8badcb8c"><div class="checkin-btn data-v-8badcb8c"><span class="checkin-btn-text data-v-8badcb8c">今日打卡</span><span class="checkin-btn-hint data-v-8badcb8c">记录佩戴时长和感受</span></div></div><div class="section-header data-v-8badcb8c" style="margin-top: 20px"><span class="section-title data-v-8badcb8c">治疗进度</span></div><div class="treatment-timeline data-v-8badcb8c"><div class="treatment-phase data-v-8badcb8c"><div class="phase-indicator data-v-8badcb8c"><div class="phase-dot completed data-v-8badcb8c">✓</div><div class="phase-line completed data-v-8badcb8c"></div></div><div class="phase-content data-v-8badcb8c"><span class="phase-name data-v-8badcb8c">初诊评估</span><span class="phase-desc data-v-8badcb8c">完成睡眠监测、口腔检查、气道评估</span><span class="phase-date data-v-8badcb8c">2026-03-15</span></div></div><div class="treatment-phase data-v-8badcb8c"><div class="phase-indicator data-v-8badcb8c"><div class="phase-dot completed data-v-8badcb8c">✓</div><div class="phase-line completed data-v-8badcb8c"></div></div><div class="phase-content data-v-8badcb8c"><span class="phase-name data-v-8badcb8c">方案定制</span><span class="phase-desc data-v-8badcb8c">取模、设计个性化阻鼾器，确定初始前伸量</span><span class="phase-date data-v-8badcb8c">2026-03-22</span></div></div><div class="treatment-phase data-v-8badcb8c"><div class="phase-indicator data-v-8badcb8c"><div class="phase-dot completed data-v-8badcb8c">✓</div><div class="phase-line active data-v-8badcb8c"></div></div><div class="phase-content data-v-8badcb8c"><span class="phase-name data-v-8badcb8c">舒适观察期</span><span class="phase-desc data-v-8badcb8c">逐步适应佩戴，观察舒适度与受力分布</span><span class="phase-date data-v-8badcb8c">2026-03-29 ~ 2026-04-28</span></div></div><div class="treatment-phase data-v-8badcb8c"><div class="phase-indicator data-v-8badcb8c"><div class="phase-dot active data-v-8badcb8c">4</div><div class="phase-line pending data-v-8badcb8c"></div></div><div class="phase-content data-v-8badcb8c"><span class="phase-name active-name data-v-8badcb8c">增量调节期</span><span class="phase-desc data-v-8badcb8c">每次调整1/4毫米，逐步前移下颌至最佳位置</span><span class="phase-date data-v-8badcb8c">预计 2026-05-01 开始</span></div></div><div class="treatment-phase data-v-8badcb8c"><div class="phase-indicator data-v-8badcb8c"><div class="phase-dot pending data-v-8badcb8c">5</div></div><div class="phase-content data-v-8badcb8c"><span class="phase-name data-v-8badcb8c">效果巩固</span><span class="phase-desc data-v-8badcb8c">鼾声消除确认，长期佩戴维护指导</span></div></div></div><div class="section-header data-v-8badcb8c" style="margin-top: 20px"><span class="section-title data-v-8badcb8c">更多功能</span></div><div class="menu-grid data-v-8badcb8c"><div class="menu-item data-v-8badcb8c"><div class="menu-icon menu-icon--trend data-v-8badcb8c">📈</div><span class="menu-title data-v-8badcb8c">睡眠趋势</span><span class="menu-desc data-v-8badcb8c">佩戴与睡眠数据</span></div><div class="menu-item data-v-8badcb8c"><div class="menu-icon menu-icon--report data-v-8badcb8c">📊</div><span class="menu-title data-v-8badcb8c">睡眠报告</span><span class="menu-desc data-v-8badcb8c">AI智能分析与建议</span></div><div class="menu-item data-v-8badcb8c"><div class="menu-icon menu-icon--timeline data-v-8badcb8c">🕒</div><span class="menu-title data-v-8badcb8c">治疗时间线</span><span class="menu-desc data-v-8badcb8c">就诊全记录</span></div><div class="menu-item data-v-8badcb8c"><div class="menu-icon menu-icon--advice data-v-8badcb8c">🩺</div><span class="menu-title data-v-8badcb8c">医嘱建议</span><span class="menu-desc data-v-8badcb8c">医生指导方案</span></div><div class="menu-item data-v-8badcb8c"><div class="menu-icon menu-icon--adjust data-v-8badcb8c">🔧</div><span class="menu-title data-v-8badcb8c">设备调整</span><span class="menu-desc data-v-8badcb8c">参数与调整记录</span></div><div class="menu-item data-v-8badcb8c"><div class="menu-icon menu-icon--community data-v-8badcb8c">👥</div><span class="menu-title data-v-8badcb8c">医患社区</span><span class="menu-desc data-v-8badcb8c">交流经验与心得</span></div></div><div class="section-header data-v-8badcb8c" style="margin-top: 20px"><span class="section-title data-v-8badcb8c">治疗动态</span><div class="section-link data-v-8badcb8c"><span class="data-v-8badcb8c">全部</span></div></div><div class="timeline-preview data-v-8badcb8c"></div><div class="safe-bottom data-v-8badcb8c"></div></div></div>
+        未佩戴</span></div><div class="stats-row data-v-8badcb8c"><div class="stat-card data-v-8badcb8c"><span class="stat-value data-v-8badcb8c">/7</span><span class="stat-label data-v-8badcb8c">本周佩戴</span></div><div class="stat-card data-v-8badcb8c"><span class="stat-value data-v-8badcb8c">[]h</span><span class="stat-label data-v-8badcb8c">平均时长</span></div><div class="stat-card data-v-8badcb8c"><span class="stat-value data-v-8badcb8c">/5</span><span class="stat-label data-v-8badcb8c">舒适度</span></div><div class="stat-card data-v-8badcb8c"><span class="stat-value data-v-8badcb8c">true天</span><span class="stat-label data-v-8badcb8c">连续天数</span></div></div><div class="checkin-btn-wrap data-v-8badcb8c"><div class="checkin-btn data-v-8badcb8c"><span class="checkin-btn-text data-v-8badcb8c">今日打卡</span><span class="checkin-btn-hint data-v-8badcb8c">记录佩戴时长和感受</span></div></div><div class="section-header data-v-8badcb8c" style="margin-top: 20px"><span class="section-title data-v-8badcb8c">治疗进度</span></div><div class="treatment-timeline data-v-8badcb8c"><div class="treatment-phase data-v-8badcb8c"><div class="phase-indicator data-v-8badcb8c"><div class="phase-dot completed data-v-8badcb8c">✓</div><div class="phase-line completed data-v-8badcb8c"></div></div><div class="phase-content data-v-8badcb8c"><span class="phase-name data-v-8badcb8c">初诊评估</span><span class="phase-desc data-v-8badcb8c">完成睡眠监测、口腔检查、气道评估</span><span class="phase-date data-v-8badcb8c">2026-03-15</span></div></div><div class="treatment-phase data-v-8badcb8c"><div class="phase-indicator data-v-8badcb8c"><div class="phase-dot completed data-v-8badcb8c">✓</div><div class="phase-line completed data-v-8badcb8c"></div></div><div class="phase-content data-v-8badcb8c"><span class="phase-name data-v-8badcb8c">方案定制</span><span class="phase-desc data-v-8badcb8c">取模、设计个性化阻鼾器，确定初始前伸量</span><span class="phase-date data-v-8badcb8c">2026-03-22</span></div></div><div class="treatment-phase data-v-8badcb8c"><div class="phase-indicator data-v-8badcb8c"><div class="phase-dot completed data-v-8badcb8c">✓</div><div class="phase-line active data-v-8badcb8c"></div></div><div class="phase-content data-v-8badcb8c"><span class="phase-name data-v-8badcb8c">舒适观察期</span><span class="phase-desc data-v-8badcb8c">逐步适应佩戴，观察舒适度与受力分布</span><span class="phase-date data-v-8badcb8c">2026-03-29 ~ 2026-04-28</span></div></div><div class="treatment-phase data-v-8badcb8c"><div class="phase-indicator data-v-8badcb8c"><div class="phase-dot active data-v-8badcb8c">4</div><div class="phase-line pending data-v-8badcb8c"></div></div><div class="phase-content data-v-8badcb8c"><span class="phase-name active-name data-v-8badcb8c">增量调节期</span><span class="phase-desc data-v-8badcb8c">每次调整1/4毫米，逐步前移下颌至最佳位置</span><span class="phase-date data-v-8badcb8c">预计 2026-05-01 开始</span></div></div><div class="treatment-phase data-v-8badcb8c"><div class="phase-indicator data-v-8badcb8c"><div class="phase-dot pending data-v-8badcb8c">5</div></div><div class="phase-content data-v-8badcb8c"><span class="phase-name data-v-8badcb8c">效果巩固</span><span class="phase-desc data-v-8badcb8c">鼾声消除确认，长期佩戴维护指导</span></div></div></div><div class="section-header data-v-8badcb8c" style="margin-top: 20px"><span class="section-title data-v-8badcb8c">更多功能</span></div><div class="menu-grid data-v-8badcb8c"><div class="menu-item data-v-8badcb8c"><img class="menu-icon menu-icon--trend data-v-8badcb8c" src="../mp-weixin/static/icons/trend.svg" /><span class="menu-title data-v-8badcb8c">睡眠趋势</span><span class="menu-desc data-v-8badcb8c">佩戴与睡眠数据</span></div><div class="menu-item data-v-8badcb8c"><img class="menu-icon menu-icon--report data-v-8badcb8c" src="../mp-weixin/static/icons/report.svg" /><span class="menu-title data-v-8badcb8c">睡眠报告</span><span class="menu-desc data-v-8badcb8c">AI智能分析与建议</span></div><div class="menu-item data-v-8badcb8c"><img class="menu-icon menu-icon--timeline data-v-8badcb8c" src="../mp-weixin/static/icons/timeline.svg" /><span class="menu-title data-v-8badcb8c">治疗时间线</span><span class="menu-desc data-v-8badcb8c">就诊全记录</span></div><div class="menu-item data-v-8badcb8c"><img class="menu-icon menu-icon--advice data-v-8badcb8c" src="../mp-weixin/static/icons/advice.svg" /><span class="menu-title data-v-8badcb8c">医嘱建议</span><span class="menu-desc data-v-8badcb8c">医生指导方案</span></div><div class="menu-item data-v-8badcb8c"><img class="menu-icon menu-icon--adjust data-v-8badcb8c" src="../mp-weixin/static/icons/adjust.svg" /><span class="menu-title data-v-8badcb8c">设备调整</span><span class="menu-desc data-v-8badcb8c">参数与调整记录</span></div><div class="menu-item data-v-8badcb8c"><img class="menu-icon menu-icon--community data-v-8badcb8c" src="../mp-weixin/static/icons/community.svg" /><span class="menu-title data-v-8badcb8c">医患社区</span><span class="menu-desc data-v-8badcb8c">交流经验与心得</span></div></div><div class="section-header data-v-8badcb8c" style="margin-top: 20px"><span class="section-title data-v-8badcb8c">治疗动态</span><div class="section-link data-v-8badcb8c"><span class="data-v-8badcb8c">全部</span></div></div><div class="timeline-preview data-v-8badcb8c"></div><div class="safe-bottom data-v-8badcb8c"></div></div></div>
         </div>
       </div>
     </div>
@@ -11797,7 +12440,7 @@ body {
       </div>
       <div class="phone">
         <div class="phone-screen">
-          <div class="page data-v-093cfe40"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-title data-v-1529c78d" style="">我的</div></div></div></div><div class="page-content data-v-093cfe40"><div class="user-card data-v-093cfe40"><div class="user-avatar data-v-093cfe40"><span class="user-avatar-text data-v-093cfe40">张</span></div><div class="user-info data-v-093cfe40"><span class="user-name data-v-093cfe40">张明华</span><div class="user-level data-v-093cfe40"><span class="user-level-tag data-v-093cfe40">黄金会员</span></div></div><span class="user-arrow data-v-093cfe40">›</span></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">我的健康</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">📋</span><span class="menu-label data-v-093cfe40">病历档案</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">💊</span><span class="menu-label data-v-093cfe40">阻鼾器管理</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">👨‍👩‍👧</span><span class="menu-label data-v-093cfe40">家庭成员</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">我的服务</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">💰</span><span class="menu-label data-v-093cfe40">会员权益</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">📦</span><span class="menu-label data-v-093cfe40">我的订单</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">🔗</span><span class="menu-label data-v-093cfe40">分销中心</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">🎬</span><span class="menu-label data-v-093cfe40">直播中心</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">其他</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">💬</span><span class="menu-label data-v-093cfe40">在线客服</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">🔔</span><span class="menu-label data-v-093cfe40">消息通知</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><span class="menu-icon data-v-093cfe40">⚙️</span><span class="menu-label data-v-093cfe40">设置</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div></div><div class="safe-bottom data-v-093cfe40"></div></div>
+          <div class="page data-v-093cfe40"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-title data-v-1529c78d" style="">我的</div></div></div></div><div class="page-content data-v-093cfe40"><div class="user-card data-v-093cfe40"><div class="user-avatar data-v-093cfe40"><span class="user-avatar-text data-v-093cfe40">张</span></div><div class="user-info data-v-093cfe40"><span class="user-name data-v-093cfe40">张明华</span><div class="user-level data-v-093cfe40"><span class="user-level-tag data-v-093cfe40">黄金会员</span></div></div><span class="user-arrow data-v-093cfe40">›</span></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">我的健康</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="📋" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">病历档案</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="💊" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">阻鼾器管理</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="👨‍👩‍👧" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">家庭成员</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">我的服务</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="💰" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">会员权益</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="📦" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">我的订单</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="🔗" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">分销中心</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="🎬" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">直播中心</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div><div class="menu-group data-v-093cfe40"><span class="menu-group-title data-v-093cfe40">其他</span><div class="menu-list data-v-093cfe40"><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="💬" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">在线客服</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="🔔" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">消息通知</span><span class="menu-arrow data-v-093cfe40">›</span></div><div class="menu-item data-v-093cfe40"><img class="menu-icon data-v-093cfe40" src="⚙️" style="width: 18px; height: 18px; vertical-align: middle;" /><span class="menu-label data-v-093cfe40">设置</span><span class="menu-arrow data-v-093cfe40">›</span></div></div></div></div><div class="safe-bottom data-v-093cfe40"></div></div>
         </div>
       </div>
     </div>
@@ -11809,11 +12452,11 @@ body {
       </div>
       <div class="phone">
         <div class="phone-screen">
-          <div class="page-container"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">登录</div></div></div></div><div class="page-content login-page"><div class="brand-section"><div class="logo-container"><span class="logo-emoji">💤</span></div><span class="brand-name">鼾静健康诊所</span><span class="brand-slogan">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</span></div><div class="auth-section"><div class="auth-tip-card"><div class="tip-header"><span class="tip-icon">🔒</span><span class="tip-title">安全授权提示</span></div><span class="tip-content">根据国家网络安全法及就诊真实性要求，预约挂号、病历管理、睡眠监测等功能需绑定您的手机号码。</span></div><button class="auth-btn" open-type="getPhoneNumber">
+          <div class="page-container"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">登录</div></div></div></div><div class="page-content login-page"><div class="brand-section"><div class="logo-container"><span class="logo-emoji">💤</span></div><span class="brand-name">鼾静健康诊所</span><span class="brand-slogan">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</span></div><div class="auth-section"><div class="auth-tip-card"><div class="tip-header"><span class="tip-icon">🔒</span><span class="tip-title">安全授权提示</span></div><span class="tip-content">根据国家网络安全法及就诊真实性要求，预约挂号、病历管理、睡眠监测等功能需绑定您的手机号码。</span></div><button class="auth-btn" open-type="">
         微信手机号一键登录
       </button><button class="cancel-btn">
         暂不登录
-      </button></div><div class="protocol-section"><span class="protocol-text">登录即代表您同意 </span><span class="protocol-link">《用户协议》</span><span class="protocol-text">与</span><span class="protocol-link">《隐私政策》</span></div></div></div>
+      </button></div><div class="protocol-section"><checkbox-group><label class="protocol-label"><checkbox class="protocol-checkbox" value="agree" checked="true" color="#3b6bf5"></checkbox><span class="protocol-text">我已阅读并同意 </span></label></checkbox-group><span class="protocol-link">《用户协议》</span><span class="protocol-text">与</span><span class="protocol-link">《隐私政策》</span></div></div></div>
         </div>
       </div>
     </div>
@@ -11837,12 +12480,24 @@ body {
       </div>
       <div class="phone">
         <div class="phone-screen">
-          <div class="page data-v-1b135653"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">接诊医生详情</div></div></div></div><div class="page-content data-v-1b135653"><div class="section-header data-v-1b135653"><span class="section-title data-v-1b135653">选择医生</span><span class="section-hint data-v-1b135653">共 示例 位医生</span></div><div class="data-v-1b135653"></div></div></div>
+          <div class="page data-v-detail"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">接诊医生详情</div></div></div></div><div class="page-content data-v-detail"><div class="doctor-detail-hero data-v-detail"><div class="doc-avatar data-v-detail"><span class="doc-avatar-text data-v-detail">示例</span></div><div class="doc-name data-v-detail"></div><div class="doc-title-text data-v-detail"> · </div><div class="doc-tags data-v-detail"></div></div><div class="doc-stats-row data-v-detail"><div class="doc-stat data-v-detail"><div class="val data-v-detail"><span class="data-v-detail"></span><span class="unit data-v-detail">年</span></div><div class="lab data-v-detail">临床经验</div></div><div class="doc-stat data-v-detail"><div class="val data-v-detail"><span class="data-v-detail"></span><span class="unit data-v-detail">+</span></div><div class="lab data-v-detail">累计诊疗</div></div><div class="doc-stat data-v-detail"><div class="val data-v-detail"><span class="data-v-detail"></span><span class="unit data-v-detail">%</span></div><div class="lab data-v-detail">好评率</div></div></div><div class="doc-section data-v-detail"><div class="doc-section-title data-v-detail"><img class="doc-section-icon data-v-detail" src="../mp-weixin/static/icons/tab-profile-active.png" /> 个人简介</div><div class="doc-intro data-v-detail"></div></div><div class="doc-section data-v-detail"><div class="doc-section-title data-v-detail"><img class="doc-section-icon data-v-detail" src="../mp-weixin/static/icons/tab-treatment-active.png" /> 擅长领域</div><div class="doc-specialties data-v-detail"></div></div><div class="doc-section data-v-detail" style="padding-bottom: 90px"><div class="doc-section-title data-v-detail"><img class="doc-section-icon data-v-detail" src="../mp-weixin/static/icons/tab-appointment-active.png" /> 近期排班</div><div class="doc-schedule data-v-detail"></div></div></div><div class="bottom-fixed-bar data-v-detail"><button class="bar-primary-btn data-v-detail"></button></div></div>
         </div>
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-9" data-path="pages/appointment/time-select" data-title="选择预约时段">
+    <div class="phone-wrapper" id="phone-9" data-path="pages/appointment/doctor-list" data-title="鼾静健康诊所">
+      <div class="page-label">
+        <span>鼾静健康诊所</span>
+        <span class="path">pages/appointment/doctor-list</span>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="page data-v-1b135653"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">鼾静健康诊所</div></div></div></div><div class="page-content data-v-1b135653"><div class="section-header data-v-1b135653"><span class="section-title data-v-1b135653">选择医生</span><span class="section-hint data-v-1b135653">共 示例 位医生</span></div><div class="data-v-1b135653"></div></div></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="phone-wrapper" id="phone-10" data-path="pages/appointment/time-select" data-title="选择预约时段">
       <div class="page-label">
         <span>选择预约时段</span>
         <span class="path">pages/appointment/time-select</span>
@@ -11854,43 +12509,43 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-10" data-path="pages/appointment/confirm" data-title="确认挂号信息">
+    <div class="phone-wrapper" id="phone-11" data-path="pages/appointment/confirm" data-title="确认挂号信息">
       <div class="page-label">
         <span>确认挂号信息</span>
         <span class="path">pages/appointment/confirm</span>
       </div>
       <div class="phone">
         <div class="phone-screen">
-          <div class="page data-v-03365e87"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">确认挂号信息</div></div></div></div><div class="page-content data-v-03365e87"><div class="info-card data-v-03365e87"><span class="info-title data-v-03365e87">预约信息确认</span><div class="info-row data-v-03365e87"><span class="info-label data-v-03365e87">🏥 门店</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><span class="info-label data-v-03365e87">👨‍⚕️ 医生</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><span class="info-label data-v-03365e87">📅 日期</span><span class="info-value data-v-03365e87">false</span></div><div class="info-row data-v-03365e87"><span class="info-label data-v-03365e87">🕐 时段</span><span class="info-value info-value--bold data-v-03365e87"></span></div></div><div class="symptom-card data-v-03365e87"><span class="symptom-title data-v-03365e87">症状描述（选填）</span></div><div class="tips data-v-03365e87"><span class="tips-text data-v-03365e87">💡 就诊当天会有消息提醒，请保持手机畅通</span><span class="tips-text data-v-03365e87">⚠️ 如需取消，请在就诊前2小时取消</span></div><div class="submit-area data-v-03365e87"></div></div></div>
+          <div class="page data-v-03365e87"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">确认挂号信息</div></div></div></div><div class="page-content data-v-03365e87"><div class="info-card data-v-03365e87"><span class="info-title data-v-03365e87">预约信息确认</span><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/store.svg" /><span class="info-label data-v-03365e87">门店</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/doctor.svg" /><span class="info-label data-v-03365e87">医生</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/calendar.svg" /><span class="info-label data-v-03365e87">日期</span><span class="info-value data-v-03365e87">false</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/clock.svg" /><span class="info-label data-v-03365e87">时段</span><span class="info-value info-value--bold data-v-03365e87"></span></div></div><div class="symptom-card data-v-03365e87"><span class="symptom-title data-v-03365e87">症状描述（选填）</span></div><div class="tips data-v-03365e87"><div class="tip-item data-v-03365e87"><img class="tip-icon data-v-03365e87" src="../mp-weixin/static/icons/info.svg" /><span class="tips-text data-v-03365e87">就诊当天会有消息提醒，请保持手机畅通</span></div><div class="tip-item data-v-03365e87"><img class="tip-icon data-v-03365e87" src="../mp-weixin/static/icons/alert.svg" /><span class="tips-text data-v-03365e87">如需取消，请在就诊前2小时取消</span></div></div><div class="submit-area data-v-03365e87"></div></div></div>
         </div>
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-11" data-path="pages/appointment/success" data-title="挂号预约成功">
+    <div class="phone-wrapper" id="phone-12" data-path="pages/appointment/success" data-title="挂号预约成功">
       <div class="page-label">
         <span>挂号预约成功</span>
         <span class="path">pages/appointment/success</span>
       </div>
       <div class="phone">
         <div class="phone-screen">
-          <div class="page data-v-baa6e4ef"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">挂号预约成功</div></div></div></div><div class="page-content data-v-baa6e4ef"><div class="success-icon data-v-baa6e4ef"><span class="success-emoji data-v-baa6e4ef">✅</span></div><span class="success-title data-v-baa6e4ef">预约成功！</span><span class="success-desc data-v-baa6e4ef">您的预约已提交，请按时就诊</span><div class="summary-card data-v-baa6e4ef"><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">预约单号</span><span class="summary-value summary-value--no data-v-baa6e4ef">示例</span></div><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">就诊门店</span><span class="summary-value data-v-baa6e4ef">示例</span></div><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">就诊医生</span><span class="summary-value data-v-baa6e4ef"></span></div><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">就诊时间</span><span class="summary-value summary-value--bold data-v-baa6e4ef"> </span></div></div><div class="actions data-v-baa6e4ef"><button class="hj-btn hj-btn-primary"></button></div><div class="remind data-v-baa6e4ef"><span class="remind-text data-v-baa6e4ef">📱 就诊当天将通过微信消息提醒您</span></div></div></div>
+          <div class="page data-v-baa6e4ef"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">挂号预约成功</div></div></div></div><div class="page-content data-v-baa6e4ef"><div class="success-icon data-v-baa6e4ef"><img class="success-medical-icon data-v-baa6e4ef" mode="aspectFit" src="../mp-weixin/static/icons/success-medical.svg" /></div><span class="success-title data-v-baa6e4ef">预约成功</span><span class="success-desc data-v-baa6e4ef">您的预约已提交，请按时就诊</span><div class="summary-card data-v-baa6e4ef"><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">预约单号</span><span class="summary-value summary-value--no data-v-baa6e4ef">示例</span></div><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">就诊门店</span><span class="summary-value data-v-baa6e4ef">示例</span></div><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">就诊医生</span><span class="summary-value data-v-baa6e4ef"></span></div><div class="summary-row data-v-baa6e4ef"><span class="summary-label data-v-baa6e4ef">就诊时间</span><span class="summary-value summary-value--bold data-v-baa6e4ef"> </span></div></div><div class="actions data-v-baa6e4ef"><button class="hj-btn hj-btn-primary"></button></div><div class="remind data-v-baa6e4ef"><div class="remind-item data-v-baa6e4ef"><img class="remind-icon data-v-baa6e4ef" src="../mp-weixin/static/icons/bell.svg" /><span class="remind-text data-v-baa6e4ef">就诊当天将通过微信消息提醒您</span></div></div></div></div>
         </div>
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-12" data-path="pages/appointment/detail" data-title="门诊预约详情">
+    <div class="phone-wrapper" id="phone-13" data-path="pages/appointment/detail" data-title="门诊预约详情">
       <div class="page-label">
         <span>门诊预约详情</span>
         <span class="path">pages/appointment/detail</span>
       </div>
       <div class="phone">
         <div class="phone-screen">
-          <div class="page data-v-7e5a1194"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">门诊预约详情</div></div></div></div><div class="page-content data-v-7e5a1194"><div class="status-bar data-v-7e5a1194"><span class="hj-tag hj-tag-primary"></span><span class="status-no data-v-7e5a1194"></span></div><div class="card data-v-7e5a1194"><span class="card-title data-v-7e5a1194">就诊信息</span><div class="info-row data-v-7e5a1194"><span class="info-label data-v-7e5a1194">🏥 门店</span><span class="info-value data-v-7e5a1194"></span></div><div class="info-row data-v-7e5a1194"><span class="info-label data-v-7e5a1194">📍 地址</span><span class="info-value info-value--small data-v-7e5a1194"></span></div><div class="info-row data-v-7e5a1194"><span class="info-label data-v-7e5a1194">👨‍⚕️ 医生</span><span class="info-value data-v-7e5a1194"> · </span></div><div class="info-row data-v-7e5a1194"><span class="info-label data-v-7e5a1194">📅 时间</span><span class="info-value info-value--bold data-v-7e5a1194">null </span></div><div class="info-row data-v-7e5a1194"><span class="info-label data-v-7e5a1194">📋 类型</span><span class="info-value data-v-7e5a1194"></span></div></div></div></div>
+          <div class="page data-v-7e5a1194"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">门诊预约详情</div></div></div></div><div class="page-content data-v-7e5a1194"><div class="status-hero  data-v-7e5a1194"><div class="status-hero-main data-v-7e5a1194"><div class="status-icon-wrapper data-v-7e5a1194"><img class="status-icon data-v-7e5a1194" src="../mp-weixin/static/icons/tab-home.png" /></div><div class="status-title-group data-v-7e5a1194"><span class="status-title data-v-7e5a1194"></span><span class="status-desc data-v-7e5a1194">预约流程已更新，详情请见下方信息</span></div></div></div><div class="order-no-bar data-v-7e5a1194"><div class="no-text-group data-v-7e5a1194"><span class="no-label data-v-7e5a1194">预约单号</span><span class="no-value data-v-7e5a1194"></span></div><button class="copy-btn-action data-v-7e5a1194" hover-class="copy-btn-hover">复制</button></div><div class="card-premium doctor-card data-v-7e5a1194"><div class="doc-avatar-large data-v-7e5a1194"><span class="doc-avatar-text-large data-v-7e5a1194"></span><div class="pulse-ring-avatar data-v-7e5a1194"></div></div><div class="doc-info-detail data-v-7e5a1194"><div class="doc-name-row data-v-7e5a1194"><span class="doc-name-large data-v-7e5a1194"></span><span class="doc-title-badge data-v-7e5a1194"></span></div><span class="doc-dept data-v-7e5a1194"></span><span class="doc-hospital data-v-7e5a1194"></span></div></div><div class="card-premium data-v-7e5a1194"><div class="card-header-premium data-v-7e5a1194"><img class="header-icon data-v-7e5a1194" src="../mp-weixin/static/icons/tab-appointment.png" /><span class="header-title data-v-7e5a1194">就诊及门店信息</span></div><div class="detail-rows data-v-7e5a1194"><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">就诊时间</span><span class="row-value row-value--bold data-v-7e5a1194">null </span></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">就诊门诊</span><span class="row-value data-v-7e5a1194"></span></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">门店地址</span><span class="row-value row-value--small data-v-7e5a1194"></span></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">门诊类型</span><span class="row-value data-v-7e5a1194"></span></div></div></div></div></div>
         </div>
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-13" data-path="pages/appointment/reschedule" data-title="就诊预约改期">
+    <div class="phone-wrapper" id="phone-14" data-path="pages/appointment/reschedule" data-title="就诊预约改期">
       <div class="page-label">
         <span>就诊预约改期</span>
         <span class="path">pages/appointment/reschedule</span>
@@ -11902,7 +12557,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-14" data-path="pages/assessment/questionnaire/index" data-title="ESS 嗜睡自我量表评估">
+    <div class="phone-wrapper" id="phone-15" data-path="pages/assessment/questionnaire/index" data-title="ESS 嗜睡自我量表评估">
       <div class="page-label">
         <span>ESS 嗜睡自我量表评估</span>
         <span class="path">pages/assessment/questionnaire/index</span>
@@ -11914,7 +12569,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-15" data-path="pages/assessment/result/index" data-title="睡眠呼吸初评报告">
+    <div class="phone-wrapper" id="phone-16" data-path="pages/assessment/result/index" data-title="睡眠呼吸初评报告">
       <div class="page-label">
         <span>睡眠呼吸初评报告</span>
         <span class="path">pages/assessment/result/index</span>
@@ -11926,7 +12581,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-16" data-path="pages/assessment/recording/index" data-title="AI 睡眠鼾声实时录音">
+    <div class="phone-wrapper" id="phone-17" data-path="pages/assessment/recording/index" data-title="AI 睡眠鼾声实时录音">
       <div class="page-label">
         <span>AI 睡眠鼾声实时录音</span>
         <span class="path">pages/assessment/recording/index</span>
@@ -11943,7 +12598,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-17" data-path="pages/assessment/snore-result/index" data-title="AI 睡眠鼾声分析报告">
+    <div class="phone-wrapper" id="phone-18" data-path="pages/assessment/snore-result/index" data-title="AI 睡眠鼾声分析报告">
       <div class="page-label">
         <span>AI 睡眠鼾声分析报告</span>
         <span class="path">pages/assessment/snore-result/index</span>
@@ -11959,7 +12614,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-18" data-path="pages/treatment/sleep-trend/index" data-title="近期睡眠戴镜数据趋势">
+    <div class="phone-wrapper" id="phone-19" data-path="pages/treatment/sleep-trend/index" data-title="近期睡眠戴镜数据趋势">
       <div class="page-label">
         <span>近期睡眠戴镜数据趋势</span>
         <span class="path">pages/treatment/sleep-trend/index</span>
@@ -11971,7 +12626,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-19" data-path="pages/treatment/timeline/index" data-title="临床治疗记录时间轴">
+    <div class="phone-wrapper" id="phone-20" data-path="pages/treatment/timeline/index" data-title="临床治疗记录时间轴">
       <div class="page-label">
         <span>临床治疗记录时间轴</span>
         <span class="path">pages/treatment/timeline/index</span>
@@ -11983,7 +12638,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-20" data-path="pages/treatment/doctor-advice/index" data-title="主诊医生就诊建议书">
+    <div class="phone-wrapper" id="phone-21" data-path="pages/treatment/doctor-advice/index" data-title="主诊医生就诊建议书">
       <div class="page-label">
         <span>主诊医生就诊建议书</span>
         <span class="path">pages/treatment/doctor-advice/index</span>
@@ -11995,7 +12650,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-21" data-path="pages/treatment/adjust-detail/index" data-title="阻鼾器下颌前伸微调记录">
+    <div class="phone-wrapper" id="phone-22" data-path="pages/treatment/adjust-detail/index" data-title="阻鼾器下颌前伸微调记录">
       <div class="page-label">
         <span>阻鼾器下颌前伸微调记录</span>
         <span class="path">pages/treatment/adjust-detail/index</span>
@@ -12010,7 +12665,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-22" data-path="pages/treatment/sleep-report/index" data-title="多导睡眠监测评估报告 (PSG)">
+    <div class="phone-wrapper" id="phone-23" data-path="pages/treatment/sleep-report/index" data-title="多导睡眠监测评估报告 (PSG)">
       <div class="page-label">
         <span>多导睡眠监测评估报告 (PSG)</span>
         <span class="path">pages/treatment/sleep-report/index</span>
@@ -12024,7 +12679,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-23" data-path="pages/product/detail/index" data-title="商品详情">
+    <div class="phone-wrapper" id="phone-24" data-path="pages/product/detail/index" data-title="商品详情">
       <div class="page-label">
         <span>商品详情</span>
         <span class="path">pages/product/detail/index</span>
@@ -12036,7 +12691,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-24" data-path="pages/product/detail" data-title="鼾静健康诊所">
+    <div class="phone-wrapper" id="phone-25" data-path="pages/product/detail" data-title="鼾静健康诊所">
       <div class="page-label">
         <span>鼾静健康诊所</span>
         <span class="path">pages/product/detail</span>
@@ -12048,7 +12703,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-25" data-path="pages/profile/medical-records/index" data-title="就诊门诊电子病历">
+    <div class="phone-wrapper" id="phone-26" data-path="pages/profile/medical-records/index" data-title="就诊门诊电子病历">
       <div class="page-label">
         <span>就诊门诊电子病历</span>
         <span class="path">pages/profile/medical-records/index</span>
@@ -12060,7 +12715,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-26" data-path="pages/profile/device-manage/index" data-title="我的定制阻鼾器管理">
+    <div class="phone-wrapper" id="phone-27" data-path="pages/profile/device-manage/index" data-title="我的定制阻鼾器管理">
       <div class="page-label">
         <span>我的定制阻鼾器管理</span>
         <span class="path">pages/profile/device-manage/index</span>
@@ -12072,7 +12727,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-27" data-path="pages/profile/device-manage/wearing-data/index" data-title="佩戴追踪数据图表">
+    <div class="phone-wrapper" id="phone-28" data-path="pages/profile/device-manage/wearing-data/index" data-title="佩戴追踪数据图表">
       <div class="page-label">
         <span>佩戴追踪数据图表</span>
         <span class="path">pages/profile/device-manage/wearing-data/index</span>
@@ -12084,7 +12739,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-28" data-path="pages/profile/device-manage/maintenance/index" data-title="鼾静健康诊所">
+    <div class="phone-wrapper" id="phone-29" data-path="pages/profile/device-manage/maintenance/index" data-title="鼾静健康诊所">
       <div class="page-label">
         <span>鼾静健康诊所</span>
         <span class="path">pages/profile/device-manage/maintenance/index</span>
@@ -12096,7 +12751,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-29" data-path="pages/profile/device-manage/feedback/index" data-title="鼾静健康诊所">
+    <div class="phone-wrapper" id="phone-30" data-path="pages/profile/device-manage/feedback/index" data-title="鼾静健康诊所">
       <div class="page-label">
         <span>鼾静健康诊所</span>
         <span class="path">pages/profile/device-manage/feedback/index</span>
@@ -12108,7 +12763,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-30" data-path="pages/profile/family-members/index" data-title="家庭就诊成员列表">
+    <div class="phone-wrapper" id="phone-31" data-path="pages/profile/family-members/index" data-title="家庭就诊成员列表">
       <div class="page-label">
         <span>家庭就诊成员列表</span>
         <span class="path">pages/profile/family-members/index</span>
@@ -12120,7 +12775,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-31" data-path="pages/profile/family-members/add-member/index" data-title="添加家庭成员卡">
+    <div class="phone-wrapper" id="phone-32" data-path="pages/profile/family-members/add-member/index" data-title="添加家庭成员卡">
       <div class="page-label">
         <span>添加家庭成员卡</span>
         <span class="path">pages/profile/family-members/add-member/index</span>
@@ -12132,7 +12787,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-32" data-path="pages/profile/member-benefits/index" data-title="会员特权与服务权益">
+    <div class="phone-wrapper" id="phone-33" data-path="pages/profile/member-benefits/index" data-title="会员特权与服务权益">
       <div class="page-label">
         <span>会员特权与服务权益</span>
         <span class="path">pages/profile/member-benefits/index</span>
@@ -12144,7 +12799,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-33" data-path="pages/profile/settings/index" data-title="系统设置">
+    <div class="phone-wrapper" id="phone-34" data-path="pages/profile/settings/index" data-title="系统设置">
       <div class="page-label">
         <span>系统设置</span>
         <span class="path">pages/profile/settings/index</span>
@@ -12156,7 +12811,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-34" data-path="pages/profile/settings/personal-info/index" data-title="修改个人基本资料">
+    <div class="phone-wrapper" id="phone-35" data-path="pages/profile/settings/personal-info/index" data-title="修改个人基本资料">
       <div class="page-label">
         <span>修改个人基本资料</span>
         <span class="path">pages/profile/settings/personal-info/index</span>
@@ -12168,7 +12823,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-35" data-path="pages/profile/settings/account-security/index" data-title="账号安全维护中心">
+    <div class="phone-wrapper" id="phone-36" data-path="pages/profile/settings/account-security/index" data-title="账号安全维护中心">
       <div class="page-label">
         <span>账号安全维护中心</span>
         <span class="path">pages/profile/settings/account-security/index</span>
@@ -12180,7 +12835,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-36" data-path="pages/profile/notifications/index" data-title="系统消息与服务通知">
+    <div class="phone-wrapper" id="phone-37" data-path="pages/profile/notifications/index" data-title="系统消息与服务通知">
       <div class="page-label">
         <span>系统消息与服务通知</span>
         <span class="path">pages/profile/notifications/index</span>
@@ -12192,7 +12847,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-37" data-path="pages/profile/online-service/index" data-title="在线客服实时咨询">
+    <div class="phone-wrapper" id="phone-38" data-path="pages/profile/online-service/index" data-title="在线客服实时咨询">
       <div class="page-label">
         <span>在线客服实时咨询</span>
         <span class="path">pages/profile/online-service/index</span>
@@ -12204,7 +12859,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-38" data-path="pages/order/index" data-title="商城购物订单">
+    <div class="phone-wrapper" id="phone-39" data-path="pages/order/index" data-title="商城购物订单">
       <div class="page-label">
         <span>商城购物订单</span>
         <span class="path">pages/order/index</span>
@@ -12216,7 +12871,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-39" data-path="pages/order/detail" data-title="订单详情">
+    <div class="phone-wrapper" id="phone-40" data-path="pages/order/detail" data-title="订单详情">
       <div class="page-label">
         <span>订单详情</span>
         <span class="path">pages/order/detail</span>
@@ -12228,7 +12883,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-40" data-path="pages/distribution/center/index" data-title="健康合伙人分销中心">
+    <div class="phone-wrapper" id="phone-41" data-path="pages/distribution/center/index" data-title="健康合伙人分销中心">
       <div class="page-label">
         <span>健康合伙人分销中心</span>
         <span class="path">pages/distribution/center/index</span>
@@ -12240,7 +12895,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-41" data-path="pages/distribution/commission/index" data-title="分销金及推广佣金明细">
+    <div class="phone-wrapper" id="phone-42" data-path="pages/distribution/commission/index" data-title="分销金及推广佣金明细">
       <div class="page-label">
         <span>分销金及推广佣金明细</span>
         <span class="path">pages/distribution/commission/index</span>
@@ -12252,7 +12907,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-42" data-path="pages/distribution/withdraw/index" data-title="佣金余额提现申请">
+    <div class="phone-wrapper" id="phone-43" data-path="pages/distribution/withdraw/index" data-title="佣金余额提现申请">
       <div class="page-label">
         <span>佣金余额提现申请</span>
         <span class="path">pages/distribution/withdraw/index</span>
@@ -12264,7 +12919,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-43" data-path="pages/distribution/withdraw-records/index" data-title="资金提现记录表">
+    <div class="phone-wrapper" id="phone-44" data-path="pages/distribution/withdraw-records/index" data-title="资金提现记录表">
       <div class="page-label">
         <span>资金提现记录表</span>
         <span class="path">pages/distribution/withdraw-records/index</span>
@@ -12276,7 +12931,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-44" data-path="pages/distribution/team/index" data-title="我推荐的合伙人团队">
+    <div class="phone-wrapper" id="phone-45" data-path="pages/distribution/team/index" data-title="我推荐的合伙人团队">
       <div class="page-label">
         <span>我推荐的合伙人团队</span>
         <span class="path">pages/distribution/team/index</span>
@@ -12288,7 +12943,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-45" data-path="pages/distribution/invite/index" data-title="邀请好友加入合伙人">
+    <div class="phone-wrapper" id="phone-46" data-path="pages/distribution/invite/index" data-title="邀请好友加入合伙人">
       <div class="page-label">
         <span>邀请好友加入合伙人</span>
         <span class="path">pages/distribution/invite/index</span>
@@ -12302,7 +12957,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-46" data-path="pages/distribution/products/index" data-title="推广健康包赚佣金">
+    <div class="phone-wrapper" id="phone-47" data-path="pages/distribution/products/index" data-title="推广健康包赚佣金">
       <div class="page-label">
         <span>推广健康包赚佣金</span>
         <span class="path">pages/distribution/products/index</span>
@@ -12314,7 +12969,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-47" data-path="pages/distribution/rules/index" data-title="鼾静分销合伙人规则">
+    <div class="phone-wrapper" id="phone-48" data-path="pages/distribution/rules/index" data-title="鼾静分销合伙人规则">
       <div class="page-label">
         <span>鼾静分销合伙人规则</span>
         <span class="path">pages/distribution/rules/index</span>
@@ -12326,7 +12981,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-48" data-path="pages/live/list/index" data-title="睡眠呼吸健康直播课">
+    <div class="phone-wrapper" id="phone-49" data-path="pages/live/list/index" data-title="睡眠呼吸健康直播课">
       <div class="page-label">
         <span>睡眠呼吸健康直播课</span>
         <span class="path">pages/live/list/index</span>
@@ -12338,7 +12993,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-49" data-path="pages/live/playback/index" data-title="往期直播精彩回放">
+    <div class="phone-wrapper" id="phone-50" data-path="pages/live/playback/index" data-title="往期直播精彩回放">
       <div class="page-label">
         <span>往期直播精彩回放</span>
         <span class="path">pages/live/playback/index</span>
@@ -12350,7 +13005,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-50" data-path="pages/community/index" data-title="睡眠呼吸健康交流圈">
+    <div class="phone-wrapper" id="phone-51" data-path="pages/community/index" data-title="睡眠呼吸健康交流圈">
       <div class="page-label">
         <span>睡眠呼吸健康交流圈</span>
         <span class="path">pages/community/index</span>
@@ -12362,7 +13017,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-51" data-path="pages/community/detail/index" data-title="圈子讨论详情">
+    <div class="phone-wrapper" id="phone-52" data-path="pages/community/detail/index" data-title="圈子讨论详情">
       <div class="page-label">
         <span>圈子讨论详情</span>
         <span class="path">pages/community/detail/index</span>
@@ -12376,7 +13031,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-52" data-path="pages/community/publish/index" data-title="发布科普/提问帖子">
+    <div class="phone-wrapper" id="phone-53" data-path="pages/community/publish/index" data-title="发布科普/提问帖子">
       <div class="page-label">
         <span>发布科普/提问帖子</span>
         <span class="path">pages/community/publish/index</span>

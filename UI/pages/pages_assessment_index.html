@@ -546,6 +546,8 @@ button:after {
   gap: 4px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  height: 20px;
+  overflow: hidden;
 }
 .doctor-expertise-tag.data-v-906afe6e {
   font-size: 11px;
@@ -553,6 +555,7 @@ button:after {
   background: #d3f5e3;
   padding: 2px 6px;
   border-radius: 4px;
+  line-height: 1.2;
 }
 .doctor-stats.data-v-906afe6e {
   display: flex;
@@ -817,9 +820,17 @@ button:after {
   margin-bottom: 8px;
 }
 .apt-label.data-v-74fd48b7 {
+  display: flex;
+  align-items: center;
   font-size: 13px;
   color: #9ca3af;
-  width: 56px;
+  width: 60px;
+  flex-shrink: 0;
+  gap: 6px;
+}
+.apt-label-icon.data-v-74fd48b7 {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
 }
 .apt-value.data-v-74fd48b7 {
@@ -997,6 +1008,19 @@ button:after {
 }
 .calendar-day--selected .calendar-day-dot.data-v-70d02435 {
   background: #fff;
+}
+.calendar-month-selector.data-v-70d02435 {
+  display: flex;
+  align-items: center;
+}
+.month-arrow.data-v-70d02435 {
+  font-size: 20px;
+  color: #3b6bf5;
+  padding: 0 10px;
+  font-weight: bold;
+}
+.month-arrow.data-v-70d02435:active {
+  opacity: 0.5;
 }
 
 .data-v-822bb649:root {
@@ -1454,10 +1478,8 @@ button:after {
   height: 48px;
   background: #eef4ff;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
+  box-sizing: border-box;
+  padding: 11px;
   margin-right: 12px;
   flex-shrink: 0;
 }
@@ -1611,7 +1633,7 @@ body {
 <div class="phone-standalone">
   <div class="page data-v-35dabd14"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">鼾静健康诊所</div></div></div></div><div class="page-content data-v-35dabd14"><div class="hero-card data-v-35dabd14"><span class="hero-emoji data-v-35dabd14">🌙</span><span class="hero-title data-v-35dabd14">了解您的睡眠质量</span><span class="hero-desc data-v-35dabd14">
         通过专业的ESS嗜睡量表和AI鼾声分析，全面评估您的睡眠呼吸健康状况
-      </span></div><div class="eval-card data-v-35dabd14"><div class="eval-icon data-v-35dabd14">📊</div><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">ESS嗜睡量表</span><span class="eval-desc data-v-35dabd14">8道情境题 · 约3分钟 · 国际通用标准</span></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="eval-card data-v-35dabd14"><div class="eval-icon data-v-35dabd14">🎤</div><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">AI鼾声分析</span><span class="eval-desc data-v-35dabd14">录制鼾声 · AI分析 · 风险评级</span><div class="new-tag data-v-35dabd14">新增上线</div></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="section-header data-v-35dabd14"><span class="section-title data-v-35dabd14">我的评估记录</span></div><div class="data-v-35dabd14"></div></div><div class="safe-bottom data-v-35dabd14"></div></div>
+      </span></div><div class="eval-card data-v-35dabd14"><img class="eval-icon data-v-35dabd14" src="../mp-weixin/static/icons/assessment.svg" /><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">ESS嗜睡量表</span><span class="eval-desc data-v-35dabd14">8道情境题 · 约3分钟 · 国际通用标准</span></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="eval-card data-v-35dabd14"><img class="eval-icon data-v-35dabd14" src="../mp-weixin/static/icons/microphone.svg" /><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">AI鼾声分析</span><span class="eval-desc data-v-35dabd14">录制鼾声 · AI分析 · 风险评级</span><div class="new-tag data-v-35dabd14">新增上线</div></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="section-header data-v-35dabd14"><span class="section-title data-v-35dabd14">我的评估记录</span></div><div class="data-v-35dabd14"></div></div><div class="safe-bottom data-v-35dabd14"></div></div>
 </div>
 </body>
 </html>
