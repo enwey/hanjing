@@ -109,7 +109,9 @@
 }
 
 .status-icon.data-v-7e5a1194 {
-  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
 }
 
 .status-title-group.data-v-7e5a1194 {

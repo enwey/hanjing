@@ -12,11 +12,11 @@
     <view class="status-hero {{statusClass}} data-v-7e5a1194">
       <view class="status-hero-main data-v-7e5a1194">
         <view class="status-icon-wrapper data-v-7e5a1194">
-          <text wx:if="{{status === 'confirmed' || status === 'reminded'}}" class="status-icon data-v-7e5a1194">📅</text>
-          <text wx:elif="{{status === 'pending'}}" class="status-icon data-v-7e5a1194">⏳</text>
-          <text wx:elif="{{status === 'completed'}}" class="status-icon data-v-7e5a1194">✅</text>
-          <text wx:elif="{{status === 'cancelled' || status === 'no_show'}}" class="status-icon data-v-7e5a1194">❌</text>
-          <text wx:else class="status-icon data-v-7e5a1194">🔔</text>
+          <image wx:if="{{status === 'confirmed' || status === 'reminded'}}" class="status-icon data-v-7e5a1194" src="/static/icons/tab-appointment.png" />
+          <image wx:elif="{{status === 'pending'}}" class="status-icon data-v-7e5a1194" src="/static/icons/tab-assessment.png" />
+          <image wx:elif="{{status === 'completed'}}" class="status-icon data-v-7e5a1194" src="/static/icons/tab-treatment.png" />
+          <image wx:elif="{{status === 'cancelled' || status === 'no_show'}}" class="status-icon data-v-7e5a1194" src="/static/icons/tab-profile.png" />
+          <image wx:else class="status-icon data-v-7e5a1194" src="/static/icons/tab-home.png" />
         </view>
         <view class="status-title-group data-v-7e5a1194">
           <text class="status-title data-v-7e5a1194">{{statusLabel}}</text>
@@ -57,7 +57,7 @@
     <!-- 4. Schedule & Location Card -->
     <view class="card-premium data-v-7e5a1194">
       <view class="card-header-premium data-v-7e5a1194">
-        <image class="header-icon data-v-7e5a1194" src="/static/icons/calendar.svg" />
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/tab-appointment.png" />
         <text class="header-title data-v-7e5a1194">就诊及门店信息</text>
       </view>
       
@@ -82,24 +82,30 @@
     </view>
 
     <!-- 5. Symptom description Card -->
-    <view wx:if="{{l}}" class="card-premium symptom-card data-v-7e5a1194">
+    <view wx:if="{{l}}" class="card-premium data-v-7e5a1194">
       <view class="card-header-premium data-v-7e5a1194">
-        <image class="header-icon data-v-7e5a1194" src="/static/icons/timeline.svg" />
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/tab-treatment.png" />
         <text class="header-title data-v-7e5a1194">主诉症状描述</text>
       </view>
-      <view class="symptom-content-wrapper data-v-7e5a1194">
-        <text class="symptom-text-styled data-v-7e5a1194">{{m}}</text>
+      <view class="detail-rows data-v-7e5a1194">
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">症状描述</text>
+          <text class="row-value data-v-7e5a1194">{{m}}</text>
+        </view>
       </view>
     </view>
 
     <!-- 6. Cancel description Card -->
-    <view wx:if="{{n}}" class="card-premium cancel-card-styled data-v-7e5a1194">
+    <view wx:if="{{n}}" class="card-premium data-v-7e5a1194">
       <view class="card-header-premium data-v-7e5a1194">
-        <image class="header-icon data-v-7e5a1194" src="/static/icons/warning.svg" />
-        <text class="header-title data-v-7e5a1194" style="color: #ef4444;">取消原因</text>
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/tab-community.png" />
+        <text class="header-title data-v-7e5a1194">取消原因</text>
       </view>
-      <view class="cancel-content-wrapper data-v-7e5a1194">
-        <text class="cancel-text-styled data-v-7e5a1194">{{o}}</text>
+      <view class="detail-rows data-v-7e5a1194">
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">取消原因</text>
+          <text class="row-value data-v-7e5a1194">{{o}}</text>
+        </view>
       </view>
     </view>
 
