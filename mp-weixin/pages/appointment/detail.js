@@ -80,18 +80,20 @@ const o = () => "../../components/base/hj-navbar.js",
           if ((await Promise.all([l.fetchStores(), s.fetchDoctors()]), c))
             try {
               const e = (await a.getAppointmentDetail(c)).data;
-              ((r.value = e.appointment),
-                (u.value = l.getStoreById(
-                  null == (t = e.appointment) ? void 0 : t.storeId,
-                )),
-                (i.value = e.doctor));
-              const doc = i.value;
+              r.value = e.appointment;
+              u.value = l.getStoreById(
+                null == (t = e.appointment) ? void 0 : t.storeId,
+              );
+              // Fetch from doctor store first to guarantee identity/data consistency with homepage card
+              const doc = e.appointment ? s.getDoctorById(e.appointment.doctorId) || e.doctor : e.doctor;
+              i.value = doc;
+
               const pages = getCurrentPages();
               const curPage = pages[pages.length - 1];
               if (curPage && curPage.setData) {
                 curPage.setData({
                   doctorDept: doc ? `${doc.specialty || '科室'} · ${doc.experienceYears || 0}年经验` : "科室 · 经验",
-                  doctorExpertise: doc && doc.expertise ? doc.expertise : ["睡眠呼吸暂停综合症", "阻鼾器适配", "下颌前移治疗"]
+                  doctorExpertise: doc && doc.expertise ? doc.expertise : []
                 });
               }
             } catch (d) {
@@ -111,7 +113,7 @@ const o = () => "../../components/base/hj-navbar.js",
                     statusLabel: (n.AppointmentStatusMap[r.value.status] || n.AppointmentStatusMap.pending).label,
                     statusClass: "status--" + r.value.status,
                     doctorDept: i.value ? `${i.value.specialty || '科室'} · ${i.value.experienceYears || 0}年经验` : "科室 · 经验",
-                    doctorExpertise: i.value && i.value.expertise ? i.value.expertise : ["睡眠呼吸暂停综合症", "阻鼾器适配", "下颌前移治疗"],
+                    doctorExpertise: i.value && i.value.expertise ? i.value.expertise : [],
                     onCopy: e.o(copyNo),
                     onCancel: e.o(cancelAppt),
                     onReschedule: e.o(rescheduleAppt),
