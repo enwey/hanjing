@@ -4364,6 +4364,92 @@ button:after {
   opacity: 0.85;
 }
 
+/* pages/appointment/map CSS */
+..phone-screen, .phone-standalone-container.data-v-c5678abc {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #f9fafb;
+}
+
+.map-wrapper.data-v-c5678abc {
+  flex: 1;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.store-map.data-v-c5678abc {
+  width: 100%;
+  height: 100%;
+}
+
+.store-card.data-v-c5678abc {
+  position: absolute;
+  bottom: 30px;
+  left: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(31, 41, 55, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.store-info.data-v-c5678abc {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.store-name.data-v-c5678abc {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.4;
+}
+
+.store-address.data-v-c5678abc {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.nav-btn.data-v-c5678abc {
+  background: linear-gradient(135deg, #3b6bf5 0%, #2a52d4 100%);
+  color: #ffffff;
+  border-radius: 9999px;
+  font-size: 15px;
+  font-weight: 500;
+  height: 48px;
+  line-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  box-shadow: 0 4px 14px rgba(59, 107, 245, 0.3);
+}
+
+.nav-btn.data-v-c5678abc:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.btn-icon.data-v-c5678abc {
+  width: 16px;
+  height: 16px;
+  filter: brightness(0) invert(1);
+}
+
 /* pages/appointment/reschedule CSS */
 .data-v-54e72399:root {
   --color-primary-50: #eef4ff;
@@ -12000,7 +12086,7 @@ body {
   <div class="sidebar">
     <div class="sidebar-header">
       <h2>鼾静健康诊所</h2>
-      <p>编译自小程序开发源码 (54个页面)</p>
+      <p>编译自小程序开发源码 (55个页面)</p>
     </div>
     
     <div class="toolbar">
@@ -12114,281 +12200,288 @@ body {
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-14" data-path="pages/appointment/reschedule" data-title="就诊预约改期">
+          <li class="menu-item" id="menu-item-14" data-path="pages/appointment/map" data-title="鼾静健康诊所">
             <a href="#phone-14" class="menu-link" onclick="highlightMenu(14)">
+              <span>鼾静健康诊所</span>
+              <span class="menu-link-badge">pages/appointment/map</span>
+            </a>
+          </li>
+          
+          <li class="menu-item" id="menu-item-15" data-path="pages/appointment/reschedule" data-title="就诊预约改期">
+            <a href="#phone-15" class="menu-link" onclick="highlightMenu(15)">
               <span>就诊预约改期</span>
               <span class="menu-link-badge">pages/appointment/reschedule</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-15" data-path="pages/assessment/questionnaire/index" data-title="ESS 嗜睡自我量表评估">
-            <a href="#phone-15" class="menu-link" onclick="highlightMenu(15)">
+          <li class="menu-item" id="menu-item-16" data-path="pages/assessment/questionnaire/index" data-title="ESS 嗜睡自我量表评估">
+            <a href="#phone-16" class="menu-link" onclick="highlightMenu(16)">
               <span>ESS 嗜睡自我量表评估</span>
               <span class="menu-link-badge">pages/assessment/questionnaire/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-16" data-path="pages/assessment/result/index" data-title="睡眠呼吸初评报告">
-            <a href="#phone-16" class="menu-link" onclick="highlightMenu(16)">
+          <li class="menu-item" id="menu-item-17" data-path="pages/assessment/result/index" data-title="睡眠呼吸初评报告">
+            <a href="#phone-17" class="menu-link" onclick="highlightMenu(17)">
               <span>睡眠呼吸初评报告</span>
               <span class="menu-link-badge">pages/assessment/result/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-17" data-path="pages/assessment/recording/index" data-title="AI 睡眠鼾声实时录音">
-            <a href="#phone-17" class="menu-link" onclick="highlightMenu(17)">
+          <li class="menu-item" id="menu-item-18" data-path="pages/assessment/recording/index" data-title="AI 睡眠鼾声实时录音">
+            <a href="#phone-18" class="menu-link" onclick="highlightMenu(18)">
               <span>AI 睡眠鼾声实时录音</span>
               <span class="menu-link-badge">pages/assessment/recording/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-18" data-path="pages/assessment/snore-result/index" data-title="AI 睡眠鼾声分析报告">
-            <a href="#phone-18" class="menu-link" onclick="highlightMenu(18)">
+          <li class="menu-item" id="menu-item-19" data-path="pages/assessment/snore-result/index" data-title="AI 睡眠鼾声分析报告">
+            <a href="#phone-19" class="menu-link" onclick="highlightMenu(19)">
               <span>AI 睡眠鼾声分析报告</span>
               <span class="menu-link-badge">pages/assessment/snore-result/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-19" data-path="pages/treatment/sleep-trend/index" data-title="近期睡眠戴镜数据趋势">
-            <a href="#phone-19" class="menu-link" onclick="highlightMenu(19)">
+          <li class="menu-item" id="menu-item-20" data-path="pages/treatment/sleep-trend/index" data-title="近期睡眠戴镜数据趋势">
+            <a href="#phone-20" class="menu-link" onclick="highlightMenu(20)">
               <span>近期睡眠戴镜数据趋势</span>
               <span class="menu-link-badge">pages/treatment/sleep-trend/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-20" data-path="pages/treatment/timeline/index" data-title="临床治疗记录时间轴">
-            <a href="#phone-20" class="menu-link" onclick="highlightMenu(20)">
+          <li class="menu-item" id="menu-item-21" data-path="pages/treatment/timeline/index" data-title="临床治疗记录时间轴">
+            <a href="#phone-21" class="menu-link" onclick="highlightMenu(21)">
               <span>临床治疗记录时间轴</span>
               <span class="menu-link-badge">pages/treatment/timeline/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-21" data-path="pages/treatment/doctor-advice/index" data-title="主诊医生就诊建议书">
-            <a href="#phone-21" class="menu-link" onclick="highlightMenu(21)">
+          <li class="menu-item" id="menu-item-22" data-path="pages/treatment/doctor-advice/index" data-title="主诊医生就诊建议书">
+            <a href="#phone-22" class="menu-link" onclick="highlightMenu(22)">
               <span>主诊医生就诊建议书</span>
               <span class="menu-link-badge">pages/treatment/doctor-advice/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-22" data-path="pages/treatment/adjust-detail/index" data-title="阻鼾器下颌前伸微调记录">
-            <a href="#phone-22" class="menu-link" onclick="highlightMenu(22)">
+          <li class="menu-item" id="menu-item-23" data-path="pages/treatment/adjust-detail/index" data-title="阻鼾器下颌前伸微调记录">
+            <a href="#phone-23" class="menu-link" onclick="highlightMenu(23)">
               <span>阻鼾器下颌前伸微调记录</span>
               <span class="menu-link-badge">pages/treatment/adjust-detail/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-23" data-path="pages/treatment/sleep-report/index" data-title="多导睡眠监测评估报告 (PSG)">
-            <a href="#phone-23" class="menu-link" onclick="highlightMenu(23)">
+          <li class="menu-item" id="menu-item-24" data-path="pages/treatment/sleep-report/index" data-title="多导睡眠监测评估报告 (PSG)">
+            <a href="#phone-24" class="menu-link" onclick="highlightMenu(24)">
               <span>多导睡眠监测评估报告 (PSG)</span>
               <span class="menu-link-badge">pages/treatment/sleep-report/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-24" data-path="pages/product/detail/index" data-title="商品详情">
-            <a href="#phone-24" class="menu-link" onclick="highlightMenu(24)">
+          <li class="menu-item" id="menu-item-25" data-path="pages/product/detail/index" data-title="商品详情">
+            <a href="#phone-25" class="menu-link" onclick="highlightMenu(25)">
               <span>商品详情</span>
               <span class="menu-link-badge">pages/product/detail/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-25" data-path="pages/product/detail" data-title="鼾静健康诊所">
-            <a href="#phone-25" class="menu-link" onclick="highlightMenu(25)">
+          <li class="menu-item" id="menu-item-26" data-path="pages/product/detail" data-title="鼾静健康诊所">
+            <a href="#phone-26" class="menu-link" onclick="highlightMenu(26)">
               <span>鼾静健康诊所</span>
               <span class="menu-link-badge">pages/product/detail</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-26" data-path="pages/profile/medical-records/index" data-title="就诊门诊电子病历">
-            <a href="#phone-26" class="menu-link" onclick="highlightMenu(26)">
+          <li class="menu-item" id="menu-item-27" data-path="pages/profile/medical-records/index" data-title="就诊门诊电子病历">
+            <a href="#phone-27" class="menu-link" onclick="highlightMenu(27)">
               <span>就诊门诊电子病历</span>
               <span class="menu-link-badge">pages/profile/medical-records/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-27" data-path="pages/profile/device-manage/index" data-title="我的定制阻鼾器管理">
-            <a href="#phone-27" class="menu-link" onclick="highlightMenu(27)">
+          <li class="menu-item" id="menu-item-28" data-path="pages/profile/device-manage/index" data-title="我的定制阻鼾器管理">
+            <a href="#phone-28" class="menu-link" onclick="highlightMenu(28)">
               <span>我的定制阻鼾器管理</span>
               <span class="menu-link-badge">pages/profile/device-manage/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-28" data-path="pages/profile/device-manage/wearing-data/index" data-title="佩戴追踪数据图表">
-            <a href="#phone-28" class="menu-link" onclick="highlightMenu(28)">
+          <li class="menu-item" id="menu-item-29" data-path="pages/profile/device-manage/wearing-data/index" data-title="佩戴追踪数据图表">
+            <a href="#phone-29" class="menu-link" onclick="highlightMenu(29)">
               <span>佩戴追踪数据图表</span>
               <span class="menu-link-badge">pages/profile/device-manage/wearing-data/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-29" data-path="pages/profile/device-manage/maintenance/index" data-title="鼾静健康诊所">
-            <a href="#phone-29" class="menu-link" onclick="highlightMenu(29)">
+          <li class="menu-item" id="menu-item-30" data-path="pages/profile/device-manage/maintenance/index" data-title="鼾静健康诊所">
+            <a href="#phone-30" class="menu-link" onclick="highlightMenu(30)">
               <span>鼾静健康诊所</span>
               <span class="menu-link-badge">pages/profile/device-manage/maintenance/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-30" data-path="pages/profile/device-manage/feedback/index" data-title="鼾静健康诊所">
-            <a href="#phone-30" class="menu-link" onclick="highlightMenu(30)">
+          <li class="menu-item" id="menu-item-31" data-path="pages/profile/device-manage/feedback/index" data-title="鼾静健康诊所">
+            <a href="#phone-31" class="menu-link" onclick="highlightMenu(31)">
               <span>鼾静健康诊所</span>
               <span class="menu-link-badge">pages/profile/device-manage/feedback/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-31" data-path="pages/profile/family-members/index" data-title="家庭就诊成员列表">
-            <a href="#phone-31" class="menu-link" onclick="highlightMenu(31)">
+          <li class="menu-item" id="menu-item-32" data-path="pages/profile/family-members/index" data-title="家庭就诊成员列表">
+            <a href="#phone-32" class="menu-link" onclick="highlightMenu(32)">
               <span>家庭就诊成员列表</span>
               <span class="menu-link-badge">pages/profile/family-members/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-32" data-path="pages/profile/family-members/add-member/index" data-title="添加家庭成员卡">
-            <a href="#phone-32" class="menu-link" onclick="highlightMenu(32)">
+          <li class="menu-item" id="menu-item-33" data-path="pages/profile/family-members/add-member/index" data-title="添加家庭成员卡">
+            <a href="#phone-33" class="menu-link" onclick="highlightMenu(33)">
               <span>添加家庭成员卡</span>
               <span class="menu-link-badge">pages/profile/family-members/add-member/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-33" data-path="pages/profile/member-benefits/index" data-title="会员特权与服务权益">
-            <a href="#phone-33" class="menu-link" onclick="highlightMenu(33)">
+          <li class="menu-item" id="menu-item-34" data-path="pages/profile/member-benefits/index" data-title="会员特权与服务权益">
+            <a href="#phone-34" class="menu-link" onclick="highlightMenu(34)">
               <span>会员特权与服务权益</span>
               <span class="menu-link-badge">pages/profile/member-benefits/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-34" data-path="pages/profile/settings/index" data-title="系统设置">
-            <a href="#phone-34" class="menu-link" onclick="highlightMenu(34)">
+          <li class="menu-item" id="menu-item-35" data-path="pages/profile/settings/index" data-title="系统设置">
+            <a href="#phone-35" class="menu-link" onclick="highlightMenu(35)">
               <span>系统设置</span>
               <span class="menu-link-badge">pages/profile/settings/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-35" data-path="pages/profile/settings/personal-info/index" data-title="修改个人基本资料">
-            <a href="#phone-35" class="menu-link" onclick="highlightMenu(35)">
+          <li class="menu-item" id="menu-item-36" data-path="pages/profile/settings/personal-info/index" data-title="修改个人基本资料">
+            <a href="#phone-36" class="menu-link" onclick="highlightMenu(36)">
               <span>修改个人基本资料</span>
               <span class="menu-link-badge">pages/profile/settings/personal-info/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-36" data-path="pages/profile/settings/account-security/index" data-title="账号安全维护中心">
-            <a href="#phone-36" class="menu-link" onclick="highlightMenu(36)">
+          <li class="menu-item" id="menu-item-37" data-path="pages/profile/settings/account-security/index" data-title="账号安全维护中心">
+            <a href="#phone-37" class="menu-link" onclick="highlightMenu(37)">
               <span>账号安全维护中心</span>
               <span class="menu-link-badge">pages/profile/settings/account-security/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-37" data-path="pages/profile/notifications/index" data-title="系统消息与服务通知">
-            <a href="#phone-37" class="menu-link" onclick="highlightMenu(37)">
+          <li class="menu-item" id="menu-item-38" data-path="pages/profile/notifications/index" data-title="系统消息与服务通知">
+            <a href="#phone-38" class="menu-link" onclick="highlightMenu(38)">
               <span>系统消息与服务通知</span>
               <span class="menu-link-badge">pages/profile/notifications/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-38" data-path="pages/profile/online-service/index" data-title="在线客服实时咨询">
-            <a href="#phone-38" class="menu-link" onclick="highlightMenu(38)">
+          <li class="menu-item" id="menu-item-39" data-path="pages/profile/online-service/index" data-title="在线客服实时咨询">
+            <a href="#phone-39" class="menu-link" onclick="highlightMenu(39)">
               <span>在线客服实时咨询</span>
               <span class="menu-link-badge">pages/profile/online-service/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-39" data-path="pages/order/index" data-title="商城购物订单">
-            <a href="#phone-39" class="menu-link" onclick="highlightMenu(39)">
+          <li class="menu-item" id="menu-item-40" data-path="pages/order/index" data-title="商城购物订单">
+            <a href="#phone-40" class="menu-link" onclick="highlightMenu(40)">
               <span>商城购物订单</span>
               <span class="menu-link-badge">pages/order/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-40" data-path="pages/order/detail" data-title="订单详情">
-            <a href="#phone-40" class="menu-link" onclick="highlightMenu(40)">
+          <li class="menu-item" id="menu-item-41" data-path="pages/order/detail" data-title="订单详情">
+            <a href="#phone-41" class="menu-link" onclick="highlightMenu(41)">
               <span>订单详情</span>
               <span class="menu-link-badge">pages/order/detail</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-41" data-path="pages/distribution/center/index" data-title="健康合伙人分销中心">
-            <a href="#phone-41" class="menu-link" onclick="highlightMenu(41)">
+          <li class="menu-item" id="menu-item-42" data-path="pages/distribution/center/index" data-title="健康合伙人分销中心">
+            <a href="#phone-42" class="menu-link" onclick="highlightMenu(42)">
               <span>健康合伙人分销中心</span>
               <span class="menu-link-badge">pages/distribution/center/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-42" data-path="pages/distribution/commission/index" data-title="分销金及推广佣金明细">
-            <a href="#phone-42" class="menu-link" onclick="highlightMenu(42)">
+          <li class="menu-item" id="menu-item-43" data-path="pages/distribution/commission/index" data-title="分销金及推广佣金明细">
+            <a href="#phone-43" class="menu-link" onclick="highlightMenu(43)">
               <span>分销金及推广佣金明细</span>
               <span class="menu-link-badge">pages/distribution/commission/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-43" data-path="pages/distribution/withdraw/index" data-title="佣金余额提现申请">
-            <a href="#phone-43" class="menu-link" onclick="highlightMenu(43)">
+          <li class="menu-item" id="menu-item-44" data-path="pages/distribution/withdraw/index" data-title="佣金余额提现申请">
+            <a href="#phone-44" class="menu-link" onclick="highlightMenu(44)">
               <span>佣金余额提现申请</span>
               <span class="menu-link-badge">pages/distribution/withdraw/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-44" data-path="pages/distribution/withdraw-records/index" data-title="资金提现记录表">
-            <a href="#phone-44" class="menu-link" onclick="highlightMenu(44)">
+          <li class="menu-item" id="menu-item-45" data-path="pages/distribution/withdraw-records/index" data-title="资金提现记录表">
+            <a href="#phone-45" class="menu-link" onclick="highlightMenu(45)">
               <span>资金提现记录表</span>
               <span class="menu-link-badge">pages/distribution/withdraw-records/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-45" data-path="pages/distribution/team/index" data-title="我推荐的合伙人团队">
-            <a href="#phone-45" class="menu-link" onclick="highlightMenu(45)">
+          <li class="menu-item" id="menu-item-46" data-path="pages/distribution/team/index" data-title="我推荐的合伙人团队">
+            <a href="#phone-46" class="menu-link" onclick="highlightMenu(46)">
               <span>我推荐的合伙人团队</span>
               <span class="menu-link-badge">pages/distribution/team/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-46" data-path="pages/distribution/invite/index" data-title="邀请好友加入合伙人">
-            <a href="#phone-46" class="menu-link" onclick="highlightMenu(46)">
+          <li class="menu-item" id="menu-item-47" data-path="pages/distribution/invite/index" data-title="邀请好友加入合伙人">
+            <a href="#phone-47" class="menu-link" onclick="highlightMenu(47)">
               <span>邀请好友加入合伙人</span>
               <span class="menu-link-badge">pages/distribution/invite/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-47" data-path="pages/distribution/products/index" data-title="推广健康包赚佣金">
-            <a href="#phone-47" class="menu-link" onclick="highlightMenu(47)">
+          <li class="menu-item" id="menu-item-48" data-path="pages/distribution/products/index" data-title="推广健康包赚佣金">
+            <a href="#phone-48" class="menu-link" onclick="highlightMenu(48)">
               <span>推广健康包赚佣金</span>
               <span class="menu-link-badge">pages/distribution/products/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-48" data-path="pages/distribution/rules/index" data-title="鼾静分销合伙人规则">
-            <a href="#phone-48" class="menu-link" onclick="highlightMenu(48)">
+          <li class="menu-item" id="menu-item-49" data-path="pages/distribution/rules/index" data-title="鼾静分销合伙人规则">
+            <a href="#phone-49" class="menu-link" onclick="highlightMenu(49)">
               <span>鼾静分销合伙人规则</span>
               <span class="menu-link-badge">pages/distribution/rules/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-49" data-path="pages/live/list/index" data-title="睡眠呼吸健康直播课">
-            <a href="#phone-49" class="menu-link" onclick="highlightMenu(49)">
+          <li class="menu-item" id="menu-item-50" data-path="pages/live/list/index" data-title="睡眠呼吸健康直播课">
+            <a href="#phone-50" class="menu-link" onclick="highlightMenu(50)">
               <span>睡眠呼吸健康直播课</span>
               <span class="menu-link-badge">pages/live/list/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-50" data-path="pages/live/playback/index" data-title="往期直播精彩回放">
-            <a href="#phone-50" class="menu-link" onclick="highlightMenu(50)">
+          <li class="menu-item" id="menu-item-51" data-path="pages/live/playback/index" data-title="往期直播精彩回放">
+            <a href="#phone-51" class="menu-link" onclick="highlightMenu(51)">
               <span>往期直播精彩回放</span>
               <span class="menu-link-badge">pages/live/playback/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-51" data-path="pages/community/index" data-title="睡眠呼吸健康交流圈">
-            <a href="#phone-51" class="menu-link" onclick="highlightMenu(51)">
+          <li class="menu-item" id="menu-item-52" data-path="pages/community/index" data-title="睡眠呼吸健康交流圈">
+            <a href="#phone-52" class="menu-link" onclick="highlightMenu(52)">
               <span>睡眠呼吸健康交流圈</span>
               <span class="menu-link-badge">pages/community/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-52" data-path="pages/community/detail/index" data-title="圈子讨论详情">
-            <a href="#phone-52" class="menu-link" onclick="highlightMenu(52)">
+          <li class="menu-item" id="menu-item-53" data-path="pages/community/detail/index" data-title="圈子讨论详情">
+            <a href="#phone-53" class="menu-link" onclick="highlightMenu(53)">
               <span>圈子讨论详情</span>
               <span class="menu-link-badge">pages/community/detail/index</span>
             </a>
           </li>
           
-          <li class="menu-item" id="menu-item-53" data-path="pages/community/publish/index" data-title="发布科普/提问帖子">
-            <a href="#phone-53" class="menu-link" onclick="highlightMenu(53)">
+          <li class="menu-item" id="menu-item-54" data-path="pages/community/publish/index" data-title="发布科普/提问帖子">
+            <a href="#phone-54" class="menu-link" onclick="highlightMenu(54)">
               <span>发布科普/提问帖子</span>
               <span class="menu-link-badge">pages/community/publish/index</span>
             </a>
@@ -12578,7 +12671,19 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-14" data-path="pages/appointment/reschedule" data-title="就诊预约改期">
+    <div class="phone-wrapper" id="phone-14" data-path="pages/appointment/map" data-title="鼾静健康诊所">
+      <div class="page-label">
+        <span>鼾静健康诊所</span>
+        <span class="path">pages/appointment/map</span>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="page-container data-v-c5678abc"><div class="map-wrapper data-v-c5678abc"><map id="storeMap" class="store-map data-v-c5678abc" latitude="示例" longitude="示例" scale="16" markers="" show-location=""></map><div class="store-card data-v-c5678abc"><div class="store-info data-v-c5678abc"><span class="store-name data-v-c5678abc"></span><span class="store-address data-v-c5678abc"></span></div><button class="nav-btn data-v-c5678abc"><img class="btn-icon data-v-c5678abc" src="../mp-weixin/static/icons/paper-plane.svg" /><span class="data-v-c5678abc">开始导航</span></button></div></div></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="phone-wrapper" id="phone-15" data-path="pages/appointment/reschedule" data-title="就诊预约改期">
       <div class="page-label">
         <span>就诊预约改期</span>
         <span class="path">pages/appointment/reschedule</span>
@@ -12590,7 +12695,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-15" data-path="pages/assessment/questionnaire/index" data-title="ESS 嗜睡自我量表评估">
+    <div class="phone-wrapper" id="phone-16" data-path="pages/assessment/questionnaire/index" data-title="ESS 嗜睡自我量表评估">
       <div class="page-label">
         <span>ESS 嗜睡自我量表评估</span>
         <span class="path">pages/assessment/questionnaire/index</span>
@@ -12602,7 +12707,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-16" data-path="pages/assessment/result/index" data-title="睡眠呼吸初评报告">
+    <div class="phone-wrapper" id="phone-17" data-path="pages/assessment/result/index" data-title="睡眠呼吸初评报告">
       <div class="page-label">
         <span>睡眠呼吸初评报告</span>
         <span class="path">pages/assessment/result/index</span>
@@ -12614,7 +12719,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-17" data-path="pages/assessment/recording/index" data-title="AI 睡眠鼾声实时录音">
+    <div class="phone-wrapper" id="phone-18" data-path="pages/assessment/recording/index" data-title="AI 睡眠鼾声实时录音">
       <div class="page-label">
         <span>AI 睡眠鼾声实时录音</span>
         <span class="path">pages/assessment/recording/index</span>
@@ -12631,7 +12736,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-18" data-path="pages/assessment/snore-result/index" data-title="AI 睡眠鼾声分析报告">
+    <div class="phone-wrapper" id="phone-19" data-path="pages/assessment/snore-result/index" data-title="AI 睡眠鼾声分析报告">
       <div class="page-label">
         <span>AI 睡眠鼾声分析报告</span>
         <span class="path">pages/assessment/snore-result/index</span>
@@ -12647,7 +12752,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-19" data-path="pages/treatment/sleep-trend/index" data-title="近期睡眠戴镜数据趋势">
+    <div class="phone-wrapper" id="phone-20" data-path="pages/treatment/sleep-trend/index" data-title="近期睡眠戴镜数据趋势">
       <div class="page-label">
         <span>近期睡眠戴镜数据趋势</span>
         <span class="path">pages/treatment/sleep-trend/index</span>
@@ -12659,7 +12764,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-20" data-path="pages/treatment/timeline/index" data-title="临床治疗记录时间轴">
+    <div class="phone-wrapper" id="phone-21" data-path="pages/treatment/timeline/index" data-title="临床治疗记录时间轴">
       <div class="page-label">
         <span>临床治疗记录时间轴</span>
         <span class="path">pages/treatment/timeline/index</span>
@@ -12671,7 +12776,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-21" data-path="pages/treatment/doctor-advice/index" data-title="主诊医生就诊建议书">
+    <div class="phone-wrapper" id="phone-22" data-path="pages/treatment/doctor-advice/index" data-title="主诊医生就诊建议书">
       <div class="page-label">
         <span>主诊医生就诊建议书</span>
         <span class="path">pages/treatment/doctor-advice/index</span>
@@ -12683,7 +12788,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-22" data-path="pages/treatment/adjust-detail/index" data-title="阻鼾器下颌前伸微调记录">
+    <div class="phone-wrapper" id="phone-23" data-path="pages/treatment/adjust-detail/index" data-title="阻鼾器下颌前伸微调记录">
       <div class="page-label">
         <span>阻鼾器下颌前伸微调记录</span>
         <span class="path">pages/treatment/adjust-detail/index</span>
@@ -12698,7 +12803,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-23" data-path="pages/treatment/sleep-report/index" data-title="多导睡眠监测评估报告 (PSG)">
+    <div class="phone-wrapper" id="phone-24" data-path="pages/treatment/sleep-report/index" data-title="多导睡眠监测评估报告 (PSG)">
       <div class="page-label">
         <span>多导睡眠监测评估报告 (PSG)</span>
         <span class="path">pages/treatment/sleep-report/index</span>
@@ -12712,7 +12817,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-24" data-path="pages/product/detail/index" data-title="商品详情">
+    <div class="phone-wrapper" id="phone-25" data-path="pages/product/detail/index" data-title="商品详情">
       <div class="page-label">
         <span>商品详情</span>
         <span class="path">pages/product/detail/index</span>
@@ -12724,7 +12829,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-25" data-path="pages/product/detail" data-title="鼾静健康诊所">
+    <div class="phone-wrapper" id="phone-26" data-path="pages/product/detail" data-title="鼾静健康诊所">
       <div class="page-label">
         <span>鼾静健康诊所</span>
         <span class="path">pages/product/detail</span>
@@ -12736,7 +12841,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-26" data-path="pages/profile/medical-records/index" data-title="就诊门诊电子病历">
+    <div class="phone-wrapper" id="phone-27" data-path="pages/profile/medical-records/index" data-title="就诊门诊电子病历">
       <div class="page-label">
         <span>就诊门诊电子病历</span>
         <span class="path">pages/profile/medical-records/index</span>
@@ -12748,7 +12853,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-27" data-path="pages/profile/device-manage/index" data-title="我的定制阻鼾器管理">
+    <div class="phone-wrapper" id="phone-28" data-path="pages/profile/device-manage/index" data-title="我的定制阻鼾器管理">
       <div class="page-label">
         <span>我的定制阻鼾器管理</span>
         <span class="path">pages/profile/device-manage/index</span>
@@ -12760,7 +12865,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-28" data-path="pages/profile/device-manage/wearing-data/index" data-title="佩戴追踪数据图表">
+    <div class="phone-wrapper" id="phone-29" data-path="pages/profile/device-manage/wearing-data/index" data-title="佩戴追踪数据图表">
       <div class="page-label">
         <span>佩戴追踪数据图表</span>
         <span class="path">pages/profile/device-manage/wearing-data/index</span>
@@ -12772,7 +12877,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-29" data-path="pages/profile/device-manage/maintenance/index" data-title="鼾静健康诊所">
+    <div class="phone-wrapper" id="phone-30" data-path="pages/profile/device-manage/maintenance/index" data-title="鼾静健康诊所">
       <div class="page-label">
         <span>鼾静健康诊所</span>
         <span class="path">pages/profile/device-manage/maintenance/index</span>
@@ -12784,7 +12889,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-30" data-path="pages/profile/device-manage/feedback/index" data-title="鼾静健康诊所">
+    <div class="phone-wrapper" id="phone-31" data-path="pages/profile/device-manage/feedback/index" data-title="鼾静健康诊所">
       <div class="page-label">
         <span>鼾静健康诊所</span>
         <span class="path">pages/profile/device-manage/feedback/index</span>
@@ -12796,7 +12901,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-31" data-path="pages/profile/family-members/index" data-title="家庭就诊成员列表">
+    <div class="phone-wrapper" id="phone-32" data-path="pages/profile/family-members/index" data-title="家庭就诊成员列表">
       <div class="page-label">
         <span>家庭就诊成员列表</span>
         <span class="path">pages/profile/family-members/index</span>
@@ -12808,7 +12913,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-32" data-path="pages/profile/family-members/add-member/index" data-title="添加家庭成员卡">
+    <div class="phone-wrapper" id="phone-33" data-path="pages/profile/family-members/add-member/index" data-title="添加家庭成员卡">
       <div class="page-label">
         <span>添加家庭成员卡</span>
         <span class="path">pages/profile/family-members/add-member/index</span>
@@ -12820,7 +12925,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-33" data-path="pages/profile/member-benefits/index" data-title="会员特权与服务权益">
+    <div class="phone-wrapper" id="phone-34" data-path="pages/profile/member-benefits/index" data-title="会员特权与服务权益">
       <div class="page-label">
         <span>会员特权与服务权益</span>
         <span class="path">pages/profile/member-benefits/index</span>
@@ -12832,7 +12937,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-34" data-path="pages/profile/settings/index" data-title="系统设置">
+    <div class="phone-wrapper" id="phone-35" data-path="pages/profile/settings/index" data-title="系统设置">
       <div class="page-label">
         <span>系统设置</span>
         <span class="path">pages/profile/settings/index</span>
@@ -12844,7 +12949,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-35" data-path="pages/profile/settings/personal-info/index" data-title="修改个人基本资料">
+    <div class="phone-wrapper" id="phone-36" data-path="pages/profile/settings/personal-info/index" data-title="修改个人基本资料">
       <div class="page-label">
         <span>修改个人基本资料</span>
         <span class="path">pages/profile/settings/personal-info/index</span>
@@ -12856,7 +12961,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-36" data-path="pages/profile/settings/account-security/index" data-title="账号安全维护中心">
+    <div class="phone-wrapper" id="phone-37" data-path="pages/profile/settings/account-security/index" data-title="账号安全维护中心">
       <div class="page-label">
         <span>账号安全维护中心</span>
         <span class="path">pages/profile/settings/account-security/index</span>
@@ -12868,7 +12973,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-37" data-path="pages/profile/notifications/index" data-title="系统消息与服务通知">
+    <div class="phone-wrapper" id="phone-38" data-path="pages/profile/notifications/index" data-title="系统消息与服务通知">
       <div class="page-label">
         <span>系统消息与服务通知</span>
         <span class="path">pages/profile/notifications/index</span>
@@ -12880,7 +12985,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-38" data-path="pages/profile/online-service/index" data-title="在线客服实时咨询">
+    <div class="phone-wrapper" id="phone-39" data-path="pages/profile/online-service/index" data-title="在线客服实时咨询">
       <div class="page-label">
         <span>在线客服实时咨询</span>
         <span class="path">pages/profile/online-service/index</span>
@@ -12892,7 +12997,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-39" data-path="pages/order/index" data-title="商城购物订单">
+    <div class="phone-wrapper" id="phone-40" data-path="pages/order/index" data-title="商城购物订单">
       <div class="page-label">
         <span>商城购物订单</span>
         <span class="path">pages/order/index</span>
@@ -12904,7 +13009,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-40" data-path="pages/order/detail" data-title="订单详情">
+    <div class="phone-wrapper" id="phone-41" data-path="pages/order/detail" data-title="订单详情">
       <div class="page-label">
         <span>订单详情</span>
         <span class="path">pages/order/detail</span>
@@ -12916,7 +13021,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-41" data-path="pages/distribution/center/index" data-title="健康合伙人分销中心">
+    <div class="phone-wrapper" id="phone-42" data-path="pages/distribution/center/index" data-title="健康合伙人分销中心">
       <div class="page-label">
         <span>健康合伙人分销中心</span>
         <span class="path">pages/distribution/center/index</span>
@@ -12928,7 +13033,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-42" data-path="pages/distribution/commission/index" data-title="分销金及推广佣金明细">
+    <div class="phone-wrapper" id="phone-43" data-path="pages/distribution/commission/index" data-title="分销金及推广佣金明细">
       <div class="page-label">
         <span>分销金及推广佣金明细</span>
         <span class="path">pages/distribution/commission/index</span>
@@ -12940,7 +13045,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-43" data-path="pages/distribution/withdraw/index" data-title="佣金余额提现申请">
+    <div class="phone-wrapper" id="phone-44" data-path="pages/distribution/withdraw/index" data-title="佣金余额提现申请">
       <div class="page-label">
         <span>佣金余额提现申请</span>
         <span class="path">pages/distribution/withdraw/index</span>
@@ -12952,7 +13057,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-44" data-path="pages/distribution/withdraw-records/index" data-title="资金提现记录表">
+    <div class="phone-wrapper" id="phone-45" data-path="pages/distribution/withdraw-records/index" data-title="资金提现记录表">
       <div class="page-label">
         <span>资金提现记录表</span>
         <span class="path">pages/distribution/withdraw-records/index</span>
@@ -12964,7 +13069,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-45" data-path="pages/distribution/team/index" data-title="我推荐的合伙人团队">
+    <div class="phone-wrapper" id="phone-46" data-path="pages/distribution/team/index" data-title="我推荐的合伙人团队">
       <div class="page-label">
         <span>我推荐的合伙人团队</span>
         <span class="path">pages/distribution/team/index</span>
@@ -12976,7 +13081,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-46" data-path="pages/distribution/invite/index" data-title="邀请好友加入合伙人">
+    <div class="phone-wrapper" id="phone-47" data-path="pages/distribution/invite/index" data-title="邀请好友加入合伙人">
       <div class="page-label">
         <span>邀请好友加入合伙人</span>
         <span class="path">pages/distribution/invite/index</span>
@@ -12990,7 +13095,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-47" data-path="pages/distribution/products/index" data-title="推广健康包赚佣金">
+    <div class="phone-wrapper" id="phone-48" data-path="pages/distribution/products/index" data-title="推广健康包赚佣金">
       <div class="page-label">
         <span>推广健康包赚佣金</span>
         <span class="path">pages/distribution/products/index</span>
@@ -13002,7 +13107,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-48" data-path="pages/distribution/rules/index" data-title="鼾静分销合伙人规则">
+    <div class="phone-wrapper" id="phone-49" data-path="pages/distribution/rules/index" data-title="鼾静分销合伙人规则">
       <div class="page-label">
         <span>鼾静分销合伙人规则</span>
         <span class="path">pages/distribution/rules/index</span>
@@ -13014,7 +13119,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-49" data-path="pages/live/list/index" data-title="睡眠呼吸健康直播课">
+    <div class="phone-wrapper" id="phone-50" data-path="pages/live/list/index" data-title="睡眠呼吸健康直播课">
       <div class="page-label">
         <span>睡眠呼吸健康直播课</span>
         <span class="path">pages/live/list/index</span>
@@ -13026,7 +13131,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-50" data-path="pages/live/playback/index" data-title="往期直播精彩回放">
+    <div class="phone-wrapper" id="phone-51" data-path="pages/live/playback/index" data-title="往期直播精彩回放">
       <div class="page-label">
         <span>往期直播精彩回放</span>
         <span class="path">pages/live/playback/index</span>
@@ -13038,7 +13143,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-51" data-path="pages/community/index" data-title="睡眠呼吸健康交流圈">
+    <div class="phone-wrapper" id="phone-52" data-path="pages/community/index" data-title="睡眠呼吸健康交流圈">
       <div class="page-label">
         <span>睡眠呼吸健康交流圈</span>
         <span class="path">pages/community/index</span>
@@ -13050,7 +13155,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-52" data-path="pages/community/detail/index" data-title="圈子讨论详情">
+    <div class="phone-wrapper" id="phone-53" data-path="pages/community/detail/index" data-title="圈子讨论详情">
       <div class="page-label">
         <span>圈子讨论详情</span>
         <span class="path">pages/community/detail/index</span>
@@ -13064,7 +13169,7 @@ body {
       </div>
     </div>
     
-    <div class="phone-wrapper" id="phone-53" data-path="pages/community/publish/index" data-title="发布科普/提问帖子">
+    <div class="phone-wrapper" id="phone-54" data-path="pages/community/publish/index" data-title="发布科普/提问帖子">
       <div class="page-label">
         <span>发布科普/提问帖子</span>
         <span class="path">pages/community/publish/index</span>

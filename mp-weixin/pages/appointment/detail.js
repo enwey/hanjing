@@ -86,12 +86,12 @@ const o = () => "../../components/base/hj-navbar.js",
 
       function navigateToStore() {
         if (u.value && u.value.latitude && u.value.longitude) {
-          e.index.openLocation({
-            latitude: parseFloat(u.value.latitude),
-            longitude: parseFloat(u.value.longitude),
-            name: u.value.name,
-            address: u.value.address,
-            scale: 18
+          const lat = u.value.latitude;
+          const lng = u.value.longitude;
+          const name = encodeURIComponent(u.value.name || "");
+          const addr = encodeURIComponent(u.value.address || "");
+          e.index.navigateTo({
+            url: `/pages/appointment/map?latitude=${lat}&longitude=${lng}&name=${name}&address=${addr}`
           });
         } else {
           e.index.showToast({ title: "未配置位置信息", icon: "none" });

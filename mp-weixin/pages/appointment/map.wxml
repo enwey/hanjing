@@ -1,0 +1,25 @@
+<view class="page-container data-v-c5678abc">
+  <hj-navbar wx:if="{{true}}" class="data-v-c5678abc" u-i="c5678abc-0" bind:__l="__l" u-p="{{a}}" />
+  <view class="map-wrapper data-v-c5678abc">
+    <map
+      id="storeMap"
+      class="store-map data-v-c5678abc"
+      latitude="{{b}}"
+      longitude="{{c}}"
+      scale="16"
+      markers="{{d}}"
+      show-location="{{true}}"
+    ></map>
+    
+    <view class="store-card data-v-c5678abc">
+      <view class="store-info data-v-c5678abc">
+        <text class="store-name data-v-c5678abc">{{e}}</text>
+        <text class="store-address data-v-c5678abc">{{f}}</text>
+      </view>
+      <button class="nav-btn data-v-c5678abc" bindtap="{{g}}">
+        <image class="btn-icon data-v-c5678abc" src="/static/icons/paper-plane.svg"></image>
+        <text class="data-v-c5678abc">开始导航</text>
+      </button>
+    </view>
+  </view>
+</view>
