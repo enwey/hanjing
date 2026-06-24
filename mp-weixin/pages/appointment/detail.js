@@ -28,6 +28,20 @@ const o = () => "../../components/base/hj-navbar.js",
           }[e] || "default"
         );
       }
+      function getDoctorExpertise(doc) {
+        if (!doc) return [];
+        if (doc.expertise && doc.expertise.length > 0) return doc.expertise;
+        const spec = doc.specialty || '';
+        if (spec === '睡眠呼吸科' || spec === '睡眠呼吸') {
+          return ['睡眠呼吸暂停综合症', '鼾症非手术治疗', '阻鼾器适配', '下颌前移治疗'];
+        } else if (spec === '耳鼻喉科') {
+          return ['鼻内镜诊断', '上气道评估', '过敏性鼻炎与鼾症', '多导睡眠监测'];
+        } else if (spec === '心理科' || spec === '口腔正畸') {
+          return ['正畸辅导', '睡眠行为干预', '情绪焦虑管理', '依从性辅导'];
+        } else {
+          return ['阻鼾器适配', '睡眠健康辅导'];
+        }
+      }
       const apptStore = t.useAppointmentStore();
 
       function copyNo() {
@@ -93,7 +107,7 @@ const o = () => "../../components/base/hj-navbar.js",
               if (curPage && curPage.setData) {
                 curPage.setData({
                   doctorDept: doc ? `${doc.specialty || '科室'} · ${doc.experienceYears || 0}年经验` : "科室 · 经验",
-                  doctorExpertise: doc && doc.expertise ? doc.expertise : []
+                  doctorExpertise: getDoctorExpertise(doc)
                 });
               }
             } catch (d) {
@@ -113,7 +127,7 @@ const o = () => "../../components/base/hj-navbar.js",
                     statusLabel: (n.AppointmentStatusMap[r.value.status] || n.AppointmentStatusMap.pending).label,
                     statusClass: "status--" + r.value.status,
                     doctorDept: i.value ? `${i.value.specialty || '科室'} · ${i.value.experienceYears || 0}年经验` : "科室 · 经验",
-                    doctorExpertise: i.value && i.value.expertise ? i.value.expertise : [],
+                    doctorExpertise: getDoctorExpertise(i.value),
                     onCopy: e.o(copyNo),
                     onCancel: e.o(cancelAppt),
                     onReschedule: e.o(rescheduleAppt),

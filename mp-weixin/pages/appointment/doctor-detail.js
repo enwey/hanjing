@@ -15,6 +15,21 @@ const r = e.defineComponent({
       hasFutureSchedules = e.ref(true),
       scheduleRows = e.ref([]);
 
+    const getDoctorExpertise = (doc) => {
+      if (!doc) return [];
+      if (doc.expertise && doc.expertise.length > 0) return doc.expertise;
+      const spec = doc.specialty || '';
+      if (spec === '睡眠呼吸科' || spec === '睡眠呼吸') {
+        return ['睡眠呼吸暂停综合症', '鼾症非手术治疗', '阻鼾器适配', '下颌前移治疗'];
+      } else if (spec === '耳鼻喉科') {
+        return ['鼻内镜诊断', '上气道评估', '过敏性鼻炎与鼾症', '多导睡眠监测'];
+      } else if (spec === '心理科' || spec === '口腔正畸') {
+        return ['正畸辅导', '睡眠行为干预', '情绪焦虑管理', '依从性辅导'];
+      } else {
+        return ['阻鼾器适配', '睡眠健康辅导'];
+      }
+    };
+
     const generateScheduleRows = () => {
       const rows = [];
       const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -153,7 +168,7 @@ const r = e.defineComponent({
               i: e.t(doc.consultCount),
               j: e.t(Math.round(doc.rating * 20)),
               k: e.t(doc.intro || "暂无医生简介"),
-              l: e.f(doc.expertise || [], (tag, idx) => ({
+              l: e.f(getDoctorExpertise(doc), (tag, idx) => ({
                 a: e.t(tag),
                 b: idx,
               })),
