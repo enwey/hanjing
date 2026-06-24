@@ -90,7 +90,7 @@ const o = () => "../../components/base/hj-navbar.js",
               const curPage = pages[pages.length - 1];
               if (curPage && curPage.setData) {
                 curPage.setData({
-                  doctorDept: doc ? `${doc.hospital || '鼾静健康医疗中心'} · ${doc.specialty || '门诊医生'}` : "鼾静健康医疗适配中心 · 门诊医生",
+                  doctorDept: doc ? `${doc.specialty || '科室'} · ${doc.experienceYears || 0}年工作经验` : "科室 · 工作经验",
                   doctorIntro: doc && doc.intro ? doc.intro : "擅长睡眠呼吸暂停综合症适配调谐与随访"
                 });
               }
@@ -110,7 +110,7 @@ const o = () => "../../components/base/hj-navbar.js",
                     doctorAvatar: i.value && i.value.name ? i.value.name.slice(0, 1) : "医",
                     statusLabel: (n.AppointmentStatusMap[r.value.status] || n.AppointmentStatusMap.pending).label,
                     statusClass: "status--" + r.value.status,
-                    doctorDept: i.value ? `${i.value.hospital || '鼾静健康医疗中心'} · ${i.value.specialty || '门诊医生'}` : "鼾静健康医疗适配中心 · 门诊医生",
+                    doctorDept: i.value ? `${i.value.specialty || '科室'} · ${i.value.experienceYears || 0}年工作经验` : "科室 · 工作经验",
                     doctorIntro: i.value && i.value.intro ? i.value.intro : "擅长睡眠呼吸暂停综合症适配调谐与随访",
                     onCopy: e.o(copyNo),
                     onCancel: e.o(cancelAppt),
