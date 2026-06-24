@@ -87,6 +87,15 @@ const o = () => "../../components/base/hj-navbar.js",
                 (i.value = s.getDoctorById(
                   null == (n = e.appointment) ? void 0 : n.doctorId,
                 )));
+              const doc = i.value;
+              const pages = getCurrentPages();
+              const curPage = pages[pages.length - 1];
+              if (curPage && curPage.setData) {
+                curPage.setData({
+                  doctorDept: doc ? `${doc.hospital || '鼾静健康医疗中心'} · ${doc.specialty || '门诊医生'}` : "鼾静健康医疗适配中心 · 门诊医生",
+                  doctorIntro: doc && doc.intro ? doc.intro : "擅长睡眠呼吸暂停综合症适配调谐与随访"
+                });
+              }
             } catch (d) {
               console.error("加载失败", d);
             }
