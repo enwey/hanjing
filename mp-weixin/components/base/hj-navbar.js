@@ -66,6 +66,8 @@ const t = e.defineComponent({
     const r = e.computed(() => n.value + cHeight.value);
     const shouldShowBack = e.computed(() => {
       if (t.showBack) return true;
+      const pages = getCurrentPages();
+      if (pages.length <= 1) return false;
       return !isTabbarPage.value;
     });
     const navbarTitle = e.computed(() => {
@@ -81,7 +83,7 @@ const t = e.defineComponent({
         delta: 1,
         fail() {
           e.index.switchTab({
-            url: "/pages/index/index"
+            url: "/pages/appointment/index"
           });
         }
       });

@@ -58,10 +58,18 @@ async function handleLogin() {
       MessagePlugin.warning('请输入手机号和验证码')
       return
     }
-    // SMS fallback
-    localStorage.setItem('auth_token', 'mock_jwt_token_for_hanjing_clinic')
-    MessagePlugin.success('登录成功！(测试短信快捷登录)')
-    router.push('/dashboard')
+    try {
+      const res: any = await request.post('/api/admin/sms-login', {
+        phone: loginForm.value.phone,
+        smsCode: loginForm.value.smsCode
+      })
+      localStorage.setItem('auth_token', res.data.token)
+      localStorage.setItem('user_info', JSON.stringify(res.data.user))
+      MessagePlugin.success('登录成功！欢迎访问鼾静健康诊所管理后台')
+      router.push('/dashboard')
+    } catch (err) {
+      // Error handled by interceptor
+    }
   }
 }
 </script>

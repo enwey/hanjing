@@ -188,7 +188,7 @@ async function handleCreate() {
   try {
     if (isReschedule.value) {
       await request.put(`/api/admin/appointments/${rescheduleId.value}`, {
-        status: 'confirmed'
+        status: 'pending'
       })
       MessagePlugin.success(`预约改约成功！已修改就诊时间。`)
       router.push(`/appointment/detail/${rescheduleId.value}`)

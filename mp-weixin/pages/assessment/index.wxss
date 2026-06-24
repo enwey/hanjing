@@ -61,7 +61,7 @@
 }
 .page-content.data-v-35dabd14 {
   flex: 1;
-  padding: 0 16px;
+  padding: 16px 16px 0;
 }
 .hero-card.data-v-35dabd14 {
   background: linear-gradient(135deg, #eef4ff, #d9e6ff);
@@ -112,12 +112,22 @@
 .eval-info.data-v-35dabd14 {
   flex: 1;
 }
+.eval-title-wrapper.data-v-35dabd14 {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+}
 .eval-title.data-v-35dabd14 {
   font-size: 16px;
   font-weight: 600;
   color: #1f2937;
   display: block;
   margin-bottom: 2px;
+}
+.eval-title-wrapper .eval-title.data-v-35dabd14 {
+  display: inline;
+  margin-bottom: 0;
+  margin-right: 8px;
 }
 .eval-desc.data-v-35dabd14 {
   font-size: 13px;
@@ -163,13 +173,13 @@
 }
 .new-tag.data-v-35dabd14 {
   display: inline-block;
-  margin-top: 4px;
   padding: 2px 8px;
   background: #d3f5e3;
   color: #1a9d5c;
   font-size: 11px;
   font-weight: 600;
   border-radius: 4px;
+  flex-shrink: 0;
 }
 .record-card.data-v-35dabd14 {
   display: flex;

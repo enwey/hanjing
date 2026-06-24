@@ -34,7 +34,7 @@ const o = () => "../../components/base/hj-navbar.js",
       const d = e.ref([]),
         u = e.ref([]);
       function p() {
-        const e = ["pending", "confirmed", "reminded"];
+        const e = ["pending", "confirmed", "reminded", "checked_in", "completed"];
         ((d.value = n.appointments.filter((t) => e.includes(t.status))),
           (u.value = n.appointments.filter((t) => !e.includes(t.status))));
       }

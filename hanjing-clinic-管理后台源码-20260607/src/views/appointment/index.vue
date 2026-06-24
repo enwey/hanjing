@@ -66,7 +66,7 @@ const fetchAppointments = async () => {
       time: item.appointment_time,
       type: item.type === 'first' ? '初诊' : '复诊',
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
-      status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : 'cancelled'
+      status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : 'cancelled'
     }))
   } catch (error) {
     console.error('Failed to load appointments:', error)
@@ -94,17 +94,20 @@ const doctorOptions = [
 const tabOptions = [
   { label: '全部', value: 'all' },
   { label: '今日', value: 'today' },
-  { label: '待确认', value: 'pending' },
+  { label: '已预约', value: 'pending' },
   { label: '候诊中', value: 'waiting' },
+  { label: '就诊中', value: 'checked_in' },
   { label: '待结算', value: 'completed' },
+  { label: '已完成', value: 'arrived' },
   { label: '已取消', value: 'cancelled' },
 ]
 
 const statusMap: Record<string, { label: string; theme: string }> = {
-  arrived: { label: '已结账', theme: 'success' },
+  arrived: { label: '已完成', theme: 'success' },
   completed: { label: '待结算', theme: 'danger' },
+  checked_in: { label: '就诊中', theme: 'warning' },
   waiting: { label: '候诊中', theme: 'primary' },
-  pending: { label: '待确认', theme: 'warning' },
+  pending: { label: '已预约', theme: 'success' },
   cancelled: { label: '已取消', theme: 'danger' }
 }
 
@@ -138,7 +141,9 @@ const counts = computed(() => {
     today: list.filter(a => a.date === '2026-05-29').length,
     pending: statusList.filter(a => a.status === 'pending').length,
     waiting: statusList.filter(a => a.status === 'waiting').length,
+    checked_in: statusList.filter(a => a.status === 'checked_in').length,
     completed: statusList.filter(a => a.status === 'completed').length,
+    arrived: statusList.filter(a => a.status === 'arrived').length,
     cancelled: statusList.filter(a => a.status === 'cancelled').length,
   }
 })
@@ -157,8 +162,12 @@ function getFilteredAppointments() {
     list = list.filter(a => a.status === 'pending')
   } else if (activeTab.value === 'waiting') {
     list = list.filter(a => a.status === 'waiting')
+  } else if (activeTab.value === 'checked_in') {
+    list = list.filter(a => a.status === 'checked_in')
   } else if (activeTab.value === 'completed') {
     list = list.filter(a => a.status === 'completed')
+  } else if (activeTab.value === 'arrived') {
+    list = list.filter(a => a.status === 'arrived')
   } else if (activeTab.value === 'cancelled') {
     list = list.filter(a => a.status === 'cancelled')
   }
@@ -236,10 +245,10 @@ async function cancelStatus(id: string) {
 }
 
 
-// 呼叫广播叫号
-const callPatient = (patientName: string, doctorName: string) => {
+// 呼叫广播叫号并更新状态为就诊中
+const callPatient = async (row: Appointment) => {
   if ('speechSynthesis' in window) {
-    const text = `请患者 ${patientName}，到 ${doctorName} 医生诊室就诊。`
+    const text = `请患者 ${row.patient}，到 ${row.doctor} 医生诊室就诊。`
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'zh-CN'
     utterance.rate = 0.9
@@ -247,6 +256,13 @@ const callPatient = (patientName: string, doctorName: string) => {
     MessagePlugin.success(`呼叫广播成功: "${text}"`)
   } else {
     MessagePlugin.warning('浏览器不支持语音播报，已通过系统弹窗提示')
+  }
+  try {
+    await request.put(`/api/admin/appointments/${row.id}`, { status: 'checked_in' })
+    MessagePlugin.success(`患者 ${row.patient} 已呼叫就诊中`)
+    fetchAppointments()
+  } catch (error) {
+    console.error(error)
   }
 }
 
@@ -563,7 +579,7 @@ async function submitCheckout() {
                     @click="router.push('/appointment/detail/' + row.id)"
                   >详情</button>
 
-                  <!-- status is pending (待确认) -->
+                  <!-- status is pending (已预约) -->
                   <button
                     v-if="row.status === 'pending'"
                     class="btn btn-xs btn-primary"
@@ -579,8 +595,15 @@ async function submitCheckout() {
                   <button
                     v-if="row.status === 'waiting'"
                     class="btn btn-xs btn-warning"
-                    @click="callPatient(row.patient, row.doctor)"
+                    @click="callPatient(row)"
                   >📢 叫号</button>
+
+                  <!-- status is checked_in (就诊中) -->
+                  <button
+                    v-if="row.status === 'checked_in'"
+                    class="btn btn-xs btn-success"
+                    @click="completeTreatment(row)"
+                  >诊疗完成</button>
 
                   <!-- status is completed (待结算) -->
                   <button

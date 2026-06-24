@@ -105,6 +105,12 @@
 }
 .apt-value--desc.data-v-74fd48b7 {
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-all;
 }
 .apt-actions.data-v-74fd48b7 {
   display: flex;

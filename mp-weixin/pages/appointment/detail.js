@@ -14,7 +14,9 @@ const o = () => "../../components/base/hj-navbar.js",
         r = e.ref(null),
         u = e.ref(null),
         i = e.ref(null),
-        p = e.ref(!0);
+        p = e.ref(!0),
+        medicalRecord = e.ref(null),
+        treatmentRecord = e.ref(null);
       function c(e) {
         return (
           {
@@ -24,7 +26,7 @@ const o = () => "../../components/base/hj-navbar.js",
             completed: "default",
             cancelled: "danger",
             no_show: "danger",
-            pending: "warning",
+            pending: "success",
           }[e] || "default"
         );
       }
@@ -84,17 +86,16 @@ const o = () => "../../components/base/hj-navbar.js",
         }
       }
 
-      function navigateToStore() {
-        if (u.value && u.value.latitude && u.value.longitude) {
-          const lat = u.value.latitude;
-          const lng = u.value.longitude;
-          const name = encodeURIComponent(u.value.name || "");
-          const addr = encodeURIComponent(u.value.address || "");
-          e.index.navigateTo({
-            url: `/pages/appointment/map?latitude=${lat}&longitude=${lng}&name=${name}&address=${addr}`
+      function copyAddress() {
+        if (u.value) {
+          e.index.setClipboardData({
+            data: u.value.address || "",
+            success: () => {
+              e.index.showToast({ title: "地址已复制", icon: "success" });
+            }
           });
         } else {
-          e.index.showToast({ title: "未配置位置信息", icon: "none" });
+          e.index.showToast({ title: "门店信息加载中", icon: "none" });
         }
       }
 
@@ -115,6 +116,9 @@ const o = () => "../../components/base/hj-navbar.js",
               // Fetch from doctor store first to guarantee identity/data consistency with homepage card
               const doc = e.appointment ? s.getDoctorById(e.appointment.doctorId) || e.doctor : e.doctor;
               i.value = doc;
+              
+              medicalRecord.value = e.medicalRecord;
+              treatmentRecord.value = e.treatmentRecord;
 
               const pages = getCurrentPages();
               const curPage = pages[pages.length - 1];
@@ -137,6 +141,8 @@ const o = () => "../../components/base/hj-navbar.js",
               ? e.e(
                   {
                     status: r.value.status,
+                    medicalRecord: medicalRecord.value,
+                    treatmentRecord: treatmentRecord.value,
                     doctorAvatar: i.value && i.value.name ? i.value.name.slice(0, 1) : "医",
                     statusLabel: (n.AppointmentStatusMap[r.value.status] || n.AppointmentStatusMap.pending).label,
                     statusClass: "status--" + r.value.status,
@@ -145,7 +151,7 @@ const o = () => "../../components/base/hj-navbar.js",
                     onCopy: e.o(copyNo),
                     onCancel: e.o(cancelAppt),
                     onReschedule: e.o(rescheduleAppt),
-                    onNavigateToStore: e.o(navigateToStore),
+                    onCopyAddress: e.o(copyAddress),
                     c: e.p({
                       text: ((v = r.value.status),
                       n.AppointmentStatusMap[v] ||

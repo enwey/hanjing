@@ -74,6 +74,64 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
+app.post('/api/admin/sms-login', async (req, res) => {
+  const { phone, smsCode } = req.body;
+  if (!phone || !smsCode) {
+    return res.status(400).json({ code: 400, message: '手机号和验证码不能为空' });
+  }
+
+  try {
+    const user = await get(
+      `SELECT u.*, r.name as role_name, r.code as role_code 
+       FROM admin_users u 
+       JOIN roles r ON u.role_id = r.id 
+       WHERE u.phone = ? LIMIT 1`,
+      [phone]
+    );
+
+    if (!user) {
+      return res.status(400).json({ code: 400, message: '该手机号未绑定管理员账号' });
+    }
+
+    if (user.status !== 'online') {
+      return res.status(403).json({ code: 403, message: '该账号已被禁用' });
+    }
+
+    // Update last login
+    await run(`UPDATE admin_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?`, [user.id]);
+
+    // Write audit log
+    await logAdminAction(user.id, 'login', 'admin', user.id, { username: user.username, method: 'sms' });
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role_code, store_id: user.store_id },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      code: 200,
+      message: '登录成功',
+      data: {
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          phone: user.phone,
+          role_name: user.role_name,
+          role_code: user.role_code,
+          store_id: user.store_id
+        }
+      }
+    });
+  } catch (error) {
+    console.error('SMS Login Error:', error);
+    res.status(500).json({ code: 500, message: '系统内部错误' });
+  }
+});
+
+
 app.get('/api/admin/me', authenticateToken, async (req, res) => {
   try {
     const user = await get(

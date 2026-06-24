@@ -50,7 +50,7 @@ const o = () => "../../components/base/hj-navbar.js",
               type: "first",
               symptomDesc: i.value || void 0,
             });
-            e.index.redirectTo({
+            e.index.reLaunch({
               url: `/pages/appointment/success?id=${t.id}`,
             });
           } catch (t) {

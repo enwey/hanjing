@@ -121,10 +121,12 @@ function handleViewProfile() {
       <div>
         <div class="page-title">
           {{ appointment.no }}
-          <span class="status-tag green" v-if="appointment.status === 'completed' || appointment.status === 'checked_in'">已到诊</span>
+          <span class="status-tag gray" v-if="appointment.status === 'arrived'">已完成</span>
+          <span class="status-tag red" v-else-if="appointment.status === 'completed'">待结算</span>
+          <span class="status-tag green" v-else-if="appointment.status === 'checked_in'">就诊中</span>
           <span class="status-tag blue" v-else-if="appointment.status === 'confirmed' || appointment.status === 'waiting'">候诊中</span>
-          <span class="status-tag orange" v-else-if="appointment.status === 'pending'">待确认</span>
-          <span class="status-tag red" v-else-if="appointment.status === 'cancelled'">已取消</span>
+          <span class="status-tag green" v-else-if="appointment.status === 'pending'">已预约</span>
+          <span class="status-tag gray" v-else-if="appointment.status === 'cancelled' || appointment.status === 'no_show'">已取消</span>
         </div>
         <div class="page-title-sub">创建于 {{ appointment.createTime }} · {{ appointment.source }}预约</div>
       </div>

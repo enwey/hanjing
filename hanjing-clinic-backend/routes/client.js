@@ -56,23 +56,38 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
     let user = await get(`SELECT * FROM users WHERE openid = ?`, [openid]);
     
     if (!user) {
-      const nickname = `微信用户_${code.slice(-4)}`;
-      const result = await run(
-        `INSERT INTO users (openid, nickname, phone, member_level, points, total_spent) VALUES (?, ?, ?, 'normal', 0, 0)`,
-        [openid, nickname, phone]
-      );
-      
-      await run(
-        `INSERT INTO patients (user_id, name, relation, gender, age, phone) VALUES (?, ?, 'self', 1, 30, ?)`,
-        [result.id, nickname, phone]
-      );
-      
-      user = await get(`SELECT * FROM users WHERE id = ?`, [result.id]);
+      const existingUserByPhone = await get(`SELECT * FROM users WHERE phone = ?`, [phone]);
+      if (existingUserByPhone) {
+        await run(`UPDATE users SET openid = ? WHERE id = ?`, [openid, existingUserByPhone.id]);
+        user = existingUserByPhone;
+        user.openid = openid;
+      } else {
+        const nickname = `微信用户_${code.slice(-4)}`;
+        const result = await run(
+          `INSERT INTO users (openid, nickname, phone, member_level, points, total_spent) VALUES (?, ?, ?, 'normal', 0, 0)`,
+          [openid, nickname, phone]
+        );
+        
+        await run(
+          `INSERT INTO patients (user_id, name, relation, gender, age, phone) VALUES (?, ?, 'self', 1, 30, ?)`,
+          [result.id, nickname, phone]
+        );
+        
+        user = await get(`SELECT * FROM users WHERE id = ?`, [result.id]);
+      }
     } else {
       if (phoneCode && (!user.phone || user.phone === '13800000000')) {
-        await run(`UPDATE users SET phone = ? WHERE id = ?`, [phone, user.id]);
-        await run(`UPDATE patients SET phone = ? WHERE user_id = ? AND relation = 'self'`, [phone, user.id]);
-        user.phone = phone;
+        const existingUserByPhone = await get(`SELECT * FROM users WHERE phone = ? AND id != ?`, [phone, user.id]);
+        if (!existingUserByPhone) {
+          await run(`UPDATE users SET phone = ? WHERE id = ?`, [phone, user.id]);
+          await run(`UPDATE patients SET phone = ? WHERE user_id = ? AND relation = 'self'`, [phone, user.id]);
+          user.phone = phone;
+        } else {
+          await run(`UPDATE users SET openid = NULL WHERE id = ?`, [user.id]);
+          await run(`UPDATE users SET openid = ? WHERE id = ?`, [openid, existingUserByPhone.id]);
+          user = existingUserByPhone;
+          user.openid = openid;
+        }
       }
     }
 
@@ -101,6 +116,9 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
     });
   } catch (error) {
     console.error('wx-login error:', error);
+    try {
+      fs.appendFileSync('./login_errors.log', `[${new Date().toISOString()}] Error: ${error.message}\nStack: ${error.stack}\nBody: ${JSON.stringify(req.body)}\n\n`);
+    } catch (e) {}
     res.status(500).json({ code: 500, message: '登录失败' });
   }
 });
@@ -293,6 +311,25 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
     console.error('getAssessments error:', error);
     res.status(500).json({ code: 500, message: '获取评估记录失败' });
   }
+});
+
+// GET /api/v1/assessments/ess-questions
+app.get('/api/v1/assessments/ess-questions', authenticateWxToken, (req, res) => {
+  const questions = [
+    { id: 1, situation: "坐着看书或读报时", emoji: "📖", hint: "请回想您近期的日常状态" },
+    { id: 2, situation: "看电视时", emoji: "📺", hint: "放松状态下是否容易睡着" },
+    { id: 3, situation: "在公共场所坐着不动（如在剧院或开会）", emoji: "🏛️", hint: "在安静的公共场合" },
+    { id: 4, situation: "作为乘客乘坐汽车1小时以上", emoji: "🚗", hint: "作为乘客而非驾驶员" },
+    { id: 5, situation: "下午躺下休息时", emoji: "🛋️", hint: "环境允许时是否能保持清醒" },
+    { id: 6, situation: "坐着与人交谈时", emoji: "💬", hint: "与他人面对面聊天" },
+    { id: 7, situation: "午餐后安静坐着（未饮酒）", emoji: "🍽️", hint: "饭后不喝酒的情况下" },
+    { id: 8, situation: "在车中，因交通堵塞停车几分钟", emoji: "🚦", hint: "作为驾驶员短暂停车时" }
+  ];
+  res.json({
+    code: 0,
+    message: 'success',
+    data: questions
+  });
 });
 
 // POST /api/v1/assessments/ess
@@ -1427,7 +1464,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
 
     const result = await run(
       `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, 'mini_app')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'mini_app')`,
       [
         apptNo,
         req.user.id,
@@ -1456,7 +1493,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       appointmentTime,
       type,
       symptomDesc,
-      status: 'confirmed',
+      status: 'pending',
       source: 'mini_app',
       createdAt: new Date().toISOString()
     };
@@ -1491,7 +1528,7 @@ app.get('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       sql += ` AND a.status = ?`;
       params.push(status);
     }
-    sql += ` ORDER BY a.appointment_date DESC, a.appointment_time DESC`;
+    sql += ` ORDER BY a.created_at DESC`;
 
     const list = await query(sql, params);
     const formatted = list.map(row => ({
@@ -1590,6 +1627,49 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
       storeName: row.store_name
     };
 
+    const medicalRecord = await get(
+      `SELECT mr.*, d.name as doctor_name, s.name as store_name
+       FROM medical_records mr
+       JOIN doctors d ON mr.doctor_id = d.id
+       JOIN stores s ON mr.store_id = s.id
+       WHERE mr.appointment_id = ?`,
+      [id]
+    );
+
+    let treatmentRecord = null;
+    if (medicalRecord) {
+      // 1. Try to find a treatment record that was created at this appointment (first fit)
+      treatmentRecord = await get(
+        `SELECT tr.*
+         FROM treatment_records tr
+         WHERE tr.medical_record_id = ?`,
+        [medicalRecord.id]
+      );
+
+      // 2. If not found, see if there was a device adjustment on the date of this medical record (follow-up)
+      if (!treatmentRecord) {
+        const adjustment = await get(
+          `SELECT tr.*, da.adjusted_advancement, da.patient_feedback, da.instructions
+           FROM treatment_records tr
+           JOIN device_adjustments da ON da.treatment_id = tr.id
+           WHERE tr.patient_id = ? AND (DATE(da.adjust_date) = DATE(?) OR da.adjust_date = ?)
+           ORDER BY da.id DESC LIMIT 1`,
+          [medicalRecord.patient_id, medicalRecord.visit_date, medicalRecord.visit_date]
+        );
+        if (adjustment) {
+          treatmentRecord = {
+            id: adjustment.id,
+            device_model: adjustment.device_model,
+            initial_advancement: adjustment.initial_advancement,
+            current_advancement: adjustment.adjusted_advancement, // use the adjusted value from that day!
+            next_adjust_date: adjustment.next_adjust_date,
+            status: adjustment.status,
+            start_date: adjustment.start_date
+          };
+        }
+      }
+    }
+
     res.json({
       code: 0,
       message: 'success',
@@ -1609,7 +1689,26 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
         store: {
           id: row.store_id,
           name: row.store_name
-        }
+        },
+        medicalRecord: medicalRecord ? {
+          id: medicalRecord.id,
+          diagnosis: medicalRecord.diagnosis,
+          prescription: medicalRecord.prescription,
+          doctorAdvice: medicalRecord.doctor_advice,
+          note: medicalRecord.note,
+          visitDate: formatDate(medicalRecord.visit_date),
+          doctorName: medicalRecord.doctor_name,
+          storeName: medicalRecord.store_name
+        } : null,
+        treatmentRecord: treatmentRecord ? {
+          id: treatmentRecord.id,
+          deviceModel: treatmentRecord.device_model || treatmentRecord.deviceModel,
+          initialAdvancement: Number(treatmentRecord.initial_advancement || treatmentRecord.initialAdvancement),
+          currentAdvancement: Number(treatmentRecord.current_advancement || treatmentRecord.currentAdvancement),
+          nextAdjustDate: formatDate(treatmentRecord.next_adjust_date || treatmentRecord.nextAdjustDate),
+          status: treatmentRecord.status,
+          startDate: formatDate(treatmentRecord.start_date || treatmentRecord.startDate)
+        } : null
       }
     });
   } catch (error) {
@@ -1627,8 +1726,8 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
     }
-    if (appt.status === 'cancelled') {
-      return res.status(400).json({ code: 400, message: '预约已取消' });
+    if (appt.status === 'completed' || appt.status === 'arrived' || appt.status === 'cancelled' || appt.status === 'no_show') {
+      return res.status(400).json({ code: 400, message: '该预约状态下不支持取消' });
     }
 
     await run(
@@ -1658,6 +1757,9 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
     const appt = await get(`SELECT * FROM appointments WHERE id = ? AND user_id = ?`, [id, req.user.id]);
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
+    }
+    if (appt.status === 'completed' || appt.status === 'arrived' || appt.status === 'cancelled' || appt.status === 'no_show') {
+      return res.status(400).json({ code: 400, message: '该预约状态下不支持修改就诊时间' });
     }
 
     const newSchedule = await get(`SELECT * FROM doctor_schedules WHERE id = ?`, [scheduleId]);

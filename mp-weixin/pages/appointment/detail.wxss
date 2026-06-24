@@ -84,8 +84,8 @@
 }
 
 .status-hero.status--pending.data-v-7e5a1194 {
-  background: var(--gradient-warning);
-  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.18);
+  background: var(--gradient-success);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.18);
 }
 
 .status-hero-main.data-v-7e5a1194 {

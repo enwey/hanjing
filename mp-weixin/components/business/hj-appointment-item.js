@@ -27,7 +27,7 @@ const n = () => "../base/hj-tag.js",
                   completed: "default",
                   cancelled: "danger",
                   no_show: "danger",
-                  pending: "warning",
+                  pending: "success",
                 }[p.appointment.status] || "default",
               size: "sm",
             }),
@@ -41,8 +41,8 @@ const n = () => "../base/hj-tag.js",
           e.appointment.symptomDesc
             ? { i: t.t(e.appointment.symptomDesc) }
             : {},
-          { j: "confirmed" === e.appointment.status },
-          "confirmed" === e.appointment.status
+          { j: e.appointment.status !== "arrived" && e.appointment.status !== "cancelled" && e.appointment.status !== "no_show" && e.appointment.status !== "completed" },
+          e.appointment.status !== "arrived" && e.appointment.status !== "cancelled" && e.appointment.status !== "no_show" && e.appointment.status !== "completed"
             ? {
                 k: t.o((t) => e.$emit("reschedule", e.appointment), "4d"),
                 l: t.o((t) => e.$emit("cancel", e.appointment), "b1"),

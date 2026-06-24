@@ -117,7 +117,7 @@ exports.createAppointment = async function (nData) {
           new Date().toISOString().slice(0, 10).replace(/-/g, "") +
           String(Math.floor(1000 * Math.random())).padStart(3, "0"),
         userId: "user-001",
-        status: "confirmed",
+        status: "pending",
         source: "mini_app",
         ...nData,
         createdAt: new Date().toISOString(),

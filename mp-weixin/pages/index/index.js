@@ -18,6 +18,9 @@ const t = () => "../../components/base/hj-navbar.js",
         k = e.ref("98%"),
         l = e.ref("3");
       function c() {
+        (r.resetFlow(), e.index.navigateTo({ url: "/pages/appointment/store-select" }));
+      }
+      function navigateToApptTab() {
         (r.resetFlow(), e.index.switchTab({ url: "/pages/appointment/index" }));
       }
       function handleStoreClick(store) {
@@ -76,7 +79,7 @@ const t = () => "../../components/base/hj-navbar.js",
         (o, t) => ({
           a: e.p({ transparent: !0, "text-color": "#FFFFFF" }),
           b: e.o(c, "69"),
-          c: e.o(c, "23"),
+          c: e.o(navigateToApptTab, "23"),
           d: e.o(p, "f5"),
           e: e.o(
             (o) => e.index.switchTab({ url: "/pages/treatment/index" }),

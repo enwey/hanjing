@@ -89,8 +89,8 @@ const fetchDataLists = async () => {
       avatarColor: a.patient_gender === 1 ? '#5A85F5' : '#EC4899',
       doctor: a.doctor_name,
       time: a.appointment_time,
-      status: a.status === 'completed' ? '已到诊' : a.status === 'confirmed' ? '候诊中' : a.status === 'pending' ? '待确认' : '已取消',
-      statusTheme: a.status === 'completed' ? 'green' : a.status === 'confirmed' ? 'blue' : a.status === 'pending' ? 'gold' : 'gray'
+      status: a.status === 'arrived' ? '已完成' : a.status === 'completed' ? '待结算' : a.status === 'checked_in' ? '就诊中' : a.status === 'confirmed' ? '候诊中' : a.status === 'pending' ? '已预约' : '已取消',
+      statusTheme: a.status === 'arrived' ? 'green' : a.status === 'completed' ? 'danger' : a.status === 'checked_in' ? 'orange' : a.status === 'confirmed' ? 'blue' : a.status === 'pending' ? 'green' : 'gray'
     }))
 
     // 2. Fetch orders

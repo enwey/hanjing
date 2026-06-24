@@ -12,17 +12,21 @@
     <view class="status-hero {{statusClass}} data-v-7e5a1194">
       <view class="status-hero-main data-v-7e5a1194">
         <view class="status-icon-wrapper data-v-7e5a1194">
-          <image wx:if="{{status === 'confirmed' || status === 'reminded'}}" class="status-icon data-v-7e5a1194" src="/static/icons/tab-appointment.png" />
-          <image wx:elif="{{status === 'pending'}}" class="status-icon data-v-7e5a1194" src="/static/icons/tab-profile.png" />
-          <image wx:elif="{{status === 'completed'}}" class="status-icon data-v-7e5a1194" src="/static/icons/tab-treatment.png" />
-          <image wx:elif="{{status === 'cancelled' || status === 'no_show'}}" class="status-icon data-v-7e5a1194" src="/static/icons/tab-profile.png" />
-          <image wx:else class="status-icon data-v-7e5a1194" src="/static/icons/tab-home.png" />
+          <image wx:if="{{status === 'pending'}}" class="status-icon data-v-7e5a1194" src="/static/icons/calendar.svg" />
+          <image wx:elif="{{status === 'confirmed' || status === 'reminded'}}" class="status-icon data-v-7e5a1194" src="/static/icons/clock.svg" />
+          <image wx:elif="{{status === 'checked_in'}}" class="status-icon data-v-7e5a1194" src="/static/icons/doctor.svg" />
+          <image wx:elif="{{status === 'completed'}}" class="status-icon data-v-7e5a1194" src="/static/icons/fee.svg" />
+          <image wx:elif="{{status === 'arrived'}}" class="status-icon data-v-7e5a1194" src="/static/icons/success-medical.svg" />
+          <image wx:elif="{{status === 'cancelled' || status === 'no_show'}}" class="status-icon data-v-7e5a1194" src="/static/icons/warning.svg" />
+          <image wx:else class="status-icon data-v-7e5a1194" src="/static/icons/info.svg" />
         </view>
         <view class="status-title-group data-v-7e5a1194">
           <text class="status-title data-v-7e5a1194">{{statusLabel}}</text>
-          <text wx:if="{{status === 'confirmed' || status === 'reminded'}}" class="status-desc data-v-7e5a1194">请准时前往门诊就诊，如行程有变可提前改约</text>
-          <text wx:elif="{{status === 'pending'}}" class="status-desc data-v-7e5a1194">预约申请已提交，等待诊所客服核对确认</text>
-          <text wx:elif="{{status === 'completed'}}" class="status-desc data-v-7e5a1194">本次门诊服务已完成，期待再次为您守护健康</text>
+          <text wx:if="{{status === 'confirmed' || status === 'reminded'}}" class="status-desc data-v-7e5a1194">您已完成签到，排队候诊中，请留意叫号</text>
+          <text wx:elif="{{status === 'pending'}}" class="status-desc data-v-7e5a1194">预约成功，请准时前往门店就诊并完成签到</text>
+          <text wx:elif="{{status === 'checked_in'}}" class="status-desc data-v-7e5a1194">医生已叫号，就诊进行中，请前往医生诊室</text>
+          <text wx:elif="{{status === 'completed'}}" class="status-desc data-v-7e5a1194">诊疗已结束，请前往前台收银处完成账单结算</text>
+          <text wx:elif="{{status === 'arrived'}}" class="status-desc data-v-7e5a1194">本次门诊服务已完成，期待再次为您守护健康</text>
           <text wx:elif="{{status === 'cancelled'}}" class="status-desc data-v-7e5a1194">预约已成功取消，退款（若有）将原路退回</text>
           <text wx:else class="status-desc data-v-7e5a1194">预约流程已更新，详情请见下方信息</text>
         </view>
@@ -72,11 +76,11 @@
           <text class="row-label data-v-7e5a1194">就诊门诊</text>
           <text class="row-value data-v-7e5a1194">{{e}}</text>
         </view>
-        <view class="detail-row detail-row--clickable data-v-7e5a1194" bindtap="{{onNavigateToStore}}">
+        <view class="detail-row detail-row--clickable data-v-7e5a1194" bindtap="{{onCopyAddress}}">
           <text class="row-label data-v-7e5a1194">门店地址</text>
           <view class="row-value-group data-v-7e5a1194">
             <text class="row-value row-value--small data-v-7e5a1194">{{f}}</text>
-            <image class="nav-icon data-v-7e5a1194" src="/static/icons/paper-plane.svg" />
+            <image class="nav-icon data-v-7e5a1194" src="/static/icons/copy.svg" />
           </view>
         </view>
         <view class="detail-row data-v-7e5a1194">
@@ -109,13 +113,73 @@
       </view>
     </view>
 
+    <!-- 6b. Electronic Medical Record (EMR) Card -->
+    <view wx:if="{{medicalRecord}}" class="card-premium data-v-7e5a1194">
+      <view class="card-header-premium data-v-7e5a1194">
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/report.svg" />
+        <text class="header-title data-v-7e5a1194">就诊电子病历</text>
+      </view>
+      <view class="detail-rows data-v-7e5a1194">
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">就诊日期</text>
+          <text class="row-value data-v-7e5a1194">{{medicalRecord.visitDate}}</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">接诊医生</text>
+          <text class="row-value data-v-7e5a1194">{{medicalRecord.doctorName}}</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">临床诊断</text>
+          <text class="row-value data-v-7e5a1194">{{medicalRecord.diagnosis}}</text>
+        </view>
+        <view wx:if="{{medicalRecord.prescription}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">诊疗处方</text>
+          <text class="row-value data-v-7e5a1194">{{medicalRecord.prescription}}</text>
+        </view>
+        <view wx:if="{{medicalRecord.doctorAdvice}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">医嘱建议</text>
+          <text class="row-value data-v-7e5a1194">{{medicalRecord.doctorAdvice}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 6c. Device Adjust Parameters Card -->
+    <view wx:if="{{treatmentRecord}}" class="card-premium data-v-7e5a1194">
+      <view class="card-header-premium data-v-7e5a1194">
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/timeline.svg" />
+        <text class="header-title data-v-7e5a1194">阻鼾器微调参数</text>
+      </view>
+      <view class="detail-rows data-v-7e5a1194">
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">设备型号</text>
+          <text class="row-value data-v-7e5a1194">{{treatmentRecord.deviceModel}}</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">初始前移量</text>
+          <text class="row-value data-v-7e5a1194">{{treatmentRecord.initialAdvancement}} mm</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">当前前移量</text>
+          <text class="row-value data-v-7e5a1194">{{treatmentRecord.currentAdvancement}} mm</text>
+        </view>
+        <view wx:if="{{treatmentRecord.nextAdjustDate}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">下次微调日期</text>
+          <text class="row-value data-v-7e5a1194">{{treatmentRecord.nextAdjustDate}}</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">配戴开始日期</text>
+          <text class="row-value data-v-7e5a1194">{{treatmentRecord.startDate}}</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 7. Bottom Fixed Action Panel -->
-    <view wx:if="{{status === 'confirmed' || status === 'pending' || status === 'reminded'}}" class="action-footer data-v-7e5a1194">
+    <view wx:if="{{status !== 'arrived' && status !== 'cancelled' && status !== 'no_show' && status !== 'completed'}}" class="action-footer data-v-7e5a1194">
       <button class="footer-btn btn-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onReschedule}}">修改就诊时间</button>
       <button class="footer-btn btn-danger-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onCancel}}">取消本次预约</button>
     </view>
     
-    <view wx:elif="{{status === 'completed' || status === 'cancelled'}}" class="action-footer data-v-7e5a1194">
+    <view wx:elif="{{status === 'arrived' || status === 'cancelled' || status === 'no_show' || status === 'completed'}}" class="action-footer data-v-7e5a1194">
       <button class="footer-btn btn-primary-full data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onReschedule}}">重新预约门诊</button>
     </view>
   </view>

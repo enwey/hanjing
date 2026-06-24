@@ -54,22 +54,7 @@ const activeTimeSlot = ref('all')
 
 // Extract all waiting list items globally to count slots and show numbers
 const allWaitingItems = computed(() => {
-  const list: QueueItem[] = []
-  const currentAssigned: Record<string, boolean> = {}
-  
-  appointments.value.forEach(item => {
-    if (item.status === 'completed') return
-    if (item.status === 'confirmed') {
-      if (!currentAssigned[item.doctorId]) {
-        currentAssigned[item.doctorId] = true
-      } else {
-        list.push(item)
-      }
-    } else if (item.status === 'pending') {
-      list.push(item)
-    }
-  })
-  return list
+  return appointments.value.filter(item => item.status === 'confirmed' || item.status === 'pending')
 })
 
 // Dynamically extract and sort unique time slots that have waiting patients
@@ -121,8 +106,8 @@ const doctorQueues = computed(() => {
   const queues: Record<string, { doctorName: string; storeName: string; waitingList: QueueItem[]; current: QueueItem | null }> = {}
   
   appointments.value.forEach(item => {
-    // Only show today's or pending/confirmed in the queue
-    if (item.status === 'completed') return // Completed is already finished
+    // Only show today's or pending/confirmed/checked_in in the queue
+    if (item.status === 'completed' || item.status === 'arrived') return
     
     if (!queues[item.doctorId]) {
       queues[item.doctorId] = {
@@ -133,13 +118,10 @@ const doctorQueues = computed(() => {
       }
     }
     
-    if (item.status === 'confirmed') {
-      // Treat first confirmed as currently treating
-      if (!queues[item.doctorId].current) {
-        queues[item.doctorId].current = item
-      } else {
-        queues[item.doctorId].waitingList.push(item)
-      }
+    if (item.status === 'checked_in') {
+      queues[item.doctorId].current = item
+    } else if (item.status === 'confirmed') {
+      queues[item.doctorId].waitingList.push(item)
     } else if (item.status === 'pending') {
       queues[item.doctorId].waitingList.push(item)
     }
@@ -161,10 +143,10 @@ const doctorQueues = computed(() => {
   })
 })
 
-// Call patient voice broadcast
-const callPatient = (patientName: string, doctorName: string) => {
+// Call patient voice broadcast and update status to checked_in (就诊中)
+const callPatient = async (item: QueueItem, doctorName: string) => {
   if ('speechSynthesis' in window) {
-    const text = `请患者 ${patientName}，到 ${doctorName} 医生诊室就诊。`
+    const text = `请患者 ${item.patientName}，到 ${doctorName} 医生诊室就诊。`
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'zh-CN'
     utterance.rate = 0.9
@@ -172,6 +154,12 @@ const callPatient = (patientName: string, doctorName: string) => {
     MessagePlugin.success(`呼叫广播成功: "${text}"`)
   } else {
     MessagePlugin.warning('浏览器不支持语音播报，已通过系统弹窗提示')
+  }
+  try {
+    await request.put(`/api/admin/appointments/${item.id}`, { status: 'checked_in' })
+    fetchAppointments()
+  } catch (error) {
+    console.error('更新就诊状态失败:', error)
   }
 }
 
@@ -669,7 +657,7 @@ const filteredTodayAppointments = computed(() => {
               <div class="pat-time">预约时段: {{ q.current.timeSlot }}</div>
             </div>
             <div class="action-row">
-              <t-button size="extra-small" theme="primary" variant="outline" @click="callPatient(q.current.patientName, q.doctorName)">
+              <t-button size="extra-small" theme="primary" variant="outline" @click="callPatient(q.current, q.doctorName)">
                 叫号
               </t-button>
               <t-button size="extra-small" theme="warning" variant="outline" @click="openCheckoutDialog(q.current)">
@@ -691,14 +679,14 @@ const filteredTodayAppointments = computed(() => {
                 <span class="wait-idx">{{ idx + 1 }}</span>
                 <div>
                   <div class="wait-name">{{ item.patientName }}</div>
-                  <div class="wait-time">{{ item.timeSlot }} · {{ item.status === 'pending' ? '待报到' : '候诊中' }}</div>
+                  <div class="wait-time">{{ item.timeSlot }} · {{ item.status === 'pending' ? '已预约' : '候诊中' }}</div>
                 </div>
               </div>
               <div class="wait-right">
                 <t-button v-if="item.status === 'pending'" size="extra-small" theme="warning" variant="outline" @click="startTreatment(item)">
                   签到
                 </t-button>
-                <t-button v-else size="extra-small" theme="primary" variant="outline" @click="callPatient(item.patientName, q.doctorName)">
+                <t-button v-else size="extra-small" theme="primary" variant="outline" @click="callPatient(item, q.doctorName)">
                   叫号
                 </t-button>
                 <t-button size="extra-small" theme="default" variant="text" @click="delayPatient(item)">

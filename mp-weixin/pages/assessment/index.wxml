@@ -22,10 +22,12 @@
     ><view class="eval-card data-v-35dabd14" bindtap="{{c}}"
       ><image class="eval-icon data-v-35dabd14" src="/static/icons/microphone.svg" />
       <view class="eval-info data-v-35dabd14"
-        ><text class="eval-title data-v-35dabd14">AI鼾声分析</text
+        ><view class="eval-title-wrapper data-v-35dabd14"
+          ><text class="eval-title data-v-35dabd14">AI鼾声分析</text
+          ><view class="new-tag data-v-35dabd14">新增上线</view></view
         ><text class="eval-desc data-v-35dabd14"
           >录制鼾声 · AI分析 · 风险评级</text
-        ><view class="new-tag data-v-35dabd14">新增上线</view></view
+        ></view
       ><text class="eval-arrow data-v-35dabd14">›</text></view
     ><view class="section-header data-v-35dabd14"
       ><text class="section-title data-v-35dabd14">我的评估记录</text></view
