@@ -84,7 +84,7 @@
     <!-- 5. Symptom description Card -->
     <view wx:if="{{l}}" class="card-premium data-v-7e5a1194">
       <view class="card-header-premium data-v-7e5a1194">
-        <image class="header-icon data-v-7e5a1194" src="/static/icons/tab-treatment.png" />
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/chat.svg" />
         <text class="header-title data-v-7e5a1194">主诉症状描述</text>
       </view>
       <view class="detail-rows data-v-7e5a1194">

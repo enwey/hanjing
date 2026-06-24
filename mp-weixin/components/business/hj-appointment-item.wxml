@@ -45,7 +45,7 @@
     
     <view wx:if="{{h}}" class="apt-info-row data-v-74fd48b7">
       <view class="apt-label data-v-74fd48b7">
-        <image class="apt-label-icon data-v-74fd48b7" src="/static/icons/tab-treatment.png" />
+        <image class="apt-label-icon data-v-74fd48b7" src="/static/icons/chat.svg" />
         <text class="data-v-74fd48b7">主诉</text>
       </view>
       <text class="apt-value apt-value--desc data-v-74fd48b7">{{i}}</text>
