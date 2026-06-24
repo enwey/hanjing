@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商品详情</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .swiper-indicator {
+      position: absolute;
+      bottom: 12px;
+      right: 16px;
+      background: rgba(0, 0, 0, 0.4);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .swiper-container {
+      position: relative;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-product-detail">
+  <div class="phone-screen page-pages-product-detail">
+    <div class="page data-v-5e948475">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">商品详情</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div id="loading-wrap" class="loading-wrap data-v-5e948475" style="display: none;">
+        <span class="data-v-5e948475">加载中...</span>
+      </div>
+
+      <div id="detail-content" style="display: block;">
+        <div class="swiper-container img-swiper data-v-5e948475">
+          <img id="product-hero-img" class="swiper-img data-v-5e948475" style="width: 100%; height: 375px; object-fit: cover;" src="../../static/product/hj-mad-03.png" alt="product image" />
+          <div class="swiper-indicator">1 / 1</div>
+        </div>
+
+        <div class="body data-v-5e948475" style="padding-bottom: 80px;">
+          <div class="header data-v-5e948475">
+            <div class="price-row data-v-5e948475">
+              <span id="price-val" class="price data-v-5e948475">¥1,980.00</span>
+              <span id="price-orig" class="price-original data-v-5e948475">¥2,480.00</span>
+              <span id="discount-badge" class="discount-tag data-v-5e948475">20% OFF</span>
+            </div>
+            <span id="product-name" class="name data-v-5e948475">鼾静智能固位下颌前移固磁阻鼾器（标准版）</span>
+            <span id="sales-val" class="sales data-v-5e948475">已售 1,280+</span>
+          </div>
+
+          <div class="section data-v-5e948475">
+            <span class="section-title data-v-5e948475">商品详情</span>
+            <span id="product-desc" class="desc data-v-5e948475">
+              鼾静智能下颌前移阻鼾器（HJ-MAD-03）采用高分子医用生物材料，精准咬合设计，通过微调前移下颌骨以拓宽咽部气道，有效缓解夜间睡眠打鼾及轻中度呼吸暂停。本款配备磁吸式智能充电仓与自动烘干杀菌功能，防尘防潮，便捷耐用，是您出差、旅行、居家的理想伴侣。
+            </span>
+          </div>
+        </div>
+
+        <div class="bottom-bar data-v-5e948475">
+          <div class="bottom-price data-v-5e948475">
+            <span id="bottom-price-val" class="bottom-price-val data-v-5e948475">¥1,980.00</span>
+          </div>
+          <div class="btn-buy data-v-5e948475" onclick="buyNow()">
+            <text class="data-v-5e948475">立即购买</text>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const products = {
+      'prod-001': {
+        name: '鼾静智能固位下颌前移固磁阻鼾器（标准版）',
+        price: '¥1,980.00',
+        originalPrice: '¥2,480.00',
+        discount: '20',
+        sales: '1,280+',
+        desc: '鼾静智能下颌前移阻鼾器（HJ-MAD-03）采用高分子医用生物材料，精准咬合设计，通过微调前移下颌骨以拓宽咽部气道，有效缓解夜间睡眠打鼾及轻中度呼吸暂停。本款配备磁吸式智能充电仓与自动烘干杀菌功能，防尘防潮，便捷耐用，是您出差、旅行、居家的理想伴侣。',
+        image: '../../static/product/hj-mad-03.png'
+      },
+      'prod-002': {
+        name: '睡眠冷敷凝胶',
+        price: '¥58.00',
+        originalPrice: '¥88.00',
+        discount: '34',
+        sales: '3,500+',
+        desc: '鼾静专研睡眠冷敷凝胶通过物理降温与温和的植物草本（薄荷、洋甘菊）提取物，舒缓咽部粘膜，辅助改善局部呼吸道干燥与微血管充血，减轻夜间咽干、气道发痒导致的打鼾和不适。使用简单，睡前涂抹于人中或前颈部，清凉舒适，辅助进入深度睡眠。',
+        image: '../../static/product/screening.png'
+      },
+      'prod-003': {
+        name: '鼾静阻鼾器专用清洁片（30片/盒）',
+        price: '¥39.00',
+        originalPrice: '¥59.00',
+        discount: '33',
+        sales: '5,600+',
+        desc: '阻鼾器专用清洁泡腾片，专为HJ系列高分子材质定制。采用多重活性氧生物配方，浸泡5分钟即可深度瓦解表面唾液蛋白、污垢和细菌，防止异味和污渍残留，保持器身清爽洁净。建议每天戴后使用，温和配方，不伤材质，口腔更卫生。',
+        image: '../../static/product/clean-kit.png'
+      },
+      'prod-004': {
+        name: '智能睡眠监测手环',
+        price: '¥399.00',
+        originalPrice: '¥599.00',
+        discount: '33',
+        sales: '850+',
+        desc: '鼾静专业级智能睡眠监测手环，内置高灵敏三轴运动传感器与PPG光学血氧监测仪，精准记录整晚睡眠时长、深睡/浅睡比例、清醒次数以及夜间血氧饱和度（SpO2）波动。独创打鼾震动干预模式，当监测到频繁打鼾伴血氧走低时，手环会发出微振，提醒调整睡姿，保护睡眠呼吸通畅。',
+        image: '../../static/product/pillow.png'
+      }
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const prodId = params.get('id') || 'prod-001';
+    const data = products[prodId] || products['prod-001'];
+
+    // Hydrate fields
+    document.getElementById('product-hero-img').src = data.image;
+    document.getElementById('price-val').textContent = data.price;
+    document.getElementById('price-orig').textContent = data.originalPrice;
+    document.getElementById('discount-badge').textContent = `${data.discount}% OFF`;
+    document.getElementById('product-name').textContent = data.name;
+    document.getElementById('sales-val').textContent = `已售 ${data.sales}`;
+    document.getElementById('product-desc').textContent = data.desc;
+    document.getElementById('bottom-price-val').textContent = data.price;
+
+    function buyNow() {
+      // Generate a new custom order in localStorage
+      const randomSuffix = String(Math.floor(1000 + Math.random() * 9000));
+      const orderNo = `OR20260616${randomSuffix}`;
+      const newOrder = {
+        id: `ord-${Date.now()}`,
+        orderNo: orderNo,
+        status: "paid",
+        statusLabel: "待发货",
+        statusColor: "#3b6bf5",
+        items: [
+          { name: data.name, image: data.image, qty: 1, price: data.price }
+        ],
+        totalQty: 1,
+        totalAmount: data.price
+      };
+
+      try {
+        let customOrders = [];
+        const stored = localStorage.getItem('hj_custom_orders');
+        if (stored) customOrders = JSON.parse(stored);
+        customOrders.unshift(newOrder);
+        localStorage.setItem('hj_custom_orders', JSON.stringify(customOrders));
+      } catch (e) {}
+
+      alert(`已成功创建订单！购买商品：${data.name}，实付金额：${data.price}。`);
+      window.parent.loadPage('pages/order/index');
+    }
+  </script>
+</body>
+</html>

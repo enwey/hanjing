@@ -14,10 +14,37 @@ const n = () => "../../../../components/base/hj-navbar.js",
         t.value = !0;
       }
       async function r() {
-        (await a.updateUserProfile(v.value),
-          (u.value = { ...u.value, ...v.value }),
-          (t.value = !1),
-          e.index.showToast({ title: "保存成功", icon: "success" }));
+        try {
+          await a.updateUserProfile(v.value);
+          u.value = { ...u.value, ...v.value };
+          
+          // Update Pinia user store profile directly to trigger instant reactivity
+          try {
+            const userStore = require("../../../../stores/index.js").useUserStore();
+            if (userStore) {
+              if (userStore.profile) {
+                userStore.profile.nickname = v.value.nickname;
+                userStore.profile.gender = v.value.gender;
+                userStore.profile.birthday = v.value.birthday;
+              } else {
+                userStore.profile = {
+                  nickname: v.value.nickname,
+                  gender: v.value.gender,
+                  birthday: v.value.birthday,
+                };
+              }
+              console.log("[Personal Info Save] Pinia userStore.profile updated:", JSON.stringify(userStore.profile));
+            }
+          } catch (storeErr) {
+            console.error("[Personal Info Save] Failed to update Pinia userStore profile:", storeErr);
+          }
+          
+          t.value = !1;
+          e.index.showToast({ title: "保存成功", icon: "success" });
+        } catch (err) {
+          console.error("[Personal Info Save] Failed to update profile:", err);
+          e.index.showToast({ title: "更新失败", icon: "none" });
+        }
       }
       function c() {
         (Object.assign(v.value, {

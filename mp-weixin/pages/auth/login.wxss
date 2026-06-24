@@ -106,10 +106,21 @@
   border: none;
 }
 .protocol-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   font-size: 11px;
   color: #9ca3af;
-  text-align: center;
   margin-top: 30px;
+}
+.protocol-label {
+  display: flex;
+  align-items: center;
+}
+.protocol-checkbox {
+  transform: scale(0.65);
+  margin-right: -2px;
 }
 .protocol-text {
   color: #9ca3af;

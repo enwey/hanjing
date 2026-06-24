@@ -20,13 +20,16 @@ const a = () => "../../components/base/hj-navbar.js",
           (o.value = l.schedules));
       }
       e.onMounted(async () => {
-        var e, t, a, n;
-        const o = getCurrentPages(),
-          r = (null == (e = o[o.length - 1].$page) ? void 0 : e.options) || {};
+        var t, a, n;
+        const o = getCurrentPages();
+        const curPage = o[o.length - 1] || {};
+        const r = curPage.options || (curPage.$page && curPage.$page.options) || {};
+        const docIdParam = r.doctorId || r.doctorid || "";
+        const storeIdParam = r.storeId || r.storeid || "";
         ((u.value =
-          r.doctorId || (null == (t = l.selectedDoctor) ? void 0 : t.id) || ""),
+          docIdParam || (null == (t = l.selectedDoctor) ? void 0 : t.id) || ""),
           (i.value =
-            r.storeId || (null == (a = l.selectedStore) ? void 0 : a.id) || ""),
+            storeIdParam || (null == (a = l.selectedStore) ? void 0 : a.id) || ""),
           (d.value = (null == (n = l.selectedDoctor) ? void 0 : n.name) || ""),
           await l.fetchScheduleDates(u.value, i.value),
           (s.value = !1));
@@ -83,7 +86,7 @@ const a = () => "../../components/base/hj-navbar.js",
                             e.unref(l).timeSlots.length > 0
                             ? {
                                 h: e.f(e.unref(l).timeSlots, (a, s, n) => ({
-                                  a: e.t(a.startTime),
+                                  a: e.t(a.label),
                                   b: a.id,
                                   c: "available" === a.status ? 1 : "",
                                   d: "booked" === a.status ? 1 : "",

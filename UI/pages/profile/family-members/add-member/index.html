@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>添加成员</title>
+  <link rel="stylesheet" href="../../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    /* Simple layout normalization for custom text tags */
+    text {
+      display: inline-block;
+    }
+    .form-group {
+      background: #fff;
+      padding: 16px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .form-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      display: block;
+      margin-bottom: 10px;
+    }
+    .form-input {
+      width: 100%;
+      border: none;
+      font-size: 15px;
+      outline: none;
+      color: #1f2937;
+    }
+    .form-input::placeholder {
+      color: #9ca3af;
+    }
+    .form-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip {
+      padding: 6px 16px;
+      background: #f3f4f6;
+      border-radius: 20px;
+      font-size: 13px;
+      color: #4b5563;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+    .chip.active {
+      background: #eef4ff;
+      color: #3b6bf5;
+      border-color: #3b6bf5;
+      font-weight: 500;
+    }
+    .btn-submit {
+      margin: 30px 16px;
+      height: 44px;
+      background: #3b6bf5;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 22px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-family-members-add-member-index">
+  <div class="phone-screen page-pages-profile-family-members-add-member-index">
+    <div class="page data-v-33d45858">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">添加成员</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-33d45858">
+        <!-- Name -->
+        <div class="form-group data-v-33d45858">
+          <text class="form-label data-v-33d45858">姓名</text>
+          <input id="member-name" class="form-input data-v-33d45858" placeholder="请输入姓名" />
+        </div>
+
+        <!-- Relation -->
+        <div class="form-group data-v-33d45858">
+          <text class="form-label data-v-33d45858">关系</text>
+          <div class="form-chips data-v-33d45858" id="relation-chips">
+            <div class="chip data-v-33d45858 active" onclick="selectRelation(this, '配偶')"><text class="data-v-33d45858">配偶</text></div>
+            <div class="chip data-v-33d45858" onclick="selectRelation(this, '子女')"><text class="data-v-33d45858">子女</text></div>
+            <div class="chip data-v-33d45858" onclick="selectRelation(this, '父母')"><text class="data-v-33d45858">父母</text></div>
+            <div class="chip data-v-33d45858" onclick="selectRelation(this, '其他')"><text class="data-v-33d45858">其他</text></div>
+          </div>
+        </div>
+
+        <!-- Gender -->
+        <div class="form-group data-v-33d45858">
+          <text class="form-label data-v-33d45858">性别</text>
+          <div class="form-chips data-v-33d45858" id="gender-chips">
+            <div class="chip data-v-33d45858 active" onclick="selectGender(this, '男')"><text class="data-v-33d45858">男</text></div>
+            <div class="chip data-v-33d45858" onclick="selectGender(this, '女')"><text class="data-v-33d45858">女</text></div>
+          </div>
+        </div>
+
+        <!-- Age -->
+        <div class="form-group data-v-33d45858">
+          <text class="form-label data-v-33d45858">年龄</text>
+          <input id="member-age" class="form-input data-v-33d45858" type="number" placeholder="请输入年龄" />
+        </div>
+
+        <!-- Phone -->
+        <div class="form-group data-v-33d45858">
+          <text class="form-label data-v-33d45858">手机号</text>
+          <input id="member-phone" class="form-input data-v-33d45858" type="number" placeholder="选填" />
+        </div>
+
+        <div class="btn-submit data-v-33d45858" onclick="submitForm()">
+          <text class="data-v-33d45858">确认添加</text>
+        </div>
+        <div class="safe-bottom data-v-33d45858" style="height: 34px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedRelation = '配偶';
+    let selectedGender = '男';
+
+    function selectRelation(el, rel) {
+      selectedRelation = rel;
+      document.querySelectorAll('#relation-chips .chip').forEach(c => {
+        c.classList.remove('active');
+        const text = c.querySelector('text');
+      });
+      el.classList.add('active');
+    }
+
+    function selectGender(el, gen) {
+      selectedGender = gen;
+      document.querySelectorAll('#gender-chips .chip').forEach(c => {
+        c.classList.remove('active');
+      });
+      el.classList.add('active');
+    }
+
+    function submitForm() {
+      const name = document.getElementById('member-name').value.trim();
+      const age = document.getElementById('member-age').value.trim();
+      const phone = document.getElementById('member-phone').value.trim();
+
+      if (!name) {
+        alert('请输入姓名！');
+        return;
+      }
+      if (!age) {
+        alert('请输入年龄！');
+        return;
+      }
+
+      const newMember = {
+        id: 'fm_' + Date.now(),
+        name: name,
+        relation: selectedRelation,
+        gender: selectedGender === '男' ? '1' : '2',
+        age: parseInt(age),
+        phone: phone ? phone.substring(0, 3) + '****' + phone.substring(7) : '',
+        hasSnore: false, // Default to false
+        lastVisit: '无就诊记录'
+      };
+
+      try {
+        let members = [];
+        const stored = localStorage.getItem('hj_family_members');
+        if (stored) members = JSON.parse(stored);
+        members.unshift(newMember);
+        localStorage.setItem('hj_family_members', JSON.stringify(members));
+      } catch (e) {}
+
+      alert('成员添加成功！');
+      window.parent.loadPage('pages/profile/family-members/index');
+    }
+  </script>
+</body>
+</html>

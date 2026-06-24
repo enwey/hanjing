@@ -1,5 +1,6 @@
 "use strict";
-const e = require("../../../common/vendor.js");
+const e = require("../../../common/vendor.js"),
+  api = require("../../../api/index.js");
 Math || t();
 const t = () => "../../../components/base/hj-navbar.js",
   a = e.defineComponent({
@@ -18,31 +19,31 @@ const t = () => "../../../components/base/hj-navbar.js",
           "情感支持",
           "经验交流",
         ];
-      function s() {
-        a.value.trim() && n.value.trim()
-          ? ((o.value = !0),
-            setTimeout(() => {
-              const t = {
-                id: "p-new-" + Date.now(),
-                author: "我",
-                avatar: "",
-                role: "patient",
-                roleLabel: "鼾症患者",
-                title: a.value.trim(),
-                content: n.value.trim(),
-                images: [],
-                tags: [...i.value],
-                likes: 0,
-                comments: 0,
-                isLiked: !1,
-                createdAt: new Date().toISOString(),
-                isTop: !1,
-              };
-              (e.index.$emit("newPost", t),
-                e.index.showToast({ title: "发布成功", icon: "success" }),
-                setTimeout(() => e.index.navigateBack(), 800));
-            }, 600))
-          : e.index.showToast({ title: "请填写标题和内容", icon: "none" });
+      async function s() {
+        if (a.value.trim() && n.value.trim()) {
+          o.value = !0;
+          try {
+            const res = await api.createCommunityPost({
+              title: a.value.trim(),
+              content: n.value.trim(),
+              tags: [...i.value]
+            });
+            if (res && res.code === 0) {
+              e.index.$emit("newPost", res.data);
+              e.index.showToast({ title: "发布成功", icon: "success" });
+              setTimeout(() => e.index.navigateBack(), 800);
+            } else {
+              e.index.showToast({ title: "发布失败，请重试", icon: "none" });
+            }
+          } catch (err) {
+            console.error(err);
+            e.index.showToast({ title: "发布失败，请重试", icon: "none" });
+          } finally {
+            o.value = !1;
+          }
+        } else {
+          e.index.showToast({ title: "请填写标题和内容", icon: "none" });
+        }
       }
       return (t, u) => ({
         a: e.p({ title: "发帖", showBack: !0 }),

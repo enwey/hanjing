@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>治疗时间线</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .tl-card.data-v-50b7be62 {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+    .tl-card.data-v-50b7be62:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-treatment-timeline-index">
+  <div class="phone-screen page-pages-treatment-timeline-index">
+    <div class="page data-v-50b7be62">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">治疗时间线</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-50b7be62">
+        <!-- Current Treatment Parameters -->
+        <div class="status-card data-v-50b7be62">
+          <span class="status-title data-v-50b7be62">当前治疗</span>
+          <div class="status-row data-v-50b7be62">
+            <span class="status-label data-v-50b7be62">设备型号</span>
+            <span id="status-device" class="status-value data-v-50b7be62">加载中...</span>
+          </div>
+          <div class="status-row data-v-50b7be62">
+            <span class="status-label data-v-50b7be62">下颌前移量</span>
+            <span id="status-value" class="status-value data-v-50b7be62">-.-mm</span>
+          </div>
+          <div class="status-row data-v-50b7be62">
+            <span class="status-label data-v-50b7be62">下次调整</span>
+            <span id="status-next" class="status-value data-v-50b7be62" style="color: #f59e0b">加载中</span>
+          </div>
+        </div>
+
+        <div class="section-title data-v-50b7be62">治疗历程</div>
+
+        <!-- Timeline List -->
+        <div class="timeline data-v-50b7be62" id="timeline-list"></div>
+
+        <div class="safe-bottom data-v-50b7be62"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Config mappings
+    const typeLabelMap = {
+      visit: "初诊",
+      adjust: "调整",
+      followup: "随访",
+      advice: "医嘱",
+      milestone: "节点"
+    };
+
+    // Mock treatment data matching the timeline APIs
+    const treatmentRecord = {
+      deviceModel: "智能阻鼾器 HJ-MAD-03",
+      adjustmentValue: 4.0,
+      nextAdjustDate: "2026-06-25"
+    };
+
+    // Mock timeline list
+    const timelineData = [
+      {
+        id: 1,
+        date: "2026-06-04",
+        type: "advice",
+        color: "#3B6BF5",
+        title: "日常佩戴医嘱",
+        description: "随诊后医生调整了建议。请保证每日佩戴时间≥6小时，平时尽量侧卧睡眠，能够更加有效地减轻下颌和牙齿负重并获得优良血氧水平。",
+        doctorName: "王芳"
+      },
+      {
+        id: 2,
+        date: "2026-05-28",
+        type: "adjust",
+        color: "#F59E0B",
+        title: "首月复诊调整",
+        description: "王芳医生评估首月数据符合预期，下颌肌肉及关节适应度建立良好。今日协助调节阻鼾器前伸锁扣阻尼，将移置量增调至 4.0mm。",
+        doctorName: "王芳"
+      },
+      {
+        id: 3,
+        type: "followup",
+        date: "2026-05-15",
+        color: "#10B981",
+        title: "首周佩戴电话回访",
+        description: "技术客服进行首周佩戴回访。用户自述前三晚口水稍多，晨起下颌有数分钟微发酸，随后缓解。建议继续佩戴，让口咽肌肉充分适应阻鼾拉力。",
+        doctorName: ""
+      },
+      {
+        id: 4,
+        type: "visit",
+        date: "2026-05-07",
+        color: "#1A9D5C",
+        title: "初诊口腔检查与三维扫模",
+        description: "李明辉医生安排完成了夜间睡眠PSG监测。AHI为22.5，确诊中度阻塞性鼾症。今日完成颞下颌关节拍片、口腔三维扫描，定制阻鼾器 HJ-MAD-03，前移量设为3.0mm。",
+        doctorName: "李明辉"
+      }
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // Simulate quick fetch delay
+      setTimeout(() => {
+        // Set Header details
+        document.getElementById("status-device").textContent = treatmentRecord.deviceModel;
+        document.getElementById("status-value").textContent = `${treatmentRecord.adjustmentValue.toFixed(1)}mm`;
+        document.getElementById("status-next").textContent = treatmentRecord.nextAdjustDate || "待定";
+
+        // Render List
+        const timelineList = document.getElementById("timeline-list");
+        
+        timelineList.innerHTML = timelineData.map((event, idx) => {
+          const isLast = (idx === timelineData.length - 1);
+          const formattedDate = event.date.slice(5); // e.g. "06-04"
+          const typeText = typeLabelMap[event.type] || event.type;
+          
+          const lastClass = isLast ? "tl-item--last" : "";
+          
+          // Render line only if not the last item
+          const lineHtml = !isLast 
+            ? `<div class="tl-line data-v-50b7be62" style="background: ${event.color}30"></div>` 
+            : "";
+
+          const doctorHtml = event.doctorName 
+            ? `<span class="tl-doctor data-v-50b7be62">${event.doctorName} 医生</span>` 
+            : "";
+
+          return `
+            <div class="tl-item data-v-50b7be62 ${lastClass}" data-id="${event.id}">
+              <div class="tl-left data-v-50b7be62">
+                <span class="tl-date data-v-50b7be62">${formattedDate}</span>
+                <span class="tl-type data-v-50b7be62">${typeText}</span>
+              </div>
+              <div class="tl-middle data-v-50b7be62">
+                <div class="tl-dot data-v-50b7be62" style="background: ${event.color}"></div>
+                ${lineHtml}
+              </div>
+              <div class="tl-right data-v-50b7be62">
+                <div class="tl-card data-v-50b7be62">
+                  <span class="tl-title data-v-50b7be62">${event.title}</span>
+                  <span class="tl-desc data-v-50b7be62">${event.description}</span>
+                  ${doctorHtml}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }, 200);
+    });
+  </script>
+</body>
+</html>

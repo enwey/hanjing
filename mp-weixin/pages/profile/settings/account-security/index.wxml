@@ -27,6 +27,8 @@
           ><text class="info-label data-v-ecc58349">登录设备</text
           ><text class="info-val data-v-ecc58349">{{h}}</text></view
         ></view
+      ><view class="btn-logout data-v-ecc58349" bindtap="{{i}}"
+        ><text class="data-v-ecc58349">退出登录</text></view
       ></block
     ><view class="safe-bottom data-v-ecc58349" /></view
 ></view>

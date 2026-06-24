@@ -58,7 +58,7 @@
   background: #f9fafb;
 }
 .page-content.data-v-03365e87 {
-  padding: 0 16px;
+  padding: 16px 16px 0;
 }
 .info-card.data-v-03365e87 {
   background: #fff;
@@ -84,7 +84,13 @@
 .info-label.data-v-03365e87 {
   font-size: 14px;
   color: #6b7280;
-  width: 72px;
+  width: 56px;
+  flex-shrink: 0;
+}
+.row-icon.data-v-03365e87 {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
   flex-shrink: 0;
 }
 .info-value.data-v-03365e87 {
@@ -115,6 +121,7 @@
 }
 .symptom-textarea.data-v-03365e87 {
   width: 100%;
+  box-sizing: border-box;
   height: 120px;
   background: #f9fafb;
   border-radius: 12px;
@@ -126,8 +133,20 @@
 .tips.data-v-03365e87 {
   margin-bottom: 24px;
 }
+.tip-item.data-v-03365e87 {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.tip-icon.data-v-03365e87 {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
 .tips-text.data-v-03365e87 {
-  display: block;
+  flex: 1;
   font-size: 13px;
   color: #9ca3af;
   line-height: 1.8;

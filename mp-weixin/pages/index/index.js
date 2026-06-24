@@ -1,6 +1,7 @@
 "use strict";
 const e = require("../../common/vendor.js"),
-  o = require("../../stores/index.js");
+  o = require("../../stores/index.js"),
+  api = require("../../api/index.js");
 Math || (t + s + n)();
 const t = () => "../../components/base/hj-navbar.js",
   n = () => "../../components/business/hj-store-card.js",
@@ -18,6 +19,13 @@ const t = () => "../../components/base/hj-navbar.js",
         l = e.ref("3");
       function c() {
         (r.resetFlow(), e.index.switchTab({ url: "/pages/appointment/index" }));
+      }
+      function handleStoreClick(store) {
+        r.resetFlow();
+        r.selectStore(store);
+        e.index.navigateTo({
+          url: `/pages/appointment/doctor-list?storeId=${store.id}`
+        });
       }
       function d(o) {
         (r.resetFlow(),
@@ -39,25 +47,27 @@ const t = () => "../../components/base/hj-navbar.js",
       }
       return (
         e.onMounted(async () => {
-          (await Promise.all([n.fetchStores(), s.fetchDoctors()]),
-            (i.value = s.doctors.slice(0, 3)));
+          let coords = null;
           try {
-            await new Promise((resolve) => {
-              wx.request({
-                url: "http://127.0.0.1:5005/api/v1/home/stats",
-                success: (res) => {
-                  if (res.data && res.data.code === 0) {
-                    j.value = res.data.data.totalPatients.toLocaleString() + "+";
-                    k.value = res.data.data.satisfactionRate + "%";
-                    l.value = res.data.data.storeCount.toString();
-                  }
-                  resolve(null);
-                },
-                fail: () => {
-                  resolve(null);
-                }
+            coords = await new Promise((resolve) => {
+              e.index.getLocation({
+                type: "wgs84",
+                success: (res) => resolve({ latitude: res.latitude, longitude: res.longitude }),
+                fail: () => resolve(null)
               });
             });
+          } catch (err) {
+            // ignore
+          }
+          (await Promise.all([n.fetchStores(), s.fetchDoctors(coords || undefined)]),
+            (i.value = s.doctors.slice(0, 3)));
+          try {
+            const res = await api.getHomeStats();
+            if (res && res.code === 0) {
+              j.value = res.data.totalPatients.toLocaleString() + "+";
+              k.value = res.data.satisfactionRate + "%";
+              l.value = res.data.storeCount.toString();
+            }
           } catch (err) {
             console.error(err);
           }
@@ -74,7 +84,7 @@ const t = () => "../../components/base/hj-navbar.js",
           ),
           f: e.o(u, "04"),
           g: e.o(
-            (o) => e.index.switchTab({ url: "/pages/appointment/index" }),
+            (o) => e.index.navigateTo({ url: "/pages/appointment/doctor-list" }),
             "af",
           ),
           h: e.f(i.value, (o, t, n) => ({
@@ -85,7 +95,7 @@ const t = () => "../../components/base/hj-navbar.js",
           })),
           i: e.f(e.unref(n).stores, (o, t, n) => ({
             a: o.id,
-            b: e.o(c, o.id),
+            b: e.o(handleStoreClick, o.id),
             c: "e9eb3795-2-" + n,
             d: e.p({ store: o }),
           })),

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>病历档案</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-medical-records-index">
+  <div class="phone-screen page-pages-profile-medical-records-index">
+    <div class="page data-v-04031480">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">病历档案</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-04031480" id="record-list-container" style="padding: 16px;">
+        <!-- Loading state -->
+        <div id="loading-spinner" class="loading-wrap data-v-04031480">
+          <span class="loading-text data-v-04031480">加载中...</span>
+        </div>
+
+        <!-- Records container (will be filled by JS) -->
+        <div id="records-content" style="display: none;"></div>
+
+        <!-- Empty state (hidden by default) -->
+        <div id="empty-state" class="empty-state data-v-04031480" style="display: none;">
+          <span class="empty-text data-v-04031480">暂无就诊记录</span>
+        </div>
+        
+        <div class="safe-bottom data-v-04031480" style="height: 32px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Mock data representing realistic diagnoses
+      const mockRecords = [
+        {
+          id: 1,
+          type: '首诊',
+          typeBg: '#eff6ff',
+          typeColor: '#2563eb',
+          date: '2026-05-15 10:30',
+          doctor: '李明 主任医师',
+          department: '鼾症专科门诊',
+          diagnosis: '阻塞性睡眠呼吸暂停低通气综合征 (OSAHS) - 中度。伴有轻度睡眠低氧血症，夜间最低血氧饱和度82%。',
+          prescription: '1. 定制并佩戴韩镜下颌前导阻鼾器（每晚睡眠时佩戴）。\n2. 侧卧位睡眠，避免仰卧位以减轻上呼吸道塌陷。\n3. 控制体重，BMI建议控制在24以下；戒烟限酒，尤其是睡前4小时内禁饮酒。',
+          note: '注意：初次戴镜可能有下颌微酸、口水分泌增多，属正常现象，通常在3-7天内自愈。如有一周以上不适，请及时复诊微调。'
+        },
+        {
+          id: 2,
+          type: '复诊',
+          typeBg: '#f0fdf4',
+          typeColor: '#16a34a',
+          date: '2026-06-05 14:15',
+          doctor: '李明 主任医师',
+          department: '鼾症专科门诊',
+          diagnosis: '中度OSAHS治疗随访。戴镜3周，夜间打鼾频率明显降低，打鼾分贝由72dB降至45dB，白天精神状态良好，未见下颌关节异常。',
+          prescription: '1. 继续维持当前下颌前导量（4.5mm）。\n2. 每日清晨摘镜后进行1-2分钟下颌前伸与后缩交替拉伸活动，防止咬合改变。\n3. 4-6周后复查睡眠监测。',
+          note: '注意：注意清洁阻鼾器，每日早晨摘下后用清水洗净并置于阴凉通风处晾干。'
+        }
+      ];
+
+      const spinner = document.getElementById('loading-spinner');
+      const content = document.getElementById('records-content');
+      const emptyState = document.getElementById('empty-state');
+
+      setTimeout(() => {
+        spinner.style.display = 'none';
+        if (mockRecords.length === 0) {
+          emptyState.style.display = 'block';
+        } else {
+          content.style.display = 'block';
+          content.innerHTML = mockRecords.map(record => `
+            <div class="record-card data-v-04031480">
+              <div class="record-header data-v-04031480">
+                <div class="record-type data-v-04031480" style="background: ${record.typeBg}; color: ${record.typeColor}">
+                  <span class="data-v-04031480">${record.type}</span>
+                </div>
+                <span class="record-date data-v-04031480">${record.date}</span>
+              </div>
+              <span class="record-doctor data-v-04031480">${record.doctor} | ${record.department}</span>
+              <div class="record-section data-v-04031480">
+                <span class="record-label data-v-04031480">诊断</span>
+                <span class="record-value data-v-04031480">${record.diagnosis}</span>
+              </div>
+              <div class="record-section data-v-04031480">
+                <span class="record-label data-v-04031480">处方/方案</span>
+                <span class="record-value data-v-04031480" style="white-space: pre-line;">${record.prescription}</span>
+              </div>
+              ${record.note ? `
+                <div class="record-note data-v-04031480" style="background: #fffbeb; border-radius: 8px; padding: 10px 12px; margin-top: 8px;">
+                  <text class="data-v-04031480" style="font-size: 13px; color: #d97706; line-height: 1.5; display: block;">${record.note}</text>
+                </div>
+              ` : ''}
+            </div>
+          `).join('');
+        }
+      }, 400); // 400ms delay for premium feel loading simulation
+    });
+  </script>
+</body>
+</html>

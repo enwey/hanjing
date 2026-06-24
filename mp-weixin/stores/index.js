@@ -1,8 +1,37 @@
 "use strict";
 const e = require("../common/vendor.js"),
   t = require("../api/index.js"),
-  n = require("../mock/index.js"),
-  o = e.defineStore("user", () => {
+  n = require("../mock/index.js");
+
+function matchStoreId(id1, id2) {
+  const s1 = String(id1);
+  const s2 = String(id2);
+  if (s1 === s2) return true;
+  const normalize = (id) => {
+    if (id === "1" || id === "store-001") return "1";
+    if (id === "2" || id === "store-002") return "2";
+    if (id === "3" || id === "store-003") return "3";
+    if (id === "4" || id === "store-004") return "4";
+    return id;
+  };
+  return normalize(s1) === normalize(s2);
+}
+
+function matchDoctorId(id1, id2) {
+  const d1 = String(id1);
+  const d2 = String(id2);
+  if (d1 === d2) return true;
+  const normalize = (id) => {
+    if (id === "1" || id === "doc-001") return "1";
+    if (id === "2" || id === "doc-002") return "2";
+    if (id === "3" || id === "doc-003") return "3";
+    if (id === "4" || id === "doc-004") return "4";
+    return id;
+  };
+  return normalize(d1) === normalize(d2);
+}
+
+const o = e.defineStore("user", () => {
     const n = e.ref(e.index.getStorageSync("access_token") || ""),
       o = e.ref(!!e.index.getStorageSync("access_token")),
       a = e.ref(null);
@@ -26,9 +55,12 @@ const e = require("../common/vendor.js"),
         }
       },
       fetchProfile: async function () {
+        console.log("[User Store] fetchProfile starting...");
         try {
           const e = await t.getUserProfile();
+          console.log("[User Store] fetchProfile API response:", JSON.stringify(e));
           a.value = e.data;
+          console.log("[User Store] profile set in store:", JSON.stringify(a.value));
         } catch (e) {
           console.error("[Profile] 获取失败", e);
         }
@@ -59,7 +91,7 @@ const e = require("../common/vendor.js"),
         }
       },
       getStoreById: function (e) {
-        return n.value.find((t) => t.id === e);
+        return n.value.find((t) => matchStoreId(t.id, e));
       },
     };
   }),
@@ -81,10 +113,10 @@ const e = require("../common/vendor.js"),
         }
       },
       getDoctorById: function (e) {
-        return n.value.find((t) => t.id === e);
+        return n.value.find((t) => matchDoctorId(t.id, e));
       },
       getDoctorsByStore: function (e) {
-        return n.value.filter((t) => t.storeIds.includes(e));
+        return n.value.filter((t) => t.storeIds && t.storeIds.some(id => matchStoreId(id, e)));
       },
     };
   }),
@@ -175,7 +207,11 @@ const e = require("../common/vendor.js"),
       fetchAppointments: async function (e) {
         v.value = !0;
         try {
-          const n = await t.getAppointments({ status: e });
+          const params = {};
+          if (e !== undefined && e !== null && e !== "") {
+            params.status = e;
+          }
+          const n = await t.getAppointments(params);
           i.value = n.data;
         } catch (n) {
           console.error("[Appointments] 加载失败", n);
@@ -287,4 +323,6 @@ const e = require("../common/vendor.js"),
   (exports.useAssessmentStore = s),
   (exports.useDoctorStore = r),
   (exports.useStoreStore = a),
-  (exports.useUserStore = o));
+  (exports.useUserStore = o),
+  (exports.matchStoreId = matchStoreId),
+  (exports.matchDoctorId = matchDoctorId));

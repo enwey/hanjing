@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>健康商城</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-product-index">
+  <div class="phone-screen page-pages-product-index">
+    <div class="page data-v-789c78ca">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px; justify-content: center;">
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937; font-weight: 600; font-size: 17px; text-align: center; width: 100%;">健康商城</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-789c78ca">
+        <!-- Category Tabs -->
+        <div class="tab-scroll data-v-789c78ca">
+          <div class="tab-item data-v-789c78ca active" onclick="switchCategory('all')">
+            <span class="tab-label data-v-789c78ca">全部</span>
+            <div class="tab-indicator data-v-789c78ca"></div>
+          </div>
+          <div class="tab-item data-v-789c78ca" onclick="switchCategory('device')">
+            <span class="tab-label data-v-789c78ca">治疗设备</span>
+            <div class="tab-indicator data-v-789c78ca" style="display: none;"></div>
+          </div>
+          <div class="tab-item data-v-789c78ca" onclick="switchCategory('accessory')">
+            <span class="tab-label data-v-789c78ca">配件耗材</span>
+            <div class="tab-indicator data-v-789c78ca" style="display: none;"></div>
+          </div>
+          <div class="tab-item data-v-789c78ca" onclick="switchCategory('service')">
+            <span class="tab-label data-v-789c78ca">医疗服务</span>
+            <div class="tab-indicator data-v-789c78ca" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Waterfall Columns -->
+        <div class="waterfall-container data-v-789c78ca">
+          <div class="waterfall-column data-v-789c78ca" id="column-1"></div>
+          <div class="waterfall-column data-v-789c78ca" id="column-2"></div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state data-v-789c78ca" id="empty-state" style="display: none;">
+          <span class="empty-text data-v-789c78ca">暂无商品</span>
+        </div>
+
+        <div class="safe-bottom data-v-789c78ca"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const products = [
+      {
+        id: "prod-001",
+        name: "定制式可调舌型阻鼾器 HJ-MAD-03",
+        image: "../../static/product/hj-mad-03.png",
+        price: "¥2980",
+        originalPrice: "¥3580",
+        sales: 1283,
+        category: "device",
+        badge: "热销"
+      },
+      {
+        id: "prod-002",
+        name: "阻鼾器深度清洁套装",
+        image: "../../static/product/clean-kit.png",
+        price: "¥79",
+        originalPrice: "¥99",
+        sales: 4521,
+        category: "accessory"
+      },
+      {
+        id: "prod-003",
+        name: "睡眠呼吸初筛服务套餐",
+        image: "../../static/product/screening.png",
+        price: "¥99",
+        sales: 892,
+        category: "service"
+      },
+      {
+        id: "prod-004",
+        name: "鼾静健康专用记忆枕",
+        image: "../../static/product/pillow.png",
+        price: "¥299",
+        originalPrice: "¥399",
+        sales: 2105,
+        category: "accessory"
+      }
+    ];
+
+    function renderProducts(category) {
+      const col1 = document.getElementById('column-1');
+      const col2 = document.getElementById('column-2');
+      const emptyState = document.getElementById('empty-state');
+      
+      col1.innerHTML = '';
+      col2.innerHTML = '';
+      
+      const filtered = category === 'all' 
+        ? products 
+        : products.filter(p => p.category === category);
+        
+      if (filtered.length === 0) {
+        emptyState.style.display = 'block';
+      } else {
+        emptyState.style.display = 'none';
+        filtered.forEach((p, idx) => {
+          const card = document.createElement('div');
+          card.className = 'product-card data-v-789c78ca';
+          card.onclick = () => window.parent.loadPage(`pages/product/detail?id=${p.id}`);
+          
+          let badgeHTML = '';
+          if (p.badge) {
+            badgeHTML = `<div class="product-badge product-badge--custom data-v-789c78ca">
+              <text class="data-v-789c78ca">${p.badge}</text>
+            </div>`;
+          }
+          
+          let origPriceHTML = '';
+          if (p.originalPrice) {
+            origPriceHTML = `<div class="product-price-original-row data-v-789c78ca">
+              <span class="price-original data-v-789c78ca">${p.originalPrice}</span>
+            </div>`;
+          }
+          
+          card.innerHTML = `
+            <div class="product-img-wrap data-v-789c78ca">
+              <img class="product-img data-v-789c78ca" src="${p.image}" style="width: 100%; display: block;" />
+              ${badgeHTML}
+            </div>
+            <div class="product-body data-v-789c78ca">
+              <span class="product-name data-v-789c78ca">${p.name}</span>
+              <div class="product-footer data-v-789c78ca">
+                <div class="product-price-sales-row data-v-789c78ca">
+                  <span class="price data-v-789c78ca">${p.price}</span>
+                  <span class="product-sales data-v-789c78ca">已售 ${p.sales}</span>
+                </div>
+                ${origPriceHTML}
+              </div>
+            </div>
+          `;
+          
+          if (idx % 2 === 0) {
+            col1.appendChild(card);
+          } else {
+            col2.appendChild(card);
+          }
+        });
+      }
+    }
+
+    function switchCategory(category) {
+      const tabs = document.querySelectorAll('.tab-item');
+      tabs.forEach(tab => {
+        const indicator = tab.querySelector('.tab-indicator');
+        if (tab.getAttribute('onclick').includes(category)) {
+          tab.classList.add('active');
+          if (indicator) indicator.style.display = 'block';
+        } else {
+          tab.classList.remove('active');
+          if (indicator) indicator.style.display = 'none';
+        }
+      });
+      renderProducts(category);
+    }
+
+    // Initial load
+    renderProducts('all');
+  </script>
+</body>
+</html>

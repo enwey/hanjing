@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>医患社区</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .post-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #fff;
+      font-size: 16px;
+      margin-right: 12px;
+    }
+    .post-author-row {
+      display: flex;
+      align-items: center;
+    }
+    .post-role {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+      font-weight: 500;
+    }
+    .role--patient {
+      color: #1A9D5C;
+      background: #E6F7ED;
+    }
+    .role--doctor {
+      color: #3B6BF5;
+      background: #EEF4FF;
+    }
+    .role--expert {
+      color: #8B5CF6;
+      background: #F5F3FF;
+    }
+    .post-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .post-tag {
+      font-size: 12px;
+      color: #6b7280;
+      background: #f3f4f6;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .liked {
+      color: #ef4444 !important;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-community-index">
+  <div class="phone-screen page-pages-community-index">
+    <div class="page data-v-b7ab25fd">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">医患社区</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-b7ab25fd">
+        <div class="publish-entry data-v-b7ab25fd" onclick="window.parent.loadPage('pages/community/publish/index')">
+          <div class="publish-icon data-v-b7ab25fd">✏️</div>
+          <span class="publish-placeholder data-v-b7ab25fd">分享你的治疗经验...</span>
+          <div class="publish-btn data-v-b7ab25fd">发帖</div>
+        </div>
+
+        <div class="tabs data-v-b7ab25fd">
+          <div id="tab-hot" class="tab data-v-b7ab25fd active" onclick="switchTab('hot')">热门</div>
+          <div id="tab-latest" class="tab data-v-b7ab25fd" onclick="switchTab('latest')">最新</div>
+          <div id="tab-expert" class="tab data-v-b7ab25fd" onclick="switchTab('expert')">专家</div>
+        </div>
+
+        <div id="post-list" class="post-list data-v-b7ab25fd">
+          <!-- Posts will be generated dynamically -->
+        </div>
+
+        <div id="empty-tip" class="empty-tip data-v-b7ab25fd" style="display: none;">
+          <span class="data-v-b7ab25fd">暂无帖子，来发第一帖吧！</span>
+        </div>
+      </div>
+
+      <!-- Floating Action Button -->
+      <div class="fab data-v-b7ab25fd" onclick="window.parent.loadPage('pages/community/publish/index')">✏️</div>
+      <div class="safe-bottom data-v-b7ab25fd"></div>
+    </div>
+  </div>
+
+  <script>
+    // Raw Mock Post Data
+    const postsData = [
+      {
+        id: "p-001",
+        author: "张**",
+        role: "patient",
+        roleLabel: "鼾症患者",
+        avatarBg: "#1A9D5C",
+        title: "佩戴阻鼾器第7天，说话感觉大舌头，正常吗？",
+        content: "刚开始戴HJ-MAD-03，下颌前移量调到4mm，前三天早上摘下来牙齿酸胀，今天是第七天，酸胀感好多了，但是说话感觉有点大舌头，发音不太清楚。问了客服说要适应1-2周，大家有类似情况吗？\n\n另外想问一下，晚上睡觉有时会不自觉把阻鼾器吐出来，有什么好办法吗？",
+        tags: ["适应期", "初戴体验"],
+        likes: 23,
+        comments: 8,
+        isLiked: false,
+        createdAt: "2026-06-03T10:30:00Z",
+        isTop: true
+      },
+      {
+        id: "p-002",
+        author: "王芳医生",
+        role: "doctor",
+        roleLabel: "主治医师",
+        avatarBg: "#3B6BF5",
+        title: "【科普】如何判断自己是否需要佩戴阻鼾器？",
+        content: "很多人觉得打鼾是\"睡得香\"的表现，其实不然。如果出现以下情况，建议尽早就医评估：\n\n1. 夜间打鼾且伴有憋气/呼吸暂停\n2. 白天嗜睡、注意力不集中\n3. 晨起头痛、口干\n4. 家人反映你睡觉时有呼吸停顿\n\nESS嗜睡量表可作为初步筛查工具，得分>10分建议尽快做睡眠监测。早发现早干预，OSA是可防可治的。",
+        tags: ["科普", "就医指南"],
+        likes: 156,
+        comments: 32,
+        isLiked: true,
+        createdAt: "2026-06-02T14:00:00Z",
+        isTop: false
+      },
+      {
+        id: "p-003",
+        author: "李**",
+        role: "patient",
+        roleLabel: "鼾症患者",
+        avatarBg: "#1A9D5C",
+        title: "分享：坚持佩戴3个月，AHI从32降到8！",
+        content: "今年2月确诊中重度OSAS，AHI=32。医生建议佩戴阻鼾器，一开始很抗拒，觉得戴着睡不舒服。但是坚持下来，现在3个月了，昨天复查AHI降到了8！分享一下我的适应经验：\n\n1. 前2周先从午睡开始戴，让口腔适应\n2. 睡前用温水泡一下阻鼾器，戴起来更舒服\n3. 每天清洁很重要，不然有异味影响佩戴意愿\n4. 设置手机闹钟提醒佩戴，养成习惯\n\n大家加油，坚持就是胜利！",
+        tags: ["治疗分享", "AHI改善"],
+        likes: 89,
+        comments: 21,
+        isLiked: false,
+        createdAt: "2026-06-01T09:15:00Z",
+        isTop: false
+      },
+      {
+        id: "p-004",
+        author: "陈技师",
+        role: "expert",
+        roleLabel: "睡眠技师",
+        avatarBg: "#8B5CF6",
+        title: "阻鼾器清洁保养指南（官方版）",
+        content: "正确的清洁保养可以延长阻鼾器使用寿命，保持口腔卫生。\n\n步骤：\n1. 每次摘下后用清水冲洗\n2. 每周用清洁片浸泡1次，深度杀菌\n3. 不要用热水冲洗（超过60度会导致变形）\n4. 存放时放在透气盒内，避免密封潮湿环境\n5. 每月检查一次有无裂纹或磨损\n\n常见误区：\n× 用牙膏刷洗（会磨损表面）\n× 用酒精消毒（会腐蚀材质）\n× 长期不清洁（滋生细菌导致口臭）",
+        tags: ["保养", "官方指南"],
+        likes: 203,
+        comments: 45,
+        isLiked: false,
+        createdAt: "2026-05-30T16:00:00Z",
+        isTop: true
+      }
+    ];
+
+    // Read stored custom posts (if any)
+    let customPosts = [];
+    try {
+      const stored = localStorage.getItem('hj_community_posts');
+      if (stored) customPosts = JSON.parse(stored);
+    } catch (e) {}
+
+    const allPosts = [...customPosts, ...postsData];
+
+    let currentTab = 'hot';
+
+    function formatTime(createdAtStr) {
+      const now = new Date("2026-06-16T20:11:00Z");
+      const postTime = new Date(createdAtStr);
+      const diffMins = (now.getTime() - postTime.getTime()) / 1000 / 60;
+      if (diffMins < 60) {
+        return `${Math.max(1, Math.round(diffMins))}分钟前`;
+      }
+      const diffHours = diffMins / 60;
+      if (diffHours < 24) {
+        return `${Math.round(diffHours)}小时前`;
+      }
+      return `${Math.round(diffHours / 24)}天前`;
+    }
+
+    function switchTab(tabKey) {
+      currentTab = tabKey;
+      document.querySelectorAll('.tabs .tab').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tabKey).classList.add('active');
+      renderPosts();
+    }
+
+    function toggleLike(e, postId) {
+      e.stopPropagation();
+      const post = allPosts.find(p => p.id === postId);
+      if (post) {
+        post.isLiked = !post.isLiked;
+        post.likes += post.isLiked ? 1 : -1;
+        
+        // Save to custom posts storage if needed
+        const customIdx = customPosts.findIndex(p => p.id === postId);
+        if (customIdx !== -1) {
+          customPosts[customIdx] = post;
+          localStorage.setItem('hj_community_posts', JSON.stringify(customPosts));
+        }
+        renderPosts();
+      }
+    }
+
+    function renderPosts() {
+      // Filter & Sort
+      let filtered = [...allPosts];
+      
+      if (currentTab === 'expert') {
+        filtered = filtered.filter(p => p.role === 'doctor' || p.role === 'expert');
+      }
+
+      if (currentTab === 'hot') {
+        filtered.sort((a, b) => b.likes - a.likes);
+      } else if (currentTab === 'latest') {
+        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      }
+
+      // Group tops first
+      const tops = filtered.filter(p => p.isTop);
+      const normals = filtered.filter(p => !p.isTop);
+      const sorted = [...tops, ...normals];
+
+      const postList = document.getElementById('post-list');
+      const emptyTip = document.getElementById('empty-tip');
+      postList.innerHTML = '';
+
+      if (sorted.length === 0) {
+        emptyTip.style.display = 'block';
+        return;
+      } else {
+        emptyTip.style.display = 'none';
+      }
+
+      sorted.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'post-card data-v-b7ab25fd';
+        card.onclick = () => window.parent.loadPage(`pages/community/detail/index?id=${p.id}`);
+
+        let topHTML = '';
+        if (p.isTop) {
+          topHTML = `
+            <div class="post-top data-v-b7ab25fd">
+              <span class="top-icon data-v-b7ab25fd">📌</span>
+              <span class="top-text data-v-b7ab25fd">置顶</span>
+            </div>
+          `;
+        }
+
+        let tagsHTML = '';
+        if (p.tags && p.tags.length > 0) {
+          tagsHTML = `<div class="post-tags data-v-b7ab25fd">` + 
+            p.tags.map(t => `<span class="post-tag data-v-b7ab25fd">${t}</span>`).join('') + 
+            `</div>`;
+        }
+
+        const roleClass = `role--${p.role}`;
+
+        card.innerHTML = `
+          ${topHTML}
+          <div class="post-header data-v-b7ab25fd">
+            <div class="post-avatar data-v-b7ab25fd" style="background: ${p.avatarBg || '#1A9D5C'}">
+              ${p.author ? p.author[0] : '匿'}
+            </div>
+            <div class="post-author-info data-v-b7ab25fd">
+              <div class="post-author-row data-v-b7ab25fd">
+                <span class="post-author data-v-b7ab25fd">${p.author}</span>
+                <span class="post-role data-v-b7ab25fd ${roleClass}">${p.roleLabel}</span>
+              </div>
+              <span class="post-time data-v-b7ab25fd">${formatTime(p.createdAt)}</span>
+            </div>
+          </div>
+          <span class="post-title data-v-b7ab25fd">${p.title || ''}</span>
+          <span class="post-content data-v-b7ab25fd" style="display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin-top: 8px; font-size: 14px; line-height: 1.5; color: #4b5563;">${p.content}</span>
+          ${tagsHTML}
+          <div class="post-actions data-v-b7ab25fd">
+            <div class="action-item data-v-b7ab25fd" onclick="toggleLike(event, '${p.id}')">
+              <span class="action-icon data-v-b7ab25fd ${p.isLiked ? 'liked' : ''}">${p.isLiked ? '❤️' : '🤍'}</span>
+              <span class="action-count data-v-b7ab25fd">${p.likes}</span>
+            </div>
+            <div class="action-item data-v-b7ab25fd">
+              <span class="action-icon data-v-b7ab25fd">💬</span>
+              <span class="action-count data-v-b7ab25fd">${p.comments}</span>
+            </div>
+            <div class="action-item data-v-b7ab25fd">
+              <span class="action-icon data-v-b7ab25fd">↗️</span>
+              <span class="action-count data-v-b7ab25fd">分享</span>
+            </div>
+          </div>
+        `;
+        postList.appendChild(card);
+      });
+    }
+
+    // Initialize
+    renderPosts();
+  </script>
+</body>
+</html>

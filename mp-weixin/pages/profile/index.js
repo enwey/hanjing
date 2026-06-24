@@ -8,15 +8,20 @@ const l = () => "../../components/base/hj-navbar.js",
     setup(l) {
       const n = i.useUserStore();
       e.onShow(async () => {
+        console.log("[My Page] onShow triggered");
         const token = e.index.getStorageSync("access_token");
+        console.log("[My Page] access_token:", token);
         if (token) {
-          n.profile || (await n.fetchProfile());
+          console.log("[My Page] profile before fetch:", JSON.stringify(n.profile));
+          await n.fetchProfile();
+          console.log("[My Page] profile after fetch:", JSON.stringify(n.profile));
         }
       });
       e.onMounted(async () => {
+        console.log("[My Page] onMounted triggered");
         const token = e.index.getStorageSync("access_token");
         if (token) {
-          n.profile || (await n.fetchProfile());
+          await n.fetchProfile();
         }
       });
       function onUserCardTap() {
@@ -32,17 +37,17 @@ const l = () => "../../components/base/hj-navbar.js",
           title: "我的健康",
           items: [
             {
-              icon: "📋",
+              icon: "/static/icons/profile_orange.svg",
               label: "病历档案",
               url: "/pages/profile/medical-records/index",
             },
             {
-              icon: "💊",
+              icon: "/static/icons/treatment_green.svg",
               label: "阻鼾器管理",
               url: "/pages/profile/device-manage/wearing-data/index",
             },
             {
-              icon: "👨‍👩‍👧",
+              icon: "/static/icons/community.svg",
               label: "家庭成员",
               url: "/pages/profile/family-members/index",
             },
@@ -52,33 +57,33 @@ const l = () => "../../components/base/hj-navbar.js",
           title: "我的服务",
           items: [
             {
-              icon: "💰",
+              icon: "/static/icons/fee.svg",
               label: "会员权益",
               url: "/pages/profile/member-benefits/index",
             },
-            { icon: "📦", label: "我的订单", url: "/pages/order/index" },
+            { icon: "/static/icons/tab-mall-active.png", label: "我的订单", url: "/pages/order/index" },
             {
-              icon: "🔗",
+              icon: "/static/icons/distribution.svg",
               label: "分销中心",
               url: "/pages/distribution/center/index",
             },
-            { icon: "🎬", label: "直播中心", url: "/pages/live/list/index" },
+            { icon: "/static/icons/microphone.svg", label: "直播中心", url: "/pages/live/list/index" },
           ],
         },
         {
           title: "其他",
           items: [
             {
-              icon: "💬",
+              icon: "/static/icons/chat.svg",
               label: "在线客服",
               url: "/pages/profile/online-service/index",
             },
             {
-              icon: "🔔",
+              icon: "/static/icons/bell.svg",
               label: "消息通知",
               url: "/pages/profile/notifications/index",
             },
-            { icon: "⚙️", label: "设置", url: "/pages/profile/settings/index" },
+            { icon: "/static/icons/adjust.svg", label: "设置", url: "/pages/profile/settings/index" },
           ],
         },
       ];
@@ -98,7 +103,7 @@ const l = () => "../../components/base/hj-navbar.js",
           d: e.f(r, (i, l, nVal) => ({
             a: e.t(i.title),
             b: e.f(i.items, (i, l, nVal2) => ({
-              a: e.t(i.icon),
+              a: i.icon,
               b: e.t(i.label),
               c: i.label,
               d: e.o((l) => {

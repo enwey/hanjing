@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>睡眠趋势</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .mode-btn.data-v-eb41b617 {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .bar-fill.data-v-eb41b617 {
+      transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-treatment-sleep-trend-index">
+  <div class="phone-screen page-pages-treatment-sleep-trend-index">
+    <div class="page data-v-eb41b617">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">睡眠趋势</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-eb41b617">
+        <!-- Switch Period Mode -->
+        <div class="mode-switch data-v-eb41b617">
+          <div id="mode-btn-week" class="mode-btn data-v-eb41b617 mode-btn--active" onclick="switchMode('week')">本周</div>
+          <div id="mode-btn-all" class="mode-btn data-v-eb41b617" onclick="switchMode('all')">全部</div>
+        </div>
+
+        <!-- Summary Row -->
+        <div class="summary-row data-v-eb41b617">
+          <div class="summary-item data-v-eb41b617">
+            <span id="summary-worn" class="summary-val data-v-eb41b617">0天</span>
+            <span class="summary-lbl data-v-eb41b617">佩戴天数</span>
+          </div>
+          <div class="summary-item data-v-eb41b617">
+            <span id="summary-avg" class="summary-val data-v-eb41b617">0h</span>
+            <span class="summary-lbl data-v-eb41b617">日均时长</span>
+          </div>
+          <div class="summary-item data-v-eb41b617">
+            <span id="summary-compliance" class="summary-val data-v-eb41b617">0%</span>
+            <span class="summary-lbl data-v-eb41b617">依从率</span>
+          </div>
+        </div>
+
+        <!-- Wearing Duration Chart Card -->
+        <div class="chart-card data-v-eb41b617">
+          <span class="chart-title data-v-eb41b617">每日佩戴时长</span>
+          <div class="chart-bars data-v-eb41b617" id="duration-chart-bars"></div>
+          <span class="chart-hint data-v-eb41b617">参考线：目标 7h</span>
+        </div>
+
+        <!-- Comfort Score Chart Card -->
+        <div class="chart-card data-v-eb41b617">
+          <span class="chart-title data-v-eb41b617">舒适度评分</span>
+          <div class="comfort-grid data-v-eb41b617" id="comfort-chart-grid"></div>
+        </div>
+
+        <div class="safe-bottom data-v-eb41b617"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Mock wearing history (14 days total)
+    const mockWearingHistory = [
+      { date: "2026-05-22", wearDuration: 7.2, comfort: 4 },
+      { date: "2026-05-23", wearDuration: 6.8, comfort: 4 },
+      { date: "2026-05-24", wearDuration: 7.5, comfort: 5 },
+      { date: "2026-05-25", wearDuration: 5.0, comfort: 3 },
+      { date: "2026-05-26", wearDuration: 0, comfort: 0 },
+      { date: "2026-05-27", wearDuration: 6.2, comfort: 3 },
+      { date: "2026-05-28", wearDuration: 8.0, comfort: 5 },
+      { date: "2026-05-29", wearDuration: 0, comfort: 0 },
+      { date: "2026-05-30", wearDuration: 5.0, comfort: 3 },
+      { date: "2026-05-31", wearDuration: 6.0, comfort: 3 },
+      { date: "2026-06-01", wearDuration: 7.0, comfort: 4 },
+      { date: "2026-06-02", wearDuration: 0, comfort: 0 },
+      { date: "2026-06-03", wearDuration: 6.5, comfort: 4 },
+      { date: "2026-06-04", wearDuration: 7.5, comfort: 5 }
+    ];
+
+    let currentMode = "week";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      renderTrend();
+    });
+
+    function switchMode(mode) {
+      if (currentMode === mode) return;
+      currentMode = mode;
+
+      document.getElementById("mode-btn-week").classList.toggle("mode-btn--active", mode === "week");
+      document.getElementById("mode-btn-all").classList.toggle("mode-btn--active", mode === "all");
+
+      renderTrend();
+    }
+
+    function renderTrend() {
+      // 1. Slice history based on mode
+      const history = currentMode === "week" ? mockWearingHistory.slice(-7) : mockWearingHistory;
+      
+      const recorded = history.filter(h => h.wearDuration > 0);
+      const wornDays = recorded.length;
+      
+      // Calculate average duration
+      let avgDuration = 0;
+      if (wornDays > 0) {
+        const sum = recorded.reduce((acc, h) => acc + h.wearDuration, 0);
+        avgDuration = (sum / wornDays).toFixed(1);
+      }
+
+      // Calculate compliance (standard is wearing >= 5h out of total days)
+      const totalDays = history.length;
+      const compliantDays = history.filter(h => h.wearDuration >= 5).length;
+      const compliancePercent = Math.round((compliantDays / totalDays) * 100);
+
+      // Render metrics
+      document.getElementById("summary-worn").textContent = `${wornDays}天`;
+      document.getElementById("summary-avg").textContent = `${avgDuration}h`;
+      document.getElementById("summary-compliance").textContent = `${compliancePercent}%`;
+
+      // 2. Render Duration Chart Bars
+      const maxVal = Math.max(...history.map(h => h.wearDuration), 8);
+      const barsContainer = document.getElementById("duration-chart-bars");
+      
+      barsContainer.innerHTML = history.map(item => {
+        const hasData = item.wearDuration > 0;
+        let color = "#E5E7EB"; // Grey for zero
+        let heightVal = "4px";
+
+        if (hasData) {
+          heightVal = `${(item.wearDuration / maxVal) * 120}px`;
+          if (item.wearDuration >= 7) {
+            color = "linear-gradient(to top, #1a9d5c, #55c595)"; // Brand Green Gradient
+          } else if (item.wearDuration >= 5) {
+            color = "linear-gradient(to top, #f5a623, #fcd34d)"; // Brand Gold Gradient
+          } else {
+            color = "linear-gradient(to top, #ef4444, #fca5a5)"; // Warning Red Gradient
+          }
+        }
+
+        const valueHtml = hasData 
+          ? `<span class="bar-value data-v-eb41b617">${item.wearDuration}h</span>`
+          : `<span class="bar-value bar-value--zero data-v-eb41b617">-</span>`;
+
+        return `
+          <div class="bar-col data-v-eb41b617">
+            ${valueHtml}
+            <div class="bar-fill data-v-eb41b617" style="height: ${heightVal}; background: ${color};"></div>
+            <span class="bar-label data-v-eb41b617">${item.date.slice(5)}</span>
+          </div>
+        `;
+      }).join("");
+
+      // 3. Render Comfort Grid Cells (vertical dots)
+      const comfortGrid = document.getElementById("comfort-chart-grid");
+      
+      comfortGrid.innerHTML = history.map(item => {
+        const hasData = item.wearDuration > 0;
+        const emptyClass = hasData ? "" : "comfort-cell--empty";
+
+        // Generate 5 stacked dots, where higher indices (rating 5) are at the top
+        const dotsHtml = [5, 4, 3, 2, 1].map(lvl => {
+          const dotOnClass = (hasData && lvl <= item.comfort) ? "comfort-dot--on" : "";
+          return `<div class="comfort-dot data-v-eb41b617 ${dotOnClass}"></div>`;
+        }).join("");
+
+        return `
+          <div class="comfort-cell data-v-eb41b617 ${emptyClass}">
+            <div class="comfort-dots data-v-eb41b617">
+              ${dotsHtml}
+            </div>
+            <span class="comfort-date data-v-eb41b617">${item.date.slice(5)}</span>
+          </div>
+        `;
+      }).join("");
+    }
+  </script>
+</body>
+</html>

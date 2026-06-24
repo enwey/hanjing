@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>订单详情</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .status-card {
+      background: linear-gradient(135deg, #3b6bf5, #60a5fa);
+      color: #fff;
+      padding: 20px 16px;
+      border-radius: 0 0 16px 16px;
+      margin-bottom: 12px;
+    }
+    .status-title {
+      font-size: 18px;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .status-label {
+      font-size: 13px;
+      opacity: 0.9;
+      display: block;
+    }
+    .address-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 0 16px 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      display: flex;
+      align-items: center;
+    }
+    .address-icon {
+      font-size: 20px;
+      margin-right: 12px;
+    }
+    .address-info {
+      flex: 1;
+    }
+    .address-user {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1f2937;
+    }
+    .address-detail {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+      display: block;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-order-detail">
+  <div class="phone-screen page-pages-order-detail">
+    <div class="page data-v-e129e068">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">订单详情</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="body data-v-e129e068" style="padding-bottom: 40px;">
+        <!-- Status Card -->
+        <div class="status-card">
+          <span id="status-text" class="status-title">已完成</span>
+          <span id="status-desc" class="status-label">感谢您的购买，欢迎再次光临！</span>
+        </div>
+
+        <!-- Shipping Address Card -->
+        <div class="address-card">
+          <span class="address-icon">📍</span>
+          <div class="address-info">
+            <span class="address-user">张先生  138****8888</span>
+            <span class="address-detail">广东省深圳市福田区卓越世纪中心1号楼18层</span>
+          </div>
+        </div>
+
+        <!-- Product Details -->
+        <div class="section data-v-e129e068">
+          <span class="section-title data-v-e129e068">商品信息</span>
+          <div id="product-container">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Amount details -->
+        <div class="section data-v-e129e068">
+          <span class="section-title data-v-e129e068">金额明细</span>
+          <div class="amount-row data-v-e129e068">
+            <span class="amount-label data-v-e129e068">商品总价</span>
+            <span id="amount-subtotal" class="amount-val data-v-e129e068">¥2,980.00</span>
+          </div>
+          <div class="amount-row data-v-e129e068">
+            <span class="amount-label data-v-e129e068">优惠减免</span>
+            <span id="amount-discount" class="amount-val discount data-v-e129e068">-¥300.00</span>
+          </div>
+          <div class="amount-row total data-v-e129e068">
+            <span class="amount-label data-v-e129e068">实付金额</span>
+            <span id="amount-pay" class="amount-val total-val data-v-e129e068">¥2,680.00</span>
+          </div>
+        </div>
+
+        <!-- Order Information Details -->
+        <div class="section data-v-e129e068">
+          <span class="section-title data-v-e129e068">订单信息</span>
+          <div class="info-row data-v-e129e068">
+            <span class="info-label data-v-e129e068">订单编号</span>
+            <span id="info-orderNo" class="info-val data-v-e129e068">OR20260528001</span>
+          </div>
+          <div class="info-row data-v-e129e068">
+            <span class="info-label data-v-e129e068">下单时间</span>
+            <span id="info-createdAt" class="info-val data-v-e129e068">2026-05-28 14:20</span>
+          </div>
+          <div id="paytime-row" class="info-row data-v-e129e068">
+            <span class="info-label data-v-e129e068">支付时间</span>
+            <span id="info-payAt" class="info-val data-v-e129e068">2026-05-28 15:30</span>
+          </div>
+          <div class="info-row data-v-e129e068">
+            <span class="info-label data-v-e129e068">支付方式</span>
+            <span class="info-val data-v-e129e068">微信支付</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const orderDetails = {
+      'ord-001': {
+        orderNo: 'OR20260528001',
+        statusLabel: '已完成',
+        statusDesc: '感谢您的购买，欢迎再次光临！',
+        subtotal: '¥2,980.00',
+        discount: '-¥300.00',
+        payAmount: '¥2,680.00',
+        createdAt: '2026-05-28 14:20',
+        payAt: '2026-05-28 15:30',
+        items: [
+          { name: '定制式可调舌型阻鼾器 HJ-MAD-03', image: '../../static/product/hj-mad-03.png', qty: 1, price: '¥2,980.00' }
+        ]
+      },
+      'ord-002': {
+        orderNo: 'OR20260530001',
+        statusLabel: '已发货',
+        statusDesc: '您的包裹正由顺丰速运配送中，单号 SF14285739',
+        subtotal: '¥158.00',
+        discount: '-¥0.00',
+        payAmount: '¥158.00',
+        createdAt: '2026-05-30 09:10',
+        payAt: '2026-05-30 09:15',
+        items: [
+          { name: '阻鼾器深度清洁套装', image: '../../static/product/clean-kit.png', qty: 2, price: '¥79.00' }
+        ]
+      },
+      'ord-003': {
+        orderNo: 'OR20260601001',
+        statusLabel: '已完成',
+        statusDesc: '筛查套餐服务已激活，如有疑问可联系客服。',
+        subtotal: '¥99.00',
+        discount: '-¥0.00',
+        payAmount: '¥99.00',
+        createdAt: '2026-06-01 10:55',
+        payAt: '2026-06-01 11:00',
+        items: [
+          { name: '睡眠呼吸初筛服务套餐', image: '../../static/product/screening.png', qty: 1, price: '¥99.00' }
+        ]
+      },
+      'ord-004': {
+        orderNo: 'OR20260603001',
+        statusLabel: '待付款',
+        statusDesc: '请在24小时内完成支付，逾期将自动取消订单。',
+        subtotal: '¥299.00',
+        discount: '-¥0.00',
+        payAmount: '¥299.00',
+        createdAt: '2026-06-03 20:30',
+        payAt: null,
+        items: [
+          { name: '鼾静健康专用记忆枕', image: '../../static/product/pillow.png', qty: 1, price: '¥299.00' }
+        ]
+      }
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const ordId = params.get('id') || 'ord-001';
+    
+    // Check localStorage first for custom orders
+    let detail = null;
+    try {
+      const stored = localStorage.getItem('hj_custom_orders');
+      if (stored) {
+        const customOrders = JSON.parse(stored);
+        const found = customOrders.find(o => o.id === ordId);
+        if (found) {
+          detail = {
+            orderNo: found.orderNo,
+            statusLabel: found.statusLabel,
+            statusDesc: '支付成功，正在为您备货中。',
+            subtotal: found.totalAmount,
+            discount: '-¥0.00',
+            payAmount: found.totalAmount,
+            createdAt: '2026-06-16 21:05',
+            payAt: '2026-06-16 21:06',
+            items: found.items
+          };
+        }
+      }
+    } catch(e) {}
+
+    if (!detail) {
+      detail = orderDetails[ordId] || orderDetails['ord-001'];
+    }
+
+    // Hydrate
+    document.getElementById('status-text').textContent = detail.statusLabel;
+    document.getElementById('status-desc').textContent = detail.statusDesc;
+    document.getElementById('amount-subtotal').textContent = detail.subtotal;
+    document.getElementById('amount-discount').textContent = detail.discount;
+    document.getElementById('amount-pay').textContent = detail.payAmount;
+    document.getElementById('info-orderNo').textContent = detail.orderNo;
+    document.getElementById('info-createdAt').textContent = detail.createdAt;
+
+    if (detail.payAt) {
+      document.getElementById('paytime-row').style.display = 'flex';
+      document.getElementById('info-payAt').textContent = detail.payAt;
+    } else {
+      document.getElementById('paytime-row').style.display = 'none';
+    }
+
+    const container = document.getElementById('product-container');
+    container.innerHTML = '';
+    detail.items.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'item-row data-v-e129e068';
+      row.innerHTML = `
+        <img class="item-img data-v-e129e068" src="${item.image}" alt="item" />
+        <div class="item-info data-v-e129e068">
+          <span class="item-name data-v-e129e068">${item.name}</span>
+          <span class="item-qty data-v-e129e068">x${item.qty}</span>
+        </div>
+        <span class="item-price data-v-e129e068">${item.price}</span>
+      `;
+      container.appendChild(row);
+    });
+  </script>
+</body>
+</html>

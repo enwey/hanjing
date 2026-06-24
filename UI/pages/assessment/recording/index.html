@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI鼾声分析</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    /* Simple dynamic pulse animation for recording */
+    @keyframes pulse-wave {
+      0% { transform: scale(1); opacity: 0.6; }
+      50% { transform: scale(1.15); opacity: 0.3; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+    .mic-pulse--active {
+      animation: pulse-wave 1.5s infinite ease-out;
+    }
+    /* Waveform visual bars anim */
+    @keyframes wave-jump {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(3); }
+    }
+    .wave-bar--animated {
+      animation: wave-jump 1s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-assessment-recording-index">
+  <div class="phone-screen page-pages-assessment-recording-index">
+    <div class="page data-v-70350287">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">AI鼾声分析</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-70350287">
+        <div class="guide-card data-v-70350287">
+          <span class="guide-emoji data-v-70350287">Zzz</span>
+          <span class="guide-title data-v-70350287">录制夜间鼾声</span>
+          <span class="guide-desc data-v-70350287">
+            请在安静环境下，将手机放在床头距头部约50cm处，录制 30秒~60秒 的睡眠时段声音
+          </span>
+        </div>
+
+        <div class="record-area data-v-70350287">
+          <!-- Waveform container -->
+          <div id="waveform" class="waveform data-v-70350287" style="display: none; height: 50px; justify-content: center; align-items: center; gap: 4px;">
+            <!-- Render 16 bars -->
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+            <div class="wave-bar data-v-70350287" style="height: 6px; width: 4px; background: #3b6bf5; border-radius: 2px;"></div>
+          </div>
+
+          <span id="record-time" class="record-time data-v-70350287" style="display: none;">00:00</span>
+
+          <div class="mic-btn-wrapper data-v-70350287">
+            <div id="mic-pulse" class="mic-pulse data-v-70350287"></div>
+            <div id="mic-btn" class="mic-btn data-v-70350287" onclick="toggleRecording()">
+              <span id="mic-icon" class="mic-icon data-v-70350287">MIC</span>
+            </div>
+          </div>
+
+          <span id="status-text" class="status-text data-v-70350287">点击麦克风开始录制</span>
+        </div>
+
+        <div id="actions-bar" class="actions data-v-70350287" style="display: none;">
+          <div class="btn btn--outline data-v-70350287" onclick="resetRecording()">
+            <span class="data-v-70350287">重新录制</span>
+          </div>
+          <div class="btn btn--primary data-v-70350287" onclick="analyzeSnore()">
+            <span class="data-v-70350287">AI分析鼾声</span>
+          </div>
+        </div>
+
+        <!-- AI analyzing card overlay -->
+        <div id="analyzing-card" class="analyzing-card data-v-70350287" style="display: none;">
+          <div class="spinner data-v-70350287"></div>
+          <span class="analyzing-text data-v-70350287">正在分析...</span>
+          <span class="analyzing-hint data-v-70350287">约需 2-3 秒</span>
+        </div>
+
+        <div class="tips-card data-v-70350287">
+          <span class="tips-title data-v-70350287">录音小贴士</span>
+          <div class="tips-list data-v-70350287">
+            <span class="tip-item data-v-70350287">• 建议在睡前开始录制</span>
+            <span class="tip-item data-v-70350287">• 手机麦克风朝向上方</span>
+            <span class="tip-item data-v-70350287">• 避免风扇/空调直达噪音</span>
+            <span class="tip-item data-v-70350287">• 可配合手机支架使用</span>
+          </div>
+        </div>
+      </div>
+      <div class="safe-bottom data-v-70350287"></div>
+    </div>
+  </div>
+
+  <script>
+    let state = 'idle'; // idle, recording, paused, done, analyzing
+    let seconds = 0;
+    let timerInterval = null;
+    let waveInterval = null;
+
+    function toggleRecording() {
+      if (state === 'idle') {
+        startRecording();
+      } else if (state === 'recording') {
+        stopRecording();
+      }
+    }
+
+    function startRecording() {
+      state = 'recording';
+      seconds = 0;
+      
+      document.getElementById('waveform').style.display = 'flex';
+      document.getElementById('record-time').style.display = 'block';
+      document.getElementById('record-time').textContent = '00:00';
+      
+      document.getElementById('mic-btn').className = 'mic-btn mic-btn--recording data-v-70350287';
+      document.getElementById('mic-pulse').classList.add('mic-pulse--active');
+      document.getElementById('mic-icon').className = 'mic-icon mic-icon--stop data-v-70350287';
+      document.getElementById('mic-icon').textContent = '■';
+      
+      document.getElementById('status-text').className = 'status-text status-text--recording data-v-70350287';
+      document.getElementById('status-text').textContent = '正在录制中...';
+      document.getElementById('actions-bar').style.display = 'none';
+
+      // Start timer
+      timerInterval = setInterval(() => {
+        seconds++;
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        document.getElementById('record-time').textContent = 
+          `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        
+        // Auto stop after 60 seconds
+        if (seconds >= 60) {
+          stopRecording();
+        }
+      }, 1000);
+
+      // Start wave oscillations
+      const bars = document.querySelectorAll('.wave-bar');
+      waveInterval = setInterval(() => {
+        bars.forEach((bar) => {
+          const height = 10 + Math.floor(Math.random() * 40);
+          bar.style.height = `${height}px`;
+          bar.style.backgroundColor = '#3b6bf5';
+        });
+      }, 100);
+    }
+
+    function stopRecording() {
+      state = 'done';
+      clearInterval(timerInterval);
+      clearInterval(waveInterval);
+
+      document.getElementById('mic-btn').className = 'mic-btn mic-btn--done data-v-70350287';
+      document.getElementById('mic-pulse').classList.remove('mic-pulse--active');
+      document.getElementById('mic-icon').className = 'mic-icon data-v-70350287';
+      document.getElementById('mic-icon').textContent = 'OK';
+      
+      document.getElementById('status-text').className = 'status-text status-text--done data-v-70350287';
+      document.getElementById('status-text').textContent = '录制完成 · 点击提交进行分析';
+      
+      document.getElementById('actions-bar').style.display = 'flex';
+
+      // Flatten waves
+      const bars = document.querySelectorAll('.wave-bar');
+      bars.forEach(bar => {
+        bar.style.height = '6px';
+      });
+    }
+
+    function resetRecording() {
+      state = 'idle';
+      seconds = 0;
+      clearInterval(timerInterval);
+      clearInterval(waveInterval);
+
+      document.getElementById('waveform').style.display = 'none';
+      document.getElementById('record-time').style.display = 'none';
+      
+      document.getElementById('mic-btn').className = 'mic-btn data-v-70350287';
+      document.getElementById('mic-icon').className = 'mic-icon data-v-70350287';
+      document.getElementById('mic-icon').textContent = 'MIC';
+      
+      document.getElementById('status-text').className = 'status-text data-v-70350287';
+      document.getElementById('status-text').textContent = '点击麦克风开始录制';
+      
+      document.getElementById('actions-bar').style.display = 'none';
+    }
+
+    function analyzeSnore() {
+      state = 'analyzing';
+      document.getElementById('analyzing-card').style.display = 'flex';
+      
+      // Determine a pseudo-random risk level based on the duration or random
+      const risks = ['low', 'medium', 'high'];
+      // Let's bias towards medium or high since it's a demonstration
+      const finalRisk = risks[Math.floor(Math.random() * 2) + 1]; // medium or high
+
+      setTimeout(() => {
+        document.getElementById('analyzing-card').style.display = 'none';
+        window.parent.loadPage(`pages/assessment/snore-result/index?risk=${finalRisk}&duration=${seconds}`);
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

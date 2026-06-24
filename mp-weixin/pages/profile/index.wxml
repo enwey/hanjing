@@ -7,7 +7,7 @@
     u-p="{{a}}" /><view class="page-content data-v-093cfe40"
     ><view class="user-card data-v-093cfe40" bindtap="{{e}}"
       ><view class="user-avatar data-v-093cfe40"
-        ><text class="user-avatar-text data-v-093cfe40">{{b}}</text></view
+        ><image wx:if="{{b === '👤'}}" class="user-avatar-ecg data-v-093cfe40" src="/static/icons/avatar-ecg.svg" style="width: 32px; height: 32px;" /><text wx:else class="user-avatar-text data-v-093cfe40">{{b}}</text></view
       ><view class="user-info data-v-093cfe40"
         ><text class="user-name data-v-093cfe40">{{c}}</text
         ><view class="user-level data-v-093cfe40"
@@ -27,9 +27,7 @@
           wx:key="c"
           class="menu-item data-v-093cfe40"
           bindtap="{{item.d}}"
-          ><text class="menu-icon data-v-093cfe40">{{item.a}}</text
-          ><text class="menu-label data-v-093cfe40">{{item.b}}</text
-          ><text class="menu-arrow data-v-093cfe40">›</text></view
+          ><image class="menu-icon data-v-093cfe40" src="{{item.a}}" style="width: 18px; height: 18px; vertical-align: middle;" /><text class="menu-label data-v-093cfe40">{{item.b}}</text><text class="menu-arrow data-v-093cfe40">›</text></view
         ></view
       ></view
     ></view

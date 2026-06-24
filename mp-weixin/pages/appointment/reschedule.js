@@ -84,7 +84,7 @@ const a = () => "../../components/base/hj-navbar.js",
                             f: e.f(e.unref(l).timeSlots, (t, a, l) => {
                               var n;
                               return {
-                                a: e.t(t.startTime),
+                                a: e.t(t.label),
                                 b: t.id,
                                 c: "available" === t.status ? 1 : "",
                                 d:

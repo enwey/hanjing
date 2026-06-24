@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设备调整</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .history-item.data-v-64c0d952 {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+    .history-item.data-v-64c0d952:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-treatment-adjust-detail-index">
+  <div class="phone-screen page-pages-treatment-adjust-detail-index">
+    <div class="page data-v-64c0d952">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">设备调整</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-64c0d952">
+        <!-- Current Parameters -->
+        <div class="param-card data-v-64c0d952" style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+          <div style="flex: 1;">
+            <span class="param-title data-v-64c0d952" style="margin-bottom: 14px;">当前设备参数</span>
+            <div class="param-grid data-v-64c0d952">
+              <div class="param-item data-v-64c0d952">
+                <span class="param-label data-v-64c0d952">设备型号</span>
+                <span id="param-model" class="param-val data-v-64c0d952">加载中...</span>
+              </div>
+              <div class="param-item data-v-64c0d952">
+                <span class="param-label data-v-64c0d952">下颌前移量</span>
+                <span id="param-value" class="param-val param-val--big data-v-64c0d952">-.-mm</span>
+              </div>
+              <div class="param-item data-v-64c0d952">
+                <span class="param-label data-v-64c0d952">调整次数</span>
+                <span id="param-count" class="param-val data-v-64c0d952">-次</span>
+              </div>
+              <div class="param-item data-v-64c0d952">
+                <span class="param-label data-v-64c0d952">下次调整</span>
+                <span id="param-next" class="param-val data-v-64c0d952" style="color: #047857; font-weight: bold;">加载中</span>
+              </div>
+            </div>
+          </div>
+          <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.75); border-radius: 12px; padding: 6px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
+            <img src="../../../static/product/hj-mad-03.png" style="width: 100%; height: 100%; object-fit: contain;" alt="设备图片">
+          </div>
+        </div>
+
+        <!-- Adjustment Advice -->
+        <div class="advice-card data-v-64c0d952">
+          <span class="advice-title data-v-64c0d952">调整建议</span>
+          <span class="advice-text data-v-64c0d952">
+            每次调整增量通常为 0.5-1mm，根据患者适应情况和治疗效果进行个性化调整。
+            请勿自行调整阻鼾器参数，必须在医生指导下进行。
+          </span>
+        </div>
+
+        <!-- History List Title -->
+        <span class="section-title data-v-64c0d952">调整历史</span>
+
+        <!-- History List -->
+        <div class="history-list data-v-64c0d952" id="history-container"></div>
+        
+        <div class="safe-bottom data-v-64c0d952"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Mock data based on the Mini Program getTreatmentRecord API call
+    const treatmentRecord = {
+      deviceModel: "HJ-S200 智能阻鼾器",
+      adjustmentValue: 4.0,
+      nextAdjustDate: "2026-06-25",
+      history: [
+        {
+          date: "2026-05-30",
+          value: 3.0,
+          note: "初始适配，下颌前移量设定为3.0mm，建议第一周佩戴适应",
+          doctor: "王芳",
+          comfort: 3
+        },
+        {
+          date: "2026-06-05",
+          value: 4.0,
+          note: "首次微调：前伸量增加1.0mm，以进一步打开气道，减少打鼾频次",
+          doctor: "王芳",
+          comfort: 4
+        },
+        {
+          date: "2026-06-25",
+          value: 4.5,
+          note: "第二次微调预约，预期微移0.5mm以优化气流，即将进行",
+          doctor: "王芳",
+          comfort: 0
+        }
+      ]
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // Simulate slight network load
+      setTimeout(() => {
+        // Set Header details
+        document.getElementById("param-model").textContent = treatmentRecord.deviceModel;
+        document.getElementById("param-value").innerHTML = `${treatmentRecord.adjustmentValue}<span style="font-size: 13px; font-weight: normal; margin-left: 2px;">mm</span>`;
+        
+        const completedAdjustments = treatmentRecord.history.filter(h => h.comfort > 0).length;
+        document.getElementById("param-count").textContent = `${completedAdjustments}次`;
+        document.getElementById("param-next").textContent = treatmentRecord.nextAdjustDate || "待定";
+
+        // Render History List
+        const historyContainer = document.getElementById("history-container");
+        historyContainer.innerHTML = treatmentRecord.history.map((item, idx) => {
+          const formattedDate = item.date;
+          
+          let actionHtml = "";
+          if (item.comfort > 0) {
+            actionHtml = `
+              <div class="history-comfort data-v-64c0d952">
+                <span class="history-comfort-label data-v-64c0d952">佩戴感受：</span>
+                <span class="data-v-64c0d952">${item.comfort}/5</span>
+              </div>
+            `;
+          } else {
+            actionHtml = `<div class="history-badge data-v-64c0d952">即将进行</div>`;
+          }
+
+          const doctorHtml = item.doctor 
+            ? `<span class="history-doctor data-v-64c0d952">${item.doctor} 医生</span>` 
+            : "";
+
+          return `
+            <div class="history-item data-v-64c0d952" data-id="${idx}">
+              <div class="history-left data-v-64c0d952">
+                <span class="history-date data-v-64c0d952">${formattedDate.slice(5)}</span>
+                <span class="history-val data-v-64c0d952">${item.value.toFixed(1)}mm</span>
+              </div>
+              <div class="history-right data-v-64c0d952">
+                <span class="history-note data-v-64c0d952">${item.note}</span>
+                ${doctorHtml}
+                ${actionHtml}
+              </div>
+            </div>
+          `;
+        }).join("");
+      }, 300);
+    });
+  </script>
+</body>
+</html>

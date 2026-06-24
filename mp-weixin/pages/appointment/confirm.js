@@ -16,6 +16,21 @@ const o = () => "../../components/base/hj-navbar.js",
         p = r.selectedDate,
         m = (null == (s = r.selectedTimeSlot) ? void 0 : s.label) || "",
         f = (null == (c = r.selectedDoctor) ? void 0 : c.consultFee) || 0;
+      const patientId = e.ref("pat-001");
+      e.onMounted(async () => {
+        try {
+          const api = require("../../api/index.js");
+          const res = await api.getFamilyMembers();
+          if (res && res.data && res.data.list && res.data.list.length > 0) {
+            const selfMember = res.data.list.find(item => item.relation === 'self') || res.data.list[0];
+            if (selfMember) {
+              patientId.value = selfMember.id;
+            }
+          }
+        } catch (err) {
+          console.error("加载就诊人失败", err);
+        }
+      });
       async function v() {
         if (
           r.selectedStore &&
@@ -26,7 +41,7 @@ const o = () => "../../components/base/hj-navbar.js",
           d.value = !0;
           try {
             const t = await r.createAppointment({
-              patientId: "pat-001",
+              patientId: patientId.value,
               storeId: r.selectedStore.id,
               doctorId: r.selectedDoctor.id,
               scheduleId: r.selectedSchedule.id,

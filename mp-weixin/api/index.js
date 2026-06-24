@@ -24,6 +24,25 @@ function n(errMessage) {
   });
 }
 
+function mapMockStoreId(storeId) {
+  const s = String(storeId);
+  if (s === "1" || s === "store-001") return "store-001";
+  if (s === "2" || s === "store-002") return "store-002";
+  if (s === "3" || s === "store-003") return "store-003";
+  if (s === "4" || s === "store-004") return "store-002"; // Fallback to 南山
+  return storeId;
+}
+
+function mapMockDoctorId(doctorId) {
+  const d = String(doctorId);
+  if (d === "1" || d === "doc-001") return "doc-001";
+  if (d === "2" || d === "doc-002") return "doc-002";
+  if (d === "3" || d === "doc-003") return "doc-003";
+  if (d === "4" || d === "doc-004") return "doc-002"; // Fallback
+  return doctorId;
+}
+
+
 exports.addFamilyMember = async function (nData) {
   return req.request(
     {
@@ -264,7 +283,7 @@ exports.getDoctors = async function (nQuery) {
     () => {
       let o = [...e.mockDoctors];
       if (nQuery && nQuery.storeId) {
-        o = e.getDoctorsByStore(nQuery.storeId);
+        o = e.getDoctorsByStore(mapMockStoreId(nQuery.storeId));
       }
       return t(o);
     },
@@ -422,7 +441,7 @@ exports.getScheduleDates = async function (nQuery) {
       method: "GET",
       data: nQuery,
     },
-    () => t(e.getScheduleDates(nQuery.doctorId, nQuery.storeId)),
+    () => t(e.getScheduleDates(mapMockDoctorId(nQuery.doctorId), mapMockStoreId(nQuery.storeId))),
   );
 };
 
@@ -436,8 +455,8 @@ exports.getSchedules = async function (nQuery) {
     () =>
       t(
         e.getSchedulesByDateRange(
-          nQuery.doctorId,
-          nQuery.storeId,
+          mapMockDoctorId(nQuery.doctorId),
+          mapMockStoreId(nQuery.storeId),
           nQuery.startDate || "",
           nQuery.endDate || "",
         ),
@@ -761,6 +780,114 @@ exports.wxLogin = async function (nCode, phoneCode) {
         },
         expires_in: 604800,
       });
+    },
+  );
+};
+
+exports.getHomeStats = async function () {
+  return req.request(
+    {
+      url: "/home/stats",
+      method: "GET",
+    },
+    () => t({
+      totalPatients: 12580,
+      satisfactionRate: 98,
+      storeCount: 3
+    })
+  );
+};
+
+const postsMock = require("../mock/posts.js");
+
+exports.getCommunityPosts = async function () {
+  return req.request(
+    {
+      url: "/community/posts",
+      method: "GET",
+    },
+    () => t(postsMock.mockPosts),
+  );
+};
+
+exports.getCommunityPostDetail = async function (id) {
+  return req.request(
+    {
+      url: `/community/posts/${id}`,
+      method: "GET",
+    },
+    () => {
+      const post = postsMock.mockPosts.find(p => p.id === id);
+      return post ? t({ ...post, comments: postsMock.mockComments.filter(c => c.postId === id) }) : n("帖子不存在");
+    },
+  );
+};
+
+exports.createCommunityPost = async function (data) {
+  return req.request(
+    {
+      url: "/community/posts",
+      method: "POST",
+      data,
+    },
+    () => {
+      const post = {
+        id: "post-" + Date.now(),
+        author: "匿名用户",
+        avatar: "/static/demo/avatar.jpg",
+        role: "patient",
+        roleLabel: "健康管家",
+        likes: 0,
+        comments: 0,
+        isTop: false,
+        createdAt: new Date().toISOString(),
+        ...data
+      };
+      postsMock.mockPosts.unshift(post);
+      return t(post);
+    },
+  );
+};
+
+exports.likeCommunityPost = async function (id, isLiked) {
+  return req.request(
+    {
+      url: `/community/posts/${id}/like`,
+      method: "POST",
+      data: { isLiked },
+    },
+    () => {
+      const post = postsMock.mockPosts.find(p => p.id === id);
+      if (post) {
+        post.isLiked = isLiked;
+        post.likes += isLiked ? 1 : -1;
+      }
+      return t(null);
+    },
+  );
+};
+
+exports.commentCommunityPost = async function (id, content) {
+  return req.request(
+    {
+      url: `/community/posts/${id}/comment`,
+      method: "POST",
+      data: { content },
+    },
+    () => {
+      const comment = {
+        id: "c-" + Date.now(),
+        postId: id,
+        author: "匿名用户",
+        avatar: "/static/demo/avatar.jpg",
+        content,
+        likes: 0,
+        createdAt: new Date().toISOString()
+      };
+      postsMock.mockComments.push(comment);
+      const post = postsMock.mockPosts.find(p => p.id === id);
+      if (post) post.comments += 1;
+      return t(comment);
     },
   );
 };

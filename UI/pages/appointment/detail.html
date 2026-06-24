@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>预约详情</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .hj-button.data-v-f6f93744 {
+      cursor: pointer;
+      transition: transform 0.1s ease, opacity 0.15s ease;
+    }
+    .hj-button.data-v-f6f93744:active {
+      transform: scale(0.99);
+      opacity: 0.95;
+    }
+    /* Toast styles */
+    .toast-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 2000;
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+    /* Dialog Overlay styles */
+    .dialog-overlay {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.25s ease;
+    }
+    .dialog-box {
+      width: 280px;
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px 20px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+      text-align: center;
+      animation: zoomIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .dialog-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .dialog-desc {
+      font-size: 14px;
+      color: #6b7280;
+      line-height: 1.5;
+      margin-bottom: 20px;
+      display: block;
+    }
+    .dialog-actions {
+      display: flex;
+      gap: 12px;
+    }
+    .dialog-btn-cancel {
+      flex: 1;
+      background: #f3f4f6;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      color: #6b7280;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .dialog-btn-confirm {
+      flex: 1;
+      background: #ef4444;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes zoomIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-appointment-detail">
+  <div class="phone-screen page-pages-appointment-detail">
+    <div class="page data-v-7e5a1194">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="handleGoBack()">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">预约详情</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-7e5a1194">
+        <!-- Status Bar -->
+        <div class="status-bar data-v-7e5a1194">
+          <!-- Start Component hj-tag -->
+          <div class="component-hj-tag">
+            <span id="detail-tag" class="hj-tag data-v-822bb649" style="color: #3b6bf5; background-color: #eef4ff;">已确认</span>
+          </div>
+          <!-- End Component hj-tag -->
+          <span id="detail-no" class="status-no data-v-7e5a1194">预约号：AP---------</span>
+        </div>
+        
+        <!-- Info Card -->
+        <div class="card data-v-7e5a1194">
+          <span class="card-title data-v-7e5a1194">就诊信息</span>
+          
+          <div class="info-row data-v-7e5a1194">
+            <span class="info-label data-v-7e5a1194">🏥 门店</span>
+            <span id="detail-store" class="info-value data-v-7e5a1194">加载中...</span>
+          </div>
+          
+          <div class="info-row data-v-7e5a1194">
+            <span class="info-label data-v-7e5a1194">📍 地址</span>
+            <span id="detail-address" class="info-value info-value--small data-v-7e5a1194">加载中...</span>
+          </div>
+          
+          <div class="info-row data-v-7e5a1194">
+            <span class="info-label data-v-7e5a1194">👨‍⚕️ 医生</span>
+            <span id="detail-doctor" class="info-value data-v-7e5a1194">加载中...</span>
+          </div>
+          
+          <div class="info-row data-v-7e5a1194">
+            <span class="info-label data-v-7e5a1194">📅 时间</span>
+            <span id="detail-time" class="info-value info-value--bold data-v-7e5a1194">加载中...</span>
+          </div>
+          
+          <div class="info-row data-v-7e5a1194">
+            <span class="info-label data-v-7e5a1194">📋 类型</span>
+            <span id="detail-type" class="info-value data-v-7e5a1194">首次面诊</span>
+          </div>
+        </div>
+        
+        <!-- Symptom Card -->
+        <div id="symptom-card" class="card data-v-7e5a1194">
+          <span class="card-title data-v-7e5a1194">症状描述</span>
+          <span id="detail-symptom" class="symptom-text data-v-7e5a1194">未填写</span>
+        </div>
+        
+        <!-- Cancellation Card -->
+        <div id="cancel-card" class="card data-v-7e5a1194" style="display: none;">
+          <span class="card-title data-v-7e5a1194">取消原因</span>
+          <span id="detail-cancel" class="cancel-text data-v-7e5a1194">因行程冲突取消预约</span>
+        </div>
+
+        <!-- Dynamic Action Buttons -->
+        <div id="detail-actions" class="submit-area data-v-7e5a1194" style="margin: 24px 0 32px;"></div>
+        <div class="safe-bottom" style="height: 34px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancel Confirmation Dialog -->
+  <div id="dialog-overlay" class="dialog-overlay" style="display: none;" onclick="closeCancelDialog()">
+    <div class="dialog-box" onclick="event.stopPropagation()">
+      <span class="dialog-title">确认取消预约</span>
+      <span class="dialog-desc">取消后将无法撤销，如需变更就诊时间，您可以选择“修改时间”服务。</span>
+      <div class="dialog-actions">
+        <div class="dialog-btn-cancel" onclick="closeCancelDialog()">保留</div>
+        <div class="dialog-btn-confirm" onclick="confirmCancelAppointment()">确认取消</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Toast -->
+  <div id="toast" class="toast-container">取消成功</div>
+  
+  <script>
+    // Parse URL query parameters
+    const params = new URLSearchParams(window.location.search);
+    const aptId = params.get('id') || 'apt-001';
+
+    // Store configurations
+    const storeNames = {
+      'store-001': '鼾静健康·深圳旗舰中心',
+      'store-002': '鼾静健康·南山分中心',
+      'store-003': '鼾静健康·宝安分中心'
+    };
+    const storeAddresses = {
+      'store-001': '深圳市福田区福华三路卓越世纪中心1号楼18层',
+      'store-002': '深圳市南山区科技园科苑路15号科兴科学园B栋2层',
+      'store-003': '深圳市宝安区创业一路宝安中心医院门诊楼4层'
+    };
+    const doctorNames = {
+      'doc-001': '李明辉 · 主任医师',
+      'doc-002': '王芳 · 副主任医师',
+      'doc-003': '张伟 · 副主任医师'
+    };
+
+    // State placeholders
+    let currentStoreId = 'store-001';
+    let currentDoctorId = 'doc-001';
+    let currentDate = '2026-06-18';
+    let currentTimeSlot = '09:00-09:30';
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadAppointmentDetails();
+    });
+
+    function loadAppointmentDetails() {
+      const cancelCard = document.getElementById('cancel-card');
+      const detailTag = document.getElementById('detail-tag');
+
+      // Try loading from localStorage
+      const aptList = JSON.parse(localStorage.getItem('hj_appointments')) || [];
+      const foundApt = aptList.find(a => a.id === aptId);
+
+      if (foundApt) {
+        currentStoreId = foundApt.storeId;
+        currentDoctorId = foundApt.doctorId;
+        currentDate = foundApt.date;
+        currentTimeSlot = foundApt.timeSlot;
+
+        detailTag.textContent = foundApt.status === 'confirmed' ? '已确认' : (foundApt.status === 'cancelled' ? '已取消' : '已完成');
+        if (foundApt.status === 'confirmed') {
+          detailTag.style.color = '#3b6bf5';
+          detailTag.style.backgroundColor = '#eef4ff';
+        } else if (foundApt.status === 'cancelled') {
+          detailTag.style.color = '#ef4444';
+          detailTag.style.backgroundColor = '#fef2f2';
+        } else {
+          detailTag.style.color = '#6b7280';
+          detailTag.style.backgroundColor = '#f3f4f6';
+        }
+
+        document.getElementById('detail-no').textContent = `预约号：${foundApt.appointmentNo}`;
+        document.getElementById('detail-store').textContent = storeNames[foundApt.storeId] || foundApt.storeId;
+        document.getElementById('detail-address').textContent = storeAddresses[foundApt.storeId] || '';
+        document.getElementById('detail-doctor').textContent = doctorNames[foundApt.doctorId] || foundApt.doctorId;
+        document.getElementById('detail-time').textContent = `${foundApt.date} ${foundApt.timeSlot}`;
+        document.getElementById('detail-type').textContent = foundApt.type;
+        document.getElementById('detail-symptom').textContent = foundApt.symptom || '未填写描述';
+
+        if (foundApt.status === 'cancelled') {
+          cancelCard.style.display = 'block';
+          document.getElementById('detail-cancel').textContent = '由于行程冲突，用户自主在线取消预约';
+        } else {
+          cancelCard.style.display = 'none';
+        }
+
+        renderActions(foundApt.status);
+
+      } else if (aptId === 'apt-new') {
+        // Retrieve fresh parameters from confirm/success submit
+        const appointmentNo = params.get('appointmentNo') || 'AP20260616999';
+        currentStoreId = params.get('storeId') || 'store-001';
+        currentDoctorId = params.get('doctorId') || 'doc-001';
+        currentDate = params.get('date') || '2026-06-18';
+        currentTimeSlot = params.get('timeSlot') || '09:00-09:30';
+        const symptom = params.get('symptom') || '';
+
+        detailTag.textContent = '已确认';
+        detailTag.style.color = '#3b6bf5';
+        detailTag.style.backgroundColor = '#eef4ff';
+        
+        document.getElementById('detail-no').textContent = `预约号：${appointmentNo}`;
+        document.getElementById('detail-store').textContent = storeNames[currentStoreId];
+        document.getElementById('detail-address').textContent = storeAddresses[currentStoreId];
+        document.getElementById('detail-doctor').textContent = doctorNames[currentDoctorId];
+        document.getElementById('detail-time').textContent = `${currentDate} ${currentTimeSlot}`;
+        document.getElementById('detail-type').textContent = '首次面诊';
+
+        const symptomCard = document.getElementById('symptom-card');
+        if (symptom) {
+          symptomCard.style.display = 'block';
+          document.getElementById('detail-symptom').textContent = decodeURIComponent(symptom);
+        } else {
+          symptomCard.style.display = 'block';
+          document.getElementById('detail-symptom').textContent = '未填写描述';
+        }
+        
+        cancelCard.style.display = 'none';
+        renderActions('confirmed');
+
+      } else if (aptId === 'apt-002') {
+        detailTag.textContent = '已完成';
+        detailTag.style.color = '#6b7280';
+        detailTag.style.backgroundColor = '#f3f4f6';
+        
+        document.getElementById('detail-no').textContent = '预约号：AP20260528002';
+        document.getElementById('detail-store').textContent = storeNames['store-001'];
+        document.getElementById('detail-address').textContent = storeAddresses['store-001'];
+        document.getElementById('detail-doctor').textContent = doctorNames['doc-002'];
+        document.getElementById('detail-time').textContent = '2026-05-30 14:30-15:00';
+        document.getElementById('detail-type').textContent = '佩戴复诊';
+        document.getElementById('detail-symptom').textContent = '阻鼾器佩戴2周后复诊，微调前移量。';
+        cancelCard.style.display = 'none';
+        renderActions('completed');
+
+      } else if (aptId === 'apt-003') {
+        detailTag.textContent = '已取消';
+        detailTag.style.color = '#ef4444';
+        detailTag.style.backgroundColor = '#fef2f2';
+        
+        document.getElementById('detail-no').textContent = '预约号：AP20260601003';
+        document.getElementById('detail-store').textContent = storeNames['store-002'];
+        document.getElementById('detail-address').textContent = storeAddresses['store-002'];
+        document.getElementById('detail-doctor').textContent = doctorNames['doc-003'];
+        document.getElementById('detail-time').textContent = '2026-06-08 10:00-10:30';
+        document.getElementById('detail-type').textContent = '阻鼾器微调';
+        document.getElementById('detail-symptom').textContent = '佩戴后感觉牙齿微痛。';
+        
+        cancelCard.style.display = 'block';
+        document.getElementById('detail-cancel').textContent = '因临时出差行程冲突，故取消本次约诊。';
+        renderActions('cancelled');
+
+      } else {
+        // Default apt-001
+        detailTag.textContent = '已确认';
+        detailTag.style.color = '#3b6bf5';
+        detailTag.style.backgroundColor = '#eef4ff';
+        
+        document.getElementById('detail-no').textContent = '预约号：AP20260601001';
+        document.getElementById('detail-store').textContent = storeNames['store-001'];
+        document.getElementById('detail-address').textContent = storeAddresses['store-001'];
+        document.getElementById('detail-doctor').textContent = doctorNames['doc-001'];
+        document.getElementById('detail-time').textContent = '2026-06-05 09:00-09:30';
+        document.getElementById('detail-type').textContent = '首次面诊';
+        document.getElementById('detail-symptom').textContent = '夜间打鼾严重，偶有呼吸暂停，白天嗜睡。';
+        cancelCard.style.display = 'none';
+        renderActions('confirmed');
+      }
+    }
+
+    // Render Actions Panel
+    function renderActions(status) {
+      const actionsContainer = document.getElementById('detail-actions');
+      if (status === 'confirmed') {
+        actionsContainer.innerHTML = `
+          <div class="component-hj-button">
+            <button class="hj-button hj-button--primary hj-button--lg hj-button--block data-v-f6f93744" onclick="handleReschedule()">
+              <span class="hj-button-text">修改预约时间</span>
+            </button>
+          </div>
+          <div class="component-hj-button" style="margin-top: 12px;">
+            <button class="hj-button hj-button--ghost hj-button--lg hj-button--block data-v-f6f93744" style="color: #ef4444; border-color: #ef4444;" onclick="openCancelDialog()">
+              <span class="hj-button-text">取消预约</span>
+            </button>
+          </div>
+        `;
+      } else {
+        // cancelled or completed
+        actionsContainer.innerHTML = `
+          <div class="component-hj-button">
+            <button class="hj-button hj-button--primary hj-button--lg hj-button--block data-v-f6f93744" onclick="handleRebook()">
+              <span class="hj-button-text">重新预约</span>
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    // Navigation and Action Handlers
+    function handleReschedule() {
+      const urlQuery = `id=${aptId}&storeId=${currentStoreId}&doctorId=${currentDoctorId}&date=${currentDate}&timeSlot=${currentTimeSlot}`;
+      if (window.parent && window.parent.loadPage) {
+        window.parent.loadPage(`pages/appointment/reschedule?${urlQuery}`);
+      } else {
+        window.location.href = `reschedule.html?${urlQuery}`;
+      }
+    }
+
+    function handleRebook() {
+      if (window.parent && window.parent.loadPage) {
+        window.parent.loadPage('pages/appointment/index');
+      } else {
+        window.location.href = 'index.html';
+      }
+    }
+
+    function handleGoBack() {
+      if (window.parent && window.parent.handleGoBack) {
+        window.parent.handleGoBack();
+      } else {
+        history.back();
+      }
+    }
+
+    // Cancel Dialog Overlay Control
+    function openCancelDialog() {
+      document.getElementById('dialog-overlay').style.display = 'flex';
+    }
+
+    function closeCancelDialog() {
+      document.getElementById('dialog-overlay').style.display = 'none';
+    }
+
+    function confirmCancelAppointment() {
+      closeCancelDialog();
+      
+      // Update status in localStorage
+      const aptList = JSON.parse(localStorage.getItem('hj_appointments')) || [];
+      const apt = aptList.find(a => a.id === aptId);
+      if (apt) {
+        apt.status = 'cancelled';
+        localStorage.setItem('hj_appointments', JSON.stringify(aptList));
+      }
+
+      // Update details to simulated "cancelled" state
+      const detailTag = document.getElementById('detail-tag');
+      detailTag.textContent = '已取消';
+      detailTag.style.color = '#ef4444';
+      detailTag.style.backgroundColor = '#fef2f2';
+
+      const cancelCard = document.getElementById('cancel-card');
+      cancelCard.style.display = 'block';
+      document.getElementById('detail-cancel').textContent = '由于行程冲突，用户自主在线取消预约';
+
+      // Switch to Rebook action button
+      renderActions('cancelled');
+
+      // Toast notification
+      showToast('预约已成功取消');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.style.display = "block";
+      setTimeout(() => {
+        toast.style.display = "none";
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-index">
+  <div class="phone-screen page-pages-profile-index">
+    <div class="page data-v-093cfe40">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px; justify-content: center;">
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937; font-weight: 600; font-size: 17px; text-align: center; width: 100%;">我的</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-093cfe40">
+        <!-- User Card -->
+        <div class="user-card data-v-093cfe40" onclick="window.parent.loadPage('pages/profile/settings/personal-info')">
+          <div class="user-avatar data-v-093cfe40">
+            <span class="user-avatar-text data-v-093cfe40">张</span>
+          </div>
+          <div class="user-info data-v-093cfe40">
+            <span class="user-name data-v-093cfe40">张先生</span>
+            <div class="user-level data-v-093cfe40">
+              <span class="user-level-tag data-v-093cfe40">黄金会员</span>
+            </div>
+          </div>
+          <span class="user-arrow data-v-093cfe40">›</span>
+        </div>
+
+        <!-- Menu Group 1: 我的健康 -->
+        <div class="menu-group data-v-093cfe40">
+          <span class="menu-group-title data-v-093cfe40">我的健康</span>
+          <div class="menu-list data-v-093cfe40">
+            <div class="menu-item data-v-093cfe40" onclick="window.parent.loadPage('pages/profile/medical-records/index')">
+              <span class="menu-icon data-v-093cfe40">📋</span>
+              <span class="menu-label data-v-093cfe40">病历档案</span>
+              <span class="menu-arrow data-v-093cfe40">›</span>
+            </div>
+            <div class="menu-item data-v-093cfe40" onclick="window.parent.loadPage('pages/profile/device-manage/index')">
+              <span class="menu-icon data-v-093cfe40">💊</span>
+              <span class="menu-label data-v-093cfe40">阻鼾器管理</span>
+              <span class="menu-arrow data-v-093cfe40">›</span>
+            </div>
+            <div class="menu-item data-v-093cfe40" onclick="window.parent.loadPage('pages/profile/family-members/index')">
+              <span class="menu-icon data-v-093cfe40">👨‍👩‍👧</span>
+              <span class="menu-label data-v-093cfe40">家庭成员</span>
+              <span class="menu-arrow data-v-093cfe40">›</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Menu Group 2: 我的服务 -->
+        <div class="menu-group data-v-093cfe40">
+          <span class="menu-group-title data-v-093cfe40">我的服务</span>
+          <div class="menu-list data-v-093cfe40">
+            <div class="menu-item data-v-093cfe40" onclick="window.parent.loadPage('pages/profile/member-benefits/index')">
+              <span class="menu-icon data-v-093cfe40">💰</span>
+              <span class="menu-label data-v-093cfe40">会员权益</span>
+              <span class="menu-arrow data-v-093cfe40">›</span>
+            </div>
+            <div class="menu-item data-v-093cfe40" onclick="window.parent.loadPage('pages/order/index')">
+              <span class="menu-icon data-v-093cfe40">📦</span>
+              <span class="menu-label data-v-093cfe40">我的订单</span>
+              <span class="menu-arrow data-v-093cfe40">›</span>
+            </div>
+            <div class="menu-item data-v-093cfe40" onclick="window.parent.loadPage('pages/distribution/center/index')">
+              <span class="menu-icon data-v-093cfe40">🔗</span>
+              <span class="menu-label data-v-093cfe40">分销中心</span>
+              <span class="menu-arrow data-v-093cfe40">›</span>
+            </div>
+            <div class="menu-item data-v-093cfe40" onclick="window.parent.loadPage('pages/live/list/index')">
+              <span class="menu-icon data-v-093cfe40">🎬</span>
+              <span class="menu-label data-v-093cfe40">直播中心</span>
+              <span class="menu-arrow data-v-093cfe40">›</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Menu Group 3: 其他 -->
+        <div class="menu-group data-v-093cfe40">
+          <span class="menu-group-title data-v-093cfe40">其他</span>
+          <div class="menu-list data-v-093cfe40">
+            <div class="menu-item data-v-093cfe40" onclick="window.parent.loadPage('pages/profile/online-service/index')">
+              <span class="menu-icon data-v-093cfe40">💬</span>
+              <span class="menu-label data-v-093cfe40">在线客服</span>
+              <span class="menu-arrow data-v-093cfe40">›</span>
+            </div>
+            <div class="menu-item data-v-093cfe40" onclick="window.parent.loadPage('pages/profile/notifications/index')">
+              <span class="menu-icon data-v-093cfe40">🔔</span>
+              <span class="menu-label data-v-093cfe40">消息通知</span>
+              <span class="menu-arrow data-v-093cfe40">›</span>
+            </div>
+            <div class="menu-item data-v-093cfe40" onclick="window.parent.loadPage('pages/profile/settings/index')">
+              <span class="menu-icon data-v-093cfe40">⚙️</span>
+              <span class="menu-label data-v-093cfe40">设置</span>
+              <span class="menu-arrow data-v-093cfe40">›</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="safe-bottom data-v-093cfe40"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Synchronize nickname, avatar letter and level with localStorage
+      const nickname = localStorage.getItem('hj_user_nickname') || '张先生';
+      const userLevel = localStorage.getItem('hj_user_level') || '黄金会员';
+      
+      const nameEl = document.querySelector('.user-name');
+      const avatarEl = document.querySelector('.user-avatar-text');
+      const levelEl = document.querySelector('.user-level-tag');
+      
+      if (nameEl) nameEl.innerText = nickname;
+      if (avatarEl && nickname.length > 0) avatarEl.innerText = nickname.charAt(0);
+      if (levelEl) levelEl.innerText = userLevel;
+    });
+  </script>
+</body>
+</html>

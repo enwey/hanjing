@@ -14,10 +14,10 @@
         bindtap="{{item.f}}"
         ><view
           class="menu-icon data-v-2c4614d4"
-          style="{{'background:' + item.b + ';' + ('color:' + item.c)}}"
-          ><text class="data-v-2c4614d4">{{item.a}}</text></view
+          style="{{'background:' + item.b}}"
+          ><image class="menu-icon-img data-v-2c4614d4" src="{{item.a}}" style="width: 20px; height: 20px;" /></view
         ><text class="menu-label data-v-2c4614d4">{{item.d}}</text
-        ><text class="menu-arrow data-v-2c4614d4">&gt;</text></view
+        ><image class="menu-arrow data-v-2c4614d4" src="/static/icons/chevron-right.svg" style="width: 14px; height: 14px; margin-left: auto;" /></view
       ></view
     ><view class="safe-bottom data-v-2c4614d4" /></view
 ></view>

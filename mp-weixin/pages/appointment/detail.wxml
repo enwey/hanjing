@@ -17,25 +17,25 @@
     ><view class="card data-v-7e5a1194"
       ><text class="card-title data-v-7e5a1194">就诊信息</text
       ><view class="info-row data-v-7e5a1194"
-        ><text class="info-label data-v-7e5a1194">🏥 门店</text
+        ><image class="row-icon data-v-7e5a1194" src="/static/icons/store.svg" /><text class="info-label data-v-7e5a1194">门店</text
         ><text class="info-value data-v-7e5a1194">{{e}}</text></view
       ><view class="info-row data-v-7e5a1194"
-        ><text class="info-label data-v-7e5a1194">📍 地址</text
+        ><image class="row-icon data-v-7e5a1194" src="/static/icons/map-pin.svg" /><text class="info-label data-v-7e5a1194">地址</text
         ><text class="info-value info-value--small data-v-7e5a1194"
           >{{f}}</text
         ></view
       ><view class="info-row data-v-7e5a1194"
-        ><text class="info-label data-v-7e5a1194">👨‍⚕️ 医生</text
+        ><image class="row-icon data-v-7e5a1194" src="/static/icons/doctor.svg" /><text class="info-label data-v-7e5a1194">医生</text
         ><text class="info-value data-v-7e5a1194">{{g}} · {{h}}</text></view
       ><view class="info-row data-v-7e5a1194"
-        ><text class="info-label data-v-7e5a1194">📅 时间</text
+        ><image class="row-icon data-v-7e5a1194" src="/static/icons/calendar.svg" /><text class="info-label data-v-7e5a1194">时间</text
         ><text class="info-value info-value--bold data-v-7e5a1194"
           >{{i}} {{j}}</text
         ></view
       ><view class="info-row data-v-7e5a1194"
-        ><text class="info-label data-v-7e5a1194">📋 类型</text
+        ><image class="row-icon data-v-7e5a1194" src="/static/icons/type.svg" /><text class="info-label data-v-7e5a1194">类型</text
         ><text class="info-value data-v-7e5a1194">{{k}}</text></view
-      ></view
+      ></view>
     ><view wx:if="{{l}}" class="card data-v-7e5a1194"
       ><text class="card-title data-v-7e5a1194">症状描述</text
       ><text class="symptom-text data-v-7e5a1194">{{m}}</text></view

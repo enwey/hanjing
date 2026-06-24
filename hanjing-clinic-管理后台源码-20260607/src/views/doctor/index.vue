@@ -39,7 +39,9 @@ const fetchDoctors = async () => {
         rating: Number(d.rating) || 5.0,
         positiveRate: d.rating ? Math.round((Number(d.rating) / 5) * 100) + '%' : '100%',
         isOnline: d.status === 1,
-        expertise: tags
+        expertise: tags,
+        experience: d.experience_years || 0,
+        intro: d.intro || ''
       }
     })
   } catch (error) {
@@ -105,7 +107,9 @@ const formData = ref({
   specialty: '',
   store: '',
   isOnline: true,
-  expertiseStr: ''
+  expertiseStr: '',
+  experience: 0,
+  intro: ''
 })
 
 function openSchedule(doctorId: string) {
@@ -120,7 +124,9 @@ function handleAddDoctor() {
     specialty: '',
     store: '',
     isOnline: true,
-    expertiseStr: ''
+    expertiseStr: '',
+    experience: 0,
+    intro: ''
   }
   showEdit.value = true
 }
@@ -137,7 +143,9 @@ function handleEditDoctor(id: string) {
     specialty: d.specialty,
     store: d.store,
     isOnline: d.isOnline,
-    expertiseStr: d.expertise ? d.expertise.join(',') : ''
+    expertiseStr: d.expertise ? d.expertise.join(',') : '',
+    experience: d.experience || 0,
+    intro: d.intro || ''
   }
   showEdit.value = true
 }
@@ -160,9 +168,10 @@ async function handleSave() {
         title: formData.value.title,
         specialty: formData.value.specialty,
         hospital: '鼾静门诊部',
-        intro: '执业医师',
+        intro: formData.value.intro,
         status: formData.value.isOnline ? 1 : 0,
-        expertise: tags.length > 0 ? tags : null
+        expertise: tags.length > 0 ? tags : null,
+        experience_years: Number(formData.value.experience)
       })
       MessagePlugin.success('保存医生档案成功')
     } else {
@@ -171,9 +180,10 @@ async function handleSave() {
         title: formData.value.title,
         specialty: formData.value.specialty,
         hospital: '鼾静门诊部',
-        intro: '执业医师',
+        intro: formData.value.intro,
         status: formData.value.isOnline ? 1 : 0,
-        expertise: tags.length > 0 ? tags : null
+        expertise: tags.length > 0 ? tags : null,
+        experience_years: Number(formData.value.experience)
       })
       MessagePlugin.success('新增医生档案成功')
     }
@@ -238,7 +248,7 @@ function handleNextWeek() {
           <!-- Doctor Name -->
           <div style="font-size: 16px; font-weight: 700; color: #111827;">{{ dr.name }}</div>
           <!-- Title & Specialty -->
-          <div style="font-size: 12px; color: #3B6BF5; margin-top: 2px;">{{ dr.title }} · {{ dr.specialty }}</div>
+          <div style="font-size: 12px; color: #3B6BF5; margin-top: 2px;">{{ dr.title }} · {{ dr.specialty }} · {{ dr.experience }}年经验</div>
           <!-- Store -->
           <div style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">{{ dr.store }}</div>
           <!-- Tags / Expertise -->
@@ -337,6 +347,10 @@ function handleNextWeek() {
           <input type="text" class="form-control" v-model="formData.specialty" placeholder="例如：睡眠呼吸科">
         </div>
         <div class="form-group">
+          <label class="form-label">工作经验（年）<span class="required">*</span></label>
+          <input type="number" class="form-control" v-model="formData.experience" placeholder="请输入工作经验年限" min="0">
+        </div>
+        <div class="form-group">
           <label class="form-label">就诊门店<span class="required">*</span></label>
           <input type="text" class="form-control" v-model="formData.store" placeholder="例如：龙岗总店 · 南山分院">
         </div>
@@ -346,6 +360,10 @@ function handleNextWeek() {
           <div style="font-size: 11px; color: #9CA3AF; margin-top: 2px;">
             留空时，将自动根据医生科室匹配默认标签（如“睡眠呼吸暂停综合症”等）。
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">个人简介</label>
+          <textarea class="form-control" v-model="formData.intro" placeholder="请输入医生个人简介或擅长领域的详细描述..."></textarea>
         </div>
         <div class="form-group" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-top: 4px;">
           <label class="form-label" style="margin-bottom: 0;">是否在岗/在线</label>
@@ -528,6 +546,13 @@ function handleNextWeek() {
 .form-control:focus {
   border-color: var(--primary-500);
   box-shadow: 0 0 0 2px rgba(59, 107, 245, 0.1);
+}
+textarea.form-control {
+  height: auto;
+  min-height: 80px;
+  resize: vertical;
+  line-height: 1.5;
+  padding: 8px 12px;
 }
 select.form-control {
   appearance: auto;

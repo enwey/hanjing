@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鼾声分析报告</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-assessment-snore-result-index">
+  <div class="phone-screen page-pages-assessment-snore-result-index">
+    <div class="page data-v-45b6ad14">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">AI 睡眠鼾声分析报告</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-45b6ad14">
+        <div id="risk-card" class="risk-card data-v-45b6ad14" style="background: #FEF2F2;">
+          <span id="risk-badge" class="risk-badge data-v-45b6ad14" style="background: #EF4444;">高风险</span>
+          <span class="risk-score-title data-v-45b6ad14">鼾声风险指数</span>
+          <span id="risk-score" class="risk-score data-v-45b6ad14" style="color: #EF4444;">84%</span>
+          <span id="risk-desc" class="risk-desc data-v-45b6ad14">
+            检测到重度鼾声和较多呼吸暂停事件，可能存在中度至重度睡眠呼吸暂停综合征。
+          </span>
+        </div>
+
+        <div class="risk-bar-section data-v-45b6ad14">
+          <div class="risk-bar-track data-v-45b6ad14">
+            <div id="risk-bar-fill" class="risk-bar-fill data-v-45b6ad14" style="width: 84%; background: #EF4444;"></div>
+            <div class="risk-marker data-v-45b6ad14" style="left: 33%">低</div>
+            <div class="risk-marker data-v-45b6ad14" style="left: 66%">中</div>
+            <div class="risk-marker risk-marker--high data-v-45b6ad14" style="left: 90%">高</div>
+          </div>
+        </div>
+
+        <div class="section-title data-v-45b6ad14">📊 鼾声数据详情</div>
+        <div id="stats-grid" class="stats-grid data-v-45b6ad14">
+          <!-- Dynamically populated cards -->
+          <div class="stat-card data-v-45b6ad14">
+            <span class="stat-icon data-v-45b6ad14">🔊</span>
+            <span id="stat-avgDb" class="stat-value data-v-45b6ad14">68 dB</span>
+            <span class="stat-label data-v-45b6ad14">平均分贝</span>
+          </div>
+          <div class="stat-card data-v-45b6ad14">
+            <span class="stat-icon data-v-45b6ad14">📈</span>
+            <span id="stat-peakDb" class="stat-value data-v-45b6ad14">89 dB</span>
+            <span class="stat-label data-v-45b6ad14">峰值分贝</span>
+          </div>
+          <div class="stat-card data-v-45b6ad14">
+            <span class="stat-icon data-v-45b6ad14">💤</span>
+            <span id="stat-snoreRate" class="stat-value data-v-45b6ad14">78%</span>
+            <span class="stat-label data-v-45b6ad14">鼾声占比</span>
+          </div>
+          <div class="stat-card data-v-45b6ad14">
+            <span class="stat-icon data-v-45b6ad14">⚠️</span>
+            <span id="stat-apnea" class="stat-value data-v-45b6ad14">14 次</span>
+            <span class="stat-label data-v-45b6ad14">呼吸暂停</span>
+          </div>
+        </div>
+
+        <div class="section-title data-v-45b6ad14">💊 专业建议</div>
+        <div class="advice-card data-v-45b6ad14">
+          <span id="advice-text" class="advice-text data-v-45b6ad14">
+            请尽快到鼾静健康门诊进行多导睡眠监测（PSG）和上气道评估，及早治疗可避免心脑血管并发症风险。
+          </span>
+        </div>
+
+        <div class="section-title data-v-45b6ad14">✨ 改善小贴士</div>
+        <div id="tips-grid" class="tips-grid data-v-45b6ad14">
+          <!-- Dynamically populated tips -->
+        </div>
+
+        <div class="cta-section data-v-45b6ad14">
+          <div class="btn btn--primary data-v-45b6ad14" onclick="window.parent.loadPage('pages/appointment/index')">
+            📅 立即预约门诊
+          </div>
+          <div class="btn btn--outline data-v-45b6ad14" onclick="window.parent.loadPage('pages/assessment/recording/index')">
+            🔄 重新测试
+          </div>
+          <div class="btn btn--ghost data-v-45b6ad14" onclick="window.parent.loadPage('pages/index/index')">
+            🏠 返回首页
+          </div>
+        </div>
+      </div>
+      <div class="safe-bottom data-v-45b6ad14"></div>
+    </div>
+  </div>
+
+  <script>
+    const riskData = {
+      low: {
+        title: "低风险",
+        color: "#1A9D5C",
+        bgColor: "#D3F5E3",
+        desc: "您的鼾声测试结果良好，未检测到明显的睡眠呼吸暂停风险。",
+        advice: "建议保持健康生活习惯，定期关注睡眠质量变化。如家人反馈仍有明显鼾声，可3个月后复测。",
+        tips: ["保持规律作息", "避免睡前饮酒", "侧卧睡眠", "控制体重"],
+        score: 18,
+        avgDb: 42,
+        peakDb: 58,
+        rate: 12,
+        apnea: 0
+      },
+      medium: {
+        title: "中风险",
+        color: "#F59E0B",
+        bgColor: "#FFFBEB",
+        desc: "检测到中度鼾声和少量呼吸暂停事件，建议引起关注并及时进行专业评估。",
+        advice: "建议预约鼾静健康门诊进行面诊和睡眠监测，早期干预效果最佳。",
+        tips: ["尽快预约门诊", "监测睡眠姿势", "减少酒精和安眠药", "记录夜间醒来次数"],
+        score: 52,
+        avgDb: 58,
+        peakDb: 72,
+        rate: 45,
+        apnea: 4
+      },
+      high: {
+        title: "高风险",
+        color: "#EF4444",
+        bgColor: "#FEF2F2",
+        desc: "检测到重度鼾声和较多呼吸暂停事件，可能存在中度至重度睡眠呼吸暂停综合征。",
+        advice: "请尽快到鼾静健康门诊进行多导睡眠监测（PSG）和上气道评估，及早治疗可避免心脑血管并发症风险。",
+        tips: ["立即预约门诊", "避免长途驾驶", "告知家属观察", "记录日间嗜睡情况"],
+        score: 84,
+        avgDb: 68,
+        peakDb: 89,
+        rate: 78,
+        apnea: 14
+      }
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const riskParam = params.get('risk') || 'high'; // default to high for mockup display
+    const data = riskData[riskParam] || riskData.low;
+
+    // Apply values to DOM
+    document.getElementById('risk-badge').textContent = data.title;
+    document.getElementById('risk-badge').style.background = data.color;
+    document.getElementById('risk-card').style.background = data.bgColor;
+    document.getElementById('risk-score').textContent = `${data.score}%`;
+    document.getElementById('risk-score').style.color = data.color;
+    document.getElementById('risk-desc').textContent = data.desc;
+
+    document.getElementById('risk-bar-fill').style.width = `${data.score}%`;
+    document.getElementById('risk-bar-fill').style.background = data.color;
+
+    document.getElementById('stat-avgDb').textContent = `${data.avgDb} dB`;
+    document.getElementById('stat-peakDb').textContent = `${data.peakDb} dB`;
+    document.getElementById('stat-snoreRate').textContent = `${data.rate}%`;
+    document.getElementById('stat-apnea').textContent = `${data.apnea} 次`;
+
+    document.getElementById('advice-text').textContent = data.advice;
+
+    const tipsGrid = document.getElementById('tips-grid');
+    tipsGrid.innerHTML = '';
+    data.tips.forEach((tip, idx) => {
+      const chip = document.createElement('div');
+      chip.className = 'tip-chip data-v-45b6ad14';
+      
+      const numSpan = document.createElement('span');
+      numSpan.className = 'tip-num data-v-45b6ad14';
+      numSpan.textContent = idx + 1;
+      
+      const contentSpan = document.createElement('span');
+      contentSpan.className = 'tip-content data-v-45b6ad14';
+      contentSpan.textContent = tip;
+      
+      chip.appendChild(numSpan);
+      chip.appendChild(contentSpan);
+      tipsGrid.appendChild(chip);
+    });
+
+  </script>
+</body>
+</html>

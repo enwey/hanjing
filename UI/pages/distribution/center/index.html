@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分销中心</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f5f6f8;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .product-scroll {
+      display: flex;
+      overflow-x: auto;
+      gap: 12px;
+      padding: 4px 0 12px;
+      scrollbar-width: none; /* Firefox */
+    }
+    .product-scroll::-webkit-scrollbar {
+      display: none; /* Safari and Chrome */
+    }
+    .product-card {
+      flex-shrink: 0;
+      width: 130px;
+    }
+    .order-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .order-item:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-distribution-center-index">
+  <div class="phone-screen page-pages-distribution-center-index">
+    <div class="page data-v-6a5afdbe">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">分销中心</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="banner data-v-6a5afdbe">
+        <div class="banner-bg data-v-6a5afdbe"></div>
+        <div class="banner-content data-v-6a5afdbe">
+          <span class="banner-title data-v-6a5afdbe">我的推广</span>
+          <div class="banner-stats data-v-6a5afdbe">
+            <div class="stat-item data-v-6a5afdbe">
+              <span class="stat-val data-v-6a5afdbe">¥2,570.00</span>
+              <span class="stat-label data-v-6a5afdbe">累计佣金</span>
+            </div>
+            <div class="stat-divider data-v-6a5afdbe"></div>
+            <div class="stat-item data-v-6a5afdbe">
+              <span class="stat-val highlight data-v-6a5afdbe">¥1,285.00</span>
+              <span class="stat-label data-v-6a5afdbe">可提现</span>
+            </div>
+            <div class="stat-divider data-v-6a5afdbe"></div>
+            <div class="stat-item data-v-6a5afdbe">
+              <span class="stat-val data-v-6a5afdbe">35人</span>
+              <span class="stat-label data-v-6a5afdbe">团队成员</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions data-v-6a5afdbe">
+        <div class="action-item data-v-6a5afdbe" onclick="window.parent.loadPage('pages/distribution/withdraw/index')">
+          <div class="action-icon gold data-v-6a5afdbe">T</div>
+          <span class="action-label data-v-6a5afdbe">提现</span>
+        </div>
+        <div class="action-item data-v-6a5afdbe" onclick="window.parent.loadPage('pages/distribution/commission/index')">
+          <div class="action-icon blue data-v-6a5afdbe">$</div>
+          <span class="action-label data-v-6a5afdbe">佣金明细</span>
+        </div>
+        <div class="action-item data-v-6a5afdbe" onclick="window.parent.loadPage('pages/distribution/team/index')">
+          <div class="action-icon green data-v-6a5afdbe">G</div>
+          <span class="action-label data-v-6a5afdbe">团队成员</span>
+        </div>
+        <div class="action-item data-v-6a5afdbe" onclick="window.parent.loadPage('pages/distribution/invite/index')">
+          <div class="action-icon purple data-v-6a5afdbe">S</div>
+          <span class="action-label data-v-6a5afdbe">邀请好友</span>
+        </div>
+      </div>
+
+      <!-- FX Products -->
+      <div class="section data-v-6a5afdbe">
+        <div class="section-hd data-v-6a5afdbe">
+          <span class="section-title data-v-6a5afdbe">推广商品</span>
+          <span class="section-more data-v-6a5afdbe" style="cursor: pointer;" onclick="window.parent.loadPage('pages/distribution/products/index')">全部 &rsaquo;</span>
+        </div>
+        <div class="product-scroll data-v-6a5afdbe">
+          <!-- Card 1 -->
+          <div class="product-card data-v-6a5afdbe" onclick="window.parent.loadPage('pages/product/detail?id=prod-001')">
+            <img class="product-img data-v-6a5afdbe" src="../../../static/product/hj-mad-03.png" alt="prod1" />
+            <div class="product-info data-v-6a5afdbe">
+              <span class="product-name data-v-6a5afdbe">智能固磁阻鼾器</span>
+              <span class="product-price data-v-6a5afdbe">¥1,980.00</span>
+              <span class="product-commission data-v-6a5afdbe">佣金 ¥198.00</span>
+            </div>
+          </div>
+          <!-- Card 2 -->
+          <div class="product-card data-v-6a5afdbe" onclick="window.parent.loadPage('pages/product/detail?id=prod-003')">
+            <img class="product-img data-v-6a5afdbe" src="../../../static/product/clean-kit.png" alt="prod3" />
+            <div class="product-info data-v-6a5afdbe">
+              <span class="product-name data-v-6a5afdbe">专用清洁片</span>
+              <span class="product-price data-v-6a5afdbe">¥39.00</span>
+              <span class="product-commission data-v-6a5afdbe">佣金 ¥3.90</span>
+            </div>
+          </div>
+          <!-- Card 3 -->
+          <div class="product-card data-v-6a5afdbe" onclick="window.parent.loadPage('pages/product/detail?id=prod-004')">
+            <img class="product-img data-v-6a5afdbe" src="../../../static/product/pillow.png" alt="prod4" />
+            <div class="product-info data-v-6a5afdbe">
+              <span class="product-name data-v-6a5afdbe">智能睡眠手环</span>
+              <span class="product-price data-v-6a5afdbe">¥399.00</span>
+              <span class="product-commission data-v-6a5afdbe">佣金 ¥39.90</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FX Orders -->
+      <div class="section data-v-6a5afdbe" style="margin-bottom: 24px;">
+        <div class="section-hd data-v-6a5afdbe" style="border-bottom: 1px solid #f3f4f6; padding-bottom: 8px;">
+          <span class="section-title data-v-6a5afdbe">近期推广订单</span>
+          <span class="section-more data-v-6a5afdbe" style="cursor: pointer;" onclick="window.parent.loadPage('pages/distribution/commission/index')">全部 &rsaquo;</span>
+        </div>
+        <div class="order-list data-v-6a5afdbe">
+          <!-- Order 1 -->
+          <div class="order-item data-v-6a5afdbe">
+            <img class="order-img data-v-6a5afdbe" src="../../../static/product/hj-mad-03.png" alt="prod" />
+            <div class="order-info data-v-6a5afdbe">
+              <span class="order-name data-v-6a5afdbe">智能固磁阻鼾器（标准版）</span>
+              <span class="order-meta data-v-6a5afdbe">购买人：张* | 2026-06-03</span>
+            </div>
+            <div class="order-amount data-v-6a5afdbe">
+              <span class="amount-val data-v-6a5afdbe">+¥198.00</span>
+              <span class="amount-tag settled data-v-6a5afdbe">已结算</span>
+            </div>
+          </div>
+          <!-- Order 2 -->
+          <div class="order-item data-v-6a5afdbe">
+            <img class="order-img data-v-6a5afdbe" src="../../../static/product/clean-kit.png" alt="prod" />
+            <div class="order-info data-v-6a5afdbe">
+              <span class="order-name data-v-6a5afdbe">阻鼾器专用清洁片</span>
+              <span class="order-meta data-v-6a5afdbe">购买人：李* | 2026-06-02</span>
+            </div>
+            <div class="order-amount data-v-6a5afdbe">
+              <span class="amount-val data-v-6a5afdbe">+¥3.90</span>
+              <span class="amount-tag pending data-v-6a5afdbe">待结算</span>
+            </div>
+          </div>
+          <!-- Order 3 -->
+          <div class="order-item data-v-6a5afdbe">
+            <img class="order-img data-v-6a5afdbe" src="../../../static/product/pillow.png" alt="prod" />
+            <div class="order-info data-v-6a5afdbe">
+              <span class="order-name data-v-6a5afdbe">智能睡眠监测手环</span>
+              <span class="order-meta data-v-6a5afdbe">购买人：王* | 2026-06-01</span>
+            </div>
+            <div class="order-amount data-v-6a5afdbe">
+              <span class="amount-val data-v-6a5afdbe">+¥39.90</span>
+              <span class="amount-tag settled data-v-6a5afdbe">已结算</span>
+            </div>
+          </div>
+        </div>
+      </div>
+ 
+      <div class="section data-v-6a5afdbe" onclick="window.parent.loadPage('pages/distribution/rules/index')" style="cursor: pointer;">
+        <div class="rule-entry data-v-6a5afdbe">
+          <span class="data-v-6a5afdbe">分销规则与说明</span>
+          <span class="arrow data-v-6a5afdbe">&gt;</span>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-bottom: 24px; margin-top: 16px;">
+        <span style="font-size: 12px; color: #3b6bf5; cursor: pointer; text-decoration: underline;" onclick="window.parent.loadPage('pages/distribution/rules/index')">《鼾静健康分销推广规则》</span>
+      </div>
+      <div class="safe-bottom data-v-6a5afdbe" style="height: 34px;"></div>
+    </div>
+  </div>
+</body>
+</html>

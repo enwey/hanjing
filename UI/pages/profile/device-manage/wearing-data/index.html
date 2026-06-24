@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>佩戴数据</title>
+  <link rel="stylesheet" href="../../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .data-card.data-v-0ef6c91e {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+    .data-card.data-v-0ef6c91e:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-device-manage-wearing-data-index">
+  <div class="phone-screen page-pages-profile-device-manage-wearing-data-index">
+    <div class="page data-v-0ef6c91e">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">佩戴数据</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-0ef6c91e">
+        <!-- Loading State -->
+        <div class="loading-wrap data-v-0ef6c91e" id="loading-wrap">
+          <text class="data-v-0ef6c91e">加载中...</text>
+        </div>
+
+        <!-- Wearing Records List -->
+        <div id="wearing-list" class="data-v-0ef6c91e" style="display: none;"></div>
+
+        <!-- Empty State -->
+        <div class="empty data-v-0ef6c91e" id="empty-state" style="display: none;">
+          <text class="data-v-0ef6c91e">暂无佩戴记录</text>
+        </div>
+
+        <div class="safe-bottom data-v-0ef6c91e"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Comfort rating mapper
+    const comfortLevels = {
+      1: "极差",
+      2: "不适",
+      3: "一般",
+      4: "舒适",
+      5: "极佳"
+    };
+
+    // Realistic wear records
+    const mockRecords = [
+      {
+        id: 1,
+        date: "2026-06-15",
+        wearDuration: 7.8,
+        comfort: 5,
+        note: "整晚佩戴良好，无中途醒来。早起口腔无干燥感，呼吸顺畅。"
+      },
+      {
+        id: 2,
+        date: "2026-06-14",
+        wearDuration: 8.2,
+        comfort: 4,
+        note: "昨晚入睡较快，佩戴稳定，早起下颌有轻微酸胀，数分钟后消失。"
+      },
+      {
+        id: 3,
+        date: "2026-06-13",
+        wearDuration: 5.5,
+        comfort: 3,
+        note: "下半夜觉得异物感有点强，半醒状态下把设备取下了。"
+      },
+      {
+        id: 4,
+        date: "2026-06-12",
+        wearDuration: 0,
+        comfort: 1,
+        note: "出差忘带清洁液和收纳盒，昨晚未佩戴。"
+      },
+      {
+        id: 5,
+        date: "2026-06-11",
+        wearDuration: 7.2,
+        comfort: 4,
+        note: "配合呼吸贴纸使用，打鼾声较前日明显减弱，血氧维持良好。"
+      },
+      {
+        id: 6,
+        date: "2026-06-10",
+        wearDuration: 3.5,
+        comfort: 2,
+        note: "感冒鼻塞，用口呼吸较难受，佩戴半途摘除。"
+      }
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const loadingWrap = document.getElementById("loading-wrap");
+      const wearingList = document.getElementById("wearing-list");
+      const emptyState = document.getElementById("empty-state");
+
+      setTimeout(() => {
+        loadingWrap.style.display = "none";
+
+        if (mockRecords && mockRecords.length > 0) {
+          wearingList.style.display = "block";
+          wearingList.innerHTML = mockRecords.map(rec => {
+            const hasWear = rec.wearDuration > 0;
+            let barColor = "#EF4444";
+            if (rec.wearDuration >= 6) {
+              barColor = "#1A9D5C";
+            } else if (rec.wearDuration >= 4) {
+              barColor = "#F59E0B";
+            }
+
+            const widthPercent = Math.min((rec.wearDuration / 8) * 100, 100);
+            const comfortText = comfortLevels[rec.comfort] || "一般";
+
+            return `
+              <div class="data-card data-v-0ef6c91e" data-id="${rec.id}">
+                <div class="data-header data-v-0ef6c91e">
+                  <span class="data-date data-v-0ef6c91e">${rec.date}</span>
+                  <div class="data-tags data-v-0ef6c91e">
+                    ${hasWear 
+                      ? `<span class="tag duration data-v-0ef6c91e">${rec.wearDuration}h</span>` 
+                      : `<span class="tag skip data-v-0ef6c91e">未佩戴</span>`}
+                    ${hasWear 
+                      ? `<span class="tag comfort data-v-0ef6c91e">舒适 ${comfortText}</span>` 
+                      : ''}
+                  </div>
+                </div>
+                ${hasWear ? `
+                  <div class="data-bar data-v-0ef6c91e">
+                    <div class="bar-fill data-v-0ef6c91e" style="width: ${widthPercent}%; background: ${barColor};"></div>
+                  </div>
+                ` : ''}
+                ${rec.note ? `<span class="data-note data-v-0ef6c91e">${rec.note}</span>` : ''}
+              </div>
+            `;
+          }).join("");
+        } else {
+          emptyState.style.display = "block";
+        }
+      }, 500);
+    });
+  </script>
+</body>
+</html>

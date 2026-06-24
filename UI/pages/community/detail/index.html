@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>帖子详情</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .post-avatar, .comment-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #fff;
+      font-size: 16px;
+      margin-right: 12px;
+    }
+    .comment-avatar {
+      width: 32px;
+      height: 32px;
+      font-size: 13px;
+    }
+    .post-author-row {
+      display: flex;
+      align-items: center;
+    }
+    .post-role {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+      font-weight: 500;
+    }
+    .role--patient {
+      color: #1A9D5C;
+      background: #E6F7ED;
+    }
+    .role--doctor {
+      color: #3B6BF5;
+      background: #EEF4FF;
+    }
+    .role--expert {
+      color: #8B5CF6;
+      background: #F5F3FF;
+    }
+    .post-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .post-tag {
+      font-size: 12px;
+      color: #6b7280;
+      background: #f3f4f6;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .liked {
+      color: #ef4444 !important;
+    }
+    .page-content {
+      padding-bottom: 70px;
+    }
+    .comment-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: #fff;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      z-index: 100;
+    }
+    .comment-input {
+      flex: 1;
+      height: 36px;
+      background: #f3f4f6;
+      border-radius: 18px;
+      border: none;
+      padding: 0 16px;
+      font-size: 14px;
+      outline: none;
+    }
+    .comment-send {
+      margin-left: 12px;
+      color: #3b6bf5;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .comment-send.disabled {
+      color: #9ca3af;
+      cursor: default;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-community-detail-index">
+  <div class="phone-screen page-pages-community-detail-index">
+    <div class="page data-v-d95e15f4">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">帖子详情</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-d95e15f4">
+        <!-- Post Main Card -->
+        <div id="post-card-container" class="post-card data-v-d95e15f4">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Comments Area -->
+        <div class="comment-section data-v-d95e15f4">
+          <span id="comment-section-title" class="comment-title data-v-d95e15f4">评论 (0)</span>
+          <div id="comment-list" class="comment-list data-v-d95e15f4">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Comment Entry Bar -->
+      <div class="comment-bar data-v-d95e15f4">
+        <input
+          id="comment-input"
+          class="comment-input data-v-d95e15f4"
+          placeholder="写评论..."
+          oninput="handleInput(event)"
+          onkeydown="handleKeydown(event)"
+        />
+        <div
+          id="comment-send"
+          class="comment-send data-v-d95e15f4 disabled"
+          onclick="submitComment()"
+        >
+          发送
+        </div>
+      </div>
+      <div class="safe-bottom data-v-d95e15f4"></div>
+    </div>
+  </div>
+
+  <script>
+    // Raw Mock Post Data
+    const postsData = [
+      {
+        id: "p-001",
+        author: "张**",
+        role: "patient",
+        roleLabel: "鼾症患者",
+        avatarBg: "#1A9D5C",
+        title: "佩戴阻鼾器第7天，说话感觉大舌头，正常吗？",
+        content: "刚开始戴HJ-MAD-03，下颌前移量调到4mm，前三天早上摘下来牙齿酸胀，今天是第七天，酸胀感好多了，但是说话感觉有点大舌头，发音不太清楚。问了客服说要适应1-2周，大家有类似情况吗？\n\n另外想问一下，晚上睡觉有时会不自觉把阻鼾器吐出来，有什么好办法吗？",
+        tags: ["适应期", "初戴体验"],
+        likes: 23,
+        comments: 3,
+        isLiked: false,
+        createdAt: "2026-06-03T10:30:00Z"
+      },
+      {
+        id: "p-002",
+        author: "王芳医生",
+        role: "doctor",
+        roleLabel: "主治医师",
+        avatarBg: "#3B6BF5",
+        title: "【科普】如何判断自己是否需要佩戴阻鼾器？",
+        content: "很多人觉得打鼾是\"睡得香\"的表现，其实不然。如果出现以下情况，建议尽早就医评估：\n\n1. 夜间打鼾且伴有憋气/呼吸暂停\n2. 白天嗜睡、注意力不集中\n3. 晨起头痛、口干\n4. 家人反映你睡觉时有呼吸停顿\n\nESS嗜睡量表可作为初步筛查工具，得分>10分建议尽快做睡眠监测。早发现早干预，OSA是可防可治的。",
+        tags: ["科普", "就医指南"],
+        likes: 156,
+        comments: 2,
+        isLiked: true,
+        createdAt: "2026-06-02T14:00:00Z"
+      },
+      {
+        id: "p-003",
+        author: "李**",
+        role: "patient",
+        roleLabel: "鼾症患者",
+        avatarBg: "#1A9D5C",
+        title: "分享：坚持佩戴3个月，AHI从32降到8！",
+        content: "今年2月确诊中重度OSAS，AHI=32。医生建议佩戴阻鼾器，一开始很抗拒，觉得戴着睡不舒服。但是坚持下来，现在3个月了，昨天复查AHI降到了8！分享一下我的适应经验：\n\n1. 前2周先从午睡开始戴，让口腔适应\n2. 睡前用温水泡一下阻鼾器，戴起来更舒服\n3. 每天清洁很重要，不然有异味影响佩戴意愿\n4. 设置手机闹钟提醒佩戴，养成习惯\n\n大家加油，坚持就是胜利！",
+        tags: ["治疗分享", "AHI改善"],
+        likes: 89,
+        comments: 1,
+        isLiked: false,
+        createdAt: "2026-06-01T09:15:00Z"
+      },
+      {
+        id: "p-004",
+        author: "陈技师",
+        role: "expert",
+        roleLabel: "睡眠技师",
+        avatarBg: "#8B5CF6",
+        title: "阻鼾器清洁保养指南（官方版）",
+        content: "正确的清洁保养可以延长阻鼾器使用寿命，保持口腔卫生。\n\n步骤：\n1. 每次摘下后用清水冲洗\n2. 每周用清洁片浸泡1次，深度杀菌\n3. 不要用热水冲洗（超过60度会导致变形）\n4. 存放时放在透气盒内，避免密封潮湿环境\n5. 每月检查一次有无裂纹或磨损\n\n常见误区：\n× 用牙膏刷洗（会磨损表面）\n× 用酒精消毒（会腐蚀材质）\n× 长期不清洁（滋生细菌导致口臭）",
+        tags: ["保养", "官方指南"],
+        likes: 203,
+        comments: 1,
+        isLiked: false,
+        createdAt: "2026-05-30T16:00:00Z"
+      }
+    ];
+
+    const commentsData = {
+      "p-001": [
+        {
+          id: "c-001",
+          author: "王芳医生",
+          avatarBg: "#3b6bf5",
+          content: "这是正常的适应期反应。发音不清一般在7-14天内缓解，建议：1. 白天可以刻意多朗读练习适应；2. 如果2周后仍明显，可以复查调整前移量。睡觉吐出来通常是初次佩戴不适应，可以尝试先午睡时佩戴适应。",
+          likes: 45,
+          isLiked: false,
+          createdAt: "2026-06-03T11:15:00Z",
+          replies: [
+            {
+              id: "r-001",
+              author: "张**",
+              content: "谢谢王医生！那我再多适应几天看看。",
+              createdAt: "2026-06-03T11:30:00Z"
+            }
+          ]
+        },
+        {
+          id: "c-002",
+          author: "李**",
+          avatarBg: "#1a9d5c",
+          content: "我刚开始也是！大概第10天就完全好了，现在戴了三个月完全没感觉。坚持住！",
+          likes: 12,
+          isLiked: true,
+          createdAt: "2026-06-03T12:00:00Z",
+          replies: []
+        },
+        {
+          id: "c-003",
+          author: "陈技师",
+          avatarBg: "#8b5cf6",
+          content: "关于睡觉吐出来的问题：可以先从午睡开始适应，每次佩戴时间逐日增加。如果持续超过2周仍有吐出情况，建议回店复查咬合情况。",
+          likes: 18,
+          isLiked: false,
+          createdAt: "2026-06-03T14:20:00Z",
+          replies: []
+        }
+      ],
+      "p-002": [
+        {
+          id: "c-101",
+          author: "赵**",
+          avatarBg: "#1a9d5c",
+          content: "王医生讲得很清楚！我老公就是打鼾严重，我经常被吵醒。已经让他做ESS量表了，得分12分，打算这周末去看医生。",
+          likes: 28,
+          isLiked: false,
+          createdAt: "2026-06-02T16:30:00Z",
+          replies: []
+        },
+        {
+          id: "c-102",
+          author: "钱医生",
+          avatarBg: "#3b6bf5",
+          content: "补充一点：如果白天经常感到疲劳、注意力下降，即使ESS分数不高也建议做一次多导睡眠监测。有些患者主观感受不准。",
+          likes: 35,
+          isLiked: false,
+          createdAt: "2026-06-02T18:00:00Z",
+          replies: []
+        }
+      ],
+      "p-003": [
+        {
+          id: "c-201",
+          author: "王**",
+          avatarBg: "#1a9d5c",
+          content: "太励志了！我刚开始戴一周，酸胀感还有点明显，看到你的分享更有信心了！",
+          likes: 15,
+          isLiked: false,
+          createdAt: "2026-06-01T11:00:00Z",
+          replies: []
+        }
+      ],
+      "p-004": [
+        {
+          id: "c-301",
+          author: "刘**",
+          avatarBg: "#1a9d5c",
+          content: "用了三个月才知道不能用牙膏洗...之前一直用牙膏，难怪感觉表面有点粗糙了。谢谢技师提醒！",
+          likes: 42,
+          isLiked: false,
+          createdAt: "2026-05-31T09:00:00Z",
+          replies: []
+        }
+      ]
+    };
+
+    // Load active post details
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get('id') || 'p-001';
+
+    // Get from local storage first to keep interactive state
+    let post = null;
+    try {
+      const storedPosts = localStorage.getItem('hj_community_posts');
+      if (storedPosts) {
+        const parsed = JSON.parse(storedPosts);
+        post = parsed.find(p => p.id === postId);
+      }
+    } catch (e) {}
+
+    if (!post) {
+      post = postsData.find(p => p.id === postId) || postsData[0];
+    }
+
+    // Set up comments list (keep interactive state in memory/localStorage)
+    let comments = [];
+    const storageCommentKey = `hj_comments_${postId}`;
+    try {
+      const storedComments = localStorage.getItem(storageCommentKey);
+      if (storedComments) {
+        comments = JSON.parse(storedComments);
+      }
+    } catch (e) {}
+
+    if (comments.length === 0) {
+      comments = commentsData[postId] || [];
+    }
+
+    function formatTime(createdAtStr) {
+      const now = new Date("2026-06-16T20:11:00Z");
+      const postTime = new Date(createdAtStr);
+      const diffMins = (now.getTime() - postTime.getTime()) / 1000 / 60;
+      if (diffMins < 60) {
+        return `${Math.max(1, Math.round(diffMins))}分钟前`;
+      }
+      const diffHours = diffMins / 60;
+      if (diffHours < 24) {
+        return `${Math.round(diffHours)}小时前`;
+      }
+      return `${Math.round(diffHours / 24)}天前`;
+    }
+
+    function togglePostLike() {
+      post.isLiked = !post.isLiked;
+      post.likes += post.isLiked ? 1 : -1;
+      
+      // Update global/local storage
+      try {
+        let storedPosts = localStorage.getItem('hj_community_posts');
+        let parsed = storedPosts ? JSON.parse(storedPosts) : [];
+        const idx = parsed.findIndex(p => p.id === postId);
+        if (idx !== -1) {
+          parsed[idx] = post;
+        } else {
+          parsed.push(post);
+        }
+        localStorage.setItem('hj_community_posts', JSON.stringify(parsed));
+      } catch (e) {}
+
+      renderPostDetail();
+    }
+
+    function toggleCommentLike(commentId) {
+      const comment = comments.find(c => c.id === commentId);
+      if (comment) {
+        comment.isLiked = !comment.isLiked;
+        comment.likes += comment.isLiked ? 1 : -1;
+        localStorage.setItem(storageCommentKey, JSON.stringify(comments));
+        renderComments();
+      }
+    }
+
+    function handleInput(e) {
+      const sendBtn = document.getElementById('comment-send');
+      if (e.target.value.trim().length > 0) {
+        sendBtn.classList.remove('disabled');
+      } else {
+        sendBtn.classList.add('disabled');
+      }
+    }
+
+    function handleKeydown(e) {
+      if (e.key === 'Enter') {
+        submitComment();
+      }
+    }
+
+    function submitComment() {
+      const input = document.getElementById('comment-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const newComment = {
+        id: 'c_' + Date.now(),
+        author: '我 (黄金会员)',
+        avatarBg: '#FF9900',
+        content: text,
+        likes: 0,
+        isLiked: false,
+        createdAt: new Date().toISOString(),
+        replies: []
+      };
+
+      comments.push(newComment);
+      localStorage.setItem(storageCommentKey, JSON.stringify(comments));
+
+      // Update post comment count
+      post.comments = comments.length;
+      try {
+        let storedPosts = localStorage.getItem('hj_community_posts');
+        let parsed = storedPosts ? JSON.parse(storedPosts) : [];
+        const idx = parsed.findIndex(p => p.id === postId);
+        if (idx !== -1) {
+          parsed[idx] = post;
+        } else {
+          parsed.push(post);
+        }
+        localStorage.setItem('hj_community_posts', JSON.stringify(parsed));
+      } catch (e) {}
+
+      input.value = '';
+      document.getElementById('comment-send').classList.add('disabled');
+      
+      renderPostDetail();
+      renderComments();
+    }
+
+    function renderPostDetail() {
+      const container = document.getElementById('post-card-container');
+      
+      let tagsHTML = '';
+      if (post.tags && post.tags.length > 0) {
+        tagsHTML = `<div class="post-tags data-v-d95e15f4">` +
+          post.tags.map(t => `<span class="post-tag data-v-d95e15f4">${t}</span>`).join('') +
+          `</div>`;
+      }
+
+      container.innerHTML = `
+        <div class="post-header data-v-d95e15f4">
+          <div class="post-avatar data-v-d95e15f4" style="background: ${post.avatarBg || '#1A9D5C'}">
+            ${post.author ? post.author[0] : '匿'}
+          </div>
+          <div class="post-author-info data-v-d95e15f4">
+            <div class="post-author-row data-v-d95e15f4">
+              <span class="post-author data-v-d95e15f4">${post.author}</span>
+              <span class="post-role data-v-d95e15f4 role--${post.role}">${post.roleLabel}</span>
+            </div>
+            <span class="post-time data-v-d95e15f4">${formatTime(post.createdAt)}</span>
+          </div>
+        </div>
+        <span class="post-title data-v-d95e15f4">${post.title || ''}</span>
+        <span class="post-content data-v-d95e15f4" style="white-space: pre-wrap; margin-top: 12px; font-size: 15px; line-height: 1.6; color: #1f2937; display: block;">${post.content}</span>
+        ${tagsHTML}
+        <div class="post-actions data-v-d95e15f4" style="margin-top: 16px; border-top: 1px solid #f3f4f6; padding-top: 12px; justify-content: space-around;">
+          <div class="action-item data-v-d95e15f4" onclick="togglePostLike()">
+            <span class="action-icon data-v-d95e15f4 ${post.isLiked ? 'liked' : ''}">${post.isLiked ? '❤️' : '🤍'}</span>
+            <span class="action-count data-v-d95e15f4">${post.likes}</span>
+          </div>
+          <div class="action-item data-v-d95e15f4">
+            <span class="action-icon data-v-d95e15f4">💬</span>
+            <span class="action-count data-v-d95e15f4">${post.comments}</span>
+          </div>
+          <div class="action-item data-v-d95e15f4">
+            <span class="action-icon data-v-d95e15f4">↗️</span>
+            <span class="action-count data-v-d95e15f4">分享</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderComments() {
+      document.getElementById('comment-section-title').textContent = `评论 (${comments.length})`;
+      const listContainer = document.getElementById('comment-list');
+      listContainer.innerHTML = '';
+
+      if (comments.length === 0) {
+        listContainer.innerHTML = `<span style="display: block; text-align: center; color: #9ca3af; padding: 24px 0; font-size: 13px;">暂无评论，来抢沙发吧！</span>`;
+        return;
+      }
+
+      comments.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'comment-item data-v-d95e15f4';
+
+        let repliesHTML = '';
+        if (c.replies && c.replies.length > 0) {
+          repliesHTML = `<div class="reply-list data-v-d95e15f4">` +
+            c.replies.map(r => `
+              <div class="reply-item data-v-d95e15f4">
+                <span class="reply-author data-v-d95e15f4">${r.author}：</span>
+                <span class="reply-content data-v-d95e15f4">${r.content}</span>
+              </div>
+            `).join('') +
+            `</div>`;
+        }
+
+        item.innerHTML = `
+          <div class="comment-header data-v-d95e15f4">
+            <div class="comment-avatar data-v-d95e15f4" style="background: ${c.avatarBg || '#6b7280'}">
+              ${c.author ? c.author[0] : '匿'}
+            </div>
+            <div class="comment-info data-v-d95e15f4">
+              <span class="comment-author data-v-d95e15f4">${c.author}</span>
+              <span class="comment-time data-v-d95e15f4">${formatTime(c.createdAt)}</span>
+            </div>
+          </div>
+          <span class="comment-content data-v-d95e15f4" style="margin-left: 44px; display: block; font-size: 14px; color: #374151; line-height: 1.5; margin-bottom: 8px;">${c.content}</span>
+          ${repliesHTML}
+          <div class="comment-actions data-v-d95e15f4" style="margin-left: 44px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #9ca3af; margin-top: 6px;">
+            <span class="data-v-d95e15f4 ${c.isLiked ? 'liked' : ''}" onclick="toggleCommentLike('${c.id}')" style="cursor: pointer;">
+              ${c.isLiked ? '❤️' : '🤍'} ${c.likes}
+            </span>
+            <span class="data-v-d95e15f4" onclick="document.getElementById('comment-input').focus(); document.getElementById('comment-input').placeholder='回复 ${c.author}...';" style="cursor: pointer;">回复</span>
+          </div>
+        `;
+        listContainer.appendChild(item);
+      });
+    }
+
+    // Initialize
+    renderPostDetail();
+    renderComments();
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
-"use strict";
 const e = require("../../common/vendor.js"),
-  t = require("../../stores/index.js");
+  t = require("../../stores/index.js"),
+  api = require("../../api/index.js");
 Math || (s + o)();
 const s = () => "../../components/base/hj-navbar.js",
   o = () => "../../components/business/hj-store-card.js",
@@ -9,13 +9,30 @@ const s = () => "../../components/base/hj-navbar.js",
     setup(s) {
       const o = t.useStoreStore(),
         n = t.useAppointmentStore(),
-        r = e.ref(!0);
+        docStore = t.useDoctorStore(),
+        r = e.ref(!0),
+        doctorId = e.ref(""),
+        storesWithSchedules = e.ref([]);
       function a(t) {
         (n.selectStore(t),
-          e.index.navigateTo({
-            url: `/pages/appointment/doctor-detail?storeId=${t.id}`,
-          }));
+          doctorId.value
+            ? e.index.navigateTo({
+                url: `/pages/appointment/time-select?doctorId=${doctorId.value}&storeId=${t.id}`,
+              })
+            : e.index.navigateTo({
+                url: `/pages/appointment/doctor-list?storeId=${t.id}`,
+              }));
       }
+      const filteredStores = e.computed(() => {
+        if (doctorId.value) {
+          const doc = docStore.getDoctorById(doctorId.value);
+          if (doc && doc.storeIds) {
+            return o.stores.filter(s => doc.storeIds.some(id => t.matchStoreId(id, s.id)) && storesWithSchedules.value.some(id => t.matchStoreId(id, s.id)));
+          }
+          return [];
+        }
+        return o.stores;
+      });
       return (
         e.onShow(async () => {
           const token = e.index.getStorageSync("access_token");
@@ -30,12 +47,54 @@ const s = () => "../../components/base/hj-navbar.js",
             e.index.navigateTo({ url: "/pages/auth/login" });
             return;
           }
-          (0 === o.stores.length && (await o.fetchStores()), (r.value = !1));
+          const pages = getCurrentPages();
+          const curPage = pages[pages.length - 1] || {};
+          const options = curPage.options || (curPage.$page && curPage.$page.options) || {};
+          const targetDocId = options.doctorId || options.doctorid || "";
+          if (targetDocId) {
+            doctorId.value = targetDocId;
+          }
+          if (0 === docStore.doctors.length) {
+            await docStore.fetchDoctors();
+          }
+          if (0 === o.stores.length) {
+            await o.fetchStores();
+          }
+
+          if (doctorId.value) {
+            const doc = docStore.getDoctorById(doctorId.value);
+            if (doc && doc.storeIds) {
+              const today = new Date();
+              const year = today.getFullYear();
+              const month = String(today.getMonth() + 1).padStart(2, "0");
+              const day = String(today.getDate()).padStart(2, "0");
+              const todayStr = `${year}-${month}-${day}`;
+
+              const validStores = [];
+              await Promise.all(
+                doc.storeIds.map(async (storeId) => {
+                  try {
+                    const res = await api.getScheduleDates({ doctorId: doctorId.value, storeId });
+                    const dates = res.data || [];
+                    const hasFuture = dates.some(d => d.slice(0, 10) >= todayStr);
+                    if (hasFuture) {
+                      validStores.push(String(storeId));
+                    }
+                  } catch (err) {
+                    console.error("[StoreSelect] Load schedules error:", err);
+                  }
+                })
+              );
+              storesWithSchedules.value = validStores;
+            }
+          }
+
+          (r.value = !1);
         }),
         (t, s) => ({
           a: e.p({ title: "选择门店", "show-back": !0 }),
-          b: e.t(e.unref(o).stores.length),
-          c: e.f(e.unref(o).stores, (t, s, o) => ({
+          b: e.t(filteredStores.value.length),
+          c: e.f(filteredStores.value, (t, s, o) => ({
             a: t.id,
             b: e.o(a, t.id),
             c: "c4ad3ae9-1-" + o,

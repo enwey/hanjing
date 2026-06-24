@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人信息</title>
+  <link rel="stylesheet" href="../../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+
+    /* Toast popup styles */
+    .toast-overlay {
+      position: fixed;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      z-index: 10000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .toast-overlay.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-settings-personal-info-index">
+  <div class="phone-screen page-pages-profile-settings-personal-info-index">
+    <div class="page data-v-acab1652">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">个人信息</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-acab1652" style="padding: 16px;">
+        <!-- Loading state -->
+        <div id="loading-spinner" class="loading-wrap data-v-acab1652" style="text-align: center; padding: 60px 0;">
+          <span class="data-v-acab1652" style="font-size: 14px; color: #9ca3af;">加载中...</span>
+        </div>
+
+        <!-- Form Card -->
+        <div id="form-container" style="display: none;">
+          <div class="form-card data-v-acab1652">
+            
+            <div class="form-row data-v-acab1652" onclick="changeAvatar()" style="cursor: pointer;">
+              <span class="form-label data-v-acab1652">头像</span>
+              <div class="avatar data-v-acab1652">
+                <span class="data-v-acab1652" id="avatar-char" style="color: #fff; font-size: 20px; font-weight: 700;">张</span>
+              </div>
+            </div>
+
+            <div class="form-row data-v-acab1652">
+              <span class="form-label data-v-acab1652">昵称</span>
+              <!-- Edit input -->
+              <input id="nickname-input" class="form-value-input data-v-acab1652" value="张先生" style="display: none;" />
+              <!-- View span -->
+              <span id="nickname-view" class="form-value data-v-acab1652">张先生</span>
+            </div>
+
+            <div class="form-row data-v-acab1652">
+              <span class="form-label data-v-acab1652">手机号</span>
+              <span class="form-value disabled data-v-acab1652" id="phone-display">13800008888</span>
+            </div>
+
+            <div class="form-row data-v-acab1652">
+              <span class="form-label data-v-acab1652">性别</span>
+              <!-- View span -->
+              <span id="gender-view" class="form-value data-v-acab1652">男</span>
+              <!-- Edit chips -->
+              <div id="gender-chips" class="form-chips data-v-acab1652" style="display: none;">
+                <div id="chip-male" class="chip data-v-acab1652 active" onclick="selectGender('男')">
+                  <text class="data-v-acab1652" style="font-size: 13px;">男</text>
+                </div>
+                <div id="chip-female" class="chip data-v-acab1652" onclick="selectGender('女')">
+                  <text class="data-v-acab1652" style="font-size: 13px;">女</text>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row data-v-acab1652">
+              <span class="form-label data-v-acab1652">生日</span>
+              <!-- Edit input -->
+              <input id="birthday-input" class="form-value-input data-v-acab1652" placeholder="YYYY-MM-DD" value="1990-08-15" style="display: none;" type="date" />
+              <!-- View span -->
+              <span id="birthday-view" class="form-value data-v-acab1652">1990-08-15</span>
+            </div>
+
+          </div>
+
+          <!-- Actions Group -->
+          <div class="actions data-v-acab1652">
+            <!-- Edit Button -->
+            <div id="btn-edit-mode" class="btn-edit data-v-acab1652" onclick="enterEditMode()" style="cursor: pointer;">
+              <text class="data-v-acab1652">编辑资料</text>
+            </div>
+            
+            <!-- Save/Cancel Buttons -->
+            <div id="edit-actions" style="display: none;">
+              <div class="btn-save data-v-acab1652" onclick="saveProfile()" style="cursor: pointer; margin-bottom: 12px;">
+                <text class="data-v-acab1652">保存</text>
+              </div>
+              <div class="btn-cancel data-v-acab1652" onclick="cancelEdit()" style="cursor: pointer;">
+                <text class="data-v-acab1652" style="color: #6b7280;">取消</text>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="safe-bottom data-v-acab1652" style="height: 32px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast overlay -->
+  <div id="toast" class="toast-overlay">提示内容</div>
+
+  <script>
+    let isEditMode = false;
+    let selectedGenderVal = '男';
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.classList.add('show');
+      setTimeout(() => {
+        t.classList.remove('show');
+      }, 2000);
+    }
+
+    function changeAvatar() {
+      showToast('头像更改功能将在正式版中开放');
+    }
+
+    function selectGender(gender) {
+      selectedGenderVal = gender;
+      const maleChip = document.getElementById('chip-male');
+      const femaleChip = document.getElementById('chip-female');
+
+      if (gender === '男') {
+        maleChip.classList.add('active');
+        maleChip.querySelector('span').style.color = '#fff';
+        femaleChip.classList.remove('active');
+        femaleChip.querySelector('span').style.color = '#6b7280';
+      } else {
+        femaleChip.classList.add('active');
+        femaleChip.querySelector('span').style.color = '#fff';
+        maleChip.classList.remove('active');
+        maleChip.querySelector('span').style.color = '#6b7280';
+      }
+    }
+
+    function enterEditMode() {
+      isEditMode = true;
+      
+      // Toggle visibility
+      document.getElementById('nickname-view').style.display = 'none';
+      document.getElementById('nickname-input').style.display = 'block';
+
+      document.getElementById('gender-view').style.display = 'none';
+      document.getElementById('gender-chips').style.display = 'flex';
+
+      document.getElementById('birthday-view').style.display = 'none';
+      document.getElementById('birthday-input').style.display = 'block';
+
+      document.getElementById('btn-edit-mode').style.display = 'none';
+      document.getElementById('edit-actions').style.display = 'block';
+      
+      // Pre-select gender chip
+      selectGender(selectedGenderVal);
+    }
+
+    function cancelEdit() {
+      isEditMode = false;
+
+      // Restore values from views
+      document.getElementById('nickname-input').value = document.getElementById('nickname-view').innerText;
+      document.getElementById('birthday-input').value = document.getElementById('birthday-view').innerText;
+
+      // Toggle visibility back
+      document.getElementById('nickname-view').style.display = 'block';
+      document.getElementById('nickname-input').style.display = 'none';
+
+      document.getElementById('gender-view').style.display = 'block';
+      document.getElementById('gender-chips').style.display = 'none';
+
+      document.getElementById('birthday-view').style.display = 'block';
+      document.getElementById('birthday-input').style.display = 'none';
+
+      document.getElementById('btn-edit-mode').style.display = 'block';
+      document.getElementById('edit-actions').style.display = 'none';
+    }
+
+    function saveProfile() {
+      const nickname = document.getElementById('nickname-input').value.trim();
+      const birthday = document.getElementById('birthday-input').value;
+
+      if (!nickname) {
+        showToast('昵称不能为空');
+        return;
+      }
+
+      // Update values
+      document.getElementById('nickname-view').innerText = nickname;
+      document.getElementById('gender-view').innerText = selectedGenderVal;
+      document.getElementById('birthday-view').innerText = birthday || '未设置';
+      
+      // Update avatar character
+      if (nickname.length > 0) {
+        document.getElementById('avatar-char').innerText = nickname.charAt(0);
+      }
+
+      // Save to localStorage
+      localStorage.setItem('hj_user_nickname', nickname);
+      localStorage.setItem('hj_user_gender', selectedGenderVal);
+      localStorage.setItem('hj_user_birthday', birthday);
+
+      showToast('保存成功');
+      
+      // Toggle visibility back
+      isEditMode = false;
+      document.getElementById('nickname-view').style.display = 'block';
+      document.getElementById('nickname-input').style.display = 'none';
+
+      document.getElementById('gender-view').style.display = 'block';
+      document.getElementById('gender-chips').style.display = 'none';
+
+      document.getElementById('birthday-view').style.display = 'block';
+      document.getElementById('birthday-input').style.display = 'none';
+
+      document.getElementById('btn-edit-mode').style.display = 'block';
+      document.getElementById('edit-actions').style.display = 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load from localStorage or defaults
+      const nickname = localStorage.getItem('hj_user_nickname') || '张先生';
+      selectedGenderVal = localStorage.getItem('hj_user_gender') || '男';
+      const birthday = localStorage.getItem('hj_user_birthday') || '1990-08-15';
+      const phone = localStorage.getItem('hj_login_phone') || '13800008888';
+
+      document.getElementById('nickname-view').innerText = nickname;
+      document.getElementById('nickname-input').value = nickname;
+      document.getElementById('avatar-char').innerText = nickname.charAt(0);
+      document.getElementById('phone-display').innerText = phone;
+      document.getElementById('gender-view').innerText = selectedGenderVal;
+      document.getElementById('birthday-view').innerText = birthday;
+      document.getElementById('birthday-input').value = birthday;
+
+      // Simulate loading fade
+      setTimeout(() => {
+        document.getElementById('loading-spinner').style.display = 'none';
+        document.getElementById('form-container').style.display = 'block';
+      }, 300);
+    });
+  </script>
+</body>
+</html>

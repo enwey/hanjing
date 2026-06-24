@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>预约挂号</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Hide scrollbar defaults inside simulated screen if needed */
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-appointment-index">
+  <div class="phone-screen page-pages-appointment-index">
+          <div class="page data-v-801bfeef"
+  ><!-- Start Component hj-navbar -->
+<!-- Start Component hj-navbar -->
+<div class="component-hj-navbar">
+  <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+    <div class="data-v-1529c78d" style="height: 48px;"></div>
+    <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px; justify-content: center;">
+      <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937; font-weight: 600; font-size: 17px; text-align: center; width: 100%;">预约挂号</div>
+    </div>
+  </div>
+  <div class="data-v-1529c78d" style="height: 88px;"></div>
+</div>
+<!-- End Component hj-navbar -->
+<div class="page-content data-v-801bfeef"
+    ><div class="booking-banner data-v-801bfeef"
+      ><div class="booking-banner-text data-v-801bfeef"
+        ><span class="booking-banner-title data-v-801bfeef">在线预约</span>
+        <span class="booking-banner-desc data-v-801bfeef"
+          >选择门店、医生和时段，轻松完成预约</span></div>
+      
+      <!-- Component hj-button -->
+      <div class="component-hj-button">
+        <button class="hj-button hj-button--primary hj-button--md data-v-f6f93744" onclick="window.parent.loadPage('pages/appointment/store-select')">
+          <span class="hj-button-text">立即预约</span>
+        </button>
+      </div>
+    </div>
+    <div class="tabs data-v-801bfeef"
+      ><div
+        id="tab-upcoming"
+        class="tab data-v-801bfeef tab--active"
+        onclick="switchTab('upcoming')"
+        ><span class="data-v-801bfeef">进行中</span></div
+      ><div
+        id="tab-history"
+        class="tab data-v-801bfeef"
+        onclick="switchTab('history')"
+        ><span class="data-v-801bfeef">历史记录</span></div
+      ></div>
+    
+    <!-- Upcoming Appointments List -->
+    <div id="list-upcoming" class="apt-list data-v-801bfeef"></div>
+    
+    <!-- History Appointments List -->
+    <div id="list-history" class="apt-list data-v-801bfeef" style="display: none;"></div>
+  </div>
+  <div class="safe-bottom data-v-801bfeef"></div>
+
+  <script>
+    const storeNames = {
+      'store-001': '鼾静健康·深圳旗舰中心',
+      'store-002': '鼾静健康·南山分中心',
+      'store-003': '鼾静健康·宝安分中心'
+    };
+    const doctorNames = {
+      'doc-001': '李明辉 (主任医师)',
+      'doc-002': '王芳 (副主任医师)',
+      'doc-003': '张伟 (副主任医师)'
+    };
+
+    function switchTab(type) {
+      const tabUp = document.getElementById('tab-upcoming');
+      const tabHist = document.getElementById('tab-history');
+      const listUp = document.getElementById('list-upcoming');
+      const listHist = document.getElementById('list-history');
+      
+      if (type === 'upcoming') {
+        tabUp.classList.add('tab--active');
+        tabHist.classList.remove('tab--active');
+        listUp.style.display = 'block';
+        listHist.style.display = 'none';
+      } else {
+        tabUp.classList.remove('tab--active');
+        tabHist.classList.add('tab--active');
+        listUp.style.display = 'none';
+        listHist.style.display = 'block';
+      }
+    }
+
+    function initAppointments() {
+      let aptList = JSON.parse(localStorage.getItem('hj_appointments'));
+      if (!aptList) {
+        // Initialize default mock records
+        aptList = [
+          {
+            id: 'apt-001',
+            appointmentNo: 'AP20260601001',
+            storeId: 'store-001',
+            doctorId: 'doc-001',
+            date: '2026-06-20',
+            timeSlot: '09:00-09:30',
+            type: '首次面诊',
+            symptom: '夜间打鼾严重，偶有呼吸暂停，白天嗜睡',
+            status: 'confirmed'
+          },
+          {
+            id: 'apt-002',
+            appointmentNo: 'AP20260528002',
+            storeId: 'store-001',
+            doctorId: 'doc-002',
+            date: '2026-05-30',
+            timeSlot: '14:30-15:00',
+            type: '佩戴复诊',
+            symptom: '阻鼾器佩戴2周后复诊，微调前移量',
+            status: 'completed'
+          }
+        ];
+        localStorage.setItem('hj_appointments', JSON.stringify(aptList));
+      }
+      return aptList;
+    }
+
+    function renderAppointments() {
+      const aptList = initAppointments();
+      const listUpcoming = document.getElementById('list-upcoming');
+      const listHistory = document.getElementById('list-history');
+      
+      let upcomingHtml = '';
+      let historyHtml = '';
+      
+      const upcomingApts = aptList.filter(a => a.status === 'confirmed');
+      const historyApts = aptList.filter(a => a.status === 'completed' || a.status === 'cancelled');
+      
+      if (upcomingApts.length === 0) {
+        upcomingHtml = `
+          <div style="text-align: center; padding: 60px 0; color: #9ca3af; font-size: 14px;">
+            暂无进行中的预约
+          </div>
+        `;
+      } else {
+        upcomingApts.forEach(apt => {
+          upcomingHtml += `
+            <div class="component-hj-appointment-item">
+              <div class="apt-item data-v-74fd48b7" onclick="window.parent.loadPage('pages/appointment/detail?id=${apt.id}')">
+                <div class="apt-header data-v-74fd48b7">
+                  <span class="apt-no data-v-74fd48b7">预约号：${apt.appointmentNo}</span>
+                  <div class="component-hj-tag">
+                    <span class="hj-tag data-v-822bb649" style="color: #3b6bf5; background-color: #eef4ff;">已确认</span>
+                  </div>
+                </div>
+                <div class="apt-body data-v-74fd48b7">
+                  <div class="apt-info-row data-v-74fd48b7">
+                    <span class="apt-label data-v-74fd48b7">🏥 门店</span>
+                    <span class="apt-value data-v-74fd48b7">${storeNames[apt.storeId] || apt.storeId}</span>
+                  </div>
+                  <div class="apt-info-row data-v-74fd48b7">
+                    <span class="apt-label data-v-74fd48b7">👨‍⚕️ 医生</span>
+                    <span class="apt-value data-v-74fd48b7">${doctorNames[apt.doctorId] || apt.doctorId}</span>
+                  </div>
+                  <div class="apt-info-row data-v-74fd48b7">
+                    <span class="apt-label data-v-74fd48b7">📅 时间</span>
+                    <span class="apt-value apt-value--bold data-v-74fd48b7">${apt.date} ${apt.timeSlot}</span>
+                  </div>
+                  <div class="apt-info-row data-v-74fd48b7">
+                    <span class="apt-label data-v-74fd48b7">📋 类型</span>
+                    <span class="apt-value data-v-74fd48b7">${apt.type}</span>
+                  </div>
+                  <div class="apt-info-row data-v-74fd48b7">
+                    <span class="apt-label data-v-74fd48b7">💬 主诉</span>
+                    <span class="apt-value apt-value--desc data-v-74fd48b7">${apt.symptom || '未填写描述'}</span>
+                  </div>
+                </div>
+                <div class="apt-actions data-v-74fd48b7">
+                  <button class="apt-btn apt-btn--ghost data-v-74fd48b7" onclick="event.stopPropagation(); window.parent.loadPage('pages/appointment/reschedule?id=${apt.id}&doctorId=${apt.doctorId}&storeId=${apt.storeId}')">改约</button>
+                  <button class="apt-btn apt-btn--ghost apt-btn--danger data-v-74fd48b7" onclick="event.stopPropagation(); cancelAppointment('${apt.id}')">取消预约</button>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      }
+      
+      if (historyApts.length === 0) {
+        historyHtml = `
+          <div style="text-align: center; padding: 60px 0; color: #9ca3af; font-size: 14px;">
+            暂无历史预约记录
+          </div>
+        `;
+      } else {
+        historyApts.forEach(apt => {
+          const isCancelled = apt.status === 'cancelled';
+          const tagColor = isCancelled ? '#ef4444' : '#6b7280';
+          const tagBg = isCancelled ? '#fef2f2' : '#f3f4f6';
+          const tagText = isCancelled ? '已取消' : '已完成';
+          
+          historyHtml += `
+            <div class="component-hj-appointment-item">
+              <div class="apt-item data-v-74fd48b7" onclick="window.parent.loadPage('pages/appointment/detail?id=${apt.id}')">
+                <div class="apt-header data-v-74fd48b7">
+                  <span class="apt-no data-v-74fd48b7">预约号：${apt.appointmentNo}</span>
+                  <div class="component-hj-tag">
+                    <span class="hj-tag data-v-822bb649" style="color: ${tagColor}; background-color: ${tagBg};">${tagText}</span>
+                  </div>
+                </div>
+                <div class="apt-body data-v-74fd48b7">
+                  <div class="apt-info-row data-v-74fd48b7">
+                    <span class="apt-label data-v-74fd48b7">🏥 门店</span>
+                    <span class="apt-value data-v-74fd48b7">${storeNames[apt.storeId] || apt.storeId}</span>
+                  </div>
+                  <div class="apt-info-row data-v-74fd48b7">
+                    <span class="apt-label data-v-74fd48b7">👨‍⚕️ 医生</span>
+                    <span class="apt-value data-v-74fd48b7">${doctorNames[apt.doctorId] || apt.doctorId}</span>
+                  </div>
+                  <div class="apt-info-row data-v-74fd48b7">
+                    <span class="apt-label data-v-74fd48b7">📅 时间</span>
+                    <span class="apt-value apt-value--bold data-v-74fd48b7">${apt.date} ${apt.timeSlot}</span>
+                  </div>
+                  <div class="apt-info-row data-v-74fd48b7">
+                    <span class="apt-label data-v-74fd48b7">📋 类型</span>
+                    <span class="apt-value data-v-74fd48b7">${apt.type}</span>
+                  </div>
+                  <div class="apt-info-row data-v-74fd48b7">
+                    <span class="apt-label data-v-74fd48b7">💬 主诉</span>
+                    <span class="apt-value apt-value--desc data-v-74fd48b7">${apt.symptom || '未填写描述'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      }
+      
+      listUpcoming.innerHTML = upcomingHtml;
+      listHistory.innerHTML = historyHtml;
+    }
+
+    function cancelAppointment(id) {
+      if (confirm('确定要取消该预约吗？')) {
+        const aptList = JSON.parse(localStorage.getItem('hj_appointments')) || [];
+        const apt = aptList.find(a => a.id === id);
+        if (apt) {
+          apt.status = 'cancelled';
+          localStorage.setItem('hj_appointments', JSON.stringify(aptList));
+          renderAppointments();
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderAppointments();
+    });
+  </script>
+</body>
+</html>

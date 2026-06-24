@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>医嘱建议</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .book-btn.data-v-3fe7702c {
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    .book-btn.data-v-3fe7702c:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-treatment-doctor-advice-index">
+  <div class="phone-screen page-pages-treatment-doctor-advice-index">
+    <div class="page data-v-3fe7702c">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">医嘱建议</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-3fe7702c">
+        <!-- Diagnosis Card -->
+        <div class="card data-v-3fe7702c">
+          <span class="card-title data-v-3fe7702c">诊断结果</span>
+          <span id="diagnosis-text" class="card-text data-v-3fe7702c">中度阻塞性睡眠呼吸暂停综合征 (OSAS)，夜间打鼾伴随呼吸暂停，AHI指数为22.5次/小时。</span>
+        </div>
+
+        <!-- Treatment Plan Card -->
+        <div class="card data-v-3fe7702c">
+          <span class="card-title data-v-3fe7702c">治疗方案</span>
+          <span id="plan-text" class="card-text data-v-3fe7702c">使用鼾静定制型下颌前移阻鼾器 (MAD) 进行夜间物理气道拓宽，初始设定移量为3.0mm，循序渐进微调至最佳止鼾位。</span>
+        </div>
+
+        <!-- Doctor Advice Card -->
+        <div class="card card--highlight data-v-3fe7702c">
+          <span class="card-title data-v-3fe7702c">医生建议</span>
+          <span id="advice-text" class="card-text data-v-3fe7702c">每晚佩戴不少于6小时，初期若有唾液分泌增多或咀嚼肌轻度发酸属于正常建立适应过程。若出现颞下颌关节持续刺痛或牙齿咬合异常请暂停使用，并及时约诊微调下颌移量。</span>
+        </div>
+
+        <!-- Care Tips Card -->
+        <div class="card data-v-3fe7702c">
+          <span class="card-title data-v-3fe7702c">佩戴注意事项</span>
+          <div class="tips-list data-v-3fe7702c">
+            <span class="tip data-v-3fe7702c">每晚佩戴不少于 6 小时</span>
+            <span class="tip data-v-3fe7702c">初期不适属正常反应，3-5天后逐渐适应</span>
+            <span class="tip data-v-3fe7702c">如出现明显颞下颌关节疼痛请及时联系医生</span>
+            <span class="tip data-v-3fe7702c">定期复诊调整，确保治疗效果</span>
+            <span class="tip data-v-3fe7702c">配合侧卧睡眠姿势效果更佳</span>
+          </div>
+        </div>
+
+        <!-- Follow-up Card -->
+        <div class="card card--followup data-v-3fe7702c">
+          <span class="card-title data-v-3fe7702c">下次随访</span>
+          <span id="followup-date" class="followup-date data-v-3fe7702c">2026-06-25 (待预约)</span>
+          <span class="followup-hint data-v-3fe7702c">请按时复诊，医生将评估近期佩戴数据与气道反应，微调下颌移量参数。</span>
+        </div>
+
+        <!-- Booking Button -->
+        <div class="btn-wrap data-v-3fe7702c">
+          <button class="book-btn data-v-3fe7702c" onclick="handleBookFollowup()">预约复诊</button>
+        </div>
+
+        <div class="safe-bottom data-v-3fe7702c"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Real medical details mock matching treatment records
+    const adviceData = {
+      diagnosis: "中度阻塞性睡眠呼吸暂停综合征 (OSAS)，睡眠监测显示伴有重度夜间打鼾及血氧饱和度阶段性下降（最低血氧82%）。",
+      treatmentPlan: "定制型下颌前移器 (MAD) 物理治疗。第一阶段初始前伸位定为3.0mm以适应咬合；第二阶段计划调整至4.0mm - 4.5mm，保持气道充沛开放。",
+      doctorAdvice: "请坚持每晚入睡前佩戴，记录次日晨起口干与下颌适应度；早起摘下后用清水洗净并置于阴凉干燥盒中。适应期前两周尽量侧卧，有助于提升止鼾效果。",
+      followupDate: "2026-06-25"
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // Simulate quick data fetch
+      setTimeout(() => {
+        document.getElementById("diagnosis-text").textContent = adviceData.diagnosis;
+        document.getElementById("plan-text").textContent = adviceData.treatmentPlan;
+        document.getElementById("advice-text").textContent = adviceData.doctorAdvice;
+        document.getElementById("followup-date").textContent = adviceData.followupDate ? `${adviceData.followupDate} (建议随访)` : "待医生安排";
+      }, 200);
+    });
+
+    function handleBookFollowup() {
+      if (window.parent && window.parent.handleGoToPage) {
+        window.parent.handleGoToPage('/pages/appointment/index');
+      } else {
+        window.location.href = '../../appointment/index.html';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -9,6 +9,7 @@
     "pages/auth/login",
     "pages/appointment/store-select",
     "pages/appointment/doctor-detail",
+    "pages/appointment/doctor-list",
     "pages/appointment/time-select",
     "pages/appointment/confirm",
     "pages/appointment/success",

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>在线客服</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .phone-screen {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .page {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    /* Set custom chat bubble display values since default template compile might be buggy */
+    .chat-area.data-v-72504f8b {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      -webkit-overflow-scrolling: touch;
+      display: block;
+      background: #f4f6f8;
+      box-sizing: border-box;
+      height: calc(100vh - 156px); /* Adjust to make space for navbar and input-bar */
+    }
+    .chat-list.data-v-72504f8b {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-bottom: 20px;
+    }
+    
+    /* Quick FAQ link lists */
+    .faq-list {
+      margin-top: 8px;
+      padding-left: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .faq-item {
+      color: #3b6bf5;
+      font-size: 13px;
+      text-decoration: underline;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+    .typing-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background: #6b7280;
+      border-radius: 50%;
+      animation: typingBounce 1s infinite alternate;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce {
+      from { transform: translateY(0); }
+      to { transform: translateY(-4px); }
+    }
+    
+    /* Ensure layouts align properly */
+    .chat-msg.data-v-72504f8b {
+      display: flex;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .chat-msg.assistant.data-v-72504f8b {
+      justify-content: flex-start;
+    }
+    .chat-msg.user.data-v-72504f8b {
+      justify-content: flex-end;
+    }
+    
+    .msg-bubble.data-v-72504f8b {
+      max-width: 80%;
+      border-radius: 12px;
+      padding: 10px 14px;
+      position: relative;
+      word-wrap: break-word;
+      word-break: break-all;
+    }
+    .msg-bubble.assistant.data-v-72504f8b {
+      background: #ffffff;
+      color: #1f2937;
+      border-top-left-radius: 2px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .msg-bubble.user.data-v-72504f8b {
+      background: #2563eb;
+      color: #ffffff;
+      border-top-right-radius: 2px;
+      box-shadow: 0 1px 2px rgba(37,99,235,0.1);
+    }
+    .msg-text.data-v-72504f8b {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .msg-time.data-v-72504f8b {
+      display: block;
+      font-size: 10px;
+      margin-top: 4px;
+      opacity: 0.6;
+    }
+    .msg-bubble.assistant .msg-time.data-v-72504f8b {
+      color: #9ca3af;
+    }
+    .msg-bubble.user .msg-time.data-v-72504f8b {
+      color: #dbeafe;
+      text-align: right;
+    }
+
+    .input-bar.data-v-72504f8b {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 68px;
+      background: #ffffff;
+      border-top: 1px solid #e5e7eb;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-sizing: border-box;
+      z-index: 100;
+    }
+    .chat-input.data-v-72504f8b {
+      flex: 1;
+      height: 38px;
+      border: 1px solid #d1d5db;
+      border-radius: 19px;
+      padding: 0 16px;
+      font-size: 14px;
+      outline: none;
+      background: #f9fafb;
+    }
+    .chat-input.data-v-72504f8b:focus {
+      border-color: #3b6bf5;
+      background: #ffffff;
+    }
+    .btn-send.data-v-72504f8b {
+      background: #2563eb;
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: 19px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 60px;
+      box-sizing: border-box;
+    }
+    .btn-send:active {
+      background: #1d4ed8;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-online-service-index">
+  <div class="phone-screen page-pages-profile-online-service-index">
+    <div class="page data-v-72504f8b">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">在线客服</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <!-- Chat viewport -->
+      <div class="chat-area data-v-72504f8b" id="chat-viewport">
+        <div class="chat-list data-v-72504f8b" id="chat-container">
+          
+          <!-- Welcome message -->
+          <div class="chat-msg assistant data-v-72504f8b">
+            <div class="msg-bubble assistant data-v-72504f8b">
+              <span class="msg-text data-v-72504f8b">
+                您好！我是韩镜智能助手，很高兴为您服务。请问有什么我可以帮您的？您也可以直接点击下方常见问题进行快捷查询：
+                <ul class="faq-list">
+                  <li class="faq-item" onclick="sendQuickQuestion('阻鼾器是如何工作的？')">1. 阻鼾器的工作原理是什么？</li>
+                  <li class="faq-item" onclick="sendQuickQuestion('佩戴初期有什么注意事项？')">2. 佩戴初期有什么注意事项？</li>
+                  <li class="faq-item" onclick="sendQuickQuestion('如何保养和清洗阻鼾器？')">3. 阻鼾器应该如何保养与清洗？</li>
+                </ul>
+              </span>
+              <span class="msg-time data-v-72504f8b" id="welcome-time">20:15</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Input Send Bar -->
+      <div class="input-bar data-v-72504f8b">
+        <input
+          id="message-input"
+          class="chat-input data-v-72504f8b"
+          placeholder="输入您的问题..."
+          onkeypress="handleKeyPress(event)"
+        />
+        <div class="btn-send data-v-72504f8b" onclick="sendMessage()">
+          <text class="data-v-72504f8b">发送</text>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const chatContainer = document.getElementById('chat-container');
+    const chatViewport = document.getElementById('chat-viewport');
+    const messageInput = document.getElementById('message-input');
+
+    // Simple FAQ answers directory
+    const faqAnswers = {
+      '阻鼾器是如何工作的？': '韩镜智能阻鼾器采用符合人体工程学的<b>下颌前导（Mandibular Advancement Device, MAD）原理</b>。在您睡眠时，它通过微调您的下颌位置，使其保持温和的轻微前伸，拉紧咽部的松弛软组织，从而扩张并保持气道通畅，使气流可以顺畅通过，从根本上阻断因气道塌陷摩擦而产生的鼾声。',
+      '佩戴初期有什么注意事项？': '1. <b>适应感</b>：佩戴初期（3-7天）部分用户可能会有口水增多、清晨下颌肌肉微酸、轻度咬合异样感，这属于正常的关节与肌肉适应过程，通常摘下阻鼾器15分钟内会自动消失。<br>2. <b>肌肉拉伸</b>：清晨摘镜后，可做1分钟的下颌开合与前后移动的简单放松活动。<br>3. <b>牙齿卫生</b>：戴镜前务必认真刷牙，保持口腔清洁，防止牙齿缝隙残留食物引起细菌滋生。',
+      '如何保养和清洗阻鼾器？': '1. <b>日常清洁</b>：每天清晨摘下阻鼾器后，请立即用凉水或温水冲洗（<b>禁止用开水或热水</b>，温水勿超过40℃，以免材料变形），配合软毛牙刷轻轻刷洗干净。<br>2. <b>存放晾干</b>：冲洗干净后，将阻鼾器甩干，放置在通风阴凉处的收纳盒中自然晾干，切勿置于阳光下曝晒。<br>3. <b>深度杀菌</b>：建议每周使用一次韩镜专用的假牙/牙套消毒泡腾片，浸泡15分钟，进行深层清洁和除味。'
+    };
+
+    function formatTime(date) {
+      const h = String(date.getHours()).padStart(2, '0');
+      const m = String(date.getMinutes()).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
+    // Initialize welcome timestamp
+    document.getElementById('welcome-time').innerText = formatTime(new Date());
+
+    function scrollToBottom() {
+      chatViewport.scrollTop = chatViewport.scrollHeight;
+    }
+
+    function appendMessage(text, isUser = false) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `chat-msg ${isUser ? 'user' : 'assistant'} data-v-72504f8b`;
+
+      const bubbleDiv = document.createElement('div');
+      bubbleDiv.className = `msg-bubble ${isUser ? 'user' : 'assistant'} data-v-72504f8b`;
+
+      const textSpan = document.createElement('span');
+      textSpan.className = 'msg-text data-v-72504f8b';
+      textSpan.innerHTML = text; // support html markup for answers
+
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'msg-time data-v-72504f8b';
+      timeSpan.innerText = formatTime(new Date());
+
+      bubbleDiv.appendChild(textSpan);
+      bubbleDiv.appendChild(timeSpan);
+      msgDiv.appendChild(bubbleDiv);
+      chatContainer.appendChild(msgDiv);
+      
+      scrollToBottom();
+    }
+
+    function appendTypingIndicator() {
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'chat-msg assistant data-v-72504f8b';
+      typingDiv.id = 'typing-indicator';
+
+      const bubbleDiv = document.createElement('div');
+      bubbleDiv.className = 'msg-bubble assistant data-v-72504f8b';
+
+      const typingContainer = document.createElement('div');
+      typingContainer.className = 'typing-indicator';
+      typingContainer.innerHTML = `
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      `;
+
+      bubbleDiv.appendChild(typingContainer);
+      typingDiv.appendChild(bubbleDiv);
+      chatContainer.appendChild(typingDiv);
+      
+      scrollToBottom();
+    }
+
+    function removeTypingIndicator() {
+      const el = document.getElementById('typing-indicator');
+      if (el) el.remove();
+    }
+
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    }
+
+    function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      appendMessage(text, true);
+      messageInput.value = '';
+
+      // Trigger automatic assistant response
+      appendTypingIndicator();
+
+      setTimeout(() => {
+        removeTypingIndicator();
+        
+        let answer = faqAnswers[text];
+        if (!answer) {
+          // Fallback keyword matches
+          if (text.includes('工作') || text.includes('原理') || text.includes('效果') || text.includes('有用')) {
+            answer = faqAnswers['阻鼾器是如何工作的？'];
+          } else if (text.includes('疼') || text.includes('酸') || text.includes('不舒服') || text.includes('流口水')) {
+            answer = faqAnswers['佩戴初期有什么注意事项？'];
+          } else if (text.includes('洗') || text.includes('刷') || text.includes('泡') || text.includes('清洁') || text.includes('干净')) {
+            answer = faqAnswers['如何保养和清洗阻鼾器？'];
+          } else {
+            answer = `感谢您的留言，我已经将您的提问：“${text}” 记录并提交给专业售后临床顾问，他们将很快通过该聊天窗口或您预留的手机号给您回复。如需紧急咨询，可在工作时间内直接致电官方客服：<b>400-888-9999</b>。`;
+          }
+        }
+        appendMessage(answer, false);
+      }, 700);
+    }
+
+    function sendQuickQuestion(questionText) {
+      appendMessage(questionText, true);
+      appendTypingIndicator();
+      setTimeout(() => {
+        removeTypingIndicator();
+        appendMessage(faqAnswers[questionText], false);
+      }, 550);
+    }
+  </script>
+</body>
+</html>

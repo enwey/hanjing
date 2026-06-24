@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>维护记录</title>
+  <link rel="stylesheet" href="../../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    /* Hover scale effect for cards */
+    .record-card.data-v-6756cb81 {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+    .record-card.data-v-6756cb81:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-device-manage-maintenance-index">
+  <div class="phone-screen page-pages-profile-device-manage-maintenance-index">
+    <div class="page data-v-6756cb81">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">维护记录</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-6756cb81">
+        <!-- Loading State -->
+        <div class="loading-wrap data-v-6756cb81" id="loading-wrap">
+          <span class="data-v-6756cb81">加载中...</span>
+        </div>
+
+        <!-- Records List Container -->
+        <div id="record-list" class="data-v-6756cb81" style="display: none;"></div>
+
+        <!-- Empty State -->
+        <div class="empty data-v-6756cb81" id="empty-state" style="display: none;">
+          <span class="data-v-6756cb81">暂无维护记录</span>
+        </div>
+
+        <div class="safe-bottom data-v-6756cb81"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration mappings
+    const s = {
+      clean: "清洁",
+      repair: "维修",
+      adjust: "调整",
+      replace: "更换",
+    };
+    const o = {
+      clean: "#3B6BF5",
+      repair: "#EF4444",
+      adjust: "#F59E0B",
+      replace: "#1A9D5C",
+    };
+
+    // Mock records data
+    const mockRecords = [
+      {
+        id: 1,
+        type: "clean",
+        date: "2026-06-10",
+        description: "超声波深层清洗与臭氧杀菌消毒服务，已完成全机性能校准",
+        cost: 0
+      },
+      {
+        id: 2,
+        type: "adjust",
+        date: "2026-05-15",
+        description: "根据最新睡眠监测报告，技术员调整了下颌前伸位（增加1.5mm），并优化锁扣阻尼力",
+        cost: 150
+      },
+      {
+        id: 3,
+        type: "replace",
+        date: "2026-03-20",
+        description: "更换两侧防滑硅胶垫片及固定螺丝，提升夜间佩戴贴合度",
+        cost: 45
+      },
+      {
+        id: 4,
+        type: "repair",
+        date: "2026-01-08",
+        description: "修复左侧锁扣咬合部位轻微松动，固化打磨机身裂纹，并进行压力压力疲劳测试",
+        cost: 320
+      }
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const loadingWrap = document.getElementById("loading-wrap");
+      const recordList = document.getElementById("record-list");
+      const emptyState = document.getElementById("empty-state");
+
+      // Simulate network request delay
+      setTimeout(() => {
+        loadingWrap.style.display = "none";
+        
+        if (mockRecords && mockRecords.length > 0) {
+          recordList.style.display = "block";
+          recordList.innerHTML = mockRecords.map(rec => {
+            const typeText = s[rec.type] || "其他";
+            const color = o[rec.type] || "#374151";
+            const bgColor = color + "18"; // ~10% opacity hex
+            
+            const costHtml = rec.cost > 0 
+              ? `<span class="record-cost data-v-6756cb81">¥${rec.cost.toFixed(2)}</span>`
+              : `<span class="record-cost data-v-6756cb81" style="color: #9ca3af; font-weight: normal;">免费保养</span>`;
+
+            return `
+              <div class="record-card data-v-6756cb81" data-id="${rec.id}">
+                <div class="record-header data-v-6756cb81">
+                  <div class="record-type data-v-6756cb81" style="background: ${bgColor}; color: ${color};">
+                    <span class="data-v-6756cb81">${typeText}</span>
+                  </div>
+                  <span class="record-date data-v-6756cb81">${rec.date}</span>
+                </div>
+                <span class="record-desc data-v-6756cb81">${rec.description}</span>
+                ${costHtml}
+              </div>
+            `;
+          }).join("");
+        } else {
+          emptyState.style.display = "block";
+        }
+      }, 500);
+    });
+  </script>
+</body>
+</html>

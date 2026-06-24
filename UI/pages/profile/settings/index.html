@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设置</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    
+    /* Styled Toast and Dialog overlays */
+    .toast-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .toast-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .toast-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      width: 280px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      text-align: center;
+      transform: scale(0.9);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .toast-overlay.show .toast-card {
+      transform: scale(1);
+    }
+    .toast-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+    .toast-body {
+      font-size: 14px;
+      color: #4b5563;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .toast-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    .toast-btn {
+      flex: 1;
+      padding: 10px 0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+    }
+    .toast-btn-cancel {
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+    .toast-btn-confirm {
+      background: #2563eb;
+      color: #ffffff;
+    }
+    
+    /* Toast tip popup */
+    .mini-toast {
+      position: fixed;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      z-index: 10000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .mini-toast.show {
+      opacity: 1;
+    }
+
+    .btn-logout {
+      margin: 24px 16px;
+      background: #ffffff;
+      color: #ef4444;
+      font-size: 16px;
+      font-weight: 500;
+      text-align: center;
+      padding: 15px 0;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      border: 1px solid #fee2e2;
+      transition: background 0.2s;
+    }
+    .btn-logout:active {
+      background: #fef2f2;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-settings-index">
+  <div class="phone-screen page-pages-profile-settings-index">
+    <div class="page data-v-2c4614d4">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">设置</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-2c4614d4" style="padding: 16px 0;">
+        <div class="menu-list data-v-2c4614d4">
+          
+          <div class="menu-item data-v-2c4614d4" onclick="window.parent.loadPage('pages/profile/settings/personal-info/index')">
+            <div class="menu-icon data-v-2c4614d4" style="background: #eff6ff; color: #2563eb;">
+              <span class="data-v-2c4614d4">👤</span>
+            </div>
+            <span class="menu-label data-v-2c4614d4">个人信息</span>
+            <span class="menu-arrow data-v-2c4614d4">&gt;</span>
+          </div>
+
+          <div class="menu-item data-v-2c4614d4" onclick="window.parent.loadPage('pages/profile/settings/account-security/index')">
+            <div class="menu-icon data-v-2c4614d4" style="background: #ecfdf5; color: #10b981;">
+              <span class="data-v-2c4614d4">🔒</span>
+            </div>
+            <span class="menu-label data-v-2c4614d4">账号与安全</span>
+            <span class="menu-arrow data-v-2c4614d4">&gt;</span>
+          </div>
+
+          <div class="menu-item data-v-2c4614d4" onclick="handleClearCache()">
+            <div class="menu-icon data-v-2c4614d4" style="background: #fff7ed; color: #f97316;">
+              <span class="data-v-2c4614d4">🧹</span>
+            </div>
+            <span class="menu-label data-v-2c4614d4">清除缓存</span>
+            <span id="cache-size" class="menu-arrow data-v-2c4614d4" style="font-size: 13px; color: #9ca3af; margin-right: 4px;">12.4 MB</span>
+            <span class="menu-arrow data-v-2c4614d4">&gt;</span>
+          </div>
+
+          <div class="menu-item data-v-2c4614d4" onclick="handleAboutUs()">
+            <div class="menu-icon data-v-2c4614d4" style="background: #f5f3ff; color: #8b5cf6;">
+              <span class="data-v-2c4614d4">ℹ️</span>
+            </div>
+            <span class="menu-label data-v-2c4614d4">关于韩镜</span>
+            <span class="menu-arrow data-v-2c4614d4" style="font-size: 13px; color: #9ca3af; margin-right: 4px;">v1.0.8</span>
+            <span class="menu-arrow data-v-2c4614d4">&gt;</span>
+          </div>
+
+        </div>
+
+        <!-- Logout Button -->
+        <div class="btn-logout" onclick="confirmLogout()">退出登录</div>
+
+        <div class="safe-bottom data-v-2c4614d4"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Dialog Confirmation Modal -->
+  <div id="dialog-confirm" class="toast-overlay">
+    <div class="toast-card">
+      <div class="toast-title" id="dialog-title">确认退出</div>
+      <div class="toast-body" id="dialog-body">确定要退出当前登录的账号吗？</div>
+      <div class="toast-buttons">
+        <button class="toast-btn toast-btn-cancel" onclick="closeDialog()">取消</button>
+        <button class="toast-btn toast-btn-confirm" id="dialog-confirm-btn" onclick="executeLogout()">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mini Toast notification -->
+  <div id="mini-toast" class="mini-toast">清理完毕</div>
+
+  <script>
+    let activeAction = '';
+
+    function showToast(msg) {
+      const t = document.getElementById('mini-toast');
+      t.innerText = msg;
+      t.classList.add('show');
+      setTimeout(() => {
+        t.classList.remove('show');
+      }, 2000);
+    }
+
+    function handleClearCache() {
+      const cacheEl = document.getElementById('cache-size');
+      if (cacheEl.innerText === '0.00 KB') {
+        showToast('缓存已经清理干净啦');
+        return;
+      }
+      activeAction = 'clear-cache';
+      document.getElementById('dialog-title').innerText = '清理缓存';
+      document.getElementById('dialog-body').innerText = '确定要清理本地图片缓存与临时数据吗？';
+      document.getElementById('dialog-confirm-btn').onclick = executeClearCache;
+      document.getElementById('dialog-confirm').classList.add('show');
+    }
+
+    function executeClearCache() {
+      closeDialog();
+      showToast('正在清理...');
+      setTimeout(() => {
+        document.getElementById('cache-size').innerText = '0.00 KB';
+        showToast('清理成功');
+      }, 800);
+    }
+
+    function handleAboutUs() {
+      activeAction = 'about';
+      document.getElementById('dialog-title').innerText = '关于韩镜智能阻鼾';
+      document.getElementById('dialog-body').innerText = '韩镜（Hanjing）智能阻鼾系统专注于健康睡眠管理，结合高精度传感器和阻鼾设备为您带来静谧睡眠。 \n\n当前版本: v1.0.8';
+      document.getElementById('dialog-confirm-btn').onclick = closeDialog;
+      // Change buttons layout for simple alert
+      document.querySelector('.toast-btn-cancel').style.display = 'none';
+      document.getElementById('dialog-confirm').classList.add('show');
+    }
+
+    function confirmLogout() {
+      activeAction = 'logout';
+      document.getElementById('dialog-title').innerText = '确认退出';
+      document.getElementById('dialog-body').innerText = '确定要安全退出当前绑定的手机号吗？';
+      document.getElementById('dialog-confirm-btn').onclick = executeLogout;
+      document.querySelector('.toast-btn-cancel').style.display = 'block';
+      document.getElementById('dialog-confirm').classList.add('show');
+    }
+
+    function executeLogout() {
+      closeDialog();
+      localStorage.removeItem('hj_user_token');
+      localStorage.removeItem('hj_login_phone');
+      showToast('已安全退出');
+      setTimeout(() => {
+        window.parent.loadPage('pages/auth/login');
+      }, 1000);
+    }
+
+    function closeDialog() {
+      document.getElementById('dialog-confirm').classList.remove('show');
+      // Restore standard styles
+      document.querySelector('.toast-btn-cancel').style.display = 'block';
+    }
+  </script>
+</body>
+</html>

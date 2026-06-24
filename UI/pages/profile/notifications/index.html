@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>消息通知</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Hide scrollbar defaults inside simulated screen if needed */
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-notifications-index">
+  <div class="phone-screen page-pages-profile-notifications-index">
+    <div class="page data-v-c3158b61">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">消息通知</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="top-bar data-v-c3158b61" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+        <span class="unread-text data-v-c3158b61" id="unread-count-text" style="font-size: 13px; color: #6b7280;">0 条未读</span>
+        <span class="read-all data-v-c3158b61" id="btn-read-all" onclick="markAllRead()" style="font-size: 13px; color: #2563eb; cursor: pointer; display: none;">全部已读</span>
+      </div>
+
+      <div class="page-content data-v-c3158b61" style="padding: 12px 16px;">
+        
+        <!-- Loading state -->
+        <div id="loading-spinner" class="loading-wrap data-v-c3158b61" style="text-align: center; padding: 60px 0;">
+          <span class="data-v-c3158b61" style="font-size: 14px; color: #9ca3af;">加载中...</span>
+        </div>
+
+        <!-- Notifications Card Container -->
+        <div id="notifications-list" style="display: none;"></div>
+
+        <!-- Empty state -->
+        <div id="empty-state" class="empty data-v-c3158b61" style="display: none; text-align: center; padding: 100px 0;">
+          <span class="data-v-c3158b61" style="font-size: 14px; color: #9ca3af;">暂无消息</span>
+        </div>
+
+        <div class="safe-bottom data-v-c3158b61" style="height: 32px;" />
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Default notification list
+      const defaultNotifications = [
+        {
+          id: 1,
+          title: '睡眠报告生成提示',
+          content: '您昨晚的睡眠呼吸质量报告已生成。打鼾次数32次，均值44分贝，睡眠呼吸指数正常。点击查看详情记录。',
+          time: '今天 08:30',
+          unread: true,
+          icon: '📊',
+          iconBg: '#eff6ff',
+          iconColor: '#2563eb',
+          route: 'pages/treatment/sleep-report/index'
+        },
+        {
+          id: 2,
+          title: '服务预约成功',
+          content: '您预约李明主任医生的鼾症健康调理咨询门诊（2026-06-18 10:00）已确认成功，请准时前往预约门店打卡。',
+          time: '昨天 15:20',
+          unread: true,
+          icon: '📅',
+          iconBg: '#ecfdf5',
+          iconColor: '#10b981',
+          route: 'pages/appointment/index'
+        },
+        {
+          id: 3,
+          title: '会员升级通知',
+          content: '恭喜您的账户已正式升级为黄金会员！1对1专属临床售后顾问已为您匹配，点击查看您当前可享的黄金会员专享特权。',
+          time: '2026-06-14 10:00',
+          unread: false,
+          icon: '👑',
+          iconBg: '#fff7ed',
+          iconColor: '#f59e0b',
+          route: 'pages/profile/member-benefits/index'
+        }
+      ];
+
+      // Retrieve from localStorage or set defaults
+      let notifications = JSON.parse(localStorage.getItem('hj_notifications')) || defaultNotifications;
+
+      function saveNotifications() {
+        localStorage.setItem('hj_notifications', JSON.stringify(notifications));
+      }
+
+      function render() {
+        const listContainer = document.getElementById('notifications-list');
+        const emptyState = document.getElementById('empty-state');
+        const unreadText = document.getElementById('unread-count-text');
+        const btnReadAll = document.getElementById('btn-read-all');
+
+        if (notifications.length === 0) {
+          listContainer.style.display = 'none';
+          emptyState.style.display = 'block';
+          unreadText.innerText = '0 条未读';
+          btnReadAll.style.display = 'none';
+          return;
+        }
+
+        listContainer.style.display = 'block';
+        emptyState.style.display = 'none';
+
+        const unreadCount = notifications.filter(n => n.unread).length;
+        unreadText.innerText = `${unreadCount} 条未读`;
+        btnReadAll.style.display = unreadCount > 0 ? 'block' : 'none';
+
+        listContainer.innerHTML = notifications.map(n => `
+          <div class="noti-card data-v-c3158b61 ${n.unread ? 'unread' : ''}" onclick="clickNotification(${n.id}, '${n.route}')" style="cursor: pointer; background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; position: relative;">
+            <div class="noti-dot data-v-c3158b61 ${n.unread ? 'active' : ''}" style="${n.unread ? 'position: absolute; top: 16px; right: 16px; width: 8px; height: 8px; border-radius: 50%; background: #ef4444;' : 'display: none;'}"></div>
+            <div class="noti-icon data-v-c3158b61" style="background: ${n.iconBg}; color: ${n.iconColor}; font-size: 18px; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+              <span class="data-v-c3158b61">${n.icon}</span>
+            </div>
+            <div class="noti-body data-v-c3158b61" style="flex: 1;">
+              <span class="noti-title data-v-c3158b61" style="font-weight: 600; font-size: 14px; color: #1f2937; display: block; margin-bottom: 4px;">${n.title}</span>
+              <span class="noti-content data-v-c3158b61" style="font-size: 12px; color: #6b7280; line-height: 1.5; display: block; margin-bottom: 6px;">${n.content}</span>
+              <span class="noti-time data-v-c3158b61" style="font-size: 11px; color: #9ca3af; display: block;">${n.time}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      window.clickNotification = function(id, route) {
+        const item = notifications.find(n => n.id === id);
+        if (item) {
+          item.unread = false;
+          saveNotifications();
+          render();
+        }
+        // Redirect to detail page in the WeChat parent context
+        if (window.parent && window.parent.loadPage) {
+          window.parent.loadPage(route);
+        }
+      };
+
+      window.markAllRead = function() {
+        notifications.forEach(n => n.unread = false);
+        saveNotifications();
+        render();
+      };
+
+      // Loading simulation
+      setTimeout(() => {
+        document.getElementById('loading-spinner').style.display = 'none';
+        render();
+      }, 300);
+    });
+  </script>
+</body>
+</html>

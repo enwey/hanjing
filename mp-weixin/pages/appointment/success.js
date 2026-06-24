@@ -1,6 +1,7 @@
 "use strict";
 const e = require("../../common/vendor.js"),
-  t = require("../../stores/index.js");
+  t = require("../../stores/index.js"),
+  api = require("../../api/index.js");
 Math || (n + o)();
 const n = () => "../../components/base/hj-navbar.js",
   o = () => "../../components/base/hj-button.js",
@@ -39,16 +40,13 @@ const n = () => "../../components/base/hj-navbar.js",
           (await a.fetchStores(),
             await i.fetchDoctors(),
             (async function () {
-              var e;
-              const t = getCurrentPages(),
-                n = (
-                  (null == (e = t[t.length - 1].$page) ? void 0 : e.options) ||
-                  {}
-                ).id;
+              const pages = getCurrentPages();
+              const curPage = pages[pages.length - 1] || {};
+              const options = curPage.options || (curPage.$page && curPage.$page.options) || {};
+              const n = options.id;
               if (n) {
-                const { getAppointmentDetail: e } = await "../../api/index.js";
                 try {
-                  const t = await e(n);
+                  const t = await api.getAppointmentDetail(n);
                   r.value = t.data;
                 } catch (o) {
                   console.error("加载失败", o);

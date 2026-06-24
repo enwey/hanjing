@@ -7,16 +7,34 @@ const e = require("../../common/vendor.js"),
     setup(t, { emit: a }) {
       const s = t,
         d = a,
+        currentYear = e.ref(new Date().getFullYear()),
+        currentMonth = e.ref(new Date().getMonth()),
+        prevMonth = () => {
+          if (currentMonth.value === 0) {
+            currentYear.value--;
+            currentMonth.value = 11;
+          } else {
+            currentMonth.value--;
+          }
+        },
+        nextMonth = () => {
+          if (currentMonth.value === 11) {
+            currentYear.value++;
+            currentMonth.value = 0;
+          } else {
+            currentMonth.value++;
+          }
+        },
         n = e.ref(""),
         c = ["日", "一", "二", "三", "四", "五", "六"],
         i = e.computed(() => {
-          const e = new Date(),
-            t = e.getFullYear(),
-            a = e.getMonth();
+          const t = currentYear.value,
+            a = currentMonth.value;
           n.value = `${t}年${a + 1}月`;
           const d = new Date(t, a, 1).getDay(),
             c = new Date(t, a + 1, 0).getDate(),
-            i = new Date().toISOString().split("T")[0],
+            today = new Date(),
+            i = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
             l = [];
           for (let s = 0; s < d; s++)
             l.push({
@@ -40,6 +58,7 @@ const e = require("../../common/vendor.js"),
           }
           return l;
         });
+
       return (t, a) => ({
         a: e.t(n.value),
         b: e.f(c, (t, a, s) => ({ a: e.t(t), b: t })),
@@ -67,6 +86,8 @@ const e = require("../../common/vendor.js"),
             },
           ),
         ),
+        l: e.o(prevMonth, "70d02435-prev"),
+        m: e.o(nextMonth, "70d02435-next"),
       });
     },
   }),

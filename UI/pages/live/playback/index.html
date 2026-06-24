@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>直播回放</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #111827;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .video-player {
+      width: 100%;
+      height: 220px;
+      background: #000;
+      display: block;
+    }
+    .info {
+      padding: 16px;
+      background: #1f2937;
+      color: #fff;
+    }
+    .info-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+      line-height: 1.4;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .info-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 8px;
+    }
+    .anchor {
+      display: flex;
+      align-items: center;
+    }
+    .anchor-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #3b6bf5;
+      color: #fff;
+      font-size: 11px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+    }
+    .anchor-name {
+      color: #fff;
+      font-weight: 500;
+    }
+    .info-stats {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 12px;
+    }
+    .info-desc {
+      font-size: 13px;
+      color: #d1d5db;
+      line-height: 1.5;
+      display: block;
+    }
+    .section {
+      padding: 16px;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #fff;
+      display: block;
+      margin-bottom: 12px;
+    }
+    .product-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .product-item {
+      display: flex;
+      background: #1f2937;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      padding: 8px;
+    }
+    .p-img {
+      width: 60px;
+      height: 60px;
+      border-radius: 6px;
+      object-fit: cover;
+      margin-right: 12px;
+    }
+    .p-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .p-name {
+      font-size: 13px;
+      color: #fff;
+      font-weight: 500;
+      display: block;
+    }
+    .p-price {
+      font-size: 13px;
+      color: #ef4444;
+      font-weight: bold;
+      margin-top: 4px;
+      display: block;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-live-playback-index">
+  <div class="phone-screen page-pages-live-playback-index">
+    <div class="page data-v-e4fc628d">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">直播回放</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <!-- Video Player -->
+      <div class="player data-v-e4fc628d">
+        <video 
+          id="live-video"
+          class="video-player"
+          controls
+          autoplay
+          src="../../../static/demo/snore-demo.mp4"
+          poster="../../../static/demo/live-1.jpg"
+        ></video>
+      </div>
+
+      <!-- Live Info -->
+      <div class="info data-v-e4fc628d">
+        <span id="live-title" class="info-title data-v-e4fc628d">打鼾就是睡得香？王芳医生揭秘睡眠呼吸暂停</span>
+        <div class="info-meta data-v-e4fc628d">
+          <div class="anchor data-v-e4fc628d">
+            <span id="live-anchor-avatar" class="anchor-avatar data-v-e4fc628d">王</span>
+            <span id="live-anchor-name" class="anchor-name data-v-e4fc628d">王芳</span>
+          </div>
+          <span id="live-time" class="info-time data-v-e4fc628d">2026-05-28 19:30</span>
+        </div>
+        <div class="info-stats data-v-e4fc628d">
+          <span id="live-views">3,421 次观看</span>
+        </div>
+        <span id="live-desc" class="info-desc data-v-e4fc628d">
+          中西医结合主任医师王芳医生在线解答打鼾问题，教你如何分辨普通打鼾和睡眠呼吸暂停。
+        </span>
+      </div>
+
+      <!-- Live Products -->
+      <div class="section data-v-e4fc628d">
+        <span class="section-title data-v-e4fc628d">直播好物</span>
+        <div class="product-list data-v-e4fc628d" id="live-products">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  
+        <div class="safe-bottom" style="height: 34px;"></div>
+      </div>
+
+  <script>
+    const liveDetails = {
+      'live-001': {
+        title: "打鼾就是睡得香？王芳医生揭秘睡眠呼吸暂停",
+        anchorName: "王芳",
+        timeLabel: "直播时间：2026-05-28 19:30",
+        viewsLabel: "3,421 次观看",
+        desc: "中西医结合主任医师王芳医生在线解答打鼾问题，教你如何分辨普通打鼾和睡眠呼吸暂停。",
+        poster: "../../../static/demo/live-1.jpg",
+        products: [
+          { id: 'prod-001', name: '智能固磁阻鼾器（标准版）', price: '¥1,980.00', image: '../../../static/product/hj-mad-03.png' },
+          { id: 'prod-003', name: '阻鼾器专用清洁片（30片/盒）', price: '¥39.00', image: '../../../static/product/clean-kit.png' }
+        ]
+      },
+      'live-002': {
+        title: "阻鼾器怎么选？多品牌实测对比",
+        anchorName: "陈思雨",
+        timeLabel: "直播时间：2026-05-25 20:00",
+        viewsLabel: "2,156 次观看",
+        desc: "睡眠技师陈思雨带你了解不同类型的阻鼾器，从材质、舒适度、效果多维度对比。",
+        poster: "../../../static/demo/live-2.jpg",
+        products: [
+          { id: 'prod-001', name: '智能固磁阻鼾器（标准版）', price: '¥1,980.00', image: '../../../static/product/hj-mad-03.png' },
+          { id: 'prod-002', name: '睡眠冷敷凝胶', price: '¥58.00', image: '../../../static/product/screening.png' }
+        ]
+      }
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const liveId = params.get('id') || 'live-001';
+    const detail = liveDetails[liveId] || liveDetails['live-001'];
+
+    // Hydrate fields
+    document.getElementById('live-title').textContent = detail.title;
+    document.getElementById('live-anchor-avatar').textContent = detail.anchorName[0];
+    document.getElementById('live-anchor-name').textContent = detail.anchorName;
+    document.getElementById('live-time').textContent = detail.timeLabel;
+    document.getElementById('live-views').textContent = detail.viewsLabel;
+    document.getElementById('live-desc').textContent = detail.desc;
+    document.getElementById('live-video').poster = detail.poster;
+
+    const prodContainer = document.getElementById('live-products');
+    prodContainer.innerHTML = '';
+    detail.products.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'product-item data-v-e4fc628d';
+      item.onclick = () => window.parent.loadPage(`pages/product/detail?id=${p.id}`);
+
+      item.innerHTML = `
+        <img class="p-img data-v-e4fc628d" src="${p.image}" alt="product" />
+        <div class="p-info data-v-e4fc628d">
+          <span class="p-name data-v-e4fc628d">${p.name}</span>
+          <span class="p-price data-v-e4fc628d">${p.price}</span>
+        </div>
+      `;
+      prodContainer.appendChild(item);
+    });
+  </script>
+</body>
+</html>

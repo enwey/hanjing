@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>直播中心</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .tabs {
+      display: flex;
+      background: #fff;
+      padding: 10px 16px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      font-size: 14px;
+      color: #6b7280;
+      padding: 8px 0;
+      cursor: pointer;
+      position: relative;
+    }
+    .tab.active {
+      color: #3b6bf5;
+      font-weight: 600;
+    }
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 25%;
+      right: 25%;
+      height: 3px;
+      background: #3b6bf5;
+      border-radius: 2px;
+    }
+    .list {
+      padding: 16px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      cursor: pointer;
+    }
+    .cover-wrap {
+      position: relative;
+      height: 160px;
+    }
+    .cover {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .cover-tag {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      font-size: 11px;
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .tag--replay {
+      background: #4b5563;
+    }
+    .tag--upcoming {
+      background: #3b6bf5;
+    }
+    .cover-time {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      color: #fff;
+      font-size: 11px;
+      background: rgba(0,0,0,0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      width: fit-content;
+    }
+    .card-body {
+      padding: 12px;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1f2937;
+      line-height: 1.4;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .anchor {
+      display: flex;
+      align-items: center;
+    }
+    .anchor-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #e5e7eb;
+      color: #374151;
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 6px;
+    }
+    .tags {
+      display: flex;
+      gap: 4px;
+    }
+    .tag {
+      font-size: 10px;
+      color: #3b6bf5;
+      background: #eef4ff;
+      padding: 1px 4px;
+      border-radius: 2px;
+    }
+    .hj-empty {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .hj-empty-icon {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+    .hj-empty-text {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-live-list-index">
+  <div class="phone-screen page-pages-live-list-index">
+    <div class="page data-v-b8fa8280">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">直播中心</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="tabs data-v-b8fa8280">
+        <div id="tab-all" class="tab data-v-b8fa8280 active" onclick="switchTab('all')">全部</div>
+        <div id="tab-replay" class="tab data-v-b8fa8280" onclick="switchTab('replay')">回放</div>
+        <div id="tab-upcoming" class="tab data-v-b8fa8280" onclick="switchTab('upcoming')">预告</div>
+      </div>
+
+      <div class="list data-v-b8fa8280" id="live-list">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div id="empty-state" class="hj-empty" style="display: none;">
+        <span class="hj-empty-icon">📺</span>
+        <span class="hj-empty-text">暂无相关直播</span>
+      </div>
+    </div>
+  
+        <div class="safe-bottom" style="height: 34px;"></div>
+      </div>
+
+  <script>
+    const liveRooms = [
+      {
+        id: "live-001",
+        title: "打鼾就是睡得香？王芳医生揭秘睡眠呼吸暂停",
+        cover: "../../../static/demo/live-1.jpg",
+        anchorName: "王芳",
+        status: "replay",
+        statusLabel: "回放",
+        timeLabel: "直播时间：2026-05-28 19:30",
+        viewerCount: "3421人观看",
+        tags: ["科普", "义诊"]
+      },
+      {
+        id: "live-002",
+        title: "阻鼾器怎么选？多品牌实测对比",
+        cover: "../../../static/demo/live-2.jpg",
+        anchorName: "陈思雨",
+        status: "replay",
+        statusLabel: "回放",
+        timeLabel: "直播时间：2026-05-25 20:00",
+        viewerCount: "2156人观看",
+        tags: ["产品测评", "选购指南"]
+      },
+      {
+        id: "live-003",
+        title: "618睡眠好物专场：阻鼾器配件超值秒杀",
+        cover: "../../../static/demo/live-3.jpg",
+        anchorName: "王芳",
+        status: "upcoming",
+        statusLabel: "预告",
+        timeLabel: "直播时间：2026-06-20 20:00",
+        viewerCount: "已预约 328人",
+        tags: ["618大促", "秒杀"]
+      },
+      {
+        id: "live-004",
+        title: "您睡得好吗？AI鼾声分析在线体验",
+        cover: "../../../static/demo/live-4.jpg",
+        anchorName: "张伟",
+        status: "upcoming",
+        statusLabel: "预告",
+        timeLabel: "直播时间：2026-06-25 19:00",
+        viewerCount: "已预约 156人",
+        tags: ["智能硬件", "体验"]
+      }
+    ];
+
+    let currentTab = 'all';
+
+    function switchTab(tabKey) {
+      currentTab = tabKey;
+      document.querySelectorAll('.tabs .tab').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tabKey).classList.add('active');
+      renderList();
+    }
+
+    function clickRoom(roomId, status) {
+      if (status === 'replay') {
+        window.parent.loadPage(`pages/live/playback/index?id=${roomId}`);
+      } else {
+        alert('预约成功！直播开始前我们将通过短信及消息提醒您。');
+      }
+    }
+
+    function renderList() {
+      const container = document.getElementById('live-list');
+      const emptyState = document.getElementById('empty-state');
+      container.innerHTML = '';
+
+      let filtered = [...liveRooms];
+      if (currentTab !== 'all') {
+        filtered = filtered.filter(item => item.status === currentTab);
+      }
+
+      if (filtered.length === 0) {
+        emptyState.style.display = 'block';
+        container.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      container.style.display = 'block';
+
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'card data-v-b8fa8280';
+        card.onclick = () => clickRoom(item.id, item.status);
+
+        const statusTagClass = item.status === 'replay' ? 'tag--replay' : 'tag--upcoming';
+        const tagsHTML = item.tags.map(t => `<span class="tag data-v-b8fa8280">${t}</span>`).join('');
+
+        card.innerHTML = `
+          <div class="cover-wrap data-v-b8fa8280">
+            <img class="cover data-v-b8fa8280" src="${item.cover}" alt="cover" />
+            <div class="cover-tag data-v-b8fa8280 ${statusTagClass}">${item.statusLabel}</div>
+            <div class="cover-time data-v-b8fa8280">${item.timeLabel}</div>
+          </div>
+          <div class="card-body data-v-b8fa8280">
+            <span class="card-title data-v-b8fa8280">${item.title}</span>
+            <div class="card-meta data-v-b8fa8280">
+              <div class="anchor data-v-b8fa8280">
+                <span class="anchor-avatar data-v-b8fa8280">${item.anchorName[0]}</span>
+                <span class="anchor-name data-v-b8fa8280">${item.anchorName}</span>
+              </div>
+              <span class="views data-v-b8fa8280">${item.viewerCount}</span>
+              <span class="tags data-v-b8fa8280">${tagsHTML}</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Initialize
+    renderList();
+  </script>
+</body>
+</html>

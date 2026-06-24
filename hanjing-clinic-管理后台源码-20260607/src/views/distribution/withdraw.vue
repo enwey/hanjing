@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
-/* ---- 提现记录 mock 数据 ---- */
+/* ---- 提现记录 数据结构 ---- */
 interface WithdrawApply {
   id: string;
   no: string;
@@ -23,50 +24,38 @@ const pageSize = ref(30)
 const selectedRowKeys = ref<string[]>([])
 const activeTab = ref('pending') // 'pending', 'approved', 'rejected', 'all'
 const searchKeyword = ref('')
+const loading = ref(false)
+const records = ref<WithdrawApply[]>([])
 
-const initialRecords: WithdrawApply[] = [
-  { id: '1', no: 'TX20260529001', name: '赵芳芳', level: '钻石', phone: '138****1111', amount: 1500.00, method: 'wechat', account: '微信钱包', time: '2026-05-29 18:32', status: 'pending' },
-  { id: '2', no: 'TX20260529002', name: '李雪琴', level: '金牌', phone: '139****2345', amount: 860.00, method: 'wechat', account: '微信钱包', time: '2026-05-29 16:15', status: 'pending' },
-  { id: '3', no: 'TX20260529003', name: '王秀兰', level: '黄金', phone: '136****7890', amount: 2000.00, method: 'bank', account: '6222026050011116789', bankName: '工商银行', time: '2026-05-29 14:08', status: 'pending' },
-  { id: '4', no: 'TX20260529004', name: '刘建国', level: '银牌', phone: '137****6666', amount: 320.00, method: 'wechat', account: '微信钱包', time: '2026-05-29 11:22', status: 'pending' },
-  { id: '5', no: 'TX20260529005', name: '陈小红', level: '白银', phone: '135****5555', amount: 500.00, method: 'wechat', account: '微信钱包', time: '2026-05-29 09:45', status: 'pending' },
-]
+async function fetchWithdraws() {
+  loading.value = true
+  try {
+    const res: any = await request.get('/api/admin/distribution/withdraws')
+    if (res && res.code === 200) {
+      records.value = res.data.map((item: any) => ({
+        id: String(item.id),
+        no: 'TX' + String(item.id).padStart(8, '0'),
+        name: item.nickname || '推广员',
+        level: item.level || '普通',
+        phone: item.phone || '138****0000',
+        amount: item.amount,
+        method: (item.account_info && item.account_info.includes('银行')) ? 'bank' : 'wechat',
+        account: item.account_info || '微信钱包',
+        time: item.created_at,
+        status: item.status,
+        reason: item.remark
+      }))
+    }
+  } catch (err) {
+    console.error('Fetch withdraws error:', err)
+  } finally {
+    loading.value = false
+  }
+}
 
-const records = ref<WithdrawApply[]>(
-  Array.from({ length: 35 }, (_, index) => {
-    if (index < 5) {
-      return { ...initialRecords[index] }
-    }
-    const base = initialRecords[index % initialRecords.length]
-    // Generate dates
-    const day = 29 - Math.floor(index / 5)
-    const hour = 18 - (index % 5) * 2
-    const minute = (index * 7) % 60
-    
-    // Status distribution
-    let status: 'pending' | 'approved' | 'rejected' = 'pending'
-    if (index >= 12 && index < 24) {
-      status = 'approved'
-    } else if (index >= 24) {
-      status = 'rejected'
-    }
-
-    return {
-      id: String(index + 1),
-      no: `TX202605${String(day).padStart(2, '0')}${String(index + 1).padStart(3, '0')}`,
-      name: index < 5 ? base.name : base.name.substring(0, 1) + '推广员' + (index + 1),
-      level: base.level,
-      phone: base.phone,
-      amount: base.amount + index * 10,
-      method: base.method,
-      account: base.account,
-      bankName: base.bankName,
-      time: `2026-05-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
-      status,
-      reason: status === 'rejected' ? '账号涉嫌违规分销/数据异常' : undefined
-    }
-  })
-)
+onMounted(() => {
+  fetchWithdraws()
+})
 
 /* ---- Dynamic counts ---- */
 const pendingCount = computed(() => {
@@ -160,12 +149,21 @@ function openApprove(record: WithdrawApply) {
   approveVisible.value = true
 }
 
-function confirmApprove() {
+async function confirmApprove() {
   if (selectedRecord.value) {
-    selectedRecord.value.status = 'approved'
-    MessagePlugin.success(`申请单 ${selectedRecord.value.no} 已审核通过，系统已发起转账`)
-    approveVisible.value = false
-    selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== selectedRecord.value?.id)
+    try {
+      await request.put(`/api/admin/distribution/withdraws/${selectedRecord.value.id}/status`, {
+        status: 'approved',
+        remark: '审核通过，已代付打款'
+      })
+      selectedRecord.value.status = 'approved'
+      MessagePlugin.success(`申请单 ${selectedRecord.value.no} 已审核通过，系统已发起转账`)
+      approveVisible.value = false
+      selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== selectedRecord.value?.id)
+      fetchWithdraws()
+    } catch (err) {
+      console.error(err)
+    }
   }
 }
 
@@ -175,32 +173,50 @@ function openReject(record: WithdrawApply) {
   rejectVisible.value = true
 }
 
-function confirmReject() {
+async function confirmReject() {
   if (!rejectReason.value.trim()) {
     MessagePlugin.warning('请填写驳回原因')
     return
   }
   if (selectedRecord.value) {
-    selectedRecord.value.status = 'rejected'
-    selectedRecord.value.reason = rejectReason.value
-    MessagePlugin.success(`已驳回单 ${selectedRecord.value.no} 的提现申请`)
-    rejectVisible.value = false
-    selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== selectedRecord.value?.id)
+    try {
+      await request.put(`/api/admin/distribution/withdraws/${selectedRecord.value.id}/status`, {
+        status: 'rejected',
+        remark: rejectReason.value
+      })
+      selectedRecord.value.status = 'rejected'
+      selectedRecord.value.reason = rejectReason.value
+      MessagePlugin.success(`已驳回单 ${selectedRecord.value.no} 的提现申请`)
+      rejectVisible.value = false
+      selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== selectedRecord.value?.id)
+      fetchWithdraws()
+    } catch (err) {
+      console.error(err)
+    }
   }
 }
 
-function handleBatchApprove() {
+async function handleBatchApprove() {
   if (selectedRowKeys.value.length === 0) return
   let approvedCount = 0
-  selectedRowKeys.value.forEach(key => {
+  for (const key of selectedRowKeys.value) {
     const record = records.value.find(r => r.id === key)
     if (record && record.status === 'pending') {
-      record.status = 'approved'
-      approvedCount++
+      try {
+        await request.put(`/api/admin/distribution/withdraws/${record.id}/status`, {
+          status: 'approved',
+          remark: '批量审核通过，已代付打款'
+        })
+        record.status = 'approved'
+        approvedCount++
+      } catch (err) {
+        console.error(err)
+      }
     }
-  })
+  }
   if (approvedCount > 0) {
-    MessagePlugin.success(`成功批量审核通过 ${approvedCount} 笔提现申请！系统已发起自动代付打款。`)
+    MessagePlugin.success(`成功批量审核通过 ${approvedCount} 笔提现申请！`)
+    fetchWithdraws()
   } else {
     MessagePlugin.info('选中的申请没有处于待审核状态的记录')
   }

@@ -98,3 +98,19 @@
 .safe-bottom.data-v-ecc58349 {
   height: calc(env(safe-area-inset-bottom, 34px) + 20px);
 }
+.btn-logout.data-v-ecc58349 {
+  margin-top: 24px;
+  background: #ffffff;
+  color: #ef4444;
+  text-align: center;
+  padding: 15px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+}
+.btn-logout.data-v-ecc58349:active {
+  background: #f3f4f6;
+  opacity: 0.9;
+}

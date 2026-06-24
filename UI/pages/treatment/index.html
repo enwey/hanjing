@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>治疗追踪</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    /* Dynamic UI styles */
+    .duration-chip.data-v-8badcb8c, .comfort-star.data-v-8badcb8c {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .checkin-btn.data-v-8badcb8c, .menu-item.data-v-8badcb8c, .section-link.data-v-8badcb8c {
+      cursor: pointer;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    .checkin-btn.data-v-8badcb8c:active, .menu-item.data-v-8badcb8c:active {
+      transform: scale(0.98);
+    }
+    /* Simple custom toast styles */
+    .toast-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 2000;
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-treatment-index">
+  <div class="phone-screen page-pages-treatment-index">
+    <div class="page data-v-8badcb8c">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px; justify-content: center;">
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937; font-weight: 600; font-size: 17px; text-align: center; width: 100%;">治疗追踪</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-8badcb8c">
+        <!-- Hero Card -->
+        <div class="hero-card data-v-8badcb8c">
+          <div class="hero-top data-v-8badcb8c">
+            <div class="hero-badge data-v-8badcb8c">治疗中</div>
+            <span id="hero-wearing-days" class="hero-sub data-v-8badcb8c">已佩戴 28 天</span>
+          </div>
+          <span id="hero-device-name" class="hero-device data-v-8badcb8c">智能阻鼾器 HJ-MAD-03</span>
+          <span class="hero-doctor data-v-8badcb8c">主治：王芳 医生</span>
+          <div class="hero-progress-wrap data-v-8badcb8c">
+            <div class="hero-progress-bar data-v-8badcb8c">
+              <div id="hero-compliance-bar" class="hero-progress-fill data-v-8badcb8c" style="width: 0%"></div>
+            </div>
+            <span id="hero-compliance-text" class="hero-progress-num data-v-8badcb8c">依从率 0%</span>
+          </div>
+          <span class="hero-start data-v-8badcb8c">初配日期：2026-05-07</span>
+        </div>
+
+        <!-- Section: 打卡日历 -->
+        <div class="section-header data-v-8badcb8c">
+          <span class="section-title data-v-8badcb8c">打卡日历</span>
+          <div class="section-link data-v-8badcb8c" onclick="goToTrend()">
+            <span class="data-v-8badcb8c">完整日历</span>
+            <div class="more-arrow data-v-8badcb8c"></div>
+          </div>
+        </div>
+
+        <!-- 7-day Strip -->
+        <div class="calendar-strip data-v-8badcb8c" id="calendar-strip"></div>
+
+        <!-- Calendar Legend -->
+        <div class="calendar-legend data-v-8badcb8c">
+          <span class="legend-item data-v-8badcb8c">
+            <div class="legend-dot data-v-8badcb8c" style="background: #86efac"></div>充足(≥7h)
+          </span>
+          <span class="legend-item data-v-8badcb8c">
+            <div class="legend-dot data-v-8badcb8c" style="background: #fde68a"></div>一般(5-7h)
+          </span>
+          <span class="legend-item data-v-8badcb8c">
+            <div class="legend-dot data-v-8badcb8c" style="background: #fdba74"></div>偏低(<5h)
+          </span>
+          <span class="legend-item data-v-8badcb8c">
+            <div class="legend-dot data-v-8badcb8c" style="background: #fecaca"></div>未佩戴
+          </span>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="stats-row data-v-8badcb8c">
+          <div class="stat-card data-v-8badcb8c">
+            <span id="stat-worn" class="stat-value data-v-8badcb8c">0/7</span>
+            <span class="stat-label data-v-8badcb8c">本周佩戴</span>
+          </div>
+          <div class="stat-card data-v-8badcb8c">
+            <span id="stat-avg" class="stat-value data-v-8badcb8c">0h</span>
+            <span class="stat-label data-v-8badcb8c">平均时长</span>
+          </div>
+          <div class="stat-card data-v-8badcb8c">
+            <span id="stat-comfort" class="stat-value data-v-8badcb8c">0/5</span>
+            <span class="stat-label data-v-8badcb8c">平均舒适度</span>
+          </div>
+          <div class="stat-card data-v-8badcb8c">
+            <span id="stat-streak" class="stat-value data-v-8badcb8c">0天</span>
+            <span class="stat-label data-v-8badcb8c">连续打卡</span>
+          </div>
+        </div>
+
+        <!-- Checkin Button Trigger -->
+        <div class="checkin-btn-wrap data-v-8badcb8c">
+          <div class="checkin-btn data-v-8badcb8c" onclick="openCheckinModal()">
+            <span class="checkin-btn-text data-v-8badcb8c">今日打卡</span>
+            <span class="checkin-btn-hint data-v-8badcb8c">记录佩戴时长和感受</span>
+          </div>
+        </div>
+
+        <!-- Section: 治疗进度 -->
+        <div class="section-header data-v-8badcb8c" style="margin-top: 20px">
+          <span class="section-title data-v-8badcb8c">治疗进度</span>
+        </div>
+        <div class="treatment-timeline data-v-8badcb8c">
+          <div class="treatment-phase data-v-8badcb8c">
+            <div class="phase-indicator data-v-8badcb8c">
+              <div class="phase-dot completed data-v-8badcb8c">✓</div>
+              <div class="phase-line completed data-v-8badcb8c"></div>
+            </div>
+            <div class="phase-content data-v-8badcb8c">
+              <span class="phase-name data-v-8badcb8c">初诊评估</span>
+              <span class="phase-desc data-v-8badcb8c">完成睡眠监测、口腔检查、气道评估</span>
+              <span class="phase-date data-v-8badcb8c">2026-05-07</span>
+            </div>
+          </div>
+          <div class="treatment-phase data-v-8badcb8c">
+            <div class="phase-indicator data-v-8badcb8c">
+              <div class="phase-dot completed data-v-8badcb8c">✓</div>
+              <div class="phase-line completed data-v-8badcb8c"></div>
+            </div>
+            <div class="phase-content data-v-8badcb8c">
+              <span class="phase-name data-v-8badcb8c">方案定制</span>
+              <span class="phase-desc data-v-8badcb8c">取模、设计个性化阻鼾器，确定初始前伸量3.0mm</span>
+              <span class="phase-date data-v-8badcb8c">2026-05-14</span>
+            </div>
+          </div>
+          <div class="treatment-phase data-v-8badcb8c">
+            <div class="phase-indicator data-v-8badcb8c">
+              <div class="phase-dot completed data-v-8badcb8c">✓</div>
+              <div class="phase-line active data-v-8badcb8c"></div>
+            </div>
+            <div class="phase-content data-v-8badcb8c">
+              <span class="phase-name data-v-8badcb8c">舒适观察期</span>
+              <span class="phase-desc data-v-8badcb8c">佩戴阻鼾器逐步适应，建立吞咽与下颌肌肉记忆</span>
+              <span class="phase-date data-v-8badcb8c">2026-05-15 ~ 2026-06-04</span>
+            </div>
+          </div>
+          <div class="treatment-phase data-v-8badcb8c">
+            <div class="phase-indicator data-v-8badcb8c">
+              <div class="phase-dot active data-v-8badcb8c">4</div>
+              <div class="phase-line pending data-v-8badcb8c"></div>
+            </div>
+            <div class="phase-content data-v-8badcb8c">
+              <span class="phase-name active-name data-v-8badcb8c">增量调节期</span>
+              <span class="phase-desc data-v-8badcb8c">微调前移量至4.0mm，循序渐进扩宽咽腔气道</span>
+              <span class="phase-date data-v-8badcb8c">预计 2026-06-05 开始</span>
+            </div>
+          </div>
+          <div class="treatment-phase data-v-8badcb8c">
+            <div class="phase-indicator data-v-8badcb8c">
+              <div class="phase-dot pending data-v-8badcb8c">5</div>
+            </div>
+            <div class="phase-content data-v-8badcb8c">
+              <span class="phase-name data-v-8badcb8c">效果巩固</span>
+              <span class="phase-desc data-v-8badcb8c">气道通畅打鼾消除，进入长期自我维护与监测</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: 更多功能 -->
+        <div class="section-header data-v-8badcb8c" style="margin-top: 20px">
+          <span class="section-title data-v-8badcb8c">更多功能</span>
+        </div>
+        <div class="menu-grid data-v-8badcb8c">
+          <div class="menu-item data-v-8badcb8c" onclick="goToTrend()">
+            <div class="menu-icon menu-icon--trend data-v-8badcb8c">📈</div>
+            <span class="menu-title data-v-8badcb8c">睡眠趋势</span>
+            <span class="menu-desc data-v-8badcb8c">佩戴与睡眠数据</span>
+          </div>
+          <div class="menu-item data-v-8badcb8c" onclick="goToReport()">
+            <div class="menu-icon menu-icon--report data-v-8badcb8c">📊</div>
+            <span class="menu-title data-v-8badcb8c">睡眠报告</span>
+            <span class="menu-desc data-v-8badcb8c">AI智能分析与建议</span>
+          </div>
+          <div class="menu-item data-v-8badcb8c" onclick="goToTimeline()">
+            <div class="menu-icon menu-icon--timeline data-v-8badcb8c">🕒</div>
+            <span class="menu-title data-v-8badcb8c">治疗时间线</span>
+            <span class="menu-desc data-v-8badcb8c">就诊全记录</span>
+          </div>
+          <div class="menu-item data-v-8badcb8c" onclick="goToAdvice()">
+            <div class="menu-icon menu-icon--advice data-v-8badcb8c">🩺</div>
+            <span class="menu-title data-v-8badcb8c">医嘱建议</span>
+            <span class="menu-desc data-v-8badcb8c">医生指导方案</span>
+          </div>
+          <div class="menu-item data-v-8badcb8c" onclick="goToAdjust()">
+            <div class="menu-icon menu-icon--adjust data-v-8badcb8c">🔧</div>
+            <span class="menu-title data-v-8badcb8c">设备调整</span>
+            <span class="menu-desc data-v-8badcb8c">参数与调整记录</span>
+          </div>
+          <div class="menu-item data-v-8badcb8c" onclick="goToCommunity()">
+            <div class="menu-icon menu-icon--community data-v-8badcb8c">👥</div>
+            <span class="menu-title data-v-8badcb8c">医患社区</span>
+            <span class="menu-desc data-v-8badcb8c">交流经验与心得</span>
+          </div>
+        </div>
+
+        <!-- Section: 治疗动态 -->
+        <div class="section-header data-v-8badcb8c" style="margin-top: 20px">
+          <span class="section-title data-v-8badcb8c">治疗动态</span>
+          <div class="section-link data-v-8badcb8c" onclick="goToTimeline()">
+            <span class="data-v-8badcb8c">全部</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Timeline Preview -->
+        <div class="timeline-preview data-v-8badcb8c" id="timeline-preview-container"></div>
+
+        <div class="safe-bottom data-v-8badcb8c"></div>
+      </div>
+
+      <!-- Checkin Overlay Dialog Modal -->
+      <div id="checkin-overlay" class="checkin-overlay data-v-8badcb8c" style="display: none;" onclick="closeCheckinModal()">
+        <div class="checkin-panel data-v-8badcb8c" onclick="event.stopPropagation()">
+          <span class="checkin-panel-title data-v-8badcb8c">今日佩戴打卡</span>
+          <span class="checkin-panel-date data-v-8badcb8c">2026年6月4日 周四</span>
+          
+          <span class="checkin-label data-v-8badcb8c">佩戴时长（小时）</span>
+          <div class="duration-grid data-v-8badcb8c">
+            <div class="duration-chip data-v-8badcb8c duration-chip--active" data-val="8" onclick="selectDuration(8)">
+              <span class="data-v-8badcb8c">8h</span>
+            </div>
+            <div class="duration-chip data-v-8badcb8c" data-val="7" onclick="selectDuration(7)">
+              <span class="data-v-8badcb8c">7h</span>
+            </div>
+            <div class="duration-chip data-v-8badcb8c" data-val="6" onclick="selectDuration(6)">
+              <span class="data-v-8badcb8c">6h</span>
+            </div>
+            <div class="duration-chip data-v-8badcb8c" data-val="5" onclick="selectDuration(5)">
+              <span class="data-v-8badcb8c">5h</span>
+            </div>
+            <div class="duration-chip data-v-8badcb8c" data-val="4" onclick="selectDuration(4)">
+              <span class="data-v-8badcb8c">4h</span>
+            </div>
+          </div>
+
+          <span class="checkin-label data-v-8badcb8c">舒适度评分</span>
+          <div class="comfort-row data-v-8badcb8c">
+            <div class="comfort-star data-v-8badcb8c comfort-star--active" data-val="1" onclick="selectComfort(1)">
+              <span class="data-v-8badcb8c">1</span>
+            </div>
+            <div class="comfort-star data-v-8badcb8c comfort-star--active" data-val="2" onclick="selectComfort(2)">
+              <span class="data-v-8badcb8c">2</span>
+            </div>
+            <div class="comfort-star data-v-8badcb8c comfort-star--active" data-val="3" onclick="selectComfort(3)">
+              <span class="data-v-8badcb8c">3</span>
+            </div>
+            <div class="comfort-star data-v-8badcb8c comfort-star--active" data-val="4" onclick="selectComfort(4)">
+              <span class="data-v-8badcb8c">4</span>
+            </div>
+            <div class="comfort-star data-v-8badcb8c" data-val="5" onclick="selectComfort(5)">
+              <span class="data-v-8badcb8c">5</span>
+            </div>
+          </div>
+
+          <span class="checkin-label data-v-8badcb8c">备注（选填）</span>
+          <textarea
+            id="checkin-note"
+            class="checkin-textarea data-v-8badcb8c"
+            placeholder="记录今日感受，如：轻微牙齿酸胀、睡眠质量改善..."
+            maxlength="200"
+          ></textarea>
+
+          <div class="checkin-actions data-v-8badcb8c">
+            <div class="checkin-btn-cancel data-v-8badcb8c" onclick="closeCheckinModal()">
+              <span class="data-v-8badcb8c">取消</span>
+            </div>
+            <div class="checkin-btn-submit data-v-8badcb8c" id="btn-submit-checkin" onclick="submitCheckin()">
+              <span class="data-v-8badcb8c" id="submit-text">确认打卡</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast Component -->
+      <div id="toast" class="toast-container">打卡成功</div>
+
+    </div>
+  </div>
+
+  <script>
+    // State management
+    let wearDuration = 8;
+    let comfortRating = 4;
+    let checkinCompleted = false;
+
+    // Static wearing history (past 6 days + today June 4th)
+    const mockWearingHistory = [
+      { date: "2026-05-29", wearDuration: 0, comfort: 0, note: "未佩戴设备" },
+      { date: "2026-05-30", wearDuration: 5.0, comfort: 3, note: "初始佩戴，有异物感，醒来口干" },
+      { date: "2026-05-31", wearDuration: 6.0, comfort: 3, note: "适应稍有改善，睡眠平稳" },
+      { date: "2026-06-01", wearDuration: 7.0, comfort: 4, note: "下颌稍有发酸，呼吸通畅" },
+      { date: "2026-06-02", wearDuration: 0, comfort: 0, note: "因聚会喝茶影响睡眠，未佩戴" },
+      { date: "2026-06-03", wearDuration: 6.5, comfort: 4, note: "佩戴过程舒适，睡眠较深" },
+      { date: "2026-06-04", wearDuration: 0, comfort: 0, note: "" } // Today (starts unrecorded)
+    ];
+
+    // Static timelines
+    const timelineEvents = [
+      { id: 1, date: "2026-06-04", title: "未打卡", description: "今日暂无佩戴记录，记得及时打卡记录哦", color: "#EF4444" },
+      { id: 2, date: "2026-05-28", title: "主治医生复诊", description: "王芳医生建议：已度过观察期，建议从6月5日起下颌移量由3mm调整至4mm。", color: "#3B6BF5" },
+      { id: 3, date: "2026-05-07", title: "初诊适配", description: "完成鼾静三维扫描与初次试戴。阻鼾器型号为：HJ-MAD-03。", color: "#1A9D5C" }
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      renderCalendar();
+      updateStatistics();
+      renderTimeline();
+    });
+
+    // Generate calendar strip
+    function renderCalendar() {
+      const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+      const baseDate = new Date("2026-06-04");
+      const stripContainer = document.getElementById("calendar-strip");
+      
+      let html = "";
+      for (let i = 6; i >= 0; i--) {
+        const targetDate = new Date(baseDate);
+        targetDate.setDate(targetDate.getDate() - i);
+        const dateStr = targetDate.toISOString().split("T")[0];
+        
+        // Find existing record
+        const record = mockWearingHistory.find(item => item.date === dateStr);
+        const dayOfWeek = weekdays[targetDate.getDay()];
+        const dayNum = targetDate.getDate();
+        
+        let color = "#FECACA"; // Default unrecorded / not worn (light red)
+        let titleTip = "未佩戴";
+        if (record && record.wearDuration > 0) {
+          titleTip = `${record.wearDuration}小时`;
+          if (record.wearDuration >= 7) {
+            color = "#86efac"; // green
+          } else if (record.wearDuration >= 5) {
+            color = "#fde68a"; // yellow
+          } else {
+            color = "#fdba74"; // orange
+          }
+        }
+        
+        const isTodayClass = (i === 0) ? "cal-day--today" : "";
+        
+        html += `
+          <div class="cal-day data-v-8badcb8c ${isTodayClass}" title="${titleTip}">
+            <span class="cal-dow data-v-8badcb8c">${dayOfWeek}</span>
+            <div class="cal-bar data-v-8badcb8c" style="background: ${color}"></div>
+            <span class="cal-num data-v-8badcb8c">${dayNum}</span>
+          </div>
+        `;
+      }
+      stripContainer.innerHTML = html;
+    }
+
+    // Recalculate statistics cards
+    function updateStatistics() {
+      const recorded = mockWearingHistory.filter(h => h.wearDuration > 0);
+      const totalDays = mockWearingHistory.length;
+      
+      // Streak Calculation (consecutive days counting backwards from yesterday or today)
+      let streak = 0;
+      const baseDate = new Date("2026-06-04");
+      for (let i = 0; i < totalDays; i++) {
+        const targetDate = new Date(baseDate);
+        targetDate.setDate(targetDate.getDate() - i);
+        const dateStr = targetDate.toISOString().split("T")[0];
+        const record = mockWearingHistory.find(h => h.date === dateStr);
+        
+        if (record && record.wearDuration > 0) {
+          streak++;
+        } else {
+          // If we haven't checked in today yet, we don't break the streak immediately if yesterday was active
+          if (i === 0) {
+            continue; 
+          }
+          break;
+        }
+      }
+
+      // If today is checked in, and we didn't break, check if today is counted
+      const todayRecord = mockWearingHistory.find(h => h.date === "2026-06-04");
+      if (todayRecord && todayRecord.wearDuration === 0 && streak > 0) {
+        // Streak continues from yesterday, check if yesterday was active
+        const yesterdayDate = new Date(baseDate);
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yestStr = yesterdayDate.toISOString().split("T")[0];
+        const yestRecord = mockWearingHistory.find(h => h.date === yestStr);
+        if (!yestRecord || yestRecord.wearDuration === 0) {
+          streak = 0;
+        }
+      }
+
+      // Average wear hours
+      let avgHours = 0;
+      if (recorded.length > 0) {
+        const sum = recorded.reduce((acc, h) => acc + h.wearDuration, 0);
+        avgHours = (sum / recorded.length).toFixed(1);
+      }
+
+      // Average comfort rating
+      let avgComfort = 0;
+      if (recorded.length > 0) {
+        const sum = recorded.reduce((acc, h) => acc + h.comfort, 0);
+        avgComfort = (sum / recorded.length).toFixed(1);
+      }
+
+      // Compliance (standard is wearing >= 5h is compliant)
+      const compliantDays = mockWearingHistory.filter(h => h.wearDuration >= 5).length;
+      const compliancePercent = Math.round((compliantDays / totalDays) * 100);
+
+      // Apply to HTML
+      document.getElementById("stat-worn").textContent = `${recorded.length}/${totalDays}`;
+      document.getElementById("stat-avg").textContent = `${avgHours}h`;
+      document.getElementById("stat-comfort").textContent = `${avgComfort}/5`;
+      document.getElementById("stat-streak").textContent = `${streak}天`;
+
+      document.getElementById("hero-wearing-days").textContent = `已佩戴 ${recorded.length} 天`;
+      document.getElementById("hero-compliance-bar").style.width = `${compliancePercent}%`;
+      document.getElementById("hero-compliance-text").textContent = `依从率 ${compliancePercent}%`;
+    }
+
+    // Render 2 latest events in Timeline
+    function renderTimeline() {
+      const container = document.getElementById("timeline-preview-container");
+      const itemsToRender = timelineEvents.slice(0, 2);
+      
+      container.innerHTML = itemsToRender.map((event, index) => {
+        const isLast = (index === itemsToRender.length - 1) ? "tl-item--last" : "";
+        const showLine = (index < itemsToRender.length - 1) ? `<div class="tl-line data-v-8badcb8c"></div>` : "";
+        
+        return `
+          <div class="tl-item data-v-8badcb8c ${isLast}">
+            <div class="tl-dot data-v-8badcb8c" style="background: ${event.color}"></div>
+            ${showLine}
+            <div class="tl-content data-v-8badcb8c">
+              <span class="tl-date data-v-8badcb8c">${event.date}</span>
+              <span class="tl-title data-v-8badcb8c">${event.title}</span>
+              <span class="tl-desc data-v-8badcb8c">${event.description}</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Navigation routines
+    function goToTrend() {
+      window.location.href = "sleep-trend/index.html";
+    }
+    function goToReport() {
+      window.location.href = "sleep-report/index.html";
+    }
+    function goToTimeline() {
+      window.location.href = "timeline/index.html";
+    }
+    function goToAdvice() {
+      window.location.href = "doctor-advice/index.html";
+    }
+    function goToAdjust() {
+      window.location.href = "adjust-detail/index.html";
+    }
+    function goToCommunity() {
+      window.location.href = "../community/index.html";
+    }
+
+    // Modal check-in triggers
+    function openCheckinModal() {
+      document.getElementById("checkin-overlay").style.display = "flex";
+      // Load current inputs if already completed today
+      if (checkinCompleted) {
+        const todayRec = mockWearingHistory.find(h => h.date === "2026-06-04");
+        selectDuration(todayRec.wearDuration);
+        selectComfort(todayRec.comfort);
+        document.getElementById("checkin-note").value = todayRec.note || "";
+      }
+    }
+
+    function closeCheckinModal() {
+      document.getElementById("checkin-overlay").style.display = "none";
+    }
+
+    function selectDuration(hours) {
+      wearDuration = hours;
+      const chips = document.querySelectorAll(".duration-chip");
+      chips.forEach(chip => {
+        if (parseInt(chip.getAttribute("data-val")) === hours) {
+          chip.classList.add("duration-chip--active");
+        } else {
+          chip.classList.remove("duration-chip--active");
+        }
+      });
+    }
+
+    function selectComfort(rating) {
+      comfortRating = rating;
+      const stars = document.querySelectorAll(".comfort-star");
+      stars.forEach(star => {
+        const val = parseInt(star.getAttribute("data-val"));
+        if (val <= rating) {
+          star.classList.add("comfort-star--active");
+        } else {
+          star.classList.remove("comfort-star--active");
+        }
+      });
+    }
+
+    // Checkin submit routine
+    function submitCheckin() {
+      const btnSubmit = document.getElementById("btn-submit-checkin");
+      const submitText = document.getElementById("submit-text");
+      const noteInput = document.getElementById("checkin-note").value;
+
+      btnSubmit.classList.add("checkin-btn-submit--loading");
+      submitText.textContent = "保存中...";
+
+      setTimeout(() => {
+        // Save today's record
+        const todayRec = mockWearingHistory.find(h => h.date === "2026-06-04");
+        todayRec.wearDuration = wearDuration;
+        todayRec.comfort = comfortRating;
+        todayRec.note = noteInput;
+        
+        checkinCompleted = true;
+
+        // Update timeline events
+        timelineEvents[0].title = "打卡佩戴";
+        timelineEvents[0].description = `今日已顺利佩戴 ${wearDuration} 小时 · 舒适度：${comfortRating}星${noteInput ? ' · 备注：' + noteInput : ''}`;
+        timelineEvents[0].color = "#1A9D5C";
+
+        // Reset submit button state
+        btnSubmit.classList.remove("checkin-btn-submit--loading");
+        submitText.textContent = "修改打卡";
+
+        // Update layout
+        renderCalendar();
+        updateStatistics();
+        renderTimeline();
+        closeCheckinModal();
+        showToast("打卡成功");
+      }, 400);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.style.display = "block";
+      setTimeout(() => {
+        toast.style.display = "none";
+      }, 1500);
+    }
+  </script>
+</body>
+</html>

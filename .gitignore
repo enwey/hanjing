@@ -34,3 +34,12 @@ dist-ssr/
 !.env.example
 *.sqlite
 
+# Hanjing Clinic ignores
+hanjing-clinic-backend/uploads/
+hanjing-clinic-backend/scratch/
+check_onclick.py
+compare_pages.py
+scratch/dump_doctors.js
+scratch/parse_pages.py
+
+

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>评估结果</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-assessment-result-index">
+  <div class="phone-screen page-pages-assessment-result-index">
+    <div class="page data-v-1973d3c1">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">睡眠呼吸初评报告</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-1973d3c1">
+        <!-- Empty State (Hidden if score parameter is present) -->
+        <div id="empty-state" class="empty-state data-v-1973d3c1" style="display: none;">
+          <span class="empty-icon data-v-1973d3c1">📋</span>
+          <span class="empty-title data-v-1973d3c1">暂无评估结果</span>
+          <span class="empty-desc data-v-1973d3c1">请先完成ESS嗜睡量表评估</span>
+          <div class="btn-retake data-v-1973d3c1" onclick="window.parent.loadPage('pages/assessment/questionnaire/index')">
+            <span class="data-v-1973d3c1">开始评估</span>
+          </div>
+        </div>
+
+        <!-- Result Content (Visible if score parameter is present) -->
+        <div id="result-content" style="display: block;">
+          <div id="score-card" class="score-card data-v-1973d3c1" style="background: #F97316;">
+            <span class="score-label data-v-1973d3c1">ESS 评分</span>
+            <span id="score-value" class="score-value data-v-1973d3c1">14</span>
+            <span class="score-unit data-v-1973d3c1">/ 24 分</span>
+            <span id="score-level" class="score-level data-v-1973d3c1">中度嗜睡</span>
+          </div>
+
+          <div class="result-card data-v-1973d3c1">
+            <span class="result-title data-v-1973d3c1">📊 评分解读</span>
+            <span id="result-desc" class="result-desc data-v-1973d3c1">
+              您存在中度日间嗜睡，日常活动受到明显影响，需引起重视。
+            </span>
+          </div>
+
+          <div class="result-card data-v-1973d3c1">
+            <span class="result-title data-v-1973d3c1">📝 答案回顾</span>
+            <div id="answer-list" class="answer-list data-v-1973d3c1">
+              <!-- Dynamically populated answer review items -->
+            </div>
+          </div>
+
+          <div class="advice-card data-v-1973d3c1">
+            <span class="advice-icon data-v-1973d3c1">💡</span>
+            <span class="advice-title data-v-1973d3c1">专业建议</span>
+            <span id="advice-text" class="advice-text data-v-1973d3c1">
+              强烈建议尽快预约专业门诊。可能需要进行睡眠监测，评估是否存在睡眠呼吸暂停。
+            </span>
+          </div>
+
+          <div class="action-buttons data-v-1973d3c1">
+            <div class="btn-primary data-v-1973d3c1" onclick="window.parent.loadPage('pages/appointment/index')">
+              <span class="data-v-1973d3c1">立即预约门诊</span>
+            </div>
+            <div class="btn-secondary data-v-1973d3c1" onclick="window.parent.loadPage('pages/index/index')">
+              <span class="data-v-1973d3c1">返回首页</span>
+            </div>
+            <div class="btn-outline data-v-1973d3c1" onclick="window.parent.loadPage('pages/assessment/questionnaire/index')">
+              <span class="data-v-1973d3c1">重新评估</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="safe-bottom data-v-1973d3c1"></div>
+    </div>
+  </div>
+
+  <script>
+    const questions = [
+      { id: 1, situation: "坐着看书或读报时" },
+      { id: 2, situation: "看电视时" },
+      { id: 3, situation: "在公共场所坐着不动" },
+      { id: 4, situation: "作为乘客乘坐汽车1小时以上" },
+      { id: 5, situation: "下午躺下休息时" },
+      { id: 6, situation: "坐着与人交谈时" },
+      { id: 7, situation: "午餐后安静坐着（未饮酒）" },
+      { id: 8, situation: "在车中，因交通堵塞停车几分钟" }
+    ];
+
+    const optionLabels = ["从不打瞌睡", "轻度可能", "中度可能", "高度可能"];
+
+    const params = new URLSearchParams(window.location.search);
+    const scoreParam = params.get('score');
+    const answersParam = params.get('answers');
+
+    if (scoreParam === null) {
+      // Show empty state
+      document.getElementById('empty-state').style.display = 'flex';
+      document.getElementById('result-content').style.display = 'none';
+    } else {
+      const totalScore = parseInt(scoreParam) || 0;
+      
+      // Determine ESS level details
+      let level = "";
+      let color = "";
+      let desc = "";
+      let advice = "";
+
+      if (totalScore <= 5) {
+        level = "正常（低嗜睡倾向）";
+        color = "#1A9D5C";
+        desc = "您的日间嗜睡程度在正常范围内，白天精神状态良好。";
+        advice = "保持现有作息规律，定期关注睡眠质量变化。如仍存在打鼾问题，建议进行睡眠评估。";
+      } else if (totalScore <= 10) {
+        level = "正常偏高";
+        color = "#3B6BF5";
+        desc = "您的日间嗜睡程度略高于正常范围，可能存在轻度睡眠质量下降。";
+        advice = "注意保持规律作息，避免熬夜。建议使用APP内的AI鼾声分析功能，了解夜间睡眠状况。";
+      } else if (totalScore <= 12) {
+        level = "轻度嗜睡";
+        color = "#F59E0B";
+        desc = "您存在轻度日间过度嗜睡，可能影响日常工作和生活质量。";
+        advice = "建议在线预约睡眠呼吸门诊，进行专业的睡眠评估。及早干预可有效改善睡眠质量。";
+      } else if (totalScore <= 15) {
+        level = "中度嗜睡";
+        color = "#F97316";
+        desc = "您存在中度日间嗜睡，日常活动受到明显影响，需引起重视。";
+        advice = "强烈建议尽快预约专业门诊。可能需要进行睡眠监测，评估是否存在睡眠呼吸暂停。";
+      } else {
+        level = "重度嗜睡";
+        color = "#EF4444";
+        desc = "您存在重度日间嗜睡，可能对健康和安全造成严重影响（如驾驶风险）。";
+        advice = "请立即预约预估门诊进行专业诊断。建议避免长途驾驶，尽快进行多导睡眠监测（PSG）。";
+      }
+
+      // Populate score card
+      document.getElementById('score-value').textContent = totalScore;
+      document.getElementById('score-level').textContent = level;
+      document.getElementById('score-card').style.background = color;
+      document.getElementById('result-desc').textContent = desc;
+      document.getElementById('advice-text').textContent = advice;
+
+      // Populate answer review list
+      const answerList = document.getElementById('answer-list');
+      answerList.innerHTML = '';
+      
+      const answerArray = answersParam ? answersParam.split(',').map(Number) : [];
+      questions.forEach((q, idx) => {
+        const item = document.createElement('div');
+        item.className = 'answer-item data-v-1973d3c1';
+        
+        const qSpan = document.createElement('span');
+        qSpan.className = 'answer-q data-v-1973d3c1';
+        qSpan.textContent = `Q${q.id} ${q.situation}`;
+        
+        const sSpan = document.createElement('span');
+        sSpan.className = 'answer-s data-v-1973d3c1';
+        
+        const score = (answerArray[idx] !== undefined && idx < answerArray.length) ? answerArray[idx] : 0;
+        sSpan.textContent = `— ${optionLabels[score]} (${score}分)`;
+        
+        item.appendChild(qSpan);
+        item.appendChild(sSpan);
+        answerList.appendChild(item);
+      });
+    }
+  </script>
+</body>
+</html>

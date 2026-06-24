@@ -1,6 +1,6 @@
 "use strict";
 const e = require("../../common/vendor.js"),
-  t = require("../../mock/posts.js");
+  api = require("../../api/index.js");
 Math || o();
 const o = () => "../../components/base/hj-navbar.js",
   i = e.defineComponent({
@@ -22,10 +22,23 @@ const o = () => "../../components/base/hj-navbar.js",
               ));
           return [...e.filter((e) => e.isTop), ...e.filter((e) => !e.isTop)];
         });
-      function s(t) {
-        (a.value.unshift(t),
-          (n.value = "latest"),
-          e.index.showToast({ title: "帖子已发布", icon: "success" }));
+      async function loadPosts() {
+        i.value = true;
+        try {
+          const res = await api.getCommunityPosts();
+          if (res && res.code === 0) {
+            a.value = res.data;
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          i.value = false;
+        }
+      }
+      function s(post) {
+        a.value.unshift(post);
+        n.value = "latest";
+        e.index.showToast({ title: "帖子已发布", icon: "success" });
       }
       function r(e) {
         const t = new Date("2026-06-04"),
@@ -37,18 +50,16 @@ const o = () => "../../components/base/hj-navbar.js",
             ? `${Math.round(i / 60)}小时前`
             : `${Math.round(i / 1440)}天前`;
       }
-      function u(t) {
-        e.index.navigateTo({ url: `/pages/community/detail/index?id=${t}` });
+      function u(postId) {
+        e.index.navigateTo({ url: `/pages/community/detail/index?id=${postId}` });
       }
       function d() {
         e.index.navigateTo({ url: "/pages/community/publish/index" });
       }
       return (
         e.onMounted(() => {
-          (setTimeout(() => {
-            ((a.value = [...t.mockPosts]), (i.value = !1));
-          }, 300),
-            e.index.$on("newPost", s));
+          loadPosts();
+          e.index.$on("newPost", s);
         }),
         e.onUnmounted(() => {
           e.index.$off("newPost", s);
@@ -102,11 +113,16 @@ const o = () => "../../components/base/hj-navbar.js",
                     n: e.n(t.isLiked ? "action-icon liked" : "action-icon"),
                     o: e.t(t.likes),
                     p: e.o(
-                      (e) =>
-                        (function (e) {
-                          ((e.isLiked = !e.isLiked),
-                            (e.likes += e.isLiked ? 1 : -1));
-                        })(t),
+                      async (e) => {
+                        const newLiked = !t.isLiked;
+                        t.isLiked = newLiked;
+                        t.likes += newLiked ? 1 : -1;
+                        try {
+                          await api.likeCommunityPost(t.id, newLiked);
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      },
                       t.id,
                     ),
                     q: e.t(t.comments),

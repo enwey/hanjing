@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>睡眠评估</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Hide scrollbar defaults inside simulated screen if needed */
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-assessment-index">
+  <div class="phone-screen page-pages-assessment-index">
+          <div class="page data-v-35dabd14"
+  ><!-- Start Component hj-navbar -->
+<div class="component-hj-navbar">
+  <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+    <div class="data-v-1529c78d" style="height: 48px;"></div>
+    <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+      <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+        <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+      </div>
+      <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">睡眠评估</div>
+    </div>
+  </div>
+  <div class="data-v-1529c78d" style="height: 88px;"></div>
+</div>
+<!-- End Component hj-navbar --><div class="page-content data-v-35dabd14">
+      <div class="hero-card data-v-35dabd14">
+        <span class="hero-emoji data-v-35dabd14">🌙</span>
+        <span class="hero-title data-v-35dabd14">了解您的睡眠质量</span>
+        <span class="hero-desc data-v-35dabd14">
+          通过专业的ESS嗜睡量表和AI鼾声分析，全面评估您的睡眠呼吸健康状况
+        </span>
+      </div>
+      
+      <div class="eval-card data-v-35dabd14" onclick="window.parent.loadPage('pages/assessment/questionnaire/index')">
+        <div class="eval-icon data-v-35dabd14">📊</div>
+        <div class="eval-info data-v-35dabd14">
+          <span class="eval-title data-v-35dabd14">ESS嗜睡量表</span>
+          <span class="eval-desc data-v-35dabd14">8道情境题 · 约3分钟 · 国际通用标准</span>
+        </div>
+        <span class="eval-arrow data-v-35dabd14">›</span>
+      </div>
+      
+      <div class="eval-card data-v-35dabd14" onclick="window.parent.loadPage('pages/assessment/recording/index')">
+        <div class="eval-icon data-v-35dabd14">🎤</div>
+        <div class="eval-info data-v-35dabd14">
+          <span class="eval-title data-v-35dabd14">AI鼾声分析</span>
+          <span class="eval-desc data-v-35dabd14">录制鼾声 · AI分析 · 风险评级</span>
+          <div class="new-tag data-v-35dabd14">新增上线</div>
+        </div>
+        <span class="eval-arrow data-v-35dabd14">›</span>
+      </div>
+      
+      <div class="section-header data-v-35dabd14">
+        <span class="section-title data-v-35dabd14">我的评估记录</span>
+      </div>
+      
+      <div class="data-v-35dabd14">
+        <!-- Record 1 -->
+        <div class="record-card data-v-35dabd14" onclick="window.parent.loadPage('pages/treatment/sleep-report/index?from=assessment&id=ar-001')">
+          <div class="record-left data-v-35dabd14">
+            <div class="record-type-dot data-v-35dabd14" style="background: #F59E0B;"></div>
+            <div class="record-info data-v-35dabd14">
+              <span class="record-type data-v-35dabd14">ESS嗜睡量表</span>
+              <span class="record-desc data-v-35dabd14">得分14分，建议就医评估并考虑治疗方案</span>
+              <span class="record-date data-v-35dabd14">2026-06-02</span>
+            </div>
+          </div>
+          <div class="record-right data-v-35dabd14">
+            <span class="record-level data-v-35dabd14" style="color: #F59E0B;">中度嗜睡</span>
+            <span class="record-arrow data-v-35dabd14">›</span>
+          </div>
+        </div>
+        
+        <!-- Record 2 -->
+        <div class="record-card data-v-35dabd14" onclick="window.parent.loadPage('pages/treatment/sleep-report/index?from=assessment&id=ar-002')">
+          <div class="record-left data-v-35dabd14">
+            <div class="record-type-dot data-v-35dabd14" style="background: #EF4444;"></div>
+            <div class="record-info data-v-35dabd14">
+              <span class="record-type data-v-35dabd14">AI鼾声分析</span>
+              <span class="record-desc data-v-35dabd14">检测到频繁呼吸暂停特征，建议尽快就医</span>
+              <span class="record-date data-v-35dabd14">2026-06-01</span>
+            </div>
+          </div>
+          <div class="record-right data-v-35dabd14">
+            <span class="record-level data-v-35dabd14" style="color: #EF4444;">中风险</span>
+            <span class="record-arrow data-v-35dabd14">›</span>
+          </div>
+        </div>
+        
+        <!-- Record 3 -->
+        <div class="record-card data-v-35dabd14" onclick="window.parent.loadPage('pages/treatment/sleep-report/index?from=assessment&id=ar-003')">
+          <div class="record-left data-v-35dabd14">
+            <div class="record-type-dot data-v-35dabd14" style="background: #3B6BF5;"></div>
+            <div class="record-info data-v-35dabd14">
+              <span class="record-type data-v-35dabd14">ESS嗜睡量表</span>
+              <span class="record-desc data-v-35dabd14">得分11分，处于轻度嗜睡范围，需持续关注</span>
+              <span class="record-date data-v-35dabd14">2026-05-20</span>
+            </div>
+          </div>
+          <div class="record-right data-v-35dabd14">
+            <span class="record-level data-v-35dabd14" style="color: #3B6BF5;">轻度嗜睡</span>
+            <span class="record-arrow data-v-35dabd14">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="safe-bottom data-v-35dabd14"></div>
+  </div>
+</body>
+</html>

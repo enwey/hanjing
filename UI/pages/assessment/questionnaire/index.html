@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESS嗜睡量表</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-assessment-questionnaire-index">
+  <div class="phone-screen page-pages-assessment-questionnaire-index">
+    <div class="page data-v-c4ff781e">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">ESS嗜睡量表</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-c4ff781e">
+        <div class="progress-section data-v-c4ff781e">
+          <div class="progress-bar data-v-c4ff781e">
+            <div id="progress-fill" class="progress-fill data-v-c4ff781e" style="width: 12.5%;"></div>
+          </div>
+          <span id="progress-text" class="progress-text data-v-c4ff781e">1 / 8</span>
+        </div>
+
+        <div class="question-card data-v-c4ff781e">
+          <span id="question-emoji" class="question-emoji data-v-c4ff781e">📖</span>
+          <span id="question-title" class="question-title data-v-c4ff781e">第 1 题</span>
+          <span id="question-situation" class="question-situation data-v-c4ff781e">坐着看书或读报时</span>
+          <span id="question-hint" class="question-hint data-v-c4ff781e">💡 请回想您近期的日常状态</span>
+          
+          <div class="options-list data-v-c4ff781e">
+            <div class="option-item data-v-c4ff781e" onclick="selectOption(0)">
+              <span class="option-emoji data-v-c4ff781e">😀</span>
+              <span class="option-label data-v-c4ff781e">从不打瞌睡</span>
+              <div class="option-radio data-v-c4ff781e" id="radio-0"><span class="data-v-c4ff781e">✓</span></div>
+            </div>
+            <div class="option-item data-v-c4ff781e" onclick="selectOption(1)">
+              <span class="option-emoji data-v-c4ff781e">🙂</span>
+              <span class="option-label data-v-c4ff781e">轻度可能</span>
+              <div class="option-radio data-v-c4ff781e" id="radio-1"><span class="data-v-c4ff781e">✓</span></div>
+            </div>
+            <div class="option-item data-v-c4ff781e" onclick="selectOption(2)">
+              <span class="option-emoji data-v-c4ff781e">😐</span>
+              <span class="option-label data-v-c4ff781e">中度可能</span>
+              <div class="option-radio data-v-c4ff781e" id="radio-2"><span class="data-v-c4ff781e">✓</span></div>
+            </div>
+            <div class="option-item data-v-c4ff781e" onclick="selectOption(3)">
+              <span class="option-emoji data-v-c4ff781e">😴</span>
+              <span class="option-label data-v-c4ff781e">高度可能</span>
+              <div class="option-radio data-v-c4ff781e" id="radio-3"><span class="data-v-c4ff781e">✓</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dots data-v-c4ff781e" id="dots-container">
+          <!-- Dots will be rendered dynamically -->
+        </div>
+
+        <div class="bottom-actions data-v-c4ff781e">
+          <div id="btn-prev" class="btn-prev data-v-c4ff781e" onclick="prevQuestion()" style="opacity: 0.5; pointer-events: none;">
+            <span class="data-v-c4ff781e">‹ 上一题</span>
+          </div>
+          <div id="btn-next" class="btn-next data-v-c4ff781e" onclick="nextQuestion()">
+            <span class="data-v-c4ff781e">下一题 ›</span>
+          </div>
+          <div id="btn-submit" class="btn-submit data-v-c4ff781e" onclick="submitQuestionnaire()" style="display: none;">
+            <span class="data-v-c4ff781e">提交评估</span>
+          </div>
+        </div>
+      </div>
+      <div class="safe-bottom data-v-c4ff781e"></div>
+    </div>
+  </div>
+
+  <script>
+    const questions = [
+      { id: 1, situation: "坐着看书或读报时", emoji: "📖", hint: "请回想您近期的日常状态" },
+      { id: 2, situation: "看电视时", emoji: "📺", hint: "放松状态下是否容易睡着" },
+      { id: 3, situation: "在公共场所坐着不动（如在剧院或开会）", emoji: "🏛️", hint: "在安静的公共场合" },
+      { id: 4, situation: "作为乘客乘坐汽车1小时以上", emoji: "🚗", hint: "作为乘客而非驾驶员" },
+      { id: 5, situation: "下午躺下休息时", emoji: "🛋️", hint: "环境允许时是否能保持清醒" },
+      { id: 6, situation: "坐着与人交谈时", emoji: "💬", hint: "与他人面对面聊天" },
+      { id: 7, situation: "午餐后安静坐着（未饮酒）", emoji: "🍽️", hint: "饭后不喝酒的情况下" },
+      { id: 8, situation: "在车中，因交通堵塞停车几分钟", emoji: "🚦", hint: "作为驾驶员短暂停车时" }
+    ];
+
+    const options = [
+      { score: 0, label: "从不打瞌睡", emoji: "😀" },
+      { score: 1, label: "轻度可能", emoji: "🙂" },
+      { score: 2, label: "中度可能", emoji: "😐" },
+      { score: 3, label: "高度可能", emoji: "😴" }
+    ];
+
+    let currentQuestionIdx = 0;
+    const answers = new Array(questions.length).fill(-1);
+
+    function initDots() {
+      const dotsContainer = document.getElementById('dots-container');
+      dotsContainer.innerHTML = '';
+      for (let i = 0; i < questions.length; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot data-v-c4ff781e';
+        dot.onclick = () => goToQuestion(i);
+        dotsContainer.appendChild(dot);
+      }
+      updateDots();
+    }
+
+    function updateDots() {
+      const dots = document.querySelectorAll('#dots-container .dot');
+      dots.forEach((dot, idx) => {
+        dot.className = 'dot data-v-c4ff781e';
+        if (answers[idx] !== -1) {
+          dot.classList.add('completed');
+        }
+        if (idx === currentQuestionIdx) {
+          dot.classList.add('current');
+        }
+      });
+    }
+
+    function renderQuestion() {
+      const q = questions[currentQuestionIdx];
+      document.getElementById('question-emoji').textContent = q.emoji;
+      document.getElementById('question-title').textContent = `第 ${q.id} 题`;
+      document.getElementById('question-situation').textContent = q.situation;
+      document.getElementById('question-hint').textContent = `💡 ${q.hint}`;
+
+      document.getElementById('progress-text').textContent = `${q.id} / ${questions.length}`;
+      document.getElementById('progress-fill').style.width = `${((q.id) / questions.length) * 100}%`;
+
+      // Update options selected state
+      const selectedScore = answers[currentQuestionIdx];
+      const optionItems = document.querySelectorAll('.option-item');
+      optionItems.forEach((item, score) => {
+        const radio = item.querySelector('.option-radio');
+        if (score === selectedScore) {
+          item.classList.add('is-selected');
+          radio.classList.add('checked');
+        } else {
+          item.classList.remove('is-selected');
+          radio.classList.remove('checked');
+        }
+      });
+
+      // Update buttons
+      const btnPrev = document.getElementById('btn-prev');
+      const btnNext = document.getElementById('btn-next');
+      const btnSubmit = document.getElementById('btn-submit');
+
+      if (currentQuestionIdx === 0) {
+        btnPrev.style.opacity = '0.5';
+        btnPrev.style.pointerEvents = 'none';
+      } else {
+        btnPrev.style.opacity = '1';
+        btnPrev.style.pointerEvents = 'auto';
+      }
+
+      if (currentQuestionIdx === questions.length - 1) {
+        btnNext.style.display = 'none';
+        btnSubmit.style.display = 'flex';
+        // Enable submit only if all questions answered
+        const allAnswered = answers.every(score => score !== -1);
+        if (allAnswered) {
+          btnSubmit.style.opacity = '1';
+          btnSubmit.style.pointerEvents = 'auto';
+        } else {
+          btnSubmit.style.opacity = '0.5';
+          btnSubmit.style.pointerEvents = 'none';
+        }
+      } else {
+        btnNext.style.display = 'flex';
+        btnSubmit.style.display = 'none';
+        // Enable next only if current is answered
+        if (answers[currentQuestionIdx] !== -1) {
+          btnNext.style.opacity = '1';
+          btnNext.style.pointerEvents = 'auto';
+        } else {
+          btnNext.style.opacity = '0.5';
+          btnNext.style.pointerEvents = 'none';
+        }
+      }
+
+      updateDots();
+    }
+
+    function selectOption(score) {
+      answers[currentQuestionIdx] = score;
+      renderQuestion();
+      
+      // Auto advance to next question after a brief delay if not the last question
+      if (currentQuestionIdx < questions.length - 1) {
+        setTimeout(() => {
+          if (currentQuestionIdx < questions.length - 1) {
+            currentQuestionIdx++;
+            renderQuestion();
+          }
+        }, 300);
+      }
+    }
+
+    function prevQuestion() {
+      if (currentQuestionIdx > 0) {
+        currentQuestionIdx--;
+        renderQuestion();
+      }
+    }
+
+    function nextQuestion() {
+      if (currentQuestionIdx < questions.length - 1 && answers[currentQuestionIdx] !== -1) {
+        currentQuestionIdx++;
+        renderQuestion();
+      }
+    }
+
+    function goToQuestion(idx) {
+      currentQuestionIdx = idx;
+      renderQuestion();
+    }
+
+    function submitQuestionnaire() {
+      const allAnswered = answers.every(score => score !== -1);
+      if (!allAnswered) return;
+
+      const totalScore = answers.reduce((sum, score) => sum + score, 0);
+      const answersStr = answers.join(',');
+      window.parent.loadPage(`pages/assessment/result/index?score=${totalScore}&answers=${answersStr}`);
+    }
+
+    // Initialize page
+    initDots();
+    renderQuestion();
+  </script>
+</body>
+</html>

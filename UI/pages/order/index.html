@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的订单</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .tab-scroll {
+      display: flex;
+      background: #fff;
+      padding: 10px 16px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .tab-item {
+      flex: 1;
+      text-align: center;
+      font-size: 13px;
+      color: #6b7280;
+      padding: 8px 0;
+      cursor: pointer;
+      position: relative;
+    }
+    .tab-item.active {
+      color: #3b6bf5;
+      font-weight: 600;
+    }
+    .tab-item.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 20%;
+      right: 20%;
+      height: 3px;
+      background: #3b6bf5;
+      border-radius: 2px;
+    }
+    .order-list {
+      padding: 16px;
+    }
+    .order-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      cursor: pointer;
+    }
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #f3f4f6;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .order-no {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .order-status {
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .order-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .item-img {
+      width: 50px;
+      height: 50px;
+      border-radius: 6px;
+      object-fit: cover;
+      margin-right: 12px;
+    }
+    .item-info {
+      flex: 1;
+    }
+    .item-name {
+      font-size: 14px;
+      color: #1f2937;
+      font-weight: 500;
+      display: block;
+    }
+    .item-qty {
+      font-size: 12px;
+      color: #9ca3af;
+      display: block;
+      margin-top: 4px;
+    }
+    .item-price {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    .order-footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      font-size: 13px;
+      color: #4b5563;
+      border-top: 1px solid #f3f4f6;
+      padding-top: 10px;
+      margin-top: 12px;
+    }
+    .order-total {
+      font-size: 15px;
+      font-weight: bold;
+      color: #ef4444;
+      margin-left: 6px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .empty-text {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-order-index">
+  <div class="phone-screen page-pages-order-index">
+    <div class="page data-v-a92287bc">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">我的订单</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-a92287bc">
+        <div class="tab-scroll data-v-a92287bc">
+          <div id="tab-all" class="tab-item data-v-a92287bc active" onclick="switchTab('all')"><span class="tab-label data-v-a92287bc">全部</span></div>
+          <div id="tab-pending" class="tab-item data-v-a92287bc" onclick="switchTab('pending')"><span class="tab-label data-v-a92287bc">待付款</span></div>
+          <div id="tab-paid" class="tab-item data-v-a92287bc" onclick="switchTab('paid')"><span class="tab-label data-v-a92287bc">待发货</span></div>
+          <div id="tab-shipped" class="tab-item data-v-a92287bc" onclick="switchTab('shipped')"><span class="tab-label data-v-a92287bc">待收货</span></div>
+          <div id="tab-completed" class="tab-item data-v-a92287bc" onclick="switchTab('completed')"><span class="tab-label data-v-a92287bc">已完成</span></div>
+        </div>
+
+        <div class="order-list data-v-a92287bc" id="order-container">
+          <!-- Dynamically populated -->
+        </div>
+
+        <div id="empty-state" class="empty-state data-v-a92287bc" style="display: none;">
+          <span class="empty-text data-v-a92287bc">暂无订单</span>
+        </div>
+      </div>
+      <div class="safe-bottom data-v-a92287bc"></div>
+    </div>
+  </div>
+
+  <script>
+    const defaultOrders = [
+      {
+        id: "ord-001",
+        orderNo: "OR20260528001",
+        status: "completed",
+        statusLabel: "已完成",
+        statusColor: "#10b981",
+        items: [
+          { name: "定制式可调舌型阻鼾器 HJ-MAD-03", image: "../../static/product/hj-mad-03.png", qty: 1, price: "¥2,980.00" }
+        ],
+        totalQty: 1,
+        totalAmount: "¥2,680.00"
+      },
+      {
+        id: "ord-002",
+        orderNo: "OR20260530001",
+        status: "shipped",
+        statusLabel: "已发货",
+        statusColor: "#8b5cf6",
+        items: [
+          { name: "阻鼾器深度清洁套装", image: "../../static/product/clean-kit.png", qty: 2, price: "¥79.00" }
+        ],
+        totalQty: 2,
+        totalAmount: "¥158.00"
+      },
+      {
+        id: "ord-003",
+        orderNo: "OR20260601001",
+        status: "completed",
+        statusLabel: "已完成",
+        statusColor: "#10b981",
+        items: [
+          { name: "睡眠呼吸初筛服务套餐", image: "../../static/product/screening.png", qty: 1, price: "¥99.00" }
+        ],
+        totalQty: 1,
+        totalAmount: "¥99.00"
+      },
+      {
+        id: "ord-004",
+        orderNo: "OR20260603001",
+        status: "pending",
+        statusLabel: "待付款",
+        statusColor: "#f59e0b",
+        items: [
+          { name: "鼾静健康专用记忆枕", image: "../../static/product/pillow.png", qty: 1, price: "¥299.00" }
+        ],
+        totalQty: 1,
+        totalAmount: "¥299.00"
+      }
+    ];
+
+    let currentTab = 'all';
+
+    function switchTab(tabKey) {
+      currentTab = tabKey;
+      document.querySelectorAll('.tab-scroll .tab-item').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tabKey).classList.add('active');
+      renderOrders();
+    }
+
+    function renderOrders() {
+      const container = document.getElementById('order-container');
+      const emptyState = document.getElementById('empty-state');
+      container.innerHTML = '';
+
+      // Load custom orders from details purchases (if any)
+      // Custom orders can be simulated. For example:
+      let customOrders = [];
+      try {
+        const stored = localStorage.getItem('hj_custom_orders');
+        if (stored) customOrders = JSON.parse(stored);
+      } catch (e) {}
+
+      const allOrders = [...customOrders, ...defaultOrders];
+
+      let filtered = allOrders;
+      if (currentTab !== 'all') {
+        filtered = allOrders.filter(o => o.status === currentTab);
+      }
+
+      if (filtered.length === 0) {
+        emptyState.style.display = 'block';
+        container.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      container.style.display = 'block';
+
+      filtered.forEach(o => {
+        const card = document.createElement('div');
+        card.className = 'order-card data-v-a92287bc';
+        card.onclick = () => window.parent.loadPage(`pages/order/detail?id=${o.id}`);
+
+        let itemsHTML = o.items.map(item => `
+          <div class="order-item data-v-a92287bc">
+            <img class="item-img data-v-a92287bc" src="${item.image}" alt="item" />
+            <div class="item-info data-v-a92287bc">
+              <span class="item-name data-v-a92287bc">${item.name}</span>
+              <span class="item-qty data-v-a92287bc">x${item.qty}</span>
+            </div>
+            <span class="item-price data-v-a92287bc">${item.price}</span>
+          </div>
+        `).join('');
+
+        card.innerHTML = `
+          <div class="order-header data-v-a92287bc">
+            <span class="order-no data-v-a92287bc">订单号：${o.orderNo}</span>
+            <span class="order-status data-v-a92287bc" style="color: ${o.statusColor}">${o.statusLabel}</span>
+          </div>
+          ${itemsHTML}
+          <div class="order-footer data-v-a92287bc">
+            <span class="order-amount data-v-a92287bc">共 ${o.totalQty} 件，合计</span>
+            <span class="order-total data-v-a92287bc">${o.totalAmount}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Initialize
+    renderOrders();
+  </script>
+</body>
+</html>

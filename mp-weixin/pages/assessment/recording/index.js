@@ -12,6 +12,17 @@ const l = () => "../../../components/base/hj-navbar.js",
         t = e.ref(0),
         o = e.ref(!1);
       let r = null;
+      const recorderManager = wx.getRecorderManager();
+      const tempFilePath = e.ref("");
+
+      recorderManager.onStop((res) => {
+        console.log("[RecorderManager] Stopped, tempFilePath:", res.tempFilePath);
+        tempFilePath.value = res.tempFilePath;
+      });
+      recorderManager.onError((err) => {
+        console.error("[RecorderManager] Error:", err);
+      });
+
       const s = e.computed(() => {
           const e = Math.floor(t.value / 60),
             a = t.value % 60;
@@ -23,18 +34,76 @@ const l = () => "../../../components/base/hj-navbar.js",
             u.value ? e.push(10 + Math.floor(40 * Math.random())) : e.push(6);
           return e;
         });
+
       function c() {
-        ((u.value = !0),
-          (v.value = !1),
-          (t.value = 0),
-          (r = setInterval(() => {
-            t.value++;
-          }, 1e3)));
+        wx.authorize({
+          scope: "scope.record",
+          success: () => {
+            u.value = !0;
+            v.value = !1;
+            t.value = 0;
+            r = setInterval(() => {
+              t.value++;
+            }, 1000);
+            recorderManager.start({
+              duration: 600000,
+              sampleRate: 16000,
+              numberOfChannels: 1,
+              encodeBitRate: 48000,
+              format: "m4a",
+            });
+          },
+          fail: () => {
+            e.index.showModal({
+              title: "授权提示",
+              content: "我们需使用麦克风来分析您的鼾声，请在系统设置中开启麦克风录音权限。",
+              confirmText: "去设置",
+              success: (res) => {
+                if (res.confirm) {
+                  wx.openSetting();
+                }
+              }
+            });
+          }
+        });
       }
+
+      function onMicTap() {
+        if (u.value || n.value) {
+          if (u.value) {
+            r && clearInterval(r);
+            u.value = !1;
+            v.value = !1;
+            n.value = !0;
+            recorderManager.stop();
+          }
+        } else {
+          c();
+        }
+      }
+
       async function d() {
         o.value = !0;
         try {
-          const l = (await a.submitSnoreRecording({ duration: t.value })).data;
+          let fileData = "";
+          let fileName = "snore.m4a";
+          if (tempFilePath.value) {
+            try {
+              const fs = wx.getFileSystemManager();
+              fileData = fs.readFileSync(tempFilePath.value, "base64");
+              const parts = tempFilePath.value.split("/");
+              fileName = parts[parts.length - 1];
+            } catch (fsErr) {
+              console.error("[SnoreRecording] Read file failed:", fsErr);
+            }
+          }
+
+          const l = (await a.submitSnoreRecording({ 
+            duration: t.value,
+            fileData: fileData,
+            fileName: fileName
+          })).data;
+
           l && l.id
             ? e.index.navigateTo({
                 url: "/pages/assessment/snore-result/index?id=" + l.id,
@@ -50,6 +119,7 @@ const l = () => "../../../components/base/hj-navbar.js",
           o.value = !1;
         }
       }
+
       return (
         e.onUnmounted(() => {
           r && clearInterval(r);
@@ -81,18 +151,7 @@ const l = () => "../../../components/base/hj-navbar.js",
               l: v.value ? 1 : "",
               m: n.value && !u.value ? 1 : "",
               n: o.value ? 1 : "",
-              o: e.o(
-                (e) =>
-                  u.value || n.value
-                    ? u.value
-                      ? (r && clearInterval(r),
-                        (u.value = !1),
-                        (v.value = !1),
-                        void (n.value = !0))
-                      : null
-                    : c(),
-                "e5",
-              ),
+              o: e.o(onMicTap, "e5"),
               p: !u.value && !n.value,
             },
             u.value || n.value

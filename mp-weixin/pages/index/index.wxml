@@ -28,17 +28,13 @@
     ></view
   ><view class="section quick-actions data-v-e9eb3795"
     ><view class="quick-action data-v-e9eb3795" bindtap="{{c}}"
-      ><view class="quick-action-icon data-v-e9eb3795">📅</view
-      ><text class="quick-action-text data-v-e9eb3795">预约挂号</text></view
+      ><image class="quick-action-icon quick-action-icon--appointment data-v-e9eb3795" src="/static/icons/tab-appointment-active.png" /><text class="quick-action-text data-v-e9eb3795">预约挂号</text></view
     ><view class="quick-action data-v-e9eb3795" bindtap="{{d}}"
-      ><view class="quick-action-icon data-v-e9eb3795">📊</view
-      ><text class="quick-action-text data-v-e9eb3795">睡眠评估</text></view
+      ><image class="quick-action-icon quick-action-icon--assessment data-v-e9eb3795" src="/static/icons/assessment_purple.svg" /><text class="quick-action-text data-v-e9eb3795">睡眠评估</text></view
     ><view class="quick-action data-v-e9eb3795" bindtap="{{e}}"
-      ><view class="quick-action-icon data-v-e9eb3795">💊</view
-      ><text class="quick-action-text data-v-e9eb3795">治疗追踪</text></view
+      ><image class="quick-action-icon quick-action-icon--treatment data-v-e9eb3795" src="/static/icons/tab-treatment-active.png" /><text class="quick-action-text data-v-e9eb3795">治疗追踪</text></view
     ><view class="quick-action data-v-e9eb3795" bindtap="{{f}}"
-      ><view class="quick-action-icon data-v-e9eb3795">👤</view
-      ><text class="quick-action-text data-v-e9eb3795">我的档案</text></view
+      ><image class="quick-action-icon quick-action-icon--profile data-v-e9eb3795" src="/static/icons/profile_orange.svg" /><text class="quick-action-text data-v-e9eb3795">我的档案</text></view
     ></view
   ><view class="section data-v-e9eb3795"
     ><view class="section-header data-v-e9eb3795"

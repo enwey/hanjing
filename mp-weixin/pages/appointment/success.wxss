@@ -63,10 +63,12 @@
 .success-icon.data-v-baa6e4ef {
   display: flex;
   justify-content: center;
-  padding: 40px 0 16px;
+  padding: 40px 0 20px;
 }
-.success-emoji.data-v-baa6e4ef {
-  font-size: 64px;
+.success-medical-icon.data-v-baa6e4ef {
+  width: 80px;
+  height: 80px;
+  transform: translateX(-4px);
 }
 .success-title.data-v-baa6e4ef {
   font-size: 24px;
@@ -119,13 +121,31 @@
   color: #3b6bf5;
 }
 .actions.data-v-baa6e4ef {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 20px;
+}
+.actions.data-v-baa6e4ef hj-button {
+  display: block;
 }
 .remind.data-v-baa6e4ef {
   text-align: center;
   padding-bottom: 40px;
 }
+.remind-item.data-v-baa6e4ef {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.remind-icon.data-v-baa6e4ef {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
 .remind-text.data-v-baa6e4ef {
   font-size: 13px;
   color: #9ca3af;
 }
+

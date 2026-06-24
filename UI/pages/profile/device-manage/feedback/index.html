@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>使用反馈</title>
+  <link rel="stylesheet" href="../../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Hide scrollbar defaults inside simulated screen if needed */
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-device-manage-feedback-index">
+  <div class="phone-screen page-pages-profile-device-manage-feedback-index">
+          <div class="page data-v-86cd8c34"
+  ><!-- Start Component hj-navbar -->
+<div class="component-hj-navbar">
+  <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+    <div class="data-v-1529c78d" style="height: 48px;"></div>
+    <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+      <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+        <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+      </div>
+      <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">使用反馈</div>
+    </div>
+  </div>
+  <div class="data-v-1529c78d" style="height: 88px;"></div>
+</div>
+<!-- End Component hj-navbar -->      <div class="page-content data-v-86cd8c34">
+        <!-- Container for feedback list -->
+        <div id="feedback-list-container" class="data-v-86cd8c34">
+          <!-- Dynamically rendered feedback cards will appear here -->
+        </div>
+
+        <!-- Button to write feedback -->
+        <div class="btn-add data-v-86cd8c34" onclick="openFeedbackForm()">
+          <text class="data-v-86cd8c34">+ 写反馈</text>
+        </div>
+
+        <!-- Write Feedback Modal Overlay -->
+        <div id="form-overlay" class="form-overlay data-v-86cd8c34" style="display: none;">
+          <div class="form-card data-v-86cd8c34">
+            <span class="form-title data-v-86cd8c34">使用反馈</span>
+            
+            <div class="form-stars data-v-86cd8c34">
+              <span id="f-star-1" class="form-star data-v-86cd8c34 active" onclick="setFormStars(1)">★</span>
+              <span id="f-star-2" class="form-star data-v-86cd8c34 active" onclick="setFormStars(2)">★</span>
+              <span id="f-star-3" class="form-star data-v-86cd8c34 active" onclick="setFormStars(3)">★</span>
+              <span id="f-star-4" class="form-star data-v-86cd8c34 active" onclick="setFormStars(4)">★</span>
+              <span id="f-star-5" class="form-star data-v-86cd8c34 active" onclick="setFormStars(5)">★</span>
+            </div>
+
+            <textarea
+              id="feedback-text"
+              class="form-textarea data-v-86cd8c34"
+              placeholder="请描述您的使用感受（如舒适度、异物感、磨牙情况或鼾声改善等）..."
+              maxlength="500"
+            ></textarea>
+
+            <div class="form-actions data-v-86cd8c34">
+              <div class="btn-cancel data-v-86cd8c34" onclick="closeFeedbackForm()">
+                <text class="data-v-86cd8c34">取消</text>
+              </div>
+              <div class="btn-submit data-v-86cd8c34" onclick="submitFeedbackForm()">
+                <text class="data-v-86cd8c34">提交</text>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="safe-bottom data-v-86cd8c34"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let feedbacks = [
+      {
+        id: 1,
+        date: '2026-06-12',
+        stars: 4,
+        content: '阻鼾器戴了三天了，刚开始稍微有点异物感，现在感觉好多了，打鼾声音确实小了。就是早上起来下巴微酸。',
+        reply: '下巴微酸属于正常适应期反应，一般在一周左右消失。如果酸痛持续或加重，可以适当逆时针旋转调节螺丝调小前移量。'
+      },
+      {
+        id: 2,
+        date: '2026-06-05',
+        stars: 5,
+        content: '清洁套装很好用，超声波清洗机洗得很干净，配合清洁片完全没有异味。',
+        reply: '感谢您的支持！保持阻鼾器清洁对口腔健康非常重要，建议每天使用清水冲洗，每周使用清洁片进行深层清洁 1-2 次。'
+      }
+    ];
+
+    let currentFormStars = 5;
+
+    function renderFeedbacks() {
+      const container = document.getElementById('feedback-list-container');
+      if (feedbacks.length === 0) {
+        container.innerHTML = `
+          <div class="empty data-v-86cd8c34">
+            <span class="data-v-86cd8c34">暂无反馈记录</span>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      feedbacks.forEach(item => {
+        // Build stars HTML
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+          starsHtml += `<span class="star data-v-86cd8c34 ${i <= item.stars ? 'active' : ''}">★</span>`;
+        }
+
+        // Build reply HTML
+        let replyHtml = '';
+        if (item.reply) {
+          replyHtml = `
+            <div class="fb-reply data-v-86cd8c34">
+              <text class="reply-label data-v-86cd8c34">医生回复：</text>
+              <text class="data-v-86cd8c34">${item.reply}</text>
+            </div>
+          `;
+        }
+
+        html += `
+          <div class="feedback-card data-v-86cd8c34">
+            <div class="fb-header data-v-86cd8c34">
+              <span class="fb-date data-v-86cd8c34">${item.date}</span>
+              <div class="fb-stars data-v-86cd8c34">${starsHtml}</div>
+            </div>
+            <span class="fb-content data-v-86cd8c34">${item.content}</span>
+            ${replyHtml}
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function openFeedbackForm() {
+      currentFormStars = 5;
+      setFormStars(5);
+      document.getElementById('feedback-text').value = '';
+      document.getElementById('form-overlay').style.display = 'flex';
+    }
+
+    function closeFeedbackForm() {
+      document.getElementById('form-overlay').style.display = 'none';
+    }
+
+    function setFormStars(rating) {
+      currentFormStars = rating;
+      for (let i = 1; i <= 5; i++) {
+        const star = document.getElementById(`f-star-${i}`);
+        if (i <= rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      }
+    }
+
+    function submitFeedbackForm() {
+      const text = document.getElementById('feedback-text').value.trim();
+      if (!text) {
+        alert('请输入您的使用感受');
+        return;
+      }
+
+      const todayStr = new Date('2026-06-16').toISOString().split('T')[0]; // seed date
+      feedbacks.unshift({
+        id: Date.now(),
+        date: todayStr,
+        stars: currentFormStars,
+        content: text,
+        reply: null
+      });
+
+      renderFeedbacks();
+      closeFeedbackForm();
+    }
+
+    // Initialize
+    renderFeedbacks();
+  </script>
+</body>
+</html>

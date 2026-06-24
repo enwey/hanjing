@@ -11,18 +11,20 @@ const o = () => "../../../components/base/hj-navbar.js",
           label: "个人信息",
           url: "/pages/profile/settings/personal-info/index",
           color: "#3B6BF5",
+          imagePath: "/static/icons/profile-settings.svg",
         },
         {
           icon: "lock",
           label: "账号安全",
           url: "/pages/profile/settings/account-security/index",
           color: "#1A9D5C",
+          imagePath: "/static/icons/lock-settings.svg",
         },
       ];
       return (o, r) => ({
         a: e.p({ title: "设置", "show-back": !0 }),
         b: e.f(n, (o, n, r) => ({
-          a: e.t("user" === o.icon ? "U" : "L"),
+          a: o.imagePath,
           b: o.color + "15",
           c: o.color,
           d: e.t(o.label),

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>账号安全</title>
+  <link rel="stylesheet" href="../../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Hide scrollbar defaults inside simulated screen if needed */
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-settings-account-security-index">
+  <div class="phone-screen page-pages-profile-settings-account-security-index">
+    <div class="page data-v-ecc58349">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">账号安全</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-ecc58349" style="padding: 16px;">
+        <!-- Loading state -->
+        <div id="loading-spinner" class="loading-wrap data-v-ecc58349" style="text-align: center; padding: 100px 0;">
+          <span class="data-v-ecc58349" style="font-size: 14px; color: #9ca3af;">加载中...</span>
+        </div>
+
+        <!-- Content Container -->
+        <div id="security-content" style="display: none;">
+          <div class="info-group data-v-ecc58349">
+            <div class="info-row data-v-ecc58349">
+              <span class="info-label data-v-ecc58349">绑定手机</span>
+              <span class="info-val data-v-ecc58349" id="phone-display">138****8888</span>
+            </div>
+            <div class="info-row data-v-ecc58349">
+              <span class="info-label data-v-ecc58349">登录密码</span>
+              <span class="info-val data-v-ecc58349">已设置</span>
+            </div>
+            <div class="info-row data-v-ecc58349">
+              <span class="info-label data-v-ecc58349">实名认证</span>
+              <span class="info-val success data-v-ecc58349">已认证</span>
+            </div>
+          </div>
+
+          <div class="info-group data-v-ecc58349">
+            <div class="info-row data-v-ecc58349">
+              <span class="info-label data-v-ecc58349">最近登录</span>
+              <span class="info-val data-v-ecc58349" id="login-time-display">2026-06-16 19:42</span>
+            </div>
+            <div class="info-row data-v-ecc58349">
+              <span class="info-label data-v-ecc58349">登录设备</span>
+              <span class="info-val data-v-ecc58349">iPhone 16 Pro Max</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="safe-bottom data-v-ecc58349" style="height: 32px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Dynamic mobile reading from localStorage if it exists
+      const savedPhone = localStorage.getItem('hj_login_phone');
+      if (savedPhone) {
+        // Format phone: e.g. 13812345678 -> 138****5678
+        if (savedPhone.length === 11) {
+          document.getElementById('phone-display').innerText = savedPhone.substring(0,3) + '****' + savedPhone.substring(7);
+        } else {
+          document.getElementById('phone-display').innerText = savedPhone;
+        }
+      }
+
+      // Format current date minus a few hours for realistic last login
+      const now = new Date();
+      now.setHours(now.getHours() - 2);
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('login-time-display').innerText = `${year}-${month}-${day} ${hours}:${minutes}`;
+
+      // Simulate loading fade
+      setTimeout(() => {
+        document.getElementById('loading-spinner').style.display = 'none';
+        document.getElementById('security-content').style.display = 'block';
+      }, 300);
+    });
+  </script>
+</body>
+</html>

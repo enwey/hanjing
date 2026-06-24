@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>推广商品</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .list {
+      padding: 16px;
+    }
+    .item {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      cursor: pointer;
+    }
+    .item-img {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin-right: 12px;
+    }
+    .item-info {
+      flex: 1;
+    }
+    .item-name {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1f2937;
+      display: block;
+    }
+    .item-price {
+      font-size: 14px;
+      color: #ef4444;
+      font-weight: bold;
+      display: block;
+      margin-top: 4px;
+    }
+    .item-rate {
+      font-size: 12px;
+      color: #10b981;
+      display: block;
+      margin-top: 4px;
+    }
+    .item-arrow {
+      font-size: 20px;
+      color: #d1d5db;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-distribution-products-index">
+  <div class="phone-screen page-pages-distribution-products-index">
+    <div class="page data-v-17829149">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">推广商品</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="list data-v-17829149" id="products-list">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  
+        <div class="safe-bottom" style="height: 34px;"></div>
+      </div>
+
+  <script>
+    const productsData = [
+      {
+        id: "prod-001",
+        name: "鼾静智能固位下颌前移固磁阻鼾器（标准版）",
+        image: "../../../static/product/hj-mad-03.png",
+        price: "¥1,980.00",
+        rate: "10%",
+        commission: "¥198.00"
+      },
+      {
+        id: "prod-002",
+        name: "睡眠冷敷凝胶",
+        image: "../../../static/product/screening.png",
+        price: "¥58.00",
+        rate: "10%",
+        commission: "¥5.80"
+      },
+      {
+        id: "prod-003",
+        name: "鼾静阻鼾器专用清洁片（30片/盒）",
+        image: "../../../static/product/clean-kit.png",
+        price: "¥39.00",
+        rate: "10%",
+        commission: "¥3.90"
+      },
+      {
+        id: "prod-004",
+        name: "智能睡眠监测手环",
+        image: "../../../static/product/pillow.png",
+        price: "¥399.00",
+        rate: "10%",
+        commission: "¥39.90"
+      }
+    ];
+
+    function renderProducts() {
+      const container = document.getElementById('products-list');
+      container.innerHTML = '';
+
+      productsData.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'item data-v-17829149';
+        row.onclick = () => window.parent.loadPage(`pages/product/detail?id=${p.id}`);
+        row.innerHTML = `
+          <img class="item-img data-v-17829149" src="${p.image}" alt="product" />
+          <div class="item-info data-v-17829149">
+            <span class="item-name data-v-17829149">${p.name}</span>
+            <span class="item-price data-v-17829149">${p.price}</span>
+            <span class="item-rate data-v-17829149">佣金比例：${p.rate} | 预估佣金：${p.commission}</span>
+          </div>
+          <span class="item-arrow data-v-17829149">&rsaquo;</span>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    // Initialize
+    renderProducts();
+  </script>
+</body>
+</html>

@@ -15,9 +15,16 @@ const o = () => "../../components/base/hj-navbar.js",
         a = t.useDoctorStore(),
         r = e.ref(!0),
         c = e.ref("upcoming");
+      e.onShow(async () => {
+        try {
+          await n.fetchAppointments();
+          p();
+        } catch (err) {
+          console.error("加载预约失败", err);
+        }
+      });
       e.onMounted(async () => {
         (await Promise.all([
-          n.fetchAppointments(),
           s.fetchStores(),
           a.fetchDoctors(),
           i.fetchProfile(),

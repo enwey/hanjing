@@ -1,6 +1,6 @@
 "use strict";
 const e = require("../../../common/vendor.js"),
-  t = require("../../../mock/posts.js");
+  api = require("../../../api/index.js");
 Math || a();
 const a = () => "../../../components/base/hj-navbar.js",
   o = e.defineComponent({
@@ -19,15 +19,24 @@ const a = () => "../../../components/base/hj-navbar.js",
           (i = null == (l = null == r ? void 0 : r.$page) ? void 0 : l.options)
             ? void 0
             : i.id);
+
+      async function loadPostDetail(postId) {
+        try {
+          const res = await api.getCommunityPostDetail(postId);
+          if (res && res.code === 0) {
+            n.value = res.data;
+            s.value = res.data.comments || [];
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
       if (d) {
         u.value = d;
-        const e = t.mockPosts.find((e) => e.id === d);
-        e && ((n.value = { ...e }), (s.value = [...(t.mockComments[d] || [])]));
+        loadPostDetail(d);
       }
-      n.value ||
-        ((n.value = { ...t.mockPosts[0] }),
-        (s.value = [...(t.mockComments[t.mockPosts[0].id] || [])]),
-        t.mockPosts[0] && (u.value = t.mockPosts[0].id));
+
       const c = e.ref(""),
         m = e.ref(!1),
         k = (e) => {
@@ -41,23 +50,23 @@ const a = () => "../../../components/base/hj-navbar.js",
               : `${Math.round(o / 1440)}天前`;
         },
         h = async () => {
-          c.value.trim() &&
-            ((m.value = !0),
-            setTimeout(() => {
-              (s.value.unshift({
-                id: "c-" + Date.now(),
-                author: "我",
-                avatar: "",
-                content: c.value,
-                likes: 0,
-                isLiked: !1,
-                createdAt: new Date().toISOString(),
-              }),
-                n.value.comments++,
-                (c.value = ""),
-                (m.value = !1),
-                e.index.showToast({ title: "评论成功", icon: "success" }));
-            }, 500));
+          if (c.value.trim()) {
+            m.value = true;
+            try {
+              const res = await api.commentCommunityPost(u.value, c.value);
+              if (res && res.code === 0) {
+                s.value.unshift(res.data);
+                n.value.comments++;
+                c.value = "";
+                e.index.showToast({ title: "评论成功", icon: "success" });
+              }
+            } catch (err) {
+              console.error(err);
+              e.index.showToast({ title: "评论失败", icon: "none" });
+            } finally {
+              m.value = false;
+            }
+          }
         };
       return (t, a) =>
         e.e(
@@ -87,9 +96,15 @@ const a = () => "../../../components/base/hj-navbar.js",
                   m: e.t(n.value.isLiked ? "❤️" : "🤍"),
                   n: e.n(n.value.isLiked ? "action-icon liked" : "action-icon"),
                   o: e.t(n.value.likes),
-                  p: e.o((e) => {
-                    ((n.value.isLiked = !n.value.isLiked),
-                      (n.value.likes += n.value.isLiked ? 1 : -1));
+                  p: e.o(async (e) => {
+                    const newLiked = !n.value.isLiked;
+                    n.value.isLiked = newLiked;
+                    n.value.likes += newLiked ? 1 : -1;
+                    try {
+                      await api.likeCommunityPost(n.value.id, newLiked);
+                    } catch (err) {
+                      console.error(err);
+                    }
                   }, "78"),
                   q: e.t(n.value.comments),
                   r: e.t(n.value.comments),

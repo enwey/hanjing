@@ -8,10 +8,39 @@ const t = () => "../../../../components/base/hj-navbar.js",
     setup(t) {
       const n = e.ref(null),
         l = e.ref(!0);
+      function onLogout() {
+        e.index.showModal({
+          title: "提示",
+          content: "确定要退出登录吗？",
+          success: (res) => {
+            if (res.confirm) {
+              try {
+                const userStore = require("../../../../stores/index.js").useUserStore();
+                userStore.logout();
+                e.index.showToast({ title: "已退出登录", icon: "success" });
+                setTimeout(() => {
+                  e.index.switchTab({ url: "/pages/profile/index" });
+                }, 1000);
+              } catch (err) {
+                console.error("[Account Security] Logout failed:", err);
+              }
+            }
+          }
+        });
+      }
       return (
         e.onMounted(async () => {
-          const e = await a.getAccountSecurity();
-          ((n.value = e.data || e), (l.value = !1));
+          try {
+            console.log("[Account Security] Fetching account security info...");
+            const res = await a.getAccountSecurity();
+            console.log("[Account Security] Fetch success:", JSON.stringify(res));
+            n.value = res.data || res;
+          } catch (err) {
+            console.error("[Account Security] Fetch error:", err);
+            e.index.showToast({ title: "加载失败，请重试", icon: "none" });
+          } finally {
+            l.value = !1;
+          }
         }),
         (a, t) => {
           var u;
@@ -34,6 +63,7 @@ const t = () => "../../../../components/base/hj-navbar.js",
                         : u.slice(0, 16).replace("T", " "),
                     ),
                     h: e.t(n.value.loginDevice),
+                    i: e.o(onLogout),
                   }
                 : {},
             { c: n.value },

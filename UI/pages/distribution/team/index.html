@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>团队成员</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .list {
+      padding: 16px;
+    }
+    .item {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #3b6bf5;
+      color: #fff;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      margin-right: 12px;
+    }
+    .info {
+      flex: 1;
+    }
+    .name {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1f2937;
+      display: block;
+    }
+    .meta {
+      font-size: 12px;
+      color: #9ca3af;
+      display: block;
+      margin-top: 4px;
+    }
+    .right {
+      text-align: right;
+    }
+    .level {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+      display: inline-block;
+    }
+    .level--gold {
+      color: #D97706;
+      background: #FEF3C7;
+    }
+    .level--silver {
+      color: #4B5563;
+      background: #F3F4F6;
+    }
+    .sales {
+      font-size: 13px;
+      color: #4b5563;
+      display: block;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+    .status-tag {
+      font-size: 11px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .status--paid {
+      color: #059669;
+      background: #D1FAE5;
+    }
+    .status--unpaid {
+      color: #9CA3AF;
+      background: #F3F4F6;
+    }
+    .status--booked {
+      color: #3B6BF5;
+      background: #EEF4FF;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-distribution-team-index">
+  <div class="phone-screen page-pages-distribution-team-index">
+    <div class="page data-v-e9b2690b">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">团队成员</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="stats-bar data-v-e9b2690b">
+        <div class="stat data-v-e9b2690b">
+          <span class="sv data-v-e9b2690b">5</span>
+          <span class="sl data-v-e9b2690b">一级成员</span>
+        </div>
+        <div class="stat data-v-e9b2690b">
+          <span class="sv data-v-e9b2690b">8</span>
+          <span class="sl data-v-e9b2690b">二级成员</span>
+        </div>
+        <div class="stat data-v-e9b2690b">
+          <span class="sv data-v-e9b2690b">¥65.4万</span>
+          <span class="sl data-v-e9b2690b">团队销售额</span>
+        </div>
+      </div>
+
+      <div class="list data-v-e9b2690b" id="team-list">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  
+        <div class="safe-bottom" style="height: 34px;"></div>
+      </div>
+
+  <script>
+    const teamMembers = [
+      {
+        id: "tm-001",
+        nickname: "李医生",
+        avatar: "../../../static/demo/doctor-1.jpg",
+        level: "gold",
+        levelLabel: "黄金",
+        orderCount: 23,
+        totalSales: "35.6万",
+        joinedAt: "2026-05-01",
+        statusText: "已成交",
+        statusClass: "paid"
+      },
+      {
+        id: "tm-005",
+        nickname: "陈总",
+        avatar: "../../../static/demo/doctor-2.jpg",
+        level: "gold",
+        levelLabel: "黄金",
+        orderCount: 18,
+        totalSales: "29.8万",
+        joinedAt: "2026-05-05",
+        statusText: "已成交",
+        statusClass: "paid"
+      },
+      {
+        id: "tm-002",
+        nickname: "王小姐",
+        avatar: "../../../static/demo/doctor-3.jpg",
+        level: "silver",
+        levelLabel: "白银",
+        orderCount: 0,
+        totalSales: "0.0万",
+        joinedAt: "2026-05-10",
+        statusText: "未成交",
+        statusClass: "unpaid"
+      },
+      {
+        id: "tm-003",
+        nickname: "赵先生",
+        avatar: "../../../static/demo/doctor-4.jpg",
+        level: "silver",
+        levelLabel: "白银",
+        orderCount: 0,
+        totalSales: "0.0万",
+        joinedAt: "2026-05-15",
+        statusText: "已预约",
+        statusClass: "booked"
+      },
+      {
+        id: "tm-004",
+        nickname: "刘姐",
+        avatar: "../../../static/demo/avatar.jpg",
+        level: "silver",
+        levelLabel: "白银",
+        orderCount: 0,
+        totalSales: "0.0万",
+        joinedAt: "2026-05-20",
+        statusText: "未成交",
+        statusClass: "unpaid"
+      }
+    ];
+
+    function renderTeam() {
+      const container = document.getElementById('team-list');
+      container.innerHTML = '';
+
+      teamMembers.forEach(m => {
+        const row = document.createElement('div');
+        row.className = 'item data-v-e9b2690b';
+
+        const avatarBg = m.level === 'gold' ? '#D97706' : '#9CA3AF';
+        const levelClass = `level--${m.level}`;
+        const statusClass = `status--${m.statusClass}`;
+
+        const avatarHtml = m.avatar 
+          ? `<img class="avatar data-v-e9b2690b" src="${m.avatar}" style="object-fit: cover;" alt="${m.nickname}">`
+          : `<div class="avatar data-v-e9b2690b" style="background: ${avatarBg}">${m.nickname[0]}</div>`;
+
+        row.innerHTML = `
+          ${avatarHtml}
+          <div class="info data-v-e9b2690b">
+            <span class="name data-v-e9b2690b">
+              ${m.nickname}
+              <span class="status-tag ${statusClass}">${m.statusText}</span>
+            </span>
+            <span class="meta data-v-e9b2690b">${m.orderCount} 笔成交 · 加入日期：${m.joinedAt}</span>
+          </div>
+          <div class="right data-v-e9b2690b">
+            <span class="level data-v-e9b2690b ${levelClass}">${m.levelLabel}</span>
+            <span class="sales data-v-e9b2690b">贡献：${m.totalSales}</span>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    // Initialize
+    renderTeam();
+  </script>
+</body>
+</html>

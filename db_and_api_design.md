@@ -11,6 +11,10 @@
 
 ```mermaid
 erDiagram
+    STORES ||--o{ STORE_HOURS : "营业时段"
+    APPOINTMENTS ||--o| APPOINTMENT_EVALUATIONS : "获得评价"
+    APPOINTMENTS ||--o| APPOINTMENT_PRE_EXAMS : "诊前体征"
+    FOLLOW_UP_TASKS ||--o{ FOLLOW_UP_RECORDS : "包含记录"
     USERS ||--o{ PATIENTS : "管理"
     USERS ||--o| DISTRIBUTORS : "成为推广员"
     USERS ||--o{ USER_NOTIFICATIONS : "接收"
@@ -38,6 +42,7 @@ erDiagram
     ADMIN_USERS }|--|| ROLES : "拥有角色"
     ROLES ||--o{ PERMISSIONS : "关联权限"
     ADMIN_USERS ||--o{ FOLLOW_UP_TASKS : "执行随访"
+    ADMIN_USERS ||--o{ AUDIT_LOGS : "产生审计日志"
     ESS_ASSESSMENTS ||--o{ APPOINTMENTS : "转化预约"
     SNORE_ASSESSMENTS ||--o{ APPOINTMENTS : "转化预约"
     APPOINTMENTS ||--o| MEDICAL_RECORDS : "诊断生成"
@@ -76,6 +81,8 @@ erDiagram
 | `age` | `INT` | - | NULL | 年龄 |
 | `phone` | `VARCHAR(20)` | - | NULL | 联系电话 |
 | `has_snore` | `TINYINT(1)` | - | `0` | 是否打鼾：0-否, 1-是 |
+| `medical_history` | `TEXT` | - | NULL | 既往病史描述 |
+| `allergy_history` | `TEXT` | - | NULL | 过敏史描述 |
 | `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 创建时间 |
 | `updated_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 更新时间 |
 
@@ -101,14 +108,22 @@ erDiagram
 | `has_parking` | `TINYINT(1)` | - | `1` | 是否免费停车：0-否, 1-是 |
 | `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 创建时间 |
 
-#### 2.2 门店特色表 (`store_features`)
+#### 2.2 门店营业时段表 (`store_hours`)
+| 字段名 | 类型 | 约束 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | 时段ID |
+| `store_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | 门店ID |
+| `open_time` | `VARCHAR(10)` | `NOT NULL` | 开门时段 (如 "09:00") |
+| `close_time` | `VARCHAR(10)` | `NOT NULL` | 关门时段 (如 "18:00") |
+
+#### 2.3 门店特色表 (`store_features`)
 存储门店的服务标签。
 | 字段名 | 类型 | 约束 | 说明 |
 | :--- | :--- | :--- | :--- |
 | `store_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | 门店ID |
 | `feature` | `VARCHAR(50)` | `NOT NULL` | 服务特色（如 VIP室、睡眠监测、直播室） |
 
-#### 2.3 医生表 (`doctors`)
+#### 2.4 医生表 (`doctors`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 医生ID |
@@ -122,15 +137,16 @@ erDiagram
 | `rating` | `DECIMAL(2,1)` | - | `5.0` | 患者评分 (0-5.0) |
 | `consult_fee` | `INT` | - | `0` | 挂号/咨询费（分） |
 | `status` | `TINYINT` | - | `1` | 医生状态：0-离职/禁用, 1-在职/启用 |
+| `expertise` | `JSON` | - | NULL | 专长领域标签列表 |
 
-#### 2.4 医生门店关联表 (`doctor_store_mapping`)
+#### 2.5 医生门店关联表 (`doctor_store_mapping`)
 记录医生多点执业的排班门店范围。
 | 字段名 | 类型 | 约束 | 说明 |
 | :--- | :--- | :--- | :--- |
 | `doctor_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | 医生ID |
 | `store_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | 执业门店ID |
 
-#### 2.5 医生出诊排班表 (`doctor_schedules`)
+#### 2.6 医生出诊排班表 (`doctor_schedules`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 排班ID |
@@ -169,6 +185,30 @@ erDiagram
 | `snore_assessment_id`| `BIGINT UNSIGNED` | `FOREIGN KEY` | NULL | 关联的 AI 鼾声录音分析报告ID（用于医生接诊时查看初筛背景） |
 | `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 创建时间 |
 | `updated_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 更新时间 |
+
+#### 3.2 预约评价表 (`appointment_evaluations`)
+| 字段名 | 类型 | 约束 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 评价唯一ID |
+| `appointment_id` | `BIGINT UNSIGNED` | `FOREIGN KEY`, `UNIQUE` | `NOT NULL` | 关联预约记录ID |
+| `doctor_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 被评价医生ID |
+| `user_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 评价用户ID |
+| `rating` | `DECIMAL(2,1)` | - | - | 评分 (0-5.0) |
+| `content` | `TEXT` | - | NULL | 评价内容文本 |
+| `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 评价时间 |
+
+#### 3.3 诊前体征分诊表 (`appointment_pre_exams`)
+| 字段名 | 类型 | 约束 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 体征ID |
+| `appointment_id` | `BIGINT UNSIGNED` | `FOREIGN KEY`, `UNIQUE` | `NOT NULL` | 关联预约记录ID |
+| `height` | `DECIMAL(5,2)` | - | NULL | 身高 (cm) |
+| `weight` | `DECIMAL(5,2)` | - | NULL | 体重 (kg) |
+| `systolic_bp` | `INT` | - | NULL | 收缩压 (mmHg) |
+| `diastolic_bp` | `INT` | - | NULL | 舒张压 (mmHg) |
+| `neck_circumference` | `DECIMAL(4,1)` | - | NULL | 颈围 (cm) |
+| `bmi` | `DECIMAL(4,1)` | - | NULL | BMI 体质指数 |
+| `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 录入时间 |
 
 ---
 
@@ -448,14 +488,24 @@ erDiagram
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 任务ID |
 | `patient_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 随访患者ID |
 | `doctor_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 责任医护/执行人ID |
-| `plan_date` | `DATE` | `NOT NULL` | - | 计划随访执行日期 |
-| `type` | `VARCHAR(20)` | `NOT NULL` | `'phone'` | 随访方式：phone-电话随访, chat-微信在线沟通, clinic-门诊面诊 |
-| `status` | `VARCHAR(20)` | `NOT NULL` | `'pending'` | 任务状态：pending-待随访, processing-随访中, completed-已完成, expired-超时未随访 |
-| `feedback_content` | `TEXT` | - | NULL | 随访记录总结与患者配戴主诉反馈 |
-| `completed_at` | `TIMESTAMP` | - | NULL | 随访实际执行完成时间 |
-| `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 任务分配建单时间 |
+| `title` | `VARCHAR(150)` | `NOT NULL` | - | 随访任务标题 |
+| `description` | `TEXT` | - | NULL | 随访计划/要求描述 |
+| `due_date` | `DATE` | `NOT NULL` | - | 计划随访执行日期 |
+| `status` | `VARCHAR(30)` | `NOT NULL` | `'pending'` | 任务状态：pending-待处理, completed-已完成 |
+| `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 任务创建时间 |
 
-#### 9.5 营销优惠券表 (`coupons`)
+#### 9.5 随访沟通记录表 (`follow_up_records`)
+| 字段名 | 类型 | 约束 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 记录唯一ID |
+| `task_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 关联的随访任务ID |
+| `patient_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 随访患者ID |
+| `doctor_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | `NOT NULL` | 记录医生ID |
+| `contact_type` | `VARCHAR(30)` | `NOT NULL` | - | 随访渠道：电话、微信、面诊等 |
+| `summary` | `TEXT` | `NOT NULL` | - | 沟通总结/健康反馈记录 |
+| `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 记录录入时间 |
+
+#### 9.6 营销优惠券表 (`coupons`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 优惠券ID |
@@ -467,7 +517,7 @@ erDiagram
 | `end_time` | `TIMESTAMP` | `NOT NULL` | - | 优惠截止时间 |
 | `stock` | `INT` | `NOT NULL` | `100` | 允许领取的剩余券数 |
 
-#### 9.6 用户系统通知与订阅消息表 (`user_notifications`)
+#### 9.7 用户系统通知与订阅消息表 (`user_notifications`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 通知ID |
@@ -479,7 +529,7 @@ erDiagram
 | `payload` | `JSON` | - | NULL | 携带的关联跳转配置（如 `{ "type": "order", "id": 102 }`） |
 | `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 通知发送时间 |
 
-#### 9.7 系统广告轮播图表 (`banners`)
+#### 9.8 系统广告轮播图表 (`banners`)
 | 字段名 | 类型 | 约束 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 轮播图ID |
@@ -488,6 +538,17 @@ erDiagram
 | `sort_order` | `INT` | `NOT NULL` | `0` | 轮播切换排序权重（值小靠前） |
 | `position` | `VARCHAR(30)` | `NOT NULL` | `'home'` | 展示位置：home-首页头图, mall-商城活动位 |
 | `status` | `TINYINT` | - | `1` | 状态：0-隐藏禁用, 1-显示启用 |
+
+#### 9.9 系统管理员操作审计日志表 (`audit_logs`)
+| 字段名 | 类型 | 约束 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | `PRIMARY KEY` | AUTO_INCREMENT | 审计日志ID |
+| `admin_id` | `BIGINT UNSIGNED` | `FOREIGN KEY` | - | 操作管理员ID |
+| `action` | `VARCHAR(100)` | `NOT NULL` | - | 操作类型 (如 `login`, `decrypt_phone`, `delete_doctor`, `update_store`, `create_appointment`, `create_medical_record`, `create_device_adjustment`) |
+| `target_type` | `VARCHAR(50)` | `NOT NULL` | - | 被操作的目标对象类型 (如 `admin`, `patient`, `doctor`, `store`, `appointment`, `medical_record`, `device_adjustment`) |
+| `target_id` | `VARCHAR(100)` | - | NULL | 被操作的目标对象唯一标识ID |
+| `details` | `TEXT` | - | NULL | 操作细节（如更改前后的主要参数、被查看者姓名等，以 JSON 格式存储） |
+| `created_at` | `TIMESTAMP` | - | CURRENT_TIMESTAMP | 操作发生时间 |
 
 ---
 

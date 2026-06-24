@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>佣金明细</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .tabs {
+      display: flex;
+      background: #fff;
+      padding: 10px 16px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      font-size: 14px;
+      color: #6b7280;
+      padding: 8px 0;
+      cursor: pointer;
+      position: relative;
+    }
+    .tab.active {
+      color: #3b6bf5;
+      font-weight: 600;
+    }
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 25%;
+      right: 25%;
+      height: 3px;
+      background: #3b6bf5;
+      border-radius: 2px;
+    }
+    .list {
+      padding: 16px;
+    }
+    .item {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .item-img {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin-right: 12px;
+    }
+    .item-info {
+      flex: 1;
+    }
+    .item-name {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1f2937;
+      display: block;
+    }
+    .item-meta {
+      font-size: 12px;
+      color: #9ca3af;
+      display: block;
+      margin-top: 4px;
+    }
+    .item-level {
+      font-size: 11px;
+      color: #3b6bf5;
+      background: #eef4ff;
+      padding: 1px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+    .item-right {
+      text-align: right;
+    }
+    .item-amount {
+      font-size: 15px;
+      font-weight: bold;
+      color: #10b981;
+      display: block;
+    }
+    .item-tag {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+    .tag--pending {
+      color: #D97706;
+      background: #FEF3C7;
+    }
+    .tag--settled {
+      color: #059669;
+      background: #D1FAE5;
+    }
+    .tag--cancelled {
+      color: #6B7280;
+      background: #F3F4F6;
+    }
+    .hj-empty {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .hj-empty-icon {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+    .hj-empty-text {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-distribution-commission-index">
+  <div class="phone-screen page-pages-distribution-commission-index">
+    <div class="page data-v-8fd26dea">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">佣金明细</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="summary data-v-8fd26dea">
+        <div class="sum-item data-v-8fd26dea">
+          <span class="sum-val data-v-8fd26dea">¥2,570.00</span>
+          <span class="sum-label data-v-8fd26dea">累计佣金</span>
+        </div>
+        <div class="sum-item data-v-8fd26dea">
+          <span class="sum-val highlight data-v-8fd26dea" style="color: #d97706;">¥3.90</span>
+          <span class="sum-label data-v-8fd26dea">待结算</span>
+        </div>
+        <div class="sum-item data-v-8fd26dea">
+          <span class="sum-val data-v-8fd26dea" style="color: #10b981;">¥2,566.10</span>
+          <span class="sum-label data-v-8fd26dea">已结算</span>
+        </div>
+      </div>
+
+      <div class="tabs data-v-8fd26dea">
+        <span id="tab-all" class="tab data-v-8fd26dea active" onclick="switchTab('all')">全部</span>
+        <span id="tab-pending" class="tab data-v-8fd26dea" onclick="switchTab('pending')">待结算</span>
+        <span id="tab-settled" class="tab data-v-8fd26dea" onclick="switchTab('settled')">已结算</span>
+        <span id="tab-cancelled" class="tab data-v-8fd26dea" onclick="switchTab('cancelled')">已取消</span>
+      </div>
+
+      <div class="list data-v-8fd26dea" id="commission-list">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div id="empty-state" class="hj-empty" style="display: none;">
+        <span class="hj-empty-icon">📂</span>
+        <span class="hj-empty-text">暂无明细数据</span>
+      </div>
+    </div>
+  
+        <div class="safe-bottom" style="height: 34px;"></div>
+      </div>
+
+  <script>
+    const commissionData = [
+      {
+        id: "c-001",
+        name: "智能固磁阻鼾器（标准版）",
+        image: "../../../static/product/hj-mad-03.png",
+        buyer: "张*",
+        date: "2026-06-03",
+        level: "一级分销",
+        amount: "+¥198.00",
+        status: "settled",
+        statusLabel: "已结算"
+      },
+      {
+        id: "c-002",
+        name: "阻鼾器专用清洁片",
+        image: "../../../static/product/clean-kit.png",
+        buyer: "李*",
+        date: "2026-06-02",
+        level: "一级分销",
+        amount: "+¥3.90",
+        status: "pending",
+        statusLabel: "待结算"
+      },
+      {
+        id: "c-003",
+        name: "智能睡眠监测手环",
+        image: "../../../static/product/pillow.png",
+        buyer: "王*",
+        date: "2026-06-01",
+        level: "二级分销",
+        amount: "+¥39.90",
+        status: "settled",
+        statusLabel: "已结算"
+      }
+    ];
+
+    let currentTab = 'all';
+
+    function switchTab(tabKey) {
+      currentTab = tabKey;
+      document.querySelectorAll('.tabs .tab').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tabKey).classList.add('active');
+      renderList();
+    }
+
+    function renderList() {
+      const listContainer = document.getElementById('commission-list');
+      const emptyState = document.getElementById('empty-state');
+      listContainer.innerHTML = '';
+
+      let filtered = [...commissionData];
+      if (currentTab !== 'all') {
+        filtered = filtered.filter(item => item.status === currentTab);
+      }
+
+      if (filtered.length === 0) {
+        emptyState.style.display = 'block';
+        listContainer.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      listContainer.style.display = 'block';
+
+      filtered.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'item data-v-8fd26dea';
+
+        const tagClass = `tag--${item.status}`;
+
+        row.innerHTML = `
+          <img class="item-img data-v-8fd26dea" src="${item.image}" alt="product" />
+          <div class="item-info data-v-8fd26dea">
+            <span class="item-name data-v-8fd26dea">${item.name}</span>
+            <span class="item-meta data-v-8fd26dea">购买人：${item.buyer} | ${item.date}</span>
+            <span class="item-level data-v-8fd26dea">${item.level}</span>
+          </div>
+          <div class="item-right data-v-8fd26dea">
+            <span class="item-amount data-v-8fd26dea" style="color: ${item.status === 'settled' ? '#10b981' : '#d97706'}">${item.amount}</span>
+            <span class="item-tag data-v-8fd26dea ${tagClass}">${item.statusLabel}</span>
+          </div>
+        `;
+        listContainer.appendChild(row);
+      });
+    }
+
+    // Initialize
+    renderList();
+  </script>
+</body>
+</html>

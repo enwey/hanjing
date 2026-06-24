@@ -104,10 +104,8 @@
   height: 48px;
   background: #eef4ff;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
+  box-sizing: border-box;
+  padding: 11px;
   margin-right: 12px;
   flex-shrink: 0;
 }

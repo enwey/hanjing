@@ -39,6 +39,22 @@ export const run = async (sql, params = []) => {
   return { id: result.insertId, changes: result.affectedRows };
 };
 
+export const transaction = async (callback) => {
+  if (!pool) await initPool();
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+  try {
+    const result = await callback(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
 // Initialize Tables
 export const initDB = async () => {
   console.log('Initializing MySQL connection...');
@@ -133,8 +149,8 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS store_hours (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       store_id BIGINT UNSIGNED NOT NULL,
-      open_time VARCHAR(10) NOT NULL,
-      close_time VARCHAR(10) NOT NULL,
+      open_time TIME NOT NULL,
+      close_time TIME NOT NULL,
       FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
     );
   `);
@@ -153,11 +169,25 @@ export const initDB = async () => {
       rating DECIMAL(2, 1) DEFAULT 5.0,
       consult_fee INT DEFAULT 0,
       status TINYINT DEFAULT 1,
-      expertise JSON DEFAULT NULL
+      expertise JSON DEFAULT NULL,
+      exposure_count INT DEFAULT 0,
+      is_new TINYINT DEFAULT 1
     );
   `);
   try {
     await query(`ALTER TABLE doctors ADD COLUMN expertise JSON DEFAULT NULL;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+
+  try {
+    await query(`ALTER TABLE doctors ADD COLUMN exposure_count INT DEFAULT 0;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+
+  try {
+    await query(`ALTER TABLE doctors ADD COLUMN is_new TINYINT DEFAULT 1;`);
   } catch (err) {
     // Ignore error if column already exists
   }
@@ -654,6 +684,20 @@ export const initDB = async () => {
     );
   `);
 
+  // 35. audit_logs
+  await query(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      admin_id BIGINT UNSIGNED,
+      action VARCHAR(100) NOT NULL,
+      target_type VARCHAR(50) NOT NULL,
+      target_id VARCHAR(100),
+      details TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE SET NULL
+    );
+  `);
+
   // Ensure default products 1-7 exist for cashier checkout flows
   try {
     await query(`
@@ -676,6 +720,26 @@ export const initDB = async () => {
     console.log('Ensured products 1-7 exist in database.');
   } catch (err) {
     console.error('Failed to ensure default products exist:', err);
+  }
+
+  // Create High Performance Secondary Indexes
+  try {
+    await query(`CREATE INDEX idx_appt_date_status ON appointments (appointment_date, status);`);
+    console.log('Index idx_appt_date_status verified/created.');
+  } catch (err) {
+    // Ignore error if index already exists
+  }
+  try {
+    await query(`CREATE INDEX idx_orders_pay_status ON orders (pay_at, status);`);
+    console.log('Index idx_orders_pay_status verified/created.');
+  } catch (err) {
+    // Ignore error if index already exists
+  }
+  try {
+    await query(`CREATE INDEX idx_posts_status_top_date ON community_posts (status, is_top, created_at DESC);`);
+    console.log('Index idx_posts_status_top_date verified/created.');
+  } catch (err) {
+    // Ignore error if index already exists
   }
 
   // Re-enable Foreign Key checks

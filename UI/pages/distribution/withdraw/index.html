@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>提现申请</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .method-row {
+      display: flex;
+      gap: 12px;
+    }
+    .method {
+      flex: 1;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: #fff;
+      transition: all 0.2s;
+      font-weight: 500;
+      font-size: 14px;
+      color: #4b5563;
+    }
+    .method#method-wechat.active {
+      border-color: #07c160;
+      background: #f0fdf4;
+      color: #07c160;
+    }
+    .method#method-bank.active {
+      border-color: #3b6bf5;
+      background: #eff6ff;
+      color: #3b6bf5;
+    }
+    .method-icon {
+      font-weight: bold;
+      margin-right: 6px;
+    }
+    .submit-btn {
+      margin: 20px 16px;
+      height: 44px;
+      background: #3b6bf5;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 22px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .submit-btn.disabled {
+      background: #e5e7eb;
+      color: #9ca3af;
+      cursor: default;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-distribution-withdraw-index">
+  <div class="phone-screen page-pages-distribution-withdraw-index">
+    <div class="page data-v-6825c219">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">提现申请</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="card data-v-6825c219">
+        <span class="label data-v-6825c219">可提现佣金</span>
+        <span class="balance data-v-6825c219">1,285.00</span>
+        <div class="info-row data-v-6825c219">
+          <span class="data-v-6825c219">累计佣金：¥2,570.00</span>
+          <span class="data-v-6825c219">已提现：¥1,285.00</span>
+        </div>
+      </div>
+
+      <div class="form data-v-6825c219">
+        <div class="form-item data-v-6825c219">
+          <span class="form-label data-v-6825c219">提现金额</span>
+          <div class="input-wrap data-v-6825c219" style="position: relative;">
+            <span class="prefix data-v-6825c219">¥</span>
+            <input
+              id="withdraw-amount"
+              class="input data-v-6825c219"
+              type="number"
+              placeholder="请输入提现金额"
+              oninput="handleAmountInput(event)"
+            />
+            <span style="position: absolute; right: 16px; top: 12px; font-size: 13px; color: #3b6bf5; cursor: pointer;" onclick="withdrawAll()">全部提现</span>
+          </div>
+        </div>
+
+        <div class="form-item data-v-6825c219">
+          <span class="form-label data-v-6825c219">到账方式</span>
+          <div class="method-row data-v-6825c219">
+            <div id="method-wechat" class="method data-v-6825c219 active" onclick="selectMethod('wechat')">
+              <span class="method-icon data-v-6825c219">💬</span>
+              <span class="method-text data-v-6825c219">微信零钱</span>
+            </div>
+            <div id="method-bank" class="method data-v-6825c219" onclick="selectMethod('bank')">
+              <span class="method-icon data-v-6825c219">💳</span>
+              <span class="method-text data-v-6825c219">银行卡 (4321)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tip-box data-v-6825c219">
+          <span class="tip data-v-6825c219">到账金额 = 提现金额 - 手续费(0.1%)</span>
+          <span class="tip data-v-6825c219">预计到账：<span id="expected-amount">¥0.00</span></span>
+        </div>
+      </div>
+
+      <div id="submit-btn" class="submit-btn data-v-6825c219 disabled" onclick="submitWithdraw()">确认提现</div>
+      
+      <div class="records-link data-v-6825c219" onclick="window.parent.loadPage('pages/distribution/withdraw-records/index')">
+        <span class="data-v-6825c219">查看提现记录</span>
+        <span class="arrow data-v-6825c219">&rsaquo;</span>
+      </div>
+    </div>
+  
+        <div class="safe-bottom" style="height: 34px;"></div>
+      </div>
+
+  <script>
+    const maxBalance = 1285.00;
+    let selectedMethod = 'wechat';
+    let inputVal = 0.00;
+
+    function handleAmountInput(e) {
+      const val = parseFloat(e.target.value);
+      if (isNaN(val) || val <= 0) {
+        inputVal = 0.00;
+      } else {
+        inputVal = val;
+      }
+      updateExpected();
+    }
+
+    function withdrawAll() {
+      document.getElementById('withdraw-amount').value = maxBalance;
+      inputVal = maxBalance;
+      updateExpected();
+    }
+
+    function selectMethod(method) {
+      selectedMethod = method;
+      if (method === 'wechat') {
+        document.getElementById('method-wechat').classList.add('active');
+        document.getElementById('method-bank').classList.remove('active');
+      } else {
+        document.getElementById('method-wechat').classList.remove('active');
+        document.getElementById('method-bank').classList.add('active');
+      }
+    }
+
+    function updateExpected() {
+      const expectedEl = document.getElementById('expected-amount');
+      const submitBtn = document.getElementById('submit-btn');
+
+      if (inputVal <= 0) {
+        expectedEl.textContent = '¥0.00';
+        submitBtn.classList.add('disabled');
+        return;
+      }
+
+      const fee = inputVal * 0.001;
+      const expected = inputVal - fee;
+      expectedEl.textContent = `¥${expected.toFixed(2)}`;
+
+      // Validate threshold: min 10元, max maxBalance
+      if (inputVal >= 10 && inputVal <= maxBalance) {
+        submitBtn.classList.remove('disabled');
+      } else {
+        submitBtn.classList.add('disabled');
+      }
+    }
+
+    function submitWithdraw() {
+      if (inputVal < 10) {
+        alert('起提金额为 10 元！');
+        return;
+      }
+      if (inputVal > maxBalance) {
+        alert('提现金额超出可提现佣金钱包！');
+        return;
+      }
+
+      // Create record in localStorage
+      const methodLabel = selectedMethod === 'wechat' ? '微信钱包' : '招商银行 (尾号 4321)';
+      const newRecord = {
+        id: 'w_' + Date.now(),
+        amount: `-¥${inputVal.toFixed(2)}`,
+        accountInfo: methodLabel,
+        status: 'pending',
+        statusLabel: '审核中',
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        let records = [];
+        const stored = localStorage.getItem('hj_withdraw_records');
+        if (stored) records = JSON.parse(stored);
+        records.unshift(newRecord);
+        localStorage.setItem('hj_withdraw_records', JSON.stringify(records));
+      } catch (e) {}
+
+      alert(`提现申请已成功提交！提现金额：¥${inputVal.toFixed(2)}，预计将在1-3个工作日内到账。`);
+      window.parent.loadPage('pages/distribution/withdraw-records/index');
+    }
+  </script>
+</body>
+</html>

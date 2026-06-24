@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>预约确认</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .hj-button.data-v-f6f93744 {
+      cursor: pointer;
+      transition: transform 0.1s ease, opacity 0.15s ease;
+    }
+    .hj-button.data-v-f6f93744:active {
+      transform: scale(0.99);
+      opacity: 0.95;
+    }
+    .symptom-textarea.data-v-03365e87:focus {
+      outline: none;
+      border-color: #3b6bf5;
+      background-color: #fff;
+      box-shadow: 0 0 0 3px rgba(59, 107, 245, 0.1);
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-appointment-confirm">
+  <div class="phone-screen page-pages-appointment-confirm">
+    <div class="page data-v-03365e87">
+      
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">预约确认</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-03365e87">
+        <!-- Info Card -->
+        <div class="info-card data-v-03365e87">
+          <span class="info-title data-v-03365e87">预约信息确认</span>
+          <div class="info-row data-v-03365e87">
+            <span class="info-label data-v-03365e87">🏥 门店</span>
+            <span id="info-store" class="info-value data-v-03365e87">加载中...</span>
+          </div>
+          <div class="info-row data-v-03365e87">
+            <span class="info-label data-v-03365e87">👨‍⚕️ 医生</span>
+            <span id="info-doctor" class="info-value data-v-03365e87">加载中...</span>
+          </div>
+          <div class="info-row data-v-03365e87">
+            <span class="info-label data-v-03365e87">📅 日期</span>
+            <span id="info-date" class="info-value data-v-03365e87">2026-06-18</span>
+          </div>
+          <div class="info-row data-v-03365e87">
+            <span class="info-label data-v-03365e87">🕐 时段</span>
+            <span id="info-time" class="info-value info-value--bold data-v-03365e87">09:00-09:30</span>
+          </div>
+          <div class="info-row data-v-03365e87">
+            <span class="info-label data-v-03365e87">💰 诊疗费</span>
+            <span id="info-fee" class="info-value info-value--price data-v-03365e87">¥0.00</span>
+          </div>
+        </div>
+        
+        <!-- Symptom Description -->
+        <div class="symptom-card data-v-03365e87">
+          <span class="symptom-title data-v-03365e87">症状描述（选填）</span>
+          <textarea
+            id="symptom-desc"
+            class="symptom-textarea data-v-03365e87"
+            placeholder="请简要描述您的主要症状，例如：打鼾伴随憋气、清晨醒来口干发涩、白天昏沉嗜睡等..."
+            maxlength="500"
+          ></textarea>
+        </div>
+        
+        <!-- Booking Tips -->
+        <div class="tips data-v-03365e87">
+          <span class="tips-text data-v-03365e87">💡 就诊当天会有微信消息提醒，请准时到店</span>
+          <span class="tips-text data-v-03365e87">⚠️ 如需取消或变更预约，请至少提前 2 小时操作</span>
+        </div>
+        
+        <!-- Action Button -->
+        <div class="submit-area data-v-03365e87">
+          <div class="component-hj-button">
+            <button class="hj-button hj-button--primary hj-button--lg hj-button--block data-v-f6f93744" onclick="submitAppointment()">
+              <span class="hj-button-text" id="submit-btn-text">确认预约</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+        <div class="safe-bottom" style="height: 34px;"></div>
+      </div>
+
+  <script>
+    // Parse URL query parameters
+    const params = new URLSearchParams(window.location.search);
+    const storeId = params.get('storeId') || 'store-001';
+    const doctorId = params.get('doctorId') || 'doc-001';
+    const date = params.get('date') || '2026-06-18';
+    const timeSlot = params.get('timeSlot') || '09:00-09:30';
+
+    const storeNames = {
+      'store-001': '鼾静健康·深圳旗舰中心',
+      'store-002': '鼾静健康·南山分中心',
+      'store-003': '鼾静健康·宝安分中心'
+    };
+    const doctorNames = {
+      'doc-001': '李明辉 (主任医师)',
+      'doc-002': '王芳 (副主任医师)',
+      'doc-003': '张伟 (副主任医师)'
+    };
+    const doctorFees = {
+      'doc-001': 200,
+      'doc-002': 150,
+      'doc-003': 150
+    };
+
+    // Load data
+    const feeValue = doctorFees[doctorId] || 200;
+    document.getElementById('info-store').textContent = storeNames[storeId] || '鼾静健康·深圳旗舰中心';
+    document.getElementById('info-doctor').textContent = doctorNames[doctorId] || '李明辉 (主任医师)';
+    document.getElementById('info-date').textContent = date;
+    document.getElementById('info-time').textContent = timeSlot;
+    document.getElementById('info-fee').textContent = `¥${feeValue.toFixed(2)}`;
+
+    // Set WeChat style combined price button
+    document.getElementById('submit-btn-text').textContent = `确认预约 · ¥${feeValue.toFixed(2)}`;
+
+    function submitAppointment() {
+      const symptomDesc = document.getElementById('symptom-desc').value;
+      
+      // Generate a random booking number
+      const randomSuffix = String(Math.floor(1000 + Math.random() * 9000));
+      const cleanDate = date.replace(/-/g, '');
+      const appointmentNo = `AP${cleanDate}${randomSuffix}`;
+
+      // Save new appointment to localStorage list
+      const newApt = {
+        id: appointmentNo,
+        appointmentNo: appointmentNo,
+        storeId: storeId,
+        doctorId: doctorId,
+        date: date,
+        timeSlot: timeSlot,
+        symptom: symptomDesc,
+        status: 'confirmed',
+        type: '首次面诊'
+      };
+      
+      const aptList = JSON.parse(localStorage.getItem('hj_appointments')) || [];
+      if (!aptList.some(a => a.id === appointmentNo)) {
+        aptList.push(newApt);
+        localStorage.setItem('hj_appointments', JSON.stringify(aptList));
+      }
+
+      const urlQuery = `doctorId=${doctorId}&storeId=${storeId}&date=${date}&timeSlot=${timeSlot}&symptom=${encodeURIComponent(symptomDesc)}&appointmentNo=${appointmentNo}`;
+      
+      if (window.parent && window.parent.loadPage) {
+        window.parent.loadPage(`pages/appointment/success?${urlQuery}`);
+      } else {
+        window.location.href = `success.html?${urlQuery}`;
+      }
+    }
+  </script>
+</body>
+</html>

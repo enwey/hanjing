@@ -1,0 +1,29 @@
+<view class="page data-v-1b135653"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-1b135653"
+    u-i="1b135653-0"
+    bind:__l="__l"
+    u-p="{{a}}"
+  /><view class="page-content data-v-1b135653"
+    ><view class="section-header data-v-1b135653"
+      ><text class="section-title data-v-1b135653">选择医生</text
+      ><text class="section-hint data-v-1b135653">共 {{b}} 位医生</text></view
+    ><view wx:if="{{c}}" class="data-v-1b135653"
+      ><view
+        wx:for="{{d}}"
+        wx:for-item="doctor"
+        wx:key="c"
+        class="doctor-wrapper data-v-1b135653"
+        bindtap="{{doctor.d}}"
+        ><hj-doctor-card
+          wx:if="{{doctor.b}}"
+          class="data-v-1b135653"
+          u-i="{{doctor.a}}"
+          bind:__l="__l"
+          u-p="{{doctor.b}}" /></view></view
+    ><view wx:else class="empty-state data-v-1b135653"
+      ><text class="empty-text data-v-1b135653">该门店暂无医生排班</text></view
+    ></view
+  ></view
+>

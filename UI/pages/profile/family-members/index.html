@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>家庭成员</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .list {
+      padding: 16px;
+    }
+    .member-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    .member-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #3b6bf5;
+      color: #fff;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      margin-right: 12px;
+    }
+    .member-info {
+      flex: 1;
+    }
+    .member-name-row {
+      display: flex;
+      align-items: center;
+    }
+    .member-name {
+      font-size: 15px;
+      font-weight: bold;
+      color: #1f2937;
+    }
+    .member-relation {
+      font-size: 11px;
+      color: #3b6bf5;
+      background: #eef4ff;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+      font-weight: 500;
+    }
+    .member-detail {
+      font-size: 12px;
+      color: #6b7280;
+      display: block;
+      margin-top: 4px;
+    }
+    .member-tag {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+    .tag--snore {
+      color: #ef4444;
+      background: #fef2f2;
+    }
+    .tag--nosnore {
+      color: #10b981;
+      background: #ecfdf5;
+    }
+    .member-visit {
+      font-size: 11px;
+      color: #9ca3af;
+      display: block;
+      margin-top: 4px;
+    }
+    .member-delete {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 14px;
+      color: #d1d5db;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .member-delete:hover {
+      color: #ef4444;
+    }
+    .btn-add {
+      margin: 20px 16px;
+      height: 44px;
+      background: #fff;
+      color: #3b6bf5;
+      border: 1px dashed #3b6bf5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 22px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .empty-icon {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+    .empty-text {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-profile-family-members-index">
+  <div class="phone-screen page-pages-profile-family-members-index">
+    <div class="page data-v-30acdad2">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">家庭成员</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-30acdad2">
+        <div class="list" id="members-list">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div id="empty-state" class="empty" style="display: none;">
+          <span class="empty-icon">👥</span>
+          <span class="empty-text">暂无家庭成员</span>
+        </div>
+
+        <div class="btn-add data-v-30acdad2" onclick="window.parent.loadPage('pages/profile/family-members/add-member/index')">
+          <text class="data-v-30acdad2">+ 添加成员</text>
+        </div>
+      </div>
+      <div class="safe-bottom data-v-30acdad2"></div>
+    </div>
+  </div>
+
+  <script>
+    const defaultMembers = [
+      {
+        id: "fm-001",
+        name: "李丽",
+        relation: "配偶",
+        gender: "2", // 女
+        age: 34,
+        phone: "138****5678",
+        hasSnore: true,
+        lastVisit: "2026-05-30"
+      },
+      {
+        id: "fm-002",
+        name: "张小明",
+        relation: "儿子",
+        gender: "1", // 男
+        age: 8,
+        phone: "",
+        hasSnore: false,
+        lastVisit: ""
+      }
+    ];
+
+    function deleteMember(id) {
+      if (!confirm('确认删除该家庭成员吗？')) return;
+
+      try {
+        let members = [];
+        const stored = localStorage.getItem('hj_family_members');
+        if (stored) members = JSON.parse(stored);
+        
+        // Filter out
+        const updated = members.filter(m => m.id !== id);
+        localStorage.setItem('hj_family_members', JSON.stringify(updated));
+        
+        // If it was a default member, we can also store a "deleted defaults" array
+        let deletedDefaults = [];
+        const storedDeleted = localStorage.getItem('hj_deleted_default_members');
+        if (storedDeleted) deletedDefaults = JSON.parse(storedDeleted);
+        if (defaultMembers.some(m => m.id === id)) {
+          deletedDefaults.push(id);
+          localStorage.setItem('hj_deleted_default_members', JSON.stringify(deletedDefaults));
+        }
+      } catch (e) {}
+
+      renderMembers();
+    }
+
+    function renderMembers() {
+      // Load custom members
+      let customMembers = [];
+      try {
+        const stored = localStorage.getItem('hj_family_members');
+        if (stored) customMembers = JSON.parse(stored);
+      } catch (e) {}
+
+      // Filter deleted defaults
+      let deletedDefaults = [];
+      try {
+        const storedDeleted = localStorage.getItem('hj_deleted_default_members');
+        if (storedDeleted) deletedDefaults = JSON.parse(storedDeleted);
+      } catch (e) {}
+
+      const activeDefaults = defaultMembers.filter(m => !deletedDefaults.includes(m.id));
+      const allMembers = [...customMembers, ...activeDefaults];
+
+      const listContainer = document.getElementById('members-list');
+      const emptyState = document.getElementById('empty-state');
+      listContainer.innerHTML = '';
+
+      if (allMembers.length === 0) {
+        emptyState.style.display = 'block';
+        listContainer.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      listContainer.style.display = 'block';
+
+      allMembers.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'member-card data-v-30acdad2';
+
+        const genderLabel = m.gender === '1' ? '男' : '女';
+        const phoneLabel = m.phone ? ` | ${m.phone}` : '';
+        const snoreHTML = m.hasSnore 
+          ? `<span class="member-tag tag--snore">有打鼾</span>` 
+          : `<span class="member-tag tag--nosnore">无打鼾</span>`;
+        const visitHTML = m.lastVisit 
+          ? `<span class="member-visit">上次就诊: ${m.lastVisit}</span>` 
+          : `<span class="member-visit">暂无就诊记录</span>`;
+
+        card.innerHTML = `
+          <div class="member-avatar data-v-30acdad2"><text class="data-v-30acdad2">${m.name[0]}</text></div>
+          <div class="member-info data-v-30acdad2">
+            <div class="member-name-row data-v-30acdad2">
+              <span class="member-name data-v-30acdad2">${m.name}</span>
+              <span class="member-relation data-v-30acdad2">${m.relation}</span>
+            </div>
+            <span class="member-detail data-v-30acdad2">${genderLabel} | ${m.age}岁${phoneLabel}</span>
+            ${snoreHTML}
+            ${visitHTML}
+          </div>
+          <span class="member-delete data-v-30acdad2" onclick="deleteMember('${m.id}')">&times;</span>
+        `;
+        listContainer.appendChild(card);
+      });
+    }
+
+    // Initialize
+    renderMembers();
+  </script>
+</body>
+</html>

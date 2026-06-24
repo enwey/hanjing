@@ -1,6 +1,9 @@
 <view class="calendar data-v-70d02435"
   ><view class="calendar-header data-v-70d02435"
-    ><text class="calendar-month data-v-70d02435">{{a}}</text
+    ><view class="calendar-month-selector data-v-70d02435"
+      ><text class="month-arrow month-prev data-v-70d02435" bindtap="{{l}}">‹</text
+      ><text class="calendar-month data-v-70d02435">{{a}}</text
+      ><text class="month-arrow month-next data-v-70d02435" bindtap="{{m}}">›</text></view
     ><text class="calendar-hint data-v-70d02435">蓝色日期可预约</text></view
   ><view class="calendar-weekdays data-v-70d02435"
     ><text

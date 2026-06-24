@@ -91,12 +91,19 @@
 }
 .info-row.data-v-7e5a1194 {
   display: flex;
+  align-items: center;
   padding: 6px 0;
 }
 .info-label.data-v-7e5a1194 {
   font-size: 14px;
   color: #9ca3af;
-  width: 64px;
+  width: 48px;
+  flex-shrink: 0;
+}
+.row-icon.data-v-7e5a1194 {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
   flex-shrink: 0;
 }
 .info-value.data-v-7e5a1194 {

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>医生详情</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Hide scrollbar defaults inside simulated screen if needed */
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-appointment-doctor-detail">
+  <div class="phone-screen page-pages-appointment-doctor-detail">
+          <div class="page data-v-1b135653"
+  ><!-- Start Component hj-navbar -->
+<div class="component-hj-navbar">
+  <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+    <div class="data-v-1529c78d" style="height: 48px;"></div>
+    <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+      <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+        <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+      </div>
+      <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">医生详情</div>
+    </div>
+  </div>
+  <div class="data-v-1529c78d" style="height: 88px;"></div>
+</div>
+<div class="page-content data-v-1b135653"
+    ><div class="section-header data-v-1b135653"
+      ><span class="section-title data-v-1b135653">选择医生</span>
+      <span class="section-hint data-v-1b135653">共 3 位就诊医生</span></div
+    ><div class="data-v-1b135653"
+      >
+      <!-- Start Component hj-doctor-card (Dr. Li Minghui) -->
+      <div class="doctor-wrapper data-v-1b135653" onclick="window.parent.loadPage('pages/appointment/time-select?doctorId=doc-001&storeId=store-001')">
+        <div class="component-hj-doctor-card">
+          <div class="doctor-card data-v-906afe6e">
+            <div class="doctor-avatar data-v-906afe6e">
+              <span class="doctor-avatar-text data-v-906afe6e">李</span>
+            </div>
+            <div class="doctor-info data-v-906afe6e">
+              <div class="doctor-header data-v-906afe6e">
+                <span class="doctor-name data-v-906afe6e">李明辉</span>
+                <div class="component-hj-tag">
+                  <span class="hj-tag hj-tag--sm data-v-822bb649" style="color: #3b6bf5; background-color: #eef4ff;">主任医师</span>
+                </div>
+              </div>
+              <span class="doctor-specialty data-v-906afe6e">睡眠呼吸 · 22年经验</span>
+              <div class="doctor-expertise data-v-906afe6e">
+                <span class="doctor-expertise-tag data-v-906afe6e">睡眠呼吸暂停综合症</span>
+                <span class="doctor-expertise-tag data-v-906afe6e">阻鼾器适配</span>
+                <span class="doctor-expertise-tag data-v-906afe6e">下颌前移治疗</span>
+              </div>
+              <div class="doctor-stats data-v-906afe6e">
+                <div class="doctor-rating data-v-906afe6e">
+                  <span class="doctor-rating-star data-v-906afe6e">⭐</span>
+                  <span class="doctor-rating-value data-v-906afe6e">4.9</span>
+                  <span class="doctor-rating-count data-v-906afe6e">(326评)</span>
+                </div>
+                <span class="doctor-consult data-v-906afe6e">已接诊 10280+</span>
+              </div>
+            </div>
+            <div class="doctor-arrow data-v-906afe6e">›</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Start Component hj-doctor-card (Dr. Wang Fang) -->
+      <div class="doctor-wrapper data-v-1b135653" onclick="window.parent.loadPage('pages/appointment/time-select?doctorId=doc-002&storeId=store-001')">
+        <div class="component-hj-doctor-card">
+          <div class="doctor-card data-v-906afe6e">
+            <div class="doctor-avatar data-v-906afe6e">
+              <span class="doctor-avatar-text data-v-906afe6e">王</span>
+            </div>
+            <div class="doctor-info data-v-906afe6e">
+              <div class="doctor-header data-v-906afe6e">
+                <span class="doctor-name data-v-906afe6e">王芳</span>
+                <div class="component-hj-tag">
+                  <span class="hj-tag hj-tag--sm data-v-822bb649" style="color: #3b6bf5; background-color: #eef4ff;">副主任医师</span>
+                </div>
+              </div>
+              <span class="doctor-specialty data-v-906afe6e">口腔正畸 · 15年经验</span>
+              <div class="doctor-expertise data-v-906afe6e">
+                <span class="doctor-expertise-tag data-v-906afe6e">口腔矫治器治疗OSAS</span>
+                <span class="doctor-expertise-tag data-v-906afe6e">下颌前移量控制</span>
+                <span class="doctor-expertise-tag data-v-906afe6e">儿童鼾症</span>
+              </div>
+              <div class="doctor-stats data-v-906afe6e">
+                <div class="doctor-rating data-v-906afe6e">
+                  <span class="doctor-rating-star data-v-906afe6e">⭐</span>
+                  <span class="doctor-rating-value data-v-906afe6e">4.8</span>
+                  <span class="doctor-rating-count data-v-906afe6e">(218评)</span>
+                </div>
+                <span class="doctor-consult data-v-906afe6e">已接诊 6520+</span>
+              </div>
+            </div>
+            <div class="doctor-arrow data-v-906afe6e">›</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Start Component hj-doctor-card (Dr. Zhang Wei) -->
+      <div class="doctor-wrapper data-v-1b135653" onclick="window.parent.loadPage('pages/appointment/time-select?doctorId=doc-003&storeId=store-001')">
+        <div class="component-hj-doctor-card">
+          <div class="doctor-card data-v-906afe6e">
+            <div class="doctor-avatar data-v-906afe6e">
+              <span class="doctor-avatar-text data-v-906afe6e">张</span>
+            </div>
+            <div class="doctor-info data-v-906afe6e">
+              <div class="doctor-header data-v-906afe6e">
+                <span class="doctor-name data-v-906afe6e">张伟</span>
+                <div class="component-hj-tag">
+                  <span class="hj-tag hj-tag--sm data-v-822bb649" style="color: #3b6bf5; background-color: #eef4ff;">副主任医师</span>
+                </div>
+              </div>
+              <span class="doctor-specialty data-v-906afe6e">耳鼻喉科 · 18年经验</span>
+              <div class="doctor-expertise data-v-906afe6e">
+                <span class="doctor-expertise-tag data-v-906afe6e">鼻内镜诊断</span>
+                <span class="doctor-expertise-tag data-v-906afe6e">上气道评估</span>
+                <span class="doctor-expertise-tag data-v-906afe6e">过敏性鼻炎与鼾症</span>
+              </div>
+              <div class="doctor-stats data-v-906afe6e">
+                <div class="doctor-rating data-v-906afe6e">
+                  <span class="doctor-rating-star data-v-906afe6e">⭐</span>
+                  <span class="doctor-rating-value data-v-906afe6e">4.7</span>
+                  <span class="doctor-rating-count data-v-906afe6e">(185评)</span>
+                </div>
+                <span class="doctor-consult data-v-906afe6e">已接诊 8430+</span>
+              </div>
+            </div>
+            <div class="doctor-arrow data-v-906afe6e">›</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+        <div class="safe-bottom" style="height: 34px;"></div>
+      </div>
+</body>
+</html>

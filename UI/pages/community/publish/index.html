@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>发帖</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .form {
+      padding: 16px;
+    }
+    .field {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .field-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      display: block;
+      margin-bottom: 10px;
+    }
+    .field-input {
+      width: 100%;
+      border: none;
+      font-size: 15px;
+      color: #1f2937;
+      outline: none;
+      padding: 4px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .field-input::placeholder, .field-textarea::placeholder {
+      color: #9ca3af;
+    }
+    .field-textarea {
+      width: 100%;
+      height: 120px;
+      border: none;
+      font-size: 15px;
+      color: #1f2937;
+      outline: none;
+      resize: none;
+      line-height: 1.5;
+    }
+    .field-count {
+      display: block;
+      text-align: right;
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 8px;
+    }
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tag {
+      font-size: 13px;
+      color: #4b5563;
+      background: #f3f4f6;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+    .tag.active {
+      color: #3b6bf5;
+      background: #eef4ff;
+      border-color: #3b6bf5;
+    }
+    .img-upload {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .img-add {
+      width: 80px;
+      height: 80px;
+      background: #f9fafb;
+      border: 1px dashed #d1d5db;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #9ca3af;
+      cursor: pointer;
+    }
+    .submit-bar {
+      padding: 16px;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border-top: 1px solid #f3f4f6;
+      box-sizing: border-box;
+    }
+    .submit-btn {
+      width: 100%;
+      height: 44px;
+      background: #3b6bf5;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 22px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .submit-btn.disabled {
+      background: #e5e7eb;
+      color: #9ca3af;
+      cursor: default;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-community-publish-index">
+  <div class="phone-screen page-pages-community-publish-index">
+    <div class="page data-v-c3d232f9">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">发帖</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-c3d232f9" style="padding-bottom: 80px;">
+        <div class="form data-v-c3d232f9">
+          <!-- Title -->
+          <div class="field data-v-c3d232f9">
+            <span class="field-label data-v-c3d232f9">标题</span>
+            <input
+              id="title-input"
+              class="field-input data-v-c3d232f9"
+              placeholder="简洁描述你的问题或分享（必填）"
+              maxlength="40"
+              oninput="validateForm()"
+            />
+          </div>
+
+          <!-- Content -->
+          <div class="field data-v-c3d232f9">
+            <span class="field-label data-v-c3d232f9">内容</span>
+            <textarea
+              id="content-input"
+              class="field-textarea data-v-c3d232f9"
+              placeholder="详细描述你的情况、问题或分享经验...（必填）"
+              maxlength="1000"
+              oninput="handleContentInput()"
+            ></textarea>
+            <span id="char-count" class="field-count data-v-c3d232f9">0/1000</span>
+          </div>
+
+          <!-- Tags -->
+          <div class="field data-v-c3d232f9">
+            <span class="field-label data-v-c3d232f9">标签（最多3个）</span>
+            <div class="tag-list data-v-c3d232f9" id="tags-container">
+              <div class="tag data-v-c3d232f9" onclick="toggleTag(this, '适应期')">适应期</div>
+              <div class="tag data-v-c3d232f9" onclick="toggleTag(this, '初戴体验')">初戴体验</div>
+              <div class="tag data-v-c3d232f9" onclick="toggleTag(this, '治疗分享')">治疗分享</div>
+              <div class="tag data-v-c3d232f9" onclick="toggleTag(this, '科普')">科普</div>
+              <div class="tag data-v-c3d232f9" onclick="toggleTag(this, '保养')">保养</div>
+              <div class="tag data-v-c3d232f9" onclick="toggleTag(this, '就医指南')">就医指南</div>
+            </div>
+          </div>
+
+          <!-- Images -->
+          <div class="field data-v-c3d232f9">
+            <span class="field-label data-v-c3d232f9">图片（选填）</span>
+            <div class="img-upload data-v-c3d232f9">
+              <div class="img-add data-v-c3d232f9" onclick="alert('图片上传功能已模拟！')">+ 添加图片</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit Bar -->
+      <div class="submit-bar data-v-c3d232f9">
+        <div
+          id="submit-btn"
+          class="submit-btn data-v-c3d232f9 disabled"
+          onclick="publishPost()"
+        >
+          发布
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const selectedTags = new Set();
+
+    function handleContentInput() {
+      const textarea = document.getElementById('content-input');
+      const charCount = document.getElementById('char-count');
+      charCount.textContent = `${textarea.value.length}/1000`;
+      validateForm();
+    }
+
+    function toggleTag(el, tagName) {
+      if (selectedTags.has(tagName)) {
+        selectedTags.delete(tagName);
+        el.classList.remove('active');
+      } else {
+        if (selectedTags.size >= 3) {
+          alert('最多选择3个标签');
+          return;
+        }
+        selectedTags.add(tagName);
+        el.classList.add('active');
+      }
+    }
+
+    function validateForm() {
+      const title = document.getElementById('title-input').value.trim();
+      const content = document.getElementById('content-input').value.trim();
+      const submitBtn = document.getElementById('submit-btn');
+
+      if (title.length > 0 && content.length > 0) {
+        submitBtn.classList.remove('disabled');
+      } else {
+        submitBtn.classList.add('disabled');
+      }
+    }
+
+    function publishPost() {
+      const title = document.getElementById('title-input').value.trim();
+      const content = document.getElementById('content-input').value.trim();
+      if (!title || !content) return;
+
+      const newPost = {
+        id: 'p_' + Date.now(),
+        author: '我 (黄金会员)',
+        role: 'patient',
+        roleLabel: '鼾症患者',
+        avatarBg: '#FF9900',
+        title: title,
+        content: content,
+        tags: Array.from(selectedTags),
+        likes: 0,
+        comments: 0,
+        isLiked: false,
+        createdAt: new Date().toISOString(),
+        isTop: false
+      };
+
+      // Load existing custom posts, prepend and save
+      let customPosts = [];
+      try {
+        const stored = localStorage.getItem('hj_community_posts');
+        if (stored) {
+          customPosts = JSON.parse(stored);
+        }
+      } catch (e) {}
+
+      customPosts.unshift(newPost);
+      localStorage.setItem('hj_community_posts', JSON.stringify(customPosts));
+
+      alert('发布成功！');
+      window.parent.loadPage('pages/community/index');
+    }
+  </script>
+</body>
+</html>

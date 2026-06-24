@@ -20,22 +20,28 @@
       
       <button 
         class="auth-btn" 
-        open-type="getPhoneNumber" 
-        bindgetphonenumber="onGetPhoneNumber"
+        open-type="{{(a && !h) ? 'getPhoneNumber' : ''}}" 
+        bindtap="{{h ? i : b}}"
+        bindgetphonenumber="{{c}}"
       >
         微信手机号一键登录
       </button>
       
-      <button class="cancel-btn" bindtap="onCancel">
+      <button class="cancel-btn" bindtap="{{d}}">
         暂不登录
       </button>
     </view>
     
     <view class="protocol-section">
-      <text class="protocol-text">登录即代表您同意 </text>
-      <text class="protocol-link" bindtap="viewAgreement">《用户协议》</text>
+      <checkbox-group bindchange="{{e}}">
+        <label class="protocol-label">
+          <checkbox class="protocol-checkbox" value="agree" checked="{{a}}" color="#3b6bf5" />
+          <text class="protocol-text">我已阅读并同意 </text>
+        </label>
+      </checkbox-group>
+      <text class="protocol-link" bindtap="{{f}}">《用户协议》</text>
       <text class="protocol-text">与</text>
-      <text class="protocol-link" bindtap="viewPrivacy">《隐私政策》</text>
+      <text class="protocol-link" bindtap="{{g}}">《隐私政策》</text>
     </view>
   </view>
 </view>

@@ -1,29 +1,80 @@
-<view class="page data-v-1b135653"
+<view class="page data-v-detail"
   ><hj-navbar
     wx:if="{{a}}"
-    class="data-v-1b135653"
-    u-i="1b135653-0"
+    class="data-v-detail"
+    u-i="detail-0"
     bind:__l="__l"
     u-p="{{a}}"
-  /><view class="page-content data-v-1b135653"
-    ><view class="section-header data-v-1b135653"
-      ><text class="section-title data-v-1b135653">选择医生</text
-      ><text class="section-hint data-v-1b135653">共 {{b}} 位医生</text></view
-    ><view wx:if="{{c}}" class="data-v-1b135653"
-      ><view
-        wx:for="{{d}}"
-        wx:for-item="doctor"
-        wx:key="c"
-        class="doctor-wrapper data-v-1b135653"
-        bindtap="{{doctor.d}}"
-        ><hj-doctor-card
-          wx:if="{{doctor.b}}"
-          class="data-v-1b135653"
-          u-i="{{doctor.a}}"
-          bind:__l="__l"
-          u-p="{{doctor.b}}" /></view></view
-    ><view wx:else class="empty-state data-v-1b135653"
-      ><text class="empty-text data-v-1b135653">该门店暂无医生排班</text></view
+  /><view class="page-content data-v-detail" wx:if="{{b}}"
+    ><view class="doctor-detail-hero data-v-detail"
+      ><view class="doc-avatar data-v-detail"
+        ><text class="doc-avatar-text data-v-detail">{{c}}</text></view
+      ><view class="doc-name data-v-detail">{{d}}</view
+      ><view class="doc-title-text data-v-detail">{{e}} · {{f}}</view
+      ><view class="doc-tags data-v-detail"
+        ><text
+          wx:for="{{g}}"
+          wx:for-item="tag"
+          wx:key="a"
+          class="doc-hero-tag data-v-detail"
+          >{{tag.a}}</text
+        ></view
+      ></view
+    ><view class="doc-stats-row data-v-detail"
+      ><view class="doc-stat data-v-detail"
+        ><view class="val data-v-detail"
+          ><text class="data-v-detail">{{h}}</text
+          ><text class="unit data-v-detail">年</text></view
+        ><view class="lab data-v-detail">临床经验</view></view
+      ><view class="doc-stat data-v-detail"
+        ><view class="val data-v-detail"
+          ><text class="data-v-detail">{{i}}</text
+          ><text class="unit data-v-detail">+</text></view
+        ><view class="lab data-v-detail">累计诊疗</view></view
+      ><view class="doc-stat data-v-detail"
+        ><view class="val data-v-detail"
+          ><text class="data-v-detail">{{j}}</text
+          ><text class="unit data-v-detail">%</text></view
+        ><view class="lab data-v-detail">好评率</view></view
+      ></view
+    ><view class="doc-section data-v-detail"
+      ><view class="doc-section-title data-v-detail"
+        ><image class="doc-section-icon data-v-detail" src="/static/icons/tab-profile-active.png" /> 个人简介</view
+      ><view class="doc-intro data-v-detail">{{k}}</view></view
+    ><view class="doc-section data-v-detail"
+      ><view class="doc-section-title data-v-detail"
+        ><image class="doc-section-icon data-v-detail" src="/static/icons/tab-treatment-active.png" /> 擅长领域</view
+      ><view class="doc-specialties data-v-detail"
+        ><text
+          wx:for="{{l}}"
+          wx:for-item="spec"
+          wx:key="a"
+          class="doc-spec-tag data-v-detail"
+          >{{spec.a}}</text
+        ></view
+      ></view
+    ><view class="doc-section data-v-detail" style="padding-bottom: 90px"
+      ><view class="doc-section-title data-v-detail"
+        ><image class="doc-section-icon data-v-detail" src="/static/icons/tab-appointment-active.png" /> 近期排班</view
+      ><view class="doc-schedule data-v-detail"
+        ><view
+          wx:for="{{m}}"
+          wx:for-item="row"
+          wx:key="a"
+          class="schedule-row data-v-detail"
+          ><text class="date data-v-detail">{{row.a}}</text
+          ><text class="period data-v-detail">{{row.b}}</text
+          ><text class="{{['status', 'data-v-detail', row.d]}}"
+            >{{row.c}}</text
+          ></view
+        ><view wx:if="{{!q}}" class="schedule-empty data-v-detail"
+          ><text class="data-v-detail">该医生近期暂无排班计划</text></view
+        ></view
+      ></view
+    ></view
+  ><view class="bottom-fixed-bar data-v-detail" wx:if="{{b}}"
+    ><button class="{{['bar-primary-btn', 'data-v-detail', o ? 'bar-primary-btn--disabled' : '']}}" bindtap="{{n}}"
+      >{{p}}</button
     ></view
   ></view
 >

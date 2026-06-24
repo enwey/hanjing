@@ -41,13 +41,17 @@
           ></view
         ><view class="form-row data-v-acab1652"
           ><text class="form-label data-v-acab1652">生日</text
-          ><input
+          ><picker
             wx:if="{{o}}"
             class="form-value-input data-v-acab1652"
-            placeholder="YYYY-MM-DD"
+            mode="date"
             value="{{p}}"
-            bindinput="{{q}}"
-          /><text wx:else class="form-value data-v-acab1652">{{r}}</text></view
+            start="1900-01-01"
+            end="2026-06-23"
+            bindchange="{{q}}"
+          >
+            <view class="picker-text data-v-acab1652" style="min-height: 20px; line-height: 20px;">{{p || '请选择生日'}}</view>
+          </picker><text wx:else class="form-value data-v-acab1652">{{r}}</text></view
         ></view
       ><view class="actions data-v-acab1652"
         ><view wx:if="{{s}}" class="btn-edit data-v-acab1652" bindtap="{{t}}"

@@ -1,0 +1,14 @@
+{
+  "name": "hanjing-clinic-ui-draft",
+  "version": "1.0.0",
+  "description": "鼾静健康诊所 - 小程序真实全页面UI设计稿项目",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "serve": "npx -y http-server . -p 8080 -o"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>提现记录</title>
+  <link rel="stylesheet" href="../../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .list {
+      padding: 16px;
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .item-left {
+      display: flex;
+      flex-direction: column;
+    }
+    .item-amount {
+      font-size: 16px;
+      font-weight: bold;
+      color: #1f2937;
+    }
+    .item-meta {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+    .item-right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .item-tag {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+      display: inline-block;
+      margin-bottom: 4px;
+    }
+    .tag--success {
+      color: #059669;
+      background: #D1FAE5;
+    }
+    .tag--pending {
+      color: #D97706;
+      background: #FEF3C7;
+    }
+    .tag--failed {
+      color: #EF4444;
+      background: #FEF2F2;
+    }
+    .item-date {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .hj-empty {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .hj-empty-icon {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+    .hj-empty-text {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-distribution-withdraw-records-index">
+  <div class="phone-screen page-pages-distribution-withdraw-records-index">
+    <div class="page data-v-1157dc5a">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">提现记录</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="list data-v-1157dc5a" id="records-list">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div id="empty-state" class="hj-empty" style="display: none;">
+        <span class="hj-empty-icon">💸</span>
+        <span class="hj-empty-text">暂无提现记录</span>
+      </div>
+    </div>
+  
+        <div class="safe-bottom" style="height: 34px;"></div>
+      </div>
+
+  <script>
+    const defaultRecords = [
+      {
+        id: "w-001",
+        amount: "-¥500.00",
+        accountInfo: "招商银行 (尾号 4321)",
+        status: "success",
+        statusLabel: "已到账",
+        createdAt: "2026-05-28T09:00:00Z"
+      },
+      {
+        id: "w-002",
+        amount: "-¥300.00",
+        accountInfo: "微信钱包",
+        status: "success",
+        statusLabel: "已到账",
+        createdAt: "2026-05-15T10:00:00Z"
+      },
+      {
+        id: "w-003",
+        amount: "-¥120.00",
+        accountInfo: "微信钱包",
+        status: "success",
+        statusLabel: "已到账",
+        createdAt: "2026-04-10T14:30:00Z"
+      }
+    ];
+
+    function formatTime(createdAtStr) {
+      if (!createdAtStr) return '';
+      return createdAtStr.split('T')[0];
+    }
+
+    function renderRecords() {
+      // Load custom records
+      let customRecords = [];
+      try {
+        const stored = localStorage.getItem('hj_withdraw_records');
+        if (stored) customRecords = JSON.parse(stored);
+      } catch (e) {}
+
+      const allRecords = [...customRecords, ...defaultRecords];
+      const container = document.getElementById('records-list');
+      const emptyState = document.getElementById('empty-state');
+
+      container.innerHTML = '';
+
+      if (allRecords.length === 0) {
+        emptyState.style.display = 'block';
+        container.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      container.style.display = 'block';
+
+      allRecords.forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'item data-v-1157dc5a';
+
+        const tagClass = `tag--${r.status}`;
+
+        row.innerHTML = `
+          <div class="item-left data-v-1157dc5a">
+            <span class="item-amount data-v-1157dc5a">${r.amount}</span>
+            <span class="item-meta data-v-1157dc5a">${r.accountInfo}</span>
+          </div>
+          <div class="item-right data-v-1157dc5a">
+            <span class="item-tag data-v-1157dc5a ${tagClass}">${r.statusLabel}</span>
+            <span class="item-date data-v-1157dc5a">${formatTime(r.createdAt)}</span>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    // Initialize
+    renderRecords();
+  </script>
+</body>
+</html>

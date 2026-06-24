@@ -9,21 +9,21 @@
     ><view class="info-card data-v-03365e87"
       ><text class="info-title data-v-03365e87">预约信息确认</text
       ><view class="info-row data-v-03365e87"
-        ><text class="info-label data-v-03365e87">🏥 门店</text
+        ><image class="row-icon data-v-03365e87" src="/static/icons/store.svg" /><text class="info-label data-v-03365e87">门店</text
         ><text class="info-value data-v-03365e87">{{b}}</text></view
       ><view class="info-row data-v-03365e87"
-        ><text class="info-label data-v-03365e87">👨‍⚕️ 医生</text
+        ><image class="row-icon data-v-03365e87" src="/static/icons/doctor.svg" /><text class="info-label data-v-03365e87">医生</text
         ><text class="info-value data-v-03365e87">{{c}}</text></view
       ><view class="info-row data-v-03365e87"
-        ><text class="info-label data-v-03365e87">📅 日期</text
+        ><image class="row-icon data-v-03365e87" src="/static/icons/calendar.svg" /><text class="info-label data-v-03365e87">日期</text
         ><text class="info-value data-v-03365e87">{{d}}</text></view
       ><view class="info-row data-v-03365e87"
-        ><text class="info-label data-v-03365e87">🕐 时段</text
+        ><image class="row-icon data-v-03365e87" src="/static/icons/clock.svg" /><text class="info-label data-v-03365e87">时段</text
         ><text class="info-value info-value--bold data-v-03365e87"
           >{{e}}</text
         ></view
       ><view wx:if="{{f}}" class="info-row data-v-03365e87"
-        ><text class="info-label data-v-03365e87">💰 挂号费</text
+        ><image class="row-icon data-v-03365e87" src="/static/icons/fee.svg" /><text class="info-label data-v-03365e87">挂号费</text
         ><text class="info-value info-value--price data-v-03365e87"
           >¥{{g}}</text
         ></view
@@ -40,10 +40,14 @@
           bindinput="{{i}}"
         /></block></view
     ><view class="tips data-v-03365e87"
-      ><text class="tips-text data-v-03365e87"
-        >💡 就诊当天会有消息提醒，请保持手机畅通</text
-      ><text class="tips-text data-v-03365e87"
-        >⚠️ 如需取消，请在就诊前2小时取消</text
+      ><view class="tip-item data-v-03365e87"
+        ><image class="tip-icon data-v-03365e87" src="/static/icons/info.svg" /><text class="tips-text data-v-03365e87"
+          >就诊当天会有消息提醒，请保持手机畅通</text
+        ></view
+      ><view class="tip-item data-v-03365e87"
+        ><image class="tip-icon data-v-03365e87" src="/static/icons/alert.svg" /><text class="tips-text data-v-03365e87"
+          >如需取消，请在就诊前2小时取消</text
+        ></view
       ></view
     ><view class="submit-area data-v-03365e87"
       ><hj-button

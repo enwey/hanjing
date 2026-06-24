@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>改约</title>
+  <link rel="stylesheet" href="../../css/app-styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      -webkit-font-smoothing: antialiased;
+      width: 100vw;
+      height: 100vh;
+      overflow-x: hidden;
+    }
+    body::-webkit-scrollbar {
+      width: 4px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 2px;
+    }
+    .submit-area {
+      padding: 16px;
+      background: #fff;
+      border-top: 1px solid #e5e7eb;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+    }
+    .page-content {
+      padding-bottom: 100px;
+    }
+  </style>
+</head>
+<body class="page-pages page-pages-appointment-reschedule">
+  <div class="phone-screen page-pages-appointment-reschedule">
+    <div class="page data-v-54e72399">
+      <!-- Start Component hj-navbar -->
+      <div class="component-hj-navbar">
+        <div class="hj-navbar data-v-1529c78d is-fixed" style="height: 88px; background: #ffffff; border-bottom: 1px solid #f3f4f6;">
+          <div class="data-v-1529c78d" style="height: 48px;"></div>
+          <div class="hj-navbar-inner data-v-1529c78d" style="height: 40px;">
+            <div class="hj-navbar-back data-v-1529c78d" style="color: #1f2937;" onclick="if(window.parent && window.parent.handleGoBack) { window.parent.handleGoBack(); } else { history.back(); }">
+              <span class="hj-navbar-back-icon data-v-1529c78d" style="border-color: #1f2937;"></span>
+            </div>
+            <div class="hj-navbar-title data-v-1529c78d" style="color: #1f2937;">改约</div>
+          </div>
+        </div>
+        <div class="data-v-1529c78d" style="height: 88px;"></div>
+      </div>
+      <!-- End Component hj-navbar -->
+
+      <div class="page-content data-v-54e72399">
+        <!-- Start Component hj-schedule-calendar -->
+        <div class="component-hj-schedule-calendar">
+          <div class="calendar data-v-70d02435">
+            <div class="calendar-header data-v-70d02435">
+              <span id="calendar-month-text" class="calendar-month data-v-70d02435">2026年6月</span>
+              <span class="calendar-hint data-v-70d02435">蓝色日期可预约</span>
+            </div>
+            <div class="calendar-weekdays data-v-70d02435">
+              <span class="calendar-weekday data-v-70d02435">日</span>
+              <span class="calendar-weekday data-v-70d02435">一</span>
+              <span class="calendar-weekday data-v-70d02435">二</span>
+              <span class="calendar-weekday data-v-70d02435">三</span>
+              <span class="calendar-weekday data-v-70d02435">四</span>
+              <span class="calendar-weekday data-v-70d02435">五</span>
+              <span class="calendar-weekday data-v-70d02435">六</span>
+            </div>
+            <div id="calendar-grid" class="calendar-grid data-v-70d02435">
+              <!-- Calendar grid days will be dynamically rendered here -->
+            </div>
+          </div>
+        </div>
+        <!-- End Component hj-schedule-calendar -->
+
+        <!-- Container for schedules or select hint -->
+        <div id="schedules-container" class="data-v-54e72399">
+          <!-- Dynamically loaded selection hint or schedules -->
+        </div>
+
+        <div id="submit-area-container" class="submit-area data-v-54e72399" style="display: none;">
+          <!-- Component hj-button -->
+          <div class="component-hj-button">
+            <button id="submit-btn" class="hj-button hj-button--primary hj-button--md data-v-f6f93744" style="width: 100%; display: flex; align-items: center; justify-content: center;" onclick="confirmReschedule()">
+              <span id="submit-text" class="hj-button-text">确认改约</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Parse URL query parameters
+    const params = new URLSearchParams(window.location.search);
+    const appointmentId = params.get('id') || 'apt-001';
+    const doctorId = params.get('doctorId') || 'doc-001';
+    const storeId = params.get('storeId') || 'store-001';
+
+    // Date generation and management (Today reference: June 16, 2026)
+    const today = new Date('2026-06-16'); 
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 5 for June
+
+    // Set month title
+    document.getElementById('calendar-month-text').textContent = `${currentYear}年${currentMonth + 1}月`;
+
+    // Compute the 14 available dates starting from tomorrow (June 17 to June 30), skipping Sundays
+    const scheduleDates = [];
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      if (d.getDay() !== 0) { // Skip Sundays (0)
+        const dateStr = d.toISOString().split('T')[0];
+        scheduleDates.push(dateStr);
+      }
+    }
+
+    let selectedDate = ''; // Initially empty
+    let expandedPeriod = null; // Currently expanded period: 'morning', 'afternoon' or null
+    let selectedSlotTime = ''; // Selected slot time range: e.g. '09:00-09:30'
+
+    function renderCalendar() {
+      const firstDay = new Date(currentYear, currentMonth, 1);
+      const startDayOfWeek = firstDay.getDay(); // 0 (Sunday) to 6 (Saturday)
+      const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+      const grid = document.getElementById('calendar-grid');
+      let html = '';
+
+      // 1. Render empty padding days (Sunday-based padding)
+      for (let i = 0; i < startDayOfWeek; i++) {
+        html += `<div class="calendar-day data-v-70d02435 calendar-day--empty"></div>`;
+      }
+
+      // 2. Render actual month days
+      const todayStr = today.toISOString().split('T')[0];
+      for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isToday = dateStr === todayStr;
+        const isPast = dateStr < todayStr;
+        const hasSchedule = scheduleDates.includes(dateStr);
+        const isDisabled = isPast || !hasSchedule;
+        const isSelected = dateStr === selectedDate;
+
+        const dayClasses = ['calendar-day', 'data-v-70d02435'];
+        if (isToday) dayClasses.push('calendar-day--today');
+        if (isPast) dayClasses.push('calendar-day--past');
+        if (hasSchedule) dayClasses.push('calendar-day--has-schedule');
+        if (isDisabled) dayClasses.push('calendar-day--disabled');
+        if (isSelected) dayClasses.push('calendar-day--selected');
+
+        html += `
+          <div class="${dayClasses.join(' ')}" onclick="if(!${isDisabled}) selectDate('${dateStr}')">
+            <span class="calendar-day-text data-v-70d02435">${day}</span>
+            ${hasSchedule && !isPast ? '<div class="calendar-day-dot data-v-70d02435"></div>' : ''}
+          </div>
+        `;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function selectDate(dateStr) {
+      selectedDate = dateStr;
+      expandedPeriod = null; // Reset expanded period when switching dates
+      selectedSlotTime = ''; // Reset selected slot
+      renderCalendar();
+      renderSchedules();
+      updateSubmitArea();
+    }
+
+    function getMockSchedule(period, dateStr) {
+      // Seed based on dateStr and period
+      const seed = dateStr.split('-').reduce((acc, val) => acc + parseInt(val), 0) + (period === 'morning' ? 12 : 24);
+      const rand = ((seed * 9301 + 49297) % 233280) / 233280;
+
+      const totalSlots = 6;
+      const bookedSlots = rand < 0.15 ? 6 : Math.floor(rand * 5) + 1;
+      const isFull = bookedSlots >= totalSlots;
+
+      return {
+        period,
+        periodText: period === 'morning' ? '🌅 上午段' : '🌇 下午段',
+        timeRange: period === 'morning' ? '09:00-12:00' : '14:00-17:00',
+        totalSlots,
+        bookedSlots,
+        isFull
+      };
+    }
+
+    function getMockSlots(period, dateStr) {
+      const startTimes = period === 'morning' ? 
+        ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30'] : 
+        ['14:00', '14:30', '15:00', '15:30', '16:00', '16:30'];
+      const endTimes = period === 'morning' ? 
+        ['09:30', '10:00', '10:30', '11:00', '11:30', '12:00'] : 
+        ['14:30', '15:00', '15:30', '16:00', '16:30', '17:00'];
+        
+      const slots = [];
+      for (let i = 0; i < startTimes.length; i++) {
+        const slotStr = `${startTimes[i]}-${endTimes[i]}`;
+        const seed = dateStr.split('-').reduce((acc, val) => acc + parseInt(val), 0) + (period === 'morning' ? 100 : 200) + i;
+        const rand = ((seed * 9301 + 49297) % 233280) / 233280;
+        
+        let status = 'available';
+        if (rand < 0.35) {
+          status = 'booked';
+        }
+        slots.push({ time: slotStr, status });
+      }
+      return slots;
+    }
+
+    function togglePeriod(period, isFull) {
+      if (isFull) return;
+      if (expandedPeriod === period) {
+        expandedPeriod = null;
+      } else {
+        expandedPeriod = period;
+      }
+      renderSchedules();
+    }
+
+    function chooseSlot(timeStr) {
+      selectedSlotTime = timeStr;
+      renderSchedules();
+      updateSubmitArea();
+    }
+
+    function renderSchedules() {
+      const container = document.getElementById('schedules-container');
+      if (!selectedDate) {
+        container.innerHTML = `
+          <div class="select-hint data-v-54e72399" style="text-align: center; font-size: 15px; color: #9ca3af; padding: 60px 0;">
+            <span>👆 请先选择就诊日期</span>
+          </div>
+        `;
+        return;
+      }
+
+      const parsedDate = new Date(selectedDate);
+      const weekdayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      const dateHeaderStr = `${parsedDate.getFullYear()}年${parsedDate.getMonth() + 1}月${parsedDate.getDate()}日 (${weekdayNames[parsedDate.getDay()]})`;
+
+      const morning = getMockSchedule('morning', selectedDate);
+      const afternoon = getMockSchedule('afternoon', selectedDate);
+
+      let html = `
+        <div class="schedule-section data-v-54e72399" style="padding: 16px;">
+          <span class="schedule-date data-v-54e72399" style="font-size: 15px; font-weight: 600; color: #1f2937; display: block; margin-bottom: 12px;">${dateHeaderStr}</span>
+      `;
+
+      // Morning Schedule
+      const morningHeaderClasses = ['schedule-header', 'data-v-54e72399'];
+      if (morning.isFull) morningHeaderClasses.push('schedule-header--full');
+      
+      html += `
+        <div class="schedule-group data-v-54e72399" style="margin-bottom: 16px;">
+          <div class="${morningHeaderClasses.join(' ')}" style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: #4b5563; background: #fff; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;" onclick="togglePeriod('morning', ${morning.isFull})">
+            <span class="schedule-period data-v-54e72399">${morning.periodText} (${morning.timeRange})</span>
+          </div>
+      `;
+
+      if (expandedPeriod === 'morning') {
+        const slots = getMockSlots('morning', selectedDate);
+        html += `<div class="slot-grid data-v-54e72399" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">`;
+        slots.forEach((slot, index) => {
+          const slotId = `slot-m-${index}`;
+          const isSelected = selectedSlotTime === slot.time;
+          if (slot.status === 'available') {
+            const bg = isSelected ? '#eef4ff' : '#fff';
+            const color = isSelected ? '#3b6bf5' : '#1f2937';
+            const borderColor = isSelected ? '#3b6bf5' : '#d1d5db';
+            html += `
+              <div id="${slotId}" class="slot data-v-54e72399 slot--available" onclick="chooseSlot('${slot.time}')">
+                <span class="slot-time data-v-54e72399" style="font-size: 12px; text-align: center; display: block; padding: 10px 0; border: 1px solid ${borderColor}; border-radius: 6px; background: ${bg}; color: ${color};">${slot.time}</span>
+              </div>
+            `;
+          } else {
+            html += `
+              <div class="slot data-v-54e72399 slot--booked">
+                <span class="slot-time data-v-54e72399" style="font-size: 12px; text-align: center; display: block; padding: 10px 0; border: 1px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; color: #9ca3af;">${slot.time}</span>
+              </div>
+            `;
+          }
+        });
+        html += `</div>`;
+      }
+      html += `</div>`; // Close morning group
+
+      // Afternoon Schedule
+      const afternoonHeaderClasses = ['schedule-header', 'data-v-54e72399'];
+      if (afternoon.isFull) afternoonHeaderClasses.push('schedule-header--full');
+
+      html += `
+        <div class="schedule-group data-v-54e72399">
+          <div class="${afternoonHeaderClasses.join(' ')}" style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: #4b5563; background: #fff; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px;" onclick="togglePeriod('afternoon', ${afternoon.isFull})">
+            <span class="schedule-period data-v-54e72399">${afternoon.periodText} (${afternoon.timeRange})</span>
+          </div>
+      `;
+
+      if (expandedPeriod === 'afternoon') {
+        const slots = getMockSlots('afternoon', selectedDate);
+        html += `<div class="slot-grid data-v-54e72399" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">`;
+        slots.forEach((slot, index) => {
+          const slotId = `slot-a-${index}`;
+          const isSelected = selectedSlotTime === slot.time;
+          if (slot.status === 'available') {
+            const bg = isSelected ? '#eef4ff' : '#fff';
+            const color = isSelected ? '#3b6bf5' : '#1f2937';
+            const borderColor = isSelected ? '#3b6bf5' : '#d1d5db';
+            html += `
+              <div id="${slotId}" class="slot data-v-54e72399 slot--available" onclick="chooseSlot('${slot.time}')">
+                <span class="slot-time data-v-54e72399" style="font-size: 12px; text-align: center; display: block; padding: 10px 0; border: 1px solid ${borderColor}; border-radius: 6px; background: ${bg}; color: ${color};">${slot.time}</span>
+              </div>
+            `;
+          } else {
+            html += `
+              <div class="slot data-v-54e72399 slot--booked">
+                <span class="slot-time data-v-54e72399" style="font-size: 12px; text-align: center; display: block; padding: 10px 0; border: 1px solid #e5e7eb; border-radius: 6px; background: #f3f4f6; color: #9ca3af;">${slot.time}</span>
+              </div>
+            `;
+          }
+        });
+        html += `</div>`;
+      }
+      html += `</div>`; // Close afternoon group
+
+      html += `</div>`; // Close schedule-section
+      container.innerHTML = html;
+    }
+
+    function updateSubmitArea() {
+      const area = document.getElementById('submit-area-container');
+      const text = document.getElementById('submit-text');
+      if (selectedSlotTime) {
+        area.style.display = 'block';
+        text.textContent = `确认改约至 ${selectedDate} ${selectedSlotTime}`;
+      } else {
+        area.style.display = 'none';
+      }
+    }
+
+    function confirmReschedule() {
+      if (!selectedSlotTime) return;
+      alert(`已成功改约至：${selectedDate} ${selectedSlotTime}，就诊当天请按时前往门诊。`);
+      window.parent.loadPage('pages/appointment/index');
+    }
+
+    // Initialize
+    renderCalendar();
+    renderSchedules();
+  </script>
+</body>
+</html>

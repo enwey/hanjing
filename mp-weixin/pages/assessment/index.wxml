@@ -12,16 +12,16 @@
         通过专业的ESS嗜睡量表和AI鼾声分析，全面评估您的睡眠呼吸健康状况
       </text></view
     ><view class="eval-card data-v-35dabd14" bindtap="{{b}}"
-      ><view class="eval-icon data-v-35dabd14">📊</view
-      ><view class="eval-info data-v-35dabd14"
+      ><image class="eval-icon data-v-35dabd14" src="/static/icons/assessment.svg" />
+      <view class="eval-info data-v-35dabd14"
         ><text class="eval-title data-v-35dabd14">ESS嗜睡量表</text
         ><text class="eval-desc data-v-35dabd14"
           >8道情境题 · 约3分钟 · 国际通用标准</text
         ></view
       ><text class="eval-arrow data-v-35dabd14">›</text></view
     ><view class="eval-card data-v-35dabd14" bindtap="{{c}}"
-      ><view class="eval-icon data-v-35dabd14">🎤</view
-      ><view class="eval-info data-v-35dabd14"
+      ><image class="eval-icon data-v-35dabd14" src="/static/icons/microphone.svg" />
+      <view class="eval-info data-v-35dabd14"
         ><text class="eval-title data-v-35dabd14">AI鼾声分析</text
         ><text class="eval-desc data-v-35dabd14"
           >录制鼾声 · AI分析 · 风险评级</text
