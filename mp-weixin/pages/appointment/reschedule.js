@@ -43,8 +43,8 @@ const a = () => "../../components/base/hj-navbar.js",
         e.onMounted(async () => {
           var e;
           const t = getCurrentPages(),
-            a =
-              (null == (e = t[t.length - 1].$page) ? void 0 : e.options) || {};
+            curPage = t[t.length - 1] || {},
+            a = curPage.options || (curPage.$page && curPage.$page.options) || {};
           ((n.value = a.id || ""),
             (u.value = a.doctorId || ""),
             (s.value = a.storeId || ""),

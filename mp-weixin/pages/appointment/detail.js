@@ -32,9 +32,9 @@ const o = () => "../../components/base/hj-navbar.js",
         e.onMounted(async () => {
           var e, t, n;
           const o = getCurrentPages(),
-            c = (
-              (null == (e = o[o.length - 1].$page) ? void 0 : e.options) || {}
-            ).id;
+            curPage = o[o.length - 1] || {},
+            options = curPage.options || (curPage.$page && curPage.$page.options) || {},
+            c = options.id;
           if ((await Promise.all([l.fetchStores(), s.fetchDoctors()]), c))
             try {
               const e = (await a.getAppointmentDetail(c)).data;
