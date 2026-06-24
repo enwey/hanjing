@@ -28,12 +28,28 @@ const t = e.defineComponent({
   setup(t, { emit: a }) {
     const o = a,
       n = e.ref(0),
+      cHeight = e.ref(44),
       showNavbar = e.ref(!1),
       isTabbarPage = e.ref(!1),
       pageRoute = e.ref("");
     e.onMounted(() => {
       const t = e.index.getWindowInfo();
-      n.value = t.statusBarHeight || 44;
+      n.value = t.statusBarHeight || 20;
+      
+      let capsule = { top: 0, height: 0 };
+      try {
+        capsule = e.index.getMenuButtonBoundingClientRect();
+      } catch (err) {
+        console.error("[hj-navbar] getMenuButtonBoundingClientRect fail", err);
+      }
+      
+      if (capsule && capsule.top && capsule.height) {
+        const gap = capsule.top - n.value;
+        cHeight.value = (gap * 2) + capsule.height;
+      } else {
+        cHeight.value = 44;
+      }
+
       const s = getCurrentPages(),
         c = s[s.length - 1],
         r = c ? c.route : "";
@@ -47,7 +63,7 @@ const t = e.defineComponent({
       ].includes(r);
       showNavbar.value = true;
     });
-    const r = e.computed(() => n.value + 44);
+    const r = e.computed(() => n.value + cHeight.value);
     const shouldShowBack = e.computed(() => {
       if (t.showBack) return true;
       return !isTabbarPage.value;
@@ -78,7 +94,7 @@ const t = e.defineComponent({
         {
           d: e.t(e.unref(navbarTitle)),
           e: t.textColor,
-          f: "44px",
+          f: cHeight.value + "px",
           g: t.fixed ? 1 : "",
           h: t.transparent ? 1 : "",
           i: r.value + "px",
