@@ -260,9 +260,20 @@
   display: block;
 }
 
-.doc-hospital.data-v-7e5a1194 {
+.doctor-expertise.data-v-7e5a1194 {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.doctor-expertise-tag.data-v-7e5a1194 {
   font-size: 11px;
-  color: #9ca3af;
+  color: #1a9d5c;
+  background: #d3f5e3;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.2;
 }
 
 /* 4. Schedule & Location Card */

@@ -544,6 +544,9 @@ function buildPageContext(pagePath, title) {
         { id: 'p1', a: '/static/demo/prod-1.jpg', b: '定制型下颌前移阻鼾器 HJ-MAD-03', c: '物理防鼾，轻量便携，睡眠守护', d: '2980', e: '3600', f: '已售 1240' },
         { id: 'p2', a: '/static/demo/prod-2.jpg', b: '阻鼾器专用声波消毒清洁盒', c: '99.9% 紫外线声波双重清洁', d: '298', e: '398', f: '已售 890' }
       ]
+    },
+    'pages/appointment/detail': {
+      doctorExpertise: ['睡眠呼吸暂停综合症', '鼾症非手术治疗', '阻鼾器适配', '下颌前移治疗']
     }
   };
 

@@ -91,7 +91,7 @@ const o = () => "../../components/base/hj-navbar.js",
               if (curPage && curPage.setData) {
                 curPage.setData({
                   doctorDept: doc ? `${doc.specialty || '科室'} · ${doc.experienceYears || 0}年经验` : "科室 · 经验",
-                  doctorIntro: doc && doc.intro ? doc.intro : "擅长睡眠呼吸暂停综合症适配调谐与随访"
+                  doctorExpertise: doc && doc.expertise ? doc.expertise : ["睡眠呼吸暂停综合症", "阻鼾器适配", "下颌前移治疗"]
                 });
               }
             } catch (d) {
@@ -111,7 +111,7 @@ const o = () => "../../components/base/hj-navbar.js",
                     statusLabel: (n.AppointmentStatusMap[r.value.status] || n.AppointmentStatusMap.pending).label,
                     statusClass: "status--" + r.value.status,
                     doctorDept: i.value ? `${i.value.specialty || '科室'} · ${i.value.experienceYears || 0}年经验` : "科室 · 经验",
-                    doctorIntro: i.value && i.value.intro ? i.value.intro : "擅长睡眠呼吸暂停综合症适配调谐与随访",
+                    doctorExpertise: i.value && i.value.expertise ? i.value.expertise : ["睡眠呼吸暂停综合症", "阻鼾器适配", "下颌前移治疗"],
                     onCopy: e.o(copyNo),
                     onCancel: e.o(cancelAppt),
                     onReschedule: e.o(rescheduleAppt),

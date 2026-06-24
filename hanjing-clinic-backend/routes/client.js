@@ -1531,7 +1531,7 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
     const row = await get(
-      `SELECT a.*, p.name as patient_name, d.name as doctor_name, d.title as doctor_title, d.avatar_url as doctor_avatar, d.specialty as doctor_specialty, d.hospital as doctor_hospital, d.intro as doctor_intro, d.experience_years as doctor_experience_years, s.name as store_name
+      `SELECT a.*, p.name as patient_name, d.name as doctor_name, d.title as doctor_title, d.avatar_url as doctor_avatar, d.specialty as doctor_specialty, d.hospital as doctor_hospital, d.intro as doctor_intro, d.experience_years as doctor_experience_years, d.expertise as doctor_expertise, s.name as store_name
        FROM appointments a
        JOIN patients p ON a.patient_id = p.id
        JOIN doctors d ON a.doctor_id = d.id
@@ -1542,6 +1542,30 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
 
     if (!row) {
       return res.status(404).json({ code: 404, message: '预约记录不存在' });
+    }
+
+    let expertise = null;
+    if (row.doctor_expertise) {
+      try {
+        const parsed = typeof row.doctor_expertise === 'string' ? JSON.parse(row.doctor_expertise) : row.doctor_expertise;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          expertise = parsed;
+        }
+      } catch (e) {
+        console.error('Failed to parse expertise JSON:', e);
+      }
+    }
+
+    if (!expertise || expertise.length === 0) {
+      if (row.doctor_specialty === '睡眠呼吸科' || row.doctor_specialty === '睡眠呼吸') {
+        expertise = ['睡眠呼吸暂停综合症', '鼾症非手术治疗', '阻鼾器适配', '下颌前移治疗'];
+      } else if (row.doctor_specialty === '耳鼻喉科') {
+        expertise = ['鼻内镜诊断', '上气道评估', '过敏性鼻炎与鼾症', '多导睡眠监测'];
+      } else if (row.doctor_specialty === '心理科' || row.doctor_specialty === '口腔正畸') {
+        expertise = ['正畸辅导', '睡眠行为干预', '情绪焦虑管理', '依从性辅导'];
+      } else {
+        expertise = ['阻鼾器适配', '睡眠健康辅导'];
+      }
     }
 
     const appt = {
@@ -1579,7 +1603,8 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
           specialty: row.doctor_specialty,
           hospital: row.doctor_hospital,
           intro: row.doctor_intro,
-          experienceYears: row.doctor_experience_years
+          experienceYears: row.doctor_experience_years,
+          expertise: expertise
         },
         store: {
           id: row.store_id,
