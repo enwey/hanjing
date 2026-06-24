@@ -9,25 +9,30 @@
       u-p="{{b}}" /></view
   ><view class="apt-body data-v-74fd48b7"
     ><view class="apt-info-row data-v-74fd48b7"
-      ><text class="apt-label data-v-74fd48b7">🏥 门店</text
+      ><view class="apt-label data-v-74fd48b7"
+        ><image class="apt-label-icon data-v-74fd48b7" src="/static/icons/tab-home.png" /><text class="data-v-74fd48b7">门店</text></view
       ><text class="apt-value data-v-74fd48b7">{{c}}</text></view
     ><view class="apt-info-row data-v-74fd48b7"
-      ><text class="apt-label data-v-74fd48b7">👨‍⚕️ 医生</text
+      ><view class="apt-label data-v-74fd48b7"
+        ><image class="apt-label-icon data-v-74fd48b7" src="/static/icons/tab-profile.png" /><text class="data-v-74fd48b7">医生</text></view
       ><text class="apt-value data-v-74fd48b7">{{d}}</text></view
     ><view class="apt-info-row data-v-74fd48b7"
-      ><text class="apt-label data-v-74fd48b7">📅 时间</text
+      ><view class="apt-label data-v-74fd48b7"
+        ><image class="apt-label-icon data-v-74fd48b7" src="/static/icons/tab-appointment.png" /><text class="data-v-74fd48b7">时间</text></view
       ><text class="apt-value apt-value--bold data-v-74fd48b7"
         >{{e}} {{f}}</text
       ></view
     ><view class="apt-info-row data-v-74fd48b7"
-      ><text class="apt-label data-v-74fd48b7">📋 类型</text
+      ><view class="apt-label data-v-74fd48b7"
+        ><image class="apt-label-icon data-v-74fd48b7" src="/static/icons/tab-treatment.png" /><text class="data-v-74fd48b7">类型</text></view
       ><text class="apt-value data-v-74fd48b7">{{g}}</text></view
     ><view wx:if="{{h}}" class="apt-info-row data-v-74fd48b7"
-      ><text class="apt-label data-v-74fd48b7">💬 主诉</text
+      ><view class="apt-label data-v-74fd48b7"
+        ><image class="apt-label-icon data-v-74fd48b7" src="/static/icons/tab-community.png" /><text class="data-v-74fd48b7">主诉</text></view
       ><text class="apt-value apt-value--desc data-v-74fd48b7"
         >{{i}}</text
       ></view
-    ></view
+    ></view>
   ><view wx:if="{{j}}" class="apt-actions data-v-74fd48b7"
     ><button class="apt-btn apt-btn--ghost data-v-74fd48b7" catchtap="{{k}}">
       改约</button
