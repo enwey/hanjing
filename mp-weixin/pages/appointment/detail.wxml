@@ -84,14 +84,12 @@
     </view>
 
     <!-- 5. Symptom description Card -->
-    <view wx:if="{{l}}" class="card-premium symptom-card data-v-7e5a1194">
+    <view wx:if="{{l}}" class="card-premium data-v-7e5a1194">
       <view class="card-header-premium data-v-7e5a1194">
         <image class="header-icon data-v-7e5a1194" src="/static/icons/chat.svg" />
         <text class="header-title data-v-7e5a1194">主诉症状描述</text>
       </view>
-      <view class="symptom-content-wrapper data-v-7e5a1194">
-        <text class="symptom-text-styled data-v-7e5a1194">{{m}}</text>
-      </view>
+      <text class="symptom-text-styled data-v-7e5a1194">{{m}}</text>
     </view>
 
     <!-- 6. Cancel description Card -->
