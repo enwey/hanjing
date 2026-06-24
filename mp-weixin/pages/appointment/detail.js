@@ -28,6 +28,48 @@ const o = () => "../../components/base/hj-navbar.js",
           }[e] || "default"
         );
       }
+      const apptStore = t.useAppointmentStore();
+
+      function copyNo() {
+        if (r.value && r.value.appointmentNo) {
+          e.index.setClipboardData({
+            data: r.value.appointmentNo,
+            success: () => {
+              e.index.showToast({ title: "复制成功", icon: "success" });
+            }
+          });
+        }
+      }
+
+      function cancelAppt() {
+        if (r.value) {
+          e.index.showModal({
+            title: "取消预约",
+            content: "确定要取消这次预约吗？",
+            success: async (res) => {
+              if (res.confirm) {
+                try {
+                  await apptStore.cancelAppointment(r.value.id, "用户主动取消");
+                  e.index.showToast({ title: "已取消", icon: "success" });
+                  const res2 = (await a.getAppointmentDetail(r.value.id)).data;
+                  r.value = res2.appointment;
+                } catch (err) {
+                  e.index.showToast({ title: "取消失败", icon: "error" });
+                }
+              }
+            }
+          });
+        }
+      }
+
+      function rescheduleAppt() {
+        if (r.value) {
+          e.index.navigateTo({
+            url: `/pages/appointment/reschedule?id=${r.value.id}&doctorId=${r.value.doctorId}&storeId=${r.value.storeId}`,
+          });
+        }
+      }
+
       return (
         e.onMounted(async () => {
           var e, t, n;
@@ -57,6 +99,13 @@ const o = () => "../../components/base/hj-navbar.js",
             r.value
               ? e.e(
                   {
+                    status: r.value.status,
+                    doctorAvatar: i.value && i.value.name ? i.value.name.slice(0, 1) : "医",
+                    statusLabel: (n.AppointmentStatusMap[r.value.status] || n.AppointmentStatusMap.pending).label,
+                    statusClass: "status--" + r.value.status,
+                    onCopy: e.o(copyNo),
+                    onCancel: e.o(cancelAppt),
+                    onReschedule: e.o(rescheduleAppt),
                     c: e.p({
                       text: ((v = r.value.status),
                       n.AppointmentStatusMap[v] ||

@@ -1,47 +1,116 @@
-<view class="page data-v-7e5a1194"
-  ><hj-navbar
+<view class="page data-v-7e5a1194">
+  <hj-navbar
     wx:if="{{a}}"
     class="data-v-7e5a1194"
     u-i="7e5a1194-0"
     bind:__l="__l"
     u-p="{{a}}"
-  /><view wx:if="{{b}}" class="page-content data-v-7e5a1194"
-    ><view class="status-bar data-v-7e5a1194"
-      ><hj-tag
-        wx:if="{{c}}"
-        class="data-v-7e5a1194"
-        u-i="7e5a1194-1"
-        bind:__l="__l"
-        u-p="{{c}}"
-      /><text class="status-no data-v-7e5a1194">{{d}}</text></view
-    ><view class="card data-v-7e5a1194"
-      ><text class="card-title data-v-7e5a1194">就诊信息</text
-      ><view class="info-row data-v-7e5a1194"
-        ><image class="row-icon data-v-7e5a1194" src="/static/icons/store.svg" /><text class="info-label data-v-7e5a1194">门店</text
-        ><text class="info-value data-v-7e5a1194">{{e}}</text></view
-      ><view class="info-row data-v-7e5a1194"
-        ><image class="row-icon data-v-7e5a1194" src="/static/icons/map-pin.svg" /><text class="info-label data-v-7e5a1194">地址</text
-        ><text class="info-value info-value--small data-v-7e5a1194"
-          >{{f}}</text
-        ></view
-      ><view class="info-row data-v-7e5a1194"
-        ><image class="row-icon data-v-7e5a1194" src="/static/icons/doctor.svg" /><text class="info-label data-v-7e5a1194">医生</text
-        ><text class="info-value data-v-7e5a1194">{{g}} · {{h}}</text></view
-      ><view class="info-row data-v-7e5a1194"
-        ><image class="row-icon data-v-7e5a1194" src="/static/icons/calendar.svg" /><text class="info-label data-v-7e5a1194">时间</text
-        ><text class="info-value info-value--bold data-v-7e5a1194"
-          >{{i}} {{j}}</text
-        ></view
-      ><view class="info-row data-v-7e5a1194"
-        ><image class="row-icon data-v-7e5a1194" src="/static/icons/type.svg" /><text class="info-label data-v-7e5a1194">类型</text
-        ><text class="info-value data-v-7e5a1194">{{k}}</text></view
-      ></view>
-    ><view wx:if="{{l}}" class="card data-v-7e5a1194"
-      ><text class="card-title data-v-7e5a1194">症状描述</text
-      ><text class="symptom-text data-v-7e5a1194">{{m}}</text></view
-    ><view wx:if="{{n}}" class="card data-v-7e5a1194"
-      ><text class="card-title data-v-7e5a1194">取消原因</text
-      ><text class="cancel-text data-v-7e5a1194">{{o}}</text></view
-    ></view
-  ></view
->
+  />
+  
+  <view wx:if="{{b}}" class="page-content data-v-7e5a1194">
+    <!-- 1. Status Hero Banner -->
+    <view class="status-hero {{statusClass}} data-v-7e5a1194">
+      <view class="status-hero-main data-v-7e5a1194">
+        <view class="status-icon-wrapper data-v-7e5a1194">
+          <text wx:if="{{status === 'confirmed' || status === 'reminded'}}" class="status-icon data-v-7e5a1194">📅</text>
+          <text wx:elif="{{status === 'pending'}}" class="status-icon data-v-7e5a1194">⏳</text>
+          <text wx:elif="{{status === 'completed'}}" class="status-icon data-v-7e5a1194">✅</text>
+          <text wx:elif="{{status === 'cancelled' || status === 'no_show'}}" class="status-icon data-v-7e5a1194">❌</text>
+          <text wx:else class="status-icon data-v-7e5a1194">🔔</text>
+        </view>
+        <view class="status-title-group data-v-7e5a1194">
+          <text class="status-title data-v-7e5a1194">{{statusLabel}}</text>
+          <text wx:if="{{status === 'confirmed' || status === 'reminded'}}" class="status-desc data-v-7e5a1194">请准时前往门诊就诊，如行程有变可提前改约</text>
+          <text wx:elif="{{status === 'pending'}}" class="status-desc data-v-7e5a1194">预约申请已提交，等待诊所客服核对确认</text>
+          <text wx:elif="{{status === 'completed'}}" class="status-desc data-v-7e5a1194">本次门诊服务已完成，期待再次为您守护健康</text>
+          <text wx:elif="{{status === 'cancelled'}}" class="status-desc data-v-7e5a1194">预约已成功取消，退款（若有）将原路退回</text>
+          <text wx:else class="status-desc data-v-7e5a1194">预约流程已更新，详情请见下方信息</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 2. Order No Bar -->
+    <view class="order-no-bar data-v-7e5a1194">
+      <view class="no-text-group data-v-7e5a1194">
+        <text class="no-label data-v-7e5a1194">预约单号</text>
+        <text class="no-value data-v-7e5a1194">{{d}}</text>
+      </view>
+      <button class="copy-btn-action data-v-7e5a1194" hover-class="copy-btn-hover" bindtap="{{onCopy}}">复制</button>
+    </view>
+
+    <!-- 3. Doctor Details Card -->
+    <view class="card-premium doctor-card data-v-7e5a1194">
+      <view class="doc-avatar-large data-v-7e5a1194">
+        <text class="doc-avatar-text-large data-v-7e5a1194">{{doctorAvatar}}</text>
+        <view class="pulse-ring-avatar data-v-7e5a1194"></view>
+      </view>
+      <view class="doc-info-detail data-v-7e5a1194">
+        <view class="doc-name-row data-v-7e5a1194">
+          <text class="doc-name-large data-v-7e5a1194">{{g}}</text>
+          <text class="doc-title-badge data-v-7e5a1194">{{h}}</text>
+        </view>
+        <text class="doc-dept data-v-7e5a1194">鼾静健康医疗适配中心 · 门诊医生</text>
+        <text class="doc-hospital data-v-7e5a1194">擅长睡眠呼吸暂停综合症适配调谐与随访</text>
+      </view>
+    </view>
+
+    <!-- 4. Schedule & Location Card -->
+    <view class="card-premium data-v-7e5a1194">
+      <view class="card-header-premium data-v-7e5a1194">
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/calendar.svg" />
+        <text class="header-title data-v-7e5a1194">就诊及门店信息</text>
+      </view>
+      
+      <view class="detail-rows data-v-7e5a1194">
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">就诊时间</text>
+          <text class="row-value row-value--bold data-v-7e5a1194">{{i}} {{j}}</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">就诊门诊</text>
+          <text class="row-value data-v-7e5a1194">{{e}}</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">门店地址</text>
+          <text class="row-value row-value--small data-v-7e5a1194">{{f}}</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">门诊类型</text>
+          <text class="row-value data-v-7e5a1194">{{k}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 5. Symptom description Card -->
+    <view wx:if="{{l}}" class="card-premium symptom-card data-v-7e5a1194">
+      <view class="card-header-premium data-v-7e5a1194">
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/timeline.svg" />
+        <text class="header-title data-v-7e5a1194">主诉症状描述</text>
+      </view>
+      <view class="symptom-content-wrapper data-v-7e5a1194">
+        <text class="symptom-text-styled data-v-7e5a1194">{{m}}</text>
+      </view>
+    </view>
+
+    <!-- 6. Cancel description Card -->
+    <view wx:if="{{n}}" class="card-premium cancel-card-styled data-v-7e5a1194">
+      <view class="card-header-premium data-v-7e5a1194">
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/warning.svg" />
+        <text class="header-title data-v-7e5a1194" style="color: #ef4444;">取消原因</text>
+      </view>
+      <view class="cancel-content-wrapper data-v-7e5a1194">
+        <text class="cancel-text-styled data-v-7e5a1194">{{o}}</text>
+      </view>
+    </view>
+
+    <!-- 7. Bottom Fixed Action Panel -->
+    <view wx:if="{{status === 'confirmed' || status === 'pending' || status === 'reminded'}}" class="action-footer data-v-7e5a1194">
+      <button class="footer-btn btn-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onReschedule}}">修改就诊时间</button>
+      <button class="footer-btn btn-danger-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onCancel}}">取消本次预约</button>
+    </view>
+    
+    <view wx:elif="{{status === 'completed' || status === 'cancelled'}}" class="action-footer data-v-7e5a1194">
+      <button class="footer-btn btn-primary-full data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onReschedule}}">重新预约门诊</button>
+    </view>
+  </view>
+</view>
