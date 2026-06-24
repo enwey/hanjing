@@ -1531,7 +1531,7 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
     const row = await get(
-      `SELECT a.*, p.name as patient_name, d.name as doctor_name, d.title as doctor_title, d.avatar_url as doctor_avatar, s.name as store_name
+      `SELECT a.*, p.name as patient_name, d.name as doctor_name, d.title as doctor_title, d.avatar_url as doctor_avatar, d.specialty as doctor_specialty, d.hospital as doctor_hospital, d.intro as doctor_intro, s.name as store_name
        FROM appointments a
        JOIN patients p ON a.patient_id = p.id
        JOIN doctors d ON a.doctor_id = d.id
@@ -1575,7 +1575,10 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
           id: row.doctor_id,
           name: row.doctor_name,
           avatarUrl: row.doctor_avatar,
-          title: row.doctor_title
+          title: row.doctor_title,
+          specialty: row.doctor_specialty,
+          hospital: row.doctor_hospital,
+          intro: row.doctor_intro
         },
         store: {
           id: row.store_id,

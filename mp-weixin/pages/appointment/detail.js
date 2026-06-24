@@ -84,9 +84,7 @@ const o = () => "../../components/base/hj-navbar.js",
                 (u.value = l.getStoreById(
                   null == (t = e.appointment) ? void 0 : t.storeId,
                 )),
-                (i.value = s.getDoctorById(
-                  null == (n = e.appointment) ? void 0 : n.doctorId,
-                )));
+                (i.value = e.doctor));
               const doc = i.value;
               const pages = getCurrentPages();
               const curPage = pages[pages.length - 1];
