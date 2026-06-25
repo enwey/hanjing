@@ -42,14 +42,20 @@
       ></view
     ><view class="calendar-legend data-v-8badcb8c"
       ><text class="legend-item data-v-8badcb8c"
-        ><view class="legend-dot data-v-8badcb8c" style="background: #86efac" />
-        充足</text
+        ><view class="legend-dot data-v-8badcb8c" style="background: #15803d" />
+        极佳(5)</text
       ><text class="legend-item data-v-8badcb8c"
-        ><view class="legend-dot data-v-8badcb8c" style="background: #fde68a" />
-        一般</text
+        ><view class="legend-dot data-v-8badcb8c" style="background: #4ade80" />
+        舒适(4)</text
       ><text class="legend-item data-v-8badcb8c"
-        ><view class="legend-dot data-v-8badcb8c" style="background: #fecaca" />
-        未佩戴</text
+        ><view class="legend-dot data-v-8badcb8c" style="background: #06b6d4" />
+        一般(3)</text
+      ><text class="legend-item data-v-8badcb8c"
+        ><view class="legend-dot data-v-8badcb8c" style="background: #eab308" />
+        较差(2)</text
+      ><text class="legend-item data-v-8badcb8c"
+        ><view class="legend-dot data-v-8badcb8c" style="background: #ef4444" />
+        难受(1)</text
       ></view
     ><view class="stats-row data-v-8badcb8c"
       ><view class="stat-card data-v-8badcb8c"
@@ -75,48 +81,18 @@
     ><view class="section-header data-v-8badcb8c" style="margin-top: 20px"
       ><text class="section-title data-v-8badcb8c">治疗进度</text></view
     ><view class="treatment-timeline data-v-8badcb8c"
-      ><view class="treatment-phase data-v-8badcb8c"
+      ><view
+        wx:for="{{phases}}"
+        wx:for-item="phase"
+        wx:key="f"
+        class="treatment-phase data-v-8badcb8c"
         ><view class="phase-indicator data-v-8badcb8c"
-          ><view class="phase-dot completed data-v-8badcb8c">✓</view
-          ><view class="phase-line completed data-v-8badcb8c" /></view
+          ><view class="{{['phase-dot', 'data-v-8badcb8c', phase.b]}}">{{phase.a}}</view
+          ><view wx:if="{{!phase.i}}" class="{{['phase-line', 'data-v-8badcb8c', phase.h]}}" /></view
         ><view class="phase-content data-v-8badcb8c"
-          ><text class="phase-name data-v-8badcb8c">初诊评估</text
-          ><text class="phase-desc data-v-8badcb8c">完成睡眠监测、口腔检查、气道评估</text
-          ><text class="phase-date data-v-8badcb8c">2026-03-15</text></view
-        ></view
-      ><view class="treatment-phase data-v-8badcb8c"
-        ><view class="phase-indicator data-v-8badcb8c"
-          ><view class="phase-dot completed data-v-8badcb8c">✓</view
-          ><view class="phase-line completed data-v-8badcb8c" /></view
-        ><view class="phase-content data-v-8badcb8c"
-          ><text class="phase-name data-v-8badcb8c">方案定制</text
-          ><text class="phase-desc data-v-8badcb8c">取模、设计个性化阻鼾器，确定初始前伸量</text
-          ><text class="phase-date data-v-8badcb8c">2026-03-22</text></view
-        ></view
-      ><view class="treatment-phase data-v-8badcb8c"
-        ><view class="phase-indicator data-v-8badcb8c"
-          ><view class="phase-dot completed data-v-8badcb8c">✓</view
-          ><view class="phase-line active data-v-8badcb8c" /></view
-        ><view class="phase-content data-v-8badcb8c"
-          ><text class="phase-name data-v-8badcb8c">舒适观察期</text
-          ><text class="phase-desc data-v-8badcb8c">逐步适应佩戴，观察舒适度与受力分布</text
-          ><text class="phase-date data-v-8badcb8c">2026-03-29 ~ 2026-04-28</text></view
-        ></view
-      ><view class="treatment-phase data-v-8badcb8c"
-        ><view class="phase-indicator data-v-8badcb8c"
-          ><view class="phase-dot active data-v-8badcb8c">4</view
-          ><view class="phase-line pending data-v-8badcb8c" /></view
-        ><view class="phase-content data-v-8badcb8c"
-          ><text class="phase-name active-name data-v-8badcb8c">增量调节期</text
-          ><text class="phase-desc data-v-8badcb8c">每次调整1/4毫米，逐步前移下颌至最佳位置</text
-          ><text class="phase-date data-v-8badcb8c">预计 2026-05-01 开始</text></view
-        ></view
-      ><view class="treatment-phase data-v-8badcb8c"
-        ><view class="phase-indicator data-v-8badcb8c"
-          ><view class="phase-dot pending data-v-8badcb8c">5</view></view
-        ><view class="phase-content data-v-8badcb8c"
-          ><text class="phase-name data-v-8badcb8c">效果巩固</text
-          ><text class="phase-desc data-v-8badcb8c">鼾声消除确认，长期佩戴维护指导</text></view
+          ><text class="{{['phase-name', 'data-v-8badcb8c', phase.e]}}">{{phase.d}}</text
+          ><text class="phase-desc data-v-8badcb8c">{{phase.f}}</text
+          ><text class="phase-date data-v-8badcb8c">{{phase.g}}</text></view
         ></view
       ></view
     ><view class="section-header data-v-8badcb8c" style="margin-top: 20px"
@@ -187,7 +163,7 @@
   ><view wx:if="{{A}}" class="checkin-overlay data-v-8badcb8c" bindtap="{{K}}"
     ><view class="checkin-panel data-v-8badcb8c" catchtap="{{J}}"
       ><text class="checkin-panel-title data-v-8badcb8c">今日佩戴打卡</text
-      ><text class="checkin-panel-date data-v-8badcb8c">2026年6月4日 周四</text
+      ><text class="checkin-panel-date data-v-8badcb8c">{{z1}}</text
       ><text class="checkin-label data-v-8badcb8c">佩戴时长（小时）</text
       ><view class="duration-grid data-v-8badcb8c"
         ><view
@@ -204,7 +180,7 @@
           wx:for="{{C}}"
           wx:for-item="s"
           wx:key="b"
-          class="{{['comfort-star', 'data-v-8badcb8c', s.c && 'comfort-star--active']}}"
+          class="{{['comfort-star', 'data-v-8badcb8c', s.c]}}"
           bindtap="{{s.d}}"
           ><text class="data-v-8badcb8c">{{s.a}}</text></view
         ></view

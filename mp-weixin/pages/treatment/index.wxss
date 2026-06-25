@@ -196,7 +196,7 @@
 }
 .calendar-legend.data-v-8badcb8c {
   display: flex;
-  gap: 16px;
+  gap: 10px;
   justify-content: center;
   margin-bottom: 12px;
 }
@@ -442,11 +442,37 @@
   font-size: 18px;
   font-weight: 700;
   color: #d1d5db;
+  transition: all 0.2s ease;
 }
 .comfort-star--active.data-v-8badcb8c {
   background: #fffbeb;
   color: #f59e0b;
   border: 1.5px solid #f59e0b;
+}
+.comfort-star--active-1.data-v-8badcb8c {
+  background: #fef2f2 !important;
+  color: #ef4444 !important;
+  border: 1.5px solid #ef4444 !important;
+}
+.comfort-star--active-2.data-v-8badcb8c {
+  background: #fefce8 !important;
+  color: #eab308 !important;
+  border: 1.5px solid #eab308 !important;
+}
+.comfort-star--active-3.data-v-8badcb8c {
+  background: #ecfeff !important;
+  color: #0891b2 !important;
+  border: 1.5px solid #0891b2 !important;
+}
+.comfort-star--active-4.data-v-8badcb8c {
+  background: #f0fdf4 !important;
+  color: #22c55e !important;
+  border: 1.5px solid #22c55e !important;
+}
+.comfort-star--active-5.data-v-8badcb8c {
+  background: #eafaf1 !important;
+  color: #15803d !important;
+  border: 1.5px solid #15803d !important;
 }
 .checkin-textarea.data-v-8badcb8c {
   width: 100%;

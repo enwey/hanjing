@@ -134,9 +134,9 @@ const a = () => "../../components/base/hj-navbar.js",
             : {
                 d: e.f(d.value, (a, i, r) => {
                   return e.e(
-                    { a: a.image },
-                    a.image
-                      ? { b: a.image }
+                    { a: a.imageUrl || a.image },
+                    (a.imageUrl || a.image)
+                      ? { b: a.imageUrl || a.image }
                       : {
                           c: e.t(
                             "device" === a.category

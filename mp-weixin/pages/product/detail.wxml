@@ -45,6 +45,50 @@
       ><view class="btn-buy data-v-5e948475" bindtap="{{p}}"
         ><text class="data-v-5e948475">立即购买</text></view
       ></view
-    ></block
+    ><view wx:if="{{showCheckout}}" class="checkout-overlay data-v-5e948475" bindtap="closeCheckout">
+      <view class="checkout-panel data-v-5e948475" catchtap="true">
+        <view class="checkout-close data-v-5e948475" bindtap="closeCheckout">×</view>
+        <text class="checkout-title data-v-5e948475">确认订单</text>
+        <view class="checkout-product-card data-v-5e948475">
+          <image class="checkout-product-img data-v-5e948475" src="{{productImageUrl}}" mode="aspectFill" />
+          <view class="checkout-product-info data-v-5e948475">
+            <text class="checkout-product-name data-v-5e948475">{{l}}</text>
+            <text class="checkout-product-price data-v-5e948475">{{o}}</text>
+          </view>
+        </view>
+        <view class="checkout-row data-v-5e948475">
+          <text class="checkout-label data-v-5e948475">购买数量</text>
+          <view class="qty-selector data-v-5e948475">
+            <view class="qty-btn data-v-5e948475" bindtap="decreaseQty">-</view>
+            <text class="qty-val data-v-5e948475">{{quantity}}</text>
+            <view class="qty-btn data-v-5e948475" bindtap="increaseQty">+</view>
+          </view>
+        </view>
+        <view class="checkout-address-section data-v-5e948475">
+          <text class="checkout-section-title data-v-5e948475">收货人信息</text>
+          <view class="input-group data-v-5e948475">
+            <text class="input-label data-v-5e948475">收货人</text>
+            <input class="checkout-input data-v-5e948475" type="text" value="{{contactName}}" bindinput="inputName" placeholder="收货人姓名" />
+          </view>
+          <view class="input-group data-v-5e948475">
+            <text class="input-label data-v-5e948475">联系电话</text>
+            <input class="checkout-input data-v-5e948475" type="number" value="{{phone}}" bindinput="inputPhone" placeholder="联系手机号" />
+          </view>
+          <view class="input-group data-v-5e948475">
+            <text class="input-label data-v-5e948475">详细地址</text>
+            <input class="checkout-input data-v-5e948475" type="text" value="{{detailAddress}}" bindinput="inputDetail" placeholder="省市区及详细地址" />
+          </view>
+        </view>
+        <view class="checkout-footer data-v-5e948475">
+          <view class="checkout-total data-v-5e948475">
+            <text class="checkout-total-label data-v-5e948475">实付款：</text>
+            <text class="checkout-total-val data-v-5e948475">{{totalPayAmountText}}</text>
+          </view>
+          <view class="checkout-btn-submit data-v-5e948475" bindtap="submitOrder">
+            <text class="data-v-5e948475">{{isSubmitting ? '正在提交...' : '确认支付'}}</text>
+          </view>
+        </view>
+      </view>
+    </view></block
   ></view
 >

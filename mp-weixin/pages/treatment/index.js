@@ -24,19 +24,19 @@ const t = () => "../../components/base/hj-navbar.js",
                 model: u.value.deviceModel,
                 adjustValue: u.value.adjustmentValue,
                 startDate: u.value.createdAt.split("T")[0],
-                doctorName: "王芳",
+                doctorName: u.value.doctorName || "王芳",
                 nextAdjust: u.value.nextAdjustDate,
               }
             : null,
         ),
         g = e.computed(() => {
           const e = [],
-            a = new Date("2026-06-04"),
+            a = new Date(),
             t = ["日", "一", "二", "三", "四", "五", "六"];
           for (let n = 6; n >= 0; n--) {
             const u = new Date(a);
             u.setDate(u.getDate() - n);
-            const l = u.toISOString().split("T")[0],
+            const l = `${u.getFullYear()}-${String(u.getMonth() + 1).padStart(2, "0")}-${String(u.getDate()).padStart(2, "0")}`,
               r = o.value.find((e) => e.date === l) || null;
             e.push({
               date: l,
@@ -59,15 +59,26 @@ const t = () => "../../components/base/hj-navbar.js",
                 streak: r.value.streak,
               }
             : { worn: 0, avgHours: 0, avgComfort: 0, streak: 0 },
-        );
+        ),
+        checkinDateStr = e.computed(() => {
+          const today = new Date();
+          const weeks = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+          return `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日 ${weeks[today.getDay()]}`;
+        });
       function x(e) {
         if (e.isFuture) return "#E5E7EB";
-        if (!e.record || 0 === e.record.wearDuration) return "#FECACA";
-        const a = e.record.wearDuration;
-        return a >= 7 ? "#86EFAC" : a >= 5 ? "#FDE68A" : "#FDBA74";
+        if (!e.record || 0 === e.record.wearDuration) return "#F3F4F6";
+        const comfort = e.record.comfort || 3;
+        if (comfort === 1) return "#EF4444";
+        if (comfort === 2) return "#EAB308";
+        if (comfort === 3) return "#06B6D4";
+        if (comfort === 4) return "#4ADE80";
+        if (comfort === 5) return "#15803D";
+        return "#06B6D4";
       }
       function D() {
-        const e = new Date("2026-06-04").toISOString().split("T")[0],
+        const todayObj = new Date(),
+          e = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`,
           a = o.value.find((a) => a.date === e);
         ((null == a ? void 0 : a.wearDuration) && a.wearDuration > 0
           ? ((f.value = !0),
@@ -83,7 +94,8 @@ const t = () => "../../components/base/hj-navbar.js",
       async function T() {
         s.value = !0;
         try {
-          const t = new Date("2026-06-04").toISOString().split("T")[0];
+          const todayObj = new Date(),
+            t = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`;
           await a.submitWearingCheckin({
             date: t,
             wearDuration: v.value,
@@ -213,6 +225,17 @@ const t = () => "../../components/base/hj-navbar.js",
                       },
                     ),
                   ),
+                  phases: e.f(u.value.phases || [], (phase, t, n) => ({
+                    a: phase.status === 'completed' ? '✓' : phase.dot,
+                    b: phase.status === 'completed' ? 'completed' : (phase.status === 'active' ? 'active' : 'pending'),
+                    c: phase.status === 'completed' ? 'completed' : (phase.status === 'active' ? 'active' : 'pending'),
+                    d: e.t(phase.name),
+                    e: phase.status === 'active' ? 'active-name' : '',
+                    f: e.t(phase.desc),
+                    g: e.t(phase.date),
+                    h: t === u.value.phases.length - 1 ? '' : (phase.status === 'completed' ? 'completed' : (phase.status === 'active' ? 'active' : 'pending')),
+                    i: t === u.value.phases.length - 1 ? 1 : ""
+                  }))
                 }
               : {},
             { y: !n.value && !u.value },
@@ -222,6 +245,7 @@ const t = () => "../../components/base/hj-navbar.js",
             { A: i.value },
             i.value
               ? {
+                  z1: e.t(checkinDateStr.value),
                   B: e.f([4, 5, 6, 7, 8], (a, t, n) => ({
                     a: e.t(a),
                     b: a,
@@ -237,7 +261,7 @@ const t = () => "../../components/base/hj-navbar.js",
                   C: e.f([1, 2, 3, 4, 5], (a, t, n) => ({
                     a: e.t(a),
                     b: a,
-                    c: a <= d.value ? 1 : "",
+                    c: a <= d.value ? "comfort-star--active comfort-star--active-" + d.value : "",
                     d: e.o((e) => (d.value = a), a),
                   })),
                   D: c.value,

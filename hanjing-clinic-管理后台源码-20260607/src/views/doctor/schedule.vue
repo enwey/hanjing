@@ -498,9 +498,10 @@ function handleSaveEdit() {
         <div class="form-group">
           <label class="form-label">出诊门店</label>
           <select class="form-control" v-model="editStore">
-            <option>龙岗总店</option>
-            <option>南山分院</option>
-            <option>休息</option>
+            <option v-for="store in storesList" :key="store.id" :value="mapDbStoreToUi(store.name)">
+              {{ mapDbStoreToUi(store.name) }}
+            </option>
+            <option value="休息">休息</option>
           </select>
         </div>
         <div class="form-group" v-if="editStore !== '休息'">

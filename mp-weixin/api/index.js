@@ -931,3 +931,28 @@ exports.getBookingSettings = async function () {
     }
   );
 };
+
+exports.createOrder = async function (data) {
+  return req.request(
+    {
+      url: "/orders",
+      method: "POST",
+      data: data
+    },
+    () => {
+      return t({ id: "1", orderNo: "OD2026123456", payAmount: 5000 });
+    }
+  );
+};
+
+exports.payOrder = async function (id) {
+  return req.request(
+    {
+      url: `/orders/${id}/pay`,
+      method: "POST"
+    },
+    () => {
+      return t({ success: true });
+    }
+  );
+};

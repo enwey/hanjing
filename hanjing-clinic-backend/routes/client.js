@@ -2241,22 +2241,115 @@ app.get('/api/v1/user/medical-records', authenticateWxToken, async (req, res) =>
 // 21. Active Treatment Record (GET)
 app.get('/api/v1/treatment/record', authenticateWxToken, async (req, res) => {
   try {
-    const patient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    let patient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
     if (!patient) {
-      return res.status(404).json({ code: 404, message: '患者记录未找到' });
+      const nickname = `微信用户_${req.user.id}`;
+      const phone = '13800000000';
+      const result = await run(
+        `INSERT INTO patients (user_id, name, relation, gender, age, phone) VALUES (?, ?, 'self', 1, 30, ?)`,
+        [req.user.id, nickname, phone]
+      );
+      patient = { id: result.id };
     }
-    const tr = await get(
-      `SELECT tr.*, mr.diagnosis, mr.doctor_advice 
+    let tr = await get(
+      `SELECT tr.*, mr.diagnosis, mr.doctor_advice, d.name as doctor_name
        FROM treatment_records tr
        LEFT JOIN medical_records mr ON tr.medical_record_id = mr.id
+       LEFT JOIN doctors d ON tr.doctor_id = d.id
        WHERE tr.patient_id = ? AND tr.status = 'active'
        LIMIT 1`,
       [patient.id]
     );
 
     if (!tr) {
-      return res.status(404).json({ code: 404, message: '当前无活跃治疗记录' });
+      // Auto initialize active treatment, wearing logs, and timelines for simulation/testing
+      const today = new Date();
+      const startDate = new Date(today.getTime() - 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const resultTr = await run(
+        `INSERT INTO treatment_records (patient_id, doctor_id, device_model, initial_advancement, current_advancement, start_date, status)
+         VALUES (?, 2, 'HJ-MAD-03', 3.0, 4.5, ?, 'active')`,
+        [patient.id, startDate]
+      );
+      const treatmentId = resultTr.id;
+
+      // Seed 15 days of wearing_logs
+      for (let i = 15; i >= 1; i--) {
+        const pastDate = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+        const dateStr = pastDate.toISOString().split('T')[0];
+        const wears = Math.random() > 0.15;
+        const duration = wears ? (5 + Math.random() * 3.5).toFixed(1) : 0;
+        const comfort = wears ? Math.floor(3 + Math.random() * 3) : 1;
+        const notes = [
+          "首次佩戴，稍微有些异物感",
+          "逐渐适应，无大碍",
+          "佩戴体验很舒适",
+          "睡眠质量明显有提升",
+          "晨起牙齿有轻微酸胀感，片刻即消",
+          "感觉呼吸更加顺畅了"
+        ];
+        const note = wears ? notes[Math.floor(Math.random() * notes.length)] : '未佩戴';
+        await run(
+          `INSERT INTO wearing_logs (treatment_id, date, wear_duration, comfort, note) VALUES (?, ?, ?, ?, ?)`,
+          [treatmentId, dateStr, duration, comfort, note]
+        );
+      }
+
+      // Seed treatment_timelines if empty
+      const timelineCheck = await get(`SELECT id FROM treatment_timelines WHERE user_id = ? LIMIT 1`, [req.user.id]);
+      if (!timelineCheck) {
+        const dates = [
+          new Date(today.getTime() - 25 * 24 * 60 * 60 * 1000),
+          new Date(today.getTime() - 20 * 24 * 60 * 60 * 1000),
+          new Date(today.getTime() - 15 * 24 * 60 * 60 * 1000)
+        ];
+        const timelineData = [
+          ['建立疗程档案', '王医生针对中重度阻塞性睡眠呼吸暂停(OSAHS)为患者制定了下颌前移阻鼾器治疗方案，初始量3.0mm。', 'visit', '王医生', '#1A9D5C', 'start'],
+          ['阻鼾器制作与配送', '定制式可调舌型阻鼾器设计制作完成，型号：HJ-MAD-03。', 'milestone', '陈技师', '#3B6BF5', 'device'],
+          ['阻鼾器首次调试', '王医生完成了阻鼾器首次试戴和调试。患者反馈良好，已进行佩戴指导。', 'adjust', '王医生', '#F59E0B', 'adjust']
+        ];
+        for (let j = 0; j < dates.length; j++) {
+          const dateStr = dates[j].toISOString().split('T')[0];
+          await run(`
+            INSERT INTO treatment_timelines (user_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `, [req.user.id, dateStr, timelineData[j][0], timelineData[j][1], timelineData[j][2], timelineData[j][3], timelineData[j][4], timelineData[j][5]]);
+        }
+      }
+
+      // Re-fetch the active record
+      tr = await get(
+        `SELECT tr.*, mr.diagnosis, mr.doctor_advice, d.name as doctor_name
+         FROM treatment_records tr
+         LEFT JOIN medical_records mr ON tr.medical_record_id = mr.id
+         LEFT JOIN doctors d ON tr.doctor_id = d.id
+         WHERE tr.patient_id = ? AND tr.status = 'active'
+         LIMIT 1`,
+        [patient.id]
+      );
     }
+
+    const getPhaseList = (startDateStr) => {
+      const start = new Date(startDateStr);
+      const formatYmd = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      };
+      
+      const p1Date = new Date(start.getTime() - 14 * 24 * 60 * 60 * 1000);
+      const p2Date = new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const p3End = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const p4Start = new Date(start.getTime() + 31 * 24 * 60 * 60 * 1000);
+      
+      return [
+        { name: '初诊评估', desc: '完成睡眠监测、口腔检查、气道评估', date: formatYmd(p1Date), status: 'completed', dot: '1' },
+        { name: '方案定制', desc: '取模、设计个性化阻鼾器，确定初始前伸量', date: formatYmd(p2Date), status: 'completed', dot: '2' },
+        { name: '舒适观察期', desc: '逐步适应佩戴，观察舒适度与受力分布', date: `${formatYmd(start)} ~ ${formatYmd(p3End)}`, status: 'active', dot: '3' },
+        { name: '增量调节期', desc: '每次调整1/4毫米，逐步前移下颌至最佳位置', date: `预计 ${formatYmd(p4Start)} 开始`, status: 'pending', dot: '4' },
+        { name: '效果巩固', desc: '鼾声消除确认，长期佩戴维护指导', date: '长期', status: 'pending', dot: '5' }
+      ];
+    };
 
     res.json({
       code: 0,
@@ -2266,6 +2359,7 @@ app.get('/api/v1/treatment/record', authenticateWxToken, async (req, res) => {
         patientId: tr.patient_id.toString(),
         appointmentId: tr.medical_record_id ? tr.medical_record_id.toString() : '',
         doctorId: tr.doctor_id.toString(),
+        doctorName: tr.doctor_name || '王芳',
         diagnosis: tr.diagnosis || '轻度阻塞性睡眠呼吸暂停（OSAS）',
         treatmentPlan: `下颌前移式阻鼾器治疗，初始前移量${tr.initial_advancement}mm，当前前移量${tr.current_advancement}mm`,
         deviceModel: tr.device_model,
@@ -2273,11 +2367,433 @@ app.get('/api/v1/treatment/record', authenticateWxToken, async (req, res) => {
         nextAdjustDate: tr.next_adjust_date || '',
         doctorAdvice: tr.doctor_advice || '建议每晚佩戴，如有不适请及时就诊。',
         followupDate: tr.next_adjust_date || '',
-        createdAt: tr.created_at
+        createdAt: tr.created_at,
+        phases: getPhaseList(tr.start_date || tr.created_at)
       }
     });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取治疗记录失败' });
+  }
+});
+
+// 21.1 WeChat Client Wearing Records (GET)
+app.get('/api/v1/treatment/wearing-records', authenticateWxToken, async (req, res) => {
+  try {
+    const patient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    if (!patient) {
+      return res.json({ code: 0, message: 'success', data: [] });
+    }
+    const tr = await get(`SELECT id FROM treatment_records WHERE patient_id = ? AND status = 'active' LIMIT 1`, [patient.id]);
+    if (!tr) {
+      return res.json({ code: 0, message: 'success', data: [] });
+    }
+    const logs = await query(`SELECT * FROM wearing_logs WHERE treatment_id = ? ORDER BY date DESC`, [tr.id]);
+    const formatTime = (d) => {
+      if (!d) return '';
+      const date = new Date(d);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const r = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${r}`;
+    };
+    res.json({
+      code: 0,
+      message: 'success',
+      data: logs.map(log => ({
+        id: log.id.toString(),
+        patientId: patient.id.toString(),
+        date: formatTime(log.date),
+        wearDuration: Number(log.wear_duration),
+        comfort: log.comfort || 3,
+        note: log.note || '',
+        createdAt: log.created_at
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取佩戴记录失败' });
+  }
+});
+
+// 21.2 WeChat Client Wearing Summary (GET)
+app.get('/api/v1/treatment/wearing-summary', authenticateWxToken, async (req, res) => {
+  try {
+    const patient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    const defaultSummary = {
+      totalDays: 0,
+      wornDays: 0,
+      compliance: 0,
+      avgDuration: 0,
+      avgComfort: 0,
+      streak: 0,
+      weekWorn: 0,
+      weekAvg: 0
+    };
+    if (!patient) {
+      return res.json({ code: 0, message: 'success', data: defaultSummary });
+    }
+    const tr = await get(`SELECT id FROM treatment_records WHERE patient_id = ? AND status = 'active' LIMIT 1`, [patient.id]);
+    if (!tr) {
+      return res.json({ code: 0, message: 'success', data: defaultSummary });
+    }
+    const logs = await query(`SELECT * FROM wearing_logs WHERE treatment_id = ? ORDER BY date ASC`, [tr.id]);
+    if (logs.length === 0) {
+      return res.json({ code: 0, message: 'success', data: defaultSummary });
+    }
+
+    const e = logs.filter(l => Number(l.wear_duration) > 0);
+    const totalDays = logs.length;
+    const wornDays = e.length;
+    const compliance = Math.round((wornDays / totalDays) * 100);
+    const avgDuration = e.length > 0 ? Math.round((e.reduce((acc, l) => acc + Number(l.wear_duration), 0) / e.length) * 10) / 10 : 0;
+    const avgComfort = e.length > 0 ? Math.round((e.reduce((acc, l) => acc + (l.comfort || 3), 0) / e.length) * 10) / 10 : 0;
+
+    // Calculate streak (consecutive days of wearing from last element backwards)
+    let streak = 0;
+    for (let i = logs.length - 1; i >= 0 && Number(logs[i].wear_duration) > 0; i--) {
+      streak++;
+    }
+
+    // Recent 7 days calculations
+    const recent7 = logs.slice(-7);
+    const weekWornLogs = recent7.filter(l => Number(l.wear_duration) > 0);
+    const weekWorn = weekWornLogs.length;
+    const weekAvg = weekWorn > 0 ? Math.round((recent7.reduce((acc, l) => acc + Number(l.wear_duration), 0) / weekWorn) * 10) / 10 : 0;
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        totalDays,
+        wornDays,
+        compliance,
+        avgDuration,
+        avgComfort,
+        streak,
+        weekWorn,
+        weekAvg
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取佩戴汇总失败' });
+  }
+});
+
+// 21.3 WeChat Client Treatment Timeline (GET)
+app.get('/api/v1/treatment/timeline', authenticateWxToken, async (req, res) => {
+  try {
+    const timelines = await query(`SELECT * FROM treatment_timelines WHERE user_id = ? ORDER BY event_date DESC`, [req.user.id]);
+    const formatTime = (d) => {
+      if (!d) return '';
+      const date = new Date(d);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const r = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${r}`;
+    };
+    res.json({
+      code: 0,
+      message: 'success',
+      data: timelines.map(t => ({
+        id: t.id.toString(),
+        date: formatTime(t.event_date),
+        type: t.event_type || 'visit',
+        title: t.event_title,
+        description: t.event_desc || '',
+        doctorName: t.doctor_name || '',
+        icon: t.icon || '',
+        color: t.color || '#3B6BF5'
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取时间线失败' });
+  }
+});
+
+// 21.4 WeChat Client Wearing Check-in (POST)
+app.post('/api/v1/treatment/wearing', authenticateWxToken, async (req, res) => {
+  const { date, wearDuration, comfort, note } = req.body;
+  if (!date || wearDuration === undefined) {
+    return res.status(400).json({ code: 400, message: '打卡日期和时长不能为空' });
+  }
+  try {
+    const patient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    if (!patient) {
+      return res.status(404).json({ code: 404, message: '患者档案未找到' });
+    }
+    const tr = await get(`SELECT id FROM treatment_records WHERE patient_id = ? AND status = 'active' LIMIT 1`, [patient.id]);
+    if (!tr) {
+      return res.status(404).json({ code: 404, message: '当前无活跃治疗，无法打卡' });
+    }
+    
+    // Check if check-in log already exists for this date
+    const existingLog = await get(`SELECT id FROM wearing_logs WHERE treatment_id = ? AND date = ?`, [tr.id, date]);
+    if (existingLog) {
+      await run(
+        `UPDATE wearing_logs SET wear_duration = ?, comfort = ?, note = ? WHERE id = ?`,
+        [wearDuration, comfort || 3, note || null, existingLog.id]
+      );
+    } else {
+      await run(
+        `INSERT INTO wearing_logs (treatment_id, date, wear_duration, comfort, note) VALUES (?, ?, ?, ?, ?)`,
+        [tr.id, date, wearDuration, comfort || 3, note || null]
+      );
+    }
+    
+    res.json({ code: 0, message: '打卡成功' });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '佩戴打卡失败' });
+  }
+});
+
+// 21.5 WeChat Client Order List (GET)
+app.get('/api/v1/orders', authenticateWxToken, async (req, res) => {
+  const { status } = req.query;
+  try {
+    let sql = `SELECT * FROM orders WHERE user_id = ?`;
+    const params = [req.user.id];
+    if (status && status !== 'all') {
+      sql += ` AND status = ?`;
+      params.push(status);
+    }
+    sql += ` ORDER BY created_at DESC`;
+    const list = await query(sql, params);
+
+    const orderIds = list.map(o => o.id);
+    let allOrderItems = [];
+    if (orderIds.length > 0) {
+      const placeholders = orderIds.map(() => '?').join(',');
+      allOrderItems = await query(`SELECT * FROM order_items WHERE order_id IN (${placeholders})`, orderIds);
+    }
+
+    const orderItemsMap = {};
+    allOrderItems.forEach(item => {
+      if (!orderItemsMap[item.order_id]) orderItemsMap[item.order_id] = [];
+      orderItemsMap[item.order_id].push(item);
+    });
+
+    const formattedList = list.map(order => {
+      let address = {};
+      try {
+        address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {});
+      } catch (e) {}
+
+      return {
+        id: order.id.toString(),
+        orderNo: order.order_no,
+        type: order.type,
+        totalAmount: order.total_amount,
+        discountAmount: order.discount_amount,
+        payAmount: order.pay_amount,
+        payMethod: order.pay_method,
+        payAt: order.pay_at,
+        status: order.status,
+        shippingAddress: address,
+        createdAt: order.created_at,
+        items: (orderItemsMap[order.id] || []).map(item => ({
+          id: item.id.toString(),
+          productId: item.product_id.toString(),
+          productName: item.product_name,
+          productImage: item.product_image,
+          price: item.price,
+          quantity: item.quantity
+        }))
+      };
+    });
+
+    res.json({ code: 0, message: 'success', data: formattedList });
+  } catch (error) {
+    console.error('Get client orders error:', error);
+    res.status(500).json({ code: 500, message: '获取订单列表失败' });
+  }
+});
+
+// 21.6 WeChat Client Order Detail (GET)
+app.get('/api/v1/orders/:id', authenticateWxToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const order = await get(`SELECT * FROM orders WHERE id = ? AND user_id = ?`, [id, req.user.id]);
+    if (!order) {
+      return res.status(404).json({ code: 404, message: '订单未找到' });
+    }
+    const items = await query(`SELECT * FROM order_items WHERE order_id = ?`, [order.id]);
+
+    let address = {};
+    try {
+      address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {});
+    } catch (e) {}
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        id: order.id.toString(),
+        orderNo: order.order_no,
+        type: order.type,
+        totalAmount: order.total_amount,
+        discountAmount: order.discount_amount,
+        payAmount: order.pay_amount,
+        payMethod: order.pay_method,
+        payAt: order.pay_at,
+        status: order.status,
+        shippingAddress: address,
+        createdAt: order.created_at,
+        items: items.map(item => ({
+          id: item.id.toString(),
+          productId: item.product_id.toString(),
+          productName: item.product_name,
+          productImage: item.product_image,
+          price: item.price,
+          quantity: item.quantity
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Get client order detail error:', error);
+    res.status(500).json({ code: 500, message: '获取订单详情失败' });
+  }
+});
+
+// 21.7 WeChat Client Create Order (POST)
+app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
+  const { items, shippingAddress, couponId } = req.body;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ code: 400, message: '商品列表不能为空' });
+  }
+  if (!shippingAddress) {
+    return res.status(400).json({ code: 400, message: '收货地址不能为空' });
+  }
+
+  try {
+    const productIds = items.map(item => item.productId);
+    const placeholders = productIds.map(() => '?').join(',');
+    const dbProducts = await query(`SELECT * FROM products WHERE id IN (${placeholders})`, productIds);
+    const productMap = {};
+    dbProducts.forEach(p => {
+      productMap[p.id] = p;
+    });
+
+    let totalAmount = 0;
+    const validatedItems = [];
+
+    for (const item of items) {
+      const dbProduct = productMap[item.productId];
+      if (!dbProduct) {
+        return res.status(400).json({ code: 400, message: `商品 ID ${item.productId} 不存在` });
+      }
+      if (dbProduct.status !== 'on') {
+        return res.status(400).json({ code: 400, message: `商品 ${dbProduct.name} 已下架` });
+      }
+      if (dbProduct.stock < item.quantity) {
+        return res.status(400).json({ code: 400, message: `商品 ${dbProduct.name} 库存不足` });
+      }
+      totalAmount += dbProduct.price * item.quantity;
+      validatedItems.push({
+        product: dbProduct,
+        quantity: item.quantity,
+        price: dbProduct.price
+      });
+    }
+
+    let discountAmount = 0;
+    if (couponId) {
+      const userCoupon = await get(
+        `SELECT uc.*, c.discount_amount as val 
+         FROM user_coupons uc 
+         JOIN coupons c ON uc.coupon_id = c.id 
+         WHERE uc.id = ? AND uc.user_id = ? AND uc.status = 'active'`,
+        [couponId, req.user.id]
+      );
+      if (userCoupon) {
+        discountAmount = userCoupon.val;
+      }
+    }
+    const payAmount = Math.max(0, totalAmount - discountAmount);
+
+    const orderNo = `OD2026${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+
+    const newOrderId = await transaction(async (conn) => {
+      // 1. Insert order
+      const [orderResult] = await conn.execute(
+        `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, shipping_address)
+         VALUES (?, ?, 'product', ?, ?, ?, ?, 'wechat', NULL, 'pending', ?)`,
+        [orderNo, req.user.id, totalAmount, discountAmount, couponId || null, payAmount, JSON.stringify(shippingAddress)]
+      );
+      const insertedId = orderResult.insertId;
+
+      // 2. Insert order items & Update product stock
+      for (const item of validatedItems) {
+        await conn.execute(
+          `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [insertedId, item.product.id, item.product.name, item.product.image_url, item.price, item.quantity]
+        );
+
+        await conn.execute(
+          `UPDATE products SET stock = stock - ?, sales_count = sales_count + ? WHERE id = ?`,
+          [item.quantity, item.quantity, item.product.id]
+        );
+      }
+
+      // 3. Consume coupon if used
+      if (couponId) {
+        await conn.execute(
+          `UPDATE user_coupons SET status = 'used', used_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          [couponId]
+        );
+      }
+
+      return insertedId;
+    });
+
+    res.json({
+      code: 0,
+      message: '订单创建成功',
+      data: {
+        id: newOrderId.toString(),
+        orderNo,
+        payAmount
+      }
+    });
+  } catch (error) {
+    console.error('Create client order error:', error);
+    res.status(500).json({ code: 500, message: '订单创建失败' });
+  }
+});
+
+// 21.8 WeChat Client Pay Order (POST)
+app.post('/api/v1/orders/:id/pay', authenticateWxToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const order = await get('SELECT * FROM orders WHERE id = ? AND user_id = ?', [id, req.user.id]);
+    if (!order) {
+      return res.status(404).json({ code: 404, message: '订单不存在' });
+    }
+    if (order.status !== 'pending') {
+      return res.status(400).json({ code: 400, message: '订单非待支付状态' });
+    }
+
+    await transaction(async (conn) => {
+      // 1. Update order status to paid
+      await conn.execute(
+        `UPDATE orders SET status = 'paid', pay_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [id]
+      );
+
+      // 2. Create notification
+      await conn.execute(
+        `INSERT INTO user_notifications (user_id, title, content)
+         VALUES (?, '商品购买成功', ?)`,
+        [
+          req.user.id,
+          `您已成功支付商品订单，支付金额 ¥${(order.pay_amount / 100).toFixed(2)}。订单号: ${order.order_no}。我们会尽快为您安排发货。`
+        ]
+      );
+    });
+
+    res.json({ code: 0, message: '支付同步成功' });
+  } catch (error) {
+    console.error('Pay client order error:', error);
+    res.status(500).json({ code: 500, message: '同步支付状态失败' });
   }
 });
 
@@ -2641,7 +3157,9 @@ app.get('/api/v1/home/stats', async (req, res) => {
       data: {
         patientCount: patientCountRow ? patientCountRow.count : 0,
         storeCount: storeCountRow ? storeCountRow.count : 0,
-        satisfaction
+        satisfaction,
+        totalPatients: patientCountRow ? patientCountRow.count : 0,
+        satisfactionRate: satisfaction
       }
     });
   } catch (error) {
