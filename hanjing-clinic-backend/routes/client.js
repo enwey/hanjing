@@ -1443,6 +1443,10 @@ app.get('/api/v1/schedules', async (req, res) => {
       const displayBookedSlots = row.total_slots - availableCount;
       const displayStatus = (availableCount === 0) ? 'full' : row.status;
 
+      if (isToday && availableCount === 0) {
+        return null;
+      }
+
       return {
         id: row.id,
         doctorId: Number(row.doctor_id),
@@ -1456,7 +1460,7 @@ app.get('/api/v1/schedules', async (req, res) => {
         status: displayStatus,
         peoplePerSlot: row.people_per_slot
       };
-    });
+    }).filter(Boolean);
 
     res.json({
       code: 0,
@@ -3218,6 +3222,160 @@ app.post('/api/v1/im/send', authenticateWxToken, async (req, res) => {
   } catch (error) {
     console.error('Client Send IM Error:', error);
     res.status(500).json({ code: 500, message: '发送失败' });
+  }
+});
+
+// 3) 获取维护记录
+app.get('/api/v1/treatment/device-maintenance', authenticateWxToken, async (req, res) => {
+  try {
+    const records = await query(
+      `SELECT * FROM device_maintenance WHERE user_id = ? ORDER BY service_date DESC`,
+      [req.user.id]
+    );
+    const mapped = records.map(r => ({
+      id: r.id.toString(),
+      date: formatDate(r.service_date),
+      type: r.service_type,
+      description: r.description || '',
+      cost: r.cost || 0
+    }));
+    res.json({ code: 0, message: 'success', list: mapped, total: mapped.length });
+  } catch (error) {
+    console.error('Get device maintenance error:', error);
+    res.status(500).json({ code: 500, message: '获取维护记录失败' });
+  }
+});
+
+// 4) 获取设备反馈记录
+app.get('/api/v1/treatment/device-feedback', authenticateWxToken, async (req, res) => {
+  try {
+    const records = await query(
+      `SELECT * FROM device_feedback WHERE user_id = ? ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    const mapped = records.map(r => ({
+      id: r.id.toString(),
+      date: formatDate(r.created_at),
+      rating: r.rating || 5,
+      content: r.feedback_desc,
+      reply: r.reply_content || null
+    }));
+    res.json({ code: 0, message: 'success', list: mapped, total: mapped.length });
+  } catch (error) {
+    console.error('Get device feedback error:', error);
+    res.status(500).json({ code: 500, message: '获取反馈记录失败' });
+  }
+});
+
+// 5) 提交使用反馈
+app.post('/api/v1/treatment/feedback', authenticateWxToken, async (req, res) => {
+  const { rating, content } = req.body;
+  if (!content) {
+    return res.status(400).json({ code: 400, message: '反馈内容不能为空' });
+  }
+  try {
+    const result = await run(
+      `INSERT INTO device_feedback (user_id, rating, feedback_desc, status) VALUES (?, ?, ?, 'pending')`,
+      [req.user.id, rating || 5, content]
+    );
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        id: result.id.toString(),
+        date: formatDate(new Date()),
+        rating: rating || 5,
+        content: content,
+        reply: null
+      }
+    });
+  } catch (error) {
+    console.error('Submit device feedback error:', error);
+    res.status(500).json({ code: 500, message: '提交反馈失败' });
+  }
+});
+
+// 6) 获取科普直播列表
+app.get('/api/v1/live/rooms', async (req, res) => {
+  try {
+    const rooms = await query(`SELECT * FROM live_rooms ORDER BY start_time DESC`);
+    const mapped = rooms.map(r => {
+      let pIds = [];
+      try {
+        pIds = typeof r.product_ids === 'string' ? JSON.parse(r.product_ids) : (r.product_ids || []);
+      } catch (e) {
+        pIds = [];
+      }
+      let tags = [];
+      try {
+        tags = typeof r.tags === 'string' ? JSON.parse(r.tags) : (r.tags || ['科普', '健康']);
+      } catch (e) {
+        tags = ['科普', '健康'];
+      }
+      return {
+        id: r.id.toString(),
+        title: r.title,
+        cover: r.cover_url,
+        anchorName: r.anchor_name,
+        anchorAvatar: r.anchor_avatar || '',
+        status: r.status,
+        startTime: r.start_time,
+        endTime: r.end_time || null,
+        viewerCount: r.viewer_count || 0,
+        replayUrl: r.replay_url || '',
+        productIds: pIds,
+        description: r.description || '',
+        tags: tags
+      };
+    });
+    res.json({ code: 0, message: 'success', list: mapped, total: mapped.length });
+  } catch (error) {
+    console.error('Get live rooms error:', error);
+    res.status(500).json({ code: 500, message: '获取直播列表失败' });
+  }
+});
+
+// 7) 获取直播间详情
+app.get('/api/v1/live/rooms/:id', async (req, res) => {
+  try {
+    const r = await get(`SELECT * FROM live_rooms WHERE id = ?`, [req.params.id]);
+    if (!r) {
+      return res.status(404).json({ code: 404, message: '直播不存在' });
+    }
+    let pIds = [];
+    try {
+      pIds = typeof r.product_ids === 'string' ? JSON.parse(r.product_ids) : (r.product_ids || []);
+    } catch (e) {
+      pIds = [];
+    }
+    let tags = [];
+    try {
+      tags = typeof r.tags === 'string' ? JSON.parse(r.tags) : (r.tags || ['科普', '健康']);
+    } catch (e) {
+      tags = ['科普', '健康'];
+    }
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        id: r.id.toString(),
+        title: r.title,
+        cover: r.cover_url,
+        anchorName: r.anchor_name,
+        anchorAvatar: r.anchor_avatar || '',
+        status: r.status,
+        startTime: r.start_time,
+        endTime: r.end_time || null,
+        viewerCount: r.viewer_count || 0,
+        replayUrl: r.replay_url || '',
+        productIds: pIds,
+        description: r.description || '',
+        tags: tags
+      }
+    });
+  } catch (error) {
+    console.error('Get live room detail error:', error);
+    res.status(500).json({ code: 500, message: '获取直播详情失败' });
   }
 });
 

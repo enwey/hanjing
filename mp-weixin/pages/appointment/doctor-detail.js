@@ -122,8 +122,10 @@ const r = e.defineComponent({
           const next7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
           const next7DaysStr = `${next7Days.getFullYear()}-${String(next7Days.getMonth() + 1).padStart(2, "0")}-${String(next7Days.getDate()).padStart(2, "0")}`;
           
+          const storesToQuery = queryStoreId.value ? [Number(queryStoreId.value)] : doc.storeIds;
+          
           await Promise.all(
-            doc.storeIds.map(async (storeId) => {
+            storesToQuery.map(async (storeId) => {
               try {
                 const res = await api.getSchedules({
                   doctorId: doc.id,
