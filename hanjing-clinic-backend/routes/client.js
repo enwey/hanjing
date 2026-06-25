@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { query, get, run, transaction } from '../db.js';
+import { query, get, run, transaction, autoUpdateExpiredAppointments } from '../db.js';
 import {
   JWT_SECRET,
   checkStoreIsOpen,
@@ -1274,16 +1274,82 @@ app.get('/api/v1/schedules/dates', async (req, res) => {
   }
 
   try {
+    const advanceDaysRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_advance_days'`);
+    const advanceDays = advanceDaysRow ? parseInt(advanceDaysRow.key_value, 10) : 7;
+
+    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    const maxDate = new Date(today.getTime() + advanceDays * 24 * 60 * 60 * 1000);
+    const maxDateStr = `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
+
     const list = await query(
-      `SELECT DISTINCT date FROM doctor_schedules 
-       WHERE doctor_id = ? AND store_id = ? AND date >= CURRENT_DATE 
+      `SELECT * FROM doctor_schedules 
+       WHERE doctor_id = ? AND store_id = ? AND date >= ? AND date <= ?
        ORDER BY date ASC`,
-      [doctorId, storeId]
+      [doctorId, storeId, todayStr, maxDateStr]
     );
+
+    const scheduleIds = list.map(row => row.id);
+    const apptMap = {};
+    if (scheduleIds.length > 0) {
+      const appts = await query(
+        `SELECT schedule_id, appointment_time, COUNT(*) as count 
+         FROM appointments 
+         WHERE schedule_id IN (${scheduleIds.join(',')}) AND status NOT IN ('cancelled', 'no_show')
+         GROUP BY schedule_id, appointment_time`
+      );
+      appts.forEach(appt => {
+        if (!apptMap[appt.schedule_id]) apptMap[appt.schedule_id] = {};
+        apptMap[appt.schedule_id][appt.appointment_time] = appt.count;
+      });
+    }
+
+    const availableDates = new Set();
+    for (const t of list) {
+      const dateStr = formatDate(t.date);
+      const isToday = dateStr === todayStr;
+      const currentHour = today.getHours();
+      const currentMinute = today.getMinutes();
+
+      const o = parseInt(t.start_time.split(':')[0]);
+      const endHour = parseInt(t.end_time.split(':')[0]);
+      const durationMins = 60 * (endHour - o);
+      const r = t.total_slots;
+      const slotDuration = Math.floor(durationMins / r);
+      
+      const apptsForSchedule = apptMap[t.id] || {};
+      let availableCount = 0;
+      for (let n = 0; n < r; n++) {
+        const i = n * slotDuration;
+        const nextIdx = (n + 1) * slotDuration;
+        const startH = Math.floor(i / 60) + o;
+        const startM = i % 60;
+        const endH = Math.floor(nextIdx / 60) + o;
+        const endM = nextIdx % 60;
+        const label = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}-${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+        const slotBookedCount = apptsForSchedule[label] || 0;
+        let status = slotBookedCount >= t.people_per_slot ? 'booked' : 'available';
+        if (isToday) {
+          if (startH < currentHour || (startH === currentHour && startM < currentMinute)) {
+            status = 'disabled';
+          }
+        }
+        if (status === 'available') {
+          availableCount++;
+        }
+      }
+      if (availableCount > 0) {
+        availableDates.add(dateStr);
+      }
+    }
+
+    const sortedDates = Array.from(availableDates).sort();
     res.json({
       code: 0,
       message: 'success',
-      data: list.map(item => formatDate(item.date))
+      data: sortedDates
     });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取排班日期失败' });
@@ -1298,6 +1364,9 @@ app.get('/api/v1/schedules', async (req, res) => {
   }
 
   try {
+    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
     let list;
     if (startDate && endDate) {
       list = await query(
@@ -1307,26 +1376,87 @@ app.get('/api/v1/schedules', async (req, res) => {
         [doctorId, storeId, startDate, endDate]
       );
     } else {
+      const advanceDaysRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_advance_days'`);
+      const advanceDays = advanceDaysRow ? parseInt(advanceDaysRow.key_value, 10) : 7;
+      
+      const maxDate = new Date(today.getTime() + advanceDays * 24 * 60 * 60 * 1000);
+      const maxDateStr = `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
+
       list = await query(
         `SELECT * FROM doctor_schedules 
-         WHERE doctor_id = ? AND store_id = ? AND date >= CURRENT_DATE 
+         WHERE doctor_id = ? AND store_id = ? AND date >= ? AND date <= ? 
          ORDER BY date ASC, start_time ASC`,
-        [doctorId, storeId]
+        [doctorId, storeId, todayStr, maxDateStr]
       );
     }
 
-    const formatted = list.map(row => ({
-      id: row.id,
-      doctorId: Number(row.doctor_id),
-      storeId: Number(row.store_id),
-      date: formatDate(row.date),
-      period: row.period,
-      startTime: row.start_time,
-      endTime: row.end_time,
-      totalSlots: row.total_slots,
-      bookedSlots: row.booked_slots,
-      status: row.status
-    }));
+    const scheduleIds = list.map(row => row.id);
+    const apptMap = {};
+    if (scheduleIds.length > 0) {
+      const appts = await query(
+        `SELECT schedule_id, appointment_time, COUNT(*) as count 
+         FROM appointments 
+         WHERE schedule_id IN (${scheduleIds.join(',')}) AND status NOT IN ('cancelled', 'no_show')
+         GROUP BY schedule_id, appointment_time`
+      );
+      appts.forEach(appt => {
+        if (!apptMap[appt.schedule_id]) apptMap[appt.schedule_id] = {};
+        apptMap[appt.schedule_id][appt.appointment_time] = appt.count;
+      });
+    }
+
+    const formatted = list.map(row => {
+      const dateStr = formatDate(row.date);
+      const isToday = dateStr === todayStr;
+      const currentHour = today.getHours();
+      const currentMinute = today.getMinutes();
+
+      const o = parseInt(row.start_time.split(':')[0]);
+      const endHour = parseInt(row.end_time.split(':')[0]);
+      const durationMins = 60 * (endHour - o);
+      const r = row.total_slots;
+      const slotDuration = Math.floor(durationMins / r);
+      
+      const apptsForSchedule = apptMap[row.id] || {};
+      let availableCount = 0;
+      for (let n = 0; n < r; n++) {
+        const i = n * slotDuration;
+        const nextIdx = (n + 1) * slotDuration;
+        const startH = Math.floor(i / 60) + o;
+        const startM = i % 60;
+        const endH = Math.floor(nextIdx / 60) + o;
+        const endM = nextIdx % 60;
+        const label = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}-${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+        const slotBookedCount = apptsForSchedule[label] || 0;
+        let status = slotBookedCount >= row.people_per_slot ? 'booked' : 'available';
+        if (isToday) {
+          if (startH < currentHour || (startH === currentHour && startM < currentMinute)) {
+            status = 'disabled';
+          }
+        }
+        if (status === 'available') {
+          availableCount++;
+        }
+      }
+
+      const displayBookedSlots = row.total_slots - availableCount;
+      const displayStatus = (availableCount === 0) ? 'full' : row.status;
+
+      return {
+        id: row.id,
+        doctorId: Number(row.doctor_id),
+        storeId: Number(row.store_id),
+        date: dateStr,
+        period: row.period,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        totalSlots: row.total_slots,
+        bookedSlots: displayBookedSlots,
+        status: displayStatus,
+        peoplePerSlot: row.people_per_slot
+      };
+    });
 
     res.json({
       code: 0,
@@ -1347,6 +1477,24 @@ app.get('/api/v1/schedules/:id/slots', async (req, res) => {
       return res.status(404).json({ code: 1004, message: '排班不存在' });
     }
 
+    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const isToday = formatDate(t.date) === todayStr;
+    const currentHour = today.getHours();
+    const currentMinute = today.getMinutes();
+
+    const appts = await query(
+      `SELECT appointment_time, COUNT(*) as count 
+       FROM appointments 
+       WHERE schedule_id = ? AND status NOT IN ('cancelled', 'no_show')
+       GROUP BY appointment_time`,
+      [id]
+    );
+    const apptMap = {};
+    appts.forEach(appt => {
+      apptMap[appt.appointment_time] = appt.count;
+    });
+
     const slots = [];
     const o = parseInt(t.start_time.split(':')[0]);
     const endHour = parseInt(t.end_time.split(':')[0]);
@@ -1354,7 +1502,6 @@ app.get('/api/v1/schedules/:id/slots', async (req, res) => {
     const r = t.total_slots;
     const slotDuration = Math.floor(durationMins / r);
     
-    let bookedCount = 0;
     for (let n = 0; n < r; n++) {
       const i = n * slotDuration;
       const nextIdx = (n + 1) * slotDuration;
@@ -1362,16 +1509,23 @@ app.get('/api/v1/schedules/:id/slots', async (req, res) => {
       const startM = i % 60;
       const endH = Math.floor(nextIdx / 60) + o;
       const endM = nextIdx % 60;
-      const isBooked = bookedCount < t.booked_slots;
-      if (isBooked) bookedCount++;
+      const label = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}-${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+      const slotBookedCount = apptMap[label] || 0;
+      let status = slotBookedCount >= t.people_per_slot ? 'booked' : 'available';
+      if (isToday) {
+        if (startH < currentHour || (startH === currentHour && startM < currentMinute)) {
+          status = 'disabled';
+        }
+      }
 
       slots.push({
         id: `slot-${t.id}-${n}`,
         scheduleId: t.id,
         startTime: `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`,
         endTime: `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`,
-        status: isBooked ? 'booked' : 'available',
-        label: `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}-${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
+        status: status,
+        label: label
       });
     }
 
@@ -1429,57 +1583,88 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       resolvedPatientId = parseInt(patientId, 10);
     }
 
-    // Map mock scheduleId
-    let resolvedScheduleId = scheduleId;
+    // Find the exact schedule for the given doctor, store, and date
     let schedule = null;
-    if (typeof scheduleId === 'string' && (scheduleId.startsWith('schedule-') || isNaN(Number(scheduleId)))) {
+    if (scheduleId && !isNaN(Number(scheduleId))) {
+      schedule = await get(
+        `SELECT * FROM doctor_schedules WHERE id = ? AND doctor_id = ? AND store_id = ? AND date = ?`,
+        [Number(scheduleId), resolvedDoctorId, resolvedStoreId, appointmentDate]
+      );
+    }
+    if (!schedule) {
       schedule = await get(
         `SELECT * FROM doctor_schedules WHERE doctor_id = ? AND store_id = ? AND date = ? LIMIT 1`,
         [resolvedDoctorId, resolvedStoreId, appointmentDate]
       );
-      if (schedule) {
-        resolvedScheduleId = schedule.id;
-      } else {
-        schedule = await get(
-          `SELECT * FROM doctor_schedules WHERE doctor_id = ? AND store_id = ? LIMIT 1`,
-          [resolvedDoctorId, resolvedStoreId]
-        );
-        if (schedule) {
-          resolvedScheduleId = schedule.id;
-        }
-      }
-    } else {
-      resolvedScheduleId = parseInt(scheduleId, 10);
-      schedule = await get(`SELECT * FROM doctor_schedules WHERE id = ?`, [resolvedScheduleId]);
     }
 
     if (!schedule) {
-      return res.status(400).json({ code: 400, message: '排班时段不存在' });
+      return res.status(400).json({ code: 400, message: '医生在所选日期没有出诊排班' });
     }
-    if (schedule.booked_slots >= schedule.total_slots) {
-      return res.status(400).json({ code: 400, message: '该预约时段已约满' });
+
+    // Generate slots to validate appointmentTime
+    const startHVal = parseInt(schedule.start_time.split(':')[0]);
+    const endHour = parseInt(schedule.end_time.split(':')[0]);
+    const durationMins = 60 * (endHour - startHVal);
+    const r = schedule.total_slots;
+    const slotDuration = Math.floor(durationMins / r);
+    
+    const validSlots = [];
+    for (let n = 0; n < r; n++) {
+      const i = n * slotDuration;
+      const nextIdx = (n + 1) * slotDuration;
+      const startH = Math.floor(i / 60) + startHVal;
+      const startM = i % 60;
+      const endH = Math.floor(nextIdx / 60) + startHVal;
+      const endM = nextIdx % 60;
+      const label = `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}-${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+      validSlots.push(label);
+    }
+
+    if (!validSlots.includes(appointmentTime)) {
+      return res.status(400).json({ code: 400, message: '所选预约时段不符合排班规则' });
+    }
+
+    const slotApptCountRow = await get(
+      `SELECT COUNT(*) as count 
+       FROM appointments 
+       WHERE schedule_id = ? AND appointment_time = ? AND status NOT IN ('cancelled', 'no_show')`,
+      [schedule.id, appointmentTime]
+    );
+    const slotApptCount = slotApptCountRow ? slotApptCountRow.count : 0;
+    if (slotApptCount >= schedule.people_per_slot) {
+      return res.status(400).json({ code: 400, message: '该时间段预约人数已满，请选择其他时间段' });
     }
 
     const apptNo = `AP2026${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
 
+    // Read require_deposit and deposit_amount settings
+    const requireDepositRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'require_deposit'`);
+    const depositAmountRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'deposit_amount'`);
+    
+    const requireDeposit = requireDepositRow ? requireDepositRow.key_value === 'true' : false;
+    const depositAmount = depositAmountRow ? parseInt(depositAmountRow.key_value, 10) : 5000;
+    const initialStatus = requireDeposit ? 'pending_payment' : 'pending';
+
     const result = await run(
       `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'mini_app')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'mini_app')`,
       [
         apptNo,
         req.user.id,
         resolvedPatientId,
         resolvedStoreId,
         resolvedDoctorId,
-        resolvedScheduleId,
+        schedule.id,
         appointmentDate,
         appointmentTime,
         type || 'first',
+        initialStatus,
         symptomDescClean
       ]
     );
 
-    await run(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [resolvedScheduleId]);
+    await run(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [schedule.id]);
 
     const o = {
       id: result.id,
@@ -1488,12 +1673,14 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       patientId: resolvedPatientId,
       doctorId: resolvedDoctorId,
       storeId: resolvedStoreId,
-      scheduleId: resolvedScheduleId,
+      scheduleId: schedule.id,
       appointmentDate,
       appointmentTime,
       type,
       symptomDesc,
-      status: 'pending',
+      status: initialStatus,
+      requireDeposit,
+      depositAmount,
       source: 'mini_app',
       createdAt: new Date().toISOString()
     };
@@ -1509,6 +1696,122 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
   }
 });
 
+// 13.5 Pay Appointment Deposit (POST)
+// 13.5 Pay Appointment Deposit (POST)
+app.post('/api/v1/appointments/:id/pay', authenticateWxToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const appt = await get(
+      `SELECT a.*, d.consult_fee 
+       FROM appointments a 
+       JOIN doctors d ON a.doctor_id = d.id 
+       WHERE a.id = ?`, 
+      [id]
+    );
+    if (!appt) {
+      return res.status(404).json({ code: 404, message: '预约不存在' });
+    }
+    if (appt.status !== 'pending_payment') {
+      return res.status(400).json({ code: 400, message: '预约不需要支付或已支付' });
+    }
+
+    // Generates mock signed WeChat Pay parameters for wx.requestPayment
+    const timeStamp = String(Math.floor(Date.now() / 1000));
+    const nonceStr = crypto.randomBytes(16).toString('hex');
+    const prepayId = `wx2026${Date.now()}${Math.floor(100 + Math.random() * 900)}`;
+    const paySign = crypto.randomBytes(32).toString('hex').toUpperCase();
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        timeStamp,
+        nonceStr,
+        package: `prepay_id=${prepayId}`,
+        signType: 'MD5',
+        paySign
+      }
+    });
+  } catch (error) {
+    console.error('Unified order error:', error);
+    res.status(500).json({ code: 500, message: '生成支付订单失败' });
+  }
+});
+
+// 13.6 Confirm Appointment Payment (POST)
+app.post('/api/v1/appointments/:id/confirm-pay', authenticateWxToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const appt = await get(
+      `SELECT a.*, d.consult_fee 
+       FROM appointments a 
+       JOIN doctors d ON a.doctor_id = d.id 
+       WHERE a.id = ?`, 
+      [id]
+    );
+    if (!appt) {
+      return res.status(404).json({ code: 404, message: '预约不存在' });
+    }
+    if (appt.status !== 'pending_payment') {
+      return res.status(400).json({ code: 400, message: '预约不需要支付或已支付' });
+    }
+
+    // Get deposit amount setting
+    const depositAmountRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'deposit_amount'`);
+    const depositAmount = depositAmountRow ? parseInt(depositAmountRow.key_value, 10) : 5000;
+    const totalPayAmount = depositAmount + (appt.consult_fee || 0);
+
+    await transaction(async (conn) => {
+      // 1. Update appointment status to 'pending'
+      await conn.execute("UPDATE appointments SET status = 'pending', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
+
+      // 2. Create order of type 'appointment_deposit'
+      const orderNo = `OD2026${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+      await conn.execute(
+        `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status)
+         VALUES (?, ?, 'appointment_deposit', ?, 0, NULL, ?, 'wechat', CURRENT_TIMESTAMP, 'paid')`,
+        [orderNo, req.user.id, totalPayAmount, totalPayAmount]
+      );
+      
+      // 3. Create a system notification for the user
+      await conn.execute(
+        `INSERT INTO user_notifications (user_id, title, content)
+         VALUES (?, '预约支付成功', ?)`,
+        [
+          req.user.id,
+          `您已成功支付预约费用 ¥${(totalPayAmount / 100).toFixed(2)} 元（含定金与挂号费）。预约号: ${appt.appointment_no}。`
+        ]
+      );
+    });
+
+    res.json({ code: 0, message: '支付同步成功' });
+  } catch (error) {
+    console.error('Confirm pay error:', error);
+    res.status(500).json({ code: 500, message: '同步支付状态失败' });
+  }
+});
+
+// 获取预约配置公开信息 API
+app.get('/api/v1/settings/booking', async (req, res) => {
+  try {
+    const requireDepositRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'require_deposit'`);
+    const depositAmountRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'deposit_amount'`);
+    const cancelLimitRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_cancel_limit'`);
+    
+    res.json({
+      code: 0,
+      data: {
+        requireDeposit: requireDepositRow ? requireDepositRow.key_value === 'true' : false,
+        depositAmount: depositAmountRow ? parseInt(depositAmountRow.key_value, 10) : 5000,
+        cancelLimit: cancelLimitRow ? cancelLimitRow.key_value : '就诊前2小时'
+      }
+    });
+  } catch (error) {
+    console.error('Get booking settings error:', error);
+    res.status(500).json({ code: 500, message: '获取预约配置失败' });
+  }
+});
+
 // 14. List Appointments (GET)
 app.get('/api/v1/appointments', authenticateWxToken, async (req, res) => {
   let { status } = req.query;
@@ -1516,6 +1819,7 @@ app.get('/api/v1/appointments', authenticateWxToken, async (req, res) => {
     status = undefined;
   }
   try {
+    await autoUpdateExpiredAppointments();
     let sql = `SELECT a.*, p.name as patient_name, d.name as doctor_name, d.title as doctor_title, d.avatar_url as doctor_avatar, s.name as store_name
                FROM appointments a
                JOIN patients p ON a.patient_id = p.id
@@ -1567,6 +1871,7 @@ app.get('/api/v1/appointments', authenticateWxToken, async (req, res) => {
 app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
+    await autoUpdateExpiredAppointments();
     const row = await get(
       `SELECT a.*, p.name as patient_name, d.name as doctor_name, d.title as doctor_title, d.avatar_url as doctor_avatar, d.specialty as doctor_specialty, d.hospital as doctor_hospital, d.intro as doctor_intro, d.experience_years as doctor_experience_years, d.expertise as doctor_expertise, s.name as store_name
        FROM appointments a
@@ -1605,6 +1910,12 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
       }
     }
 
+    const requireDepositRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'require_deposit'`);
+    const depositAmountRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'deposit_amount'`);
+    
+    const requireDeposit = requireDepositRow ? requireDepositRow.key_value === 'true' : false;
+    const depositAmount = depositAmountRow ? parseInt(depositAmountRow.key_value, 10) : 5000;
+
     const appt = {
       id: row.id,
       appointmentNo: row.appointment_no,
@@ -1624,7 +1935,9 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
       doctorName: row.doctor_name,
       doctorTitle: row.doctor_title,
       doctorAvatar: row.doctor_avatar,
-      storeName: row.store_name
+      storeName: row.store_name,
+      requireDeposit,
+      depositAmount
     };
 
     const medicalRecord = await get(
@@ -1730,6 +2043,19 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
       return res.status(400).json({ code: 400, message: '该预约状态下不支持取消' });
     }
 
+    // Check if within 2 hours of appointment time
+    try {
+      const [year, month, day] = appt.appointment_date.split('-').map(Number);
+      const [hours, minutes] = appt.appointment_time.split('-')[0].trim().split(':').map(Number);
+      const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+      const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
+      if (apptDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
+        return res.status(400).json({ code: 400, message: '距离预约时间已不足2小时，不支持取消预约' });
+      }
+    } catch (err) {
+      console.error('解析预约时间失败:', err);
+    }
+
     await run(
       `UPDATE appointments SET status = 'cancelled', cancel_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [reasonClean, id]
@@ -1760,6 +2086,19 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
     }
     if (appt.status === 'completed' || appt.status === 'arrived' || appt.status === 'cancelled' || appt.status === 'no_show') {
       return res.status(400).json({ code: 400, message: '该预约状态下不支持修改就诊时间' });
+    }
+
+    // Check if within 2 hours of appointment time
+    try {
+      const [year, month, day] = appt.appointment_date.split('-').map(Number);
+      const [hours, minutes] = appt.appointment_time.split('-')[0].trim().split(':').map(Number);
+      const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+      const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
+      if (apptDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
+        return res.status(400).json({ code: 400, message: '距离预约时间已不足2小时，不支持修改就诊时间' });
+      }
+    } catch (err) {
+      console.error('解析预约时间失败:', err);
     }
 
     const newSchedule = await get(`SELECT * FROM doctor_schedules WHERE id = ?`, [scheduleId]);

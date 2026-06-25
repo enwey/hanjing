@@ -131,6 +131,10 @@
   "requiredPrivateInfos": [
     "getLocation"
   ],
+  "navigateToMiniProgramAppIdList": [
+    "wxdb9a5899edef2670",
+    "wx92f72a912e753443"
+  ],
   "lazyCodeLoading": "requiredComponents",
   "usingComponents": {
     "hj-navbar": "/components/base/hj-navbar"

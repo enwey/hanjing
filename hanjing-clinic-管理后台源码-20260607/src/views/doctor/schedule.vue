@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,36 +21,287 @@ const doctor = ref({
 interface PeriodData {
   store: string; // "龙岗总店", "南山分院", "休息"
   slots: number;
+  peoplePerSlot?: number;
 }
 interface DaySchedule {
+  date: string;
   dateLabel: string;
   morning: PeriodData;
   afternoon: PeriodData;
 }
 
-const schedules = ref<DaySchedule[]>([
-  { dateLabel: '周一 6/1', morning: { store: '龙岗总店', slots: 4 }, afternoon: { store: '龙岗总店', slots: 4 } },
-  { dateLabel: '周二 6/2', morning: { store: '龙岗总店', slots: 4 }, afternoon: { store: '龙岗总店', slots: 4 } },
-  { dateLabel: '周三 6/3', morning: { store: '南山分院', slots: 3 }, afternoon: { store: '休息', slots: 0 } },
-  { dateLabel: '周四 6/4', morning: { store: '龙岗总店', slots: 4 }, afternoon: { store: '龙岗总店', slots: 4 } },
-  { dateLabel: '周五 6/5', morning: { store: '龙岗总店', slots: 4 }, afternoon: { store: '南山分院', slots: 3 } },
-  { dateLabel: '周六 6/6', morning: { store: '龙岗总店', slots: 2 }, afternoon: { store: '休息', slots: 0 } },
-  { dateLabel: '周日 6/7', morning: { store: '休息', slots: 0 }, afternoon: { store: '休息', slots: 0 } }
-])
+const currentYear = ref(new Date().getFullYear())
+const currentMonth = ref(new Date().getMonth()) // 0-indexed
+
+const monthLabel = computed(() => {
+  return `${currentYear.value}年${currentMonth.value + 1}月`
+})
+
+const scheduleChunks = computed(() => {
+  const chunks = []
+  for (let i = 0; i < schedules.value.length; i += 10) {
+    chunks.push(schedules.value.slice(i, i + 10))
+  }
+  return chunks
+})
+
+const schedules = ref<DaySchedule[]>([])
+
+const generateMonthSchedules = () => {
+  const year = currentYear.value
+  const month = currentMonth.value
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  
+  const list: DaySchedule[] = []
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d)
+    const dayOfWeek = date.getDay()
+    const dateLabel = `${weekdays[dayOfWeek]} ${month + 1}/${d}`
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+    const morningStore = isWeekend ? (dayOfWeek === 6 ? '龙岗总店' : '休息') : '龙岗总店'
+    const morningSlots = isWeekend ? (dayOfWeek === 6 ? 2 : 0) : 4
+    
+    const afternoonStore = isWeekend ? '休息' : (dayOfWeek === 5 ? '南山分院' : '龙岗总店')
+    const afternoonSlots = isWeekend ? 0 : (dayOfWeek === 5 ? 3 : 4)
+    
+    list.push({
+      date: dateStr,
+      dateLabel,
+      morning: {
+        store: morningStore,
+        slots: morningSlots,
+        peoplePerSlot: 1
+      },
+      afternoon: {
+        store: afternoonStore,
+        slots: afternoonSlots,
+        peoplePerSlot: 1
+      }
+    })
+  }
+  schedules.value = list
+}
+
+const storesList = ref<any[]>([])
+
+const fetchStores = async () => {
+  try {
+    const res: any = await request.get('/api/admin/stores')
+    if (res.code === 200) {
+      storesList.value = res.data
+    }
+  } catch (err) {
+    console.error('获取门店列表失败:', err)
+  }
+}
+
+const fetchDoctorInfo = async () => {
+  try {
+    const res: any = await request.get('/api/admin/doctors')
+    if (res.code === 200) {
+      const doc = res.data.find((d: any) => String(d.id) === String(doctorId.value))
+      if (doc) {
+        doctor.value = {
+          id: String(doc.id),
+          name: doc.name,
+          title: doc.title,
+          specialty: doc.specialty,
+          stores: doc.hospital || ''
+        }
+      }
+    }
+  } catch (err) {
+    console.error('获取医生信息失败:', err)
+  }
+}
+
+const mapDbStoreToUi = (dbStoreName: string) => {
+  if (!dbStoreName) return '休息'
+  if (dbStoreName.includes('龙岗总店')) return '龙岗总店'
+  if (dbStoreName.includes('南山分院')) return '南山分院'
+  if (dbStoreName.includes('福田门诊部') || dbStoreName.includes('福田')) return '福田门诊部'
+  if (dbStoreName.includes('广州天河店') || dbStoreName.includes('广州')) return '广州天河店'
+  return dbStoreName
+}
+
+const mapUiStoreToDb = (uiStoreName: string) => {
+  if (uiStoreName === '休息') return null
+  const found = storesList.value.find(s => s.name.includes(uiStoreName))
+  return found || null
+}
+
+const loadSchedules = async () => {
+  if (storesList.value.length === 0) {
+    await fetchStores()
+  }
+  await fetchDoctorInfo()
+  generateMonthSchedules()
+
+  try {
+    const monthStr = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}`
+    const res: any = await request.get(`/api/admin/schedules`, {
+      params: {
+        doctor_id: doctorId.value,
+        date: monthStr
+      }
+    })
+    if (res.code === 200 && Array.isArray(res.data)) {
+      res.data.forEach((row: any) => {
+        const rowDate = String(row.date).slice(0, 10)
+        const day = schedules.value.find(d => d.date === rowDate)
+        if (day) {
+          const period: 'morning' | 'afternoon' = row.period
+          if (day[period]) {
+            day[period] = {
+              store: mapDbStoreToUi(row.store_name),
+              slots: row.total_slots || 0,
+              peoplePerSlot: row.people_per_slot || 1
+            }
+          }
+        }
+      })
+    }
+  } catch (err) {
+    console.error('加载排班数据失败:', err)
+  }
+}
+
+// Initialize
+onMounted(() => {
+  loadSchedules()
+})
+
+function prevMonth() {
+  if (currentMonth.value === 0) {
+    currentYear.value--
+    currentMonth.value = 11
+  } else {
+    currentMonth.value--
+  }
+  loadSchedules()
+}
+
+function nextMonth() {
+  if (currentMonth.value === 11) {
+    currentYear.value++
+    currentMonth.value = 0
+  } else {
+    currentMonth.value++
+  }
+  loadSchedules()
+}
 
 const showEdit = ref(false)
 const editingDayIndex = ref(-1)
 const editingPeriod = ref<'morning' | 'afternoon'>('morning')
 const editStore = ref('龙岗总店')
 const editSlots = ref(4)
+const editPeoplePerSlot = ref(1)
+
+// Batch mode variables
+const isBatchMode = ref(false)
+const selectedDays = ref<number[]>([])
+const batchPeriod = ref<('morning' | 'afternoon')[]>(['morning', 'afternoon'])
+
+function toggleDaySelection(dayIdx: number) {
+  const idx = selectedDays.value.indexOf(dayIdx)
+  if (idx > -1) {
+    selectedDays.value.splice(idx, 1)
+  } else {
+    selectedDays.value.push(dayIdx)
+  }
+}
+
+function selectAllDays() {
+  selectedDays.value = Array.from({ length: schedules.value.length }, (_, i) => i)
+}
+
+function deselectAllDays() {
+  selectedDays.value = []
+}
+
+function enterBatchMode() {
+  isBatchMode.value = true
+  selectedDays.value = []
+}
+
+function exitBatchMode() {
+  isBatchMode.value = false
+  selectedDays.value = []
+}
+
+function openBatchEdit() {
+  if (selectedDays.value.length === 0) {
+    MessagePlugin.warning('请先选择需要排班的日期')
+    return
+  }
+  editStore.value = '龙岗总店'
+  editSlots.value = 4
+  editPeoplePerSlot.value = 1
+  batchPeriod.value = ['morning', 'afternoon']
+  showEdit.value = true
+}
 
 function handleBack() {
   router.push('/doctor')
 }
 
-function handleSaveAll() {
-  MessagePlugin.success('保存排班成功')
-  router.push('/doctor')
+const isSaving = ref(false)
+
+async function handleSaveAll() {
+  if (isSaving.value) return
+  isSaving.value = true
+  
+  try {
+    const saveList: any[] = []
+    
+    schedules.value.forEach(day => {
+      // morning
+      const mStoreDb = mapUiStoreToDb(day.morning.store)
+      saveList.push({
+        date: day.date,
+        period: 'morning',
+        is_rest: day.morning.store === '休息',
+        store_id: mStoreDb ? mStoreDb.id : null,
+        start_time: '09:00:00',
+        end_time: '12:00:00',
+        total_slots: day.morning.slots,
+        people_per_slot: day.morning.peoplePerSlot || 1
+      })
+      
+      // afternoon
+      const aStoreDb = mapUiStoreToDb(day.afternoon.store)
+      saveList.push({
+        date: day.date,
+        period: 'afternoon',
+        is_rest: day.afternoon.store === '休息',
+        store_id: aStoreDb ? aStoreDb.id : null,
+        start_time: '14:00:00',
+        end_time: '18:00:00',
+        total_slots: day.afternoon.slots,
+        people_per_slot: day.afternoon.peoplePerSlot || 1
+      })
+    })
+
+    const res: any = await request.post('/api/admin/schedules/batch', {
+      doctor_id: doctorId.value,
+      list: saveList
+    })
+
+    if (res.code === 200) {
+      MessagePlugin.success('保存排班成功')
+      router.push('/doctor')
+    } else {
+      MessagePlugin.error(res.message || '保存排班失败')
+    }
+  } catch (err: any) {
+    console.error('保存排班失败:', err)
+  } finally {
+    isSaving.value = false
+  }
 }
 
 function handleCopyLastMonth() {
@@ -58,8 +310,8 @@ function handleCopyLastMonth() {
 
 function handleClear() {
   schedules.value.forEach(day => {
-    day.morning = { store: '休息', slots: 0 }
-    day.afternoon = { store: '休息', slots: 0 }
+    day.morning = { store: '休息', slots: 0, peoplePerSlot: 1 }
+    day.afternoon = { store: '休息', slots: 0, peoplePerSlot: 1 }
   })
   MessagePlugin.info('已清空排班数据')
 }
@@ -70,15 +322,41 @@ function openEdit(dayIdx: number, period: 'morning' | 'afternoon') {
   const data = schedules.value[dayIdx][period]
   editStore.value = data.store === '休息' ? '龙岗总店' : data.store
   editSlots.value = data.slots || 4
+  editPeoplePerSlot.value = data.peoplePerSlot || 1
   showEdit.value = true
 }
 
 function handleSaveEdit() {
-  const day = schedules.value[editingDayIndex.value]
-  if (day) {
-    day[editingPeriod.value] = {
-      store: editStore.value,
-      slots: editStore.value === '休息' ? 0 : editSlots.value
+  if (isBatchMode.value) {
+    selectedDays.value.forEach(dayIdx => {
+      const day = schedules.value[dayIdx]
+      if (day) {
+        if (batchPeriod.value.includes('morning')) {
+          day.morning = {
+            store: editStore.value,
+            slots: editStore.value === '休息' ? 0 : editSlots.value,
+            peoplePerSlot: editStore.value === '休息' ? 1 : editPeoplePerSlot.value
+          }
+        }
+        if (batchPeriod.value.includes('afternoon')) {
+          day.afternoon = {
+            store: editStore.value,
+            slots: editStore.value === '休息' ? 0 : editSlots.value,
+            peoplePerSlot: editStore.value === '休息' ? 1 : editPeoplePerSlot.value
+          }
+        }
+      }
+    })
+    isBatchMode.value = false
+    selectedDays.value = []
+  } else {
+    const day = schedules.value[editingDayIndex.value]
+    if (day) {
+      day[editingPeriod.value] = {
+        store: editStore.value,
+        slots: editStore.value === '休息' ? 0 : editSlots.value,
+        peoplePerSlot: editStore.value === '休息' ? 1 : editPeoplePerSlot.value
+      }
     }
   }
   showEdit.value = false
@@ -97,71 +375,105 @@ function handleSaveEdit() {
         <div class="page-title-sub">{{ doctor.title }} · {{ doctor.specialty }} · {{ doctor.stores }}</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" @click="handleBack">取消</button>
-        <button class="btn btn-primary" @click="handleSaveAll">保存排班</button>
+        <button class="btn btn-outline" :disabled="isSaving" @click="handleBack">取消</button>
+        <button class="btn btn-primary" :disabled="isSaving" @click="handleSaveAll">
+          {{ isSaving ? '保存中...' : '保存排班' }}
+        </button>
       </div>
     </div>
 
     <!-- Calendar Panel -->
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">6月排班 · 6/1 - 6/30</div>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn btn-sm btn-outline" @click="handleCopyLastMonth">复制上月排班</button>
-          <button class="btn btn-sm btn-outline" @click="handleClear">清空</button>
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div class="panel-title">{{ monthLabel }} 排班</div>
+          <div style="display: flex; gap: 4px;">
+            <button class="btn btn-sm btn-outline" @click="prevMonth">◀ 上个月</button>
+            <button class="btn btn-sm btn-outline" @click="nextMonth">下个月 ▶</button>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <template v-if="!isBatchMode">
+            <button class="btn btn-sm btn-primary" @click="enterBatchMode">批量排班</button>
+            <button class="btn btn-sm btn-outline" @click="handleCopyLastMonth">复制上月排班</button>
+            <button class="btn btn-sm btn-outline" @click="handleClear">清空</button>
+          </template>
+          <template v-else>
+            <span style="font-size: 13px; color: #4B5563; font-weight: 600;">已选中 {{ selectedDays.length }} 天</span>
+            <button class="btn btn-sm btn-outline" @click="selectAllDays">全选</button>
+            <button class="btn btn-sm btn-outline" @click="deselectAllDays">取消全选</button>
+            <button class="btn btn-sm btn-primary" @click="openBatchEdit">统一设置</button>
+            <button class="btn btn-sm btn-outline" @click="exitBatchMode">退出批量</button>
+          </template>
         </div>
       </div>
       <div class="panel-body">
-        <div class="grid-table">
+        <div v-for="(chunk, chunkIdx) in scheduleChunks" :key="chunkIdx" class="grid-table" style="margin-bottom: 24px;">
           <!-- Header Row -->
           <div class="grid-header"></div>
-          <div v-for="(day, index) in schedules" :key="index" class="grid-header-cell">
+          <div
+            v-for="(day, index) in chunk"
+            :key="index"
+            class="grid-header-cell"
+            :class="{ 'selected-column': isBatchMode && selectedDays.includes(chunkIdx * 10 + index) }"
+            @click="isBatchMode && toggleDaySelection(chunkIdx * 10 + index)"
+            :style="{ cursor: isBatchMode ? 'pointer' : 'default' }"
+          >
+            <div v-if="isBatchMode" style="margin-bottom: 6px;">
+              <input type="checkbox" :checked="selectedDays.includes(chunkIdx * 10 + index)" style="pointer-events: none;">
+            </div>
             {{ day.dateLabel }}
           </div>
+          <!-- Empty Cells for alignment -->
+          <div v-for="n in (10 - chunk.length)" :key="'empty-h-' + n" class="grid-header-cell empty-cell"></div>
 
           <!-- Morning Row -->
           <div class="grid-row-header">🌅 上午</div>
           <div
-            v-for="(day, index) in schedules"
+            v-for="(day, index) in chunk"
             :key="'m-' + index"
             class="grid-cell"
             :class="{
               'success-bg': day.morning.store !== '休息' && day.morning.slots >= 3,
               'warning-bg': day.morning.store !== '休息' && day.morning.slots < 3,
-              'rest-bg': day.morning.store === '休息'
+              'rest-bg': day.morning.store === '休息',
+              'selected-column': isBatchMode && selectedDays.includes(chunkIdx * 10 + index)
             }"
-            @click="openEdit(index, 'morning')"
+            @click="isBatchMode ? toggleDaySelection(chunkIdx * 10 + index) : openEdit(chunkIdx * 10 + index, 'morning')"
           >
             <template v-if="day.morning.store !== '休息'">
               <span class="store-name">{{ day.morning.store }}</span>
-              <span class="slots-count">{{ day.morning.slots }}个时段</span>
+              <span class="slots-count">{{ day.morning.slots }}时段 / {{ day.morning.peoplePerSlot || 1 }}人</span>
             </template>
             <template v-else>
               <span class="rest-text">休息</span>
             </template>
           </div>
+          <div v-for="n in (10 - chunk.length)" :key="'empty-m-' + n" class="grid-cell rest-bg empty-cell"></div>
 
           <!-- Afternoon Row -->
           <div class="grid-row-header">🌇 下午</div>
           <div
-            v-for="(day, index) in schedules"
+            v-for="(day, index) in chunk"
             :key="'a-' + index"
             class="grid-cell"
             :class="{
               'success-bg': day.afternoon.store !== '休息' && day.afternoon.slots >= 3,
               'warning-bg': day.afternoon.store !== '休息' && day.afternoon.slots < 3,
-              'rest-bg': day.afternoon.store === '休息'
+              'rest-bg': day.afternoon.store === '休息',
+              'selected-column': isBatchMode && selectedDays.includes(chunkIdx * 10 + index)
             }"
-            @click="openEdit(index, 'afternoon')"
+            @click="isBatchMode ? toggleDaySelection(chunkIdx * 10 + index) : openEdit(chunkIdx * 10 + index, 'afternoon')"
           >
             <template v-if="day.afternoon.store !== '休息'">
               <span class="store-name">{{ day.afternoon.store }}</span>
-              <span class="slots-count">{{ day.afternoon.slots }}个时段</span>
+              <span class="slots-count">{{ day.afternoon.slots }}时段 / {{ day.afternoon.peoplePerSlot || 1 }}人</span>
             </template>
             <template v-else>
               <span class="rest-text">休息</span>
             </template>
           </div>
+          <div v-for="n in (10 - chunk.length)" :key="'empty-a-' + n" class="grid-cell rest-bg empty-cell"></div>
         </div>
       </div>
       
@@ -179,6 +491,17 @@ function handleSaveEdit() {
       :cancelBtn="null"
     >
       <div class="form-container" style="padding: 12px 0; display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group" v-if="isBatchMode">
+          <label class="form-label">应用时段</label>
+          <div style="display: flex; gap: 16px; align-items: center; margin-top: 4px;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer;">
+              <input type="checkbox" value="morning" v-model="batchPeriod"> 🌅 上午
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer;">
+              <input type="checkbox" value="afternoon" v-model="batchPeriod"> 🌇 下午
+            </label>
+          </div>
+        </div>
         <div class="form-group">
           <label class="form-label">出诊门店</label>
           <select class="form-control" v-model="editStore">
@@ -190,6 +513,10 @@ function handleSaveEdit() {
         <div class="form-group" v-if="editStore !== '休息'">
           <label class="form-label">可约时段数 (个)</label>
           <input type="number" class="form-control" v-model.number="editSlots" min="1" max="12">
+        </div>
+        <div class="form-group" v-if="editStore !== '休息'">
+          <label class="form-label">每个时段可约人数 (人)</label>
+          <input type="number" class="form-control" v-model.number="editPeoplePerSlot" min="1" max="100">
         </div>
       </div>
     </t-dialog>
@@ -331,11 +658,23 @@ function handleSaveEdit() {
 /* Grid Week Table */
 .grid-table {
   display: grid;
-  grid-template-columns: 80px repeat(7, 1fr);
+  grid-template-columns: 80px repeat(10, 1fr);
   gap: 1px;
   background: #E5E7EB;
   border-radius: 8px;
   overflow: hidden;
+}
+
+.empty-cell {
+  pointer-events: none;
+  cursor: default;
+}
+
+.selected-column {
+  background-color: #EFF6FF !important;
+  outline: 2px solid #3B82F6 !important;
+  outline-offset: -2px;
+  z-index: 10;
 }
 
 .grid-header {

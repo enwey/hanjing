@@ -1,5 +1,6 @@
 "use strict";
 ((exports.AppointmentStatusMap = {
+  pending_payment: { label: "待支付", color: "#EF4444", bgColor: "#FEF2F2" },
   pending: { label: "已预约", color: "#1A9D5C", bgColor: "#D3F5E3" },
   confirmed: { label: "候诊中", color: "#F59E0B", bgColor: "#FFFBEB" },
   reminded: { label: "候诊中", color: "#F59E0B", bgColor: "#FFFBEB" },

@@ -11,13 +11,48 @@ const a = e.defineComponent({
     const address = e.ref("");
     const markers = e.ref([]);
 
+    function gcj02tobd09(lng, lat) {
+      const x_PI = (3.14159265358979324 * 3000.0) / 180.0;
+      const z = Math.sqrt(lng * lng + lat * lat) + 0.00002 * Math.sin(lat * x_PI);
+      const theta = Math.atan2(lat, lng) + 0.000003 * Math.cos(lng * x_PI);
+      const bd_lng = z * Math.cos(theta) + 0.0065;
+      const bd_lat = z * Math.sin(theta) + 0.006;
+      return { lat: bd_lat, lng: bd_lng };
+    }
+
     function onStartNavigation() {
-      e.index.openLocation({
-        latitude: latitude.value,
-        longitude: longitude.value,
-        name: name.value,
-        address: address.value,
-        scale: 18
+      e.index.showActionSheet({
+        itemList: ["腾讯地图 (微信内置)", "高德地图", "百度地图"],
+        success: (res) => {
+          if (res.tapIndex === 0) {
+            e.index.openLocation({
+              latitude: latitude.value,
+              longitude: longitude.value,
+              name: name.value,
+              address: address.value,
+              scale: 18
+            });
+          } else if (res.tapIndex === 1) {
+            e.index.navigateToMiniProgram({
+              appId: "wxdb9a5899edef2670",
+              path: `pages/route/route?dlat=${latitude.value}&dlon=${longitude.value}&dname=${encodeURIComponent(name.value)}&dev=0&t=0`
+            });
+          } else if (res.tapIndex === 2) {
+            const bdCoord = gcj02tobd09(longitude.value, latitude.value);
+            e.index.navigateToMiniProgram({
+              appId: "wx92f72a912e753443",
+              path: "pages/index/index",
+              extraData: {
+                destination: {
+                  lat: bdCoord.lat,
+                  lng: bdCoord.lng,
+                  name: name.value
+                },
+                mode: "driving"
+              }
+            });
+          }
+        }
       });
     }
 

@@ -844,6 +844,12 @@ button:after {
 }
 .apt-value--desc.data-v-74fd48b7 {
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  span-overflow: ellipsis;
+  word-break: break-all;
 }
 .apt-actions.data-v-74fd48b7 {
   display: flex;
@@ -1021,6 +1027,13 @@ button:after {
 }
 .month-arrow.data-v-70d02435:active {
   opacity: 0.5;
+}
+.calendar-day--today-unbookable.calendar-day--disabled.data-v-70d02435 {
+  opacity: 1; /* Keep it clearly visible instead of faint */
+}
+.calendar-day--today-unbookable .calendar-day-span.data-v-70d02435 {
+  color: #10b981 !important; /* Elegant light green */
+  font-weight: 700;
 }
 
 .data-v-822bb649:root {
@@ -1435,7 +1448,7 @@ button:after {
 }
 ..phone-screen, .phone-standalone-content.data-v-35dabd14 {
   flex: 1;
-  padding: 0 16px;
+  padding: 16px 16px 0;
 }
 .hero-card.data-v-35dabd14 {
   background: linear-gradient(135deg, #eef4ff, #d9e6ff);
@@ -1486,12 +1499,22 @@ button:after {
 .eval-info.data-v-35dabd14 {
   flex: 1;
 }
+.eval-title-wrapper.data-v-35dabd14 {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+}
 .eval-title.data-v-35dabd14 {
   font-size: 16px;
   font-weight: 600;
   color: #1f2937;
   display: block;
   margin-bottom: 2px;
+}
+.eval-title-wrapper .eval-title.data-v-35dabd14 {
+  display: inline;
+  margin-bottom: 0;
+  margin-right: 8px;
 }
 .eval-desc.data-v-35dabd14 {
   font-size: 13px;
@@ -1537,13 +1560,13 @@ button:after {
 }
 .new-tag.data-v-35dabd14 {
   display: inline-block;
-  margin-top: 4px;
   padding: 2px 8px;
   background: #d3f5e3;
   color: #1a9d5c;
   font-size: 11px;
   font-weight: 600;
   border-radius: 4px;
+  flex-shrink: 0;
 }
 .record-card.data-v-35dabd14 {
   display: flex;
@@ -1633,7 +1656,7 @@ body {
 <div class="phone-standalone">
   <div class="page data-v-35dabd14"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">鼾静健康诊所</div></div></div></div><div class="page-content data-v-35dabd14"><div class="hero-card data-v-35dabd14"><span class="hero-emoji data-v-35dabd14">🌙</span><span class="hero-title data-v-35dabd14">了解您的睡眠质量</span><span class="hero-desc data-v-35dabd14">
         通过专业的ESS嗜睡量表和AI鼾声分析，全面评估您的睡眠呼吸健康状况
-      </span></div><div class="eval-card data-v-35dabd14"><img class="eval-icon data-v-35dabd14" src="../mp-weixin/static/icons/assessment.svg" /><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">ESS嗜睡量表</span><span class="eval-desc data-v-35dabd14">8道情境题 · 约3分钟 · 国际通用标准</span></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="eval-card data-v-35dabd14"><img class="eval-icon data-v-35dabd14" src="../mp-weixin/static/icons/microphone.svg" /><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">AI鼾声分析</span><span class="eval-desc data-v-35dabd14">录制鼾声 · AI分析 · 风险评级</span><div class="new-tag data-v-35dabd14">新增上线</div></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="section-header data-v-35dabd14"><span class="section-title data-v-35dabd14">我的评估记录</span></div><div class="data-v-35dabd14"></div></div><div class="safe-bottom data-v-35dabd14"></div></div>
+      </span></div><div class="eval-card data-v-35dabd14"><img class="eval-icon data-v-35dabd14" src="../mp-weixin/static/icons/assessment.svg" /><div class="eval-info data-v-35dabd14"><span class="eval-title data-v-35dabd14">ESS嗜睡量表</span><span class="eval-desc data-v-35dabd14">8道情境题 · 约3分钟 · 国际通用标准</span></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="eval-card data-v-35dabd14"><img class="eval-icon data-v-35dabd14" src="../mp-weixin/static/icons/microphone.svg" /><div class="eval-info data-v-35dabd14"><div class="eval-title-wrapper data-v-35dabd14"><span class="eval-title data-v-35dabd14">AI鼾声分析</span><div class="new-tag data-v-35dabd14">新增上线</div></div><span class="eval-desc data-v-35dabd14">录制鼾声 · AI分析 · 风险评级</span></div><span class="eval-arrow data-v-35dabd14">›</span></div><div class="section-header data-v-35dabd14"><span class="section-title data-v-35dabd14">我的评估记录</span></div><div class="data-v-35dabd14"></div></div><div class="safe-bottom data-v-35dabd14"></div></div>
 </div>
 </body>
 </html>

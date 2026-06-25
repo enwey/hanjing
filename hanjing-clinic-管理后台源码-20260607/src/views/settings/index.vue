@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 
@@ -12,6 +13,7 @@ const bookingInterval = ref(30)
 const bookingCancelLimit = ref('就诊前2小时')
 const allowSelfBooking = ref(true)
 const requireDeposit = ref(false)
+const depositAmount = ref(50.00)
 
 const cancelLimitOptions = [
   { label: '就诊前2小时', value: '就诊前2小时' },
@@ -41,8 +43,68 @@ const roles = ref([
   { name: '内容编辑', membersCount: 1, scope: '文章/轮播图', status: 'active' }
 ])
 
-function handleSaveAll() {
-  MessagePlugin.success('系统设置已成功保存')
+onMounted(async () => {
+  try {
+    const res: any = await request.get('/api/admin/settings')
+    if (res && res.code === 200 && res.data) {
+      const data = res.data
+      bookingAdvanceDays.value = data.booking_advance_days ?? 7
+      bookingHours.value = data.booking_hours ?? '08:30 - 18:00'
+      bookingInterval.value = data.booking_interval ?? 30
+      bookingCancelLimit.value = data.booking_cancel_limit ?? '就诊前2小时'
+      allowSelfBooking.value = data.allow_self_booking ?? true
+      requireDeposit.value = data.require_deposit ?? false
+      depositAmount.value = data.deposit_amount ? (data.deposit_amount / 100) : 50.00
+
+      commission1.value = data.commission1 ?? 15
+      commission2.value = data.commission2 ?? 5
+      minWithdraw.value = data.min_withdraw ?? 100
+      withdrawFeeRate.value = data.withdraw_fee_rate ?? 0.2
+      enableDistribution.value = data.enable_distribution ?? true
+      autoApproveWithdraw.value = data.auto_approve_withdraw ?? false
+
+      notifyNewBooking.value = data.notify_new_booking ?? true
+      notifyWithdrawApply.value = data.notify_withdraw_apply ?? true
+      notifyVisitReminder.value = data.notify_visit_reminder ?? true
+      notifyRevisitReminder.value = data.notify_revisit_reminder ?? true
+    }
+  } catch (err) {
+    console.error('加载系统设置失败', err)
+    MessagePlugin.error('加载系统设置失败')
+  }
+})
+
+async function handleSaveAll() {
+  try {
+    const payload = {
+      booking_advance_days: bookingAdvanceDays.value,
+      booking_hours: bookingHours.value,
+      booking_interval: bookingInterval.value,
+      booking_cancel_limit: bookingCancelLimit.value,
+      allow_self_booking: allowSelfBooking.value,
+      require_deposit: requireDeposit.value,
+      deposit_amount: Math.round(depositAmount.value * 100),
+
+      commission1: commission1.value,
+      commission2: commission2.value,
+      min_withdraw: minWithdraw.value,
+      withdraw_fee_rate: withdrawFeeRate.value,
+      enable_distribution: enableDistribution.value,
+      auto_approve_withdraw: autoApproveWithdraw.value,
+
+      notify_new_booking: notifyNewBooking.value,
+      notify_withdraw_apply: notifyWithdrawApply.value,
+      notify_visit_reminder: notifyVisitReminder.value,
+      notify_revisit_reminder: notifyRevisitReminder.value
+    }
+    const res: any = await request.post('/api/admin/settings', payload)
+    if (res && res.code === 200) {
+      MessagePlugin.success('系统设置已成功保存')
+    }
+  } catch (err) {
+    console.error('保存系统设置失败', err)
+    MessagePlugin.error('保存系统设置失败')
+  }
 }
 
 function handleReset() {
@@ -52,6 +114,7 @@ function handleReset() {
   bookingCancelLimit.value = '就诊前2小时'
   allowSelfBooking.value = true
   requireDeposit.value = false
+  depositAmount.value = 50.00
 
   commission1.value = 15
   commission2.value = 5
@@ -69,7 +132,6 @@ function handleReset() {
 }
 
 function editRole(roleName: string) {
-  // Map mock names to edit routes
   if (roleName === '门店管理员') {
     router.push('/permission/role-edit/2')
   } else if (roleName === '财务人员') {
@@ -139,6 +201,13 @@ function editRole(roleName: string) {
                   <input type="checkbox" v-model="requireDeposit">
                   <span class="switch-slider"></span>
                 </label>
+              </div>
+            </div>
+            <div class="form-group" v-if="requireDeposit">
+              <label class="form-label">定金金额（元）<span class="required">*</span></label>
+              <div class="input-group">
+                <span class="input-prefix">¥</span>
+                <input type="number" class="form-control-inner" v-model.number="depositAmount" min="0.01" step="0.01">
               </div>
             </div>
           </div>

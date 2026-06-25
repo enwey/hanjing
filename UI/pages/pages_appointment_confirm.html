@@ -844,6 +844,12 @@ button:after {
 }
 .apt-value--desc.data-v-74fd48b7 {
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  span-overflow: ellipsis;
+  word-break: break-all;
 }
 .apt-actions.data-v-74fd48b7 {
   display: flex;
@@ -1021,6 +1027,13 @@ button:after {
 }
 .month-arrow.data-v-70d02435:active {
   opacity: 0.5;
+}
+.calendar-day--today-unbookable.calendar-day--disabled.data-v-70d02435 {
+  opacity: 1; /* Keep it clearly visible instead of faint */
+}
+.calendar-day--today-unbookable .calendar-day-span.data-v-70d02435 {
+  color: #10b981 !important; /* Elegant light green */
+  font-weight: 700;
 }
 
 .data-v-822bb649:root {
@@ -1556,7 +1569,7 @@ body {
 </head>
 <body>
 <div class="phone-standalone">
-  <div class="page data-v-03365e87"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">确认挂号信息</div></div></div></div><div class="page-content data-v-03365e87"><div class="info-card data-v-03365e87"><span class="info-title data-v-03365e87">预约信息确认</span><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/store.svg" /><span class="info-label data-v-03365e87">门店</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/doctor.svg" /><span class="info-label data-v-03365e87">医生</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/calendar.svg" /><span class="info-label data-v-03365e87">日期</span><span class="info-value data-v-03365e87">false</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/clock.svg" /><span class="info-label data-v-03365e87">时段</span><span class="info-value info-value--bold data-v-03365e87"></span></div></div><div class="symptom-card data-v-03365e87"><span class="symptom-title data-v-03365e87">症状描述（选填）</span></div><div class="tips data-v-03365e87"><div class="tip-item data-v-03365e87"><img class="tip-icon data-v-03365e87" src="../mp-weixin/static/icons/info.svg" /><span class="tips-text data-v-03365e87">就诊当天会有消息提醒，请保持手机畅通</span></div><div class="tip-item data-v-03365e87"><img class="tip-icon data-v-03365e87" src="../mp-weixin/static/icons/alert.svg" /><span class="tips-text data-v-03365e87">如需取消，请在就诊前2小时取消</span></div></div><div class="submit-area data-v-03365e87"></div></div></div>
+  <div class="page data-v-03365e87"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">确认挂号信息</div></div></div></div><div class="page-content data-v-03365e87"><div class="info-card data-v-03365e87"><span class="info-title data-v-03365e87">预约信息确认</span><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/tab-home.png" /><span class="info-label data-v-03365e87">门店</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/tab-profile.png" /><span class="info-label data-v-03365e87">医生</span><span class="info-value data-v-03365e87">示例</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/tab-appointment.png" /><span class="info-label data-v-03365e87">日期</span><span class="info-value data-v-03365e87">false</span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/clock.svg" /><span class="info-label data-v-03365e87">时段</span><span class="info-value info-value--bold data-v-03365e87"></span></div><div class="info-row data-v-03365e87"><img class="row-icon data-v-03365e87" src="../mp-weixin/static/icons/price.svg" /><span class="info-label data-v-03365e87">定金</span><span class="info-value info-value--price data-v-03365e87">¥0.00</span></div></div><div class="symptom-card data-v-03365e87"><span class="symptom-title data-v-03365e87">症状描述（选填）</span></div><div class="tips data-v-03365e87"><div class="tip-item data-v-03365e87"><img class="tip-icon data-v-03365e87" src="../mp-weixin/static/icons/info.svg" /><span class="tips-text data-v-03365e87">就诊当天会有消息提醒，请保持手机畅通</span></div><div class="tip-item data-v-03365e87"><img class="tip-icon data-v-03365e87" src="../mp-weixin/static/icons/alert.svg" /><span class="tips-text data-v-03365e87">如需取消，请在就诊前2小时取消</span></div></div><div class="submit-area data-v-03365e87"></div></div></div>
 </div>
 </body>
 </html>

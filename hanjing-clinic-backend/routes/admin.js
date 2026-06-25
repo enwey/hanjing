@@ -2,7 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import fs from 'fs';
-import { query, get, run, transaction } from '../db.js';
+import { query, get, run, transaction, autoUpdateExpiredAppointments } from '../db.js';
 import {
   JWT_SECRET,
   checkStoreIsOpen,
@@ -546,6 +546,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
   }
 
   try {
+    await autoUpdateExpiredAppointments();
     if (page) {
       const countSql = `
         SELECT COUNT(*) as total
@@ -615,6 +616,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
 app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
+    await autoUpdateExpiredAppointments();
     let sql = `
       SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
              p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history,
@@ -1423,7 +1425,7 @@ app.delete('/api/admin/doctors/:id', authenticateToken, async (req, res) => {
 
 // Schedules
 app.get('/api/admin/schedules', authenticateToken, async (req, res) => {
-  const { date } = req.query; // Expecting YYYY-MM-DD or week dates
+  const { date, doctor_id } = req.query; // Expecting YYYY-MM-DD, YYYY-MM or week dates
   try {
     let sql = `
       SELECT s.*, d.name as doctor_name, d.title as doctor_title, d.specialty as doctor_specialty, st.name as store_name
@@ -1434,52 +1436,245 @@ app.get('/api/admin/schedules', authenticateToken, async (req, res) => {
     `;
     const params = [];
     if (date) {
-      sql += ` AND s.date = ?`;
-      params.push(date);
+      if (date.length === 7) {
+        sql += ` AND s.date LIKE ?`;
+        params.push(`${date}%`);
+      } else {
+        sql += ` AND s.date = ?`;
+        params.push(date);
+      }
+    }
+    if (doctor_id) {
+      sql += ` AND s.doctor_id = ?`;
+      params.push(doctor_id);
     }
     if (req.user.role !== 'super_admin' && req.user.store_id) {
       sql += ` AND s.store_id = ?`;
       params.push(req.user.store_id);
     }
     const list = await query(sql, params);
-    res.json({ code: 200, data: list });
+    const formattedList = list.map(item => ({
+      ...item,
+      date: item.date instanceof Date ? 
+        `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, '0')}-${String(item.date.getDate()).padStart(2, '0')}` : 
+        String(item.date).slice(0, 10)
+    }));
+    res.json({ code: 200, data: formattedList });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取排班列表失败' });
   }
 });
 
 app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
-  const { doctor_id, store_id, date, period, start_time, end_time, total_slots } = req.body;
-  if (!doctor_id || !store_id || !date || !period) {
+  const { doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, is_rest } = req.body;
+  if (!doctor_id || !date || !period) {
     return res.status(400).json({ code: 400, message: '排班参数不足' });
   }
 
-  if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(store_id)) {
+  if (!is_rest && !store_id) {
+    return res.status(400).json({ code: 400, message: '非休息排班必须选择门店' });
+  }
+
+  if (!is_rest && req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(store_id)) {
     return res.status(403).json({ code: 403, message: '您无权为其他门店排班' });
   }
 
   try {
-    // Check if schedule already exists
     const existing = await get(
       `SELECT id FROM doctor_schedules WHERE doctor_id = ? AND date = ? AND period = ?`,
       [doctor_id, date, period]
     );
 
+    if (is_rest) {
+      if (existing) {
+        const booked = await get(
+          `SELECT COUNT(*) as count FROM appointments WHERE schedule_id = ? AND status NOT IN ('cancelled', 'no_show')`,
+          [existing.id]
+        );
+        if (booked && booked.count > 0) {
+          return res.status(400).json({ code: 400, message: `${date} ${period === 'morning' ? '上午' : '下午'}已有预约，不能设置为休息` });
+        }
+        await run(`DELETE FROM doctor_schedules WHERE id = ?`, [existing.id]);
+      }
+      return res.json({ code: 200, message: '设置休息成功' });
+    }
+
     if (existing) {
+      const booked = await get(
+        `SELECT COUNT(*) as count FROM appointments WHERE schedule_id = ? AND status NOT IN ('cancelled', 'no_show')`,
+        [existing.id]
+      );
+      const bookedCount = booked ? booked.count : 0;
+      const proposedTotal = (total_slots || 6) * (people_per_slot || 1);
+      if (bookedCount > proposedTotal) {
+        return res.status(400).json({ code: 400, message: `${date} ${period === 'morning' ? '上午' : '下午'}已有较多预约（已约 ${bookedCount} 人），新设置的总号源数（${proposedTotal} 人）不足` });
+      }
+
       await run(
-        `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ? WHERE id = ?`,
-        [store_id, start_time || '09:00:00', end_time || '12:00:00', total_slots || 6, existing.id]
+        `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ? WHERE id = ?`,
+        [store_id, start_time || '09:00:00', end_time || '12:00:00', total_slots || 6, people_per_slot || 1, existing.id]
       );
     } else {
       await run(
-        `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [doctor_id, store_id, date, period, start_time || '09:00:00', end_time || '12:00:00', total_slots || 6]
+        `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [doctor_id, store_id, date, period, start_time || '09:00:00', end_time || '12:00:00', total_slots || 6, people_per_slot || 1]
       );
     }
     res.json({ code: 200, message: '设置排班成功' });
   } catch (error) {
     res.status(500).json({ code: 500, message: '设置排班失败' });
+  }
+});
+
+app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
+  const { doctor_id, list } = req.body;
+  if (!doctor_id || !Array.isArray(list) || list.length === 0) {
+    return res.status(400).json({ code: 400, message: '排班参数不足' });
+  }
+
+  try {
+    const monthStr = list[0].date.slice(0, 7); // e.g. "2026-06"
+    
+    await transaction(async (conn) => {
+      // 1. Fetch all existing schedules for this doctor in this month in one query
+      const [existingRows] = await conn.execute(
+        `SELECT * FROM doctor_schedules WHERE doctor_id = ? AND date LIKE ?`,
+        [doctor_id, `${monthStr}%`]
+      );
+      
+      const existingMap = {};
+      existingRows.forEach(row => {
+        const dateStr = row.date instanceof Date ? 
+          `${row.date.getFullYear()}-${String(row.date.getMonth() + 1).padStart(2, '0')}-${String(row.date.getDate()).padStart(2, '0')}` : 
+          String(row.date).slice(0, 10);
+        existingMap[`${dateStr}_${row.period}`] = row;
+      });
+
+      // 2. Fetch all active booked appointment counts for this doctor in this month in one query
+      const [bookedRows] = await conn.execute(
+        `SELECT schedule_id, COUNT(*) as count 
+         FROM appointments 
+         WHERE doctor_id = ? AND appointment_date LIKE ? AND status NOT IN ('cancelled', 'no_show')
+         GROUP BY schedule_id`,
+        [doctor_id, `${monthStr}%`]
+      );
+      
+      const bookedMap = {};
+      bookedRows.forEach(row => {
+        bookedMap[row.schedule_id] = row.count;
+      });
+
+      const idsToDelete = [];
+      const inserts = [];
+      const updates = [];
+
+      // 3. Process differences in memory
+      for (const item of list) {
+        const { store_id, date, period, start_time, end_time, total_slots, people_per_slot, is_rest } = item;
+        if (!date || !period) {
+          throw new Error('排班日期与时段不能为空');
+        }
+
+        const key = `${date}_${period}`;
+        const existing = existingMap[key];
+
+        if (is_rest) {
+          if (existing) {
+            const bookedCount = bookedMap[existing.id] || 0;
+            if (bookedCount > 0) {
+              throw new Error(`${date} ${period === 'morning' ? '上午' : '下午'}已有预约，不能设置为休息`);
+            }
+            idsToDelete.push(existing.id);
+          }
+        } else {
+          if (!store_id) {
+            throw new Error('非休息排班必须选择门店');
+          }
+
+          if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(store_id)) {
+            throw new Error('您无权为其他门店排班');
+          }
+
+          const targetStartTime = start_time || '09:00:00';
+          const targetEndTime = end_time || (period === 'morning' ? '12:00:00' : '18:00:00');
+          const targetTotalSlots = total_slots || 6;
+          const targetPeoplePerSlot = people_per_slot || 1;
+
+          if (existing) {
+            // Check if values have actually changed
+            const existingStartTime = String(existing.start_time).slice(0, 8);
+            const existingEndTime = String(existing.end_time).slice(0, 8);
+            const hasChanged = 
+              Number(existing.store_id) !== Number(store_id) ||
+              existingStartTime !== targetStartTime ||
+              existingEndTime !== targetEndTime ||
+              Number(existing.total_slots) !== Number(targetTotalSlots) ||
+              Number(existing.people_per_slot) !== Number(targetPeoplePerSlot);
+
+            if (hasChanged) {
+              const bookedCount = bookedMap[existing.id] || 0;
+              const proposedTotal = Number(targetTotalSlots) * Number(targetPeoplePerSlot);
+              if (bookedCount > proposedTotal) {
+                throw new Error(`${date} ${period === 'morning' ? '上午' : '下午'}已有较多预约（已约 ${bookedCount} 人），新设置的总号源数（${proposedTotal} 人）不足`);
+              }
+
+              updates.push({
+                id: existing.id,
+                store_id,
+                start_time: targetStartTime,
+                end_time: targetEndTime,
+                total_slots: targetTotalSlots,
+                people_per_slot: targetPeoplePerSlot
+              });
+            }
+          } else {
+            // Collect new schedules to insert
+            inserts.push([
+              doctor_id,
+              store_id,
+              date,
+              period,
+              targetStartTime,
+              targetEndTime,
+              targetTotalSlots,
+              targetPeoplePerSlot
+            ]);
+          }
+        }
+      }
+
+      // 4. Perform database operations in batches
+      if (idsToDelete.length > 0) {
+        const placeholders = idsToDelete.map(() => '?').join(',');
+        await conn.execute(
+          `DELETE FROM doctor_schedules WHERE id IN (${placeholders})`,
+          idsToDelete
+        );
+      }
+
+      if (inserts.length > 0) {
+        const placeholders = inserts.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(',');
+        const flatValues = inserts.reduce((acc, val) => acc.concat(val), []);
+        await conn.execute(
+          `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot)
+           VALUES ${placeholders}`,
+          flatValues
+        );
+      }
+
+      for (const val of updates) {
+        await conn.execute(
+          `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ? WHERE id = ?`,
+          [val.store_id, val.start_time, val.end_time, val.total_slots, val.people_per_slot, val.id]
+        );
+      }
+    });
+
+    res.json({ code: 200, message: '批量保存排班成功' });
+  } catch (error) {
+    console.error('Batch schedule save error:', error);
+    res.status(400).json({ code: 400, message: error.message || '批量保存排班失败' });
   }
 });
 
@@ -2457,6 +2652,46 @@ app.post('/api/admin/im/send', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Admin Send IM Error:', error);
     res.status(500).json({ code: 500, message: '发送失败' });
+  }
+});
+
+// 获取系统设置 API
+app.get('/api/admin/settings', authenticateToken, async (req, res) => {
+  try {
+    const rows = await query('SELECT key_name, key_value FROM system_settings');
+    const settings = {};
+    rows.forEach(row => {
+      let val = row.key_value;
+      if (val === 'true') val = true;
+      else if (val === 'false') val = false;
+      else if (/^\d+$/.test(val)) val = parseInt(val, 10);
+      else if (/^\d+\.\d+$/.test(val)) val = parseFloat(val);
+      settings[row.key_name] = val;
+    });
+    res.json({ code: 200, data: settings });
+  } catch (error) {
+    console.error('Get Settings Error:', error);
+    res.status(500).json({ code: 500, message: '获取设置失败' });
+  }
+});
+
+// 保存系统设置 API
+app.post('/api/admin/settings', authenticateToken, async (req, res) => {
+  try {
+    const updates = req.body;
+    await transaction(async (conn) => {
+      for (const [key, val] of Object.entries(updates)) {
+        const strVal = String(val);
+        await conn.execute(
+          'INSERT INTO system_settings (key_name, key_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE key_value = ?',
+          [key, strVal, strVal]
+        );
+      }
+    });
+    res.json({ code: 200, message: '设置保存成功' });
+  } catch (error) {
+    console.error('Update Settings Error:', error);
+    res.status(500).json({ code: 500, message: '保存设置失败' });
   }
 });
 

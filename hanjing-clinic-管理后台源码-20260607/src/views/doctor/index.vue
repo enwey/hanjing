@@ -41,7 +41,8 @@ const fetchDoctors = async () => {
         isOnline: d.status === 1,
         expertise: tags,
         experience: d.experience_years || 0,
-        intro: d.intro || ''
+        intro: d.intro || '',
+        consultFee: d.consult_fee !== undefined ? d.consult_fee / 100 : 0
       }
     })
   } catch (error) {
@@ -109,7 +110,8 @@ const formData = ref({
   isOnline: true,
   expertiseStr: '',
   experience: 0,
-  intro: ''
+  intro: '',
+  consultFee: 0
 })
 
 function openSchedule(doctorId: string) {
@@ -126,7 +128,8 @@ function handleAddDoctor() {
     isOnline: true,
     expertiseStr: '',
     experience: 0,
-    intro: ''
+    intro: '',
+    consultFee: 0
   }
   showEdit.value = true
 }
@@ -145,13 +148,14 @@ function handleEditDoctor(id: string) {
     isOnline: d.isOnline,
     expertiseStr: d.expertise ? d.expertise.join(',') : '',
     experience: d.experience || 0,
-    intro: d.intro || ''
+    intro: d.intro || '',
+    consultFee: d.consultFee || 0
   }
   showEdit.value = true
 }
 
 async function handleSave() {
-  if (!formData.value.name || !formData.value.specialty || !formData.value.store) {
+  if (!formData.value.name || !formData.value.specialty || !formData.value.store || formData.value.consultFee === undefined || formData.value.consultFee === null || formData.value.consultFee === '') {
     MessagePlugin.warning('请填写所有必填信息')
     return
   }
@@ -171,7 +175,8 @@ async function handleSave() {
         intro: formData.value.intro,
         status: formData.value.isOnline ? 1 : 0,
         expertise: tags.length > 0 ? tags : null,
-        experience_years: Number(formData.value.experience)
+        experience_years: Number(formData.value.experience),
+        consult_fee: Math.round(Number(formData.value.consultFee) * 100)
       })
       MessagePlugin.success('保存医生档案成功')
     } else {
@@ -183,7 +188,8 @@ async function handleSave() {
         intro: formData.value.intro,
         status: formData.value.isOnline ? 1 : 0,
         expertise: tags.length > 0 ? tags : null,
-        experience_years: Number(formData.value.experience)
+        experience_years: Number(formData.value.experience),
+        consult_fee: Math.round(Number(formData.value.consultFee) * 100)
       })
       MessagePlugin.success('新增医生档案成功')
     }
@@ -251,6 +257,10 @@ function handleNextWeek() {
           <div style="font-size: 12px; color: #3B6BF5; margin-top: 2px;">{{ dr.title }} · {{ dr.specialty }} · {{ dr.experience }}年经验</div>
           <!-- Store -->
           <div style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">{{ dr.store }}</div>
+          <!-- Registration Fee -->
+          <div style="font-size: 12px; color: #374151; margin-top: 4px; font-weight: 500;">
+            挂号费：<span style="color: #EC4899; font-weight: bold;">¥{{ dr.consultFee !== undefined ? dr.consultFee.toFixed(2) : '0.00' }}</span>
+          </div>
           <!-- Tags / Expertise -->
           <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 8px; min-height: 20px;">
             <span v-for="tag in dr.expertise" :key="tag" style="font-size: 10px; background: #EBF2FF; color: #3B6BF5; padding: 2px 6px; border-radius: 4px; font-weight: 500;">
@@ -349,6 +359,10 @@ function handleNextWeek() {
         <div class="form-group">
           <label class="form-label">工作经验（年）<span class="required">*</span></label>
           <input type="number" class="form-control" v-model="formData.experience" placeholder="请输入工作经验年限" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">挂号费（元）<span class="required">*</span></label>
+          <input type="number" class="form-control" v-model="formData.consultFee" placeholder="请输入挂号费金额" min="0" step="0.01">
         </div>
         <div class="form-group">
           <label class="form-label">就诊门店<span class="required">*</span></label>

@@ -844,6 +844,12 @@ button:after {
 }
 .apt-value--desc.data-v-74fd48b7 {
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  span-overflow: ellipsis;
+  word-break: break-all;
 }
 .apt-actions.data-v-74fd48b7 {
   display: flex;
@@ -1021,6 +1027,13 @@ button:after {
 }
 .month-arrow.data-v-70d02435:active {
   opacity: 0.5;
+}
+.calendar-day--today-unbookable.calendar-day--disabled.data-v-70d02435 {
+  opacity: 1; /* Keep it clearly visible instead of faint */
+}
+.calendar-day--today-unbookable .calendar-day-span.data-v-70d02435 {
+  color: #10b981 !important; /* Elegant light green */
+  font-weight: 700;
 }
 
 .data-v-822bb649:root {
@@ -1452,14 +1465,15 @@ button:after {
 }
 
 .status-hero.status--cancelled.data-v-7e5a1194,
-.status-hero.status--no_show.data-v-7e5a1194 {
-  background: var(--gradient-danger);
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.18);
+.status-hero.status--no_show.data-v-7e5a1194,
+.status-hero.status--arrived.data-v-7e5a1194 {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important;
+  box-shadow: 0 8px 20px rgba(107, 114, 128, 0.15) !important;
 }
 
 .status-hero.status--pending.data-v-7e5a1194 {
-  background: var(--gradient-warning);
-  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.18);
+  background: var(--gradient-success);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.18);
 }
 
 .status-hero-main.data-v-7e5a1194 {
@@ -1663,6 +1677,7 @@ button:after {
   width: 18px;
   height: 18px;
   margin-right: 8px;
+  filter: brightness(0) saturate(100%) invert(37%) sepia(89%) saturate(2255%) hue-rotate(213deg) brightness(98%) contrast(94%);
 }
 
 .header-title.data-v-7e5a1194 {
@@ -1812,6 +1827,35 @@ button:after {
   opacity: 0.85;
 }
 
+/* 8. Notice Warning Card */
+.notice-card-warning.data-v-7e5a1194 {
+  background: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 0 0 16px 0;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.05);
+}
+
+.notice-content-wrapper.data-v-7e5a1194 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notice-icon.data-v-7e5a1194 {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.notice-span-warning.data-v-7e5a1194 {
+  font-size: 13px;
+  color: #b45309;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -1839,7 +1883,7 @@ body {
 </head>
 <body>
 <div class="phone-standalone">
-  <div class="page data-v-7e5a1194"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">门诊预约详情</div></div></div></div><div class="page-content data-v-7e5a1194"><div class="status-hero  data-v-7e5a1194"><div class="status-hero-main data-v-7e5a1194"><div class="status-icon-wrapper data-v-7e5a1194"><img class="status-icon data-v-7e5a1194" src="../mp-weixin/static/icons/tab-home.png" /></div><div class="status-title-group data-v-7e5a1194"><span class="status-title data-v-7e5a1194"></span><span class="status-desc data-v-7e5a1194">预约流程已更新，详情请见下方信息</span></div></div></div><div class="order-no-bar data-v-7e5a1194"><div class="no-text-group data-v-7e5a1194"><span class="no-label data-v-7e5a1194">预约单号</span><span class="no-value data-v-7e5a1194"></span></div><button class="copy-btn-action data-v-7e5a1194" hover-class="copy-btn-hover">复制</button></div><div class="card-premium doctor-card data-v-7e5a1194"><div class="doc-avatar-large data-v-7e5a1194"><span class="doc-avatar-text-large data-v-7e5a1194"></span><div class="pulse-ring-avatar data-v-7e5a1194"></div></div><div class="doc-info-detail data-v-7e5a1194"><div class="doc-name-row data-v-7e5a1194"><span class="doc-name-large data-v-7e5a1194"></span><span class="doc-title-badge data-v-7e5a1194"></span></div><span class="doc-dept data-v-7e5a1194"></span><div class="doctor-expertise data-v-7e5a1194"><span class="doctor-expertise-tag data-v-7e5a1194">睡眠呼吸暂停综合症</span><span class="doctor-expertise-tag data-v-7e5a1194">鼾症非手术治疗</span><span class="doctor-expertise-tag data-v-7e5a1194">阻鼾器适配</span><span class="doctor-expertise-tag data-v-7e5a1194">下颌前移治疗</span></div></div></div><div class="card-premium data-v-7e5a1194"><div class="card-header-premium data-v-7e5a1194"><img class="header-icon data-v-7e5a1194" src="../mp-weixin/static/icons/tab-appointment.png" /><span class="header-title data-v-7e5a1194">就诊及门店信息</span></div><div class="detail-rows data-v-7e5a1194"><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">就诊时间</span><span class="row-value row-value--bold data-v-7e5a1194">null </span></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">就诊门诊</span><span class="row-value data-v-7e5a1194"></span></div><div class="detail-row detail-row--clickable data-v-7e5a1194"><span class="row-label data-v-7e5a1194">门店地址</span><div class="row-value-group data-v-7e5a1194"><span class="row-value row-value--small data-v-7e5a1194"></span><img class="nav-icon data-v-7e5a1194" src="../mp-weixin/static/icons/paper-plane.svg" /></div></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">门诊类型</span><span class="row-value data-v-7e5a1194"></span></div></div></div></div></div>
+  <div class="page data-v-7e5a1194"><div class="component-hj-navbar"><div class="hj-navbar data-v-1529c78d is-fixed" style=""><div class="data-v-1529c78d" style=""></div><div class="hj-navbar-inner data-v-1529c78d" style=""><div class="hj-navbar-back data-v-1529c78d" style=""><span class="hj-navbar-back-icon data-v-1529c78d"></span></div><div class="hj-navbar-title data-v-1529c78d" style="">门诊预约详情</div></div></div></div><div class="page-content data-v-7e5a1194"><div class="status-hero  data-v-7e5a1194"><div class="status-hero-main data-v-7e5a1194"><div class="status-icon-wrapper data-v-7e5a1194"><img class="status-icon data-v-7e5a1194" src="../mp-weixin/static/icons/info.svg" /></div><div class="status-title-group data-v-7e5a1194"><span class="status-title data-v-7e5a1194"></span><span class="status-desc data-v-7e5a1194">预约流程已更新，详情请见下方信息</span></div></div></div><div class="order-no-bar data-v-7e5a1194"><div class="no-text-group data-v-7e5a1194"><span class="no-label data-v-7e5a1194">预约单号</span><span class="no-value data-v-7e5a1194"></span></div><button class="copy-btn-action data-v-7e5a1194" hover-class="copy-btn-hover">复制</button></div><div class="card-premium doctor-card data-v-7e5a1194"><div class="doc-avatar-large data-v-7e5a1194"><span class="doc-avatar-text-large data-v-7e5a1194"></span><div class="pulse-ring-avatar data-v-7e5a1194"></div></div><div class="doc-info-detail data-v-7e5a1194"><div class="doc-name-row data-v-7e5a1194"><span class="doc-name-large data-v-7e5a1194"></span><span class="doc-title-badge data-v-7e5a1194"></span></div><span class="doc-dept data-v-7e5a1194"></span><div class="doctor-expertise data-v-7e5a1194"><span class="doctor-expertise-tag data-v-7e5a1194">睡眠呼吸暂停综合症</span><span class="doctor-expertise-tag data-v-7e5a1194">鼾症非手术治疗</span><span class="doctor-expertise-tag data-v-7e5a1194">阻鼾器适配</span><span class="doctor-expertise-tag data-v-7e5a1194">下颌前移治疗</span></div></div></div><div class="card-premium data-v-7e5a1194"><div class="card-header-premium data-v-7e5a1194"><img class="header-icon data-v-7e5a1194" src="../mp-weixin/static/icons/calendar.svg" /><span class="header-title data-v-7e5a1194">就诊及门店信息</span></div><div class="detail-rows data-v-7e5a1194"><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">就诊时间</span><span class="row-value row-value--bold data-v-7e5a1194">null </span></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">就诊门诊</span><span class="row-value data-v-7e5a1194"></span></div><div class="detail-row detail-row--clickable data-v-7e5a1194"><span class="row-label data-v-7e5a1194">门店地址</span><div class="row-value-group data-v-7e5a1194"><span class="row-value row-value--small data-v-7e5a1194"></span><img class="nav-icon data-v-7e5a1194" src="../mp-weixin/static/icons/paper-plane.svg" /></div></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">门诊类型</span><span class="row-value data-v-7e5a1194"></span></div></div></div><div class="card-premium data-v-7e5a1194"><div class="card-header-premium data-v-7e5a1194"><img class="header-icon data-v-7e5a1194" src="../mp-weixin/static/icons/report.svg" /><span class="header-title data-v-7e5a1194">就诊电子病历</span></div><div class="detail-rows data-v-7e5a1194"><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">就诊日期</span><span class="row-value data-v-7e5a1194"></span></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">接诊医生</span><span class="row-value data-v-7e5a1194"></span></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">临床诊断</span><span class="row-value data-v-7e5a1194"></span></div></div></div><div class="card-premium data-v-7e5a1194"><div class="card-header-premium data-v-7e5a1194"><img class="header-icon data-v-7e5a1194" src="../mp-weixin/static/icons/adjust.svg" /><span class="header-title data-v-7e5a1194">阻鼾器微调参数</span></div><div class="detail-rows data-v-7e5a1194"><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">设备型号</span><span class="row-value data-v-7e5a1194"></span></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">初始前移量</span><span class="row-value data-v-7e5a1194"> mm</span></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">当前前移量</span><span class="row-value data-v-7e5a1194"> mm</span></div><div class="detail-row data-v-7e5a1194"><span class="row-label data-v-7e5a1194">配戴开始日期</span><span class="row-value data-v-7e5a1194"></span></div></div></div></div></div>
 </div>
 </body>
 </html>

@@ -76,6 +76,7 @@ const e = require("../../common/vendor.js"),
               h: a.hasSchedule && !a.isPast ? 1 : "",
               i: a.disabled ? 1 : "",
               j: a.date === t.selectedDate ? 1 : "",
+              l: a.isToday && !a.hasSchedule ? 1 : "",
               k: e.o(
                 (e) =>
                   (function (e) {

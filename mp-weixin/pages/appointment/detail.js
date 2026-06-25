@@ -23,10 +23,11 @@ const o = () => "../../components/base/hj-navbar.js",
             confirmed: "primary",
             reminded: "primary",
             checked_in: "success",
-            completed: "default",
-            cancelled: "danger",
-            no_show: "danger",
+            completed: "danger",
+            cancelled: "default",
+            no_show: "default",
             pending: "success",
+            pending_payment: "danger",
           }[e] || "default"
         );
       }
@@ -44,7 +45,23 @@ const o = () => "../../components/base/hj-navbar.js",
           return ['阻鼾器适配', '睡眠健康辅导'];
         }
       }
-      const apptStore = t.useAppointmentStore();
+      const apptStore = e.useAppointmentStore || t.useAppointmentStore();
+
+      const canCancelOrReschedule = e.computed(() => {
+        if (!r.value) return false;
+        if (['arrived', 'cancelled', 'no_show', 'completed'].includes(r.value.status)) {
+          return false;
+        }
+        try {
+          const [year, month, day] = r.value.appointmentDate.split('-').map(Number);
+          const [hours, minutes] = r.value.appointmentTime.split('-')[0].trim().split(':').map(Number);
+          const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+          const now = new Date();
+          return (apptDateTime.getTime() - now.getTime()) >= 2 * 60 * 60 * 1000;
+        } catch (err) {
+          return false;
+        }
+      });
 
       function copyNo() {
         if (r.value && r.value.appointmentNo) {
@@ -59,6 +76,19 @@ const o = () => "../../components/base/hj-navbar.js",
 
       function cancelAppt() {
         if (r.value) {
+          try {
+            const [year, month, day] = r.value.appointmentDate.split('-').map(Number);
+            const [hours, minutes] = r.value.appointmentTime.split('-')[0].trim().split(':').map(Number);
+            const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+            const now = new Date();
+            if (apptDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
+              e.index.showToast({ title: "距离预约时间已不足2小时，不支持取消预约", icon: "none" });
+              return;
+            }
+          } catch (err) {
+            console.error("解析就诊时间失败", err);
+          }
+
           e.index.showModal({
             title: "取消预约",
             content: "确定要取消这次预约吗？",
@@ -80,22 +110,86 @@ const o = () => "../../components/base/hj-navbar.js",
 
       function rescheduleAppt() {
         if (r.value) {
+          // If status is finished (completed, arrived, cancelled, no_show), it's a rebook action
+          if (['arrived', 'cancelled', 'no_show', 'completed'].includes(r.value.status)) {
+            if (apptStore && apptStore.resetFlow) {
+              apptStore.resetFlow();
+            }
+            e.index.navigateTo({
+              url: "/pages/appointment/store-select",
+            });
+            return;
+          }
+
+          if (['pending', 'confirmed', 'pending_payment'].includes(r.value.status)) {
+            try {
+              const [year, month, day] = r.value.appointmentDate.split('-').map(Number);
+              const [hours, minutes] = r.value.appointmentTime.split('-')[0].trim().split(':').map(Number);
+              const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+              const now = new Date();
+              if (apptDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
+                e.index.showToast({ title: "距离预约时间已不足2小时，不支持修改就诊时间", icon: "none" });
+                return;
+              }
+            } catch (err) {
+              console.error("解析就诊时间失败", err);
+            }
+          }
+
           e.index.navigateTo({
             url: `/pages/appointment/reschedule?id=${r.value.id}&doctorId=${r.value.doctorId}&storeId=${r.value.storeId}`,
           });
         }
       }
 
-      function copyAddress() {
-        if (u.value) {
-          e.index.setClipboardData({
-            data: u.value.address || "",
-            success: () => {
-              e.index.showToast({ title: "地址已复制", icon: "success" });
-            }
+      function navigateToStore() {
+        if (u.value && u.value.latitude && u.value.longitude) {
+          const lat = u.value.latitude;
+          const lng = u.value.longitude;
+          const name = encodeURIComponent(u.value.name || "");
+          const addr = encodeURIComponent(u.value.address || "");
+          e.index.navigateTo({
+            url: `/pages/appointment/map?latitude=${lat}&longitude=${lng}&name=${name}&address=${addr}`
           });
         } else {
-          e.index.showToast({ title: "门店信息加载中", icon: "none" });
+          e.index.showToast({ title: "未配置位置信息", icon: "none" });
+        }
+      }
+
+      async function payDeposit() {
+        if (r.value) {
+          e.index.showLoading({ title: "发起支付..." });
+          try {
+            const payRes = await a.payAppointmentDeposit(r.value.id);
+            e.index.hideLoading();
+
+            e.index.requestPayment({
+              timeStamp: payRes.data.timeStamp,
+              nonceStr: payRes.data.nonceStr,
+              package: payRes.data.package,
+              signType: payRes.data.signType,
+              paySign: payRes.data.paySign,
+              success: async (res) => {
+                e.index.showLoading({ title: "同步支付状态..." });
+                try {
+                  await a.confirmAppointmentPayment(r.value.id);
+                  e.index.hideLoading();
+                  e.index.showToast({ title: "支付成功", icon: "success" });
+                  const res2 = (await a.getAppointmentDetail(r.value.id)).data;
+                  r.value = res2.appointment;
+                } catch (err) {
+                  e.index.hideLoading();
+                  e.index.showToast({ title: "支付同步失败，请联系客服", icon: "none" });
+                }
+              },
+              fail: (err) => {
+                e.index.showToast({ title: "已取消支付", icon: "none" });
+              }
+            });
+          } catch (err) {
+            e.index.hideLoading();
+            e.index.showToast({ title: "发起支付失败，请稍后重试", icon: "none" });
+          }
         }
       }
 
@@ -146,12 +240,17 @@ const o = () => "../../components/base/hj-navbar.js",
                     doctorAvatar: i.value && i.value.name ? i.value.name.slice(0, 1) : "医",
                     statusLabel: (n.AppointmentStatusMap[r.value.status] || n.AppointmentStatusMap.pending).label,
                     statusClass: "status--" + r.value.status,
+                    requireDeposit: r.value.requireDeposit,
+                    depositAmountYuan: r.value.depositAmount ? (r.value.depositAmount / 100).toFixed(2) : "0.00",
+                    depositStatusLabel: r.value.status === 'pending_payment' ? '待支付' : '已支付',
                     doctorDept: i.value ? `${i.value.specialty || '科室'} · ${i.value.experienceYears || 0}年经验` : "科室 · 经验",
                     doctorExpertise: getDoctorExpertise(i.value),
                     onCopy: e.o(copyNo),
                     onCancel: e.o(cancelAppt),
                     onReschedule: e.o(rescheduleAppt),
-                    onCopyAddress: e.o(copyAddress),
+                    onNavigateToStore: e.o(navigateToStore),
+                    payDeposit: e.o(payDeposit),
+                    canCancelOrReschedule: e.unref(canCancelOrReschedule),
                     c: e.p({
                       text: ((v = r.value.status),
                       n.AppointmentStatusMap[v] ||

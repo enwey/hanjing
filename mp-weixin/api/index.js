@@ -891,3 +891,43 @@ exports.commentCommunityPost = async function (id, content) {
     },
   );
 };
+
+exports.payAppointmentDeposit = async function (id) {
+  return req.request(
+    {
+      url: `/appointments/${id}/pay`,
+      method: "POST"
+    },
+    () => {
+      return t({ success: true });
+    }
+  );
+};
+
+exports.confirmAppointmentPayment = async function (id) {
+  return req.request(
+    {
+      url: `/appointments/${id}/confirm-pay`,
+      method: "POST"
+    },
+    () => {
+      return t({ success: true });
+    }
+  );
+};
+
+exports.getBookingSettings = async function () {
+  return req.request(
+    {
+      url: "/settings/booking",
+      method: "GET"
+    },
+    () => {
+      return t({
+        requireDeposit: false,
+        depositAmount: 5000,
+        cancelLimit: "就诊前2小时"
+      });
+    }
+  );
+};

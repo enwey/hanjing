@@ -676,8 +676,8 @@ export const seedData = async () => {
 
   // 18. Live Rooms
   await run(
-    `INSERT INTO live_rooms (title, cover_url, anchor_name, anchor_avatar, status, start_time, end_time, viewer_count, replay_url, product_ids)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO live_rooms (title, cover_url, anchor_name, anchor_avatar, status, start_time, end_time, viewer_count, replay_url, product_ids, description, tags)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       '远离鼾症，深度睡眠健康公开课',
       '/static/demo/store-1.jpg',
@@ -688,12 +688,14 @@ export const seedData = async () => {
       '2026-05-28 21:30:00',
       1250,
       '/static/demo/snore-demo.mp4',
-      JSON.stringify([prod1.id, prod2.id])
+      JSON.stringify([prod1.id, prod2.id]),
+      '中西医结合主任医师王芳医生在线解答打鼾问题，教你如何分辨普通打鼾和睡眠呼吸暂停。',
+      JSON.stringify(['科普', '义诊', '专家答疑'])
     ]
   );
   await run(
-    `INSERT INTO live_rooms (title, cover_url, anchor_name, anchor_avatar, status, start_time, viewer_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO live_rooms (title, cover_url, anchor_name, anchor_avatar, status, start_time, viewer_count, description, tags)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       '物理阻鼾器的佩戴与下颌前移微调指南',
       '/static/demo/store-2.jpg',
@@ -701,7 +703,9 @@ export const seedData = async () => {
       '/static/demo/doctor-2.jpg',
       'upcoming',
       '2026-06-18 19:30:00',
-      328
+      328,
+      '睡眠技师王志远带你了解不同类型的阻鼾器，从材质、舒适度、效果多维度对比。',
+      JSON.stringify(['产品测评', '选购指南'])
     ]
   );
 

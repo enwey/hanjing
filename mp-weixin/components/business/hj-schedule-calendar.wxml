@@ -18,7 +18,7 @@
       wx:for="{{c}}"
       wx:for-item="day"
       wx:key="d"
-      class="{{['calendar-day', 'data-v-70d02435', day.e && 'calendar-day--empty', day.f && 'calendar-day--today', day.g && 'calendar-day--past', day.h && 'calendar-day--has-schedule', day.i && 'calendar-day--disabled', day.j && 'calendar-day--selected']}}"
+      class="{{['calendar-day', 'data-v-70d02435', day.e && 'calendar-day--empty', day.f && 'calendar-day--today', day.g && 'calendar-day--past', day.h && 'calendar-day--has-schedule', day.i && 'calendar-day--disabled', day.j && 'calendar-day--selected', day.l && 'calendar-day--today-unbookable']}}"
       bindtap="{{day.k}}"
       ><text wx:if="{{day.a}}" class="calendar-day-text data-v-70d02435"
         >{{day.b}}</text

@@ -14,33 +14,65 @@ const a = () => "../../components/base/hj-navbar.js",
         u = e.ref(""),
         i = e.ref(""),
         d = e.ref("");
+      const c = e.ref(null);
+      async function v(e) {
+        c.value = e;
+        if ("full" !== e.status) {
+          await l.fetchTimeSlots(e.id);
+        }
+      }
       async function r(e) {
-        ((n.value = e),
-          await l.fetchSchedules(u.value, i.value, e, e),
-          (o.value = l.schedules));
+        n.value = e;
+        await l.fetchSchedules(u.value, i.value, e, e);
+        o.value = l.schedules;
+        
+        // 默认展开第一个可以预约的时段
+        if (o.value && o.value.length > 0) {
+          const firstBookable = o.value.find(item => item.status !== 'full');
+          if (firstBookable) {
+            await v(firstBookable);
+          } else {
+            c.value = null;
+          }
+        } else {
+          c.value = null;
+        }
       }
       e.onMounted(async () => {
         var t, a, n;
         const o = getCurrentPages();
         const curPage = o[o.length - 1] || {};
-        const r = curPage.options || (curPage.$page && curPage.$page.options) || {};
-        const docIdParam = r.doctorId || r.doctorid || "";
-        const storeIdParam = r.storeId || r.storeid || "";
-        ((u.value =
-          docIdParam || (null == (t = l.selectedDoctor) ? void 0 : t.id) || ""),
-          (i.value =
-            storeIdParam || (null == (a = l.selectedStore) ? void 0 : a.id) || ""),
-          (d.value = (null == (n = l.selectedDoctor) ? void 0 : n.name) || ""),
-          await l.fetchScheduleDates(u.value, i.value),
-          (s.value = !1));
+        const options = curPage.options || (curPage.$page && curPage.$page.options) || {};
+        const docIdParam = options.doctorId || options.doctorid || "";
+        const storeIdParam = options.storeId || options.storeid || "";
+        u.value = docIdParam || (null == (t = l.selectedDoctor) ? void 0 : t.id) || "";
+        i.value = storeIdParam || (null == (a = l.selectedStore) ? void 0 : a.id) || "";
+        d.value = (null == (n = l.selectedDoctor) ? void 0 : n.name) || "";
+        
+        await l.fetchScheduleDates(u.value, i.value);
+        
+        // 计算默认选中日期：默认选中当天，若当天不可预约则选中距离当天最近的可预约的一天
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        let defaultDate = todayStr;
+        if (l.scheduleDates && l.scheduleDates.length > 0) {
+          if (l.scheduleDates.includes(todayStr)) {
+            defaultDate = todayStr;
+          } else {
+            let minDiff = Infinity;
+            const todayMs = new Date(todayStr).getTime();
+            for (const date of l.scheduleDates) {
+              const diff = Math.abs(new Date(date).getTime() - todayMs);
+              if (diff < minDiff) {
+                minDiff = diff;
+                defaultDate = date;
+              }
+            }
+          }
+        }
+        await r(defaultDate);
+        s.value = !1;
       });
-      const c = e.ref(null);
-      async function v(e) {
-        ((c.value = e),
-          await (async function (e) {
-            "full" !== e.status && (await l.fetchTimeSlots(e.id));
-          })(e));
-      }
       return (t, a) =>
         e.e(
           {

@@ -1,42 +1,86 @@
 "use strict";
-const e = require("../../common/vendor.js");
+const e = require("../../common/vendor.js"),
+  api = require("../../api/index.js");
 Math || t();
 const t = () => "../../components/base/hj-navbar.js",
   a = e.defineComponent({
     __name: "index",
     setup(t) {
-      const a = e.ref([
-        {
-          id: "ar-001",
-          type: "ess",
-          typeLabel: "ESS嗜睡量表",
-          score: 14,
-          level: "中度嗜睡",
-          levelColor: "#F59E0B",
-          date: "2026-06-02",
-          desc: "得分14分，建议就医评估并考虑治疗方案",
-        },
-        {
-          id: "ar-002",
-          type: "snore",
-          typeLabel: "AI鼾声分析",
-          score: 0,
-          level: "中风险",
-          levelColor: "#EF4444",
-          date: "2026-06-01",
-          desc: "检测到频繁呼吸暂停特征，建议尽快就医",
-        },
-        {
-          id: "ar-003",
-          type: "ess",
-          typeLabel: "ESS嗜睡量表",
-          score: 11,
-          level: "轻度嗜睡",
-          levelColor: "#3B6BF5",
-          date: "2026-05-20",
-          desc: "得分11分，处于轻度嗜睡范围，需持续关注",
-        },
-      ]);
+      const a = e.ref([]);
+      
+      function mapRecord(item) {
+        const isEss = item.type === 'ess';
+        let typeLabel = isEss ? 'ESS嗜睡量表' : 'AI鼾声分析';
+        let date = item.createdAt ? item.createdAt.split('T')[0] : '';
+        
+        let scoreStr = '';
+        let level = '';
+        let levelColor = '#3B6BF5';
+        
+        if (isEss) {
+          scoreStr = `得分${item.essScore}分`;
+          level = {
+            normal: '正常',
+            mild: '轻度嗜睡',
+            moderate: '中度嗜睡',
+            severe: '重度嗜睡'
+          }[item.essLevel] || '正常';
+          
+          levelColor = {
+            normal: '#22C55E',
+            mild: '#3B6BF5',
+            moderate: '#F59E0B',
+            severe: '#EF4444'
+          }[item.essLevel] || '#22C55E';
+        } else {
+          scoreStr = `时长${item.snoreAnalysis.duration}秒`;
+          level = {
+            normal: '正常',
+            low: '低风险',
+            mild: '轻度风险',
+            moderate: '中度风险',
+            severe: '重度风险'
+          }[item.snoreAnalysis.riskLevel] || '正常';
+          
+          levelColor = {
+            normal: '#22C55E',
+            low: '#22C55E',
+            mild: '#3B6BF5',
+            moderate: '#F59E0B',
+            severe: '#EF4444'
+          }[item.snoreAnalysis.riskLevel] || '#22C55E';
+        }
+        
+        return {
+          id: item.id,
+          type: item.type,
+          typeLabel: typeLabel,
+          score: isEss ? item.essScore : 0,
+          level: level,
+          levelColor: levelColor,
+          date: date,
+          desc: `${scoreStr}，${item.recommendation || ''}`
+        };
+      }
+
+      e.onShow(async () => {
+        const token = e.index.getStorageSync("access_token");
+        if (!token) {
+          a.value = [];
+          return;
+        }
+        try {
+          const res = await api.getAssessments();
+          if (res && res.code === 0 && Array.isArray(res.data)) {
+            a.value = res.data.map(mapRecord);
+          } else {
+            a.value = [];
+          }
+        } catch (err) {
+          console.error("加载评估记录失败", err);
+          a.value = [];
+        }
+      });
       function s() {
         const token = e.index.getStorageSync("access_token");
         if (!token) {
@@ -77,13 +121,15 @@ const t = () => "../../components/base/hj-navbar.js",
                       e.index.navigateTo({ url: "/pages/auth/login" });
                       return;
                     }
-                    return (
-                      (sVal = t),
-                      void e.index.navigateTo({
-                        url: `/pages/treatment/sleep-report/index?from=assessment&id=${sVal.id}`,
-                      })
-                    );
-                    var sVal;
+                    if (t.type === 'ess') {
+                      e.index.navigateTo({
+                        url: `/pages/assessment/result/index?id=${t.id}`
+                      });
+                    } else {
+                      e.index.navigateTo({
+                        url: `/pages/assessment/snore-result/index?id=${t.id}`
+                      });
+                    }
                   }, t.id),
                 })),
               }

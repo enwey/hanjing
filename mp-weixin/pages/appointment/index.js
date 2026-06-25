@@ -34,7 +34,7 @@ const o = () => "../../components/base/hj-navbar.js",
       const d = e.ref([]),
         u = e.ref([]);
       function p() {
-        const e = ["pending", "confirmed", "reminded", "checked_in", "completed"];
+        const e = ["pending_payment", "pending", "confirmed", "reminded", "checked_in", "completed"];
         ((d.value = n.appointments.filter((t) => e.includes(t.status))),
           (u.value = n.appointments.filter((t) => !e.includes(t.status))));
       }
@@ -58,6 +58,19 @@ const o = () => "../../components/base/hj-navbar.js",
         e.index.navigateTo({ url: `/pages/appointment/detail?id=${t.id}` });
       }
       async function h(t) {
+        try {
+          const [year, month, day] = t.appointmentDate.split('-').map(Number);
+          const [hours, minutes] = t.appointmentTime.split('-')[0].trim().split(':').map(Number);
+          const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+          const now = new Date();
+          if (apptDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
+            e.index.showToast({ title: "距离预约时间已不足2小时，不支持取消预约", icon: "none" });
+            return;
+          }
+        } catch (err) {
+          console.error("解析就诊时间失败", err);
+        }
+
         e.index.showModal({
           title: "取消预约",
           content: "确定要取消这次预约吗？",
@@ -74,6 +87,19 @@ const o = () => "../../components/base/hj-navbar.js",
         });
       }
       function g(t) {
+        try {
+          const [year, month, day] = t.appointmentDate.split('-').map(Number);
+          const [hours, minutes] = t.appointmentTime.split('-')[0].trim().split(':').map(Number);
+          const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+          const now = new Date();
+          if (apptDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
+            e.index.showToast({ title: "距离预约时间已不足2小时，不支持修改就诊时间", icon: "none" });
+            return;
+          }
+        } catch (err) {
+          console.error("解析就诊时间失败", err);
+        }
+
         e.index.navigateTo({
           url: `/pages/appointment/reschedule?id=${t.id}&doctorId=${t.doctorId}&storeId=${t.storeId}`,
         });

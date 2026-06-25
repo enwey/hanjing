@@ -33,6 +33,14 @@
       </view>
     </view>
 
+    <!-- 2b. Notice block for cancel/reschedule limit -->
+    <view wx:if="{{status !== 'arrived' && status !== 'cancelled' && status !== 'no_show' && status !== 'completed' && !canCancelOrReschedule}}" class="notice-card-warning data-v-7e5a1194">
+      <view class="notice-content-wrapper data-v-7e5a1194">
+        <image class="notice-icon data-v-7e5a1194" src="/static/icons/warning.svg" />
+        <text class="notice-text-warning data-v-7e5a1194">温馨提示：由于临近就诊时间（不足 2 小时），若需改约或取消，请联系客服为您处理。</text>
+      </view>
+    </view>
+
     <!-- 2. Order No Bar -->
     <view class="order-no-bar data-v-7e5a1194">
       <view class="no-text-group data-v-7e5a1194">
@@ -63,7 +71,7 @@
     <!-- 4. Schedule & Location Card -->
     <view class="card-premium data-v-7e5a1194">
       <view class="card-header-premium data-v-7e5a1194">
-        <image class="header-icon data-v-7e5a1194" src="/static/icons/tab-appointment.png" />
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/calendar.svg" />
         <text class="header-title data-v-7e5a1194">就诊及门店信息</text>
       </view>
       
@@ -76,16 +84,24 @@
           <text class="row-label data-v-7e5a1194">就诊门诊</text>
           <text class="row-value data-v-7e5a1194">{{e}}</text>
         </view>
-        <view class="detail-row detail-row--clickable data-v-7e5a1194" bindtap="{{onCopyAddress}}">
+        <view class="detail-row detail-row--clickable data-v-7e5a1194" bindtap="{{onNavigateToStore}}">
           <text class="row-label data-v-7e5a1194">门店地址</text>
           <view class="row-value-group data-v-7e5a1194">
             <text class="row-value row-value--small data-v-7e5a1194">{{f}}</text>
-            <image class="nav-icon data-v-7e5a1194" src="/static/icons/copy.svg" />
+            <image class="nav-icon data-v-7e5a1194" src="/static/icons/paper-plane.svg" />
           </view>
         </view>
         <view class="detail-row data-v-7e5a1194">
           <text class="row-label data-v-7e5a1194">门诊类型</text>
           <text class="row-value data-v-7e5a1194">{{k}}</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194" wx:if="{{requireDeposit}}">
+          <text class="row-label data-v-7e5a1194">预约定金</text>
+          <text class="row-value row-value--price data-v-7e5a1194">¥{{depositAmountYuan}}</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194" wx:if="{{requireDeposit}}">
+          <text class="row-label data-v-7e5a1194">定金状态</text>
+          <text class="row-value data-v-7e5a1194">{{depositStatusLabel}}</text>
         </view>
       </view>
     </view>
@@ -102,7 +118,7 @@
     <!-- 6. Cancel description Card -->
     <view wx:if="{{n}}" class="card-premium data-v-7e5a1194">
       <view class="card-header-premium data-v-7e5a1194">
-        <image class="header-icon data-v-7e5a1194" src="/static/icons/tab-profile.png" />
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/alert.svg" />
         <text class="header-title data-v-7e5a1194">取消原因</text>
       </view>
       <view class="detail-rows data-v-7e5a1194">
@@ -146,7 +162,7 @@
     <!-- 6c. Device Adjust Parameters Card -->
     <view wx:if="{{treatmentRecord}}" class="card-premium data-v-7e5a1194">
       <view class="card-header-premium data-v-7e5a1194">
-        <image class="header-icon data-v-7e5a1194" src="/static/icons/timeline.svg" />
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/adjust.svg" />
         <text class="header-title data-v-7e5a1194">阻鼾器微调参数</text>
       </view>
       <view class="detail-rows data-v-7e5a1194">
@@ -174,7 +190,12 @@
     </view>
 
     <!-- 7. Bottom Fixed Action Panel -->
-    <view wx:if="{{status !== 'arrived' && status !== 'cancelled' && status !== 'no_show' && status !== 'completed'}}" class="action-footer data-v-7e5a1194">
+    <view wx:if="{{status === 'pending_payment'}}" class="action-footer data-v-7e5a1194">
+      <button class="footer-btn btn-primary-full data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{payDeposit}}">立即支付定金</button>
+      <button wx:if="{{canCancelOrReschedule}}" class="footer-btn btn-danger-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onCancel}}">取消本次预约</button>
+    </view>
+    
+    <view wx:elif="{{status !== 'arrived' && status !== 'cancelled' && status !== 'no_show' && status !== 'completed' && canCancelOrReschedule}}" class="action-footer data-v-7e5a1194">
       <button class="footer-btn btn-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onReschedule}}">修改就诊时间</button>
       <button class="footer-btn btn-danger-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onCancel}}">取消本次预约</button>
     </view>

@@ -30,39 +30,51 @@ const r = e.defineComponent({
       }
     };
 
-    const generateScheduleRows = () => {
+    const generateScheduleRows = (schedulesList = []) => {
       const rows = [];
       const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
       const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      
+      const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+      const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
 
-      // Row 1: Today morning
-      const d1 = new Date(today);
-      rows.push({
-        date: `今天 (${d1.getMonth() + 1}/${d1.getDate()})`,
-        period: "上午 9:00-12:00",
-        statusText: "可预约",
-        statusClass: "status-available"
+      // Sort schedulesList by date and startTime
+      schedulesList.sort((a, b) => {
+        if (a.date !== b.date) {
+          return a.date.localeCompare(b.date);
+        }
+        return a.startTime.localeCompare(b.startTime);
       });
 
-      // Row 2: Today afternoon
-      rows.push({
-        date: `今天 (${d1.getMonth() + 1}/${d1.getDate()})`,
-        period: "下午 14:00-17:00",
-        statusText: "可预约",
-        statusClass: "status-available"
+      schedulesList.forEach(item => {
+        // If it's today and not available (all slots booked or past), skip it!
+        if (item.date === todayStr && item.status !== "available") {
+          return;
+        }
+
+        const datePart = new Date(item.date.replace(/-/g, '/'));
+        let dateLabel = "";
+        if (item.date === todayStr) {
+          dateLabel = `今天 (${datePart.getMonth() + 1}/${datePart.getDate()})`;
+        } else if (item.date === tomorrowStr) {
+          dateLabel = `明天 (${datePart.getMonth() + 1}/${datePart.getDate()})`;
+        } else {
+          dateLabel = `${days[datePart.getDay()]} (${datePart.getMonth() + 1}/${datePart.getDate()})`;
+        }
+
+        const periodLabel = item.period === "morning" ? "上午" : "下午";
+        const timeRange = `${item.startTime.slice(0, 5)}-${item.endTime.slice(0, 5)}`;
+        
+        rows.push({
+          date: dateLabel,
+          period: `${periodLabel} ${timeRange}`,
+          statusText: item.status === "available" ? "可预约" : "已满",
+          statusClass: item.status === "available" ? "status-available" : "status-full"
+        });
       });
 
-      // Row 3: Tomorrow morning
-      const d2 = new Date(today);
-      d2.setDate(today.getDate() + 1);
-      rows.push({
-        date: `${days[d2.getDay()]} (${d2.getMonth() + 1}/${d2.getDate()})`,
-        period: "上午 9:00-12:00",
-        statusText: "已满",
-        statusClass: "status-full"
-      });
-
-      return rows;
+      return rows.slice(0, 4);
     };
 
     e.onShow(async () => {
@@ -101,18 +113,27 @@ const r = e.defineComponent({
         doctor.value = doc;
         avatarChar.value = doc.name ? doc.name.slice(0, 1) : "";
 
-        // Check if there are any future schedules in any of the stores
+        // Load doctor's active schedules across all assigned stores
         let foundFuture = false;
+        let schedulesList = [];
         if (doc.storeIds && doc.storeIds.length > 0) {
           const today = new Date();
           const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+          const next7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+          const next7DaysStr = `${next7Days.getFullYear()}-${String(next7Days.getMonth() + 1).padStart(2, "0")}-${String(next7Days.getDate()).padStart(2, "0")}`;
           
           await Promise.all(
             doc.storeIds.map(async (storeId) => {
               try {
-                const res = await api.getScheduleDates({ doctorId: doc.id, storeId });
-                const dates = res.data || [];
-                if (dates.some(d => d.slice(0, 10) >= todayStr)) {
+                const res = await api.getSchedules({
+                  doctorId: doc.id,
+                  storeId,
+                  startDate: todayStr,
+                  endDate: next7DaysStr
+                });
+                const list = res.data || [];
+                schedulesList = schedulesList.concat(list);
+                if (list.some(d => d.date >= todayStr && d.status === 'available')) {
                   foundFuture = true;
                 }
               } catch (err) {
@@ -123,8 +144,8 @@ const r = e.defineComponent({
         }
 
         hasFutureSchedules.value = foundFuture;
-        if (foundFuture) {
-          scheduleRows.value = generateScheduleRows();
+        if (schedulesList.length > 0) {
+          scheduleRows.value = generateScheduleRows(schedulesList);
         } else {
           scheduleRows.value = [];
         }

@@ -22,8 +22,29 @@ const t = () => "../../../components/base/hj-navbar.js",
           e.index.redirectTo({ url: "/pages/assessment/questionnaire/index" }));
       }
       return (
-        e.onMounted(() => {
-          o.value && s.fetchAssessments();
+        e.onMounted(async () => {
+          const pages = getCurrentPages();
+          const curPage = pages[pages.length - 1] || {};
+          const options = curPage.options || (curPage.$page && curPage.$page.options) || {};
+          const id = options.id;
+          if (id) {
+            try {
+              if (s.questions.length === 0) {
+                await s.fetchQuestions();
+              }
+              const api = require("../../../api/index.js");
+              const res = await api.getSnoreAnalysis(id);
+              if (res && res.code === 0 && res.data) {
+                s.currentResult = res.data;
+                s.answers = res.data.essAnswers || [];
+                s.submitted = !0;
+              }
+            } catch (err) {
+              console.error("加载结果详情失败", err);
+            }
+          } else {
+            o.value && s.fetchAssessments();
+          }
         }),
         (n, t) =>
           e.e(
