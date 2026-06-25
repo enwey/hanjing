@@ -1646,9 +1646,12 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
     const depositAmount = depositAmountRow ? parseInt(depositAmountRow.key_value, 10) : 5000;
     const initialStatus = requireDeposit ? 'pending_payment' : 'pending';
 
+    const doctorObj = await get(`SELECT * FROM doctors WHERE id = ?`, [resolvedDoctorId]);
+    const storeObj = await get(`SELECT * FROM stores WHERE id = ?`, [resolvedStoreId]);
+
     const result = await run(
-      `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'mini_app')`,
+      `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc, source, doctor_name, doctor_title, doctor_specialty, doctor_avatar, consult_fee, store_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'mini_app', ?, ?, ?, ?, ?, ?)`,
       [
         apptNo,
         req.user.id,
@@ -1660,7 +1663,13 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
         appointmentTime,
         type || 'first',
         initialStatus,
-        symptomDescClean
+        symptomDescClean,
+        doctorObj ? doctorObj.name : '',
+        doctorObj ? doctorObj.title : '',
+        doctorObj ? doctorObj.specialty : '',
+        doctorObj ? doctorObj.avatar_url : '',
+        doctorObj ? doctorObj.consult_fee : 0,
+        storeObj ? storeObj.name : ''
       ]
     );
 
@@ -1820,11 +1829,9 @@ app.get('/api/v1/appointments', authenticateWxToken, async (req, res) => {
   }
   try {
     await autoUpdateExpiredAppointments();
-    let sql = `SELECT a.*, p.name as patient_name, d.name as doctor_name, d.title as doctor_title, d.avatar_url as doctor_avatar, s.name as store_name
+    let sql = `SELECT a.*, p.name as patient_name, a.doctor_name, a.doctor_title, a.doctor_avatar, a.store_name
                FROM appointments a
                JOIN patients p ON a.patient_id = p.id
-               JOIN doctors d ON a.doctor_id = d.id
-               JOIN stores s ON a.store_id = s.id
                WHERE a.user_id = ?`;
     const params = [req.user.id];
 
@@ -1873,11 +1880,10 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
   try {
     await autoUpdateExpiredAppointments();
     const row = await get(
-      `SELECT a.*, p.name as patient_name, d.name as doctor_name, d.title as doctor_title, d.avatar_url as doctor_avatar, d.specialty as doctor_specialty, d.hospital as doctor_hospital, d.intro as doctor_intro, d.experience_years as doctor_experience_years, d.expertise as doctor_expertise, s.name as store_name
+      `SELECT a.*, p.name as patient_name, d.hospital as doctor_hospital, d.intro as doctor_intro, d.experience_years as doctor_experience_years, d.expertise as doctor_expertise
        FROM appointments a
        JOIN patients p ON a.patient_id = p.id
-       JOIN doctors d ON a.doctor_id = d.id
-       JOIN stores s ON a.store_id = s.id
+       LEFT JOIN doctors d ON a.doctor_id = d.id
        WHERE a.id = ? AND a.user_id = ?`,
       [id, req.user.id]
     );
@@ -1937,7 +1943,8 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
       doctorAvatar: row.doctor_avatar,
       storeName: row.store_name,
       requireDeposit,
-      depositAmount
+      depositAmount,
+      consultFee: row.consult_fee
     };
 
     const medicalRecord = await get(

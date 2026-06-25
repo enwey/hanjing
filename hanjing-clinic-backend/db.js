@@ -226,6 +226,41 @@ export const initDB = async () => {
     // Ignore error if column already exists
   }
 
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN doctor_name VARCHAR(100) DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN doctor_title VARCHAR(50) DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN doctor_specialty VARCHAR(100) DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN doctor_avatar VARCHAR(255) DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN consult_fee INT DEFAULT 0;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN store_name VARCHAR(100) DEFAULT NULL;`);
+  } catch (err) {}
+
+  try {
+    await query(`
+      UPDATE appointments 
+      SET 
+        doctor_name = (SELECT name FROM doctors WHERE doctors.id = appointments.doctor_id),
+        doctor_title = (SELECT title FROM doctors WHERE doctors.id = appointments.doctor_id),
+        doctor_specialty = (SELECT specialty FROM doctors WHERE doctors.id = appointments.doctor_id),
+        doctor_avatar = (SELECT avatar_url FROM doctors WHERE doctors.id = appointments.doctor_id),
+        consult_fee = (SELECT consult_fee FROM doctors WHERE doctors.id = appointments.doctor_id),
+        store_name = (SELECT name FROM stores WHERE stores.id = appointments.store_id)
+      WHERE doctor_name IS NULL OR store_name IS NULL
+    `);
+  } catch (err) {
+    console.error('Failed to run appointments data migration:', err);
+  }
+
 
   // 6. doctor_store_mapping
   await query(`
@@ -306,6 +341,12 @@ export const initDB = async () => {
       source VARCHAR(30) DEFAULT 'mini_app',
       ess_assessment_id BIGINT UNSIGNED,
       snore_assessment_id BIGINT UNSIGNED,
+      doctor_name VARCHAR(100) DEFAULT NULL,
+      doctor_title VARCHAR(50) DEFAULT NULL,
+      doctor_specialty VARCHAR(100) DEFAULT NULL,
+      doctor_avatar VARCHAR(255) DEFAULT NULL,
+      consult_fee INT DEFAULT 0,
+      store_name VARCHAR(100) DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

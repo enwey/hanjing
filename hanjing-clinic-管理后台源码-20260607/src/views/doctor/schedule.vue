@@ -60,24 +60,17 @@ const generateMonthSchedules = () => {
     const dateLabel = `${weekdays[dayOfWeek]} ${month + 1}/${d}`
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
     
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-    const morningStore = isWeekend ? (dayOfWeek === 6 ? '龙岗总店' : '休息') : '龙岗总店'
-    const morningSlots = isWeekend ? (dayOfWeek === 6 ? 2 : 0) : 4
-    
-    const afternoonStore = isWeekend ? '休息' : (dayOfWeek === 5 ? '南山分院' : '龙岗总店')
-    const afternoonSlots = isWeekend ? 0 : (dayOfWeek === 5 ? 3 : 4)
-    
     list.push({
       date: dateStr,
       dateLabel,
       morning: {
-        store: morningStore,
-        slots: morningSlots,
+        store: '休息',
+        slots: 0,
         peoplePerSlot: 1
       },
       afternoon: {
-        store: afternoonStore,
-        slots: afternoonSlots,
+        store: '休息',
+        slots: 0,
         peoplePerSlot: 1
       }
     })

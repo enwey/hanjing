@@ -52,7 +52,7 @@
   </view>
   
   <view wx:if="{{j}}" class="apt-actions data-v-74fd48b7">
-    <button class="apt-btn apt-btn--ghost data-v-74fd48b7" catchtap="{{k}}">改约</button>
+    <button class="apt-btn apt-btn--ghost data-v-74fd48b7" catchtap="{{k}}">{{btnText}}</button>
     <button class="apt-btn apt-btn--ghost apt-btn--danger data-v-74fd48b7" catchtap="{{l}}">取消</button>
   </view>
 </view>

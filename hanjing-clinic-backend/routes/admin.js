@@ -535,7 +535,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
   }
 
   if (search) {
-    whereClause += ` AND (p.name LIKE ? OR p.phone LIKE ? OR d.name LIKE ?)`;
+    whereClause += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ?)`;
     const searchParam = `%${search}%`;
     params.push(searchParam, searchParam, searchParam);
   }
@@ -552,8 +552,6 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
         SELECT COUNT(*) as total
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
-        JOIN doctors d ON a.doctor_id = d.id
-        JOIN stores s ON a.store_id = s.id
         WHERE 1=1 ${whereClause}
       `;
       const countRes = await get(countSql, params);
@@ -561,12 +559,9 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
 
       const offset = (page - 1) * pageSize;
       const dataSql = `
-        SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age,
-               d.name as doctor_name, d.specialty as doctor_specialty, s.name as store_name
+        SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
-        JOIN doctors d ON a.doctor_id = d.id
-        JOIN stores s ON a.store_id = s.id
         WHERE 1=1 ${whereClause}
         ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC
         LIMIT ${pageSize} OFFSET ${offset}
@@ -591,12 +586,9 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
       });
     } else {
       const dataSql = `
-        SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age,
-               d.name as doctor_name, d.specialty as doctor_specialty, s.name as store_name
+        SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
-        JOIN doctors d ON a.doctor_id = d.id
-        JOIN stores s ON a.store_id = s.id
         WHERE 1=1 ${whereClause}
         ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC
       `;
@@ -619,12 +611,9 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
     await autoUpdateExpiredAppointments();
     let sql = `
       SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
-             p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history,
-             d.name as doctor_name, d.specialty as doctor_specialty, s.name as store_name
+             p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history
       FROM appointments a
       JOIN patients p ON a.patient_id = p.id
-      JOIN doctors d ON a.doctor_id = d.id
-      JOIN stores s ON a.store_id = s.id
     `;
     const isNo = isNaN(id) || id.startsWith('BK');
     if (isNo) {
@@ -733,10 +722,30 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
     const patientObj = await get(`SELECT user_id FROM patients WHERE id = ?`, [patient_id]);
     const user_id = patientObj ? patientObj.user_id : 1;
 
+    const doctorObj = await get(`SELECT * FROM doctors WHERE id = ?`, [doctor_id]);
+    const storeObj = await get(`SELECT * FROM stores WHERE id = ?`, [store_id]);
+
     const result = await run(
-      `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'walk_in')`,
-      [appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, date, time, type || 'first', symptom_desc || '']
+      `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc, source, doctor_name, doctor_title, doctor_specialty, doctor_avatar, consult_fee, store_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'walk_in', ?, ?, ?, ?, ?, ?)`,
+      [
+        appointment_no, 
+        user_id, 
+        patient_id, 
+        store_id, 
+        doctor_id, 
+        schedule_id, 
+        date, 
+        time, 
+        type || 'first', 
+        symptom_desc || '',
+        doctorObj ? doctorObj.name : '',
+        doctorObj ? doctorObj.title : '',
+        doctorObj ? doctorObj.specialty : '',
+        doctorObj ? doctorObj.avatar_url : '',
+        doctorObj ? doctorObj.consult_fee : 0,
+        storeObj ? storeObj.name : ''
+      ]
     );
 
     // Log admin action

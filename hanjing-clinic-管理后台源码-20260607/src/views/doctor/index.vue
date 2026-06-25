@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -45,6 +45,7 @@ const fetchDoctors = async () => {
         consultFee: d.consult_fee !== undefined ? d.consult_fee / 100 : 0
       }
     })
+    loadWeeklySchedules()
   } catch (error) {
     console.error('Failed to load doctors:', error)
   }
@@ -54,50 +55,91 @@ onMounted(() => {
   fetchDoctors()
 })
 
-// Weekly schedule mock data matching mockup
 const currentWeek = ref('5/25 - 5/31')
-const scheduleWeekDays = [
-  { label: '周一 5/25', key: 'mon' },
-  { label: '周二 5/26', key: 'tue' },
-  { label: '周三 5/27', key: 'wed' },
-  { label: '周四 5/28', key: 'thu' },
-  { label: '周五 5/29', key: 'fri' },
-  { label: '周六 5/30', key: 'sat' },
-  { label: '周日 5/31', key: 'sun' }
-]
 
-const schedules = ref([
-  {
-    doctorName: '古堪民',
-    mon: { label: '全天', tagColor: 'green' },
-    tue: { label: '全天', tagColor: 'green' },
-    wed: { label: '上午', tagColor: 'gold' },
-    thu: { label: '全天', tagColor: 'green' },
-    fri: { label: '全天', tagColor: 'green' },
-    sat: { label: '上午', tagColor: 'gold' },
-    sun: { label: '休息', tagColor: 'gray' }
-  },
-  {
-    doctorName: '王志远',
-    mon: { label: '下午', tagColor: 'gold' },
-    tue: { label: '全天', tagColor: 'green' },
-    wed: { label: '全天', tagColor: 'green' },
-    thu: { label: '上午', tagColor: 'gold' },
-    fri: { label: '全天', tagColor: 'green' },
-    sat: { label: '休息', tagColor: 'gray' },
-    sun: { label: '休息', tagColor: 'gray' }
-  },
-  {
-    doctorName: '刘婉清',
-    mon: { label: '休息', tagColor: 'gray' },
-    tue: { label: '下午', tagColor: 'gold' },
-    wed: { label: '全天', tagColor: 'green' },
-    thu: { label: '全天', tagColor: 'green' },
-    fri: { label: '上午', tagColor: 'gold' },
-    sat: { label: '全天', tagColor: 'green' },
-    sun: { label: '上午', tagColor: 'gold' }
+const weekDatesMap: Record<string, { label: string; date: string }[]> = {
+  '5/18 - 5/24': [
+    { label: '周一 5/18', date: '2026-05-18' },
+    { label: '周二 5/19', date: '2026-05-19' },
+    { label: '周三 5/20', date: '2026-05-20' },
+    { label: '周四 5/21', date: '2026-05-21' },
+    { label: '周五 5/22', date: '2026-05-22' },
+    { label: '周六 5/23', date: '2026-05-23' },
+    { label: '周日 5/24', date: '2026-05-24' }
+  ],
+  '5/25 - 5/31': [
+    { label: '周一 5/25', date: '2026-05-25' },
+    { label: '周二 5/26', date: '2026-05-26' },
+    { label: '周三 5/27', date: '2026-05-27' },
+    { label: '周四 5/28', date: '2026-05-28' },
+    { label: '周五 5/29', date: '2026-05-29' },
+    { label: '周六 5/30', date: '2026-05-30' },
+    { label: '周日 5/31', date: '2026-05-31' }
+  ],
+  '6/1 - 6/7': [
+    { label: '周一 6/1', date: '2026-06-01' },
+    { label: '周二 6/2', date: '2026-06-02' },
+    { label: '周三 6/3', date: '2026-06-03' },
+    { label: '周四 6/4', date: '2026-06-04' },
+    { label: '周五 6/5', date: '2026-06-05' },
+    { label: '周六 6/6', date: '2026-06-06' },
+    { label: '周日 6/7', date: '2026-06-07' }
+  ]
+}
+
+const scheduleWeekDays = computed(() => {
+  const dates = weekDatesMap[currentWeek.value] || weekDatesMap['5/25 - 5/31']
+  const keys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+  return dates.map((d, index) => ({ label: d.label, key: keys[index] }))
+})
+
+const schedules = ref<any[]>([])
+
+const loadWeeklySchedules = async () => {
+  try {
+    const dates = weekDatesMap[currentWeek.value] || weekDatesMap['5/25 - 5/31']
+    const res: any = await request.get('/api/admin/schedules')
+    const allSchedules = res.data || []
+    
+    const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+    const newSchedules = primaryDoctors.value.map(doc => {
+      const row: any = { doctorName: doc.name }
+      
+      dates.forEach((dObj, idx) => {
+        const key = dayKeys[idx]
+        const daySchedules = allSchedules.filter((s: any) => 
+          String(s.doctor_id) === String(doc.id) && String(s.date).slice(0, 10) === dObj.date
+        )
+        
+        let label = '休息'
+        let tagColor = 'gray'
+        
+        if (daySchedules.length > 0) {
+          const hasMorning = daySchedules.some((s: any) => s.period === 'morning')
+          const hasAfternoon = daySchedules.some((s: any) => s.period === 'afternoon')
+          if (hasMorning && hasAfternoon) {
+            label = '全天'
+            tagColor = 'green'
+          } else if (hasMorning) {
+            label = '上午'
+            tagColor = 'gold'
+          } else if (hasAfternoon) {
+            label = '下午'
+            tagColor = 'blue'
+          }
+        }
+        
+        row[key] = { label, tagColor }
+      })
+      
+      return row
+    })
+    
+    schedules.value = newSchedules
+  } catch (error) {
+    console.error('Failed to load weekly schedules:', error)
   }
-])
+}
 
 const showEdit = ref(false)
 const isEdit = ref(false)
@@ -206,17 +248,17 @@ function handleViewData(name: string) {
 
 function handlePrevWeek() {
   currentWeek.value = '5/18 - 5/24'
-  MessagePlugin.info('加载上周排班数据')
+  loadWeeklySchedules()
 }
 
 function handleCurrentWeek() {
   currentWeek.value = '5/25 - 5/31'
-  MessagePlugin.info('已回到本周排班')
+  loadWeeklySchedules()
 }
 
 function handleNextWeek() {
   currentWeek.value = '6/1 - 6/7'
-  MessagePlugin.info('加载下周排班数据')
+  loadWeeklySchedules()
 }
 </script>
 

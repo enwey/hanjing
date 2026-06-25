@@ -54,6 +54,7 @@ const n = () => "../base/hj-tag.js",
             f: t.t(e.appointment.appointmentTime),
             g: t.t(t.unref(a)),
             h: e.appointment.symptomDesc,
+            btnText: t.t(p.appointment.status === 'pending_payment' ? '支付' : '改约'),
           },
           e.appointment.symptomDesc
             ? { i: t.t(e.appointment.symptomDesc) }
