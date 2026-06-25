@@ -698,6 +698,20 @@ export const initDB = async () => {
     );
   `);
 
+  // 36. im_messages
+  await query(`
+    CREATE TABLE IF NOT EXISTS im_messages (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      sender VARCHAR(20) NOT NULL,
+      sender_name VARCHAR(50),
+      text TEXT NOT NULL,
+      is_read TINYINT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+    );
+  `);
+
   // Ensure default products 1-7 exist for cashier checkout flows
   try {
     await query(`

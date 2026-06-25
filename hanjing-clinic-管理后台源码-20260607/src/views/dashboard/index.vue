@@ -6,13 +6,14 @@ import request from '@/utils/request'
 
 const router = useRouter()
 const filterTime = ref('month')
+const chartFilterTime = ref('month')
 
 // KPI cards ref
 const kpiCards = ref([
-  { label: '今日预约', value: '0', trend: '↑ 实时', trendType: 'up', icon: '📅', color: 'blue' },
-  { label: '今日营收', value: '¥0', trend: '↑ 实时', trendType: 'up', icon: '💰', color: 'green' },
-  { label: '今日新增患者', value: '0', trend: '↑ 实时', trendType: 'up', icon: '👥', color: 'gold' },
-  { label: '今日到诊率', value: '0%', trend: '↑ 实时', trendType: 'up', icon: '🔄', color: 'red' }
+  { label: '今日预约', value: '0', trend: '↑ 实时', trendType: 'up', icon: 'calendar', color: 'blue' },
+  { label: '今日营收', value: '¥0', trend: '↑ 实时', trendType: 'up', icon: 'dollar-sign', color: 'green' },
+  { label: '今日新增患者', value: '0', trend: '↑ 实时', trendType: 'up', icon: 'users', color: 'gold' },
+  { label: '今日到诊率', value: '0%', trend: '↑ 实时', trendType: 'up', icon: 'activity', color: 'red' }
 ])
 
 const updateTimeStr = ref('2026-06-09 18:00')
@@ -49,17 +50,64 @@ const updateChart = (xData: string[], yData: number[]) => {
   }
 }
 
-// Fetch Stats from Real API
-const fetchStats = async () => {
+const normalizeDate = (rawDate: any) => {
+  if (!rawDate) return '';
+  if (typeof rawDate === 'string') {
+    if (rawDate.includes('T')) {
+      return rawDate.split('T')[0];
+    }
+    return rawDate.substring(0, 10);
+  }
+  try {
+    const d = new Date(rawDate);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const r = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${r}`;
+  } catch (e) {
+    return '';
+  }
+};
+
+// Fetch Stats from Real API (KPIs, departments, etc.)
+const fetchDashboardStats = async () => {
   try {
     const res: any = await request.get(`/api/admin/dashboard/stats?range=${filterTime.value}`)
-    const { totalRevenue, totalAppointments, totalPatients, visitRate, departments, onlineDoctors, periodLabel, appointmentTrends } = res.data
+    const { totalRevenue, totalAppointments, totalPatients, visitRate, trends, departments, periodLabel } = res.data
 
     kpiCards.value = [
-      { label: periodLabel + '预约', value: totalAppointments.toString(), trend: '↑ 实时', trendType: 'up', icon: '📅', color: 'blue' },
-      { label: periodLabel + '营收', value: '¥' + (totalRevenue / 100).toFixed(2), trend: '↑ 实时', trendType: 'up', icon: '💰', color: 'green' },
-      { label: periodLabel + '新增患者', value: totalPatients.toString(), trend: '↑ 实时', trendType: 'up', icon: '👥', color: 'gold' },
-      { label: periodLabel + '到诊率', value: visitRate, trend: '↑ 实时', trendType: 'up', icon: '🔄', color: 'red' }
+      { 
+        label: periodLabel + '预约', 
+        value: totalAppointments.toString(), 
+        trend: (trends?.appointments?.trendType === 'up' ? '↑ ' : '↓ ') + (trends?.appointments?.trend || '0%'), 
+        trendType: trends?.appointments?.trendType || 'up', 
+        icon: 'calendar', 
+        color: 'blue' 
+      },
+      { 
+        label: periodLabel + '营收', 
+        value: '¥' + (totalRevenue / 100).toFixed(2), 
+        trend: (trends?.revenue?.trendType === 'up' ? '↑ ' : '↓ ') + (trends?.revenue?.trend || '0%'), 
+        trendType: trends?.revenue?.trendType || 'up', 
+        icon: 'dollar-sign', 
+        color: 'green' 
+      },
+      { 
+        label: periodLabel + '新增患者', 
+        value: totalPatients.toString(), 
+        trend: (trends?.patients?.trendType === 'up' ? '↑ ' : '↓ ') + (trends?.patients?.trend || '0%'), 
+        trendType: trends?.patients?.trendType || 'up', 
+        icon: 'users', 
+        color: 'gold' 
+      },
+      { 
+        label: periodLabel + '到诊率', 
+        value: visitRate, 
+        trend: (trends?.visitRate?.trendType === 'up' ? '↑ ' : '↓ ') + (trends?.visitRate?.trend || '0%'), 
+        trendType: trends?.visitRate?.trendType || 'up', 
+        icon: 'activity', 
+        color: 'red' 
+      }
     ]
 
     if (departments && departments.length > 0) {
@@ -68,14 +116,120 @@ const fetchStats = async () => {
 
     const now = new Date()
     updateTimeStr.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-
-    if (appointmentTrends && appointmentTrends.length > 0) {
-      const xData = appointmentTrends.map((t: any) => t.date.substring(5)) // e.g. "05-29"
-      const yData = appointmentTrends.map((t: any) => t.count)
-      updateChart(xData, yData)
-    }
   } catch (error) {
-    console.error('Failed to fetch stats:', error)
+    console.error('Failed to fetch dashboard stats:', error)
+  }
+}
+
+// Fetch Trend Chart Data specifically based on chartFilterTime
+const fetchTrendChartData = async () => {
+  try {
+    const res: any = await request.get(`/api/admin/dashboard/stats?range=${chartFilterTime.value}`)
+    const { appointmentTrends } = res.data
+
+    // Format Trend Chart Axis and pad missing data
+    let xData: string[] = []
+    let yData: number[] = []
+
+    if (chartFilterTime.value === 'today') {
+      // Standard business hours: 08:00 to 20:00
+      const standardHours = ['08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20']
+      const hourMap = new Map<string, number>()
+      standardHours.forEach(h => hourMap.set(h, 0))
+
+      if (appointmentTrends && appointmentTrends.length > 0) {
+        appointmentTrends.forEach((t: any) => {
+          if (t.date) {
+            const match = String(t.date).match(/^(\d+)/)
+            if (match) {
+              const hStr = match[1].padStart(2, '0')
+              if (hourMap.has(hStr)) {
+                hourMap.set(hStr, hourMap.get(hStr)! + t.count)
+              }
+            }
+          }
+        })
+      }
+      xData = standardHours.map(h => `${h}点`)
+      yData = standardHours.map(h => hourMap.get(h)!)
+
+    } else if (chartFilterTime.value === 'week') {
+      // Monday to Sunday of the current week
+      const getWeekDates = () => {
+        const current = new Date()
+        const day = current.getDay()
+        const distanceToMonday = day === 0 ? -6 : 1 - day
+        const monday = new Date()
+        monday.setDate(current.getDate() + distanceToMonday)
+        
+        const dates = []
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(monday)
+          date.setDate(monday.getDate() + i)
+          const yyyy = date.getFullYear()
+          const mm = String(date.getMonth() + 1).padStart(2, '0')
+          const dd = String(date.getDate()).padStart(2, '0')
+          dates.push(`${yyyy}-${mm}-${dd}`)
+        }
+        return dates
+      }
+
+      const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+      const weekDates = getWeekDates()
+      const weekMap = new Map<string, number>()
+      weekDates.forEach(d => weekMap.set(d, 0))
+
+      if (appointmentTrends && appointmentTrends.length > 0) {
+        appointmentTrends.forEach((t: any) => {
+          const norm = normalizeDate(t.date)
+          if (norm && weekMap.has(norm)) {
+            weekMap.set(norm, t.count)
+          }
+        })
+      }
+      xData = weekDates.map((d, idx) => weekDays[idx])
+      yData = weekDates.map(d => weekMap.get(d)!)
+
+    } else { // month
+      // All days of the current month
+      const getMonthDates = () => {
+        const current = new Date()
+        const year = current.getFullYear()
+        const month = current.getMonth()
+        const lastDayObj = new Date(year, month + 1, 0)
+        const lastDay = lastDayObj.getDate()
+        
+        const dates = []
+        for (let i = 1; i <= lastDay; i++) {
+          const mm = String(month + 1).padStart(2, '0')
+          const dd = String(i).padStart(2, '0')
+          dates.push({
+            fullDate: `${year}-${mm}-${dd}`,
+            label: `${i}号`
+          })
+        }
+        return dates
+      }
+
+      const monthDates = getMonthDates()
+      const monthMap = new Map<string, number>()
+      monthDates.forEach(item => monthMap.set(item.fullDate, 0))
+
+      if (appointmentTrends && appointmentTrends.length > 0) {
+        appointmentTrends.forEach((t: any) => {
+          const norm = normalizeDate(t.date)
+          if (norm && monthMap.has(norm)) {
+            monthMap.set(norm, t.count)
+          }
+        })
+      }
+      xData = monthDates.map(item => item.label)
+      yData = monthDates.map(item => monthMap.get(item.fullDate)!)
+    }
+
+    updateChart(xData, yData)
+  } catch (error) {
+    console.error('Failed to fetch trend chart data:', error)
   }
 }
 
@@ -110,8 +264,13 @@ const fetchDataLists = async () => {
   }
 }
 
-watch(filterTime, () => {
-  fetchStats()
+watch(filterTime, (newVal) => {
+  chartFilterTime.value = newVal
+  fetchDashboardStats()
+})
+
+watch(chartFilterTime, () => {
+  fetchTrendChartData()
 })
 
 onMounted(() => {
@@ -165,7 +324,8 @@ onMounted(() => {
   }
 
   // Load real data
-  fetchStats()
+  fetchDashboardStats()
+  fetchTrendChartData()
   fetchDataLists()
 })
 </script>
@@ -179,7 +339,15 @@ onMounted(() => {
         <div class="page-title-sub">数据更新时间：{{ updateTimeStr }} · 实时数据</div>
       </div>
       <div style="display: flex; gap: 8px;">
-        <button :class="['btn', filterTime === 'today' ? 'btn-primary' : 'btn-outline']" @click="filterTime = 'today'">📅 今日</button>
+        <button :class="['btn', filterTime === 'today' ? 'btn-primary' : 'btn-outline']" @click="filterTime = 'today'">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          今日
+        </button>
         <button :class="['btn', filterTime === 'week' ? 'btn-primary' : 'btn-outline']" @click="filterTime = 'week'">本周</button>
         <button :class="['btn', filterTime === 'month' ? 'btn-primary' : 'btn-outline']" @click="filterTime = 'month'">本月</button>
       </div>
@@ -187,9 +355,30 @@ onMounted(() => {
 
     <!-- KPI Cards -->
     <div class="stat-grid">
-      <div v-for="kpi in kpiCards" :key="kpi.label" class="stat-card">
+      <div v-for="kpi in kpiCards" :key="kpi.label" :class="['stat-card', 'stat-card-' + kpi.color]">
         <div class="stat-card-header">
-          <div :class="['stat-card-icon', kpi.color]">{{ kpi.icon }}</div>
+          <div :class="['stat-card-icon', kpi.color]">
+            <svg v-if="kpi.icon === 'calendar'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <svg v-else-if="kpi.icon === 'dollar-sign'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            <svg v-else-if="kpi.icon === 'users'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <svg v-else-if="kpi.icon === 'activity'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            <span v-else>{{ kpi.icon }}</span>
+          </div>
           <div :class="['stat-card-trend', kpi.trendType]">{{ kpi.trend }}</div>
         </div>
         <div class="stat-card-value">{{ kpi.value }}</div>
@@ -204,9 +393,9 @@ onMounted(() => {
         <div class="panel-header">
           <div class="panel-title">预约趋势</div>
           <div class="panel-actions">
-            <button class="btn btn-sm btn-outline">日</button>
-            <button class="btn btn-sm btn-primary">周</button>
-            <button class="btn btn-sm btn-outline">月</button>
+            <button :class="['btn', 'btn-sm', chartFilterTime === 'today' ? 'btn-primary' : 'btn-outline']" @click="chartFilterTime = 'today'">日</button>
+            <button :class="['btn', 'btn-sm', chartFilterTime === 'week' ? 'btn-primary' : 'btn-outline']" @click="chartFilterTime = 'week'">周</button>
+            <button :class="['btn', 'btn-sm', chartFilterTime === 'month' ? 'btn-primary' : 'btn-outline']" @click="chartFilterTime = 'month'">月</button>
           </div>
         </div>
         <div class="panel-body" style="padding: 16px 20px;">
@@ -351,50 +540,157 @@ onMounted(() => {
   margin-bottom: 24px;
 }
 .stat-card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #F3F4F6;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid transparent;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
 }
+/* Concentric Orbit 1 (Outer Dashed Circle) */
+.stat-card::before {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border: 1px dashed rgba(255, 255, 255, 0.07);
+  border-radius: 50%;
+  top: -50px;
+  right: -50px;
+  pointer-events: none;
+  z-index: 1;
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* Concentric Orbit 2 (Inner Solid Circle) */
+.stat-card::after {
+  content: '';
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 50%;
+  top: -10px;
+  right: -10px;
+  pointer-events: none;
+  z-index: 1;
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.stat-card:hover {
+  transform: translateY(-6px);
+}
+.stat-card:hover::before {
+  transform: scale(1.15) rotate(45deg);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.stat-card:hover::after {
+  transform: scale(1.25);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.stat-card-blue {
+  background: 
+    radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.22) 0%, transparent 60%),
+    radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+    linear-gradient(135deg, #3B6BF5 0%, #1D4ED8 100%);
+  background-size: 100% 100%, 14px 14px, 100% 100%;
+  color: #ffffff;
+}
+.stat-card-blue:hover {
+  box-shadow: 0 20px 25px -5px rgba(29, 78, 216, 0.3), 0 10px 10px -6px rgba(29, 78, 216, 0.2);
+}
+.stat-card-green {
+  background: 
+    radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.22) 0%, transparent 60%),
+    radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+    linear-gradient(135deg, #10B981 0%, #059669 100%);
+  background-size: 100% 100%, 14px 14px, 100% 100%;
+  color: #ffffff;
+}
+.stat-card-green:hover {
+  box-shadow: 0 20px 25px -5px rgba(5, 150, 105, 0.3), 0 10px 10px -6px rgba(5, 150, 105, 0.2);
+}
+.stat-card-gold {
+  background: 
+    radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.22) 0%, transparent 60%),
+    radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+    linear-gradient(135deg, #F5A623 0%, #D97706 100%);
+  background-size: 100% 100%, 14px 14px, 100% 100%;
+  color: #ffffff;
+}
+.stat-card-gold:hover {
+  box-shadow: 0 20px 25px -5px rgba(217, 119, 6, 0.3), 0 10px 10px -6px rgba(217, 119, 6, 0.2);
+}
+.stat-card-red {
+  background: 
+    radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.22) 0%, transparent 60%),
+    radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+    linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+  background-size: 100% 100%, 14px 14px, 100% 100%;
+  color: #ffffff;
+}
+.stat-card-red:hover {
+  box-shadow: 0 20px 25px -5px rgba(185, 28, 28, 0.3), 0 10px 10px -6px rgba(185, 28, 28, 0.2);
+}
+
 .stat-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
 }
 .stat-card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.1);
 }
-.stat-card-icon.blue { background: #EEF4FF; color: #3B6BF5; }
-.stat-card-icon.green { background: #ECFDF5; color: #22C55E; }
-.stat-card-icon.gold { background: #FFF9E6; color: #F5A623; }
-.stat-card-icon.red { background: #FEF2F2; color: #EF4444; }
+.stat-card:hover .stat-card-icon {
+  transform: scale(1.1) rotate(4deg);
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
 
 .stat-card-trend {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
 }
-.stat-card-trend.up { background: #ECFDF5; color: #16A34A; }
-.stat-card-trend.down { background: #FEF2F2; color: #DC2626; }
 .stat-card-value {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 800;
-  color: #111827;
+  color: #ffffff !important;
   line-height: 1;
+  letter-spacing: -0.04em;
+  margin-bottom: 4px;
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 .stat-card-label {
-  font-size: 12px;
-  color: #9CA3AF;
-  margin-top: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  position: relative;
+  z-index: 2;
 }
 
 /* Panel cards matching mockup */

@@ -17,6 +17,11 @@ const loginForm = ref({
 const countdown = ref(0)
 const isSending = ref(false)
 
+const rules = {
+  account: [{ required: true, message: '请输入管理员账号', type: 'error', trigger: 'submit' }],
+  password: [{ required: true, message: '请输入密码', type: 'error', trigger: 'submit' }]
+}
+
 function sendSms() {
   if (!loginForm.value.phone) {
     MessagePlugin.warning('请输入手机号')
@@ -35,12 +40,12 @@ function sendSms() {
   }, 1000)
 }
 
-async function handleLogin() {
+async function handleLogin({ validateResult }: any) {
+  if (validateResult !== true) {
+    return
+  }
+  
   if (loginType.value === 'password') {
-    if (!loginForm.value.account || !loginForm.value.password) {
-      MessagePlugin.warning('请输入账号和密码')
-      return
-    }
     try {
       const res: any = await request.post('/api/admin/login', {
         username: loginForm.value.account,
@@ -51,13 +56,9 @@ async function handleLogin() {
       MessagePlugin.success('登录成功！欢迎访问鼾静健康诊所管理后台')
       router.push('/dashboard')
     } catch (err) {
-      // Error handled by interceptor
+      // 错误由 axios 响应拦截器统一处理并展示
     }
   } else {
-    if (!loginForm.value.phone || !loginForm.value.smsCode) {
-      MessagePlugin.warning('请输入手机号和验证码')
-      return
-    }
     try {
       const res: any = await request.post('/api/admin/sms-login', {
         phone: loginForm.value.phone,
@@ -68,7 +69,7 @@ async function handleLogin() {
       MessagePlugin.success('登录成功！欢迎访问鼾静健康诊所管理后台')
       router.push('/dashboard')
     } catch (err) {
-      // Error handled by interceptor
+      // 错误由 axios 响应拦截器统一处理并展示
     }
   }
 }
@@ -90,26 +91,29 @@ async function handleLogin() {
         </div>
       </div>
 
-      <t-tabs v-model="loginType" style="margin-bottom: 24px;">
-        <t-tab-panel value="password" label="账号密码登录" />
-        <t-tab-panel value="sms" label="短信验证码登录" />
-      </t-tabs>
+      <div style="margin-bottom: 24px; font-size: 16px; font-weight: 600; color: #1E293B; text-align: center; letter-spacing: 1px;">管理员登录</div>
 
-      <t-form :data="loginForm" label-width="0" @submit="handleLogin">
+      <t-form :data="loginForm" :rules="rules" label-width="0" @submit="handleLogin">
         <!-- Password Login Form -->
         <template v-if="loginType === 'password'">
           <t-form-item name="account">
-            <t-input v-model="loginForm.account" placeholder="请输入管理员账号">
+            <t-input v-model="loginForm.account" placeholder="请输入管理员账号" size="large">
               <template #prefix-icon>
-                <span style="font-size: 16px;">👤</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748B;">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
               </template>
             </t-input>
           </t-form-item>
 
           <t-form-item name="password" style="margin-top: 16px;">
-            <t-input v-model="loginForm.password" type="password" placeholder="请输入密码">
+            <t-input v-model="loginForm.password" type="password" placeholder="请输入密码" size="large">
               <template #prefix-icon>
-                <span style="font-size: 16px;">🔒</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748B;">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
               </template>
             </t-input>
           </t-form-item>
@@ -159,7 +163,7 @@ async function handleLogin() {
   align-items: center;
   justify-content: center;
   background: #0F172A;
-  z-index: 9999;
+  z-index: 1;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
 }

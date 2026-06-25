@@ -2288,20 +2288,73 @@ app.get('/api/v1/home/stats', async (req, res) => {
       const docAvgRow = await get(`SELECT AVG(rating) as avg FROM doctors WHERE status = 1`);
       satisfaction = docAvgRow && docAvgRow.avg ? Math.round((Number(docAvgRow.avg) / 5) * 100) : 98;
     }
-    
+
     res.json({
       code: 0,
       message: 'success',
       data: {
-        totalPatients: patientCountRow.count || 0,
-        satisfactionRate: satisfaction,
-        storeCount: storeCountRow.count || 0
+        patientCount: patientCountRow ? patientCountRow.count : 0,
+        storeCount: storeCountRow ? storeCountRow.count : 0,
+        satisfaction
       }
     });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '获取首页统计数据失败' });
+    res.status(500).json({ code: 500, message: '获取首页统计失败' });
   }
 });
 
+// 1) 获取与客服的聊天记录
+app.get('/api/v1/im/messages', authenticateWxToken, async (req, res) => {
+  try {
+    const patient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    if (!patient) {
+      return res.json({ code: 0, message: 'success', data: [] });
+    }
+    const messages = await query(`
+      SELECT sender, text, DATE_FORMAT(created_at, '%H:%i') as time 
+      FROM im_messages 
+      WHERE patient_id = ? 
+      ORDER BY created_at ASC`,
+      [patient.id]
+    );
+    res.json({ code: 0, message: 'success', data: messages });
+  } catch (error) {
+    console.error('Client Get IM Messages Error:', error);
+    res.status(500).json({ code: 500, message: '获取消息失败' });
+  }
+});
+
+// 2) 发送消息给客服
+app.post('/api/v1/im/send', authenticateWxToken, async (req, res) => {
+  const { text } = req.body;
+  if (!text) {
+    return res.status(400).json({ code: 400, message: '消息内容不能为空' });
+  }
+  try {
+    const patient = await get(`SELECT id, name FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    if (!patient) {
+      return res.status(404).json({ code: 404, message: '未找到关联患者' });
+    }
+    await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read) VALUES (?, 'patient', ?, ?, 0)`,
+      [patient.id, patient.name, text]
+    );
+
+    // 自动模拟客服助理在线自动回复
+    setTimeout(async () => {
+      try {
+        await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read) VALUES (?, 'doctor', '客服助理', '收到您的消息，我们会在工作时间（9:00-18:00）尽快回复。如需紧急帮助，请拨打客服热线：400-888-9999', 1)`,
+          [patient.id]
+        );
+      } catch (e) {
+        console.error('Mock assistant auto-reply insertion failed:', e);
+      }
+    }, 1500);
+
+    res.json({ code: 0, message: '发送成功' });
+  } catch (error) {
+    console.error('Client Send IM Error:', error);
+    res.status(500).json({ code: 500, message: '发送失败' });
+  }
+});
 
 export default app;

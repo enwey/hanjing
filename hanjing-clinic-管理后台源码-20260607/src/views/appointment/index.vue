@@ -196,6 +196,67 @@ function getFilteredAppointments() {
   return list
 }
 
+function handleExport() {
+  const list = getFilteredAppointments()
+  if (list.length === 0) {
+    MessagePlugin.warning('当前无匹配的预约记录可供导出')
+    return
+  }
+
+  const headers = [
+    '预约单号',
+    '患者姓名',
+    '手机号',
+    '就诊门店',
+    '就诊医生',
+    '预约日期',
+    '预约时间',
+    '就诊类型',
+    '来源渠道',
+    '预约状态'
+  ]
+
+  const rows = list.map(item => {
+    const escapeCsv = (val: string) => {
+      if (val === null || val === undefined) return ''
+      const str = String(val).replace(/"/g, '""')
+      return `"${str}"`
+    }
+
+    const statusLabel = statusMap[item.status]?.label || item.status
+
+    return [
+      escapeCsv(item.no),
+      escapeCsv(item.patient),
+      escapeCsv(item.phone),
+      escapeCsv(item.store),
+      escapeCsv(item.doctor),
+      escapeCsv(item.date),
+      escapeCsv(item.time),
+      escapeCsv(item.type),
+      escapeCsv(item.source),
+      escapeCsv(statusLabel)
+    ]
+  })
+
+  const csvContent = '\uFEFF' + [headers.join(',')].concat(rows.map(r => r.join(','))).join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  
+  const now = new Date()
+  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+  link.setAttribute('download', `预约挂号导出_${dateStr}.csv`)
+  
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  
+  MessagePlugin.success(`成功导出 ${list.length} 条预约记录`)
+}
+
 const paginatedAppointments = computed(() => {
   const filtered = getFilteredAppointments()
   const start = (currentPage.value - 1) * pageSize.value
@@ -467,7 +528,7 @@ async function submitCheckout() {
         <div class="page-title-sub">管理所有预约挂号记录</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <t-button theme="default" variant="outline">📥 导出</t-button>
+        <t-button theme="default" variant="outline" @click="handleExport">📥 导出</t-button>
         <t-button theme="primary" @click="router.push('/appointment/create')">➕ 新建预约</t-button>
       </div>
     </div>

@@ -14,6 +14,11 @@ export const seedData = async () => {
     } catch (e) {
       console.error('Failed to inject new distribution seeds:', e);
     }
+    try {
+      await injectImSeeds();
+    } catch (e) {
+      console.error('Failed to inject IM seeds:', e);
+    }
     return;
   }
 
@@ -865,6 +870,11 @@ export const seedData = async () => {
   }
 
   await injectNewDistributionSeeds();
+  try {
+    await injectImSeeds();
+  } catch (e) {
+    console.error('Failed to inject IM seeds:', e);
+  }
   console.log('Database seeded successfully.');
 };
 
@@ -950,5 +960,70 @@ const injectNewDistributionSeeds = async () => {
     }
   } catch (error) {
     console.error('Failed to inject distribution seeds:', error);
+  }
+};
+
+const injectImSeeds = async () => {
+  try {
+    const imCount = await query('SELECT count(*) as count FROM im_messages');
+    if (imCount[0].count > 0) {
+      console.log('IM database already has data. Skipping IM seeding.');
+      return;
+    }
+
+    console.log('Seeding IM mock data into database...');
+    let patientZhang = await query("SELECT id FROM patients WHERE name = '张华' LIMIT 1");
+    let patientLi = await query("SELECT id FROM patients WHERE name = '李明' LIMIT 1");
+    let patientWang = await query("SELECT id FROM patients WHERE name = '王芳' LIMIT 1");
+
+    if (patientZhang.length === 0) {
+      patientZhang = await query("SELECT id FROM patients LIMIT 1");
+    }
+    if (patientLi.length === 0) {
+      patientLi = await query("SELECT id FROM patients LIMIT 1");
+    }
+    if (patientWang.length === 0) {
+      patientWang = await query("SELECT id FROM patients LIMIT 1");
+    }
+
+    const zhangId = patientZhang.length > 0 ? patientZhang[0].id : null;
+    const liId = patientLi.length > 0 ? patientLi[0].id : null;
+    const wangId = patientWang.length > 0 ? patientWang[0].id : null;
+
+    if (zhangId) {
+      await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [zhangId, 'patient', '张华', '李医生您好，我已经配戴 HJ-MAD-03 阻鼾器三周了。', 1, '2026-06-25 10:40:00']
+      );
+      await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [zhangId, 'doctor', '李医生', '张先生您好，最近佩戴感觉如何？昨晚的睡眠数据我看到您的依从率是 100%，佩戴时长 7.5 小时。', 1, '2026-06-25 10:42:00']
+      );
+      await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [zhangId, 'patient', '张华', '最近打鼾确实声音变小了很多，我爱人说效果很明显。不过就是晚上下颌感觉有些微酸，要调小刻度吗？', 0, '2026-06-25 10:45:00']
+      );
+    }
+
+    if (liId && liId !== zhangId) {
+      await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [liId, 'patient', '李明', '医生，下周五李明辉医生在福田门诊部坐诊吗？我想去复查一下。', 1, '2026-06-25 09:20:00']
+      );
+      await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [liId, 'doctor', '客服助理', '是的，李医生下周五全天在福田门诊部坐诊，您可以直接在小程序上预约挂号。', 1, '2026-06-25 09:25:00']
+      );
+      await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [liId, 'patient', '李明', '好的，谢谢医生，下周五我准时去门诊复诊。', 0, '2026-06-25 09:30:00']
+      );
+    }
+
+    if (wangId && wangId !== liId && wangId !== zhangId) {
+      await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [wangId, 'doctor', '客服助理', '王女士，您的阻鼾器清洁和维护状况良好，建议每周使用泡腾片清洗 2-3 次。', 1, '2026-06-25 08:00:00']
+      );
+      await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [wangId, 'patient', '王芳', '我的清洁泡腾片快用完了，商城里可以直接买吧？', 0, '2026-06-25 08:15:00']
+      );
+    }
+    console.log('IM mock data seeded successfully.');
+  } catch (error) {
+    console.error('Failed to seed IM mock data:', error);
   }
 };

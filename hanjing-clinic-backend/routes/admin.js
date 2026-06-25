@@ -17,10 +17,23 @@ import {
 
 const app = express.Router();
 
+const failedAttempts = new Map(); // username -> { count, lockUntil }
+
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ code: 400, message: '用户名和密码不能为空' });
+  }
+
+  const now = Date.now();
+  const attempt = failedAttempts.get(username) || { count: 0, lockUntil: 0 };
+
+  if (attempt.lockUntil > now) {
+    const remainingMinutes = Math.ceil((attempt.lockUntil - now) / 60000);
+    return res.status(429).json({
+      code: 429,
+      message: `账号已被临时锁定，请在 ${remainingMinutes} 分钟后重新尝试登录`
+    });
   }
 
   try {
@@ -33,12 +46,28 @@ app.post('/api/admin/login', async (req, res) => {
     );
 
     if (!user || !verifyPassword(password, user.password_hash)) {
-      return res.status(400).json({ code: 400, message: '用户名或密码不正确' });
+      attempt.count += 1;
+      if (attempt.count >= 5) {
+        attempt.lockUntil = Date.now() + 15 * 60 * 1000; // Lock for 15 minutes
+        failedAttempts.set(username, attempt);
+        return res.status(429).json({
+          code: 429,
+          message: '密码错误次数过多，账号已临时锁定，请 15 分钟后再试'
+        });
+      }
+      failedAttempts.set(username, attempt);
+      return res.status(400).json({
+        code: 400,
+        message: `用户名或密码不正确（连续输入错误 5 次将被锁定，还剩 ${5 - attempt.count} 次机会）`
+      });
     }
 
     if (user.status !== 'online') {
-      return res.status(403).json({ code: 403, message: '该账号已被禁用' });
+      return res.status(403).json({ code: 403, message: '该账号已被停用/禁用，请联系超级管理员' });
     }
+
+    // Reset failed attempts
+    failedAttempts.delete(username);
 
     // Update last login
     await run(`UPDATE admin_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?`, [user.id]);
@@ -70,7 +99,7 @@ app.post('/api/admin/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login Error:', error);
-    res.status(500).json({ code: 500, message: '系统内部错误' });
+    res.status(500).json({ code: 500, message: '系统内部错误，请稍后再试' });
   }
 });
 
@@ -159,68 +188,136 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
   let dateFilterAppt = `appointment_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
   let dateFilterOrder = `pay_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
   let dateFilterPatient = `created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
+  
+  let prevDateFilterAppt = `appointment_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01') AND appointment_date < DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
+  let prevDateFilterOrder = `pay_at >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01') AND pay_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
+  let prevDateFilterPatient = `created_at >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01') AND created_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
+  
   let periodLabel = '本月';
 
   if (range === 'today') {
     dateFilterAppt = `appointment_date = CURDATE()`;
     dateFilterOrder = `DATE(pay_at) = CURDATE()`;
     dateFilterPatient = `DATE(created_at) = CURDATE()`;
+    
+    prevDateFilterAppt = `appointment_date = DATE_SUB(CURDATE(), INTERVAL 1 DAY)`;
+    prevDateFilterOrder = `DATE(pay_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)`;
+    prevDateFilterPatient = `DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)`;
+    
     periodLabel = '今日';
   } else if (range === 'week') {
     dateFilterAppt = `YEARWEEK(appointment_date, 1) = YEARWEEK(CURDATE(), 1)`;
     dateFilterOrder = `YEARWEEK(pay_at, 1) = YEARWEEK(CURDATE(), 1)`;
     dateFilterPatient = `YEARWEEK(created_at, 1) = YEARWEEK(CURDATE(), 1)`;
+    
+    prevDateFilterAppt = `YEARWEEK(appointment_date, 1) = YEARWEEK(DATE_SUB(CURDATE(), INTERVAL 1 WEEK), 1)`;
+    prevDateFilterOrder = `YEARWEEK(pay_at, 1) = YEARWEEK(DATE_SUB(CURDATE(), INTERVAL 1 WEEK), 1)`;
+    prevDateFilterPatient = `YEARWEEK(created_at, 1) = YEARWEEK(DATE_SUB(CURDATE(), INTERVAL 1 WEEK), 1)`;
+    
     periodLabel = '本周';
   }
 
   try {
-    // 1. Revenue
+    // 1. Revenue (Current & Previous)
     let revSql = `SELECT SUM(pay_amount) as total FROM orders WHERE status IN ('paid', 'completed') AND ${dateFilterOrder}`;
+    let prevRevSql = `SELECT SUM(pay_amount) as total FROM orders WHERE status IN ('paid', 'completed') AND ${prevDateFilterOrder}`;
     const revParams = [];
+    const prevRevParams = [];
     if (req.user.role !== 'super_admin' && req.user.store_id) {
-      revSql += ` AND user_id IN (
+      const storeFilter = ` AND user_id IN (
         SELECT p.user_id FROM patients p
         WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
            OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
       )`;
+      revSql += storeFilter;
+      prevRevSql += storeFilter;
       revParams.push(req.user.store_id, req.user.store_id);
+      prevRevParams.push(req.user.store_id, req.user.store_id);
     }
     const revRow = await get(revSql, revParams);
+    const prevRevRow = await get(prevRevSql, prevRevParams);
     const revenue = revRow.total || 0;
+    const prevRevenue = prevRevRow.total || 0;
 
-    // 2. Appointments count
+    // 2. Appointments count (Current & Previous)
     let apptSql = `SELECT COUNT(*) as count FROM appointments WHERE ${dateFilterAppt}`;
+    let prevApptSql = `SELECT COUNT(*) as count FROM appointments WHERE ${prevDateFilterAppt}`;
     const apptParams = [];
+    const prevApptParams = [];
     if (req.user.role !== 'super_admin' && req.user.store_id) {
       apptSql += ` AND store_id = ?`;
+      prevApptSql += ` AND store_id = ?`;
       apptParams.push(req.user.store_id);
+      prevApptParams.push(req.user.store_id);
     }
     const apptRow = await get(apptSql, apptParams);
+    const prevApptRow = await get(prevApptSql, prevApptParams);
     const appointments = apptRow.count || 0;
+    const prevAppointments = prevApptRow.count || 0;
 
-    // 3. New Patients count
+    // 3. New Patients count (Current & Previous)
     let patientSql = `SELECT COUNT(*) as count FROM patients WHERE ${dateFilterPatient}`;
+    let prevPatientSql = `SELECT COUNT(*) as count FROM patients WHERE ${prevDateFilterPatient}`;
     const patientParams = [];
+    const prevPatientParams = [];
     if (req.user.role !== 'super_admin' && req.user.store_id) {
-      patientSql += ` AND (
+      const storeFilter = ` AND (
         id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
         OR id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
       )`;
+      patientSql += storeFilter;
+      prevPatientSql += storeFilter;
       patientParams.push(req.user.store_id, req.user.store_id);
+      prevPatientParams.push(req.user.store_id, req.user.store_id);
     }
     const patientRow = await get(patientSql, patientParams);
+    const prevPatientRow = await get(prevPatientSql, prevPatientParams);
     const newPatients = patientRow.count || 0;
+    const prevNewPatients = prevPatientRow.count || 0;
 
-    // 4. Visit rate (completed / total appointments)
+    // 4. Visit rate (completed / total appointments) (Current & Previous)
     let completedApptSql = `SELECT COUNT(*) as count FROM appointments WHERE status = 'completed' AND ${dateFilterAppt}`;
+    let prevCompletedApptSql = `SELECT COUNT(*) as count FROM appointments WHERE status = 'completed' AND ${prevDateFilterAppt}`;
     const completedApptParams = [];
+    const prevCompletedApptParams = [];
     if (req.user.role !== 'super_admin' && req.user.store_id) {
       completedApptSql += ` AND store_id = ?`;
+      prevCompletedApptSql += ` AND store_id = ?`;
       completedApptParams.push(req.user.store_id);
+      prevCompletedApptParams.push(req.user.store_id);
     }
     const completedApptRow = await get(completedApptSql, completedApptParams);
+    const prevCompletedApptRow = await get(prevCompletedApptSql, prevCompletedApptParams);
     const completedAppts = completedApptRow.count || 0;
+    const prevCompletedAppts = prevCompletedApptRow.count || 0;
     const visitRate = appointments > 0 ? Math.round((completedAppts / appointments) * 100) : 0;
+    const prevVisitRate = prevAppointments > 0 ? Math.round((prevCompletedAppts / prevAppointments) * 100) : 0;
+
+    // Helper to calculate comparison trend percentage
+    const calculateTrend = (curr, prev) => {
+      if (prev === 0) {
+        if (curr === 0) return { trend: '0%', trendType: 'up' };
+        return { trend: '+100%', trendType: 'up' };
+      }
+      const diff = curr - prev;
+      const pct = Math.round((diff / prev) * 100);
+      if (pct >= 0) {
+        return { trend: `+${pct}%`, trendType: 'up' };
+      } else {
+        return { trend: `${pct}%`, trendType: 'down' };
+      }
+    };
+
+    const apptTrendInfo = calculateTrend(appointments, prevAppointments);
+    const revenueTrendInfo = calculateTrend(revenue, prevRevenue);
+    const patientTrendInfo = calculateTrend(newPatients, prevNewPatients);
+    
+    // Visit rate comparison (difference in percentage points)
+    const rateDiff = visitRate - prevVisitRate;
+    const rateTrendInfo = {
+      trend: rateDiff >= 0 ? `+${rateDiff}%` : `${rateDiff}%`,
+      trendType: rateDiff >= 0 ? 'up' : 'down'
+    };
 
     // 5. Department distribution based on appointment counts
     let deptSql = `
@@ -269,45 +366,120 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
     const onlineDoctorsRow = await get(docSql, docParams);
     const onlineDoctors = onlineDoctorsRow.count || 0;
 
-    // 6. Chart: Appointments grouped by date
-    let apptTrendSql = `
-      SELECT appointment_date as date, COUNT(*) as count 
-      FROM appointments 
-    `;
+    // 6. Chart: Appointments grouped by date/time based on range
+    let apptTrendSql = '';
     const apptTrendParams = [];
-    if (req.user.role !== 'super_admin' && req.user.store_id) {
-      apptTrendSql += ` WHERE store_id = ?`;
-      apptTrendParams.push(req.user.store_id);
+    if (range === 'today') {
+      apptTrendSql = `
+        SELECT appointment_time as date, COUNT(*) as count 
+        FROM appointments 
+        WHERE appointment_date = CURDATE()
+      `;
+      if (req.user.role !== 'super_admin' && req.user.store_id) {
+        apptTrendSql += ` AND store_id = ?`;
+        apptTrendParams.push(req.user.store_id);
+      }
+      apptTrendSql += `
+        GROUP BY appointment_time 
+        ORDER BY appointment_time DESC
+      `;
+    } else if (range === 'week') {
+      apptTrendSql = `
+        SELECT DATE_FORMAT(appointment_date, '%Y-%m-%d') as date, COUNT(*) as count 
+        FROM appointments 
+        WHERE YEARWEEK(appointment_date, 1) = YEARWEEK(CURDATE(), 1)
+      `;
+      if (req.user.role !== 'super_admin' && req.user.store_id) {
+        apptTrendSql += ` AND store_id = ?`;
+        apptTrendParams.push(req.user.store_id);
+      }
+      apptTrendSql += `
+        GROUP BY appointment_date 
+        ORDER BY appointment_date DESC
+      `;
+    } else { // month
+      apptTrendSql = `
+        SELECT DATE_FORMAT(appointment_date, '%Y-%m-%d') as date, COUNT(*) as count 
+        FROM appointments 
+        WHERE appointment_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND appointment_date <= LAST_DAY(CURDATE())
+      `;
+      if (req.user.role !== 'super_admin' && req.user.store_id) {
+        apptTrendSql += ` AND store_id = ?`;
+        apptTrendParams.push(req.user.store_id);
+      }
+      apptTrendSql += `
+        GROUP BY appointment_date 
+        ORDER BY appointment_date DESC
+      `;
     }
-    apptTrendSql += `
-      GROUP BY appointment_date 
-      ORDER BY appointment_date DESC 
-      LIMIT 15
-    `;
     const appointmentTrends = await query(apptTrendSql, apptTrendParams);
 
-    // 7. Chart: Revenue grouped by date
-    let revTrendSql = `
-      SELECT DATE(pay_at) as date, SUM(pay_amount) as total 
-      FROM orders 
-      WHERE status IN ('paid', 'completed') AND pay_at IS NOT NULL
-    `;
+    // 7. Chart: Revenue grouped by date/time based on range
+    let revTrendSql = '';
     const revTrendParams = [];
-    if (req.user.role !== 'super_admin' && req.user.store_id) {
-      revTrendSql += `
-        AND user_id IN (
-          SELECT p.user_id FROM patients p
-          WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
-             OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
-        )
+    if (range === 'today') {
+      revTrendSql = `
+        SELECT DATE_FORMAT(pay_at, '%H:00') as date, SUM(pay_amount) as total 
+        FROM orders 
+        WHERE status IN ('paid', 'completed') AND DATE(pay_at) = CURDATE()
       `;
-      revTrendParams.push(req.user.store_id, req.user.store_id);
+      if (req.user.role !== 'super_admin' && req.user.store_id) {
+        revTrendSql += `
+          AND user_id IN (
+            SELECT p.user_id FROM patients p
+            WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
+               OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
+          )
+        `;
+        revTrendParams.push(req.user.store_id, req.user.store_id);
+      }
+      revTrendSql += `
+        GROUP BY DATE_FORMAT(pay_at, '%H:00') 
+        ORDER BY date DESC
+      `;
+    } else if (range === 'week') {
+      revTrendSql = `
+        SELECT DATE_FORMAT(pay_at, '%Y-%m-%d') as date, SUM(pay_amount) as total 
+        FROM orders 
+        WHERE status IN ('paid', 'completed') AND YEARWEEK(pay_at, 1) = YEARWEEK(CURDATE(), 1)
+      `;
+      if (req.user.role !== 'super_admin' && req.user.store_id) {
+        revTrendSql += `
+          AND user_id IN (
+            SELECT p.user_id FROM patients p
+            WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
+               OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
+          )
+        `;
+        revTrendParams.push(req.user.store_id, req.user.store_id);
+      }
+      revTrendSql += `
+        GROUP BY DATE_FORMAT(pay_at, '%Y-%m-%d') 
+        ORDER BY date DESC
+      `;
+    } else { // month
+      revTrendSql = `
+        SELECT DATE_FORMAT(pay_at, '%Y-%m-%d') as date, SUM(pay_amount) as total 
+        FROM orders 
+        WHERE status IN ('paid', 'completed') 
+          AND pay_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') 
+          AND pay_at < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)
+      `;
+      if (req.user.role !== 'super_admin' && req.user.store_id) {
+        revTrendSql += `
+          AND user_id IN (
+            SELECT p.user_id FROM patients p
+            WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
+               OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
+          )
+        `;
+        revTrendParams.push(req.user.store_id, req.user.store_id);
+      }
+      revTrendSql += `
+        GROUP BY DATE_FORMAT(pay_at, '%Y-%m-%d') 
+        ORDER BY date DESC
+      `;
     }
-    revTrendSql += `
-      GROUP BY DATE(pay_at) 
-      ORDER BY date DESC 
-      LIMIT 15
-    `;
     const revenueTrends = await query(revTrendSql, revTrendParams);
 
     res.json({
@@ -319,6 +491,12 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
         totalAppointments: appointments,
         totalPatients: newPatients,
         visitRate: visitRate + '%',
+        trends: {
+          appointments: apptTrendInfo,
+          revenue: revenueTrendInfo,
+          patients: patientTrendInfo,
+          visitRate: rateTrendInfo
+        },
         departments: depts,
         onlineDoctors,
         appointmentTrends: appointmentTrends.reverse(),
@@ -389,7 +567,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
         JOIN doctors d ON a.doctor_id = d.id
         JOIN stores s ON a.store_id = s.id
         WHERE 1=1 ${whereClause}
-        ORDER BY a.appointment_date DESC, a.appointment_time ASC
+        ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC
         LIMIT ${pageSize} OFFSET ${offset}
       `;
       const list = await query(dataSql, params);
@@ -419,7 +597,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
         JOIN doctors d ON a.doctor_id = d.id
         JOIN stores s ON a.store_id = s.id
         WHERE 1=1 ${whereClause}
-        ORDER BY a.appointment_date DESC, a.appointment_time ASC
+        ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC
       `;
       const list = await query(dataSql, params);
       const maskedList = list.map(item => ({
@@ -755,7 +933,7 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
       appointmentsSql += ` AND a.store_id = ?`;
       appointmentsParams.push(req.user.store_id);
     }
-    appointmentsSql += ` ORDER BY a.appointment_date DESC`;
+    appointmentsSql += ` ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC`;
 
     const appointments = await query(appointmentsSql, appointmentsParams);
 
@@ -2118,6 +2296,167 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ code: 500, message: '收银失败' });
+  }
+});
+
+// 全局模糊搜索 API (支持预约单、患者姓名/电话、订单号)
+app.get('/api/admin/global-search', authenticateToken, async (req, res) => {
+  const { q } = req.query;
+  if (!q) {
+    return res.json({ code: 200, data: { patients: [], appointments: [], orders: [] } });
+  }
+  const kw = `%${q}%`;
+  try {
+    const patients = await query(
+      `SELECT p.id, p.name, p.phone, p.gender, p.age, u.member_level 
+       FROM patients p
+       LEFT JOIN users u ON p.user_id = u.id
+       WHERE p.name LIKE ? OR p.phone LIKE ? LIMIT 5`,
+      [kw, kw]
+    );
+    const appointments = await query(
+      `SELECT a.id, a.appointment_no, p.name as patient_name, a.appointment_date, a.status 
+       FROM appointments a
+       JOIN patients p ON a.patient_id = p.id
+       WHERE a.appointment_no LIKE ? OR p.name LIKE ? LIMIT 5`,
+      [kw, kw]
+    );
+    const orders = await query(
+      `SELECT o.id, o.order_no, o.pay_amount, o.status
+       FROM orders o
+       WHERE o.order_no LIKE ? LIMIT 5`,
+      [kw]
+    );
+    res.json({
+      code: 200,
+      data: { patients, appointments, orders }
+    });
+  } catch (error) {
+    console.error('Global Search Error:', error);
+    res.status(500).json({ code: 500, message: '搜索失败' });
+  }
+});
+
+// 顶部消息通知/待办统计 API
+app.get('/api/admin/notifications/stats', authenticateToken, async (req, res) => {
+  try {
+    const pendingWithdraws = await get(`SELECT COUNT(*) as count FROM withdraw_records WHERE status = 'pending'`);
+    const pendingAppointments = await get(`SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'`);
+    const pendingOrders = await get(`SELECT COUNT(*) as count FROM orders WHERE status = 'paid'`);
+    res.json({
+      code: 200,
+      data: {
+        withdrawCount: pendingWithdraws ? pendingWithdraws.count : 0,
+        appointmentCount: pendingAppointments ? pendingAppointments.count : 0,
+        orderCount: pendingOrders ? pendingOrders.count : 0
+      }
+    });
+  } catch (error) {
+    console.error('Notification Stats Error:', error);
+    res.status(500).json({ code: 500, message: '获取消息统计失败' });
+  }
+});
+
+// 1) 获取最近聊天患者列表
+app.get('/api/admin/im/users', authenticateToken, async (req, res) => {
+  try {
+    const users = await query(`
+      SELECT p.id, p.name, p.phone, 
+             (SELECT text FROM im_messages WHERE patient_id = p.id ORDER BY created_at DESC LIMIT 1) as lastMsg,
+             (SELECT DATE_FORMAT(created_at, '%H:%i') FROM im_messages WHERE patient_id = p.id ORDER BY created_at DESC LIMIT 1) as time,
+             CASE WHEN (SELECT COUNT(*) FROM im_messages WHERE patient_id = p.id AND sender = 'patient' AND is_read = 0) > 0 THEN 1 ELSE 0 END as unread
+      FROM patients p
+      WHERE EXISTS (SELECT 1 FROM im_messages WHERE patient_id = p.id)
+      ORDER BY (SELECT created_at FROM im_messages WHERE patient_id = p.id ORDER BY created_at DESC LIMIT 1) DESC
+    `);
+    
+    // 如果没有用户，那就默认推荐前三个有数据的患者
+    if (users.length === 0) {
+      const defaultPatients = await query(`SELECT id, name, phone FROM patients LIMIT 3`);
+      const emptyUsers = defaultPatients.map(p => ({
+        id: p.id,
+        name: p.name,
+        phone: p.phone,
+        lastMsg: '您好，目前暂无聊天历史记录。',
+        time: '刚刚',
+        unread: 0
+      }));
+      return res.json({ code: 200, data: emptyUsers });
+    }
+    
+    res.json({ code: 200, data: users });
+  } catch (error) {
+    console.error('Admin Get IM Users Error:', error);
+    res.status(500).json({ code: 500, message: '获取会话列表失败' });
+  }
+});
+
+// 2) 获取与特定患者的聊天记录
+app.get('/api/admin/im/messages', authenticateToken, async (req, res) => {
+  const { patient_id } = req.query;
+  if (!patient_id) {
+    return res.status(400).json({ code: 400, message: '患者ID不能为空' });
+  }
+  try {
+    const messages = await query(`
+      SELECT sender, text, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as time 
+      FROM im_messages 
+      WHERE patient_id = ? 
+      ORDER BY created_at ASC`,
+      [patient_id]
+    );
+    
+    // 标记已读
+    await run(`UPDATE im_messages SET is_read = 1 WHERE patient_id = ? AND sender = 'patient'`, [patient_id]);
+    
+    res.json({ code: 200, data: messages });
+  } catch (error) {
+    console.error('Admin Get IM Messages Error:', error);
+    res.status(500).json({ code: 500, message: '获取消息历史失败' });
+  }
+});
+
+// 3) 管理后台发送消息给患者
+app.post('/api/admin/im/send', authenticateToken, async (req, res) => {
+  const { patient_id, text } = req.body;
+  if (!patient_id || !text) {
+    return res.status(400).json({ code: 400, message: '患者ID或消息内容不能为空' });
+  }
+  try {
+    const adminUser = req.user;
+    const senderName = adminUser ? adminUser.name || '客服助理' : '客服助理';
+    
+    await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read) VALUES (?, 'doctor', ?, ?, 1)`,
+      [patient_id, senderName, text]
+    );
+
+    // 自动模拟患者回复（非阻塞）
+    setTimeout(async () => {
+      try {
+        let replyText = '收到，非常感谢您的解答！';
+        const patient = await get(`SELECT name FROM patients WHERE id = ?`, [patient_id]);
+        const patientName = patient ? patient.name : '患者';
+        
+        if (patientName.includes('张')) {
+          replyText = '好的李医生，我先保持这个刻度观察一下，如果有异常我再反馈。';
+        } else if (patientName.includes('李')) {
+          replyText = '好的，那我就直接在小程序里挂号复诊了，谢谢！';
+        } else if (patientName.includes('王')) {
+          replyText = '行，我直接去商城下单买一盒清洁片，谢谢助理老师。';
+        }
+        
+        await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read) VALUES (?, 'patient', ?, ?, 0)`,
+          [patient_id, patientName, replyText]
+        );
+      } catch (e) {
+        console.error('Mock patient reply insertion failed:', e);
+      }
+    }, 1500);
+
+    res.json({ code: 200, message: '发送成功' });
+  } catch (error) {
+    console.error('Admin Send IM Error:', error);
+    res.status(500).json({ code: 500, message: '发送失败' });
   }
 });
 
