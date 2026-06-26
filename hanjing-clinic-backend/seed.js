@@ -544,6 +544,27 @@ export const seedData = async () => {
       'on'
     ]
   );
+  const prod8 = { id: 8 };
+  await run(
+    `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
+    [
+      8,
+      '就诊预约定金',
+      'service',
+      '/static/product/screening.png',
+      JSON.stringify(['/static/product/screening.png']),
+      20000,
+      20000,
+      '就诊预约定金。',
+      99999,
+      100,
+      0,
+      0.0,
+      'on'
+    ]
+  );
 
   // 14. Coupons
   const cp1 = await run(

@@ -3316,8 +3316,9 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
       if (product.category !== 'service' && product.stock < quantity) {
         return res.status(400).json({ code: 400, message: `商品 ${product.name} 库存不足` });
       }
-      total_amount += product.price * quantity;
-      validatedItems.push({ product, quantity, price: product.price });
+      const itemPrice = (item.price !== undefined && item.price !== null) ? Number(item.price) : product.price;
+      total_amount += itemPrice * quantity;
+      validatedItems.push({ product, quantity, price: itemPrice });
     }
     const discount = Math.max(0, parseInt(discount_amount || 0, 10));
     const calculatedPayAmount = Math.max(0, total_amount - discount);

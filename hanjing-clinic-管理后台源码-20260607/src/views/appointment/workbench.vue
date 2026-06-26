@@ -285,7 +285,8 @@ const productOptions = [
   { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
   { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
   { id: '5', name: '诊所专家诊断评估费', price: 50000 },
-  { id: '7', name: '快递运费', price: 1500 }
+  { id: '7', name: '快递运费', price: 1500 },
+  { id: '8', name: '就诊预约定金', price: 20000 }
 ]
 
 const billingItems = ref<Array<{ product_id: string; product_name: string; price: number; quantity: number }>>([])
@@ -1023,7 +1024,7 @@ async function submitCreateAppt() {
 
           <div style="display: flex; justify-content: flex-end; gap: 10px;">
             <t-button theme="default" @click="closeCheckoutDialog">取消</t-button>
-            <t-button theme="primary" :loading="checkoutLoading" @click="submitCheckout">确认支付收款</t-button>
+            <t-button theme="primary" :loading="checkoutLoading" @click="submitCheckout">确认支付收款 · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
           </div>
         </div>
 
