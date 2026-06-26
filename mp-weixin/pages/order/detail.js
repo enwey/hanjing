@@ -46,6 +46,8 @@ const a = () => "../../components/base/hj-navbar.js",
             ],
           },
           cancelled: { current: 0, steps: [{ label: "已取消", done: !0 }] },
+          refunding: { current: 1, steps: [{ label: "退款审核中", done: !0 }] },
+          refunded: { current: 1, steps: [{ label: "已退款", done: !0 }] },
         },
         o = {
           pending: "待付款",
@@ -53,10 +55,98 @@ const a = () => "../../components/base/hj-navbar.js",
           shipped: "已发货",
           completed: "已完成",
           cancelled: "已取消",
+          refunding: "退款审核中",
+          refunded: "已退款",
           confirmed: "已确认",
         };
       function u(e) {
         return "¥" + (e / 100).toFixed(2);
+      }
+      function requestWxPay(payParams) {
+        if (payParams.mockPayment) {
+          return Promise.resolve();
+        }
+        return new Promise((resolve, reject) => {
+          e.index.requestPayment({
+            timeStamp: payParams.timeStamp,
+            nonceStr: payParams.nonceStr,
+            package: payParams.package,
+            signType: payParams.signType,
+            paySign: payParams.paySign,
+            success: resolve,
+            fail: reject
+          });
+        });
+      }
+      async function onCancelOrder() {
+        e.index.showModal({
+          title: "提示",
+          content: "确定要取消该订单吗？",
+          success: async (res) => {
+            if (res.confirm) {
+              try {
+                await t.cancelOrder(l.value.id);
+                e.index.showToast({ title: "订单已取消", icon: "success" });
+                const o = await t.getOrderDetail(l.value.id);
+                l.value = o.data || o;
+              } catch (err) {
+                e.index.showToast({ title: "取消失败", icon: "none" });
+              }
+            }
+          }
+        });
+      }
+      async function onPayOrder() {
+        e.index.showLoading({ title: "发起支付..." });
+        try {
+          const payRes = await t.payOrder(l.value.id);
+          const payParams = payRes.data || payRes;
+          await requestWxPay(payParams);
+          await t.confirmOrderPayment(l.value.id);
+          e.index.hideLoading();
+          e.index.showToast({ title: "支付成功", icon: "success" });
+          const o = await t.getOrderDetail(l.value.id);
+          l.value = o.data || o;
+        } catch (err) {
+          e.index.hideLoading();
+          e.index.showToast({ title: "支付失败", icon: "none" });
+        }
+      }
+      async function onConfirmReceipt() {
+        e.index.showModal({
+          title: "提示",
+          content: "确定已收到商品吗？",
+          success: async (res) => {
+            if (res.confirm) {
+              try {
+                await t.confirmReceipt(l.value.id);
+                e.index.showToast({ title: "已确认收货", icon: "success" });
+                const o = await t.getOrderDetail(l.value.id);
+                l.value = o.data || o;
+              } catch (err) {
+                e.index.showToast({ title: "确认失败", icon: "none" });
+              }
+            }
+          }
+        });
+      }
+      async function onApplyRefund() {
+        e.index.showModal({
+          title: "提示",
+          content: "确定要申请退款吗？",
+          success: async (res) => {
+            if (res.confirm) {
+              try {
+                await t.applyRefund(l.value.id);
+                e.index.showToast({ title: "退款申请已提交", icon: "success" });
+                const o = await t.getOrderDetail(l.value.id);
+                l.value = o.data || o;
+              } catch (err) {
+                e.index.showToast({ title: "申请失败", icon: "none" });
+              }
+            }
+          }
+        });
       }
       return (
         e.onLoad(async (a) => {
@@ -138,6 +228,25 @@ const a = () => "../../components/base/hj-navbar.js",
                       : {},
                     { o: l.value.payMethod },
                     (l.value.payMethod, {}),
+                    {
+                      shipName: l.value.shippingAddress && (l.value.shippingAddress.contactName || l.value.shippingAddress.receiver),
+                      shipPhone: l.value.shippingAddress && l.value.shippingAddress.phone,
+                      shipAddress: l.value.shippingAddress && (l.value.shippingAddress.detailAddress || [
+                        l.value.shippingAddress.province,
+                        l.value.shippingAddress.city,
+                        l.value.shippingAddress.district,
+                        l.value.shippingAddress.detail
+                      ].filter(Boolean).join("")),
+                      p0: l.value.status === "pending" || l.value.status === "shipped" || l.value.status === "paid",
+                      p1: l.value.status === "pending",
+                      p2: e.o(onCancelOrder),
+                      p3: l.value.status === "pending",
+                      p4: e.o(onPayOrder),
+                      p5: l.value.status === "shipped",
+                      p6: e.o(onConfirmReceipt),
+                      p7: l.value.status === "paid",
+                      p8: e.o(onApplyRefund)
+                    }
                   )
                 : {},
             { c: l.value },

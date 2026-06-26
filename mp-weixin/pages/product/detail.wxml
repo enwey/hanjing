@@ -65,7 +65,10 @@
           </view>
         </view>
         <view class="checkout-address-section data-v-5e948475">
-          <text class="checkout-section-title data-v-5e948475">收货人信息</text>
+          <view class="checkout-section-head data-v-5e948475">
+            <text class="checkout-section-title data-v-5e948475">收货人信息</text>
+            <text class="checkout-address-choose data-v-5e948475" bindtap="chooseWxAddress">选择微信地址</text>
+          </view>
           <view class="input-group data-v-5e948475">
             <text class="input-label data-v-5e948475">收货人</text>
             <input class="checkout-input data-v-5e948475" type="text" value="{{contactName}}" bindinput="inputName" placeholder="收货人姓名" />

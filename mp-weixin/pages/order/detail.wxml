@@ -60,6 +60,19 @@
         ><view wx:if="{{o}}" class="info-row data-v-e129e068"
           ><text class="info-label data-v-e129e068">支付方式</text
           ><text class="info-val data-v-e129e068">微信支付</text></view
-        ></view
-      ><view class="safe-bottom data-v-e129e068" /></view></block
+        ><view wx:if="{{shipName}}" class="info-row data-v-e129e068"
+          ><text class="info-label data-v-e129e068">收货人</text
+          ><text class="info-val data-v-e129e068">{{shipName}}</text></view
+        ><view wx:if="{{shipPhone}}" class="info-row data-v-e129e068"
+          ><text class="info-label data-v-e129e068">联系电话</text
+          ><text class="info-val data-v-e129e068">{{shipPhone}}</text></view
+        ><view wx:if="{{shipAddress}}" class="info-row data-v-e129e068"
+          ><text class="info-label data-v-e129e068">收货地址</text
+          ><text class="info-val data-v-e129e068">{{shipAddress}}</text></view
+        <view wx:if="{{p0}}" class="action-footer data-v-e129e068" style="padding: 20rpx 30rpx; background: #fff; border-top: 1rpx solid #eee; display: flex; justify-content: flex-end; gap: 20rpx; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;">
+        <button wx:if="{{p1}}" bindtap="{{p2}}" size="mini" style="margin: 0; color: #666; background: #f5f5f5; border-radius: 40rpx; border: 1rpx solid #ddd; line-height: 2;">取消订单</button>
+        <button wx:if="{{p3}}" bindtap="{{p4}}" size="mini" type="primary" style="margin: 0; background: #3B6BF5; border-radius: 40rpx; line-height: 2;">立即支付</button>
+        <button wx:if="{{p5}}" bindtap="{{p6}}" size="mini" type="primary" style="margin: 0; background: #3B6BF5; border-radius: 40rpx; line-height: 2;">确认收货</button>
+        <button wx:if="{{p7}}" bindtap="{{p8}}" size="mini" style="margin: 0; color: #666; background: #f5f5f5; border-radius: 40rpx; border: 1rpx solid #ddd; line-height: 2;">申请退款</button>
+      </view><view class="safe-bottom data-v-e129e068" style="height: 120rpx;" /></view></block
 ></view>

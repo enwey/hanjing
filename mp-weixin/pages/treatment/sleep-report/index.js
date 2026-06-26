@@ -8,38 +8,21 @@ const t = () => "../../../components/base/hj-navbar.js",
       const a = e.ref(!0),
         o = e.ref("week"),
         u = e.computed(() => ("week" === o.value ? "过去7天" : "过去30天")),
-        n = { compliance: 85, weekAvg: 6.2, avgComfort: 3.8, streak: 12 },
-        l = { compliance: 78, weekAvg: 5.9, avgComfort: 4.1, streak: 26 },
+        n = e.reactive({ hasData: false, compliance: 0, weekAvg: 0, avgComfort: 0, streak: 0, score: 0, betterThan: 0, trend: [] }),
+        l = e.reactive({ hasData: false, compliance: 0, weekAvg: 0, avgComfort: 0, streak: 0, score: 0, betterThan: 0, trend: [] }),
         v = e.computed(() => ("week" === o.value ? n : l));
-      const c = e.computed(() =>
-          (function (e) {
-            const t = new Date();
-            return Array.from({ length: e }, (a, o) => {
-              const u = new Date(t);
-              u.setDate(t.getDate() - (e - 1 - o));
-              const n = [
-                72, 80, 68, 85, 91, 78, 88, 74, 83, 76, 90, 65, 80, 88, 70, 82,
-                75, 78, 86, 92, 68, 77, 84, 73, 90, 82, 78, 87, 74, 85,
-              ];
-              return {
-                date: `${u.getMonth() + 1}/${u.getDate()}`,
-                score: n[o % n.length],
-              };
-            });
-          })("week" === o.value ? 7 : 14),
-        ),
+      const c = e.computed(() => {
+          const currentData = "week" === o.value ? n : l;
+          if (currentData.trend && currentData.trend.length > 0) {
+            return currentData.trend;
+          }
+          return [];
+        }),
         r = e.computed(() => c.value.map((e) => e.score)),
         m = e.computed(() => Math.max(...r.value, 1)),
         p = e.computed(() => {
           const e = v.value;
-          return Math.min(
-            100,
-            Math.round(
-              0.4 * e.compliance +
-                (e.weekAvg / 8) * 100 * 0.4 +
-                (e.avgComfort / 5) * 100 * 0.2,
-            ),
-          );
+          return e.hasData ? e.score : 0;
         }),
         i = e.computed(() => {
           const e = p.value;
@@ -52,7 +35,7 @@ const t = () => "../../../components/base/hj-navbar.js",
                 : { label: "需改善", color: "#EF4444", bg: "#FEE2E2" };
         }),
         g = e.computed(() => ({
-          betterThan: "week" === o.value ? 78 : 71,
+          betterThan: v.value.betterThan || 0,
           avgDuration: 5.8,
           avgCompliance: 72,
           yourDurationPct: Math.min(
@@ -63,6 +46,13 @@ const t = () => "../../../components/base/hj-navbar.js",
         s = e.computed(() => {
           const e = v.value,
             t = [];
+          if (!e.hasData) {
+            return [{
+              icon: "📭",
+              text: "暂无真实佩戴记录。完成每日佩戴打卡后，这里会生成治疗报告。",
+              type: "info",
+            }];
+          }
           return (
             e.compliance >= 85
               ? t.push({
@@ -109,17 +99,33 @@ const t = () => "../../../components/base/hj-navbar.js",
           );
         }),
         h = e.computed(() => v.value.avgComfort < 3);
-      function d(e) {
-        o.value = e;
+
+      async function loadReportData() {
+        try {
+          const api = require("../../../api/index.js");
+          const res = await api.getSleepReport({ range: o.value });
+          if (res && res.data) {
+            const target = o.value === "week" ? n : l;
+            Object.assign(target, res.data);
+          }
+        } catch (err) {
+          console.error("加载睡眠报告失败", err);
+          const target = o.value === "week" ? n : l;
+          Object.assign(target, { hasData: false, compliance: 0, weekAvg: 0, avgComfort: 0, streak: 0, score: 0, betterThan: 0, trend: [] });
+        }
+      }
+
+      async function d(val) {
+        o.value = val;
+        await loadReportData();
       }
       function w() {
         e.index.switchTab({ url: "/pages/appointment/index" });
       }
       return (
-        e.onMounted(() => {
-          setTimeout(() => {
-            a.value = !1;
-          }, 300);
+        e.onMounted(async () => {
+          await loadReportData();
+          a.value = !1;
         }),
         (t, n) =>
           e.e(

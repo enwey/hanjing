@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 const route = useRoute()
@@ -35,12 +36,31 @@ function handlePreview() {
   MessagePlugin.info('正在生成预览页面...')
 }
 
-function handleSaveDraft() {
+function buildPayload(status: string) {
+  return {
+    title: title.value,
+    content: editorHtml.value,
+    tags: tags.value.split(/[,，]/).map(item => item.trim()).filter(Boolean),
+    status
+  }
+}
+
+async function handleSaveDraft() {
+  if (!title.value.trim() || !editorHtml.value.trim()) {
+    MessagePlugin.warning('请填写文章标题和正文')
+    return
+  }
+  await request.post('/api/admin/content/articles', buildPayload('draft'))
   MessagePlugin.success('草稿已成功保存')
   router.push('/content')
 }
 
-function handlePublish() {
+async function handlePublish() {
+  if (!title.value.trim() || !editorHtml.value.trim()) {
+    MessagePlugin.warning('请填写文章标题和正文')
+    return
+  }
+  await request.post('/api/admin/content/articles', buildPayload('approved'))
   MessagePlugin.success('文章发布成功')
   router.push('/content')
 }

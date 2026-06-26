@@ -19,17 +19,34 @@ const l = () => "../../../../components/base/hj-navbar.js",
           { value: "other", label: "其他" },
         ];
       async function s() {
-        u.value.trim()
-          ? (await a.addFamilyMember({
-              name: u.value.trim(),
-              relation: t.value,
-              gender: o.value,
-              age: v.value,
-              phone: n.value,
-            }),
-            e.index.showToast({ title: "添加成功", icon: "success" }),
-            setTimeout(() => e.index.navigateBack(), 800))
-          : e.index.showToast({ title: "请输入姓名", icon: "none" });
+        const name = u.value.trim();
+        if (!name) {
+          e.index.showToast({ title: "请输入姓名", icon: "none" });
+          return;
+        }
+        if (name.length > 20) {
+          e.index.showToast({ title: "姓名最多20个字符", icon: "none" });
+          return;
+        }
+        const ageVal = parseInt(v.value, 10);
+        if (isNaN(ageVal) || ageVal < 1 || ageVal > 120) {
+          e.index.showToast({ title: "年龄必须在1至120之间", icon: "none" });
+          return;
+        }
+        const phoneVal = n.value.trim();
+        if (phoneVal && !/^1[3-9]\d{9}$/.test(phoneVal)) {
+          e.index.showToast({ title: "手机号格式不正确", icon: "none" });
+          return;
+        }
+        await a.addFamilyMember({
+          name: name,
+          relation: t.value,
+          gender: o.value,
+          age: ageVal,
+          phone: phoneVal,
+        });
+        e.index.showToast({ title: "添加成功", icon: "success" });
+        setTimeout(() => e.index.navigateBack(), 800);
       }
       return (a, l) => ({
         a: e.p({ title: "添加成员", "show-back": !0 }),

@@ -272,12 +272,22 @@
   padding-top: 18px;
   margin-bottom: 24px;
 }
+.checkout-section-head.data-v-5e948475 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
 .checkout-section-title.data-v-5e948475 {
   font-size: 15px;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 12px;
   display: block;
+}
+.checkout-address-choose.data-v-5e948475 {
+  font-size: 13px;
+  color: #3b6bf5;
+  padding: 4px 0;
 }
 .input-group.data-v-5e948475 {
   display: flex;

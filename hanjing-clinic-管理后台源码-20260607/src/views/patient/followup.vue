@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -9,6 +10,8 @@ const patientId = ref(route.params.id as string || '1')
 const patientName = ref('张明华')
 
 interface Task {
+  id: string;
+  doctorId: string;
   type: string;
   typeTag: string; // blue, green, gold
   dueDate: string;
@@ -17,64 +20,129 @@ interface Task {
   status: string; // gold (待执行), green (已完成)
 }
 
-const tasks = ref<Task[]>([
-  { type: '电话随访', typeTag: 'blue', dueDate: '6/1 (3天后)', executor: '古堪民', content: 'CPAP使用1周回访，询问依从性、面罩舒适度、副作用', status: 'gold' },
-  { type: '到店复查', typeTag: 'green', dueDate: '8/29 (3个月后)', executor: '古堪民', content: 'CPAP治疗3个月复查PSG，评估长期疗效', status: 'gold' },
-  { type: '微信随访', typeTag: 'gold', dueDate: '6/15', executor: '护理部', content: '满意度调查，收集反馈意见', status: 'gold' },
-  { type: '电话随访', typeTag: 'blue', dueDate: '5/29', executor: '古堪民', content: '就诊后当天回访，确认患者状态', status: 'green' },
-  { type: '到店复查', typeTag: 'green', dueDate: '4/15', executor: '古堪民', content: 'CPAP使用1个月随访', status: 'green' },
-])
+const tasks = ref<Task[]>([])
+const doctors = ref<any[]>([])
 
 const showCreate = ref(false)
 const newTask = ref({
   type: '电话随访',
   dueDate: '',
-  executor: '古堪民',
+  doctorId: '',
   content: ''
 })
+
+function typeTag(type: string) {
+  if (type.includes('电话')) return 'blue'
+  if (type.includes('到店')) return 'green'
+  return 'gold'
+}
+
+function mapTask(row: any): Task {
+  return {
+    id: String(row.id),
+    doctorId: String(row.doctor_id || ''),
+    type: row.title || '随访任务',
+    typeTag: typeTag(row.title || ''),
+    dueDate: String(row.due_date || '').slice(0, 10),
+    executor: row.doctor_name || '未分配',
+    content: row.description || '',
+    status: row.status === 'completed' ? 'green' : 'gold'
+  }
+}
+
+async function fetchData() {
+  try {
+    const [patientRes, followRes, doctorRes]: any[] = await Promise.all([
+      request.get(`/api/admin/patients/${patientId.value}`),
+      request.get(`/api/admin/patients/${patientId.value}/follow-ups`),
+      request.get('/api/admin/doctors')
+    ])
+    patientName.value = patientRes.data?.name || patientName.value
+    doctors.value = doctorRes.data || []
+    if (!newTask.value.doctorId && doctors.value.length > 0) {
+      newTask.value.doctorId = String(doctors.value[0].id)
+    }
+    tasks.value = (followRes.data?.tasks || []).map(mapTask)
+  } catch (error) {
+    MessagePlugin.error('加载随访任务失败')
+  }
+}
 
 function handleBack() {
   router.push(`/patient/detail/${patientId.value}`)
 }
 
-function handleExecute(task: Task) {
-  task.status = 'green'
-  MessagePlugin.success(`成功执行 [${task.type}] 随访任务`)
+async function handleExecute(task: Task) {
+  try {
+    await request.post(`/api/admin/patients/${patientId.value}/follow-ups/records`, {
+      task_id: task.id,
+      doctor_id: task.doctorId || newTask.value.doctorId,
+      contact_type: task.type,
+      summary: task.content || '后台标记随访已完成'
+    })
+    task.status = 'green'
+    MessagePlugin.success(`成功执行 [${task.type}] 随访任务`)
+  } catch (error) {
+    MessagePlugin.error('执行随访任务失败')
+  }
 }
 
-function handleReschedule(task: Task) {
-  MessagePlugin.info(`已触发 [${task.type}] 随访的改期操作`)
+async function handleReschedule(task: Task) {
+  const current = task.dueDate || new Date().toISOString().slice(0, 10)
+  const nextDate = window.prompt('请输入新的计划执行日期（YYYY-MM-DD）', current)
+  if (!nextDate) return
+  try {
+    await request.put(`/api/admin/patients/${patientId.value}/follow-ups/${task.id}`, {
+      due_date: nextDate,
+      status: 'pending'
+    })
+    task.dueDate = nextDate
+    MessagePlugin.success(`已改期 [${task.type}] 随访`)
+  } catch (error) {
+    MessagePlugin.error('随访改期失败')
+  }
 }
 
-function handleCancel(index: number) {
-  tasks.value.splice(index, 1)
-  MessagePlugin.success('随访计划已取消')
+async function handleCancel(index: number) {
+  const task = tasks.value[index]
+  try {
+    await request.put(`/api/admin/patients/${patientId.value}/follow-ups/${task.id}`, {
+      status: 'cancelled'
+    })
+    tasks.value.splice(index, 1)
+    MessagePlugin.success('随访计划已取消')
+  } catch (error) {
+    MessagePlugin.error('取消随访计划失败')
+  }
 }
 
 function handleView(task: Task) {
   MessagePlugin.info(`查看随访详情: ${task.content}`)
 }
 
-function handleCreate() {
-  if (!newTask.value.dueDate || !newTask.value.content) {
-    MessagePlugin.warning('请填写计划日期和随访内容')
+async function handleCreate() {
+  if (!newTask.value.dueDate || !newTask.value.content || !newTask.value.doctorId) {
+    MessagePlugin.warning('请填写计划日期、执行医生和随访内容')
     return
   }
-  
-  const typeTag = newTask.value.type === '电话随访' ? 'blue' : newTask.value.type === '到店复查' ? 'green' : 'gold'
-  tasks.value.unshift({
-    type: newTask.value.type,
-    typeTag,
-    dueDate: newTask.value.dueDate,
-    executor: newTask.value.executor,
-    content: newTask.value.content,
-    status: 'gold'
-  })
-  
-  showCreate.value = false
-  newTask.value = { type: '电话随访', dueDate: '', executor: '古堪民', content: '' }
-  MessagePlugin.success('新建随访任务成功')
+
+  try {
+    await request.post(`/api/admin/patients/${patientId.value}/follow-ups`, {
+      doctor_id: newTask.value.doctorId,
+      title: newTask.value.type,
+      description: newTask.value.content,
+      due_date: newTask.value.dueDate
+    })
+    showCreate.value = false
+    newTask.value = { type: '电话随访', dueDate: '', doctorId: newTask.value.doctorId, content: '' }
+    MessagePlugin.success('新建随访任务成功')
+    fetchData()
+  } catch (error) {
+    MessagePlugin.error('新建随访任务失败')
+  }
 }
+
+onMounted(fetchData)
 </script>
 
 <template>
@@ -160,10 +228,8 @@ function handleCreate() {
         </div>
         <div class="form-group">
           <label class="form-label">执行人</label>
-          <select class="form-control" v-model="newTask.executor">
-            <option>古堪民</option>
-            <option>护理部</option>
-            <option>客服中心</option>
+          <select class="form-control" v-model="newTask.doctorId">
+            <option v-for="doctor in doctors" :key="doctor.id" :value="String(doctor.id)">{{ doctor.name }}</option>
           </select>
         </div>
         <div class="form-group">

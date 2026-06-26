@@ -60,9 +60,9 @@ export const autoUpdateExpiredAppointments = async () => {
     const nowInShanghai = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
     const todayStr = `${nowInShanghai.getFullYear()}-${String(nowInShanghai.getMonth() + 1).padStart(2, '0')}-${String(nowInShanghai.getDate()).padStart(2, '0')}`;
     await run(
-      `UPDATE appointments 
-       SET status = 'no_show', updated_at = CURRENT_TIMESTAMP 
-       WHERE appointment_date < ? 
+      `UPDATE appointments
+       SET status = 'no_show', updated_at = CURRENT_TIMESTAMP
+       WHERE appointment_date < ?
          AND status IN ('pending', 'confirmed', 'pending_payment')`,
       [todayStr]
     );
@@ -74,7 +74,7 @@ export const autoUpdateExpiredAppointments = async () => {
 // Initialize Tables
 export const initDB = async () => {
   console.log('Initializing MySQL connection...');
-  
+
   // 1. Temporary connection to make sure DB exists
   const connection = await mysql.createConnection({
     host: process.env.DB_HOST || '127.0.0.1',
@@ -82,7 +82,7 @@ export const initDB = async () => {
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || 'root'
   });
-  
+
   await connection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME || 'hanjing_clinic'}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
   await connection.end();
 
@@ -247,8 +247,8 @@ export const initDB = async () => {
 
   try {
     await query(`
-      UPDATE appointments 
-      SET 
+      UPDATE appointments
+      SET
         doctor_name = (SELECT name FROM doctors WHERE doctors.id = appointments.doctor_id),
         doctor_title = (SELECT title FROM doctors WHERE doctors.id = appointments.doctor_id),
         doctor_specialty = (SELECT specialty FROM doctors WHERE doctors.id = appointments.doctor_id),
@@ -346,6 +346,7 @@ export const initDB = async () => {
       doctor_specialty VARCHAR(100) DEFAULT NULL,
       doctor_avatar VARCHAR(255) DEFAULT NULL,
       consult_fee INT DEFAULT 0,
+      deposit_amount INT DEFAULT 0,
       store_name VARCHAR(100) DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -358,6 +359,12 @@ export const initDB = async () => {
       FOREIGN KEY (snore_assessment_id) REFERENCES snore_assessments(id) ON DELETE SET NULL
     );
   `);
+
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN deposit_amount INT DEFAULT 0;`);
+  } catch (err) {
+    // ignore
+  }
 
   // 11. medical_records
   await query(`
@@ -651,6 +658,22 @@ export const initDB = async () => {
     await query(`ALTER TABLE live_rooms ADD COLUMN tags JSON DEFAULT NULL`);
   } catch (e) {}
 
+  // 27.1 content_banners
+  await query(`
+    CREATE TABLE IF NOT EXISTS content_banners (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      title VARCHAR(255) NOT NULL,
+      preview_text VARCHAR(100) NOT NULL,
+      preview_color VARCHAR(255) DEFAULT 'linear-gradient(135deg, #1A3580, #3B6BF5)',
+      link_url VARCHAR(255) DEFAULT '',
+      validity VARCHAR(100) DEFAULT '长期',
+      status VARCHAR(30) DEFAULT 'inactive',
+      sort_order INT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+  `);
+
   // 28. community_posts
   await query(`
     CREATE TABLE IF NOT EXISTS community_posts (
@@ -687,15 +710,37 @@ export const initDB = async () => {
     );
   `);
 
+  // 29.1 community_reports
+  await query(`
+    CREATE TABLE IF NOT EXISTS community_reports (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      post_id BIGINT UNSIGNED NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      reason VARCHAR(100) NOT NULL,
+      status VARCHAR(30) DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
   // 30. roles
   await query(`
     CREATE TABLE IF NOT EXISTS roles (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       name VARCHAR(100) UNIQUE NOT NULL,
       code VARCHAR(50) UNIQUE NOT NULL,
+      description TEXT,
+      status VARCHAR(30) DEFAULT 'active',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  try {
+    await query(`ALTER TABLE roles ADD COLUMN description TEXT DEFAULT NULL`);
+  } catch (e) {}
+  try {
+    await query(`ALTER TABLE roles ADD COLUMN status VARCHAR(30) DEFAULT 'active'`);
+  } catch (e) {}
 
   // 31. permissions
   await query(`
@@ -903,7 +948,7 @@ export const initDB = async () => {
     if (recordsCount[0].count === 0) {
       const usersList = await query('SELECT id FROM users LIMIT 5');
       const today = new Date();
-      
+
       for (const u of usersList) {
         // 1. Seed wearing records for the past 7 days
         for (let i = 1; i <= 7; i++) {
@@ -913,7 +958,7 @@ export const initDB = async () => {
           const comfort = Math.floor(4 + Math.random() * 2); // 4 or 5
           const decibel = Math.floor(35 + Math.random() * 15);
           const apnea = Math.floor(Math.random() * 3);
-          
+
           const s = [
             "首次佩戴，有轻微异物感",
             "逐渐适应，无不适",
@@ -923,7 +968,7 @@ export const initDB = async () => {
             "调整后舒适度提升"
           ];
           const note = s[i % s.length];
-          
+
           await query(`
             INSERT INTO wearing_records (user_id, wearing_date, start_time, end_time, duration_mins, comfort_score, snore_decibel, apnea_events, note)
             VALUES (?, ?, '22:30:00', '06:30:00', ?, ?, ?, ?, ?)
@@ -985,7 +1030,7 @@ export const initDB = async () => {
     if (settingsCount[0].count === 0) {
       await query(`
         INSERT INTO system_settings (key_name, key_value, description)
-        VALUES 
+        VALUES
           ('booking_advance_days', '7', '预约提前天数'),
           ('booking_hours', '08:30 - 18:00', '每日可约时段'),
           ('booking_interval', '30', '时段间隔（分钟）'),
@@ -993,6 +1038,7 @@ export const initDB = async () => {
           ('allow_self_booking', 'true', '允许患者自助预约'),
           ('require_deposit', 'false', '预约需支付定金'),
           ('deposit_amount', '5000', '定金金额（分）'),
+          ('appointment_subscribe_template_ids', '', '预约订阅消息模板ID，多个用英文逗号分隔'),
           ('commission1', '15', '一级佣金比例'),
           ('commission2', '5', '二级佣金比例'),
           ('min_withdraw', '100', '最低提现金额'),
@@ -1014,7 +1060,7 @@ export const initDB = async () => {
   try {
     await query(`
       INSERT INTO products (id, name, category, image_url, price, original_price, description, stock, sales_count, status)
-      VALUES 
+      VALUES
         (1, '定制式可调舌型阻鼾器 HJ-MAD-03', 'device', '/static/product/hj-mad-03.png', 298000, 368000, '针对中轻度阻塞性睡眠呼吸暂停(OSAHS)及顽固打鼾设计，采用食品级高分子材质，下颌前移微调精度达0.5mm，智能监测传感器自动上传睡眠佩戴时长与质量数据。', 120, 58, 'on'),
         (2, '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', 'accessory', '/static/product/pillow.png', 4900, 6900, '专为阻鼾器高分子材料研发 of 温和除菌清洁片。能有效杀灭99.9%的口腔常见细菌，防止异味积聚，不损伤阻鼾器金属调节螺丝与树脂基托。', 800, 340, 'on'),
         (3, '鼾静智能阻鼾舒眠记忆枕', 'accessory', '/static/product/pillow.png', 29900, 39900, '人体工学设计，智能控温与防鼾姿势引导，提升整晚睡眠舒适度与深睡比例。', 150, 85, 'on'),
@@ -1022,7 +1068,7 @@ export const initDB = async () => {
         (5, '诊所专家诊断评估费', 'service', '/static/product/screening.png', 50000, 50000, '专家诊断评估费，包含专家一对一问诊及阻鼾器物理适配评估。', 99999, 650, 'on'),
         (6, '专业睡眠呼吸多导初筛服务套餐', 'service', '/static/product/screening.png', 19900, 29900, '包含一次线上睡眠嗜睡问卷评估、三晚鼾声监测报告、以及一次门诊专家面对面的物理阻鼾器适应性筛查与出诊挂号费用。', 9999, 125, 'on'),
         (7, '快递运费', 'service', '/static/product/screening.png', 1500, 1500, '顺丰快递或挂号邮寄服务费。', 99999, 500, 'on')
-      ON DUPLICATE KEY UPDATE 
+      ON DUPLICATE KEY UPDATE
         name = VALUES(name),
         category = VALUES(category),
         price = VALUES(price),

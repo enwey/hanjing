@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 
@@ -9,22 +10,70 @@ function handleExport() {
   MessagePlugin.success('导出报表成功！')
 }
 
-// Mock Leaderboard data
-const leaderBoard = ref([
-  { rank: 1, name: '赵芳芳', level: '钻石', orders: 342, commission: 18640, avatarBg: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', emoji: '💎' },
-  { rank: 2, name: '李雪琴', level: '金牌', orders: 98, commission: 5420, avatarBg: 'linear-gradient(135deg, #F59E0B, #D97706)', emoji: '🥇' },
-  { rank: 3, name: '孙大鹏', level: '银牌', orders: 12, commission: 680, avatarBg: 'linear-gradient(135deg, #9CA3AF, #6B7280)', emoji: '🥈' },
-  { rank: 4, name: '周小林', level: '银牌', orders: 18, commission: 1420, avatarBg: 'linear-gradient(135deg, #9CA3AF, #6B7280)', emoji: '🥈' },
-  { rank: 5, name: '王梦莹', level: '银牌', orders: 9, commission: 980, avatarBg: 'linear-gradient(135deg, #9CA3AF, #6B7280)', emoji: '🥈' }
-])
+const overview = ref({
+  totalCommission: 0,
+  activePromoters: 0,
+  promotedOrders: 0,
+  invitedUsers: 0
+})
 
-// Recent commission records
-const recentCommissions = ref([
-  { date: '06-04 14:30', patient: '李美玲', product: '睡眠监测服务', amount: 980, commission: 98, promoter: '李雪琴' },
-  { date: '05-28 15:30', patient: '周文博', product: '定制阻鼾器·标准型', amount: 3980, commission: 398, promoter: '赵芳芳' },
-  { date: '05-15 10:22', patient: '郑先生', product: '定制阻鼾器·舒适型', amount: 5680, commission: 682, promoter: '赵芳芳' },
-  { date: '05-12 09:15', patient: '孙先生', product: '定制阻鼾器·舒适型', amount: 5680, commission: 454, promoter: '孙大鹏' }
-])
+const leaderBoard = ref<any[]>([])
+const recentCommissions = ref<any[]>([])
+
+function yuan(value: number) {
+  return (Number(value || 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
+}
+
+function levelEmoji(level: string) {
+  if (level === 'diamond') return '💎'
+  if (level === 'gold') return '🥇'
+  if (level === 'silver') return '🥈'
+  return '🌱'
+}
+
+function levelLabel(level: string) {
+  if (level === 'diamond') return '钻石'
+  if (level === 'gold') return '金牌'
+  if (level === 'silver') return '银牌'
+  return '普通'
+}
+
+function formatTime(value: string) {
+  if (!value) return '—'
+  return value.replace('T', ' ').slice(5, 16)
+}
+
+async function fetchDistribution() {
+  try {
+    const [overviewRes, leaderboardRes, commissionRes]: any[] = await Promise.all([
+      request.get('/api/admin/distribution/overview'),
+      request.get('/api/admin/distribution/leaderboard'),
+      request.get('/api/admin/distribution/commissions')
+    ])
+    overview.value = overviewRes.data || overview.value
+    leaderBoard.value = (leaderboardRes.data || []).map((row: any, index: number) => ({
+      rank: index + 1,
+      name: row.nickname || '推广员',
+      level: levelLabel(row.level),
+      orders: Number(row.invites || 0),
+      commission: Number(row.total_commission || 0),
+      avatarBg: index === 0 ? 'linear-gradient(135deg, #8B5CF6, #6D28D9)' : 'linear-gradient(135deg, #F59E0B, #D97706)',
+      emoji: levelEmoji(row.level)
+    }))
+    recentCommissions.value = (commissionRes.data || []).map((row: any) => ({
+      date: formatTime(row.created_at),
+      patient: row.patient_name || '—',
+      product: row.product_names || row.order_no || '—',
+      amount: Number(row.order_amount || 0),
+      commission: Number(row.commission_amount || 0),
+      promoter: row.promoter_name || '推广员'
+    }))
+  } catch (error) {
+    MessagePlugin.error('加载分销总览失败')
+  }
+}
+
+onMounted(fetchDistribution)
 </script>
 
 <template>
@@ -48,7 +97,7 @@ const recentCommissions = ref([
           <div class="stat-card-icon gold">💰</div>
           <div class="stat-card-trend up">↑ 32%</div>
         </div>
-        <div class="stat-card-value" style="color:#F5A623;">¥12.8w</div>
+        <div class="stat-card-value" style="color:#F5A623;">¥{{ yuan(overview.totalCommission) }}</div>
         <div class="stat-card-label">累计佣金支出</div>
       </div>
       <div class="stat-card">
@@ -56,7 +105,7 @@ const recentCommissions = ref([
           <div class="stat-card-icon blue">👥</div>
           <div class="stat-card-trend up">↑ 15%</div>
         </div>
-        <div class="stat-card-value">486</div>
+        <div class="stat-card-value">{{ overview.activePromoters }}</div>
         <div class="stat-card-label">活跃推广员</div>
       </div>
       <div class="stat-card">
@@ -64,7 +113,7 @@ const recentCommissions = ref([
           <div class="stat-card-icon green">📦</div>
           <div class="stat-card-trend up">↑ 28%</div>
         </div>
-        <div class="stat-card-value">1,247</div>
+        <div class="stat-card-value">{{ overview.promotedOrders }}</div>
         <div class="stat-card-label">推广订单</div>
       </div>
       <div class="stat-card">
@@ -72,8 +121,8 @@ const recentCommissions = ref([
           <div class="stat-card-icon red">🔄</div>
           <div class="stat-card-trend up">↑ 5%</div>
         </div>
-        <div class="stat-card-value">68.2%</div>
-        <div class="stat-card-label">推广转化率</div>
+        <div class="stat-card-value">{{ overview.invitedUsers }}</div>
+        <div class="stat-card-label">累计邀请用户</div>
       </div>
     </div>
 
@@ -118,7 +167,7 @@ const recentCommissions = ref([
                   </span>
                 </td>
                 <td style="font-weight:600;">{{ row.orders }}</td>
-                <td style="font-weight:700;color:#F5A623;">¥{{ row.commission.toLocaleString() }}</td>
+                <td style="font-weight:700;color:#F5A623;">¥{{ yuan(row.commission) }}</td>
               </tr>
             </tbody>
           </table>
@@ -149,8 +198,8 @@ const recentCommissions = ref([
                 <td style="font-weight:600;color:#1F2937;">{{ row.promoter }}</td>
                 <td>{{ row.patient }}</td>
                 <td style="font-size:12px;color:#6B7280;">{{ row.product }}</td>
-                <td style="font-weight:600;">¥{{ row.amount }}</td>
-                <td style="font-weight:700;color:#22C55E;">+¥{{ row.commission }}</td>
+                <td style="font-weight:600;">¥{{ yuan(row.amount) }}</td>
+                <td style="font-weight:700;color:#22C55E;">+¥{{ yuan(row.commission) }}</td>
               </tr>
             </tbody>
           </table>

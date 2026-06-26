@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 const route = useRoute()
 
-const roleId = ref(route.params.id || '1')
-const isEdit = ref(true)
+const roleId = ref(route.params.id ? String(route.params.id) : '')
+const isEdit = ref(!!route.params.id)
 
-const roleName = ref('门店管理员')
-const roleDesc = ref('负责管理所属门店的预约、患者、医生排班等日常运营事务')
+const roleName = ref('')
+const roleDesc = ref('')
 
 interface Member {
   name: string;
@@ -19,12 +20,7 @@ interface Member {
   store: string;
 }
 
-const members = ref<Member[]>([
-  { name: '陈经理', avatarChar: '陈', avatarColor: 'var(--success-500)', store: '龙岗总店' },
-  { name: '林主任', avatarChar: '林', avatarColor: 'var(--primary-500)', store: '南山分院' },
-  { name: '赵主管', avatarChar: '赵', avatarColor: '#9333EA', store: '福田门诊部' },
-  { name: '钱助理', avatarChar: '钱', avatarColor: 'var(--warning-500)', store: '广州天河店' }
-])
+const members = ref<Member[]>([])
 
 interface PermissionRow {
   module: string;
@@ -36,15 +32,26 @@ interface PermissionRow {
 }
 
 const permissionMatrix = ref<PermissionRow[]>([
-  { module: '📅 预约管理', view: true, add: true, edit: true, delete: false, audit: true },
-  { module: '🧑‍⚕️ 患者管理', view: true, add: true, edit: true, delete: false, audit: null },
-  { module: '👨‍⚕️ 医生管理', view: true, add: false, edit: true, delete: false, audit: null },
-  { module: '🏥 门店管理', view: true, add: false, edit: false, delete: false, audit: null },
-  { module: '📦 订单管理', view: true, add: null, edit: true, delete: false, audit: null },
-  { module: '💰 分销管理', view: false, add: false, edit: false, delete: false, audit: false },
-  { module: '⚙️ 系统设置', view: false, add: false, edit: false, delete: false, audit: false },
-  { module: '📋 操作日志', view: true, add: null, edit: false, delete: false, audit: null }
+  { module: 'appointment', view: false, add: false, edit: false, delete: false, audit: false },
+  { module: 'patient', view: false, add: false, edit: false, delete: false, audit: null },
+  { module: 'doctor', view: false, add: false, edit: false, delete: false, audit: null },
+  { module: 'store', view: false, add: false, edit: false, delete: false, audit: null },
+  { module: 'order', view: false, add: null, edit: false, delete: false, audit: null },
+  { module: 'distribution', view: false, add: false, edit: false, delete: false, audit: false },
+  { module: 'system', view: false, add: false, edit: false, delete: false, audit: false },
+  { module: 'audit_log', view: false, add: null, edit: false, delete: false, audit: null }
 ])
+
+const moduleLabels: Record<string, string> = {
+  appointment: '预约管理',
+  patient: '患者管理',
+  doctor: '医生管理',
+  store: '门店管理',
+  order: '订单管理',
+  distribution: '分销管理',
+  system: '系统设置',
+  audit_log: '操作日志'
+}
 
 const showAddMember = ref(false)
 const newMemberName = ref('')
@@ -52,7 +59,7 @@ const newMemberStore = ref('龙岗总店')
 
 function removeMember(index: number) {
   members.value.splice(index, 1)
-  MessagePlugin.success('已从该角色移除成员')
+  MessagePlugin.warning('成员角色调整请到管理员账号页保存')
 }
 
 function handleAddMember() {
@@ -60,25 +67,82 @@ function handleAddMember() {
     MessagePlugin.warning('请填写成员姓名')
     return
   }
-  members.value.push({
-    name: newMemberName.value,
-    avatarChar: newMemberName.value.charAt(0),
-    avatarColor: 'var(--primary-500)',
-    store: newMemberStore.value
-  })
-  showAddMember.value = false
-  newMemberName.value = ''
-  MessagePlugin.success('已成功添加新成员')
+  MessagePlugin.warning('成员角色调整请到管理员账号页操作')
 }
 
-function handleSave() {
-  MessagePlugin.success('保存角色及权限矩阵成功')
-  router.push('/permission')
+function buildPermissions() {
+  const permissions: string[] = []
+  permissionMatrix.value.forEach(row => {
+    if (row.view) permissions.push(`${row.module}:view`)
+    if (row.add) permissions.push(`${row.module}:add`)
+    if (row.edit) permissions.push(`${row.module}:edit`)
+    if (row.delete) permissions.push(`${row.module}:delete`)
+    if (row.audit) permissions.push(`${row.module}:audit`)
+  })
+  return permissions
+}
+
+function applyPermissions(permissions: string[]) {
+  permissionMatrix.value.forEach(row => {
+    row.view = permissions.includes(`${row.module}:view`)
+    if (row.add !== null) row.add = permissions.includes(`${row.module}:add`)
+    row.edit = permissions.includes(`${row.module}:edit`)
+    row.delete = permissions.includes(`${row.module}:delete`)
+    if (row.audit !== null) row.audit = permissions.includes(`${row.module}:audit`)
+  })
+}
+
+async function fetchRole() {
+  if (!isEdit.value) return
+  const res: any = await request.get('/api/admin/roles')
+  const role = (res.data || []).find((row: any) => String(row.id) === roleId.value)
+  if (!role) return
+  roleName.value = role.name
+  roleDesc.value = role.description || ''
+  applyPermissions(role.permissions || [])
+
+  const usersRes: any = await request.get('/api/admin/users')
+  members.value = (usersRes.data || [])
+    .filter((row: any) => String(row.role_id) === roleId.value)
+    .map((row: any) => ({
+      name: row.name || row.username,
+      avatarChar: (row.name || row.username || '管').charAt(0),
+      avatarColor: 'var(--primary-500)',
+      store: row.store_name || '全部门店'
+    }))
+}
+
+async function handleSave() {
+  if (!roleName.value.trim()) {
+    MessagePlugin.warning('请填写角色名称')
+    return
+  }
+  try {
+    const payload = {
+      name: roleName.value,
+      description: roleDesc.value,
+      status: 'active',
+      permissions: buildPermissions()
+    }
+    if (isEdit.value) {
+      await request.put(`/api/admin/roles/${roleId.value}`, payload)
+    } else {
+      await request.post('/api/admin/roles', payload)
+    }
+    MessagePlugin.success('保存角色及权限矩阵成功')
+    router.push('/permission')
+  } catch (error) {
+    MessagePlugin.error('保存角色失败')
+  }
 }
 
 function handleCancel() {
   router.push('/permission')
 }
+
+onMounted(() => {
+  fetchRole()
+})
 </script>
 
 <template>
@@ -164,7 +228,7 @@ function handleCancel() {
         </thead>
         <tbody>
           <tr v-for="(row, idx) in permissionMatrix" :key="idx">
-            <td style="font-weight: 600; color: #1F2937;">{{ row.module }}</td>
+            <td style="font-weight: 600; color: #1F2937;">{{ moduleLabels[row.module] || row.module }}</td>
             <td>
               <input type="checkbox" v-model="row.view" class="custom-checkbox">
             </td>

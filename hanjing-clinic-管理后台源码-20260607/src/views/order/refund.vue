@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 interface RefundRequest {
   id: string;
@@ -16,28 +17,9 @@ interface RefundRequest {
   status: string; // pending, approved, rejected
 }
 
-const baseRefunds = [
-  { id: '1', refundNo: 'RF20260529001', orderNo: '#2026052905', patient: '周小燕', avatarChar: '周', avatarColor: '#10B981', product: '复查+监测', amount: 580, reason: '临时有事无法到店', applyTime: '5/29 13:05', status: 'pending' },
-  { id: '2', refundNo: 'RF20260528003', orderNo: '#2026052807', patient: '何大海', avatarChar: '何', avatarColor: '#F59E0B', product: '止鼾器定制', amount: 1280, reason: '佩戴不适，要求退货', applyTime: '5/28 16:42', status: 'pending' },
-  { id: '3', refundNo: 'RF20260528001', orderNo: '#2026052802', patient: '黄丽华', avatarChar: '黄', avatarColor: '#9333EA', product: '初诊挂号', amount: 200, reason: '预约时间冲突', applyTime: '5/28 09:18', status: 'pending' }
-]
+const refunds = ref<RefundRequest[]>([])
 
-const refunds = ref<RefundRequest[]>(
-  Array.from({ length: 35 }, (_, i) => {
-    const base = baseRefunds[i % baseRefunds.length]
-    return {
-      ...base,
-      id: String(i + 1),
-      refundNo: `RF202605${29 - (i % 5)}00${i + 1}`,
-      orderNo: `#202605${29 - (i % 5)}0${i + 1}`,
-      patient: `${base.patient}-${i + 1}`,
-      amount: base.amount + (i % 4) * 100,
-      status: i % 4 === 3 ? 'approved' : (i % 4 === 2 ? 'rejected' : 'pending')
-    }
-  })
-)
-
-const selectedRefund = ref<RefundRequest | null>(refunds.value[0])
+const selectedRefund = ref<RefundRequest | null>(null)
 
 const currentPage = ref(1)
 const pageSize = ref(30)
@@ -71,21 +53,60 @@ function showDetail(row: RefundRequest) {
   selectedRefund.value = row
 }
 
-function handleApprove(row: RefundRequest) {
-  row.status = 'approved'
-  MessagePlugin.success(`已同意退款单 ${row.refundNo}`)
-  if (selectedRefund.value?.id === row.id) {
-    selectedRefund.value = null
+function formatTime(value: string) {
+  if (!value) return '—'
+  return value.replace('T', ' ').slice(0, 16)
+}
+
+function mapRefund(row: any): RefundRequest {
+  return {
+    id: String(row.id),
+    refundNo: row.refundNo,
+    orderNo: row.orderNo,
+    patient: row.patient,
+    avatarChar: (row.patient || '患').charAt(0),
+    avatarColor: '#10B981',
+    product: row.product,
+    amount: Number(row.amount || 0) / 100,
+    reason: row.reason || '用户申请退款',
+    applyTime: formatTime(row.applyTime),
+    status: row.status
   }
 }
 
-function handleReject(row: RefundRequest) {
-  row.status = 'rejected'
-  MessagePlugin.error(`已拒绝退款单 ${row.refundNo}`)
-  if (selectedRefund.value?.id === row.id) {
-    selectedRefund.value = null
+async function fetchRefunds() {
+  try {
+    const res: any = await request.get('/api/admin/orders/refunds')
+    refunds.value = (res.data || []).map(mapRefund)
+    selectedRefund.value = refunds.value[0] || null
+  } catch (error) {
+    MessagePlugin.error('加载退款列表失败')
   }
 }
+
+async function handleApprove(row: RefundRequest) {
+  try {
+    await request.put(`/api/admin/orders/${row.id}/refund`, { approve: true })
+    row.status = 'approved'
+    MessagePlugin.success(`已同意退款单 ${row.refundNo}`)
+    if (selectedRefund.value?.id === row.id) selectedRefund.value = null
+  } catch (error) {
+    MessagePlugin.error('退款审批通过失败')
+  }
+}
+
+async function handleReject(row: RefundRequest) {
+  try {
+    await request.put(`/api/admin/orders/${row.id}/refund`, { approve: false })
+    row.status = 'rejected'
+    MessagePlugin.error(`已拒绝退款单 ${row.refundNo}`)
+    if (selectedRefund.value?.id === row.id) selectedRefund.value = null
+  } catch (error) {
+    MessagePlugin.error('退款驳回失败')
+  }
+}
+
+onMounted(fetchRefunds)
 </script>
 
 <template>

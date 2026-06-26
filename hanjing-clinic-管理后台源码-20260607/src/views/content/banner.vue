@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 interface Banner {
   id: string;
@@ -13,25 +14,8 @@ interface Banner {
   status: string; // active (展示中), inactive (已下架), expired (已过期)
 }
 
-const baseBanners = [
-  { id: '1', sort: 1, title: '世界睡眠日特惠 · 监测套餐立减500', previewText: '💤 睡眠', previewColor: 'linear-gradient(135deg, #1A3580, #3B6BF5)', link: '→ 商品详情（睡眠监测套餐）', validity: '5/1 - 6/30', status: 'active' },
-  { id: '2', sort: 2, title: '推荐有礼 · 赚取高额佣金', previewText: '💰 分销', previewColor: 'linear-gradient(135deg, #F5A623, #FFD700)', link: '→ 分销中心', validity: '长期', status: 'active' },
-  { id: '3', sort: 3, title: '古堪民主任 · 20年鼾症诊疗经验', previewText: '👨‍⚕️ 医生', previewColor: 'linear-gradient(135deg, #1A9D5C, #3ABE80)', link: '→ 医生详情（古堪民）', validity: '长期', status: 'active' },
-  { id: '4', sort: 4, title: '福田门诊部 · 盛大开业', previewText: '🏥 新店', previewColor: '#9CA3AF', link: '→ 门店详情（福田）', validity: '4/1 - 4/30', status: 'expired' }
-]
-
-const banners = ref<Banner[]>(
-  Array.from({ length: 38 }, (_, i) => {
-    const base = baseBanners[i % baseBanners.length]
-    return {
-      ...base,
-      id: String(i + 1),
-      sort: i + 1,
-      title: `${base.title.split(' · ')[0]} (${i + 1})`,
-      status: i % 3 === 0 ? 'active' : (i % 3 === 1 ? 'inactive' : 'expired')
-    }
-  })
-)
+const banners = ref<Banner[]>([])
+const loading = ref(false)
 
 const currentPage = ref(1)
 const pageSize = ref(30)
@@ -71,8 +55,46 @@ const formData = ref<Partial<Banner>>({
   validity: '长期'
 })
 
+function mapBanner(row: any): Banner {
+  return {
+    id: String(row.id),
+    sort: Number(row.sort_order || row.sort || 0),
+    title: row.title || '',
+    previewText: row.preview_text || row.previewText || '',
+    previewColor: row.preview_color || row.previewColor || 'linear-gradient(135deg, #1A3580, #3B6BF5)',
+    link: row.link_url || row.link || '',
+    validity: row.validity || '长期',
+    status: row.status || 'inactive'
+  }
+}
+
+function toPayload(banner: Partial<Banner>) {
+  return {
+    title: banner.title,
+    preview_text: banner.previewText,
+    preview_color: banner.previewColor,
+    link_url: banner.link,
+    validity: banner.validity,
+    status: banner.status,
+    sort_order: banner.sort
+  }
+}
+
+async function fetchBanners() {
+  loading.value = true
+  try {
+    const res: any = await request.get('/api/admin/content/banners')
+    banners.value = (res.data || []).map(mapBanner)
+  } catch (error) {
+    MessagePlugin.error('加载轮播图失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 function handleAdd() {
   isEdit.value = false
+  editIndex.value = -1
   formData.value = {
     title: '',
     previewText: '',
@@ -83,7 +105,7 @@ function handleAdd() {
   showEdit.value = true
 }
 
-function handleEdit(id: string) {
+async function handleEdit(id: string) {
   const idx = banners.value.findIndex(b => b.id === id)
   if (idx === -1) return
   isEdit.value = true
@@ -92,7 +114,7 @@ function handleEdit(id: string) {
   showEdit.value = true
 }
 
-function handleToggle(id: string) {
+async function handleToggle(id: string) {
   const idx = banners.value.findIndex(b => b.id === id)
   if (idx === -1) return
   const b = banners.value[idx]
@@ -100,16 +122,17 @@ function handleToggle(id: string) {
     MessagePlugin.warning('过期的轮播图无法重新上架，请先修改有效期')
     return
   }
-  if (b.status === 'active') {
-    b.status = 'inactive'
-    MessagePlugin.success(`轮播图 [${b.title}] 已下架`)
-  } else {
-    b.status = 'active'
-    MessagePlugin.success(`轮播图 [${b.title}] 已上架展示`)
+  const nextStatus = b.status === 'active' ? 'inactive' : 'active'
+  try {
+    await request.put(`/api/admin/content/banners/${id}`, { status: nextStatus })
+    b.status = nextStatus
+    MessagePlugin.success(`轮播图 [${b.title}] 已${nextStatus === 'active' ? '上架展示' : '下架'}`)
+  } catch (error) {
+    MessagePlugin.error('更新轮播图状态失败')
   }
 }
 
-function moveSort(id: string, direction: 'up' | 'down') {
+async function moveSort(id: string, direction: 'up' | 'down') {
   const index = banners.value.findIndex(b => b.id === id)
   if (index === -1) return
   if (direction === 'up' && index > 0) {
@@ -123,45 +146,60 @@ function moveSort(id: string, direction: 'up' | 'down') {
   }
   // Reset sort sequence number
   banners.value.forEach((b, idx) => b.sort = idx + 1)
-  MessagePlugin.success('已调整展示顺序')
+  try {
+    await Promise.all(
+      banners.value.map(b => request.put(`/api/admin/content/banners/${b.id}`, { sort_order: b.sort }))
+    )
+    MessagePlugin.success('已调整展示顺序')
+  } catch (error) {
+    MessagePlugin.error('保存排序失败')
+    fetchBanners()
+  }
 }
 
-function handleDelete(id: string) {
+async function handleDelete(id: string) {
   const idx = banners.value.findIndex(b => b.id === id)
   if (idx === -1) return
-  banners.value.splice(idx, 1)
-  // Re-sort
-  banners.value.forEach((b, i) => b.sort = i + 1)
-  MessagePlugin.success('已成功删除轮播图')
+  try {
+    await request.delete(`/api/admin/content/banners/${id}`)
+    banners.value.splice(idx, 1)
+    banners.value.forEach((b, i) => b.sort = i + 1)
+    MessagePlugin.success('已成功删除轮播图')
+  } catch (error) {
+    MessagePlugin.error('删除轮播图失败')
+  }
 }
 
-function handleSave() {
+async function handleSave() {
   if (!formData.value.title || !formData.value.previewText) {
     MessagePlugin.warning('请填写标题与预览文字')
     return
   }
   
-  if (isEdit.value) {
-    banners.value[editIndex.value] = {
-      ...banners.value[editIndex.value],
-      ...formData.value
-    } as Banner
-    MessagePlugin.success('保存轮播图配置成功')
-  } else {
-    banners.value.push({
-      id: String(Date.now()),
-      sort: banners.value.length + 1,
-      title: formData.value.title || '',
-      previewText: formData.value.previewText || '',
-      previewColor: formData.value.previewColor || 'linear-gradient(135deg, #1A3580, #3B6BF5)',
-      link: formData.value.link || '→ 首页',
-      validity: formData.value.validity || '长期',
-      status: 'active'
-    })
-    MessagePlugin.success('新增轮播图成功')
+  try {
+    if (isEdit.value && editIndex.value >= 0) {
+      const nextBanner = {
+        ...banners.value[editIndex.value],
+        ...formData.value
+      } as Banner
+      await request.put(`/api/admin/content/banners/${nextBanner.id}`, toPayload(nextBanner))
+      MessagePlugin.success('保存轮播图配置成功')
+    } else {
+      await request.post('/api/admin/content/banners', toPayload({
+        ...formData.value,
+        sort: banners.value.length + 1,
+        status: 'active'
+      }))
+      MessagePlugin.success('新增轮播图成功')
+    }
+    showEdit.value = false
+    fetchBanners()
+  } catch (error) {
+    MessagePlugin.error(isEdit.value ? '保存轮播图失败' : '新增轮播图失败')
   }
-  showEdit.value = false
 }
+
+onMounted(fetchBanners)
 </script>
 
 <template>

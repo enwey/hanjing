@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 const searchKeyword = ref('')
@@ -23,60 +24,7 @@ interface Distributor {
 const currentPage = ref(1)
 const pageSize = ref(30)
 
-const initialDistributors: Distributor[] = [
-  { id: '1', name: '赵芳芳', phone: '138****1111', level: '钻石', firstLevelDownline: 56, secondLevelDownline: 128,
-    totalOrders: 342, totalAmount: 186400, totalCommission: 18640, withdrawableCommission: 3280,
-    joinDate: '2025-09-15', source: '患者转化', status: 'active',
-    commissions: [
-      { date: '2026-06-04', orderNo: 'OD202606040002', patient: '李美玲', product: '睡眠监测服务', amount: 980, rate: '10%', commission: 98 },
-      { date: '2026-05-28', orderNo: 'OD202605280007', patient: '周文博', product: '定制阻鼾器·标准型', amount: 3980, rate: '10%', commission: 398 },
-      { date: '2026-05-15', orderNo: 'OD202605150009', patient: '郑先生', product: '定制阻鼾器·舒适型', amount: 5680, rate: '12%', commission: 682 },
-    ]
-  },
-  { id: '2', name: '李雪琴', phone: '139****2345', level: '金牌', firstLevelDownline: 23, secondLevelDownline: 45,
-    totalOrders: 98, totalAmount: 54200, totalCommission: 5420, withdrawableCommission: 860,
-    joinDate: '2025-10-08', source: '患者转化', status: 'active',
-    commissions: [
-      { date: '2026-06-02', orderNo: 'OD202606020005', patient: '陈大明', product: '年度随访套餐', amount: 2980, rate: '10%', commission: 298 },
-      { date: '2026-05-20', orderNo: 'OD202605200010', patient: '黄女士', product: '定制阻鼾器·标准型', amount: 3980, rate: '10%', commission: 398 },
-    ]
-  },
-  { id: '3', name: '孙大鹏', phone: '136****7890', level: '银牌', firstLevelDownline: 5, secondLevelDownline: 3,
-    totalOrders: 12, totalAmount: 6800, totalCommission: 680, withdrawableCommission: 120,
-    joinDate: '2025-11-20', source: '医生推荐', status: 'active',
-    commissions: [
-      { date: '2026-05-28', orderNo: 'OD202605280011', patient: '孙先生', product: '定制阻鼾器·舒适型', amount: 5680, rate: '8%', commission: 454 },
-    ]
-  },
-  { id: '4', name: '周小林', phone: '137****6666', level: '银牌', firstLevelDownline: 12, secondLevelDownline: 19,
-    totalOrders: 18, totalAmount: 14200, totalCommission: 1420, withdrawableCommission: 0,
-    joinDate: '2025-12-05', source: '门店推广', status: 'active',
-    commissions: []
-  },
-  { id: '5', name: '王梦莹', phone: '135****5555', level: '银牌', firstLevelDownline: 8, secondLevelDownline: 14,
-    totalOrders: 9, totalAmount: 9800, totalCommission: 980, withdrawableCommission: 180,
-    joinDate: '2026-01-15', source: '直播引流', status: 'active',
-    commissions: []
-  },
-  { id: '6', name: '刘志明', phone: '133****4444', level: '青铜', firstLevelDownline: 4, secondLevelDownline: 6,
-    totalOrders: 4, totalAmount: 3560, totalCommission: 356, withdrawableCommission: 89,
-    joinDate: '2026-03-10', source: '患者转化', status: 'active',
-    commissions: []
-  },
-]
-
-const distributors = ref<Distributor[]>(
-  Array.from({ length: 35 }, (_, index) => {
-    const base = initialDistributors[index % initialDistributors.length]
-    return {
-      ...base,
-      id: String(index + 1),
-      name: index < 6 ? base.name : base.name.substring(0, 1) + '推广员' + (index + 1),
-      phone: base.phone,
-      status: (index % 5 === 0) ? 'inactive' : 'active'
-    }
-  })
-)
+const distributors = ref<Distributor[]>([])
 
 const levelTabs = ['全部', '银牌', '金牌', '钻石']
 
@@ -117,6 +65,46 @@ function handleExport() {
   MessagePlugin.success('导出报表成功！')
 }
 
+function levelLabel(level: string) {
+  if (level === 'diamond') return '钻石'
+  if (level === 'gold') return '金牌'
+  if (level === 'silver') return '银牌'
+  return '青铜'
+}
+
+function formatDate(value: string) {
+  if (!value) return '—'
+  return value.slice(0, 10)
+}
+
+function yuan(value: number) {
+  return Number(value || 0) / 100
+}
+
+async function fetchDistributors() {
+  try {
+    const res: any = await request.get('/api/admin/distribution/promoters')
+    distributors.value = (res.data || []).map((row: any) => ({
+      id: String(row.id),
+      name: row.nickname || '推广员',
+      phone: row.user_phone || '',
+      level: levelLabel(row.level),
+      firstLevelDownline: Number(row.invitees_count || 0),
+      secondLevelDownline: 0,
+      totalOrders: 0,
+      totalAmount: 0,
+      totalCommission: yuan(row.total_commission),
+      withdrawableCommission: yuan(row.available_commission),
+      joinDate: formatDate(row.created_at),
+      source: '用户申请',
+      status: row.status || 'active',
+      commissions: []
+    }))
+  } catch (error) {
+    MessagePlugin.error('加载推广员列表失败')
+  }
+}
+
 function getAvatarBg(level: string) {
   if (level === '钻石') return 'linear-gradient(135deg, #8B5CF6, #6D28D9)'
   if (level === '金牌') return 'linear-gradient(135deg, #F59E0B, #D97706)'
@@ -137,6 +125,8 @@ function getLevelEmoji(level: string) {
   if (level === '银牌') return '🥈'
   return '🥉'
 }
+
+onMounted(fetchDistributors)
 </script>
 
 <template>

@@ -86,40 +86,38 @@ const o = () => "../../components/base/hj-navbar.js",
           },
         });
       }
+      function requestWxPay(payParams) {
+        if (payParams.mockPayment) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          e.index.requestPayment({
+            timeStamp: payParams.timeStamp,
+            nonceStr: payParams.nonceStr,
+            package: payParams.package,
+            signType: payParams.signType,
+            paySign: payParams.paySign,
+            success: resolve,
+            fail: reject
+          });
+        });
+      }
       async function g(t) {
         if (t.status === 'pending_payment') {
           e.index.showLoading({ title: "发起支付..." });
           try {
             const api = require("../../api/index.js");
             const payRes = await api.payAppointmentDeposit(t.id);
+            const payParams = payRes.data || payRes;
             e.index.hideLoading();
-
-            e.index.requestPayment({
-              timeStamp: payRes.data.timeStamp,
-              nonceStr: payRes.data.nonceStr,
-              package: payRes.data.package,
-              signType: payRes.data.signType,
-              paySign: payRes.data.paySign,
-              success: async (res) => {
-                e.index.showLoading({ title: "同步支付状态..." });
-                try {
-                  await api.confirmAppointmentPayment(t.id);
-                  e.index.hideLoading();
-                  e.index.showToast({ title: "支付成功", icon: "success" });
-                  await n.fetchAppointments();
-                  p();
-                } catch (err) {
-                  e.index.hideLoading();
-                  e.index.showToast({ title: "支付同步失败，请联系客服", icon: "none" });
-                }
-              },
-              fail: (err) => {
-                e.index.showToast({ title: "已取消支付", icon: "none" });
-              }
-            });
+            await requestWxPay(payParams);
+            e.index.showLoading({ title: "同步支付状态..." });
+            await api.confirmAppointmentPayment(t.id);
+            e.index.hideLoading();
+            e.index.showToast({ title: "支付成功", icon: "success" });
+            await n.fetchAppointments();
+            p();
           } catch (err) {
             e.index.hideLoading();
-            e.index.showToast({ title: "发起支付失败，请稍后重试", icon: "none" });
+            e.index.showToast({ title: err && err.errMsg ? "已取消支付" : "发起支付失败，请稍后重试", icon: "none" });
           }
           return;
         }

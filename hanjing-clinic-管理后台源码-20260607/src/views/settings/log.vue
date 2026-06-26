@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 interface LogEntry {
   id: string;
@@ -13,37 +15,7 @@ interface LogEntry {
   status: 'success' | 'fail';
 }
 
-const baseLogs = [
-  { id: '1', time: '2026-06-05 16:32:15', operator: '陈经理', role: '超级管理员', module: '系统设置', action: '启用账号', detail: '启用管理员账号 [李运营]', ip: '192.168.1.100', status: 'success' },
-  { id: '2', time: '2026-06-05 15:10:45', operator: '李明辉', role: '医生/技师', module: '患者管理', action: '修改健康参数', detail: '修改患者 [张建国] 的阻鼾器下颌前移量 (2.0mm -> 4.0mm)', ip: '192.168.2.45', status: 'success' },
-  { id: '3', time: '2026-06-05 14:23:10', operator: '陈经理', role: '超级管理员', module: '分销管理', action: '提现审批', detail: '审核通过分销商 [赵芳芳] 的提现申请 (单号：TX20260529001，金额：¥1200.00)', ip: '192.168.1.100', status: 'success' },
-  { id: '4', time: '2026-06-04 18:30:12', operator: '赵经理', role: '门店管理员', module: '医生管理', action: '修改排班', detail: '调整医生 [李明辉] 2026-06-10 的出诊排班为 [下午半天]', ip: '192.168.1.155', status: 'success' },
-  { id: '5', time: '2026-06-04 11:15:00', operator: '陈经理', role: '超级管理员', module: '患者管理', action: '查询敏感数据', detail: '导出患者 [张建国]、[李美玲] 的完整身份证号与就诊病历记录', ip: '192.168.1.100', status: 'success' },
-  { id: '6', time: '2026-06-03 14:22:15', operator: '李运营', role: '内容管理员', module: '内容管理', action: '审核发帖', detail: '审核通过社区帖子 [佩戴阻鼾器三个月感受分享]', ip: '192.168.1.121', status: 'success' },
-  { id: '7', time: '2026-06-02 09:45:11', operator: '赵经理', role: '门店管理员', module: '门店管理', action: '修改门店信息', detail: '更新 [南山分院] 的营业时间为 09:00 - 21:00', ip: '192.168.1.155', status: 'success' },
-  { id: '8', time: '2026-06-01 10:12:35', operator: '李运营', role: '内容管理员', module: '系统设置', action: '密码修改', detail: '尝试修改管理员密码', ip: '192.168.1.121', status: 'fail' }
-]
-
-const logs = ref<LogEntry[]>(
-  Array.from({ length: 42 }, (_, i) => {
-    const base = baseLogs[i % baseLogs.length]
-    const date = new Date(new Date('2026-06-05 16:32:15').getTime() - i * 3600 * 1000 * 2) // 2 hours apart
-    const timeStr = date.getFullYear() + '-' +
-      String(date.getMonth() + 1).padStart(2, '0') + '-' +
-      String(date.getDate()).padStart(2, '0') + ' ' +
-      String(date.getHours()).padStart(2, '0') + ':' +
-      String(date.getMinutes()).padStart(2, '0') + ':' +
-      String(date.getSeconds()).padStart(2, '0')
-    return {
-      ...base,
-      id: String(i + 1),
-      time: timeStr,
-      operator: `${base.operator}-${i + 1}`,
-      detail: `${base.detail} (日志审计 #${i + 1})`,
-      status: i % 10 === 9 ? 'fail' : 'success'
-    }
-  })
-)
+const logs = ref<LogEntry[]>([])
 
 /* ---- 筛选与搜索 ---- */
 const searchKeyword = ref('')
@@ -77,6 +49,65 @@ const actionOptions = [
   { label: '启用账号', value: '启用账号' },
 ]
 
+const actionLabels: Record<string, string> = {
+  login: '登录',
+  create_role: '新增角色',
+  update_role: '修改角色',
+  create_banner: '新增轮播图',
+  update_banner: '修改轮播图',
+  delete_banner: '删除轮播图',
+  approve_withdraw: '提现审批',
+  reject_withdraw: '提现驳回',
+  approve_refund: '退款审批',
+  reject_refund: '退款驳回',
+  create_cashier_order: '新增收银订单',
+  complete_order: '完成订单',
+  notify_order_arrival: '到店通知',
+  complete_consultation: '完成接诊'
+}
+
+const moduleLabels: Record<string, string> = {
+  admin: '系统设置',
+  role: '系统设置',
+  content_banner: '内容管理',
+  withdraw: '分销管理',
+  order: '订单管理',
+  appointment: '预约管理',
+  medical_record: '患者管理',
+  doctor: '医生管理',
+  store: '门店管理',
+  patient: '患者管理'
+}
+
+function formatTime(value: string) {
+  if (!value) return '—'
+  return value.replace('T', ' ').slice(0, 19)
+}
+
+async function fetchLogs() {
+  try {
+    const res: any = await request.get('/api/admin/logs')
+    logs.value = (res.data || []).map((row: any) => {
+      const detailParts = []
+      if (row.target_type) detailParts.push(`对象：${row.target_type}${row.target_id ? `#${row.target_id}` : ''}`)
+      if (row.details) detailParts.push(`详情：${row.details}`)
+      return {
+        id: String(row.id),
+        time: formatTime(row.created_at),
+        operator: row.operator_name || row.username || '系统',
+        role: row.role_name || '—',
+        module: moduleLabels[row.target_type] || row.target_type || '系统',
+        action: actionLabels[row.action] || row.action,
+        detail: detailParts.join('；') || row.action,
+        ip: '—',
+        status: 'success'
+      }
+    })
+  } catch (error) {
+    MessagePlugin.error('加载操作日志失败')
+  }
+}
+
 const filteredLogs = computed(() => {
   return logs.value.filter(l => {
     const matchKeyword = l.operator.includes(searchKeyword.value) || l.detail.includes(searchKeyword.value) || l.ip.includes(searchKeyword.value)
@@ -91,6 +122,8 @@ const paginatedLogs = computed(() => {
   const end = start + pageSize.value
   return filteredLogs.value.slice(start, end)
 })
+
+onMounted(fetchLogs)
 </script>
 
 <template>

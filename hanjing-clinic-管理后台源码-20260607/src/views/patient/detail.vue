@@ -21,14 +21,14 @@ const patient = ref({
   age: 52,
   level: 'VIP',
   source: '小程序',
-  referrer: '赵芳芳（钻石推广员）',
+  referrer: '无推荐人',
   regDate: '2024-01-15',
   totalVisits: 0,
   totalSpent: 0,
   commissionRate: '10%',
   nextFollowup: '待定',
-  diagnosis: '阻塞性睡眠呼吸暂停综合征（OSAHS）',
-  plan: '定制阻鼾器 HJ-MAD-03',
+  diagnosis: '暂无诊断记录',
+  plan: '暂无治疗方案',
   lastVisit: '暂无就诊'
 })
 
@@ -73,14 +73,14 @@ const loadPatientDetails = async () => {
       age: p.age || 30,
       level: levelMap[p.member_level] || '普通',
       source: p.source === 'walk_in' ? '门店' : '小程序',
-      referrer: '系统分配',
+      referrer: p.referrer_name || '无推荐人',
       regDate: p.created_at ? p.created_at.substring(0, 10) : '2026-06-01',
       totalVisits: p.appointments ? p.appointments.length : 0,
       totalSpent: (p.total_spent || 0) / 100,
       commissionRate: p.member_level === 'diamond' ? '15%' : '10%',
       nextFollowup: '待随访',
-      diagnosis: '阻塞性睡眠呼吸暂停 (OSAHS)',
-      plan: '配戴阻鼾器 HJ-MAD-03 进行下颌前移微调治疗',
+      diagnosis: '暂无诊断记录',
+      plan: '暂无治疗方案',
       medical_history: p.medical_history || '',
       allergy_history: p.allergy_history || '',
       lastVisit: p.appointments && p.appointments[0] ? `${(() => {
@@ -214,13 +214,12 @@ const loadTreatmentAndChart = async () => {
         const sortedLogs = [...logs].reverse()
         const dates = sortedLogs.map((l: any) => l.date.substring(5))
         const durations = sortedLogs.map((l: any) => l.wear_duration)
-        const comfortToAHI = sortedLogs.map((l: any) => 30 - l.comfort * 4) // Mock index from comfort rating
 
         myChart.setOption({
           xAxis: { data: dates },
           series: [
             { data: durations },
-            { data: comfortToAHI }
+            { data: [] }
           ]
         })
       }
@@ -258,7 +257,7 @@ onMounted(() => {
     myChart = echarts.init(chartRef.value)
     const option = {
       title: {
-        text: '设备佩戴时长与 AHI 监测趋势 (历史记录)',
+        text: '设备佩戴时长趋势（AHI 未录入时不展示）',
         left: 'left',
         textStyle: { fontSize: 14, color: '#111827', fontWeight: 600 }
       },
@@ -267,7 +266,7 @@ onMounted(() => {
         axisPointer: { type: 'cross' }
       },
       legend: {
-        data: ['佩戴时长 (小时)', 'AHI 指数 (次/小时)'],
+        data: ['佩戴时长 (小时)', 'AHI 指数（真实记录）'],
         right: 0
       },
       grid: {
@@ -309,7 +308,7 @@ onMounted(() => {
           barWidth: '25%'
         },
         {
-          name: 'AHI 指数 (次/小时)',
+          name: 'AHI 指数（真实记录）',
           type: 'line',
           yAxisIndex: 1,
           smooth: true,

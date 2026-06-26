@@ -8,10 +8,49 @@ Math;
 const o = e.defineComponent({
   __name: "App",
   setup: (o) => {
-    e.onLaunch(() => {
-      console.log("[鼾静健康] App Launch");
+    e.onLaunch((options) => {
+      console.log("[鼾静健康] App Launch", options);
       if (!e.index.getStorageSync("access_token")) {
         console.log("[鼾静健康] 未登录");
+      }
+
+      // Parse and store invite code
+      let inviteCode = "";
+      if (options && options.query) {
+        inviteCode = options.query.inviteCode || options.query.invite_code || "";
+        if (options.query.scene) {
+          const sceneStr = decodeURIComponent(options.query.scene);
+          if (sceneStr.indexOf("=") > -1) {
+            const sceneParams = {};
+            sceneStr.split("&").forEach((pair) => {
+              const parts = pair.split("=");
+              if (parts[0]) {
+                sceneParams[parts[0]] = parts.slice(1).join("=");
+              }
+            });
+            inviteCode = sceneParams.invite_code || sceneParams.inviteCode || sceneParams.code || inviteCode;
+          } else {
+            inviteCode = sceneStr;
+          }
+        }
+      }
+      inviteCode = String(inviteCode || "").trim();
+
+      if (inviteCode) {
+        console.log("[鼾静健康] 监测到推荐邀请码:", inviteCode);
+        e.index.setStorageSync("pending_invite_code", inviteCode);
+
+        // Try bind
+        const token = e.index.getStorageSync("access_token");
+        if (token) {
+          const api = require("./api/index.js");
+          api.bindDistribution(inviteCode).then(() => {
+            console.log("[鼾静健康] 启动时成功绑定推荐人");
+            e.index.removeStorageSync("pending_invite_code");
+          }).catch(err => {
+            console.error("[鼾静健康] 启动绑定推荐人失败", err);
+          });
+        }
       }
 
       // Global error logging and tracking

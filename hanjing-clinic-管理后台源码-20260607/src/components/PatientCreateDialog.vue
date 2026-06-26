@@ -30,7 +30,7 @@ const createForm = ref({
 watch(() => props.visible, (val) => {
   if (val) {
     createForm.value = {
-      name: props.defaultName || '',
+      name: '',
       phone: '',
       gender: '男',
       age: 30,
@@ -75,8 +75,6 @@ async function handleConfirm() {
     emit('update:visible', false)
   } catch (error: any) {
     console.error(error)
-    const msg = error.response?.data?.message || '手动建档失败'
-    MessagePlugin.error(msg)
   } finally {
     loading.value = false
   }

@@ -16,10 +16,59 @@ const i = () => "../../components/base/hj-navbar.js",
         quantity = e.ref(1),
         isSubmitting = e.ref(!1),
         address = e.ref({
-          contactName: "张三",
-          phone: "13800000000",
-          detailAddress: "广东省深圳市南山区科技园南海大道1001号"
+          contactName: "",
+          phone: "",
+          detailAddress: ""
         });
+      function validateAddress() {
+        if (!address.value.contactName.trim()) {
+          e.index.showToast({ title: "请填写收货人", icon: "none" });
+          return !1;
+        }
+        if (!/^1\d{10}$/.test(address.value.phone)) {
+          e.index.showToast({ title: "请填写正确手机号", icon: "none" });
+          return !1;
+        }
+        if (!address.value.detailAddress.trim()) {
+          e.index.showToast({ title: "请填写详细地址", icon: "none" });
+          return !1;
+        }
+        return !0;
+      }
+      function requestWxPay(payParams) {
+        if (payParams.mockPayment) {
+          return Promise.resolve();
+        }
+        return new Promise((resolve, reject) => {
+          e.index.requestPayment({
+            timeStamp: payParams.timeStamp,
+            nonceStr: payParams.nonceStr,
+            package: payParams.package,
+            signType: payParams.signType,
+            paySign: payParams.paySign,
+            success: resolve,
+            fail: reject
+          });
+        });
+      }
+      function chooseWxAddress() {
+        if (!wx.chooseAddress) {
+          e.index.showToast({ title: "当前微信版本不支持选择地址", icon: "none" });
+          return;
+        }
+        wx.chooseAddress({
+          success: (res) => {
+            address.value = {
+              contactName: res.userName || "",
+              phone: res.telNumber || "",
+              detailAddress: `${res.provinceName || ""}${res.cityName || ""}${res.countyName || ""}${res.detailInfo || ""}`
+            };
+          },
+          fail: () => {
+            e.index.showToast({ title: "可手动填写收货地址", icon: "none" });
+          }
+        });
+      }
       function openCheckout() {
         const token = e.index.getStorageSync("access_token");
         if (!token) {
@@ -39,6 +88,7 @@ const i = () => "../../components/base/hj-navbar.js",
       }
       async function submitOrder() {
         if (isSubmitting.value) return;
+        if (!validateAddress()) return;
         isSubmitting.value = !0;
         try {
           const res = await a.createOrder({
@@ -46,7 +96,10 @@ const i = () => "../../components/base/hj-navbar.js",
             shippingAddress: address.value
           });
           const orderId = res.data.id;
-          await a.payOrder(orderId);
+          const payRes = await a.payOrder(orderId);
+          const payParams = payRes.data || payRes;
+          await requestWxPay(payParams);
+          await a.confirmOrderPayment(orderId);
           e.index.showToast({ title: "支付成功", icon: "success" });
           showCheckout.value = !1;
           setTimeout(() => {
@@ -106,6 +159,7 @@ const i = () => "../../components/base/hj-navbar.js",
                       quantity: quantity.value,
                       increaseQty: e.o(increaseQty),
                       decreaseQty: e.o(decreaseQty),
+                      chooseWxAddress: e.o(chooseWxAddress),
                       submitOrder: e.o(submitOrder),
                       isSubmitting: isSubmitting.value,
                       contactName: address.value.contactName,

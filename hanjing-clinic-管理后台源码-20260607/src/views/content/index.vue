@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 
@@ -31,44 +32,7 @@ interface Post {
   isTop: boolean;
 }
 
-const basePosts: Post[] = [
-  { id: '1', title: '戴上阻鼾器一个月了，老婆说我终于不打鼾了，睡眠质量提升明显！', author: '张建国', avatar: '张',
-    category: '患者故事', views: 2356, likes: 128, comments: 23, createTime: '2026-06-04 15:30', status: 'approved', isTop: true },
-  { id: '2', title: '刚开始戴阻鼾器有异物感，大概多久能适应？', author: '李美玲', avatar: '李',
-    category: '睡眠科普', views: 1876, likes: 56, comments: 34, createTime: '2026-06-03 20:15', status: 'approved', isTop: false },
-  { id: '3', title: '深圳哪家门店做睡眠监测比较好？求推荐靠谱医生', author: '王华', avatar: '王',
-    category: '睡眠科普', views: 1024, likes: 18, comments: 12, createTime: '2026-06-05 09:00', status: 'pending', isTop: false },
-  { id: '4', title: '原来打鼾和高血压真的有关系！分享我的治疗经历', author: '王强', avatar: '王',
-    category: '治疗知识', views: 4521, likes: 287, comments: 45, createTime: '2026-05-28 11:20', status: 'approved', isTop: false },
-  { id: '5', title: '分享一个检测打鼾严重程度的小方法，在家就能做', author: '健康助手', avatar: '助',
-    category: '睡眠科普', views: 6780, likes: 356, comments: 52, createTime: '2026-05-25 08:00', status: 'approved', isTop: true },
-  { id: '6', title: '最新款进口定制阻鼾器参数配置及佩戴注意事项', author: '官方发布', avatar: '官',
-    category: '设备介绍', views: 523, likes: 2, comments: 8, createTime: '2026-06-05 06:30', status: 'rejected', isTop: false },
-  { id: '7', title: '南山分中心新增儿童睡眠监测服务，欢迎预约咨询', author: '鼾静助手', avatar: '鼾',
-    category: '设备介绍', views: 980, likes: 45, comments: 6, createTime: '2026-06-04 10:00', status: 'approved', isTop: false },
-  { id: '8', title: '2026年端午假期各门店营业时间调整通知', author: '官方客服', avatar: '客',
-    category: '设备介绍', views: 1520, likes: 32, comments: 2, createTime: '2026-06-02 14:00', status: 'approved', isTop: false },
-]
-
-const posts = ref<Post[]>(
-  Array.from({ length: 45 }, (_, i) => {
-    if (i < 8) {
-      return { ...basePosts[i] }
-    }
-    const base = basePosts[i % basePosts.length]
-    const status = i % 5 === 0 ? 'pending' : (i % 5 === 4 ? 'rejected' : 'approved')
-    return {
-      ...base,
-      id: String(i + 1),
-      title: `${base.title} (第${i + 1}篇)`,
-      views: base.views + i * 15,
-      likes: base.likes + (i % 7),
-      comments: base.comments + (i % 5),
-      isTop: i < 2,
-      status
-    }
-  })
-)
+const posts = ref<Post[]>([])
 
 const categories = ['睡眠科普', '治疗知识', '设备介绍', '患者故事']
 
@@ -107,33 +71,72 @@ const paginatedPosts = computed(() => {
   return filteredPosts.value.slice(start, end)
 })
 
-function approve(id: string) {
+function formatTime(value: string) {
+  if (!value) return '—'
+  return value.replace('T', ' ').slice(0, 16)
+}
+
+function parseCategory(tags: any) {
+  try {
+    const list = typeof tags === 'string' ? JSON.parse(tags) : tags
+    return Array.isArray(list) && list.length ? list[0] : '睡眠科普'
+  } catch (error) {
+    return '睡眠科普'
+  }
+}
+
+async function fetchPosts() {
+  try {
+    const res: any = await request.get('/api/admin/content/articles')
+    posts.value = (res.data || []).map((row: any) => ({
+      id: String(row.id),
+      title: row.title,
+      author: row.nickname || row.phone || '用户',
+      avatar: (row.nickname || row.phone || '用').charAt(0),
+      category: parseCategory(row.tags),
+      views: 0,
+      likes: Number(row.likes_count || 0),
+      comments: Number(row.comments_count || 0),
+      createTime: formatTime(row.created_at),
+      status: row.status || 'pending',
+      isTop: Boolean(row.is_top)
+    }))
+  } catch (error) {
+    MessagePlugin.error('加载内容列表失败')
+  }
+}
+
+async function approve(id: string) {
   const p = posts.value.find(p => p.id === id)
   if (p) {
+    await request.put(`/api/admin/content/articles/${id}`, { status: 'approved' })
     p.status = 'approved'
     MessagePlugin.success('帖子已审核通过，已公开展示！')
   }
 }
 
-function reject(id: string) {
+async function reject(id: string) {
   const p = posts.value.find(p => p.id === id)
   if (p) {
+    await request.put(`/api/admin/content/articles/${id}`, { status: 'rejected' })
     p.status = 'rejected'
     MessagePlugin.success('已拒绝/下架该帖子')
   }
 }
 
-function toggleTop(id: string) {
+async function toggleTop(id: string) {
   const p = posts.value.find(p => p.id === id)
   if (p) {
+    await request.put(`/api/admin/content/articles/${id}`, { is_top: !p.isTop })
     p.isTop = !p.isTop
     MessagePlugin.success(p.isTop ? '该帖子已置顶展示' : '已取消置顶展示')
   }
 }
 
-function handleDelete(id: string) {
+async function handleDelete(id: string) {
   const idx = posts.value.findIndex(p => p.id === id)
   if (idx !== -1) {
+    await request.delete(`/api/admin/content/articles/${id}`)
     posts.value.splice(idx, 1)
     MessagePlugin.success('文章帖子已成功删除')
   }
@@ -151,6 +154,8 @@ function getAvatarBg(author: string) {
   }
   return 'linear-gradient(135deg, #F5A623, #FFD700)'
 }
+
+onMounted(fetchPosts)
 </script>
 
 <template>

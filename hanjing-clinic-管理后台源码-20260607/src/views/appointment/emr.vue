@@ -185,69 +185,61 @@ const handleSubmit = async () => {
 
   submitting.value = true
   try {
-    // 1. Submit Medical Record
-    const emrPayload = {
-      doctor_id: appt.value.doctor_id,
-      store_id: appt.value.store_id,
-      appointment_id: appt.value.id,
-      visit_date: new Date().toISOString().split('T')[0],
-      diagnosis: diagnosis.value,
-      prescription: prescription.value,
-      doctor_advice: doctorAdvice.value,
-      note: note.value,
-      medical_history: medicalHistory.value,
-      allergy_history: allergyHistory.value
+    const payload: any = {
+      medical_record: {
+        doctor_id: appt.value.doctor_id,
+        store_id: appt.value.store_id,
+        visit_date: new Date().toISOString().split('T')[0],
+        diagnosis: diagnosis.value,
+        prescription: prescription.value,
+        doctor_advice: doctorAdvice.value,
+        note: note.value,
+        medical_history: medicalHistory.value,
+        allergy_history: allergyHistory.value
+      }
     }
 
-    const emrRes: any = await request.post(`/api/admin/patients/${appt.value.patient_id}/medical-records`, emrPayload)
-    
-    if (emrRes.code === 200) {
-      // 2. Submit Treatment Profiling or Device Adjustment if toggled
-      if (activeTreatment.value) {
-        if (syncAdjust.value) {
-          const adjustPayload = {
-            treatment_id: activeTreatment.value.id,
-            adjust_date: new Date().toISOString().split('T')[0],
-            operator_id: appt.value.doctor_id,
-            adjusted_advancement: adjustedAdvancement.value,
-            patient_feedback: patientFeedback.value,
-            instructions: adjustInstructions.value,
-            next_adjust_date: nextAdjustDate.value
-          }
-          await request.post(`/api/admin/patients/${appt.value.patient_id}/treatment/adjustments`, adjustPayload)
-          
-          if (nextAdjustDate.value) {
-            const followUpPayload = {
-              doctor_id: appt.value.doctor_id,
-              title: `阻鼾器参数微调 - 复查`,
-              description: `已调至 ${adjustedAdvancement.value}mm (反馈: ${patientFeedback.value})，安排门诊复诊。`,
-              due_date: nextAdjustDate.value
-            }
-            await request.post(`/api/admin/patients/${appt.value.patient_id}/follow-ups`, followUpPayload)
-          }
-        }
-      } else {
-        if (syncTreatment.value) {
-          const treatmentPayload = {
-            doctor_id: appt.value.doctor_id,
-            device_model: deviceModel.value,
-            initial_advancement: initialAdvancement.value,
-            start_date: startDate.value
-          }
-          await request.post(`/api/admin/patients/${appt.value.patient_id}/treatment`, treatmentPayload)
-          
-          if (nextAdjustDate.value) {
-            const followUpPayload = {
-              doctor_id: appt.value.doctor_id,
-              title: `阻鼾器物理微调 - 2周复查`,
-              description: `初次配戴 ${deviceModel.value} (初始前伸量 ${initialAdvancement.value}mm) 满两周，到店复查微调下颌前伸度。`,
-              due_date: nextAdjustDate.value
-            }
-            await request.post(`/api/admin/patients/${appt.value.patient_id}/follow-ups`, followUpPayload)
-          }
+    if (activeTreatment.value && syncAdjust.value) {
+      payload.treatment = { treatment_id: activeTreatment.value.id }
+      payload.adjustment = {
+        create: true,
+        adjust_date: new Date().toISOString().split('T')[0],
+        operator_id: appt.value.doctor_id,
+        adjusted_advancement: adjustedAdvancement.value,
+        patient_feedback: patientFeedback.value,
+        instructions: adjustInstructions.value,
+        next_adjust_date: nextAdjustDate.value
+      }
+      if (nextAdjustDate.value) {
+        payload.follow_up = {
+          create: true,
+          doctor_id: appt.value.doctor_id,
+          title: `阻鼾器参数微调 - 复查`,
+          description: `已调至 ${adjustedAdvancement.value}mm (反馈: ${patientFeedback.value})，安排门诊复诊。`,
+          due_date: nextAdjustDate.value
         }
       }
-      
+    } else if (!activeTreatment.value && syncTreatment.value) {
+      payload.treatment = {
+        create: true,
+        device_model: deviceModel.value,
+        initial_advancement: initialAdvancement.value,
+        start_date: startDate.value
+      }
+      if (nextAdjustDate.value) {
+        payload.follow_up = {
+          create: true,
+          doctor_id: appt.value.doctor_id,
+          title: `阻鼾器物理微调 - 2周复查`,
+          description: `初次配戴 ${deviceModel.value} (初始前伸量 ${initialAdvancement.value}mm) 满两周，到店复查微调下颌前伸度。`,
+          due_date: nextAdjustDate.value
+        }
+      }
+    }
+
+    const emrRes: any = await request.post(`/api/admin/appointments/${appt.value.id}/complete-consultation`, payload)
+
+    if (emrRes.code === 200) {
       MessagePlugin.success('诊疗录入成功，患者已就诊完毕并完成建档！')
       router.push('/queue')
     } else {

@@ -29,7 +29,9 @@
           ><text class="record-value data-v-04031480">{{record.i}}</text></view
         ><view wx:if="{{record.j}}" class="record-note data-v-04031480"
           ><text class="data-v-04031480">{{record.k}}</text></view
-        ></view
+        ><view wx:if="{{record.hasAttachments}}" class="record-action data-v-04031480" style="margin-top: 20rpx; padding-top: 20rpx; border-top: 1rpx solid #f3f4f6; display: flex; justify-content: flex-end;">
+          <text bindtap="{{record.onPreview}}" class="data-v-04031480" style="color: #3B6BF5; font-size: 26rpx; display: flex; align-items: center;">📎 查看电子检查报告附件 ＞</text>
+        </view></view
       ><view wx:if="{{d}}" class="empty-state data-v-04031480"
         ><text class="empty-text data-v-04031480">暂无就诊记录</text></view
       ></block

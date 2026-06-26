@@ -8,6 +8,14 @@ const a = () => "../../../components/base/hj-navbar.js",
     setup(a) {
       const o = e.ref([]),
         s = e.ref(!0);
+      function previewAttachment(urls) {
+        if (urls && urls.length > 0) {
+          e.index.previewImage({
+            urls: urls,
+            current: urls[0]
+          });
+        }
+      }
       e.onMounted(async () => {
         var e;
         const a = await t.getMedicalRecords();
@@ -38,6 +46,10 @@ const a = () => "../../../components/base/hj-navbar.js",
                       t.prescription ? { i: e.t(t.prescription) } : {},
                       { j: t.note },
                       t.note ? { k: e.t(t.note) } : {},
+                      {
+                        hasAttachments: t.attachments && t.attachments.length > 0,
+                        onPreview: e.o(() => previewAttachment(t.attachments), t.id)
+                      },
                       { l: t.id },
                     ),
                   ),

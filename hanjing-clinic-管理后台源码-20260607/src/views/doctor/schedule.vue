@@ -297,8 +297,18 @@ async function handleSaveAll() {
   }
 }
 
-function handleCopyLastMonth() {
-  MessagePlugin.success('已成功复制上月排班数据')
+async function handleCopyLastMonth() {
+  try {
+    const res: any = await request.post('/api/admin/schedules/copy-last-month', {
+      doctor_id: doctorId.value,
+      year: currentYear.value,
+      month: currentMonth.value + 1
+    })
+    MessagePlugin.success(res.message || '已成功复制上月排班数据')
+    loadSchedules()
+  } catch (err: any) {
+    MessagePlugin.error(err?.message || '复制上月排班失败')
+  }
 }
 
 function handleClear() {

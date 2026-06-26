@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 interface Product {
   id: string;
@@ -17,29 +18,7 @@ interface Product {
 const currentPage = ref(1)
 const pageSize = ref(30)
 
-const initialProducts: Product[] = [
-  { id: '1', name: '睡眠监测套餐', desc: 'PSG + 初诊 + 报告', icon: '🛏️', price: 3680, commission1: 15, commission2: 5, promotes: '246', status: 'active' },
-  { id: '2', name: '止鼾器定制', desc: '口腔止鼾器定制', icon: '😷', price: 1280, commission1: 15, commission2: 5, promotes: '128', status: 'active' },
-  { id: '3', name: 'CPAP呼吸机', desc: '瑞思迈AirSense 10', icon: '💨', price: 8900, commission1: 12, commission2: 3, promotes: '67', status: 'active' },
-  { id: '4', name: '初诊挂号', desc: '含基础检查', icon: '🩺', price: 200, commission1: 10, commission2: 3, promotes: '—', status: 'inactive' }
-]
-
-const products = ref<Product[]>(
-  Array.from({ length: 35 }, (_, index) => {
-    if (index < 4) {
-      return { ...initialProducts[index] }
-    }
-    const base = initialProducts[index % initialProducts.length]
-    const status = index % 4 === 3 ? 'inactive' : 'active'
-    return {
-      ...base,
-      id: String(index + 1),
-      name: base.name + (index + 1),
-      promotes: status === 'active' ? String(10 + index * 3) : '—',
-      status
-    }
-  })
-)
+const products = ref<Product[]>([])
 
 const searchKeyword = ref('')
 const activeStatusTab = ref('all') // 'all', 'active', 'inactive'
@@ -100,6 +79,41 @@ function handleAdd() {
   showEdit.value = true
 }
 
+function mapProduct(row: any): Product {
+  return {
+    id: String(row.id),
+    name: row.name,
+    desc: row.description || '',
+    icon: row.category === 'device' ? '😷' : row.category === 'product' ? '💨' : '🛏️',
+    price: Number(row.price || 0) / 100,
+    commission1: Number(row.commission_rate || 0),
+    commission2: 0,
+    promotes: String(row.sales_count || 0),
+    status: row.status === 'on' && row.is_distribution ? 'active' : 'inactive'
+  }
+}
+
+function toPayload(prod: Partial<Product>) {
+  return {
+    name: prod.name,
+    description: prod.desc,
+    price: Math.round(Number(prod.price || 0) * 100),
+    commission_rate: Number(prod.commission1 || 0),
+    status: prod.status === 'active' ? 'on' : 'off',
+    is_distribution: prod.status === 'active',
+    category: prod.icon === '😷' ? 'device' : prod.icon === '💨' ? 'product' : 'service'
+  }
+}
+
+async function fetchProducts() {
+  try {
+    const res: any = await request.get('/api/admin/distribution/products')
+    products.value = (res.data || []).map(mapProduct)
+  } catch (error) {
+    MessagePlugin.error('加载推广商品失败')
+  }
+}
+
 function handleEdit(prodId: string) {
   isEdit.value = true
   const idx = products.value.findIndex(p => p.id === prodId)
@@ -109,47 +123,45 @@ function handleEdit(prodId: string) {
   showEdit.value = true
 }
 
-function handleToggle(prodId: string) {
+async function handleToggle(prodId: string) {
   const idx = products.value.findIndex(p => p.id === prodId)
   if (idx !== -1) {
     const prod = products.value[idx]
-    prod.status = prod.status === 'active' ? 'inactive' : 'active'
-    if (prod.status === 'inactive') {
-      prod.promotes = '—'
-    } else {
-      prod.promotes = '0'
+    const nextStatus = prod.status === 'active' ? 'inactive' : 'active'
+    try {
+      await request.put(`/api/admin/distribution/products/${prodId}`, {
+        status: nextStatus === 'active' ? 'on' : 'off',
+        is_distribution: nextStatus === 'active'
+      })
+      prod.status = nextStatus
+      prod.promotes = nextStatus === 'active' ? prod.promotes : '—'
+      MessagePlugin.success(prod.status === 'active' ? '商品已上架推广' : '商品已下架')
+    } catch (error) {
+      MessagePlugin.error('更新推广商品状态失败')
     }
-    MessagePlugin.success(prod.status === 'active' ? '商品已上架推广' : '商品已下架')
   }
 }
 
-function handleSave() {
+async function handleSave() {
   if (!formData.value.name || !formData.value.price) {
     MessagePlugin.warning('请填写商品名称和价格')
     return
   }
   
-  if (isEdit.value) {
-    products.value[editIndex.value] = {
-      ...products.value[editIndex.value],
-      ...formData.value
-    } as Product
-    MessagePlugin.success('保存商品配置成功')
-  } else {
-    products.value.push({
-      id: String(products.value.length + 1),
-      name: formData.value.name || '',
-      desc: formData.value.desc || '',
-      icon: formData.value.icon || '🛍️',
-      price: Number(formData.value.price),
-      commission1: Number(formData.value.commission1) || 15,
-      commission2: Number(formData.value.commission2) || 5,
-      promotes: formData.value.status === 'active' ? '0' : '—',
-      status: formData.value.status || 'active'
-    })
-    MessagePlugin.success('添加推广商品成功')
+  try {
+    if (isEdit.value && editIndex.value >= 0) {
+      const prod = { ...products.value[editIndex.value], ...formData.value }
+      await request.put(`/api/admin/distribution/products/${prod.id}`, toPayload(prod))
+      MessagePlugin.success('保存商品配置成功')
+    } else {
+      await request.post('/api/admin/distribution/products', toPayload(formData.value))
+      MessagePlugin.success('添加推广商品成功')
+    }
+    showEdit.value = false
+    fetchProducts()
+  } catch (error) {
+    MessagePlugin.error(isEdit.value ? '保存商品配置失败' : '添加推广商品失败')
   }
-  showEdit.value = false
 }
 
 function getIconBoxClass(prod: Product) {
@@ -161,6 +173,8 @@ function getIconBoxClass(prod: Product) {
   if (prod.icon === '💨') return 'product-icon-box orange-grad'
   return 'product-icon-box default-grad'
 }
+
+onMounted(fetchProducts)
 </script>
 
 <template>

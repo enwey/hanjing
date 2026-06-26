@@ -460,30 +460,14 @@ const s = [
     );
   }),
   (exports.getSnoreAnalysisResult = function () {
-    const t = Math.random();
-    return t < 0.2
-      ? {
-          avgDecibel: 35 + Math.floor(10 * Math.random()),
-          peakDecibel: 52 + Math.floor(8 * Math.random()),
-          snoreRate: 15 + Math.floor(15 * Math.random()),
-          apneaEvents: Math.floor(2 * Math.random()),
-          riskLevel: "low",
-        }
-      : t < 0.7
-        ? {
-            avgDecibel: 48 + Math.floor(10 * Math.random()),
-            peakDecibel: 68 + Math.floor(15 * Math.random()),
-            snoreRate: 35 + Math.floor(20 * Math.random()),
-            apneaEvents: 3 + Math.floor(5 * Math.random()),
-            riskLevel: "medium",
-          }
-        : {
-            avgDecibel: 58 + Math.floor(15 * Math.random()),
-            peakDecibel: 82 + Math.floor(20 * Math.random()),
-            snoreRate: 60 + Math.floor(25 * Math.random()),
-            apneaEvents: 8 + Math.floor(12 * Math.random()),
-            riskLevel: "high",
-          };
+    return {
+      avgDecibel: 0,
+      peakDecibel: 0,
+      snoreRate: 0,
+      apneaEvents: 0,
+      qualityScore: 0,
+      riskLevel: "low",
+    };
   }),
   (exports.getSnoreRiskInfo = function (t) {
     const e = {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 const router = useRouter()
 
@@ -45,17 +46,7 @@ const baseRoles = [
 ]
 
 const roles = ref<Role[]>(
-  Array.from({ length: 35 }, (_, i) => {
-    const base = baseRoles[i % baseRoles.length]
-    if (i === 0) return base as Role
-    return {
-      id: `role-${i + 1}`,
-      name: `${base.name}-${i + 1}`,
-      membersCount: base.membersCount + (i % 3),
-      scope: base.scope,
-      status: i % 5 === 0 ? 'inactive' : 'active'
-    } as Role
-  })
+  []
 )
 
 const currentPage = ref(1)
@@ -75,14 +66,38 @@ function handleAddRole() {
   router.push('/permission/role-edit')
 }
 
-function toggleStatus(row: Role) {
-  if (row.id === 'super-admin') {
+async function fetchRoles() {
+  try {
+    const res: any = await request.get('/api/admin/roles')
+    roles.value = (res.data || []).map((row: any) => ({
+      id: String(row.id),
+      name: row.name,
+      membersCount: Number(row.members_count || 0),
+      scope: (row.permissions || []).length ? row.permissions.join('、') : (row.description || '未配置权限'),
+      status: row.status || 'active'
+    }))
+  } catch (error) {
+    MessagePlugin.error('加载角色列表失败')
+    roles.value = baseRoles as Role[]
+  }
+}
+
+async function toggleStatus(row: Role) {
+  if (row.name === '超级管理员') {
     MessagePlugin.error('超级管理员角色不能被禁用')
     return
   }
-  row.status = row.status === 'active' ? 'inactive' : 'active'
-  MessagePlugin.success(`角色 ${row.name} 已${row.status === 'active' ? '启用' : '禁用'}`)
+  const nextStatus = row.status === 'active' ? 'inactive' : 'active'
+  try {
+    await request.put(`/api/admin/roles/${row.id}`, { status: nextStatus })
+    row.status = nextStatus
+    MessagePlugin.success(`角色 ${row.name} 已${row.status === 'active' ? '启用' : '禁用'}`)
+  } catch (error) {
+    MessagePlugin.error('更新角色状态失败')
+  }
 }
+
+onMounted(fetchRoles)
 
 </script>
 
@@ -128,7 +143,7 @@ function toggleStatus(row: Role) {
                 <div class="actions" style="justify-content: flex-end;" @click.stop>
                   <button class="btn btn-xs btn-outline" @click="editRole(row.id)">编辑</button>
                   <button
-                    v-if="row.id !== 'super-admin'"
+                    v-if="row.name !== '超级管理员'"
                     :class="['btn', 'btn-xs', row.status === 'active' ? 'btn-danger' : 'btn-success']"
                     @click="toggleStatus(row)"
                   >

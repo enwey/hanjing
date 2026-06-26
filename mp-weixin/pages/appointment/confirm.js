@@ -16,9 +16,24 @@ const o = () => "../../components/base/hj-navbar.js",
         p = r.selectedDate,
         m = (null == (s = r.selectedTimeSlot) ? void 0 : s.label) || "",
         f = (null == (c = r.selectedDoctor) ? void 0 : c.consultFee) || 0;
-      const patientId = e.ref("pat-001");
+      const patientId = e.ref("");
+      const patientList = e.ref([]);
+      const patientIndex = e.ref(0);
+      const patientNames = e.computed(() => patientList.value.map(item => `${item.name} (${item.relation === 'self' ? '本人' : item.relation})`));
+      const selectedPatientName = e.computed(() => {
+        const p = patientList.value[patientIndex.value];
+        return p ? p.name : "本人";
+      });
+      function onPatientChange(eDetail) {
+        const val = parseInt(eDetail.detail.value);
+        patientIndex.value = val;
+        if (patientList.value[val]) {
+          patientId.value = patientList.value[val].id;
+        }
+      }
       const requireDeposit = e.ref(false);
       const depositAmountYuan = e.ref("0.00");
+      const subscribeTemplateIds = e.ref([]);
       e.onMounted(async () => {
         try {
           const api = require("../../api/index.js");
@@ -27,6 +42,7 @@ const o = () => "../../components/base/hj-navbar.js",
             if (settingsRes && settingsRes.data) {
               requireDeposit.value = settingsRes.data.requireDeposit;
               depositAmountYuan.value = (settingsRes.data.depositAmount / 100).toFixed(2);
+              subscribeTemplateIds.value = settingsRes.data.subscribeTemplateIds || [];
             }
           } catch (settingsErr) {
             console.error("加载预约设置失败", settingsErr);
@@ -34,15 +50,50 @@ const o = () => "../../components/base/hj-navbar.js",
           
           const res = await api.getFamilyMembers();
           if (res && res.data && res.data.list && res.data.list.length > 0) {
-            const selfMember = res.data.list.find(item => item.relation === 'self') || res.data.list[0];
-            if (selfMember) {
-              patientId.value = selfMember.id;
-            }
+            patientList.value = res.data.list;
+            const selfIdx = res.data.list.findIndex(item => item.relation === 'self');
+            const idx = selfIdx > -1 ? selfIdx : 0;
+            patientIndex.value = idx;
+            patientId.value = res.data.list[idx].id;
           }
         } catch (err) {
           console.error("加载就诊人失败", err);
         }
       });
+      function requestSubscribe(callback) {
+        if (wx.requestSubscribeMessage && subscribeTemplateIds.value.length > 0) {
+          wx.requestSubscribeMessage({
+            tmplIds: subscribeTemplateIds.value,
+            success: (res) => {
+              console.log("订阅结果", res);
+            },
+            fail: (err) => {
+              console.warn("订阅消息授权失败，可能处于开发环境", err);
+            },
+            complete: () => {
+              callback();
+            }
+          });
+        } else {
+          callback();
+        }
+      }
+      function requestWxPay(payParams) {
+        if (payParams.mockPayment) {
+          return Promise.resolve();
+        }
+        return new Promise((resolve, reject) => {
+          e.index.requestPayment({
+            timeStamp: payParams.timeStamp,
+            nonceStr: payParams.nonceStr,
+            package: payParams.package,
+            signType: payParams.signType,
+            paySign: payParams.paySign,
+            success: resolve,
+            fail: reject
+          });
+        });
+      }
       async function v() {
         if (
           r.selectedStore &&
@@ -50,6 +101,10 @@ const o = () => "../../components/base/hj-navbar.js",
           r.selectedSchedule &&
           r.selectedTimeSlot
         ) {
+          if (!patientId.value) {
+            e.index.showToast({ title: "请先选择就诊人", icon: "none" });
+            return;
+          }
           d.value = !0;
           try {
             const t = await r.createAppointment({
@@ -62,11 +117,26 @@ const o = () => "../../components/base/hj-navbar.js",
               type: "first",
               symptomDesc: i.value || void 0,
             });
-            if (t.requireDeposit) {
-              const totalPayYuan = ((t.depositAmount + f) / 100).toFixed(2);
+            const appt = t.data || t;
+            const apptId = appt.id || t.id;
+            const apptStatus = appt.status || t.status;
+            const apptRequireDeposit = appt.requireDeposit !== undefined ? appt.requireDeposit : t.requireDeposit;
+            const apptDepositAmount = appt.depositAmount !== undefined ? appt.depositAmount : t.depositAmount;
+
+            if (apptStatus === "pending_payment") {
+              const depAmt = apptRequireDeposit ? apptDepositAmount : 0;
+              let feeDesc = "";
+              if (apptRequireDeposit && f > 0) {
+                feeDesc = "（含定金与挂号费）";
+              } else if (apptRequireDeposit) {
+                feeDesc = "（含预约定金）";
+              } else if (f > 0) {
+                feeDesc = "（含挂号费）";
+              }
+              const totalPayYuan = ((depAmt + f) / 100).toFixed(2);
               e.index.showModal({
                 title: "确认支付",
-                content: `预约就诊需要支付 ¥${totalPayYuan}（含定金与挂号费），是否确认支付？`,
+                content: `预约就诊需要支付 ¥${totalPayYuan}${feeDesc}，是否确认支付？`,
                 confirmText: "确认支付",
                 cancelText: "取消",
                 success: async function (o) {
@@ -74,43 +144,30 @@ const o = () => "../../components/base/hj-navbar.js",
                     e.index.showLoading({ title: "发起支付..." });
                     try {
                       const api = require("../../api/index.js");
-                      const payRes = await api.payAppointmentDeposit(t.id);
+                      const payRes = await api.payAppointmentDeposit(apptId);
                       e.index.hideLoading();
                       
-                      e.index.requestPayment({
-                        timeStamp: payRes.data.timeStamp,
-                        nonceStr: payRes.data.nonceStr,
-                        package: payRes.data.package,
-                        signType: payRes.data.signType,
-                        paySign: payRes.data.paySign,
-                        success: async function (res) {
-                          e.index.showLoading({ title: "同步支付状态..." });
-                          try {
-                            await api.confirmAppointmentPayment(t.id);
-                            e.index.hideLoading();
-                            e.index.showToast({ title: "支付成功", icon: "success" });
-                            setTimeout(() => {
-                              e.index.reLaunch({
-                                url: `/pages/appointment/success?id=${t.id}`,
-                              });
-                            }, 1000);
-                          } catch (err) {
-                            e.index.hideLoading();
-                            e.index.showToast({ title: "支付同步失败，请联系客服", icon: "none" });
-                          }
-                        },
-                        fail: function (err) {
-                          e.index.showToast({ title: "已取消支付", icon: "none" });
-                          setTimeout(() => {
-                            e.index.reLaunch({
-                              url: "/pages/appointment/index?tab=mine",
-                            });
-                          }, 1000);
-                        }
-                      });
+                      const payParams = payRes.data || payRes;
+                      await requestWxPay(payParams);
+                      e.index.showLoading({ title: "同步支付状态..." });
+                      await api.confirmAppointmentPayment(apptId);
+                      e.index.hideLoading();
+                      e.index.showToast({ title: "支付成功", icon: "success" });
+                      setTimeout(() => {
+                        requestSubscribe(() => {
+                          e.index.reLaunch({
+                            url: `/pages/appointment/success?id=${apptId}`,
+                          });
+                        });
+                      }, 1000);
                     } catch (err) {
                       e.index.hideLoading();
-                      e.index.showToast({ title: "发起支付失败，请稍后重试", icon: "none" });
+                      e.index.showToast({ title: err && err.errMsg ? "已取消支付" : "发起支付失败，请稍后重试", icon: "none" });
+                      setTimeout(() => {
+                        e.index.reLaunch({
+                          url: "/pages/appointment/index?tab=mine",
+                        });
+                      }, 1000);
                     }
                   } else {
                     e.index.showToast({ title: "已取消支付", icon: "none" });
@@ -123,11 +180,13 @@ const o = () => "../../components/base/hj-navbar.js",
                 }
               });
             } else {
-              e.index.reLaunch({
-                url: `/pages/appointment/success?id=${t.id}`,
+              requestSubscribe(() => {
+                e.index.reLaunch({
+                  url: `/pages/appointment/success?id=${apptId}`,
+                });
               });
             }
-          } catch (t) {
+          } catch (err) {
             e.index.showToast({ title: "预约失败，请重试", icon: "error" });
           } finally {
             d.value = !1;
@@ -161,6 +220,10 @@ const o = () => "../../components/base/hj-navbar.js",
             depositAmountYuan: e.unref(depositAmountYuan),
             totalAmountYuan: e.unref(totalAmountYuan),
             buttonText: e.unref(buttonText),
+            selectedPatientName: e.unref(selectedPatientName),
+            patientNames: e.unref(patientNames),
+            patientIndex: e.unref(patientIndex),
+            onPatientChange: e.o(onPatientChange),
           },
           e.unref(f) > 0 ? { g: e.t((e.unref(f) / 100).toFixed(2)) } : {},
           {

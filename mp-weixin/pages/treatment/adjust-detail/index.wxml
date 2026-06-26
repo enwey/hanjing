@@ -33,7 +33,10 @@
         请勿自行调整阻鼾器参数，必须在医生指导下进行。
       </text></view
     ><text class="section-title data-v-64c0d952">调整历史</text
-    ><view class="history-list data-v-64c0d952"
+    ><view wx:if="{{!hasHistory}}" class="empty-history data-v-64c0d952"
+      >暂无医生调整记录，后续调整会在这里同步展示</view
+    >
+    <view class="history-list data-v-64c0d952"
       ><view
         wx:for="{{g}}"
         wx:for-item="item"

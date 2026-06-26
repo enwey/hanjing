@@ -68,12 +68,30 @@ const a = () => "../../../components/base/hj-navbar.js",
             }
           }
         };
+      function reportPost() {
+        e.index.showActionSheet({
+          itemList: ["垃圾广告", "违规言论", "侮辱谩骂", "涉嫌欺诈", "其他原因"],
+          success: async (res) => {
+            const reasons = ["垃圾广告", "违规言论", "侮辱谩骂", "涉嫌欺诈", "其他原因"];
+            e.index.showLoading({ title: "提交举报..." });
+            try {
+              await api.reportCommunityPost(u.value, reasons[res.tapIndex] || "其他原因");
+              e.index.hideLoading();
+              e.index.showToast({ title: "举报成功，感谢您的反馈！", icon: "success" });
+            } catch (err) {
+              e.index.hideLoading();
+              e.index.showToast({ title: "举报失败，请稍后重试", icon: "none" });
+            }
+          }
+        });
+      }
       return (t, a) =>
         e.e(
           { a: e.p({ title: "帖子详情", showBack: !0 }), b: n.value },
           n.value
             ? e.e(
                 {
+                  reportPost: e.o(reportPost),
                   c: e.t(n.value.author[0]),
                   d:
                     "doctor" === n.value.role

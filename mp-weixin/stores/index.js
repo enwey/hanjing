@@ -43,6 +43,17 @@ const o = e.defineStore("user", () => {
         try {
           const r = await e.index.login(),
             l = (await t.wxLogin(r.code, phoneCode)).data;
+          // Try bind pending invite code upon login success
+          const pendingCode = e.index.getStorageSync("pending_invite_code");
+          if (pendingCode) {
+            try {
+              await t.bindDistribution(pendingCode);
+              e.index.removeStorageSync("pending_invite_code");
+              console.log("[Login] 登录成功并成功绑定分销关系");
+            } catch (bindErr) {
+              console.error("[Login] 绑定分销关系失败", bindErr);
+            }
+          }
           return (
             (n.value = l.access_token),
             (a.value = l.user),

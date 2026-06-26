@@ -538,6 +538,40 @@ exports.getTreatmentRecord = async function () {
   );
 };
 
+exports.getSleepReport = async function (query) {
+  return req.request(
+    {
+      url: "/treatment/sleep-report",
+      method: "GET",
+      data: query
+    },
+    () => {
+      return t({
+        hasData: false,
+        compliance: 0,
+        weekAvg: 0,
+        avgComfort: 0,
+        streak: 0,
+        score: 0,
+        betterThan: 0,
+        trend: []
+      });
+    }
+  );
+};
+
+exports.getDeviceAdjustments = async function () {
+  return req.request(
+    {
+      url: "/treatment/adjustments",
+      method: "GET"
+    },
+    () => {
+      return t([]);
+    }
+  );
+};
+
 exports.getUserProfile = async function () {
   return req.request(
     {
@@ -688,16 +722,24 @@ exports.submitSnoreRecording = async function (nData) {
       data: nData,
     },
     () => {
-      const o = e.getSnoreAnalysisResult();
-      const r = e.getSnoreRiskInfo(o.riskLevel);
+      const duration = Number(nData.duration || 0);
+      const o = {
+        duration,
+        avgDecibel: 0,
+        peakDecibel: 0,
+        snoreRate: 0,
+        apneaEvents: 0,
+        qualityScore: 0,
+        riskLevel: "normal"
+      };
       const s = {
         id: "snore-" + Date.now(),
         userId: "user-001",
         patientId: "pat-001",
         type: "ai_snore",
-        snoreRecordUrl: nData.filePath || "/static/demo/snore-demo.mp4",
+        snoreRecordUrl: "",
         snoreAnalysis: o,
-        recommendation: r.advice,
+        recommendation: "当前为离线兜底结果，请连接后端服务后获取真实音频筛查结果。",
         createdAt: new Date().toISOString(),
       };
       e.mockAssessments.push(s);
@@ -892,6 +934,17 @@ exports.commentCommunityPost = async function (id, content) {
   );
 };
 
+exports.reportCommunityPost = async function (id, reason) {
+  return req.request(
+    {
+      url: `/community/posts/${id}/report`,
+      method: "POST",
+      data: { reason },
+    },
+    () => t({ success: true }),
+  );
+};
+
 exports.payAppointmentDeposit = async function (id) {
   return req.request(
     {
@@ -899,7 +952,17 @@ exports.payAppointmentDeposit = async function (id) {
       method: "POST"
     },
     () => {
-      return t({ success: true });
+      const timeStamp = String(Math.floor(Date.now() / 1000));
+      return t({
+        appointmentId: id,
+        payAmount: 5000,
+        timeStamp,
+        nonceStr: "mock_nonce_" + timeStamp,
+        package: "prepay_id=mock_appt_" + timeStamp,
+        signType: "MD5",
+        paySign: "MOCK_PAY_SIGN",
+        mockPayment: true
+      });
     }
   );
 };
@@ -926,7 +989,8 @@ exports.getBookingSettings = async function () {
       return t({
         requireDeposit: false,
         depositAmount: 5000,
-        cancelLimit: "就诊前2小时"
+        cancelLimit: "就诊前2小时",
+        subscribeTemplateIds: []
       });
     }
   );
@@ -950,6 +1014,78 @@ exports.payOrder = async function (id) {
     {
       url: `/orders/${id}/pay`,
       method: "POST"
+    },
+    () => {
+      const timeStamp = String(Math.floor(Date.now() / 1000));
+      return t({
+        orderId: id,
+        orderNo: "OD2026123456",
+        payAmount: 5000,
+        timeStamp,
+        nonceStr: "mock_nonce_" + timeStamp,
+        package: "prepay_id=mock_prepay_" + timeStamp,
+        signType: "MD5",
+        paySign: "MOCK_PAY_SIGN",
+        mockPayment: true
+      });
+    }
+  );
+};
+
+exports.confirmOrderPayment = async function (id) {
+  return req.request(
+    {
+      url: `/orders/${id}/confirm-pay`,
+      method: "POST"
+    },
+    () => {
+      return t({ success: true });
+    }
+  );
+};
+
+exports.cancelOrder = async function (id) {
+  return req.request(
+    {
+      url: `/orders/${id}/cancel`,
+      method: "POST"
+    },
+    () => {
+      return t({ success: true });
+    }
+  );
+};
+
+exports.confirmReceipt = async function (id) {
+  return req.request(
+    {
+      url: `/orders/${id}/confirm-receipt`,
+      method: "POST"
+    },
+    () => {
+      return t({ success: true });
+    }
+  );
+};
+
+exports.applyRefund = async function (id) {
+  return req.request(
+    {
+      url: `/orders/${id}/refund`,
+      method: "POST"
+    },
+    () => {
+      return t({ success: true });
+    }
+  );
+};
+
+exports.bindDistribution = async function (inviteCode) {
+  return req.request(
+    {
+      url: "/distribution/bind",
+      method: "POST",
+      data: { inviteCode }
     },
     () => {
       return t({ success: true });

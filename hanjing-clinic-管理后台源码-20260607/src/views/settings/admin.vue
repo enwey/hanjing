@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
+import request from '@/utils/request'
 
 interface AdminAccount {
   id: string;
   username: string;
   name: string;
+  phone?: string;
+  password?: string;
+  roleId?: string;
+  storeId?: string;
   avatarChar: string;
   avatarColor: string;
   role: string;
@@ -15,26 +20,20 @@ interface AdminAccount {
   status: string; // online, offline, disabled
 }
 
-const baseAdmins = [
-  { id: '1', username: 'admin', name: '管理员', avatarChar: '管', avatarColor: 'var(--primary-500)', role: '超级管理员', roleTag: 'blue', store: '全部门店', lastLogin: '5/29 19:32', status: 'online' },
-  { id: '2', username: 'chenmgr', name: '陈经理', avatarChar: '陈', avatarColor: 'var(--success-500)', role: '门店管理员', roleTag: 'green', store: '龙岗总店', lastLogin: '5/29 18:45', status: 'online' },
-  { id: '3', username: 'finance01', name: '财务王', avatarChar: '财', avatarColor: '#9333EA', role: '财务人员', roleTag: 'gold', store: '全部门店', lastLogin: '5/29 16:33', status: 'offline' },
-  { id: '4', username: 'editor01', name: '编辑小李', avatarChar: '编', avatarColor: '#EC4899', role: '内容编辑', roleTag: 'gray', store: '—', lastLogin: '5/28 14:20', status: 'offline' }
-]
+interface RoleOption {
+  id: string;
+  name: string;
+  code?: string;
+}
 
-const admins = ref<AdminAccount[]>(
-  Array.from({ length: 36 }, (_, i) => {
-    const base = baseAdmins[i % baseAdmins.length]
-    if (i === 0) return base
-    return {
-      ...base,
-      id: String(i + 1),
-      username: `${base.username}${i + 1}`,
-      name: `${base.name}-${i + 1}`,
-      status: i % 3 === 0 ? 'online' : (i % 3 === 1 ? 'offline' : 'disabled')
-    }
-  })
-)
+interface StoreOption {
+  id: string;
+  name: string;
+}
+
+const admins = ref<AdminAccount[]>([])
+const roles = ref<RoleOption[]>([])
+const stores = ref<StoreOption[]>([])
 
 const currentPage = ref(1)
 const pageSize = ref(30)
@@ -71,17 +70,77 @@ const editIndex = ref(-1)
 const formData = ref<Partial<AdminAccount>>({
   username: '',
   name: '',
-  role: '门店管理员',
-  store: '龙岗总店'
+  phone: '',
+  roleId: '',
+  storeId: '',
+  status: 'online'
 })
 
-function handleAdd() {
+function roleTagByName(name: string) {
+  if (name.includes('超级')) return 'blue'
+  if (name.includes('门店')) return 'green'
+  if (name.includes('财务')) return 'gold'
+  return 'gray'
+}
+
+function formatTime(value: string) {
+  if (!value) return '—'
+  return value.replace('T', ' ').slice(0, 16)
+}
+
+function mapAdmin(row: any): AdminAccount {
+  return {
+    id: String(row.id),
+    username: row.username || '',
+    name: row.name || '',
+    phone: row.phone || '',
+    roleId: row.role_id ? String(row.role_id) : '',
+    storeId: row.store_id ? String(row.store_id) : '',
+    avatarChar: (row.name || row.username || '管').charAt(0),
+    avatarColor: roleTagByName(row.role_name || '') === 'green' ? 'var(--success-500)' : 'var(--primary-500)',
+    role: row.role_name || '未分配角色',
+    roleTag: roleTagByName(row.role_name || ''),
+    store: row.store_name || '全部门店',
+    lastLogin: formatTime(row.last_login_at),
+    status: row.status || 'offline'
+  }
+}
+
+async function fetchOptions() {
+  const [roleRes, storeRes]: any[] = await Promise.all([
+    request.get('/api/admin/roles'),
+    request.get('/api/admin/stores')
+  ])
+  roles.value = (roleRes.data || []).map((row: any) => ({
+    id: String(row.id),
+    name: row.name,
+    code: row.code
+  }))
+  stores.value = (storeRes.data || []).map((row: any) => ({
+    id: String(row.id),
+    name: row.name
+  }))
+}
+
+async function fetchAdmins() {
+  try {
+    const res: any = await request.get('/api/admin/users')
+    admins.value = (res.data || []).map(mapAdmin)
+  } catch (error) {
+    MessagePlugin.error('加载管理员账号失败')
+  }
+}
+
+async function handleAdd() {
   isEdit.value = false
+  editIndex.value = -1
   formData.value = {
     username: '',
     name: '',
-    role: '门店管理员',
-    store: '龙岗总店'
+    phone: '',
+    roleId: roles.value[0]?.id || '',
+    storeId: '',
+    status: 'online'
   }
   showEdit.value = true
 }
@@ -95,7 +154,7 @@ function handleEdit(id: string) {
   showEdit.value = true
 }
 
-function handleToggle(id: string) {
+async function handleToggle(id: string) {
   const idx = admins.value.findIndex(a => a.id === id)
   if (idx === -1) return
   const account = admins.value[idx]
@@ -103,49 +162,66 @@ function handleToggle(id: string) {
     MessagePlugin.error('超级管理员账号不可禁用')
     return
   }
-  if (account.status === 'disabled') {
-    account.status = 'offline'
-    MessagePlugin.success(`账号 [${account.username}] 已成功启用`)
-  } else {
-    account.status = 'disabled'
-    MessagePlugin.success(`账号 [${account.username}] 已成功禁用`)
+  const nextStatus = account.status === 'disabled' ? 'offline' : 'disabled'
+  try {
+    await request.put(`/api/admin/users/${id}`, {
+      name: account.name,
+      phone: account.phone,
+      role_id: account.roleId,
+      store_id: account.storeId || null,
+      status: nextStatus
+    })
+    account.status = nextStatus
+    MessagePlugin.success(`账号 [${account.username}] 已成功${nextStatus === 'disabled' ? '禁用' : '启用'}`)
+  } catch (error) {
+    MessagePlugin.error('更新账号状态失败')
   }
 }
 
-function handleSave() {
-  if (!formData.value.username || !formData.value.name) {
-    MessagePlugin.warning('请填写用户名与姓名')
+async function handleSave() {
+  if (!formData.value.username || !formData.value.name || !formData.value.roleId) {
+    MessagePlugin.warning('请填写用户名、姓名与角色')
     return
   }
-  
-  const roleTag = formData.value.role === '超级管理员' ? 'blue' : formData.value.role === '门店管理员' ? 'green' : formData.value.role === '财务人员' ? 'gold' : 'gray'
-  const avatarChar = formData.value.name?.charAt(0) || '管'
-  
-  if (isEdit.value) {
-    admins.value[editIndex.value] = {
-      ...admins.value[editIndex.value],
-      ...formData.value,
-      roleTag,
-      avatarChar
-    } as AdminAccount
-    MessagePlugin.success('保存管理员信息成功')
-  } else {
-    admins.value.push({
-      id: String(Date.now()),
-      username: formData.value.username || '',
-      name: formData.value.name || '',
-      avatarChar,
-      avatarColor: 'var(--primary-500)',
-      role: formData.value.role || '门店管理员',
-      roleTag,
-      store: formData.value.store || '全部门店',
-      lastLogin: '—',
-      status: 'offline'
-    })
-    MessagePlugin.success('新增管理员成功')
+
+  try {
+    const payload: any = {
+      username: formData.value.username,
+      name: formData.value.name,
+      phone: formData.value.phone || '',
+      role_id: formData.value.roleId,
+      store_id: formData.value.storeId || null,
+      status: formData.value.status || 'online'
+    }
+    if ((formData.value as any).password) payload.password = (formData.value as any).password
+
+    if (isEdit.value && editIndex.value >= 0) {
+      await request.put(`/api/admin/users/${formData.value.id}`, payload)
+      MessagePlugin.success('保存管理员信息成功')
+    } else {
+      if (!payload.password) {
+        MessagePlugin.warning('新增管理员必须设置初始密码')
+        return
+      }
+      await request.post('/api/admin/users', payload)
+      MessagePlugin.success('新增管理员成功')
+    }
+    showEdit.value = false
+    fetchAdmins()
+  } catch (error) {
+    MessagePlugin.error(isEdit.value ? '保存管理员失败' : '新增管理员失败')
   }
-  showEdit.value = false
 }
+
+onMounted(async () => {
+  try {
+    await fetchOptions()
+  } catch (error) {
+    MessagePlugin.error('加载角色或门店选项失败')
+  } finally {
+    fetchAdmins()
+  }
+})
 </script>
 
 <template>
@@ -293,21 +369,24 @@ function handleSave() {
           <input type="text" class="form-control" v-model="formData.name" placeholder="请输入姓名">
         </div>
         <div class="form-group">
+          <label class="form-label">手机号</label>
+          <input type="text" class="form-control" v-model="formData.phone" placeholder="请输入手机号">
+        </div>
+        <div class="form-group">
+          <label class="form-label">{{ isEdit ? '重置密码（可选）' : '初始密码' }}</label>
+          <input type="password" class="form-control" v-model="formData.password" placeholder="新增账号必须设置密码">
+        </div>
+        <div class="form-group">
           <label class="form-label">角色权限组</label>
-          <select class="form-control" v-model="formData.role">
-            <option>超级管理员</option>
-            <option>门店管理员</option>
-            <option>财务人员</option>
-            <option>内容编辑</option>
+          <select class="form-control" v-model="formData.roleId">
+            <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
           </select>
         </div>
         <div class="form-group">
           <label class="form-label">负责门店</label>
-          <select class="form-control" v-model="formData.store">
-            <option>全部门店</option>
-            <option>龙岗总店</option>
-            <option>南山分院</option>
-            <option>福田门诊部</option>
+          <select class="form-control" v-model="formData.storeId">
+            <option value="">全部门店</option>
+            <option v-for="store in stores" :key="store.id" :value="store.id">{{ store.name }}</option>
           </select>
         </div>
       </div>

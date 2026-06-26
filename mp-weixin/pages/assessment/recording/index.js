@@ -83,6 +83,10 @@ const l = () => "../../../components/base/hj-navbar.js",
       }
 
       async function d() {
+        if (t.value < 5) {
+          e.index.showToast({ title: "录音时间过短，分析前请至少录制5秒", icon: "none" });
+          return;
+        }
         o.value = !0;
         try {
           let fileData = "";

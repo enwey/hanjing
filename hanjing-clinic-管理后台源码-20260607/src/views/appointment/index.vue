@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
 const router = useRouter()
+const route = useRoute()
 
 // Filter states matching UI mockup
 const activeTab = ref('all') // Default to 'all' (全部)
@@ -66,8 +67,17 @@ const fetchAppointments = async () => {
       time: item.appointment_time,
       type: item.type === 'first' ? '初诊' : '复诊',
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
-      status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : 'cancelled'
+      status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : item.status === 'pending_payment' ? 'pending_payment' : 'cancelled',
+      consult_fee: item.consult_fee || 0,
+      deposit_amount: item.deposit_amount || 0
     }))
+
+    if (route.query.checkout_id) {
+      const appt = appointments.value.find(a => String(a.id) === String(route.query.checkout_id))
+      if (appt) {
+        openCheckoutDialog(appt)
+      }
+    }
   } catch (error) {
     console.error('Failed to load appointments:', error)
   }
@@ -94,6 +104,7 @@ const doctorOptions = [
 const tabOptions = [
   { label: '全部', value: 'all' },
   { label: '今日', value: 'today' },
+  { label: '待支付', value: 'pending_payment' },
   { label: '已预约', value: 'pending' },
   { label: '候诊中', value: 'waiting' },
   { label: '就诊中', value: 'checked_in' },
@@ -108,6 +119,7 @@ const statusMap: Record<string, { label: string; theme: string }> = {
   checked_in: { label: '就诊中', theme: 'warning' },
   waiting: { label: '候诊中', theme: 'primary' },
   pending: { label: '已预约', theme: 'success' },
+  pending_payment: { label: '待支付', theme: 'warning' },
   cancelled: { label: '已取消', theme: 'danger' }
 }
 
@@ -139,6 +151,7 @@ const counts = computed(() => {
   return {
     all: statusList.length,
     today: list.filter(a => a.date === '2026-05-29').length,
+    pending_payment: statusList.filter(a => a.status === 'pending_payment').length,
     pending: statusList.filter(a => a.status === 'pending').length,
     waiting: statusList.filter(a => a.status === 'waiting').length,
     checked_in: statusList.filter(a => a.status === 'checked_in').length,
@@ -158,6 +171,8 @@ function getFilteredAppointments() {
   // 1. Tab filter
   if (activeTab.value === 'today') {
     list = list.filter(a => a.date === '2026-05-29')
+  } else if (activeTab.value === 'pending_payment') {
+    list = list.filter(a => a.status === 'pending_payment')
   } else if (activeTab.value === 'pending') {
     list = list.filter(a => a.status === 'pending')
   } else if (activeTab.value === 'waiting') {
@@ -407,10 +422,23 @@ watch(deliveryType, (newVal) => {
 
 function openCheckoutDialog(row: Appointment) {
   selectedCheckoutRow.value = row
-  billingItems.value = [
-    { product_id: '4', product_name: '诊所首诊挂号门诊费', price: 20000, quantity: 1 }
-  ]
-  discountAmount.value = 3000
+  if (row.status === 'pending_payment') {
+    const items = []
+    if (row.consult_fee && row.consult_fee > 0) {
+      items.push({ product_id: '4', product_name: `${row.doctor}医生挂号门诊费`, price: row.consult_fee, quantity: 1 })
+    }
+    if (row.deposit_amount && row.deposit_amount > 0) {
+      items.push({ product_id: '8', product_name: '就诊预约定金', price: row.deposit_amount, quantity: 1 })
+    }
+    billingItems.value = items.length > 0 ? items : [
+      { product_id: '4', product_name: '门诊挂号就诊费', price: 20000, quantity: 1 }
+    ]
+  } else {
+    billingItems.value = [
+      { product_id: '4', product_name: '诊所首诊挂号门诊费', price: 20000, quantity: 1 }
+    ]
+  }
+  discountAmount.value = row.status === 'pending_payment' ? 0 : 3000
   payMethod.value = 'wechat'
   checkoutSuccess.value = false
   orderResult.value = null
@@ -492,7 +520,8 @@ async function submitCheckout() {
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
       try {
-        await request.put(`/api/admin/appointments/${selectedCheckoutRow.value.id}`, { status: 'arrived' })
+        const nextStatus = selectedCheckoutRow.value.status === 'pending_payment' ? 'pending' : 'arrived'
+        await request.put(`/api/admin/appointments/${selectedCheckoutRow.value.id}`, { status: nextStatus })
       } catch (err) {
         console.error('更新预约结算状态失败:', err)
       }
@@ -639,6 +668,18 @@ async function submitCheckout() {
                     class="btn btn-xs btn-outline"
                     @click="router.push('/appointment/detail/' + row.id)"
                   >详情</button>
+
+                  <!-- status is pending_payment (待支付) -->
+                  <button
+                    v-if="row.status === 'pending_payment'"
+                    class="btn btn-xs btn-primary"
+                    @click="openCheckoutDialog(row)"
+                  >🪙 挂号收银</button>
+                  <button
+                    v-if="row.status === 'pending_payment'"
+                    class="btn btn-xs btn-danger"
+                    @click="cancelStatus(row.id)"
+                  >取消</button>
 
                   <!-- status is pending (已预约) -->
                   <button

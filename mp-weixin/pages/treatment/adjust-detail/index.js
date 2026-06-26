@@ -8,27 +8,17 @@ const o = () => "../../../components/base/hj-navbar.js",
     setup(o) {
       const a = e.ref(!0),
         c = e.ref(null),
-        r = [
-          {
-            date: "2026-05-30",
-            value: 3,
-            note: "初始适配，下颌前移量设定为3mm",
-            doctor: "王芳",
-            comfort: 3,
-          },
-          {
-            date: "2026-06-05",
-            value: 4,
-            note: "首次调整预约（即将进行）",
-            doctor: "王芳",
-            comfort: 0,
-          },
-        ];
+        r = e.reactive([]);
       return (
         e.onMounted(async () => {
           try {
             const e = await t.getTreatmentRecord();
             c.value = e.data;
+
+            const adjRes = await t.getDeviceAdjustments();
+            if (adjRes && adjRes.data) {
+              r.splice(0, r.length, ...adjRes.data);
+            }
           } catch (e) {
             console.error(e);
           } finally {
@@ -47,6 +37,7 @@ const o = () => "../../../components/base/hj-navbar.js",
                   d: e.t(c.value.adjustmentValue),
                   e: e.t(r.filter((e) => e.comfort > 0).length),
                   f: e.t(c.value.nextAdjustDate || "待定"),
+                  hasHistory: r.length > 0,
                   g: e.f(r, (t, o, a) =>
                     e.e(
                       {

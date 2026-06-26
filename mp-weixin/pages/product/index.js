@@ -95,7 +95,7 @@ const a = () => "../../components/base/hj-navbar.js",
         return "¥" + (e / 100).toFixed(2);
       }
       const navbarHeight = e.ref(88);
-      e.onMounted(() => {
+      e.onMounted(async () => {
         try {
           const windowInfo = e.index.getWindowInfo();
           const statusBarHeight = windowInfo.statusBarHeight || 44;
@@ -103,9 +103,23 @@ const a = () => "../../components/base/hj-navbar.js",
         } catch (err) {
           console.error(err);
         }
-        setTimeout(() => {
-          ((c.value = l), (o.value = !1));
-        }, 300);
+        try {
+          const api = require("../../api/index.js");
+          const res = await api.getProducts();
+          if (res && res.data && res.data.list) {
+            c.value = res.data.list.map(item => ({
+              ...item,
+              sales: item.salesCount !== undefined ? item.salesCount : item.sales
+            }));
+          } else {
+            c.value = l;
+          }
+        } catch (err) {
+          console.error("加载商品列表错误", err);
+          c.value = l;
+        } finally {
+          o.value = !1;
+        }
       });
       const s = { device: "#D9E6FF", accessory: "#D3F5E3", service: "#FFF3CD" };
       return (a, c) =>

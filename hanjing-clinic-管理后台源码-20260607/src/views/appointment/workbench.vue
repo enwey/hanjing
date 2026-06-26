@@ -444,7 +444,7 @@ const apptSearchQuery = ref('')
 const apptSelectedPatient = ref<any>(null)
 const apptStore = ref('🏥 鼾静健康·龙岗总店')
 const apptDate = ref(new Date().toISOString().split('T')[0])
-const apptSlot = ref('09:30')
+const apptSlot = ref('09:00 - 09:30')
 const apptVisitType = ref('复诊')
 const apptRemarks = ref('')
 const apptPatientCreateVisible = ref(false)
@@ -453,7 +453,7 @@ function openCreateApptDialog() {
   apptSearchQuery.value = ''
   apptSelectedPatient.value = null
   apptDate.value = new Date().toISOString().split('T')[0]
-  apptSlot.value = '09:30'
+  apptSlot.value = '09:00 - 09:30'
   apptVisitType.value = '复诊'
   apptRemarks.value = ''
   createApptVisible.value = true
@@ -503,14 +503,28 @@ async function submitCreateAppt() {
     return
   }
   try {
+    const slotTime = apptSlot.value.replace(/\s+/g, '') // e.g. "09:00-09:30"
+    const slotHour = parseInt(slotTime.split(':')[0], 10)
+    const period = slotHour < 12 ? 'morning' : 'afternoon'
+    const scheduleRes: any = await request.get('/api/admin/schedules', {
+      params: {
+        doctor_id: selectedDoctorId.value,
+        date: apptDate.value
+      }
+    })
+    const schedule = (scheduleRes.data || []).find((item: any) => item.period === period)
+    if (!schedule) {
+      MessagePlugin.warning('该医生当天没有对应时段排班，不能现场挂号')
+      return
+    }
     const payload = {
       patient_id: parseInt(apptSelectedPatient.value.id, 10),
-      store_id: currentDoctor.value?.store_id || 1,
+      store_id: schedule.store_id,
       doctor_id: parseInt(selectedDoctorId.value, 10),
-      schedule_id: 1, // seed placeholder
-      appointment_date: apptDate.value,
-      appointment_time: apptSlot.value,
-      type: apptVisitType.value === '复诊' ? 'return' : 'first',
+      date: apptDate.value,
+      period,
+      time: slotTime,
+      type: apptVisitType.value === '复诊' ? 'followup' : 'first',
       symptom_desc: apptRemarks.value
     }
     await request.post('/api/admin/appointments', payload)
