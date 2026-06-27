@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
@@ -175,6 +175,18 @@ function getIconBoxClass(prod: Product) {
 }
 
 onMounted(fetchProducts)
+
+const operationColumnWidth = computed(() => {
+  if (paginatedProducts.value.length === 0) return '80px'
+  const hasActive = paginatedProducts.value.some(p => p.status === 'active')
+  return hasActive ? '140px' : '80px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -229,27 +241,27 @@ onMounted(fetchProducts)
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="min-width: 220px;">商品</th>
-              <th style="width: 100px;">价格</th>
-              <th style="width: 130px;">一级佣金</th>
-              <th style="width: 130px;">二级佣金</th>
-              <th style="width: 100px;">推广次数</th>
-              <th style="width: 100px;">状态</th>
-              <th style="width: 160px; min-width: 160px; text-align: right;">操作</th>
+              <th>商品</th>
+              <th>价格</th>
+              <th>一级佣金</th>
+              <th>二级佣金</th>
+              <th>推广次数</th>
+              <th>状态</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="prod in paginatedProducts" :key="prod.id">
               <td>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <div :class="getIconBoxClass(prod)">
+                <div style="display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden;">
+                  <div :class="getIconBoxClass(prod)" style="flex-shrink: 0;">
                     {{ prod.icon }}
                   </div>
-                  <div>
-                    <div :style="{ fontWeight: '600', color: prod.status === 'active' ? '#1F2937' : '#9CA3AF' }">
+                  <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
+                    <div :style="{ fontWeight: '600', color: prod.status === 'active' ? '#1F2937' : '#9CA3AF' }" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                       {{ prod.name }}
                     </div>
-                    <div style="font-size: 11px; color: #9CA3AF; margin-top: 2px;">
+                    <div style="font-size: 11px; color: #9CA3AF; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                       {{ prod.desc }}
                     </div>
                   </div>
@@ -271,7 +283,7 @@ onMounted(fetchProducts)
                 <span class="status-tag green" v-if="prod.status === 'active'">推广中</span>
                 <span class="status-tag gray" v-else-if="prod.status === 'inactive'">已下架</span>
               </td>
-              <td>
+              <td :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">
                 <div style="display: flex; gap: 6px; justify-content: flex-end;">
                   <button class="btn btn-xs btn-outline" @click="handleEdit(prod.id)" v-if="prod.status === 'active'">编辑</button>
                   <button class="btn btn-xs btn-danger" @click="handleToggle(prod.id)" v-if="prod.status === 'active'">下架</button>

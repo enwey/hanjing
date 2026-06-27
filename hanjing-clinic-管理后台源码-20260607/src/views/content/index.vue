@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -156,6 +156,18 @@ function getAvatarBg(author: string) {
 }
 
 onMounted(fetchPosts)
+
+const operationColumnWidth = computed(() => {
+  if (paginatedPosts.value.length === 0) return '80px'
+  const hasPending = paginatedPosts.value.some(p => p.status === 'pending')
+  return hasPending ? '340px' : '220px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -260,31 +272,31 @@ onMounted(fetchPosts)
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="min-width: 250px;">文章标题</th>
-              <th style="width: 130px;">发布作者</th>
-              <th style="width: 100px;">文章分类</th>
-              <th style="width: 80px;">阅读量</th>
-              <th style="width: 80px;">点赞数</th>
-              <th style="width: 80px;">评论数</th>
-              <th style="width: 150px;">发布时间</th>
-              <th style="width: 100px;">状态</th>
-              <th style="width: 330px; text-align: right;">操作</th>
+              <th>文章标题</th>
+              <th>发布作者</th>
+              <th>文章分类</th>
+              <th>阅读量</th>
+              <th>点赞数</th>
+              <th>评论数</th>
+              <th>发布时间</th>
+              <th>状态</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="post in paginatedPosts" :key="post.id">
               <td>
-                <div style="font-weight: 600; color: #1F2937; display: flex; align-items: center; gap: 6px;">
+                <div style="font-weight: 600; color: #1F2937; display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden;">
                   <span v-if="post.isTop" style="font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #FEF2F2; color: #EF4444; font-weight: 700; flex-shrink: 0;">置顶</span>
-                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="post.title">{{ post.title }}</span>
+                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;" :title="post.title">{{ post.title }}</span>
                 </div>
               </td>
               <td>
-                <div class="name-cell">
-                  <div class="avatar-xs" :style="{ background: getAvatarBg(post.author) }">
+                <div class="name-cell" style="min-width: 0; overflow: hidden; display: flex; align-items: center; gap: 8px;">
+                  <div class="avatar-xs" :style="{ background: getAvatarBg(post.author), flexShrink: 0 }">
                     {{ post.avatar }}
                   </div>
-                  <span style="font-size: 13px; color: #4B5563;">{{ post.author }}</span>
+                  <span style="font-size: 13px; color: #4B5563; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ post.author }}</span>
                 </div>
               </td>
               <td>
@@ -301,7 +313,7 @@ onMounted(fetchPosts)
                 <span class="status-tag green" v-else-if="post.status === 'approved'">已通过</span>
                 <span class="status-tag red" v-else-if="post.status === 'rejected'">已下架</span>
               </td>
-              <td>
+              <td :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">
                 <div style="display: flex; gap: 6px; justify-content: flex-end;">
                   <button class="btn btn-xs btn-success" @click="approve(post.id)" v-if="post.status === 'pending'">通过</button>
                   <button class="btn btn-xs btn-danger" @click="reject(post.id)" v-if="post.status === 'pending'">拒绝</button>

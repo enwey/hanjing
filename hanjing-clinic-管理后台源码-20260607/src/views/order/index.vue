@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -174,6 +174,21 @@ async function handleNotify(row: Order) {
 function handleShip(row: Order) {
   router.push(`/order/detail/${row.id}`)
 }
+
+const operationColumnWidth = computed(() => {
+  if (paginatedOrders.value.length === 0) return '80px'
+  const hasProcessing = paginatedOrders.value.some(o => o.status === 'processing')
+  const hasShipping = paginatedOrders.value.some(o => o.status === 'shipping')
+  if (hasProcessing) return '240px'
+  if (hasShipping) return '140px'
+  return '80px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -225,26 +240,26 @@ function handleShip(row: Order) {
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="width: 130px;">订单号</th>
-              <th style="width: 140px;">患者</th>
-              <th style="min-width: 180px;">商品/服务</th>
-              <th style="width: 120px;">门店</th>
-              <th style="width: 100px;">金额</th>
-              <th style="width: 110px;">分销佣金</th>
-              <th style="width: 150px;">下单时间</th>
-              <th style="width: 100px;">状态</th>
-              <th style="width: 140px; min-width: 140px; text-align: right;">操作</th>
+              <th>订单号</th>
+              <th>患者</th>
+              <th>商品/服务</th>
+              <th>门店</th>
+              <th>金额</th>
+              <th>分销佣金</th>
+              <th>下单时间</th>
+              <th>状态</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in paginatedOrders" :key="row.id">
               <td class="id">{{ row.no }}</td>
               <td>
-                <div class="name-cell">
-                  <div class="avatar-sm" :style="{ background: row.avatarBg }">
+                <div class="name-cell" style="min-width: 0; overflow: hidden; display: flex; align-items: center; gap: 8px;">
+                  <div class="avatar-sm" :style="{ background: row.avatarBg, flexShrink: 0 }">
                     {{ row.patient[0] }}
                   </div>
-                  {{ row.patient }}
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ row.patient }}</span>
                 </div>
               </td>
               <td>{{ row.product }}</td>
@@ -265,7 +280,7 @@ function handleShip(row: Order) {
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;">
                   <button class="btn btn-xs btn-outline" @click="openOrderDetail(row.id)">详情</button>
-                  <button v-if="row.status === 'processing'" class="btn btn-xs btn-outline" @click="handleNotify(row)" style="margin-right: 4px;">🔔 通知到货</button>
+                  <button v-if="row.status === 'processing'" class="btn btn-xs btn-outline" @click="handleNotify(row)" style="margin-right: 4px;">通知到货</button>
                   <button v-if="row.status === 'processing'" class="btn btn-xs btn-success" @click="handleComplete(row)">提货核销</button>
                   <button v-if="row.status === 'shipping'" class="btn btn-xs btn-primary" @click="handleShip(row)">发货</button>
                 </div>

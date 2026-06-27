@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -99,6 +99,17 @@ async function toggleStatus(row: Role) {
 
 onMounted(fetchRoles)
 
+const operationColumnWidth = computed(() => {
+  if (paginatedRoles.value.length === 0) return '80px'
+  const hasToggleable = paginatedRoles.value.some(r => r.name !== '超级管理员')
+  return hasToggleable ? '140px' : '80px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -121,11 +132,11 @@ onMounted(fetchRoles)
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="width: 180px;">角色名称</th>
-              <th style="width: 100px;">成员数</th>
-              <th style="min-width: 250px;">权限范围</th>
-              <th style="width: 120px;">状态</th>
-              <th style="width: 150px; min-width: 150px; text-align: right;">操作</th>
+              <th>角色名称</th>
+              <th>成员数</th>
+              <th>权限范围</th>
+              <th>状态</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -139,7 +150,7 @@ onMounted(fetchRoles)
                 <t-tag v-if="row.status === 'active'" theme="success" variant="light">启用</t-tag>
                 <t-tag v-else theme="default" variant="light">禁用</t-tag>
               </td>
-              <td style="text-align: right;">
+               <td :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">
                 <div class="actions" style="justify-content: flex-end;" @click.stop>
                   <button class="btn btn-xs btn-outline" @click="editRole(row.id)">编辑</button>
                   <button

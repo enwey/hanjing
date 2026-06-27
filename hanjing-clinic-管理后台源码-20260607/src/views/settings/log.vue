@@ -160,13 +160,13 @@ onMounted(fetchLogs)
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="width: 180px;">操作时间</th>
-              <th style="width: 180px;">操作账号</th>
-              <th style="width: 120px;">操作模块</th>
-              <th style="width: 130px;">行为类别</th>
-              <th style="min-width: 280px;">操作详情</th>
-              <th style="width: 130px;">IP 地址</th>
-              <th style="width: 100px;">状态</th>
+              <th>操作时间</th>
+              <th>操作账号</th>
+              <th>操作模块</th>
+              <th>行为类别</th>
+              <th>操作详情</th>
+              <th>IP 地址</th>
+              <th>状态</th>
             </tr>
           </thead>
           <tbody>

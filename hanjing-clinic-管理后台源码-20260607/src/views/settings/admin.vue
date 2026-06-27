@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
@@ -222,6 +222,18 @@ onMounted(async () => {
     fetchAdmins()
   }
 })
+
+const operationColumnWidth = computed(() => {
+  if (paginatedAdmins.value.length === 0) return '80px'
+  const hasToggleable = paginatedAdmins.value.some(a => a.username !== 'admin')
+  return hasToggleable ? '140px' : '80px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -285,22 +297,22 @@ onMounted(async () => {
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="width: 140px;">账号</th>
-              <th style="width: 130px;">姓名</th>
-              <th style="width: 120px;">角色</th>
-              <th style="width: 160px;">负责门店</th>
-              <th style="width: 150px;">最近登录</th>
-              <th style="width: 100px;">状态</th>
-              <th style="width: 180px; text-align: right;">操作</th>
+              <th>账号</th>
+              <th>姓名</th>
+              <th>角色</th>
+              <th>负责门店</th>
+              <th>最近登录</th>
+              <th>状态</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in paginatedAdmins" :key="row.id">
               <td style="font-family: monospace; font-size: 12px;">{{ row.username }}</td>
               <td>
-                <div class="name-cell">
-                  <div class="avatar avatar-sm" :style="{ background: row.avatarColor }">{{ row.avatarChar }}</div>
-                  <strong>{{ row.name }}</strong>
+                <div class="name-cell" style="min-width: 0; overflow: hidden; display: flex; align-items: center; gap: 8px;">
+                  <div class="avatar avatar-sm" :style="{ background: row.avatarColor, flexShrink: 0 }">{{ row.avatarChar }}</div>
+                  <strong style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ row.name }}</strong>
                 </div>
               </td>
               <td>
@@ -316,7 +328,7 @@ onMounted(async () => {
                 <span class="status-tag gray" v-else-if="row.status === 'offline'">离线</span>
                 <span class="status-tag red" v-else-if="row.status === 'disabled'">已禁用</span>
               </td>
-              <td>
+              <td :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">
                 <div style="display: flex; gap: 4px; justify-content: flex-end;">
                   <button class="btn btn-xs btn-outline" @click="handleEdit(row.id)">编辑</button>
                   <button

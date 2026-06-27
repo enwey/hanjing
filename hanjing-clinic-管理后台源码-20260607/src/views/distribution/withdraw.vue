@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
@@ -256,6 +256,18 @@ function formatAccount(row: WithdrawApply) {
   const last4 = acc.substring(acc.length - 4)
   return `${bank} ****${last4}`
 }
+
+const operationColumnWidth = computed(() => {
+  if (paginatedRecords.value.length === 0) return '80px'
+  const hasPending = paginatedRecords.value.some(r => r.status === 'pending')
+  return hasPending ? '140px' : '80px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -366,18 +378,18 @@ function formatAccount(row: WithdrawApply) {
               <th style="width: 50px; text-align: center;">
                 <input 
                   type="checkbox" 
-                  :checked="isAllSelected" 
+                  :checked="selectedRowKeys.length === paginatedRecords.filter(r => r.status === 'pending').length && selectedRowKeys.length > 0" 
                   @change="toggleSelectAll"
                 >
               </th>
-              <th style="width: 150px;">申请单号</th>
-              <th style="width: 150px;">推广员</th>
-              <th style="width: 110px;">提现金额</th>
-              <th style="width: 100px;">手续费</th>
-              <th style="width: 110px;">到账金额</th>
-              <th style="width: 200px;">账户</th>
-              <th style="width: 150px;">申请时间</th>
-              <th style="width: 150px; min-width: 150px; text-align: right;">操作</th>
+              <th>申请单号</th>
+              <th>推广员</th>
+              <th>提现金额</th>
+              <th>手续费</th>
+              <th>到账金额</th>
+              <th>账户</th>
+              <th>申请时间</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -392,13 +404,13 @@ function formatAccount(row: WithdrawApply) {
               </td>
               <td class="id">{{ row.no }}</td>
               <td>
-                <div class="name-cell">
-                  <div class="avatar-sm" :style="{ background: getAvatarBg(row.level) }">
+                <div class="name-cell" style="min-width: 0; overflow: hidden; display: flex; align-items: center; gap: 8px;">
+                  <div class="avatar-sm" :style="{ background: getAvatarBg(row.level), flexShrink: 0 }">
                     {{ row.name.substring(0, 1) }}
                   </div>
-                  <div>
-                    <div style="font-weight: 600; color: #1F2937;">{{ row.name }}</div>
-                    <div style="font-size: 11px; color: #9CA3AF;">{{ row.phone }}</div>
+                  <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
+                    <div style="font-weight: 600; color: #1F2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ row.name }}</div>
+                    <div style="font-size: 11px; color: #9CA3AF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ row.phone }}</div>
                   </div>
                 </div>
               </td>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -127,6 +127,17 @@ function getLevelEmoji(level: string) {
 }
 
 onMounted(fetchDistributors)
+
+const operationColumnWidth = computed(() => {
+  if (paginatedDistributors.value.length === 0) return '80px'
+  return '140px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -171,27 +182,27 @@ onMounted(fetchDistributors)
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="width: 160px;">推广员</th>
-              <th style="width: 110px;">等级</th>
-              <th style="width: 100px;">一级下线</th>
-              <th style="width: 100px;">二级下线</th>
-              <th style="width: 100px;">推广订单</th>
-              <th style="width: 120px;">累计佣金</th>
-              <th style="width: 120px;">可提现</th>
-              <th style="width: 100px;">状态</th>
-              <th style="width: 150px; min-width: 150px; text-align: right;">操作</th>
+              <th>推广员</th>
+              <th>等级</th>
+              <th>一级下线</th>
+              <th>二级下线</th>
+              <th>推广订单</th>
+              <th>累计佣金</th>
+              <th>可提现</th>
+              <th>状态</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in paginatedDistributors" :key="row.id">
               <td>
-                <div class="name-cell">
-                  <div class="avatar-sm" :style="{ background: getAvatarBg(row.level) }">
+                <div class="name-cell" style="min-width: 0; overflow: hidden; display: flex; align-items: center; gap: 8px;">
+                  <div class="avatar-sm" :style="{ background: getAvatarBg(row.level), flexShrink: 0 }">
                     {{ row.name.substring(0, 1) }}
                   </div>
-                  <div>
-                    <div style="font-weight:600;color:#1F2937;">{{ row.name }}</div>
-                    <div style="font-size:11px;color:#9CA3AF;">{{ row.phone }}</div>
+                  <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
+                    <div style="font-weight:600;color:#1F2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.name }}</div>
+                    <div style="font-size:11px;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.phone }}</div>
                   </div>
                 </div>
               </td>

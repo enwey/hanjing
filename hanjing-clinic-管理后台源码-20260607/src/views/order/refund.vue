@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
@@ -107,6 +107,18 @@ async function handleReject(row: RefundRequest) {
 }
 
 onMounted(fetchRefunds)
+
+const operationColumnWidth = computed(() => {
+  if (paginatedRefunds.value.length === 0) return '80px'
+  const hasPending = paginatedRefunds.value.some(r => r.status === 'pending')
+  return hasPending ? '220px' : '80px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -171,14 +183,14 @@ onMounted(fetchRefunds)
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="width: 150px;">退款单号</th>
-              <th style="width: 140px;">原订单</th>
-              <th style="width: 140px;">患者</th>
-              <th style="min-width: 180px;">商品</th>
-              <th style="width: 100px;">退款金额</th>
-              <th style="width: 180px;">原因</th>
-              <th style="width: 150px;">申请时间</th>
-              <th style="width: 170px; min-width: 170px; text-align: right;">操作</th>
+              <th>退款单号</th>
+              <th>原订单</th>
+              <th>患者</th>
+              <th>商品</th>
+              <th>退款金额</th>
+              <th>原因</th>
+              <th>申请时间</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -186,14 +198,14 @@ onMounted(fetchRefunds)
               <td style="font-family: monospace; font-size: 12px; color: #9CA3AF;">{{ row.refundNo }}</td>
               <td style="font-family: monospace; font-size: 12px;">{{ row.orderNo }}</td>
               <td>
-                <div class="name-cell">
-                  <div class="avatar avatar-sm" :style="{ background: row.avatarColor }">{{ row.avatarChar }}</div>
-                  <span>{{ row.patient }}</span>
+                <div class="name-cell" style="min-width: 0; overflow: hidden; display: flex; align-items: center; gap: 8px;">
+                  <div class="avatar avatar-sm" :style="{ background: row.avatarColor, flexShrink: 0 }">{{ row.avatarChar }}</div>
+                  <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ row.patient }}</span>
                 </div>
               </td>
               <td>{{ row.product }}</td>
               <td style="font-weight: 700; color: var(--error-500);">¥{{ row.amount }}</td>
-              <td style="font-size: 12px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <td :title="row.reason">
                 {{ row.reason }}
               </td>
               <td style="font-size: 12px; color: #6B7280;">{{ row.applyTime }}</td>

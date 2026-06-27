@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
@@ -200,6 +200,18 @@ async function handleSave() {
 }
 
 onMounted(fetchBanners)
+
+const operationColumnWidth = computed(() => {
+  if (paginatedBanners.value.length === 0) return '80px'
+  const hasInactive = paginatedBanners.value.some(b => b.status === 'inactive')
+  return hasInactive ? '340px' : '280px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -259,13 +271,13 @@ onMounted(fetchBanners)
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="width: 70px;">排序</th>
-              <th style="width: 110px;">预览</th>
-              <th style="min-width: 200px;">标题</th>
-              <th style="width: 250px;">跳转链接</th>
-              <th style="width: 110px;">有效期</th>
-              <th style="width: 100px;">展示状态</th>
-              <th style="width: 320px; min-width: 320px; text-align: right;">操作</th>
+              <th>排序</th>
+              <th>预览</th>
+              <th>标题</th>
+              <th>跳转链接</th>
+              <th>有效期</th>
+              <th>展示状态</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -284,7 +296,7 @@ onMounted(fetchBanners)
                 <span class="status-tag gray" v-else-if="b.status === 'inactive'">已下架</span>
                 <span class="status-tag gray" v-else-if="b.status === 'expired'">已过期</span>
               </td>
-              <td>
+              <td :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">
                 <div style="display: flex; gap: 4px; justify-content: flex-end;">
                   <button class="btn btn-xs btn-outline" @click="handleEdit(b.id)">编辑</button>
                   

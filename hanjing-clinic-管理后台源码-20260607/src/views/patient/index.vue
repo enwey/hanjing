@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -212,6 +212,17 @@ const statusMap: Record<string, { label: string; theme: string }> = {
   active: { label: '活跃', theme: 'success' },
   inactive: { label: '失活', theme: 'default' },
 }
+
+const operationColumnWidth = computed(() => {
+  if (paginatedPatients.value.length === 0) return '80px'
+  return '140px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -247,22 +258,22 @@ const statusMap: Record<string, { label: string; theme: string }> = {
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="width: 120px;">病历号</th>
-              <th style="min-width: 220px;">患者信息</th>
-              <th style="width: 80px;">等级</th>
-              <th style="width: 150px;">标签</th>
-              <th style="width: 100px;">就诊次数</th>
-              <th style="width: 110px;">最近就诊</th>
-              <th style="width: 120px;">消费总额</th>
-              <th style="width: 100px;">来源</th>
-              <th style="width: 150px; min-width: 150px; text-align: right;">操作</th>
+              <th>病历号</th>
+              <th>患者信息</th>
+              <th>等级</th>
+              <th>标签</th>
+              <th>就诊次数</th>
+              <th>最近就诊</th>
+              <th>消费总额</th>
+              <th>来源</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in paginatedPatients" :key="row.id" @click="openDetail(row)" style="cursor: pointer;">
               <td style="font-family: monospace; font-weight: 600; color: var(--primary-500);">{{ row.no }}</td>
               <td>
-                <div style="display:flex;align-items:center;gap:8px;" @click.stop>
+                <div style="display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;" @click.stop>
                   <div :style="{
                     width: '32px',
                     height: '32px',
@@ -276,9 +287,9 @@ const statusMap: Record<string, { label: string; theme: string }> = {
                     fontSize: '12px',
                     flexShrink: 0
                   }">{{ row.name.substring(0, 1) }}</div>
-                  <div>
-                    <div style="font-weight:600;color:#1F2937;">{{ row.name }}</div>
-                    <div style="font-size:11px;color:#9CA3AF;">{{ row.gender }} · {{ row.age }}岁 · {{ row.phone }}</div>
+                  <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
+                    <div style="font-weight:600;color:#1F2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.name }}</div>
+                    <div style="font-size:11px;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.gender }} · {{ row.age }}岁 · {{ row.phone }}</div>
                   </div>
                 </div>
               </td>

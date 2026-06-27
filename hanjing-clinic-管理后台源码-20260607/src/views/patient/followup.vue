@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -143,6 +143,18 @@ async function handleCreate() {
 }
 
 onMounted(fetchData)
+
+const operationColumnWidth = computed(() => {
+  if (tasks.value.length === 0) return '80px'
+  const hasGold = tasks.value.some(t => t.status === 'gold')
+  return hasGold ? '220px' : '80px'
+})
+
+watch(operationColumnWidth, () => {
+  nextTick(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+})
 </script>
 
 <template>
@@ -165,12 +177,12 @@ onMounted(fetchData)
       <table class="data-table" v-resizable>
         <thead>
           <tr>
-            <th style="width: 120px;">随访类型</th>
-            <th style="width: 140px;">计划时间</th>
-            <th style="width: 120px;">执行人</th>
-            <th style="min-width: 250px;">内容</th>
-            <th style="width: 100px;">状态</th>
-            <th style="width: 150px; text-align: right;">操作</th>
+            <th>随访类型</th>
+            <th>计划时间</th>
+            <th>执行人</th>
+            <th>内容</th>
+            <th>状态</th>
+            <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -182,7 +194,7 @@ onMounted(fetchData)
             </td>
             <td :style="{ fontWeight: task.status === 'gold' ? '600' : '400' }">{{ task.dueDate }}</td>
             <td>{{ task.executor }}</td>
-            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="task.content">{{ task.content }}</td>
+            <td :title="task.content">{{ task.content }}</td>
             <td>
               <span class="status-tag gold" v-if="task.status === 'gold'">待执行</span>
               <span class="status-tag green" v-else-if="task.status === 'green'">已完成</span>
