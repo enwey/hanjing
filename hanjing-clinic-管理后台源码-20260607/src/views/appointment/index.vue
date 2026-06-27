@@ -682,8 +682,8 @@ async function submitCheckout() {
                     flexShrink: 0
                   }">{{ row.patient.substring(0, 1) }}</div>
                   <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
-                    <div style="font-weight: 600; color: #1F2937; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ row.patient }}</div>
-                    <div style="font-size: 11px; color: #9CA3AF; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ row.phone }}</div>
+                    <div style="font-weight: 600; color: #1F2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ row.patient }}</div>
+                    <div style="font-size: 11px; color: #9CA3AF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ row.phone }}</div>
                   </div>
                 </div>
               </td>
