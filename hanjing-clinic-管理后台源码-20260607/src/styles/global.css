@@ -382,6 +382,9 @@ div::-webkit-scrollbar-thumb:hover {
 .filter-tab:last-child {
   border-radius: 0 8px 8px 0; /* UI Mockup: var(--radius-sm) (8px) */
 }
+.filter-tab:only-child {
+  border-radius: 8px;
+}
 .filter-tab + .filter-tab {
   border-left: none;
 }
