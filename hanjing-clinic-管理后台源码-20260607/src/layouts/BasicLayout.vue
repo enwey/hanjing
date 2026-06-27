@@ -10,7 +10,25 @@ const isSidebarCollapsed = ref(false)
 
 const isMenuCollapsed = computed(() => isSidebarCollapsed.value)
 
-const menuGroups = [
+const activeAppointmentCount = ref(0)
+
+async function fetchAppointmentBadgeCount() {
+  try {
+    const res: any = await request.get('/api/admin/appointments')
+    if (res && res.code === 200) {
+      // Find all appointments that are successfully booked (status is not pending_payment or cancelled) 
+      // and their lifecycle has not ended (status is not finished/arrived or settled)
+      const activeAppts = res.data.filter((item: any) => 
+        ['pending', 'confirmed', 'waiting', 'checked_in', 'completed'].includes(item.status)
+      )
+      activeAppointmentCount.value = activeAppts.length
+    }
+  } catch (error) {
+    console.error('Fetch appointment badge count error:', error)
+  }
+}
+
+const menuGroups = computed(() => [
   {
     title: '概览',
     items: [
@@ -20,7 +38,13 @@ const menuGroups = [
   {
     title: '业务管理',
     items: [
-      { path: '/appointment', label: '预约管理', icon: '📅', badge: '12', badgeColor: 'red' },
+      { 
+        path: '/appointment', 
+        label: '预约管理', 
+        icon: '📅', 
+        badge: activeAppointmentCount.value > 0 ? String(activeAppointmentCount.value) : undefined, 
+        badgeColor: 'red' 
+      },
       { path: '/queue', label: '排队分诊', icon: '📣' },
       { path: '/workbench', label: '接诊工作台', icon: '🩺' },
       { path: '/patient', label: '患者管理', icon: '🧑‍⚕️' },
@@ -34,7 +58,13 @@ const menuGroups = [
     items: [
       { path: '/distribution', label: '分销总览', icon: '💰' },
       { path: '/promoter', label: '推广员管理', icon: '👥' },
-      { path: '/withdraw', label: '提现审核', icon: '💳', badge: '5', badgeColor: 'gold' },
+      { 
+        path: '/withdraw', 
+        label: '提现审核', 
+        icon: '💳', 
+        badge: notifStats.value.withdrawCount > 0 ? String(notifStats.value.withdrawCount) : undefined, 
+        badgeColor: 'gold' 
+      },
       { path: '/products', label: '推广商品', icon: '🛍️' }
     ]
   },
@@ -53,7 +83,7 @@ const menuGroups = [
       { path: '/log', label: '操作日志', icon: '📋' }
     ]
   }
-]
+])
 
 const userInfo = computed(() => {
   const userInfoRaw = localStorage.getItem('user_info')
@@ -67,10 +97,10 @@ const userInfo = computed(() => {
 const filteredMenuGroups = computed(() => {
   const userRole = userInfo.value.role_code || 'super_admin';
   if (userRole === 'super_admin') {
-    return menuGroups;
+    return menuGroups.value;
   }
   
-  return menuGroups.map(group => {
+  return menuGroups.value.map(group => {
     const items = group.items.filter(item => {
       if (userRole === 'store_mgr') {
         return !['/permission', '/settings'].includes(item.path);
@@ -347,6 +377,7 @@ async function fetchNotifStats() {
     if (res && res.code === 200) {
       notifStats.value = res.data
     }
+    await fetchAppointmentBadgeCount()
   } catch (error) {
     console.error('Fetch notification stats error:', error)
   }
