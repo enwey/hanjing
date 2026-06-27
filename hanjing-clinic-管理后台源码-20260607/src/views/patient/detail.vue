@@ -112,7 +112,10 @@ const loadPatientDetails = async () => {
         if (a.status === 'completed') {
           title = '完成就诊'
           color = 'green'
-        } else if (a.status === 'confirmed') {
+        } else if (a.status === 'checked_in') {
+          title = '就诊中'
+          color = 'purple'
+        } else if (a.status === 'confirmed' || a.status === 'called') {
           title = '确认待就诊'
           color = 'blue'
         } else if (a.status === 'cancelled') {

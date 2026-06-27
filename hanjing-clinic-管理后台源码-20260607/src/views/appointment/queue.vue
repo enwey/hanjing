@@ -39,7 +39,7 @@ const fetchAppointments = async () => {
     const todayStr = getTodayDateString()
     const res: any = await request.get(`/api/admin/appointments?date=${todayStr}`)
     const activeAppts = res.data.filter((item: any) => 
-      ['pending', 'confirmed', 'waiting', 'checked_in', 'completed'].includes(item.status)
+      !['pending_payment', 'cancelled', 'no_show'].includes(item.status)
     )
     appointments.value = activeAppts.map((item: any) => ({
       id: item.id.toString(),
@@ -78,7 +78,7 @@ watch(selectedStore, () => {
 // Extract all waiting list items globally to count slots and show numbers
 const allWaitingItems = computed(() => {
   return appointments.value
-    .filter(item => item.status === 'confirmed' || item.status === 'pending')
+    .filter(item => !['pending_payment', 'cancelled', 'no_show'].includes(item.status))
     .filter(item => selectedStore.value === 'all' || item.storeName.includes(selectedStore.value))
 })
 
@@ -157,7 +157,7 @@ const doctorQueues = computed(() => {
     doctorAppts.forEach(appt => {
       if (appt.status === 'checked_in') {
         current = appt
-      } else if (appt.status === 'confirmed' || appt.status === 'pending') {
+      } else if (appt.status === 'confirmed' || appt.status === 'called' || appt.status === 'pending' || appt.status === 'waiting') {
         waitingList.push(appt)
       }
     })
@@ -665,9 +665,16 @@ const filteredTodayAppointments = computed(() => {
     </div>
 
     <div v-if="doctorQueues.length === 0" class="empty-state">
-      <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
-      <div style="font-size: 16px; color: #4B5563; font-weight: 500;">今日暂无排队候诊中的患者</div>
-      <div style="font-size: 12px; color: #9CA3AF; margin-top: 8px;">小程序端预约确认或前台登记后，数据将在此同步。</div>
+      <div style="font-size: 48px; margin-bottom: 16px; display: flex; justify-content: center; align-items: center;">
+        <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      </div>
+      <div style="font-size: 16px; color: #4B5563; font-weight: 500;">今日暂无医生排班</div>
+      <div style="font-size: 12px; color: #9CA3AF; margin-top: 8px;">请先在排班管理中配置医生今日排班，排班发布且有预约或登记患者后，数据将在此同步。</div>
     </div>
 
     <div v-else class="queue-grid">
@@ -729,15 +736,15 @@ const filteredTodayAppointments = computed(() => {
                 <span class="wait-idx">{{ idx + 1 }}</span>
                 <div>
                   <div class="wait-name">{{ item.patientName }}</div>
-                  <div class="wait-time">{{ item.timeSlot }} · {{ item.status === 'pending' ? '已预约' : '候诊中' }}</div>
+                  <div class="wait-time">{{ item.timeSlot }} · {{ item.status === 'pending' ? '已预约' : (item.status === 'called' ? '已叫号' : '候诊中') }}</div>
                 </div>
               </div>
               <div class="wait-right">
                 <t-button v-if="item.status === 'pending'" size="extra-small" theme="warning" variant="outline" @click="startTreatment(item)">
                   签到
                 </t-button>
-                <t-button v-else size="extra-small" theme="primary" variant="outline" @click="callPatient(item, q.doctorName)">
-                  叫号
+                <t-button v-else size="extra-small" :theme="item.status === 'called' ? 'success' : 'primary'" variant="outline" @click="callPatient(item, q.doctorName)">
+                  {{ item.status === 'called' ? '重呼' : '叫号' }}
                 </t-button>
                 <t-button size="extra-small" theme="default" variant="text" @click="delayPatient(item)">
                   顺延

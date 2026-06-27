@@ -7,6 +7,24 @@ import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
 
 const router = useRouter()
 
+const getTodayDateString = () => {
+  const nowInShanghai = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }))
+  const y = nowInShanghai.getFullYear()
+  const m = String(nowInShanghai.getMonth() + 1).padStart(2, '0')
+  const d = String(nowInShanghai.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+const getAvatarColor = (name: string) => {
+  if (!name) return '#3B6BF5'
+  const colors = ['#3B6BF5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+}
+
 interface QueueItem {
   id: string;
   patientId: string;
@@ -27,6 +45,12 @@ interface QueueItem {
     neck_circumference?: number;
     bmi?: number;
   };
+  gender?: string;
+  age?: number;
+  type?: string;
+  source?: string;
+  consultFee?: number;
+  depositAmount?: number;
 }
 
 const appointments = ref<QueueItem[]>([])
@@ -55,7 +79,8 @@ const fetchDoctors = async () => {
 const fetchAppointments = async () => {
   loading.value = true
   try {
-    const res: any = await request.get('/api/admin/appointments')
+    const todayStr = getTodayDateString()
+    const res: any = await request.get(`/api/admin/appointments?date=${todayStr}`)
     const mapped = res.data.map((item: any) => ({
       id: item.id.toString(),
       patientId: item.patient_id.toString(),
@@ -68,16 +93,26 @@ const fetchAppointments = async () => {
       timeSlot: item.appointment_time,
       symptom: item.symptom_desc || '无主诉描述',
       status: item.status,
-      pre_exam: item.pre_exam || null
+      pre_exam: item.pre_exam || null,
+      gender: item.patient_gender === 1 ? '男' : '女',
+      age: item.patient_age,
+      type: item.type === 'first' ? '初诊' : '复诊',
+      source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '现场',
+      consultFee: item.consult_fee || 0,
+      depositAmount: item.deposit_amount || 0
     }))
 
-    // For each appointment, fetch its pre-exam vitals if confirmed or completed
+    // For each appointment, fetch its pre-exam vitals if confirmed, checked_in or completed
     for (const appt of mapped) {
-      if (appt.status === 'confirmed' || appt.status === 'completed') {
+      if (appt.status === 'confirmed' || appt.status === 'called' || appt.status === 'checked_in' || appt.status === 'completed') {
         try {
           const preRes: any = await request.get(`/api/admin/appointments/${appt.id}`)
-          if (preRes.code === 200 && preRes.data && preRes.data.pre_exam) {
-            appt.pre_exam = preRes.data.pre_exam
+          if (preRes.code === 200 && preRes.data) {
+            if (preRes.data.pre_exam) {
+              appt.pre_exam = preRes.data.pre_exam
+            }
+            appt.medicalHistory = preRes.data.patient_medical_history
+            appt.allergyHistory = preRes.data.patient_allergy_history
           }
         } catch (e) {
           // ignore
@@ -113,7 +148,7 @@ const currentStoreName = computed(() => {
 const uniqueTimeSlots = computed(() => {
   const slots = new Set<string>()
   appointments.value.forEach(item => {
-    if (item.doctorId === selectedDoctorId.value && item.status !== 'completed' && item.timeSlot) {
+    if (item.doctorId === selectedDoctorId.value && !['completed', 'checked_in', 'pending_payment', 'cancelled', 'no_show'].includes(item.status) && item.timeSlot) {
       slots.add(item.timeSlot)
     }
   })
@@ -121,7 +156,7 @@ const uniqueTimeSlots = computed(() => {
 })
 
 const allWaitingItems = computed(() => {
-  return appointments.value.filter(item => item.doctorId === selectedDoctorId.value && item.status !== 'completed')
+  return appointments.value.filter(item => item.doctorId === selectedDoctorId.value && !['completed', 'checked_in', 'pending_payment', 'cancelled', 'no_show'].includes(item.status))
 })
 
 function getSlotCount(slot: string) {
@@ -143,17 +178,16 @@ function getBadgeStyle(isActive: boolean) {
   }
 }
 
-// Doctor's active treating patient (first 'confirmed' appointment)
+// Doctor's active treating patient (last checked_in patient)
 const currentPatient = computed(() => {
-  return appointments.value.find(item => item.doctorId === selectedDoctorId.value && item.status === 'confirmed') || null
+  return appointments.value.find(item => item.doctorId === selectedDoctorId.value && item.status === 'checked_in') || null
 })
 
 // Doctor's waiting queue (excluding the active currentPatient)
 const waitingQueue = computed(() => {
   const list = appointments.value.filter(item => {
     if (item.doctorId !== selectedDoctorId.value) return false
-    if (item.status === 'completed') return false
-    if (currentPatient.value && item.id === currentPatient.value.id) return false
+    if (['completed', 'checked_in', 'pending_payment', 'cancelled', 'no_show'].includes(item.status)) return false
     return true
   })
   
@@ -244,17 +278,40 @@ async function handleCheckInSubmit() {
   }
 }
 
-// Call next patient / Call selected patient to active seat
-const handleCallToConsult = (item: QueueItem) => {
-  if (currentPatient.value) {
-    MessagePlugin.warning('当前已有接诊中患者，请先录入病历或将其移出诊室')
-    return
-  }
+// Click '叫号' button: voice broadcast only, update status to 'called'
+const triggerCallOnly = async (item: QueueItem) => {
+  // Voice call broadcast
   callPatient(item.patientName, item.doctorName)
-  if (item.status === 'pending') {
-    openCheckInDialog(item)
-  } else {
-    MessagePlugin.success(`正在接诊患者 [${item.patientName}]`)
+
+  try {
+    // Update status to 'called' in backend
+    await request.put(`/api/admin/appointments/${item.id}`, { status: 'called' })
+    MessagePlugin.success(`已成功呼叫并语音播报患者 [${item.patientName}]`)
+    fetchAppointments()
+  } catch (error) {
+    console.error('叫号状态更新失败:', error)
+    MessagePlugin.error('叫号失败')
+  }
+}
+
+// Click '接诊' button: move to room, update status to 'checked_in'
+const triggerConsultOnly = async (item: QueueItem) => {
+  try {
+    // If there is already a checked_in patient, change their status back to 'confirmed'
+    const prevCheckedIn = appointments.value.find(
+      a => a.doctorId === selectedDoctorId.value && a.status === 'checked_in' && a.id !== item.id
+    )
+    if (prevCheckedIn) {
+      await request.put(`/api/admin/appointments/${prevCheckedIn.id}`, { status: 'confirmed' })
+    }
+
+    // Update status to checked_in (就诊中)
+    await request.put(`/api/admin/appointments/${item.id}`, { status: 'checked_in' })
+    MessagePlugin.success(`已接诊患者 [${item.patientName}]，进入诊室`)
+    fetchAppointments()
+  } catch (error) {
+    console.error('接诊状态更新失败:', error)
+    MessagePlugin.error('接诊失败')
   }
 }
 
@@ -355,6 +412,22 @@ watch(deliveryType, (newVal) => {
   }
 })
 
+const patientDiagnostics = ref<any>(null)
+watch(currentPatient, async (newVal) => {
+  if (newVal) {
+    try {
+      const res: any = await request.get(`/api/admin/patients/${newVal.patientId}/sleep-diagnostics`)
+      if (res.code === 200) {
+        patientDiagnostics.value = res.data
+      }
+    } catch (e) {
+      patientDiagnostics.value = null
+    }
+  } else {
+    patientDiagnostics.value = null
+  }
+}, { immediate: true })
+
 async function submitCheckout() {
   if (!selectedQueueItem.value) return
   if (billingItems.value.length === 0) {
@@ -443,8 +516,8 @@ function goToEmr(item: QueueItem) {
 const createApptVisible = ref(false)
 const apptSearchQuery = ref('')
 const apptSelectedPatient = ref<any>(null)
-const apptStore = ref('🏥 鼾静健康·龙岗总店')
-const apptDate = ref(new Date().toISOString().split('T')[0])
+const apptStore = ref('鼾静健康·龙岗总店')
+const apptDate = ref(getTodayDateString())
 const apptSlot = ref('09:00 - 09:30')
 const apptVisitType = ref('复诊')
 const apptRemarks = ref('')
@@ -548,11 +621,18 @@ async function submitCreateAppt() {
         <div class="page-title-sub">独立诊室呼叫、体征查阅、病历处方录入与费用结算</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <t-button theme="primary" variant="outline" @click="fetchAppointments" :loading="loading">
-          🔄 刷新队列
+        <t-button theme="primary" variant="outline" @click="fetchAppointments" :loading="loading" style="display: inline-flex; align-items: center; gap: 4px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>刷新队列
         </t-button>
-        <t-button theme="primary" @click="openCreateApptDialog">
-          ➕ 现场登记挂号
+        <t-button theme="primary" @click="openCreateApptDialog" style="display: inline-flex; align-items: center; gap: 4px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>现场登记挂号
         </t-button>
       </div>
     </div>
@@ -564,12 +644,16 @@ async function submitCreateAppt() {
           <span class="selector-lbl">当前接诊诊室：</span>
           <select v-model="selectedDoctorId" class="selector-dropdown" @change="activeTimeSlot = 'all'">
             <option v-for="d in doctorsList" :key="d.id" :value="d.id.toString()">
-              👨‍⚕️ {{ d.name }} · {{ d.title }} ({{ d.specialty }})
+              {{ d.name }} · {{ d.title }} ({{ d.specialty }})
             </option>
           </select>
         </div>
-        <div class="selector-right">
-          <span>🏥 当前门店：{{ currentStoreName }}</span>
+        <div class="selector-right" style="display: flex; align-items: center; gap: 6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #4B5563;">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span>当前门店：{{ currentStoreName }}</span>
           <span class="separator">|</span>
           <span>科室：睡眠呼吸障碍治疗门诊</span>
         </div>
@@ -581,7 +665,13 @@ async function submitCreateAppt() {
       <!-- Left Panel: Currently Treating Patient -->
       <div class="workbench-left panel">
         <div class="pane-header">
-          <div class="pane-title">🔊 当前诊室就诊中</div>
+          <div class="pane-title" style="display: flex; align-items: center; gap: 6px;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <span>当前诊室就诊中</span>
+          </div>
           <span v-if="currentPatient" class="status-tag green">就诊中</span>
           <span v-else class="status-tag gray">空闲</span>
         </div>
@@ -590,16 +680,18 @@ async function submitCreateAppt() {
           <!-- Vitals Header -->
           <div class="patient-main-info" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 16px;">
-              <div class="avatar-logo">
-                {{ currentPatient.patientName.charAt(0) }}
-              </div>
+              <t-avatar size="50px" :style="{ background: getAvatarColor(currentPatient.patientName), fontSize:'20px', fontWeight: '700', color: '#FFF' }">
+                {{ currentPatient.patientName.slice(0, 1) }}
+              </t-avatar>
               <div>
-                <div style="display: flex; align-items: baseline; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
                   <span class="active-pat-name">{{ currentPatient.patientName }}</span>
-                  <span style="font-size: 13px; color: #6B7280; font-weight: normal;">{{ currentPatient.phone }}</span>
+                  <span style="font-size: 11px; color: #3B82F6; background: #EFF6FF; padding: 1px 6px; border-radius: 4px; font-weight: 600; line-height: 1.4;">{{ currentPatient.gender }}</span>
+                  <span style="font-size: 11px; color: #3B82F6; background: #EFF6FF; padding: 1px 6px; border-radius: 4px; font-weight: 600; line-height: 1.4;">{{ currentPatient.age }}岁</span>
+                  <span style="font-size: 11px; color: #D97706; background: #FFF3E0; padding: 1px 6px; border-radius: 4px; font-weight: 600; line-height: 1.4;">{{ currentPatient.type }}</span>
                 </div>
-                <div style="font-size: 13px; color: #6B7280; margin-top: 2px;">
-                  {{ currentPatient.timeSlot }} 预约挂号
+                <div style="font-size: 13px; color: #6B7280; margin-top: 4px;">
+                  {{ currentPatient.timeSlot }} 预约挂号 · {{ currentPatient.phone }}
                 </div>
               </div>
             </div>
@@ -611,14 +703,22 @@ async function submitCreateAppt() {
                 划扣收费
               </t-button>
               <t-button size="extra-small" theme="default" variant="outline" @click="callPatient(currentPatient.patientName, currentPatient.doctorName)">
-                接诊
+                叫号
               </t-button>
             </div>
           </div>
 
           <!-- Pre-exam Vitals -->
           <div class="vitals-section">
-            <div class="section-sub-title">🩺 预检体征数据 (由分诊/护士录入)</div>
+            <div class="section-sub-title" style="display: flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4.8 3h14.4"></path>
+                <path d="M4.8 3v4.8c0 4.8 7.2 4.8 7.2 9.6v1.8"></path>
+                <path d="M19.2 3v4.8c0 3.6-3.6 4.8-4.8 6.4"></path>
+                <circle cx="12" cy="21" r="2"></circle>
+              </svg>
+              <span>预检体征数据 (由分诊/护士录入)</span>
+            </div>
             
             <div v-if="currentPatient.pre_exam" class="vitals-grid">
               <div class="vital-item">
@@ -646,25 +746,110 @@ async function submitCreateAppt() {
                 <span class="vital-val text-blue">{{ currentPatient.pre_exam.bmi || '--' }}</span>
               </div>
             </div>
-            <div v-else class="vitals-empty">
-              ⚠️ 该患者尚未录入身高、血压等预检体征信息，建议点击右侧“签到/录入”完善指标。
+            <div v-else class="vitals-empty" style="display: flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span>该患者尚未录入身高、血压等预检体征信息，建议点击右侧“签到/录入”完善指标。</span>
             </div>
           </div>
 
           <!-- Symptoms complaint -->
           <div class="complaint-section">
-            <span class="complaint-lbl">📋 就诊主诉与描述：</span>
+            <span class="complaint-lbl" style="display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              </svg>就诊主诉与描述：
+            </span>
             <p class="complaint-val">{{ currentPatient.symptom }}</p>
+          </div>
+
+          <!-- Sleep Diagnostics & History Section -->
+          <div class="diagnostics-section" style="margin-top: 16px; border-top: 1px dashed #E5E7EB; padding-top: 16px;">
+            <div class="section-sub-title" style="display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-weight: 600; color: #111827;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #3B82F6;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              <span>诊断参考与筛查数据</span>
+            </div>
+
+            <!-- Health History Grid (Allergies & Medical History) -->
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px;">
+              <div style="background: #FFFBEB; padding: 10px; border-radius: 6px; border-left: 3px solid #F59E0B; text-align: left;">
+                <div style="font-size: 11px; color: #B45309; font-weight: 600; margin-bottom: 2px;">📋 既往病史</div>
+                <div style="font-size: 12px; color: #D97706; white-space: pre-wrap;">{{ currentPatient.medicalHistory || '暂无既往病史记录' }}</div>
+              </div>
+              <div style="background: #FEF2F2; padding: 10px; border-radius: 6px; border-left: 3px solid #EF4444; text-align: left;">
+                <div style="font-size: 11px; color: #B91C1C; font-weight: 600; margin-bottom: 2px;">🚫 药物与过敏史</div>
+                <div style="font-size: 12px; color: #DC2626; white-space: pre-wrap;">{{ currentPatient.allergyHistory || '暂无过敏史记录' }}</div>
+              </div>
+            </div>
+
+            <!-- Sleep & Snore Diagnostics -->
+            <div style="background: #F9FAFB; padding: 12px; border-radius: 6px; border: 1px solid #F3F4F6;">
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: left;">
+                
+                <!-- ESS sleepiness -->
+                <div style="border-right: 1px solid #E5E7EB; padding-right: 8px;">
+                  <div style="font-size: 11px; color: #6B7280; font-weight: 600;">日间嗜睡评估 (ESS)</div>
+                  <div v-if="patientDiagnostics?.ess" style="margin-top: 4px;">
+                    <span style="font-size: 14px; font-weight: 700; color: #3B82F6;">{{ patientDiagnostics.ess.total_score }}分</span>
+                    <span style="font-size: 10px; margin-left: 4px; color: #4B5563; background: #E0F2FE; padding: 1px 4px; border-radius: 3px; font-weight: 500;">{{ patientDiagnostics.ess.risk_level }}</span>
+                  </div>
+                  <div v-else style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">未评估</div>
+                </div>
+
+                <!-- Night Snoring -->
+                <div style="border-right: 1px solid #E5E7EB; padding-right: 8px; padding-left: 4px;">
+                  <div style="font-size: 11px; color: #6B7280; font-weight: 600;">夜间鼾声评估</div>
+                  <div v-if="patientDiagnostics?.snore" style="margin-top: 4px; font-size: 12px; color: #374151;">
+                    <div>暂停事件: <span style="font-weight: 700; color: #EF4444;">{{ patientDiagnostics.snore.apnea_events }}次</span></div>
+                    <div style="font-size: 11px; color: #6B7280; margin-top: 1px; line-height: 1.2;">
+                      均值{{ patientDiagnostics.snore.avg_decibel }}dB (峰值{{ patientDiagnostics.snore.peak_decibel }}dB)
+                    </div>
+                  </div>
+                  <div v-else style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">未评估</div>
+                </div>
+
+                <!-- Compliance / Device Wearing -->
+                <div style="padding-left: 4px;">
+                  <div style="font-size: 11px; color: #6B7280; font-weight: 600;">治疗依从性与疗效</div>
+                  <div v-if="patientDiagnostics?.wearing && patientDiagnostics.wearing.total_days > 0" style="margin-top: 4px; font-size: 12px; color: #374151;">
+                    <div>累计佩戴: <span style="font-weight: 700; color: #10B981;">{{ patientDiagnostics.wearing.total_days }}天</span></div>
+                    <div style="font-size: 11px; color: #6B7280; margin-top: 1px; line-height: 1.2;">
+                      均效: {{ (patientDiagnostics.wearing.avg_duration / 60).toFixed(1) }}h (舒分: {{ (patientDiagnostics.wearing.avg_comfort).toFixed(1) }}分)
+                    </div>
+                  </div>
+                  <div v-else style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">暂无佩戴记录</div>
+                </div>
+
+              </div>
+            </div>
           </div>
 
 
         </div>
 
         <div v-else class="active-patient-empty">
-          <div class="empty-icon">🛋️</div>
+          <div class="empty-icon" style="color: #9CA3AF; display: flex; justify-content: center; align-items: center; margin-bottom: 16px;">
+            <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+              <line x1="6" y1="1" x2="6" y2="4"></line>
+              <line x1="10" y1="1" x2="10" y2="4"></line>
+              <line x1="14" y1="1" x2="14" y2="4"></line>
+            </svg>
+          </div>
           <div class="empty-title">诊室当前空闲中</div>
           <p class="empty-desc">
-            目前没有正在就诊中的患者。请从右侧的“候诊队列”中点击“接诊”邀请下一位患者进入诊室就诊。
+            目前没有正在就诊中的患者。请从右侧的“候诊队列”中点击“叫号”邀请下一位患者进入诊室就诊。
           </p>
         </div>
       </div>
@@ -677,15 +862,25 @@ async function submitCreateAppt() {
             class="pane-tab" 
             :class="{ active: rightPaneTab === 'waiting' }" 
             @click="rightPaneTab = 'waiting'"
+            style="display: flex; align-items: center; justify-content: center; gap: 6px;"
           >
-            ⏳ 等待就诊 ({{ waitingQueue.length }}人)
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>等待就诊 ({{ waitingQueue.length }}人)</span>
           </div>
           <div 
             class="pane-tab" 
             :class="{ active: rightPaneTab === 'completed' }" 
             @click="rightPaneTab = 'completed'"
+            style="display: flex; align-items: center; justify-content: center; gap: 6px;"
           >
-            ✅ 今日已诊 ({{ completedQueue.length }}人)
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span>今日已诊 ({{ completedQueue.length }}人)</span>
           </div>
         </div>
 
@@ -723,14 +918,17 @@ async function submitCreateAppt() {
 
           <div class="queue-list">
             <div v-for="(item, idx) in waitingQueue" :key="item.id" class="queue-item-row">
-              <div class="queue-item-left">
-                <span class="queue-idx">{{ idx + 1 }}</span>
-                <div>
-                  <div class="queue-name font-bold">{{ item.patientName }}</div>
-                  <div class="queue-meta">
+              <div class="queue-item-left" style="display: flex; align-items: center; gap: 8px;">
+                <span class="queue-idx" style="width: 20px; text-align: center; font-size: 13px; color: #9CA3AF; font-weight: 500;">{{ idx + 1 }}</span>
+                <t-avatar size="32px" :style="{ background: getAvatarColor(item.patientName), fontSize: '12px', fontWeight: '700', color: '#FFF', flexShrink: 0 }">
+                  {{ item.patientName.slice(0, 1) }}
+                </t-avatar>
+                <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column; text-align: left;">
+                  <div class="queue-name font-bold" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">{{ item.patientName }}</div>
+                  <div class="queue-meta" style="line-height: 1.2; margin-top: 2px;">
                     {{ item.timeSlot }} · 
                     <span :class="item.status === 'pending' ? 'status-pending' : 'status-arrived'">
-                      {{ item.status === 'pending' ? '待报到签到' : '候诊中' }}
+                      {{ item.status === 'pending' ? '待报到签到' : (item.status === 'called' ? '已叫号' : '候诊中') }}
                     </span>
                   </div>
                 </div>
@@ -739,17 +937,26 @@ async function submitCreateAppt() {
                 <t-button v-if="item.status === 'pending'" size="extra-small" theme="warning" variant="outline" @click="openCheckInDialog(item)">
                   签到
                 </t-button>
-                <t-button v-else size="extra-small" theme="primary" variant="outline" @click="handleCallToConsult(item)">
-                  接诊
-                </t-button>
-                <t-button size="extra-small" theme="default" variant="text" @click="delayPatient(item)">
+                <template v-else>
+                  <t-button size="extra-small" theme="primary" variant="outline" @click="triggerCallOnly(item)" style="margin-right: 4px;">
+                    叫号
+                  </t-button>
+                  <t-button size="extra-small" theme="success" variant="outline" @click="triggerConsultOnly(item)">
+                    接诊
+                  </t-button>
+                </template>
+                <t-button size="extra-small" theme="default" variant="text" @click="delayPatient(item)" style="margin-left: 4px;">
                   顺延
                 </t-button>
               </div>
             </div>
             
-            <div v-if="waitingQueue.length === 0" class="no-queue-state">
-              🎉 候诊队列为空，今日接诊任务完成！
+            <div v-if="waitingQueue.length === 0" class="no-queue-state" style="display: flex; align-items: center; justify-content: center; gap: 6px; color: #10B981;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span>候诊队列为空，今日接诊任务完成！</span>
             </div>
           </div>
         </div>
@@ -758,11 +965,14 @@ async function submitCreateAppt() {
         <div v-else class="queue-tab-content">
           <div class="queue-list">
             <div v-for="item in completedQueue" :key="item.id" class="queue-item-row completed">
-              <div class="queue-item-left">
-                <span class="queue-idx checked">✓</span>
-                <div>
-                  <div class="queue-name font-bold">{{ item.patientName }}</div>
-                  <div class="queue-meta">已完成就诊 · {{ item.timeSlot }}</div>
+              <div class="queue-item-left" style="display: flex; align-items: center; gap: 8px;">
+                <span class="queue-idx checked" style="width: 20px; text-align: center;">✓</span>
+                <t-avatar size="32px" :style="{ background: getAvatarColor(item.patientName), fontSize: '12px', fontWeight: '700', color: '#FFF', flexShrink: 0 }">
+                  {{ item.patientName.slice(0, 1) }}
+                </t-avatar>
+                <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column; text-align: left;">
+                  <div class="queue-name font-bold" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">{{ item.patientName }}</div>
+                  <div class="queue-meta" style="line-height: 1.2; margin-top: 2px;">已完成就诊 · {{ item.timeSlot }}</div>
                 </div>
               </div>
               <div class="queue-item-right">
@@ -877,8 +1087,13 @@ async function submitCreateAppt() {
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">颈围 (cm)</label>
           <input v-model="checkInForm.neckCircumference" type="number" step="0.1" class="form-control" placeholder="输入测量颈围（例如：38）">
         </div>
-        <div v-if="computedBmi" style="margin-top: 10px; font-size: 13px; color: #1E40AF; background: #EFF6FF; padding: 10px; border-radius: 6px;">
-          💡 自动推算患者 BMI 指数：<strong>{{ computedBmi }}</strong>
+        <div v-if="computedBmi" style="margin-top: 10px; font-size: 13px; color: #1E40AF; background: #EFF6FF; padding: 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+            <path d="M9 18h6"></path>
+            <path d="M10 22h4"></path>
+            <path d="M15 13a5 5 0 0 0 3-4.5c0-3.5-3.5-5.5-6-5.5s-6 2-6 5.5A5 5 0 0 0 9 13l1 2h4l1-2z"></path>
+          </svg>
+          <span>自动推算患者 BMI 指数：<strong>{{ computedBmi }}</strong></span>
         </div>
       </div>
     </t-dialog>
@@ -932,7 +1147,12 @@ async function submitCreateAppt() {
             </tbody>
           </table>
 
-          <button class="btn-add-item" style="margin-bottom: 16px;" @click="addBillingItem">➕ 添加诊疗费/项目/药品</button>
+          <button class="btn-add-item" style="margin-bottom: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;" @click="addBillingItem">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>添加诊疗费/项目/药品
+          </button>
 
           <!-- Discount & Delivery selector -->
           <div style="display: flex; gap: 16px; margin-bottom: 16px;">
@@ -952,7 +1172,15 @@ async function submitCreateAppt() {
 
           <!-- Shipping Address Form -->
           <div v-if="deliveryType === 'online'" style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
-            <div style="font-weight: 700; font-size: 12px; color: #374151;">🚚 快递收货地址</div>
+            <div style="font-weight: 700; font-size: 12px; color: #374151; display: flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="1" y="3" width="15" height="13"></rect>
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                <circle cx="18.5" cy="18.5" r="2.5"></circle>
+              </svg>
+              <span>快递收货地址</span>
+            </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
               <div class="form-group" style="margin-bottom: 0;">
                 <label class="form-label" style="font-size: 11px;">收件人</label>
@@ -971,7 +1199,13 @@ async function submitCreateAppt() {
 
           <!-- Pickup Info Form -->
           <div v-if="deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 12px; border-radius: 8px; border: 1px solid #FCD34D; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
-            <div style="font-weight: 700; font-size: 12px; color: #D97706;">🏪 缺货自提预订</div>
+            <div style="font-weight: 700; font-size: 12px; color: #D97706; display: flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+              <span>缺货自提预订</span>
+            </div>
             <div style="font-size: 11px; color: #B45309; line-height: 1.4;">
               货到后系统将通过微信推送通知该患者到店自提。
             </div>
@@ -1007,17 +1241,24 @@ async function submitCreateAppt() {
           <div style="margin-bottom: 24px;">
             <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: #374151;">支付方式</div>
             <div style="display: flex; gap: 12px;">
-              <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
+              <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }" style="display: inline-flex; align-items: center; gap: 6px;">
                 <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
-                🟢 微信支付
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="#22C55E" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                </svg>微信支付
               </label>
-              <label class="pay-method-label" :class="{ active: payMethod === 'alipay' }">
+              <label class="pay-method-label" :class="{ active: payMethod === 'alipay' }" style="display: inline-flex; align-items: center; gap: 6px;">
                 <input v-model="payMethod" type="radio" value="alipay" style="display: none;">
-                🔵 支付宝
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="#3B82F6" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                </svg>支付宝
               </label>
-              <label class="pay-method-label" :class="{ active: payMethod === 'cash' }">
+              <label class="pay-method-label" :class="{ active: payMethod === 'cash' }" style="display: inline-flex; align-items: center; gap: 6px;">
                 <input v-model="payMethod" type="radio" value="cash" style="display: none;">
-                🪙 现金/刷卡
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect>
+                  <line x1="2" y1="10" x2="22" y2="10"></line>
+                </svg>现金/刷卡
               </label>
             </div>
           </div>
@@ -1030,7 +1271,12 @@ async function submitCreateAppt() {
 
         <!-- Checkout Success state -->
         <div v-else style="text-align: center; padding: 20px 0;">
-          <div style="font-size: 48px; color: #22C55E; margin-bottom: 16px;">✓</div>
+          <div style="color: #22C55E; margin-bottom: 16px; display: flex; justify-content: center; align-items: center;">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
           <h3 style="font-size: 18px; font-weight: 700; color: #111827; margin: 0 0 8px 0;">收款划扣成功</h3>
           <p style="font-size: 13px; color: #6B7280; margin-bottom: 24px;">
             订单已支付完成，自动标记就诊单，前台小票打印已就绪。
@@ -1043,7 +1289,13 @@ async function submitCreateAppt() {
           </div>
 
           <div style="display: flex; justify-content: center; gap: 10px;">
-            <t-button theme="primary" variant="outline" @click="handlePrintInvoice">🖨️ 打印交易小票</t-button>
+            <t-button theme="primary" variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+              </svg>打印交易小票
+            </t-button>
             <t-button theme="default" @click="closeCheckoutDialog">关闭</t-button>
           </div>
         </div>

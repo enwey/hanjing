@@ -1026,6 +1026,39 @@ app.post('/api/admin/patients', authenticateToken, async (req, res) => {
 });
 
 
+app.get('/api/admin/patients/:id/sleep-diagnostics', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const patient = await get('SELECT user_id FROM patients WHERE id = ?', [id]);
+    if (!patient) return res.status(404).json({ code: 404, message: '患者不存在' });
+    
+    // 1. Get latest ESS assessment
+    const ess = await get('SELECT * FROM ess_assessments WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', [patient.user_id]);
+    
+    // 2. Get latest Snore assessment
+    const snore = await get('SELECT * FROM snore_assessments WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', [patient.user_id]);
+    
+    // 3. Get latest wearing records stats
+    const wearingStats = await get(
+      `SELECT COUNT(*) as total_days, COALESCE(AVG(duration_mins), 0) as avg_duration, COALESCE(AVG(comfort_score), 0) as avg_comfort
+       FROM wearing_records WHERE user_id = ?`,
+      [patient.user_id]
+    );
+
+    res.json({
+      code: 200,
+      data: {
+        ess: ess || null,
+        snore: snore || null,
+        wearing: wearingStats || null
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '获取患者睡眠诊断数据失败' });
+  }
+});
+
 app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
 

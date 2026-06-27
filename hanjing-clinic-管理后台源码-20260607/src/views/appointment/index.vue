@@ -7,6 +7,14 @@ import request from '@/utils/request'
 const router = useRouter()
 const route = useRoute()
 
+const getTodayDateString = () => {
+  const nowInShanghai = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }))
+  const y = nowInShanghai.getFullYear()
+  const m = String(nowInShanghai.getMonth() + 1).padStart(2, '0')
+  const d = String(nowInShanghai.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 // Filter states matching UI mockup
 const activeTab = ref('all') // Default to 'all' (全部)
 const filterStore = ref('全部门店')
@@ -68,7 +76,7 @@ const fetchAppointments = async () => {
       time: item.appointment_time,
       type: item.type === 'first' ? '初诊' : '复诊',
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
-      status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : item.status === 'pending_payment' ? 'pending_payment' : item.status === 'no_show' ? 'no_show' : 'cancelled',
+      status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' || item.status === 'called' ? 'waiting' : item.status === 'pending' ? 'pending' : item.status === 'pending_payment' ? 'pending_payment' : item.status === 'no_show' ? 'no_show' : 'cancelled',
       createdAt: item.created_at ? new Date(item.created_at).toLocaleString('zh-CN', { hour12: false }) : '',
       consult_fee: item.consult_fee || 0,
       deposit_amount: item.deposit_amount || 0
@@ -154,7 +162,7 @@ const counts = computed(() => {
 
   return {
     all: statusList.length,
-    today: list.filter(a => a.date === '2026-05-29').length,
+    today: list.filter(a => a.date === getTodayDateString()).length,
     pending_payment: statusList.filter(a => a.status === 'pending_payment').length,
     pending: statusList.filter(a => a.status === 'pending').length,
     waiting: statusList.filter(a => a.status === 'waiting').length,
@@ -175,7 +183,7 @@ function getFilteredAppointments() {
 
   // 1. Tab filter
   if (activeTab.value === 'today') {
-    list = list.filter(a => a.date === '2026-05-29')
+    list = list.filter(a => a.date === getTodayDateString())
   } else if (activeTab.value === 'pending_payment') {
     list = list.filter(a => a.status === 'pending_payment')
   } else if (activeTab.value === 'pending') {
