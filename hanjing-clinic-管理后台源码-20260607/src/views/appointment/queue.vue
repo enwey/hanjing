@@ -22,13 +22,17 @@ interface QueueItem {
 }
 
 const appointments = ref<QueueItem[]>([])
+const schedules = ref<any[]>([])
 const loading = ref(false)
 
 const fetchAppointments = async () => {
   loading.value = true
   try {
-    const res: any = await request.get('/api/admin/appointments')
-    appointments.value = res.data.map((item: any) => ({
+    const res: any = await request.get('/api/admin/appointments?date=2026-05-29')
+    const activeAppts = res.data.filter((item: any) => 
+      ['pending', 'confirmed', 'waiting', 'checked_in', 'completed'].includes(item.status)
+    )
+    appointments.value = activeAppts.map((item: any) => ({
       id: item.id.toString(),
       patientId: item.patient_id.toString(),
       no: item.appointment_no,
@@ -39,11 +43,14 @@ const fetchAppointments = async () => {
       storeName: item.store_name,
       timeSlot: item.appointment_time,
       symptom: item.symptom_desc || '无主诉描述',
-      status: item.status // pending, confirmed (waiting), completed (arrived)
+      status: item.status
     }))
+
+    const schedRes: any = await request.get('/api/admin/schedules?date=2026-05-29')
+    schedules.value = schedRes.data || []
   } catch (error) {
     console.error(error)
-    MessagePlugin.error('获取排队数据失败')
+    MessagePlugin.error('获取排队与排班数据失败')
   } finally {
     loading.value = false
   }
@@ -110,48 +117,56 @@ function getBadgeStyle(isActive: boolean) {
   }
 }
 
-// Group appointments by doctor
+// Group appointments by doctor according to doctor schedules
 const doctorQueues = computed(() => {
-  const queues: Record<string, { doctorName: string; storeName: string; waitingList: QueueItem[]; current: QueueItem | null }> = {}
-  
-  appointments.value.forEach(item => {
-    // Only show today's or pending/confirmed/checked_in in the queue
-    if (item.status === 'completed' || item.status === 'arrived') return
-    
-    if (!queues[item.doctorId]) {
-      queues[item.doctorId] = {
-        doctorName: item.doctorName,
-        storeName: item.storeName,
-        waitingList: [],
-        current: null
+  // 1. Filter schedules by current store (if not 'all')
+  const filteredSchedules = schedules.value.filter(s => {
+    return selectedStore.value === 'all' || s.store_name.includes(selectedStore.value)
+  })
+
+  // 2. Extract unique doctors based on schedules
+  const docMap: Record<string, { doctorId: string; doctorName: string; storeName: string }> = {}
+  filteredSchedules.forEach(s => {
+    const docIdStr = s.doctor_id.toString()
+    if (!docMap[docIdStr]) {
+      docMap[docIdStr] = {
+        doctorId: docIdStr,
+        doctorName: s.doctor_name,
+        storeName: s.store_name
       }
-    }
-    
-    if (item.status === 'checked_in') {
-      queues[item.doctorId].current = item
-    } else if (item.status === 'confirmed') {
-      queues[item.doctorId].waitingList.push(item)
-    } else if (item.status === 'pending') {
-      queues[item.doctorId].waitingList.push(item)
     }
   })
-  
-  return Object.entries(queues)
-    .filter(([id, queue]) => selectedStore.value === 'all' || queue.storeName.includes(selectedStore.value))
-    .map(([id, queue]) => {
-      // Filter waitingList by activeTimeSlot
-      let filteredList = queue.waitingList
-      if (activeTimeSlot.value !== 'all') {
-        filteredList = queue.waitingList.filter(item => item.timeSlot === activeTimeSlot.value)
-      }
-      return {
-        doctorId: id,
-        doctorName: queue.doctorName,
-        storeName: queue.storeName,
-        current: queue.current,
-        waitingList: filteredList
+
+  // 3. Construct queues for these scheduled doctors
+  return Object.values(docMap).map(doc => {
+    // Find all active appointments of this doctor
+    const doctorAppts = appointments.value.filter(a => a.doctorId === doc.doctorId)
+    
+    let current: QueueItem | null = null
+    const waitingList: QueueItem[] = []
+    
+    doctorAppts.forEach(appt => {
+      if (appt.status === 'checked_in') {
+        current = appt
+      } else if (appt.status === 'confirmed' || appt.status === 'pending') {
+        waitingList.push(appt)
       }
     })
+    
+    // Filter waitingList by activeTimeSlot
+    let filteredList = waitingList
+    if (activeTimeSlot.value !== 'all') {
+      filteredList = waitingList.filter(item => item.timeSlot === activeTimeSlot.value)
+    }
+    
+    return {
+      doctorId: doc.doctorId,
+      doctorName: doc.doctorName,
+      storeName: doc.storeName,
+      current,
+      waitingList: filteredList
+    }
+  })
 })
 
 // Call patient voice broadcast and update status to checked_in (就诊中)
