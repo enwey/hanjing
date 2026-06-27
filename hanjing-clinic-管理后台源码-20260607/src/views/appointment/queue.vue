@@ -586,18 +586,12 @@ const filteredTodayAppointments = computed(() => {
     <!-- 时段过滤面板 -->
     <div class="panel">
       <div class="filter-bar" style="flex-wrap: wrap; gap: 16px; border-bottom: none; padding: 12px 20px;">
-        <div class="filter-tabs" style="flex-wrap: wrap; gap: 8px;">
+        <div class="filter-tabs" style="flex-wrap: wrap;">
           <div
             class="filter-tab"
             :class="{ active: activeTimeSlot === 'all' }"
             @click="activeTimeSlot = 'all'"
-            :style="{
-              display: 'flex',
-              alignItems: 'center',
-              borderRadius: '20px',
-              borderLeft: activeTimeSlot === 'all' ? '1px solid var(--primary-500)' : '1px solid #E5E7EB',
-              marginLeft: '0'
-            }"
+            style="display: flex; align-items: center;"
           >
             <span>全部</span>
             <span :style="getBadgeStyle(activeTimeSlot === 'all')">
@@ -610,13 +604,7 @@ const filteredTodayAppointments = computed(() => {
             class="filter-tab"
             :class="{ active: activeTimeSlot === slot }"
             @click="activeTimeSlot = slot"
-            :style="{
-              display: 'flex',
-              alignItems: 'center',
-              borderRadius: '20px',
-              borderLeft: activeTimeSlot === slot ? '1px solid var(--primary-500)' : '1px solid #E5E7EB',
-              marginLeft: '0'
-            }"
+            style="display: flex; align-items: center;"
           >
             <span>{{ slot }}</span>
             <span :style="getBadgeStyle(activeTimeSlot === slot)">
