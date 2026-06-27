@@ -63,7 +63,7 @@ watch(selectedStore, () => {
 const allWaitingItems = computed(() => {
   return appointments.value
     .filter(item => item.status === 'confirmed' || item.status === 'pending')
-    .filter(item => selectedStore.value === 'all' || item.storeName === selectedStore.value)
+    .filter(item => selectedStore.value === 'all' || item.storeName.includes(selectedStore.value))
 })
 
 // Dynamically extract and sort unique time slots that have waiting patients
@@ -137,7 +137,7 @@ const doctorQueues = computed(() => {
   })
   
   return Object.entries(queues)
-    .filter(([id, queue]) => selectedStore.value === 'all' || queue.storeName === selectedStore.value)
+    .filter(([id, queue]) => selectedStore.value === 'all' || queue.storeName.includes(selectedStore.value))
     .map(([id, queue]) => {
       // Filter waitingList by activeTimeSlot
       let filteredList = queue.waitingList

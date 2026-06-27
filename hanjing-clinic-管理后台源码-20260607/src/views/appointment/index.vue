@@ -138,7 +138,7 @@ const counts = computed(() => {
 
   // 2. Store filter
   if (filterStore.value && filterStore.value !== '全部门店') {
-    list = list.filter(a => a.store === filterStore.value)
+    list = list.filter(a => a.store.includes(filterStore.value))
   }
 
   // 3. Doctor filter
@@ -202,7 +202,7 @@ function getFilteredAppointments() {
 
   // 3. Store filter
   if (filterStore.value && filterStore.value !== '全部门店') {
-    list = list.filter(a => a.store === filterStore.value)
+    list = list.filter(a => a.store.includes(filterStore.value))
   }
 
   // 4. Doctor filter
