@@ -717,7 +717,7 @@ async function submitCheckout() {
                     v-if="row.status === 'pending_payment'"
                     class="btn btn-xs btn-primary"
                     @click="openCheckoutDialog(row)"
-                  >🪙 挂号收银</button>
+                  >挂号收银</button>
                   <button
                     v-if="row.status === 'pending_payment'"
                     class="btn btn-xs btn-danger"
@@ -755,7 +755,7 @@ async function submitCheckout() {
                     v-if="row.status === 'completed'"
                     class="btn btn-xs btn-warning"
                     @click="openCheckoutDialog(row)"
-                  >🪙 收银结算</button>
+                  >收银结算</button>
                 </div>
               </td>
             </tr>

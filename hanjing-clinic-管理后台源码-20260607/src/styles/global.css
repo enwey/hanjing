@@ -296,11 +296,20 @@ div::-webkit-scrollbar-thumb:hover {
 .btn-success:hover {
   background: #D3F5E3;
 }
+.btn-warning {
+  background: #FFFBEB;
+  color: #D97706;
+  border: 1px solid #FCD34D;
+}
+.btn-warning:hover {
+  background: #FEF3C7;
+}
 .btn-sm,
 .btn.btn-sm,
 .btn-outline.btn-sm,
 .btn-primary.btn-sm,
 .btn-success.btn-sm,
+.btn-warning.btn-sm,
 .btn-danger.btn-sm {
   padding: 5px 12px !important;
   font-size: 12px !important;
@@ -317,6 +326,7 @@ div::-webkit-scrollbar-thumb:hover {
 .btn-outline.btn-xs,
 .btn-primary.btn-xs,
 .btn-success.btn-xs,
+.btn-warning.btn-xs,
 .btn-danger.btn-xs {
   padding: 5px 12px !important;
   font-size: 12px !important;
