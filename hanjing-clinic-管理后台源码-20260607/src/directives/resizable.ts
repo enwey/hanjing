@@ -18,13 +18,39 @@ export const resizable: Directive = {
 
     const checkScrollable = () => {
       if (!parent) return
-      const tableWidth = el.getBoundingClientRect().width
-      const parentWidth = parent.clientWidth
       
-      if (tableWidth > parentWidth) {
+      // Calculate total columns width by summing the parsed width of all header elements.
+      // For the last column (Operations), we use its minWidth or its bounding box width.
+      let totalWidth = 0
+      headers.forEach((th, idx) => {
+        if (idx === headers.length - 1) {
+          const minW = parseFloat(th.style.minWidth) || 80
+          totalWidth += minW
+        } else {
+          const w = parseFloat(th.style.width) || th.getBoundingClientRect().width
+          totalWidth += w
+        }
+      })
+      
+      const parentWidth = parent.clientWidth
+      const lastTh = headers[headers.length - 1]
+      
+      if (totalWidth > parentWidth) {
         el.classList.add('is-scrollable')
+        el.style.width = `${totalWidth}px`
+        el.style.minWidth = `${totalWidth}px`
+        // In scrollable mode, freeze the last column to its minWidth
+        if (lastTh) {
+          lastTh.style.width = lastTh.style.minWidth
+        }
       } else {
         el.classList.remove('is-scrollable')
+        el.style.width = '100%'
+        el.style.minWidth = '100%'
+        // In stretched 100% mode, clear the last column's width style so it expands to fill the container
+        if (lastTh) {
+          lastTh.style.width = ''
+        }
       }
     }
 
@@ -62,24 +88,19 @@ export const resizable: Directive = {
 
         const startX = e.clientX
 
-        // 1. Freeze all column widths to pixel values based on current rendered size
-        headers.forEach((headerTh) => {
-          if (!headerTh.style.width) {
-            headerTh.style.width = `${headerTh.getBoundingClientRect().width}px`
+        // 1. Freeze all column widths in pixels except the last one (operations column)
+        headers.forEach((headerTh, idx) => {
+          if (idx < headers.length - 1) {
+            if (!headerTh.style.width) {
+              headerTh.style.width = `${headerTh.getBoundingClientRect().width}px`
+            }
           }
         })
 
         // 2. Switch to fixed layout for drag support
         el.style.tableLayout = 'fixed'
 
-        // 3. Set table width and minWidth to the sum of columns
-        let totalWidth = 0
-        headers.forEach((headerTh) => {
-          const w = parseFloat(headerTh.style.width) || headerTh.getBoundingClientRect().width
-          totalWidth += w
-        })
-        el.style.width = `${totalWidth}px`
-        el.style.minWidth = `${totalWidth}px`
+        checkScrollable()
 
         const startWidth = th.getBoundingClientRect().width
 
@@ -89,15 +110,6 @@ export const resizable: Directive = {
           
           th.style.width = `${newWidth}px`
           th.style.minWidth = `${newWidth}px`
-
-          // Update table total width based on current columns
-          let currentTotalWidth = 0
-          headers.forEach((headerTh) => {
-            const w = parseFloat(headerTh.style.width) || headerTh.getBoundingClientRect().width
-            currentTotalWidth += w
-          })
-          el.style.width = `${currentTotalWidth}px`
-          el.style.minWidth = `${currentTotalWidth}px`
 
           checkScrollable()
         }
