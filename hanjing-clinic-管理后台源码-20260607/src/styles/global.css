@@ -117,6 +117,8 @@ body {
   border-bottom: 1px solid #F3F4F6 !important; /* var(--color-gray-100) */
   white-space: nowrap !important;
   letter-spacing: 0.5px !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .data-table td {
@@ -125,6 +127,9 @@ body {
   font-size: 13px !important;
   vertical-align: middle !important;
   border-bottom: 1px solid #F9FAFB !important; /* var(--color-gray-50) */
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .data-table tr {

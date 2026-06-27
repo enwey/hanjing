@@ -667,7 +667,7 @@ async function submitCheckout() {
             <tr v-for="row in paginatedAppointments" :key="row.id">
               <td style="font-family: monospace; font-weight: 600; color: var(--primary-500);">{{ row.no }}</td>
               <td>
-                <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden;">
                   <div :style="{
                     width: '32px',
                     height: '32px',
@@ -681,9 +681,9 @@ async function submitCheckout() {
                     fontSize: '12px',
                     flexShrink: 0
                   }">{{ row.patient.substring(0, 1) }}</div>
-                  <div>
-                    <div style="font-weight: 600; color: #1F2937; line-height: 1.4;">{{ row.patient }}</div>
-                    <div style="font-size: 11px; color: #9CA3AF; line-height: 1.2;">{{ row.phone }}</div>
+                  <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
+                    <div style="font-weight: 600; color: #1F2937; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ row.patient }}</div>
+                    <div style="font-size: 11px; color: #9CA3AF; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ row.phone }}</div>
                   </div>
                 </div>
               </td>
