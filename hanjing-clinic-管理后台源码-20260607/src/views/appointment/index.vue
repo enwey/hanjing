@@ -652,14 +652,14 @@ async function submitCheckout() {
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="width: 140px;">预约单号</th>
-              <th style="width: 180px;">患者</th>
-              <th style="width: 120px;">门店</th>
+              <th style="width: 160px;">预约单号</th>
+              <th style="width: 200px;">患者</th>
+              <th style="width: 160px;">门店</th>
               <th style="width: 100px;">医生</th>
-              <th style="width: 140px;">预约时间</th>
-              <th style="width: 90px;">来源</th>
+              <th style="width: 160px;">预约时间</th>
+              <th style="width: 100px;">来源</th>
               <th style="width: 100px;">状态</th>
-              <th style="width: 170px;">预约创建时间</th>
+              <th style="width: 200px;">预约创建时间</th>
               <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
