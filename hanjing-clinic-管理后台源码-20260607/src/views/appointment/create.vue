@@ -345,10 +345,10 @@ async function fetchTimeSlots() {
       params: { date: selectedDate.value }
     })
     const allAppts = apptRes.data || []
+    const activeAppointmentStatuses = new Set(['pending_payment', 'pending', 'confirmed', 'checked_in', 'arrived'])
     const doctorAppts = allAppts.filter((appt: any) => 
-      String(appt.doctor_id) === String(selectedDoctor.value) && 
-      appt.status !== 'cancelled' && 
-      appt.status !== 'no_show'
+      String(appt.doctor_id) === String(selectedDoctor.value) &&
+      activeAppointmentStatuses.has(String(appt.status || '').trim())
     )
 
     timeSlots.value = rows.flatMap((row: any) => {
@@ -495,6 +495,7 @@ const checkoutLoading = ref(false)
 const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
 const selectedCheckoutRow = ref<any>(null)
+const checkoutClosing = ref(false)
 
 const deliveryType = ref<string>('offline_direct')
 const shippingReceiver = ref<string>('')
@@ -523,22 +524,6 @@ const payableAmount = computed(() => {
   const diff = totalAmount.value - discountAmount.value
   return diff > 0 ? diff : 0
 })
-
-function addBillingItem() {
-  billingItems.value.push({ product_id: '1', product_name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000, quantity: 1 })
-}
-
-function removeBillingItem(idx: number) {
-  billingItems.value.splice(idx, 1)
-}
-
-function onProductChange(idx: number, prodId: string) {
-  const prod = productOptions.find(p => p.id === prodId)
-  if (prod) {
-    billingItems.value[idx].product_name = prod.name
-    billingItems.value[idx].price = prod.price
-  }
-}
 
 watch(deliveryType, (newVal) => {
   if (newVal === 'online') {
@@ -579,7 +564,29 @@ function openCheckoutDialog(row: any) {
   checkoutVisible.value = true
 }
 
-function closeCheckoutDialog() {
+async function closeCheckoutDialog() {
+  if (checkoutLoading.value || checkoutClosing.value) return
+
+  const currentCheckoutRow = selectedCheckoutRow.value
+  const shouldCancelAppointment = !!currentCheckoutRow && !checkoutSuccess.value && currentCheckoutRow.status === 'pending_payment'
+
+  if (shouldCancelAppointment) {
+    checkoutClosing.value = true
+    try {
+      await request.put(`/api/admin/appointments/${currentCheckoutRow.id}`, {
+        status: 'cancelled',
+        cancel_reason: '支付窗口取消预约'
+      })
+      MessagePlugin.success('已取消本次预约')
+    } catch (error) {
+      console.error('取消待支付预约失败:', error)
+      MessagePlugin.error('取消预约失败，请稍后重试')
+      checkoutClosing.value = false
+      return
+    }
+    checkoutClosing.value = false
+  }
+
   checkoutVisible.value = false
   selectedCheckoutRow.value = null
   router.push('/appointment')
@@ -918,88 +925,24 @@ async function submitCheckout() {
               <th style="padding: 8px;">项目/商品名称</th>
               <th style="padding: 8px; width: 100px;">单价</th>
               <th style="padding: 8px; width: 60px;">数量</th>
-              <th style="padding: 8px; width: 50px;">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(item, idx) in billingItems" :key="idx" style="border-bottom: 1px solid #F3F4F6; font-size: 13px;">
               <td style="padding: 8px;">
-                <select 
-                  v-model="item.product_id" 
-                  class="form-control" 
-                  style="height: 30px; font-size: 12px; padding: 0 8px;"
-                  @change="onProductChange(idx, item.product_id)"
-                >
-                  <option v-for="p in productOptions" :key="p.id" :value="p.id">
-                    {{ p.name }}
-                  </option>
-                </select>
+                <div style="min-height: 30px; display: flex; align-items: center; padding: 0 8px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px; color: #374151;">
+                  {{ item.product_name }}
+                </div>
               </td>
               <td style="padding: 8px;">¥{{ (item.price / 100).toFixed(2) }}</td>
               <td style="padding: 8px;">
-                <input v-model="item.quantity" type="number" class="form-control" style="height: 30px; padding: 2px 6px; text-align: center;" min="1">
-              </td>
-              <td style="padding: 8px;">
-                <button class="btn-text-del" @click="removeBillingItem(idx)">删除</button>
+                <div style="min-height: 30px; display: flex; align-items: center; justify-content: center; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px; color: #374151;">
+                  {{ item.quantity }}
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
-
-        <button class="btn-add-item" style="margin-bottom: 16px;" @click="addBillingItem">➕ 添加诊疗费/项目/药品</button>
-
-        <!-- Discount & Delivery selector -->
-        <div style="display: flex; gap: 16px; margin-bottom: 16px;">
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label">卡券折扣金额 (元)</label>
-            <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="val => `¥${(val / 100).toFixed(2)}`" style="width: 100%;" />
-          </div>
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label">配送/交付方式</label>
-            <t-select v-model="deliveryType" :options="[
-              { label: '现场自提', value: 'offline_direct' },
-              { label: '到店自取 (缺货)', value: 'offline_pending' },
-              { label: '快递邮寄 (邮寄)', value: 'online' }
-            ]" />
-          </div>
-        </div>
-
-        <!-- Shipping Address Form -->
-        <div v-if="deliveryType === 'online'" style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
-          <div style="font-weight: 700; font-size: 12px; color: #374151;">🚚 快递收货地址</div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label" style="font-size: 11px;">收件人</label>
-              <t-input v-model="shippingReceiver" size="small" placeholder="姓名" />
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label" style="font-size: 11px;">手机号</label>
-              <t-input v-model="shippingPhone" size="small" placeholder="手机号" />
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="font-size: 11px;">详细地址</label>
-            <t-input v-model="shippingAddressStr" size="small" placeholder="请输入详细省市区县及门牌号" />
-          </div>
-        </div>
-
-        <!-- Pickup Info Form -->
-        <div v-if="deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 12px; border-radius: 8px; border: 1px solid #FCD34D; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
-          <div style="font-weight: 700; font-size: 12px; color: #D97706;">🏪 缺货自提预订</div>
-          <div style="font-size: 11px; color: #B45309; line-height: 1.4;">
-            货到后系统将通过微信推送通知该患者到店自提。
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label" style="font-size: 11px; color: #B45309;">通知人</label>
-              <t-input v-model="shippingReceiver" size="small" placeholder="姓名" />
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label" style="font-size: 11px; color: #B45309;">通知手机号</label>
-              <t-input v-model="shippingPhone" size="small" placeholder="手机号" />
-            </div>
-          </div>
-        </div>
 
         <!-- Payment Settings Summary Block -->
         <div style="background: #F9FAFB; padding: 14px; border-radius: 8px; margin-bottom: 20px;">

@@ -32,6 +32,7 @@ interface Appointment {
   type: string;
   source: string;
   status: string;
+  createdAt: string;
 }
 
 const baseAppointments = [
@@ -68,6 +69,7 @@ const fetchAppointments = async () => {
       type: item.type === 'first' ? '初诊' : '复诊',
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
       status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : item.status === 'pending_payment' ? 'pending_payment' : 'cancelled',
+      createdAt: item.created_at ? new Date(item.created_at).toLocaleString('zh-CN', { hour12: false }) : '',
       consult_fee: item.consult_fee || 0,
       deposit_amount: item.deposit_amount || 0
     }))
@@ -277,6 +279,44 @@ const paginatedAppointments = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
   return filtered.slice(start, end)
+})
+
+const operationColumnWidth = computed(() => {
+  if (paginatedAppointments.value.length === 0) {
+    return '80px'
+  }
+  
+  let maxButtons = 1
+  let hasPendingPayment = false
+  let hasCompletedOrCheckedIn = false
+  
+  for (const row of paginatedAppointments.value) {
+    if (row.status === 'pending_payment') {
+      maxButtons = 3
+      hasPendingPayment = true
+    } else if (row.status === 'pending') {
+      maxButtons = Math.max(maxButtons, 3)
+    } else if (row.status === 'waiting' || row.status === 'checked_in' || row.status === 'completed') {
+      maxButtons = Math.max(maxButtons, 2)
+      if (row.status === 'completed' || row.status === 'checked_in') {
+        hasCompletedOrCheckedIn = true
+      }
+    }
+  }
+  
+  if (maxButtons === 3) {
+    return hasPendingPayment ? '220px' : '190px'
+  } else if (maxButtons === 2) {
+    return hasCompletedOrCheckedIn ? '160px' : '140px'
+  } else {
+    return '80px'
+  }
+})
+
+watch(operationColumnWidth, () => {
+  setTimeout(() => {
+    window.dispatchEvent(new Event('resize'))
+  }, 100)
 })
 
 function getAvatarColor(name: string) {
@@ -619,7 +659,8 @@ async function submitCheckout() {
               <th style="width: 140px;">预约时间</th>
               <th style="width: 90px;">来源</th>
               <th style="width: 100px;">状态</th>
-              <th style="width: 210px; min-width: 210px; text-align: right;">操作</th>
+              <th style="width: 170px;">预约创建时间</th>
+              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -663,6 +704,7 @@ async function submitCheckout() {
                   {{ statusMap[row.status]?.label || row.status }}
                 </t-tag>
               </td>
+              <td style="font-size: 12px; color: #4B5563;">{{ row.createdAt || '--' }}</td>
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;">
                   <button
@@ -718,7 +760,7 @@ async function submitCheckout() {
               </td>
             </tr>
             <tr v-if="paginatedAppointments.length === 0">
-              <td colspan="8" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无匹配的预约记录数据</td>
+              <td colspan="9" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无匹配的预约记录数据</td>
             </tr>
           </tbody>
         </table>
@@ -1013,4 +1055,3 @@ async function submitCheckout() {
   text-decoration: underline;
 }
 </style>
-
