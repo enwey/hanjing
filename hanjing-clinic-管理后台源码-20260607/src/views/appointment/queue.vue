@@ -52,9 +52,18 @@ const fetchAppointments = async () => {
 // Time slot filter state
 const activeTimeSlot = ref('all')
 
+const selectedStore = ref('all')
+const storeOptions = ref(['龙岗总店', '南山分院', '福田门诊部'])
+
+watch(selectedStore, () => {
+  activeTimeSlot.value = 'all'
+})
+
 // Extract all waiting list items globally to count slots and show numbers
 const allWaitingItems = computed(() => {
-  return appointments.value.filter(item => item.status === 'confirmed' || item.status === 'pending')
+  return appointments.value
+    .filter(item => item.status === 'confirmed' || item.status === 'pending')
+    .filter(item => selectedStore.value === 'all' || item.storeName === selectedStore.value)
 })
 
 // Dynamically extract and sort unique time slots that have waiting patients
@@ -127,20 +136,22 @@ const doctorQueues = computed(() => {
     }
   })
   
-  return Object.entries(queues).map(([id, queue]) => {
-    // Filter waitingList by activeTimeSlot
-    let filteredList = queue.waitingList
-    if (activeTimeSlot.value !== 'all') {
-      filteredList = queue.waitingList.filter(item => item.timeSlot === activeTimeSlot.value)
-    }
-    return {
-      doctorId: id,
-      doctorName: queue.doctorName,
-      storeName: queue.storeName,
-      current: queue.current,
-      waitingList: filteredList
-    }
-  })
+  return Object.entries(queues)
+    .filter(([id, queue]) => selectedStore.value === 'all' || queue.storeName === selectedStore.value)
+    .map(([id, queue]) => {
+      // Filter waitingList by activeTimeSlot
+      let filteredList = queue.waitingList
+      if (activeTimeSlot.value !== 'all') {
+        filteredList = queue.waitingList.filter(item => item.timeSlot === activeTimeSlot.value)
+      }
+      return {
+        doctorId: id,
+        doctorName: queue.doctorName,
+        storeName: queue.storeName,
+        current: queue.current,
+        waitingList: filteredList
+      }
+    })
 })
 
 // Call patient voice broadcast and update status to checked_in (就诊中)
@@ -585,31 +596,45 @@ const filteredTodayAppointments = computed(() => {
 
     <!-- 时段过滤面板 -->
     <div class="panel">
-      <div class="filter-bar" style="flex-wrap: wrap; gap: 16px; border-bottom: none; padding: 12px 20px;">
-        <div class="filter-tabs" style="flex-wrap: wrap;">
-          <div
-            class="filter-tab"
-            :class="{ active: activeTimeSlot === 'all' }"
-            @click="activeTimeSlot = 'all'"
-            style="display: flex; align-items: center;"
-          >
-            <span>全部</span>
-            <span :style="getBadgeStyle(activeTimeSlot === 'all')">
-              {{ allWaitingItems.length }}
+      <div class="filter-bar" style="flex-wrap: wrap; gap: 16px; align-items: center; border-bottom: none; padding: 12px 20px;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 13px; font-weight: 600; color: #4B5563; display: inline-flex; align-items: center; gap: 4px;">
+              <span>🏥</span> 接诊门店：
             </span>
+            <select v-model="selectedStore" class="selector-dropdown" style="height: 32px; font-size: 13px; font-weight: 500; color: #374151; border: 1px solid #D1D5DB; border-radius: 8px; background: #fff; cursor: pointer; padding: 0 8px; outline: none; transition: border-color 150ms;">
+              <option value="all">全部门店</option>
+              <option v-for="s in storeOptions" :key="s" :value="s">{{ s }}</option>
+            </select>
           </div>
-          <div
-            v-for="slot in uniqueTimeSlots"
-            :key="slot"
-            class="filter-tab"
-            :class="{ active: activeTimeSlot === slot }"
-            @click="activeTimeSlot = slot"
-            style="display: flex; align-items: center;"
-          >
-            <span>{{ slot }}</span>
-            <span :style="getBadgeStyle(activeTimeSlot === slot)">
-              {{ getSlotCount(slot) }}
-            </span>
+          
+          <span style="color: #E5E7EB; margin: 0 4px;">|</span>
+          
+          <div class="filter-tabs" style="flex-wrap: wrap;">
+            <div
+              class="filter-tab"
+              :class="{ active: activeTimeSlot === 'all' }"
+              @click="activeTimeSlot = 'all'"
+              style="display: flex; align-items: center;"
+            >
+              <span>全部</span>
+              <span :style="getBadgeStyle(activeTimeSlot === 'all')">
+                {{ allWaitingItems.length }}
+              </span>
+            </div>
+            <div
+              v-for="slot in uniqueTimeSlots"
+              :key="slot"
+              class="filter-tab"
+              :class="{ active: activeTimeSlot === slot }"
+              @click="activeTimeSlot = slot"
+              style="display: flex; align-items: center;"
+            >
+              <span>{{ slot }}</span>
+              <span :style="getBadgeStyle(activeTimeSlot === slot)">
+                {{ getSlotCount(slot) }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
