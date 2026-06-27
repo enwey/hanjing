@@ -21,6 +21,14 @@ interface QueueItem {
   status: string;
 }
 
+const getTodayDateString = () => {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const appointments = ref<QueueItem[]>([])
 const schedules = ref<any[]>([])
 const loading = ref(false)
@@ -28,7 +36,8 @@ const loading = ref(false)
 const fetchAppointments = async () => {
   loading.value = true
   try {
-    const res: any = await request.get('/api/admin/appointments?date=2026-05-29')
+    const todayStr = getTodayDateString()
+    const res: any = await request.get(`/api/admin/appointments?date=${todayStr}`)
     const activeAppts = res.data.filter((item: any) => 
       ['pending', 'confirmed', 'waiting', 'checked_in', 'completed'].includes(item.status)
     )
@@ -46,7 +55,7 @@ const fetchAppointments = async () => {
       status: item.status
     }))
 
-    const schedRes: any = await request.get('/api/admin/schedules?date=2026-05-29')
+    const schedRes: any = await request.get(`/api/admin/schedules?date=${todayStr}`)
     schedules.value = schedRes.data || []
   } catch (error) {
     console.error(error)
@@ -470,7 +479,7 @@ const apptSearchQuery = ref('')
 const apptSelectedPatient = ref<any>(null)
 const apptStore = ref('🏥 鼾静健康·龙岗总店')
 const apptDoctor = ref('古堪民 · 主任医师 · 睡眠呼吸科')
-const apptDate = ref('2026-05-29')
+const apptDate = ref(getTodayDateString())
 const apptSlot = ref('09:30')
 const apptVisitType = ref('复诊')
 const apptPromoterId = ref<string | null>(null)
@@ -483,7 +492,7 @@ function openCreateApptDialog() {
   apptSelectedPatient.value = null
   apptStore.value = '🏥 鼾静健康·龙岗总店'
   apptDoctor.value = '古堪民 · 主任医师 · 睡眠呼吸科'
-  apptDate.value = '2026-05-29'
+  apptDate.value = getTodayDateString()
   apptSlot.value = '09:30'
   apptVisitType.value = '复诊'
   apptPromoterId.value = null
