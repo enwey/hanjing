@@ -33,15 +33,16 @@ export const resizable: Directive = {
         totalWidth += w
       })
       
+      el.style.width = `${totalWidth}px`
+      el.style.minWidth = `${totalWidth}px`
+      
       const parentWidth = parent.clientWidth
       
-      // Only add scrollable style if total column width exceeds container width
+      // Add scrollable style if total column width exceeds container width
       if (totalWidth > parentWidth) {
         el.classList.add('is-scrollable')
-        el.style.width = `${totalWidth}px`
       } else {
         el.classList.remove('is-scrollable')
-        el.style.width = '100%'
       }
     }
 
