@@ -68,7 +68,7 @@ const fetchAppointments = async () => {
       time: item.appointment_time,
       type: item.type === 'first' ? '初诊' : '复诊',
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
-      status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : item.status === 'pending_payment' ? 'pending_payment' : 'cancelled',
+      status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' ? 'waiting' : item.status === 'pending' ? 'pending' : item.status === 'pending_payment' ? 'pending_payment' : item.status === 'no_show' ? 'no_show' : 'cancelled',
       createdAt: item.created_at ? new Date(item.created_at).toLocaleString('zh-CN', { hour12: false }) : '',
       consult_fee: item.consult_fee || 0,
       deposit_amount: item.deposit_amount || 0
@@ -112,6 +112,7 @@ const tabOptions = [
   { label: '就诊中', value: 'checked_in' },
   { label: '待结算', value: 'completed' },
   { label: '已完成', value: 'arrived' },
+  { label: '未到诊', value: 'no_show' },
   { label: '已取消', value: 'cancelled' },
 ]
 
@@ -122,6 +123,7 @@ const statusMap: Record<string, { label: string; theme: string }> = {
   waiting: { label: '候诊中', theme: 'primary' },
   pending: { label: '已预约', theme: 'success' },
   pending_payment: { label: '待支付', theme: 'warning' },
+  no_show: { label: '未到诊', theme: 'default' },
   cancelled: { label: '已取消', theme: 'danger' }
 }
 
@@ -159,6 +161,7 @@ const counts = computed(() => {
     checked_in: statusList.filter(a => a.status === 'checked_in').length,
     completed: statusList.filter(a => a.status === 'completed').length,
     arrived: statusList.filter(a => a.status === 'arrived').length,
+    no_show: statusList.filter(a => a.status === 'no_show').length,
     cancelled: statusList.filter(a => a.status === 'cancelled').length,
   }
 })
@@ -185,6 +188,8 @@ function getFilteredAppointments() {
     list = list.filter(a => a.status === 'completed')
   } else if (activeTab.value === 'arrived') {
     list = list.filter(a => a.status === 'arrived')
+  } else if (activeTab.value === 'no_show') {
+    list = list.filter(a => a.status === 'no_show')
   } else if (activeTab.value === 'cancelled') {
     list = list.filter(a => a.status === 'cancelled')
   }
@@ -287,25 +292,31 @@ const operationColumnWidth = computed(() => {
   }
   
   let maxButtons = 1
+  let hasPending = false
   let hasPendingPayment = false
+  let hasWaiting = false
   let hasCompletedOrCheckedIn = false
   
   for (const row of paginatedAppointments.value) {
-    if (row.status === 'pending_payment') {
-      maxButtons = 3
-      hasPendingPayment = true
-    } else if (row.status === 'pending') {
+    if (row.status === 'pending') {
+      maxButtons = Math.max(maxButtons, 4)
+      hasPending = true
+    } else if (row.status === 'pending_payment') {
       maxButtons = Math.max(maxButtons, 3)
-    } else if (row.status === 'waiting' || row.status === 'checked_in' || row.status === 'completed') {
+      hasPendingPayment = true
+    } else if (row.status === 'waiting') {
+      maxButtons = Math.max(maxButtons, 3)
+      hasWaiting = true
+    } else if (row.status === 'checked_in' || row.status === 'completed') {
       maxButtons = Math.max(maxButtons, 2)
-      if (row.status === 'completed' || row.status === 'checked_in') {
-        hasCompletedOrCheckedIn = true
-      }
+      hasCompletedOrCheckedIn = true
     }
   }
   
-  if (maxButtons === 3) {
-    return hasPendingPayment ? '220px' : '190px'
+  if (maxButtons === 4) {
+    return '270px'
+  } else if (maxButtons === 3) {
+    return hasPendingPayment ? '220px' : '200px'
   } else if (maxButtons === 2) {
     return hasCompletedOrCheckedIn ? '160px' : '140px'
   } else {
@@ -357,6 +368,17 @@ async function cancelStatus(id: string) {
     fetchAppointments()
   } catch (error) {
     console.error(error)
+  }
+}
+
+async function markAsNoShow(row: Appointment) {
+  try {
+    await request.put(`/api/admin/appointments/${row.id}`, { status: 'no_show' })
+    MessagePlugin.success(`已将患者 ${row.patient} 标记为未到诊`)
+    fetchAppointments()
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('标记未到诊失败')
   }
 }
 
@@ -732,6 +754,11 @@ async function submitCheckout() {
                   >签到</button>
                   <button
                     v-if="row.status === 'pending'"
+                    class="btn btn-xs btn-warning"
+                    @click="markAsNoShow(row)"
+                  >未到诊</button>
+                  <button
+                    v-if="row.status === 'pending'"
                     class="btn btn-xs btn-danger"
                     @click="cancelStatus(row.id)"
                   >取消</button>
@@ -742,6 +769,11 @@ async function submitCheckout() {
                     class="btn btn-xs btn-warning"
                     @click="callPatient(row)"
                   >📢 叫号</button>
+                  <button
+                    v-if="row.status === 'waiting'"
+                    class="btn btn-xs btn-warning"
+                    @click="markAsNoShow(row)"
+                  >未到诊</button>
 
                   <!-- status is checked_in (就诊中) -->
                   <button
