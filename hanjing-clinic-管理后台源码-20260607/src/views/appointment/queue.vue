@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -19,6 +19,8 @@ interface QueueItem {
   timeSlot: string;
   symptom: string;
   status: string;
+  originalIndex?: number;
+  postponeCount?: number;
 }
 
 const getTodayDateString = () => {
@@ -33,15 +35,15 @@ const appointments = ref<QueueItem[]>([])
 const schedules = ref<any[]>([])
 const loading = ref(false)
 
-const fetchAppointments = async () => {
-  loading.value = true
+const fetchAppointments = async (isSilent = false) => {
+  if (!isSilent) loading.value = true
   try {
     const todayStr = getTodayDateString()
     const res: any = await request.get(`/api/admin/appointments?date=${todayStr}`)
     const activeAppts = res.data.filter((item: any) => 
       !['pending_payment', 'cancelled', 'no_show'].includes(item.status)
     )
-    appointments.value = activeAppts.map((item: any) => ({
+    appointments.value = activeAppts.map((item: any, index: number) => ({
       id: item.id.toString(),
       patientId: item.patient_id.toString(),
       no: item.appointment_no,
@@ -52,27 +54,34 @@ const fetchAppointments = async () => {
       storeName: item.store_name,
       timeSlot: item.appointment_time,
       symptom: item.symptom_desc || '无主诉描述',
-      status: item.status
+      status: item.status,
+      originalIndex: index,
+      postponeCount: item.postpone_count || 0
     }))
 
     const schedRes: any = await request.get(`/api/admin/schedules?date=${todayStr}`)
     schedules.value = schedRes.data || []
   } catch (error) {
     console.error(error)
-    MessagePlugin.error('获取排队与排班数据失败')
+    if (!isSilent) MessagePlugin.error('获取排队与排班数据失败')
   } finally {
-    loading.value = false
+    if (!isSilent) loading.value = false
   }
 }
 
 // Time slot filter state
-const activeTimeSlot = ref('all')
+const activeTimeSlot = ref(localStorage.getItem('queue_active_time_slot') || 'all')
 
-const selectedStore = ref('all')
+const selectedStore = ref(localStorage.getItem('queue_selected_store') || 'all')
 const storeOptions = ref(['龙岗总店', '南山分院', '福田门诊部'])
 
-watch(selectedStore, () => {
+watch(selectedStore, (newVal) => {
+  localStorage.setItem('queue_selected_store', newVal)
   activeTimeSlot.value = 'all'
+})
+
+watch(activeTimeSlot, (newVal) => {
+  localStorage.setItem('queue_active_time_slot', newVal)
 })
 
 // Extract all waiting list items globally to count slots and show numbers
@@ -148,8 +157,11 @@ const doctorQueues = computed(() => {
 
   // 3. Construct queues for these scheduled doctors
   return Object.values(docMap).map(doc => {
-    // Find all active appointments of this doctor
-    const doctorAppts = appointments.value.filter(a => a.doctorId === doc.doctorId)
+    // Find all active appointments of this doctor at the selected store
+    const doctorAppts = appointments.value.filter(a => {
+      if (a.doctorId !== doc.doctorId) return false
+      return selectedStore.value === 'all' || a.storeName.includes(selectedStore.value)
+    })
     
     let current: QueueItem | null = null
     const waitingList: QueueItem[] = []
@@ -160,6 +172,18 @@ const doctorQueues = computed(() => {
       } else if (appt.status === 'confirmed' || appt.status === 'called' || appt.status === 'pending' || appt.status === 'waiting') {
         waitingList.push(appt)
       }
+    })
+
+    // Sort waitingList based on postponed list
+    waitingList.sort((a, b) => {
+      const aPostpone = a.postponeCount || 0
+      const bPostpone = b.postponeCount || 0
+      if (aPostpone !== bPostpone) {
+        return aPostpone - bPostpone
+      }
+      const aIndex = a.originalIndex !== undefined ? a.originalIndex : 999999
+      const bIndex = b.originalIndex !== undefined ? b.originalIndex : 999999
+      return aIndex - bIndex
     })
     
     // Filter waitingList by activeTimeSlot
@@ -507,18 +531,31 @@ async function submitCheckout() {
 }
 
 // Move patient down the queue (顺延)
-const delayPatient = (item: QueueItem) => {
-  // Local swap for simulation
-  const index = appointments.value.findIndex(a => a.id === item.id)
-  if (index !== -1) {
-    const [moved] = appointments.value.splice(index, 1)
-    appointments.value.push(moved) // move to end
+const delayPatient = async (item: QueueItem) => {
+  try {
+    await request.post(`/api/admin/appointments/${item.id}/postpone`)
     MessagePlugin.success(`已将 ${item.patientName} 的顺序往后顺延`)
+    await fetchAppointments(true)
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('顺延操作失败')
   }
 }
 
+let timerId: any = null
+
 onMounted(() => {
   fetchAppointments()
+  timerId = setInterval(() => {
+    fetchAppointments(true)
+  }, 5000)
+})
+
+onUnmounted(() => {
+  if (timerId) {
+    clearInterval(timerId)
+    timerId = null
+  }
 })
 
 // Walk-in Registration dialog states & actions
@@ -668,46 +705,48 @@ const filteredTodayAppointments = computed(() => {
 
     <!-- 时段过滤面板 -->
     <div class="panel">
-      <div class="filter-bar" style="flex-wrap: wrap; gap: 16px; align-items: center; border-bottom: none; padding: 12px 20px;">
-        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 13px; font-weight: 600; color: #4B5563; display: inline-flex; align-items: center; gap: 4px;">
-              <span><AppIcon name="store" /> </span> 接诊门店：
-            </span>
-            <select v-model="selectedStore" class="selector-dropdown" style="height: 32px; font-size: 13px; font-weight: 500; color: #374151; border: 1px solid #D1D5DB; border-radius: 8px; background: #fff; cursor: pointer; padding: 0 8px; outline: none; transition: border-color 150ms;">
-              <option value="all">全部门店</option>
-              <option v-for="s in storeOptions" :key="s" :value="s">{{ s }}</option>
-            </select>
-          </div>
-          
-          <span style="color: #E5E7EB; margin: 0 4px;">|</span>
-          
-          <div class="filter-tabs" style="flex-wrap: wrap;">
-            <div
-              class="filter-tab"
-              :class="{ active: activeTimeSlot === 'all' }"
-              @click="activeTimeSlot = 'all'"
-              style="display: flex; align-items: center;"
-            >
-              <span>全部</span>
-              <span :style="getBadgeStyle(activeTimeSlot === 'all')">
-                {{ allWaitingItems.length }}
-              </span>
-            </div>
-            <div
-              v-for="slot in uniqueTimeSlots"
-              :key="slot"
-              class="filter-tab"
-              :class="{ active: activeTimeSlot === slot }"
-              @click="activeTimeSlot = slot"
-              style="display: flex; align-items: center;"
-            >
-              <span>{{ slot }}</span>
-              <span :style="getBadgeStyle(activeTimeSlot === slot)">
-                {{ getSlotCount(slot) }}
-              </span>
+      <div class="doctor-selector-bar" style="border-bottom: none; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;">
+        <!-- Left: Time slots Filter Bar exactly like workbench.vue -->
+        <div style="flex: 1; min-width: 200px;">
+          <div class="time-filter-wrapper" style="margin-bottom: 0; padding-bottom: 0;">
+            <div class="filter-tabs">
+              <div 
+                class="filter-tab" 
+                :class="{ active: activeTimeSlot === 'all' }" 
+                @click="activeTimeSlot = 'all'"
+                style="display: flex; align-items: center;"
+              >
+                <span>全部</span>
+                <span :style="getBadgeStyle(activeTimeSlot === 'all')">
+                  {{ allWaitingItems.length }}
+                </span>
+              </div>
+              <div 
+                v-for="slot in uniqueTimeSlots" 
+                :key="slot" 
+                class="filter-tab" 
+                :class="{ active: activeTimeSlot === slot }" 
+                @click="activeTimeSlot = slot"
+                style="display: flex; align-items: center;"
+              >
+                <span>{{ slot }}</span>
+                <span :style="getBadgeStyle(activeTimeSlot === slot)">
+                  {{ getSlotCount(slot) }}
+                </span>
+              </div>
             </div>
           </div>
+        </div>
+
+        <!-- Right: Store Selector -->
+        <div class="selector-right" style="flex-shrink: 0; display: flex; align-items: center; gap: 8px;">
+          <span class="selector-lbl" style="display: inline-flex; align-items: center; gap: 4px;">
+            接诊门店：
+          </span>
+          <select v-model="selectedStore" class="selector-dropdown">
+            <option value="all">全部门店</option>
+            <option v-for="s in storeOptions" :key="s" :value="s">{{ s }}</option>
+          </select>
         </div>
       </div>
     </div>
@@ -1265,5 +1304,77 @@ const filteredTodayAppointments = computed(() => {
 }
 .btn-text-del:hover {
   text-decoration: underline;
+}
+
+/* Selector and Filter tab styles matching workbench.vue */
+.doctor-selector-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+}
+
+.selector-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selector-lbl {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.selector-dropdown {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #D1D5DB;
+  font-size: 13px;
+  outline: none;
+  background: #FFF;
+  cursor: pointer;
+  color: #374151;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.time-filter-wrapper {
+  overflow-x: auto;
+  white-space: nowrap;
+  width: 100%;
+  margin-bottom: 0px;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.time-filter-wrapper::-webkit-scrollbar {
+  height: 4px;
+}
+
+.time-filter-wrapper::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 2px;
+}
+
+.time-filter-wrapper::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 2px;
+}
+
+.time-filter-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+.time-filter-wrapper .filter-tabs {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0;
+}
+
+.time-filter-wrapper .filter-tab {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 </style>

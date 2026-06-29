@@ -44,6 +44,15 @@ export const seedData = async () => {
   await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [storeMgrRoleId, 'appointment:edit']);
   await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [storeMgrRoleId, 'patient:view']);
   await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [storeMgrRoleId, 'store:view']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'appointment:view']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'appointment:edit']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'patient:view']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'patient:phone:view']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'medical_record:view']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'medical_record:add']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'medical_record:edit']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'schedule:view']);
+  await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'schedule:edit']);
 
   // 3. Stores
   const store1 = await run(

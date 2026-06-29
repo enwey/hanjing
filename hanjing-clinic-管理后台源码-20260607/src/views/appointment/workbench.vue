@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -51,23 +51,48 @@ interface QueueItem {
   source?: string;
   consultFee?: number;
   depositAmount?: number;
+  originalIndex?: number;
+  postponeCount?: number;
+  storeId?: string;
 }
 
 const appointments = ref<QueueItem[]>([])
 const doctorsList = ref<any[]>([])
-const selectedDoctorId = ref<string>('')
+const selectedDoctorId = ref<string>(localStorage.getItem('workbench_selected_doctor_id') || '')
 const loading = ref(false)
-const activeTimeSlot = ref('all')
+const activeTimeSlot = ref(localStorage.getItem('workbench_active_time_slot') || 'all')
 const rightPaneTab = ref('waiting') // waiting, completed
+
+const storeList = ref<any[]>([])
+const selectedStoreId = ref<string>(localStorage.getItem('workbench_selected_store_id') || 'all')
+
+const fetchStores = async () => {
+  try {
+    const res: any = await request.get('/api/admin/stores')
+    if (res.code === 200) {
+      storeList.value = res.data
+    }
+  } catch (error) {
+    console.error('获取门店数据失败:', error)
+  }
+}
 
 // Fetch all doctors to populate selector
 const fetchDoctors = async () => {
   try {
-    const res: any = await request.get('/api/admin/doctors')
+    const url = selectedStoreId.value === 'all'
+      ? '/api/admin/doctors'
+      : `/api/admin/doctors?store_id=${selectedStoreId.value}`
+    const res: any = await request.get(url)
     if (res.code === 200) {
       doctorsList.value = res.data
-      if (res.data.length > 0 && !selectedDoctorId.value) {
-        selectedDoctorId.value = res.data[0].id.toString()
+      if (doctorsList.value.length > 0) {
+        const exists = doctorsList.value.some(d => d.id.toString() === selectedDoctorId.value)
+        if (!exists) {
+          selectedDoctorId.value = doctorsList.value[0].id.toString()
+        }
+      } else {
+        selectedDoctorId.value = ''
       }
     }
   } catch (error) {
@@ -75,13 +100,27 @@ const fetchDoctors = async () => {
   }
 }
 
+watch(selectedStoreId, async (newVal) => {
+  localStorage.setItem('workbench_selected_store_id', newVal)
+  activeTimeSlot.value = 'all'
+  await fetchDoctors()
+})
+
+watch(selectedDoctorId, (newVal) => {
+  localStorage.setItem('workbench_selected_doctor_id', newVal)
+})
+
+watch(activeTimeSlot, (newVal) => {
+  localStorage.setItem('workbench_active_time_slot', newVal)
+})
+
 // Fetch queue appointments
-const fetchAppointments = async () => {
-  loading.value = true
+const fetchAppointments = async (isSilent = false) => {
+  if (!isSilent) loading.value = true
   try {
     const todayStr = getTodayDateString()
     const res: any = await request.get(`/api/admin/appointments?date=${todayStr}`)
-    const mapped = res.data.map((item: any) => ({
+    const mapped = res.data.map((item: any, index: number) => ({
       id: item.id.toString(),
       patientId: item.patient_id.toString(),
       no: item.appointment_no,
@@ -90,6 +129,7 @@ const fetchAppointments = async () => {
       doctorName: item.doctor_name,
       doctorId: item.doctor_id.toString(),
       storeName: item.store_name,
+      storeId: item.store_id.toString(),
       timeSlot: item.appointment_time,
       symptom: item.symptom_desc || '无主诉描述',
       status: item.status,
@@ -99,7 +139,9 @@ const fetchAppointments = async () => {
       type: item.type === 'first' ? '初诊' : '复诊',
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '现场',
       consultFee: item.consult_fee || 0,
-      depositAmount: item.deposit_amount || 0
+      depositAmount: item.deposit_amount || 0,
+      originalIndex: index,
+      postponeCount: item.postpone_count || 0
     }))
 
     // For each appointment, fetch its pre-exam vitals if confirmed, checked_in or completed
@@ -122,15 +164,39 @@ const fetchAppointments = async () => {
     appointments.value = mapped
   } catch (error) {
     console.error(error)
-    MessagePlugin.error('获取排队队列数据失败')
+    if (!isSilent) MessagePlugin.error('获取排队队列数据失败')
   } finally {
-    loading.value = false
+    if (!isSilent) loading.value = false
   }
 }
 
+const navigateToCreateAppointment = () => {
+  const query: any = {}
+  if (selectedStoreId.value && selectedStoreId.value !== 'all') {
+    query.store_id = selectedStoreId.value
+  }
+  if (selectedDoctorId.value) {
+    query.doctor_id = selectedDoctorId.value
+  }
+  router.push({ path: '/appointment/create', query })
+}
+
+let timerId: any = null
+
 onMounted(async () => {
+  await fetchStores()
   await fetchDoctors()
   await fetchAppointments()
+  timerId = setInterval(() => {
+    fetchAppointments(true)
+  }, 5000)
+})
+
+onUnmounted(() => {
+  if (timerId) {
+    clearInterval(timerId)
+    timerId = null
+  }
 })
 
 // Current selected doctor object
@@ -149,14 +215,20 @@ const uniqueTimeSlots = computed(() => {
   const slots = new Set<string>()
   appointments.value.forEach(item => {
     if (item.doctorId === selectedDoctorId.value && !['completed', 'checked_in', 'pending_payment', 'cancelled', 'no_show'].includes(item.status) && item.timeSlot) {
-      slots.add(item.timeSlot)
+      if (selectedStoreId.value === 'all' || item.storeId === selectedStoreId.value) {
+        slots.add(item.timeSlot)
+      }
     }
   })
   return Array.from(slots).sort()
 })
 
 const allWaitingItems = computed(() => {
-  return appointments.value.filter(item => item.doctorId === selectedDoctorId.value && !['completed', 'checked_in', 'pending_payment', 'cancelled', 'no_show'].includes(item.status))
+  return appointments.value.filter(item => 
+    item.doctorId === selectedDoctorId.value && 
+    !['completed', 'checked_in', 'pending_payment', 'cancelled', 'no_show'].includes(item.status) &&
+    (selectedStoreId.value === 'all' || item.storeId === selectedStoreId.value)
+  )
 })
 
 function getSlotCount(slot: string) {
@@ -180,7 +252,11 @@ function getBadgeStyle(isActive: boolean) {
 
 // Doctor's active treating patient (last checked_in patient)
 const currentPatient = computed(() => {
-  return appointments.value.find(item => item.doctorId === selectedDoctorId.value && item.status === 'checked_in') || null
+  return appointments.value.find(item => 
+    item.doctorId === selectedDoctorId.value && 
+    item.status === 'checked_in' &&
+    (selectedStoreId.value === 'all' || item.storeId === selectedStoreId.value)
+  ) || null
 })
 
 // Doctor's waiting queue (excluding the active currentPatient)
@@ -188,7 +264,20 @@ const waitingQueue = computed(() => {
   const list = appointments.value.filter(item => {
     if (item.doctorId !== selectedDoctorId.value) return false
     if (['completed', 'checked_in', 'pending_payment', 'cancelled', 'no_show'].includes(item.status)) return false
+    if (selectedStoreId.value !== 'all' && item.storeId !== selectedStoreId.value) return false
     return true
+  })
+  
+  // Sort list based on database postpone Count and originalIndex
+  list.sort((a, b) => {
+    const aPostpone = a.postponeCount || 0
+    const bPostpone = b.postponeCount || 0
+    if (aPostpone !== bPostpone) {
+      return aPostpone - bPostpone
+    }
+    const aIndex = a.originalIndex !== undefined ? a.originalIndex : 999999
+    const bIndex = b.originalIndex !== undefined ? b.originalIndex : 999999
+    return aIndex - bIndex
   })
   
   if (activeTimeSlot.value !== 'all') {
@@ -199,7 +288,11 @@ const waitingQueue = computed(() => {
 
 // Doctor's completed queue for today
 const completedQueue = computed(() => {
-  return appointments.value.filter(item => item.doctorId === selectedDoctorId.value && item.status === 'completed')
+  return appointments.value.filter(item => 
+    item.doctorId === selectedDoctorId.value && 
+    item.status === 'completed' &&
+    (selectedStoreId.value === 'all' || item.storeId === selectedStoreId.value)
+  )
 })
 
 // Call patient voice broadcast
@@ -676,34 +769,37 @@ async function submitCreateAppt() {
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>刷新队列
         </button>
-        <button class="btn btn-primary" @click="openCreateApptDialog">
+        <button class="btn btn-primary" @click="navigateToCreateAppointment">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>现场登记挂号
+          </svg>新建预约
         </button>
       </div>
     </div>
 
     <!-- Doctor selector workbench bar -->
     <div class="panel">
-      <div class="doctor-selector-bar">
-        <div class="selector-left">
+      <div class="doctor-selector-bar" style="display: flex; justify-content: flex-end; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <!-- Store Selector -->
+        <div class="selector-left" style="display: flex; align-items: center; gap: 8px;">
+          <span class="selector-lbl">接诊门店：</span>
+          <select v-model="selectedStoreId" class="selector-dropdown" @change="activeTimeSlot = 'all'">
+            <option value="all">全部门店</option>
+            <option v-for="s in storeList" :key="s.id" :value="s.id.toString()">
+              {{ s.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Doctor Selector -->
+        <div class="selector-left" style="display: flex; align-items: center; gap: 8px;">
           <span class="selector-lbl">当前接诊诊室：</span>
           <select v-model="selectedDoctorId" class="selector-dropdown" @change="activeTimeSlot = 'all'">
             <option v-for="d in doctorsList" :key="d.id" :value="d.id.toString()">
               {{ d.name }} · {{ d.title }} ({{ d.specialty }})
             </option>
           </select>
-        </div>
-        <div class="selector-right" style="display: flex; align-items: center; gap: 6px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #4B5563;">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-          </svg>
-          <span>当前门店：{{ currentStoreName }}</span>
-          <span class="separator">|</span>
-          <span>科室：睡眠呼吸障碍治疗门诊</span>
         </div>
       </div>
     </div>

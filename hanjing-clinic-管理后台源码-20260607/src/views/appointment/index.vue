@@ -16,11 +16,17 @@ const getTodayDateString = () => {
 }
 
 // Filter states matching UI mockup
-const activeTab = ref('all') // Default to 'all' (全部)
-const filterStore = ref('全部门店')
-const filterDoctor = ref('全部医生')
-const filterDate = ref('') // No date filter by default
-const searchKeyword = ref('')
+const activeTab = ref(localStorage.getItem('appt_list_active_tab') || 'all') // Default to 'all' (全部)
+const filterStore = ref(localStorage.getItem('appt_list_filter_store') || '全部门店')
+const filterDoctor = ref(localStorage.getItem('appt_list_filter_doctor') || '全部医生')
+const filterDate = ref(localStorage.getItem('appt_list_filter_date') || '') // No date filter by default
+const searchKeyword = ref(localStorage.getItem('appt_list_search_keyword') || '')
+
+watch(activeTab, (newVal) => { localStorage.setItem('appt_list_active_tab', newVal) })
+watch(filterStore, (newVal) => { localStorage.setItem('appt_list_filter_store', newVal) })
+watch(filterDoctor, (newVal) => { localStorage.setItem('appt_list_filter_doctor', newVal) })
+watch(filterDate, (newVal) => { localStorage.setItem('appt_list_filter_date', newVal) })
+watch(searchKeyword, (newVal) => { localStorage.setItem('appt_list_search_keyword', newVal) })
 
 const currentPage = ref(1)
 const pageSize = ref(30)

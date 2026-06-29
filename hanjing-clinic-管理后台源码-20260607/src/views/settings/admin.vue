@@ -11,6 +11,8 @@ interface AdminAccount {
   password?: string;
   roleId?: string;
   storeId?: string;
+  doctorId?: string;
+  doctorName?: string;
   avatarChar: string;
   avatarColor: string;
   role: string;
@@ -31,9 +33,17 @@ interface StoreOption {
   name: string;
 }
 
+interface DoctorOption {
+  id: string;
+  name: string;
+  title?: string;
+  adminUserId?: string;
+}
+
 const admins = ref<AdminAccount[]>([])
 const roles = ref<RoleOption[]>([])
 const stores = ref<StoreOption[]>([])
+const doctors = ref<DoctorOption[]>([])
 
 const currentPage = ref(1)
 const pageSize = ref(30)
@@ -49,7 +59,8 @@ const filteredAdmins = computed(() => {
       a.username.toLowerCase().includes(kw) || 
       a.name.toLowerCase().includes(kw) || 
       a.role.toLowerCase().includes(kw) || 
-      a.store.toLowerCase().includes(kw)
+      a.store.toLowerCase().includes(kw) ||
+      (a.doctorName || '').toLowerCase().includes(kw)
     return matchStatus && matchKeyword
   })
 })
@@ -73,12 +84,14 @@ const formData = ref<Partial<AdminAccount>>({
   phone: '',
   roleId: '',
   storeId: '',
+  doctorId: '',
   status: 'online'
 })
 
 function roleTagByName(name: string) {
   if (name.includes('超级')) return 'blue'
   if (name.includes('门店')) return 'green'
+  if (name.includes('医生') || name.includes('就诊')) return 'gold'
   if (name.includes('财务')) return 'gold'
   return 'gray'
 }
@@ -96,6 +109,8 @@ function mapAdmin(row: any): AdminAccount {
     phone: row.phone || '',
     roleId: row.role_id ? String(row.role_id) : '',
     storeId: row.store_id ? String(row.store_id) : '',
+    doctorId: row.doctor_id ? String(row.doctor_id) : '',
+    doctorName: row.doctor_name || '',
     avatarChar: (row.name || row.username || '管').charAt(0),
     avatarColor: roleTagByName(row.role_name || '') === 'green' ? 'var(--success-500)' : 'var(--primary-500)',
     role: row.role_name || '未分配角色',
@@ -107,9 +122,10 @@ function mapAdmin(row: any): AdminAccount {
 }
 
 async function fetchOptions() {
-  const [roleRes, storeRes]: any[] = await Promise.all([
+  const [roleRes, storeRes, doctorRes]: any[] = await Promise.all([
     request.get('/api/admin/roles'),
-    request.get('/api/admin/stores')
+    request.get('/api/admin/stores'),
+    request.get('/api/admin/doctors')
   ])
   roles.value = (roleRes.data || []).map((row: any) => ({
     id: String(row.id),
@@ -119,6 +135,12 @@ async function fetchOptions() {
   stores.value = (storeRes.data || []).map((row: any) => ({
     id: String(row.id),
     name: row.name
+  }))
+  doctors.value = (doctorRes.data || []).map((row: any) => ({
+    id: String(row.id),
+    name: row.name,
+    title: row.title,
+    adminUserId: row.admin_user_id ? String(row.admin_user_id) : ''
   }))
 }
 
@@ -140,6 +162,7 @@ async function handleAdd() {
     phone: '',
     roleId: roles.value[0]?.id || '',
     storeId: '',
+    doctorId: '',
     status: 'online'
   }
   showEdit.value = true
@@ -162,13 +185,14 @@ async function handleToggle(id: string) {
     MessagePlugin.error('超级管理员账号不可禁用')
     return
   }
-  const nextStatus = account.status === 'disabled' ? 'offline' : 'disabled'
+  const nextStatus = account.status === 'disabled' ? 'online' : 'disabled'
   try {
     await request.put(`/api/admin/users/${id}`, {
       name: account.name,
       phone: account.phone,
       role_id: account.roleId,
       store_id: account.storeId || null,
+      doctor_id: account.doctorId || null,
       status: nextStatus
     })
     account.status = nextStatus
@@ -191,6 +215,7 @@ async function handleSave() {
       phone: formData.value.phone || '',
       role_id: formData.value.roleId,
       store_id: formData.value.storeId || null,
+      doctor_id: formData.value.doctorId || null,
       status: formData.value.status || 'online'
     }
     if ((formData.value as any).password) payload.password = (formData.value as any).password
@@ -288,7 +313,7 @@ watch(operationColumnWidth, () => {
           type="text" 
           v-model="searchKeyword" 
           class="filter-input" 
-          placeholder="搜索账号/姓名/角色/门店" 
+          placeholder="搜索账号/姓名/角色/门店/医生" 
           style="width: 240px;"
         >
       </div>
@@ -301,6 +326,7 @@ watch(operationColumnWidth, () => {
               <th>姓名</th>
               <th>角色</th>
               <th>负责门店</th>
+              <th>绑定医生</th>
               <th>最近登录</th>
               <th>状态</th>
               <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
@@ -322,6 +348,7 @@ watch(operationColumnWidth, () => {
                 <span class="tag tag-gray" v-else-if="row.roleTag === 'gray'">{{ row.role }}</span>
               </td>
               <td>{{ row.store }}</td>
+              <td>{{ row.doctorName || '—' }}</td>
               <td style="font-size: 12px; color: #6B7280;">{{ row.lastLogin }}</td>
               <td>
                 <span class="status-tag green" v-if="row.status === 'online'">在线</span>
@@ -400,6 +427,21 @@ watch(operationColumnWidth, () => {
             <option value="">全部门店</option>
             <option v-for="store in stores" :key="store.id" :value="store.id">{{ store.name }}</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">绑定医生档案</label>
+          <select class="form-control" v-model="formData.doctorId">
+            <option value="">不绑定医生</option>
+            <option
+              v-for="doctor in doctors"
+              :key="doctor.id"
+              :value="doctor.id"
+              :disabled="!!doctor.adminUserId && doctor.adminUserId !== formData.id"
+            >
+              {{ doctor.name }}{{ doctor.title ? `（${doctor.title}）` : '' }}{{ doctor.adminUserId && doctor.adminUserId !== formData.id ? ' - 已绑定账号' : '' }}
+            </option>
+          </select>
+          <div style="font-size: 12px; color: #9CA3AF;">绑定后该账号登录后台会按医生本人范围查看预约、患者、病历和排班。</div>
         </div>
       </div>
     </t-dialog>

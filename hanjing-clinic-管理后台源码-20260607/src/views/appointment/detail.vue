@@ -38,9 +38,9 @@ const appointment = ref<any>({
   feeStatus: 'paid',
   source: '',
   symptom: '',
-  deposit: '0.00',
   pre_exam: null,
-  latest_pre_exam: null
+  latest_pre_exam: null,
+  previous_pre_exam: null
 })
 
 const patientHistory = ref<any[]>([])
@@ -228,7 +228,8 @@ const fetchAppointmentDetail = async () => {
         symptom: appt.symptom_desc || '',
         deposit: appt.deposit_amount !== null && appt.deposit_amount !== undefined ? (appt.deposit_amount / 100).toFixed(2) : '0.00',
         pre_exam: appt.pre_exam,
-        latest_pre_exam: appt.latest_pre_exam
+        latest_pre_exam: appt.latest_pre_exam,
+        previous_pre_exam: appt.previous_pre_exam
       }
     }
   } catch (error) {
@@ -311,13 +312,18 @@ async function handleCheckInSubmit() {
       neckCircumference: neckCircumference ? parseFloat(neckCircumference) : null,
       bmi: checkInBmi.value ? parseFloat(checkInBmi.value) : null
     })
-    await request.put(`/api/admin/appointments/${appointment.value.id}`, { status: 'confirmed' })
-    MessagePlugin.success(`患者 ${appointment.value.patient} 签到与预检体征录入成功`)
+    const isPending = ['pending', 'pending_payment'].includes(appointment.value.status)
+    if (isPending) {
+      await request.put(`/api/admin/appointments/${appointment.value.id}`, { status: 'confirmed' })
+      MessagePlugin.success(`患者 ${appointment.value.patient} 签到与预检体征录入成功`)
+    } else {
+      MessagePlugin.success(`患者 ${appointment.value.patient} 预检体征录入成功`)
+    }
     checkInVisible.value = false
     fetchAppointmentDetail()
   } catch (error) {
     console.error(error)
-    MessagePlugin.error('签到保存失败')
+    MessagePlugin.error('体征录入失败')
   }
 }
 
@@ -607,7 +613,12 @@ function handleBack() {
 }
 
 function handlePrint() {
-  MessagePlugin.success('打印任务已提交到前台打印机。')
+  const oldTitle = document.title
+  document.title = '鼾静健康诊所'
+  window.print()
+  setTimeout(() => {
+    document.title = oldTitle
+  }, 1000)
 }
 
 function handleReschedule() {
@@ -636,7 +647,8 @@ function handleViewProfile() {
 
 <template>
   <div class="page-container">
-
+    <!-- 打印预览专用页眉 -->
+    <div class="print-header">鼾静健康诊所</div>
 
     <!-- Header Title Row -->
     <div class="page-title-row">
@@ -737,7 +749,66 @@ function handleViewProfile() {
           </div>
 
           <!-- Vitals Section -->
-          <div v-if="appointment.latest_pre_exam" class="vitals-section" style="margin-bottom: 0;">
+          <div class="vitals-section" style="margin-bottom: 0;">
+            <div class="section-sub-title" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4.8 3h14.4"></path>
+                  <path d="M4.8 3v4.8c0 4.8 7.2 4.8 7.2 9.6v1.8"></path>
+                  <path d="M19.2 3v4.8c0 3.6-3.6 4.8-4.8 6.4"></path>
+                  <circle cx="12" cy="21" r="2"></circle>
+                </svg>
+                <span>预检体征数据 (由分诊/护士录入)</span>
+              </div>
+              <t-button
+                v-if="!['completed', 'arrived', 'settled', 'cancelled', 'no_show'].includes(appointment.status)"
+                size="extra-small"
+                theme="primary"
+                variant="outline"
+                @click="openCheckInDialog"
+              >
+                {{ appointment.pre_exam ? '编辑预检体征数据' : '录入预检体征数据' }}
+              </t-button>
+            </div>
+            
+            <div v-if="appointment.pre_exam" class="vitals-grid">
+              <div class="vital-item">
+                <span class="vital-lbl">身高</span>
+                <span class="vital-val">{{ appointment.pre_exam.height }} cm</span>
+              </div>
+              <div class="vital-item">
+                <span class="vital-lbl">体重</span>
+                <span class="vital-val">{{ appointment.pre_exam.weight }} kg</span>
+              </div>
+              <div class="vital-item">
+                <span class="vital-lbl">收缩压 (高压)</span>
+                <span class="vital-val">{{ appointment.pre_exam.systolic_bp || '--' }} mmHg</span>
+              </div>
+              <div class="vital-item">
+                <span class="vital-lbl">舒张压 (低压)</span>
+                <span class="vital-val">{{ appointment.pre_exam.diastolic_bp || '--' }} mmHg</span>
+              </div>
+              <div class="vital-item">
+                <span class="vital-lbl">颈围</span>
+                <span class="vital-val">{{ appointment.pre_exam.neck_circumference || '--' }} cm</span>
+              </div>
+              <div class="vital-item">
+                <span class="vital-lbl">BMI 指数</span>
+                <span class="vital-val text-blue">{{ appointment.pre_exam.bmi || '--' }}</span>
+              </div>
+            </div>
+            <div v-else class="vitals-empty" style="display: flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span>暂无预检体征数据</span>
+            </div>
+          </div>
+
+          <!-- Previous Vitals Section -->
+          <div v-if="!appointment.pre_exam && !['completed', 'arrived', 'settled', 'cancelled', 'no_show'].includes(appointment.status)" class="vitals-section previous-vitals-section" style="margin-bottom: 0; margin-top: 12px;">
             <div class="section-sub-title" style="display: flex; align-items: center; gap: 6px;">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4.8 3h14.4"></path>
@@ -745,34 +816,42 @@ function handleViewProfile() {
                 <path d="M19.2 3v4.8c0 3.6-3.6 4.8-4.8 6.4"></path>
                 <circle cx="12" cy="21" r="2"></circle>
               </svg>
-              <span>预检体征数据 (由分诊/护士录入)</span>
+              <span>上次预检体征数据 (由分诊/护士录入)</span>
             </div>
             
-            <div class="vitals-grid">
+            <div v-if="appointment.previous_pre_exam" class="vitals-grid">
               <div class="vital-item">
                 <span class="vital-lbl">身高</span>
-                <span class="vital-val">{{ appointment.latest_pre_exam.height }} cm</span>
+                <span class="vital-val">{{ appointment.previous_pre_exam.height }} cm</span>
               </div>
               <div class="vital-item">
                 <span class="vital-lbl">体重</span>
-                <span class="vital-val">{{ appointment.latest_pre_exam.weight }} kg</span>
+                <span class="vital-val">{{ appointment.previous_pre_exam.weight }} kg</span>
               </div>
               <div class="vital-item">
                 <span class="vital-lbl">收缩压 (高压)</span>
-                <span class="vital-val">{{ appointment.latest_pre_exam.systolic_bp || '--' }} mmHg</span>
+                <span class="vital-val">{{ appointment.previous_pre_exam.systolic_bp || '--' }} mmHg</span>
               </div>
               <div class="vital-item">
                 <span class="vital-lbl">舒张压 (低压)</span>
-                <span class="vital-val">{{ appointment.latest_pre_exam.diastolic_bp || '--' }} mmHg</span>
+                <span class="vital-val">{{ appointment.previous_pre_exam.diastolic_bp || '--' }} mmHg</span>
               </div>
               <div class="vital-item">
                 <span class="vital-lbl">颈围</span>
-                <span class="vital-val">{{ appointment.latest_pre_exam.neck_circumference || '--' }} cm</span>
+                <span class="vital-val">{{ appointment.previous_pre_exam.neck_circumference || '--' }} cm</span>
               </div>
               <div class="vital-item">
                 <span class="vital-lbl">BMI 指数</span>
-                <span class="vital-val text-blue">{{ appointment.latest_pre_exam.bmi || '--' }}</span>
+                <span class="vital-val text-blue">{{ appointment.previous_pre_exam.bmi || '--' }}</span>
               </div>
+            </div>
+            <div v-else class="vitals-empty" style="display: flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <span>暂无预检体征数据</span>
             </div>
           </div>
         </div>
@@ -814,46 +893,14 @@ function handleViewProfile() {
           </div>
           <div class="info-item" style="grid-column: span 2; border-top: 1px dashed #E5E7EB; padding-top: 12px; margin-top: 4px;">
             <div class="info-label">病症描述/主诉</div>
-            <div class="info-value" style="color: #4B5563; font-weight: normal; line-height: 1.6;">{{ appointment.symptom }}</div>
+            <div class="info-value" :style="{ color: appointment.symptom ? '#4B5563' : '#9CA3AF', fontWeight: 'normal', lineHeight: '1.6' }">
+              {{ appointment.symptom || '无主诉描述' }}
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 预检体征信息 -->
-    <div v-if="appointment.pre_exam" class="panel" style="margin-top: 16px;">
-      <div class="panel-header">
-        <div class="panel-title"><AppIcon name="stethoscope" />  预检体征信息</div>
-      </div>
-      <div class="panel-body">
-        <div class="vitals-grid" style="grid-template-columns: repeat(6, 1fr);">
-          <div class="vital-item">
-            <span class="vital-lbl">身高</span>
-            <span class="vital-val">{{ appointment.pre_exam.height }} cm</span>
-          </div>
-          <div class="vital-item">
-            <span class="vital-lbl">体重</span>
-            <span class="vital-val">{{ appointment.pre_exam.weight }} kg</span>
-          </div>
-          <div class="vital-item">
-            <span class="vital-lbl">收缩压 (高压)</span>
-            <span class="vital-val">{{ appointment.pre_exam.systolic_bp || '--' }} mmHg</span>
-          </div>
-          <div class="vital-item">
-            <span class="vital-lbl">舒张压 (低压)</span>
-            <span class="vital-val">{{ appointment.pre_exam.diastolic_bp || '--' }} mmHg</span>
-          </div>
-          <div class="vital-item">
-            <span class="vital-lbl">颈围</span>
-            <span class="vital-val">{{ appointment.pre_exam.neck_circumference || '--' }} cm</span>
-          </div>
-          <div class="vital-item">
-            <span class="vital-lbl">BMI 指数</span>
-            <span class="vital-val text-blue">{{ appointment.pre_exam.bmi || '--' }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Timeline Progress -->
     <div class="panel" style="margin-top: 16px;">
@@ -1087,7 +1134,7 @@ function handleViewProfile() {
     <!-- 签到预检体征录入弹窗 -->
     <t-dialog
       v-model:visible="checkInVisible"
-      header="到店签到 & 预检体征录入"
+      header="预检体征录入"
       width="480px"
       :footer="null"
       @cancel="closeCheckInDialog"
@@ -1124,8 +1171,15 @@ function handleViewProfile() {
         <!-- Custom Footer -->
         <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #E5E7EB; padding-top: 16px;">
           <t-button variant="outline" theme="default" @click="closeCheckInDialog">取消</t-button>
-          <t-button variant="outline" theme="warning" @click="handleCheckInSkip">跳过录入直接签到</t-button>
-          <t-button theme="primary" @click="handleCheckInSubmit">确认签到</t-button>
+          <t-button
+            v-if="['pending', 'pending_payment'].includes(appointment.status)"
+            variant="outline"
+            theme="warning"
+            @click="handleCheckInSkip"
+          >跳过录入直接签到</t-button>
+          <t-button theme="primary" @click="handleCheckInSubmit">
+            {{ ['pending', 'pending_payment'].includes(appointment.status) ? '确认签到' : '确认保存' }}
+          </t-button>
         </div>
       </div>
     </t-dialog>
@@ -1628,4 +1682,123 @@ function handleViewProfile() {
 .text-blue {
   color: var(--primary-500);
 }
+
+.vitals-empty {
+  font-size: 12px;
+  color: #D97706;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  padding: 10px;
+}
+.print-header {
+  display: none;
+}
 </style>
+
+<style>
+@page {
+  size: auto;
+  margin: 0mm; /* Hides default browser header (title/date) and footer (URL/page numbers) */
+}
+
+@media print {
+  /* Hide all layouts, sidebar toggle buttons, top headers and custom app layouts */
+  aside,
+  header,
+  nav,
+  .app-sidebar, 
+  .sidebar-toggle-btn, 
+  .topbar, 
+  .sidebar,
+  .sidebar-logo,
+  .t-layout__aside,
+  .t-layout__header,
+  .action-buttons,
+  /* Hide all dialogues, overlays, popups, and contextual components */
+  .t-dialog__wrapper,
+  .t-dialog__ctx,
+  .t-dialog,
+  .t-popup,
+  .t-overlay,
+  /* Hide all buttons, actions and interactive controls */
+  button,
+  .btn,
+  .btn-sm,
+  .btn-outline,
+  .t-button,
+  .panel-header button,
+  .panel-header .btn {
+    display: none !important;
+  }
+  
+  /* Render custom print-only header on page */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    color: #111827;
+    margin-bottom: 20px !important;
+    border-bottom: 2px solid #E5E7EB;
+    padding-bottom: 8px;
+  }
+
+  /* Reset document flow and overflow controls to allow multi-page printing */
+  html, 
+  body, 
+  #app, 
+  .app-layout, 
+  .t-layout, 
+  .app-content,
+  .t-layout__content,
+  .t-layout__inner,
+  main,
+  section {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #FFF !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    display: block !important;
+  }
+
+  /* Add border margins manually so content doesn't print against paper edges */
+  body {
+    padding: 10mm 15mm !important;
+  }
+
+  .page-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .card-grid-2 {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  .panel {
+    border: 1px solid #E5E7EB !important;
+    box-shadow: none !important;
+    margin-top: 12px !important;
+    background: #FFF !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .previous-vitals-section {
+    display: none !important;
+  }
+}</style>

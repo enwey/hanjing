@@ -348,6 +348,7 @@ export const initDB = async () => {
       consult_fee INT DEFAULT 0,
       deposit_amount INT DEFAULT 0,
       store_name VARCHAR(100) DEFAULT NULL,
+      postpone_count INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -798,7 +799,6 @@ export const initDB = async () => {
   try {
     await query(`ALTER TABLE roles ADD COLUMN status VARCHAR(30) DEFAULT 'active'`);
   } catch (e) {}
-
   // 31. permissions
   await query(`
     CREATE TABLE IF NOT EXISTS permissions (
@@ -808,7 +808,6 @@ export const initDB = async () => {
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
     );
   `);
-
   // 32. admin_users
   await query(`
     CREATE TABLE IF NOT EXISTS admin_users (
@@ -819,13 +818,51 @@ export const initDB = async () => {
       phone VARCHAR(30),
       role_id BIGINT UNSIGNED NOT NULL,
       store_id BIGINT UNSIGNED,
+      doctor_id BIGINT UNSIGNED,
       status VARCHAR(30) DEFAULT 'online',
       last_login_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
-      FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE SET NULL
+      FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE SET NULL,
+      FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE SET NULL
     );
   `);
+  try {
+    await query(`ALTER TABLE admin_users ADD COLUMN doctor_id BIGINT UNSIGNED NULL`);
+  } catch (e) {}
+  try {
+    const adminCount = await get(`SELECT COUNT(*) as count FROM admin_users`);
+    if (Number(adminCount?.count || 0) > 0) {
+      let role = await get(`SELECT id FROM roles WHERE code = 'doctor' LIMIT 1`);
+      if (!role) {
+        const result = await run(
+          `INSERT INTO roles (name, code, description, status) VALUES (?, ?, ?, ?)`,
+          ['就诊医生', 'doctor', '医生后台登录角色', 'active']
+        );
+        role = { id: result.id };
+      }
+      const doctorPermissions = [
+        'appointment:view',
+        'appointment:edit',
+        'patient:view',
+        'patient:phone:view',
+        'medical_record:view',
+        'medical_record:add',
+        'medical_record:edit',
+        'schedule:view',
+        'schedule:edit'
+      ];
+      for (const permission of doctorPermissions) {
+        const existingPermission = await get(
+          `SELECT id FROM permissions WHERE role_id = ? AND permission_resource = ? LIMIT 1`,
+          [role.id, permission]
+        );
+        if (!existingPermission) {
+          await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [role.id, permission]);
+        }
+      }
+    }
+  } catch (e) {}
 
   // 33. appointment_evaluations
   await query(`
@@ -848,6 +885,7 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS appointment_pre_exams (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       appointment_id BIGINT UNSIGNED UNIQUE NOT NULL,
+      user_id BIGINT UNSIGNED,
       height DECIMAL(5,2),
       weight DECIMAL(5,2),
       systolic_bp INT,
@@ -855,7 +893,8 @@ export const initDB = async () => {
       neck_circumference DECIMAL(4,1),
       bmi DECIMAL(4,1),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+      FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     );
   `);
 
@@ -1161,6 +1200,27 @@ export const initDB = async () => {
     console.log('Index idx_posts_status_top_date verified/created.');
   } catch (err) {
     // Ignore error if index already exists
+  }
+
+  try {
+    const columns = await query("SHOW COLUMNS FROM appointment_pre_exams LIKE 'user_id'");
+    if (columns.length === 0) {
+      await query("ALTER TABLE appointment_pre_exams ADD COLUMN user_id BIGINT UNSIGNED NULL AFTER appointment_id");
+      await query("ALTER TABLE appointment_pre_exams ADD CONSTRAINT fk_pre_exams_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL");
+      console.log('Added user_id column and foreign key to appointment_pre_exams');
+    }
+  } catch (err) {
+    console.error('Failed to migrate appointment_pre_exams user_id column:', err);
+  }
+
+  try {
+    const columns = await query("SHOW COLUMNS FROM appointments LIKE 'postpone_count'");
+    if (columns.length === 0) {
+      await query("ALTER TABLE appointments ADD COLUMN postpone_count INT DEFAULT 0");
+      console.log('Added postpone_count column to appointments table');
+    }
+  } catch (err) {
+    console.error('Failed to migrate appointments postpone_count column:', err);
   }
 
   // Re-enable Foreign Key checks

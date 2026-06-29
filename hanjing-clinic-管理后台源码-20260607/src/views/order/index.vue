@@ -5,11 +5,14 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
 const router = useRouter()
-const searchKeyword = ref('')
+const searchKeyword = ref(localStorage.getItem('order_list_search_keyword') || '')
 const currentPage = ref(1)
 const pageSize = ref(30)
-const activeTab = ref('全部')
+const activeTab = ref(localStorage.getItem('order_list_active_tab') || '全部')
 const loading = ref(false)
+
+watch(searchKeyword, (newVal) => { localStorage.setItem('order_list_search_keyword', newVal) })
+watch(activeTab, (newVal) => { localStorage.setItem('order_list_active_tab', newVal) })
 
 interface Order {
   id: string

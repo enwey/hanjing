@@ -11,6 +11,8 @@ const route = useRoute()
 
 const isReschedule = ref(route.query.reschedule === '1')
 const rescheduleId = ref(route.query.id as string || '')
+const storeIdFromQuery = route.query.store_id as string
+const doctorIdFromQuery = route.query.doctor_id as string
 
 /* ---- State Management ---- */
 const searchQuery = ref('')
@@ -207,8 +209,19 @@ async function fetchStoresAndDoctors() {
   ])
   stores.value = storeRes.data || []
   doctors.value = doctorRes.data || []
-  if (!selectedStore.value && stores.value.length) selectedStore.value = String(stores.value[0].id)
-  if (!selectedDoctor.value && doctors.value.length) selectedDoctor.value = String(doctors.value[0].id)
+  
+  if (storeIdFromQuery) {
+    selectedStore.value = storeIdFromQuery
+  } else if (!selectedStore.value && stores.value.length) {
+    selectedStore.value = String(stores.value[0].id)
+  }
+  
+  if (doctorIdFromQuery) {
+    selectedDoctor.value = doctorIdFromQuery
+  } else if (!selectedDoctor.value && doctors.value.length) {
+    selectedDoctor.value = String(doctors.value[0].id)
+  }
+  
   await fetchDoctorMonthSchedules()
   await fetchTimeSlots()
 }

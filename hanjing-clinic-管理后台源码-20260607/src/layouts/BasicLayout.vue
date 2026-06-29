@@ -33,7 +33,7 @@ const menuGroups = computed(() => [
   {
     title: '概览',
     items: [
-      { path: '/dashboard', label: '数据看板', icon: '📊' }
+      { path: '/dashboard', label: '数据看板', icon: '📊', permission: '' }
     ]
   },
   {
@@ -43,57 +43,65 @@ const menuGroups = computed(() => [
         path: '/appointment', 
         label: '预约管理', 
         icon: '📅', 
+        permission: 'appointment:view',
         badge: activeAppointmentCount.value > 0 ? String(activeAppointmentCount.value) : undefined, 
         badgeColor: 'red' 
       },
-      { path: '/queue', label: '排队分诊', icon: '📣' },
-      { path: '/workbench', label: '接诊工作台', icon: '🩺' },
-      { path: '/patient', label: '患者管理', icon: '🧑‍⚕️' },
-      { path: '/doctor', label: '医生管理', icon: '👨‍⚕️' },
-      { path: '/store', label: '门店管理', icon: '🏥' },
-      { path: '/order', label: '订单管理', icon: '📦' }
+      { path: '/queue', label: '排队分诊', icon: '📣', permission: 'appointment:view' },
+      { path: '/workbench', label: '接诊工作台', icon: '🩺', permission: 'appointment:edit' },
+      { path: '/patient', label: '患者管理', icon: '🧑‍⚕️', permission: 'patient:view' },
+      { path: '/doctor', label: '医生管理', icon: '👨‍⚕️', permission: 'schedule:view' },
+      { path: '/store', label: '门店管理', icon: '🏥', permission: 'store:view' },
+      { path: '/order', label: '订单管理', icon: '📦', permission: 'order:view' }
     ]
   },
   {
     title: '分销管理',
     items: [
-      { path: '/distribution', label: '分销总览', icon: '💰' },
-      { path: '/promoter', label: '推广员管理', icon: '👥' },
+      { path: '/distribution', label: '分销总览', icon: '💰', permission: 'distribution:view' },
+      { path: '/promoter', label: '推广员管理', icon: '👥', permission: 'distribution:view' },
       { 
         path: '/withdraw', 
         label: '提现审核', 
         icon: '💳', 
+        permission: 'distribution:audit',
         badge: notifStats.value.withdrawCount > 0 ? String(notifStats.value.withdrawCount) : undefined, 
         badgeColor: 'gold' 
       },
-      { path: '/products', label: '商品管理', icon: '🛍️' }
+      { path: '/products', label: '商品管理', icon: '🛍️', permission: 'distribution:edit' }
     ]
   },
   {
     title: '内容',
     items: [
-      { path: '/content', label: '科普文章', icon: '📝' },
-      { path: '/live', label: '直播管理', icon: 'video' },
-      { path: '/banner', label: '轮播图管理', icon: '🎨' }
+      { path: '/content', label: '科普文章', icon: '📝', permission: 'content:view' },
+      { path: '/live', label: '直播管理', icon: 'video', permission: 'content:view' },
+      { path: '/banner', label: '轮播图管理', icon: '🎨', permission: 'content:edit' }
     ]
   },
   {
     title: '系统',
     items: [
-      { path: '/settings', label: '系统设置', icon: '⚙️' },
-      { path: '/permission', label: '权限管理', icon: '🔐' },
-      { path: '/log', label: '操作日志', icon: '📋' }
+      { path: '/settings', label: '系统设置', icon: '⚙️', permission: 'system:view' },
+      { path: '/permission', label: '权限管理', icon: '🔐', permission: 'system:edit' },
+      { path: '/log', label: '操作日志', icon: '📋', permission: 'audit_log:view' }
     ]
   }
 ])
 
-const userInfo = computed(() => {
+const currentUserInfo = ref<any>({ name: '管理员', role_name: '超级管理员' })
+const loadUserInfo = () => {
   const userInfoRaw = localStorage.getItem('user_info')
   try {
-    return userInfoRaw ? JSON.parse(userInfoRaw) : { name: '管理员', role_name: '超级管理员' }
+    currentUserInfo.value = userInfoRaw ? JSON.parse(userInfoRaw) : { name: '管理员', role_name: '超级管理员' }
   } catch {
-    return { name: '管理员', role_name: '超级管理员' }
+    currentUserInfo.value = { name: '管理员', role_name: '超级管理员' }
   }
+}
+loadUserInfo()
+
+const userInfo = computed(() => {
+  return currentUserInfo.value
 })
 
 const filteredMenuGroups = computed(() => {
@@ -101,9 +109,18 @@ const filteredMenuGroups = computed(() => {
   if (userRole === 'super_admin') {
     return menuGroups.value;
   }
+  const permissions = Array.isArray(userInfo.value.permissions) ? userInfo.value.permissions : [];
+  const hasPermission = (permission?: string) => {
+    if (!permission) return true;
+    if (permissions.includes('*')) return true;
+    return permissions.includes(permission);
+  };
   
   return menuGroups.value.map(group => {
     const items = group.items.filter(item => {
+      if (permissions.length > 0) {
+        return hasPermission(item.permission);
+      }
       if (userRole === 'store_mgr') {
         return !['/permission', '/settings'].includes(item.path);
       }
@@ -144,6 +161,118 @@ function handleConfirmLogout() {
   localStorage.removeItem('user_info')
   MessagePlugin.success('已成功安全退出登录')
   router.push('/login')
+}
+
+// ==========================================
+// 👤 个人资料与修改密码逻辑
+// ==========================================
+const isProfileVisible = ref(false)
+const profileForm = ref({
+  name: '',
+  phone: '',
+  username: '',
+  role_name: '',
+  store_name: ''
+})
+const isSavingProfile = ref(false)
+
+async function showProfileDialog() {
+  try {
+    const res: any = await request.get('/api/admin/me')
+    if (res.code === 200) {
+      profileForm.value = {
+        name: res.data.name || '',
+        phone: res.data.phone || '',
+        username: res.data.username || '',
+        role_name: res.data.role_name || '',
+        store_name: res.data.store_name || '全店'
+      }
+      isProfileVisible.value = true
+    }
+  } catch (error) {
+    MessagePlugin.error('获取个人资料失败')
+  }
+}
+
+async function handleSaveProfile() {
+  isSavingProfile.value = true
+  try {
+    const res: any = await request.put('/api/admin/profile', {
+      name: profileForm.value.name,
+      phone: profileForm.value.phone
+    })
+    if (res.code === 200) {
+      MessagePlugin.success('修改个人资料成功')
+      isProfileVisible.value = false
+      
+      // Update local and reactive user info
+      currentUserInfo.value.name = profileForm.value.name
+      localStorage.setItem('user_info', JSON.stringify(currentUserInfo.value))
+    } else {
+      MessagePlugin.error(res.message || '修改个人资料失败')
+    }
+  } catch (error: any) {
+    MessagePlugin.error(error.response?.data?.message || '修改个人资料失败')
+  } finally {
+    isSavingProfile.value = false
+  }
+}
+
+const isPasswordVisible = ref(false)
+const passwordForm = ref({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+const isSavingPassword = ref(false)
+
+function showChangePasswordDialog() {
+  passwordForm.value = {
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  }
+  isPasswordVisible.value = true
+}
+
+async function handleSavePassword() {
+  if (!passwordForm.value.oldPassword) {
+    MessagePlugin.warning('请输入原始密码')
+    return
+  }
+  if (!passwordForm.value.newPassword) {
+    MessagePlugin.warning('请输入新密码')
+    return
+  }
+  if (passwordForm.value.newPassword.length < 6) {
+    MessagePlugin.warning('新密码长度不能少于 6 位')
+    return
+  }
+  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+    MessagePlugin.warning('两次输入的新密码不一致')
+    return
+  }
+  
+  isSavingPassword.value = true
+  try {
+    const res: any = await request.put('/api/admin/change-password', {
+      oldPassword: passwordForm.value.oldPassword,
+      newPassword: passwordForm.value.newPassword
+    })
+    if (res.code === 200) {
+      MessagePlugin.success('修改密码成功，请重新登录')
+      isPasswordVisible.value = false
+      setTimeout(() => {
+        handleConfirmLogout()
+      }, 1000)
+    } else {
+      MessagePlugin.error(res.message || '修改密码失败')
+    }
+  } catch (error: any) {
+    MessagePlugin.error(error.response?.data?.message || '原始密码不正确或修改密码失败')
+  } finally {
+    isSavingPassword.value = false
+  }
 }
 
 // ==========================================
@@ -540,14 +669,48 @@ onUnmounted(() => {
             <span v-if="chatUsers.some(u => u.unread)" class="chat-badge"></span>
           </button>
           
-          <div class="topbar-user">
-            <div class="topbar-avatar">{{ userInfo.name ? userInfo.name[0] : '管' }}</div>
-            <div class="topbar-user-info">
-              <div class="topbar-user-name">{{ userInfo.name || '管理员' }}</div>
-              <div class="topbar-user-role">{{ userInfo.role_name || '超级管理员' }}</div>
+          <!-- 👤 用户中心 Popup -->
+          <t-popup trigger="click" placement="bottom-right" overlay-class-name="user-popup-overlay">
+            <div class="topbar-user" style="cursor: pointer; user-select: none;">
+              <div class="topbar-avatar">{{ userInfo.name ? userInfo.name[0] : '管' }}</div>
+              <div class="topbar-user-info">
+                <div class="topbar-user-name" style="display: flex; align-items: center; gap: 4px;">
+                  <span>{{ userInfo.name || '管理员' }}</span>
+                  <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.7;">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </div>
+                <div class="topbar-user-role">{{ userInfo.role_name || '超级管理员' }}</div>
+              </div>
             </div>
-            <span class="topbar-logout-btn" title="安全退出" @click="logout">⏻</span>
-          </div>
+            <template #content>
+              <div class="user-dropdown-menu">
+                <div class="user-menu-item" @click="showProfileDialog">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <span>个人资料</span>
+                </div>
+                <div class="user-menu-item" @click="showChangePasswordDialog">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                  <span>修改密码</span>
+                </div>
+                <div class="user-menu-divider"></div>
+                <div class="user-menu-item logout" @click="logout">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  </svg>
+                  <span>退出登录</span>
+                </div>
+              </div>
+            </template>
+          </t-popup>
         </div>
       </t-header>
       <t-content class="app-content">
@@ -573,6 +736,72 @@ onUnmounted(() => {
     >
       <div style="padding: 12px 0; font-size: 14.5px; color: #374151;">
         您确定要安全退出当前系统账号吗？退出后将返回登录界面。
+      </div>
+    </t-dialog>
+
+    <!-- ==========================================
+         👤 个人资料 Dialog
+         ========================================== -->
+    <t-dialog
+      v-model:visible="isProfileVisible"
+      header="个人资料"
+      width="450px"
+      confirm-btn="保存"
+      cancel-btn="取消"
+      @confirm="handleSaveProfile"
+      @cancel="isProfileVisible = false"
+      :confirm-loading="isSavingProfile"
+    >
+      <div style="padding: 8px 0; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 13px; color: #4B5563; font-weight: 500;">用户名 (不可修改)</span>
+          <t-input :value="profileForm.username" disabled />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 13px; color: #4B5563; font-weight: 500;">角色名称 (不可修改)</span>
+          <t-input :value="profileForm.role_name" disabled />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 13px; color: #4B5563; font-weight: 500;">所属门店 (不可修改)</span>
+          <t-input :value="profileForm.store_name" disabled />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 13px; color: #4B5563; font-weight: 500;">真实姓名</span>
+          <t-input v-model="profileForm.name" placeholder="请输入真实姓名" />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 13px; color: #4B5563; font-weight: 500;">联系电话</span>
+          <t-input v-model="profileForm.phone" placeholder="请输入联系电话" />
+        </div>
+      </div>
+    </t-dialog>
+
+    <!-- ==========================================
+         🔑 修改密码 Dialog
+         ========================================== -->
+    <t-dialog
+      v-model:visible="isPasswordVisible"
+      header="修改密码"
+      width="450px"
+      confirm-btn="确认修改"
+      cancel-btn="取消"
+      @confirm="handleSavePassword"
+      @cancel="isPasswordVisible = false"
+      :confirm-loading="isSavingPassword"
+    >
+      <div style="padding: 8px 0; display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 13px; color: #4B5563; font-weight: 500;">原始密码</span>
+          <t-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原始密码" clearable />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 13px; color: #4B5563; font-weight: 500;">新密码</span>
+          <t-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码 (不少于6位)" clearable />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 13px; color: #4B5563; font-weight: 500;">确认新密码</span>
+          <t-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码进行确认" clearable />
+        </div>
       </div>
     </t-dialog>
 
@@ -1801,5 +2030,56 @@ onUnmounted(() => {
   position: absolute;
   top: 10px;
   right: 10px;
+}
+
+.user-popup-overlay {
+  padding: 0 !important;
+}
+
+.user-dropdown-menu {
+  width: 140px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  border: 1px solid #E2E8F0;
+  overflow: hidden;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  transition: all 0.15s ease-in-out;
+  text-align: left;
+}
+
+.user-menu-item:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+
+.user-menu-item.logout {
+  color: #EF4444;
+}
+
+.user-menu-item.logout:hover {
+  background: #FEF2F2;
+  color: #EF4444;
+}
+
+.user-menu-divider {
+  height: 1px;
+  background: #E2E8F0;
+  margin: 4px 6px;
 }
 </style>

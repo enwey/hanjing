@@ -6,9 +6,13 @@ import request from '@/utils/request'
 import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
 
 const router = useRouter()
-const searchKeyword = ref('')
-const filterGender = ref('')
-const filterLevel = ref('')
+const searchKeyword = ref(localStorage.getItem('patient_list_search_keyword') || '')
+const filterGender = ref(localStorage.getItem('patient_list_filter_gender') || '')
+const filterLevel = ref(localStorage.getItem('patient_list_filter_level') || '')
+
+watch(searchKeyword, (newVal) => { localStorage.setItem('patient_list_search_keyword', newVal) })
+watch(filterGender, (newVal) => { localStorage.setItem('patient_list_filter_gender', newVal) })
+watch(filterLevel, (newVal) => { localStorage.setItem('patient_list_filter_level', newVal) })
 const detailVisible = ref(false)
 const detailTab = ref('info')
 const selectedPatient = ref<any>(null)

@@ -31,6 +31,11 @@ const formatDate = (d) => {
   return String(d).slice(0, 10);
 };
 
+const getRolePermissions = async (roleId) => {
+  const perms = await query(`SELECT permission_resource FROM permissions WHERE role_id = ?`, [roleId]);
+  return perms.map(p => p.permission_resource);
+};
+
 const WECHAT_TOKEN_CACHE = {
   value: '',
   expiresAt: 0
@@ -248,9 +253,11 @@ app.post('/api/admin/login', async (req, res) => {
 
   try {
     const user = await get(
-      `SELECT u.*, r.name as role_name, r.code as role_code 
+      `SELECT u.*, r.name as role_name, r.code as role_code, r.status as role_status,
+              d.name as doctor_name
        FROM admin_users u 
        JOIN roles r ON u.role_id = r.id 
+       LEFT JOIN doctors d ON u.doctor_id = d.id
        WHERE u.username = ?`,
       [username]
     );
@@ -275,6 +282,9 @@ app.post('/api/admin/login', async (req, res) => {
     if (user.status !== 'online') {
       return res.status(403).json({ code: 403, message: '该账号已被停用/禁用，请联系超级管理员' });
     }
+    if (user.role_status === 'inactive') {
+      return res.status(403).json({ code: 403, message: '该账号所属角色已禁用，请联系超级管理员' });
+    }
 
     // Reset failed attempts
     failedAttempts.delete(username);
@@ -284,9 +294,10 @@ app.post('/api/admin/login', async (req, res) => {
 
     // Write audit log
     await logAdminAction(user.id, 'login', 'admin', user.id, { username: user.username });
+    const permissions = await getRolePermissions(user.role_id);
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role_code, store_id: user.store_id },
+      { id: user.id, username: user.username, role: user.role_code, store_id: user.store_id, doctor_id: user.doctor_id || null },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -303,7 +314,10 @@ app.post('/api/admin/login', async (req, res) => {
           phone: user.phone,
           role_name: user.role_name,
           role_code: user.role_code,
-          store_id: user.store_id
+          store_id: user.store_id,
+          doctor_id: user.doctor_id,
+          doctor_name: user.doctor_name,
+          permissions
         }
       }
     });
@@ -321,9 +335,11 @@ app.post('/api/admin/sms-login', async (req, res) => {
 
   try {
     const user = await get(
-      `SELECT u.*, r.name as role_name, r.code as role_code 
+      `SELECT u.*, r.name as role_name, r.code as role_code, r.status as role_status,
+              d.name as doctor_name
        FROM admin_users u 
        JOIN roles r ON u.role_id = r.id 
+       LEFT JOIN doctors d ON u.doctor_id = d.id
        WHERE u.phone = ? LIMIT 1`,
       [phone]
     );
@@ -335,15 +351,19 @@ app.post('/api/admin/sms-login', async (req, res) => {
     if (user.status !== 'online') {
       return res.status(403).json({ code: 403, message: '该账号已被禁用' });
     }
+    if (user.role_status === 'inactive') {
+      return res.status(403).json({ code: 403, message: '该账号所属角色已禁用，请联系超级管理员' });
+    }
 
     // Update last login
     await run(`UPDATE admin_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?`, [user.id]);
 
     // Write audit log
     await logAdminAction(user.id, 'login', 'admin', user.id, { username: user.username, method: 'sms' });
+    const permissions = await getRolePermissions(user.role_id);
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role_code, store_id: user.store_id },
+      { id: user.id, username: user.username, role: user.role_code, store_id: user.store_id, doctor_id: user.doctor_id || null },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -360,7 +380,10 @@ app.post('/api/admin/sms-login', async (req, res) => {
           phone: user.phone,
           role_name: user.role_name,
           role_code: user.role_code,
-          store_id: user.store_id
+          store_id: user.store_id,
+          doctor_id: user.doctor_id,
+          doctor_name: user.doctor_name,
+          permissions
         }
       }
     });
@@ -374,18 +397,59 @@ app.post('/api/admin/sms-login', async (req, res) => {
 app.get('/api/admin/me', authenticateToken, async (req, res) => {
   try {
     const user = await get(
-      `SELECT u.id, u.username, u.name, u.phone, u.store_id, r.name as role_name, r.code as role_code 
+      `SELECT u.id, u.username, u.name, u.phone, u.store_id, u.doctor_id, u.role_id,
+              r.name as role_name, r.code as role_code, s.name as store_name,
+              d.name as doctor_name, d.title as doctor_title
        FROM admin_users u 
        JOIN roles r ON u.role_id = r.id 
+       LEFT JOIN stores s ON u.store_id = s.id
+       LEFT JOIN doctors d ON u.doctor_id = d.id
        WHERE u.id = ?`,
       [req.user.id]
     );
     if (!user) {
       return res.status(404).json({ code: 404, message: '用户不存在' });
     }
+    user.permissions = await getRolePermissions(user.role_id);
     res.json({ code: 200, data: user });
   } catch (error) {
     res.status(500).json({ code: 500, message: '系统错误' });
+  }
+});
+
+app.put('/api/admin/profile', authenticateToken, async (req, res) => {
+  const { name, phone } = req.body;
+  try {
+    await run(
+      `UPDATE admin_users SET name = ?, phone = ? WHERE id = ?`,
+      [name || '', phone || '', req.user.id]
+    );
+    res.json({ code: 200, message: '个人资料修改成功' });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '修改个人资料失败' });
+  }
+});
+
+app.put('/api/admin/change-password', authenticateToken, async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ code: 400, message: '原始密码和新密码不能为空' });
+  }
+  try {
+    const user = await get(`SELECT password_hash FROM admin_users WHERE id = ?`, [req.user.id]);
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '用户不存在' });
+    }
+    const hashedOld = hashPassword(oldPassword);
+    if (user.password_hash !== hashedOld) {
+      return res.status(400).json({ code: 400, message: '原始密码不正确' });
+    }
+    const hashedNew = hashPassword(newPassword);
+    await run(`UPDATE admin_users SET password_hash = ? WHERE id = ?`, [hashedNew, req.user.id]);
+    res.json({ code: 200, message: '密码修改成功' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '修改密码失败' });
   }
 });
 
@@ -727,6 +791,9 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
   const { date, tab, search, patient_id } = req.query;
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const pageSize = req.query.pageSize ? parseInt(req.query.pageSize, 10) : 10;
+  if (req.user.role === 'doctor' && !req.user.doctor_id) {
+    return res.status(403).json({ code: 403, message: '医生账号未绑定医生档案，无法访问预约数据' });
+  }
 
   let whereClause = '';
   const params = [];
@@ -753,6 +820,11 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
     whereClause += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ?)`;
     const searchParam = `%${search}%`;
     params.push(searchParam, searchParam, searchParam);
+  }
+
+  if (req.user.role === 'doctor' && req.user.doctor_id) {
+    whereClause += ` AND a.doctor_id = ?`;
+    params.push(req.user.doctor_id);
   }
 
   if (req.user.role !== 'super_admin' && req.user.store_id) {
@@ -822,6 +894,9 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
 
 app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
+  if (req.user.role === 'doctor' && !req.user.doctor_id) {
+    return res.status(403).json({ code: 403, message: '医生账号未绑定医生档案，无法访问预约数据' });
+  }
   try {
     await autoUpdateExpiredAppointments();
     let sql = `
@@ -843,6 +918,10 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       sql += ` AND a.store_id = ?`;
       params.push(req.user.store_id);
     }
+    if (req.user.role === 'doctor' && req.user.doctor_id) {
+      sql += ` AND a.doctor_id = ?`;
+      params.push(req.user.doctor_id);
+    }
     const appt = await get(sql, params);
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约记录不存在' });
@@ -859,6 +938,17 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       [appt.patient_id]
     );
     appt.latest_pre_exam = latestPreExam || null;
+
+    const previousPreExam = await get(
+      `SELECT pe.* 
+       FROM appointment_pre_exams pe
+       JOIN appointments a ON pe.appointment_id = a.id
+       WHERE a.patient_id = ? AND a.id != ?
+       ORDER BY pe.id DESC LIMIT 1`,
+      [appt.patient_id, appt.id]
+    );
+    appt.previous_pre_exam = previousPreExam || null;
+
     res.json({ code: 200, data: appt });
   } catch (error) {
     console.error(error);
@@ -887,6 +977,9 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约记录不存在' });
     }
+    if (req.user.role === 'doctor' && req.user.doctor_id && Number(appt.doctor_id) !== Number(req.user.doctor_id)) {
+      return res.status(403).json({ code: 403, message: '您无权修改其他医生的预约' });
+    }
 
     if (date || time || doctor_id || store_id) {
       const nextStoreId = Number(store_id || appt.store_id);
@@ -896,6 +989,9 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       const nextPeriod = period || (parseInt(String(nextTime).split(':')[0], 10) < 12 ? 'morning' : 'afternoon');
       if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== nextStoreId) {
         return res.status(403).json({ code: 403, message: '您无权改约到该门店' });
+      }
+      if (req.user.role === 'doctor' && req.user.doctor_id && nextDoctorId !== Number(req.user.doctor_id)) {
+        return res.status(403).json({ code: 403, message: '医生账号不能将预约改约给其他医生' });
       }
 
       const nextSchedule = await get(
@@ -1005,6 +1101,9 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
   if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(store_id)) {
     return res.status(403).json({ code: 403, message: '您无权在该门店创建预约' });
   }
+  if (req.user.role === 'doctor' && (!req.user.doctor_id || Number(req.user.doctor_id) !== Number(doctor_id))) {
+    return res.status(403).json({ code: 403, message: '医生账号只能为本人创建预约' });
+  }
 
   try {
     const appointment_no = `APPT${date.replace(/-/g, '')}${String(Date.now()).slice(-4)}`;
@@ -1098,6 +1197,9 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
   const { search } = req.query;
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const pageSize = req.query.pageSize ? parseInt(req.query.pageSize, 10) : 10;
+  if (req.user.role === 'doctor' && !req.user.doctor_id) {
+    return res.status(403).json({ code: 403, message: '医生账号未绑定医生档案，无法访问患者数据' });
+  }
 
   let whereClause = '';
   const params = [];
@@ -1108,7 +1210,13 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
     params.push(searchParam, searchParam);
   }
 
-  if (req.user.role !== 'super_admin' && req.user.store_id) {
+  if (req.user.role === 'doctor' && req.user.doctor_id) {
+    whereClause += ` AND (
+      p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ?)
+      OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ?)
+    )`;
+    params.push(req.user.doctor_id, req.user.doctor_id);
+  } else if (req.user.role !== 'super_admin' && req.user.store_id) {
     whereClause += ` AND (
       p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
       OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
@@ -1315,6 +1423,10 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
       appointmentsSql += ` AND a.store_id = ?`;
       appointmentsParams.push(req.user.store_id);
     }
+    if (req.user.role === 'doctor' && req.user.doctor_id) {
+      appointmentsSql += ` AND a.doctor_id = ?`;
+      appointmentsParams.push(req.user.doctor_id);
+    }
     appointmentsSql += ` ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC`;
 
     const appointments = await query(appointmentsSql, appointmentsParams);
@@ -1381,6 +1493,10 @@ app.get('/api/admin/patients/:id/medical-records', authenticateToken, async (req
       sql += ` AND r.store_id = ?`;
       params.push(req.user.store_id);
     }
+    if (req.user.role === 'doctor' && req.user.doctor_id) {
+      sql += ` AND r.doctor_id = ?`;
+      params.push(req.user.doctor_id);
+    }
     sql += ` ORDER BY r.visit_date DESC`;
 
     const records = await query(sql, params);
@@ -1400,6 +1516,9 @@ app.post('/api/admin/patients/:id/medical-records', authenticateToken, async (re
 
   if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(store_id)) {
     return res.status(403).json({ code: 403, message: '您无权在该门店创建病历' });
+  }
+  if (req.user.role === 'doctor' && req.user.doctor_id && Number(req.user.doctor_id) !== Number(doctor_id)) {
+    return res.status(403).json({ code: 403, message: '医生账号只能以本人身份创建病历' });
   }
 
   if (!await verifyPatientAccess(id, req.user)) {
@@ -1460,8 +1579,19 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
     if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(appt.store_id)) {
       return res.status(403).json({ code: 403, message: '您无权完成该门店预约' });
     }
+    if (req.user.role === 'doctor' && req.user.doctor_id && Number(req.user.doctor_id) !== Number(appt.doctor_id)) {
+      return res.status(403).json({ code: 403, message: '医生账号只能完成自己的预约' });
+    }
     if (!await verifyPatientAccess(appt.patient_id, req.user)) {
       return res.status(403).json({ code: 403, message: '您无权操作该患者' });
+    }
+    if (
+      req.user.role === 'doctor' &&
+      req.user.doctor_id &&
+      medical_record.doctor_id &&
+      Number(medical_record.doctor_id) !== Number(req.user.doctor_id)
+    ) {
+      return res.status(403).json({ code: 403, message: '医生账号只能以本人身份完成诊疗' });
     }
 
     const result = await transaction(async (conn) => {
@@ -1561,6 +1691,29 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
   }
 });
 
+app.post('/api/admin/appointments/:id/postpone', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const appt = await get('SELECT id, doctor_id, appointment_date FROM appointments WHERE id = ?', [id]);
+    if (!appt) {
+      return res.status(404).json({ code: 404, message: '预约记录不存在' });
+    }
+
+    const maxPostponeRes = await get(
+      `SELECT MAX(postpone_count) as max_val FROM appointments 
+       WHERE doctor_id = ? AND appointment_date = ?`,
+      [appt.doctor_id, appt.appointment_date]
+    );
+    const newPostponeCount = (maxPostponeRes && maxPostponeRes.max_val ? maxPostponeRes.max_val : 0) + 1;
+
+    await query('UPDATE appointments SET postpone_count = ? WHERE id = ?', [newPostponeCount, id]);
+    res.json({ code: 200, message: '顺延成功', data: { postpone_count: newPostponeCount } });
+  } catch (error) {
+    console.error('Failed to postpone appointment:', error);
+    res.status(500).json({ code: 500, message: '顺延失败' });
+  }
+});
+
 // Sleep Assessments (睡眠与鼾声评估详情)
 app.get('/api/admin/assessments/ess/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
@@ -1644,6 +1797,9 @@ app.post('/api/admin/patients/:id/treatment', authenticateToken, async (req, res
   if (!await verifyPatientAccess(id, req.user)) {
     return res.status(403).json({ code: 403, message: '您无权为该患者进行治疗建档' });
   }
+  if (req.user.role === 'doctor' && (!req.user.doctor_id || Number(req.user.doctor_id) !== Number(doctor_id))) {
+    return res.status(403).json({ code: 403, message: '医生账号只能以本人身份治疗建档' });
+  }
 
   try {
     // Deactivate previous active treatments
@@ -1672,6 +1828,9 @@ app.post('/api/admin/patients/:id/treatment/adjustments', authenticateToken, asy
 
   if (!await verifyPatientAccess(id, req.user)) {
     return res.status(403).json({ code: 403, message: '您无权为该患者添加微调记录' });
+  }
+  if (req.user.role === 'doctor' && (!req.user.doctor_id || Number(req.user.doctor_id) !== Number(operator_id))) {
+    return res.status(403).json({ code: 403, message: '医生账号只能以本人身份添加微调记录' });
   }
 
   try {
@@ -1749,6 +1908,9 @@ app.post('/api/admin/patients/:id/follow-ups', authenticateToken, async (req, re
   if (!await verifyPatientAccess(id, req.user)) {
     return res.status(403).json({ code: 403, message: '您无权为该患者创建随访任务' });
   }
+  if (req.user.role === 'doctor' && (!req.user.doctor_id || Number(req.user.doctor_id) !== Number(doctor_id))) {
+    return res.status(403).json({ code: 403, message: '医生账号只能以本人身份创建随访任务' });
+  }
 
   try {
     const result = await run(
@@ -1768,6 +1930,9 @@ app.post('/api/admin/patients/:id/follow-ups/records', authenticateToken, async 
 
   if (!await verifyPatientAccess(id, req.user)) {
     return res.status(403).json({ code: 403, message: '您无权为该患者保存随访沟通记录' });
+  }
+  if (req.user.role === 'doctor' && (!req.user.doctor_id || Number(req.user.doctor_id) !== Number(doctor_id))) {
+    return res.status(403).json({ code: 403, message: '医生账号只能以本人身份保存随访记录' });
   }
 
   try {
@@ -1801,6 +1966,12 @@ app.put('/api/admin/patients/:id/follow-ups/:taskId', authenticateToken, async (
   if (task.status === 'completed' && status !== 'completed') {
     return res.status(400).json({ code: 400, message: '已完成随访不能回退状态' });
   }
+  if (req.user.role === 'doctor' && req.user.doctor_id) {
+    const nextDoctorId = doctor_id ?? task.doctor_id;
+    if (Number(nextDoctorId) !== Number(req.user.doctor_id)) {
+      return res.status(403).json({ code: 403, message: '医生账号只能维护自己的随访任务' });
+    }
+  }
 
   try {
     await run(
@@ -1828,14 +1999,35 @@ app.put('/api/admin/patients/:id/follow-ups/:taskId', authenticateToken, async (
 // 5. DOCTORS & SCHEDULES
 // ----------------------------------------
 app.get('/api/admin/doctors', authenticateToken, async (req, res) => {
+  const { store_id } = req.query;
+  if (req.user.role === 'doctor' && !req.user.doctor_id) {
+    return res.status(403).json({ code: 403, message: '医生账号未绑定医生档案，无法访问医生数据' });
+  }
   try {
-    let sql = `SELECT * FROM doctors`;
+    let sql = `
+      SELECT d.*, au.id as admin_user_id, au.username as admin_username, au.status as admin_status
+      FROM doctors d
+      LEFT JOIN admin_users au ON au.doctor_id = d.id
+    `;
     const params = [];
-    if (req.user.role !== 'super_admin' && req.user.store_id) {
-      sql += ` WHERE id IN (SELECT doctor_id FROM doctor_store_mapping WHERE store_id = ?)`;
+    const whereClauses = [];
+
+    if (store_id && store_id !== 'all') {
+      whereClauses.push(`d.id IN (SELECT doctor_id FROM doctor_store_mapping WHERE store_id = ?)`);
+      params.push(store_id);
+    } else if (req.user.role === 'doctor' && req.user.doctor_id) {
+      whereClauses.push(`d.id = ?`);
+      params.push(req.user.doctor_id);
+    } else if (req.user.role !== 'super_admin' && req.user.store_id) {
+      whereClauses.push(`d.id IN (SELECT doctor_id FROM doctor_store_mapping WHERE store_id = ?)`);
       params.push(req.user.store_id);
     }
-    sql += ` ORDER BY id ASC`;
+
+    if (whereClauses.length > 0) {
+      sql += ` WHERE ` + whereClauses.join(' AND ');
+    }
+
+    sql += ` ORDER BY d.id ASC`;
     const list = await query(sql, params);
     const formatted = [];
     for (const d of list) {
@@ -1945,6 +2137,9 @@ app.delete('/api/admin/doctors/:id', authenticateToken, async (req, res) => {
 // Schedules
 app.get('/api/admin/schedules', authenticateToken, async (req, res) => {
   const { date, doctor_id } = req.query; // Expecting YYYY-MM-DD, YYYY-MM or week dates
+  if (req.user.role === 'doctor' && !req.user.doctor_id) {
+    return res.status(403).json({ code: 403, message: '医生账号未绑定医生档案，无法访问排班数据' });
+  }
   try {
     let sql = `
       SELECT s.*, d.name as doctor_name, d.title as doctor_title, d.specialty as doctor_specialty, st.name as store_name
@@ -1966,6 +2161,10 @@ app.get('/api/admin/schedules', authenticateToken, async (req, res) => {
     if (doctor_id) {
       sql += ` AND s.doctor_id = ?`;
       params.push(doctor_id);
+    }
+    if (req.user.role === 'doctor' && req.user.doctor_id) {
+      sql += ` AND s.doctor_id = ?`;
+      params.push(req.user.doctor_id);
     }
     if (req.user.role !== 'super_admin' && req.user.store_id) {
       sql += ` AND s.store_id = ?`;
@@ -1996,6 +2195,9 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
 
   if (!is_rest && req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(store_id)) {
     return res.status(403).json({ code: 403, message: '您无权为其他门店排班' });
+  }
+  if (req.user.role === 'doctor' && req.user.doctor_id && Number(req.user.doctor_id) !== Number(doctor_id)) {
+    return res.status(403).json({ code: 403, message: '医生账号只能维护自己的排班' });
   }
 
   try {
@@ -2050,6 +2252,9 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
   const { doctor_id, list } = req.body;
   if (!doctor_id || !Array.isArray(list) || list.length === 0) {
     return res.status(400).json({ code: 400, message: '排班参数不足' });
+  }
+  if (req.user.role === 'doctor' && req.user.doctor_id && Number(req.user.doctor_id) !== Number(doctor_id)) {
+    return res.status(403).json({ code: 403, message: '医生账号只能维护自己的排班' });
   }
 
   try {
@@ -2201,6 +2406,9 @@ app.post('/api/admin/schedules/copy-last-month', authenticateToken, async (req, 
   const { doctor_id, year, month } = req.body;
   if (!doctor_id || !year || !month) {
     return res.status(400).json({ code: 400, message: '医生和目标月份为必填项' });
+  }
+  if (req.user.role === 'doctor' && req.user.doctor_id && Number(req.user.doctor_id) !== Number(doctor_id)) {
+    return res.status(403).json({ code: 403, message: '医生账号只能复制自己的排班' });
   }
 
   const targetMonth = String(month).padStart(2, '0');
@@ -3580,11 +3788,12 @@ app.get('/api/admin/content/qa', authenticateToken, async (req, res) => {
 app.get('/api/admin/users', authenticateToken, async (req, res) => {
   try {
     const list = await query(
-      `SELECT u.id, u.username, u.name, u.phone, u.status, u.role_id, u.store_id, u.last_login_at, u.created_at,
-             r.name as role_name, s.name as store_name
+      `SELECT u.id, u.username, u.name, u.phone, u.status, u.role_id, u.store_id, u.doctor_id, u.last_login_at, u.created_at,
+             r.name as role_name, r.code as role_code, s.name as store_name, d.name as doctor_name
        FROM admin_users u
        JOIN roles r ON u.role_id = r.id
        LEFT JOIN stores s ON u.store_id = s.id
+       LEFT JOIN doctors d ON u.doctor_id = d.id
        ORDER BY u.id ASC`
     );
     res.json({ code: 200, data: list });
@@ -3594,17 +3803,27 @@ app.get('/api/admin/users', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/users', authenticateToken, async (req, res) => {
-  const { username, name, phone, role_id, store_id, password } = req.body;
+  const { username, name, phone, role_id, store_id, doctor_id, password, status } = req.body;
   if (!username || !role_id || !password) {
     return res.status(400).json({ code: 400, message: '用户名、角色和密码为必填项' });
   }
 
   try {
+    if (doctor_id) {
+      const doctor = await get(`SELECT id FROM doctors WHERE id = ?`, [doctor_id]);
+      if (!doctor) {
+        return res.status(400).json({ code: 400, message: '绑定的医生不存在' });
+      }
+      const existing = await get(`SELECT id FROM admin_users WHERE doctor_id = ?`, [doctor_id]);
+      if (existing) {
+        return res.status(400).json({ code: 400, message: '该医生已绑定后台账号' });
+      }
+    }
     const passwordHash = hashPassword(password);
     const result = await run(
-      `INSERT INTO admin_users (username, password_hash, name, phone, role_id, store_id, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'online')`,
-      [username, passwordHash, name || '', phone || '', role_id, store_id || null]
+      `INSERT INTO admin_users (username, password_hash, name, phone, role_id, store_id, doctor_id, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [username, passwordHash, name || '', phone || '', role_id, store_id || null, doctor_id || null, status || 'online']
     );
     res.json({ code: 200, message: '创建账号成功', data: { id: result.id } });
   } catch (error) {
@@ -3618,23 +3837,33 @@ app.post('/api/admin/users', authenticateToken, async (req, res) => {
 
 app.put('/api/admin/users/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { name, phone, role_id, store_id, status, password } = req.body;
+  const { name, phone, role_id, store_id, doctor_id, status, password } = req.body;
 
   try {
+    if (doctor_id) {
+      const doctor = await get(`SELECT id FROM doctors WHERE id = ?`, [doctor_id]);
+      if (!doctor) {
+        return res.status(400).json({ code: 400, message: '绑定的医生不存在' });
+      }
+      const existing = await get(`SELECT id FROM admin_users WHERE doctor_id = ? AND id <> ?`, [doctor_id, id]);
+      if (existing) {
+        return res.status(400).json({ code: 400, message: '该医生已绑定其他后台账号' });
+      }
+    }
     if (password) {
       const passwordHash = hashPassword(password);
       await run(
         `UPDATE admin_users 
-         SET name = ?, phone = ?, role_id = ?, store_id = ?, status = ?, password_hash = ? 
+         SET name = ?, phone = ?, role_id = ?, store_id = ?, doctor_id = ?, status = ?, password_hash = ? 
          WHERE id = ?`,
-        [name || '', phone || '', role_id, store_id || null, status || 'online', passwordHash, id]
+        [name || '', phone || '', role_id, store_id || null, doctor_id || null, status || 'online', passwordHash, id]
       );
     } else {
       await run(
         `UPDATE admin_users 
-         SET name = ?, phone = ?, role_id = ?, store_id = ?, status = ?
+         SET name = ?, phone = ?, role_id = ?, store_id = ?, doctor_id = ?, status = ?
          WHERE id = ?`,
-        [name || '', phone || '', role_id, store_id || null, status || 'online', id]
+        [name || '', phone || '', role_id, store_id || null, doctor_id || null, status || 'online', id]
       );
     }
     res.json({ code: 200, message: '修改账号成功' });
@@ -3751,19 +3980,31 @@ app.post('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, 
   const { id } = req.params;
   const { height, weight, systolicBp, diastolicBp, neckCircumference, bmi } = req.body;
   try {
+    const appt = await get('SELECT a.doctor_id, a.store_id, p.user_id FROM appointments a JOIN patients p ON a.patient_id = p.id WHERE a.id = ?', [id]);
+    if (!appt) {
+      return res.status(404).json({ code: 404, message: '预约不存在' });
+    }
+    if (req.user.role === 'doctor' && (!req.user.doctor_id || Number(req.user.doctor_id) !== Number(appt.doctor_id))) {
+      return res.status(403).json({ code: 403, message: '医生账号只能维护自己的预约预检信息' });
+    }
+    if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(appt.store_id)) {
+      return res.status(403).json({ code: 403, message: '您无权维护该门店预约预检信息' });
+    }
+    const userId = appt ? appt.user_id : null;
+
     const existing = await get('SELECT id FROM appointment_pre_exams WHERE appointment_id = ?', [id]);
     if (existing) {
       await run(
         `UPDATE appointment_pre_exams 
-         SET height = ?, weight = ?, systolic_bp = ?, diastolic_bp = ?, neck_circumference = ?, bmi = ?
+         SET height = ?, weight = ?, systolic_bp = ?, diastolic_bp = ?, neck_circumference = ?, bmi = ?, user_id = ?
          WHERE appointment_id = ?`,
-        [height, weight, systolicBp, diastolicBp, neckCircumference, bmi, id]
+        [height, weight, systolicBp, diastolicBp, neckCircumference, bmi, userId, id]
       );
     } else {
       await run(
-        `INSERT INTO appointment_pre_exams (appointment_id, height, weight, systolic_bp, diastolic_bp, neck_circumference, bmi)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id, height, weight, systolicBp, diastolicBp, neckCircumference, bmi]
+        `INSERT INTO appointment_pre_exams (appointment_id, user_id, height, weight, systolic_bp, diastolic_bp, neck_circumference, bmi)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, userId, height, weight, systolicBp, diastolicBp, neckCircumference, bmi]
       );
     }
     res.json({ code: 200, message: '保存预检信息成功' });
@@ -3776,6 +4017,16 @@ app.post('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, 
 app.get('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
+    const appt = await get('SELECT doctor_id, store_id FROM appointments WHERE id = ?', [id]);
+    if (!appt) {
+      return res.status(404).json({ code: 404, message: '预约不存在' });
+    }
+    if (req.user.role === 'doctor' && (!req.user.doctor_id || Number(req.user.doctor_id) !== Number(appt.doctor_id))) {
+      return res.status(403).json({ code: 403, message: '医生账号只能查看自己的预约预检信息' });
+    }
+    if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(appt.store_id)) {
+      return res.status(403).json({ code: 403, message: '您无权查看该门店预约预检信息' });
+    }
     let data = await get('SELECT * FROM appointment_pre_exams WHERE appointment_id = ?', [id]);
     if (!data) {
       data = await get(

@@ -46,8 +46,31 @@ export const authenticateToken = (req, res, next) => {
 
 // Helper to verify if a patient is accessible to the current user (store-restricted)
 export const verifyPatientAccess = async (patientId, user) => {
+  if (user.role === 'doctor' && !user.doctor_id) {
+    return false;
+  }
   if (user.role === 'super_admin' || !user.store_id) {
+    if (user.role === 'doctor' && user.doctor_id) {
+      const doctorRecord = await get(
+        `SELECT 1 FROM patients p WHERE p.id = ? AND (
+          p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ?)
+          OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ?)
+        ) LIMIT 1`,
+        [patientId, user.doctor_id, user.doctor_id]
+      );
+      return !!doctorRecord;
+    }
     return true; // Super admin or users not bound to a store have global access
+  }
+  if (user.role === 'doctor' && user.doctor_id) {
+    const record = await get(
+      `SELECT 1 FROM patients p WHERE p.id = ? AND (
+        p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ? AND store_id = ?)
+        OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ? AND store_id = ?)
+      ) LIMIT 1`,
+      [patientId, user.doctor_id, user.store_id, user.doctor_id, user.store_id]
+    );
+    return !!record;
   }
   // Check if patient has any appointment or medical record at the user's store
   const record = await get(
@@ -62,8 +85,31 @@ export const verifyPatientAccess = async (patientId, user) => {
 
 // Helper to verify if a user's patients are accessible to the current user
 export const verifyUserAccess = async (userId, user) => {
+  if (user.role === 'doctor' && !user.doctor_id) {
+    return false;
+  }
   if (user.role === 'super_admin' || !user.store_id) {
+    if (user.role === 'doctor' && user.doctor_id) {
+      const doctorRecord = await get(
+        `SELECT 1 FROM patients p WHERE p.user_id = ? AND (
+          p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ?)
+          OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ?)
+        ) LIMIT 1`,
+        [userId, user.doctor_id, user.doctor_id]
+      );
+      return !!doctorRecord;
+    }
     return true;
+  }
+  if (user.role === 'doctor' && user.doctor_id) {
+    const record = await get(
+      `SELECT 1 FROM patients p WHERE p.user_id = ? AND (
+        p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ? AND store_id = ?)
+        OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ? AND store_id = ?)
+      ) LIMIT 1`,
+      [userId, user.doctor_id, user.store_id, user.doctor_id, user.store_id]
+    );
+    return !!record;
   }
   // Check if any patient belonging to this user has visited this store
   const record = await get(
@@ -154,4 +200,3 @@ export const verifyPassword = (password, storedHash) => {
   const verifyHash = crypto.pbkdf2Sync(password, salt, iterations, 64, 'sha512').toString('hex');
   return verifyHash === hash;
 };
-

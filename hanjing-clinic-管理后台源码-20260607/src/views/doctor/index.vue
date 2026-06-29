@@ -42,7 +42,10 @@ const fetchDoctors = async () => {
         expertise: tags,
         experience: d.experience_years || 0,
         intro: d.intro || '',
-        consultFee: d.consult_fee !== undefined ? d.consult_fee / 100 : 0
+        consultFee: d.consult_fee !== undefined ? d.consult_fee / 100 : 0,
+        adminUserId: d.admin_user_id ? String(d.admin_user_id) : '',
+        adminUsername: d.admin_username || '',
+        adminStatus: d.admin_status || ''
       }
     })
     loadWeeklySchedules()
@@ -246,6 +249,10 @@ function handleViewData(name: string) {
   router.push('/store/report')
 }
 
+function openAdminAccounts() {
+  router.push('/settings/admin')
+}
+
 function handlePrevWeek() {
   currentWeek.value = '5/18 - 5/24'
   loadWeeklySchedules()
@@ -303,6 +310,10 @@ function handleNextWeek() {
           <div style="font-size: 12px; color: #374151; margin-top: 4px; font-weight: 500;">
             挂号费：<span style="color: #EC4899; font-weight: bold;">¥{{ dr.consultFee !== undefined ? dr.consultFee.toFixed(2) : '0.00' }}</span>
           </div>
+          <div style="margin-top: 8px;">
+            <span v-if="dr.adminUserId" class="status-tag green">后台账号：{{ dr.adminUsername }}</span>
+            <span v-else class="status-tag gray">未开通后台账号</span>
+          </div>
           <!-- Tags / Expertise -->
           <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 8px; min-height: 20px;">
             <span v-for="tag in dr.expertise" :key="tag" style="font-size: 10px; background: #EBF2FF; color: #3B6BF5; padding: 2px 6px; border-radius: 4px; font-weight: 500;">
@@ -333,7 +344,7 @@ function handleNextWeek() {
           <div style="display: flex; gap: 8px; margin-top: 16px; justify-content: center;">
             <button class="btn btn-sm btn-outline" style="flex: 1;" @click="handleEditDoctor(dr.id)">编辑</button>
             <button class="btn btn-sm btn-outline" style="flex: 1;" @click="openSchedule(dr.id)">排班</button>
-            <button class="btn btn-sm btn-outline" style="flex: 1;" @click="handleViewData(dr.name)">数据</button>
+            <button class="btn btn-sm btn-outline" style="flex: 1;" @click="dr.adminUserId ? handleViewData(dr.name) : openAdminAccounts()">{{ dr.adminUserId ? '数据' : '开通账号' }}</button>
           </div>
         </div>
       </div>

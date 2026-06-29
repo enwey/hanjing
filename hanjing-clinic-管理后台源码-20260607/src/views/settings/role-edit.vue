@@ -35,10 +35,13 @@ interface PermissionRow {
 const permissionMatrix = ref<PermissionRow[]>([
   { module: 'appointment', view: false, add: false, edit: false, delete: false, audit: false },
   { module: 'patient', view: false, add: false, edit: false, delete: false, audit: null },
+  { module: 'medical_record', view: false, add: false, edit: false, delete: false, audit: null },
+  { module: 'schedule', view: false, add: false, edit: false, delete: false, audit: null },
   { module: 'doctor', view: false, add: false, edit: false, delete: false, audit: null },
   { module: 'store', view: false, add: false, edit: false, delete: false, audit: null },
   { module: 'order', view: false, add: null, edit: false, delete: false, audit: null },
   { module: 'distribution', view: false, add: false, edit: false, delete: false, audit: false },
+  { module: 'content', view: false, add: false, edit: false, delete: false, audit: false },
   { module: 'system', view: false, add: false, edit: false, delete: false, audit: false },
   { module: 'audit_log', view: false, add: null, edit: false, delete: false, audit: null }
 ])
@@ -46,10 +49,13 @@ const permissionMatrix = ref<PermissionRow[]>([
 const moduleLabels: Record<string, string> = {
   appointment: '预约管理',
   patient: '患者管理',
+  medical_record: '诊疗病历',
+  schedule: '医生排班',
   doctor: '医生管理',
   store: '门店管理',
   order: '订单管理',
   distribution: '分销管理',
+  content: '内容管理',
   system: '系统设置',
   audit_log: '操作日志'
 }
