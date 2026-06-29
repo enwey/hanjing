@@ -850,6 +850,15 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
     appt.patient_phone = maskPhone(appt.patient_phone);
     const preExam = await get('SELECT * FROM appointment_pre_exams WHERE appointment_id = ?', [appt.id]);
     appt.pre_exam = preExam || null;
+    const latestPreExam = await get(
+      `SELECT pe.* 
+       FROM appointment_pre_exams pe
+       JOIN appointments a ON pe.appointment_id = a.id
+       WHERE a.patient_id = ?
+       ORDER BY pe.id DESC LIMIT 1`,
+      [appt.patient_id]
+    );
+    appt.latest_pre_exam = latestPreExam || null;
     res.json({ code: 200, data: appt });
   } catch (error) {
     console.error(error);

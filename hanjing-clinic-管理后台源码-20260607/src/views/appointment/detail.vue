@@ -39,7 +39,8 @@ const appointment = ref<any>({
   source: '',
   symptom: '',
   deposit: '0.00',
-  pre_exam: null
+  pre_exam: null,
+  latest_pre_exam: null
 })
 
 const patientHistory = ref<any[]>([])
@@ -226,7 +227,8 @@ const fetchAppointmentDetail = async () => {
         source: appt.source === 'mini_app' ? '小程序' : appt.source === 'telephone' ? '电话' : '到店',
         symptom: appt.symptom_desc || '',
         deposit: appt.deposit_amount !== null && appt.deposit_amount !== undefined ? (appt.deposit_amount / 100).toFixed(2) : '0.00',
-        pre_exam: appt.pre_exam
+        pre_exam: appt.pre_exam,
+        latest_pre_exam: appt.latest_pre_exam
       }
     }
   } catch (error) {
@@ -713,12 +715,12 @@ function handleViewProfile() {
     <!-- Two-Column Panel Info -->
     <div class="card-grid-2">
       <!-- Patient Info -->
-      <div class="panel" style="margin: 0;">
+      <div class="panel" style="margin: 0; display: flex; flex-direction: column;">
         <div class="panel-header">
           <div class="panel-title"><AppIcon name="patient" />  患者信息</div>
           <button class="btn btn-sm btn-outline" @click="handleViewProfile">查看档案</button>
         </div>
-        <div class="panel-body">
+        <div class="panel-body" style="flex: 1; display: flex; flex-direction: column; gap: 16px;">
           <div style="display: flex; gap: 14px; align-items: flex-start;">
             <div class="avatar avatar-lg" style="background: linear-gradient(135deg, var(--primary-500), #2A52D4);">{{ appointment.patient ? appointment.patient[0] : '' }}</div>
             <div style="flex: 1;">
@@ -731,6 +733,54 @@ function handleViewProfile() {
                 {{ appointment.gender }} · {{ appointment.age }}岁 · {{ appointment.phone }}<br>
                 病历号 HZ{{ String(appointment.patient_id || '').padStart(4, '0') }} · 累计就诊 {{ patientHistory.length }}次 · 消费 ¥{{ (totalSpent / 100).toLocaleString() }}
               </div>
+            </div>
+          </div>
+
+          <!-- Vitals Section -->
+          <div class="vitals-section" style="margin-bottom: 0;">
+            <div class="section-sub-title" style="display: flex; align-items: center; gap: 6px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4.8 3h14.4"></path>
+                <path d="M4.8 3v4.8c0 4.8 7.2 4.8 7.2 9.6v1.8"></path>
+                <path d="M19.2 3v4.8c0 3.6-3.6 4.8-4.8 6.4"></path>
+                <circle cx="12" cy="21" r="2"></circle>
+              </svg>
+              <span>最新预检体征数据 (由分诊/护士录入)</span>
+            </div>
+            
+            <div v-if="appointment.latest_pre_exam" class="vitals-grid">
+              <div class="vital-item">
+                <span class="vital-lbl">身高</span>
+                <span class="vital-val">{{ appointment.latest_pre_exam.height }} cm</span>
+              </div>
+              <div class="vital-item">
+                <span class="vital-lbl">体重</span>
+                <span class="vital-val">{{ appointment.latest_pre_exam.weight }} kg</span>
+              </div>
+              <div class="vital-item">
+                <span class="vital-lbl">收缩压 (高压)</span>
+                <span class="vital-val">{{ appointment.latest_pre_exam.systolic_bp || '--' }} mmHg</span>
+              </div>
+              <div class="vital-item">
+                <span class="vital-lbl">舒张压 (低压)</span>
+                <span class="vital-val">{{ appointment.latest_pre_exam.diastolic_bp || '--' }} mmHg</span>
+              </div>
+              <div class="vital-item">
+                <span class="vital-lbl">颈围</span>
+                <span class="vital-val">{{ appointment.latest_pre_exam.neck_circumference || '--' }} cm</span>
+              </div>
+              <div class="vital-item">
+                <span class="vital-lbl">BMI 指数</span>
+                <span class="vital-val text-blue">{{ appointment.latest_pre_exam.bmi || '--' }}</span>
+              </div>
+            </div>
+            <div v-else style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 16px; border: 1px dashed #E5E7EB; border-radius: 8px; background: #F9FAFB; color: #9CA3AF; font-size: 13px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>暂无预检体征数据</span>
             </div>
           </div>
         </div>
@@ -1549,5 +1599,52 @@ function handleViewProfile() {
 }
 .btn-text-del:hover {
   text-decoration: underline;
+}
+
+.vitals-section {
+  background: #F9FAFB;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid #E5E7EB;
+}
+
+.section-sub-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4B5563;
+  margin-bottom: 12px;
+}
+
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.vital-item {
+  display: flex;
+  flex-direction: column;
+  background: #FFF;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+  align-items: center;
+}
+
+.vital-lbl {
+  font-size: 11px;
+  color: #9CA3AF;
+  margin-bottom: 2px;
+}
+
+.vital-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.text-blue {
+  color: var(--primary-600);
 }
 </style>
