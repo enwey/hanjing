@@ -737,7 +737,7 @@ function handleViewProfile() {
           </div>
 
           <!-- Vitals Section -->
-          <div class="vitals-section" style="margin-bottom: 0;">
+          <div v-if="appointment.latest_pre_exam" class="vitals-section" style="margin-bottom: 0;">
             <div class="section-sub-title" style="display: flex; align-items: center; gap: 6px;">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4.8 3h14.4"></path>
@@ -745,10 +745,10 @@ function handleViewProfile() {
                 <path d="M19.2 3v4.8c0 3.6-3.6 4.8-4.8 6.4"></path>
                 <circle cx="12" cy="21" r="2"></circle>
               </svg>
-              <span>最新预检体征数据 (由分诊/护士录入)</span>
+              <span>预检体征数据 (由分诊/护士录入)</span>
             </div>
             
-            <div v-if="appointment.latest_pre_exam" class="vitals-grid">
+            <div class="vitals-grid">
               <div class="vital-item">
                 <span class="vital-lbl">身高</span>
                 <span class="vital-val">{{ appointment.latest_pre_exam.height }} cm</span>
@@ -773,14 +773,6 @@ function handleViewProfile() {
                 <span class="vital-lbl">BMI 指数</span>
                 <span class="vital-val text-blue">{{ appointment.latest_pre_exam.bmi || '--' }}</span>
               </div>
-            </div>
-            <div v-else style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 16px; border: 1px dashed #E5E7EB; border-radius: 8px; background: #F9FAFB; color: #9CA3AF; font-size: 13px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-              <span>暂无预检体征数据</span>
             </div>
           </div>
         </div>
@@ -834,41 +826,30 @@ function handleViewProfile() {
         <div class="panel-title"><AppIcon name="stethoscope" />  预检体征信息</div>
       </div>
       <div class="panel-body">
-        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px;">
-          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
-            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">身高</div>
-            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.pre_exam.height }} <span style="font-size: 12px; font-weight: normal; color: #6B7280;">cm</span></div>
+        <div class="vitals-grid" style="grid-template-columns: repeat(6, 1fr);">
+          <div class="vital-item">
+            <span class="vital-lbl">身高</span>
+            <span class="vital-val">{{ appointment.pre_exam.height }} cm</span>
           </div>
-          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
-            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">体重</div>
-            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.pre_exam.weight }} <span style="font-size: 12px; font-weight: normal; color: #6B7280;">kg</span></div>
+          <div class="vital-item">
+            <span class="vital-lbl">体重</span>
+            <span class="vital-val">{{ appointment.pre_exam.weight }} kg</span>
           </div>
-          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
-            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">收缩压</div>
-            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.pre_exam.systolic_bp || '--' }} <span style="font-size: 12px; font-weight: normal; color: #6B7280;">mmHg</span></div>
+          <div class="vital-item">
+            <span class="vital-lbl">收缩压 (高压)</span>
+            <span class="vital-val">{{ appointment.pre_exam.systolic_bp || '--' }} mmHg</span>
           </div>
-          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
-            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">舒张压</div>
-            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.pre_exam.diastolic_bp || '--' }} <span style="font-size: 12px; font-weight: normal; color: #6B7280;">mmHg</span></div>
+          <div class="vital-item">
+            <span class="vital-lbl">舒张压 (低压)</span>
+            <span class="vital-val">{{ appointment.pre_exam.diastolic_bp || '--' }} mmHg</span>
           </div>
-          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
-            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">颈围</div>
-            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.pre_exam.neck_circumference || '--' }} <span style="font-size: 12px; font-weight: normal; color: #6B7280;">cm</span></div>
+          <div class="vital-item">
+            <span class="vital-lbl">颈围</span>
+            <span class="vital-val">{{ appointment.pre_exam.neck_circumference || '--' }} cm</span>
           </div>
-          <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; text-align: center;">
-            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">BMI</div>
-            <div style="font-size: 18px; font-weight: 700; color: #111827; display: flex; align-items: center; justify-content: center; gap: 4px;">
-              {{ appointment.pre_exam.bmi || '--' }}
-              <span v-if="appointment.pre_exam.bmi" :style="{
-                fontSize: '11px',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                color: '#fff',
-                background: parseFloat(appointment.pre_exam.bmi) >= 28 ? '#EF4444' : parseFloat(appointment.pre_exam.bmi) >= 24 ? '#F59E0B' : parseFloat(appointment.pre_exam.bmi) >= 18.5 ? '#10B981' : '#3B6BF5'
-              }">
-                {{ parseFloat(appointment.pre_exam.bmi) >= 28 ? '肥胖' : parseFloat(appointment.pre_exam.bmi) >= 24 ? '超重' : parseFloat(appointment.pre_exam.bmi) >= 18.5 ? '正常' : '偏瘦' }}
-              </span>
-            </div>
+          <div class="vital-item">
+            <span class="vital-lbl">BMI 指数</span>
+            <span class="vital-val text-blue">{{ appointment.pre_exam.bmi || '--' }}</span>
           </div>
         </div>
       </div>
@@ -1645,6 +1626,6 @@ function handleViewProfile() {
 }
 
 .text-blue {
-  color: var(--primary-600);
+  color: var(--primary-500);
 }
 </style>
