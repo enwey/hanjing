@@ -1,38 +1,45 @@
-<view class="page data-v-e4fc628d"
-  ><hj-navbar title="直播回放" show-back="{{true}}" /><view class="player data-v-e4fc628d"
-    ><view class="player-placeholder data-v-e4fc628d"
-      ><text class="play-icon data-v-e4fc628d">▶</text
-      ><text class="play-text data-v-e4fc628d">回放加载中（模拟）</text
-      ><text class="play-duration data-v-e4fc628d">时长：{{a}}</text></view
-    ></view
-  ><view wx:if="{{b}}" class="info data-v-e4fc628d"
-    ><text class="info-title data-v-e4fc628d">{{c}}</text
-    ><view class="info-meta data-v-e4fc628d"
-      ><view class="anchor data-v-e4fc628d"
-        ><text class="anchor-avatar data-v-e4fc628d">{{d}}</text
-        ><text class="anchor-name data-v-e4fc628d">{{e}}</text></view
-      ><text class="info-time data-v-e4fc628d">{{f}}</text></view
-    ><view class="info-stats data-v-e4fc628d"
-      ><text class="data-v-e4fc628d">{{g}}人观看</text></view
-    ><text class="info-desc data-v-e4fc628d">{{h}}</text></view
-  ><view wx:if="{{i}}" class="section data-v-e4fc628d"
-    ><text class="section-title data-v-e4fc628d">直播好物</text
-    ><view class="product-list data-v-e4fc628d"
-      ><view
-        wx:for="{{j}}"
-        wx:for-item="p"
-        wx:key="c"
+<view class="page data-v-e4fc628d">
+  <hj-navbar title="直播详情" show-back="{{true}}" />
+
+  <view class="hero data-v-e4fc628d" wx:if="{{room}}">
+    <image class="hero-cover data-v-e4fc628d" src="{{room.cover}}" mode="aspectFill" />
+    <view class="hero-mask data-v-e4fc628d"></view>
+    <view class="hero-content data-v-e4fc628d">
+      <view class="status-pill data-v-e4fc628d {{room.status}}">{{room.statusText}}</view>
+      <text class="hero-title data-v-e4fc628d">{{room.title}}</text>
+      <text class="hero-sub data-v-e4fc628d">微信直播间ID：{{room.displayRoomId}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{room}}" class="info data-v-e4fc628d">
+    <view class="info-meta data-v-e4fc628d">
+      <view class="anchor data-v-e4fc628d">
+        <text class="anchor-avatar data-v-e4fc628d">{{room.anchorInitial}}</text>
+        <text class="anchor-name data-v-e4fc628d">{{room.anchorName}}</text>
+      </view>
+      <text class="info-time data-v-e4fc628d">{{room.displayTime}}</text>
+    </view>
+    <view class="info-stats data-v-e4fc628d">{{room.displayViewerCount}}人观看</view>
+    <text class="info-desc data-v-e4fc628d">{{room.displayDescription}}</text>
+    <button class="enter-btn data-v-e4fc628d" bindtap="openWechatLiveRoom">{{room.actionText}}</button>
+  </view>
+
+  <view wx:if="{{products.length}}" class="section data-v-e4fc628d">
+    <text class="section-title data-v-e4fc628d">直播好物</text>
+    <view class="product-list data-v-e4fc628d">
+      <view
+        wx:for="{{products}}"
+        wx:key="id"
         class="product-item data-v-e4fc628d"
-        bindtap="{{p.d}}"
-        ><image
-          class="p-img data-v-e4fc628d"
-          src="{{p.a}}"
-          mode="aspectFill"
-        /><view class="p-info data-v-e4fc628d"
-          ><text class="p-name data-v-e4fc628d">{{p.b}}</text
-          ><text class="p-price data-v-e4fc628d">¥{{p.e}}</text></view
-        ></view
-      ></view
-    ></view
-  ></view
->
+        data-id="{{item.id}}"
+        bindtap="openProductDetail"
+      >
+        <image class="p-img data-v-e4fc628d" src="{{item.imageUrl}}" mode="aspectFill" />
+        <view class="p-info data-v-e4fc628d">
+          <text class="p-name data-v-e4fc628d">{{item.name}}</text>
+          <text class="p-price data-v-e4fc628d">¥{{item.displayPrice}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

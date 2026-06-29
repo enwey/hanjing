@@ -6,10 +6,12 @@ import App from './App.vue'
 import router from './router'
 import './styles/global.css'
 import { resizable } from './directives/resizable'
+import AppIcon from './components/AppIcon.vue'
 
 const app = createApp(App)
 app.use(createPinia())
 app.use(TDesign)
 app.use(router)
+app.component('AppIcon', AppIcon)
 app.directive('resizable', resizable)
 app.mount('#app')

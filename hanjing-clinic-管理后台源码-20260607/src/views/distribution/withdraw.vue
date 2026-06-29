@@ -284,9 +284,9 @@ watch(operationColumnWidth, () => {
           @click="handleBatchApprove"
           :disabled="selectedRowKeys.length === 0"
         >
-          ✅ 批量通过
+          <AppIcon name="check-circle" />  批量通过
         </button>
-        <button class="btn btn-outline" @click="handleExport">📥 导出</button>
+        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出</button>
       </div>
     </div>
 
@@ -305,7 +305,7 @@ watch(operationColumnWidth, () => {
       
       <div class="stat-card">
         <div class="stat-card-header">
-          <div class="stat-card-icon green">✅</div>
+          <div class="stat-card-icon green"><AppIcon name="check-circle" /> </div>
         </div>
         <div class="stat-card-value" style="color: #16A34A;">
           12
@@ -316,7 +316,7 @@ watch(operationColumnWidth, () => {
       
       <div class="stat-card">
         <div class="stat-card-header">
-          <div class="stat-card-icon gold">💰</div>
+          <div class="stat-card-icon gold"><AppIcon name="money" /> </div>
         </div>
         <div class="stat-card-value" style="color: #F5A623;">
           8,450.00
@@ -365,7 +365,7 @@ watch(operationColumnWidth, () => {
           type="text" 
           v-model="searchKeyword" 
           class="filter-input" 
-          placeholder="🔍 搜索姓名/手机号/单号" 
+          placeholder="搜索姓名/手机号/单号" 
           style="width: 210px;"
         >
       </div>

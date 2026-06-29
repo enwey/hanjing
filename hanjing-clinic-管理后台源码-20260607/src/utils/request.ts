@@ -3,7 +3,7 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import router from '@/router'
 
 const service = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '',
   timeout: 30000
 })
 

@@ -1,25 +1,36 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { navigateToParent } from '@/utils/routeNavigation'
 
 const route = useRoute()
 const router = useRouter()
 const appointmentId = ref(route.params.id as string || '1')
 
 /* ---- Appointment Data ---- */
+const levelMap: Record<string, string> = {
+  normal: '普通',
+  silver: 'VIP',
+  gold: 'VIP',
+  diamond: 'SVIP'
+}
+
 const appointment = ref<any>({
   id: appointmentId.value,
+  patient_id: null,
   no: '',
   status: '',
   createTime: '',
   patient: '',
   phone: '',
-  level: '普通',
+  gender: '',
+  age: '',
+  level: '',
   isNew: false,
   doctor: '',
-  dept: '睡眠呼吸科',
+  dept: '',
   store: '',
   dateTime: '',
   type: '',
@@ -27,16 +38,161 @@ const appointment = ref<any>({
   feeStatus: 'paid',
   source: '',
   symptom: '',
+  deposit: '0.00',
   pre_exam: null
 })
+
+const patientHistory = ref<any[]>([])
+
+const fetchPatientHistory = async (patientId: number) => {
+  try {
+    const res: any = await request.get('/api/admin/appointments', {
+      params: { patient_id: patientId, page: 1, pageSize: 50 }
+    })
+    if (res.code === 200 && res.data && res.data.list) {
+      patientHistory.value = res.data.list
+    }
+  } catch (error) {
+    console.error('获取患者历史预约失败:', error)
+  }
+}
+
+const totalSpent = computed(() => {
+  return patientHistory.value
+    .filter(item => item.status === 'arrived' || item.status === 'settled')
+    .reduce((sum, item) => sum + (item.consult_fee || 0), 0)
+})
+
+const timelineSteps = computed(() => {
+  const steps = []
+  const status = appointment.value.status
+
+  // 1. 创建预约 (始终完成)
+  steps.push({
+    dot: 'green',
+    time: appointment.value.createTime || '--',
+    content: `<strong>创建预约</strong> — 患者通过 ${appointment.value.source} 预约，选择 ${appointment.value.store} · ${appointment.value.doctor} · ${appointment.value.dateTime}`
+  })
+
+  // 2. 支付/确认挂号
+  if (status === 'pending_payment') {
+    steps.push({
+      dot: 'orange',
+      time: '待支付',
+      content: `<strong>等待支付</strong> — 就诊挂号金待支付`
+    })
+  } else {
+    steps.push({
+      dot: 'green',
+      time: appointment.value.createTime || '--',
+      content: `<strong>确认预约</strong> — 挂号预约已确认成功`
+    })
+  }
+
+  // 检查是否已取消或未诊
+  if (status === 'cancelled') {
+    steps.push({
+      dot: 'red',
+      time: '已取消',
+      content: `<strong>预约取消</strong> — 该预约单已被取消`
+    })
+    return steps
+  } else if (status === 'no_show') {
+    steps.push({
+      dot: 'orange',
+      time: '未到诊',
+      content: `<strong>未到诊</strong> — 预约时间已过，患者未到诊`
+    })
+    return steps
+  }
+
+  // 3. 到店签到
+  const hasCheckedIn = ['waiting', 'confirmed', 'checked_in', 'completed', 'arrived', 'settled'].includes(status)
+  steps.push({
+    dot: hasCheckedIn ? 'green' : 'gray',
+    time: hasCheckedIn ? (appointment.value.dateTime.split(' ').pop() || '--') : '待完成',
+    content: hasCheckedIn
+      ? `<strong>到店签到</strong> — 患者已确认签到到诊，进入候诊队列。${appointment.value.pre_exam ? '预检体征信息已录入。' : '体征录入已跳过。'}`
+      : `<strong>到店签到</strong> — 等待患者到店签到及录入预检体征`
+  })
+
+  // 4. 医生接诊
+  const hasConsulted = ['checked_in', 'completed', 'arrived', 'settled'].includes(status)
+  steps.push({
+    dot: hasConsulted ? 'green' : 'gray',
+    time: hasConsulted ? (appointment.value.dateTime.split(' ').pop() || '--') : '待完成',
+    content: hasConsulted
+      ? `<strong>医生接诊</strong> — 医生 ${appointment.value.doctor} 已接诊，开始诊疗`
+      : `<strong>医生接诊</strong> — 等待医生呼叫接诊`
+  })
+
+  // 5. 诊疗结束
+  const hasCompleted = ['completed', 'arrived', 'settled'].includes(status)
+  steps.push({
+    dot: hasCompleted ? 'green' : 'gray',
+    time: hasCompleted ? (appointment.value.dateTime.split(' ').pop() || '--') : '待完成',
+    content: hasCompleted
+      ? `<strong>诊疗结束</strong> — 诊疗已结束，等待前台收银结算`
+      : `<strong>诊疗结束</strong> — 等待就诊服务结束`
+  })
+
+  // 6. 收银结算
+  const hasSettled = ['arrived', 'settled'].includes(status)
+  steps.push({
+    dot: hasSettled ? 'green' : 'gray',
+    time: hasSettled ? (appointment.value.dateTime.split(' ').pop() || '--') : '待完成',
+    content: hasSettled
+      ? `<strong>结算完成</strong> — 门诊收银结算已完成，服务生命周期结束`
+      : `<strong>结算完成</strong> — 等待收银结算完成`
+  })
+
+  return steps
+})
+
+const getStatusText = (status: string) => {
+  if (status === 'arrived' || status === 'settled') return '已完成'
+  if (status === 'completed') return '待结算'
+  if (status === 'checked_in') return '就诊中'
+  if (status === 'confirmed' || status === 'waiting') return '候诊中'
+  if (status === 'pending') return '已预约'
+  if (status === 'pending_payment') return '待支付'
+  if (status === 'cancelled') return '已取消'
+  if (status === 'no_show') return '未到诊'
+  return status
+}
+
+const getStatusTagClass = (status: string) => {
+  if (status === 'arrived' || status === 'settled') return 'gray'
+  if (status === 'completed') return 'red'
+  if (status === 'checked_in') return 'green'
+  if (status === 'confirmed' || status === 'waiting') return 'blue'
+  if (status === 'pending') return 'green'
+  if (status === 'pending_payment') return 'orange'
+  if (status === 'cancelled') return 'gray'
+  if (status === 'no_show') return 'orange'
+  return 'default'
+}
+
+const formatHistDate = (dateStr: string) => {
+  if (!dateStr) return ''
+  const parts = dateStr.split('-')
+  if (parts.length === 3) {
+    return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`
+  }
+  return dateStr
+}
 
 const fetchAppointmentDetail = async () => {
   try {
     const res: any = await request.get(`/api/admin/appointments/${appointmentId.value}`)
     if (res.code === 200 && res.data) {
       const appt = res.data
+      if (appt.patient_id) {
+        fetchPatientHistory(appt.patient_id)
+      }
       appointment.value = {
         id: appt.id.toString(),
+        patient_id: appt.patient_id,
         no: appt.appointment_no,
         status: appt.status,
         createTime: appt.created_at ? (() => {
@@ -50,10 +206,12 @@ const fetchAppointmentDetail = async () => {
         })() : '',
         patient: appt.patient_name,
         phone: appt.patient_phone,
-        level: appt.patient_age >= 60 ? '老人特需' : '普通',
+        gender: appt.patient_gender === 1 ? '男' : appt.patient_gender === 2 ? '女' : '未知',
+        age: appt.patient_age || '--',
+        level: levelMap[appt.member_level] || '普通',
         isNew: appt.type === 'first',
         doctor: appt.doctor_name,
-        dept: appt.doctor_specialty || '睡眠呼吸科',
+        dept: appt.doctor_specialty || '',
         store: appt.store_name,
         dateTime: appt.appointment_date ? (() => {
           const d = new Date(appt.appointment_date);
@@ -63,10 +221,11 @@ const fetchAppointmentDetail = async () => {
           return `${y}-${m}-${date} ${appt.appointment_time}`;
         })() : appt.appointment_time,
         type: appt.type === 'first' ? '初诊' : '复诊',
-        fee: appt.type === 'first' ? '200.00' : '100.00',
-        feeStatus: 'paid',
+        fee: appt.consult_fee !== null && appt.consult_fee !== undefined ? (appt.consult_fee / 100).toFixed(2) : '0.00',
+        feeStatus: appt.status === 'pending_payment' ? 'unpaid' : 'paid',
         source: appt.source === 'mini_app' ? '小程序' : appt.source === 'telephone' ? '电话' : '到店',
-        symptom: appt.symptom_desc || '无主诉描述',
+        symptom: appt.symptom_desc || '',
+        deposit: appt.deposit_amount !== null && appt.deposit_amount !== undefined ? (appt.deposit_amount / 100).toFixed(2) : '0.00',
         pre_exam: appt.pre_exam
       }
     }
@@ -76,12 +235,373 @@ const fetchAppointmentDetail = async () => {
   }
 }
 
+const checkInVisible = ref(false)
+const checkInForm = ref({
+  height: '',
+  weight: '',
+  systolicBp: '',
+  diastolicBp: '',
+  neckCircumference: ''
+})
+
+const checkInBmi = computed(() => {
+  const h = parseFloat(checkInForm.value.height)
+  const w = parseFloat(checkInForm.value.weight)
+  if (h > 0 && w > 0) {
+    return (w / ((h / 100) * (h / 100))).toFixed(1)
+  }
+  return ''
+})
+
+async function openCheckInDialog() {
+  checkInForm.value = {
+    height: '',
+    weight: '',
+    systolicBp: '',
+    diastolicBp: '',
+    neckCircumference: ''
+  }
+  try {
+    const res: any = await request.get(`/api/admin/appointments/${appointment.value.id}/pre-exam`)
+    if (res.code === 200 && res.data) {
+      checkInForm.value = {
+        height: res.data.height !== null && res.data.height !== undefined ? String(res.data.height) : '',
+        weight: res.data.weight !== null && res.data.weight !== undefined ? String(res.data.weight) : '',
+        systolicBp: res.data.systolic_bp !== null && res.data.systolic_bp !== undefined ? String(res.data.systolic_bp) : '',
+        diastolicBp: res.data.diastolic_bp !== null && res.data.diastolic_bp !== undefined ? String(res.data.diastolic_bp) : '',
+        neckCircumference: res.data.neck_circumference !== null && res.data.neck_circumference !== undefined ? String(res.data.neck_circumference) : ''
+      }
+    }
+  } catch (error) {
+    console.error(error)
+  }
+  checkInVisible.value = true
+}
+
+function closeCheckInDialog() {
+  checkInVisible.value = false
+}
+
+async function handleCheckInSkip() {
+  try {
+    await request.put(`/api/admin/appointments/${appointment.value.id}`, { status: 'confirmed' })
+    MessagePlugin.success(`患者 ${appointment.value.patient} 签到成功（已跳过体征录入）`)
+    checkInVisible.value = false
+    fetchAppointmentDetail()
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('签到失败')
+  }
+}
+
+async function handleCheckInSubmit() {
+  const { height, weight, systolicBp, diastolicBp, neckCircumference } = checkInForm.value
+  if (!height || !weight) {
+    MessagePlugin.warning('请填写身高和体重')
+    return
+  }
+  try {
+    await request.post(`/api/admin/appointments/${appointment.value.id}/pre-exam`, {
+      height: parseFloat(height),
+      weight: parseFloat(weight),
+      systolicBp: systolicBp ? parseInt(systolicBp) : null,
+      diastolicBp: diastolicBp ? parseInt(diastolicBp) : null,
+      neckCircumference: neckCircumference ? parseFloat(neckCircumference) : null,
+      bmi: checkInBmi.value ? parseFloat(checkInBmi.value) : null
+    })
+    await request.put(`/api/admin/appointments/${appointment.value.id}`, { status: 'confirmed' })
+    MessagePlugin.success(`患者 ${appointment.value.patient} 签到与预检体征录入成功`)
+    checkInVisible.value = false
+    fetchAppointmentDetail()
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('签到保存失败')
+  }
+}
+
+// 诊车收费结算相关状态与方法
+const checkoutVisible = ref(false)
+const checkoutLoading = ref(false)
+const checkoutSuccess = ref(false)
+const orderResult = ref<any>(null)
+
+const deliveryType = ref<string>('offline_direct')
+const shippingReceiver = ref<string>('')
+const shippingPhone = ref<string>('')
+const shippingAddressStr = ref<string>('')
+
+const productOptions = ref<any[]>([
+  { id: '1', name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000 },
+  { id: '2', name: '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', price: 4900 },
+  { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
+  { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
+  { id: '5', name: '诊所专家诊断评估费', price: 50000 },
+  { id: '7', name: '快递运费', price: 1500 },
+  { id: '8', name: '就诊预约定金', price: 20000 }
+])
+
+const fetchProducts = async () => {
+  try {
+    const res: any = await request.get('/api/admin/products')
+    if (res.code === 200 && res.data && res.data.length > 0) {
+      productOptions.value = res.data.map((p: any) => ({
+        id: String(p.id),
+        name: p.name,
+        price: p.price
+      }))
+    }
+  } catch (error) {
+    console.error('获取商品列表失败:', error)
+  }
+}
+
+const billingItems = ref<Array<{ product_id: string; product_name: string; price: number; quantity: number }>>([])
+const discountAmount = ref<number>(3000)
+const payMethod = ref<string>('wechat')
+
+const totalAmount = computed(() => {
+  return billingItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+})
+
+const payableAmount = computed(() => {
+  const diff = totalAmount.value - discountAmount.value
+  return diff > 0 ? diff : 0
+})
+
+function addBillingItem() {
+  const firstProd = productOptions.value[0] || { id: '1', name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000 }
+  billingItems.value.push({ product_id: String(firstProd.id), product_name: firstProd.name, price: firstProd.price, quantity: 1 })
+}
+
+function removeBillingItem(idx: number) {
+  billingItems.value.splice(idx, 1)
+}
+
+function onProductChange(idx: number, prodId: string) {
+  const prod = productOptions.value.find(p => String(p.id) === String(prodId))
+  if (prod) {
+    billingItems.value[idx].product_name = prod.name
+    billingItems.value[idx].price = prod.price
+  }
+}
+
+watch(deliveryType, (newVal) => {
+  if (newVal === 'online') {
+    const exists = billingItems.value.some(item => item.product_id === '7')
+    if (!exists) {
+      billingItems.value.push({ product_id: '7', product_name: '快递运费', price: 1500, quantity: 1 })
+    }
+  } else {
+    const idx = billingItems.value.findIndex(item => item.product_id === '7')
+    if (idx !== -1) {
+      billingItems.value.splice(idx, 1)
+    }
+  }
+})
+
+function openCheckoutDialog() {
+  const row = appointment.value
+  if (row.status === 'pending_payment') {
+    const items = []
+    if (row.fee && parseFloat(row.fee) > 0) {
+      items.push({ product_id: '4', product_name: `${row.doctor}医生挂号门诊费`, price: Math.round(parseFloat(row.fee) * 100), quantity: 1 })
+    }
+    billingItems.value = items.length > 0 ? items : [
+      { product_id: '4', product_name: '门诊挂号就诊费', price: 20000, quantity: 1 }
+    ]
+  } else {
+    billingItems.value = [
+      { product_id: '4', product_name: '诊所首诊挂号门诊费', price: 20000, quantity: 1 }
+    ]
+  }
+  discountAmount.value = row.status === 'pending_payment' ? 0 : 3000
+  payMethod.value = 'wechat'
+  checkoutSuccess.value = false
+  orderResult.value = null
+  
+  deliveryType.value = 'offline_direct'
+  shippingReceiver.value = ''
+  shippingPhone.value = ''
+  shippingAddressStr.value = ''
+  
+  checkoutVisible.value = true
+}
+
+function closeCheckoutDialog() {
+  checkoutVisible.value = false
+}
+
+function handlePrintInvoice() {
+  MessagePlugin.success('已发送打印指令，正在打印交易凭证小票...')
+}
+
+async function submitCheckout() {
+  if (!appointment.value) return
+  if (billingItems.value.length === 0) {
+    MessagePlugin.warning('结账明细不能为空')
+    return
+  }
+  if (deliveryType.value !== 'offline_direct') {
+    if (!shippingReceiver.value || !shippingReceiver.value.trim()) {
+      MessagePlugin.warning('请填写联系人/收件人姓名')
+      return
+    }
+    if (!shippingPhone.value || !shippingPhone.value.trim()) {
+      MessagePlugin.warning('请填写联系电话')
+      return
+    }
+    if (!/^1\d{10}$/.test(shippingPhone.value.trim())) {
+      MessagePlugin.warning('请输入有效的11位手机号码')
+      return
+    }
+  }
+  if (deliveryType.value === 'online' && (!shippingAddressStr.value || !shippingAddressStr.value.trim())) {
+    MessagePlugin.warning('请填写详细收货地址')
+    return
+  }
+  checkoutLoading.value = true
+  try {
+    let orderType = 'offline'
+    let orderStatus = 'paid'
+    let shipAddr: any = null
+
+    if (deliveryType.value === 'online') {
+      orderType = 'online'
+      orderStatus = 'shipping'
+      shipAddr = {
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
+        province: '广东省',
+        city: '深圳市',
+        district: '快递邮寄',
+        detail: shippingAddressStr.value,
+        deliveryMethod: 'online'
+      }
+    } else if (deliveryType.value === 'offline_pending') {
+      orderType = 'offline'
+      orderStatus = 'processing'
+      shipAddr = {
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
+        province: '广东省',
+        city: '深圳市',
+        district: '门店自提',
+        detail: '缺货登记（待货通知自提）',
+        deliveryMethod: 'pickup_pending'
+      }
+    } else {
+      orderType = 'offline'
+      orderStatus = 'paid'
+      shipAddr = {
+        receiver: shippingReceiver.value || '到店客户',
+        phone: shippingPhone.value || '--',
+        province: '广东省',
+        city: '深圳市',
+        district: '到店自提',
+        detail: '到店自提',
+        deliveryMethod: 'pickup'
+      }
+    }
+
+    const payload = {
+      patient_id: appointment.value.patient_id,
+      items: billingItems.value,
+      pay_amount: payableAmount.value,
+      discount_amount: discountAmount.value,
+      pay_method: payMethod.value,
+      type: orderType,
+      status: orderStatus,
+      shipping_address: shipAddr
+    }
+    const res: any = await request.post('/api/admin/orders', payload)
+    if (res.code === 200) {
+      try {
+        const nextStatus = appointment.value.status === 'pending_payment' ? 'pending' : 'arrived'
+        await request.put(`/api/admin/appointments/${appointment.value.id}`, { status: nextStatus })
+      } catch (err) {
+        console.error('更新预约结算状态失败:', err)
+      }
+      MessagePlugin.success('收银收费结算交易成功！')
+      orderResult.value = {
+        orderNo: res.data.order_no,
+        patientName: appointment.value.patient,
+        total: (totalAmount.value / 100).toFixed(2),
+        discount: (discountAmount.value / 100).toFixed(2),
+        payable: (payableAmount.value / 100).toFixed(2),
+        payMethodText: payMethod.value === 'wechat' ? '微信支付' : payMethod.value === 'alipay' ? '支付宝' : 'POS线下刷卡',
+        time: new Date().toLocaleString()
+      }
+      checkoutSuccess.value = true
+      fetchAppointmentDetail()
+    }
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('结算收费失败')
+  } finally {
+    checkoutLoading.value = false
+  }
+}
+
+// 叫号
+const callPatient = () => {
+  if ('speechSynthesis' in window) {
+    const text = `请患者 ${appointment.value.patient}，到 ${appointment.value.doctor} 医生诊室就诊。`
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'zh-CN'
+    utterance.rate = 0.9
+    window.speechSynthesis.speak(utterance)
+    MessagePlugin.success(`呼叫广播成功: "${text}"`)
+  } else {
+    MessagePlugin.warning('浏览器不支持语音播报，已通过系统弹窗提示')
+  }
+}
+
+// 标记为未到诊
+async function markAsNoShow() {
+  try {
+    await request.put(`/api/admin/appointments/${appointment.value.id}`, { status: 'no_show' })
+    MessagePlugin.success(`已将患者 ${appointment.value.patient} 标记为未到诊`)
+    fetchAppointmentDetail()
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('标记未到诊失败')
+  }
+}
+
+// 诊疗完成
+const completeTreatment = async () => {
+  try {
+    await request.put(`/api/admin/appointments/${appointment.value.id}`, { status: 'completed' })
+    MessagePlugin.success(`患者 ${appointment.value.patient} 诊疗已完成`)
+    await fetchAppointmentDetail()
+    openCheckoutDialog()
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const historyDialogVisible = ref(false)
+const historyPage = ref(1)
+const historyPageSize = ref(10)
+
+const paginatedHistory = computed(() => {
+  const start = (historyPage.value - 1) * historyPageSize.value
+  const end = start + historyPageSize.value
+  return patientHistory.value.slice(start, end)
+})
+
+function openHistoryDialog() {
+  historyPage.value = 1
+  historyDialogVisible.value = true
+}
+
 onMounted(() => {
   fetchAppointmentDetail()
+  fetchProducts()
 })
 
 function handleBack() {
-  router.push('/appointment')
+  navigateToParent(router, route, '/appointment')
 }
 
 function handlePrint() {
@@ -132,9 +652,61 @@ function handleViewProfile() {
         <div class="page-title-sub">创建于 {{ appointment.createTime }} · {{ appointment.source }}预约</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" @click="handlePrint">🖨️ 打印</button>
-        <button class="btn btn-warning" @click="handleReschedule">✏️ 改约</button>
-        <button class="btn btn-danger" @click="handleCancel" v-if="appointment.status !== 'cancelled'">❌ 取消</button>
+        <button class="btn btn-outline" @click="handlePrint"><AppIcon name="print" />  打印</button>
+        
+        <!-- 挂号收银 -->
+        <button
+          v-if="appointment.status === 'pending_payment'"
+          class="btn btn-primary"
+          @click="openCheckoutDialog"
+        >挂号收银</button>
+
+        <!-- 签到 -->
+        <button
+          v-if="appointment.status === 'pending'"
+          class="btn btn-primary"
+          @click="openCheckInDialog"
+        >签到</button>
+
+        <!-- 叫号 -->
+        <button
+          v-if="appointment.status === 'waiting' || appointment.status === 'confirmed'"
+          class="btn btn-warning"
+          @click="callPatient"
+        ><AppIcon name="megaphone" />  叫号</button>
+
+        <!-- 未到诊 -->
+        <button
+          v-if="appointment.status === 'pending' || appointment.status === 'waiting' || appointment.status === 'confirmed'"
+          class="btn btn-outline"
+          @click="markAsNoShow"
+        >未到诊</button>
+
+        <!-- 诊疗完成 -->
+        <button
+          v-if="appointment.status === 'checked_in'"
+          class="btn btn-success"
+          @click="completeTreatment"
+        >诊疗完成</button>
+
+        <!-- 收银结算 -->
+        <button
+          v-if="appointment.status === 'completed'"
+          class="btn btn-warning"
+          @click="openCheckoutDialog"
+        >收银结算</button>
+
+        <!-- 改约 -->
+        <button
+          v-if="appointment.status === 'pending_payment' || appointment.status === 'pending' || appointment.status === 'waiting' || appointment.status === 'confirmed'"
+          class="btn btn-warning"
+          @click="handleReschedule"
+        >
+          <AppIcon name="edit" />  改约
+        </button>
+
+        <!-- 取消 -->
+        <button class="btn btn-danger" @click="handleCancel" v-if="appointment.status === 'pending_payment' || appointment.status === 'pending'"><AppIcon name="x-circle" />  取消</button>
       </div>
     </div>
 
@@ -143,12 +715,12 @@ function handleViewProfile() {
       <!-- Patient Info -->
       <div class="panel" style="margin: 0;">
         <div class="panel-header">
-          <div class="panel-title">🧑‍⚕️ 患者信息</div>
+          <div class="panel-title"><AppIcon name="patient" />  患者信息</div>
           <button class="btn btn-sm btn-outline" @click="handleViewProfile">查看档案</button>
         </div>
         <div class="panel-body">
           <div style="display: flex; gap: 14px; align-items: flex-start;">
-            <div class="avatar avatar-lg" style="background: linear-gradient(135deg, var(--primary-500), #2A52D4);">张</div>
+            <div class="avatar avatar-lg" style="background: linear-gradient(135deg, var(--primary-500), #2A52D4);">{{ appointment.patient ? appointment.patient[0] : '' }}</div>
             <div style="flex: 1;">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                 <span style="font-size: 18px; font-weight: 700; color: #111827;">{{ appointment.patient }}</span>
@@ -156,8 +728,8 @@ function handleViewProfile() {
                 <span class="tag tag-blue">{{ appointment.type }}</span>
               </div>
               <div style="font-size: 13px; color: #6B7280; line-height: 1.8;">
-                男 · 52岁 · {{ appointment.phone }}<br>
-                病历号 HZ20240001 · 累计就诊 8次 · 消费 ¥18,640
+                {{ appointment.gender }} · {{ appointment.age }}岁 · {{ appointment.phone }}<br>
+                病历号 HZ{{ String(appointment.patient_id || '').padStart(4, '0') }} · 累计就诊 {{ patientHistory.length }}次 · 消费 ¥{{ (totalSpent / 100).toLocaleString() }}
               </div>
             </div>
           </div>
@@ -167,16 +739,16 @@ function handleViewProfile() {
       <!-- Appointment Info -->
       <div class="panel" style="margin: 0;">
         <div class="panel-header">
-          <div class="panel-title">📅 预约信息</div>
+          <div class="panel-title"><AppIcon name="calendar" />  预约信息</div>
         </div>
         <div class="info-grid" style="grid-template-columns: 1fr 1fr;">
           <div class="info-item">
             <div class="info-label">就诊门店</div>
-            <div class="info-value">🏥 {{ appointment.store }}</div>
+            <div class="info-value"><AppIcon name="store" />  {{ appointment.store }}</div>
           </div>
           <div class="info-item">
             <div class="info-label">就诊医生</div>
-            <div class="info-value">👨‍⚕️ {{ appointment.doctor }}</div>
+            <div class="info-value"><AppIcon name="doctor" />  {{ appointment.doctor }}</div>
           </div>
           <div class="info-item">
             <div class="info-label">科室</div>
@@ -194,6 +766,14 @@ function handleViewProfile() {
             <div class="info-label">挂号费</div>
             <div class="info-value" style="color: var(--primary-500);">¥{{ appointment.fee }}</div>
           </div>
+          <div class="info-item">
+            <div class="info-label">预约定金</div>
+            <div class="info-value" style="color: var(--primary-500);">¥{{ appointment.deposit }}</div>
+          </div>
+          <div class="info-item" style="grid-column: span 2; border-top: 1px dashed #E5E7EB; padding-top: 12px; margin-top: 4px;">
+            <div class="info-label">病症描述/主诉</div>
+            <div class="info-value" style="color: #4B5563; font-weight: normal; line-height: 1.6;">{{ appointment.symptom }}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -201,7 +781,7 @@ function handleViewProfile() {
     <!-- 预检体征信息 -->
     <div v-if="appointment.pre_exam" class="panel" style="margin-top: 16px;">
       <div class="panel-header">
-        <div class="panel-title">🩺 预检体征信息</div>
+        <div class="panel-title"><AppIcon name="stethoscope" />  预检体征信息</div>
       </div>
       <div class="panel-body">
         <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px;">
@@ -246,38 +826,13 @@ function handleViewProfile() {
 
     <!-- Timeline Progress -->
     <div class="panel" style="margin-top: 16px;">
-      <div class="panel-header"><div class="panel-title">📋 预约流程</div></div>
+      <div class="panel-header"><div class="panel-title"><AppIcon name="clipboard" />  预约流程</div></div>
       <div class="panel-body">
         <div class="timeline">
-          <div class="timeline-item">
-            <div class="timeline-dot blue"></div>
-            <div class="timeline-time">5/28 14:32</div>
-            <div class="timeline-content"><strong>创建预约</strong> — 患者通过小程序自助预约，选择龙岗总店·古堪民·5/29 09:30</div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-dot green"></div>
-            <div class="timeline-time">5/28 14:32</div>
-            <div class="timeline-content"><strong>支付挂号费</strong> — ¥200.00 微信支付成功（交易号：wx2905281432001）</div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-dot green"></div>
-            <div class="timeline-time">5/29 08:45</div>
-            <div class="timeline-content"><strong>系统提醒</strong> — 就诊前1小时自动提醒已发送</div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-dot green"></div>
-            <div class="timeline-time">5/29 09:15</div>
-            <div class="timeline-content"><strong>到店签到</strong> — 前台扫码确认到诊</div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-dot green"></div>
-            <div class="timeline-time">5/29 09:30</div>
-            <div class="timeline-content"><strong>开始就诊</strong> — 古堪民医生接诊</div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-dot gray"></div>
-            <div class="timeline-time">待完成</div>
-            <div class="timeline-content" style="color: #9CA3AF;">完成就诊 → 开具处方/建议 → 随访计划</div>
+          <div class="timeline-item" v-for="(step, idx) in timelineSteps" :key="idx">
+            <div :class="['timeline-dot', step.dot]"></div>
+            <div class="timeline-time">{{ step.time }}</div>
+            <div class="timeline-content" v-html="step.content"></div>
           </div>
         </div>
       </div>
@@ -286,8 +841,8 @@ function handleViewProfile() {
     <!-- Patient History Table -->
     <div class="panel" style="margin-top: 16px;">
       <div class="panel-header">
-        <div class="panel-title">📜 历史预约（8次）</div>
-        <button class="btn btn-sm btn-outline">查看全部</button>
+        <div class="panel-title"><AppIcon name="history" />  历史预约（{{ patientHistory.length }}次）</div>
+        <button class="btn btn-sm btn-outline" @click="openHistoryDialog">查看全部</button>
       </div>
       <table class="data-table">
         <thead>
@@ -300,30 +855,296 @@ function handleViewProfile() {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td style="font-family: monospace; font-size: 12px; color: #9CA3AF;">BK20260415001</td>
-            <td>4/15</td>
-            <td>龙岗总店</td>
-            <td>古堪民</td>
-            <td><span class="status-tag green">已完成</span></td>
+          <tr v-for="hist in patientHistory.slice(0, 5)" :key="hist.id">
+            <td style="font-family: monospace; font-size: 12px; color: #9CA3AF;">{{ hist.appointment_no }}</td>
+            <td>{{ formatHistDate(hist.appointment_date) }}</td>
+            <td>{{ hist.store_name }}</td>
+            <td>{{ hist.doctor_name }}</td>
+            <td>
+              <span :class="['status-tag', getStatusTagClass(hist.status)]">
+                {{ getStatusText(hist.status) }}
+              </span>
+            </td>
           </tr>
-          <tr>
-            <td style="font-family: monospace; font-size: 12px; color: #9CA3AF;">BK20260320003</td>
-            <td>3/20</td>
-            <td>龙岗总店</td>
-            <td>王志远</td>
-            <td><span class="status-tag green">已完成</span></td>
-          </tr>
-          <tr>
-            <td style="font-family: monospace; font-size: 12px; color: #9CA3AF;">BK20260225002</td>
-            <td>2/25</td>
-            <td>南山分院</td>
-            <td>古堪民</td>
-            <td><span class="status-tag gray">已取消</span></td>
+          <tr v-if="patientHistory.length === 0">
+            <td colspan="5" style="text-align: center; color: #9CA3AF; padding: 20px;">暂无历史预约记录</td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <!-- 门诊收费结算收银弹窗 -->
+    <t-dialog
+      v-model:visible="checkoutVisible"
+      header="门诊电子收银结算与划扣"
+      width="540px"
+      :footer="null"
+      @cancel="closeCheckoutDialog"
+    >
+      <div v-if="appointment" class="dialog-body-form" style="padding: 10px 0;">
+        <div v-if="checkoutSuccess">
+          <div style="margin-bottom: 16px; font-size: 14px; color: #374151;">
+            收费结算单支付收款成功！交易收费凭证信息如下：
+          </div>
+          <div style="background: #F3F4F6; padding: 16px; border-radius: 8px; font-family: monospace; border: 1px dashed #D1D5DB;">
+            <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #000;">鼾静健康诊所 · 收费凭证</div>
+            <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">================================</div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>交易单号:</span> <span>{{ orderResult?.orderNo }}</span></div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>结账客户:</span> <span>{{ orderResult?.patientName }}</span></div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>交易时间:</span> <span>{{ orderResult?.time }}</span></div>
+            <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">--------------------------------</div>
+            <div v-for="item in billingItems" :key="item.product_id" style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+              <span>{{ item.product_name }} x{{ item.quantity }}</span>
+              <span>¥{{ ((item.price * item.quantity) / 100).toFixed(2) }}</span>
+            </div>
+            <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">--------------------------------</div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>总计金额:</span> <span>¥{{ orderResult?.total }}</span></div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: #EF4444;"><span>优惠折扣:</span> <span>-¥{{ orderResult?.discount }}</span></div>
+            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; color: #000; margin-bottom: 4px;">
+              <span>实收金额:</span> <span>¥{{ orderResult?.payable }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>支付方式:</span> <span>{{ orderResult?.payMethodText }}</span></div>
+            <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">================================</div>
+            <div style="font-size: 11px; color: #9CA3AF; text-align: center; margin-top: 10px; line-height: 1.4;">
+              谢谢惠顾，定制式舌型阻鼾器会在1-3个工作日内根据您的三维口腔模型制作完成并包邮寄送。
+            </div>
+          </div>
+          <div style="margin-top: 20px; display: flex; gap: 12px;">
+            <t-button variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
+            <t-button theme="primary" @click="closeCheckoutDialog">完成结算</t-button>
+          </div>
+        </div>
+
+        <div v-else class="dialog-body-form" style="padding: 10px 0;">
+          <div style="margin-bottom: 16px; font-size: 14px; color: #374151;">
+            正在为患者 <strong>{{ appointment.patient }}</strong> 开立收费结算账单：
+          </div>
+
+          <!-- Checkout Items Table -->
+          <table class="billing-table" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+            <thead>
+              <tr style="background: #F9FAFB; border-bottom: 1px solid #E5E7EB; text-align: left; font-size: 12px; color: #4B5563;">
+                <th style="padding: 8px;">项目/商品名称</th>
+                <th style="padding: 8px; width: 100px;">单价</th>
+                <th style="padding: 8px; width: 60px;">数量</th>
+                <th style="padding: 8px; width: 50px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, idx) in billingItems" :key="idx" style="border-bottom: 1px solid #F3F4F6; font-size: 13px;">
+                <td style="padding: 8px;">
+                  <select 
+                    v-model="item.product_id" 
+                    class="form-control" 
+                    style="height: 30px; font-size: 12px; padding: 0 8px;"
+                    @change="onProductChange(idx, item.product_id)"
+                  >
+                    <option v-for="p in productOptions" :key="p.id" :value="p.id">
+                      {{ p.name }}
+                    </option>
+                  </select>
+                </td>
+                <td style="padding: 8px;">¥{{ (item.price / 100).toFixed(2) }}</td>
+                <td style="padding: 8px;">
+                  <input v-model="item.quantity" type="number" class="form-control" style="height: 30px; padding: 2px 6px; text-align: center;" min="1">
+                </td>
+                <td style="padding: 8px;">
+                  <button class="btn-text-del" @click="removeBillingItem(idx)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <button class="btn-add-item" style="margin-bottom: 16px;" @click="addBillingItem"><AppIcon name="plus" />  添加诊疗费/项目/药品</button>
+
+          <!-- Discount & Delivery selector -->
+          <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">卡券折扣金额 (元)</label>
+              <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="val => `¥${(val / 100).toFixed(2)}`" style="width: 100%;" />
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">配送/交付方式</label>
+              <t-select v-model="deliveryType" :options="[
+                { label: '现场自提', value: 'offline_direct' },
+                { label: '到店自取 (缺货)', value: 'offline_pending' },
+                { label: '快递邮寄 (邮寄)', value: 'online' }
+              ]" />
+            </div>
+          </div>
+
+          <!-- Shipping Address Form -->
+          <div v-if="deliveryType === 'online'" style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-weight: 700; font-size: 12px; color: #374151;"><AppIcon name="truck" />  快递收货地址</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">收件人</label>
+                <t-input v-model="shippingReceiver" size="small" placeholder="姓名" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px;">手机号</label>
+                <t-input v-model="shippingPhone" size="small" placeholder="手机号" />
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 11px;">详细地址</label>
+              <t-input v-model="shippingAddressStr" size="small" placeholder="请输入详细省市区县及门牌号" />
+            </div>
+          </div>
+
+          <!-- Pickup Info Form -->
+          <div v-if="deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 12px; border-radius: 8px; border: 1px solid #FCD34D; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-weight: 700; font-size: 12px; color: #D97706;"><AppIcon name="pickup" />  缺货自提预订</div>
+            <div style="font-size: 11px; color: #B45309; line-height: 1.4;">
+              货到后系统将通过微信推送通知该患者到店自提。
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px; color: #B45309;">通知人</label>
+                <t-input v-model="shippingReceiver" size="small" placeholder="姓名" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-size: 11px; color: #B45309;">通知手机号</label>
+                <t-input v-model="shippingPhone" size="small" placeholder="手机号" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Settings Summary Block -->
+          <div style="background: #F9FAFB; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: #4B5563;">
+              <span>项目总额：</span>
+              <span>¥{{ (totalAmount / 100).toFixed(2) }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: #4B5563;">
+              <span>优惠折扣：</span>
+              <span>- ¥{{ (discountAmount / 100).toFixed(2) }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; color: #111827; border-top: 1px dashed #D1D5DB; padding-top: 8px;">
+              <span>应付金额：</span>
+              <span style="color: #EF4444;">¥{{ (payableAmount / 100).toFixed(2) }}</span>
+            </div>
+          </div>
+
+          <!-- Payment Method -->
+          <div style="margin-bottom: 24px;">
+            <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: #374151;">支付方式</div>
+            <div style="display: flex; gap: 12px;">
+              <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
+                <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
+                <AppIcon name="wechat" />  微信支付
+              </label>
+              <label class="pay-method-label" :class="{ active: payMethod === 'alipay' }">
+                <input v-model="payMethod" type="radio" value="alipay" style="display: none;">
+                <AppIcon name="alipay" />  支付宝
+              </label>
+              <label class="pay-method-label" :class="{ active: payMethod === 'pos' }">
+                <input v-model="payMethod" type="radio" value="pos" style="display: none;">
+                <AppIcon name="coins" />  现金/刷卡
+              </label>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <t-button theme="default" @click="closeCheckoutDialog">取消</t-button>
+            <t-button theme="primary" :loading="checkoutLoading" @click="submitCheckout">确认支付收款 · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
+          </div>
+        </div>
+      </div>
+    </t-dialog>
+
+    <!-- 签到预检体征录入弹窗 -->
+    <t-dialog
+      v-model:visible="checkInVisible"
+      header="到店签到 & 预检体征录入"
+      width="480px"
+      :footer="null"
+      @cancel="closeCheckInDialog"
+    >
+      <div class="dialog-body-form" style="padding: 10px 0;">
+        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">患者姓名</label>
+          <input type="text" class="form-control" :value="appointment?.patient" disabled style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">身高 (cm) <span class="required" style="color: #EF4444;">*</span></label>
+          <input type="number" class="form-control" v-model="checkInForm.height" placeholder="请输入身高，如 175" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">体重 (kg) <span class="required" style="color: #EF4444;">*</span></label>
+          <input type="number" class="form-control" v-model="checkInForm.weight" placeholder="请输入体重，如 70" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">收缩压 (mmHg)</label>
+          <input type="number" class="form-control" v-model="checkInForm.systolicBp" placeholder="请输入收缩压，如 120" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">舒张压 (mmHg)</label>
+          <input type="number" class="form-control" v-model="checkInForm.diastolicBp" placeholder="请输入舒张压，如 80" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">颈围 (cm)</label>
+          <input type="number" class="form-control" v-model="checkInForm.neckCircumference" placeholder="请输入颈围，如 38" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">BMI</label>
+          <input type="text" class="form-control" :value="checkInBmi" disabled placeholder="输入身高体重后自动计算" style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none; margin-bottom: 16px;">
+        </div>
+        <!-- Custom Footer -->
+        <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+          <t-button variant="outline" theme="default" @click="closeCheckInDialog">取消</t-button>
+          <t-button variant="outline" theme="warning" @click="handleCheckInSkip">跳过录入直接签到</t-button>
+          <t-button theme="primary" @click="handleCheckInSubmit">确认签到</t-button>
+        </div>
+      </div>
+    </t-dialog>
+
+    <!-- 历史预约全部记录弹窗 -->
+    <t-dialog
+      v-model:visible="historyDialogVisible"
+      header="全部历史预约记录"
+      width="680px"
+      :footer="null"
+    >
+      <div style="padding: 10px 0;">
+        <table class="data-table" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+          <thead>
+            <tr style="background: #F9FAFB; border-bottom: 1px solid #E5E7EB; text-align: left; font-size: 12px; color: #4B5563;">
+              <th style="padding: 10px 14px;">预约单号</th>
+              <th style="padding: 10px 14px;">日期</th>
+              <th style="padding: 10px 14px;">门店</th>
+              <th style="padding: 10px 14px;">医生</th>
+              <th style="padding: 10px 14px;">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="hist in paginatedHistory" :key="hist.id" style="border-bottom: 1px solid #F3F4F6;">
+              <td style="padding: 10px 14px; font-family: monospace; font-size: 12px; color: #9CA3AF;">{{ hist.appointment_no }}</td>
+              <td style="padding: 10px 14px;">{{ formatHistDate(hist.appointment_date) }}</td>
+              <td style="padding: 10px 14px;">{{ hist.store_name }}</td>
+              <td style="padding: 10px 14px;">{{ hist.doctor_name }}</td>
+              <td style="padding: 10px 14px;">
+                <span :class="['status-tag', getStatusTagClass(hist.status)]">
+                  {{ getStatusText(hist.status) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <!-- 分页 -->
+        <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+          <t-pagination
+            v-model:current="historyPage"
+            v-model:pageSize="historyPageSize"
+            :total="patientHistory.length"
+            :pageSizeOptions="[5, 10, 20]"
+            size="small"
+            style="border: none; padding: 0;"
+          />
+        </div>
+      </div>
+    </t-dialog>
   </div>
 </template>
 
@@ -637,6 +1458,14 @@ function handleViewProfile() {
   background: #D1D5DB;
   box-shadow: 0 0 0 2px #F3F4F6;
 }
+.timeline-dot.orange {
+  background: #F59E0B;
+  box-shadow: 0 0 0 2px #FEF3C7;
+}
+.timeline-dot.red {
+  background: #EF4444;
+  box-shadow: 0 0 0 2px #FEE2E2;
+}
 .timeline-time {
   font-size: 11px;
   color: #9CA3AF;
@@ -671,5 +1500,54 @@ function handleViewProfile() {
 }
 .data-table tr:hover td {
   background: #F9FAFB;
+}
+
+.pay-method-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  user-select: none;
+}
+.pay-method-label.active {
+  border-color: var(--primary-500);
+  background: var(--primary-50);
+  color: var(--primary-600);
+  font-weight: 600;
+}
+
+.btn-add-item {
+  width: 100%;
+  height: 36px;
+  background: #FFF;
+  border: 1px dashed var(--primary-400);
+  color: var(--primary-600);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+.btn-add-item:hover {
+  background: var(--primary-50);
+}
+
+.btn-text-del {
+  background: transparent;
+  border: none;
+  color: #EF4444;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+}
+.btn-text-del:hover {
+  text-decoration: underline;
 }
 </style>

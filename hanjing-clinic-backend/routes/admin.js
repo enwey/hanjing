@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import fs from 'fs';
+import path from 'path';
 import { query, get, run, transaction, autoUpdateExpiredAppointments } from '../db.js';
 import {
   JWT_SECRET,
@@ -16,6 +17,8 @@ import {
 } from '../helpers.js';
 
 const app = express.Router();
+const PAID_ORDER_STATUSES = ['paid', 'shipping', 'shipped', 'processing', 'completed'];
+const PAID_ORDER_STATUSES_SQL = PAID_ORDER_STATUSES.map(status => `'${status}'`).join(', ');
 
 const formatDate = (d) => {
   if (!d) return '';
@@ -27,6 +30,202 @@ const formatDate = (d) => {
   }
   return String(d).slice(0, 10);
 };
+
+const WECHAT_TOKEN_CACHE = {
+  value: '',
+  expiresAt: 0
+};
+
+function mapWechatLiveStatus(status) {
+  const code = Number(status);
+  if (code === 101) return 'live';
+  if (code === 102) return 'upcoming';
+  if ([103, 104, 105, 106, 107].includes(code)) return 'replay';
+  return 'upcoming';
+}
+
+async function getWechatMiniAccessToken() {
+  const now = Date.now();
+  if (WECHAT_TOKEN_CACHE.value && WECHAT_TOKEN_CACHE.expiresAt > now + 60_000) {
+    return WECHAT_TOKEN_CACHE.value;
+  }
+
+  const appId = process.env.WX_MINI_APP_ID;
+  const appSecret = process.env.WX_MINI_APP_SECRET;
+  if (!appId || !appSecret) {
+    const err = new Error('未配置微信小程序 AppID / AppSecret');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(appSecret)}`;
+  const response = await fetch(url);
+  const data = await response.json();
+  if (!response.ok || data.errcode) {
+    const err = new Error(data.errmsg || '获取微信 access_token 失败');
+    err.statusCode = 502;
+    throw err;
+  }
+
+  WECHAT_TOKEN_CACHE.value = data.access_token;
+  WECHAT_TOKEN_CACHE.expiresAt = now + Math.max((Number(data.expires_in) || 7200) - 120, 60) * 1000;
+  return WECHAT_TOKEN_CACHE.value;
+}
+
+async function fetchWechatLiveRoom(roomId) {
+  if (!/^\d+$/.test(String(roomId || ''))) {
+    const err = new Error('微信直播间ID必须为纯数字');
+    err.statusCode = 400;
+    throw err;
+  }
+  const token = await getWechatMiniAccessToken();
+  const response = await fetch(`https://api.weixin.qq.com/wxa/business/getliveinfo?access_token=${encodeURIComponent(token)}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'get_by_ids',
+      room_ids: [Number(roomId)]
+    })
+  });
+  const data = await response.json();
+  if (!response.ok || data.errcode) {
+    const err = new Error(data.errmsg || '获取微信直播间信息失败');
+    err.statusCode = 502;
+    throw err;
+  }
+
+  const rawRoom = Array.isArray(data.room_info) ? data.room_info[0] : null;
+  if (!rawRoom) {
+    const err = new Error('未查询到对应微信直播间');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return {
+    raw: rawRoom,
+    title: rawRoom.name || rawRoom.title || '',
+    coverUrl: rawRoom.cover_img || rawRoom.coverUrl || '',
+    anchorName: rawRoom.anchor_name || rawRoom.anchorName || '',
+    startTime: rawRoom.start_time ? new Date(Number(rawRoom.start_time) * 1000).toISOString().slice(0, 19).replace('T', ' ') : '',
+    endTime: rawRoom.end_time ? new Date(Number(rawRoom.end_time) * 1000).toISOString().slice(0, 19).replace('T', ' ') : null,
+    status: mapWechatLiveStatus(rawRoom.live_status)
+  };
+}
+
+function isHttpUrl(value) {
+  return /^https?:\/\//i.test(String(value || ''));
+}
+
+function buildRequestOrigin(req) {
+  const configuredBaseUrl = process.env.PUBLIC_BASE_URL || process.env.API_PUBLIC_BASE_URL;
+  if (configuredBaseUrl) return configuredBaseUrl.replace(/\/$/, '');
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  return `${protocol}://${req.get('host')}`;
+}
+
+function normalizeWechatTimestamp(value) {
+  if (!value) return 0;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+  return Math.floor(date.getTime() / 1000);
+}
+
+async function uploadWechatMediaFromUrl(url) {
+  if (!isHttpUrl(url)) {
+    const err = new Error('直播封面不是可访问的图片URL，请填写微信素材media_id或可公网访问的图片地址');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const token = await getWechatMiniAccessToken();
+  const imageResponse = await fetch(url);
+  if (!imageResponse.ok) {
+    const err = new Error('下载直播封面失败，无法上传到微信素材库');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+  const fileExt = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
+  const blob = new Blob([await imageResponse.arrayBuffer()], { type: contentType });
+  const form = new FormData();
+  form.append('media', blob, `live-cover.${fileExt}`);
+
+  const mediaResponse = await fetch(`https://api.weixin.qq.com/cgi-bin/media/upload?access_token=${encodeURIComponent(token)}&type=image`, {
+    method: 'POST',
+    body: form
+  });
+  const mediaData = await mediaResponse.json();
+  if (!mediaResponse.ok || mediaData.errcode || !mediaData.media_id) {
+    const err = new Error(mediaData.errmsg || '上传微信直播封面素材失败');
+    err.statusCode = 502;
+    throw err;
+  }
+
+  return mediaData.media_id;
+}
+
+async function createWechatLiveRoom(payload) {
+  const {
+    title,
+    cover_url,
+    wechat_cover_media_id,
+    wechat_share_media_id,
+    anchor_name,
+    wechat_anchor_wechat,
+    start_time,
+    end_time
+  } = payload;
+
+  const startTime = normalizeWechatTimestamp(start_time);
+  const endTime = normalizeWechatTimestamp(end_time);
+  if (!title || !anchor_name || !wechat_anchor_wechat || !startTime || !endTime) {
+    const err = new Error('创建微信直播间缺少必填字段');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (endTime <= startTime) {
+    const err = new Error('直播结束时间必须晚于开始时间');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const token = await getWechatMiniAccessToken();
+  const coverMediaId = wechat_cover_media_id || await uploadWechatMediaFromUrl(cover_url);
+  const shareMediaId = wechat_share_media_id || coverMediaId;
+
+  const response = await fetch(`https://api.weixin.qq.com/wxaapi/broadcast/room/create?access_token=${encodeURIComponent(token)}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      name: title,
+      coverImg: coverMediaId,
+      shareImg: shareMediaId,
+      startTime,
+      endTime,
+      anchorName: anchor_name,
+      anchorWechat: wechat_anchor_wechat,
+      type: 1,
+      screenType: 0,
+      closeLike: 0,
+      closeGoods: 0,
+      closeComment: 0,
+      closeReplay: 0
+    })
+  });
+  const data = await response.json();
+  if (!response.ok || data.errcode) {
+    const err = new Error(data.errmsg || '创建微信直播间失败');
+    err.statusCode = 502;
+    throw err;
+  }
+
+  return {
+    roomId: String(data.roomId || data.room_id || ''),
+    coverMediaId,
+    shareMediaId
+  };
+}
 
 const failedAttempts = new Map(); // username -> { count, lockUntil }
 
@@ -230,8 +429,8 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
 
   try {
     // 1. Revenue (Current & Previous)
-    let revSql = `SELECT SUM(pay_amount) as total FROM orders WHERE status IN ('paid', 'completed') AND ${dateFilterOrder}`;
-    let prevRevSql = `SELECT SUM(pay_amount) as total FROM orders WHERE status IN ('paid', 'completed') AND ${prevDateFilterOrder}`;
+    let revSql = `SELECT SUM(pay_amount) as total FROM orders WHERE status IN (${PAID_ORDER_STATUSES_SQL}) AND ${dateFilterOrder}`;
+    let prevRevSql = `SELECT SUM(pay_amount) as total FROM orders WHERE status IN (${PAID_ORDER_STATUSES_SQL}) AND ${prevDateFilterOrder}`;
     const revParams = [];
     const prevRevParams = [];
     if (req.user.role !== 'super_admin' && req.user.store_id) {
@@ -432,7 +631,7 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
       revTrendSql = `
         SELECT DATE_FORMAT(pay_at, '%H:00') as date, SUM(pay_amount) as total 
         FROM orders 
-        WHERE status IN ('paid', 'completed') AND DATE(pay_at) = CURDATE()
+        WHERE status IN (${PAID_ORDER_STATUSES_SQL}) AND DATE(pay_at) = CURDATE()
       `;
       if (req.user.role !== 'super_admin' && req.user.store_id) {
         revTrendSql += `
@@ -452,7 +651,7 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
       revTrendSql = `
         SELECT DATE_FORMAT(pay_at, '%Y-%m-%d') as date, SUM(pay_amount) as total 
         FROM orders 
-        WHERE status IN ('paid', 'completed') AND YEARWEEK(pay_at, 1) = YEARWEEK(CURDATE(), 1)
+        WHERE status IN (${PAID_ORDER_STATUSES_SQL}) AND YEARWEEK(pay_at, 1) = YEARWEEK(CURDATE(), 1)
       `;
       if (req.user.role !== 'super_admin' && req.user.store_id) {
         revTrendSql += `
@@ -472,7 +671,7 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
       revTrendSql = `
         SELECT DATE_FORMAT(pay_at, '%Y-%m-%d') as date, SUM(pay_amount) as total 
         FROM orders 
-        WHERE status IN ('paid', 'completed') 
+        WHERE status IN (${PAID_ORDER_STATUSES_SQL}) 
           AND pay_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') 
           AND pay_at < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)
       `;
@@ -525,12 +724,17 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
 // 3. APPOINTMENTS
 // ----------------------------------------
 app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
-  const { date, tab, search } = req.query;
+  const { date, tab, search, patient_id } = req.query;
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const pageSize = req.query.pageSize ? parseInt(req.query.pageSize, 10) : 10;
 
   let whereClause = '';
   const params = [];
+
+  if (patient_id) {
+    whereClause += ` AND a.patient_id = ?`;
+    params.push(patient_id);
+  }
 
   if (date) {
     whereClause += ` AND a.appointment_date = ?`;
@@ -622,9 +826,11 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
     await autoUpdateExpiredAppointments();
     let sql = `
       SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
-             p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history
+             p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history,
+             u.member_level
       FROM appointments a
       JOIN patients p ON a.patient_id = p.id
+      LEFT JOIN users u ON p.user_id = u.id
     `;
     const isNo = isNaN(id) || id.startsWith('BK');
     if (isNo) {
@@ -2307,9 +2513,18 @@ app.get('/api/admin/orders', authenticateToken, async (req, res) => {
 
     const orderIds = list.map(o => o.id);
     let allOrderItems = [];
+    let allCommissions = [];
     if (orderIds.length > 0) {
       const placeholders = orderIds.map(() => '?').join(',');
       allOrderItems = await query(`SELECT * FROM order_items WHERE order_id IN (${placeholders})`, orderIds);
+      allCommissions = await query(
+        `SELECT do.*, d.nickname as promoter_name
+         FROM distribution_orders do
+         JOIN distributors d ON do.distributor_id = d.id
+         WHERE do.order_id IN (${placeholders})
+         ORDER BY do.commission_level ASC, do.id ASC`,
+        orderIds
+      );
     }
 
     const orderItemsMap = {};
@@ -2318,8 +2533,19 @@ app.get('/api/admin/orders', authenticateToken, async (req, res) => {
       orderItemsMap[item.order_id].push(item);
     });
 
+    const commissionsMap = {};
+    allCommissions.forEach(commission => {
+      if (!commissionsMap[commission.order_id]) commissionsMap[commission.order_id] = [];
+      commissionsMap[commission.order_id].push(commission);
+    });
+
     for (const order of list) {
       order.items = orderItemsMap[order.id] || [];
+      order.commissions = commissionsMap[order.id] || [];
+      order.commission_total = order.commissions.reduce((sum, commission) => {
+        if (commission.status === 'refunded') return sum;
+        return sum + Number(commission.commission_amount || 0);
+      }, 0);
       try {
         order.shipping_address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address;
       } catch (e) {
@@ -2336,29 +2562,35 @@ app.get('/api/admin/orders', authenticateToken, async (req, res) => {
 app.get('/api/admin/orders/refunds', authenticateToken, async (req, res) => {
   try {
     const list = await query(
-      `SELECT o.*, p.name as patient_name,
+      `SELECT o.*, u.nickname as buyer_nickname, u.phone as buyer_phone,
               GROUP_CONCAT(oi.product_name SEPARATOR '、') as product_names
        FROM orders o
-       LEFT JOIN patients p ON o.patient_id = p.id
+       JOIN users u ON o.user_id = u.id
        LEFT JOIN order_items oi ON oi.order_id = o.id
-       WHERE o.status IN ('refund_pending', 'refunded')
+       WHERE o.status IN ('refund_pending', 'refunding', 'refunded')
        GROUP BY o.id
        ORDER BY o.updated_at DESC, o.created_at DESC
        LIMIT 200`
     );
     res.json({
       code: 200,
-      data: list.map(order => ({
-        id: order.id,
-        refundNo: `RF${String(order.order_no || order.id).replace(/\D/g, '').slice(-12)}`,
-        orderNo: order.order_no,
-        patient: order.patient_name || '患者',
-        product: order.product_names || '订单商品',
-        amount: order.pay_amount,
-        reason: '用户申请退款',
-        applyTime: order.updated_at || order.created_at,
-        status: order.status === 'refunded' ? 'approved' : 'pending'
-      }))
+      data: list.map(order => {
+        let addr = {};
+        try {
+          addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
+        } catch (error) {}
+        return {
+          id: order.id,
+          refundNo: `RF${String(order.order_no || order.id).replace(/\D/g, '').slice(-12)}`,
+          orderNo: order.order_no,
+          patient: addr.receiver || order.buyer_nickname || order.buyer_phone || '患者',
+          product: order.product_names || '订单商品',
+          amount: order.pay_amount,
+          reason: addr.refund_reason || '用户申请退款',
+          applyTime: order.updated_at || order.created_at,
+          status: order.status === 'refunded' ? 'approved' : 'pending'
+        };
+      })
     });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取退款列表失败' });
@@ -2369,7 +2601,7 @@ app.get('/api/admin/orders/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
     let sql = `
-      SELECT o.*, u.nickname as user_name, u.phone as user_phone
+      SELECT o.*, u.nickname as user_name, u.phone as user_phone, u.avatar_url as user_avatar
       FROM orders o
       JOIN users u ON o.user_id = u.id
       WHERE o.id = ?
@@ -2388,7 +2620,23 @@ app.get('/api/admin/orders/:id', authenticateToken, async (req, res) => {
     const order = await get(sql, params);
     if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
     const items = await query('SELECT * FROM order_items WHERE order_id = ?', [id]);
+    const commissions = await query(
+      `SELECT do.*, d.nickname as promoter_name
+       FROM distribution_orders do
+       JOIN distributors d ON do.distributor_id = d.id
+       WHERE do.order_id = ?
+       ORDER BY do.commission_level ASC, do.id ASC`,
+      [id]
+    );
     order.items = items;
+    order.commissions = commissions;
+    order.commission_total = commissions.reduce((sum, commission) => {
+      if (commission.status === 'refunded') return sum;
+      return sum + Number(commission.commission_amount || 0);
+    }, 0);
+    try {
+      order.shipping_address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : order.shipping_address;
+    } catch (error) {}
     res.json({ code: 200, data: order });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取订单详情失败' });
@@ -2412,8 +2660,18 @@ app.post('/api/admin/orders/:id/ship', authenticateToken, async (req, res) => {
     }
     const order = await get(checkSql, checkParams);
     if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (order.type !== 'online' || order.status !== 'shipping') {
+      return res.status(400).json({ code: 400, message: '只有快递待发货订单可以确认发货' });
+    }
 
-    await run(`UPDATE orders SET status = 'shipped', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [id]);
+    let addr = {};
+    try {
+      addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
+    } catch (error) {}
+    addr.express_company = req.body.express_company || req.body.carrier || '';
+    addr.tracking_number = req.body.tracking_number || req.body.trackingNo || '';
+
+    await run(`UPDATE orders SET status = 'shipped', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [JSON.stringify(addr), id]);
     res.json({ code: 200, message: '发货成功' });
   } catch (error) {
     res.status(500).json({ code: 500, message: '操作失败' });
@@ -2444,6 +2702,9 @@ app.post('/api/admin/orders/:id/notify', authenticateToken, async (req, res) => 
     const order = await get(checkSql, checkParams);
     if (!order) {
       return res.status(404).json({ code: 404, message: '订单不存在' });
+    }
+    if (order.type !== 'offline' || order.status !== 'processing') {
+      return res.status(400).json({ code: 400, message: '只有自提待到货订单可以发送到货通知' });
     }
 
     let addr = {};
@@ -2488,23 +2749,12 @@ app.post('/api/admin/orders/:id/complete', authenticateToken, async (req, res) =
     }
     const order = await get(checkSql, checkParams);
     if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (order.type !== 'offline' || !['paid', 'processing'].includes(order.status)) {
+      return res.status(400).json({ code: 400, message: '只有待取货或自提待到货订单可以提货核销' });
+    }
 
     await transaction(async (conn) => {
       await conn.execute(`UPDATE orders SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [id]);
-      const commissions = await query(
-        `SELECT distributor_id, commission_amount FROM distribution_orders WHERE order_id = ? AND status = 'pending'`,
-        [id]
-      );
-      for (const commission of commissions) {
-        await conn.execute(
-          `UPDATE distribution_orders SET status = 'settled', settled_at = CURRENT_TIMESTAMP WHERE order_id = ? AND distributor_id = ?`,
-          [id, commission.distributor_id]
-        );
-        await conn.execute(
-          `UPDATE distributors SET available_commission = available_commission + ? WHERE id = ?`,
-          [commission.commission_amount, commission.distributor_id]
-        );
-      }
       await conn.execute(
         `INSERT INTO user_notifications (user_id, title, content)
          VALUES (?, '订单已完成', ?)`,
@@ -2540,10 +2790,24 @@ app.put('/api/admin/orders/:id/refund', authenticateToken, async (req, res) => {
     }
     const order = await get(checkSql, checkParams);
     if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (!['refund_pending', 'refunding', 'refunded'].includes(order.status)) {
+      return res.status(400).json({ code: 400, message: '当前订单不是退款审核状态' });
+    }
+    if (order.status === 'refunded') {
+      return res.status(400).json({ code: 400, message: '订单已退款，不能重复审批' });
+    }
 
     await transaction(async (conn) => {
-      const status = approve ? 'refunded' : 'paid';
-      await conn.execute(`UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [status, id]);
+      let addr = {};
+      try {
+        addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
+      } catch (error) {}
+      const restoreStatus = ['paid', 'shipping', 'shipped'].includes(addr.refund_from_status)
+        ? addr.refund_from_status
+        : (order.type === 'online' ? 'shipping' : 'paid');
+      delete addr.refund_from_status;
+      const status = approve ? 'refunded' : restoreStatus;
+      await conn.execute(`UPDATE orders SET status = ?, shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [status, JSON.stringify(addr), id]);
 
       if (approve) {
         const items = await query('SELECT oi.*, p.category FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = ?', [id]);
@@ -2651,12 +2915,14 @@ app.get('/api/admin/distribution/overview', authenticateToken, async (req, res) 
 app.get('/api/admin/distribution/commissions', authenticateToken, async (req, res) => {
   try {
     const list = await query(
-      `SELECT do.*, d.nickname as promoter_name, o.order_no, p.name as patient_name,
-              GROUP_CONCAT(pr.name SEPARATOR '、') as product_names
+      `SELECT do.*, d.nickname as promoter_name,
+              MAX(o.order_no) as order_no,
+              MAX(p.name) as patient_name,
+              GROUP_CONCAT(DISTINCT pr.name SEPARATOR '、') as product_names
        FROM distribution_orders do
-       JOIN distributors d ON do.distributor_user_id = d.user_id
+       JOIN distributors d ON do.distributor_id = d.id
        LEFT JOIN orders o ON do.order_id = o.id
-       LEFT JOIN patients p ON o.patient_id = p.id
+       LEFT JOIN patients p ON o.user_id = p.user_id
        LEFT JOIN order_items oi ON oi.order_id = o.id
        LEFT JOIN products pr ON oi.product_id = pr.id
        GROUP BY do.id
@@ -2669,29 +2935,33 @@ app.get('/api/admin/distribution/commissions', authenticateToken, async (req, re
   }
 });
 
-app.get('/api/admin/distribution/products', authenticateToken, async (req, res) => {
+app.get('/api/admin/products', authenticateToken, async (req, res) => {
   try {
     const list = await query(
       `SELECT id, name, category, image_url, price, description, stock, sales_count,
-              is_distribution, commission_rate, status, created_at
+              is_distribution, commission_rate, status, created_at, original_price, gallery_urls
        FROM products
-       ORDER BY is_distribution DESC, id DESC`
+       ORDER BY id DESC`
     );
     res.json({ code: 200, data: list });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '获取推广商品失败' });
+    res.status(500).json({ code: 500, message: '获取商品列表失败' });
   }
 });
 
-app.post('/api/admin/distribution/products', authenticateToken, async (req, res) => {
-  const { name, description, price, commission_rate, status, category, image_url, stock } = req.body;
+app.post('/api/admin/products', authenticateToken, async (req, res) => {
+  const { name, description, price, commission_rate, status, category, image_url, stock, is_distribution, original_price, gallery_urls } = req.body;
   if (!name || !price) {
     return res.status(400).json({ code: 400, message: '商品名称和价格为必填项' });
   }
   try {
+    let galleryUrlsVal = '[]';
+    if (gallery_urls !== undefined && gallery_urls !== null) {
+      galleryUrlsVal = typeof gallery_urls === 'string' ? gallery_urls : JSON.stringify(gallery_urls);
+    }
     const result = await run(
-      `INSERT INTO products (name, category, image_url, price, description, stock, is_distribution, commission_rate, status)
-       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      `INSERT INTO products (name, category, image_url, price, description, stock, is_distribution, commission_rate, status, original_price, gallery_urls)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
         category || 'service',
@@ -2699,28 +2969,54 @@ app.post('/api/admin/distribution/products', authenticateToken, async (req, res)
         Number(price),
         description || '',
         Number(stock || 0),
+        is_distribution ? 1 : 0,
         Number(commission_rate || 0),
-        status === 'on' ? 'on' : 'off'
+        status === 'on' ? 'on' : 'off',
+        original_price ? Number(original_price) : null,
+        galleryUrlsVal
       ]
     );
-    await logAdminAction(req.user.id, 'create_distribution_product', 'product', result.id, { name });
-    res.json({ code: 200, message: '添加推广商品成功', data: { id: result.id } });
+    await logAdminAction(req.user.id, 'create_product', 'product', result.id, { name, is_distribution: !!is_distribution });
+    res.json({ code: 200, message: '添加商品成功', data: { id: result.id } });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '添加推广商品失败' });
+    res.status(500).json({ code: 500, message: '添加商品失败' });
   }
 });
 
-app.put('/api/admin/distribution/products/:id', authenticateToken, async (req, res) => {
+app.get('/api/admin/products/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const product = await get(`SELECT * FROM products WHERE id = ?`, [id]);
+    if (!product) {
+      return res.status(404).json({ code: 404, message: '商品不存在' });
+    }
+    res.json({ code: 200, data: product });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取商品详情失败' });
+  }
+});
+
+app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const product = await get(`SELECT * FROM products WHERE id = ?`, [id]);
   if (!product) {
     return res.status(404).json({ code: 404, message: '商品不存在' });
   }
   try {
+    let galleryUrlsVal = product.gallery_urls;
+    if (req.body.gallery_urls !== undefined) {
+      galleryUrlsVal = req.body.gallery_urls === null ? '[]' : (typeof req.body.gallery_urls === 'string' ? req.body.gallery_urls : JSON.stringify(req.body.gallery_urls));
+    } else if (galleryUrlsVal && typeof galleryUrlsVal !== 'string') {
+      galleryUrlsVal = JSON.stringify(galleryUrlsVal);
+    }
+    if (!galleryUrlsVal) {
+      galleryUrlsVal = '[]';
+    }
+
     await run(
       `UPDATE products
        SET name = ?, category = ?, image_url = ?, price = ?, description = ?, stock = ?,
-           is_distribution = ?, commission_rate = ?, status = ?
+           is_distribution = ?, commission_rate = ?, status = ?, original_price = ?, gallery_urls = ?
        WHERE id = ?`,
       [
         req.body.name ?? product.name,
@@ -2732,13 +3028,33 @@ app.put('/api/admin/distribution/products/:id', authenticateToken, async (req, r
         req.body.is_distribution !== undefined ? (req.body.is_distribution ? 1 : 0) : product.is_distribution,
         req.body.commission_rate !== undefined ? Number(req.body.commission_rate) : product.commission_rate,
         req.body.status ?? product.status,
+        req.body.original_price !== undefined ? (req.body.original_price ? Number(req.body.original_price) : null) : product.original_price,
+        galleryUrlsVal,
         id
       ]
     );
-    await logAdminAction(req.user.id, 'update_distribution_product', 'product', id, { status: req.body.status });
-    res.json({ code: 200, message: '保存推广商品成功' });
+    await logAdminAction(req.user.id, 'update_product', 'product', id, {
+      status: req.body.status,
+      is_distribution: req.body.is_distribution
+    });
+    res.json({ code: 200, message: '保存商品成功' });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '保存推广商品失败' });
+    res.status(500).json({ code: 500, message: '保存商品失败' });
+  }
+});
+
+app.get('/api/admin/distribution/products', authenticateToken, async (req, res) => {
+  try {
+    const list = await query(
+      `SELECT id, name, category, image_url, price, description, stock, sales_count,
+              is_distribution, commission_rate, status, created_at
+       FROM products
+       WHERE is_distribution = 1 AND status = 'on'
+       ORDER BY id DESC`
+    );
+    res.json({ code: 200, data: list });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取推广商品失败' });
   }
 });
 
@@ -2840,6 +3156,49 @@ app.get('/api/admin/distribution/leaderboard', authenticateToken, async (req, re
 // ----------------------------------------
 // 9. CONTENT MANAGEMENT
 // ----------------------------------------
+app.post('/api/admin/uploads/images', authenticateToken, async (req, res) => {
+  const { fileName, mimeType, fileData, context } = req.body || {};
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!fileData || !mimeType || !allowedMimeTypes.includes(mimeType)) {
+    return res.status(400).json({ code: 400, message: '仅支持 JPG、PNG、WEBP 图片' });
+  }
+
+  try {
+    const buffer = Buffer.from(String(fileData).replace(/^data:image\/\w+;base64,/, ''), 'base64');
+    if (!buffer.length || buffer.length > 3 * 1024 * 1024) {
+      return res.status(400).json({ code: 400, message: '图片大小不能超过 3MB' });
+    }
+
+    const extByMime = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/webp': '.webp'
+    };
+    const safeContext = String(context || 'common').replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'common';
+    const safeBaseName = path.basename(fileName || 'image').replace(/[^a-z0-9._-]/gi, '_');
+    const ext = extByMime[mimeType] || path.extname(safeBaseName) || '.jpg';
+    const uploadDir = path.resolve('./uploads/admin/images', safeContext);
+    fs.mkdirSync(uploadDir, { recursive: true });
+    const storedName = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;
+    const storedPath = path.join(uploadDir, storedName);
+    fs.writeFileSync(storedPath, buffer);
+
+    const urlPath = `/uploads/admin/images/${safeContext}/${storedName}`;
+    res.json({
+      code: 200,
+      message: '上传成功',
+      data: {
+        url: `${buildRequestOrigin(req)}${urlPath}`,
+        path: urlPath,
+        name: safeBaseName,
+        size: buffer.length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '上传图片失败' });
+  }
+});
+
 // Banners (小程序首页轮播)
 app.get('/api/admin/content/banners', authenticateToken, async (req, res) => {
   try {
@@ -2946,32 +3305,150 @@ app.get('/api/admin/content/live-rooms', authenticateToken, async (req, res) => 
 });
 
 app.post('/api/admin/content/live-rooms', authenticateToken, async (req, res) => {
-  const { title, cover_url, anchor_name, status, start_time, replay_url, product_ids } = req.body;
+  const {
+    title,
+    cover_url,
+    wechat_room_id,
+    wechat_anchor_wechat,
+    wechat_cover_media_id,
+    wechat_share_media_id,
+    anchor_name,
+    status,
+    start_time,
+    end_time,
+    replay_url,
+    product_ids
+  } = req.body;
   try {
+    let nextWechatRoomId = wechat_room_id ? String(wechat_room_id) : '';
+    let nextCoverMediaId = wechat_cover_media_id || '';
+    let nextShareMediaId = wechat_share_media_id || '';
+    const nextEndTime = end_time || new Date(new Date(start_time).getTime() + 2 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+
+    if (!nextWechatRoomId) {
+      const createdRoom = await createWechatLiveRoom({
+        title,
+        cover_url,
+        wechat_cover_media_id,
+        wechat_share_media_id,
+        anchor_name,
+        wechat_anchor_wechat,
+        start_time,
+        end_time: nextEndTime
+      });
+      nextWechatRoomId = createdRoom.roomId;
+      nextCoverMediaId = createdRoom.coverMediaId;
+      nextShareMediaId = createdRoom.shareMediaId;
+    }
+
     const result = await run(
-      `INSERT INTO live_rooms (title, cover_url, anchor_name, status, start_time, replay_url, product_ids, anchor_avatar)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title, cover_url || '/static/demo/store-3.jpg', anchor_name, status || 'upcoming', start_time, replay_url || '', JSON.stringify(product_ids || []), '/static/demo/doctor-1.jpg']
+      `INSERT INTO live_rooms (title, cover_url, wechat_room_id, wechat_anchor_wechat, wechat_cover_media_id, wechat_share_media_id, anchor_name, status, start_time, end_time, replay_url, product_ids, anchor_avatar)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        title,
+        cover_url || '/static/demo/store-3.jpg',
+        nextWechatRoomId || null,
+        wechat_anchor_wechat || null,
+        nextCoverMediaId || null,
+        nextShareMediaId || null,
+        anchor_name,
+        status || 'upcoming',
+        start_time,
+        nextEndTime,
+        replay_url || '',
+        JSON.stringify(product_ids || []),
+        '/static/demo/doctor-1.jpg'
+      ]
     );
-    res.json({ code: 200, message: '添加直播成功', data: { id: result.id } });
+    res.json({ code: 200, message: '添加直播成功', data: { id: result.id, wechat_room_id: nextWechatRoomId } });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '添加失败' });
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '添加失败' });
   }
 });
 
 app.put('/api/admin/content/live-rooms/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { title, cover_url, anchor_name, status, start_time, replay_url, product_ids } = req.body;
+  const {
+    title,
+    cover_url,
+    wechat_room_id,
+    wechat_anchor_wechat,
+    wechat_cover_media_id,
+    wechat_share_media_id,
+    anchor_name,
+    status,
+    start_time,
+    replay_url,
+    product_ids,
+    end_time
+  } = req.body;
   try {
     await run(
       `UPDATE live_rooms 
-       SET title = ?, cover_url = ?, anchor_name = ?, status = ?, start_time = ?, replay_url = ?, product_ids = ?
+       SET title = ?, cover_url = ?, wechat_room_id = ?, wechat_anchor_wechat = ?, wechat_cover_media_id = ?, wechat_share_media_id = ?, anchor_name = ?, status = ?, start_time = ?, end_time = ?, replay_url = ?, product_ids = ?
        WHERE id = ?`,
-      [title, cover_url, anchor_name, status, start_time, replay_url || '', JSON.stringify(product_ids || []), id]
+      [
+        title,
+        cover_url,
+        wechat_room_id ? String(wechat_room_id) : null,
+        wechat_anchor_wechat || null,
+        wechat_cover_media_id || null,
+        wechat_share_media_id || null,
+        anchor_name,
+        status,
+        start_time,
+        end_time || null,
+        replay_url || '',
+        JSON.stringify(product_ids || []),
+        id
+      ]
     );
     res.json({ code: 200, message: '编辑成功' });
   } catch (error) {
     res.status(500).json({ code: 500, message: '编辑失败' });
+  }
+});
+
+app.post('/api/admin/content/live-rooms/:id/sync-wechat', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const room = await get(`SELECT * FROM live_rooms WHERE id = ?`, [id]);
+    if (!room) {
+      return res.status(404).json({ code: 404, message: '直播不存在' });
+    }
+    if (!room.wechat_room_id) {
+      return res.status(400).json({ code: 400, message: '请先配置微信直播间ID' });
+    }
+
+    const official = await fetchWechatLiveRoom(room.wechat_room_id);
+    await run(
+      `UPDATE live_rooms
+       SET title = ?, cover_url = ?, anchor_name = ?, status = ?, start_time = ?, end_time = ?
+       WHERE id = ?`,
+      [
+        official.title || room.title,
+        official.coverUrl || room.cover_url,
+        official.anchorName || room.anchor_name,
+        official.status || room.status,
+        official.startTime || room.start_time,
+        official.endTime || room.end_time || null,
+        id
+      ]
+    );
+
+    res.json({
+      code: 200,
+      message: '已同步微信直播间信息',
+      data: {
+        room_id: room.wechat_room_id,
+        live_status: official.raw?.live_status ?? null
+      }
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      code: error.statusCode || 500,
+      message: error.message || '同步微信直播间失败'
+    });
   }
 });
 
@@ -2989,7 +3466,7 @@ app.delete('/api/admin/content/live-rooms/:id', authenticateToken, async (req, r
 app.get('/api/admin/content/articles', authenticateToken, async (req, res) => {
   try {
     const list = await query(
-      `SELECT p.id, p.title, p.content, p.tags, p.likes_count, p.comments_count,
+      `SELECT p.id, p.title, p.content, p.cover_url, p.tags, p.likes_count, p.comments_count,
               p.is_top, p.status, p.created_at, u.nickname, u.phone
        FROM community_posts p
        LEFT JOIN users u ON p.user_id = u.id
@@ -3003,7 +3480,7 @@ app.get('/api/admin/content/articles', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/content/articles', authenticateToken, async (req, res) => {
-  const { title, content, tags = [], status = 'pending' } = req.body;
+  const { title, content, cover_url, tags = [], status = 'pending' } = req.body;
   if (!title || !content) {
     return res.status(400).json({ code: 400, message: '文章标题和正文为必填项' });
   }
@@ -3017,9 +3494,9 @@ app.post('/api/admin/content/articles', authenticateToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '缺少系统用户，无法发布文章' });
     }
     const result = await run(
-      `INSERT INTO community_posts (user_id, user_role, title, content, tags, status)
-       VALUES (?, 'admin', ?, ?, ?, ?)`,
-      [author.id, title, content, JSON.stringify(tags), status === 'draft' ? 'pending' : status]
+      `INSERT INTO community_posts (user_id, user_role, title, content, cover_url, tags, status)
+       VALUES (?, 'admin', ?, ?, ?, ?, ?)`,
+      [author.id, title, content, cover_url || null, JSON.stringify(tags), status === 'draft' ? 'pending' : status]
     );
     await logAdminAction(req.user.id, 'create_article', 'community_post', result.id, { title, status });
     res.json({ code: 200, message: '保存文章成功', data: { id: result.id } });
@@ -3030,7 +3507,7 @@ app.post('/api/admin/content/articles', authenticateToken, async (req, res) => {
 
 app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { status, is_top } = req.body;
+  const { title, content, cover_url, tags, status, is_top } = req.body;
   const post = await get(`SELECT id FROM community_posts WHERE id = ?`, [id]);
   if (!post) {
     return res.status(404).json({ code: 404, message: '内容不存在' });
@@ -3042,11 +3519,24 @@ app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) =
   try {
     await run(
       `UPDATE community_posts
-       SET status = COALESCE(?, status), is_top = COALESCE(?, is_top)
+       SET title = COALESCE(?, title),
+           content = COALESCE(?, content),
+           cover_url = COALESCE(?, cover_url),
+           tags = COALESCE(?, tags),
+           status = COALESCE(?, status),
+           is_top = COALESCE(?, is_top)
        WHERE id = ?`,
-      [status ?? null, typeof is_top === 'boolean' ? (is_top ? 1 : 0) : null, id]
+      [
+        title ?? null,
+        content ?? null,
+        cover_url ?? null,
+        Array.isArray(tags) ? JSON.stringify(tags) : null,
+        status ?? null,
+        typeof is_top === 'boolean' ? (is_top ? 1 : 0) : null,
+        id
+      ]
     );
-    await logAdminAction(req.user.id, 'update_article', 'community_post', id, { status, is_top });
+    await logAdminAction(req.user.id, 'update_article', 'community_post', id, { title, status, is_top });
     res.json({ code: 200, message: '更新内容成功' });
   } catch (error) {
     res.status(500).json({ code: 500, message: '更新内容失败' });
@@ -3277,9 +3767,20 @@ app.post('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, 
 app.get('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const data = await get('SELECT * FROM appointment_pre_exams WHERE appointment_id = ?', [id]);
+    let data = await get('SELECT * FROM appointment_pre_exams WHERE appointment_id = ?', [id]);
+    if (!data) {
+      data = await get(
+        `SELECT ape.* FROM appointment_pre_exams ape
+         JOIN appointments a ON ape.appointment_id = a.id
+         WHERE a.patient_id = (SELECT patient_id FROM appointments WHERE id = ?)
+         ORDER BY a.appointment_date DESC, a.id DESC
+         LIMIT 1`,
+        [id]
+      );
+    }
     res.json({ code: 200, data });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ code: 500, message: '获取体征信息失败' });
   }
 });
@@ -3351,7 +3852,13 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
       }
       const itemPrice = (item.price !== undefined && item.price !== null) ? Number(item.price) : product.price;
       total_amount += itemPrice * quantity;
-      validatedItems.push({ product, quantity, price: itemPrice });
+      validatedItems.push({
+        product,
+        quantity,
+        price: itemPrice,
+        isDistributionSnapshot: Number(product.is_distribution || 0) === 1 ? 1 : 0,
+        commissionRateSnapshot: Number(product.commission_rate || 0)
+      });
     }
     const discount = Math.max(0, parseInt(discount_amount || 0, 10));
     const calculatedPayAmount = Math.max(0, total_amount - discount);
@@ -3363,8 +3870,17 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
       });
     }
 
-    const allowedStatus = ['completed', 'processing', 'shipping', 'paid'];
-    const orderStatus = allowedStatus.includes(status) ? status : 'completed';
+    let orderType = type === 'online' ? 'online' : 'offline';
+    if (status === 'shipping') {
+      orderType = 'online';
+    } else if (status === 'processing' || status === 'paid') {
+      orderType = 'offline';
+    }
+    const orderStatus = status === 'processing'
+      ? 'processing'
+      : orderType === 'online'
+        ? 'shipping'
+        : 'paid';
     const orderId = await transaction(async (conn) => {
       const [orderResult] = await conn.execute(
         `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, shipping_address)
@@ -3372,23 +3888,32 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
         [
           order_no,
           user_id,
-          type || 'offline',
+          orderType,
           total_amount,
           discount,
           coupon_id || null,
           calculatedPayAmount,
           pay_method || 'wechat',
           orderStatus,
-          shipping_address ? (typeof shipping_address === 'string' ? shipping_address : JSON.stringify(shipping_address)) : JSON.stringify({ receiver: patient.name, phone: patient.phone, province: '广东省', city: '深圳市', district: '到店自提', detail: '到店就诊收银' })
+          shipping_address ? (typeof shipping_address === 'string' ? shipping_address : JSON.stringify(shipping_address)) : JSON.stringify({ receiver: patient.name, phone: patient.phone, province: '广东省', city: '深圳市', district: '到店自提', detail: '到店自提', deliveryMethod: 'pickup' })
         ]
       );
       const insertedId = orderResult.insertId;
 
       for (const item of validatedItems) {
         await conn.execute(
-          `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [insertedId, item.product.id, item.product.name, item.product.image_url || '', item.price, item.quantity]
+          `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity, is_distribution_snapshot, commission_rate_snapshot)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            insertedId,
+            item.product.id,
+            item.product.name,
+            item.product.image_url || '',
+            item.price,
+            item.quantity,
+            item.isDistributionSnapshot,
+            item.commissionRateSnapshot
+          ]
         );
 
         if (item.product.category !== 'service') {
@@ -3413,13 +3938,14 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
           [relL1.parent_user_id]
         );
         if (promoter) {
-          const commissionBase = validatedItems.reduce((sum, item) => {
-            const rate = Number(item.product.commission_rate || 0);
+          const distributionItems = validatedItems.filter(item => Number(item.isDistributionSnapshot || 0) === 1);
+          const commissionBase = distributionItems.reduce((sum, item) => {
+            const rate = Number(item.commissionRateSnapshot || 0);
             return sum + Math.round(item.price * item.quantity * rate / 100);
           }, 0);
 
-          let commission = commissionBase;
-          if (commissionBase <= 0) {
+          let commission = distributionItems.length > 0 ? commissionBase : 0;
+          if (distributionItems.length > 0 && commissionBase <= 0) {
             const rateMap = { silver: 0.08, gold: 0.12, diamond: 0.15 };
             const rate = rateMap[promoter.level] || 0.10;
             commission = Math.round(calculatedPayAmount * rate);
@@ -3517,7 +4043,7 @@ app.get('/api/admin/notifications/stats', authenticateToken, async (req, res) =>
   try {
     const pendingWithdraws = await get(`SELECT COUNT(*) as count FROM withdraw_records WHERE status = 'pending'`);
     const pendingAppointments = await get(`SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'`);
-    const pendingOrders = await get(`SELECT COUNT(*) as count FROM orders WHERE status = 'paid'`);
+    const pendingOrders = await get(`SELECT COUNT(*) as count FROM orders WHERE status IN ('paid', 'shipping', 'processing')`);
     res.json({
       code: 200,
       data: {
@@ -3639,7 +4165,16 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
     const updates = req.body;
     await transaction(async (conn) => {
       for (const [key, val] of Object.entries(updates)) {
-        const strVal = String(val);
+        let strVal = String(val);
+        if (key === 'distribution_settle_days') {
+          const days = Number(val);
+          if (!Number.isInteger(days) || days < 0 || days > 365) {
+            const err = new Error('分销佣金结算天数需为0-365之间的整数');
+            err.statusCode = 400;
+            throw err;
+          }
+          strVal = String(days);
+        }
         await conn.execute(
           'INSERT INTO system_settings (key_name, key_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE key_value = ?',
           [key, strVal, strVal]
@@ -3649,7 +4184,7 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
     res.json({ code: 200, message: '设置保存成功' });
   } catch (error) {
     console.error('Update Settings Error:', error);
-    res.status(500).json({ code: 500, message: '保存设置失败' });
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '保存设置失败' });
   }
 });
 

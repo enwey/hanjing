@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { navigateToParent } from '@/utils/routeNavigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -239,7 +240,7 @@ function openBatchEdit() {
 }
 
 function handleBack() {
-  router.push('/doctor')
+  navigateToParent(router, route, '/doctor')
 }
 
 const isSaving = ref(false)
@@ -286,7 +287,7 @@ async function handleSaveAll() {
 
     if (res.code === 200) {
       MessagePlugin.success('保存排班成功')
-      router.push('/doctor')
+      navigateToParent(router, route, '/doctor')
     } else {
       MessagePlugin.error(res.message || '保存排班失败')
     }
@@ -431,7 +432,7 @@ function handleSaveEdit() {
           <div v-for="n in (10 - chunk.length)" :key="'empty-h-' + n" class="grid-header-cell empty-cell"></div>
 
           <!-- Morning Row -->
-          <div class="grid-row-header">🌅 上午</div>
+          <div class="grid-row-header"><AppIcon name="sunrise" /> 上午</div>
           <div
             v-for="(day, index) in chunk"
             :key="'m-' + index"
@@ -455,7 +456,7 @@ function handleSaveEdit() {
           <div v-for="n in (10 - chunk.length)" :key="'empty-m-' + n" class="grid-cell rest-bg empty-cell"></div>
 
           <!-- Afternoon Row -->
-          <div class="grid-row-header">🌇 下午</div>
+          <div class="grid-row-header"><AppIcon name="sunset" /> 下午</div>
           <div
             v-for="(day, index) in chunk"
             :key="'a-' + index"
@@ -482,7 +483,7 @@ function handleSaveEdit() {
       
       <!-- Footer Tip -->
       <div class="panel-footer-tip">
-        💡 点击格子编辑排班：选择门店、设置时段数，若设为“休息”则清空门店
+        <AppIcon name="lightbulb" /> 点击格子编辑排班：选择门店、设置时段数，若设为“休息”则清空门店
       </div>
     </div>
 
@@ -498,10 +499,10 @@ function handleSaveEdit() {
           <label class="form-label">应用时段</label>
           <div style="display: flex; gap: 16px; align-items: center; margin-top: 4px;">
             <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer;">
-              <input type="checkbox" value="morning" v-model="batchPeriod"> 🌅 上午
+              <input type="checkbox" value="morning" v-model="batchPeriod"> <AppIcon name="sunrise" /> 上午
             </label>
             <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer;">
-              <input type="checkbox" value="afternoon" v-model="batchPeriod"> 🌇 下午
+              <input type="checkbox" value="afternoon" v-model="batchPeriod"> <AppIcon name="sunset" /> 下午
             </label>
           </div>
         </div>

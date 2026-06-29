@@ -1,74 +1,94 @@
 "use strict";
-const e = require("../../../common/vendor.js"),
-  t = require("../../../api/index.js"),
-  a = e.defineComponent({
-    __name: "index",
-    setup(a) {
-      const n = e.ref(null),
-        i = e.ref([]),
-        r = (e) => {
-          const t = new Date(e);
-          return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
-        };
-      return (
-        e.onMounted(async () => {
-          var e, a, r, l;
-          const u = getCurrentPages(),
-            d = null == (e = u[u.length - 1].options) ? void 0 : e.id;
-          if (d)
-            try {
-              const e = await t.getLiveRoomDetail(d);
-              if (
-                ((n.value = e.data || e),
-                null == (r = null == (a = n.value) ? void 0 : a.productIds)
-                  ? void 0
-                  : r.length)
-              ) {
-                const e = await t.getProducts(),
-                  a = (null == (l = e.data) ? void 0 : l.list) || e.list || [];
-                i.value = a.filter((e) => n.value.productIds.includes(e.id));
-              }
-            } catch (o) {}
-        }),
-        (t, a) => {
-          return e.e(
-            { a: e.t("1小时30分"), b: n.value },
-            n.value
-              ? {
-                  c: e.t(n.value.title),
-                  d: e.t(n.value.anchorName[0]),
-                  e: e.t(n.value.anchorName),
-                  f: e.t(r(n.value.startTime)),
-                  g: e.t(
-                    ((l = n.value.viewerCount),
-                    l > 1e3 ? (l / 1e3).toFixed(1) + "k" : String(l)),
-                  ),
-                  h: e.t(n.value.description),
-                }
-              : {},
-            { i: i.value.length },
-            i.value.length
-              ? {
-                  j: e.f(i.value, (t, a, n) => ({
-                    a: t.image,
-                    b: e.t(t.name),
-                    c: t.id,
-                    d: e.o((a) => {
-                      return (
-                        (n = "/pages/product/detail?id=" + t.id),
-                        e.index.navigateTo({ url: n })
-                      );
-                      var n;
-                    }, t.id),
-                    e: e.t((t.price / 100).toFixed(0)),
-                  })),
-                }
-              : {},
-          );
-          var l;
-        }
-      );
-    },
-  }),
-  n = e._export_sfc(a, [["__scopeId", "data-v-e4fc628d"]]);
-wx.createPage(n);
+const api = require("../../../api/index.js");
+
+Page({
+  data: {
+    room: null,
+    products: [],
+  },
+
+  onLoad(options) {
+    if (options && options.id) {
+      this.loadDetail(options.id);
+    }
+  },
+
+  async loadDetail(id) {
+    try {
+      const res = await api.getLiveRoomDetail(id);
+      const source = (res && res.data) || res;
+      const room = source ? {
+        ...source,
+        displayTime: this.formatDate(source.startTime),
+        displayViewerCount: this.formatViewerCount(source.viewerCount),
+        actionText: this.getActionText(source.status),
+        anchorInitial: source.anchorName ? source.anchorName.slice(0, 1) : "播",
+        displayDescription: source.description || "进入微信官方直播间可观看直播和回放。",
+        statusText: source.status === "live" ? "直播中" : source.status === "replay" ? "回放中" : "预告中",
+        displayRoomId: source.wechatRoomId || "未配置"
+      } : null;
+      this.setData({ room });
+      if (room && room.productIds && room.productIds.length) {
+        const productRes = await api.getProducts();
+        const list = (productRes && productRes.data && productRes.data.list) || productRes.list || [];
+        const productIdSet = room.productIds.map((item) => String(item));
+        const products = list
+          .filter((item) => productIdSet.includes(String(item.id)))
+          .map((item) => ({
+            ...item,
+            displayPrice: (Number(item.price || 0) / 100).toFixed(2)
+          }));
+        this.setData({ products });
+      }
+    } catch (err) {
+      wx.showToast({ title: "加载直播详情失败", icon: "none" });
+    }
+  },
+
+  formatDate(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  },
+
+  formatViewerCount(value) {
+    const count = Number(value || 0);
+    return count > 1000 ? `${(count / 1000).toFixed(1)}k` : `${count}`;
+  },
+
+  getActionText(status) {
+    if (status === "live") return "进入微信直播间";
+    if (status === "replay") return "进入微信直播间看回放";
+    return "进入微信直播间预约";
+  },
+
+  openWechatLiveRoom() {
+    const room = this.data.room;
+    if (!room || !room.wechatRoomId) {
+      if (room && room.replayUrl) {
+        wx.setClipboardData({
+          data: room.replayUrl,
+          success() {
+            wx.showToast({ title: "已复制回放链接", icon: "none" });
+          }
+        });
+        return;
+      }
+      wx.showToast({ title: "暂未配置微信直播间", icon: "none" });
+      return;
+    }
+
+    wx.navigateTo({
+      url: `plugin-private://wx2b03c6e691cd7370/pages/live-player-plugin?room_id=${room.wechatRoomId}`,
+      fail: () => {
+        wx.showToast({ title: "打开微信直播间失败", icon: "none" });
+      }
+    });
+  },
+
+  openProductDetail(event) {
+    const id = event.currentTarget.dataset.id;
+    wx.navigateTo({ url: `/pages/product/detail?id=${id}` });
+  }
+});

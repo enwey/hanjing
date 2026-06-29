@@ -235,14 +235,28 @@ const computedBmi = computed(() => {
   return ''
 })
 
-const openCheckInDialog = (item: QueueItem) => {
+const openCheckInDialog = async (item: QueueItem) => {
   selectedQueueItem.value = item
   checkInForm.value = {
-    height: '172',
-    weight: '75',
-    systolicBp: '128',
-    diastolicBp: '82',
-    neckCircumference: '38.5'
+    height: '',
+    weight: '',
+    systolicBp: '',
+    diastolicBp: '',
+    neckCircumference: ''
+  }
+  try {
+    const res: any = await request.get(`/api/admin/appointments/${item.id}/pre-exam`)
+    if (res.code === 200 && res.data) {
+      checkInForm.value = {
+        height: res.data.height !== null && res.data.height !== undefined ? String(res.data.height) : '',
+        weight: res.data.weight !== null && res.data.weight !== undefined ? String(res.data.weight) : '',
+        systolicBp: res.data.systolic_bp !== null && res.data.systolic_bp !== undefined ? String(res.data.systolic_bp) : '',
+        diastolicBp: res.data.diastolic_bp !== null && res.data.diastolic_bp !== undefined ? String(res.data.diastolic_bp) : '',
+        neckCircumference: res.data.neck_circumference !== null && res.data.neck_circumference !== undefined ? String(res.data.neck_circumference) : ''
+      }
+    }
+  } catch (error) {
+    console.error(error)
   }
   checkInVisible.value = true
 }
@@ -250,6 +264,19 @@ const openCheckInDialog = (item: QueueItem) => {
 const closeCheckInDialog = () => {
   checkInVisible.value = false
   selectedQueueItem.value = null
+}
+
+async function handleCheckInSkip() {
+  if (!selectedQueueItem.value) return
+  try {
+    await request.put(`/api/admin/appointments/${selectedQueueItem.value.id}`, { status: 'confirmed' })
+    MessagePlugin.success(`患者 ${selectedQueueItem.value.patientName} 签到成功（已跳过体征录入）`)
+    checkInVisible.value = false
+    await fetchAppointments()
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('签到失败')
+  }
 }
 
 async function handleCheckInSubmit() {
@@ -370,8 +397,8 @@ function openCheckoutDialog(item: QueueItem) {
   orderResult.value = null
   
   deliveryType.value = 'offline_direct'
-  shippingReceiver.value = item.patientName || ''
-  shippingPhone.value = item.phone || ''
+  shippingReceiver.value = ''
+  shippingPhone.value = ''
   shippingAddressStr.value = ''
   
   checkoutVisible.value = true
@@ -434,10 +461,28 @@ async function submitCheckout() {
     MessagePlugin.warning('结账明细不能为空')
     return
   }
+  if (deliveryType.value !== 'offline_direct') {
+    if (!shippingReceiver.value || !shippingReceiver.value.trim()) {
+      MessagePlugin.warning('请填写联系人/收件人姓名')
+      return
+    }
+    if (!shippingPhone.value || !shippingPhone.value.trim()) {
+      MessagePlugin.warning('请填写联系电话')
+      return
+    }
+    if (!/^1\d{10}$/.test(shippingPhone.value.trim())) {
+      MessagePlugin.warning('请输入有效的11位手机号码')
+      return
+    }
+  }
+  if (deliveryType.value === 'online' && (!shippingAddressStr.value || !shippingAddressStr.value.trim())) {
+    MessagePlugin.warning('请填写详细收货地址')
+    return
+  }
   checkoutLoading.value = true
   try {
     let orderType = 'offline'
-    let orderStatus = 'completed'
+    let orderStatus = 'paid'
     let shipAddr = null
 
     if (deliveryType.value === 'online') {
@@ -449,7 +494,8 @@ async function submitCheckout() {
         province: '广东省',
         city: '深圳市',
         district: '快递邮寄',
-        detail: shippingAddressStr.value
+        detail: shippingAddressStr.value,
+        deliveryMethod: 'online'
       }
     } else if (deliveryType.value === 'offline_pending') {
       orderType = 'offline'
@@ -460,18 +506,20 @@ async function submitCheckout() {
         province: '广东省',
         city: '深圳市',
         district: '门店自提',
-        detail: '缺货登记（待货通知自提）'
+        detail: '缺货登记（待货通知自提）',
+        deliveryMethod: 'pickup_pending'
       }
     } else {
       orderType = 'offline'
-      orderStatus = 'completed'
+      orderStatus = 'paid'
       shipAddr = {
         receiver: shippingReceiver.value || '到店客户',
         phone: shippingPhone.value || '--',
         province: '广东省',
         city: '深圳市',
         district: '到店自提',
-        detail: '现场拿走'
+        detail: '到店自提',
+        deliveryMethod: 'pickup'
       }
     }
 
@@ -621,19 +669,19 @@ async function submitCreateAppt() {
         <div class="page-title-sub">独立诊室呼叫、体征查阅、病历处方录入与费用结算</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <t-button theme="primary" variant="outline" @click="fetchAppointments" :loading="loading" style="display: inline-flex; align-items: center; gap: 4px;">
+        <button class="btn btn-outline" @click="fetchAppointments" :disabled="loading">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23 4 23 10 17 10"></polyline>
             <polyline points="1 20 1 14 7 14"></polyline>
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>刷新队列
-        </t-button>
-        <t-button theme="primary" @click="openCreateApptDialog" style="display: inline-flex; align-items: center; gap: 4px;">
+        </button>
+        <button class="btn btn-primary" @click="openCreateApptDialog">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>现场登记挂号
-        </t-button>
+        </button>
       </div>
     </div>
 
@@ -783,11 +831,11 @@ async function submitCreateAppt() {
             <!-- Health History Grid (Allergies & Medical History) -->
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px;">
               <div style="background: #FFFBEB; padding: 10px; border-radius: 6px; border-left: 3px solid #F59E0B; text-align: left;">
-                <div style="font-size: 11px; color: #B45309; font-weight: 600; margin-bottom: 2px;">📋 既往病史</div>
+                <div style="font-size: 11px; color: #B45309; font-weight: 600; margin-bottom: 2px;"><AppIcon name="clipboard" />  既往病史</div>
                 <div style="font-size: 12px; color: #D97706; white-space: pre-wrap;">{{ currentPatient.medicalHistory || '暂无既往病史记录' }}</div>
               </div>
               <div style="background: #FEF2F2; padding: 10px; border-radius: 6px; border-left: 3px solid #EF4444; text-align: left;">
-                <div style="font-size: 11px; color: #B91C1C; font-weight: 600; margin-bottom: 2px;">🚫 药物与过敏史</div>
+                <div style="font-size: 11px; color: #B91C1C; font-weight: 600; margin-bottom: 2px;"><AppIcon name="x-circle" />  药物与过敏史</div>
                 <div style="font-size: 12px; color: #DC2626; white-space: pre-wrap;">{{ currentPatient.allergyHistory || '暂无过敏史记录' }}</div>
               </div>
             </div>
@@ -966,7 +1014,7 @@ async function submitCreateAppt() {
           <div class="queue-list">
             <div v-for="item in completedQueue" :key="item.id" class="queue-item-row completed">
               <div class="queue-item-left" style="display: flex; align-items: center; gap: 8px;">
-                <span class="queue-idx checked" style="width: 20px; text-align: center;">✓</span>
+                <span class="queue-idx checked" style="width: 20px; text-align: center;"><AppIcon name="check-circle" :size="14" /></span>
                 <t-avatar size="32px" :style="{ background: getAvatarColor(item.patientName), fontSize: '12px', fontWeight: '700', color: '#FFF', flexShrink: 0 }">
                   {{ item.patientName.slice(0, 1) }}
                 </t-avatar>
@@ -1053,47 +1101,47 @@ async function submitCreateAppt() {
       </div>
     </t-dialog>
 
-    <!-- 签到预检体征录入弹窗 -->
     <t-dialog
       v-model:visible="checkInVisible"
-      header="患者报到签到 & 预检体征录入"
+      header="到店签到 & 预检体征录入"
       width="480px"
-      confirm-btn="确认签到"
-      cancel-btn="取消"
-      @confirm="handleCheckInSubmit"
+      :footer="null"
       @cancel="closeCheckInDialog"
     >
       <div class="dialog-body-form" style="padding: 10px 0;">
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">就诊人姓名</label>
-          <input type="text" class="form-control" :value="selectedQueueItem?.patientName" disabled style="background-color: #F3F4F6;">
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">患者姓名</label>
+          <input type="text" class="form-control" :value="selectedQueueItem?.patientName || selectedQueueItem?.patient" disabled style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
         </div>
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">身高 (cm) <span class="required" style="color: #EF4444;">*</span></label>
-          <input v-model="checkInForm.height" type="number" class="form-control" placeholder="输入身高（例如：175）">
+          <input type="number" class="form-control" v-model="checkInForm.height" placeholder="请输入身高，如 175" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
         </div>
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">体重 (kg) <span class="required" style="color: #EF4444;">*</span></label>
-          <input v-model="checkInForm.weight" type="number" class="form-control" placeholder="输入体重（例如：70）">
+          <input type="number" class="form-control" v-model="checkInForm.weight" placeholder="请输入体重，如 70" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
         </div>
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
-          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">血压 (收缩压/舒张压, mmHg)</label>
-          <div style="display: flex; gap: 10px;">
-            <input v-model="checkInForm.systolicBp" type="number" class="form-control" placeholder="高压 (如：120)" style="flex: 1;">
-            <input v-model="checkInForm.diastolicBp" type="number" class="form-control" placeholder="低压 (如：80)" style="flex: 1;">
-          </div>
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">收缩压 (mmHg)</label>
+          <input type="number" class="form-control" v-model="checkInForm.systolicBp" placeholder="请输入收缩压，如 120" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">舒张压 (mmHg)</label>
+          <input type="number" class="form-control" v-model="checkInForm.diastolicBp" placeholder="请输入舒张压，如 80" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
         </div>
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">颈围 (cm)</label>
-          <input v-model="checkInForm.neckCircumference" type="number" step="0.1" class="form-control" placeholder="输入测量颈围（例如：38）">
+          <input type="number" class="form-control" v-model="checkInForm.neckCircumference" placeholder="请输入颈围，如 38" style="width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
         </div>
-        <div v-if="computedBmi" style="margin-top: 10px; font-size: 13px; color: #1E40AF; background: #EFF6FF; padding: 10px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-            <path d="M9 18h6"></path>
-            <path d="M10 22h4"></path>
-            <path d="M15 13a5 5 0 0 0 3-4.5c0-3.5-3.5-5.5-6-5.5s-6 2-6 5.5A5 5 0 0 0 9 13l1 2h4l1-2z"></path>
-          </svg>
-          <span>自动推算患者 BMI 指数：<strong>{{ computedBmi }}</strong></span>
+        <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">BMI</label>
+          <input type="text" class="form-control" :value="computedBmi" disabled placeholder="输入身高体重后自动计算" style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none; margin-bottom: 16px;">
+        </div>
+        <!-- Custom Footer -->
+        <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+          <t-button variant="outline" theme="default" @click="closeCheckInDialog">取消</t-button>
+          <t-button variant="outline" theme="warning" @click="handleCheckInSkip">跳过录入直接签到</t-button>
+          <t-button theme="primary" @click="handleCheckInSubmit">确认签到</t-button>
         </div>
       </div>
     </t-dialog>

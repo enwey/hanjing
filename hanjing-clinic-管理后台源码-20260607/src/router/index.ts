@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import BasicLayout from '@/layouts/BasicLayout.vue'
+import { resolveMenuPathFromRoute } from '@/utils/routeNavigation'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -127,7 +128,19 @@ const router = createRouter({
           path: 'products',
           name: 'products',
           component: () => import('@/views/distribution/products.vue'),
-          meta: { title: '推广商品管理' }
+          meta: { title: '商品管理' }
+        },
+        {
+          path: 'products/edit/:id',
+          name: 'products-edit-id',
+          component: () => import('@/views/distribution/edit.vue'),
+          meta: { title: '编辑商品', parentPath: '/products' }
+        },
+        {
+          path: 'products/edit',
+          name: 'products-edit',
+          component: () => import('@/views/distribution/edit.vue'),
+          meta: { title: '添加商品', parentPath: '/products' }
         },
         {
           path: 'promoter/detail/:id',
@@ -152,6 +165,12 @@ const router = createRouter({
           name: 'content-edit',
           component: () => import('@/views/content/edit.vue'),
           meta: { title: '新建文章', parentPath: '/content' }
+        },
+        {
+          path: 'live',
+          name: 'content-live',
+          component: () => import('@/views/content/live.vue'),
+          meta: { title: '直播管理' }
         },
         {
           path: 'banner',
@@ -226,7 +245,35 @@ const router = createRouter({
 
 import request from '@/utils/request'
 
+function shouldPreserveNavigationContext(to: any, from: any) {
+  const targetMeta = to.matched[to.matched.length - 1]?.meta || {}
+  if (!targetMeta.parentPath) return false
+  if (!from?.name || from.name === 'login') return false
+  if (to.fullPath === from.fullPath) return false
+  if (typeof to.query.from === 'string' && to.query.from) return false
+  if (typeof to.query.menu === 'string' && to.query.menu) return false
+  return true
+}
+
 router.beforeEach(async (to, from, next) => {
+  const continueNavigation = () => {
+    if (shouldPreserveNavigationContext(to, from)) {
+      next({
+        path: to.path,
+        query: {
+          ...to.query,
+          from: from.fullPath,
+          menu: resolveMenuPathFromRoute(from)
+        },
+        hash: to.hash,
+        replace: true
+      })
+      return
+    }
+
+    next()
+  }
+
   const token = localStorage.getItem('auth_token')
   if (to.name !== 'login' && !token) {
     next({ name: 'login' })
@@ -240,7 +287,7 @@ router.beforeEach(async (to, from, next) => {
         const res: any = await request.get('/api/admin/me')
         if (res && res.code === 200) {
           localStorage.setItem('user_info', JSON.stringify(res.data))
-          next()
+          continueNavigation()
         } else {
           localStorage.removeItem('auth_token')
           localStorage.removeItem('user_info')
@@ -255,7 +302,7 @@ router.beforeEach(async (to, from, next) => {
     }
   }
   
-  next()
+  continueNavigation()
 })
 
 export default router

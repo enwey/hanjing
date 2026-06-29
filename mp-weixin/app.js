@@ -5,6 +5,64 @@ Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 const e = require("./common/vendor.js");
 Math;
 
+function parseInviteCodeFromOptions(options) {
+  let inviteCode = "";
+  if (options && options.query) {
+    inviteCode = options.query.inviteCode || options.query.invite_code || "";
+    if (options.query.scene) {
+      const sceneStr = decodeURIComponent(options.query.scene);
+      if (sceneStr.indexOf("=") > -1) {
+        const sceneParams = {};
+        sceneStr.split("&").forEach((pair) => {
+          const parts = pair.split("=");
+          if (parts[0]) {
+            sceneParams[parts[0]] = parts.slice(1).join("=");
+          }
+        });
+        inviteCode = sceneParams.invite_code || sceneParams.inviteCode || sceneParams.code || inviteCode;
+      } else {
+        inviteCode = sceneStr;
+      }
+    }
+  }
+  return String(inviteCode || "").trim();
+}
+
+async function tryBindPendingInvite(inviteCode) {
+  if (!inviteCode) return;
+  const token = e.index.getStorageSync("access_token");
+  if (!token) return;
+
+  try {
+    const api = require("./api/index.js");
+    const res = await api.bindDistribution(inviteCode);
+    const status = (res && res.data && res.data.status) || (res && res.status) || "bound";
+    if (status === "bound" || status === "already_bound" || status === "ignored_self") {
+      e.index.removeStorageSync("pending_invite_code");
+    }
+    console.log("[鼾静健康] 邀请绑定结果:", status);
+  } catch (err) {
+    if (
+      err &&
+      (err.message === "无效的邀请码" ||
+        err.message === "邀请码不能为空" ||
+        err.message === "未授权或登录过期")
+    ) {
+      e.index.removeStorageSync("pending_invite_code");
+    }
+    console.error("[鼾静健康] 邀请绑定失败", err);
+  }
+}
+
+function handleInviteOptions(options) {
+  const inviteCode = parseInviteCodeFromOptions(options);
+  if (!inviteCode) return;
+
+  console.log("[鼾静健康] 监测到推荐邀请码:", inviteCode);
+  e.index.setStorageSync("pending_invite_code", inviteCode);
+  tryBindPendingInvite(inviteCode);
+}
+
 const o = e.defineComponent({
   __name: "App",
   setup: (o) => {
@@ -13,45 +71,7 @@ const o = e.defineComponent({
       if (!e.index.getStorageSync("access_token")) {
         console.log("[鼾静健康] 未登录");
       }
-
-      // Parse and store invite code
-      let inviteCode = "";
-      if (options && options.query) {
-        inviteCode = options.query.inviteCode || options.query.invite_code || "";
-        if (options.query.scene) {
-          const sceneStr = decodeURIComponent(options.query.scene);
-          if (sceneStr.indexOf("=") > -1) {
-            const sceneParams = {};
-            sceneStr.split("&").forEach((pair) => {
-              const parts = pair.split("=");
-              if (parts[0]) {
-                sceneParams[parts[0]] = parts.slice(1).join("=");
-              }
-            });
-            inviteCode = sceneParams.invite_code || sceneParams.inviteCode || sceneParams.code || inviteCode;
-          } else {
-            inviteCode = sceneStr;
-          }
-        }
-      }
-      inviteCode = String(inviteCode || "").trim();
-
-      if (inviteCode) {
-        console.log("[鼾静健康] 监测到推荐邀请码:", inviteCode);
-        e.index.setStorageSync("pending_invite_code", inviteCode);
-
-        // Try bind
-        const token = e.index.getStorageSync("access_token");
-        if (token) {
-          const api = require("./api/index.js");
-          api.bindDistribution(inviteCode).then(() => {
-            console.log("[鼾静健康] 启动时成功绑定推荐人");
-            e.index.removeStorageSync("pending_invite_code");
-          }).catch(err => {
-            console.error("[鼾静健康] 启动绑定推荐人失败", err);
-          });
-        }
-      }
+      handleInviteOptions(options);
 
       // Global error logging and tracking
       if (wx.onError) {
@@ -87,8 +107,9 @@ const o = e.defineComponent({
       }
     });
 
-    e.onShow(() => {
-      console.log("[鼾静健康] App Show");
+    e.onShow((options) => {
+      console.log("[鼾静健康] App Show", options);
+      handleInviteOptions(options);
     });
 
     e.onHide(() => {

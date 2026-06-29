@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { navigateToParent } from '@/utils/routeNavigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,51 +13,387 @@ const orderId = ref(route.params.id as string || '1')
 const order = ref<any>({
   id: orderId.value,
   no: '',
-  status: '', // paid (待发货), shipped (已发货)
+  status: '',
   createTime: '',
+  payTime: '',
+  updateTime: '',
   patient: '',
   phone: '',
   address: '',
+  receiverLabel: '收货人',
+  addressLabel: '收货地址',
+  infoTitle: '收货信息',
   price: 0,
-  productName: '',
-  productDesc: '',
-  productIcon: '📦',
-  qty: 1,
+  productIcon: 'box',
+  items: [],
+  commissions: [],
+  totalAmount: 0,
+  discountAmount: 0,
+  payMethod: '',
   type: 'offline',
-  shipping_address_raw: ''
+  shipping_address: {}
 })
 
 const showShip = ref(false)
 const carrier = ref('顺丰速运')
 const trackingNo = ref('')
 
+function parseAddress(value: any) {
+  if (!value) return {}
+  if (typeof value !== 'string') return value
+  try {
+    return JSON.parse(value || '{}')
+  } catch (error) {
+    return {}
+  }
+}
+
+function formatFen(amount: number) {
+  return (Number(amount || 0) / 100).toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+}
+
+function formatDateTime(value: string) {
+  if (!value) return ''
+  return value.replace('T', ' ').slice(0, 16)
+}
+
+function maskPhone(phone: string) {
+  if (!phone || phone === '未绑定') return '未绑定'
+  const p = phone.trim()
+  if (p.length === 11) {
+    return p.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+  }
+  if (p.length > 4) {
+    return p.slice(0, 3) + '****' + p.slice(-4)
+  }
+  return p
+}
+
+const getAvatarColor = (name: string) => {
+  if (!name) return '#3B6BF5'
+  const colors = ['#3B6BF5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+}
+
+function commissionTitle(level: number) {
+  return level === 1 ? '一级推广员' : level === 2 ? '二级推广员' : `${level}级推广员`
+}
+
+function commissionStatus(status: string) {
+  const map: Record<string, string> = {
+    pending: '待结算',
+    settled: '已结算',
+    refunded: '已退佣'
+  }
+  return map[status] || status || '待结算'
+}
+
+const activeCommissions = computed(() => {
+  return (order.value.commissions || []).filter((item: any) => item.status !== 'refunded')
+})
+
+const commissionTotal = computed(() => {
+  return activeCommissions.value.reduce((sum: number, item: any) => sum + Number(item.commission_amount || 0), 0)
+})
+
+const platformIncome = computed(() => {
+  return Math.max(0, Number(order.value.price || 0) * 100 - commissionTotal.value)
+})
+
+const timelineItems = computed(() => {
+  const result: Array<{ time: string; title: string; content: string; theme: string }> = []
+  
+  // 1. 下单创建 (始终存在并且已完成)
+  result.push({
+    time: order.value.createTime || '',
+    title: '下单创建',
+    content: `订单创建，订单金额 ¥${formatFen(order.value.totalAmount)}`,
+    theme: 'green'
+  })
+
+  const status = order.value.status
+  const type = order.value.type
+
+  // 2. 区分取消流程与退款流程
+  if (status === 'cancelled') {
+    result.push({
+      time: order.value.updateTime || '',
+      title: '订单已取消',
+      content: '订单已取消关闭，库存及已占用优惠券已释放。',
+      theme: 'gray'
+    })
+    return result
+  }
+
+  if (status === 'refunding' || status === 'refund_pending' || status === 'refunded') {
+    // 支付成功
+    result.push({
+      time: order.value.payTime || '',
+      title: '支付成功',
+      content: `${order.value.payMethod || '微信支付'}，实付 ¥${formatFen(order.value.price * 100)}`,
+      theme: 'green'
+    })
+    // 申请退款
+    result.push({
+      time: order.value.updateTime || '',
+      title: '申请退款',
+      content: `用户已提交退款申请，原因: ${order.value.shipping_address?.refund_reason || '正常退款'}`,
+      theme: 'green'
+    })
+    // 退款结果
+    if (status === 'refunded') {
+      result.push({
+        time: order.value.updateTime || '',
+        title: '退款成功',
+        content: '管理员已审核通过，退款资金原路退回，分销佣金已退回。',
+        theme: 'green'
+      })
+    } else {
+      result.push({
+        time: '进行中',
+        title: '退款审核中',
+        content: '退款申请已提交，等待管理员审核处理。',
+        theme: 'gold'
+      })
+    }
+    return result
+  }
+
+  // 3. 实付成功流程 (线上配送或门店自提)
+  // 支付成功
+  const hasPaid = ['paid', 'shipping', 'shipped', 'processing', 'completed'].includes(status)
+  if (hasPaid || order.value.payTime) {
+    result.push({
+      time: order.value.payTime || '',
+      title: '支付成功',
+      content: `${order.value.payMethod || '微信支付'}，实付 ¥${formatFen(order.value.price * 100)}`,
+      theme: 'green'
+    })
+  } else {
+    result.push({
+      time: '待处理',
+      title: '支付成功',
+      content: '等待用户完成付款。',
+      theme: 'gray'
+    })
+  }
+
+  if (type === 'offline') {
+    // 【流程二：门店自提流程】
+    // 自提待到货
+    if (status === 'processing') {
+      result.push({
+        time: '进行中',
+        title: '自提待到货',
+        content: '自提订单已支付，等待商品到店。',
+        theme: 'gold'
+      })
+      result.push({
+        time: '待处理',
+        title: '待到店取货',
+        content: '商品到店后，将发送到货通知并等待患者取货。',
+        theme: 'gray'
+      })
+      result.push({
+        time: '待处理',
+        title: '提货完成',
+        content: '患者到店并出示凭证，核销后交易完成。',
+        theme: 'gray'
+      })
+    } else if (status === 'paid') {
+      result.push({
+        time: order.value.updateTime || '',
+        title: '商品已到店',
+        content: '商品已配货到店，已发送到货消息通知。',
+        theme: 'green'
+      })
+      result.push({
+        time: '进行中',
+        title: '待到店取货',
+        content: '等待患者到店提取设备及配件。',
+        theme: 'gold'
+      })
+      result.push({
+        time: '待处理',
+        title: '提货完成',
+        content: '患者到店并出示凭证，核销后交易完成。',
+        theme: 'gray'
+      })
+    } else if (status === 'completed') {
+      result.push({
+        time: order.value.updateTime || '',
+        title: '商品已到店',
+        content: '商品已配货到店并完成自提通知。',
+        theme: 'green'
+      })
+      result.push({
+        time: order.value.updateTime || '',
+        title: '到店已取货',
+        content: '患者已到店，核对无误后提走商品。',
+        theme: 'green'
+      })
+      result.push({
+        time: order.value.updateTime || '',
+        title: '提货完成',
+        content: '自提商品已核销交付，订单交易成功完成。',
+        theme: 'green'
+      })
+    } else {
+      // 待付款状态
+      result.push({
+        time: '待处理',
+        title: '自提待到货',
+        content: '等待商品到店。',
+        theme: 'gray'
+      })
+      result.push({
+        time: '待处理',
+        title: '待到店取货',
+        content: '等待患者到店取货。',
+        theme: 'gray'
+      })
+      result.push({
+        time: '待处理',
+        title: '提货完成',
+        content: '患者到店并出示凭证，核销后交易完成。',
+        theme: 'gray'
+      })
+    }
+  } else {
+    // 【流程一：快递邮寄流程】
+    // 待发货 / 已发货
+    if (status === 'shipping' || status === 'paid') {
+      result.push({
+        time: '进行中',
+        title: '待发货',
+        content: '快递订单已支付，等待仓库分拣并录入物流运单发货。',
+        theme: 'gold'
+      })
+      result.push({
+        time: '待处理',
+        title: '已发货',
+        content: '商品发出后，可在此查询物流运单追踪。',
+        theme: 'gray'
+      })
+      result.push({
+        time: '待处理',
+        title: '订单完成',
+        content: '用户签收或自动收货后，交易成功完成。',
+        theme: 'gray'
+      })
+    } else if (status === 'shipped') {
+      result.push({
+        time: order.value.updateTime || '',
+        title: '已发货',
+        content: `商品已发出。${carrier.value || '快递公司'}: ${trackingNo.value || '运单发出'}`,
+        theme: 'green'
+      })
+      result.push({
+        time: '进行中',
+        title: '待确认收货',
+        content: '商品运输中，等待患者确认收货。',
+        theme: 'gold'
+      })
+      result.push({
+        time: '待处理',
+        title: '订单完成',
+        content: '用户签收并确认，或系统到期自动收货后交易完成。',
+        theme: 'gray'
+      })
+    } else if (status === 'completed') {
+      result.push({
+        time: order.value.updateTime || '',
+        title: '已发货',
+        content: `商品已发出。${carrier.value || '快递公司'}: ${trackingNo.value || '配送成功'}`,
+        theme: 'green'
+      })
+      result.push({
+        time: order.value.updateTime || '',
+        title: '已确认收货',
+        content: '患者已签收并确认收到商品。',
+        theme: 'green'
+      })
+      result.push({
+        time: order.value.updateTime || '',
+        title: '订单完成',
+        content: '订单交易已全部成功完成，已转入售后服务期。',
+        theme: 'green'
+      })
+    } else {
+      // 待付款状态
+      result.push({
+        time: '待处理',
+        title: '待发货',
+        content: '等待仓库录入运单发货。',
+        theme: 'gray'
+      })
+      result.push({
+        time: '待处理',
+        title: '已发货',
+        content: '商品发出后将产生物流追踪。',
+        theme: 'gray'
+      })
+      result.push({
+        time: '待处理',
+        title: '订单完成',
+        content: '确认收货后交易完成。',
+        theme: 'gray'
+      })
+    }
+  }
+
+  return result
+})
+
 const fetchOrderDetail = async () => {
   try {
     const res: any = await request.get(`/api/admin/orders/${orderId.value}`)
     if (res.code === 200 && res.data) {
       const o = res.data
-      let addr: any = {}
-      try {
-        addr = JSON.parse(o.shipping_address || '{}')
-      } catch(e) {}
-
-      const item = o.items && o.items[0] ? o.items[0] : { product_name: '服务费', price: o.pay_amount, quantity: 1 }
+      const addr: any = parseAddress(o.shipping_address)
+      const items = Array.isArray(o.items) ? o.items : []
+      const firstItem = items[0] || {}
+      const isOnline = o.type === 'online'
+      carrier.value = addr.express_company || carrier.value
+      trackingNo.value = addr.tracking_number || ''
       
       order.value = {
         id: o.id.toString(),
         no: o.order_no,
         status: o.status,
-        createTime: o.created_at ? o.created_at.replace('T', ' ').substring(0, 19) : '',
+        createTime: formatDateTime(o.created_at),
+        payTime: formatDateTime(o.pay_time || o.paid_at || ''),
+        updateTime: formatDateTime(o.updated_at),
         patient: addr.receiver || o.user_name || '患者',
         phone: addr.phone || o.user_phone || '未绑定',
-        address: o.type === 'online' ? addr.detail : `门店自提 (${addr.status || '现场直接提走'})`,
+        address: isOnline ? (addr.detail || '未填写收货地址') : (addr.detail || addr.store_name || addr.status || '门店自提'),
+        receiverLabel: isOnline ? '收货人' : '取货人',
+        addressLabel: isOnline ? '收货地址' : '自提信息',
+        infoTitle: isOnline ? '收货信息' : '自提信息',
+        userName: o.user_name || '普通成员',
+        userPhone: maskPhone(o.user_phone),
+        userAvatar: o.user_avatar || '',
+        userId: o.user_id ? o.user_id.toString() : '',
         price: o.pay_amount / 100,
-        productName: item.product_name,
-        productDesc: o.items && o.items.length > 1 ? `共 ${o.items.length} 件商品` : (item.product_desc || '鼾静相关服务商品'),
-        productIcon: '📦',
-        qty: item.quantity || 1,
+        totalAmount: Number(o.total_amount || o.pay_amount || 0),
+        discountAmount: Number(o.discount_amount || 0),
+        payMethod: o.pay_method || '微信支付',
+        productIcon: 'box',
+        items: items.length > 0 ? items : [{
+          product_name: firstItem.product_name || '订单商品',
+          price: o.pay_amount,
+          quantity: 1
+        }],
+        commissions: Array.isArray(o.commissions) ? o.commissions : [],
         type: o.type,
-        shipping_address_raw: o.shipping_address
+        shipping_address: addr
       }
     }
   } catch (error) {
@@ -70,11 +407,7 @@ onMounted(() => {
 })
 
 function handleBack() {
-  router.push('/order')
-}
-
-function handlePrint() {
-  MessagePlugin.success('已打印小票凭证')
+  navigateToParent(router, route, '/order')
 }
 
 function handleConfirmShip() {
@@ -144,113 +477,149 @@ async function handleNotifyOrder() {
         <div class="page-title">
           {{ order.no }}
           <span class="status-tag gold" v-if="order.status === 'shipping'">待发货</span>
+          <span class="status-tag blue" v-else-if="order.status === 'paid'">待取货</span>
           <span class="status-tag blue" v-else-if="order.status === 'processing'">自提待到货</span>
           <span class="status-tag green" v-else-if="order.status === 'completed'">已完成</span>
           <span class="status-tag green" v-else-if="order.status === 'shipped'">已发货</span>
+          <span class="status-tag red" v-else-if="order.status === 'refunding' || order.status === 'refund_pending'">退款中</span>
           <span class="status-tag red" v-else-if="order.status === 'refunded'">已退款</span>
         </div>
         <div class="page-title-sub">下单时间 {{ order.createTime }}</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" @click="handlePrint">🖨️ 打印小票</button>
         <!-- For online shipping -->
-        <button class="btn btn-primary" v-if="order.type === 'online' && order.status === 'shipping'" @click="handleConfirmShip">📦 确认发货</button>
+        <button class="btn btn-primary" v-if="order.type === 'online' && order.status === 'shipping'" @click="handleConfirmShip"><AppIcon name="box" />  确认发货</button>
         <!-- For offline pending self-pickup -->
-        <button class="btn btn-outline" v-if="order.type === 'offline' && order.status === 'processing'" @click="handleNotifyOrder" style="margin-right: 8px;">🔔 到货通知</button>
-        <button class="btn btn-success" v-if="order.type === 'offline' && order.status === 'processing'" @click="handleCompleteOrder">✅ 完成自提核销</button>
+        <button class="btn btn-outline" v-if="order.type === 'offline' && order.status === 'processing'" @click="handleNotifyOrder" style="margin-right: 8px;"><AppIcon name="bell" />  到货通知</button>
+        <button class="btn btn-success" v-if="order.type === 'offline' && (order.status === 'processing' || order.status === 'paid')" @click="handleCompleteOrder"><AppIcon name="check-circle" />  完成自提核销</button>
       </div>
     </div>
 
-    <!-- Grid: Merchandise & Recipient Info -->
+    <!-- Grid: Order User Info & Delivery Info -->
     <div class="card-grid-2">
-      <!-- Merchandise Info -->
-      <div class="panel" style="margin: 0;">
-        <div class="panel-header"><div class="panel-title">📦 商品信息</div></div>
-        <div class="panel-body">
-          <div style="display: flex; gap: 14px; align-items: flex-start;">
-            <div class="product-icon-lg">{{ order.productIcon }}</div>
-            <div style="flex: 1;">
-              <div style="font-size: 16px; font-weight: 700; color: #111827;">{{ order.productName }}</div>
-              <div style="font-size: 12px; color: #6B7280; margin-top: 2px;">{{ order.productDesc }}</div>
-              <div style="font-size: 12px; color: #9CA3AF; margin-top: 6px;">× {{ order.qty }}</div>
-            </div>
-            <div style="text-align: right;">
-              <div style="font-size: 20px; font-weight: 800; color: var(--primary-500);">¥{{ order.price.toLocaleString() }}</div>
+      <!-- Member Info (会员信息) -->
+      <div class="panel" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
+        <div class="panel-header"><div class="panel-title"><AppIcon name="patient" />  会员信息</div></div>
+        <div class="panel-body" style="display: flex; align-items: center; gap: 16px; padding: 24px 20px; flex: 1;">
+          <img v-if="order.userAvatar" :src="order.userAvatar" style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid #F3F4F6;" />
+          <div v-else :style="{ width: '56px', height: '56px', borderRadius: '50%', background: getAvatarColor(order.userName), color: '#FFF', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: '700', flexShrink: 0 }">
+            {{ (order.userName || 'U')[0] }}
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 18px; font-weight: 700; color: #111827;">{{ order.userName }}</div>
+            <div style="font-size: 13px; color: #6B7280; display: flex; align-items: center; gap: 6px;">
+              <span style="background: #F3F4F6; color: #4B5563; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">手机号</span>
+              <span style="font-weight: 600; color: #374151;">{{ order.userPhone }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Recipient Info -->
+      <!-- Delivery & Logistics Info -->
       <div class="panel" style="margin: 0;">
-        <div class="panel-header"><div class="panel-title">🧑‍⚕️ 收货信息</div></div>
+        <div class="panel-header">
+          <div class="panel-title">
+            <AppIcon :name="order.type === 'online' ? 'box' : 'bell'" />  
+            {{ order.type === 'online' ? '配送与物流' : '自提与核销' }}
+          </div>
+        </div>
         <div class="info-grid">
-          <div class="info-item"><div class="info-label">收货人</div><div class="info-value">{{ order.patient }}</div></div>
+          <!-- Receiver Details -->
+          <div class="info-item"><div class="info-label">{{ order.receiverLabel }}</div><div class="info-value">{{ order.patient }}</div></div>
           <div class="info-item"><div class="info-label">联系电话</div><div class="info-value">{{ order.phone }}</div></div>
           <div class="info-item" style="grid-column: span 2;">
-            <div class="info-label">收货地址</div>
+            <div class="info-label">{{ order.addressLabel }}</div>
             <div class="info-value" style="font-size: 13px; line-height: 1.5;">{{ order.address }}</div>
           </div>
+
+          <!-- Logistics Info for Online -->
+          <template v-if="order.type === 'online'">
+            <div class="info-item" style="border-left: none;"><div class="info-label">配送方式</div><div class="info-value">快递邮寄</div></div>
+            <div class="info-item" style="border-left: 1px solid #F9FAFB;"><div class="info-label">物流公司</div><div class="info-value">{{ carrier || '暂无' }}</div></div>
+            <div class="info-item" style="grid-column: span 2; border-left: none;">
+              <div class="info-label">物流追踪 / 快递单号</div>
+              <div v-if="trackingNo" class="info-value" style="font-size: 14px; font-weight: 700; color: var(--primary-500);">
+                {{ trackingNo }}
+              </div>
+              <div v-else class="info-value" style="font-size: 13px; color: #9CA3AF; font-weight: normal; display: flex; justify-content: space-between; align-items: center;">
+                <span>待发货 (暂无快递单号)</span>
+                <button class="btn btn-outline" @click="handleConfirmShip" style="padding: 4px 10px; font-size: 12px; height: 28px; line-height: 1;"><AppIcon name="box" /> 录入发货</button>
+              </div>
+            </div>
+          </template>
+
+          <!-- Self-pickup Info for Offline -->
+          <template v-else>
+            <div v-if="order.status === 'processing' || order.status === 'paid'" class="info-item" style="grid-column: span 2; display: flex; align-items: center; justify-content: flex-end; gap: 6px; border-left: none;">
+              <button class="btn btn-outline" v-if="order.status === 'processing'" @click="handleNotifyOrder" style="padding: 4px 10px; font-size: 12px; height: 28px; line-height: 1;"><AppIcon name="bell" /> 通知到货</button>
+              <button class="btn btn-success" v-if="order.status === 'processing' || order.status === 'paid'" @click="handleCompleteOrder" style="padding: 4px 10px; font-size: 12px; height: 28px; line-height: 1; border: 1px solid #BBF7D0; background: #ECFDF5; color: #16A34A;"><AppIcon name="check-circle" /> 提货核销</button>
+            </div>
+          </template>
         </div>
       </div>
     </div>
 
     <!-- Commission Panel -->
     <div class="panel" style="margin-top: 16px;">
-      <div class="panel-header"><div class="panel-title">💰 分销佣金</div></div>
+      <div class="panel-header"><div class="panel-title"><AppIcon name="money" />  分销佣金</div></div>
       <div class="panel-body">
-        <div class="commission-flow">
-          <div class="commission-card blue-bg">
-            <div class="comm-label">一级推广员</div>
-            <div class="comm-name">赵芳芳</div>
-            <div class="comm-value">¥1,068</div>
-            <div class="comm-percent">12%</div>
-          </div>
-          <div class="flow-arrow">→</div>
-          <div class="commission-card gold-bg">
-            <div class="comm-label">二级推广员</div>
-            <div class="comm-name">李雪琴</div>
-            <div class="comm-value">¥267</div>
-            <div class="comm-percent">3%</div>
-          </div>
-          <div class="flow-arrow">→</div>
+        <div v-if="order.commissions.length === 0" class="empty-state">该订单未产生分销佣金</div>
+        <div v-else class="commission-flow">
+          <template v-for="commission in order.commissions" :key="commission.id">
+            <div class="commission-card" :class="commission.commission_level === 1 ? 'blue-bg' : 'gold-bg'">
+              <div class="comm-label">{{ commissionTitle(Number(commission.commission_level || 1)) }}</div>
+              <div class="comm-name">{{ commission.promoter_name || '推广员' }}</div>
+              <div class="comm-value">¥{{ formatFen(commission.commission_amount) }}</div>
+              <div class="comm-percent">{{ commissionStatus(commission.status) }}</div>
+            </div>
+            <div class="flow-arrow">→</div>
+          </template>
           <div class="commission-card green-bg">
             <div class="comm-label">平台收入</div>
             <div class="comm-name">—</div>
-            <div class="comm-value" style="color: var(--success-500);">¥7,565</div>
-            <div class="comm-percent">85%</div>
+            <div class="comm-value" style="color: var(--success-500);">¥{{ formatFen(platformIncome) }}</div>
+            <div class="comm-percent">实付扣除未退佣金</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Merchandise Info -->
+    <div class="panel" style="margin-top: 16px;">
+      <div class="panel-header"><div class="panel-title"><AppIcon name="box" />  商品信息</div></div>
+      <div class="panel-body">
+        <div
+          v-for="item in order.items"
+          :key="item.id || item.product_id || item.product_name"
+          style="display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid #F9FAFB;"
+        >
+          <div class="product-icon-lg"><AppIcon :name="order.productIcon" size="32" /></div>
+          <div style="flex: 1;">
+            <div style="font-size: 16px; font-weight: 700; color: #111827;">{{ item.product_name }}</div>
+            <div style="font-size: 12px; color: #6B7280; margin-top: 2px;">单价 ¥{{ formatFen(item.price) }}</div>
+            <div style="font-size: 12px; color: #9CA3AF; margin-top: 6px;">× {{ item.quantity || 1 }}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 20px; font-weight: 800; color: var(--primary-500);">¥{{ formatFen(Number(item.price || 0) * Number(item.quantity || 1)) }}</div>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 18px; margin-top: 16px; font-size: 13px; color: #6B7280;">
+          <span>商品总额 ¥{{ formatFen(order.totalAmount) }}</span>
+          <span v-if="order.discountAmount > 0">优惠 ¥{{ formatFen(order.discountAmount) }}</span>
+          <strong style="color: var(--primary-500);">实付 ¥{{ formatFen(order.price * 100) }}</strong>
         </div>
       </div>
     </div>
 
     <!-- Order Timeline -->
     <div class="panel" style="margin-top: 16px;">
-      <div class="panel-header"><div class="panel-title">📋 订单流程</div></div>
+      <div class="panel-header"><div class="panel-title"><AppIcon name="clipboard" />  订单流程</div></div>
       <div class="panel-body">
         <div class="timeline">
-          <div class="timeline-item">
-            <div class="timeline-dot green"></div>
-            <div class="timeline-time">5/29 10:22</div>
-            <div class="timeline-content"><strong>下单成功</strong> — 微信支付 ¥8,900.00（交易号：wx20260529102235）</div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-dot green"></div>
-            <div class="timeline-time">5/29 10:22</div>
-            <div class="timeline-content"><strong>支付成功</strong> — 佣金冻结：一级 ¥1,068 / 二级 ¥267</div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-dot" :class="order.status === 'shipped' ? 'green' : 'gold'"></div>
-            <div class="timeline-time">5/29 10:23</div>
-            <div class="timeline-content">
-              <strong>{{ order.status === 'shipped' ? '已发货' : '待发货' }}</strong> — 
-              {{ order.status === 'shipped' ? '顺丰速运单号 ' + trackingNo : '等待仓库发出CPAP设备' }}
-            </div>
-          </div>
-          <div class="timeline-item">
-            <div class="timeline-dot gray"></div>
-            <div class="timeline-time">待处理</div>
-            <div class="timeline-content" style="color: #9CA3AF;">确认收货 → 佣金解冻 → 7天售后期满</div>
+          <div v-for="item in timelineItems" :key="`${item.title}-${item.time}`" class="timeline-item">
+            <div class="timeline-dot" :class="item.theme"></div>
+            <div class="timeline-time">{{ item.time || '待处理' }}</div>
+            <div class="timeline-content"><strong>{{ item.title }}</strong> — {{ item.content }}</div>
           </div>
         </div>
       </div>
@@ -405,6 +774,11 @@ async function handleNotifyOrder() {
   border-color: #BCCFFF;
   color: var(--primary-500);
 }
+.btn-success {
+  background: #ECFDF5;
+  color: #16A34A;
+  border: 1px solid #BBF7D0;
+}
 
 /* Grids */
 .card-grid-2 {
@@ -496,6 +870,14 @@ async function handleNotifyOrder() {
 .flow-arrow {
   font-size: 20px;
   color: #D1D5DB;
+}
+.empty-state {
+  padding: 24px;
+  border: 1px dashed #E5E7EB;
+  border-radius: 10px;
+  color: #9CA3AF;
+  text-align: center;
+  font-size: 13px;
 }
 
 /* Timeline */
@@ -604,5 +986,19 @@ select.form-control {
 }
 .status-tag.gold::before {
   background: #F59E0B;
+}
+.status-tag.blue {
+  background: #EEF2FF;
+  color: #4F46E5;
+}
+.status-tag.blue::before {
+  background: #6366F1;
+}
+.status-tag.red {
+  background: #FEF2F2;
+  color: #DC2626;
+}
+.status-tag.red::before {
+  background: #EF4444;
 }
 </style>

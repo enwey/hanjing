@@ -14,78 +14,6 @@ const a = () => "../../components/base/hj-navbar.js",
         r = e.ref("all"),
         c = e.ref([]),
         o = e.ref(!0),
-        l = [
-          {
-            id: "prod-001",
-            name: "鼾静 HJ-MAD-03 下颌前移式阻鼾器",
-            desc: "医疗级定制材料，精准前移量调节",
-            price: 89800,
-            originalPrice: 128e3,
-            image: "",
-            category: "device",
-            sales: 1280,
-            badge: "热销",
-          },
-          {
-            id: "prod-002",
-            name: "鼾静 HJ-MAD-01 基础款阻鼾器",
-            desc: "适合初次使用，舒适轻薄设计",
-            price: 59800,
-            originalPrice: 79800,
-            image: "",
-            category: "device",
-            sales: 860,
-            badge: "入门推荐",
-          },
-          {
-            id: "prod-003",
-            name: "阻鼾器专用清洁片（30片装）",
-            desc: "温和无刺激，彻底去除异味细菌",
-            price: 5800,
-            originalPrice: 7800,
-            image: "",
-            category: "accessory",
-            sales: 3200,
-          },
-          {
-            id: "prod-004",
-            name: "阻鼾器收纳保护盒",
-            desc: "透气防尘，旅行携带方便",
-            price: 2800,
-            image: "",
-            category: "accessory",
-            sales: 980,
-          },
-          {
-            id: "prod-005",
-            name: "前移量调节工具套装",
-            desc: "专业调节辅助工具，精准每步 0.5mm",
-            price: 3500,
-            image: "",
-            category: "accessory",
-            sales: 420,
-          },
-          {
-            id: "prod-006",
-            name: "睡眠健康管理套餐（3个月）",
-            desc: "含初诊评估 + 设备定制 + 3次复诊随访",
-            price: 158e3,
-            originalPrice: 218e3,
-            image: "",
-            category: "service",
-            sales: 156,
-            badge: "限时优惠",
-          },
-          {
-            id: "prod-007",
-            name: "在线复诊服务（单次）",
-            desc: "视频面诊，医生远程评估调整方案",
-            price: 19900,
-            image: "",
-            category: "service",
-            sales: 340,
-          },
-        ],
         d = e.computed(() =>
           "all" === r.value
             ? c.value
@@ -111,12 +39,11 @@ const a = () => "../../components/base/hj-navbar.js",
               ...item,
               sales: item.salesCount !== undefined ? item.salesCount : item.sales
             }));
-          } else {
-            c.value = l;
           }
         } catch (err) {
           console.error("加载商品列表错误", err);
-          c.value = l;
+          e.index.showToast({ title: err.message || "商品加载失败", icon: "none" });
+          c.value = [];
         } finally {
           o.value = !1;
         }

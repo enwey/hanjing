@@ -37,7 +37,7 @@
         ><text class="sales data-v-5e948475">已售 {{m}}</text></view
       ><view class="section data-v-5e948475"
         ><text class="section-title data-v-5e948475">商品详情</text
-        ><text class="desc data-v-5e948475">{{n}}</text></view
+        ><rich-text class="desc-rich data-v-5e948475" nodes="{{n}}"></rich-text></view
       ></view
     ><view class="bottom-bar data-v-5e948475"
       ><view class="bottom-price data-v-5e948475"
@@ -64,20 +64,33 @@
             <view class="qty-btn data-v-5e948475" bindtap="increaseQty">+</view>
           </view>
         </view>
+        <view class="checkout-delivery-section data-v-5e948475">
+          <text class="checkout-section-title data-v-5e948475">配送方式</text>
+          <view class="delivery-options data-v-5e948475">
+            <view class="delivery-option {{deliveryMethod === 'online' ? 'active' : ''}} data-v-5e948475" bindtap="selectDeliveryOnline">
+              <text class="delivery-title data-v-5e948475">快递邮寄</text>
+              <text class="delivery-desc data-v-5e948475">支付后进入待发货</text>
+            </view>
+            <view class="delivery-option {{deliveryMethod === 'pickup' ? 'active' : ''}} data-v-5e948475" bindtap="selectDeliveryPickup">
+              <text class="delivery-title data-v-5e948475">到店自提</text>
+              <text class="delivery-desc data-v-5e948475">支付后进入待取货</text>
+            </view>
+          </view>
+        </view>
         <view class="checkout-address-section data-v-5e948475">
           <view class="checkout-section-head data-v-5e948475">
-            <text class="checkout-section-title data-v-5e948475">收货人信息</text>
-            <text class="checkout-address-choose data-v-5e948475" bindtap="chooseWxAddress">选择微信地址</text>
+            <text class="checkout-section-title data-v-5e948475">{{isOnlineDelivery ? '收货人信息' : '取货人信息'}}</text>
+            <text wx:if="{{isOnlineDelivery}}" class="checkout-address-choose data-v-5e948475" bindtap="chooseWxAddress">选择微信地址</text>
           </view>
           <view class="input-group data-v-5e948475">
-            <text class="input-label data-v-5e948475">收货人</text>
-            <input class="checkout-input data-v-5e948475" type="text" value="{{contactName}}" bindinput="inputName" placeholder="收货人姓名" />
+            <text class="input-label data-v-5e948475">{{isOnlineDelivery ? '收货人' : '取货人'}}</text>
+            <input class="checkout-input data-v-5e948475" type="text" value="{{contactName}}" bindinput="inputName" placeholder="{{isOnlineDelivery ? '收货人姓名' : '取货人姓名'}}" />
           </view>
           <view class="input-group data-v-5e948475">
             <text class="input-label data-v-5e948475">联系电话</text>
             <input class="checkout-input data-v-5e948475" type="number" value="{{phone}}" bindinput="inputPhone" placeholder="联系手机号" />
           </view>
-          <view class="input-group data-v-5e948475">
+          <view wx:if="{{isOnlineDelivery}}" class="input-group data-v-5e948475">
             <text class="input-label data-v-5e948475">详细地址</text>
             <input class="checkout-input data-v-5e948475" type="text" value="{{detailAddress}}" bindinput="inputDetail" placeholder="省市区及详细地址" />
           </view>

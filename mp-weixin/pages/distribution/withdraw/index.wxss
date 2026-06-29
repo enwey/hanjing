@@ -120,6 +120,11 @@
   font-size: 36rpx;
   color: #1f2937;
 }
+.bank-input.data-v-6825c219 {
+  flex: 1;
+  font-size: 28rpx;
+  color: #1f2937;
+}
 .method-row.data-v-6825c219 {
   display: flex;
   gap: 16rpx;

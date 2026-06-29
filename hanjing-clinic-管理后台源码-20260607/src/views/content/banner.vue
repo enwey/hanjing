@@ -224,7 +224,7 @@ watch(operationColumnWidth, () => {
         <div class="page-title">轮播图管理</div>
         <div class="page-title-sub">小程序首页轮播Banner</div>
       </div>
-      <button class="btn btn-primary" @click="handleAdd">➕ 添加轮播图</button>
+      <button class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" />  添加轮播图</button>
     </div>
 
     <!-- Banner List Table -->
@@ -262,7 +262,7 @@ watch(operationColumnWidth, () => {
           type="text" 
           v-model="searchKeyword" 
           class="filter-input" 
-          placeholder="🔍 搜索标题/跳转链接" 
+          placeholder="搜索标题/跳转链接" 
           style="width: 200px;"
         >
       </div>
@@ -361,7 +361,7 @@ watch(operationColumnWidth, () => {
         </div>
         <div class="form-group">
           <label class="form-label">预览文字</label>
-          <input type="text" class="form-control" v-model="formData.previewText" placeholder="例如：💤 睡眠日特惠">
+          <input type="text" class="form-control" v-model="formData.previewText" placeholder="例如：睡眠日特惠">
         </div>
         <div class="form-group">
           <label class="form-label">背景颜色 (CSS Linear-gradient 或 Hex)</label>

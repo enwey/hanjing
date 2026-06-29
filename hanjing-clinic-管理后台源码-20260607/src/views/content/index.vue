@@ -178,14 +178,14 @@ watch(operationColumnWidth, () => {
         <div class="page-title">科普文章</div>
         <div class="page-title-sub">共 {{ stats.total }} 篇科普文章，包含 {{ stats.pending }} 篇待审核内容</div>
       </div>
-      <button class="btn btn-primary" @click="router.push('/content/edit')">➕ 撰写科普文章</button>
+      <button class="btn btn-primary" @click="router.push('/content/edit')"><AppIcon name="plus" />  撰写科普文章</button>
     </div>
 
     <!-- 统计卡片 -->
     <div class="stat-grid-3">
       <div class="stat-card">
         <div class="stat-card-header">
-          <div class="stat-card-icon blue">📝</div>
+          <div class="stat-card-icon blue"><AppIcon name="file-text" /> </div>
         </div>
         <div class="stat-card-value" style="color: #3B6BF5;">
           {{ stats.total }}
@@ -261,7 +261,7 @@ watch(operationColumnWidth, () => {
             type="text" 
             v-model="searchKeyword" 
             class="filter-input" 
-            placeholder="🔍 搜索标题/作者" 
+            placeholder="搜索标题/作者" 
             style="width: 200px;"
           >
         </div>

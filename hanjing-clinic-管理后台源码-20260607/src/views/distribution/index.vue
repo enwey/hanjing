@@ -25,10 +25,10 @@ function yuan(value: number) {
 }
 
 function levelEmoji(level: string) {
-  if (level === 'diamond') return '💎'
-  if (level === 'gold') return '🥇'
-  if (level === 'silver') return '🥈'
-  return '🌱'
+  if (level === 'diamond') return 'gem'
+  if (level === 'gold') return 'medal-gold'
+  if (level === 'silver') return 'medal-silver'
+  return 'sprout'
 }
 
 function levelLabel(level: string) {
@@ -85,8 +85,8 @@ onMounted(fetchDistribution)
         <div class="page-title-sub">管理分销员、佣金及推广数据</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-outline" @click="handleExport">📥 导出报表</button>
-        <button class="btn btn-primary" @click="router.push('/settings')">⚙️ 分销设置</button>
+        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出报表</button>
+        <button class="btn btn-primary" @click="router.push('/settings')"><AppIcon name="settings" />  分销设置</button>
       </div>
     </div>
 
@@ -94,7 +94,7 @@ onMounted(fetchDistribution)
     <div class="stat-grid">
       <div class="stat-card">
         <div class="stat-card-header">
-          <div class="stat-card-icon gold">💰</div>
+          <div class="stat-card-icon gold"><AppIcon name="money" /> </div>
           <div class="stat-card-trend up">↑ 32%</div>
         </div>
         <div class="stat-card-value" style="color:#F5A623;">¥{{ yuan(overview.totalCommission) }}</div>
@@ -102,7 +102,7 @@ onMounted(fetchDistribution)
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
-          <div class="stat-card-icon blue">👥</div>
+          <div class="stat-card-icon blue"><AppIcon name="team" /> </div>
           <div class="stat-card-trend up">↑ 15%</div>
         </div>
         <div class="stat-card-value">{{ overview.activePromoters }}</div>
@@ -110,7 +110,7 @@ onMounted(fetchDistribution)
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
-          <div class="stat-card-icon green">📦</div>
+          <div class="stat-card-icon green"><AppIcon name="box" /> </div>
           <div class="stat-card-trend up">↑ 28%</div>
         </div>
         <div class="stat-card-value">{{ overview.promotedOrders }}</div>
@@ -118,7 +118,7 @@ onMounted(fetchDistribution)
       </div>
       <div class="stat-card">
         <div class="stat-card-header">
-          <div class="stat-card-icon red">🔄</div>
+          <div class="stat-card-icon red"><AppIcon name="refresh" /> </div>
           <div class="stat-card-trend up">↑ 5%</div>
         </div>
         <div class="stat-card-value">{{ overview.invitedUsers }}</div>
@@ -131,7 +131,7 @@ onMounted(fetchDistribution)
       <!-- Leaderboard -->
       <div class="panel" style="margin-bottom:0;">
         <div class="panel-header">
-          <div class="panel-title">🏆 推广员业绩排行榜 (Top 5)</div>
+          <div class="panel-title"><AppIcon name="trophy" />  推广员业绩排行榜 (Top 5)</div>
           <button class="btn btn-sm btn-outline" @click="router.push('/promoter')">管理推广员</button>
         </div>
         <div class="panel-body" style="padding: 0;">
@@ -148,9 +148,9 @@ onMounted(fetchDistribution)
             <tbody>
               <tr v-for="row in leaderBoard" :key="row.rank">
                 <td style="font-weight: 700; text-align: center; color: #9CA3AF;">
-                  <span v-if="row.rank === 1" style="color: #FFD700;">🥇</span>
-                  <span v-else-if="row.rank === 2" style="color: #C0C0C0;">🥈</span>
-                  <span v-else-if="row.rank === 3" style="color: #CD7F32;">🥉</span>
+                  <span v-if="row.rank === 1" style="color: #FFD700;"><AppIcon name="medal-gold" /> </span>
+                  <span v-else-if="row.rank === 2" style="color: #C0C0C0;"><AppIcon name="medal-silver" /> </span>
+                  <span v-else-if="row.rank === 3" style="color: #CD7F32;"><AppIcon name="medal-bronze" /> </span>
                   <span v-else>{{ row.rank }}</span>
                 </td>
                 <td>
@@ -163,7 +163,7 @@ onMounted(fetchDistribution)
                 </td>
                 <td>
                   <span style="font-size:11px;padding:2px 8px;border-radius:12px;background:#F3F4F6;color:#4B5563;font-weight:600;">
-                    {{ row.emoji }} {{ row.level }}
+                    <AppIcon :name="row.emoji" /> {{ row.level }}
                   </span>
                 </td>
                 <td style="font-weight:600;">{{ row.orders }}</td>
@@ -177,7 +177,7 @@ onMounted(fetchDistribution)
       <!-- Recent Commissions -->
       <div class="panel" style="margin-bottom:0;">
         <div class="panel-header">
-          <div class="panel-title">⚡ 近期分销业绩动态</div>
+          <div class="panel-title"><AppIcon name="bolt" />  近期分销业绩动态</div>
           <button class="btn btn-sm btn-outline" @click="router.push('/withdraw')">去审批提现</button>
         </div>
         <div class="panel-body" style="padding: 0;">

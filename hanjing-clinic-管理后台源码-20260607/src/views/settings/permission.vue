@@ -120,9 +120,9 @@ watch(operationColumnWidth, () => {
         <div class="page-title">权限管理</div>
         <div class="page-title-sub">配置系统的角色类型，自定义不同岗位管理员的功能访问与操作权限。</div>
       </div>
-      <t-button theme="primary" @click="handleAddRole">
-        <template #icon>➕</template>添加角色
-      </t-button>
+      <button class="btn btn-primary" @click="handleAddRole">
+        <AppIcon name="plus" />  添加角色
+      </button>
     </div>
 
     <!-- Panel Wrapper -->

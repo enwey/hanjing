@@ -18,22 +18,28 @@ export const resizable: Directive = {
 
     const checkScrollable = () => {
       if (!parent) return
+      const parentWidth = parent.clientWidth
+      const lastTh = headers[headers.length - 1]
       
       // Calculate total columns width by summing the parsed width of all header elements.
       // For the last column (Operations), we use its minWidth or its bounding box width.
       let totalWidth = 0
       headers.forEach((th, idx) => {
         if (idx === headers.length - 1) {
-          const minW = parseFloat(th.style.minWidth) || 80
+          const minW = parseFloat(th.style.minWidth) || parseFloat(th.style.width) || 80
           totalWidth += minW
         } else {
-          const w = parseFloat(th.style.width) || th.getBoundingClientRect().width
+          const styleW = th.style.width
+          let w = 0
+          if (styleW && styleW.includes('%')) {
+            const pct = parseFloat(styleW) / 100
+            w = Math.max(parseFloat(th.style.minWidth) || 0, pct * parentWidth)
+          } else {
+            w = parseFloat(styleW) || th.getBoundingClientRect().width
+          }
           totalWidth += w
         }
       })
-      
-      const parentWidth = parent.clientWidth
-      const lastTh = headers[headers.length - 1]
       
       if (totalWidth > parentWidth) {
         el.classList.add('is-scrollable')
@@ -49,7 +55,7 @@ export const resizable: Directive = {
         el.style.minWidth = '100%'
         // In stretched 100% mode, clear the last column's width style so it expands to fill the container
         if (lastTh) {
-          lastTh.style.width = ''
+          lastTh.style.width = lastTh.style.minWidth || ''
         }
       }
     }
@@ -117,6 +123,8 @@ export const resizable: Directive = {
         const onMouseUp = () => {
           document.removeEventListener('mousemove', onMouseMove)
           document.removeEventListener('mouseup', onMouseUp)
+          el.style.tableLayout = ''
+          checkScrollable()
         }
 
         document.addEventListener('mousemove', onMouseMove)

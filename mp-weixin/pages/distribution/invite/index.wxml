@@ -23,7 +23,8 @@
             >告别打鼾<view class="data-v-466378e0"></view
             >让每一晚都睡得安稳</text
           ><view class="poster-qr data-v-466378e0"
-            ><text class="data-v-466378e0">扫码咨询</text></view
+            ><image wx:if="{{e}}" class="poster-qr-image data-v-466378e0" src="{{e}}" mode="aspectFill" />
+            <text wx:else class="data-v-466378e0">扫码咨询</text></view
           ></view
         ><view class="poster-bottom data-v-466378e0"
           >长按保存海报，分享给好友</view

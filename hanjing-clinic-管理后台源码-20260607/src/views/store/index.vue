@@ -22,15 +22,15 @@ const initialStores: Store[] = [
   { id: '1', name: '鼾静健康 · 龙岗总店', code: 'SZ-HQ', address: '深圳市龙岗区吉华路达成工业区3号',
     phone: '0755-8888-1001', openTime: '08:30', closeTime: '18:00', doctors: 4, devices: 8,
     monthBookings: 156, monthRevenue: '¥22.8w', status: 'open', manager: '陈经理',
-    features: ['VIP室', '睡眠监测', '直播室', '儿童专区'], icon: '🏥', iconBg: 'linear-gradient(135deg, #EEF4FF, #D9E6FF)' },
+    features: ['VIP室', '睡眠监测', '直播室', '儿童专区'], icon: 'store', iconBg: 'linear-gradient(135deg, #EEF4FF, #D9E6FF)' },
   { id: '2', name: '鼾静健康 · 南山分院', code: 'SZ-NS', address: '深圳市南山区科技园南区数字大厦2楼',
     phone: '0755-8888-1002', openTime: '09:00', closeTime: '17:30', doctors: 3, devices: 4,
     monthBookings: 98, monthRevenue: '¥10.5w', status: 'open', manager: '张经理',
-    features: ['睡眠监测', '直播室'], icon: '🏡', iconBg: 'linear-gradient(135deg, #EDFBF5, #D3F5E3)' },
+    features: ['睡眠监测', '直播室'], icon: 'store', iconBg: 'linear-gradient(135deg, #EDFBF5, #D3F5E3)' },
   { id: '3', name: '鼾静健康 · 福田门诊部', code: 'SZ-FT', address: '深圳市福田区深南大道财富大厦A座3楼',
     phone: '0755-8888-1003', openTime: '08:30', closeTime: '20:00', doctors: 5, devices: 10,
     monthBookings: 213, monthRevenue: '¥5.3w', status: 'open', manager: '赵经理',
-    features: ['睡眠监测'], icon: '🏬', iconBg: 'linear-gradient(135deg, #FFF7ED, #FFEDD5)' }
+    features: ['睡眠监测'], icon: 'store', iconBg: 'linear-gradient(135deg, #FFF7ED, #FFEDD5)' }
 ]
 
 const stores = ref<Store[]>([])
@@ -38,7 +38,7 @@ const stores = ref<Store[]>([])
 const fetchStores = async () => {
   try {
     const res: any = await request.get('/api/admin/stores')
-    const icons = ['🏥', '🏡', '🏬']
+    const icons = ['store', 'store', 'store']
     const iconBgs = [
       'linear-gradient(135deg, #EEF4FF, #D9E6FF)',
       'linear-gradient(135deg, #EDFBF5, #D3F5E3)',
@@ -117,7 +117,7 @@ async function saveEdit() {
         <div class="page-title">门店管理</div>
         <div class="page-title-sub">管理所有门店/诊所信息</div>
       </div>
-      <button class="btn btn-primary">➕ 新增门店</button>
+      <button class="btn btn-primary"><AppIcon name="plus" />  新增门店</button>
     </div>
 
     <!-- 门店卡片 -->
@@ -136,7 +136,7 @@ async function saveEdit() {
               justifyContent: 'center',
               fontSize: '36px',
               flexShrink: 0
-            }">{{ store.icon }}</div>
+            }"><AppIcon :name="store.icon" size="36" /></div>
             <div style="flex:1; min-width: 0;">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
                 <span style="font-size:16px;font-weight:700;color:#111827;">{{ store.name }}</span>
@@ -146,7 +146,7 @@ async function saveEdit() {
               </div>
               <div style="font-size:12px;color:#6B7280;line-height:1.6;" :title="store.address">{{ store.address }}</div>
               <div style="font-size:12px;color:#9CA3AF;margin-top:4px;">
-                📞 {{ store.phone }} · 🕐 {{ store.status === 'prepare' ? '待定' : store.hours.map(h => `${h.openTime}-${h.closeTime}`).join(' ') }}
+                <AppIcon name="phone" /> {{ store.phone }} · <AppIcon name="clock" /> {{ store.status === 'prepare' ? '待定' : store.hours.map(h => `${h.openTime}-${h.closeTime}`).join(' ') }}
               </div>
               <!-- Tags / Features -->
               <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">

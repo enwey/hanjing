@@ -162,6 +162,11 @@
   font-size: 20rpx;
   color: #6b7280;
 }
+.poster-qr-image.data-v-466378e0 {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 12rpx;
+}
 .poster-bottom.data-v-466378e0 {
   text-align: center;
   padding: 20rpx;

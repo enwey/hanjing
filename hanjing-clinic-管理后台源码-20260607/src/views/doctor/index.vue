@@ -270,7 +270,7 @@ function handleNextWeek() {
         <div class="page-title">医生管理</div>
         <div class="page-title-sub">管理坐诊医生信息与排班</div>
       </div>
-      <button class="btn btn-primary" @click="handleAddDoctor">➕ 添加医生</button>
+      <button class="btn btn-primary" @click="handleAddDoctor"><AppIcon name="plus" />  添加医生</button>
     </div>
 
     <!-- Doctor Cards Grid -->

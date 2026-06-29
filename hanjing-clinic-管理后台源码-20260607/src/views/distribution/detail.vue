@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
+import { navigateToParent } from '@/utils/routeNavigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,7 +29,7 @@ const commissions = ref([
 ])
 
 function handleBack() {
-  router.push('/promoter')
+  navigateToParent(router, route, '/promoter')
 }
 
 function handleFreeze() {
@@ -55,15 +56,15 @@ function handleEdit() {
       <div>
         <div class="page-title">
           {{ promoter.name }}
-          <span class="level-badge">💎 钻石</span>
+          <span class="level-badge"><AppIcon name="gem" />  钻石</span>
         </div>
         <div class="page-title-sub">注册于 {{ promoter.regDate }} · 推广码 {{ promoter.code }}</div>
       </div>
       <div class="action-buttons">
         <button class="btn btn-danger" @click="handleFreeze">
-          {{ promoter.status === '正常' ? '🚫 冻结账号' : '🔓 解冻账号' }}
+          {{ promoter.status === '正常' ? '冻结账号' : '解冻账号' }}
         </button>
-        <button class="btn btn-outline" @click="handleEdit">✏️ 编辑</button>
+        <button class="btn btn-outline" @click="handleEdit"><AppIcon name="edit" />  编辑</button>
       </div>
     </div>
 
@@ -82,28 +83,28 @@ function handleEdit() {
         <!-- Stats cards -->
         <div class="card-grid-4">
           <div class="mini-stat">
-            <div class="mini-stat-icon" style="background: var(--primary-100); color: var(--primary-500);">👥</div>
+            <div class="mini-stat-icon" style="background: var(--primary-100); color: var(--primary-500);"><AppIcon name="team" /> </div>
             <div>
               <div class="mini-stat-value">56</div>
               <div class="mini-stat-label">一级下线</div>
             </div>
           </div>
           <div class="mini-stat">
-            <div class="mini-stat-icon" style="background: var(--success-100); color: var(--success-500);">👥</div>
+            <div class="mini-stat-icon" style="background: var(--success-100); color: var(--success-500);"><AppIcon name="team" /> </div>
             <div>
               <div class="mini-stat-value">128</div>
               <div class="mini-stat-label">二级下线</div>
             </div>
           </div>
           <div class="mini-stat">
-            <div class="mini-stat-icon" style="background: #FFF9E6; color: #D4930A;">📦</div>
+            <div class="mini-stat-icon" style="background: #FFF9E6; color: #D4930A;"><AppIcon name="box" /> </div>
             <div>
               <div class="mini-stat-value">342</div>
               <div class="mini-stat-label">推广订单</div>
             </div>
           </div>
           <div class="mini-stat">
-            <div class="mini-stat-icon" style="background: var(--error-100); color: #D4930A;">💰</div>
+            <div class="mini-stat-icon" style="background: var(--error-100); color: #D4930A;"><AppIcon name="money" /> </div>
             <div>
               <div class="mini-stat-value" style="color: #D4930A;">¥18,640</div>
               <div class="mini-stat-label">累计佣金</div>
@@ -113,12 +114,12 @@ function handleEdit() {
 
         <!-- Team Relationship Preview -->
         <div class="panel" style="margin-top: 16px;">
-          <div class="panel-header"><div class="panel-title">🌳 团队关系</div></div>
+          <div class="panel-header"><div class="panel-title"><AppIcon name="tree" />  团队关系</div></div>
           <div class="panel-body">
             <div class="tree-node">
               <div class="avatar avatar-sm" style="background: linear-gradient(135deg,#8B5CF6,#6D28D9);">赵</div>
               <strong>赵芳芳</strong>
-              <span class="tree-badge purple">💎 钻石</span>
+              <span class="tree-badge purple"><AppIcon name="gem" />  钻石</span>
               <span style="font-size: 12px; color: #9CA3AF; margin-left: auto;">一级 · 56人</span>
             </div>
             <div class="tree-children">
@@ -126,20 +127,20 @@ function handleEdit() {
               <div class="tree-node tree-line">
                 <div class="avatar avatar-sm" style="background: #F59E0B; font-size: 11px;">李</div>
                 <strong style="font-size: 13px;">李雪琴</strong>
-                <span class="tree-badge gold">🥇 金</span>
+                <span class="tree-badge gold"><AppIcon name="medal-gold" />  金</span>
                 <span style="font-size: 11px; color: #9CA3AF; margin-left: 8px;">二级下线 45人</span>
               </div>
               <div class="tree-children">
                 <div class="tree-node tree-line">
                   <div class="avatar avatar-sm" style="background: #D1D5DB; font-size: 10px; color: #4B5563;">孙</div>
                   <span style="font-size: 13px;">孙大鹏</span>
-                  <span class="tree-badge silver">🥈 银</span>
+                  <span class="tree-badge silver"><AppIcon name="medal-silver" />  银</span>
                   <span style="font-size: 11px; color: #9CA3AF;">3人</span>
                 </div>
                 <div class="tree-node tree-line">
                   <div class="avatar avatar-sm" style="background: #EC4899; font-size: 10px;">陈</div>
                   <span style="font-size: 13px;">陈小红</span>
-                  <span class="tree-badge silver">🥈 银</span>
+                  <span class="tree-badge silver"><AppIcon name="medal-silver" />  银</span>
                   <span style="font-size: 11px; color: #9CA3AF;">5人</span>
                 </div>
               </div>
@@ -148,7 +149,7 @@ function handleEdit() {
               <div class="tree-node tree-line">
                 <div class="avatar avatar-sm" style="background: #10B981; font-size: 11px;">王</div>
                 <strong style="font-size: 13px;">王秀兰</strong>
-                <span class="tree-badge gold">🥇 金</span>
+                <span class="tree-badge gold"><AppIcon name="medal-gold" />  金</span>
                 <span style="font-size: 11px; color: #9CA3AF; margin-left: 8px;">二级下线 32人</span>
               </div>
 
@@ -156,7 +157,7 @@ function handleEdit() {
               <div class="tree-node tree-line">
                 <div class="avatar avatar-sm" style="background: #6B7280; font-size: 11px;">刘</div>
                 <span style="font-size: 13px;">刘建国</span>
-                <span class="tree-badge silver">🥈 银</span>
+                <span class="tree-badge silver"><AppIcon name="medal-silver" />  银</span>
                 <span style="font-size: 11px; color: #9CA3AF; margin-left: 8px;">8人</span>
               </div>
               
@@ -171,7 +172,7 @@ function handleEdit() {
       <!-- Tab 2: Team (Dedicated Tree View) -->
       <div v-if="activeTab === 'team'">
         <div class="panel" style="margin: 0;">
-          <div class="panel-header"><div class="panel-title">👥 下级团队明细</div></div>
+          <div class="panel-header"><div class="panel-title"><AppIcon name="team" />  下级团队明细</div></div>
           <div class="panel-body" style="padding: 0;">
             <table class="data-table">
               <thead>
@@ -187,21 +188,21 @@ function handleEdit() {
                 <tr>
                   <td style="font-weight: 600;">李雪琴</td>
                   <td>LIP023</td>
-                  <td><span class="tree-badge gold">🥇 金</span></td>
+                  <td><span class="tree-badge gold"><AppIcon name="medal-gold" />  金</span></td>
                   <td>92</td>
                   <td>2025-09-02</td>
                 </tr>
                 <tr>
                   <td style="font-weight: 600;">王秀兰</td>
                   <td>WAP082</td>
-                  <td><span class="tree-badge gold">🥇 金</span></td>
+                  <td><span class="tree-badge gold"><AppIcon name="medal-gold" />  金</span></td>
                   <td>74</td>
                   <td>2025-10-18</td>
                 </tr>
                 <tr>
                   <td style="font-weight: 600;">刘建国</td>
                   <td>LIP089</td>
-                  <td><span class="tree-badge silver">🥈 银</span></td>
+                  <td><span class="tree-badge silver"><AppIcon name="medal-silver" />  银</span></td>
                   <td>18</td>
                   <td>2025-11-05</td>
                 </tr>

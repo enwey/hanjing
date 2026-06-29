@@ -100,12 +100,21 @@
   background: #d3f5e3;
   color: #1a9d5c;
 }
+.item-tag.approved.data-v-1157dc5a,
+.item-tag.transferred.data-v-1157dc5a {
+  background: #d3f5e3;
+  color: #1a9d5c;
+}
 .item-tag.pending.data-v-1157dc5a,
 .item-tag.processing.data-v-1157dc5a {
   background: #fff9e6;
   color: #f5a623;
 }
 .item-tag.failed.data-v-1157dc5a {
+  background: #fee2e2;
+  color: #ef4444;
+}
+.item-tag.rejected.data-v-1157dc5a {
   background: #fee2e2;
   color: #ef4444;
 }

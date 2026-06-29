@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { resolveBreadcrumbs, resolveMenuPathFromRoute } from '@/utils/routeNavigation'
 
 const router = useRouter()
 const route = useRoute()
@@ -65,13 +66,14 @@ const menuGroups = computed(() => [
         badge: notifStats.value.withdrawCount > 0 ? String(notifStats.value.withdrawCount) : undefined, 
         badgeColor: 'gold' 
       },
-      { path: '/products', label: '推广商品', icon: '🛍️' }
+      { path: '/products', label: '商品管理', icon: '🛍️' }
     ]
   },
   {
     title: '内容',
     items: [
       { path: '/content', label: '科普文章', icon: '📝' },
+      { path: '/live', label: '直播管理', icon: 'video' },
       { path: '/banner', label: '轮播图管理', icon: '🎨' }
     ]
   },
@@ -115,168 +117,15 @@ const filteredMenuGroups = computed(() => {
 });
 
 const currentActiveMenu = computed(() => {
-  const path = route.path
-  
-  const isInMenu = (targetPath: string) => {
-    for (const group of filteredMenuGroups.value) {
-      for (const item of group.items) {
-        if (targetPath === item.path) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-
-  if (isInMenu(path)) {
-    return path
-  }
-
-  const resolvePath = (pathPattern: string, params: Record<string, any>) => {
-    let resolved = pathPattern
-    for (const [key, value] of Object.entries(params)) {
-      resolved = resolved.replace(`:${key}`, String(value))
-    }
-    return resolved
-  }
-
-  const routes = router.getRoutes()
-  const findRouteByPath = (targetPath: string) => {
-    let matched = routes.find(r => r.path === targetPath)
-    if (matched) return matched
-    try {
-      const resolved = router.resolve(targetPath)
-      if (resolved && resolved.matched.length > 0) {
-        return resolved.matched[resolved.matched.length - 1]
-      }
-    } catch (e) {}
-    for (const r of routes) {
-      const regexPattern = '^' + r.path.replace(/\/:[^/]+/g, '/[^/]+') + '$'
-      if (new RegExp(regexPattern).test(targetPath)) {
-        return r
-      }
-    }
-    return null
-  }
-
-  let tempPath = path
-  let currentRecord = routes.find(r => r.name === route.name) || findRouteByPath(tempPath)
-  let depth = 0
-  const maxDepth = 10
-
-  while (tempPath && tempPath !== '/' && depth < maxDepth) {
-    depth++
-    const parentPathPattern = currentRecord?.meta?.parentPath as string
-    if (parentPathPattern) {
-      const nextPath = resolvePath(parentPathPattern, route.params)
-      if (nextPath && nextPath !== tempPath) {
-        if (isInMenu(nextPath)) {
-          return nextPath
-        }
-        tempPath = nextPath
-        currentRecord = findRouteByPath(tempPath)
-      } else {
-        break
-      }
-    } else {
-      break
-    }
-  }
-
-  let bestMatch = ''
-  for (const group of filteredMenuGroups.value) {
-    for (const item of group.items) {
-      if (path.startsWith(item.path)) {
-        if (item.path.length > bestMatch.length) {
-          bestMatch = item.path
-        }
-      }
-    }
-  }
-
-  return bestMatch || path
+  const targetPath = resolveMenuPathFromRoute(route)
+  const existsInMenu = filteredMenuGroups.value.some(group =>
+    group.items.some(item => item.path === targetPath)
+  )
+  return existsInMenu ? targetPath : route.path
 })
 
 const breadcrumbs = computed(() => {
-  const currentPath = route.path
-  
-  if (route.name === 'login') return []
-  
-  const items: Array<{ label: string; path: string }> = []
-  const routes = router.getRoutes()
-  
-  const resolvePath = (pathPattern: string, params: Record<string, any>) => {
-    let resolved = pathPattern
-    for (const [key, value] of Object.entries(params)) {
-      resolved = resolved.replace(`:${key}`, String(value))
-    }
-    return resolved
-  }
-  
-  const findRouteByPath = (targetPath: string) => {
-    let matched = routes.find(r => r.path === targetPath)
-    if (matched) return matched
-    
-    try {
-      const resolved = router.resolve(targetPath)
-      if (resolved && resolved.matched.length > 0) {
-        return resolved.matched[resolved.matched.length - 1]
-      }
-    } catch (e) {}
-    
-    for (const r of routes) {
-      const regexPattern = '^' + r.path.replace(/\/:[^/]+/g, '/[^/]+') + '$'
-      if (new RegExp(regexPattern).test(targetPath)) {
-        return r
-      }
-    }
-    
-    return null
-  }
-  
-  let tempPath = currentPath
-  let currentRecord = routes.find(r => r.name === route.name) || findRouteByPath(tempPath)
-  
-  let depth = 0
-  const maxDepth = 10
-  
-  while (tempPath && tempPath !== '/' && depth < maxDepth) {
-    depth++
-    
-    const title = (currentRecord?.meta?.title as string) || ''
-    if (title && title !== '登录') {
-      items.unshift({
-        label: title,
-        path: tempPath
-      })
-    }
-    
-    const parentPathPattern = currentRecord?.meta?.parentPath as string
-    if (parentPathPattern) {
-      const nextPath = resolvePath(parentPathPattern, route.params)
-      if (nextPath && nextPath !== tempPath) {
-        tempPath = nextPath
-        currentRecord = findRouteByPath(tempPath)
-      } else {
-        break
-      }
-    } else {
-      break
-    }
-  }
-  
-  items.unshift({ label: '首页', path: '/dashboard' })
-  
-  const uniqueItems: typeof items = []
-  const seenPaths = new Set()
-  for (const item of items) {
-    if (!seenPaths.has(item.path)) {
-      seenPaths.add(item.path)
-      uniqueItems.push(item)
-    }
-  }
-  
-  return uniqueItems
+  return resolveBreadcrumbs(router, route)
 })
 
 function navigate(path: string) {
@@ -557,7 +406,7 @@ onUnmounted(() => {
       >
         <template #logo>
           <div class="sidebar-logo">
-            <div class="sidebar-logo-icon">💤</div>
+            <div class="sidebar-logo-icon"><AppIcon name="moon" :size="18" /></div>
             <div class="sidebar-logo-text" :class="{ 'logo-hidden': isMenuCollapsed }">
               鼾静健康
               <small>管理后台 v1.0</small>
@@ -575,91 +424,7 @@ onUnmounted(() => {
             <template #icon>
               <t-tooltip :content="item.label" placement="right" :disabled="!isMenuCollapsed">
                 <span class="nav-icon" style="display: inline-flex; align-items: center; justify-content: center;">
-                  <svg v-if="item.icon === '📊'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="20" x2="18" y2="10"></line>
-                    <line x1="12" y1="20" x2="12" y2="4"></line>
-                    <line x1="6" y1="20" x2="6" y2="14"></line>
-                  </svg>
-                  <svg v-else-if="item.icon === '📅'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                  <svg v-else-if="item.icon === '📣'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
-                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-                  </svg>
-                  <svg v-else-if="item.icon === '🩺'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4.8 3h14.4"></path>
-                    <path d="M4.8 3v4.8c0 4.8 7.2 4.8 7.2 9.6v1.8"></path>
-                    <path d="M19.2 3v4.8c0 3.6-3.6 4.8-4.8 6.4"></path>
-                    <circle cx="12" cy="21" r="2"></circle>
-                  </svg>
-                  <svg v-else-if="item.icon === '🧑‍⚕️'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                  <svg v-else-if="item.icon === '👨‍⚕️'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                  </svg>
-                  <svg v-else-if="item.icon === '🏥'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                  </svg>
-                  <svg v-else-if="item.icon === '📦'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="21 8 21 21 3 21 3 8"></polyline>
-                    <rect x="1" y="3" width="22" height="5"></rect>
-                    <line x1="10" y1="12" x2="14" y2="12"></line>
-                  </svg>
-                  <svg v-else-if="item.icon === '💰'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="1" x2="12" y2="23"></line>
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                  </svg>
-                  <svg v-else-if="item.icon === '👥'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                  <svg v-else-if="item.icon === '💳'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-                    <line x1="1" y1="10" x2="23" y2="10"></line>
-                  </svg>
-                  <svg v-else-if="item.icon === '🛍️'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <path d="M16 10a4 4 0 0 1-8 0"></path>
-                  </svg>
-                  <svg v-else-if="item.icon === '📝'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                  </svg>
-                  <svg v-else-if="item.icon === '🎨'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                    <polyline points="21 15 16 10 5 21"></polyline>
-                  </svg>
-                  <svg v-else-if="item.icon === '⚙️'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                  </svg>
-                  <svg v-else-if="item.icon === '🔐'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                  </svg>
-                  <svg v-else-if="item.icon === '📋'" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                  </svg>
-                  <span v-else>{{ item.icon }}</span>
+                  <AppIcon :name="item.icon" :size="16" />
                 </span>
               </t-tooltip>
             </template>

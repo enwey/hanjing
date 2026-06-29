@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import * as echarts from 'echarts'
+import { navigateToParent } from '@/utils/routeNavigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,10 +13,10 @@ const selectedMonth = ref('5月')
 
 /* ---- Stats KPIs ---- */
 const kpis = ref([
-  { label: '本月预约', value: '156', icon: '📅', color: 'var(--primary-100)', iconColor: 'var(--primary-500)' },
-  { label: '本月营收', value: '¥22.8w', icon: '💰', color: 'var(--success-100)', iconColor: 'var(--success-500)' },
-  { label: '到诊率', value: '92.3%', icon: '👥', color: '#FFF9E6', iconColor: '#F5A623' },
-  { label: '患者评分', value: '4.9', icon: '⭐', color: 'var(--error-100)', iconColor: 'var(--error-500)' }
+  { label: '本月预约', value: '156', icon: 'calendar', color: 'var(--primary-100)', iconColor: 'var(--primary-500)' },
+  { label: '本月营收', value: '¥22.8w', icon: 'money', color: 'var(--success-100)', iconColor: 'var(--success-500)' },
+  { label: '到诊率', value: '92.3%', icon: 'team', color: '#FFF9E6', iconColor: '#F5A623' },
+  { label: '患者评分', value: '4.9', icon: 'smile', color: 'var(--error-100)', iconColor: 'var(--error-500)' }
 ])
 
 /* ---- Doctor Rankings ---- */
@@ -84,7 +85,7 @@ onMounted(() => {
 })
 
 function handleBack() {
-  router.push('/store')
+  navigateToParent(router, route, '/store')
 }
 
 function handleExport() {
@@ -103,7 +104,7 @@ function handleExport() {
         <div class="page-title-sub">2026年{{ selectedMonth }}</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" @click="handleExport">📥 导出报表</button>
+        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出报表</button>
         <select class="form-control" style="width: 120px;" v-model="selectedMonth">
           <option>5月</option>
           <option>4月</option>
@@ -116,7 +117,7 @@ function handleExport() {
     <div class="card-grid-4">
       <div class="mini-stat" v-for="(kpi, index) in kpis" :key="index">
         <div class="mini-stat-icon" :style="{ background: kpi.color, color: kpi.iconColor }">
-          {{ kpi.icon }}
+          <AppIcon :name="kpi.icon" size="22" />
         </div>
         <div>
           <div class="mini-stat-value">{{ kpi.value }}</div>

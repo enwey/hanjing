@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
+import { navigateToParent } from '@/utils/routeNavigation'
 
 const router = useRouter()
 const route = useRoute()
@@ -379,11 +380,9 @@ function selectSlot(slot: any) {
 
 function handleCancel() {
   if (isReschedule.value) {
-    router.push(`/appointment/detail/${rescheduleId.value}`)
-  } else if (route.query.from === 'queue') {
-    router.push('/queue')
+    navigateToParent(router, route, `/appointment/detail/${rescheduleId.value}`)
   } else {
-    router.push('/appointment')
+    navigateToParent(router, route, '/appointment')
   }
 }
 
@@ -430,7 +429,7 @@ async function handleCreate() {
         symptom_desc: remarks.value
       })
       MessagePlugin.success(`预约改约成功！已修改就诊时间。`)
-      router.push(`/appointment/detail/${rescheduleId.value}`)
+      navigateToParent(router, route, `/appointment/detail/${rescheduleId.value}`)
     } else {
       const parsedConsultFee = Math.round((Number(consultFee.value) || 0) * 100)
       const parsedDepositAmount = Math.round((Number(depositAmount.value) || 0) * 100)
@@ -477,11 +476,7 @@ async function handleCreate() {
         openCheckoutDialog(row)
       } else {
         MessagePlugin.success(`预约创建成功！已写入门诊就诊记录`)
-        if (route.query.from === 'queue') {
-          router.push('/queue')
-        } else {
-          router.push('/appointment')
-        }
+        navigateToParent(router, route, '/appointment')
       }
     }
   } catch (error) {
@@ -557,8 +552,8 @@ function openCheckoutDialog(row: any) {
   orderResult.value = null
   
   deliveryType.value = 'offline_direct'
-  shippingReceiver.value = row.patient || ''
-  shippingPhone.value = row.phone || ''
+  shippingReceiver.value = ''
+  shippingPhone.value = ''
   shippingAddressStr.value = ''
   
   checkoutVisible.value = true
@@ -589,7 +584,7 @@ async function closeCheckoutDialog() {
 
   checkoutVisible.value = false
   selectedCheckoutRow.value = null
-  router.push('/appointment')
+  navigateToParent(router, route, '/appointment')
 }
 
 function handlePrintInvoice() {
@@ -602,10 +597,28 @@ async function submitCheckout() {
     MessagePlugin.warning('结账明细不能为空')
     return
   }
+  if (deliveryType.value !== 'offline_direct') {
+    if (!shippingReceiver.value || !shippingReceiver.value.trim()) {
+      MessagePlugin.warning('请填写联系人/收件人姓名')
+      return
+    }
+    if (!shippingPhone.value || !shippingPhone.value.trim()) {
+      MessagePlugin.warning('请填写联系电话')
+      return
+    }
+    if (!/^1\d{10}$/.test(shippingPhone.value.trim())) {
+      MessagePlugin.warning('请输入有效的11位手机号码')
+      return
+    }
+  }
+  if (deliveryType.value === 'online' && (!shippingAddressStr.value || !shippingAddressStr.value.trim())) {
+    MessagePlugin.warning('请填写详细收货地址')
+    return
+  }
   checkoutLoading.value = true
   try {
     let orderType = 'offline'
-    let orderStatus = 'completed'
+    let orderStatus = 'paid'
     let shipAddr: any = null
 
     if (deliveryType.value === 'online') {
@@ -617,7 +630,8 @@ async function submitCheckout() {
         province: '广东省',
         city: '深圳市',
         district: '快递邮寄',
-        detail: shippingAddressStr.value
+        detail: shippingAddressStr.value,
+        deliveryMethod: 'online'
       }
     } else if (deliveryType.value === 'offline_pending') {
       orderType = 'offline'
@@ -628,18 +642,20 @@ async function submitCheckout() {
         province: '广东省',
         city: '深圳市',
         district: '门店自提',
-        detail: '缺货登记（待货通知自提）'
+        detail: '缺货登记（待货通知自提）',
+        deliveryMethod: 'pickup_pending'
       }
     } else {
       orderType = 'offline'
-      orderStatus = 'completed'
+      orderStatus = 'paid'
       shipAddr = {
         receiver: shippingReceiver.value || '到店客户',
         phone: shippingPhone.value || '--',
         province: '广东省',
         city: '深圳市',
         district: '到店自提',
-        detail: '现场拿走'
+        detail: '到店自提',
+        deliveryMethod: 'pickup'
       }
     }
 
@@ -714,7 +730,7 @@ async function submitCheckout() {
             clearable
           />
           <t-button variant="outline" theme="primary" @click="handleAddNewPatient">
-            ➕ 新患者建档
+            <AppIcon name="plus" />  新患者建档
           </t-button>
         </div>
 
@@ -819,7 +835,7 @@ async function submitCheckout() {
           </div>
         </div>
         <div v-else style="padding: 24px; text-align: center; color: #EF4444; background: #FFF5F5; border-radius: 8px; border: 1px dashed #FCA5A5; font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: center;">
-          <span style="font-size: 20px;">📅</span>
+          <span style="font-size: 20px;"><AppIcon name="calendar" /> </span>
           <div>
             <strong style="color: #DC2626;">{{ selectedDate }}</strong> 
             <span style="color: #4B5563; margin: 0 6px;">{{ selectedDoctorName }}医生</span>
@@ -908,7 +924,7 @@ async function submitCheckout() {
           </div>
         </div>
         <div style="margin-top: 20px; display: flex; gap: 12px;">
-          <t-button variant="outline" @click="handlePrintInvoice">🖨️ 打印小票</t-button>
+          <t-button variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
           <t-button theme="primary" @click="closeCheckoutDialog">完成结算</t-button>
         </div>
       </div>
@@ -966,15 +982,15 @@ async function submitCheckout() {
           <div style="display: flex; gap: 12px;">
             <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
               <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
-              🟢 微信支付
+              <AppIcon name="wechat" />  微信支付
             </label>
             <label class="pay-method-label" :class="{ active: payMethod === 'alipay' }">
               <input v-model="payMethod" type="radio" value="alipay" style="display: none;">
-              🔵 支付宝
+              <AppIcon name="alipay" />  支付宝
             </label>
             <label class="pay-method-label" :class="{ active: payMethod === 'pos' }">
               <input v-model="payMethod" type="radio" value="pos" style="display: none;">
-              🪙 现金/刷卡
+              <AppIcon name="coins" />  现金/刷卡
             </label>
           </div>
         </div>

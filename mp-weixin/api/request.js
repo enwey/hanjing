@@ -19,6 +19,13 @@ const ENABLE_MOCK_FALLBACK = false;
 let isRefreshing = false;
 let requestsQueue = [];
 
+function createRequestError(message, statusCode, data) {
+  const error = new Error(message || "请求失败，请稍后重试");
+  error.statusCode = statusCode;
+  error.data = data;
+  return error;
+}
+
 function request(options, mockCallback) {
   const runMock = () => {
     if (ENABLE_MOCK_FALLBACK && typeof mockCallback === "function") {
@@ -81,7 +88,17 @@ function request(options, mockCallback) {
                     if (retryRes.statusCode >= 200 && retryRes.statusCode < 300) {
                       resolve(retryRes.data);
                     } else {
-                      runMock().then(resolve).catch(reject);
+                      if (ENABLE_MOCK_FALLBACK && typeof mockCallback === "function") {
+                        runMock().then(resolve).catch(reject);
+                      } else {
+                        reject(
+                          createRequestError(
+                            (retryRes.data && retryRes.data.message) || options.failMessage,
+                            retryRes.statusCode,
+                            retryRes.data,
+                          ),
+                        );
+                      }
                     }
                   },
                   fail: (err) => {
@@ -125,7 +142,17 @@ function request(options, mockCallback) {
                             if (retryRes.statusCode >= 200 && retryRes.statusCode < 300) {
                               resolve(retryRes.data);
                             } else {
-                              runMock().then(resolve).catch(reject);
+                              if (ENABLE_MOCK_FALLBACK && typeof mockCallback === "function") {
+                                runMock().then(resolve).catch(reject);
+                              } else {
+                                reject(
+                                  createRequestError(
+                                    (retryRes.data && retryRes.data.message) || options.failMessage,
+                                    retryRes.statusCode,
+                                    retryRes.data,
+                                  ),
+                                );
+                              }
                             }
                           },
                           fail: (err) => {
@@ -161,7 +188,17 @@ function request(options, mockCallback) {
             });
           } else {
             console.warn(`[Request Error] Status ${res.statusCode}.`);
-            runMock().then(resolve).catch(reject);
+            if (ENABLE_MOCK_FALLBACK && typeof mockCallback === "function") {
+              runMock().then(resolve).catch(reject);
+            } else {
+              reject(
+                createRequestError(
+                  (res.data && res.data.message) || options.failMessage,
+                  res.statusCode,
+                  res.data,
+                ),
+              );
+            }
           }
         },
         fail: (err) => {

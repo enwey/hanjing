@@ -11,7 +11,7 @@ const routeTitles = {
   "pages/distribution/withdraw-records/index": "提现记录",
   "pages/distribution/withdraw/index": "提现申请",
   "pages/live/list/index": "直播中心",
-  "pages/live/playback/index": "直播回放"
+  "pages/live/playback/index": "直播详情"
 };
 
 const t = e.defineComponent({

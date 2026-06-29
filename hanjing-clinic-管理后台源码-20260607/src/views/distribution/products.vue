@@ -1,42 +1,48 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
+import { useRouter } from 'vue-router'
 import request from '@/utils/request'
 
 interface Product {
-  id: string;
-  name: string;
-  desc: string;
-  icon: string;
-  price: number;
-  commission1: number; // percent
-  commission2: number; // percent
-  promotes: string;
-  status: string; // active, inactive
+  id: string
+  name: string
+  desc: string
+  icon: string
+  imageUrl: string
+  price: number
+  originalPrice: number
+  galleryUrls: string[]
+  stock: number
+  sales: number
+  isDistribution: boolean
+  commission1: number
+  commission2: number
+  status: string
 }
+
+const router = useRouter()
 
 const currentPage = ref(1)
 const pageSize = ref(30)
-
 const products = ref<Product[]>([])
-
 const searchKeyword = ref('')
-const activeStatusTab = ref('all') // 'all', 'active', 'inactive'
+const activeStatusTab = ref('all')
 
 const filteredProducts = computed(() => {
   let list = products.value
 
-  // 1. Status Filter
-  if (activeStatusTab.value === 'active') {
-    list = list.filter(p => p.status === 'active')
-  } else if (activeStatusTab.value === 'inactive') {
-    list = list.filter(p => p.status === 'inactive')
+  if (activeStatusTab.value === 'on') {
+    list = list.filter(product => product.status === 'on')
+  } else if (activeStatusTab.value === 'off') {
+    list = list.filter(product => product.status === 'off')
+  } else if (activeStatusTab.value === 'distribution') {
+    list = list.filter(product => product.isDistribution)
   }
 
-  // 2. Keyword Search
   if (searchKeyword.value) {
-    const kw = searchKeyword.value.toLowerCase()
-    list = list.filter(p => p.name.toLowerCase().includes(kw))
+    const keyword = searchKeyword.value.toLowerCase()
+    list = list.filter(product => product.name.toLowerCase().includes(keyword))
   }
 
   return list
@@ -52,251 +58,252 @@ const paginatedProducts = computed(() => {
   return filteredProducts.value.slice(start, end)
 })
 
-const showEdit = ref(false)
-const isEdit = ref(false)
-const editIndex = ref(-1)
-const formData = ref<Partial<Product>>({
-  name: '',
-  desc: '',
-  icon: '🛏️',
-  price: 0,
-  commission1: 15,
-  commission2: 5,
-  status: 'active'
+const operationColumnWidth = computed(() => {
+  if (paginatedProducts.value.length === 0) {
+    return '80px'
+  }
+
+  let maxButtons = 1
+  for (const row of paginatedProducts.value) {
+    if (row.status === 'on' || row.status === 'off' || row.isDistribution) {
+      maxButtons = Math.max(maxButtons, 3)
+    }
+  }
+
+  if (maxButtons === 3) return '240px'
+  if (maxButtons === 2) return '160px'
+  return '80px'
+})
+
+watch(operationColumnWidth, () => {
+  setTimeout(() => {
+    window.dispatchEvent(new Event('resize'))
+  }, 100)
 })
 
 function handleAdd() {
-  isEdit.value = false
-  formData.value = {
-    name: '',
-    desc: '',
-    icon: '🛏️',
-    price: 0,
-    commission1: 15,
-    commission2: 5,
-    status: 'active'
-  }
-  showEdit.value = true
+  router.push('/products/edit')
+}
+
+function handleEdit(productId: string) {
+  router.push(`/products/edit/${productId}`)
 }
 
 function mapProduct(row: any): Product {
+  let galleryUrls: string[] = []
+  if (row.gallery_urls) {
+    try {
+      galleryUrls = Array.isArray(row.gallery_urls) ? row.gallery_urls : JSON.parse(row.gallery_urls)
+    } catch (error) {
+      galleryUrls = []
+    }
+  }
+
   return {
     id: String(row.id),
     name: row.name,
     desc: row.description || '',
-    icon: row.category === 'device' ? '😷' : row.category === 'product' ? '💨' : '🛏️',
+    icon: row.category === 'device' ? 'mask' : row.category === 'product' ? 'wind' : 'bed',
+    imageUrl: row.image_url || '',
     price: Number(row.price || 0) / 100,
+    originalPrice: row.original_price ? Number(row.original_price) / 100 : 0,
+    galleryUrls,
+    stock: Number(row.stock || 0),
+    sales: Number(row.sales_count || 0),
+    isDistribution: Number(row.is_distribution || 0) === 1,
     commission1: Number(row.commission_rate || 0),
     commission2: 0,
-    promotes: String(row.sales_count || 0),
-    status: row.status === 'on' && row.is_distribution ? 'active' : 'inactive'
-  }
-}
-
-function toPayload(prod: Partial<Product>) {
-  return {
-    name: prod.name,
-    description: prod.desc,
-    price: Math.round(Number(prod.price || 0) * 100),
-    commission_rate: Number(prod.commission1 || 0),
-    status: prod.status === 'active' ? 'on' : 'off',
-    is_distribution: prod.status === 'active',
-    category: prod.icon === '😷' ? 'device' : prod.icon === '💨' ? 'product' : 'service'
+    status: row.status || 'off'
   }
 }
 
 async function fetchProducts() {
   try {
-    const res: any = await request.get('/api/admin/distribution/products')
+    const res: any = await request.get('/api/admin/products')
     products.value = (res.data || []).map(mapProduct)
   } catch (error) {
-    MessagePlugin.error('加载推广商品失败')
+    MessagePlugin.error('加载商品列表失败')
   }
 }
 
-function handleEdit(prodId: string) {
-  isEdit.value = true
-  const idx = products.value.findIndex(p => p.id === prodId)
-  editIndex.value = idx
-  const prod = products.value[idx]
-  formData.value = { ...prod }
-  showEdit.value = true
-}
+async function handleToggle(productId: string) {
+  const index = products.value.findIndex(product => product.id === productId)
+  if (index === -1) return
 
-async function handleToggle(prodId: string) {
-  const idx = products.value.findIndex(p => p.id === prodId)
-  if (idx !== -1) {
-    const prod = products.value[idx]
-    const nextStatus = prod.status === 'active' ? 'inactive' : 'active'
-    try {
-      await request.put(`/api/admin/distribution/products/${prodId}`, {
-        status: nextStatus === 'active' ? 'on' : 'off',
-        is_distribution: nextStatus === 'active'
-      })
-      prod.status = nextStatus
-      prod.promotes = nextStatus === 'active' ? prod.promotes : '—'
-      MessagePlugin.success(prod.status === 'active' ? '商品已上架推广' : '商品已下架')
-    } catch (error) {
-      MessagePlugin.error('更新推广商品状态失败')
-    }
-  }
-}
+  const product = products.value[index]
+  const nextStatus = product.status === 'on' ? 'off' : 'on'
 
-async function handleSave() {
-  if (!formData.value.name || !formData.value.price) {
-    MessagePlugin.warning('请填写商品名称和价格')
-    return
-  }
-  
   try {
-    if (isEdit.value && editIndex.value >= 0) {
-      const prod = { ...products.value[editIndex.value], ...formData.value }
-      await request.put(`/api/admin/distribution/products/${prod.id}`, toPayload(prod))
-      MessagePlugin.success('保存商品配置成功')
-    } else {
-      await request.post('/api/admin/distribution/products', toPayload(formData.value))
-      MessagePlugin.success('添加推广商品成功')
-    }
-    showEdit.value = false
-    fetchProducts()
+    await request.put(`/api/admin/products/${productId}`, { status: nextStatus })
+    product.status = nextStatus
+    MessagePlugin.success(nextStatus === 'on' ? '商品已上架' : '商品已下架')
   } catch (error) {
-    MessagePlugin.error(isEdit.value ? '保存商品配置失败' : '添加推广商品失败')
+    MessagePlugin.error('更新商品状态失败')
   }
 }
 
-function getIconBoxClass(prod: Product) {
-  if (prod.status === 'inactive') {
-    return 'product-icon-box grayscale'
+async function handleToggleDistribution(productId: string) {
+  const index = products.value.findIndex(product => product.id === productId)
+  if (index === -1) return
+
+  const product = products.value[index]
+  const nextIsDistribution = !product.isDistribution
+
+  try {
+    await request.put(`/api/admin/products/${productId}`, {
+      is_distribution: nextIsDistribution ? 1 : 0
+    })
+    product.isDistribution = nextIsDistribution
+    MessagePlugin.success(nextIsDistribution ? '已开启分销推广' : '已取消分销推广')
+  } catch (error) {
+    MessagePlugin.error('更新分销状态失败')
   }
-  if (prod.icon === '🛏️') return 'product-icon-box blue-grad'
-  if (prod.icon === '😷') return 'product-icon-box green-grad'
-  if (prod.icon === '💨') return 'product-icon-box orange-grad'
+}
+
+function getIconBoxClass(product: Product) {
+  if (product.status === 'off') return 'product-icon-box grayscale'
+  if (product.icon === 'bed') return 'product-icon-box blue-grad'
+  if (product.icon === 'mask') return 'product-icon-box green-grad'
+  if (product.icon === 'wind') return 'product-icon-box orange-grad'
   return 'product-icon-box default-grad'
 }
 
 onMounted(fetchProducts)
-
-const operationColumnWidth = computed(() => {
-  if (paginatedProducts.value.length === 0) return '80px'
-  const hasActive = paginatedProducts.value.some(p => p.status === 'active')
-  return hasActive ? '140px' : '80px'
-})
-
-watch(operationColumnWidth, () => {
-  nextTick(() => {
-    window.dispatchEvent(new Event('resize'))
-  })
-})
 </script>
 
 <template>
   <div class="page-container">
-    <!-- Page Title Row -->
     <div class="page-title-row">
       <div>
-        <div class="page-title">推广商品管理</div>
-        <div class="page-title-sub">设置可推广商品及佣金比例</div>
+        <div class="page-title">商品管理</div>
+        <div class="page-title-sub">统一管理小程序商城商品，上下架与是否参与分销都在这里设置</div>
       </div>
-      <button class="btn btn-primary" @click="handleAdd">➕ 添加推广商品</button>
+      <button class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" /> 添加商品</button>
     </div>
 
-    <!-- Products Table -->
     <div class="panel">
-      <!-- Filter Bar -->
       <div class="filter-bar">
         <div class="filter-tabs">
-          <div 
-            class="filter-tab" 
-            :class="{ active: activeStatusTab === 'all' }" 
+          <div
+            class="filter-tab"
+            :class="{ active: activeStatusTab === 'all' }"
             @click="activeStatusTab = 'all'"
           >
             全部
           </div>
-          <div 
-            class="filter-tab" 
-            :class="{ active: activeStatusTab === 'active' }" 
-            @click="activeStatusTab = 'active'"
+          <div
+            class="filter-tab"
+            :class="{ active: activeStatusTab === 'on' }"
+            @click="activeStatusTab = 'on'"
           >
-            推广中
+            已上架
           </div>
-          <div 
-            class="filter-tab" 
-            :class="{ active: activeStatusTab === 'inactive' }" 
-            @click="activeStatusTab = 'inactive'"
+          <div
+            class="filter-tab"
+            :class="{ active: activeStatusTab === 'distribution' }"
+            @click="activeStatusTab = 'distribution'"
+          >
+            分销商品
+          </div>
+          <div
+            class="filter-tab"
+            :class="{ active: activeStatusTab === 'off' }"
+            @click="activeStatusTab = 'off'"
           >
             已下架
           </div>
         </div>
 
-        <input 
-          type="text" 
-          v-model="searchKeyword" 
-          class="filter-input" 
-          placeholder="🔍 搜索商品名称" 
+        <input
+          v-model="searchKeyword"
+          type="text"
+          class="filter-input"
+          placeholder="搜索商品名称"
           style="width: 210px;"
         >
       </div>
 
       <div class="panel-body" style="padding: 0;">
-        <table class="data-table" v-resizable>
+        <table class="data-table product-data-table" v-resizable>
           <thead>
             <tr>
-              <th>商品</th>
+              <th class="product-col">商品</th>
               <th>价格</th>
+              <th>库存</th>
               <th>一级佣金</th>
               <th>二级佣金</th>
-              <th>推广次数</th>
-              <th>状态</th>
-              <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
+              <th>销量</th>
+              <th>商城状态</th>
+              <th>分销状态</th>
+              <th class="action-col" :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="prod in paginatedProducts" :key="prod.id">
+            <tr v-for="product in paginatedProducts" :key="product.id">
               <td>
-                <div style="display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden;">
-                  <div :class="getIconBoxClass(prod)" style="flex-shrink: 0;">
-                    {{ prod.icon }}
+                <div class="product-cell">
+                  <div :class="getIconBoxClass(product)" style="flex-shrink: 0;">
+                    <AppIcon :name="product.icon" size="28" />
                   </div>
-                  <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
-                    <div :style="{ fontWeight: '600', color: prod.status === 'active' ? '#1F2937' : '#9CA3AF' }" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                      {{ prod.name }}
+                  <div class="product-info">
+                    <div
+                      :style="{ fontWeight: '600', color: product.status === 'on' ? '#1F2937' : '#9CA3AF' }"
+                      style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+                    >
+                      {{ product.name }}
                     </div>
                     <div style="font-size: 11px; color: #9CA3AF; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                      {{ prod.desc }}
+                      {{ product.desc }}
                     </div>
                   </div>
                 </div>
               </td>
-              <td :style="{ fontWeight: '700', color: prod.status === 'active' ? '#1F2937' : '#9CA3AF' }">
-                ¥{{ prod.price.toLocaleString() }}
+              <td :style="{ fontWeight: '700', color: product.status === 'on' ? '#1F2937' : '#9CA3AF' }">
+                ¥{{ product.price.toLocaleString() }}
               </td>
-              <td :style="{ color: prod.status === 'active' ? '#F5A623' : '#9CA3AF', fontWeight: '600' }">
-                {{ prod.commission1 }}% (¥{{ ((prod.price * prod.commission1) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }) }})
+              <td :style="{ color: product.status === 'on' ? '#1F2937' : '#9CA3AF', fontWeight: '600' }">
+                {{ product.stock }}
               </td>
-              <td :style="{ color: prod.status === 'active' ? '#F5A623' : '#9CA3AF', fontWeight: '600' }">
-                {{ prod.commission2 }}% (¥{{ ((prod.price * prod.commission2) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }) }})
+              <td :style="{ color: product.isDistribution ? '#F5A623' : '#9CA3AF', fontWeight: '600' }">
+                <span v-if="product.isDistribution">
+                  {{ product.commission1 }}% (¥{{ ((product.price * product.commission1) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }) }})
+                </span>
+                <span v-else>—</span>
               </td>
-              <td :style="{ fontWeight: '600', color: prod.status === 'active' ? '#1F2937' : '#9CA3AF' }">
-                {{ prod.promotes }}
+              <td :style="{ color: product.isDistribution ? '#F5A623' : '#9CA3AF', fontWeight: '600' }">
+                <span v-if="product.isDistribution">
+                  {{ product.commission2 }}% (¥{{ ((product.price * product.commission2) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }) }})
+                </span>
+                <span v-else>—</span>
+              </td>
+              <td :style="{ fontWeight: '600', color: product.status === 'on' ? '#1F2937' : '#9CA3AF' }">
+                {{ product.sales }}
               </td>
               <td>
-                <span class="status-tag green" v-if="prod.status === 'active'">推广中</span>
-                <span class="status-tag gray" v-else-if="prod.status === 'inactive'">已下架</span>
+                <span v-if="product.status === 'on'" class="status-tag green">已上架</span>
+                <span v-else class="status-tag gray">已下架</span>
               </td>
-              <td :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">
-                <div style="display: flex; gap: 6px; justify-content: flex-end;">
-                  <button class="btn btn-xs btn-outline" @click="handleEdit(prod.id)" v-if="prod.status === 'active'">编辑</button>
-                  <button class="btn btn-xs btn-danger" @click="handleToggle(prod.id)" v-if="prod.status === 'active'">下架</button>
-                  <button class="btn btn-xs btn-success" @click="handleToggle(prod.id)" v-else>上架</button>
+              <td>
+                <span v-if="product.isDistribution" class="status-tag blue">分销商品</span>
+                <span v-else class="status-tag gray">普通商品</span>
+              </td>
+              <td class="action-col" :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">
+                <div class="actions">
+                  <button class="btn btn-xs btn-outline" @click="handleEdit(product.id)">编辑</button>
+                  <button v-if="product.status === 'on'" class="btn btn-xs btn-danger" @click="handleToggle(product.id)">下架</button>
+                  <button v-else class="btn btn-xs btn-success" @click="handleToggle(product.id)">上架</button>
+                  <button v-if="product.isDistribution" class="btn btn-xs btn-warning" @click="handleToggleDistribution(product.id)">取消推广</button>
+                  <button v-else class="btn btn-xs btn-outline" @click="handleToggleDistribution(product.id)">设为推广</button>
                 </div>
               </td>
             </tr>
             <tr v-if="paginatedProducts.length === 0">
-              <td colspan="7" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无推广商品数据</td>
+              <td colspan="9" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无商品数据</td>
             </tr>
           </tbody>
         </table>
       </div>
+
       <div class="pagination-footer">
         <t-pagination
           v-model:current="currentPage"
@@ -307,114 +314,74 @@ watch(operationColumnWidth, () => {
         />
       </div>
     </div>
-
-    <!-- Edit Dialog -->
-    <t-dialog
-      v-model:visible="showEdit"
-      :header="isEdit ? '编辑推广商品' : '添加推广商品'"
-      @confirm="handleSave"
-      :cancelBtn="null"
-    >
-      <div class="dialog-body-form" style="padding: 12px 0; display: flex; flex-direction: column; gap: 14px;">
-        <div class="form-group">
-          <label class="form-label">商品名称</label>
-          <input type="text" class="form-control" v-model="formData.name" placeholder="请输入商品名称">
-        </div>
-        <div class="form-group">
-          <label class="form-label">商品描述</label>
-          <input type="text" class="form-control" v-model="formData.desc" placeholder="请输入商品简短描述">
-        </div>
-        <div class="form-group">
-          <label class="form-label">商品图标 (Emoji)</label>
-          <input type="text" class="form-control" v-model="formData.icon" placeholder="如 🛏️, 😷, 💨">
-        </div>
-        <div class="form-group">
-          <label class="form-label">销售价格 (元)</label>
-          <input type="number" class="form-control" v-model.number="formData.price" placeholder="请输入售价">
-        </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">一级返佣比例 (%)</label>
-            <input type="number" class="form-control" v-model.number="formData.commission1" min="1" max="100">
-          </div>
-          <div class="form-group">
-            <label class="form-label">二级返佣比例 (%)</label>
-            <input type="number" class="form-control" v-model.number="formData.commission2" min="1" max="100">
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">上架状态</label>
-          <select class="form-control" v-model="formData.status">
-            <option value="active">推广中</option>
-            <option value="inactive">已下架</option>
-          </select>
-        </div>
-      </div>
-    </t-dialog>
   </div>
 </template>
 
 <style scoped>
-/* Breadcrumb */
-.breadcrumb {
+.actions {
   display: flex;
-  align-items: center;
   gap: 6px;
-  font-size: 13px;
-  color: #9CA3AF;
-  margin-bottom: 16px;
-}
-.breadcrumb .current {
-  color: #1F2937;
-  font-weight: 600;
-}
-.breadcrumb .sep {
-  color: #D1D5DB;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
-/* Screen Label */
-.screen-label {
-  font-size: 14px;
-  font-weight: 700;
-  color: #3B6BF5;
-  margin-bottom: 12px;
+.product-data-table {
+  width: max-content !important;
+  min-width: 100%;
+}
+
+.product-data-table th,
+.product-data-table td {
+  width: auto;
+}
+
+.product-data-table th.action-col,
+.product-data-table td.action-col {
+  text-align: center !important;
+}
+
+.product-data-table .product-col {
+  width: 420px;
+  min-width: 360px;
+  max-width: 480px;
+}
+
+.product-cell {
+  width: 420px;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-.screen-label::before {
-  content: '';
-  width: 3px;
-  height: 16px;
-  background: #3B6BF5;
-  border-radius: 2px;
-}
-.screen-sublabel {
-  font-size: 12px;
-  color: #9CA3AF;
-  margin-left: 8px;
-  font-weight: 400;
+  gap: 10px;
+  overflow: hidden;
 }
 
-/* Page Title Row */
+.product-info {
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .page-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
 }
+
 .page-title {
   font-size: 22px;
   font-weight: 700;
   color: #111827;
 }
+
 .page-title-sub {
   font-size: 13px;
   color: #9CA3AF;
   margin-top: 4px;
 }
 
-/* Panels */
 .panel {
   background: #fff;
   border-radius: 12px;
@@ -423,84 +390,76 @@ watch(operationColumnWidth, () => {
   overflow: hidden;
 }
 
-/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 9px 18px;
-  border-radius: 6px;
+  gap: 8px;
   font-size: 13px;
   font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 6px;
   cursor: pointer;
   border: none;
-  transition: all 150ms ease;
-  font-family: inherit;
+  transition: all 0.2s;
 }
+
 .btn-primary {
   background: #3B6BF5;
   color: #fff;
 }
+
 .btn-primary:hover {
-  background: #2A52D4;
+  background: #2557DC;
+  box-shadow: 0 4px 12px rgba(59, 107, 245, 0.2);
 }
+
 .btn-outline {
   background: #fff;
   color: #374151;
   border: 1px solid #E5E7EB;
 }
+
 .btn-outline:hover {
   border-color: #BCCFFF;
   color: #3B6BF5;
 }
+
 .btn-danger {
   background: #FEF2F2;
   color: #DC2626;
   border: 1px solid #FECACA;
 }
+
 .btn-danger:hover {
   background: #FEE2E2;
 }
+
 .btn-success {
   background: #ECFDF5;
   color: #16A34A;
   border: 1px solid #BBF7D0;
 }
+
 .btn-success:hover {
   background: #D3F5E3;
 }
+
+.btn-warning {
+  background: #FFF7ED;
+  color: #C2410C;
+  border: 1px solid #FED7AA;
+}
+
+.btn-warning:hover {
+  background: #FFEDD5;
+}
+
 .btn-xs {
   padding: 5px 12px;
   font-size: 12px;
 }
 
-/* Data Table */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.data-table th {
-  text-align: left;
-  padding: 12px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #9CA3AF;
-  background: #F9FAFB;
-  border-bottom: 1px solid #F3F4F6;
-}
-.data-table td {
-  padding: 14px 16px;
-  font-size: 13px;
-  color: #374151;
-  border-bottom: 1px solid #F9FAFB;
-  vertical-align: middle;
-}
-.data-table tr:hover td {
-  background-color: #F9FAFB;
-}
-
-/* Product icon block */
 .product-icon-box {
   width: 40px;
   height: 40px;
@@ -510,95 +469,79 @@ watch(operationColumnWidth, () => {
   justify-content: center;
   font-size: 18px;
 }
+
 .product-icon-box.blue-grad {
   background: linear-gradient(135deg, #EEF2FF, #E0E7FF);
 }
+
 .product-icon-box.green-grad {
   background: linear-gradient(135deg, #EDFBF5, #D3F5E3);
 }
+
 .product-icon-box.orange-grad {
   background: linear-gradient(135deg, #FFF7ED, #FFEDD5);
 }
+
 .product-icon-box.default-grad {
   background: linear-gradient(135deg, #F3F4F6, #E5E7EB);
 }
+
 .product-icon-box.grayscale {
   background: #F3F4F6;
   filter: grayscale(0.5);
 }
 
-/* Form Styles */
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.form-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #374151;
-}
-.form-control {
-  padding: 10px 14px;
-  border: 1px solid #D1D5DB;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #1F2937;
-  outline: none;
-  background: #fff;
-  transition: border-color 150ms;
-}
-.form-control:focus {
-  border-color: #3B6BF5;
-}
-
 .pagination-footer {
-  padding: 16px 20px;
-  border-top: 1px solid #F3F4F6;
+  padding: 16px;
   display: flex;
-  align-items: center;
   justify-content: flex-end;
+  border-top: 1px solid #F3F4F6;
 }
 
-/* Tags & Badges */
 .status-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 20px;
 }
+
 .status-tag::before {
   content: '';
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  display: inline-block;
 }
+
 .status-tag.green {
-  background: #ECFDF5;
-  color: #16A34A;
+  background: #EDFBF5;
+  color: #10B981;
 }
+
 .status-tag.green::before {
-  background: #22C55E;
+  background: #10B981;
 }
+
 .status-tag.gray {
   background: #F3F4F6;
   color: #6B7280;
 }
+
 .status-tag.gray::before {
   background: #9CA3AF;
 }
 
-/* Filter components */
+.status-tag.blue {
+  background: #EFF6FF;
+  color: #2563EB;
+}
+
+.status-tag.blue::before {
+  background: #3B82F6;
+}
+
 .filter-bar {
   display: flex;
   justify-content: space-between;
@@ -607,10 +550,12 @@ watch(operationColumnWidth, () => {
   border-bottom: 1px solid #F3F4F6;
   background: #fff;
 }
+
 .filter-tabs {
   display: flex;
   gap: 0;
 }
+
 .filter-tab {
   padding: 7px 16px;
   font-size: 13px;
@@ -621,15 +566,19 @@ watch(operationColumnWidth, () => {
   background: #fff;
   transition: all 150ms;
 }
+
 .filter-tab:first-child {
   border-radius: 6px 0 0 6px;
 }
+
 .filter-tab:last-child {
   border-radius: 0 6px 6px 0;
 }
+
 .filter-tab + .filter-tab {
   border-left: none;
 }
+
 .filter-tab.active {
   background: #3B6BF5;
   color: #fff;
@@ -646,6 +595,7 @@ watch(operationColumnWidth, () => {
   outline: none;
   transition: border-color 150ms;
 }
+
 .filter-input:focus {
   border-color: #3B6BF5;
 }

@@ -8,45 +8,43 @@ Math;
 const i = e.defineComponent({
     __name: "index",
     setup(i) {
-      const a = e.ref(null),
+      const a = e.ref({
+          totalCommission: 0,
+          availableCommission: 0,
+          teamCount: 0,
+          isDistributor: !1,
+        }),
         o = e.ref([]),
         d = e.ref([]),
-        n = e.computed(() => {
-          var e;
-          return (null == (e = a.value) ? void 0 : e.totalCommission) || 0;
-        }),
-        s = e.computed(() => {
-          var e;
-          return (null == (e = a.value) ? void 0 : e.availableCommission) || 0;
-        }),
-        u = e.computed(() => {
-          var e;
-          return (null == (e = a.value) ? void 0 : e.teamCount) || 0;
-        }),
+        n = e.computed(() => (a.value.totalCommission || 0)),
+        s = e.computed(() => (a.value.availableCommission || 0)),
+        u = e.computed(() => (a.value.teamCount || 0)),
         r = e.computed(() => o.value.slice(0, 5)),
         l = e.computed(() => d.value.slice(0, 4)),
-        c = { pending: "待结算", settled: "已结算", cancelled: "已取消" },
-        m = (t) => e.index.navigateTo({ url: t });
-      return (
-        e.onMounted(async () => {
-          var e, i;
+        c = { pending: "冻结中", settled: "已结算", refunded: "已撤销" },
+        m = (t) => e.index.navigateTo({ url: t }),
+        g = async () => {
           try {
-            const [n, s, u] = await Promise.all([
-              t.getDistributorInfo(),
-              t.getDistributionOrders(),
+            const n = await t.getDistributorInfo();
+            const s = n.data || n;
+            const [u, r] = await Promise.all([
+              t.getDistributionCommissions(),
               t.getDistributionProducts(),
             ]);
-            ((a.value = n.data || n),
-              (o.value =
-                (null == (e = s.data) ? void 0 : e.list) || s.list || []),
-              (d.value =
-                (null == (i = u.data) ? void 0 : i.list) || u.list || []));
-          } catch (n) {}
-        }),
+            a.value = s;
+            o.value = (u.data && u.data.list) || u.list || [];
+            d.value = (r.data && r.data.list) || r.list || [];
+          } catch (a) {
+            e.index.showToast({ title: "加载分销数据失败", icon: "none" });
+          }
+        };
+      return (
+        e.onMounted(g),
+        e.onShow(g),
         (t, i) =>
           e.e(
             {
-              a: e.t((n.value / 100).toFixed(0)),
+              a: e.t((n.value / 100).toFixed(2)),
               b: e.t((s.value / 100).toFixed(2)),
               c: e.t(u.value),
               d: e.o((e) => m("/pages/distribution/withdraw/index"), "b3"),
@@ -57,24 +55,23 @@ const i = e.defineComponent({
               i: e.f(l.value, (t, i, a) => ({
                 a: t.image,
                 b: e.t(t.name),
-                c: e.t((t.price / 100).toFixed(0)),
-                d: e.t(((t.price * t.commissionRate) / 100).toFixed(0)),
+                c: e.t((t.price / 100).toFixed(2)),
+                d: e.t(`¥${((t.commission || 0) / 100).toFixed(2)}`),
                 e: t.id,
                 f: e.o((e) => m("/pages/product/detail?id=" + t.id), t.id),
               })),
               j: e.o((e) => m("/pages/distribution/commission/index"), "5f"),
               k: e.f(r.value, (t, i, a) => {
                 return {
-                  a: t.productImage,
-                  b: e.t(t.productName),
+                  a: t.productImage || "",
+                  b: e.t(t.productName || "订单佣金"),
                   c: e.t(t.buyerName),
-                  d: e.t(((o = t.createdAt), o.split("T")[0])),
+                  d: e.t(String(t.createdAt || "").split("T")[0]),
                   e: e.t((t.commission / 100).toFixed(2)),
-                  f: e.t(c[t.status]),
+                  f: e.t(c[t.status] || "处理中"),
                   g: e.n(t.status),
                   h: t.id,
                 };
-                var o;
               }),
               l: !r.value.length,
             },

@@ -273,6 +273,10 @@
   background: #fee2e2;
   color: #ef4444;
 }
+.amount-tag.refunded.data-v-6a5afdbe {
+  background: #fee2e2;
+  color: #ef4444;
+}
 .rule-entry.data-v-6a5afdbe {
   display: flex;
   justify-content: space-between;

@@ -65,6 +65,189 @@ function buildPaymentParams(subject, amount) {
   };
 }
 
+const DEFAULT_DISTRIBUTION_SETTLE_DAYS = 14;
+const DISTRIBUTION_MIN_WITHDRAW_AMOUNT = 5000;
+const DISTRIBUTOR_LEVEL_RULES = {
+  silver: { level1Rate: 0.1, level2Rate: 0.03, label: '银牌' },
+  gold: { level1Rate: 0.15, level2Rate: 0.05, label: '金牌' },
+  diamond: { level1Rate: 0.2, level2Rate: 0.08, label: '钻石' }
+};
+
+function getDistributorLevelRule(level) {
+  return DISTRIBUTOR_LEVEL_RULES[level] || DISTRIBUTOR_LEVEL_RULES.silver;
+}
+
+async function getDistributionSettleDays() {
+  const row = await get(`SELECT key_value FROM system_settings WHERE key_name = 'distribution_settle_days'`);
+  const days = parseInt(row?.key_value, 10);
+  if (!Number.isInteger(days) || days < 0) {
+    return DEFAULT_DISTRIBUTION_SETTLE_DAYS;
+  }
+  return days;
+}
+
+function buildInviteCode(userId) {
+  return `HJ${String(userId).padStart(4, '0')}${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+}
+
+async function ensureDistributor(userId, conn = null) {
+  const executor = conn || { execute: query };
+  const existing = await get(`SELECT * FROM distributors WHERE user_id = ?`, [userId]);
+  if (existing) return existing;
+
+  const user = await get(`SELECT nickname, avatar_url FROM users WHERE id = ?`, [userId]);
+  if (!user) return null;
+
+  let inviteCode = buildInviteCode(userId);
+  for (let i = 0; i < 5; i += 1) {
+    const duplicate = await get(`SELECT id FROM distributors WHERE invite_code = ?`, [inviteCode]);
+    if (!duplicate) break;
+    inviteCode = buildInviteCode(userId);
+  }
+
+  await executor.execute(
+    `INSERT INTO distributors (user_id, nickname, avatar_url, level, invite_code, invite_qr_url, total_commission, available_commission, withdrawn_amount, status)
+     VALUES (?, ?, ?, 'silver', ?, ?, 0, 0, 0, 'active')`,
+    [userId, user.nickname || `用户${userId}`, user.avatar_url || null, inviteCode, '/static/demo/qrcode.png']
+  );
+
+  return get(`SELECT * FROM distributors WHERE user_id = ?`, [userId]);
+}
+
+async function refreshDistributorLevel(distributorId, conn = null) {
+  if (!distributorId) return 'silver';
+  const directOrders = await get(
+    `SELECT COUNT(DISTINCT order_id) as count
+     FROM distribution_orders
+     WHERE distributor_id = ? AND commission_level = 1 AND status != 'refunded'`,
+    [distributorId]
+  );
+  const count = Number(directOrders?.count || 0);
+  let nextLevel = 'silver';
+  if (count >= 50) {
+    nextLevel = 'diamond';
+  } else if (count >= 10) {
+    nextLevel = 'gold';
+  }
+
+  const executor = conn || { execute: query };
+  await executor.execute(`UPDATE distributors SET level = ? WHERE id = ?`, [nextLevel, distributorId]);
+  return nextLevel;
+}
+
+async function settleEligibleDistributionCommissions(userId) {
+  const distributor = await get(`SELECT id FROM distributors WHERE user_id = ?`, [userId]);
+  if (!distributor) return 0;
+  const settleDays = await getDistributionSettleDays();
+
+  const pendingList = await query(
+    `SELECT do.id, do.commission_amount
+       FROM distribution_orders do
+       JOIN orders o ON o.id = do.order_id
+       WHERE do.distributor_id = ?
+         AND do.status = 'pending'
+         AND o.status = 'completed'
+         AND o.updated_at <= DATE_SUB(NOW(), INTERVAL ${settleDays} DAY)`,
+    [distributor.id]
+  );
+
+  if (!pendingList.length) return 0;
+
+  const total = pendingList.reduce((sum, item) => sum + Number(item.commission_amount || 0), 0);
+  const ids = pendingList.map(item => item.id);
+  const placeholders = ids.map(() => '?').join(',');
+
+  await transaction(async (conn) => {
+    await conn.execute(
+      `UPDATE distribution_orders
+       SET status = 'settled', settled_at = CURRENT_TIMESTAMP
+       WHERE id IN (${placeholders})`,
+      ids
+    );
+    await conn.execute(
+      `UPDATE distributors
+       SET available_commission = available_commission + ?
+       WHERE id = ?`,
+      [total, distributor.id]
+    );
+    await conn.execute(
+      `INSERT INTO user_notifications (user_id, title, content)
+       VALUES (?, '佣金已结算', ?)`,
+      [
+        userId,
+        `您有 ${(total / 100).toFixed(2)} 元推广佣金已转为可提现余额。`
+      ]
+    );
+  });
+
+  return total;
+}
+
+async function getDistributionSummary(userId) {
+  await settleEligibleDistributionCommissions(userId);
+  const settleDays = await getDistributionSettleDays();
+
+  const distributor = await get(`SELECT * FROM distributors WHERE user_id = ?`, [userId]);
+  if (!distributor) {
+    return {
+      isDistributor: false,
+      teamCount: 0,
+      teamLevel2Count: 0,
+      totalInvites: 0,
+      totalOrders: 0,
+      totalSales: 0,
+      availableCommission: 0,
+      totalCommission: 0,
+      withdrawnAmount: 0,
+      frozenCommission: 0,
+      level: 'silver',
+      levelLabel: getDistributorLevelRule('silver').label,
+      inviteCode: '',
+      inviteQrCode: '',
+      settleDays,
+      minWithdrawAmount: DISTRIBUTION_MIN_WITHDRAW_AMOUNT,
+      withdrawFeeRates: { wechat: 0, bank: 0.01 }
+    };
+  }
+
+  const [lv1, lv2, orderStats, pendingStats] = await Promise.all([
+    get(`SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 1`, [userId]),
+    get(`SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 2`, [userId]),
+    get(
+      `SELECT COUNT(DISTINCT order_id) as total_orders, COALESCE(SUM(order_amount), 0) as total_sales
+       FROM distribution_orders
+       WHERE distributor_id = ? AND status != 'refunded'`,
+      [distributor.id]
+    ),
+    get(
+      `SELECT COALESCE(SUM(commission_amount), 0) as frozen_commission
+       FROM distribution_orders
+       WHERE distributor_id = ? AND status = 'pending'`,
+      [distributor.id]
+    )
+  ]);
+
+  return {
+    isDistributor: true,
+    teamCount: Number(lv1?.count || 0),
+    teamLevel2Count: Number(lv2?.count || 0),
+    totalInvites: Number(lv1?.count || 0) + Number(lv2?.count || 0),
+    totalOrders: Number(orderStats?.total_orders || 0),
+    totalSales: Number(orderStats?.total_sales || 0),
+    availableCommission: Number(distributor.available_commission || 0),
+    totalCommission: Number(distributor.total_commission || 0),
+    withdrawnAmount: Number(distributor.withdrawn_amount || 0),
+    frozenCommission: Number(pendingStats?.frozen_commission || 0),
+    level: distributor.level,
+    levelLabel: getDistributorLevelRule(distributor.level).label,
+    inviteCode: distributor.invite_code,
+    inviteQrCode: distributor.invite_qr_url || '/static/demo/qrcode.png',
+    settleDays,
+    minWithdrawAmount: DISTRIBUTION_MIN_WITHDRAW_AMOUNT,
+    withdrawFeeRates: { wechat: 0, bank: 0.01 }
+  };
+}
+
 async function createPendingDistributionCommission(conn, order, userId) {
   const relationships = await query(
     `SELECT parent_user_id, level FROM distribution_relationships WHERE child_user_id = ? ORDER BY level ASC`,
@@ -87,10 +270,24 @@ async function createPendingDistributionCommission(conn, order, userId) {
   );
   if (!promoterL1) return;
 
-  // 根据推荐人级别计算一级佣金（白银8%，黄金12%，钻石15%）
-  const rateMap = { silver: 0.08, gold: 0.12, diamond: 0.15 };
-  const rateL1 = rateMap[promoterL1.level] || 0.10;
-  const commissionL1 = Math.round(order.pay_amount * rateL1);
+  const orderItems = await query(
+    `SELECT price, quantity, commission_rate_snapshot, is_distribution_snapshot
+     FROM order_items
+     WHERE order_id = ?`,
+    [order.id]
+  );
+  const distributionItems = orderItems.filter(item => Number(item.is_distribution_snapshot || 0) === 1);
+  if (distributionItems.length === 0) return;
+
+  const itemCommissionBase = distributionItems.reduce((sum, item) => {
+    const rate = Number(item.commission_rate_snapshot || 0);
+    if (rate <= 0) return sum;
+    return sum + Math.round(Number(item.price || 0) * Number(item.quantity || 0) * (rate / 100));
+  }, 0);
+  const levelRuleL1 = getDistributorLevelRule(promoterL1.level);
+  const commissionL1 = itemCommissionBase > 0
+    ? itemCommissionBase
+    : Math.round(order.pay_amount * levelRuleL1.level1Rate);
 
   const existingL1 = await get(
     `SELECT id FROM distribution_orders WHERE order_id = ? AND distributor_id = ? AND commission_level = 1`,
@@ -106,17 +303,19 @@ async function createPendingDistributionCommission(conn, order, userId) {
       `UPDATE distributors SET total_commission = total_commission + ? WHERE id = ?`,
       [commissionL1, promoterL1.id]
     );
+    await refreshDistributorLevel(promoterL1.id, conn);
   }
 
-  // 2. 查找并结算二级推荐佣金（二级佣金为一级佣金的 20%）
+  // 2. 二级佣金默认按推广员等级比例计算
   const relL2 = relationships.find(r => r.level === 2);
   if (relL2 && commissionL1 > 0) {
     const promoterL2 = await get(
-      `SELECT id FROM distributors WHERE user_id = ?`,
+      `SELECT id, level FROM distributors WHERE user_id = ?`,
       [relL2.parent_user_id]
     );
     if (promoterL2) {
-      const commissionL2 = Math.round(commissionL1 * 0.2);
+      const levelRuleL2 = getDistributorLevelRule(promoterL2.level);
+      const commissionL2 = Math.round(order.pay_amount * levelRuleL2.level2Rate);
 
       const existingL2 = await get(
         `SELECT id FROM distribution_orders WHERE order_id = ? AND distributor_id = ? AND commission_level = 2`,
@@ -132,6 +331,7 @@ async function createPendingDistributionCommission(conn, order, userId) {
           `UPDATE distributors SET total_commission = total_commission + ? WHERE id = ?`,
           [commissionL2, promoterL2.id]
         );
+        await refreshDistributorLevel(promoterL2.id, conn);
       }
     }
   }
@@ -282,7 +482,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
           avatar: user.avatar_url || '/static/demo/avatar.jpg',
           phone: user.phone || '138****8888',
           memberLevel: user.member_level,
-          isDistributor: false
+          isDistributor: !!(await get(`SELECT id FROM distributors WHERE user_id = ?`, [user.id]))
         },
         expires_in: 2592000
       }
@@ -304,6 +504,7 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
       return res.status(404).json({ code: 404, message: '用户未找到' });
     }
     const patient = await get(`SELECT * FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    const distributor = await get(`SELECT id, level FROM distributors WHERE user_id = ?`, [req.user.id]);
     res.json({
       code: 0,
       message: 'success',
@@ -315,7 +516,9 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
         age: patient ? patient.age : 30,
         phone: user.phone || (patient ? patient.phone : '138****8888'),
         birthday: user.birthday ? formatDate(user.birthday) : '1995-01-01',
-        memberLevel: user.member_level || 'normal'
+        memberLevel: user.member_level || 'normal',
+        isDistributor: !!distributor,
+        distributorLevel: distributor?.level || ''
       }
     });
   } catch (error) {
@@ -810,6 +1013,7 @@ app.get('/api/v1/community/posts', async (req, res) => {
       roleLabel: p.user_role === 'doctor' ? '专家医生' : p.user_role === 'expert' ? '睡眠专家' : '鼾友',
       title: p.title,
       content: p.content,
+      coverUrl: p.cover_url || '',
       tags: p.tags ? JSON.parse(p.tags) : [],
       likes: p.likes_count,
       comments: p.comments_count,
@@ -874,6 +1078,7 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
         roleLabel: post.user_role === 'doctor' ? '专家医生' : post.user_role === 'expert' ? '睡眠专家' : '鼾友',
         title: post.title,
         content: post.content,
+        coverUrl: post.cover_url || '',
         tags: post.tags ? JSON.parse(post.tags) : [],
         likes: post.likes_count,
         commentsCount: post.comments_count,
@@ -2481,7 +2686,7 @@ app.get('/api/v1/products', async (req, res) => {
 app.get('/api/v1/products/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const p = await get(`SELECT * FROM products WHERE id = ?`, [id]);
+    const p = await get(`SELECT * FROM products WHERE id = ? AND status = 'on'`, [id]);
     if (!p) {
       return res.status(404).json({ code: 404, message: '商品不存在' });
     }
@@ -3047,6 +3252,9 @@ app.get('/api/v1/orders/:id', authenticateWxToken, async (req, res) => {
 // 21.7 WeChat Client Create Order (POST)
 app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
   const { items, shippingAddress, couponId } = req.body;
+  const deliveryMethod = shippingAddress?.deliveryMethod === 'pickup' || shippingAddress?.deliveryMethod === 'offline'
+    ? 'pickup'
+    : 'online';
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ code: 400, message: '商品列表不能为空' });
   }
@@ -3054,9 +3262,9 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
     !shippingAddress ||
     !String(shippingAddress.contactName || '').trim() ||
     !/^1\d{10}$/.test(String(shippingAddress.phone || '')) ||
-    !String(shippingAddress.detailAddress || '').trim()
+    (deliveryMethod === 'online' && !String(shippingAddress.detailAddress || '').trim())
   ) {
-    return res.status(400).json({ code: 400, message: '请填写完整且有效的收货地址' });
+    return res.status(400).json({ code: 400, message: deliveryMethod === 'online' ? '请填写完整且有效的收货地址' : '请填写完整且有效的取货联系人信息' });
   }
 
   try {
@@ -3090,7 +3298,9 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
       validatedItems.push({
         product: dbProduct,
         quantity,
-        price: dbProduct.price
+        price: dbProduct.price,
+        isDistributionSnapshot: Number(dbProduct.is_distribution || 0) === 1 ? 1 : 0,
+        commissionRateSnapshot: Number(dbProduct.commission_rate || 0)
       });
     }
 
@@ -3108,6 +3318,12 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
       }
     }
     const payAmount = Math.max(0, totalAmount - discountAmount);
+    const orderType = deliveryMethod === 'online' ? 'online' : 'offline';
+    const orderShippingAddress = {
+      ...shippingAddress,
+      deliveryMethod,
+      detailAddress: deliveryMethod === 'online' ? shippingAddress.detailAddress : (shippingAddress.detailAddress || '到店自提')
+    };
 
     const orderNo = `OD2026${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
 
@@ -3115,17 +3331,26 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
       // 1. Insert order
       const [orderResult] = await conn.execute(
         `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, shipping_address)
-         VALUES (?, ?, 'product', ?, ?, ?, ?, 'wechat', NULL, 'pending', ?)`,
-        [orderNo, req.user.id, totalAmount, discountAmount, couponId || null, payAmount, JSON.stringify(shippingAddress)]
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'wechat', NULL, 'pending', ?)`,
+        [orderNo, req.user.id, orderType, totalAmount, discountAmount, couponId || null, payAmount, JSON.stringify(orderShippingAddress)]
       );
       const insertedId = orderResult.insertId;
 
       // 2. Insert order items & Update product stock
       for (const item of validatedItems) {
         await conn.execute(
-          `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [insertedId, item.product.id, item.product.name, item.product.image_url, item.price, item.quantity]
+          `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity, is_distribution_snapshot, commission_rate_snapshot)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            insertedId,
+            item.product.id,
+            item.product.name,
+            item.product.image_url,
+            item.price,
+            item.quantity,
+            item.isDistributionSnapshot,
+            item.commissionRateSnapshot
+          ]
         );
 
         await conn.execute(
@@ -3203,10 +3428,19 @@ app.post('/api/v1/orders/:id/confirm-pay', authenticateWxToken, async (req, res)
     }
 
     await transaction(async (conn) => {
-      // 1. Update order status to paid
+      let address = {};
+      try {
+        address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {});
+      } catch (error) {}
+      const deliveryMethod = address.deliveryMethod === 'pickup' || address.deliveryMethod === 'offline'
+        ? 'pickup'
+        : (order.type === 'online' ? 'online' : 'pickup');
+      const nextStatus = deliveryMethod === 'online' ? 'shipping' : 'paid';
+
+      // 1. Update order status to fulfillment status after payment
       await conn.execute(
-        `UPDATE orders SET status = 'paid', pay_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [id]
+        `UPDATE orders SET status = ?, pay_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [nextStatus, id]
       );
 
       // 2. Create notification
@@ -3215,7 +3449,7 @@ app.post('/api/v1/orders/:id/confirm-pay', authenticateWxToken, async (req, res)
          VALUES (?, '商品购买成功', ?)`,
         [
           req.user.id,
-          `您已成功支付商品订单，支付金额 ¥${(order.pay_amount / 100).toFixed(2)}。订单号: ${order.order_no}。我们会尽快为您安排发货。`
+          `您已成功支付商品订单，支付金额 ¥${(order.pay_amount / 100).toFixed(2)}。订单号: ${order.order_no}。${nextStatus === 'shipping' ? '我们会尽快为您安排发货。' : '请按门店通知到店取货。'}`
         ]
       );
 
@@ -3318,21 +3552,28 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
     if (!order) {
       return res.status(404).json({ code: 404, message: '订单不存在' });
     }
-    if (order.status !== 'paid' && order.status !== 'shipped') {
+    if (!['paid', 'shipping', 'shipped'].includes(order.status)) {
       return res.status(400).json({ code: 400, message: '当前状态不支持申请退款' });
     }
 
     await transaction(async (conn) => {
+      let address = {};
+      try {
+        address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
+      } catch (error) {}
+      address.refund_from_status = order.status;
       await conn.execute(
-        `UPDATE orders SET status = 'refunding', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [id]
+        `UPDATE orders SET status = 'refunding', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [JSON.stringify(address), id]
       );
 
       const commissions = await query(
         `SELECT distributor_id, commission_amount, status FROM distribution_orders WHERE order_id = ? AND status != 'refunded'`,
         [id]
       );
+      const distributorIds = new Set();
       for (const commission of commissions) {
+        distributorIds.add(commission.distributor_id);
         await conn.execute(
           `UPDATE distribution_orders SET status = 'refunded' WHERE order_id = ? AND distributor_id = ?`,
           [id, commission.distributor_id]
@@ -3344,6 +3585,9 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
            WHERE id = ?`,
           [commission.commission_amount, commission.status, commission.commission_amount, commission.distributor_id]
         );
+      }
+      for (const distributorId of distributorIds) {
+        await refreshDistributorLevel(distributorId, conn);
       }
       await conn.execute(
         `INSERT INTO user_notifications (user_id, title, content)
@@ -3376,12 +3620,20 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
     const childUserId = req.user.id;
 
     if (parentUserId === childUserId) {
-      return res.status(400).json({ code: 400, message: '不能绑定自己为推荐人' });
+      return res.json({
+        code: 0,
+        message: '当前账号与邀请人相同，已忽略本次绑定',
+        data: { status: 'ignored_self' }
+      });
     }
 
     const existing = await get(`SELECT id FROM distribution_relationships WHERE child_user_id = ?`, [childUserId]);
     if (existing) {
-      return res.status(400).json({ code: 400, message: '已绑定过推荐关系，不可重复绑定' });
+      return res.json({
+        code: 0,
+        message: '当前账号已绑定过推荐关系，已忽略本次绑定',
+        data: { status: 'already_bound' }
+      });
     }
 
     await transaction(async (conn) => {
@@ -3400,10 +3652,19 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
           [grandParent.parent_user_id, childUserId]
         );
       }
+
+      await ensureDistributor(childUserId, conn);
     });
 
-    res.json({ code: 0, message: '推荐关系绑定成功' });
+    res.json({ code: 0, message: '推荐关系绑定成功', data: { status: 'bound' } });
   } catch (error) {
+    if (error && error.code === 'ER_DUP_ENTRY') {
+      return res.json({
+        code: 0,
+        message: '当前账号已绑定过推荐关系，已忽略本次绑定',
+        data: { status: 'already_bound' }
+      });
+    }
     console.error('Bind relationship error:', error);
     res.status(500).json({ code: 500, message: '绑定推荐人失败' });
   }
@@ -3412,47 +3673,75 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
 // 21b. WeChat Client Distribution (分销管理)
 app.get('/api/v1/distribution/info', authenticateWxToken, async (req, res) => {
   try {
-    const dist = await get(`SELECT * FROM distributors WHERE user_id = ?`, [req.user.id]);
-    if (!dist) {
-      return res.json({
-        code: 0,
-        data: {
-          teamCount: 0,
-          teamLevel2Count: 0,
-          totalSales: 0,
-          availableCommission: 0,
-          totalCommission: 0,
-          withdrawnAmount: 0,
-          level: 'silver',
-          inviteCode: ''
-        }
-      });
-    }
-    const lv1 = await get(`SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 1`, [req.user.id]);
-    const lv2 = await get(`SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 2`, [req.user.id]);
+    const summary = await getDistributionSummary(req.user.id);
+    res.json({ code: 0, data: summary });
+  } catch (error) {
+    console.error('Get distribution info error:', error);
+    res.status(500).json({ code: 500, message: '获取分销信息失败' });
+  }
+});
 
+app.get('/api/v1/distribution/commission-stats', authenticateWxToken, async (req, res) => {
+  try {
+    const summary = await getDistributionSummary(req.user.id);
     res.json({
       code: 0,
+      message: 'success',
       data: {
-        teamCount: lv1.count || 0,
-        teamLevel2Count: lv2.count || 0,
-        totalSales: dist.total_commission * 10,
-        availableCommission: dist.available_commission,
-        totalCommission: dist.total_commission,
-        withdrawnAmount: dist.withdrawn_amount,
-        level: dist.level,
-        inviteCode: dist.invite_code,
-        inviteQrCode: dist.invite_qr_url || '/static/demo/qrcode.png'
+        isDistributor: summary.isDistributor,
+        totalCommission: summary.totalCommission,
+        availableCommission: summary.availableCommission,
+        frozenCommission: summary.frozenCommission,
+        withdrawnAmount: summary.withdrawnAmount
       }
     });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '获取分销信息失败' });
+    console.error('Get distribution commission stats error:', error);
+    res.status(500).json({ code: 500, message: '获取佣金统计失败' });
+  }
+});
+
+app.get('/api/v1/distribution/invite-info', authenticateWxToken, async (req, res) => {
+  try {
+    const summary = await getDistributionSummary(req.user.id);
+    if (!summary.isDistributor) {
+      return res.json({
+        code: 0,
+        message: 'success',
+        data: {
+          isDistributor: false,
+          inviteCode: '',
+          inviteQrCode: '',
+          sharePath: '/pages/distribution/center/index',
+          shareTitle: '邀请好友体验鼾静健康诊所'
+        }
+      });
+    }
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        isDistributor: true,
+        inviteCode: summary.inviteCode,
+        inviteQrCode: summary.inviteQrCode,
+        sharePath: `/pages/index/index?inviteCode=${summary.inviteCode}`,
+        shareTitle: '邀请你体验鼾静健康诊所，扫码下单可享专业睡眠健康服务'
+      }
+    });
+  } catch (error) {
+    console.error('Get distribution invite info error:', error);
+    res.status(500).json({ code: 500, message: '获取邀请信息失败' });
   }
 });
 
 app.get('/api/v1/distribution/team', authenticateWxToken, async (req, res) => {
   try {
     const parentUserId = req.user.id;
+    const currentDistributor = await get(`SELECT id FROM distributors WHERE user_id = ?`, [parentUserId]);
+    if (!currentDistributor) {
+      return res.json({ code: 0, message: 'success', data: { list: [], total: 0 } });
+    }
     const relationships = await query(
       `SELECT r.child_user_id, u.nickname, u.avatar_url, u.created_at as joined_at, d.level, d.id as distributor_id
        FROM distribution_relationships r
@@ -3579,7 +3868,7 @@ app.get('/api/v1/distribution/team', authenticateWxToken, async (req, res) => {
         level: rel.level || 'silver',
         orderCount: orderCount,
         totalSales: totalSales,
-        joinedAt: rel.joined_at ? rel.joined_at.split('T')[0] : '',
+        joinedAt: formatDate(rel.joined_at),
         status: status,
         statusText: statusText,
         statusClass: statusClass
@@ -3600,17 +3889,32 @@ app.get('/api/v1/distribution/team', authenticateWxToken, async (req, res) => {
   }
 });
 
-app.get('/api/v1/distribution/orders', authenticateWxToken, async (req, res) => {
+app.get('/api/v1/distribution/commissions', authenticateWxToken, async (req, res) => {
   try {
+    await settleEligibleDistributionCommissions(req.user.id);
     const dist = await get(`SELECT id FROM distributors WHERE user_id = ?`, [req.user.id]);
     if (!dist) {
       return res.json({ code: 0, data: { list: [] } });
     }
     const list = await query(
-      `SELECT o.order_no, do.buyer_name, do.order_amount, do.commission_amount, do.status, do.created_at
+      `SELECT
+         do.id,
+         do.order_id,
+         do.buyer_name,
+         do.order_amount,
+         do.commission_amount,
+         do.commission_level,
+         do.status,
+         do.created_at,
+         do.settled_at,
+         MAX(o.order_no) as order_no,
+         MAX(oi.product_name) as product_name,
+         MAX(oi.product_image) as product_image
        FROM distribution_orders do
        JOIN orders o ON do.order_id = o.id
+       LEFT JOIN order_items oi ON oi.order_id = o.id
        WHERE do.distributor_id = ?
+       GROUP BY do.id
        ORDER BY do.created_at DESC`,
       [dist.id]
     );
@@ -3618,16 +3922,77 @@ app.get('/api/v1/distribution/orders', authenticateWxToken, async (req, res) => 
       code: 0,
       data: {
         list: list.map(item => ({
+          id: item.id.toString(),
+          orderId: item.order_id.toString(),
           orderNo: item.order_no,
           buyerName: item.buyer_name,
+          productName: item.product_name || '订单佣金',
+          productImage: item.product_image || '',
           orderAmount: item.order_amount,
           commission: item.commission_amount,
+          commissionLevel: item.commission_level,
           status: item.status,
-          createdAt: item.created_at
+          createdAt: item.created_at,
+          settledAt: item.settled_at
         }))
       }
     });
   } catch (error) {
+    console.error('Get distribution commissions error:', error);
+    res.status(500).json({ code: 500, message: '获取佣金明细失败' });
+  }
+});
+
+app.get('/api/v1/distribution/orders', authenticateWxToken, async (req, res) => {
+  try {
+    await settleEligibleDistributionCommissions(req.user.id);
+    const dist = await get(`SELECT id FROM distributors WHERE user_id = ?`, [req.user.id]);
+    if (!dist) {
+      return res.json({ code: 0, data: { list: [] } });
+    }
+    const list = await query(
+      `SELECT
+         do.id,
+         do.order_id,
+         do.buyer_name,
+         do.order_amount,
+         do.commission_amount,
+         do.commission_level,
+         do.status,
+         do.created_at,
+         do.settled_at,
+         MAX(o.order_no) as order_no,
+         MAX(oi.product_name) as product_name,
+         MAX(oi.product_image) as product_image
+       FROM distribution_orders do
+       JOIN orders o ON do.order_id = o.id
+       LEFT JOIN order_items oi ON oi.order_id = o.id
+       WHERE do.distributor_id = ?
+       GROUP BY do.id
+       ORDER BY do.created_at DESC`,
+      [dist.id]
+    );
+    res.json({
+      code: 0,
+      data: {
+        list: list.map(item => ({
+          id: item.id.toString(),
+          orderId: item.order_id.toString(),
+          orderNo: item.order_no,
+          buyerName: item.buyer_name,
+          productName: item.product_name || '订单佣金',
+          productImage: item.product_image || '',
+          orderAmount: item.order_amount,
+          commission: item.commission_amount,
+          commissionLevel: item.commission_level,
+          status: item.status,
+          createdAt: item.created_at,
+          settledAt: item.settled_at
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Get distribution orders error:', error);
     res.status(500).json({ code: 500, message: '获取推广订单失败' });
   }
 });
@@ -3660,6 +4025,7 @@ app.get('/api/v1/distribution/products', async (req, res) => {
 });
 
 app.get('/api/v1/distribution/rules', async (req, res) => {
+  const settleDays = await getDistributionSettleDays();
   res.json({
     code: 0,
     message: 'success',
@@ -3670,47 +4036,80 @@ app.get('/api/v1/distribution/rules', async (req, res) => {
 ### 一、推广员等级
 | 等级 | 升级条件 | 佣金比例 |
 |------|---------|---------|
-| 白银推广员 | 注册即可 | 8% |
-| 黄金推广员 | 累计佣金≥3,000元 | 12% |
-| 钻石推广员 | 累计佣金≥10,000元 | 15% |
+| 银牌推广员 | 注册并开通即可 | 一级10% / 二级3% |
+| 金牌推广员 | 累计直推订单≥10单 | 一级15% / 二级5% |
+| 钻石推广员 | 累计直推订单≥50单 | 一级20% / 二级8% |
 
 ### 二、佣金规则
-1. 一级佣金：您直接推广成交的订单，按对应等级比例获得佣金
-2. 二级佣金：您的推广员推广成交的订单，您可获得一级佣金的20%作为二级奖励
-3. 佣金结算：用户确认收货7天后自动结算，可提现至微信零钱或银行卡
+1. 一级佣金：优先按商品配置佣金比例计算，未配置时按推广员等级比例计算
+2. 二级佣金：按您的推广员等级对应二级佣金比例计算
+3. 佣金状态：下单后冻结，订单完成满 ${settleDays} 天自动转为可提现
+4. 退款/撤单：对应佣金自动撤销，已结算金额会从可提现余额中冲抵
 
 ### 三、推广方式
 1. 分享小程序商品页给微信好友/微信群
-2. 生成专属推广海报，引导扫码购买
-3. 通过朋友圈分享治疗案例（需脱敏处理）
+2. 通过邀请码或分享路径绑定推荐关系
+3. 生成专属海报，引导好友进入小程序咨询/下单
 
 ### 四、注意事项
 - 禁止虚假宣传、夸大疗效
 - 禁止诱导用户进行不必要的消费
 - 违规推广将冻结佣金并取消推广资格
+
+### 五、提现规则
+- 最低提现金额：¥${(DISTRIBUTION_MIN_WITHDRAW_AMOUNT / 100).toFixed(0)}
+- 微信零钱：手续费 0%
+- 银行卡：手续费 1%，最低 1 元
 `
     }
   });
 });
 
 app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) => {
-  const { amount } = req.body;
+  const { amount, method = 'wechat', bankInfo } = req.body;
   if (!amount || amount <= 0) {
     return res.status(400).json({ code: 400, message: '提现金额无效' });
   }
   try {
+    await settleEligibleDistributionCommissions(req.user.id);
     const dist = await get(`SELECT * FROM distributors WHERE user_id = ?`, [req.user.id]);
     if (!dist) {
       return res.status(400).json({ code: 400, message: '您不是推广员' });
+    }
+    if (!['wechat', 'bank'].includes(method)) {
+      return res.status(400).json({ code: 400, message: '提现方式不支持' });
+    }
+    if (amount < DISTRIBUTION_MIN_WITHDRAW_AMOUNT) {
+      return res.status(400).json({ code: 400, message: `最低提现金额为${(DISTRIBUTION_MIN_WITHDRAW_AMOUNT / 100).toFixed(0)}元` });
     }
     if (dist.available_commission < amount) {
       return res.status(400).json({ code: 400, message: '余额不足' });
     }
 
+    if (method === 'bank') {
+      const bankName = String(bankInfo?.bankName || '').trim();
+      const accountName = String(bankInfo?.accountName || '').trim();
+      const accountNo = String(bankInfo?.accountNo || '').trim();
+      if (!bankName || !accountName || !accountNo) {
+        return res.status(400).json({ code: 400, message: '请填写完整的银行卡信息' });
+      }
+    }
+
+    const fee = method === 'bank' ? Math.max(Math.round(amount * 0.01), 100) : 0;
+    const actualAmount = amount - fee;
+    const accountInfo = method === 'bank'
+      ? JSON.stringify({
+          method,
+          bankName: bankInfo.bankName,
+          accountName: bankInfo.accountName,
+          accountNo: String(bankInfo.accountNo).replace(/^(\d{4})\d+(\d{4})$/, '$1********$2')
+        })
+      : JSON.stringify({ method, label: '微信零钱' });
+
     await run(
       `INSERT INTO withdraw_records (user_id, amount, fee, actual_amount, status, account_info)
-       VALUES (?, ?, 0, ?, 'pending', '微信零钱')`,
-      [req.user.id, amount, amount]
+       VALUES (?, ?, ?, ?, 'pending', ?)`,
+      [req.user.id, amount, fee, actualAmount, accountInfo]
     );
 
     await run(
@@ -3718,9 +4117,48 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
       [amount, req.user.id]
     );
 
-    res.json({ code: 0, message: '申请提现成功，等待管理员审批' });
+    res.json({
+      code: 0,
+      message: '申请提现成功，等待管理员审批',
+      data: { amount, fee, actualAmount, method }
+    });
   } catch (error) {
+    console.error('Distribution withdraw error:', error);
     res.status(500).json({ code: 500, message: '申请失败' });
+  }
+});
+
+app.get('/api/v1/distribution/withdraws', authenticateWxToken, async (req, res) => {
+  try {
+    const list = await query(
+      `SELECT * FROM withdraw_records WHERE user_id = ? ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        list: list.map(item => ({
+          id: item.id.toString(),
+          amount: item.amount,
+          fee: item.fee,
+          actualAmount: item.actual_amount,
+          accountInfo: (() => {
+            try {
+              return typeof item.account_info === 'string' ? JSON.parse(item.account_info) : item.account_info;
+            } catch (error) {
+              return { label: item.account_info };
+            }
+          })(),
+          status: item.status,
+          createdAt: item.created_at,
+          completedAt: item.completed_at
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Get distribution withdraws error:', error);
+    res.status(500).json({ code: 500, message: '获取提现记录失败' });
   }
 });
 
@@ -3737,6 +4175,15 @@ app.get('/api/v1/distribution/withdraw-records', authenticateWxToken, async (req
         list: list.map(item => ({
           id: item.id.toString(),
           amount: item.amount,
+          fee: item.fee,
+          actualAmount: item.actual_amount,
+          accountInfo: (() => {
+            try {
+              return typeof item.account_info === 'string' ? JSON.parse(item.account_info) : item.account_info;
+            } catch (error) {
+              return { label: item.account_info };
+            }
+          })(),
           status: item.status,
           createdAt: item.created_at,
           completedAt: item.completed_at
@@ -3744,6 +4191,7 @@ app.get('/api/v1/distribution/withdraw-records', authenticateWxToken, async (req
       }
     });
   } catch (error) {
+    console.error('Get distribution withdraw records error:', error);
     res.status(500).json({ code: 500, message: '获取提现记录失败' });
   }
 });
@@ -3913,6 +4361,7 @@ app.get('/api/v1/live/rooms', async (req, res) => {
         id: r.id.toString(),
         title: r.title,
         cover: r.cover_url,
+        wechatRoomId: r.wechat_room_id ? String(r.wechat_room_id) : '',
         anchorName: r.anchor_name,
         anchorAvatar: r.anchor_avatar || '',
         status: r.status,
@@ -3958,6 +4407,7 @@ app.get('/api/v1/live/rooms/:id', async (req, res) => {
         id: r.id.toString(),
         title: r.title,
         cover: r.cover_url,
+        wechatRoomId: r.wechat_room_id ? String(r.wechat_room_id) : '',
         anchorName: r.anchor_name,
         anchorAvatar: r.anchor_avatar || '',
         status: r.status,

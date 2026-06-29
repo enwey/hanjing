@@ -217,7 +217,7 @@ const computedBmi = computed(() => {
   return ''
 })
 
-function openCheckInDialog(item: QueueItem) {
+async function openCheckInDialog(item: QueueItem) {
   selectedQueueItem.value = item
   checkInForm.value = {
     height: '',
@@ -226,12 +226,39 @@ function openCheckInDialog(item: QueueItem) {
     diastolicBp: '',
     neckCircumference: ''
   }
+  try {
+    const res: any = await request.get(`/api/admin/appointments/${item.id}/pre-exam`)
+    if (res.code === 200 && res.data) {
+      checkInForm.value = {
+        height: res.data.height !== null && res.data.height !== undefined ? String(res.data.height) : '',
+        weight: res.data.weight !== null && res.data.weight !== undefined ? String(res.data.weight) : '',
+        systolicBp: res.data.systolic_bp !== null && res.data.systolic_bp !== undefined ? String(res.data.systolic_bp) : '',
+        diastolicBp: res.data.diastolic_bp !== null && res.data.diastolic_bp !== undefined ? String(res.data.diastolic_bp) : '',
+        neckCircumference: res.data.neck_circumference !== null && res.data.neck_circumference !== undefined ? String(res.data.neck_circumference) : ''
+      }
+    }
+  } catch (error) {
+    console.error(error)
+  }
   checkInVisible.value = true
 }
 
 function closeCheckInDialog() {
   checkInVisible.value = false
   selectedQueueItem.value = null
+}
+
+async function handleCheckInSkip() {
+  if (!selectedQueueItem.value) return
+  try {
+    await request.put(`/api/admin/appointments/${selectedQueueItem.value.id}`, { status: 'confirmed' })
+    MessagePlugin.success(`患者 ${selectedQueueItem.value.patientName} 签到成功（已跳过体征录入）`)
+    checkInVisible.value = false
+    fetchAppointments()
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('签到失败')
+  }
 }
 
 async function handleCheckInSubmit() {
@@ -353,8 +380,8 @@ function openCheckoutDialog(item: QueueItem) {
   orderResult.value = null
   
   deliveryType.value = 'offline_direct'
-  shippingReceiver.value = item.patientName || ''
-  shippingPhone.value = item.phone || ''
+  shippingReceiver.value = ''
+  shippingPhone.value = ''
   shippingAddressStr.value = ''
   
   checkoutVisible.value = true
@@ -379,10 +406,28 @@ async function submitCheckout() {
     MessagePlugin.warning('结账明细不能为空')
     return
   }
+  if (deliveryType.value !== 'offline_direct') {
+    if (!shippingReceiver.value || !shippingReceiver.value.trim()) {
+      MessagePlugin.warning('请填写联系人/收件人姓名')
+      return
+    }
+    if (!shippingPhone.value || !shippingPhone.value.trim()) {
+      MessagePlugin.warning('请填写联系电话')
+      return
+    }
+    if (!/^1\d{10}$/.test(shippingPhone.value.trim())) {
+      MessagePlugin.warning('请输入有效的11位手机号码')
+      return
+    }
+  }
+  if (deliveryType.value === 'online' && (!shippingAddressStr.value || !shippingAddressStr.value.trim())) {
+    MessagePlugin.warning('请填写详细收货地址')
+    return
+  }
   checkoutLoading.value = true
   try {
     let orderType = 'offline'
-    let orderStatus = 'completed'
+    let orderStatus = 'paid'
     let shipAddr: any = null
 
     if (deliveryType.value === 'online') {
@@ -394,7 +439,8 @@ async function submitCheckout() {
         province: '广东省',
         city: '深圳市',
         district: '快递邮寄',
-        detail: shippingAddressStr.value
+        detail: shippingAddressStr.value,
+        deliveryMethod: 'online'
       }
     } else if (deliveryType.value === 'offline_pending') {
       orderType = 'offline'
@@ -405,18 +451,20 @@ async function submitCheckout() {
         province: '广东省',
         city: '深圳市',
         district: '门店自提',
-        detail: '缺货登记（待货通知自提）'
+        detail: '缺货登记（待货通知自提）',
+        deliveryMethod: 'pickup_pending'
       }
     } else {
       orderType = 'offline'
-      orderStatus = 'completed'
+      orderStatus = 'paid'
       shipAddr = {
         receiver: shippingReceiver.value || '到店客户',
         phone: shippingPhone.value || '--',
         province: '广东省',
         city: '深圳市',
         district: '到店自提',
-        detail: '现场拿走'
+        detail: '到店自提',
+        deliveryMethod: 'pickup'
       }
     }
 
@@ -477,7 +525,7 @@ onMounted(() => {
 const createApptVisible = ref(false)
 const apptSearchQuery = ref('')
 const apptSelectedPatient = ref<any>(null)
-const apptStore = ref('🏥 鼾静健康·龙岗总店')
+const apptStore = ref('鼾静健康·龙岗总店')
 const apptDoctor = ref('古堪民 · 主任医师 · 睡眠呼吸科')
 const apptDate = ref(getTodayDateString())
 const apptSlot = ref('09:30')
@@ -490,7 +538,7 @@ const apptPatientCreateVisible = ref(false)
 function openCreateApptDialog() {
   apptSearchQuery.value = ''
   apptSelectedPatient.value = null
-  apptStore.value = '🏥 鼾静健康·龙岗总店'
+  apptStore.value = '鼾静健康·龙岗总店'
   apptDoctor.value = '古堪民 · 主任医师 · 睡眠呼吸科'
   apptDate.value = getTodayDateString()
   apptSlot.value = '09:30'
@@ -611,10 +659,10 @@ const filteredTodayAppointments = computed(() => {
         <div class="page-title-sub">实时呼叫、就诊安排与队列顺延管理</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <t-button theme="primary" variant="outline" @click="fetchAppointments" :loading="loading">
-          🔄 刷新队列
-        </t-button>
-        <t-button theme="primary" @click="router.push('/appointment/create?from=queue')">➕ 新建预约</t-button>
+        <button class="btn btn-outline" @click="fetchAppointments" :disabled="loading">
+          <AppIcon name="refresh" />  刷新队列
+        </button>
+        <button class="btn btn-primary" @click="router.push('/appointment/create')"><AppIcon name="plus" />  新建预约</button>
       </div>
     </div>
 
@@ -624,7 +672,7 @@ const filteredTodayAppointments = computed(() => {
         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span style="font-size: 13px; font-weight: 600; color: #4B5563; display: inline-flex; align-items: center; gap: 4px;">
-              <span>🏥</span> 接诊门店：
+              <span><AppIcon name="store" /> </span> 接诊门店：
             </span>
             <select v-model="selectedStore" class="selector-dropdown" style="height: 32px; font-size: 13px; font-weight: 500; color: #374151; border: 1px solid #D1D5DB; border-radius: 8px; background: #fff; cursor: pointer; padding: 0 8px; outline: none; transition: border-color 150ms;">
               <option value="all">全部门店</option>
@@ -707,7 +755,7 @@ const filteredTodayAppointments = computed(() => {
 
         <!-- Current Patient -->
         <div class="current-section">
-          <div class="section-title">🔊 当前就诊中</div>
+          <div class="section-title"><AppIcon name="volume" />  当前就诊中</div>
           <div v-if="q.current" class="current-patient-card">
             <div class="patient-info">
               <div class="pat-name">{{ q.current.patientName }}</div>
@@ -763,9 +811,7 @@ const filteredTodayAppointments = computed(() => {
       v-model:visible="checkInVisible"
       header="到店签到 & 预检体征录入"
       width="480px"
-      confirm-btn="确认签到"
-      cancel-btn="取消"
-      @confirm="handleCheckInSubmit"
+      :footer="null"
       @cancel="closeCheckInDialog"
     >
       <div class="dialog-body-form" style="padding: 10px 0;">
@@ -795,7 +841,13 @@ const filteredTodayAppointments = computed(() => {
         </div>
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">BMI</label>
-          <input type="text" class="form-control" :value="computedBmi" disabled placeholder="输入身高体重后自动计算" style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
+          <input type="text" class="form-control" :value="computedBmi" disabled placeholder="输入身高体重后自动计算" style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none; margin-bottom: 16px;">
+        </div>
+        <!-- Custom Footer -->
+        <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #E5E7EB; padding-top: 16px;">
+          <t-button variant="outline" theme="default" @click="closeCheckInDialog">取消</t-button>
+          <t-button variant="outline" theme="warning" @click="handleCheckInSkip">跳过录入直接签到</t-button>
+          <t-button theme="primary" @click="handleCheckInSubmit">确认签到</t-button>
         </div>
       </div>
     </t-dialog>
@@ -833,7 +885,7 @@ const filteredTodayAppointments = computed(() => {
           </div>
         </div>
         <div style="margin-top: 20px; display: flex; gap: 12px;">
-          <t-button variant="outline" @click="handlePrintInvoice">🖨️ 打印小票</t-button>
+          <t-button variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
           <t-button theme="primary" @click="closeCheckoutDialog">完成结算</t-button>
         </div>
       </div>
@@ -878,7 +930,7 @@ const filteredTodayAppointments = computed(() => {
           </tbody>
         </table>
 
-        <button class="btn-add-item" style="margin-bottom: 16px;" @click="addBillingItem">➕ 添加诊疗费/项目/药品</button>
+        <button class="btn-add-item" style="margin-bottom: 16px;" @click="addBillingItem"><AppIcon name="plus" />  添加诊疗费/项目/药品</button>
 
         <!-- Discount & Delivery selector -->
         <div style="display: flex; gap: 16px; margin-bottom: 16px;">
@@ -898,7 +950,7 @@ const filteredTodayAppointments = computed(() => {
 
         <!-- Shipping Address Form -->
         <div v-if="deliveryType === 'online'" style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
-          <div style="font-weight: 700; font-size: 12px; color: #374151;">🚚 快递收货地址</div>
+          <div style="font-weight: 700; font-size: 12px; color: #374151;"><AppIcon name="truck" />  快递收货地址</div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label" style="font-size: 11px;">收件人</label>
@@ -917,7 +969,7 @@ const filteredTodayAppointments = computed(() => {
 
         <!-- Pickup Info Form -->
         <div v-if="deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 12px; border-radius: 8px; border: 1px solid #FCD34D; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
-          <div style="font-weight: 700; font-size: 12px; color: #D97706;">🏪 缺货自提预订</div>
+          <div style="font-weight: 700; font-size: 12px; color: #D97706;"><AppIcon name="pickup" />  缺货自提预订</div>
           <div style="font-size: 11px; color: #B45309; line-height: 1.4;">
             货到后系统将通过微信推送通知该患者到店自提。
           </div>
@@ -955,15 +1007,15 @@ const filteredTodayAppointments = computed(() => {
           <div style="display: flex; gap: 12px;">
             <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
               <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
-              🟢 微信支付
+              <AppIcon name="wechat" />  微信支付
             </label>
             <label class="pay-method-label" :class="{ active: payMethod === 'alipay' }">
               <input v-model="payMethod" type="radio" value="alipay" style="display: none;">
-              🔵 支付宝
+              <AppIcon name="alipay" />  支付宝
             </label>
             <label class="pay-method-label" :class="{ active: payMethod === 'pos' }">
               <input v-model="payMethod" type="radio" value="pos" style="display: none;">
-              🪙 现金/刷卡
+              <AppIcon name="coins" />  现金/刷卡
             </label>
           </div>
         </div>

@@ -12,22 +12,30 @@ const a = e.defineComponent({
         o = e.ref(0),
         l = e.ref(0),
         r = e.ref(0),
-        i = { gold: "黄金", silver: "白银", diamond: "钻石" };
-      return (
-        e.onMounted(async () => {
-          var e;
+        i = { gold: "金牌", silver: "银牌", diamond: "钻石" },
+        s = async () => {
           try {
-            const [a, i] = await Promise.all([
+            const [a, s] = await Promise.all([
               t.getTeamMembers(),
               t.getDistributorInfo(),
             ]);
-            n.value = (null == (e = a.data) ? void 0 : e.list) || a.list || [];
-            const s = i.data || i;
-            ((o.value = s.teamCount || 0),
-              (l.value = s.teamLevel2Count || 0),
-              (r.value = (s.totalSales || 0) / 1e4));
-          } catch (a) {}
-        }),
+            const members = ((a.data && a.data.list) || a.list || []).map((t) => ({
+              ...t,
+              avatarText: (t.nickname || "用").slice(0, 1),
+              joinedAtText: t.joinedAt || "",
+            }));
+            n.value = members;
+            const u = s.data || s;
+            o.value = u.teamCount || 0;
+            l.value = u.teamLevel2Count || 0;
+            r.value = members.reduce((sum, item) => sum + Number(item.totalSales || 0), 0) / 1e4;
+          } catch (a) {
+            e.index.showToast({ title: "加载团队成员失败", icon: "none" });
+          }
+        };
+      return (
+        e.onMounted(s),
+        e.onShow(s),
         (t, a) =>
           e.e(
             {
@@ -35,15 +43,16 @@ const a = e.defineComponent({
               b: e.t(l.value),
               c: e.t(r.value.toFixed(1)),
               d: e.f(n.value, (t, a, n) => ({
-                a: e.t(t.nickname[0]),
+                a: e.t(t.avatarText),
                 b: e.t(t.nickname),
                 c: e.t(t.orderCount),
-                d: e.t(i[t.level]),
+                d: e.t(i[t.level] || "银牌"),
                 e: e.n(t.level),
                 f: e.t((t.totalSales / 1e4).toFixed(1)),
                 g: t.id,
                 h: e.t(t.statusText || ""),
                 i: e.t(t.statusClass || ""),
+                j: e.t(t.joinedAtText || ""),
               })),
               e: !n.value.length,
             },

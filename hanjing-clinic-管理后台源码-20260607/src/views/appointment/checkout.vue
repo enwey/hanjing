@@ -50,8 +50,8 @@ const shippingAddressStr = ref<string>('')
 watch(selectedPatientId, (newVal) => {
   const p = patients.value.find(item => item.value === newVal)
   if (p) {
-    shippingReceiver.value = p.label.split(' ')[0]
-    shippingPhone.value = p.phone
+    shippingReceiver.value = ''
+    shippingPhone.value = ''
   }
 })
 
@@ -118,12 +118,30 @@ const submitCheckout = async () => {
     MessagePlugin.warning('结账明细不能为空')
     return
   }
+  if (deliveryType.value !== 'offline_direct') {
+    if (!shippingReceiver.value || !shippingReceiver.value.trim()) {
+      MessagePlugin.warning('请填写联系人/收件人姓名')
+      return
+    }
+    if (!shippingPhone.value || !shippingPhone.value.trim()) {
+      MessagePlugin.warning('请填写联系电话')
+      return
+    }
+    if (!/^1\d{10}$/.test(shippingPhone.value.trim())) {
+      MessagePlugin.warning('请输入有效的11位手机号码')
+      return
+    }
+  }
+  if (deliveryType.value === 'online' && (!shippingAddressStr.value || !shippingAddressStr.value.trim())) {
+    MessagePlugin.warning('请填写详细收货地址')
+    return
+  }
 
   loading.value = true
   try {
     // Determine order type and status based on delivery type
     let orderType = 'offline'
-    let orderStatus = 'completed' // completed for immediate offline delivery
+    let orderStatus = 'paid'
     let shipAddr: any = null
 
     if (deliveryType.value === 'online') {
@@ -135,7 +153,8 @@ const submitCheckout = async () => {
         province: '广东省',
         city: '深圳市',
         district: '快递邮寄',
-        detail: shippingAddressStr.value
+        detail: shippingAddressStr.value,
+        deliveryMethod: 'online'
       }
     } else if (deliveryType.value === 'offline_pending') {
       orderType = 'offline'
@@ -146,19 +165,21 @@ const submitCheckout = async () => {
         province: '广东省',
         city: '深圳市',
         district: '门店自提',
-        detail: '缺货登记（待货通知自提）'
+        detail: '缺货登记（待货通知自提）',
+        deliveryMethod: 'pickup_pending'
       }
     } else {
       // offline_direct
       orderType = 'offline'
-      orderStatus = 'completed'
+      orderStatus = 'paid'
       shipAddr = {
         receiver: shippingReceiver.value || '到店客户',
         phone: shippingPhone.value || '--',
         province: '广东省',
         city: '深圳市',
         district: '到店自提',
-        detail: '现场拿走'
+        detail: '到店自提',
+        deliveryMethod: 'pickup'
       }
     }
 
@@ -252,7 +273,7 @@ onMounted(() => {
     <div v-else class="checkout-layout">
       <!-- Left Form -->
       <div class="form-card">
-        <div class="card-title">💵 收费信息登记</div>
+        <div class="card-title"><AppIcon name="money" />  收费信息登记</div>
         
         <!-- Select Patient -->
         <div class="form-item">
@@ -265,7 +286,7 @@ onMounted(() => {
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <label class="form-label" style="margin-bottom: 0;">收费项目明细</label>
             <t-button size="small" theme="primary" variant="outline" @click="addBillingItem">
-              ➕ 添加项目
+              <AppIcon name="plus" />  添加项目
             </t-button>
           </div>
           
@@ -311,7 +332,7 @@ onMounted(() => {
         <!-- Shipping Address Form (if online delivery or pending offline) -->
         <div v-if="deliveryType === 'online'" style="background: #F9FAFB; padding: 14px; border-radius: 8px; border: 1px solid #E5E7EB; margin-top: 16px;">
           <div style="font-weight: 700; font-size: 13px; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 4px;">
-            <span>🚚 快递收货地址</span>
+            <span><AppIcon name="truck" />  快递收货地址</span>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
             <div class="form-item" style="margin-bottom: 0;">
@@ -332,7 +353,7 @@ onMounted(() => {
         <!-- Pickup Info Form (if pending pickup) -->
         <div v-if="deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 14px; border-radius: 8px; border: 1px solid #FCD34D; margin-top: 16px;">
           <div style="font-weight: 700; font-size: 13px; color: #D97706; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
-            <span>🏪 缺货自提预订信息</span>
+            <span><AppIcon name="pickup" />  缺货自提预订信息</span>
           </div>
           <div style="font-size: 12px; color: #B45309; line-height: 1.5; margin-bottom: 10px;">
             系统将会在后台生成一笔“待到货”的自提记录。当门店到货并在后台点击“货到通知”时，系统将通过微信推送通知该患者到店自提。
@@ -352,7 +373,7 @@ onMounted(() => {
 
       <!-- Right Summary Panel -->
       <div class="summary-card">
-        <div class="card-title">🧾 结算清单</div>
+        <div class="card-title"><AppIcon name="receipt" />  结算清单</div>
         <div class="summary-row">
           <span>商品总额</span>
           <span>¥{{ (totalAmount / 100).toFixed(2) }}</span>
@@ -368,7 +389,7 @@ onMounted(() => {
         </div>
 
         <t-button size="large" theme="success" block :loading="loading" @click="submitCheckout" style="margin-top: 24px;">
-          💳 确认收费结算 · ¥{{ (payableAmount / 100).toFixed(2) }}
+          <AppIcon name="card" />  确认收费结算 · ¥{{ (payableAmount / 100).toFixed(2) }}
         </t-button>
       </div>
     </div>

@@ -58,22 +58,26 @@ exports.addFamilyMember = async function (nData) {
   );
 };
 
-exports.applyWithdraw = async function (nAmount) {
+exports.applyWithdraw = async function (nAmount, method = "wechat", bankInfo = null) {
   return req.request(
     {
       url: "/distribution/withdraw",
       method: "POST",
-      data: { amount: nAmount },
+      data: { amount: nAmount, method, bankInfo },
     },
     () => {
       const o = {
         id: "wd-" + Date.now(),
         userId: "user-001",
         amount: nAmount,
-        fee: Math.round(0.001 * nAmount),
-        actualAmount: Math.round(0.999 * nAmount),
+        fee: "bank" === method ? Math.max(Math.round(0.01 * nAmount), 100) : 0,
+        actualAmount:
+          nAmount - ("bank" === method ? Math.max(Math.round(0.01 * nAmount), 100) : 0),
         status: "pending",
-        accountInfo: "微信零钱 ****8888",
+        accountInfo:
+          "bank" === method
+            ? { method: "bank", bankName: bankInfo?.bankName || "银行卡", accountName: bankInfo?.accountName || "", accountNo: bankInfo?.accountNo || "" }
+            : { method: "wechat", label: "微信零钱" },
         createdAt: new Date().toISOString(),
       };
       e.mockWithdrawRecords.unshift(o);
@@ -263,6 +267,35 @@ exports.getDistributionRules = async function () {
   );
 };
 
+exports.getDistributionCommissionStats = async function () {
+  return req.request(
+    {
+      url: "/distribution/commission-stats",
+      method: "GET",
+    },
+    () =>
+      t({
+        totalCommission: e.mockDistributor.totalCommission,
+        availableCommission: e.mockDistributor.availableCommission,
+        frozenCommission:
+          e.mockDistributor.totalCommission -
+          e.mockDistributor.availableCommission -
+          e.mockDistributor.withdrawnAmount,
+        withdrawnAmount: e.mockDistributor.withdrawnAmount,
+      }),
+  );
+};
+
+exports.getDistributionCommissions = async function () {
+  return req.request(
+    {
+      url: "/distribution/commissions",
+      method: "GET",
+    },
+    () => t({ list: e.mockDistributionOrders, total: e.mockDistributionOrders.length }),
+  );
+};
+
 exports.getDistributorInfo = async function () {
   return req.request(
     {
@@ -270,6 +303,22 @@ exports.getDistributorInfo = async function () {
       method: "GET",
     },
     () => t(e.mockDistributor),
+  );
+};
+
+exports.getDistributionInviteInfo = async function () {
+  return req.request(
+    {
+      url: "/distribution/invite-info",
+      method: "GET",
+    },
+    () =>
+      t({
+        inviteCode: e.mockDistributor.inviteCode,
+        inviteQrCode: e.mockDistributor.inviteQrCode,
+        sharePath: `/pages/index/index?inviteCode=${e.mockDistributor.inviteCode}`,
+        shareTitle: "邀请你体验鼾静健康诊所",
+      }),
   );
 };
 
@@ -606,7 +655,7 @@ exports.getWearingSummary = async function () {
 exports.getWithdrawRecords = async function () {
   return req.request(
     {
-      url: "/distribution/withdraw-records",
+      url: "/distribution/withdraws",
       method: "GET",
     },
     () =>

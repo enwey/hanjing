@@ -3,6 +3,7 @@ import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { navigateToParent } from '@/utils/routeNavigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -69,7 +70,7 @@ async function fetchData() {
 }
 
 function handleBack() {
-  router.push(`/patient/detail/${patientId.value}`)
+  navigateToParent(router, route, `/patient/detail/${patientId.value}`)
 }
 
 async function handleExecute(task: Task) {
@@ -169,7 +170,7 @@ watch(operationColumnWidth, () => {
           {{ tasks.filter(t => t.status === 'gold').length }}个待完成 · {{ tasks.filter(t => t.status === 'green').length }}个已完成
         </div>
       </div>
-      <button class="btn btn-primary" @click="showCreate = true">➕ 新建随访</button>
+      <button class="btn btn-primary" @click="showCreate = true"><AppIcon name="plus" />  新建随访</button>
     </div>
 
     <!-- Unified Tasks Table -->

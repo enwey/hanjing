@@ -120,10 +120,10 @@ function getLevelStyle(level: string) {
 }
 
 function getLevelEmoji(level: string) {
-  if (level === '钻石') return '💎'
-  if (level === '金牌') return '🥇'
-  if (level === '银牌') return '🥈'
-  return '🥉'
+  if (level === '钻石') return 'gem'
+  if (level === '金牌') return 'medal-gold'
+  if (level === '银牌') return 'medal-silver'
+  return 'medal-bronze'
 }
 
 onMounted(fetchDistributors)
@@ -149,7 +149,7 @@ watch(operationColumnWidth, () => {
         <div class="page-title-sub">管理分销推广渠道与推广人员</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-outline" @click="handleExport">📥 导出报表</button>
+        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出报表</button>
       </div>
     </div>
 
@@ -172,7 +172,7 @@ watch(operationColumnWidth, () => {
           type="text" 
           v-model="searchKeyword" 
           class="filter-input" 
-          placeholder="🔍 搜索姓名/手机号" 
+          placeholder="搜索姓名/手机号" 
           style="width: 180px;"
         >
       </div>
@@ -208,7 +208,7 @@ watch(operationColumnWidth, () => {
               </td>
               <td>
                 <span :style="getLevelStyle(row.level)">
-                  {{ getLevelEmoji(row.level) }} {{ row.level }}
+                  <AppIcon :name="getLevelEmoji(row.level)" /> {{ row.level }}
                 </span>
               </td>
               <td style="font-weight:600;">{{ row.firstLevelDownline }}</td>

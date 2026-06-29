@@ -24,6 +24,7 @@ const cancelLimitOptions = [
 // 2. 分销设置
 const commission1 = ref(15)
 const commission2 = ref(5)
+const distributionSettleDays = ref(14)
 const minWithdraw = ref(100)
 const withdrawFeeRate = ref(0.2)
 const enableDistribution = ref(true)
@@ -58,6 +59,7 @@ onMounted(async () => {
 
       commission1.value = data.commission1 ?? 15
       commission2.value = data.commission2 ?? 5
+      distributionSettleDays.value = data.distribution_settle_days ?? 14
       minWithdraw.value = data.min_withdraw ?? 100
       withdrawFeeRate.value = data.withdraw_fee_rate ?? 0.2
       enableDistribution.value = data.enable_distribution ?? true
@@ -87,6 +89,7 @@ async function handleSaveAll() {
 
       commission1: commission1.value,
       commission2: commission2.value,
+      distribution_settle_days: distributionSettleDays.value,
       min_withdraw: minWithdraw.value,
       withdraw_fee_rate: withdrawFeeRate.value,
       enable_distribution: enableDistribution.value,
@@ -118,6 +121,7 @@ function handleReset() {
 
   commission1.value = 15
   commission2.value = 5
+  distributionSettleDays.value = 14
   minWithdraw.value = 100
   withdrawFeeRate.value = 0.2
   enableDistribution.value = true
@@ -161,7 +165,7 @@ function editRole(roleName: string) {
       <!-- Panel 1: 预约设置 -->
       <div class="panel" style="margin: 0;">
         <div class="panel-header">
-          <div class="panel-title">📅 预约设置</div>
+          <div class="panel-title"><AppIcon name="calendar" />  预约设置</div>
         </div>
         <div class="panel-body">
           <div class="form-grid">
@@ -217,7 +221,7 @@ function editRole(roleName: string) {
       <!-- Panel 2: 分销设置 -->
       <div class="panel" style="margin: 0;">
         <div class="panel-header">
-          <div class="panel-title">💰 分销设置</div>
+          <div class="panel-title"><AppIcon name="money" />  分销设置</div>
         </div>
         <div class="panel-body">
           <div class="form-grid">
@@ -249,6 +253,13 @@ function editRole(roleName: string) {
                 <span class="input-suffix">%</span>
               </div>
             </div>
+            <div class="form-group">
+              <label class="form-label">佣金结算天数</label>
+              <div class="input-group">
+                <input type="number" class="form-control-inner form-control-inner-suffix" v-model.number="distributionSettleDays" min="0" step="1">
+                <span class="input-suffix">天</span>
+              </div>
+            </div>
             <div class="form-group full">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <label class="form-label" style="margin-bottom: 0;">开启分销功能</label>
@@ -274,7 +285,7 @@ function editRole(roleName: string) {
       <!-- Panel 3: 通知设置 -->
       <div class="panel" style="margin: 0;">
         <div class="panel-header">
-          <div class="panel-title">🔔 通知设置</div>
+          <div class="panel-title"><AppIcon name="bell" />  通知设置</div>
         </div>
         <div class="panel-body">
           <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -329,10 +340,10 @@ function editRole(roleName: string) {
       <!-- Panel 4: 权限管理 -->
       <div class="panel" style="margin: 0;">
         <div class="panel-header">
-          <div class="panel-title">🔐 权限管理</div>
+          <div class="panel-title"><AppIcon name="lock" /> 权限管理</div>
           <div style="display: flex; gap: 8px;">
-            <button class="btn btn-sm btn-outline" @click="router.push('/settings/admin')">👥 成员账号</button>
-            <button class="btn btn-sm btn-primary" @click="router.push('/permission')">➕ 添加角色</button>
+            <button class="btn btn-sm btn-outline" @click="router.push('/settings/admin')"><AppIcon name="team" />  成员账号</button>
+            <button class="btn btn-sm btn-primary" @click="router.push('/permission')"><AppIcon name="plus" />  添加角色</button>
           </div>
         </div>
         <div class="panel-body" style="padding: 0;">

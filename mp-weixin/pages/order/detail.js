@@ -13,7 +13,7 @@ const a = () => "../../components/base/hj-navbar.js",
             current: 0,
             steps: [
               { label: "待付款", done: !0 },
-              { label: "已支付", done: !1 },
+              { label: "待取货", done: !1 },
               { label: "已发货", done: !1 },
               { label: "已完成", done: !1 },
             ],
@@ -22,7 +22,16 @@ const a = () => "../../components/base/hj-navbar.js",
             current: 1,
             steps: [
               { label: "待付款", done: !0 },
-              { label: "已支付", done: !0 },
+              { label: "待取货", done: !0 },
+              { label: "已发货", done: !1 },
+              { label: "已完成", done: !1 },
+            ],
+          },
+          shipping: {
+            current: 1,
+            steps: [
+              { label: "待付款", done: !0 },
+              { label: "待发货", done: !0 },
               { label: "已发货", done: !1 },
               { label: "已完成", done: !1 },
             ],
@@ -31,7 +40,7 @@ const a = () => "../../components/base/hj-navbar.js",
             current: 2,
             steps: [
               { label: "待付款", done: !0 },
-              { label: "已支付", done: !0 },
+              { label: "待取货", done: !0 },
               { label: "已发货", done: !0 },
               { label: "已完成", done: !1 },
             ],
@@ -40,7 +49,7 @@ const a = () => "../../components/base/hj-navbar.js",
             current: 3,
             steps: [
               { label: "待付款", done: !0 },
-              { label: "已支付", done: !0 },
+              { label: "待取货", done: !0 },
               { label: "已发货", done: !0 },
               { label: "已完成", done: !0 },
             ],
@@ -51,7 +60,8 @@ const a = () => "../../components/base/hj-navbar.js",
         },
         o = {
           pending: "待付款",
-          paid: "已支付",
+          paid: "待取货",
+          shipping: "待发货",
           shipped: "已发货",
           completed: "已完成",
           cancelled: "已取消",
@@ -90,7 +100,7 @@ const a = () => "../../components/base/hj-navbar.js",
                 const o = await t.getOrderDetail(l.value.id);
                 l.value = o.data || o;
               } catch (err) {
-                e.index.showToast({ title: "取消失败", icon: "none" });
+                e.index.showToast({ title: err.message || "取消失败", icon: "none" });
               }
             }
           }
@@ -109,7 +119,7 @@ const a = () => "../../components/base/hj-navbar.js",
           l.value = o.data || o;
         } catch (err) {
           e.index.hideLoading();
-          e.index.showToast({ title: "支付失败", icon: "none" });
+          e.index.showToast({ title: err.message || "支付失败", icon: "none" });
         }
       }
       async function onConfirmReceipt() {
@@ -124,7 +134,7 @@ const a = () => "../../components/base/hj-navbar.js",
                 const o = await t.getOrderDetail(l.value.id);
                 l.value = o.data || o;
               } catch (err) {
-                e.index.showToast({ title: "确认失败", icon: "none" });
+                e.index.showToast({ title: err.message || "确认失败", icon: "none" });
               }
             }
           }
@@ -142,7 +152,7 @@ const a = () => "../../components/base/hj-navbar.js",
                 const o = await t.getOrderDetail(l.value.id);
                 l.value = o.data || o;
               } catch (err) {
-                e.index.showToast({ title: "申请失败", icon: "none" });
+                e.index.showToast({ title: err.message || "申请失败", icon: "none" });
               }
             }
           }
@@ -152,8 +162,14 @@ const a = () => "../../components/base/hj-navbar.js",
         e.onLoad(async (a) => {
           const d = null == a ? void 0 : a.id;
           if (!d) return void e.index.navigateBack();
-          const o = await t.getOrderDetail(d);
-          ((l.value = o.data || o), (n.value = !1));
+          try {
+            const o = await t.getOrderDetail(d);
+            l.value = o.data || o;
+          } catch (err) {
+            e.index.showToast({ title: err.message || "订单详情加载失败", icon: "none" });
+          } finally {
+            n.value = !1;
+          }
         }),
         (t, a) => {
           var s, p;
@@ -237,14 +253,14 @@ const a = () => "../../components/base/hj-navbar.js",
                         l.value.shippingAddress.district,
                         l.value.shippingAddress.detail
                       ].filter(Boolean).join("")),
-                      p0: l.value.status === "pending" || l.value.status === "shipped" || l.value.status === "paid",
+                      p0: l.value.status === "pending" || l.value.status === "shipping" || l.value.status === "shipped" || l.value.status === "paid",
                       p1: l.value.status === "pending",
                       p2: e.o(onCancelOrder),
                       p3: l.value.status === "pending",
                       p4: e.o(onPayOrder),
                       p5: l.value.status === "shipped",
                       p6: e.o(onConfirmReceipt),
-                      p7: l.value.status === "paid",
+                      p7: l.value.status === "paid" || l.value.status === "shipping",
                       p8: e.o(onApplyRefund)
                     }
                   )

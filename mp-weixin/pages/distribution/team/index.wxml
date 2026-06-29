@@ -22,7 +22,7 @@
           ><text class="name data-v-e9b2690b">{{m.b}}</text
           ><text wx:if="{{m.h}}" class="{{['status-badge', 'data-v-e9b2690b', m.i]}}">{{m.h}}</text></view
         ><text class="meta data-v-e9b2690b"
-          >{{m.c}}单 · 加入{m.joinedAt}</text
+          >{{m.c}}单 · 加入{{m.j}}</text
         ></view
       ><view class="right data-v-e9b2690b"
         ><text class="{{['level', 'data-v-e9b2690b', m.e]}}">{{m.d}}</text

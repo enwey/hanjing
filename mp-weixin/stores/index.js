@@ -43,22 +43,39 @@ const o = e.defineStore("user", () => {
         try {
           const r = await e.index.login(),
             l = (await t.wxLogin(r.code, phoneCode)).data;
-          // Try bind pending invite code upon login success
+          (n.value = l.access_token),
+            (a.value = l.user),
+            (o.value = !0),
+            e.index.setStorageSync("access_token", l.access_token);
+
           const pendingCode = e.index.getStorageSync("pending_invite_code");
           if (pendingCode) {
             try {
-              await t.bindDistribution(pendingCode);
-              e.index.removeStorageSync("pending_invite_code");
-              console.log("[Login] 登录成功并成功绑定分销关系");
+              const bindRes = await t.bindDistribution(pendingCode);
+              const bindStatus =
+                (bindRes && bindRes.data && bindRes.data.status) ||
+                bindRes.status ||
+                "bound";
+              if (
+                "bound" === bindStatus ||
+                "already_bound" === bindStatus ||
+                "ignored_self" === bindStatus
+              ) {
+                e.index.removeStorageSync("pending_invite_code");
+              }
+              console.log("[Login] 登录后邀请码绑定结果:", bindStatus);
             } catch (bindErr) {
+              if (
+                bindErr &&
+                (bindErr.message === "无效的邀请码" ||
+                  bindErr.message === "邀请码不能为空")
+              ) {
+                e.index.removeStorageSync("pending_invite_code");
+              }
               console.error("[Login] 绑定分销关系失败", bindErr);
             }
           }
           return (
-            (n.value = l.access_token),
-            (a.value = l.user),
-            (o.value = !0),
-            e.index.setStorageSync("access_token", l.access_token),
             l
           );
         } catch (r) {

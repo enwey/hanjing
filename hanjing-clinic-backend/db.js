@@ -534,10 +534,31 @@ export const initDB = async () => {
       product_image VARCHAR(255),
       price INT NOT NULL,
       quantity INT DEFAULT 1,
+      is_distribution_snapshot TINYINT DEFAULT 0,
+      commission_rate_snapshot DECIMAL(4, 2) DEFAULT 0.0,
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
   `);
+  let addedOrderItemDistributionSnapshot = false;
+  try {
+    await query(`ALTER TABLE order_items ADD COLUMN is_distribution_snapshot TINYINT DEFAULT 0`);
+    addedOrderItemDistributionSnapshot = true;
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE order_items ADD COLUMN commission_rate_snapshot DECIMAL(4, 2) DEFAULT 0.0`);
+    addedOrderItemDistributionSnapshot = true;
+  } catch (err) {}
+  if (addedOrderItemDistributionSnapshot) {
+    await query(`
+      UPDATE order_items oi
+      JOIN products p ON p.id = oi.product_id
+      SET oi.is_distribution_snapshot = COALESCE(p.is_distribution, 0),
+          oi.commission_rate_snapshot = COALESCE(p.commission_rate, 0)
+      WHERE COALESCE(oi.is_distribution_snapshot, 0) = 0
+        AND COALESCE(oi.commission_rate_snapshot, 0) = 0
+    `);
+  }
 
   // 21. user_coupons
   await query(`
@@ -584,6 +605,16 @@ export const initDB = async () => {
       FOREIGN KEY (child_user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+  try {
+    await query(`ALTER TABLE distribution_relationships ADD UNIQUE KEY uniq_distribution_child_level (child_user_id, level)`);
+  } catch (err) {
+    // Ignore error if index already exists
+  }
+  try {
+    await query(`ALTER TABLE distribution_relationships ADD KEY idx_distribution_parent_level (parent_user_id, level)`);
+  } catch (err) {
+    // Ignore error if index already exists
+  }
 
   // 24. distribution_orders
   await query(`
@@ -638,6 +669,10 @@ export const initDB = async () => {
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       title VARCHAR(255) NOT NULL,
       cover_url VARCHAR(255) NOT NULL,
+      wechat_room_id VARCHAR(64),
+      wechat_anchor_wechat VARCHAR(100),
+      wechat_cover_media_id VARCHAR(255),
+      wechat_share_media_id VARCHAR(255),
       anchor_name VARCHAR(100) NOT NULL,
       anchor_avatar VARCHAR(255),
       status VARCHAR(30) DEFAULT 'upcoming',
@@ -650,6 +685,22 @@ export const initDB = async () => {
       tags JSON
     );
   `);
+
+  try {
+    await query(`ALTER TABLE live_rooms ADD COLUMN wechat_room_id VARCHAR(64) DEFAULT NULL`);
+  } catch (e) {}
+
+  try {
+    await query(`ALTER TABLE live_rooms ADD COLUMN wechat_anchor_wechat VARCHAR(100) DEFAULT NULL`);
+  } catch (e) {}
+
+  try {
+    await query(`ALTER TABLE live_rooms ADD COLUMN wechat_cover_media_id VARCHAR(255) DEFAULT NULL`);
+  } catch (e) {}
+
+  try {
+    await query(`ALTER TABLE live_rooms ADD COLUMN wechat_share_media_id VARCHAR(255) DEFAULT NULL`);
+  } catch (e) {}
 
   try {
     await query(`ALTER TABLE live_rooms ADD COLUMN description TEXT DEFAULT NULL`);
@@ -682,6 +733,7 @@ export const initDB = async () => {
       user_role VARCHAR(30) DEFAULT 'patient',
       title VARCHAR(255) NOT NULL,
       content TEXT NOT NULL,
+      cover_url VARCHAR(255),
       image_urls JSON,
       tags JSON,
       likes_count INT DEFAULT 0,
@@ -693,6 +745,11 @@ export const initDB = async () => {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+  try {
+    await query(`ALTER TABLE community_posts ADD COLUMN cover_url VARCHAR(255) DEFAULT NULL AFTER content;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
 
   // 29. post_comments
   await query(`
@@ -1041,6 +1098,7 @@ export const initDB = async () => {
           ('appointment_subscribe_template_ids', '', '预约订阅消息模板ID，多个用英文逗号分隔'),
           ('commission1', '15', '一级佣金比例'),
           ('commission2', '5', '二级佣金比例'),
+          ('distribution_settle_days', '14', '分销佣金结算天数'),
           ('min_withdraw', '100', '最低提现金额'),
           ('withdraw_fee_rate', '0.2', '提现手续费率'),
           ('enable_distribution', 'true', '开启分销功能'),
@@ -1052,6 +1110,10 @@ export const initDB = async () => {
       `);
       console.log('Default system settings seeded.');
     }
+    await query(`
+      INSERT IGNORE INTO system_settings (key_name, key_value, description)
+      VALUES ('distribution_settle_days', '14', '分销佣金结算天数')
+    `);
   } catch (err) {
     console.error('Failed to seed system settings:', err);
   }

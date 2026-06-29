@@ -1,48 +1,103 @@
-<view class="page data-v-6825c219"
-  ><hj-navbar title="提现申请" show-back="{{true}}" /><view class="card data-v-6825c219"
-    ><text class="label data-v-6825c219">可提现佣金</text
-    ><text class="balance data-v-6825c219">{{a}}</text
-    ><view class="info-row data-v-6825c219"
-      ><text class="data-v-6825c219">累计佣金 {{b}}</text
-      ><text class="data-v-6825c219">已提现 {{c}}</text></view
-    ></view
-  ><view class="form data-v-6825c219"
-    ><view class="form-item data-v-6825c219"
-      ><text class="form-label data-v-6825c219">提现金额</text
-      ><view class="input-wrap data-v-6825c219"
-        ><text class="prefix data-v-6825c219">¥</text
-        ><input
+<view class="page data-v-6825c219">
+  <hj-navbar title="提现申请" show-back="{{true}}" />
+
+  <view class="card data-v-6825c219">
+    <text class="label data-v-6825c219">可提现佣金</text>
+    <text class="balance data-v-6825c219">{{a}}</text>
+    <view class="info-row data-v-6825c219">
+      <text class="data-v-6825c219">累计佣金 {{b}}</text>
+      <text class="data-v-6825c219">已提现 {{c}}</text>
+    </view>
+  </view>
+
+  <view class="form data-v-6825c219">
+    <view class="form-item data-v-6825c219">
+      <text class="form-label data-v-6825c219">提现金额</text>
+      <view class="input-wrap data-v-6825c219">
+        <text class="prefix data-v-6825c219">¥</text>
+        <input
           class="input data-v-6825c219"
           type="digit"
           placeholder="请输入提现金额"
           value="{{d}}"
-          bindinput="{{e}}" /></view></view
-    ><view class="form-item data-v-6825c219"
-      ><text class="form-label data-v-6825c219">到账方式</text
-      ><view class="method-row data-v-6825c219"
-        ><view
+          bindinput="{{e}}"
+        />
+      </view>
+    </view>
+
+    <view class="form-item data-v-6825c219">
+      <text class="form-label data-v-6825c219">到账方式</text>
+      <view class="method-row data-v-6825c219">
+        <view
           class="{{['method', 'data-v-6825c219', f && 'active']}}"
           bindtap="{{g}}"
-          ><text class="method-icon data-v-6825c219">W</text
-          ><text class="method-text data-v-6825c219">微信零钱</text></view
-        ><view
+        >
+          <text class="method-icon data-v-6825c219">W</text>
+          <text class="method-text data-v-6825c219">微信零钱</text>
+        </view>
+        <view
           class="{{['method', 'data-v-6825c219', h && 'active']}}"
           bindtap="{{i}}"
-          ><text class="method-icon data-v-6825c219">B</text
-          ><text class="method-text data-v-6825c219">银行卡</text></view
-        ></view
-      ></view
-    ><view class="tip-box data-v-6825c219"
-      ><text class="tip data-v-6825c219"
-        >到账金额 = 提现金额 - 手续费(0.1%)</text
-      ><text class="tip data-v-6825c219">预计到账：¥{{j}}</text></view
-    ></view
-  ><view
-    class="{{['submit-btn', 'data-v-6825c219', k && 'disabled']}}"
-    bindtap="{{l}}"
-    >确认提现</view
-  ><view class="records-link data-v-6825c219" bindtap="{{m}}"
-    ><text class="data-v-6825c219">查看提现记录</text
-    ><text class="arrow data-v-6825c219">&gt;</text></view
-  ></view
->
+        >
+          <text class="method-icon data-v-6825c219">B</text>
+          <text class="method-text data-v-6825c219">银行卡</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="tip-box data-v-6825c219">
+      <text class="tip data-v-6825c219">最低提现金额 50 元，微信零钱手续费 0%，银行卡手续费 1%（最低 1 元）</text>
+      <text class="tip data-v-6825c219">手续费：¥{{q}}</text>
+      <text class="tip data-v-6825c219">预计到账：¥{{r}}</text>
+    </view>
+
+    <view wx:if="{{j}}" class="form-item data-v-6825c219">
+      <text class="form-label data-v-6825c219">开户银行</text>
+      <view class="input-wrap data-v-6825c219">
+        <input
+          class="bank-input data-v-6825c219"
+          placeholder="请输入开户银行"
+          value="{{k}}"
+          bindinput="{{l}}"
+        />
+      </view>
+    </view>
+
+    <view wx:if="{{j}}" class="form-item data-v-6825c219">
+      <text class="form-label data-v-6825c219">开户姓名</text>
+      <view class="input-wrap data-v-6825c219">
+        <input
+          class="bank-input data-v-6825c219"
+          placeholder="请输入开户姓名"
+          value="{{m}}"
+          bindinput="{{n}}"
+        />
+      </view>
+    </view>
+
+    <view wx:if="{{j}}" class="form-item data-v-6825c219">
+      <text class="form-label data-v-6825c219">银行卡号</text>
+      <view class="input-wrap data-v-6825c219">
+        <input
+          class="bank-input data-v-6825c219"
+          type="number"
+          placeholder="请输入银行卡号"
+          value="{{o}}"
+          bindinput="{{p}}"
+        />
+      </view>
+    </view>
+  </view>
+
+  <view
+    class="{{['submit-btn', 'data-v-6825c219', s && 'disabled']}}"
+    bindtap="{{t}}"
+  >
+    确认提现
+  </view>
+
+  <view class="records-link data-v-6825c219" bindtap="{{u}}">
+    <text class="data-v-6825c219">查看提现记录</text>
+    <text class="arrow data-v-6825c219">&gt;</text>
+  </view>
+</view>

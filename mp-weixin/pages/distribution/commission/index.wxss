@@ -177,3 +177,7 @@
   background: #fee2e2;
   color: #ef4444;
 }
+.item-tag.refunded.data-v-8fd26dea {
+  background: #fee2e2;
+  color: #ef4444;
+}

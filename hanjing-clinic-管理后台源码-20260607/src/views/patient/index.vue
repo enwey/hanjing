@@ -234,8 +234,8 @@ watch(operationColumnWidth, () => {
         <div class="page-title-sub">2,847 位注册患者</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <t-button variant="outline">📥 导出</t-button>
-        <t-button theme="primary" @click="openCreate">➕ 手动建档</t-button>
+        <button class="btn btn-outline"><AppIcon name="download" />  导出</button>
+        <button class="btn btn-primary" @click="openCreate"><AppIcon name="plus" />  手动建档</button>
       </div>
     </div>
 

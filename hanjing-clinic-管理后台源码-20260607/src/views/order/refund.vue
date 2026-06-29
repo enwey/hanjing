@@ -174,7 +174,7 @@ watch(operationColumnWidth, () => {
           type="text" 
           v-model="searchKeyword" 
           class="filter-input" 
-          placeholder="🔍 搜索单号/原订单/患者" 
+          placeholder="搜索单号/原订单/患者" 
           style="width: 210px;"
         >
       </div>
@@ -239,7 +239,7 @@ watch(operationColumnWidth, () => {
 
     <!-- Refund Detail In-page (shows under table) -->
     <div class="detail-panel" v-if="selectedRefund">
-      <div class="detail-panel-title">💡 退款详情 — {{ selectedRefund.refundNo }}</div>
+      <div class="detail-panel-title"><AppIcon name="lightbulb" />  退款详情 — {{ selectedRefund.refundNo }}</div>
       <div class="card-grid-2">
         <div>
           <div style="font-size: 13px; color: #6B7280; line-height: 2;">
@@ -259,8 +259,8 @@ watch(operationColumnWidth, () => {
         </div>
       </div>
       <div class="detail-actions" v-if="selectedRefund.status === 'pending'">
-        <button class="btn btn-danger" @click="handleReject(selectedRefund)">❌ 拒绝退款</button>
-        <button class="btn btn-success" @click="handleApprove(selectedRefund)">✅ 同意退款</button>
+        <button class="btn btn-danger" @click="handleReject(selectedRefund)"><AppIcon name="x-circle" />  拒绝退款</button>
+        <button class="btn btn-success" @click="handleApprove(selectedRefund)"><AppIcon name="check-circle" />  同意退款</button>
       </div>
     </div>
   </div>

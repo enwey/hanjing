@@ -6,8 +6,6 @@ import request from '@/utils/request'
 
 const router = useRouter()
 const searchKeyword = ref('')
-const filterType = ref('全部类型')
-const filterStore = ref('全部门店')
 const currentPage = ref(1)
 const pageSize = ref(30)
 const activeTab = ref('全部')
@@ -25,10 +23,67 @@ interface Order {
   createTime: string
   status: string
   type: string
-  shipping_address: string
+  shipping_address: any
+  commissions: any[]
+  raw?: any
 }
 
 const orders = ref<Order[]>([])
+
+function formatFen(amount: number) {
+  return (Number(amount || 0) / 100).toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+}
+
+function formatCommission(commissions: any[]) {
+  const validCommissions = (commissions || []).filter(item => item.status !== 'refunded')
+  const total = validCommissions.reduce((sum, item) => sum + Number(item.commission_amount || 0), 0)
+  return total > 0 ? `¥${formatFen(total)}` : '—'
+}
+
+function formatDateTime(value: string) {
+  if (!value) return ''
+  return value.replace('T', ' ').slice(5, 16)
+}
+
+function formatFullDateTime(value: string) {
+  if (!value) return '—'
+  return value.replace('T', ' ').slice(0, 19).replace('.000Z', '')
+}
+
+function getStatusLabel(status: string, type: string) {
+  const map: Record<string, string> = {
+    pending: '待付款',
+    paid: type === 'offline' ? '自提待取货' : '已支付',
+    shipping: '快递待发货',
+    shipped: '已发货',
+    completed: '已完成',
+    cancelled: '已取消',
+    refunding: '退款审核中',
+    refund_pending: '退款审核中',
+    refunded: '已退款'
+  }
+  return map[status] || status || ''
+}
+
+function escapeCsv(value: any) {
+  const text = String(value ?? '')
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+}
+
+function maskPhone(phone: string) {
+  if (!phone || phone === '未绑定') return '未绑定'
+  const p = phone.trim()
+  if (p.length === 11) {
+    return p.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+  }
+  if (p.length > 4) {
+    return p.slice(0, 3) + '****' + p.slice(-4)
+  }
+  return p
+}
 
 const fetchOrders = async () => {
   loading.value = true
@@ -38,33 +93,38 @@ const fetchOrders = async () => {
       orders.value = res.data.map((item: any) => {
         let addr: any = {}
         try {
-          addr = JSON.parse(item.shipping_address || '{}')
+          addr = typeof item.shipping_address === 'string' ? JSON.parse(item.shipping_address || '{}') : (item.shipping_address || {})
         } catch(e) {}
         
-        const productName = item.items && item.items[0] ? item.items[0].product_name : '服务挂号费'
+        const productName = item.items && item.items[0] ? item.items[0].product_name : '订单商品'
         const productDesc = item.items && item.items.length > 1 ? `${productName} 等${item.items.length}件` : productName
         
-        // Show pick up status in store name
         let storeLabel = ''
         if (item.type === 'online') {
-          storeLabel = '快递寄送'
+          storeLabel = item.status === 'shipped' ? '快递寄送 (已发货)' : '快递寄送 (待发货)'
+        } else if (item.status === 'processing') {
+          storeLabel = `自提 (${addr.status || '待到货'})`
+        } else if (item.status === 'paid') {
+          storeLabel = '自提 (待取货)'
         } else {
-          storeLabel = `自提 (${addr.status || '现场直接提走'})`
+          storeLabel = `自提 (${statusLabelMap[item.status] || '已处理'})`
         }
         
         return {
           id: item.id.toString(),
           no: item.order_no,
-          patient: addr.receiver || item.user_name || '患者',
+          patient: addr.receiver || item.buyer_nickname || item.user_name || '患者',
           avatarBg: '#5A85F5',
           product: productDesc,
           store: storeLabel,
           amount: item.pay_amount / 100,
-          commission: `¥${Math.round(item.pay_amount * 0.1 / 100)} (10%)`,
-          createTime: item.created_at ? item.created_at.substring(5, 16).replace('T', ' ') : '',
+          commission: formatCommission(item.commissions || []),
+          createTime: formatDateTime(item.created_at),
           status: item.status,
           type: item.type,
-          shipping_address: item.shipping_address
+          shipping_address: item.shipping_address,
+          commissions: item.commissions || [],
+          raw: item
         }
       })
     }
@@ -80,19 +140,25 @@ onMounted(() => {
   fetchOrders()
 })
 
-const tabs = ['全部', '待发货 (快递)', '待到货 (自提预订)', '已完成', '已退款']
+const tabs = ['全部', '待取货', '待发货 (快递)', '待到货 (自提预订)', '已完成', '已退款']
 
 const statusThemeMap: Record<string, string> = {
   completed: 'green',
+  paid: 'blue',
   processing: 'blue',
   shipping: 'gold',
+  shipped: 'green',
+  refunding: 'red',
   refunded: 'red'
 }
 
 const statusLabelMap: Record<string, string> = {
   completed: '已完成',
+  paid: '待取货',
   processing: '自提待到货',
   shipping: '快递待发货',
+  shipped: '已发货',
+  refunding: '退款中',
   refunded: '已退款'
 }
 
@@ -100,25 +166,16 @@ const filteredOrders = computed(() => {
   let list = orders.value
 
   // Horizontal Tabs Filter
-  if (activeTab.value === '待发货 (快递)') {
+  if (activeTab.value === '待取货') {
+    list = list.filter(o => o.type === 'offline' && o.status === 'paid')
+  } else if (activeTab.value === '待发货 (快递)') {
     list = list.filter(o => o.type === 'online' && o.status === 'shipping')
   } else if (activeTab.value === '待到货 (自提预订)') {
     list = list.filter(o => o.type === 'offline' && o.status === 'processing')
   } else if (activeTab.value === '已完成') {
     list = list.filter(o => o.status === 'completed')
   } else if (activeTab.value === '已退款') {
-    list = list.filter(o => o.status === 'refunded')
-  }
-
-  // Type Filter
-  if (filterType.value && filterType.value !== '全部类型') {
-    if (filterType.value === '挂号') {
-      list = list.filter(o => o.product.includes('诊') || o.product.includes('挂号'))
-    } else if (filterType.value === '套餐') {
-      list = list.filter(o => o.product.includes('套餐') || o.product.includes('监测'))
-    } else if (filterType.value === '器械') {
-      list = list.filter(o => o.product.includes('呼吸机') || o.product.includes('止鼾') || o.product.includes('器'))
-    }
+    list = list.filter(o => o.status === 'refunded' || o.status === 'refunding')
   }
 
   // Search input filter
@@ -142,7 +199,83 @@ function openOrderDetail(orderId: string) {
 }
 
 function handleExport() {
-  MessagePlugin.success('导出数据成功！')
+  const headers = [
+    '订单ID', 
+    '订单编号', 
+    '订单类型', 
+    '订单状态', 
+    '下单时间', 
+    '支付时间', 
+    '支付渠道',
+    '商品总额', 
+    '优惠券抵扣', 
+    '实际支付', 
+    '下单会员ID', 
+    '下单会员昵称', 
+    '下单会员手机号', 
+    '收件人/提货人', 
+    '联系电话', 
+    '收货地址/自提门店说明',
+    '物流公司', 
+    '快递单号', 
+    '购买商品明细', 
+    '推广佣金总额', 
+    '分销明细'
+  ]
+
+  const rows = filteredOrders.value.map(row => {
+    const raw = row.raw || {}
+    const addr = typeof raw.shipping_address === 'string' ? JSON.parse(raw.shipping_address || '{}') : (raw.shipping_address || {})
+    
+    // 格式化商品明细
+    const itemsStr = (raw.items || []).map((item: any) => 
+      `${item.product_name} x${item.quantity || 1} (单价: ¥${formatFen(item.price)})`
+    ).join('; ')
+
+    // 格式化推广佣金明细
+    const commissionsStr = (raw.commissions || []).map((c: any) => 
+      `${c.commission_level === 1 ? '一级' : '二级'}:${c.promoter_name || '推广员'}(佣金: ¥${formatFen(c.commission_amount)})`
+    ).join('; ')
+
+    // 格式化订单状态文字
+    const statusText = getStatusLabel(raw.status, raw.type)
+
+    return [
+      raw.id || '',
+      raw.order_no || '',
+      raw.type === 'online' ? '快递邮寄' : '门店自提',
+      statusText,
+      formatFullDateTime(raw.created_at),
+      formatFullDateTime(raw.pay_at || raw.pay_time || ''),
+      raw.pay_method === 'wechat' ? '微信支付' : (raw.pay_method || '—'),
+      `¥${formatFen(raw.total_amount)}`,
+      `¥${formatFen(raw.discount_amount)}`,
+      `¥${formatFen(raw.pay_amount)}`,
+      raw.user_id || '',
+      raw.buyer_nickname || '—',
+      raw.buyer_phone ? maskPhone(raw.buyer_phone) : '—',
+      addr.receiver || '—',
+      addr.phone || '—',
+      raw.type === 'online' ? (addr.detail || '—') : (addr.detail || addr.store_name || addr.status || '门店自提'),
+      addr.express_company || '—',
+      addr.tracking_number || '—',
+      itemsStr || '—',
+      `¥${formatFen(raw.commission_total || 0)}`,
+      commissionsStr || '—'
+    ]
+  })
+
+  const csv = [headers, ...rows].map(row => row.map(escapeCsv).join(',')).join('\n')
+  const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `订单导出数据-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  MessagePlugin.success('订单详情已成功导出')
 }
 
 async function handleComplete(row: Order) {
@@ -178,8 +311,10 @@ function handleShip(row: Order) {
 const operationColumnWidth = computed(() => {
   if (paginatedOrders.value.length === 0) return '80px'
   const hasProcessing = paginatedOrders.value.some(o => o.status === 'processing')
+  const hasPickup = paginatedOrders.value.some(o => o.type === 'offline' && o.status === 'paid')
   const hasShipping = paginatedOrders.value.some(o => o.status === 'shipping')
   if (hasProcessing) return '240px'
+  if (hasPickup) return '150px'
   if (hasShipping) return '140px'
   return '80px'
 })
@@ -200,7 +335,7 @@ watch(operationColumnWidth, () => {
         <div class="page-title-sub">管理所有商品及服务订单</div>
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-outline" @click="handleExport">📥 导出</button>
+        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出</button>
       </div>
     </div>
 
@@ -219,19 +354,7 @@ watch(operationColumnWidth, () => {
           </div>
         </div>
         <div style="margin-left:auto;display:flex;gap:10px;align-items:center;">
-          <input type="text" v-model="searchKeyword" class="filter-input" placeholder="🔍 搜索订单号/患者名" style="width:200px;">
-          <select v-model="filterType" class="filter-select">
-            <option value="全部类型">全部类型</option>
-            <option value="挂号">挂号</option>
-            <option value="套餐">套餐</option>
-            <option value="器械">器械</option>
-          </select>
-          <select v-model="filterStore" class="filter-select">
-            <option value="全部门店">全部门店</option>
-            <option value="龙岗总店">龙岗总店</option>
-            <option value="南山分院">南山分院</option>
-            <option value="福田门诊部">福田门诊部</option>
-          </select>
+          <input type="text" v-model="searchKeyword" class="filter-input" placeholder="搜索订单号/患者名" style="width:200px;">
         </div>
       </div>
 
@@ -281,7 +404,7 @@ watch(operationColumnWidth, () => {
                 <div class="actions" style="justify-content: flex-end;">
                   <button class="btn btn-xs btn-outline" @click="openOrderDetail(row.id)">详情</button>
                   <button v-if="row.status === 'processing'" class="btn btn-xs btn-outline" @click="handleNotify(row)" style="margin-right: 4px;">通知到货</button>
-                  <button v-if="row.status === 'processing'" class="btn btn-xs btn-success" @click="handleComplete(row)">提货核销</button>
+                  <button v-if="row.status === 'processing' || (row.type === 'offline' && row.status === 'paid')" class="btn btn-xs btn-success" @click="handleComplete(row)">提货核销</button>
                   <button v-if="row.status === 'shipping'" class="btn btn-xs btn-primary" @click="handleShip(row)">发货</button>
                 </div>
               </td>

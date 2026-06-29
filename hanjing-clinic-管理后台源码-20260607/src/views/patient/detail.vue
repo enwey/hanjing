@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import * as echarts from 'echarts'
 import request from '@/utils/request'
+import { navigateToParent } from '@/utils/routeNavigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -335,7 +336,7 @@ onMounted(() => {
 })
 
 function handleBack() {
-  router.push('/patient')
+  navigateToParent(router, route, '/patient')
 }
 
 function handleEdit() {
@@ -366,9 +367,9 @@ function handleFollowup() {
         <div class="page-title-sub">病历号 {{ patient.no }} · 注册于 {{ patient.regDate }}</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" @click="handleEdit">✏️ 编辑</button>
-        <button class="btn btn-primary" @click="handleNewAppointment">📅 新建预约</button>
-        <button class="btn btn-success" @click="handleFollowup">📞 随访</button>
+        <button class="btn btn-outline" @click="handleEdit"><AppIcon name="edit" />  编辑</button>
+        <button class="btn btn-primary" @click="handleNewAppointment"><AppIcon name="calendar" />  新建预约</button>
+        <button class="btn btn-success" @click="handleFollowup"><AppIcon name="phone" />  随访</button>
       </div>
     </div>
 
@@ -389,28 +390,28 @@ function handleFollowup() {
         <!-- Stats cards -->
         <div class="card-grid-4">
           <div class="mini-stat">
-            <div class="mini-stat-icon" style="background: var(--primary-100); color: var(--primary-500);">📅</div>
+            <div class="mini-stat-icon" style="background: var(--primary-100); color: var(--primary-500);"><AppIcon name="calendar" /> </div>
             <div>
               <div class="mini-stat-value">{{ patient.totalVisits }}</div>
               <div class="mini-stat-label">累计就诊</div>
             </div>
           </div>
           <div class="mini-stat">
-            <div class="mini-stat-icon" style="background: var(--success-100); color: var(--success-500);">💰</div>
+            <div class="mini-stat-icon" style="background: var(--success-100); color: var(--success-500);"><AppIcon name="money" /> </div>
             <div>
               <div class="mini-stat-value">¥{{ patient.totalSpent.toLocaleString() }}</div>
               <div class="mini-stat-label">消费总额</div>
             </div>
           </div>
           <div class="mini-stat">
-            <div class="mini-stat-icon" style="background: #FFF9E6; color: #D4930A;">🏷️</div>
+            <div class="mini-stat-icon" style="background: #FFF9E6; color: #D4930A;"><AppIcon name="tag" /> </div>
             <div>
               <div class="mini-stat-value">{{ patient.commissionRate }}</div>
               <div class="mini-stat-label">分销佣金率</div>
             </div>
           </div>
           <div class="mini-stat">
-            <div class="mini-stat-icon" style="background: var(--error-100); color: var(--error-500);">⏰</div>
+            <div class="mini-stat-icon" style="background: var(--error-100); color: var(--error-500);"><AppIcon name="clock" /></div>
             <div>
               <div class="mini-stat-value">{{ patient.nextFollowup }}</div>
               <div class="mini-stat-label">距下次随访</div>
@@ -422,7 +423,7 @@ function handleFollowup() {
         <div class="card-grid-2">
           <!-- Personal Info -->
           <div class="panel" style="margin: 0;">
-            <div class="panel-header"><div class="panel-title">📋 个人信息</div></div>
+            <div class="panel-header"><div class="panel-title"><AppIcon name="clipboard" />  个人信息</div></div>
             <div class="info-grid">
               <div class="info-item"><div class="info-label">姓名</div><div class="info-value">{{ patient.name }}</div></div>
               <div class="info-item"><div class="info-label">性别</div><div class="info-value">{{ patient.gender }}</div></div>
@@ -437,7 +438,7 @@ function handleFollowup() {
 
           <!-- Medical Overview -->
           <div class="panel" style="margin: 0;">
-            <div class="panel-header"><div class="panel-title">🏥 就诊概况</div></div>
+            <div class="panel-header"><div class="panel-title"><AppIcon name="store" />  就诊概况</div></div>
             <div class="panel-body">
               <div style="display: flex; flex-direction: column; gap: 14px;">
                 <div v-for="dept in depts" :key="dept.name">
@@ -468,7 +469,7 @@ function handleFollowup() {
 
         <!-- Timeline of Visits -->
         <div class="panel" style="margin-top: 16px;">
-          <div class="panel-header"><div class="panel-title">📅 就诊时间线</div></div>
+          <div class="panel-header"><div class="panel-title"><AppIcon name="calendar" />  就诊时间线</div></div>
           <div class="panel-body">
             <div class="timeline">
               <div class="timeline-item" v-for="ev in timelineEvents" :key="ev.id">
@@ -487,7 +488,7 @@ function handleFollowup() {
           <div style="display: flex; flex-direction: column; gap: 16px;">
             <div>
               <div style="font-weight: 700; font-size: 14px; color: #374151; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                <span>📋 既往病史</span>
+                <span><AppIcon name="clipboard" />  既往病史</span>
               </div>
               <div v-if="patient.medical_history" style="background: #FFFBEB; padding: 14px; border-radius: 8px; border-left: 4px solid #F59E0B; font-size: 13px; color: #D97706; font-weight: 500; text-align: left;">
                 {{ patient.medical_history }}
@@ -497,7 +498,7 @@ function handleFollowup() {
             
             <div>
               <div style="font-weight: 700; font-size: 14px; color: #374151; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                <span>🚫 药物与过敏史</span>
+                <span><AppIcon name="x-circle" />  药物与过敏史</span>
               </div>
               <div v-if="patient.allergy_history" style="background: #FEF2F2; padding: 14px; border-radius: 8px; border-left: 4px solid #EF4444; font-size: 13px; color: #DC2626; font-weight: 500; text-align: left;">
                 {{ patient.allergy_history }}
@@ -594,7 +595,7 @@ function handleFollowup() {
       <!-- Tab 5: Patient Files -->
       <div v-if="activeTab === 'files'">
         <div class="panel" style="margin: 0; padding: 40px; text-align: center; color: #9CA3AF;">
-          📁 暂无病历电子附件/睡眠监测报告PDF，点击可上传
+          <AppIcon name="folder" />  暂无病历电子附件/睡眠监测报告PDF，点击可上传
           <div style="margin-top: 12px;"><button class="btn btn-sm btn-outline">上传病历附件</button></div>
         </div>
       </div>
@@ -615,25 +616,25 @@ function handleFollowup() {
           <div><strong>就诊科室:</strong> 睡眠呼吸科</div>
         </div>
         <div style="margin-bottom: 16px;">
-          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">🩺 临床诊断：</div>
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;"><AppIcon name="stethoscope" />  临床诊断：</div>
           <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid var(--primary-500); white-space: pre-wrap;">
             {{ selectedRecord.diagnosis }}
           </div>
         </div>
         <div style="margin-bottom: 16px;">
-          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">💊 治疗方案 / 处方：</div>
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;"><AppIcon name="pill" />  治疗方案 / 处方：</div>
           <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid var(--success-500); white-space: pre-wrap;">
             {{ selectedRecord.prescription || '未开具处方' }}
           </div>
         </div>
         <div style="margin-bottom: 16px;">
-          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">📣 医嘱建议：</div>
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;"><AppIcon name="megaphone" />  医嘱建议：</div>
           <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid #F59E0B; white-space: pre-wrap;">
             {{ selectedRecord.doctor_advice || '无' }}
           </div>
         </div>
         <div v-if="selectedRecord.note" style="margin-bottom: 16px;">
-          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">📝 备注：</div>
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;"><AppIcon name="file-text" />  备注：</div>
           <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; color: #6B7280; white-space: pre-wrap;">
             {{ selectedRecord.note }}
           </div>

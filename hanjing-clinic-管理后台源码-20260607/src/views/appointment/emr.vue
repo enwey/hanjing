@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { navigateToParent } from '@/utils/routeNavigation'
 
 const router = useRouter()
 const route = useRoute()
@@ -241,7 +242,7 @@ const handleSubmit = async () => {
 
     if (emrRes.code === 200) {
       MessagePlugin.success('诊疗录入成功，患者已就诊完毕并完成建档！')
-      router.push('/queue')
+      navigateToParent(router, route, '/appointment')
     } else {
       MessagePlugin.error(emrRes.message || '诊疗录入失败')
     }
@@ -262,9 +263,9 @@ const handleSubmit = async () => {
         <div class="page-title-sub">录入患者电子病历、处方方案及同步建档睡眠治疗</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-outline" @click="router.push('/queue')">取消</button>
+        <button class="btn btn-outline" @click="navigateToParent(router, route, '/appointment')">取消</button>
         <button class="btn btn-primary" :disabled="submitting" @click="handleSubmit">
-          {{ submitting ? '提交中...' : '💾 保存并结束就诊' }}
+          {{ submitting ? '提交中...' : '保存并结束就诊' }}
         </button>
       </div>
     </div>
@@ -280,7 +281,7 @@ const handleSubmit = async () => {
         <!-- Patient Info Card -->
         <div class="panel patient-card">
           <div class="panel-header">
-            <div class="panel-title">👤 就诊患者信息</div>
+            <div class="panel-title"><AppIcon name="user" />  就诊患者信息</div>
             <span class="tag tag-blue">接诊中</span>
           </div>
           <div class="info-grid">
@@ -310,12 +311,12 @@ const handleSubmit = async () => {
             </div>
           </div>
           <div class="symptom-section" style="margin-top: 12px;">
-            <div class="symptom-title">💬 患者主诉：</div>
+            <div class="symptom-title"><AppIcon name="message" />  患者主诉：</div>
             <div class="symptom-desc" style="margin-bottom: 12px;">{{ appt.symptom_desc || '无主诉描述' }}</div>
             
             <!-- Vitals Grid inside info card -->
             <div v-if="appt.pre_exam" style="border-top: 1px solid #E5E7EB; padding-top: 12px; margin-top: 12px;">
-              <div class="symptom-title" style="margin-bottom: 8px;">🩺 预检体征数据：</div>
+              <div class="symptom-title" style="margin-bottom: 8px;"><AppIcon name="stethoscope" />  预检体征数据：</div>
               <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
                 <div style="background: #FFF; padding: 6px 10px; border-radius: 6px; border: 1px solid #E5E7EB; text-align: center;">
                   <div style="font-size: 11px; color: #9CA3AF;">身高/体重</div>
@@ -332,7 +333,7 @@ const handleSubmit = async () => {
               </div>
             </div>
             <div v-else style="border-top: 1px dashed #D1D5DB; padding-top: 10px; font-size: 12px; color: #F59E0B;">
-              ⚠️ 本次就诊暂无录入的身高、体重等预检体征数据。
+              <AppIcon name="alert" />  本次就诊暂无录入的身高、体重等预检体征数据。
             </div>
           </div>
         </div>
@@ -340,14 +341,14 @@ const handleSubmit = async () => {
         <!-- Diagnostic Reports Card (ESS & Snore) -->
         <div class="panel report-card">
           <div class="panel-header">
-            <div class="panel-title">📊 睡眠筛查与 AI 鼾声监测报告</div>
+            <div class="panel-title"><AppIcon name="chart" />  睡眠筛查与 AI 鼾声监测报告</div>
           </div>
           
           <div class="reports-container">
             <!-- Sleep ESS Score -->
             <div v-if="essReport" class="report-box ess-box">
               <div class="report-box-title">
-                <span>📝 ESS 嗜睡量表结果</span>
+                <span><AppIcon name="file-text" />  ESS 嗜睡量表结果</span>
                 <span class="score-badge" :class="essReport.total_score >= 10 ? 'red' : 'green'">
                   {{ essReport.total_score }}分 ({{ essReport.risk_level }})
                 </span>
@@ -357,13 +358,13 @@ const handleSubmit = async () => {
               </div>
             </div>
             <div v-else class="report-empty">
-              <span>📝 暂无本次就诊关联的在线 ESS 嗜睡量表评估结果</span>
+              <span><AppIcon name="file-text" />  暂无本次就诊关联的在线 ESS 嗜睡量表评估结果</span>
             </div>
 
             <!-- Snore AI Analysis -->
             <div v-if="snoreReport" class="report-box snore-box">
               <div class="report-box-title">
-                <span>🔊 AI 鼾声录音分析报告</span>
+                <span><AppIcon name="volume" />  AI 鼾声录音分析报告</span>
                 <span class="risk-badge" :class="snoreReport.risk_level">
                   {{ snoreReport.risk_level === 'high' ? '高风险' : (snoreReport.risk_level === 'medium' ? '中风险' : '低风险') }}
                 </span>
@@ -393,7 +394,7 @@ const handleSubmit = async () => {
               </div>
             </div>
             <div v-else class="report-empty">
-              <span>🔊 暂无本次就诊关联的 AI 鼾声监测音频分析数据</span>
+              <span><AppIcon name="volume" />  暂无本次就诊关联的 AI 鼾声监测音频分析数据</span>
             </div>
           </div>
         </div>
@@ -401,7 +402,7 @@ const handleSubmit = async () => {
         <!-- 阻鼾器治疗监测 (已建档患者可见) -->
         <div v-if="activeTreatment" class="panel treatment-monitor-card" style="margin-top: 16px;">
           <div class="panel-header">
-            <div class="panel-title">⚙️ 物理阻鼾治疗监测 (进行中)</div>
+            <div class="panel-title"><AppIcon name="settings" />  物理阻鼾治疗监测 (进行中)</div>
           </div>
           <div class="panel-body" style="padding: 14px; font-size: 13px; color: #4B5563;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; background: #EFF6FF; padding: 10px; border-radius: 6px; border: 1px solid #BFDBFE;">
@@ -413,18 +414,18 @@ const handleSubmit = async () => {
             <!-- Average Wear Compliance -->
             <div v-if="activeTreatment.logs && activeTreatment.logs.length > 0" style="margin-bottom: 12px;">
               <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 4px;">
-                <span>📊 近30日平均佩戴时长</span>
+                <span><AppIcon name="chart" />  近30日平均佩戴时长</span>
                 <span style="font-weight: 700; color: #16A34A;">{{ computedAvgWear }} 小时</span>
               </div>
               <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 4px;">
-                <span>🙂 近30日均值舒适评分</span>
+                <span><AppIcon name="smile" />  近30日均值舒适评分</span>
                 <span style="font-weight: 700; color: #F59E0B;">{{ computedAvgComfort }} / 5 分</span>
               </div>
             </div>
             
             <!-- Previous Adjustments Timeline -->
             <div v-if="activeTreatment.adjustments && activeTreatment.adjustments.length > 0">
-              <div style="font-weight: 600; font-size: 12px; color: #374151; margin-bottom: 6px;">📋 历史微调记录 (近3次)：</div>
+              <div style="font-weight: 600; font-size: 12px; color: #374151; margin-bottom: 6px;"><AppIcon name="clipboard" />  历史微调记录 (近3次)：</div>
               <div style="display: flex; flex-direction: column; gap: 6px; max-height: 120px; overflow-y: auto;">
                 <div v-for="adj in activeTreatment.adjustments.slice(0, 3)" :key="adj.id" style="font-size: 11px; background: #F9FAFB; padding: 6px; border: 1px solid #E5E7EB; border-radius: 4px;">
                   <span style="font-weight: 600; color: #1F2937;">{{ adj.adjust_date.substring(0, 10) }}</span> · 调至 <strong>{{ adj.adjusted_advancement }}mm</strong> (反馈: {{ adj.patient_feedback || '无' }})
@@ -437,13 +438,13 @@ const handleSubmit = async () => {
         <!-- 历史就诊病历 Panel -->
         <div class="panel history-card" style="margin-top: 16px;">
           <div class="panel-header">
-            <div class="panel-title">📚 历史就诊病历 ({{ historyRecords.length }}次)</div>
+            <div class="panel-title"><AppIcon name="book" />  历史就诊病历 ({{ historyRecords.length }}次)</div>
           </div>
           <div class="panel-body" style="padding: 12px; max-height: 240px; overflow-y: auto;">
             <div v-for="r in historyRecords" :key="r.id" class="history-item" style="padding: 10px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; margin-bottom: 8px; cursor: pointer;" @click="showHistoryDetail(r)">
               <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 4px;">
-                <span>📅 {{ r.visit_date }}</span>
-                <span>👨‍⚕️ {{ r.doctor_name }}</span>
+                <span><AppIcon name="calendar" />  {{ r.visit_date }}</span>
+                <span><AppIcon name="doctor" />  {{ r.doctor_name }}</span>
               </div>
               <div style="font-size: 13px; font-weight: 600; color: #1F2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                 诊断: {{ r.diagnosis }}
@@ -461,7 +462,7 @@ const handleSubmit = async () => {
         <!-- Clinic Form Panel -->
         <div class="panel form-panel">
           <div class="panel-header">
-            <div class="panel-title">✍️ 电子病历信息录入</div>
+            <div class="panel-title"><AppIcon name="pen-square" />  电子病历信息录入</div>
           </div>
           
           <div class="form-body">
@@ -499,7 +500,7 @@ const handleSubmit = async () => {
                 rows="4"
               ></textarea>
               <div class="template-selector">
-                <span class="template-label">💡 快速诊断模板：</span>
+                <span class="template-label"><AppIcon name="lightbulb" />  快速诊断模板：</span>
                 <div class="template-chips">
                   <span 
                     v-for="(t, i) in diagnosisTemplates" 
@@ -525,7 +526,7 @@ const handleSubmit = async () => {
                 placeholder="请输入治疗方案或开具处方，例如：配戴阻鼾器 HJ-MAD-03"
               >
               <div class="template-selector">
-                <span class="template-label">💡 方案模板：</span>
+                <span class="template-label"><AppIcon name="lightbulb" />  方案模板：</span>
                 <div class="template-chips">
                   <span 
                     v-for="(t, i) in prescriptionTemplates" 
@@ -551,7 +552,7 @@ const handleSubmit = async () => {
                 rows="3"
               ></textarea>
               <div class="template-selector">
-                <span class="template-label">💡 常用医嘱：</span>
+                <span class="template-label"><AppIcon name="lightbulb" />  常用医嘱：</span>
                 <div class="template-chips">
                   <span 
                     v-for="(t, i) in adviceTemplates" 
@@ -593,14 +594,14 @@ const handleSubmit = async () => {
                   class="checkbox-ctrl"
                 >
                 <label for="sync-adjust" class="checkbox-label font-bold">
-                  🛠️ 同步记录物理阻鼾器参数微调 (复诊)
+                  <AppIcon name="tool" />  同步记录物理阻鼾器参数微调 (复诊)
                 </label>
               </div>
             </div>
 
             <div v-show="syncAdjust" class="treatment-form-body" style="padding: 16px;">
               <div class="info-alert" style="margin-bottom: 12px;">
-                💡 记录此复诊微调后，系统将更新患者当前阻鼾器的前伸调节量，并添加微调历史记录。
+                <AppIcon name="lightbulb" />  记录此复诊微调后，系统将更新患者当前阻鼾器的前伸调节量，并添加微调历史记录。
               </div>
 
               <div class="card-grid-2">
@@ -668,14 +669,14 @@ const handleSubmit = async () => {
                   class="checkbox-ctrl"
                 >
                 <label for="sync-treatment" class="checkbox-label font-bold">
-                  🛠️ 同步建立/更新物理阻鼾治疗档案
+                  <AppIcon name="tool" /> 同步建立/更新物理阻鼾治疗档案
                 </label>
               </div>
             </div>
 
             <div v-show="syncTreatment" class="treatment-form-body" style="padding: 16px;">
               <div class="info-alert" style="margin-bottom: 12px;">
-                💡 开启此项后，系统将自动为该患者建立物理阻鼾随访档案，以记录设备的日常佩戴打卡日志与物理调节量。
+                <AppIcon name="lightbulb" /> 开启此项后，系统将自动为该患者建立物理阻鼾随访档案，以记录设备的日常佩戴打卡日志与物理调节量。
               </div>
 
               <div class="card-grid-2">
@@ -742,25 +743,25 @@ const handleSubmit = async () => {
           <div><strong>就诊科室:</strong> 睡眠呼吸科</div>
         </div>
         <div style="margin-bottom: 16px;">
-          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">🩺 临床诊断：</div>
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;"><AppIcon name="stethoscope" /> 临床诊断：</div>
           <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid var(--primary-500); white-space: pre-wrap;">
             {{ selectedHistoryRecord.diagnosis }}
           </div>
         </div>
         <div style="margin-bottom: 16px;">
-          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">💊 治疗方案 / 处方：</div>
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;"><AppIcon name="pill" /> 治疗方案 / 处方：</div>
           <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid var(--success-500); white-space: pre-wrap;">
             {{ selectedHistoryRecord.prescription || '未开具处方' }}
           </div>
         </div>
         <div style="margin-bottom: 16px;">
-          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">📣 医嘱建议：</div>
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;"><AppIcon name="megaphone" /> 医嘱建议：</div>
           <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; border-left: 4px solid #F59E0B; white-space: pre-wrap;">
             {{ selectedHistoryRecord.doctor_advice || '无' }}
           </div>
         </div>
         <div v-if="selectedHistoryRecord.note" style="margin-bottom: 16px;">
-          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;">📝 备注：</div>
+          <div style="font-weight: 700; color: #111827; margin-bottom: 6px;"><AppIcon name="file-text" /> 备注：</div>
           <div style="background: #F9FAFB; padding: 12px; border-radius: 8px; color: #6B7280; white-space: pre-wrap;">
             {{ selectedHistoryRecord.note }}
           </div>

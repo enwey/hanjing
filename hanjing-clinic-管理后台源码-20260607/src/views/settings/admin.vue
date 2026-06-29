@@ -246,7 +246,7 @@ watch(operationColumnWidth, () => {
         <div class="page-title">管理员账号</div>
         <div class="page-title-sub">{{ admins.length }}位管理员</div>
       </div>
-      <button class="btn btn-primary" @click="handleAdd">➕ 添加管理员</button>
+      <button class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" />  添加管理员</button>
     </div>
 
     <!-- Admins Table -->
@@ -288,7 +288,7 @@ watch(operationColumnWidth, () => {
           type="text" 
           v-model="searchKeyword" 
           class="filter-input" 
-          placeholder="🔍 搜索账号/姓名/角色/门店" 
+          placeholder="搜索账号/姓名/角色/门店" 
           style="width: 240px;"
         >
       </div>

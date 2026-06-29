@@ -84,7 +84,7 @@ async function handleLogin({ validateResult }: any) {
     
     <div class="login-card">
       <div class="login-brand">
-        <span class="brand-logo">🌙</span>
+        <span class="brand-logo"><AppIcon name="moon" /> </span>
         <div class="brand-title">
           鼾静健康诊所
           <small>睡眠健康管理后台</small>
@@ -124,7 +124,7 @@ async function handleLogin({ validateResult }: any) {
           <t-form-item name="phone">
             <t-input v-model="loginForm.phone" placeholder="请输入管理员手机号">
               <template #prefix-icon>
-                <span style="font-size: 16px;">📱</span>
+                <AppIcon name="mobile" :size="16" style="color: #64748B;" />
               </template>
             </t-input>
           </t-form-item>
@@ -133,7 +133,7 @@ async function handleLogin({ validateResult }: any) {
             <div style="display: flex; gap: 8px; width: 100%;">
               <t-input v-model="loginForm.smsCode" placeholder="验证码" style="flex: 1;">
                 <template #prefix-icon>
-                  <span style="font-size: 16px;">🛡️</span>
+                  <AppIcon name="shield" :size="16" style="color: #64748B;" />
                 </template>
               </t-input>
               <t-button variant="outline" :disabled="isSending" style="width: 120px;" @click="sendSms">

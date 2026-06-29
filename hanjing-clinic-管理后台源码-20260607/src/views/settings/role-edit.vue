@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { navigateToParent } from '@/utils/routeNavigation'
 
 const router = useRouter()
 const route = useRoute()
@@ -130,14 +131,14 @@ async function handleSave() {
       await request.post('/api/admin/roles', payload)
     }
     MessagePlugin.success('保存角色及权限矩阵成功')
-    router.push('/permission')
+    navigateToParent(router, route, '/permission')
   } catch (error) {
     MessagePlugin.error('保存角色失败')
   }
 }
 
 function handleCancel() {
-  router.push('/permission')
+  navigateToParent(router, route, '/permission')
 }
 
 onMounted(() => {
@@ -165,7 +166,7 @@ onMounted(() => {
     <div class="card-grid-2">
       <!-- Role info -->
       <div class="panel" style="margin: 0;">
-        <div class="panel-header"><div class="panel-title">📝 角色信息</div></div>
+        <div class="panel-header"><div class="panel-title"><AppIcon name="file-text" />  角色信息</div></div>
         <div class="panel-body">
           <div class="form-grid">
             <div class="form-group full">
@@ -183,8 +184,8 @@ onMounted(() => {
       <!-- Members list -->
       <div class="panel" style="margin: 0;">
         <div class="panel-header">
-          <div class="panel-title">👥 成员列表</div>
-          <button class="btn btn-sm btn-primary" @click="showAddMember = true">➕ 添加</button>
+          <div class="panel-title"><AppIcon name="team" />  成员列表</div>
+          <button class="btn btn-sm btn-primary" @click="showAddMember = true"><AppIcon name="plus" />  添加</button>
         </div>
         <table class="data-table">
           <thead>
@@ -214,7 +215,7 @@ onMounted(() => {
 
     <!-- Permission Matrix Panel -->
     <div class="panel" style="margin-top: 16px;">
-      <div class="panel-header"><div class="panel-title">🔐 权限矩阵</div></div>
+      <div class="panel-header"><div class="panel-title"><AppIcon name="lock" /> 权限矩阵</div></div>
       <table class="data-table">
         <thead>
           <tr>
