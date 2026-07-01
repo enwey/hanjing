@@ -122,6 +122,9 @@ const t = () => "../../../components/base/hj-navbar.js",
       function w() {
         e.index.switchTab({ url: "/pages/appointment/index" });
       }
+      function handleGoCheckin() {
+        e.index.switchTab({ url: "/pages/treatment/index" });
+      }
       return (
         e.onMounted(async () => {
           await loadReportData();
@@ -129,7 +132,12 @@ const t = () => "../../../components/base/hj-navbar.js",
         }),
         (t, n) =>
           e.e(
-            { a: e.p({ title: "睡眠健康报告", showBack: !0 }), b: !a.value },
+            { 
+              a: e.p({ title: "睡眠健康报告", showBack: !0 }), 
+              b: !a.value,
+              hasData: v.value.hasData,
+              handleGoCheckin: e.o(handleGoCheckin, "go_checkin")
+            },
             a.value
               ? {}
               : e.e(

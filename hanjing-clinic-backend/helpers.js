@@ -149,12 +149,21 @@ export const escapeHtml = (str) => {
 
 
 // Log administrator action to audit_logs
-export const logAdminAction = async (adminId, action, targetType, targetId, details) => {
+export const logAdminAction = async (adminId, action, targetType, targetId, details, ipAddress = null, status = 'success', errorMessage = null) => {
   try {
     await run(
-      `INSERT INTO audit_logs (admin_id, action, target_type, target_id, details)
-       VALUES (?, ?, ?, ?, ?)`,
-      [adminId, action, targetType, targetId ? String(targetId) : null, details ? JSON.stringify(details) : null]
+      `INSERT INTO audit_logs (admin_id, action, target_type, target_id, details, ip_address, status, error_message)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        adminId, 
+        action, 
+        targetType, 
+        targetId ? String(targetId) : null, 
+        details ? JSON.stringify(details) : null, 
+        ipAddress,
+        status,
+        errorMessage
+      ]
     );
   } catch (err) {
     console.error('Failed to write audit log:', err);

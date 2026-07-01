@@ -241,7 +241,9 @@ const t = () => "../../components/base/hj-navbar.js",
             { y: !n.value && !u.value },
             n.value || u.value
               ? {}
-              : { z: e.p({ text: "暂无治疗记录", icon: "💊" }) },
+              : {
+                  z: e.p({ text: "暂无治疗记录", icon: "💊" })
+                },
             { A: i.value },
             i.value
               ? {

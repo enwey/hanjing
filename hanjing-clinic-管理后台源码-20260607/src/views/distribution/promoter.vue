@@ -56,9 +56,25 @@ const paginatedDistributors = computed(() => {
   return filtered.slice(start, end)
 })
 
-function openDetail(d: Distributor) {
+async function openDetail(d: Distributor) {
   selectedDistributor.value = d
   detailVisible.value = true
+  try {
+    const res: any = await request.get(`/api/admin/distribution/promoters/${d.id}/commissions`)
+    if (res.code === 200 && res.data) {
+      d.commissions = (res.data || []).map((row: any) => ({
+        date: formatDate(row.created_at),
+        orderNo: row.order_no || '—',
+        patient: row.patient_name || '—',
+        product: row.product_names || '—',
+        amount: `¥${(row.order_amount / 100).toFixed(2)}`,
+        rate: `${row.commission_rate || 0}%`,
+        commission: `¥${(row.commission_amount / 100).toFixed(2)}`
+      }))
+    }
+  } catch (error) {
+    console.error(error)
+  }
 }
 
 function handleExport() {
@@ -89,14 +105,14 @@ async function fetchDistributors() {
       name: row.nickname || '推广员',
       phone: row.user_phone || '',
       level: levelLabel(row.level),
-      firstLevelDownline: Number(row.invitees_count || 0),
-      secondLevelDownline: 0,
-      totalOrders: 0,
+      firstLevelDownline: Number(row.invitees_l1_count || 0),
+      secondLevelDownline: Number(row.invitees_l2_count || 0),
+      totalOrders: Number(row.total_orders || 0),
       totalAmount: 0,
       totalCommission: yuan(row.total_commission),
       withdrawableCommission: yuan(row.available_commission),
       joinDate: formatDate(row.created_at),
-      source: '用户申请',
+      source: '推荐绑定',
       status: row.status || 'active',
       commissions: []
     }))

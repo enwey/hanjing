@@ -1,0 +1,40 @@
+<view class="agreement-page">
+  <hj-navbar title="用户协议" showBack="{{true}}" />
+  <scroll-view scroll-y class="agreement-content">
+    <view class="article-title">鼾静健康诊所用户协议</view>
+    <view class="article-meta">更新日期：2026年06月11日</view>
+    
+    <view class="section">
+      <view class="section-title">一、协议的范围与确认</view>
+      <text class="section-text">
+        欢迎您使用鼾静健康诊所微信小程序（以下简称“本小程序”）。本协议由您与鼾静健康诊所共同订立。在您使用本小程序提供的各项服务之前，请务必仔细阅读本协议。当您勾选同意或开始使用本小程序服务时，即视为您已充分阅读、理解并接受本协议的全部内容。
+      </text>
+    </view>
+    
+    <view class="section">
+      <view class="section-title">二、服务内容与就诊规则</view>
+      <text class="section-text">
+        1. 本小程序为您提供在线预约挂号、就诊历史查看、设备使用追踪、睡眠健康报告筛查等健康与医疗辅助服务。
+        2. 请您在挂号和就诊时提供真实、准确、合法的个人信息，包括但不限于姓名、身份证号、手机号码及家庭成员信息。
+        3. 请您理解，本小程序提供的“AI鼾声分析”及各类健康问卷结果仅作为睡眠呼吸健康筛查和科普建议参考，不能代替执业医师的正式临床诊断与处方。
+      </text>
+    </view>
+    
+    <view class="section">
+      <view class="section-title">三、用户权利与义务</view>
+      <text class="section-text">
+        1. 您有权依据本协议及本小程序的相关规定，享受本小程序提供的各项服务。
+        2. 您应当遵守国家法律法规及本小程序的使用规则，不得利用本小程序进行任何违法、违规或侵犯他人合法权益的活动。
+        3. 您应当妥善保管您的登录账号及密码，因您保管不当导致的任何损失，由您自行承担。
+      </text>
+    </view>
+    
+    <view class="section">
+      <view class="section-title">四、免责声明与争议解决</view>
+      <text class="section-text">
+        1. 本小程序对于因不可抗力、网络状况、设备故障等原因导致的服务中断或数据丢失，不承担法律责任。
+        2. 本协议的订立、执行和解释及争议的解决均应适用中华人民共和国法律。如双方就本协议内容或其执行发生任何争议，应友好协商解决；协商不成的，任何一方均可向有管辖权的人民法院提起诉讼。
+      </text>
+    </view>
+  </scroll-view>
+</view>

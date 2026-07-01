@@ -42,7 +42,12 @@ const isEdit = ref(false)
 const syncingId = ref('')
 const editingId = ref('')
 
-const defaultCover = ''
+const defaultCover = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNjAnIGhlaWdodD0nOTAnIHZpZXdCb3g9JzAgMCAxNjAgOTAnPjxyZWN0IHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnIGZpbGw9JyNGM0Y0RjYnLz48dGV4dCB4PSc1MCUnIHk9JzUwJScgZG9taW5hbnQtYmFzZWxpbmU9J21pZGRsZScgdGV4dC1hbmNob3I9J21pZGRsZScgZm9udC1mYW1pbHk9J3NhbnMtc2VyaWYnIGZvbnQtc2l6ZT0nMTInIGZpbGw9JyM5Q0EzQUYnPuaaguaXoOWbvueJhzwvdGV4dD48L3N2Zz4='
+
+function handleImageError(event: Event) {
+  const target = event.target as HTMLImageElement;
+  target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNjAnIGhlaWdodD0nOTAnIHZpZXdCb3g9JzAgMCAxNjAgOTAnPjxyZWN0IHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnIGZpbGw9JyNGRkY1RjUnLz48dGV4dCB4PSc1MCUnIHk9JzUwJScgZG9taW5hbnQtYmFzZWxpbmU9J21pZGRsZScgdGV4dC1hbmNob3I9J21pZGRsZScgZm9udC1mYW1pbHk9J3NhbnMtc2VyaWYnIGZvbnQtc2l6ZT0nMTInIGZpbGw9JyNFRjQ0NDQnPuWbvueJh+WKoOi9veWksei0pTwvdGV4dD48L3N2Zz4=';
+}
 
 const formData = ref({
   title: '',
@@ -413,7 +418,7 @@ onMounted(async () => {
           <tbody>
             <tr v-for="room in paginatedRooms" :key="room.id">
               <td>
-                <img :src="room.coverUrl || defaultCover" class="cover-image" alt="直播封面">
+                <img :src="room.coverUrl || defaultCover" class="cover-image" alt="直播封面" @error="handleImageError">
               </td>
               <td>
                 <div class="live-title">{{ room.title }}</div>

@@ -1,8 +1,48 @@
 "use strict";
 const e = require("../../../common/vendor.js"),
-  n = require("../../../mock/index.js"),
   l = require("../../../api/index.js");
 Math || a();
+
+function getSnoreRiskInfo(riskLevel) {
+  let key = riskLevel;
+  if (riskLevel === 'normal' || riskLevel === 'low') {
+    key = 'low';
+  } else if (riskLevel === 'mild' || riskLevel === 'medium' || riskLevel === 'moderate') {
+    key = 'medium';
+  } else if (riskLevel === 'severe' || riskLevel === 'high') {
+    key = 'high';
+  }
+  const levels = {
+    low: {
+      title: "低风险",
+      color: "#1A9D5C",
+      bgColor: "#D3F5E3",
+      desc: "您的鼾声测试结果良好，未检测到明显的睡眠呼吸暂停风险。",
+      advice:
+        "建议保持健康生活习惯，定期关注睡眠质量。如家人反馈仍有明显鼾声，可3个月后复测。",
+      tips: ["保持规律作息", "避免睡前饮酒", "侧卧睡眠", "控制体重"],
+    },
+    medium: {
+      title: "中风险",
+      color: "#F59E0B",
+      bgColor: "#FFFBEB",
+      desc: "检测到中度鼾声和少量呼吸暂停事件，建议引起关注并及时进行专业评估。",
+      advice: "建议预约鼾静健康门诊进行面诊和睡眠监测，早期干预效果最佳。",
+      tips: ["尽快预约门诊", "监测睡眠姿势", "减少酒精和安眠药", "记录夜间醒来次数"],
+    },
+    high: {
+      title: "高风险",
+      color: "#EF4444",
+      bgColor: "#FEF2F2",
+      desc: "检测到重度鼾声和较多呼吸暂停事件，可能存在中度至重度睡眠呼吸暂停综合征。",
+      advice:
+        "请尽快到鼾静健康门诊进行多导睡眠监测（PSG）和上气道评估，及早治疗可避免心脑血管并发症风险。",
+      tips: ["立即预约门诊", "避免长途驾驶", "告知家属观察", "记录日间嗜睡情况"],
+    },
+  };
+  return levels[key] || levels.low;
+}
+
 const a = () => "../../../components/base/hj-navbar.js",
   o = e.defineComponent({
     __name: "index",
@@ -12,7 +52,7 @@ const a = () => "../../../components/base/hj-navbar.js",
         i = e.computed(() => {
           var e;
           return (null == (e = o.value) ? void 0 : e.snoreAnalysis)
-            ? n.getSnoreRiskInfo(o.value.snoreAnalysis.riskLevel)
+            ? getSnoreRiskInfo(o.value.snoreAnalysis.riskLevel)
             : null;
         }),
         t = e.computed(() => {
@@ -54,10 +94,19 @@ const a = () => "../../../components/base/hj-navbar.js",
           try {
             const n = getCurrentPages(),
               a = n[n.length - 1],
-              u = null == (e = null == a ? void 0 : a.options) ? void 0 : e.id;
-            if (u) {
-              const e = await l.getSnoreAnalysis(u);
-              o.value = e.data;
+              idVal = null == (e = null == a ? void 0 : a.options) ? void 0 : e.id;
+            if (idVal) {
+              if (idVal === 'local') {
+                o.value = wx.getStorageSync('last_local_snore_result');
+              } else {
+                try {
+                  const res = await l.getSnoreAnalysis(idVal);
+                  o.value = res.data;
+                } catch (apiErr) {
+                  console.warn("[SnoreResult] API load failed, trying local stash fallback:", apiErr);
+                  o.value = wx.getStorageSync('last_local_snore_result');
+                }
+              }
             }
           } catch (n) {
             console.error("[SnoreResult] 加载失败", n);

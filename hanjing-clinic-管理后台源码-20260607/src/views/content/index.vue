@@ -34,7 +34,7 @@ interface Post {
 
 const posts = ref<Post[]>([])
 
-const categories = ['睡眠科普', '治疗知识', '设备介绍', '患者故事']
+const categories = ref<string[]>([])
 
 const filteredPosts = computed(() => {
   let list = posts.value
@@ -155,7 +155,21 @@ function getAvatarBg(author: string) {
   return 'linear-gradient(135deg, #F5A623, #FFD700)'
 }
 
-onMounted(fetchPosts)
+async function fetchCategories() {
+  try {
+    const res: any = await request.get('/api/admin/content/categories')
+    if (res.code === 200 && res.data) {
+      categories.value = res.data.map((cat: any) => cat.name)
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+onMounted(() => {
+  fetchCategories()
+  fetchPosts()
+})
 
 const operationColumnWidth = computed(() => {
   if (paginatedPosts.value.length === 0) return '80px'

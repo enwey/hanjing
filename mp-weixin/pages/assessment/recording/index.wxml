@@ -5,7 +5,15 @@
     u-i="70350287-0"
     bind:__l="__l"
     u-p="{{a}}" /><view class="page-content data-v-70350287"
-    ><view class="guide-card data-v-70350287"
+    ><picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="{{onMemberChange}}" disabled="{{disabledSelector}}" class="data-v-70350287" style="background:#fff;padding:12px 16px;margin:12px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #F3F4F6;">
+      <view class="data-v-70350287" style="display:flex;width:100%;justify-content:space-between;align-items:center;font-size:14px;color:#1F2937;">
+        <view class="data-v-70350287" style="display:flex;align-items:center;gap:6px;">
+          <text class="data-v-70350287" style="color:#4B5563;">当前检测人：</text>
+          <text class="data-v-70350287" style="font-weight:600;color:#3B6BF5;">{{selectedMemberName}}</text>
+        </view>
+        <text wx:if="{{!disabledSelector}}" class="data-v-70350287" style="font-size:12px;color:#9CA3AF;font-weight:500;">切换 ▾</text>
+      </view>
+    </picker><view class="guide-card data-v-70350287"
       ><text class="guide-emoji data-v-70350287">Zzz</text
       ><text class="guide-title data-v-70350287">录制夜间鼾声</text
       ><text class="guide-desc data-v-70350287">
@@ -79,5 +87,6 @@
         ></view
       ></view
     ></view
-  ><view class="safe-bottom data-v-70350287"
-/></view>
+  ><view class="safe-bottom data-v-70350287" />
+  <hj-privacy-popup id="privacyPopup" />
+</view>

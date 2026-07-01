@@ -1,7 +1,7 @@
 "use strict";
 const e = require("../../common/vendor.js"),
   api = require("../../api/index.js");
-(require("../../mock/index.js"), Math || a());
+Math || a();
 const a = () => "../../components/base/hj-navbar.js",
   t = e.defineComponent({
     __name: "index",

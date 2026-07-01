@@ -63,11 +63,47 @@ const t = () => "../../components/base/hj-navbar.js",
         };
       }
 
+      const pendingCount = e.ref(0);
+      const isSyncing = e.ref(false);
+
+      function checkPendingCount() {
+        const pending = e.index.getStorageSync("pending_snore_uploads") || [];
+        pendingCount.value = pending.length;
+      }
+
+      async function handleForceSync() {
+        if (isSyncing.value) return;
+        isSyncing.value = true;
+        e.index.showLoading({ title: "同步中..." });
+        try {
+          await api.syncPendingSnoreRecordings();
+          checkPendingCount();
+          e.index.hideLoading();
+          e.index.showToast({ title: "同步成功", icon: "success" });
+          const res = await api.getAssessments();
+          if (res && res.code === 0 && Array.isArray(res.data)) {
+            a.value = res.data.map(mapRecord);
+          }
+        } catch (err) {
+          e.index.hideLoading();
+          e.index.showToast({ title: "同步失败，请检查网络", icon: "none" });
+        } finally {
+          isSyncing.value = false;
+        }
+      }
+
       e.onShow(async () => {
         const token = e.index.getStorageSync("access_token");
         if (!token) {
           a.value = [];
           return;
+        }
+        checkPendingCount();
+        try {
+          await api.syncPendingSnoreRecordings();
+          checkPendingCount();
+        } catch (syncErr) {
+          console.error("Silent sync failed on index show:", syncErr);
         }
         try {
           const res = await api.getAssessments();
@@ -104,6 +140,8 @@ const t = () => "../../components/base/hj-navbar.js",
             b: e.o(s, "47"),
             c: e.o(o, "5f"),
             d: a.value.length,
+            pendingCount: pendingCount.value,
+            handleForceSync: e.o(handleForceSync, "sync"),
           },
           a.value.length
             ? {

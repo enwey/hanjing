@@ -232,40 +232,7 @@ const r = [
     updatedAt: "2026-05-30T15:30:00Z",
   },
 ];
-const a = (function () {
-  const t = [],
-    e = new Date("2026-05-30"),
-    o = new Date("2026-06-04"),
-    i = Math.floor((o.getTime() - e.getTime()) / 864e5) + 1,
-    r = [5, 6, 7, 0, 6.5, 7.5],
-    a = [3, 4, 4, 0, 4, 5],
-    s = [
-      "首次佩戴，有轻微异物感",
-      "逐渐适应，无不适",
-      "佩戴感良好，睡眠质量改善",
-      "",
-      "颞下颌关节略有酸胀",
-      "调整后舒适度提升",
-    ];
-  for (let n = 0; n < i; n++) {
-    const o = new Date(e);
-    o.setDate(o.getDate() + n);
-    const i = o.toISOString().split("T")[0],
-      d = Math.min(n, r.length - 1),
-      c = r[d] || 0,
-      l = a[d] || 0;
-    t.push({
-      id: `wear-${i}`,
-      patientId: "pat-001",
-      date: i,
-      wearDuration: c,
-      comfort: l || 3,
-      note: s[d] || "",
-      createdAt: `${i}T08:00:00Z`,
-    });
-  }
-  return t;
-})();
+const a = [];
 const s = [
     {
       id: "prod-001",
@@ -514,40 +481,15 @@ const s = [
     return t.find((t) => t.id === e);
   }),
   (exports.getWearingSummary = function () {
-    const t = a,
-      e = t.filter((t) => t.wearDuration > 0),
-      o = t.length,
-      i = e.length,
-      r = Math.round((i / o) * 100),
-      s =
-        e.length > 0
-          ? Math.round(
-              (e.reduce((t, e) => t + e.wearDuration, 0) / e.length) * 10,
-            ) / 10
-          : 0,
-      n =
-        e.length > 0
-          ? Math.round(
-              (e.reduce((t, e) => t + (e.comfort || 3), 0) / e.length) * 10,
-            ) / 10
-          : 0;
-    let d = 0;
-    for (let a = t.length - 1; a >= 0 && t[a].wearDuration > 0; a--) d++;
-    const c = t.slice(-7),
-      l = c.filter((t) => t.wearDuration > 0).length;
     return {
-      totalDays: o,
-      wornDays: i,
-      compliance: r,
-      avgDuration: s,
-      avgComfort: n,
-      streak: d,
-      weekWorn: l,
-      weekAvg:
-        l > 0
-          ? Math.round((c.reduce((t, e) => t + e.wearDuration, 0) / l) * 10) /
-            10
-          : 0,
+      totalDays: 0,
+      wornDays: 0,
+      compliance: 0,
+      avgDuration: 0,
+      avgComfort: 0,
+      streak: 0,
+      weekWorn: 0,
+      weekAvg: 0,
     };
   }),
   (exports.memberLevels = [
@@ -1107,54 +1049,8 @@ const s = [
       statusClass: "paid",
     },
   ]),
-  (exports.mockTimeline = [
-    {
-      id: "tl-001",
-      date: "2026-05-30",
-      type: "visit",
-      title: "初次适配",
-      description: "完成阻鼾器HJ-MAD-03初配，下颌前移量3mm，佩戴指导完成",
-      doctorName: "王芳",
-      icon: "start",
-      color: "#1A9D5C",
-    },
-    {
-      id: "tl-002",
-      date: "2026-06-02",
-      type: "followup",
-      title: "48小时电话随访",
-      description:
-        "患者反馈佩戴初期有轻微牙齿酸胀感，属正常适应反应。建议继续佩戴，如3天后仍不适可提前复诊。",
-      doctorName: "陈思雨",
-      icon: "phone",
-      color: "#3B6BF5",
-    },
-    {
-      id: "tl-003",
-      date: "2026-06-05",
-      type: "adjust",
-      title: "首次调整预约",
-      description: "已预约首次调整，评估佩戴适应情况和治疗效果",
-      doctorName: "王芳",
-      icon: "adjust",
-      color: "#F59E0B",
-    },
-  ]),
-  (exports.mockTreatmentRecord = {
-    id: "trt-001",
-    patientId: "pat-001",
-    appointmentId: "apt-002",
-    doctorId: "doc-002",
-    diagnosis: "轻度阻塞性睡眠呼吸暂停（OSAS），AHI 12次/小时",
-    treatmentPlan: "下颌前移式阻鼾器治疗，初始前移量3mm，逐步调整至最佳位置",
-    deviceModel: "HJ-MAD-03",
-    adjustmentValue: 3,
-    nextAdjustDate: "2026-06-12",
-    doctorAdvice:
-      "每晚佩戴不少于6小时，初期有轻微不适属正常现象。如出现明显颞下颌关节疼痛或牙齿酸胀，请及时联系调整。建议侧卧睡眠，控制体重。",
-    followupDate: "2026-06-12",
-    createdAt: "2026-05-30T15:30:00Z",
-  }),
+  (exports.mockTimeline = []),
+  (exports.mockTreatmentRecord = null),
   (exports.mockUserProfile = {
     id: "user-001",
     nickname: "张先生",

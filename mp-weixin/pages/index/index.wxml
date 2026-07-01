@@ -63,5 +63,6 @@
       u-i="{{store.c}}"
       bind:__l="__l"
       u-p="{{store.d}}" /></view
-  ><view class="safe-bottom data-v-e9eb3795"
-/></view>
+  ><view class="safe-bottom data-v-e9eb3795" />
+  <hj-privacy-popup id="privacyPopup" />
+</view>

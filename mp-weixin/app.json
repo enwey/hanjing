@@ -7,6 +7,8 @@
     "pages/product/index",
     "pages/profile/index",
     "pages/auth/login",
+    "pages/auth/agreement/index",
+    "pages/auth/privacy/index",
     "pages/appointment/store-select",
     "pages/appointment/doctor-detail",
     "pages/appointment/doctor-list",
@@ -137,6 +139,7 @@
   ],
   "lazyCodeLoading": "requiredComponents",
   "usingComponents": {
-    "hj-navbar": "/components/base/hj-navbar"
+    "hj-navbar": "/components/base/hj-navbar",
+    "hj-privacy-popup": "/components/business/hj-privacy-popup/index"
   }
 }

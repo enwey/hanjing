@@ -155,6 +155,12 @@ const router = createRouter({
           meta: { title: '科普文章' }
         },
         {
+          path: 'content/category',
+          name: 'content-category',
+          component: () => import('@/views/content/category.vue'),
+          meta: { title: '分类管理', parentPath: '/content' }
+        },
+        {
           path: 'content/edit/:id',
           name: 'content-edit-id',
           component: () => import('@/views/content/edit.vue'),
@@ -281,24 +287,23 @@ router.beforeEach(async (to, from, next) => {
   }
   
   if (token && to.name !== 'login') {
-    const userInfo = localStorage.getItem('user_info')
-    if (!userInfo) {
+    if (!localStorage.getItem('user_info')) {
       try {
         const res: any = await request.get('/api/admin/me')
         if (res && res.code === 200) {
           localStorage.setItem('user_info', JSON.stringify(res.data))
-          continueNavigation()
         } else {
           localStorage.removeItem('auth_token')
           localStorage.removeItem('user_info')
           next({ name: 'login' })
+          return
         }
       } catch (err) {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('user_info')
         next({ name: 'login' })
+        return
       }
-      return
     }
   }
   

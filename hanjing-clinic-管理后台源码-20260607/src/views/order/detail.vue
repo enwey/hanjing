@@ -9,6 +9,21 @@ const route = useRoute()
 const router = useRouter()
 const orderId = ref(route.params.id as string || '1')
 
+/* ---- Express Tracking & Invoice State ---- */
+const carrier = ref('')
+const trackingNo = ref('')
+const loadingTracking = ref(false)
+const trackingSteps = ref<any[]>([])
+
+const invoiceDialogVisible = ref(false)
+const invoiceViewerVisible = ref(false)
+const submittingInvoice = ref(false)
+const invoiceForm = ref({
+  type: 'personal',
+  title: '',
+  tax_id: ''
+})
+
 /* ---- Order Data ---- */
 const order = ref<any>({
   id: orderId.value,
@@ -29,14 +44,17 @@ const order = ref<any>({
   commissions: [],
   totalAmount: 0,
   discountAmount: 0,
-  payMethod: '',
-  type: 'offline',
-  shipping_address: {}
+  payMethod: '微信支付',
+  userName: '普通成员',
+  userPhone: '',
+  userAvatar: '',
+  userId: '',
+  type: 'product',
+  shipping_address: {},
+  invoice_info: null
 })
 
 const showShip = ref(false)
-const carrier = ref('顺丰速运')
-const trackingNo = ref('')
 
 function parseAddress(value: any) {
   if (!value) return {}
@@ -352,6 +370,227 @@ const timelineItems = computed(() => {
   return result
 })
 
+const fetchTrackingLogs = async () => {
+  loadingTracking.value = true
+  try {
+    const res: any = await request.get(`/api/admin/orders/${orderId.value}/tracking`)
+    if (res.code === 200 && res.data) {
+      trackingSteps.value = res.data.steps || []
+    }
+  } catch (error) {
+    console.error('Failed to load tracking logs:', error)
+  } finally {
+    loadingTracking.value = false
+  }
+}
+
+function handleOpenInvoiceDialog() {
+  invoiceForm.value = {
+    type: 'personal',
+    title: order.value.patient || '',
+    tax_id: ''
+  }
+  invoiceDialogVisible.value = true
+}
+
+const handleConfirmInvoice = async () => {
+  if (!invoiceForm.value.title.trim()) {
+    MessagePlugin.warning('请输入发票抬头')
+    return
+  }
+  if (invoiceForm.value.type === 'company' && !invoiceForm.value.tax_id.trim()) {
+    MessagePlugin.warning('请输入企业纳税人识别号')
+    return
+  }
+
+  submittingInvoice.value = true
+  try {
+    const res: any = await request.post(`/api/admin/orders/${orderId.value}/invoice`, {
+      title: invoiceForm.value.title.trim(),
+      tax_id: invoiceForm.value.type === 'company' ? invoiceForm.value.tax_id.trim() : ''
+    })
+    if (res.code === 200) {
+      MessagePlugin.success('电子发票开具成功！')
+      invoiceDialogVisible.value = false
+      fetchOrderDetail()
+    }
+  } catch (error) {
+    console.error('Failed to issue invoice:', error)
+    MessagePlugin.error('开票失败，请检查后端服务')
+  } finally {
+    submittingInvoice.value = false
+  }
+}
+
+function handlePrintInvoice() {
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) return
+  const itemsHtml = (order.value.invoice_info?.items || []).map((item: any) => `
+    <tr style="border-bottom: 1px dashed #DDD;">
+      <td style="padding: 6px; font-size: 12px; color: #333;">*健康服务* ${item.name}</td>
+      <td style="text-align: right; padding: 6px; font-size: 12px; color: #333;">${(item.price / 100).toFixed(2)}</td>
+      <td style="text-align: right; padding: 6px; font-size: 12px; color: #333;">${item.quantity}</td>
+      <td style="text-align: right; padding: 6px; font-size: 12px; color: #333;">${(item.total / 100).toFixed(2)}</td>
+    </tr>
+  `).join('')
+
+  const taxpayerId = order.value.invoice_info?.taxpayer_id || ''
+  const companyName = order.value.invoice_info?.company_name || ''
+  const title = order.value.invoice_info?.title || ''
+  const taxId = order.value.invoice_info?.tax_id || ''
+  const invoiceCode = order.value.invoice_info?.invoice_code || ''
+  const invoiceNo = order.value.invoice_info?.invoice_no || ''
+  const createdAt = order.value.invoice_info?.created_at ? new Date(order.value.invoice_info.created_at).toLocaleString() : ''
+  const totalAmount = order.value.invoice_info ? (order.value.invoice_info.amount / 100).toFixed(2) : '0.00'
+
+  const taxIdHtml = taxId ? `<div>纳税人识别号：${taxId}</div>` : ''
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>电子发票 - ${invoiceNo}</title>
+        <style>
+          body { font-family: monospace; font-size: 12px; color: #111; padding: 20px; line-height: 1.6; }
+          .container { max-width: 600px; margin: 0 auto; border: 1px solid #CCC; padding: 20px; border-radius: 8px; }
+          .title { text-align: center; font-size: 18px; font-weight: bold; color: #B91C1C; border-bottom: 2px double #B91C1C; padding-bottom: 8px; margin-bottom: 10px; }
+          .meta-info { display: flex; justify-content: space-between; color: #666; margin-bottom: 15px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+          .section-table tr { border-bottom: 1px solid #B91C1C; }
+          .section-table td { padding: 6px; }
+          .items-table th { border-bottom: 1px solid #B91C1C; color: #B91C1C; text-align: left; padding: 6px; background: #FEF2F2; }
+          .items-table td { padding: 6px; }
+          .total-row { border-top: 1px solid #B91C1C; padding-top: 10px; display: flex; justify-content: space-between; font-weight: bold; color: #B91C1C; font-size: 14px; }
+        </style>
+      </head>
+      <body onload="window.print(); window.close();">
+        <div class="container">
+          <div class="title">电子增值税普通发票</div>
+          <div class="meta-info">
+            <span>发票代码：${invoiceCode}</span>
+            <span>发票号码：${invoiceNo}</span>
+            <span>开票日期：${createdAt}</span>
+          </div>
+          <table class="section-table">
+            <tr style="border-top: 1px solid #B91C1C;">
+              <td style="width: 80px; font-weight: bold; color: #B91C1C; background: #FEF2F2;">购买方</td>
+              <td>
+                <div>名称：${title}</div>
+                ${taxIdHtml}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-weight: bold; color: #B91C1C; background: #FEF2F2;">销售方</td>
+              <td>
+                <div>名称：${companyName}</div>
+                <div>纳税人识别号：${taxpayerId}</div>
+                <div>地址、电话：深圳市福田区深南大道999号 0755-88888888</div>
+              </td>
+            </tr>
+          </table>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>货物或应税劳务、服务名称</th>
+                <th style="text-align: right;">单价 (元)</th>
+                <th style="text-align: right; width: 60px;">数量</th>
+                <th style="text-align: right;">金额 (元)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+          <div class="total-row">
+            <span>合  计 (含税)</span>
+            <span>¥${totalAmount}</span>
+          </div>
+        </div>
+      </body>
+    </html>
+  `)
+  printWindow.document.close()
+}
+
+function handlePrintReceipt() {
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) return
+  const itemsHtml = (order.value.raw?.items || []).map((item: any) => `
+    <tr>
+      <td style="padding: 4px 0; font-size: 12px;">${item.product_name}</td>
+      <td style="text-align: right; padding: 4px 0; font-size: 12px;">${item.quantity}</td>
+      <td style="text-align: right; padding: 4px 0; font-size: 12px;">¥${(item.price * item.quantity / 100).toFixed(2)}</td>
+    </tr>
+  `).join('')
+
+  const orderNo = order.value.no
+  const createTime = order.value.createTime
+  const patientName = order.value.patient
+  const totalAmount = (order.value.raw?.total_amount / 100).toFixed(2)
+  const discountAmount = (order.value.raw?.discount_amount / 100).toFixed(2)
+  const payAmount = (order.value.raw?.pay_amount / 100).toFixed(2)
+  const payMethod = order.value.raw?.pay_method === 'wechat' ? '微信支付' : order.value.raw?.pay_method
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>打印收银小票 - ${orderNo}</title>
+        <style>
+          body {
+            font-family: monospace;
+            width: 72mm;
+            margin: 0 auto;
+            padding: 10px;
+            color: #000;
+          }
+          .header { text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 5px; }
+          .subtitle { text-align: center; font-size: 11px; margin-bottom: 15px; border-bottom: 1px dashed #000; padding-bottom: 5px; }
+          .info-line { font-size: 11px; margin-bottom: 6px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px; }
+          th { text-align: left; font-size: 11px; border-bottom: 1px dashed #000; padding-bottom: 4px; }
+          .summary { border-top: 1px dashed #000; padding-top: 6px; font-size: 11px; }
+          .summary-item { display: flex; justify-content: space-between; margin-bottom: 4px; }
+          .bold { font-weight: bold; font-size: 12px; }
+          .footer { text-align: center; margin-top: 25px; font-size: 10px; border-top: 1px dashed #000; padding-top: 8px; line-height: 1.4; }
+        </style>
+      </head>
+      <body onload="window.print(); window.close();">
+        <div class="header">鼾静健康诊所</div>
+        <div class="subtitle">结账小票 (POS RECEIPT)</div>
+        <div class="info-line">小票单号: ${orderNo}</div>
+        <div class="info-line">下单日期: ${createTime}</div>
+        <div class="info-line">收银员: 管理员</div>
+        <div class="info-line" style="border-bottom: 1px dashed #000; padding-bottom: 5px;">患者姓名: ${patientName}</div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>项目</th>
+              <th style="text-align: right; width: 40px;">数量</th>
+              <th style="text-align: right; width: 70px;">金额</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+        
+        <div class="summary">
+          <div class="summary-item"><span>商品总计:</span><span>¥${totalAmount}</span></div>
+          <div class="summary-item"><span>优惠扣减:</span><span>¥${discountAmount}</span></div>
+          <div class="summary-item bold" style="margin-top: 4px;"><span>实付总额:</span><span>¥${payAmount}</span></div>
+          <div class="summary-item" style="margin-top: 4px;"><span>支付方式:</span><span>${payMethod}</span></div>
+        </div>
+        
+        <div class="footer">
+          谢谢惠顾，祝您健康睡眠！<br>
+          鼾静健康诊所 · 鼾声分析管理系统
+        </div>
+      </body>
+    </html>
+  `)
+  printWindow.document.close()
+}
+
 const fetchOrderDetail = async () => {
   try {
     const res: any = await request.get(`/api/admin/orders/${orderId.value}`)
@@ -393,7 +632,13 @@ const fetchOrderDetail = async () => {
         }],
         commissions: Array.isArray(o.commissions) ? o.commissions : [],
         type: o.type,
-        shipping_address: addr
+        shipping_address: addr,
+        invoice_info: o.invoice_info,
+        raw: o
+      }
+
+      if (isOnline && ['shipped', 'completed'].includes(o.status)) {
+        fetchTrackingLogs()
       }
     }
   } catch (error) {
@@ -486,11 +731,17 @@ async function handleNotifyOrder() {
         </div>
         <div class="page-title-sub">下单时间 {{ order.createTime }}</div>
       </div>
-      <div class="action-buttons">
+      <div class="action-buttons" style="display: flex; gap: 8px; align-items: center;">
+        <!-- Print Receipt Action -->
+        <button class="btn btn-outline" v-if="['paid', 'completed', 'shipped'].includes(order.status)" @click="handlePrintReceipt"><AppIcon name="printer" />  打印小票</button>
+        <!-- E-Invoice Actions -->
+        <button class="btn btn-outline" v-if="['paid', 'completed', 'shipped'].includes(order.status) && !order.invoice_info" @click="handleOpenInvoiceDialog"><AppIcon name="clipboard" />  开具电子发票</button>
+        <button class="btn btn-outline" v-if="order.invoice_info" @click="invoiceViewerVisible = true"><AppIcon name="clipboard" />  查看电子发票</button>
+
         <!-- For online shipping -->
         <button class="btn btn-primary" v-if="order.type === 'online' && order.status === 'shipping'" @click="handleConfirmShip"><AppIcon name="box" />  确认发货</button>
         <!-- For offline pending self-pickup -->
-        <button class="btn btn-outline" v-if="order.type === 'offline' && order.status === 'processing'" @click="handleNotifyOrder" style="margin-right: 8px;"><AppIcon name="bell" />  到货通知</button>
+        <button class="btn btn-outline" v-if="order.type === 'offline' && order.status === 'processing'" @click="handleNotifyOrder"><AppIcon name="bell" />  到货通知</button>
         <button class="btn btn-success" v-if="order.type === 'offline' && (order.status === 'processing' || order.status === 'paid')" @click="handleCompleteOrder"><AppIcon name="check-circle" />  完成自提核销</button>
       </div>
     </div>
@@ -555,6 +806,55 @@ async function handleNotifyOrder() {
               <button class="btn btn-success" v-if="order.status === 'processing' || order.status === 'paid'" @click="handleCompleteOrder" style="padding: 4px 10px; font-size: 12px; height: 28px; line-height: 1; border: 1px solid #BBF7D0; background: #ECFDF5; color: #16A34A;"><AppIcon name="check-circle" /> 提货核销</button>
             </div>
           </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice Info Panel -->
+    <div v-if="order.invoice_info" class="panel" style="margin-top: 16px;">
+      <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="panel-title"><AppIcon name="clipboard" />  电子发票信息</div>
+        <button class="btn btn-xs btn-outline" @click="invoiceViewerVisible = true">查看发票详情</button>
+      </div>
+      <div class="panel-body" style="padding: 16px 20px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+          <div>
+            <div style="font-size: 12px; color: #9CA3AF; margin-bottom: 4px;">发票代码</div>
+            <div style="font-size: 13px; color: #1F2937; font-weight: 600;">{{ order.invoice_info.invoice_code }}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #9CA3AF; margin-bottom: 4px;">发票号码</div>
+            <div style="font-size: 13px; color: #1F2937; font-weight: 600;">{{ order.invoice_info.invoice_no }}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #9CA3AF; margin-bottom: 4px;">发票抬头</div>
+            <div style="font-size: 13px; color: #1F2937; font-weight: 600;">{{ order.invoice_info.title }}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; color: #9CA3AF; margin-bottom: 4px;">税额 / 总额</div>
+            <div style="font-size: 13px; color: #1F2937; font-weight: 600; color: #10B981;">¥{{ formatFen(order.invoice_info.amount) }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logistics Tracking Panel -->
+    <div v-if="order.type === 'online' && (order.status === 'shipped' || order.status === 'completed')" class="panel" style="margin-top: 16px;">
+      <div class="panel-header">
+        <div class="panel-title"><AppIcon name="map-pin" />  物流轨迹追踪</div>
+      </div>
+      <div class="panel-body" style="padding: 20px 24px;">
+        <div v-if="loadingTracking" style="text-align: center; color: #9CA3AF; padding: 10px;">加载物流中...</div>
+        <div v-else-if="trackingSteps.length === 0" style="color: #9CA3AF; text-align: center;">暂无物流轨迹信息</div>
+        <div v-else style="display: flex; flex-direction: column; gap: 20px;">
+          <div v-for="(step, idx) in trackingSteps" :key="idx" style="display: flex; gap: 16px; position: relative;">
+            <div v-if="idx < trackingSteps.length - 1" style="position: absolute; left: 7px; top: 16px; bottom: -20px; width: 2px; background: #E5E7EB;"></div>
+            <div :style="{ width: '16px', height: '16px', borderRadius: '50%', background: idx === 0 ? 'var(--primary-500)' : '#D1D5DB', border: idx === 0 ? '4px solid #DBEAFE' : 'none', flexShrink: 0, marginTop: '2px', zIndex: 1 }"></div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div :style="{ fontSize: '13px', color: idx === 0 ? '#1F2937' : '#4B5563', fontWeight: idx === 0 ? '600' : 'normal' }">{{ step.desc }}</div>
+              <div style="font-size: 11px; color: #9CA3AF;">{{ step.time }}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -645,6 +945,102 @@ async function handleNotifyOrder() {
           <label class="form-label">快递单号</label>
           <input type="text" class="form-control" v-model="trackingNo" placeholder="请输入快递单号">
         </div>
+      </div>
+    </t-dialog>
+
+    <!-- Issue Invoice Dialog -->
+    <t-dialog
+      v-model:visible="invoiceDialogVisible"
+      header="开具电子发票"
+      @confirm="handleConfirmInvoice"
+      :confirm-loading="submittingInvoice"
+    >
+      <div class="form-container" style="padding: 12px 0; display: flex; flex-direction: column; gap: 14px;">
+        <div class="form-group">
+          <label class="form-label">发票抬头类型</label>
+          <div style="display: flex; gap: 16px; margin-top: 6px;">
+            <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #374151;">
+              <input type="radio" value="personal" v-model="invoiceForm.type"> 个人
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: #374151;">
+              <input type="radio" value="company" v-model="invoiceForm.type"> 企业
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">发票抬头名称</label>
+          <input type="text" class="form-control" v-model="invoiceForm.title" placeholder="请输入发票抬头">
+        </div>
+        <div class="form-group" v-if="invoiceForm.type === 'company'">
+          <label class="form-label">纳税人识别号 / 统一社会信用代码</label>
+          <input type="text" class="form-control" v-model="invoiceForm.tax_id" placeholder="请输入纳税人识别号">
+        </div>
+      </div>
+    </t-dialog>
+
+    <!-- Invoice Viewer Dialog -->
+    <t-dialog
+      v-model:visible="invoiceViewerVisible"
+      header="电子增值税普通发票"
+      :footer="null"
+      width="640px"
+    >
+      <div style="background: #FAFAFA; border: 1px solid #E5E7EB; border-radius: 8px; padding: 24px; color: #111; font-family: monospace; font-size: 12px; line-height: 1.6; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-top: 10px;">
+        <div style="text-align: center; font-size: 18px; font-weight: 700; color: #B91C1C; letter-spacing: 4px; margin-bottom: 4px; border-bottom: 2px double #B91C1C; padding-bottom: 8px;">
+          电子增值税普通发票
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px; color: #666; font-size: 11px;">
+          <span>发票代码：{{ order.invoice_info?.invoice_code }}</span>
+          <span>发票号码：{{ order.invoice_info?.invoice_no }}</span>
+          <span>开票日期：{{ order.invoice_info?.created_at ? new Date(order.invoice_info.created_at).toLocaleString() : '' }}</span>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; border: 1px solid #B91C1C;">
+          <tr style="border-bottom: 1px solid #B91C1C; background: #FEF2F2;">
+            <td style="width: 80px; padding: 6px; font-weight: 600; color: #B91C1C; vertical-align: middle; border-right: 1px solid #B91C1C;">购买方</td>
+            <td style="padding: 6px;">
+              <div>名称：{{ order.invoice_info?.title }}</div>
+              <div v-if="order.invoice_info?.tax_id">纳税人识别号：{{ order.invoice_info?.tax_id }}</div>
+            </td>
+          </tr>
+          <tr style="background: #FFF;">
+            <td style="padding: 6px; font-weight: 600; color: #B91C1C; vertical-align: middle; border-right: 1px solid #B91C1C;">销售方</td>
+            <td style="padding: 6px;">
+              <div>名称：{{ order.invoice_info?.company_name }}</div>
+              <div>纳税人识别号：{{ order.invoice_info?.taxpayer_id }}</div>
+              <div>地址、电话：深圳市福田区深南大道999号 0755-88888888</div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Itemized Table -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; border: 1px solid #B91C1C;">
+          <thead>
+            <tr style="border-bottom: 1px solid #B91C1C; color: #B91C1C; font-weight: 600; background: #FEF2F2;">
+              <th style="text-align: left; padding: 6px; border-right: 1px solid #B91C1C;">货物或应税劳务、服务名称</th>
+              <th style="text-align: right; padding: 6px; border-right: 1px solid #B91C1C; width: 80px;">单价 (元)</th>
+              <th style="text-align: right; padding: 6px; border-right: 1px solid #B91C1C; width: 50px;">数量</th>
+              <th style="text-align: right; padding: 6px; width: 90px;">金额 (元)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in order.invoice_info?.items" :key="index" style="border-bottom: 1px dashed #E5E7EB; background: #FFF;">
+              <td style="padding: 6px; color: #333; border-right: 1px solid #B91C1C;">*健康服务* {{ item.name }}</td>
+              <td style="text-align: right; padding: 6px; color: #333; border-right: 1px solid #B91C1C;">{{ (item.price / 100).toFixed(2) }}</td>
+              <td style="text-align: right; padding: 6px; color: #333; border-right: 1px solid #B91C1C;">{{ item.quantity }}</td>
+              <td style="text-align: right; padding: 6px; color: #333;">{{ (item.total / 100).toFixed(2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Total -->
+        <div style="border-top: 1px solid #B91C1C; padding-top: 8px; display: flex; justify-content: space-between; font-weight: bold; color: #B91C1C; font-size: 14px;">
+          <span>合  计 (含税)</span>
+          <span>¥{{ order.invoice_info ? (order.invoice_info.amount / 100).toFixed(2) : '0.00' }}</span>
+        </div>
+      </div>
+      <div style="text-align: right; margin-top: 16px;">
+        <button class="btn btn-outline" @click="handlePrintInvoice" style="height: 32px; padding: 0 16px; font-size: 13px;"><AppIcon name="printer" />  打印电子发票</button>
       </div>
     </t-dialog>
   </div>

@@ -4,6 +4,14 @@ import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
+import {
+  createBillingItem,
+  createCheckoutReceiptResult,
+  fetchCheckoutProducts,
+  findCheckoutProduct,
+  type BillingItem,
+  type CheckoutProduct
+} from '@/utils/checkoutProducts'
 
 const router = useRouter()
 
@@ -58,13 +66,23 @@ interface QueueItem {
 
 const appointments = ref<QueueItem[]>([])
 const doctorsList = ref<any[]>([])
-const selectedDoctorId = ref<string>(localStorage.getItem('workbench_selected_doctor_id') || '')
+
+const userInfo = (() => {
+  const raw = localStorage.getItem('user_info')
+  try {
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+})()
+
+const selectedDoctorId = ref<string>(userInfo.doctor_id ? String(userInfo.doctor_id) : (localStorage.getItem('workbench_selected_doctor_id') || ''))
 const loading = ref(false)
 const activeTimeSlot = ref(localStorage.getItem('workbench_active_time_slot') || 'all')
 const rightPaneTab = ref('waiting') // waiting, completed
 
 const storeList = ref<any[]>([])
-const selectedStoreId = ref<string>(localStorage.getItem('workbench_selected_store_id') || 'all')
+const selectedStoreId = ref<string>(userInfo.doctor_id ? (userInfo.store_id ? String(userInfo.store_id) : 'all') : (localStorage.getItem('workbench_selected_store_id') || 'all'))
 
 const fetchStores = async () => {
   try {
@@ -86,7 +104,9 @@ const fetchDoctors = async () => {
     const res: any = await request.get(url)
     if (res.code === 200) {
       doctorsList.value = res.data
-      if (doctorsList.value.length > 0) {
+      if (userInfo.doctor_id) {
+        selectedDoctorId.value = String(userInfo.doctor_id)
+      } else if (doctorsList.value.length > 0) {
         const exists = doctorsList.value.some(d => d.id.toString() === selectedDoctorId.value)
         if (!exists) {
           selectedDoctorId.value = doctorsList.value[0].id.toString()
@@ -186,6 +206,7 @@ let timerId: any = null
 onMounted(async () => {
   await fetchStores()
   await fetchDoctors()
+  fetchProducts()
   await fetchAppointments()
   timerId = setInterval(() => {
     fetchAppointments(true)
@@ -456,18 +477,10 @@ const shippingReceiver = ref<string>('')
 const shippingPhone = ref<string>('')
 const shippingAddressStr = ref<string>('')
 
-const productOptions = [
-  { id: '1', name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000 },
-  { id: '2', name: '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', price: 4900 },
-  { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
-  { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
-  { id: '5', name: '诊所专家诊断评估费', price: 50000 },
-  { id: '7', name: '快递运费', price: 1500 },
-  { id: '8', name: '就诊预约定金', price: 20000 }
-]
+const productOptions = ref<CheckoutProduct[]>([])
 
-const billingItems = ref<Array<{ product_id: string; product_name: string; price: number; quantity: number }>>([])
-const discountAmount = ref<number>(3000)
+const billingItems = ref<BillingItem[]>([])
+const discountAmount = ref<number>(0)
 const payMethod = ref<string>('wechat')
 
 const totalAmount = computed(() => {
@@ -479,12 +492,29 @@ const payableAmount = computed(() => {
   return diff > 0 ? diff : 0
 })
 
-function openCheckoutDialog(item: QueueItem) {
+const fetchProducts = async () => {
+  try {
+    productOptions.value = await fetchCheckoutProducts(request)
+  } catch (error) {
+    console.error('获取商品列表失败:', error)
+    MessagePlugin.error('获取商品列表失败')
+  }
+}
+
+async function openCheckoutDialog(item: QueueItem) {
+  if (productOptions.value.length === 0) {
+    await fetchProducts()
+  }
+  const defaultProduct = findCheckoutProduct(productOptions.value)
+  if (!defaultProduct) {
+    MessagePlugin.warning('暂无上架商品，无法开立收费账单')
+    return
+  }
   selectedQueueItem.value = item
   billingItems.value = [
-    { product_id: '4', product_name: '诊所首诊挂号门诊费', price: 20000, quantity: 1 }
+    createBillingItem(defaultProduct)
   ]
-  discountAmount.value = 3000
+  discountAmount.value = 0
   payMethod.value = 'wechat'
   checkoutSuccess.value = false
   orderResult.value = null
@@ -498,12 +528,32 @@ function openCheckoutDialog(item: QueueItem) {
 }
 
 function closeCheckoutDialog() {
+  if (checkoutSuccess.value) {
+    MessagePlugin.warning('请点击底部“完成结算”完成本次结算流程')
+    checkoutVisible.value = true
+    return
+  }
   checkoutVisible.value = false
   selectedQueueItem.value = null
 }
 
+async function completeCheckoutSettlement() {
+  if (!orderResult.value) return
+  checkoutVisible.value = false
+  selectedQueueItem.value = null
+  checkoutSuccess.value = false
+  orderResult.value = null
+  await fetchAppointments()
+  MessagePlugin.success('结算已完成')
+}
+
 const addBillingItem = () => {
-  billingItems.value.push({ product_id: '1', product_name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000, quantity: 1 })
+  const product = findCheckoutProduct(productOptions.value)
+  if (!product) {
+    MessagePlugin.warning('暂无可添加的上架商品')
+    return
+  }
+  billingItems.value.push(createBillingItem(product))
 }
 
 const removeBillingItem = (idx: number) => {
@@ -511,21 +561,27 @@ const removeBillingItem = (idx: number) => {
 }
 
 function onProductChange(idx: number, prodId: string) {
-  const prod = productOptions.find(p => p.id === prodId)
+  const prod = productOptions.value.find(p => p.id === prodId)
   if (prod) {
-    billingItems.value[idx].product_name = prod.name
-    billingItems.value[idx].price = prod.price
+    billingItems.value[idx] = createBillingItem(prod, { quantity: billingItems.value[idx].quantity })
   }
 }
 
 watch(deliveryType, (newVal) => {
   if (newVal === 'online') {
-    const exists = billingItems.value.some(item => item.product_id === '7')
+    const freightProduct = findCheckoutProduct(productOptions.value, '运费')
+    if (!freightProduct) {
+      MessagePlugin.warning('商品管理中暂无上架运费项目，请先配置后再选择快递邮寄')
+      deliveryType.value = 'offline_direct'
+      return
+    }
+    const exists = billingItems.value.some(item => item.product_id === freightProduct.id)
     if (!exists) {
-      billingItems.value.push({ product_id: '7', product_name: '快递运费', price: 1500, quantity: 1 })
+      billingItems.value.push(createBillingItem(freightProduct))
     }
   } else {
-    const idx = billingItems.value.findIndex(item => item.product_id === '7')
+    const freightProduct = findCheckoutProduct(productOptions.value, '运费')
+    const idx = billingItems.value.findIndex(item => item.product_id === freightProduct?.id || item.product_name.includes('运费'))
     if (idx !== -1) {
       billingItems.value.splice(idx, 1)
     }
@@ -628,12 +684,8 @@ async function submitCheckout() {
     }
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
+      orderResult.value = createCheckoutReceiptResult(res.data.receipt)
       checkoutSuccess.value = true
-      orderResult.value = {
-        orderNo: res.data.order_no,
-        amount: payableAmount.value / 100,
-        time: new Date().toLocaleString()
-      }
       MessagePlugin.success('门诊费用结算收银成功！')
       await fetchAppointments()
     }
@@ -784,7 +836,7 @@ async function submitCreateAppt() {
         <!-- Store Selector -->
         <div class="selector-left" style="display: flex; align-items: center; gap: 8px;">
           <span class="selector-lbl">接诊门店：</span>
-          <select v-model="selectedStoreId" class="selector-dropdown" @change="activeTimeSlot = 'all'">
+          <select v-model="selectedStoreId" class="selector-dropdown" @change="activeTimeSlot = 'all'" :disabled="!!userInfo.doctor_id">
             <option value="all">全部门店</option>
             <option v-for="s in storeList" :key="s.id" :value="s.id.toString()">
               {{ s.name }}
@@ -795,7 +847,7 @@ async function submitCreateAppt() {
         <!-- Doctor Selector -->
         <div class="selector-left" style="display: flex; align-items: center; gap: 8px;">
           <span class="selector-lbl">当前接诊诊室：</span>
-          <select v-model="selectedDoctorId" class="selector-dropdown" @change="activeTimeSlot = 'all'">
+          <select v-model="selectedDoctorId" class="selector-dropdown" @change="activeTimeSlot = 'all'" :disabled="!!userInfo.doctor_id">
             <option v-for="d in doctorsList" :key="d.id" :value="d.id.toString()">
               {{ d.name }} · {{ d.title }} ({{ d.specialty }})
             </option>
@@ -1391,19 +1443,6 @@ async function submitCreateAppt() {
                   <circle cx="12" cy="12" r="10"></circle>
                 </svg>微信支付
               </label>
-              <label class="pay-method-label" :class="{ active: payMethod === 'alipay' }" style="display: inline-flex; align-items: center; gap: 6px;">
-                <input v-model="payMethod" type="radio" value="alipay" style="display: none;">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="#3B82F6" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                </svg>支付宝
-              </label>
-              <label class="pay-method-label" :class="{ active: payMethod === 'cash' }" style="display: inline-flex; align-items: center; gap: 6px;">
-                <input v-model="payMethod" type="radio" value="cash" style="display: none;">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect>
-                  <line x1="2" y1="10" x2="22" y2="10"></line>
-                </svg>现金/刷卡
-              </label>
             </div>
           </div>
 
@@ -1428,7 +1467,9 @@ async function submitCreateAppt() {
 
           <div style="background: #F9FAFB; padding: 14px; border-radius: 8px; text-align: left; font-size: 13px; color: #4B5563; margin-bottom: 24px; line-height: 1.6;">
             <div><strong>订单编号:</strong> {{ orderResult?.orderNo }}</div>
-            <div><strong>实付金额:</strong> <span style="color: #EF4444; font-weight: 700;">¥{{ orderResult?.amount.toFixed(2) }}</span></div>
+            <div><strong>结账客户:</strong> {{ orderResult?.patientName }}</div>
+            <div><strong>实付金额:</strong> <span style="color: #EF4444; font-weight: 700;">¥{{ orderResult?.payable }}</span></div>
+            <div><strong>支付方式:</strong> {{ orderResult?.payMethodText }}</div>
             <div><strong>交易时间:</strong> {{ orderResult?.time }}</div>
           </div>
 
@@ -1440,7 +1481,7 @@ async function submitCreateAppt() {
                 <rect x="6" y="14" width="12" height="8"></rect>
               </svg>打印交易小票
             </t-button>
-            <t-button theme="default" @click="closeCheckoutDialog">关闭</t-button>
+            <t-button theme="default" @click="completeCheckoutSettlement">完成结算</t-button>
           </div>
         </div>
       </div>

@@ -27,6 +27,78 @@ const t = () => "../../../components/base/hj-navbar.js",
         });
       }
 
+      let socketTask = null;
+      let isSocketConnected = false;
+
+      function connectSocket() {
+        const token = e.index.getStorageSync("access_token");
+        if (!token) return;
+
+        const BASE_URL = require("../../../api/request.js").BASE_URL;
+        const wsUrl = BASE_URL.replace("http://", "ws://").replace("https://", "wss://") + "/im/ws?token=" + encodeURIComponent(token);
+
+        console.log("[WebSocket] Connecting to", wsUrl);
+        socketTask = e.index.connectSocket({
+          url: wsUrl,
+          complete: () => {}
+        });
+
+        socketTask.onOpen(() => {
+          console.log("[WebSocket] Connected successfully!");
+          isSocketConnected = true;
+          stopPolling();
+        });
+
+        socketTask.onMessage((res) => {
+          try {
+            const data = JSON.parse(res.data);
+            if (data.type === 'pong') return;
+
+            if (data.type === 'ack') {
+              const found = i.value.find(item => item.text === data.text && item.status === 'sending');
+              if (found) {
+                found.id = data.id;
+                found.status = 'success';
+                found.time = data.time;
+              }
+            } else if (data.type === 'message') {
+              const isDuplicated = i.value.some(item => item.id === data.id);
+              if (!isDuplicated) {
+                i.value.push({
+                  id: data.id,
+                  from: data.from,
+                  text: data.text,
+                  time: data.time,
+                  status: 'success'
+                });
+              }
+            }
+          } catch (err) {
+            console.error("[WebSocket] message error:", err);
+          }
+        });
+
+        socketTask.onClose(() => {
+          console.log("[WebSocket] Closed.");
+          isSocketConnected = false;
+          startPolling();
+        });
+
+        socketTask.onError((err) => {
+          console.error("[WebSocket] Error:", err);
+          isSocketConnected = false;
+          startPolling();
+        });
+      }
+
+      function disconnectSocket() {
+        if (socketTask) {
+          socketTask.close();
+          socketTask = null;
+        }
+        isSocketConnected = false;
+      }
+
       function startPolling() {
         stopPolling();
         pollTimer = setInterval(fetchHistory, 4000);
@@ -41,15 +113,29 @@ const t = () => "../../../components/base/hj-navbar.js",
 
       e.onMounted(() => {
         fetchHistory();
-        startPolling();
+        connectSocket();
       });
 
       e.onUnmounted(() => {
+        disconnectSocket();
         stopPolling();
       });
 
       function sendMsgWithRetry(msgObj) {
         msgObj.status = "sending";
+        if (isSocketConnected && socketTask) {
+          socketTask.send({
+            data: JSON.stringify({ text: msgObj.text }),
+            fail: () => {
+              sendViaHttp(msgObj);
+            }
+          });
+        } else {
+          sendViaHttp(msgObj);
+        }
+      }
+
+      function sendViaHttp(msgObj) {
         request({
           url: "/im/send",
           method: "POST",

@@ -4,6 +4,14 @@ import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
+import {
+  createBillingItem,
+  createCheckoutReceiptResult,
+  fetchCheckoutProducts,
+  findCheckoutProduct,
+  type CheckoutProduct,
+  type BillingItem
+} from '@/utils/checkoutProducts'
 
 const router = useRouter()
 
@@ -33,6 +41,7 @@ const getTodayDateString = () => {
 
 const appointments = ref<QueueItem[]>([])
 const schedules = ref<any[]>([])
+const stores = ref<any[]>([])
 const loading = ref(false)
 
 const fetchAppointments = async (isSilent = false) => {
@@ -69,11 +78,32 @@ const fetchAppointments = async (isSilent = false) => {
   }
 }
 
+const userInfo = (() => {
+  const raw = localStorage.getItem('user_info')
+  try {
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+})()
+
 // Time slot filter state
 const activeTimeSlot = ref(localStorage.getItem('queue_active_time_slot') || 'all')
 
-const selectedStore = ref(localStorage.getItem('queue_selected_store') || 'all')
-const storeOptions = ref(['龙岗总店', '南山分院', '福田门诊部'])
+const selectedStore = ref(localStorage.getItem('queue_selected_store') || (userInfo.store_name || 'all'))
+const storeOptions = computed(() => stores.value.map(store => store.name))
+
+const fetchStores = async () => {
+  try {
+    const res: any = await request.get('/api/admin/stores')
+    stores.value = res.data || []
+    if (selectedStore.value !== 'all' && !storeOptions.value.includes(selectedStore.value)) {
+      selectedStore.value = 'all'
+    }
+  } catch (error) {
+    console.error('获取门店列表失败:', error)
+  }
+}
 
 watch(selectedStore, (newVal) => {
   localStorage.setItem('queue_selected_store', newVal)
@@ -323,7 +353,7 @@ const completeTreatment = async (item: QueueItem) => {
     MessagePlugin.success(`患者 ${item.patientName} 诊疗已完成`)
     fetchAppointments()
     // Directly open checkout cashier dialog
-    openCheckoutDialog(item)
+    openCheckoutDialog({ ...item, status: 'completed' })
   } catch (error) {
     console.error(error)
   }
@@ -340,18 +370,10 @@ const shippingReceiver = ref<string>('')
 const shippingPhone = ref<string>('')
 const shippingAddressStr = ref<string>('')
 
-const productOptions = [
-  { id: '1', name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000 },
-  { id: '2', name: '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', price: 4900 },
-  { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
-  { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
-  { id: '5', name: '诊所专家诊断评估费', price: 50000 },
-  { id: '7', name: '快递运费', price: 1500 },
-  { id: '8', name: '就诊预约定金', price: 20000 }
-]
+const productOptions = ref<CheckoutProduct[]>([])
 
-const billingItems = ref<Array<{ product_id: string; product_name: string; price: number; quantity: number }>>([])
-const discountAmount = ref<number>(3000)
+const billingItems = ref<BillingItem[]>([])
+const discountAmount = ref<number>(0)
 const payMethod = ref<string>('wechat')
 
 const totalAmount = computed(() => {
@@ -364,7 +386,12 @@ const payableAmount = computed(() => {
 })
 
 function addBillingItem() {
-  billingItems.value.push({ product_id: '1', product_name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000, quantity: 1 })
+  const prod = findCheckoutProduct(productOptions.value)
+  if (!prod) {
+    MessagePlugin.warning('暂无可添加的上架商品')
+    return
+  }
+  billingItems.value.push(createBillingItem(prod))
 }
 
 function removeBillingItem(idx: number) {
@@ -372,33 +399,56 @@ function removeBillingItem(idx: number) {
 }
 
 function onProductChange(idx: number, prodId: string) {
-  const prod = productOptions.find(p => p.id === prodId)
+  const prod = productOptions.value.find(p => p.id === prodId)
   if (prod) {
-    billingItems.value[idx].product_name = prod.name
-    billingItems.value[idx].price = prod.price
+    billingItems.value[idx] = createBillingItem(prod, { quantity: billingItems.value[idx].quantity })
   }
 }
 
 watch(deliveryType, (newVal) => {
   if (newVal === 'online') {
-    const exists = billingItems.value.some(item => item.product_id === '7')
+    const freightProduct = findCheckoutProduct(productOptions.value, '运费')
+    if (!freightProduct) {
+      MessagePlugin.warning('商品管理中暂无上架运费项目，请先配置后再选择快递邮寄')
+      deliveryType.value = 'offline_direct'
+      return
+    }
+    const exists = billingItems.value.some(item => item.product_id === freightProduct.id)
     if (!exists) {
-      billingItems.value.push({ product_id: '7', product_name: '快递运费', price: 1500, quantity: 1 })
+      billingItems.value.push(createBillingItem(freightProduct))
     }
   } else {
-    const idx = billingItems.value.findIndex(item => item.product_id === '7')
+    const freightProduct = findCheckoutProduct(productOptions.value, '运费')
+    const idx = billingItems.value.findIndex(item => item.product_id === freightProduct?.id || item.product_name.includes('运费'))
     if (idx !== -1) {
       billingItems.value.splice(idx, 1)
     }
   }
 })
 
-function openCheckoutDialog(item: QueueItem) {
+const fetchProducts = async () => {
+  try {
+    productOptions.value = await fetchCheckoutProducts(request)
+  } catch (error) {
+    console.error('获取商品列表失败:', error)
+    MessagePlugin.error('获取商品列表失败')
+  }
+}
+
+async function openCheckoutDialog(item: QueueItem) {
+  if (productOptions.value.length === 0) {
+    await fetchProducts()
+  }
+  const defaultProduct = findCheckoutProduct(productOptions.value)
+  if (!defaultProduct) {
+    MessagePlugin.warning('暂无上架商品，无法开立收费账单')
+    return
+  }
   selectedQueueItem.value = item
   billingItems.value = [
-    { product_id: '4', product_name: '诊所首诊挂号门诊费', price: 20000, quantity: 1 }
+    createBillingItem(defaultProduct)
   ]
-  discountAmount.value = 3000
+  discountAmount.value = 0
   payMethod.value = 'wechat'
   checkoutSuccess.value = false
   orderResult.value = null
@@ -412,8 +462,33 @@ function openCheckoutDialog(item: QueueItem) {
 }
 
 function closeCheckoutDialog() {
+  if (checkoutSuccess.value) {
+    MessagePlugin.warning('请点击底部“完成结算”完成本次结算流程')
+    checkoutVisible.value = true
+    return
+  }
   checkoutVisible.value = false
   selectedQueueItem.value = null
+}
+
+async function completeCheckoutSettlement() {
+  if (!selectedQueueItem.value || !orderResult.value) return
+  checkoutLoading.value = true
+  try {
+    const nextAppointmentStatus = selectedQueueItem.value.status === 'completed' ? 'completed' : 'arrived'
+    await request.put(`/api/admin/appointments/${selectedQueueItem.value.id}`, { status: nextAppointmentStatus })
+    MessagePlugin.success('结算已完成')
+    checkoutVisible.value = false
+    selectedQueueItem.value = null
+    checkoutSuccess.value = false
+    orderResult.value = null
+    fetchAppointments()
+  } catch (err) {
+    console.error('完成结算失败:', err)
+    MessagePlugin.error('完成结算失败，请稍后重试')
+  } finally {
+    checkoutLoading.value = false
+  }
 }
 
 function goToEmr(item: QueueItem) {
@@ -504,23 +579,9 @@ async function submitCheckout() {
     }
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
-      try {
-        await request.put(`/api/admin/appointments/${selectedQueueItem.value.id}`, { status: 'arrived' })
-      } catch (err) {
-        console.error('更新预约结算状态失败:', err)
-      }
       MessagePlugin.success('收银收费结算交易成功！')
-      orderResult.value = {
-        orderNo: res.data.order_no,
-        patientName: selectedQueueItem.value.patientName,
-        total: (totalAmount.value / 100).toFixed(2),
-        discount: (discountAmount.value / 100).toFixed(2),
-        payable: (payableAmount.value / 100).toFixed(2),
-        payMethodText: payMethod.value === 'wechat' ? '微信支付' : payMethod.value === 'alipay' ? '支付宝' : 'POS线下刷卡',
-        time: new Date().toLocaleString()
-      }
+      orderResult.value = createCheckoutReceiptResult(res.data.receipt)
       checkoutSuccess.value = true
-      fetchAppointments()
     }
   } catch (error) {
     console.error(error)
@@ -545,6 +606,8 @@ const delayPatient = async (item: QueueItem) => {
 let timerId: any = null
 
 onMounted(() => {
+  fetchStores()
+  fetchProducts()
   fetchAppointments()
   timerId = setInterval(() => {
     fetchAppointments(true)
@@ -564,6 +627,8 @@ const apptSearchQuery = ref('')
 const apptSelectedPatient = ref<any>(null)
 const apptStore = ref('鼾静健康·龙岗总店')
 const apptDoctor = ref('古堪民 · 主任医师 · 睡眠呼吸科')
+const apptStoreId = ref('')
+const apptDoctorId = ref('')
 const apptDate = ref(getTodayDateString())
 const apptSlot = ref('09:30')
 const apptVisitType = ref('复诊')
@@ -575,9 +640,12 @@ const apptPatientCreateVisible = ref(false)
 function openCreateApptDialog() {
   apptSearchQuery.value = ''
   apptSelectedPatient.value = null
-  apptStore.value = '鼾静健康·龙岗总店'
-  apptDoctor.value = '古堪民 · 主任医师 · 睡眠呼吸科'
   apptDate.value = getTodayDateString()
+  const firstSchedule = schedules.value[0]
+  apptStoreId.value = firstSchedule ? String(firstSchedule.store_id) : ''
+  apptDoctorId.value = firstSchedule ? String(firstSchedule.doctor_id) : ''
+  apptStore.value = firstSchedule?.store_name || ''
+  apptDoctor.value = firstSchedule ? `${firstSchedule.doctor_name} · ${firstSchedule.doctor_title || ''} · ${firstSchedule.doctor_specialty || ''}` : ''
   apptSlot.value = '09:30'
   apptVisitType.value = '复诊'
   apptPromoterId.value = null
@@ -634,13 +702,12 @@ async function handleCreateApptSubmit() {
     return
   }
 
-  let storeId = 1
-  if (apptStore.value.includes('南山分院')) storeId = 2
-  else if (apptStore.value.includes('福田门诊部')) storeId = 3
-
-  let doctorId = 1
-  if (apptDoctor.value.includes('王志远')) doctorId = 2
-  else if (apptDoctor.value.includes('刘婉清')) doctorId = 3
+  const storeId = Number(apptStoreId.value)
+  const doctorId = Number(apptDoctorId.value)
+  if (!storeId || !doctorId) {
+    MessagePlugin.error('今日暂无可用于现场挂号的医生排班')
+    return
+  }
 
   const slotHour = parseInt(apptSlot.value.split(':')[0])
   const period = slotHour < 12 ? 'morning' : 'afternoon'
@@ -907,7 +974,7 @@ const filteredTodayAppointments = computed(() => {
           <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>结账客户:</span> <span>{{ orderResult?.patientName }}</span></div>
           <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>交易时间:</span> <span>{{ orderResult?.time }}</span></div>
           <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">--------------------------------</div>
-          <div v-for="item in billingItems" :key="item.product_id" style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+          <div v-for="item in orderResult?.items" :key="item.product_id" style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
             <span>{{ item.product_name }} x{{ item.quantity }}</span>
             <span>¥{{ ((item.price * item.quantity) / 100).toFixed(2) }}</span>
           </div>
@@ -925,7 +992,7 @@ const filteredTodayAppointments = computed(() => {
         </div>
         <div style="margin-top: 20px; display: flex; gap: 12px;">
           <t-button variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
-          <t-button theme="primary" @click="closeCheckoutDialog">完成结算</t-button>
+          <t-button theme="primary" :loading="checkoutLoading" @click="completeCheckoutSettlement">完成结算</t-button>
         </div>
       </div>
 
@@ -1047,14 +1114,6 @@ const filteredTodayAppointments = computed(() => {
             <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
               <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
               <AppIcon name="wechat" />  微信支付
-            </label>
-            <label class="pay-method-label" :class="{ active: payMethod === 'alipay' }">
-              <input v-model="payMethod" type="radio" value="alipay" style="display: none;">
-              <AppIcon name="alipay" />  支付宝
-            </label>
-            <label class="pay-method-label" :class="{ active: payMethod === 'pos' }">
-              <input v-model="payMethod" type="radio" value="pos" style="display: none;">
-              <AppIcon name="coins" />  现金/刷卡
             </label>
           </div>
         </div>

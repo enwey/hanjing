@@ -6,32 +6,29 @@ import request from '@/utils/request'
 import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
 
 const router = useRouter()
+
+/* ---- Search & Filters State ---- */
 const searchKeyword = ref(localStorage.getItem('patient_list_search_keyword') || '')
 const filterGender = ref(localStorage.getItem('patient_list_filter_gender') || '')
 const filterLevel = ref(localStorage.getItem('patient_list_filter_level') || '')
+const filterTag = ref(localStorage.getItem('patient_list_filter_tag') || '')
+const filterEssLevel = ref(localStorage.getItem('patient_list_filter_ess_level') || '')
+const filterSnoreHasApnea = ref(localStorage.getItem('patient_list_filter_snore_has_apnea') || '')
+const filterSnoreNoise = ref(localStorage.getItem('patient_list_filter_snore_noise') || '')
+const filterFollower = ref(localStorage.getItem('patient_list_filter_follower') || '')
+const filterCrmStage = ref(localStorage.getItem('patient_list_filter_crm_stage') || '')
 
 watch(searchKeyword, (newVal) => { localStorage.setItem('patient_list_search_keyword', newVal) })
 watch(filterGender, (newVal) => { localStorage.setItem('patient_list_filter_gender', newVal) })
 watch(filterLevel, (newVal) => { localStorage.setItem('patient_list_filter_level', newVal) })
-const detailVisible = ref(false)
-const detailTab = ref('info')
-const selectedPatient = ref<any>(null)
+watch(filterTag, (newVal) => { localStorage.setItem('patient_list_filter_tag', newVal) })
+watch(filterEssLevel, (newVal) => { localStorage.setItem('patient_list_filter_ess_level', newVal) })
+watch(filterSnoreHasApnea, (newVal) => { localStorage.setItem('patient_list_filter_snore_has_apnea', newVal) })
+watch(filterSnoreNoise, (newVal) => { localStorage.setItem('patient_list_filter_snore_noise', newVal) })
+watch(filterFollower, (newVal) => { localStorage.setItem('patient_list_filter_follower', newVal) })
+watch(filterCrmStage, (newVal) => { localStorage.setItem('patient_list_filter_crm_stage', newVal) })
 
 const createVisible = ref(false)
-
-const levelSelectOptions = [
-  { label: '普通', value: '普通' },
-  { label: 'VIP', value: 'VIP' },
-  { label: 'SVIP', value: 'SVIP' }
-]
-
-const sourceSelectOptions = [
-  { label: '小程序', value: '小程序' },
-  { label: '分销', value: '分销' },
-  { label: '转介绍', value: '转介绍' },
-  { label: '门店', value: '门店' },
-  { label: '直播', value: '直播' }
-]
 
 function openCreate() {
   createVisible.value = true
@@ -41,89 +38,112 @@ function handleCreateSuccess() {
   fetchPatients()
 }
 
-interface Record {
-  date: string; doctor: string; type: string; diagnosis: string; treatment: string
-}
+/* ---- Types ---- */
 interface Patient {
-  id: string; no: string; name: string; phone: string; gender: string; age: number
-  level: string; lastVisit: string; totalVisits: number; totalSpent: number; source: string
-  status: string; tags: string[]
-  medicalHistory: string[]
-  records: Record[]
+  id: string
+  no: string
+  name: string
+  phone: string
+  gender: string
+  age: number | null
+  ageText: string
+  level: string
+  lastVisit: string
+  totalVisits: number
+  totalSpent: number
+  source: string
+  status: string
+  tags: string[]
+  familyCount: number
+  essText: string
+  essAbnormal: boolean
+  essResult: any
+  snoreText: string
+  snoreAbnormal: boolean
+  snoreResult: any
+  followerId: string
+  followerName: string
+  crmStage: string
 }
 
 const currentPage = ref(1)
 const pageSize = ref(30)
-
-const initialPatients: Patient[] = [
-  {
-    id: '1', no: 'P20240001', name: '张建国', phone: '138****8888', gender: '男', age: 52,
-    level: 'VIP', lastVisit: '2026-06-04', totalVisits: 12, totalSpent: 48500, source: '小程序',
-    status: 'active', tags: ['重度打鼾', 'OSA确诊'],
-    medicalHistory: ['高血压（5年）', '2型糖尿病', '阻塞性睡眠呼吸暂停（中重度 AHI 38）'],
-    records: [
-      { date: '2026-06-04', doctor: '李明辉', type: '复诊', diagnosis: '佩戴3个月，AHI降至12', treatment: '继续使用定制阻鼾器·舒适型' },
-      { date: '2026-03-01', doctor: '李明辉', type: '复诊', diagnosis: '初戴适应良好，AHI降至22', treatment: '调整阻鼾器微调' },
-      { date: '2025-12-15', doctor: '李明辉', type: '初诊', diagnosis: 'OSA中重度，AHI 38，建议定制阻鼾器', treatment: '定制阻鼾器·舒适型' },
-    ]
-  },
-  {
-    id: '2', no: 'P20240002', name: '李美玲', phone: '139****9999', gender: '女', age: 38,
-    level: '普通', lastVisit: '2026-06-03', totalVisits: 5, totalSpent: 15800, source: '分销',
-    status: 'active', tags: ['轻度打鼾', '孕期'],
-    medicalHistory: ['轻度打鼾（孕期加重）', '无其他基础疾病'],
-    records: [
-      { date: '2026-06-03', doctor: '王芳', type: '复诊', diagnosis: '佩戴1个月，鼾声明显减轻', treatment: '继续使用定制阻鼾器·标准型' },
-      { date: '2026-05-02', doctor: '王芳', type: '初诊', diagnosis: '轻度打鼾，AHI 12', treatment: '定制阻鼾器·标准型' },
-    ]
-  },
-  {
-    id: '3', no: 'P20240003', name: '王强', phone: '136****7777', gender: '男', age: 45,
-    level: 'SVIP', lastVisit: '2026-06-02', totalVisits: 18, totalSpent: 73200, source: '门店',
-    status: 'active', tags: ['重度打鼾', 'CPAP不耐受'],
-    medicalHistory: ['重度OSA（AHI 52）', 'CPAP不耐受', '高血脂'],
-    records: [
-      { date: '2026-06-02', doctor: '张伟', type: '复诊', diagnosis: 'AHI降至15，耐受良好', treatment: '维持当前治疗方案' },
-      { date: '2026-01-10', doctor: '张伟', type: '复诊', diagnosis: '更换至舒适型，适应期2周', treatment: '定制阻鼾器·舒适型' },
-      { date: '2025-08-20', doctor: '张伟', type: '初诊', diagnosis: '重度OSA，CPAP不耐受', treatment: '定制阻鼾器·标准型' },
-    ]
-  },
-  {
-    id: '4', no: 'P20240004', name: '赵敏', phone: '137****6666', gender: '女', age: 29,
-    level: '普通', lastVisit: '2026-05-28', totalVisits: 3, totalSpent: 4980, source: '小程序',
-    status: 'active', tags: ['偶发打鼾', '睡眠监测'],
-    medicalHistory: ['偶发打鼾', '失眠（轻度）'],
-    records: [
-      { date: '2026-05-28', doctor: '陈思雨', type: '初诊', diagnosis: '偶发打鼾，AHI 8，不属于OSA', treatment: '睡眠监测服务 + 行为干预指导' },
-    ]
-  },
-  {
-    id: '5', no: 'P20240005', name: '陈大明', phone: '135****5555', gender: '男', age: 61,
-    level: 'VIP', lastVisit: '2026-04-15', totalVisits: 8, totalSpent: 29600, source: '转介绍',
-    status: 'inactive', tags: ['OSA术后', '随访'],
-    medicalHistory: ['OSA（术后）', '冠心病', '高血压'],
-    records: [
-      { date: '2026-04-15', doctor: '李明辉', type: '复诊', diagnosis: '术后3个月复查，AHI 6', treatment: '定期随访，暂时无需干预' },
-      { date: '2025-11-20', doctor: '李明辉', type: '术后随访', diagnosis: '悬雍垂腭咽成形术后1个月', treatment: '术后恢复指导' },
-    ]
-  },
-  {
-    id: '6', no: 'P20240006', name: '刘芳芳', phone: '133****4444', gender: '女', age: 42,
-    level: '普通', lastVisit: '2026-06-05', totalVisits: 2, totalSpent: 3980, source: '直播',
-    status: 'active', tags: ['新患者', '鼾声评估'],
-    medicalHistory: ['自述鼾声影响伴侣', '无确诊'],
-    records: [
-      { date: '2026-06-05', doctor: '王芳', type: '初诊', diagnosis: '等待睡眠监测结果', treatment: 'AI鼾声分析 + 睡眠监测预约' },
-    ]
-  },
-]
-
 const patients = ref<Patient[]>([])
+const totalPatients = ref(0)
 
+/* ---- Source Resolver ---- */
+const sourceMap: Record<string, string> = {
+  mini_app: '小程序',
+  mini_program: '小程序',
+  wechat: '小程序',
+  distribution: '分销',
+  promoter: '分销',
+  referral: '转介绍',
+  referred: '转介绍',
+  walk_in: '门店',
+  store: '门店',
+  offline: '门店',
+  live: '直播',
+  livestream: '直播',
+  admin: '后台',
+  '小程序': '小程序',
+  '分销': '分销',
+  '转介绍': '转介绍',
+  '门店': '门店',
+  '直播': '直播'
+}
+
+function getPatientNo(item: any) {
+  return item.patient_no || item.no || '未生成'
+}
+
+function getPatientSource(item: any) {
+  const source = item.resolved_source || item.source || item.patient_source || item.latest_source
+  return sourceMap[source] || source || '未知'
+}
+
+/* ---- Clinical Normalizers ---- */
+const riskLabelMap: Record<string, string> = {
+  normal: '正常',
+  low: '低风险',
+  mild: '轻度',
+  moderate: '中度',
+  severe: '重度',
+  high: '高风险'
+}
+
+function normalizeRiskLevel(level: string): string {
+  if (!level) return 'normal'
+  const val = String(level).toLowerCase()
+  if (val.includes('正常') || val.includes('normal') || val.includes('low') || val.includes('低')) return 'normal'
+  if (val.includes('轻') || val === 'mild') return 'mild'
+  if (val.includes('中') || val === 'moderate' || val === 'medium') return 'moderate'
+  if (val.includes('重') || val === 'severe' || val === 'high' || val === 'higher' || val.includes('高')) return 'severe'
+  return val
+}
+
+function getRiskLabel(level: string) {
+  const norm = normalizeRiskLevel(level)
+  return riskLabelMap[norm] || level || ''
+}
+
+function getEssText(item: any) {
+  if (!item.ess_result) return '未评估'
+  return `${item.ess_result.total_score}分/${getRiskLabel(item.ess_result.risk_level)}`
+}
+
+function getSnoreText(item: any) {
+  if (!item.snore_result) return '未分析'
+  return `${getRiskLabel(item.snore_result.risk_level)} · ${item.snore_result.apnea_events || 0}次`
+}
+
+/* ---- Backend Data Loader ---- */
 const fetchPatients = async () => {
   try {
     const res: any = await request.get('/api/admin/patients')
-    patients.value = res.data.map((item: any) => {
+    const list = Array.isArray(res.data) ? res.data : res.data?.list || []
+    totalPatients.value = Array.isArray(res.data) ? list.length : Number(res.data?.pagination?.total || list.length)
+    patients.value = list.map((item: any) => {
       const levelMap: Record<string, string> = {
         normal: '普通',
         silver: 'VIP',
@@ -132,20 +152,29 @@ const fetchPatients = async () => {
       }
       return {
         id: item.id.toString(),
-        no: `P2026${String(item.id).padStart(4, '0')}`,
+        no: getPatientNo(item),
         name: item.name,
-        phone: item.phone || item.user_phone || '未绑定',
-        gender: item.gender === 1 ? '男' : '女',
-        age: item.age || 30,
+        phone: item.phone || item.user_phone || '',
+        gender: item.gender === 1 ? '男' : item.gender === 2 ? '女' : '未知',
+        age: item.age ?? null,
+        ageText: item.age === null || item.age === undefined ? '未知' : `${item.age}岁`,
         level: levelMap[item.member_level] || '普通',
-        lastVisit: item.visit_count > 0 ? '2026-05-29' : '暂无',
+        lastVisit: item.last_visit || '暂无',
         totalVisits: item.visit_count || 0,
-        totalSpent: (item.total_spent || 0) / 100, // Format to yuan
-        source: item.source === 'walk_in' ? '门店' : '小程序',
-        status: 'active',
-        tags: item.has_snore === 1 ? ['有鼾症记录'] : [],
-        medicalHistory: item.has_snore === 1 ? ['自建档鼾症历史'] : [],
-        records: []
+        totalSpent: (item.total_spent || 0) / 100,
+        source: getPatientSource(item),
+        status: item.status,
+        tags: item.tags || [],
+        familyCount: item.family_count || 0,
+        essText: getEssText(item),
+        essAbnormal: Boolean(item.ess_has_abnormal),
+        essResult: item.ess_result,
+        snoreText: getSnoreText(item),
+        snoreAbnormal: Boolean(item.snore_has_abnormal),
+        snoreResult: item.snore_result,
+        followerId: item.follower_id ? item.follower_id.toString() : '',
+        followerName: item.follower_name || '未分配',
+        crmStage: item.crm_stage || '未跟进'
       }
     })
   } catch (error) {
@@ -153,26 +182,137 @@ const fetchPatients = async () => {
   }
 }
 
-onMounted(() => {
-  fetchPatients()
-})
+const followers = ref<any[]>([])
+const fetchFollowers = async () => {
+  try {
+    const res: any = await request.get('/api/admin/admin-users')
+    followers.value = res.data || []
+  } catch (error) {
+    console.error('Failed to load followers:', error)
+  }
+}
 
+/* ---- Filter Dropdowns ---- */
 const genderOptions = [
   { label: '全部性别', value: '' },
   { label: '男', value: '男' },
-  { label: '女', value: '女' },
+  { label: '女', value: '女' }
 ]
+
 const levelOptions = [
   { label: '全部等级', value: '' },
   { label: 'SVIP', value: 'SVIP' },
   { label: 'VIP', value: 'VIP' },
-  { label: '普通', value: '普通' },
+  { label: '普通', value: '普通' }
 ]
 
+const tagOptions = computed(() => {
+  const allTags = new Set<string>()
+  patients.value.forEach(p => {
+    if (Array.isArray(p.tags)) {
+      p.tags.forEach(t => allTags.add(t))
+    }
+  })
+  return [{ label: '全部标签', value: '' }, ...Array.from(allTags).map(t => ({ label: t, value: t }))]
+})
+
+const essLevelOptions = [
+  { label: '全部ESS状态', value: '' },
+  { label: '未评估', value: 'none' },
+  { label: '已评估 (全部)', value: 'completed' },
+  { label: '正常 (0-6分)', value: 'normal' },
+  { label: '轻度嗜睡', value: 'mild' },
+  { label: '中度嗜睡', value: 'moderate' },
+  { label: '重度嗜睡', value: 'severe' }
+]
+
+const snoreApneaOptions = [
+  { label: '全部呼吸暂停', value: '' },
+  { label: '未进行录音', value: 'none' },
+  { label: '有疑似暂停', value: 'yes' },
+  { label: '无疑似暂停', value: 'no' }
+]
+
+const snoreNoiseOptions = [
+  { label: '全部鼾声级别', value: '' },
+  { label: '未评估', value: 'none' },
+  { label: '低风险/正常', value: 'normal' },
+  { label: '轻度打鼾', value: 'mild' },
+  { label: '中度打鼾', value: 'moderate' },
+  { label: '重度打鼾', value: 'severe' }
+]
+
+const followerOptions = computed(() => {
+  const opts = [{ label: '全部跟进人', value: '' }, { label: '未分配', value: 'unassigned' }]
+  followers.value.forEach(f => {
+    opts.push({ label: f.name, value: f.id.toString() })
+  })
+  return opts
+})
+
+const crmStageOptions = [
+  { label: '全部跟进阶段', value: '' },
+  { label: '未跟进', value: '未跟进' },
+  { label: '意向中', value: '意向中' },
+  { label: '考虑中', value: '考虑中' },
+  { label: '已成单', value: '已成单' },
+  { label: '已放弃', value: '已放弃' }
+]
+
+onMounted(() => {
+  fetchPatients()
+  fetchFollowers()
+})
+
+/* ---- Advanced Multi-Filter Logic ---- */
 const filteredPatients = computed(() => {
   let list = patients.value
   if (filterGender.value) list = list.filter(p => p.gender === filterGender.value)
   if (filterLevel.value) list = list.filter(p => p.level === filterLevel.value)
+  
+  if (filterTag.value) {
+    list = list.filter(p => Array.isArray(p.tags) && p.tags.includes(filterTag.value))
+  }
+
+  if (filterEssLevel.value) {
+    if (filterEssLevel.value === 'none') {
+      list = list.filter(p => !p.essResult)
+    } else if (filterEssLevel.value === 'completed') {
+      list = list.filter(p => !!p.essResult)
+    } else {
+      list = list.filter(p => p.essResult && normalizeRiskLevel(p.essResult.risk_level) === filterEssLevel.value)
+    }
+  }
+
+  if (filterSnoreHasApnea.value) {
+    if (filterSnoreHasApnea.value === 'yes') {
+      list = list.filter(p => p.snoreResult && p.snoreResult.apnea_events > 0)
+    } else if (filterSnoreHasApnea.value === 'no') {
+      list = list.filter(p => p.snoreResult && p.snoreResult.apnea_events === 0)
+    } else if (filterSnoreHasApnea.value === 'none') {
+      list = list.filter(p => !p.snoreResult)
+    }
+  }
+
+  if (filterSnoreNoise.value) {
+    if (filterSnoreNoise.value === 'none') {
+      list = list.filter(p => !p.snoreResult)
+    } else {
+      list = list.filter(p => p.snoreResult && normalizeRiskLevel(p.snoreResult.risk_level) === filterSnoreNoise.value)
+    }
+  }
+
+  if (filterFollower.value) {
+    if (filterFollower.value === 'unassigned') {
+      list = list.filter(p => !p.followerId)
+    } else {
+      list = list.filter(p => p.followerId === filterFollower.value)
+    }
+  }
+  if (filterCrmStage.value) {
+    list = list.filter(p => p.crmStage === filterCrmStage.value)
+  }
+
   if (searchKeyword.value) {
     const kw = searchKeyword.value.toLowerCase()
     list = list.filter(p => p.name.includes(kw) || p.no.toLowerCase().includes(kw) || p.phone.includes(kw))
@@ -180,7 +320,7 @@ const filteredPatients = computed(() => {
   return list
 })
 
-watch([searchKeyword, filterGender, filterLevel], () => {
+watch([searchKeyword, filterGender, filterLevel, filterTag, filterEssLevel, filterSnoreHasApnea, filterSnoreNoise, filterFollower, filterCrmStage], () => {
   currentPage.value = 1
 })
 
@@ -212,6 +352,13 @@ function getSourceStyle(source: string) {
 }
 
 const levelTheme: Record<string, string> = { SVIP: 'danger', VIP: 'warning', '普通': 'default' }
+const crmStageTheme: Record<string, string> = {
+  '未跟进': 'default',
+  '意向中': 'primary',
+  '考虑中': 'warning',
+  '已成单': 'success',
+  '已放弃': 'danger'
+}
 const statusMap: Record<string, { label: string; theme: string }> = {
   active: { label: '活跃', theme: 'success' },
   inactive: { label: '失活', theme: 'default' },
@@ -227,6 +374,53 @@ watch(operationColumnWidth, () => {
     window.dispatchEvent(new Event('resize'))
   })
 })
+
+/* ---- CRM Dialog State and Callbacks ---- */
+const crmVisible = ref(false)
+const crmForm = ref({
+  patientId: '',
+  patientName: '',
+  followerId: '',
+  stage: '意向中',
+  content: ''
+})
+const submittingCrm = ref(false)
+
+function openCrmDialog(row: Patient) {
+  crmForm.value = {
+    patientId: row.id,
+    patientName: row.name,
+    followerId: row.followerId || '',
+    stage: row.crmStage === '未跟进' ? '意向中' : row.crmStage,
+    content: ''
+  }
+  crmVisible.value = true
+}
+
+async function handleSaveCrm() {
+  if (!crmForm.value.content.trim()) {
+    MessagePlugin.warning('请填写跟进内容描述')
+    return
+  }
+  submittingCrm.value = true
+  try {
+    await request.put(`/api/admin/patients/${crmForm.value.patientId}/follower`, {
+      follower_id: crmForm.value.followerId ? Number(crmForm.value.followerId) : null
+    })
+    await request.post(`/api/admin/patients/${crmForm.value.patientId}/crm-records`, {
+      content: crmForm.value.content.trim(),
+      stage: crmForm.value.stage
+    })
+    MessagePlugin.success('保存跟进成功')
+    crmVisible.value = false
+    fetchPatients()
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('保存跟进失败')
+  } finally {
+    submittingCrm.value = false
+  }
+}
 </script>
 
 <template>
@@ -235,7 +429,7 @@ watch(operationColumnWidth, () => {
     <div class="page-title-row">
       <div>
         <div class="page-title">患者管理</div>
-        <div class="page-title-sub">2,847 位注册患者</div>
+        <div class="page-title-sub">{{ totalPatients.toLocaleString() }} 位注册患者</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button class="btn btn-outline"><AppIcon name="download" />  导出</button>
@@ -248,9 +442,15 @@ watch(operationColumnWidth, () => {
       <!-- 筛选栏 -->
       <div class="filter-bar">
         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-          <t-input v-model="searchKeyword" placeholder="搜索姓名/编号/手机号" clearable style="width:220px" />
-          <t-select v-model="filterGender" :options="genderOptions" style="width:120px" />
-          <t-select v-model="filterLevel" :options="levelOptions" style="width:120px" />
+          <t-input v-model="searchKeyword" placeholder="搜索姓名/编号/手机号" clearable style="width:190px" />
+          <t-select v-model="filterGender" :options="genderOptions" style="width:105px" />
+          <t-select v-model="filterLevel" :options="levelOptions" style="width:105px" />
+          <t-select v-model="filterTag" :options="tagOptions" placeholder="患者标签" style="width:115px" />
+          <t-select v-model="filterEssLevel" :options="essLevelOptions" style="width:130px" />
+          <t-select v-model="filterSnoreHasApnea" :options="snoreApneaOptions" style="width:130px" />
+          <t-select v-model="filterSnoreNoise" :options="snoreNoiseOptions" style="width:130px" />
+          <t-select v-model="filterFollower" :options="followerOptions" placeholder="跟进人" style="width:120px" />
+          <t-select v-model="filterCrmStage" :options="crmStageOptions" style="width:130px" />
         </div>
         <div style="font-size:13px;color:#9CA3AF;font-weight:400;">
           共 {{ filteredPatients.length }} 人
@@ -266,15 +466,20 @@ watch(operationColumnWidth, () => {
               <th>患者信息</th>
               <th>等级</th>
               <th>标签</th>
+              <th>家庭成员</th>
+              <th>ESS嗜睡量表</th>
+              <th>AI鼾声分析</th>
               <th>就诊次数</th>
               <th>最近就诊</th>
               <th>消费总额</th>
               <th>来源</th>
+              <th>跟进人</th>
+              <th>跟进阶段</th>
               <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in paginatedPatients" :key="row.id" @click="openDetail(row)" style="cursor: pointer;">
+            <tr v-for="row in paginatedPatients" :key="row.id">
               <td style="font-family: monospace; font-weight: 600; color: var(--primary-500);">{{ row.no }}</td>
               <td>
                 <div style="display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;" @click.stop>
@@ -293,7 +498,7 @@ watch(operationColumnWidth, () => {
                   }">{{ row.name.substring(0, 1) }}</div>
                   <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
                     <div style="font-weight:600;color:#1F2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.name }}</div>
-                    <div style="font-size:11px;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.gender }} · {{ row.age }}岁 · {{ row.phone }}</div>
+                    <div style="font-size:11px;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.gender }} · {{ row.ageText }} · {{ row.phone }}</div>
                   </div>
                 </div>
               </td>
@@ -305,21 +510,29 @@ watch(operationColumnWidth, () => {
                   <t-tag v-for="tag in row.tags" :key="tag" size="small" variant="outline">{{ tag }}</t-tag>
                 </div>
               </td>
+              <td style="font-weight:600;">{{ row.familyCount }}人</td>
+              <td :class="{ 'assessment-danger': row.essAbnormal }">{{ row.essText }}</td>
+              <td :class="{ 'assessment-danger': row.snoreAbnormal }">{{ row.snoreText }}</td>
               <td style="font-weight:600;">{{ row.totalVisits }}次</td>
               <td style="font-size:12px;color:#9CA3AF;">{{ row.lastVisit }}</td>
               <td style="font-weight:600;color:#1F2937">¥{{ row.totalSpent.toLocaleString() }}</td>
               <td>
                 <span :style="getSourceStyle(row.source)">{{ row.source }}</span>
               </td>
+              <td style="font-weight: 500; color: #4B5563;">{{ row.followerName }}</td>
+              <td>
+                <t-tag :theme="crmStageTheme[row.crmStage] || 'default'" size="small" variant="light">{{ row.crmStage }}</t-tag>
+              </td>
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;" @click.stop>
                   <button class="btn btn-xs btn-outline" @click="openDetail(row)">详情</button>
+                  <button class="btn btn-xs btn-outline" @click="openCrmDialog(row)">跟进</button>
                   <button class="btn btn-xs btn-outline" @click="router.push('/patient/followup/' + row.id)">随访</button>
                 </div>
               </td>
             </tr>
             <tr v-if="paginatedPatients.length === 0">
-              <td colspan="9" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无匹配的患者数据</td>
+              <td colspan="14" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无匹配的患者数据</td>
             </tr>
           </tbody>
         </table>
@@ -337,99 +550,54 @@ watch(operationColumnWidth, () => {
       </div>
     </div>
 
-    <!-- 详情抽屉 -->
-    <t-drawer
-      v-model:visible="detailVisible"
-      :header="selectedPatient?.name + ' - 患者详情'"
-      size="560px"
-      :footer="false"
-    >
-      <div v-if="selectedPatient">
-        <!-- 基本信息 -->
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #F3F4F6">
-          <t-avatar size="64px" :style="{ background: 'linear-gradient(135deg, #3B6BF5, #8EAFFF)', fontSize:'24px' }">
-            {{ selectedPatient.name.slice(0, 1) }}
-          </t-avatar>
-          <div>
-            <div style="font-size:18px;font-weight:700">{{ selectedPatient.name }}</div>
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px;">
-              <t-tag :theme="levelTheme[selectedPatient.level]" size="small" variant="light">{{ selectedPatient.level }}</t-tag>
-              <t-tag v-for="tag in selectedPatient.tags" :key="tag" size="small" variant="outline">{{ tag }}</t-tag>
-            </div>
-          </div>
-        </div>
-
-        <t-tabs v-model="detailTab">
-          <t-tab-panel value="info" label="基本信息">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div class="info-item">
-                <div class="info-label">患者编号</div>
-                <div class="info-val">{{ selectedPatient.no }}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">性别</div>
-                <div class="info-val">{{ selectedPatient.gender }}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">年龄</div>
-                <div class="info-val">{{ selectedPatient.age }} 岁</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">手机号</div>
-                <div class="info-val">{{ selectedPatient.phone }}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">来源渠道</div>
-                <div class="info-val">{{ selectedPatient.source }}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">末次到诊</div>
-                <div class="info-val">{{ selectedPatient.lastVisit }}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">累计到诊</div>
-                <div class="info-val">{{ selectedPatient.totalVisits }} 次</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">累计消费</div>
-                <div class="info-val" style="color:#3B6BF5;font-weight:700">¥{{ selectedPatient.totalSpent.toLocaleString() }}</div>
-              </div>
-            </div>
-          </t-tab-panel>
-
-          <t-tab-panel value="history" label="病史">
-            <div v-if="selectedPatient.medicalHistory.length" style="margin-bottom:16px">
-              <div class="info-label" style="margin-bottom:8px">既往病史</div>
-              <t-tag v-for="h in selectedPatient.medicalHistory" :key="h" theme="warning" variant="light" style="margin-right:8px;margin-bottom:8px">
-                {{ h }}
-              </t-tag>
-            </div>
-            <div v-else style="text-align:center;color:#9CA3AF;padding:40px">暂无病史记录</div>
-          </t-tab-panel>
-
-          <t-tab-panel value="records" label="到诊记录">
-            <t-timeline v-if="selectedPatient.records.length">
-              <t-timeline-item
-                v-for="(r, i) in selectedPatient.records"
-                :key="i"
-                :label="r.date"
-              >
-                <div style="font-weight:600;margin-bottom:4px">{{ r.type }}·{{ r.doctor }}</div>
-                <div style="font-size:13px;color:#6B7280;margin-bottom:2px">诊断：{{ r.diagnosis }}</div>
-                <div style="font-size:13px;color:#6B7280">处置：{{ r.treatment }}</div>
-              </t-timeline-item>
-            </t-timeline>
-            <div v-else style="text-align:center;color:#9CA3AF;padding:40px">暂未到诊记录</div>
-          </t-tab-panel>
-        </t-tabs>
-      </div>
-    </t-drawer>
-
     <!-- 手动建档弹窗 -->
     <PatientCreateDialog
       v-model:visible="createVisible"
       @success="handleCreateSuccess"
     />
+
+    <!-- CRM 跟进弹窗 -->
+    <t-dialog
+      v-model:visible="crmVisible"
+      :header="`添加跟进记录 - ${crmForm.patientName}`"
+      width="500px"
+      :on-confirm="handleSaveCrm"
+      :confirm-btn="{ content: '保存跟进', loading: submittingCrm }"
+      cancel-btn="取消"
+    >
+      <div style="display: flex; flex-direction: column; gap: 16px; padding: 10px 0;">
+        <div>
+          <div style="font-size: 13px; color: #6B7280; margin-bottom: 6px;">分配跟进人：</div>
+          <t-select
+            v-model="crmForm.followerId"
+            placeholder="选择跟进人"
+            clearable
+            style="width: 100%;"
+          >
+            <t-option v-for="item in followers" :key="item.id" :label="item.name" :value="item.id.toString()" />
+          </t-select>
+        </div>
+        
+        <div>
+          <div style="font-size: 13px; color: #6B7280; margin-bottom: 6px;">跟进阶段：</div>
+          <t-radio-group v-model="crmForm.stage" variant="default-filled">
+            <t-radio-button value="意向中">意向中</t-radio-button>
+            <t-radio-button value="考虑中">考虑中</t-radio-button>
+            <t-radio-button value="已成单">已成单</t-radio-button>
+            <t-radio-button value="已放弃">已放弃</t-radio-button>
+          </t-radio-group>
+        </div>
+
+        <div>
+          <div style="font-size: 13px; color: #6B7280; margin-bottom: 6px;">跟进内容描述：</div>
+          <t-textarea
+            v-model="crmForm.content"
+            placeholder="请输入与患者沟通的详细跟进记录..."
+            :autosize="{ minRows: 4, maxRows: 8 }"
+          />
+        </div>
+      </div>
+    </t-dialog>
   </div>
 </template>
 
@@ -448,6 +616,11 @@ watch(operationColumnWidth, () => {
   font-size: 14px;
   font-weight: 500;
   color: #1F2937;
+}
+
+.assessment-danger {
+  color: #EF4444;
+  font-weight: 700;
 }
 
 /* === 表单样式 === */

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -17,27 +17,56 @@ const loginForm = ref({
 const countdown = ref(0)
 const isSending = ref(false)
 
-const rules = {
-  account: [{ required: true, message: '请输入管理员账号', type: 'error', trigger: 'submit' }],
-  password: [{ required: true, message: '请输入密码', type: 'error', trigger: 'submit' }]
-}
+const rules = computed(() => {
+  if (loginType.value === 'password') {
+    return {
+      account: [{ required: true, message: '请输入管理员账号', type: 'error', trigger: 'submit' }],
+      password: [{ required: true, message: '请输入密码', type: 'error', trigger: 'submit' }]
+    }
+  } else {
+    return {
+      phone: [
+        { required: true, message: '请输入手机号', type: 'error', trigger: 'submit' },
+        { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', type: 'error', trigger: 'submit' }
+      ],
+      smsCode: [{ required: true, message: '请输入验证码', type: 'error', trigger: 'submit' }]
+    }
+  }
+})
 
-function sendSms() {
+async function sendSms() {
   if (!loginForm.value.phone) {
     MessagePlugin.warning('请输入手机号')
     return
   }
-  isSending.value = true
-  countdown.value = 60
-  MessagePlugin.success('短信验证码已发送，请注意查收')
-  
-  const timer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) {
-      clearInterval(timer)
-      isSending.value = false
+  if (!/^1[3-9]\d{9}$/.test(loginForm.value.phone)) {
+    MessagePlugin.warning('请输入正确的手机号格式')
+    return
+  }
+  try {
+    const res: any = await request.post('/api/admin/send-code', {
+      phone: loginForm.value.phone
+    })
+    isSending.value = true
+    countdown.value = 60
+
+    if (res.data && res.data.code) {
+      loginForm.value.smsCode = res.data.code
+      MessagePlugin.success(`验证码已发送并自动填入：${res.data.code}`)
+    } else {
+      MessagePlugin.success('验证码已发送，请注意查收')
     }
-  }, 1000)
+
+    const timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) {
+        clearInterval(timer)
+        isSending.value = false
+      }
+    }, 1000)
+  } catch (err) {
+    // 错误由 axios 响应拦截器统一处理
+  }
 }
 
 async function handleLogin({ validateResult }: any) {

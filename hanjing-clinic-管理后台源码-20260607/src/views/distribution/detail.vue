@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { navigateToParent } from '@/utils/routeNavigation'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,58 +12,136 @@ const activeTab = ref('info')
 
 const promoter = ref({
   id: distributorId.value,
-  name: '赵芳芳',
-  level: '钻石',
-  code: 'FXY001',
-  phone: '139****8888',
-  regDate: '2025-08-12',
-  status: '正常',
-  parentName: '陈经理'
+  name: '',
+  level: 'silver',
+  code: '',
+  phone: '',
+  regDate: '',
+  status: 'active',
+  parentName: '',
+  firstLevelDownline: 0,
+  secondLevelDownline: 0,
+  totalOrders: 0,
+  totalAmount: 0,
+  totalCommission: 0,
+  availableCommission: 0,
+  withdrawnAmount: 0
 })
 
-/* ---- Commission Flow List ---- */
-const commissions = ref([
-  { time: '5/29 10:22', type: '一级佣金', typeTag: 'green', source: '陈建国购买CPAP呼吸机', amount: '+¥1,335', status: '已结算', statusTag: 'green' },
-  { time: '5/29 09:15', type: '二级佣金', typeTag: 'blue', source: '李雪琴推广：李雪琴购买止鼾器', amount: '+¥64', status: '已结算', statusTag: 'green' },
-  { time: '5/28 18:32', type: '提现', typeTag: 'red', source: '提现至微信零钱', amount: '-¥1,500', status: '已到账', statusTag: 'green' },
-  { time: '5/28 08:30', type: '一级佣金', typeTag: 'green', source: '张明华购买睡眠监测套餐', amount: '+¥552', status: '冻结中', statusTag: 'gold' }
-])
+const commissionsList = ref<any[]>([])
+const teamData = ref<any>({
+  level1: [],
+  level2: []
+})
+const loading = ref(false)
+
+function getLevelName(level: string) {
+  if (level === 'diamond') return '钻石'
+  if (level === 'gold') return '金牌'
+  if (level === 'silver') return '银牌'
+  return '青铜'
+}
+
+const fetchDetail = async () => {
+  loading.value = true
+  try {
+    const res: any = await request.get(`/api/admin/distribution/promoters/${distributorId.value}`)
+    if (res.code === 200 && res.data) {
+      const d = res.data
+      promoter.value = {
+        id: d.id.toString(),
+        name: d.name,
+        level: d.level,
+        code: d.code,
+        phone: d.phone,
+        regDate: d.regDate ? new Date(d.regDate).toLocaleDateString() : '',
+        status: d.status,
+        parentName: d.parentName,
+        firstLevelDownline: d.firstLevelDownline,
+        secondLevelDownline: d.secondLevelDownline,
+        totalOrders: d.totalOrders,
+        totalAmount: d.totalAmount,
+        totalCommission: d.totalCommission,
+        availableCommission: d.availableCommission,
+        withdrawnAmount: d.withdrawnAmount
+      }
+    }
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('加载推广员详情失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const fetchCommissions = async () => {
+  try {
+    const res: any = await request.get(`/api/admin/distribution/promoters/${distributorId.value}/commissions`)
+    if (res.code === 200 && res.data) {
+      commissionsList.value = res.data || []
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const fetchTeam = async () => {
+  try {
+    const res: any = await request.get(`/api/admin/distribution/promoters/${distributorId.value}/team`)
+    if (res.code === 200 && res.data) {
+      teamData.value = res.data
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
 
 function handleBack() {
   navigateToParent(router, route, '/promoter')
 }
 
-function handleFreeze() {
-  if (promoter.value.status === '正常') {
-    promoter.value.status = '已冻结'
-    MessagePlugin.success('账号已成功冻结')
-  } else {
-    promoter.value.status = '正常'
-    MessagePlugin.success('账号已成功解冻')
+async function handleFreeze() {
+  const nextStatus = promoter.value.status === 'active' ? 'frozen' : 'active'
+  try {
+    const res: any = await request.put(`/api/admin/distribution/promoters/${distributorId.value}/status`, { status: nextStatus })
+    if (res.code === 200) {
+      promoter.value.status = nextStatus
+      MessagePlugin.success(nextStatus === 'active' ? '账号已成功解冻' : '账号已成功冻结')
+    }
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('修改状态失败')
   }
 }
 
 function handleEdit() {
-  MessagePlugin.info('跳转编辑推广员信息...')
+  router.push('/promoter/edit/' + distributorId.value)
 }
+
+onMounted(() => {
+  fetchDetail()
+  fetchCommissions()
+  fetchTeam()
+})
 </script>
 
 <template>
   <div class="page-container">
-
-
     <!-- Page Title Row -->
     <div class="page-title-row">
       <div>
         <div class="page-title">
-          {{ promoter.name }}
-          <span class="level-badge"><AppIcon name="gem" />  钻石</span>
+          {{ promoter.name || '推广员' }}
+          <span class="level-badge" :style="{ background: promoter.level === 'diamond' ? 'linear-gradient(135deg, #8B5CF6, #6D28D9)' : (promoter.level === 'gold' ? 'linear-gradient(135deg, #F59E0B, #D97706)' : '#E5E7EB'), color: promoter.level === 'silver' ? '#4B5563' : '#fff' }">
+            <AppIcon :name="promoter.level === 'diamond' ? 'gem' : (promoter.level === 'gold' ? 'medal-gold' : (promoter.level === 'silver' ? 'medal-silver' : 'medal-bronze'))" />  
+            {{ getLevelName(promoter.level) }}
+          </span>
         </div>
         <div class="page-title-sub">注册于 {{ promoter.regDate }} · 推广码 {{ promoter.code }}</div>
       </div>
       <div class="action-buttons">
         <button class="btn btn-danger" @click="handleFreeze">
-          {{ promoter.status === '正常' ? '冻结账号' : '解冻账号' }}
+          {{ promoter.status === 'active' ? '冻结账号' : '解冻账号' }}
         </button>
         <button class="btn btn-outline" @click="handleEdit"><AppIcon name="edit" />  编辑</button>
       </div>
@@ -85,28 +164,28 @@ function handleEdit() {
           <div class="mini-stat">
             <div class="mini-stat-icon" style="background: var(--primary-100); color: var(--primary-500);"><AppIcon name="team" /> </div>
             <div>
-              <div class="mini-stat-value">56</div>
+              <div class="mini-stat-value">{{ promoter.firstLevelDownline }}</div>
               <div class="mini-stat-label">一级下线</div>
             </div>
           </div>
           <div class="mini-stat">
             <div class="mini-stat-icon" style="background: var(--success-100); color: var(--success-500);"><AppIcon name="team" /> </div>
             <div>
-              <div class="mini-stat-value">128</div>
+              <div class="mini-stat-value">{{ promoter.secondLevelDownline }}</div>
               <div class="mini-stat-label">二级下线</div>
             </div>
           </div>
           <div class="mini-stat">
             <div class="mini-stat-icon" style="background: #FFF9E6; color: #D4930A;"><AppIcon name="box" /> </div>
             <div>
-              <div class="mini-stat-value">342</div>
+              <div class="mini-stat-value">{{ promoter.totalOrders }}</div>
               <div class="mini-stat-label">推广订单</div>
             </div>
           </div>
           <div class="mini-stat">
             <div class="mini-stat-icon" style="background: var(--error-100); color: #D4930A;"><AppIcon name="money" /> </div>
             <div>
-              <div class="mini-stat-value" style="color: #D4930A;">¥18,640</div>
+              <div class="mini-stat-value" style="color: #D4930A;">¥{{ (promoter.totalCommission / 100).toFixed(2) }}</div>
               <div class="mini-stat-label">累计佣金</div>
             </div>
           </div>
@@ -117,52 +196,34 @@ function handleEdit() {
           <div class="panel-header"><div class="panel-title"><AppIcon name="tree" />  团队关系</div></div>
           <div class="panel-body">
             <div class="tree-node">
-              <div class="avatar avatar-sm" style="background: linear-gradient(135deg,#8B5CF6,#6D28D9);">赵</div>
-              <strong>赵芳芳</strong>
-              <span class="tree-badge purple"><AppIcon name="gem" />  钻石</span>
-              <span style="font-size: 12px; color: #9CA3AF; margin-left: auto;">一级 · 56人</span>
+              <div class="avatar avatar-sm" style="background: linear-gradient(135deg,#8B5CF6,#6D28D9);">
+                {{ (promoter.name || '推').substring(0, 1) }}
+              </div>
+              <strong>{{ promoter.name || '推广员' }}</strong>
+              <span class="tree-badge purple" v-if="promoter.level === 'diamond'"><AppIcon name="gem" />  钻石</span>
+              <span class="tree-badge gold" v-else-if="promoter.level === 'gold'"><AppIcon name="medal-gold" />  金牌</span>
+              <span class="tree-badge silver" v-else-if="promoter.level === 'silver'"><AppIcon name="medal-silver" />  银牌</span>
+              <span class="tree-badge bronze" v-else><AppIcon name="medal-bronze" />  青铜</span>
+              <span style="font-size: 12px; color: #9CA3AF; margin-left: auto;">一级 · {{ promoter.firstLevelDownline }}人</span>
             </div>
             <div class="tree-children">
-              <!-- Node 1 -->
-              <div class="tree-node tree-line">
-                <div class="avatar avatar-sm" style="background: #F59E0B; font-size: 11px;">李</div>
-                <strong style="font-size: 13px;">李雪琴</strong>
-                <span class="tree-badge gold"><AppIcon name="medal-gold" />  金</span>
-                <span style="font-size: 11px; color: #9CA3AF; margin-left: 8px;">二级下线 45人</span>
-              </div>
-              <div class="tree-children">
-                <div class="tree-node tree-line">
-                  <div class="avatar avatar-sm" style="background: #D1D5DB; font-size: 10px; color: #4B5563;">孙</div>
-                  <span style="font-size: 13px;">孙大鹏</span>
-                  <span class="tree-badge silver"><AppIcon name="medal-silver" />  银</span>
-                  <span style="font-size: 11px; color: #9CA3AF;">3人</span>
+              <!-- Render dynamic Level 1 downline list up to 5 items -->
+              <div v-for="(sub, idx) in teamData.level1.slice(0, 5)" :key="idx" class="tree-node tree-line">
+                <div class="avatar avatar-sm" :style="{ background: sub.level === 'diamond' ? '#8B5CF6' : (sub.level === 'gold' ? '#F59E0B' : '#9CA3AF') }" style="font-size: 11px; color:#fff">
+                  {{ sub.name.substring(0, 1) }}
                 </div>
-                <div class="tree-node tree-line">
-                  <div class="avatar avatar-sm" style="background: #EC4899; font-size: 10px;">陈</div>
-                  <span style="font-size: 13px;">陈小红</span>
-                  <span class="tree-badge silver"><AppIcon name="medal-silver" />  银</span>
-                  <span style="font-size: 11px; color: #9CA3AF;">5人</span>
-                </div>
+                <strong style="font-size: 13px;">{{ sub.name }}</strong>
+                <span class="tree-badge gold" v-if="sub.level === 'gold'"><AppIcon name="medal-gold" />  金</span>
+                <span class="tree-badge purple" v-else-if="sub.level === 'diamond'"><AppIcon name="gem" />  钻</span>
+                <span class="tree-badge silver" v-else-if="sub.level === 'silver'"><AppIcon name="medal-silver" />  银</span>
+                <span class="tree-badge bronze" v-else-if="sub.level === 'bronze'"><AppIcon name="medal-bronze" />  铜</span>
+                <span style="font-size: 11px; color: #9CA3AF; margin-left: 8px;">电话 {{ sub.phone || '未绑定' }}</span>
               </div>
-              
-              <!-- Node 2 -->
-              <div class="tree-node tree-line">
-                <div class="avatar avatar-sm" style="background: #10B981; font-size: 11px;">王</div>
-                <strong style="font-size: 13px;">王秀兰</strong>
-                <span class="tree-badge gold"><AppIcon name="medal-gold" />  金</span>
-                <span style="font-size: 11px; color: #9CA3AF; margin-left: 8px;">二级下线 32人</span>
+              <div v-if="teamData.level1.length > 5" style="padding: 8px 0; font-size: 12px; color: #9CA3AF; text-align: center;">
+                · · · 还有 {{ teamData.level1.length - 5 }} 位一级下线成员
               </div>
-
-              <!-- Node 3 -->
-              <div class="tree-node tree-line">
-                <div class="avatar avatar-sm" style="background: #6B7280; font-size: 11px;">刘</div>
-                <span style="font-size: 13px;">刘建国</span>
-                <span class="tree-badge silver"><AppIcon name="medal-silver" />  银</span>
-                <span style="font-size: 11px; color: #9CA3AF; margin-left: 8px;">8人</span>
-              </div>
-              
-              <div style="padding: 8px 0; font-size: 12px; color: #9CA3AF; text-align: center;">
-                · · · 还有 52 位一级下线
+              <div v-if="teamData.level1.length === 0" style="padding: 16px; font-size: 12px; color: #9CA3AF; text-align: center;">
+                暂无一级下线团队成员
               </div>
             </div>
           </div>
@@ -172,39 +233,47 @@ function handleEdit() {
       <!-- Tab 2: Team (Dedicated Tree View) -->
       <div v-if="activeTab === 'team'">
         <div class="panel" style="margin: 0;">
-          <div class="panel-header"><div class="panel-title"><AppIcon name="team" />  下级团队明细</div></div>
+          <div class="panel-header"><div class="panel-title"><AppIcon name="team" />  团队下线明细</div></div>
           <div class="panel-body" style="padding: 0;">
             <table class="data-table">
               <thead>
                 <tr>
                   <th>姓名</th>
-                  <th>推广码</th>
+                  <th>电话</th>
                   <th>当前级别</th>
-                  <th>带来订单数</th>
+                  <th>团队类型</th>
                   <th>加入时间</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td style="font-weight: 600;">李雪琴</td>
-                  <td>LIP023</td>
-                  <td><span class="tree-badge gold"><AppIcon name="medal-gold" />  金</span></td>
-                  <td>92</td>
-                  <td>2025-09-02</td>
+                <tr v-for="(item, idx) in teamData.level1" :key="'l1-'+idx">
+                  <td style="font-weight: 600;">{{ item.name }}</td>
+                  <td>{{ item.phone }}</td>
+                  <td>
+                    <span class="tree-badge purple" v-if="item.level === 'diamond'"><AppIcon name="gem" />  钻石</span>
+                    <span class="tree-badge gold" v-else-if="item.level === 'gold'"><AppIcon name="medal-gold" />  金牌</span>
+                    <span class="tree-badge silver" v-else-if="item.level === 'silver'"><AppIcon name="medal-silver" />  银牌</span>
+                    <span class="tree-badge bronze" v-else-if="item.level === 'bronze'"><AppIcon name="medal-bronze" />  青铜</span>
+                    <span style="color: #9CA3AF;" v-else>普通客户</span>
+                  </td>
+                  <td>一级下线</td>
+                  <td>{{ item.joinDate ? new Date(item.joinDate).toLocaleDateString() : '—' }}</td>
                 </tr>
-                <tr>
-                  <td style="font-weight: 600;">王秀兰</td>
-                  <td>WAP082</td>
-                  <td><span class="tree-badge gold"><AppIcon name="medal-gold" />  金</span></td>
-                  <td>74</td>
-                  <td>2025-10-18</td>
+                <tr v-for="(item, idx) in teamData.level2" :key="'l2-'+idx">
+                  <td style="font-weight: 600;">{{ item.name }}</td>
+                  <td>{{ item.phone }}</td>
+                  <td>
+                    <span class="tree-badge purple" v-if="item.level === 'diamond'"><AppIcon name="gem" />  钻石</span>
+                    <span class="tree-badge gold" v-else-if="item.level === 'gold'"><AppIcon name="medal-gold" />  金牌</span>
+                    <span class="tree-badge silver" v-else-if="item.level === 'silver'"><AppIcon name="medal-silver" />  银牌</span>
+                    <span class="tree-badge bronze" v-else-if="item.level === 'bronze'"><AppIcon name="medal-bronze" />  青铜</span>
+                    <span style="color: #9CA3AF;" v-else>普通客户</span>
+                  </td>
+                  <td>二级下线</td>
+                  <td>{{ item.joinDate ? new Date(item.joinDate).toLocaleDateString() : '—' }}</td>
                 </tr>
-                <tr>
-                  <td style="font-weight: 600;">刘建国</td>
-                  <td>LIP089</td>
-                  <td><span class="tree-badge silver"><AppIcon name="medal-silver" />  银</span></td>
-                  <td>18</td>
-                  <td>2025-11-05</td>
+                <tr v-if="teamData.level1.length === 0 && teamData.level2.length === 0">
+                  <td colspan="5" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无团队下级关系数据</td>
                 </tr>
               </tbody>
             </table>
@@ -222,23 +291,24 @@ function handleEdit() {
                 <th>下单日期</th>
                 <th>购买商品</th>
                 <th>交易金额</th>
-                <th>结算状态</th>
+                <th>分销结算状态</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td style="font-family: monospace;">OD20260529003</td>
-                <td>05-29</td>
-                <td>瑞思迈 AirSense 10 自动呼吸机</td>
-                <td style="font-weight: 700; color: var(--primary-500);">¥8,900</td>
-                <td><span class="status-tag green">已结算</span></td>
+              <tr v-for="(comm, idx) in commissionsList" :key="idx">
+                <td style="font-family: monospace;">{{ comm.order_no }}</td>
+                <td>{{ new Date(comm.created_at).toLocaleDateString() }}</td>
+                <td>{{ comm.product_names || '推广商品' }}</td>
+                <td style="font-weight: 700; color: var(--primary-500);">¥{{ (comm.order_amount / 100).toFixed(2) }}</td>
+                <td>
+                  <span class="status-tag green" v-if="comm.status === 'settled'">已结算</span>
+                  <span class="status-tag gold" v-else-if="comm.status === 'pending'">账期锁定</span>
+                  <span class="status-tag red" v-else-if="comm.status === 'refunded'">已退回/失效</span>
+                  <span class="status-tag gray" v-else>{{ comm.status }}</span>
+                </td>
               </tr>
-              <tr>
-                <td style="font-family: monospace;">OD20260528001</td>
-                <td>05-28</td>
-                <td>多导睡眠监测 (PSG) 套餐</td>
-                <td style="font-weight: 700; color: var(--primary-500);">¥3,680</td>
-                <td><span class="status-tag gold">结算中</span></td>
+              <tr v-if="commissionsList.length === 0">
+                <td colspan="5" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无推广关联的订单</td>
               </tr>
             </tbody>
           </table>
@@ -251,32 +321,33 @@ function handleEdit() {
           <table class="data-table">
             <thead>
               <tr>
-                <th>时间</th>
-                <th>类型</th>
-                <th>来源</th>
-                <th>金额</th>
+                <th>结算入账时间</th>
+                <th>佣金类型</th>
+                <th>推广来源</th>
+                <th>入账金额</th>
                 <th>状态</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(comm, idx) in commissions" :key="idx">
-                <td style="font-size: 12px; color: #6B7280;">{{ comm.time }}</td>
+              <tr v-for="(comm, idx) in commissionsList" :key="idx">
+                <td style="font-size: 12px; color: #6B7280;">{{ new Date(comm.created_at).toLocaleString() }}</td>
                 <td>
-                  <span class="tag tag-green" v-if="comm.typeTag === 'green'">{{ comm.type }}</span>
-                  <span class="tag tag-blue" v-else-if="comm.typeTag === 'blue'">{{ comm.type }}</span>
-                  <span class="tag tag-red" v-else-if="comm.typeTag === 'red'">{{ comm.type }}</span>
+                  <span class="tag tag-green" v-if="comm.commission_level === 1">一级推广佣金</span>
+                  <span class="tag tag-blue" v-else-if="comm.commission_level === 2">二级推广佣金</span>
+                  <span class="tag tag-gray" v-else>其他佣金</span>
                 </td>
-                <td style="font-size: 13px;">{{ comm.source }}</td>
-                <td
-                  style="font-weight: 700;"
-                  :style="{ color: comm.typeTag === 'red' ? 'var(--error-500)' : '#D4930A' }"
-                >
-                  {{ comm.amount }}
+                <td style="font-size: 13px;">下级用户 {{ comm.buyer_name || comm.patient_name }} 消费</td>
+                <td style="font-weight: 700; color: #D4930A;">
+                  +¥{{ (comm.commission_amount / 100).toFixed(2) }}
                 </td>
                 <td>
-                  <span class="status-tag green" v-if="comm.statusTag === 'green'">{{ comm.status }}</span>
-                  <span class="status-tag gold" v-else-if="comm.statusTag === 'gold'">{{ comm.status }}</span>
+                  <span class="status-tag green" v-if="comm.status === 'settled'">已结算</span>
+                  <span class="status-tag gold" v-else-if="comm.status === 'pending'">冻结中</span>
+                  <span class="status-tag red" v-else-if="comm.status === 'refunded'">已扣回</span>
                 </td>
+              </tr>
+              <tr v-if="commissionsList.length === 0">
+                <td colspan="5" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无佣金入账流水记录</td>
               </tr>
             </tbody>
           </table>

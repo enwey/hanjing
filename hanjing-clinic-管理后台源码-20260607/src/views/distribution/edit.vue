@@ -57,6 +57,11 @@ function deleteGalleryImage(index: number) {
   }
 }
 
+function handleImageError(event: Event) {
+  const target = event.target as HTMLImageElement;
+  target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxNjAnIGhlaWdodD0nOTAnIHZpZXdCb3g9JzAgMCAxNjAgOTAnPjxyZWN0IHdpZHRoPScxMDAlJyBoZWlnaHQ9JzEwMCUnIGZpbGw9JyNGRkY1RjUnLz48dGV4dCB4PSc1MCUnIHk9JzUwJScgZG9taW5hbnQtYmFzZWxpbmU9J21pZGRsZScgdGV4dC1hbmNob3I9J21pZGRsZScgZm9udC1mYW1pbHk9J3NhbnMtc2VyaWYnIGZvbnQtc2l6ZT0nMTInIGZpbGw9JyNFRjQ0NDQnPuWbvueJh+WKoOi9veWksei0pTwvdGV4dD48L3N2Zz4=';
+}
+
 async function uploadImageFile(file: File, context = 'product-image'): Promise<string> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
@@ -263,7 +268,7 @@ onMounted(async () => {
                 <label class="form-label">商品主图/封面图 <span class="required">*</span></label>
                 <div class="image-uploader-single">
                   <div v-if="formData.imageUrl" class="uploaded-box">
-                    <img :src="formData.imageUrl" class="uploaded-img">
+                    <img :src="formData.imageUrl" class="uploaded-img" @error="handleImageError">
                     <div class="uploader-overlay">
                       <span class="action-btn delete" @click.stop="deleteMainImage">删除</span>
                       <span class="action-btn replace" @click.stop="mainImageInputRef?.click()">更换</span>
@@ -288,7 +293,7 @@ onMounted(async () => {
                 <label class="form-label">详情页轮播图集 (建议 3-5 张，首图默认为主图)</label>
                 <div class="image-uploader-gallery">
                   <div v-for="(img, idx) in formData.galleryUrls" :key="idx" class="gallery-uploaded-box">
-                    <img :src="img" class="gallery-uploaded-img">
+                    <img :src="img" class="gallery-uploaded-img" @error="handleImageError">
                     <button type="button" class="gallery-delete-badge" @click="deleteGalleryImage(idx)">×</button>
                   </div>
                   <div 

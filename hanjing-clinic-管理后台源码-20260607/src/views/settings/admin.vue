@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+
+const route = useRoute()
 
 interface AdminAccount {
   id: string;
@@ -156,13 +159,18 @@ async function fetchAdmins() {
 async function handleAdd() {
   isEdit.value = false
   editIndex.value = -1
+  const queryDoctorId = typeof route.query.doctor_id === 'string' ? route.query.doctor_id : ''
+  const queryStoreId = typeof route.query.store_id === 'string' ? route.query.store_id : ''
+  const doctor = doctors.value.find(d => d.id === queryDoctorId)
+  const doctorRole = roles.value.find(r => r.code === 'doctor' || r.name.includes('医生'))
+  const storeRole = roles.value.find(r => r.code === 'store_mgr' || r.name.includes('门店'))
   formData.value = {
     username: '',
-    name: '',
+    name: doctor?.name || '',
     phone: '',
-    roleId: roles.value[0]?.id || '',
-    storeId: '',
-    doctorId: '',
+    roleId: queryDoctorId ? (doctorRole?.id || roles.value[0]?.id || '') : (queryStoreId ? (storeRole?.id || roles.value[0]?.id || '') : (roles.value[0]?.id || '')),
+    storeId: queryStoreId,
+    doctorId: queryDoctorId,
     status: 'online'
   }
   showEdit.value = true
@@ -244,7 +252,10 @@ onMounted(async () => {
   } catch (error) {
     MessagePlugin.error('加载角色或门店选项失败')
   } finally {
-    fetchAdmins()
+    await fetchAdmins()
+    if ((typeof route.query.doctor_id === 'string' && route.query.doctor_id) || (typeof route.query.store_id === 'string' && route.query.store_id)) {
+      handleAdd()
+    }
   }
 })
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -15,6 +15,7 @@ const roleName = ref('')
 const roleDesc = ref('')
 
 interface Member {
+  id: string;
   name: string;
   avatarChar: string;
   avatarColor: string;
@@ -22,6 +23,12 @@ interface Member {
 }
 
 const members = ref<Member[]>([])
+const allAdminUsers = ref<any[]>([])
+const selectedUserIdToAdd = ref('')
+
+const addableUsers = computed(() => {
+  return allAdminUsers.value.filter(u => !members.value.some(m => String(m.id) === String(u.id)))
+})
 
 interface PermissionRow {
   module: string;
@@ -61,20 +68,31 @@ const moduleLabels: Record<string, string> = {
 }
 
 const showAddMember = ref(false)
-const newMemberName = ref('')
-const newMemberStore = ref('龙岗总店')
 
 function removeMember(index: number) {
+  const member = members.value[index]
   members.value.splice(index, 1)
-  MessagePlugin.warning('成员角色调整请到管理员账号页保存')
+  MessagePlugin.success(`已从角色临时移除成员 ${member.name}，点击右上角“保存权限”后保存。`)
 }
 
 function handleAddMember() {
-  if (!newMemberName.value.trim()) {
-    MessagePlugin.warning('请填写成员姓名')
+  if (!selectedUserIdToAdd.value) {
+    MessagePlugin.warning('请选择要添加的成员账号')
     return
   }
-  MessagePlugin.warning('成员角色调整请到管理员账号页操作')
+  const user = allAdminUsers.value.find(u => String(u.id) === selectedUserIdToAdd.value)
+  if (user) {
+    members.value.push({
+      id: String(user.id),
+      name: user.name || user.username,
+      avatarChar: (user.name || user.username || '管').charAt(0),
+      avatarColor: 'var(--primary-500)',
+      store: user.store_name || '全部门店'
+    })
+    MessagePlugin.success(`已临时将成员 ${user.name || user.username} 加入列表，点击右上角“保存权限”以生效。`)
+  }
+  showAddMember.value = false
+  selectedUserIdToAdd.value = ''
 }
 
 function buildPermissions() {
@@ -100,23 +118,30 @@ function applyPermissions(permissions: string[]) {
 }
 
 async function fetchRole() {
-  if (!isEdit.value) return
-  const res: any = await request.get('/api/admin/roles')
-  const role = (res.data || []).find((row: any) => String(row.id) === roleId.value)
-  if (!role) return
-  roleName.value = role.name
-  roleDesc.value = role.description || ''
-  applyPermissions(role.permissions || [])
+  try {
+    const usersRes: any = await request.get('/api/admin/users')
+    allAdminUsers.value = usersRes.data || []
 
-  const usersRes: any = await request.get('/api/admin/users')
-  members.value = (usersRes.data || [])
-    .filter((row: any) => String(row.role_id) === roleId.value)
-    .map((row: any) => ({
-      name: row.name || row.username,
-      avatarChar: (row.name || row.username || '管').charAt(0),
-      avatarColor: 'var(--primary-500)',
-      store: row.store_name || '全部门店'
-    }))
+    if (!isEdit.value) return
+    const res: any = await request.get('/api/admin/roles')
+    const role = (res.data || []).find((row: any) => String(row.id) === roleId.value)
+    if (!role) return
+    roleName.value = role.name
+    roleDesc.value = role.description || ''
+    applyPermissions(role.permissions || [])
+
+    members.value = allAdminUsers.value
+      .filter((row: any) => String(row.role_id) === roleId.value)
+      .map((row: any) => ({
+        id: String(row.id),
+        name: row.name || row.username,
+        avatarChar: (row.name || row.username || '管').charAt(0),
+        avatarColor: 'var(--primary-500)',
+        store: row.store_name || '全部门店'
+      }))
+  } catch (error) {
+    MessagePlugin.error('加载角色或账号列表失败')
+  }
 }
 
 async function handleSave() {
@@ -129,7 +154,8 @@ async function handleSave() {
       name: roleName.value,
       description: roleDesc.value,
       status: 'active',
-      permissions: buildPermissions()
+      permissions: buildPermissions(),
+      memberIds: members.value.map(m => m.id)
     }
     if (isEdit.value) {
       await request.put(`/api/admin/roles/${roleId.value}`, payload)
@@ -267,17 +293,15 @@ onMounted(() => {
     >
       <div class="form-container" style="padding: 12px 0; display: flex; flex-direction: column; gap: 14px;">
         <div class="form-group">
-          <label class="form-label">成员姓名</label>
-          <input type="text" class="form-control" v-model="newMemberName" placeholder="例如：何经理">
-        </div>
-        <div class="form-group">
-          <label class="form-label">负责门店</label>
-          <select class="form-control" v-model="newMemberStore">
-            <option>龙岗总店</option>
-            <option>南山分院</option>
-            <option>福田门诊部</option>
-            <option>全部门店</option>
-          </select>
+          <label class="form-label">选择要添加的成员账号</label>
+          <t-select v-model="selectedUserIdToAdd" placeholder="请选择系统管理员" clearable>
+            <t-option 
+              v-for="user in addableUsers" 
+              :key="user.id" 
+              :value="String(user.id)" 
+              :label="`${user.name || user.username} (${user.role_name || '无角色'})`" 
+            />
+          </t-select>
         </div>
       </div>
     </t-dialog>

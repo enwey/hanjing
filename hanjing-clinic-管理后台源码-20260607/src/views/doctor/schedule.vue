@@ -12,17 +12,21 @@ const doctorId = ref(route.params.id as string || '1')
 /* ---- Doctor Info ---- */
 const doctor = ref({
   id: doctorId.value,
-  name: '古堪民',
-  title: '主任医师',
-  specialty: '睡眠呼吸科',
-  stores: '龙岗总店/南山分院'
+  name: '',
+  title: '',
+  specialty: '',
+  stores: ''
 })
 
 /* ---- Schedule Data ---- */
 interface PeriodData {
-  store: string; // "龙岗总店", "南山分院", "休息"
+  storeId: string;
+  store: string;
   slots: number;
   peoplePerSlot?: number;
+  booked?: number;
+  startTime?: string;
+  endTime?: string;
 }
 interface DaySchedule {
   date: string;
@@ -66,13 +70,21 @@ const generateMonthSchedules = () => {
       dateLabel,
       morning: {
         store: '休息',
+        storeId: '',
         slots: 0,
-        peoplePerSlot: 1
+        peoplePerSlot: 1,
+        booked: 0,
+        startTime: '09:00:00',
+        endTime: '12:00:00'
       },
       afternoon: {
         store: '休息',
+        storeId: '',
         slots: 0,
-        peoplePerSlot: 1
+        peoplePerSlot: 1,
+        booked: 0,
+        startTime: '14:00:00',
+        endTime: '18:00:00'
       }
     })
   }
@@ -80,6 +92,11 @@ const generateMonthSchedules = () => {
 }
 
 const storesList = ref<any[]>([])
+const doctorStoreIds = ref<string[]>([])
+const activeStoreOptions = computed(() => {
+  if (!doctorStoreIds.value.length) return storesList.value
+  return storesList.value.filter(store => doctorStoreIds.value.includes(String(store.id)))
+})
 
 const fetchStores = async () => {
   try {
@@ -103,8 +120,12 @@ const fetchDoctorInfo = async () => {
           name: doc.name,
           title: doc.title,
           specialty: doc.specialty,
-          stores: doc.hospital || ''
+          stores: Array.isArray(doc.store_names) && doc.store_names.length ? doc.store_names.join(' / ') : '未绑定门店'
         }
+        doctorStoreIds.value = Array.isArray(doc.store_ids) ? doc.store_ids.map((id: any) => String(id)) : []
+      } else {
+        MessagePlugin.error('医生档案不存在或无权访问')
+        navigateToParent(router, route, '/doctor')
       }
     }
   } catch (err) {
@@ -112,19 +133,8 @@ const fetchDoctorInfo = async () => {
   }
 }
 
-const mapDbStoreToUi = (dbStoreName: string) => {
-  if (!dbStoreName) return '休息'
-  if (dbStoreName.includes('龙岗总店')) return '龙岗总店'
-  if (dbStoreName.includes('南山分院')) return '南山分院'
-  if (dbStoreName.includes('福田门诊部') || dbStoreName.includes('福田')) return '福田门诊部'
-  if (dbStoreName.includes('广州天河店') || dbStoreName.includes('广州')) return '广州天河店'
-  return dbStoreName
-}
-
-const mapUiStoreToDb = (uiStoreName: string) => {
-  if (uiStoreName === '休息') return null
-  const found = storesList.value.find(s => s.name.includes(uiStoreName))
-  return found || null
+function getStoreName(storeId: string) {
+  return storesList.value.find(s => String(s.id) === String(storeId))?.name || '休息'
 }
 
 const loadSchedules = async () => {
@@ -150,9 +160,13 @@ const loadSchedules = async () => {
           const period: 'morning' | 'afternoon' = row.period
           if (day[period]) {
             day[period] = {
-              store: mapDbStoreToUi(row.store_name),
+              storeId: row.store_id ? String(row.store_id) : '',
+              store: row.store_name || getStoreName(String(row.store_id || '')),
               slots: row.total_slots || 0,
-              peoplePerSlot: row.people_per_slot || 1
+              peoplePerSlot: row.people_per_slot || 1,
+              booked: row.booked_count || 0,
+              startTime: row.start_time || (period === 'morning' ? '09:00:00' : '14:00:00'),
+              endTime: row.end_time || (period === 'morning' ? '12:00:00' : '18:00:00')
             }
           }
         }
@@ -191,9 +205,11 @@ function nextMonth() {
 const showEdit = ref(false)
 const editingDayIndex = ref(-1)
 const editingPeriod = ref<'morning' | 'afternoon'>('morning')
-const editStore = ref('龙岗总店')
+const editStoreId = ref('')
 const editSlots = ref(4)
 const editPeoplePerSlot = ref(1)
+const editStartTime = ref('09:00')
+const editEndTime = ref('12:00')
 
 // Batch mode variables
 const isBatchMode = ref(false)
@@ -232,9 +248,11 @@ function openBatchEdit() {
     MessagePlugin.warning('请先选择需要排班的日期')
     return
   }
-  editStore.value = '龙岗总店'
+  editStoreId.value = activeStoreOptions.value[0] ? String(activeStoreOptions.value[0].id) : ''
   editSlots.value = 4
   editPeoplePerSlot.value = 1
+  editStartTime.value = '09:00'
+  editEndTime.value = '12:00'
   batchPeriod.value = ['morning', 'afternoon']
   showEdit.value = true
 }
@@ -253,28 +271,24 @@ async function handleSaveAll() {
     const saveList: any[] = []
     
     schedules.value.forEach(day => {
-      // morning
-      const mStoreDb = mapUiStoreToDb(day.morning.store)
       saveList.push({
         date: day.date,
         period: 'morning',
-        is_rest: day.morning.store === '休息',
-        store_id: mStoreDb ? mStoreDb.id : null,
-        start_time: '09:00:00',
-        end_time: '12:00:00',
+        is_rest: !day.morning.storeId,
+        store_id: day.morning.storeId ? Number(day.morning.storeId) : null,
+        start_time: day.morning.startTime || '09:00:00',
+        end_time: day.morning.endTime || '12:00:00',
         total_slots: day.morning.slots,
         people_per_slot: day.morning.peoplePerSlot || 1
       })
       
-      // afternoon
-      const aStoreDb = mapUiStoreToDb(day.afternoon.store)
       saveList.push({
         date: day.date,
         period: 'afternoon',
-        is_rest: day.afternoon.store === '休息',
-        store_id: aStoreDb ? aStoreDb.id : null,
-        start_time: '14:00:00',
-        end_time: '18:00:00',
+        is_rest: !day.afternoon.storeId,
+        store_id: day.afternoon.storeId ? Number(day.afternoon.storeId) : null,
+        start_time: day.afternoon.startTime || '14:00:00',
+        end_time: day.afternoon.endTime || '18:00:00',
         total_slots: day.afternoon.slots,
         people_per_slot: day.afternoon.peoplePerSlot || 1
       })
@@ -314,39 +328,52 @@ async function handleCopyLastMonth() {
 
 function handleClear() {
   schedules.value.forEach(day => {
-    day.morning = { store: '休息', slots: 0, peoplePerSlot: 1 }
-    day.afternoon = { store: '休息', slots: 0, peoplePerSlot: 1 }
+    day.morning = { store: '休息', storeId: '', slots: 0, peoplePerSlot: 1, booked: day.morning.booked || 0, startTime: '09:00:00', endTime: '12:00:00' }
+    day.afternoon = { store: '休息', storeId: '', slots: 0, peoplePerSlot: 1, booked: day.afternoon.booked || 0, startTime: '14:00:00', endTime: '18:00:00' }
   })
-  MessagePlugin.info('已清空排班数据')
+  MessagePlugin.info('已清空页面排班，请点击“保存排班”后生效')
 }
 
 function openEdit(dayIdx: number, period: 'morning' | 'afternoon') {
   editingDayIndex.value = dayIdx
   editingPeriod.value = period
   const data = schedules.value[dayIdx][period]
-  editStore.value = data.store === '休息' ? '龙岗总店' : data.store
+  editStoreId.value = data.storeId || (activeStoreOptions.value[0] ? String(activeStoreOptions.value[0].id) : '')
   editSlots.value = data.slots || 4
   editPeoplePerSlot.value = data.peoplePerSlot || 1
+  editStartTime.value = String(data.startTime || (period === 'morning' ? '09:00:00' : '14:00:00')).slice(0, 5)
+  editEndTime.value = String(data.endTime || (period === 'morning' ? '12:00:00' : '18:00:00')).slice(0, 5)
   showEdit.value = true
 }
 
 function handleSaveEdit() {
+  if (editStoreId.value && editStartTime.value >= editEndTime.value) {
+    MessagePlugin.warning('结束时间必须晚于开始时间')
+    return
+  }
+  const nextStoreName = editStoreId.value ? getStoreName(editStoreId.value) : '休息'
+  const nextPeriodData = {
+    storeId: editStoreId.value,
+    store: nextStoreName,
+    slots: editStoreId.value ? editSlots.value : 0,
+    peoplePerSlot: editStoreId.value ? editPeoplePerSlot.value : 1,
+    startTime: `${editStartTime.value}:00`,
+    endTime: `${editEndTime.value}:00`
+  }
   if (isBatchMode.value) {
     selectedDays.value.forEach(dayIdx => {
       const day = schedules.value[dayIdx]
       if (day) {
         if (batchPeriod.value.includes('morning')) {
           day.morning = {
-            store: editStore.value,
-            slots: editStore.value === '休息' ? 0 : editSlots.value,
-            peoplePerSlot: editStore.value === '休息' ? 1 : editPeoplePerSlot.value
+            ...nextPeriodData,
+            booked: day.morning.booked || 0
           }
         }
         if (batchPeriod.value.includes('afternoon')) {
           day.afternoon = {
-            store: editStore.value,
-            slots: editStore.value === '休息' ? 0 : editSlots.value,
-            peoplePerSlot: editStore.value === '休息' ? 1 : editPeoplePerSlot.value
+            ...nextPeriodData,
+            booked: day.afternoon.booked || 0
           }
         }
       }
@@ -357,14 +384,13 @@ function handleSaveEdit() {
     const day = schedules.value[editingDayIndex.value]
     if (day) {
       day[editingPeriod.value] = {
-        store: editStore.value,
-        slots: editStore.value === '休息' ? 0 : editSlots.value,
-        peoplePerSlot: editStore.value === '休息' ? 1 : editPeoplePerSlot.value
+        ...nextPeriodData,
+        booked: day[editingPeriod.value].booked || 0
       }
     }
   }
   showEdit.value = false
-  MessagePlugin.success('更新排班成功')
+  MessagePlugin.info('排班已更新到页面，请点击“保存排班”后生效')
 }
 </script>
 
@@ -447,7 +473,8 @@ function handleSaveEdit() {
           >
             <template v-if="day.morning.store !== '休息'">
               <span class="store-name">{{ day.morning.store }}</span>
-              <span class="slots-count">{{ day.morning.slots }}时段 / {{ day.morning.peoplePerSlot || 1 }}人</span>
+              <span class="slots-count">{{ String(day.morning.startTime || '').slice(0, 5) }}-{{ String(day.morning.endTime || '').slice(0, 5) }}</span>
+              <span class="slots-count">已约 {{ day.morning.booked || 0 }} / 可容纳 {{ (day.morning.slots || 0) * (day.morning.peoplePerSlot || 1) }} 人</span>
             </template>
             <template v-else>
               <span class="rest-text">休息</span>
@@ -471,7 +498,8 @@ function handleSaveEdit() {
           >
             <template v-if="day.afternoon.store !== '休息'">
               <span class="store-name">{{ day.afternoon.store }}</span>
-              <span class="slots-count">{{ day.afternoon.slots }}时段 / {{ day.afternoon.peoplePerSlot || 1 }}人</span>
+              <span class="slots-count">{{ String(day.afternoon.startTime || '').slice(0, 5) }}-{{ String(day.afternoon.endTime || '').slice(0, 5) }}</span>
+              <span class="slots-count">已约 {{ day.afternoon.booked || 0 }} / 可容纳 {{ (day.afternoon.slots || 0) * (day.afternoon.peoplePerSlot || 1) }} 人</span>
             </template>
             <template v-else>
               <span class="rest-text">休息</span>
@@ -508,18 +536,25 @@ function handleSaveEdit() {
         </div>
         <div class="form-group">
           <label class="form-label">出诊门店</label>
-          <select class="form-control" v-model="editStore">
-            <option v-for="store in storesList" :key="store.id" :value="mapDbStoreToUi(store.name)">
-              {{ mapDbStoreToUi(store.name) }}
+          <select class="form-control" v-model="editStoreId">
+            <option value="">休息</option>
+            <option v-for="store in activeStoreOptions" :key="store.id" :value="String(store.id)">
+              {{ store.name }}
             </option>
-            <option value="休息">休息</option>
           </select>
         </div>
-        <div class="form-group" v-if="editStore !== '休息'">
+        <div class="form-group" v-if="editStoreId">
+          <label class="form-label">出诊时间</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <input type="time" class="form-control" v-model="editStartTime">
+            <input type="time" class="form-control" v-model="editEndTime">
+          </div>
+        </div>
+        <div class="form-group" v-if="editStoreId">
           <label class="form-label">可约时段数 (个)</label>
           <input type="number" class="form-control" v-model.number="editSlots" min="1" max="12">
         </div>
-        <div class="form-group" v-if="editStore !== '休息'">
+        <div class="form-group" v-if="editStoreId">
           <label class="form-label">每个时段可约人数 (人)</label>
           <input type="number" class="form-control" v-model.number="editPeoplePerSlot" min="1" max="100">
         </div>

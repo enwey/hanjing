@@ -22,30 +22,37 @@ export const resizable: Directive = {
       const lastTh = headers[headers.length - 1]
       
       // Calculate total columns width by summing the parsed width of all header elements.
-      // For the last column (Operations), we use its minWidth or its bounding box width.
       let totalWidth = 0
-      headers.forEach((th, idx) => {
-        if (idx === headers.length - 1) {
-          const minW = parseFloat(th.style.minWidth) || parseFloat(th.style.width) || 80
-          totalWidth += minW
+      headers.forEach((th) => {
+        const styleW = th.style.width
+        let w = 0
+        if (styleW && styleW.includes('%')) {
+          const pct = parseFloat(styleW) / 100
+          w = Math.max(parseFloat(th.style.minWidth) || 0, pct * parentWidth)
         } else {
-          const styleW = th.style.width
-          let w = 0
-          if (styleW && styleW.includes('%')) {
-            const pct = parseFloat(styleW) / 100
-            w = Math.max(parseFloat(th.style.minWidth) || 0, pct * parentWidth)
-          } else {
-            w = parseFloat(styleW) || th.getBoundingClientRect().width
-          }
-          totalWidth += w
+          w = parseFloat(styleW) || th.getBoundingClientRect().width
         }
+        totalWidth += w
       })
+      
+      // If table-layout is fixed, all columns are explicitly sized in pixels.
+      // We must keep the exact computed totalWidth to prevent other columns from shifting.
+      if (el.style.tableLayout === 'fixed') {
+        const finalWidth = Math.max(parentWidth, totalWidth)
+        el.style.width = `${finalWidth}px`
+        el.style.minWidth = `${finalWidth}px`
+        if (totalWidth > parentWidth) {
+          el.classList.add('is-scrollable')
+        } else {
+          el.classList.remove('is-scrollable')
+        }
+        return
+      }
       
       if (totalWidth > parentWidth) {
         el.classList.add('is-scrollable')
         el.style.width = `${totalWidth}px`
         el.style.minWidth = `${totalWidth}px`
-        // In scrollable mode, freeze the last column to its minWidth
         if (lastTh) {
           lastTh.style.width = lastTh.style.minWidth
         }
@@ -53,7 +60,6 @@ export const resizable: Directive = {
         el.classList.remove('is-scrollable')
         el.style.width = '100%'
         el.style.minWidth = '100%'
-        // In stretched 100% mode, clear the last column's width style so it expands to fill the container
         if (lastTh) {
           lastTh.style.width = lastTh.style.minWidth || ''
         }
@@ -94,19 +100,15 @@ export const resizable: Directive = {
 
         const startX = e.clientX
 
-        // 1. Freeze all column widths in pixels except the last one (operations column)
-        headers.forEach((headerTh, idx) => {
-          if (idx < headers.length - 1) {
-            if (!headerTh.style.width) {
-              headerTh.style.width = `${headerTh.getBoundingClientRect().width}px`
-            }
-          }
+        // 1. Freeze ALL column widths in pixels (including the last one)
+        headers.forEach((headerTh) => {
+          const currentWidth = headerTh.getBoundingClientRect().width
+          headerTh.style.width = `${currentWidth}px`
+          headerTh.style.minWidth = `${currentWidth}px`
         })
 
         // 2. Switch to fixed layout for drag support
         el.style.tableLayout = 'fixed'
-
-        checkScrollable()
 
         const startWidth = th.getBoundingClientRect().width
 
@@ -117,13 +119,21 @@ export const resizable: Directive = {
           th.style.width = `${newWidth}px`
           th.style.minWidth = `${newWidth}px`
 
+          // Update total table width to match the sum of all columns
+          let totalWidth = 0
+          headers.forEach((headerTh) => {
+            totalWidth += parseFloat(headerTh.style.width) || headerTh.getBoundingClientRect().width
+          })
+          el.style.width = `${totalWidth}px`
+          el.style.minWidth = `${totalWidth}px`
+
           checkScrollable()
         }
 
         const onMouseUp = () => {
           document.removeEventListener('mousemove', onMouseMove)
           document.removeEventListener('mouseup', onMouseUp)
-          el.style.tableLayout = ''
+          // Keep table-layout: fixed to lock the exact resized pixel widths
           checkScrollable()
         }
 

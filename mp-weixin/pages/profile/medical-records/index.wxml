@@ -35,5 +35,7 @@
       ><view wx:if="{{d}}" class="empty-state data-v-04031480"
         ><text class="empty-text data-v-04031480">暂无就诊记录</text></view
       ></block
-    ><view class="safe-bottom data-v-04031480" /></view
-></view>
+    ><view class="safe-bottom data-v-04031480" />
+    <hj-privacy-popup id="privacyPopup" />
+  </view>
+</view>

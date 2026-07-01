@@ -1,5 +1,11 @@
 import { run, query } from './db.js';
 import crypto from 'crypto';
+import { generateUniquePatientNo } from './patientNo.js';
+
+const nextPatientNo = () => generateUniquePatientNo(async (candidate) => {
+  const rows = await query(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
+  return rows.length > 0;
+});
 
 export const seedData = async () => {
   const adminCount = await query('SELECT count(*) as count FROM admin_users');
@@ -184,20 +190,20 @@ export const seedData = async () => {
   );
 
   const patient1 = await run(
-    `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [user1.id, '张华', 'self', 1, 45, '13800138001', 1]
+    `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [await nextPatientNo(), user1.id, '张华', 'self', 1, 45, '13800138001', 1]
   );
   const patient2 = await run(
-    `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [user1.id, '张小华', 'child', 1, 10, '13800138001', 0]
+    `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [await nextPatientNo(), user1.id, '张小华', 'child', 1, 10, '13800138001', 0]
   );
   const patient3 = await run(
-    `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [user2.id, '李明', 'self', 1, 38, '13900139002', 1]
+    `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [await nextPatientNo(), user2.id, '李明', 'self', 1, 38, '13900139002', 1]
   );
   const patient4 = await run(
-    `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [user3.id, '王芳', 'self', 2, 52, '13700137003', 1]
+    `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [await nextPatientNo(), user3.id, '王芳', 'self', 2, 52, '13700137003', 1]
   );
 
   // 7. Doctor Schedules (May 29, 2026 matches default filter)
@@ -340,17 +346,7 @@ export const seedData = async () => {
     ]
   );
 
-  // Wearing Logs
-  const wearingDates = ['2026-06-01', '2026-06-02', '2026-06-03', '2026-06-04', '2026-06-05', '2026-06-06', '2026-06-07'];
-  const durations = [6.8, 7.2, 5.5, 8.0, 7.5, 6.0, 7.0];
-  const comforts = [3, 4, 3, 4, 5, 4, 4];
-  const notes = ['牙齿轻微发胀', '逐渐适应中', '半夜取下了', '佩戴感觉良好', '非常舒服，打鼾明显减少', '口水稍微多一些', '已经适应佩戴'];
-  for (let i = 0; i < wearingDates.length; i++) {
-    await run(
-      `INSERT INTO wearing_logs (treatment_id, date, wear_duration, comfort, note) VALUES (?, ?, ?, ?, ?)`,
-      [tr1.id, wearingDates[i], durations[i], comforts[i], notes[i]]
-    );
-  }
+  // Wearing logs are created only by real mini-program check-ins.
 
   // Device Adjustments
   await run(
@@ -955,8 +951,8 @@ const injectNewDistributionSeeds = async () => {
     );
 
     const patient5 = await run(
-      `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [user4.id, '赵达', 'self', 1, 35, '13600136004', 1]
+      `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [await nextPatientNo(), user4.id, '赵达', 'self', 1, 35, '13600136004', 1]
     );
 
     // 5. Relationship: User2 (李明) recommended User4 (赵达)

@@ -1,17 +1,65 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import ImageUploadField from '@/components/ImageUploadField.vue'
 
 const router = useRouter()
+const route = useRoute()
 
-// UI mockup primary doctors
 const primaryDoctors = ref<any[]>([])
+const storesList = ref<any[]>([])
+const currentWeekStart = ref(getWeekStart(new Date()))
+
+function formatDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function getWeekStart(date: Date) {
+  const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const day = copy.getDay() || 7
+  copy.setDate(copy.getDate() - day + 1)
+  return copy
+}
+
+function addDays(date: Date, days: number) {
+  const copy = new Date(date)
+  copy.setDate(copy.getDate() + days)
+  return copy
+}
+
+function formatWeekRange(start: Date) {
+  const end = addDays(start, 6)
+  return `${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`
+}
+
+const currentWeek = computed(() => formatWeekRange(currentWeekStart.value))
+
+const scheduleWeekDays = computed(() => {
+  const labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+  const keys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+  return labels.map((label, index) => {
+    const date = addDays(currentWeekStart.value, index)
+    return {
+      label: `${label} ${date.getMonth() + 1}/${date.getDate()}`,
+      key: keys[index],
+      date: formatDate(date)
+    }
+  })
+})
+
+const fetchStores = async () => {
+  const res: any = await request.get('/api/admin/stores')
+  storesList.value = res.data || []
+}
 
 const fetchDoctors = async () => {
   try {
-    const res: any = await request.get('/api/admin/doctors')
+    const storeId = typeof route.query.store_id === 'string' ? route.query.store_id : ''
+    const res: any = await request.get('/api/admin/doctors', {
+      params: storeId ? { store_id: storeId } : {}
+    })
     const gradients = [
       'linear-gradient(135deg, #3B6BF5, #2A52D4)',
       'linear-gradient(135deg, #8B5CF6, #6D28D9)',
@@ -32,12 +80,15 @@ const fetchDoctors = async () => {
         name: d.name,
         title: d.title,
         specialty: d.specialty,
-        store: d.id === 1 ? '龙岗总店 · 南山分院' : (d.id === 2 ? '龙岗总店' : '福田门诊部'),
+        store: Array.isArray(d.store_names) && d.store_names.length ? d.store_names.join(' · ') : '未绑定门店',
+        storeIds: Array.isArray(d.store_ids) ? d.store_ids.map((id: any) => String(id)) : [],
+        avatarUrl: d.avatar_url || '',
         avatarChar: d.name.charAt(0),
         avatarBg: gradients[index % gradients.length],
         consults: d.consult_count || 0,
         rating: Number(d.rating) || 5.0,
-        positiveRate: d.rating ? Math.round((Number(d.rating) / 5) * 100) + '%' : '100%',
+        reviewCount: d.review_count || 0,
+        positiveRate: d.positive_rate !== null && d.positive_rate !== undefined ? `${d.positive_rate}%` : '暂无评价',
         isOnline: d.status === 1,
         expertise: tags,
         experience: d.experience_years || 0,
@@ -54,61 +105,25 @@ const fetchDoctors = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await fetchStores()
   fetchDoctors()
-})
-
-const currentWeek = ref('5/25 - 5/31')
-
-const weekDatesMap: Record<string, { label: string; date: string }[]> = {
-  '5/18 - 5/24': [
-    { label: '周一 5/18', date: '2026-05-18' },
-    { label: '周二 5/19', date: '2026-05-19' },
-    { label: '周三 5/20', date: '2026-05-20' },
-    { label: '周四 5/21', date: '2026-05-21' },
-    { label: '周五 5/22', date: '2026-05-22' },
-    { label: '周六 5/23', date: '2026-05-23' },
-    { label: '周日 5/24', date: '2026-05-24' }
-  ],
-  '5/25 - 5/31': [
-    { label: '周一 5/25', date: '2026-05-25' },
-    { label: '周二 5/26', date: '2026-05-26' },
-    { label: '周三 5/27', date: '2026-05-27' },
-    { label: '周四 5/28', date: '2026-05-28' },
-    { label: '周五 5/29', date: '2026-05-29' },
-    { label: '周六 5/30', date: '2026-05-30' },
-    { label: '周日 5/31', date: '2026-05-31' }
-  ],
-  '6/1 - 6/7': [
-    { label: '周一 6/1', date: '2026-06-01' },
-    { label: '周二 6/2', date: '2026-06-02' },
-    { label: '周三 6/3', date: '2026-06-03' },
-    { label: '周四 6/4', date: '2026-06-04' },
-    { label: '周五 6/5', date: '2026-06-05' },
-    { label: '周六 6/6', date: '2026-06-06' },
-    { label: '周日 6/7', date: '2026-06-07' }
-  ]
-}
-
-const scheduleWeekDays = computed(() => {
-  const dates = weekDatesMap[currentWeek.value] || weekDatesMap['5/25 - 5/31']
-  const keys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
-  return dates.map((d, index) => ({ label: d.label, key: keys[index] }))
 })
 
 const schedules = ref<any[]>([])
 
 const loadWeeklySchedules = async () => {
   try {
-    const dates = weekDatesMap[currentWeek.value] || weekDatesMap['5/25 - 5/31']
-    const res: any = await request.get('/api/admin/schedules')
+    const res: any = await request.get('/api/admin/schedules', {
+      params: { date: formatDate(currentWeekStart.value).slice(0, 7) }
+    })
     const allSchedules = res.data || []
     
     const dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
     const newSchedules = primaryDoctors.value.map(doc => {
       const row: any = { doctorName: doc.name }
       
-      dates.forEach((dObj, idx) => {
+      scheduleWeekDays.value.forEach((dObj, idx) => {
         const key = dayKeys[idx]
         const daySchedules = allSchedules.filter((s: any) => 
           String(s.doctor_id) === String(doc.id) && String(s.date).slice(0, 10) === dObj.date
@@ -151,7 +166,8 @@ const formData = ref({
   name: '',
   title: '主任医师',
   specialty: '',
-  store: '',
+  storeIds: [] as string[],
+  avatarUrl: '',
   isOnline: true,
   expertiseStr: '',
   experience: 0,
@@ -169,7 +185,8 @@ function handleAddDoctor() {
     name: '',
     title: '主任医师',
     specialty: '',
-    store: '',
+    storeIds: [],
+    avatarUrl: '',
     isOnline: true,
     expertiseStr: '',
     experience: 0,
@@ -189,7 +206,8 @@ function handleEditDoctor(id: string) {
     name: d.name,
     title: d.title,
     specialty: d.specialty,
-    store: d.store,
+    storeIds: [...d.storeIds],
+    avatarUrl: d.avatarUrl || '',
     isOnline: d.isOnline,
     expertiseStr: d.expertise ? d.expertise.join(',') : '',
     experience: d.experience || 0,
@@ -200,7 +218,7 @@ function handleEditDoctor(id: string) {
 }
 
 async function handleSave() {
-  if (!formData.value.name || !formData.value.specialty || !formData.value.store || formData.value.consultFee === undefined || formData.value.consultFee === null || formData.value.consultFee === '') {
+  if (!formData.value.name || !formData.value.specialty || formData.value.storeIds.length === 0 || formData.value.consultFee === undefined || formData.value.consultFee === null || formData.value.consultFee === '') {
     MessagePlugin.warning('请填写所有必填信息')
     return
   }
@@ -218,6 +236,8 @@ async function handleSave() {
         specialty: formData.value.specialty,
         hospital: '鼾静门诊部',
         intro: formData.value.intro,
+        avatar_url: formData.value.avatarUrl || null,
+        store_ids: formData.value.storeIds.map(id => Number(id)),
         status: formData.value.isOnline ? 1 : 0,
         expertise: tags.length > 0 ? tags : null,
         experience_years: Number(formData.value.experience),
@@ -231,6 +251,8 @@ async function handleSave() {
         specialty: formData.value.specialty,
         hospital: '鼾静门诊部',
         intro: formData.value.intro,
+        avatar_url: formData.value.avatarUrl || null,
+        store_ids: formData.value.storeIds.map(id => Number(id)),
         status: formData.value.isOnline ? 1 : 0,
         expertise: tags.length > 0 ? tags : null,
         experience_years: Number(formData.value.experience),
@@ -245,26 +267,36 @@ async function handleSave() {
   }
 }
 
-function handleViewData(name: string) {
-  router.push('/store/report')
+function handleViewData(id: string) {
+  router.push({ path: '/store/report', query: { doctor_id: id } })
 }
 
-function openAdminAccounts() {
-  router.push('/settings/admin')
+function openAdminAccounts(doctorId?: string) {
+  router.push({ path: '/settings/admin', query: doctorId ? { doctor_id: doctorId } : {} })
+}
+
+async function handleDisableDoctor(id: string) {
+  try {
+    await request.delete(`/api/admin/doctors/${id}`)
+    MessagePlugin.success('医生已停用')
+    await fetchDoctors()
+  } catch (error) {
+    MessagePlugin.error('停用医生失败')
+  }
 }
 
 function handlePrevWeek() {
-  currentWeek.value = '5/18 - 5/24'
+  currentWeekStart.value = addDays(currentWeekStart.value, -7)
   loadWeeklySchedules()
 }
 
 function handleCurrentWeek() {
-  currentWeek.value = '5/25 - 5/31'
+  currentWeekStart.value = getWeekStart(new Date())
   loadWeeklySchedules()
 }
 
 function handleNextWeek() {
-  currentWeek.value = '6/1 - 6/7'
+  currentWeekStart.value = addDays(currentWeekStart.value, 7)
   loadWeeklySchedules()
 }
 </script>
@@ -285,7 +317,10 @@ function handleNextWeek() {
       <div v-for="dr in primaryDoctors" :key="dr.id" class="panel" style="margin-bottom: 0;">
         <div class="panel-body" style="text-align: center; padding: 24px;">
           <!-- Doctor Avatar -->
-          <div :style="{
+          <div v-if="dr.avatarUrl" style="width: 64px; height: 64px; border-radius: 50%; overflow: hidden; margin: 0 auto 12px; border: 1px solid #E5E7EB;">
+            <img :src="dr.avatarUrl" :alt="dr.name" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+          <div v-else :style="{
             width: '64px',
             height: '64px',
             borderRadius: '50%',
@@ -311,7 +346,7 @@ function handleNextWeek() {
             挂号费：<span style="color: #EC4899; font-weight: bold;">¥{{ dr.consultFee !== undefined ? dr.consultFee.toFixed(2) : '0.00' }}</span>
           </div>
           <div style="margin-top: 8px;">
-            <span v-if="dr.adminUserId" class="status-tag green">后台账号：{{ dr.adminUsername }}</span>
+            <span v-if="dr.adminUserId" :class="['status-tag', dr.adminStatus === 'disabled' ? 'red' : 'green']">后台账号：{{ dr.adminUsername }}{{ dr.adminStatus === 'disabled' ? '（已禁用）' : '' }}</span>
             <span v-else class="status-tag gray">未开通后台账号</span>
           </div>
           <!-- Tags / Expertise -->
@@ -344,7 +379,8 @@ function handleNextWeek() {
           <div style="display: flex; gap: 8px; margin-top: 16px; justify-content: center;">
             <button class="btn btn-sm btn-outline" style="flex: 1;" @click="handleEditDoctor(dr.id)">编辑</button>
             <button class="btn btn-sm btn-outline" style="flex: 1;" @click="openSchedule(dr.id)">排班</button>
-            <button class="btn btn-sm btn-outline" style="flex: 1;" @click="dr.adminUserId ? handleViewData(dr.name) : openAdminAccounts()">{{ dr.adminUserId ? '数据' : '开通账号' }}</button>
+            <button class="btn btn-sm btn-outline" style="flex: 1;" @click="dr.adminUserId ? handleViewData(dr.id) : openAdminAccounts(dr.id)">{{ dr.adminUserId ? '数据' : '开通账号' }}</button>
+            <button v-if="dr.isOnline" class="btn btn-sm btn-outline" style="flex: 1;" @click="handleDisableDoctor(dr.id)">停用</button>
           </div>
         </div>
       </div>
@@ -397,6 +433,20 @@ function handleNextWeek() {
           <input type="text" class="form-control" v-model="formData.name" placeholder="请输入姓名">
         </div>
         <div class="form-group">
+          <label class="form-label">医生头像</label>
+          <ImageUploadField
+            v-model="formData.avatarUrl"
+            label="头像"
+            context="doctor-avatar"
+            :max-size-mb="2"
+            ratio-label="1:1"
+            :ratio="1"
+            :min-width="240"
+            :min-height="240"
+            preview-ratio="1 / 1"
+          />
+        </div>
+        <div class="form-group">
           <label class="form-label">职称<span class="required">*</span></label>
           <select class="form-control" v-model="formData.title">
             <option value="主任医师">主任医师</option>
@@ -419,7 +469,16 @@ function handleNextWeek() {
         </div>
         <div class="form-group">
           <label class="form-label">就诊门店<span class="required">*</span></label>
-          <input type="text" class="form-control" v-model="formData.store" placeholder="例如：龙岗总店 · 南山分院">
+          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <label
+              v-for="store in storesList"
+              :key="store.id"
+              style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #E5E7EB; border-radius: 999px; font-size: 13px; cursor: pointer;"
+            >
+              <input v-model="formData.storeIds" type="checkbox" :value="String(store.id)">
+              {{ store.name }}
+            </label>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">擅长标签</label>

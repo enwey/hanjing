@@ -75,6 +75,7 @@ const menuGroups = computed(() => [
     title: '内容',
     items: [
       { path: '/content', label: '科普文章', icon: '📝', permission: 'content:view' },
+      { path: '/content/category', label: '分类管理', icon: '🏷️', permission: 'content:edit' },
       { path: '/live', label: '直播管理', icon: 'video', permission: 'content:view' },
       { path: '/banner', label: '轮播图管理', icon: '🎨', permission: 'content:edit' }
     ]
@@ -685,15 +686,23 @@ onUnmounted(() => {
             </div>
             <template #content>
               <div class="user-dropdown-menu">
+                <div class="user-dropdown-header">
+                  <div class="header-avatar">{{ userInfo.name ? userInfo.name[0] : '管' }}</div>
+                  <div class="header-info">
+                    <div class="header-name">{{ userInfo.name || '管理员' }}</div>
+                    <div class="header-role-badge">{{ userInfo.role_name || '超级管理员' }}</div>
+                  </div>
+                </div>
+                <div class="user-menu-divider"></div>
                 <div class="user-menu-item" @click="showProfileDialog">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="menu-icon">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                     <circle cx="12" cy="7" r="4"></circle>
                   </svg>
                   <span>个人资料</span>
                 </div>
                 <div class="user-menu-item" @click="showChangePasswordDialog">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="menu-icon">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                   </svg>
@@ -701,7 +710,7 @@ onUnmounted(() => {
                 </div>
                 <div class="user-menu-divider"></div>
                 <div class="user-menu-item logout" @click="logout">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="menu-icon">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                     <polyline points="16 17 21 12 16 7"></polyline>
                     <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -2032,43 +2041,113 @@ onUnmounted(() => {
   right: 10px;
 }
 
-.user-popup-overlay {
+.user-popup-overlay,
+.user-popup-overlay.t-popup__content,
+.user-popup-overlay .t-popup__content {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   padding: 0 !important;
 }
 
 .user-dropdown-menu {
-  width: 140px;
+  width: 200px;
   background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px -5px rgba(59, 107, 245, 0.12), 0 8px 16px -6px rgba(0, 0, 0, 0.05);
   border: 1px solid #E2E8F0;
   overflow: hidden;
-  padding: 6px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.user-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-radius: 12px;
+  margin-bottom: 4px;
+}
+
+.header-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3B6BF5, #5A85F5);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(59, 107, 245, 0.2);
+}
+
+.header-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.header-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-role-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #3B6BF5;
+  background: #eff6ff;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  width: fit-content;
+  margin-top: 3px;
+  border: 1px solid #dbeafe;
 }
 
 .user-menu-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   cursor: pointer;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 10px;
+  font-size: 13.5px;
   font-weight: 500;
-  color: #334155;
-  transition: all 0.15s ease-in-out;
+  color: #475569;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
 }
 
+.user-menu-item .menu-icon {
+  color: #64748b;
+  transition: color 0.2s ease;
+}
+
 .user-menu-item:hover {
-  background: #F1F5F9;
-  color: #0F172A;
+  background: rgba(59, 107, 245, 0.06);
+  color: #3B6BF5;
+}
+
+.user-menu-item:hover .menu-icon {
+  color: #3B6BF5;
 }
 
 .user-menu-item.logout {
+  color: #EF4444;
+}
+
+.user-menu-item.logout .menu-icon {
   color: #EF4444;
 }
 
@@ -2077,9 +2156,13 @@ onUnmounted(() => {
   color: #EF4444;
 }
 
+.user-menu-item.logout:hover .menu-icon {
+  color: #EF4444;
+}
+
 .user-menu-divider {
   height: 1px;
   background: #E2E8F0;
-  margin: 4px 6px;
+  margin: 6px 4px;
 }
 </style>

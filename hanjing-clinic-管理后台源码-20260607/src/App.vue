@@ -8,6 +8,7 @@ html, body {
   padding: 0;
   height: 100%;
   width: 100%;
+  overscroll-behavior-x: none;
 }
 #app {
   height: 100%;

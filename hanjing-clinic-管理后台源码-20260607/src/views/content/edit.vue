@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -9,27 +9,51 @@ import ImageUploadField from '@/components/ImageUploadField.vue'
 const router = useRouter()
 const route = useRoute()
 
-const articleId = ref(route.params.id || '1')
-const isEdit = ref(true)
+const articleId = ref(route.params.id as string || '')
+const isEdit = ref(!!route.params.id)
 
-const title = ref('打呼噜不只是吵！睡眠呼吸暂停的5大危害你必须知道')
+const title = ref('')
 const category = ref('睡眠科普')
-const tags = ref('打鼾, 睡眠呼吸暂停, OSAHS, 健康')
-const summary = ref('很多人觉得打呼噜只是睡得香的表现，殊不知这可能是睡眠呼吸暂停综合征的信号。长期不治疗可能引发高血压、心律失常甚至猝死...')
-const relatedProduct = ref('睡眠监测套餐')
-const relatedDoctor = ref('古堪民 主任医师')
-const publishTime = ref('2026-05-30T08:00')
+const tags = ref('')
+const summary = ref('')
+const relatedProduct = ref('')
+const relatedDoctor = ref('')
+const publishTime = ref('')
 const sortWeight = ref(100)
 const coverUrl = ref('')
 
 // Rich text editor state
-const editorHtml = ref(`
-  <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #111827;">什么是睡眠呼吸暂停？</h2>
-  <p style="margin-bottom: 16px; color: #4B5563; line-height: 1.8;">睡眠呼吸暂停综合征（OSAHS）是指在睡眠过程中反复出现呼吸暂停或低通气的疾病。每次暂停持续10秒以上，一晚上可能发生数十次甚至上百次...</p>
-  <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: #111827;">5大危害不容忽视</h2>
-  <p style="margin-bottom: 8px; color: #4B5563; line-height: 1.8;"><strong>1. 心血管疾病：</strong>长期缺氧导致血管损伤，增加高血压、冠心病、心律失常风险...</p>
-  <p style="margin-bottom: 8px; color: #4B5563; line-height: 1.8;"><strong>2. 认知功能下降：</strong>大脑反复缺氧导致记忆力减退、注意力不集中...</p>
-`)
+const editorHtml = ref('')
+
+async function fetchArticle() {
+  if (!isEdit.value || !articleId.value) return
+  try {
+    const res: any = await request.get(`/api/admin/content/articles/${articleId.value}`)
+    if (res.code === 200 && res.data) {
+      const data = res.data
+      title.value = data.title || ''
+      editorHtml.value = data.content || ''
+      coverUrl.value = data.cover_url || ''
+      
+      let tagList: string[] = []
+      if (data.tags) {
+        try {
+          tagList = Array.isArray(data.tags) ? data.tags : JSON.parse(data.tags)
+        } catch (e) {}
+      }
+      if (tagList.length > 0) {
+        category.value = tagList[0]
+        tags.value = tagList.slice(1).join(', ')
+      } else {
+        category.value = '睡眠科普'
+        tags.value = ''
+      }
+    }
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('加载文章详情失败')
+  }
+}
 
 function handleBack() {
   navigateToParent(router, route, '/content')
@@ -40,10 +64,15 @@ function handlePreview() {
 }
 
 function buildPayload(status: string) {
+  const cat = category.value
+  const list = tags.value.split(/[,，]/).map(item => item.trim()).filter(Boolean)
+  if (cat) {
+    list.unshift(cat)
+  }
   return {
     title: title.value,
     content: editorHtml.value,
-    tags: tags.value.split(/[,，]/).map(item => item.trim()).filter(Boolean),
+    tags: list,
     cover_url: coverUrl.value,
     status
   }
@@ -51,24 +80,63 @@ function buildPayload(status: string) {
 
 async function handleSaveDraft() {
   if (!title.value.trim() || !editorHtml.value.trim()) {
-    MessagePlugin.warning('请填写文章标题和正文')
+    MessagePlugin.warning('请填写文章标题 and 正文')
     return
   }
-  await request.post('/api/admin/content/articles', buildPayload('draft'))
-  MessagePlugin.success('草稿已成功保存')
-  navigateToParent(router, route, '/content')
+  try {
+    const payload = buildPayload('pending')
+    if (isEdit.value && articleId.value) {
+      await request.put(`/api/admin/content/articles/${articleId.value}`, payload)
+      MessagePlugin.success('保存文章修改成功')
+    } else {
+      await request.post('/api/admin/content/articles', payload)
+      MessagePlugin.success('草稿已成功保存')
+    }
+    navigateToParent(router, route, '/content')
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('保存失败')
+  }
 }
 
 async function handlePublish() {
   if (!title.value.trim() || !editorHtml.value.trim()) {
-    MessagePlugin.warning('请填写文章标题和正文')
+    MessagePlugin.warning('请填写文章标题 and 正文')
     return
   }
-  await request.post('/api/admin/content/articles', buildPayload('approved'))
-  MessagePlugin.success('文章发布成功')
-  navigateToParent(router, route, '/content')
+  try {
+    const payload = buildPayload('approved')
+    if (isEdit.value && articleId.value) {
+      await request.put(`/api/admin/content/articles/${articleId.value}`, payload)
+      MessagePlugin.success('文章已更新并发布')
+    } else {
+      await request.post('/api/admin/content/articles', payload)
+      MessagePlugin.success('文章发布成功')
+    }
+    navigateToParent(router, route, '/content')
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('发布失败')
+  }
 }
 
+const categoryList = ref<string[]>([])
+
+async function fetchCategories() {
+  try {
+    const res: any = await request.get('/api/admin/content/categories')
+    if (res.code === 200 && res.data) {
+      categoryList.value = res.data.map((cat: any) => cat.name)
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+onMounted(() => {
+  fetchCategories()
+  fetchArticle()
+})
 </script>
 
 <template>
@@ -78,8 +146,8 @@ async function handlePublish() {
     <!-- Page Title Row -->
     <div class="page-title-row">
       <div>
-        <div class="page-title">编辑文章</div>
-        <div class="page-title-sub">草稿 · 最后编辑 5/29 16:00</div>
+        <div class="page-title">{{ isEdit ? '编辑科普文章' : '撰写科普文章' }}</div>
+        <div class="page-title-sub">{{ isEdit ? '更新文章内容及分流状态' : '新建健康科普文章或草稿' }}</div>
       </div>
       <div class="action-buttons">
         <button class="btn btn-outline" @click="handlePreview">预览</button>
@@ -102,10 +170,7 @@ async function handlePublish() {
           <div class="form-group">
             <label class="form-label">分类</label>
             <select class="form-control" v-model="category">
-              <option>睡眠科普</option>
-              <option>治疗知识</option>
-              <option>设备介绍</option>
-              <option>患者故事</option>
+              <option v-for="cat in categoryList" :key="cat" :value="cat">{{ cat }}</option>
             </select>
           </div>
 

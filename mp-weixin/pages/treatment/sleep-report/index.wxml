@@ -15,7 +15,7 @@
         bindtap="{{f}}"
         >过去30天</view
       ></view
-    ><view class="score-card data-v-72813ef9" style="{{'background:' + n}}"
+    ><block wx:if="{{hasData}}"><view class="score-card data-v-72813ef9" style="{{'background:' + n}}"
       ><view class="score-ring data-v-72813ef9"
         ><view class="score-num data-v-72813ef9" style="{{'color:' + h}}"
           >{{g}}</view
@@ -123,6 +123,12 @@
         ><text class="book-btn-text data-v-72813ef9"
           >预约医生调整设备</text
         ></view
-      ></view
-    ><view class="safe-bottom data-v-72813ef9" /></view
+      ></view></block>
+      <view wx:else class="empty-report-card data-v-72813ef9">
+        <text class="empty-report-icon data-v-72813ef9">📊</text>
+        <text class="empty-report-title data-v-72813ef9">暂无睡眠健康报告</text>
+        <text class="empty-report-desc data-v-72813ef9">本报告根据您的设备佩戴记录生成。完成佩戴并打卡后，系统将在此处展示您的睡眠报告及AI健康洞察。</text>
+        <button class="empty-report-btn data-v-72813ef9" bindtap="{{handleGoCheckin}}">立即去打卡</button>
+      </view>
+    <view class="safe-bottom data-v-72813ef9" /></view
 ></view>

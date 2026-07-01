@@ -12,9 +12,6 @@ const apiUrls = {
 const BASE_URL = apiUrls[env] || apiUrls.release;
 
 const ENABLE_REAL_API = true;
-// Enable mock fallback for local development and testing to ensure smooth demo/dev,
-// but disable it in production release to meet compliance standards.
-const ENABLE_MOCK_FALLBACK = false;
 
 let isRefreshing = false;
 let requestsQueue = [];
@@ -26,18 +23,9 @@ function createRequestError(message, statusCode, data) {
   return error;
 }
 
-function request(options, mockCallback) {
-  const runMock = () => {
-    if (ENABLE_MOCK_FALLBACK && typeof mockCallback === "function") {
-      console.log(`[Request Mock Fallback] ${options.method || "GET"} ${options.url}`);
-      return mockCallback();
-    }
-    return Promise.reject(new Error(options.failMessage || "请求失败，请稍后重试"));
-  };
-
+function request(options) {
   if (!ENABLE_REAL_API) {
-    console.log(`[Request Mock] ${options.method || "GET"} ${options.url}`);
-    return runMock();
+    return Promise.reject(new Error("真实接口未启用"));
   }
 
   const token = wx.getStorageSync("access_token");
@@ -88,21 +76,17 @@ function request(options, mockCallback) {
                     if (retryRes.statusCode >= 200 && retryRes.statusCode < 300) {
                       resolve(retryRes.data);
                     } else {
-                      if (ENABLE_MOCK_FALLBACK && typeof mockCallback === "function") {
-                        runMock().then(resolve).catch(reject);
-                      } else {
-                        reject(
-                          createRequestError(
-                            (retryRes.data && retryRes.data.message) || options.failMessage,
-                            retryRes.statusCode,
-                            retryRes.data,
-                          ),
-                        );
-                      }
+                      reject(
+                        createRequestError(
+                          (retryRes.data && retryRes.data.message) || options.failMessage,
+                          retryRes.statusCode,
+                          retryRes.data,
+                        ),
+                      );
                     }
                   },
                   fail: (err) => {
-                    runMock().then(resolve).catch(reject);
+                    reject(createRequestError(options.failMessage));
                   }
                 });
               });
@@ -142,68 +126,60 @@ function request(options, mockCallback) {
                             if (retryRes.statusCode >= 200 && retryRes.statusCode < 300) {
                               resolve(retryRes.data);
                             } else {
-                              if (ENABLE_MOCK_FALLBACK && typeof mockCallback === "function") {
-                                runMock().then(resolve).catch(reject);
-                              } else {
-                                reject(
-                                  createRequestError(
-                                    (retryRes.data && retryRes.data.message) || options.failMessage,
-                                    retryRes.statusCode,
-                                    retryRes.data,
-                                  ),
-                                );
-                              }
+                              reject(
+                                createRequestError(
+                                  (retryRes.data && retryRes.data.message) || options.failMessage,
+                                  retryRes.statusCode,
+                                  retryRes.data,
+                                ),
+                              );
                             }
                           },
                           fail: (err) => {
-                            runMock().then(resolve).catch(reject);
+                            reject(createRequestError(options.failMessage));
                           }
                         });
                       } else {
                         console.warn("[Request Silent Login Fail] Invalid token response.");
                         requestsQueue = [];
-                        runMock().then(resolve).catch(reject);
+                        reject(createRequestError("登录授权失败"));
                       }
                     },
                     fail: (err) => {
                       isRefreshing = false;
                       console.warn("[Request Silent Login Fail] HTTP call failed.");
                       requestsQueue = [];
-                      runMock().then(resolve).catch(reject);
+                      reject(createRequestError("登录授权失败"));
                     }
                   });
                 } else {
                   isRefreshing = false;
                   console.warn("[Request Silent Login Fail] wx.login returned no code.");
                   requestsQueue = [];
-                  runMock().then(resolve).catch(reject);
+                  reject(createRequestError("登录授权失败"));
                 }
               },
               fail: (err) => {
                 isRefreshing = false;
                 console.warn("[Request Silent Login Fail] wx.login call failed.");
                 requestsQueue = [];
-                runMock().then(resolve).catch(reject);
+                reject(createRequestError("登录授权失败"));
               }
             });
           } else {
             console.warn(`[Request Error] Status ${res.statusCode}.`);
-            if (ENABLE_MOCK_FALLBACK && typeof mockCallback === "function") {
-              runMock().then(resolve).catch(reject);
-            } else {
-              reject(
-                createRequestError(
-                  (res.data && res.data.message) || options.failMessage,
-                  res.statusCode,
-                  res.data,
-                ),
-              );
-            }
+            reject(
+              createRequestError(
+                (res.data && res.data.message) || options.failMessage,
+                res.statusCode,
+                res.data,
+              ),
+            );
           }
         },
         fail: (err) => {
           console.warn(`[Request Fail] Connection to ${BASE_URL}${options.url} failed.`);
-          runMock().then(resolve).catch(reject);
+          reject(createRequestError(options.failMessage));
         },
       });
     }

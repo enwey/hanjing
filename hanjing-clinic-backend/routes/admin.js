@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { query, get, run, transaction, autoUpdateExpiredAppointments } from '../db.js';
+import { generateUniquePatientNo } from '../patientNo.js';
 import {
   JWT_SECRET,
   checkStoreIsOpen,
@@ -29,6 +30,42 @@ const formatDate = (d) => {
     return `${year}-${month}-${day}`;
   }
   return String(d).slice(0, 10);
+};
+
+const buildTreatmentDeviceSnapshot = (product) => ({
+  id: product.id,
+  name: product.name,
+  imageUrl: product.image_url || '',
+  price: Number(product.price || 0),
+  description: product.description || ''
+});
+
+const safeJsonArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const mapPatientSource = (source) => {
+  const map = {
+    '小程序': 'mini_app',
+    '分销': 'distribution',
+    '转介绍': 'referral',
+    '门店': 'walk_in',
+    '直播': 'live',
+    mini_app: 'mini_app',
+    distribution: 'distribution',
+    referral: 'referral',
+    walk_in: 'walk_in',
+    live: 'live',
+    admin: 'admin'
+  };
+  return map[source] || source || 'walk_in';
 };
 
 const getRolePermissions = async (roleId) => {
@@ -327,11 +364,41 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
+const smsCodes = new Map(); // phone -> { code, expires }
+
+app.post('/api/admin/send-code', async (req, res) => {
+  const { phone } = req.body;
+  if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
+    return res.status(400).json({ code: 400, message: '请输入有效的手机号' });
+  }
+
+  // Generate 6-digit code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  smsCodes.set(phone, { code, expires: Date.now() + 5 * 60 * 1000 }); // 5 minutes validity
+
+  console.log(`[SMS Send] Verification code for ${phone} is: ${code}`);
+
+  res.json({
+    code: 200,
+    message: '验证码发送成功（测试环境已直接返回）',
+    data: { code }
+  });
+});
+
 app.post('/api/admin/sms-login', async (req, res) => {
   const { phone, smsCode } = req.body;
   if (!phone || !smsCode) {
     return res.status(400).json({ code: 400, message: '手机号和验证码不能为空' });
   }
+
+  // Verify verification code
+  const cached = smsCodes.get(phone);
+  if (!cached || cached.code !== smsCode || Date.now() > cached.expires) {
+    return res.status(400).json({ code: 400, message: '验证码错误或已过期' });
+  }
+
+  // Delete code on successful verification
+  smsCodes.delete(phone);
 
   try {
     const user = await get(
@@ -550,8 +617,8 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
     const prevNewPatients = prevPatientRow.count || 0;
 
     // 4. Visit rate (completed / total appointments) (Current & Previous)
-    let completedApptSql = `SELECT COUNT(*) as count FROM appointments WHERE status = 'completed' AND ${dateFilterAppt}`;
-    let prevCompletedApptSql = `SELECT COUNT(*) as count FROM appointments WHERE status = 'completed' AND ${prevDateFilterAppt}`;
+    let completedApptSql = `SELECT COUNT(*) as count FROM appointments WHERE status IN ('completed', 'arrived', 'settled') AND ${dateFilterAppt}`;
+    let prevCompletedApptSql = `SELECT COUNT(*) as count FROM appointments WHERE status IN ('completed', 'arrived', 'settled') AND ${prevDateFilterAppt}`;
     const completedApptParams = [];
     const prevCompletedApptParams = [];
     if (req.user.role !== 'super_admin' && req.user.store_id) {
@@ -617,14 +684,7 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
       color: colors[idx % colors.length]
     })).sort((a, b) => b.percent - a.percent);
 
-    if (depts.length === 0) {
-      depts.push(
-        { name: '睡眠呼吸科', percent: 40, color: '#3B6BF5' },
-        { name: '耳鼻喉科', percent: 30, color: '#5A85F5' },
-        { name: '口腔科', percent: 20, color: '#1A9D5C' },
-        { name: '心理科', percent: 10, color: '#F5A623' }
-      );
-    }
+
 
     let docSql = `SELECT COUNT(*) as count FROM doctors WHERE status = 1`;
     const docParams = [];
@@ -795,65 +855,175 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
     return res.status(403).json({ code: 403, message: '医生账号未绑定医生档案，无法访问预约数据' });
   }
 
-  let whereClause = '';
-  const params = [];
+  // 1. Build Base Where Clause
+  let baseWhere = '';
+  const baseParams = [];
 
   if (patient_id) {
-    whereClause += ` AND a.patient_id = ?`;
-    params.push(patient_id);
+    baseWhere += ` AND a.patient_id = ?`;
+    baseParams.push(patient_id);
   }
 
-  if (date) {
-    whereClause += ` AND a.appointment_date = ?`;
-    params.push(date);
-  }
-
-  if (tab === 'today') {
-    if (!date) {
-      whereClause += ` AND a.appointment_date = '2026-05-29'`;
+  if (date && tab !== 'today') {
+    if (date.includes(',')) {
+      const [start, end] = date.split(',');
+      if (start && end) {
+        baseWhere += ` AND a.appointment_date >= ? AND a.appointment_date <= ?`;
+        baseParams.push(start, end);
+      }
+    } else {
+      baseWhere += ` AND a.appointment_date = ?`;
+      baseParams.push(date);
     }
-  } else if (tab === 'week') {
-    whereClause += ` AND a.appointment_date >= '2026-05-25' AND a.appointment_date <= '2026-05-31'`;
+  }
+
+  if (req.query.year) {
+    baseWhere += ` AND a.appointment_date LIKE ?`;
+    baseParams.push(`${req.query.year}%`);
+  }
+
+  if (req.query.month) {
+    baseWhere += ` AND a.appointment_date LIKE ?`;
+    baseParams.push(`${req.query.month}%`);
+  }
+
+  if (req.query.store_name) {
+    baseWhere += ` AND a.store_name = ?`;
+    baseParams.push(req.query.store_name);
+  }
+
+  if (req.query.doctor_name) {
+    baseWhere += ` AND a.doctor_name = ?`;
+    baseParams.push(req.query.doctor_name);
   }
 
   if (search) {
-    whereClause += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ?)`;
+    baseWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ?)`;
     const searchParam = `%${search}%`;
-    params.push(searchParam, searchParam, searchParam);
+    baseParams.push(searchParam, searchParam, searchParam);
   }
 
   if (req.user.role === 'doctor' && req.user.doctor_id) {
-    whereClause += ` AND a.doctor_id = ?`;
-    params.push(req.user.doctor_id);
+    baseWhere += ` AND a.doctor_id = ?`;
+    baseParams.push(req.user.doctor_id);
   }
 
   if (req.user.role !== 'super_admin' && req.user.store_id) {
-    whereClause += ` AND a.store_id = ?`;
-    params.push(req.user.store_id);
+    baseWhere += ` AND a.store_id = ?`;
+    baseParams.push(req.user.store_id);
+  }
+
+  // 2. Build Specific Where Clause for the queried list
+  let listWhere = baseWhere;
+  const listParams = [...baseParams];
+
+  if (tab === 'today') {
+    listWhere += ` AND a.appointment_date = CURDATE()`;
+  } else if (tab === 'week') {
+    listWhere += ` AND a.appointment_date >= '2026-05-25' AND a.appointment_date <= '2026-05-31'`;
+  } else if (req.query.status) {
+    const statusVal = req.query.status;
+    if (statusVal === 'waiting') {
+      listWhere += ` AND a.status IN ('confirmed', 'waiting', 'called')`;
+    } else if (statusVal === 'arrived') {
+      listWhere += ` AND a.status IN ('arrived', 'settled')`;
+    } else {
+      listWhere += ` AND a.status = ?`;
+      listParams.push(statusVal);
+    }
   }
 
   try {
     await autoUpdateExpiredAppointments();
     if (page) {
+      // Query list count
       const countSql = `
         SELECT COUNT(*) as total
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
-        WHERE 1=1 ${whereClause}
+        WHERE 1=1 ${listWhere}
       `;
-      const countRes = await get(countSql, params);
+      const countRes = await get(countSql, listParams);
       const total = countRes ? countRes.total : 0;
+
+      // Query status stats counts for frontend tab badges
+      const statsSql = `
+        SELECT a.status, COUNT(*) as count
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        WHERE 1=1 ${baseWhere}
+        GROUP BY a.status
+      `;
+      const statsRows = await query(statsSql, baseParams);
+
+      // Build today params dynamically
+      let todayWhere = '';
+      const todayParams = [];
+      if (patient_id) { todayWhere += ` AND a.patient_id = ?`; todayParams.push(patient_id); }
+      if (req.query.store_name) { todayWhere += ` AND a.store_name = ?`; todayParams.push(req.query.store_name); }
+      if (req.query.doctor_name) { todayWhere += ` AND a.doctor_name = ?`; todayParams.push(req.query.doctor_name); }
+      if (search) {
+        todayWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ?)`;
+        const searchParam = `%${search}%`;
+        todayParams.push(searchParam, searchParam, searchParam);
+      }
+      if (req.user.role === 'doctor' && req.user.doctor_id) { todayWhere += ` AND a.doctor_id = ?`; todayParams.push(req.user.doctor_id); }
+      if (req.user.role !== 'super_admin' && req.user.store_id) { todayWhere += ` AND a.store_id = ?`; todayParams.push(req.user.store_id); }
+
+      const todayCountRes = await get(
+        `SELECT COUNT(*) as total
+         FROM appointments a
+         JOIN patients p ON a.patient_id = p.id
+         WHERE a.appointment_date = CURDATE() ${todayWhere}`,
+        todayParams
+      );
+      const todayCount = todayCountRes ? todayCountRes.total : 0;
+
+      const countsMap = {
+        all: 0,
+        today: todayCount,
+        pending_payment: 0,
+        pending: 0,
+        waiting: 0,
+        checked_in: 0,
+        completed: 0,
+        arrived: 0,
+        no_show: 0,
+        cancelled: 0
+      };
+      
+      statsRows.forEach(row => {
+        const status = row.status;
+        const count = row.count || 0;
+        if (status === 'pending_payment') countsMap.pending_payment += count;
+        else if (status === 'pending') countsMap.pending += count;
+        else if (['confirmed', 'waiting', 'called'].includes(status)) countsMap.waiting += count;
+        else if (status === 'checked_in') countsMap.checked_in += count;
+        else if (status === 'completed') countsMap.completed += count;
+        else if (['arrived', 'settled'].includes(status)) countsMap.arrived += count;
+        else if (status === 'no_show') countsMap.no_show += count;
+        else if (status === 'cancelled') countsMap.cancelled += count;
+      });
+
+      const allCountRes = await get(
+        `SELECT COUNT(*) as total
+         FROM appointments a
+         JOIN patients p ON a.patient_id = p.id
+         WHERE 1=1 ${baseWhere}`,
+        baseParams
+      );
+      countsMap.all = allCountRes ? allCountRes.total : 0;
 
       const offset = (page - 1) * pageSize;
       const dataSql = `
-        SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
+        SELECT a.*, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
-        WHERE 1=1 ${whereClause}
+        WHERE 1=1 ${listWhere}
         ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC
         LIMIT ${pageSize} OFFSET ${offset}
       `;
-      const list = await query(dataSql, params);
+      const list = await query(dataSql, listParams);
       const maskedList = list.map(item => ({
         ...item,
         patient_phone: maskPhone(item.patient_phone)
@@ -863,23 +1033,21 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
         code: 200,
         data: {
           list: maskedList,
-          pagination: {
-            total,
-            page,
-            pageSize,
-            totalPages: Math.ceil(total / pageSize)
-          }
+          total,
+          counts: countsMap,
+          page,
+          pageSize
         }
       });
     } else {
       const dataSql = `
-        SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
+        SELECT a.*, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
-        WHERE 1=1 ${whereClause}
+        WHERE 1=1 ${listWhere}
         ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC
       `;
-      const list = await query(dataSql, params);
+      const list = await query(dataSql, listParams);
       const maskedList = list.map(item => ({
         ...item,
         patient_phone: maskPhone(item.patient_phone)
@@ -900,7 +1068,7 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   try {
     await autoUpdateExpiredAppointments();
     let sql = `
-      SELECT a.*, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
+      SELECT a.*, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
              p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history,
              u.member_level
       FROM appointments a
@@ -992,6 +1160,9 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       }
       if (req.user.role === 'doctor' && req.user.doctor_id && nextDoctorId !== Number(req.user.doctor_id)) {
         return res.status(403).json({ code: 403, message: '医生账号不能将预约改约给其他医生' });
+      }
+      if (!await assertDoctorStoreMapping(nextDoctorId, nextStoreId)) {
+        return res.status(400).json({ code: 400, message: '目标医生未绑定该门店，不能改约' });
       }
 
       const nextSchedule = await get(
@@ -1103,6 +1274,9 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
   }
   if (req.user.role === 'doctor' && (!req.user.doctor_id || Number(req.user.doctor_id) !== Number(doctor_id))) {
     return res.status(403).json({ code: 403, message: '医生账号只能为本人创建预约' });
+  }
+  if (!await assertDoctorStoreMapping(doctor_id, store_id)) {
+    return res.status(400).json({ code: 400, message: '所选医生未绑定该门店，不能创建预约' });
   }
 
   try {
@@ -1225,6 +1399,127 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
   }
 
   try {
+    const appendPatientListDetails = async (list) => {
+      if (!list.length) return [];
+
+      const patientIds = list.map(item => item.id);
+      const placeholders = patientIds.map(() => '?').join(',');
+      const userIds = [...new Set(list.map(item => item.user_id).filter(Boolean))];
+      const userPlaceholders = userIds.map(() => '?').join(',');
+
+      const recordRows = await query(`
+        SELECT mr.patient_id, mr.visit_date, mr.diagnosis, mr.prescription, d.name as doctor_name
+        FROM medical_records mr
+        LEFT JOIN doctors d ON mr.doctor_id = d.id
+        WHERE mr.patient_id IN (${placeholders})
+        ORDER BY mr.visit_date DESC, mr.id DESC
+      `, patientIds);
+
+      const recordsByPatient = recordRows.reduce((map, row) => {
+        if (!map[row.patient_id]) map[row.patient_id] = [];
+        if (map[row.patient_id].length < 5) {
+          map[row.patient_id].push({
+            date: row.visit_date instanceof Date ? row.visit_date.toISOString().slice(0, 10) : String(row.visit_date || ''),
+            doctor: row.doctor_name || '',
+            type: '诊疗',
+            diagnosis: row.diagnosis || '',
+            treatment: row.prescription || ''
+          });
+        }
+        return map;
+      }, {});
+
+      const orderRows = await query(`
+        SELECT p.id as patient_id, COALESCE(SUM(o.pay_amount), 0) as total_spent
+        FROM patients p
+        LEFT JOIN orders o ON o.user_id = p.user_id AND o.status IN ('paid', 'delivered', 'completed')
+        WHERE p.id IN (${placeholders})
+        GROUP BY p.id
+      `, patientIds);
+      const spentByPatient = orderRows.reduce((map, row) => {
+        map[row.patient_id] = Number(row.total_spent || 0);
+        return map;
+      }, {});
+
+      const familyRows = userIds.length ? await query(`
+        SELECT user_id, COUNT(*) as family_count
+        FROM patients
+        WHERE user_id IN (${userPlaceholders})
+        GROUP BY user_id
+      `, userIds) : [];
+      const familyCountByUser = familyRows.reduce((map, row) => {
+        map[row.user_id] = Number(row.family_count || 0);
+        return map;
+      }, {});
+
+      const essRows = patientIds.length ? await query(`
+        SELECT id, patient_id, total_score, risk_level, created_at
+        FROM ess_assessments
+        WHERE patient_id IN (${placeholders})
+        ORDER BY created_at DESC, id DESC
+      `, patientIds) : [];
+      const essByPatient = {};
+      const essAbnormalByPatient = {};
+      essRows.forEach(row => {
+        if (row.patient_id && !essByPatient[row.patient_id]) essByPatient[row.patient_id] = row;
+        if (row.risk_level && row.risk_level !== 'normal') essAbnormalByPatient[row.patient_id] = true;
+      });
+
+      const snoreRows = patientIds.length ? await query(`
+        SELECT id, patient_id, apnea_events, risk_level, created_at
+        FROM snore_assessments
+        WHERE patient_id IN (${placeholders})
+        ORDER BY created_at DESC, id DESC
+      `, patientIds) : [];
+      const snoreByPatient = {};
+      const snoreAbnormalByPatient = {};
+      snoreRows.forEach(row => {
+        if (row.patient_id && !snoreByPatient[row.patient_id]) snoreByPatient[row.patient_id] = row;
+        if (row.risk_level && !['normal', 'low'].includes(row.risk_level)) snoreAbnormalByPatient[row.patient_id] = true;
+      });
+
+      return list.map(item => {
+        const records = recordsByPatient[item.id] || [];
+        const ess = essByPatient[item.id] || null;
+        const snore = snoreByPatient[item.id] || null;
+        const medicalHistory = [item.medical_history, item.allergy_history]
+          .filter(Boolean)
+          .map(text => String(text).trim())
+          .filter(Boolean);
+        const tags = [];
+        if (item.has_snore === 1) tags.push('有鼾症记录');
+
+        return {
+          ...item,
+          patient_no: item.patient_no,
+          phone: maskPhone(item.phone),
+          user_phone: maskPhone(item.user_phone),
+          total_spent: spentByPatient[item.id] || 0,
+          last_visit: item.last_visit instanceof Date ? item.last_visit.toISOString().slice(0, 10) : item.last_visit,
+          resolved_source: item.patient_source || item.latest_source || (item.openid && item.openid.startsWith('manual_') ? 'walk_in' : 'mini_app'),
+          status: item.last_visit ? 'active' : 'inactive',
+          tags,
+          family_count: Math.max(0, (familyCountByUser[item.user_id] || 0) - 1),
+          ess_result: ess ? {
+            id: ess.id,
+            total_score: Number(ess.total_score || 0),
+            risk_level: ess.risk_level,
+            created_at: ess.created_at
+          } : null,
+          ess_has_abnormal: Boolean(essAbnormalByPatient[item.id]),
+          snore_result: snore ? {
+            id: snore.id,
+            apnea_events: Number(snore.apnea_events || 0),
+            risk_level: snore.risk_level,
+            created_at: snore.created_at
+          } : null,
+          snore_has_abnormal: Boolean(snoreAbnormalByPatient[item.id]),
+          medical_history_list: medicalHistory,
+          recent_records: records
+        };
+      });
+    };
+
     if (page) {
       const countSql = `
         SELECT COUNT(*) as total
@@ -1237,20 +1532,21 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
 
       const offset = (page - 1) * pageSize;
       const dataSql = `
-        SELECT p.*, u.nickname as user_nickname, u.phone as user_phone, 
-               (SELECT COUNT(*) FROM appointments WHERE patient_id = p.id) as visit_count
+        SELECT p.*, p.source as patient_source, u.openid, u.nickname as user_nickname, u.phone as user_phone, u.member_level,
+               au.name as follower_name,
+               (SELECT stage FROM patient_crm_records WHERE patient_id = p.id ORDER BY id DESC LIMIT 1) as crm_stage,
+               (SELECT COUNT(*) FROM appointments WHERE patient_id = p.id AND status NOT IN ('cancelled', 'no_show')) as visit_count,
+               (SELECT MAX(appointment_date) FROM appointments WHERE patient_id = p.id AND status NOT IN ('cancelled', 'no_show')) as last_visit,
+               (SELECT source FROM appointments WHERE patient_id = p.id ORDER BY appointment_date DESC, id DESC LIMIT 1) as latest_source
         FROM patients p
         JOIN users u ON p.user_id = u.id
+        LEFT JOIN admin_users au ON p.follower_id = au.id
         WHERE 1=1 ${whereClause}
         ORDER BY p.id DESC
         LIMIT ${pageSize} OFFSET ${offset}
       `;
       const list = await query(dataSql, params);
-      const maskedList = list.map(item => ({
-        ...item,
-        phone: maskPhone(item.phone),
-        user_phone: maskPhone(item.user_phone)
-      }));
+      const maskedList = await appendPatientListDetails(list);
 
       res.json({
         code: 200,
@@ -1266,24 +1562,88 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
       });
     } else {
       const dataSql = `
-        SELECT p.*, u.nickname as user_nickname, u.phone as user_phone, 
-               (SELECT COUNT(*) FROM appointments WHERE patient_id = p.id) as visit_count
+        SELECT p.*, p.source as patient_source, u.openid, u.nickname as user_nickname, u.phone as user_phone, u.member_level,
+               au.name as follower_name,
+               (SELECT stage FROM patient_crm_records WHERE patient_id = p.id ORDER BY id DESC LIMIT 1) as crm_stage,
+               (SELECT COUNT(*) FROM appointments WHERE patient_id = p.id AND status NOT IN ('cancelled', 'no_show')) as visit_count,
+               (SELECT MAX(appointment_date) FROM appointments WHERE patient_id = p.id AND status NOT IN ('cancelled', 'no_show')) as last_visit,
+               (SELECT source FROM appointments WHERE patient_id = p.id ORDER BY appointment_date DESC, id DESC LIMIT 1) as latest_source
         FROM patients p
         JOIN users u ON p.user_id = u.id
+        LEFT JOIN admin_users au ON p.follower_id = au.id
         WHERE 1=1 ${whereClause}
         ORDER BY p.id DESC
       `;
       const list = await query(dataSql, params);
-      const maskedList = list.map(item => ({
-        ...item,
-        phone: maskPhone(item.phone),
-        user_phone: maskPhone(item.user_phone)
-      }));
+      const maskedList = await appendPatientListDetails(list);
       res.json({ code: 200, data: maskedList });
     }
   } catch (error) {
     console.error('Failed to query patients list:', error);
     res.status(500).json({ code: 500, message: '获取患者列表失败' });
+  }
+});
+
+// GET /api/admin/admin-users (List of all backend accounts)
+app.get('/api/admin/admin-users', authenticateToken, async (req, res) => {
+  try {
+    const users = await query('SELECT id, username, name, phone FROM admin_users ORDER BY id ASC');
+    res.json({ code: 200, data: users });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '获取跟进人列表失败' });
+  }
+});
+
+// PUT /api/admin/patients/:id/follower (Assign a follower)
+app.put('/api/admin/patients/:id/follower', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { follower_id } = req.body;
+  try {
+    await run('UPDATE patients SET follower_id = ? WHERE id = ?', [follower_id || null, id]);
+    res.json({ code: 200, message: '分配跟进人成功' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '分配跟进人失败' });
+  }
+});
+
+// GET /api/admin/patients/:id/crm-records (Get CRM follow-up logs)
+app.get('/api/admin/patients/:id/crm-records', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const records = await query(`
+      SELECT r.*, au.name as creator_name
+      FROM patient_crm_records r
+      JOIN admin_users au ON r.admin_user_id = au.id
+      WHERE r.patient_id = ?
+      ORDER BY r.id DESC
+    `, [id]);
+    res.json({ code: 200, data: records });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '获取跟进记录失败' });
+  }
+});
+
+// POST /api/admin/patients/:id/crm-records (Add a CRM follow-up log)
+app.post('/api/admin/patients/:id/crm-records', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { content, stage } = req.body;
+  if (!content || !stage) {
+    return res.status(400).json({ code: 400, message: '跟进内容和阶段不能为空' });
+  }
+  try {
+    await run(
+      'INSERT INTO patient_crm_records (patient_id, admin_user_id, content, stage) VALUES (?, ?, ?, ?)',
+      [id, req.user.id, content, stage]
+    );
+    await logAdminAction(req.user.id, 'create_crm_record', 'patient', id, { stage, contentSnippet: content.slice(0, 50) }, req.ip || null);
+    res.json({ code: 200, message: '添加跟进记录成功' });
+  } catch (error) {
+    console.error(error);
+    await logAdminAction(req.user.id, 'create_crm_record', 'patient', id, { stage }, req.ip || null, 'fail', error.message || '添加跟进记录失败');
+    res.status(500).json({ code: 500, message: '添加跟进记录失败' });
   }
 });
 
@@ -1310,20 +1670,33 @@ app.post('/api/admin/patients', authenticateToken, async (req, res) => {
       'SVIP': 'diamond'
     };
     const memberLevel = levelMap[level] || 'normal';
+    const sourceMap = {
+      '小程序': 'mini_app',
+      '分销': 'distribution',
+      '转介绍': 'referral',
+      '门店': 'walk_in',
+      '直播': 'live'
+    };
+    const patientSource = sourceMap[source] || 'walk_in';
 
     const resultData = await transaction(async (conn) => {
+      const patientNo = await generateUniquePatientNo(async (candidate) => {
+        const [rows] = await conn.execute(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
+        return rows.length > 0;
+      });
       const [userResult] = await conn.execute(
         `INSERT INTO users (openid, nickname, phone, gender, member_level) VALUES (?, ?, ?, ?, ?)`,
         [openid, name, phone, genderVal, memberLevel]
       );
 
       const [patientResult] = await conn.execute(
-        `INSERT INTO patients (user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, 'self', ?, ?, ?, 0)`,
-        [userResult.insertId, name, genderVal, age || null, phone]
+        `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, source, has_snore) VALUES (?, ?, ?, 'self', ?, ?, ?, ?, 0)`,
+        [patientNo, userResult.insertId, name, genderVal, age || null, phone, patientSource]
       );
 
       return {
         id: patientResult.insertId,
+        patient_no: patientNo,
         name,
         phone,
         gender,
@@ -1333,6 +1706,7 @@ app.post('/api/admin/patients', authenticateToken, async (req, res) => {
       };
     });
 
+    await logAdminAction(req.user.id, 'create_patient', 'patient', resultData.id, { name, phone: resultData.phone, source }, req.ip || null);
     res.json({
       code: 200,
       message: '手动建档成功',
@@ -1340,6 +1714,7 @@ app.post('/api/admin/patients', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Failed to create patient:', error);
+    await logAdminAction(req.user.id, 'create_patient', 'patient', null, { name, phone, source }, req.ip || null, 'fail', error.message || '手动建档失败');
     if (error.message && error.message.includes('UNIQUE')) {
       res.status(400).json({ code: 400, message: '该手机号已在系统中建档' });
     } else {
@@ -1348,24 +1723,113 @@ app.post('/api/admin/patients', authenticateToken, async (req, res) => {
   }
 });
 
+app.put('/api/admin/patients/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { name, phone, gender, age, level, source, medical_history, allergy_history } = req.body || {};
+
+  if (!await verifyPatientAccess(id, req.user)) {
+    return res.status(403).json({ code: 403, message: '您无权修改该患者的信息' });
+  }
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ code: 400, message: '患者姓名不能为空' });
+  }
+
+  try {
+    const patient = await get(
+      `SELECT p.*, u.id as user_id, u.phone as user_phone, u.member_level
+       FROM patients p
+       JOIN users u ON p.user_id = u.id
+       WHERE p.id = ?`,
+      [id]
+    );
+    if (!patient) {
+      return res.status(404).json({ code: 404, message: '患者不存在' });
+    }
+
+    const cleanPhone = phone ? String(phone).trim() : null;
+    if (cleanPhone) {
+      const existing = await get(
+        `SELECT id FROM users WHERE phone = ? AND id != ? LIMIT 1`,
+        [cleanPhone, patient.user_id]
+      );
+      if (existing) {
+        return res.status(400).json({ code: 400, message: '该手机号已被其他患者使用' });
+      }
+    }
+
+    const genderVal = gender === '男' || gender === 1 ? 1 : gender === '女' || gender === 2 ? 2 : 0;
+    const levelMap = {
+      '普通': 'normal',
+      'VIP': 'silver',
+      'SVIP': 'diamond',
+      normal: 'normal',
+      silver: 'silver',
+      gold: 'gold',
+      diamond: 'diamond'
+    };
+    const memberLevel = levelMap[level] || patient.member_level || 'normal';
+
+    await transaction(async (conn) => {
+      await conn.execute(
+        `UPDATE patients
+         SET name = ?, gender = ?, age = ?, phone = ?, source = ?, medical_history = ?, allergy_history = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [
+          String(name).trim(),
+          genderVal,
+          age !== undefined && age !== null && age !== '' ? Number(age) : null,
+          cleanPhone,
+          mapPatientSource(source),
+          medical_history || null,
+          allergy_history || null,
+          id
+        ]
+      );
+      await conn.execute(
+        `UPDATE users SET nickname = ?, phone = ?, gender = ?, member_level = ? WHERE id = ?`,
+        [String(name).trim(), cleanPhone, genderVal, memberLevel, patient.user_id]
+      );
+    });
+
+    await logAdminAction(req.user.id, 'update_patient', 'patient', id, { name, phone: cleanPhone, source });
+    res.json({ code: 200, message: '保存患者信息成功' });
+  } catch (error) {
+    console.error('Failed to update patient:', error);
+    res.status(500).json({ code: 500, message: '保存患者信息失败' });
+  }
+});
+
 
 app.get('/api/admin/patients/:id/sleep-diagnostics', authenticateToken, async (req, res) => {
   const { id } = req.params;
+  if (!await verifyPatientAccess(id, req.user)) {
+    return res.status(403).json({ code: 403, message: '您无权访问该患者的睡眠诊断数据' });
+  }
   try {
     const patient = await get('SELECT user_id FROM patients WHERE id = ?', [id]);
     if (!patient) return res.status(404).json({ code: 404, message: '患者不存在' });
-    
-    // 1. Get latest ESS assessment
-    const ess = await get('SELECT * FROM ess_assessments WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', [patient.user_id]);
-    
-    // 2. Get latest Snore assessment
-    const snore = await get('SELECT * FROM snore_assessments WHERE user_id = ? ORDER BY created_at DESC LIMIT 1', [patient.user_id]);
-    
-    // 3. Get latest wearing records stats
+
+    const ess = await get(
+      `SELECT * FROM ess_assessments
+       WHERE patient_id = ? OR (patient_id IS NULL AND user_id = ?)
+       ORDER BY created_at DESC LIMIT 1`,
+      [id, patient.user_id]
+    );
+    const snore = await get(
+      `SELECT * FROM snore_assessments
+       WHERE patient_id = ? OR (patient_id IS NULL AND user_id = ?)
+       ORDER BY created_at DESC LIMIT 1`,
+      [id, patient.user_id]
+    );
     const wearingStats = await get(
-      `SELECT COUNT(*) as total_days, COALESCE(AVG(duration_mins), 0) as avg_duration, COALESCE(AVG(comfort_score), 0) as avg_comfort
-       FROM wearing_records WHERE user_id = ?`,
-      [patient.user_id]
+      `SELECT COUNT(wl.id) as total_days,
+              COALESCE(AVG(wl.wear_duration), 0) as avg_duration,
+              COALESCE(AVG(wl.comfort), 0) as avg_comfort,
+              COALESCE(AVG(wl.ahi_index), 0) as avg_ahi
+       FROM treatment_records tr
+       LEFT JOIN wearing_logs wl ON wl.treatment_id = tr.id AND wl.source = 'mini_program_checkin'
+       WHERE tr.patient_id = ?`,
+      [id]
     );
 
     res.json({
@@ -1391,7 +1855,9 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
 
   try {
     const patient = await get(
-      `SELECT p.*, u.nickname as user_nickname, u.avatar_url as user_avatar, u.phone as user_phone,
+      `SELECT p.*, u.nickname as user_nickname, u.avatar_url as user_avatar, u.phone as user_phone, u.member_level,
+              au.name as follower_name,
+              (SELECT stage FROM patient_crm_records WHERE patient_id = p.id ORDER BY id DESC LIMIT 1) as crm_stage,
               (
                 SELECT COALESCE(d.nickname, pu.nickname, pu.phone)
                 FROM distribution_relationships dr
@@ -1403,6 +1869,7 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
               ) as referrer_name
        FROM patients p
        JOIN users u ON p.user_id = u.id
+       LEFT JOIN admin_users au ON p.follower_id = au.id
        WHERE p.id = ?`,
       [id]
     );
@@ -1431,10 +1898,86 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
 
     const appointments = await query(appointmentsSql, appointmentsParams);
 
+    const totalSpentRow = await get(
+      `SELECT COALESCE(SUM(pay_amount), 0) as total_spent
+       FROM orders
+       WHERE user_id = ? AND status IN ('paid', 'processing', 'shipping', 'shipped', 'delivered', 'completed')`,
+      [patient.user_id]
+    );
+
+    const latestMedicalRecord = await get(
+      `SELECT r.*, d.name as doctor_name, d.title as doctor_title, d.specialty as doctor_specialty, s.name as store_name
+       FROM medical_records r
+       JOIN doctors d ON r.doctor_id = d.id
+       JOIN stores s ON r.store_id = s.id
+       WHERE r.patient_id = ?
+       ORDER BY r.visit_date DESC, r.id DESC
+       LIMIT 1`,
+      [id]
+    );
+
+    const activeTreatment = await get(
+      `SELECT t.*, d.name as doctor_name
+       FROM treatment_records t
+       JOIN doctors d ON t.doctor_id = d.id
+       WHERE t.patient_id = ? AND t.status = 'active'
+       ORDER BY t.start_date DESC, t.id DESC
+       LIMIT 1`,
+      [id]
+    );
+
+    const nextFollowup = await get(
+      `SELECT t.*, d.name as doctor_name
+       FROM follow_up_tasks t
+       JOIN doctors d ON t.doctor_id = d.id
+       WHERE t.patient_id = ? AND t.status != 'completed'
+       ORDER BY t.due_date ASC, t.id ASC
+       LIMIT 1`,
+      [id]
+    );
+
     patient.phone = maskPhone(patient.phone);
     patient.user_phone = maskPhone(patient.user_phone);
 
-    res.json({ code: 200, data: { ...patient, appointments } });
+    // Fetch family members with their latest ESS and Snore results
+    const familyMembers = await query(
+      `SELECT id, name, relation, gender, age, phone FROM patients WHERE user_id = ?`,
+      [patient.user_id]
+    );
+    const familyMembersWithDiagnostics = [];
+    for (const member of familyMembers) {
+      const ess = await get(
+        `SELECT total_score, risk_level, created_at FROM ess_assessments WHERE patient_id = ? ORDER BY created_at DESC LIMIT 1`,
+        [member.id]
+      );
+      const snore = await get(
+        `SELECT apnea_events, risk_level, created_at FROM snore_assessments WHERE patient_id = ? ORDER BY created_at DESC LIMIT 1`,
+        [member.id]
+      );
+      familyMembersWithDiagnostics.push({
+        id: member.id.toString(),
+        name: member.name,
+        relation: member.relation,
+        gender: member.gender,
+        age: member.age,
+        phone: maskPhone(member.phone),
+        ess: ess || null,
+        snore: snore || null
+      });
+    }
+
+    res.json({
+      code: 200,
+      data: {
+        ...patient,
+        total_spent: Number(totalSpentRow?.total_spent || 0),
+        latest_medical_record: latestMedicalRecord || null,
+        active_treatment: activeTreatment || null,
+        next_followup: nextFollowup || null,
+        appointments,
+        family_members: familyMembersWithDiagnostics
+      }
+    });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取患者详情失败' });
   }
@@ -1472,6 +2015,55 @@ app.get('/api/admin/patients/:id/phone', authenticateToken, async (req, res) => 
   }
 });
 
+app.get('/api/admin/patients/:id/orders', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  if (!await verifyPatientAccess(id, req.user)) {
+    return res.status(403).json({ code: 403, message: '您无权访问该患者的订单记录' });
+  }
+
+  try {
+    const patient = await get('SELECT user_id FROM patients WHERE id = ?', [id]);
+    if (!patient) {
+      return res.status(404).json({ code: 404, message: '患者不存在' });
+    }
+
+    const list = await query(
+      `SELECT o.*, u.nickname as buyer_nickname, u.phone as buyer_phone
+       FROM orders o
+       JOIN users u ON o.user_id = u.id
+       WHERE o.user_id = ?
+       ORDER BY o.created_at DESC`,
+      [patient.user_id]
+    );
+
+    const orderIds = list.map(o => o.id);
+    let allOrderItems = [];
+    if (orderIds.length > 0) {
+      const placeholders = orderIds.map(() => '?').join(',');
+      allOrderItems = await query(`SELECT * FROM order_items WHERE order_id IN (${placeholders})`, orderIds);
+    }
+    const orderItemsMap = {};
+    allOrderItems.forEach(item => {
+      if (!orderItemsMap[item.order_id]) orderItemsMap[item.order_id] = [];
+      orderItemsMap[item.order_id].push(item);
+    });
+
+    for (const order of list) {
+      order.items = orderItemsMap[order.id] || [];
+      try {
+        order.shipping_address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address;
+      } catch (error) {
+        // Keep original value if historical data is not JSON.
+      }
+    }
+
+    res.json({ code: 200, data: list });
+  } catch (error) {
+    console.error('Failed to get patient orders:', error);
+    res.status(500).json({ code: 500, message: '获取患者订单记录失败' });
+  }
+});
+
 // Medical Records (病历)
 app.get('/api/admin/patients/:id/medical-records', authenticateToken, async (req, res) => {
   const { id } = req.params;
@@ -1482,7 +2074,7 @@ app.get('/api/admin/patients/:id/medical-records', authenticateToken, async (req
 
   try {
     let sql = `
-       SELECT r.*, d.name as doctor_name, d.title as doctor_title, s.name as store_name
+       SELECT r.*, d.name as doctor_name, d.title as doctor_title, d.specialty as doctor_specialty, s.name as store_name
        FROM medical_records r
        JOIN doctors d ON r.doctor_id = d.id
        JOIN stores s ON r.store_id = s.id
@@ -1500,9 +2092,52 @@ app.get('/api/admin/patients/:id/medical-records', authenticateToken, async (req
     sql += ` ORDER BY r.visit_date DESC`;
 
     const records = await query(sql, params);
-    res.json({ code: 200, data: records });
+    res.json({
+      code: 200,
+      data: records.map(record => ({
+        ...record,
+        attachments: safeJsonArray(record.attachments)
+      }))
+    });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取门诊病历失败' });
+  }
+});
+
+app.put('/api/admin/patients/:id/medical-records/:recordId/attachments', authenticateToken, async (req, res) => {
+  const { id, recordId } = req.params;
+  const attachments = Array.isArray(req.body?.attachments) ? req.body.attachments : [];
+
+  if (!await verifyPatientAccess(id, req.user)) {
+    return res.status(403).json({ code: 403, message: '您无权维护该患者的病历附件' });
+  }
+
+  try {
+    const record = await get('SELECT id FROM medical_records WHERE id = ? AND patient_id = ?', [recordId, id]);
+    if (!record) {
+      return res.status(404).json({ code: 404, message: '病历记录不存在' });
+    }
+
+    const normalized = attachments
+      .filter(item => item && item.url)
+      .map(item => ({
+        name: String(item.name || '病历附件').slice(0, 120),
+        url: String(item.url),
+        path: item.path ? String(item.path) : String(item.url),
+        size: Number(item.size || 0),
+        mimeType: item.mimeType ? String(item.mimeType) : '',
+        uploaded_at: item.uploaded_at || new Date().toISOString()
+      }));
+
+    await run(
+      `UPDATE medical_records SET attachments = ? WHERE id = ? AND patient_id = ?`,
+      [JSON.stringify(normalized), recordId, id]
+    );
+    await logAdminAction(req.user.id, 'update_medical_record_attachments', 'medical_record', recordId, { patientId: id, count: normalized.length });
+    res.json({ code: 200, message: '保存病历附件成功', data: normalized });
+  } catch (error) {
+    console.error('Failed to save medical record attachments:', error);
+    res.status(500).json({ code: 500, message: '保存病历附件失败' });
   }
 });
 
@@ -1564,6 +2199,118 @@ app.post('/api/admin/patients/:id/medical-records', authenticateToken, async (re
   }
 });
 
+const getConsultationAppointment = async (id, user, medicalRecord, actionText) => {
+  const appt = await get(`SELECT * FROM appointments WHERE id = ?`, [id]);
+  if (!appt) {
+    const error = new Error('预约不存在');
+    error.statusCode = 404;
+    throw error;
+  }
+  if (user.role !== 'super_admin' && user.store_id && Number(user.store_id) !== Number(appt.store_id)) {
+    const error = new Error(`您无权${actionText}该门店预约`);
+    error.statusCode = 403;
+    throw error;
+  }
+  if (user.role === 'doctor' && user.doctor_id && Number(user.doctor_id) !== Number(appt.doctor_id)) {
+    const error = new Error(`医生账号只能${actionText}自己的预约`);
+    error.statusCode = 403;
+    throw error;
+  }
+  if (!await verifyPatientAccess(appt.patient_id, user)) {
+    const error = new Error('您无权操作该患者');
+    error.statusCode = 403;
+    throw error;
+  }
+  if (
+    user.role === 'doctor' &&
+    user.doctor_id &&
+    medicalRecord.doctor_id &&
+    Number(medicalRecord.doctor_id) !== Number(user.doctor_id)
+  ) {
+    const error = new Error(`医生账号只能以本人身份${actionText}诊疗`);
+    error.statusCode = 403;
+    throw error;
+  }
+  return appt;
+};
+
+const saveAppointmentMedicalRecord = async (conn, appt, medicalRecord) => {
+  const visitDate = medicalRecord.visit_date || new Date().toISOString().split('T')[0];
+  const doctorId = medicalRecord.doctor_id || appt.doctor_id;
+  const storeId = medicalRecord.store_id || appt.store_id;
+  const [existingRows] = await conn.execute(
+    `SELECT id FROM medical_records WHERE appointment_id = ? ORDER BY id DESC LIMIT 1`,
+    [appt.id]
+  );
+
+  let medicalRecordId = existingRows[0] ? existingRows[0].id : null;
+  if (medicalRecordId) {
+    await conn.execute(
+      `UPDATE medical_records
+       SET doctor_id = ?, store_id = ?, visit_date = ?, diagnosis = ?, prescription = ?, doctor_advice = ?, note = ?
+       WHERE id = ?`,
+      [
+        doctorId,
+        storeId,
+        visitDate,
+        medicalRecord.diagnosis,
+        medicalRecord.prescription || null,
+        medicalRecord.doctor_advice || null,
+        medicalRecord.note || null,
+        medicalRecordId
+      ]
+    );
+  } else {
+    const [mrResult] = await conn.execute(
+      `INSERT INTO medical_records (patient_id, doctor_id, store_id, appointment_id, visit_date, diagnosis, prescription, doctor_advice, note)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        appt.patient_id,
+        doctorId,
+        storeId,
+        appt.id,
+        visitDate,
+        medicalRecord.diagnosis,
+        medicalRecord.prescription || null,
+        medicalRecord.doctor_advice || null,
+        medicalRecord.note || null
+      ]
+    );
+    medicalRecordId = mrResult.insertId;
+  }
+
+  await conn.execute(
+    `UPDATE patients SET medical_history = COALESCE(?, medical_history), allergy_history = COALESCE(?, allergy_history) WHERE id = ?`,
+    [medicalRecord.medical_history || null, medicalRecord.allergy_history || null, appt.patient_id]
+  );
+
+  return {
+    medicalRecordId,
+    visitDate,
+    doctorId,
+    storeId
+  };
+};
+
+app.post('/api/admin/appointments/:id/save-consultation', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { medical_record } = req.body;
+  if (!medical_record || !medical_record.diagnosis) {
+    return res.status(400).json({ code: 400, message: '诊断病历信息不能为空' });
+  }
+
+  try {
+    const appt = await getConsultationAppointment(id, req.user, medical_record, '保存');
+    const result = await transaction(async (conn) => saveAppointmentMedicalRecord(conn, appt, medical_record));
+
+    await logAdminAction(req.user.id, 'save_consultation', 'appointment', id, result);
+    res.json({ code: 200, message: '诊疗信息已保存', data: result });
+  } catch (error) {
+    console.error('Save consultation error:', error);
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.statusCode ? error.message : '保存诊疗信息失败' });
+  }
+});
+
 app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { medical_record, treatment, adjustment, follow_up } = req.body;
@@ -1572,66 +2319,53 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
   }
 
   try {
-    const appt = await get(`SELECT * FROM appointments WHERE id = ?`, [id]);
-    if (!appt) {
-      return res.status(404).json({ code: 404, message: '预约不存在' });
-    }
-    if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(appt.store_id)) {
-      return res.status(403).json({ code: 403, message: '您无权完成该门店预约' });
-    }
-    if (req.user.role === 'doctor' && req.user.doctor_id && Number(req.user.doctor_id) !== Number(appt.doctor_id)) {
-      return res.status(403).json({ code: 403, message: '医生账号只能完成自己的预约' });
-    }
-    if (!await verifyPatientAccess(appt.patient_id, req.user)) {
-      return res.status(403).json({ code: 403, message: '您无权操作该患者' });
-    }
-    if (
-      req.user.role === 'doctor' &&
-      req.user.doctor_id &&
-      medical_record.doctor_id &&
-      Number(medical_record.doctor_id) !== Number(req.user.doctor_id)
-    ) {
-      return res.status(403).json({ code: 403, message: '医生账号只能以本人身份完成诊疗' });
-    }
+    const appt = await getConsultationAppointment(id, req.user, medical_record, '完成');
 
     const result = await transaction(async (conn) => {
-      const visitDate = medical_record.visit_date || new Date().toISOString().split('T')[0];
-      const doctorId = medical_record.doctor_id || appt.doctor_id;
-      const storeId = medical_record.store_id || appt.store_id;
-
-      const [mrResult] = await conn.execute(
-        `INSERT INTO medical_records (patient_id, doctor_id, store_id, appointment_id, visit_date, diagnosis, prescription, doctor_advice, note)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          appt.patient_id,
-          doctorId,
-          storeId,
-          appt.id,
-          visitDate,
-          medical_record.diagnosis,
-          medical_record.prescription || null,
-          medical_record.doctor_advice || null,
-          medical_record.note || null
-        ]
-      );
-      const medicalRecordId = mrResult.insertId;
-
-      await conn.execute(
-        `UPDATE patients SET medical_history = COALESCE(?, medical_history), allergy_history = COALESCE(?, allergy_history) WHERE id = ?`,
-        [medical_record.medical_history || null, medical_record.allergy_history || null, appt.patient_id]
-      );
+      const { medicalRecordId, visitDate, doctorId } = await saveAppointmentMedicalRecord(conn, appt, medical_record);
 
       let treatmentId = treatment && treatment.treatment_id ? treatment.treatment_id : null;
       if (treatment && treatment.create) {
+        const deviceProduct = treatment.device_product_id
+          ? await conn.execute(
+              `SELECT id, name, image_url, price, description
+               FROM products
+               WHERE id = ? AND category = 'device' AND status = 'on'
+               LIMIT 1`,
+              [treatment.device_product_id]
+            )
+          : null;
+        const selectedDevice = deviceProduct && deviceProduct[0][0] ? deviceProduct[0][0] : null;
+        if (!selectedDevice) {
+          const err = new Error('请选择已上架的物理阻鼾器设备');
+          err.statusCode = 400;
+          throw err;
+        }
+        if (treatment.initial_advancement === undefined || treatment.initial_advancement === null || isNaN(treatment.initial_advancement) || treatment.initial_advancement < 0 || treatment.initial_advancement > 15) {
+          const err = new Error('设备初始前伸量调节参数必须在 0 ~ 15 mm 之间');
+          err.statusCode = 400;
+          throw err;
+        }
+
         await conn.execute(`UPDATE treatment_records SET status = 'paused' WHERE patient_id = ? AND status = 'active'`, [appt.patient_id]);
+        const deviceSnapshot = buildTreatmentDeviceSnapshot(selectedDevice);
         const [trResult] = await conn.execute(
-          `INSERT INTO treatment_records (patient_id, doctor_id, medical_record_id, device_model, initial_advancement, current_advancement, start_date, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+          `INSERT INTO treatment_records (
+             patient_id, doctor_id, medical_record_id, device_product_id,
+             device_product_name, device_product_image_url, device_product_price, device_product_description,
+             device_model, initial_advancement, current_advancement, start_date, status
+           )
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
           [
             appt.patient_id,
             doctorId,
             medicalRecordId,
-            treatment.device_model,
+            deviceSnapshot.id,
+            deviceSnapshot.name,
+            deviceSnapshot.imageUrl,
+            deviceSnapshot.price,
+            deviceSnapshot.description,
+            deviceSnapshot.name,
             treatment.initial_advancement,
             treatment.initial_advancement,
             treatment.start_date || visitDate
@@ -1641,6 +2375,11 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
       }
 
       if (adjustment && adjustment.create && treatmentId) {
+        if (adjustment.adjusted_advancement === undefined || adjustment.adjusted_advancement === null || isNaN(adjustment.adjusted_advancement) || adjustment.adjusted_advancement < 0 || adjustment.adjusted_advancement > 15) {
+          const err = new Error('单次设备调整量参数必须在 0 ~ 15 mm 之间');
+          err.statusCode = 400;
+          throw err;
+        }
         await conn.execute(
           `INSERT INTO device_adjustments (treatment_id, adjust_date, operator_id, adjusted_advancement, patient_feedback, instructions)
            VALUES (?, ?, ?, ?, ?, ?)`,
@@ -1687,7 +2426,7 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
     res.json({ code: 200, message: '接诊已完成', data: result });
   } catch (error) {
     console.error('Complete consultation error:', error);
-    res.status(500).json({ code: 500, message: '结束接诊失败' });
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.statusCode ? error.message : '结束接诊失败' });
   }
 });
 
@@ -1757,7 +2496,7 @@ app.get('/api/admin/patients/:id/treatment', authenticateToken, async (req, res)
 
   try {
     const tr = await get(
-      `SELECT t.*, d.name as doctor_name 
+      `SELECT t.*, d.name as doctor_name
        FROM treatment_records t
        JOIN doctors d ON t.doctor_id = d.id
        WHERE t.patient_id = ? AND t.status = 'active'`,
@@ -1770,7 +2509,7 @@ app.get('/api/admin/patients/:id/treatment', authenticateToken, async (req, res)
 
     // Fetch wearing logs
     const logs = await query(
-      `SELECT * FROM wearing_logs WHERE treatment_id = ? ORDER BY date DESC LIMIT 30`,
+      `SELECT * FROM wearing_logs WHERE treatment_id = ? AND source = 'mini_program_checkin' ORDER BY date DESC LIMIT 30`,
       [tr.id]
     );
 
@@ -1784,7 +2523,21 @@ app.get('/api/admin/patients/:id/treatment', authenticateToken, async (req, res)
       [tr.id]
     );
 
-    res.json({ code: 200, data: { ...tr, logs, adjustments } });
+    res.json({
+      code: 200,
+      data: {
+        ...tr,
+        device: tr.device_product_id ? {
+          id: String(tr.device_product_id),
+          name: tr.device_product_name || tr.device_model,
+          image_url: tr.device_product_image_url || '',
+          price: Number(tr.device_product_price || 0),
+          description: tr.device_product_description || ''
+        } : null,
+        logs,
+        adjustments
+      }
+    });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取阻鼾器治疗建档信息失败' });
   }
@@ -1792,7 +2545,7 @@ app.get('/api/admin/patients/:id/treatment', authenticateToken, async (req, res)
 
 app.post('/api/admin/patients/:id/treatment', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { doctor_id, device_model, initial_advancement, start_date } = req.body;
+  const { doctor_id, device_product_id, initial_advancement, start_date } = req.body;
 
   if (!await verifyPatientAccess(id, req.user)) {
     return res.status(403).json({ code: 403, message: '您无权为该患者进行治疗建档' });
@@ -1800,15 +2553,46 @@ app.post('/api/admin/patients/:id/treatment', authenticateToken, async (req, res
   if (req.user.role === 'doctor' && (!req.user.doctor_id || Number(req.user.doctor_id) !== Number(doctor_id))) {
     return res.status(403).json({ code: 403, message: '医生账号只能以本人身份治疗建档' });
   }
+  if (!device_product_id) {
+    return res.status(400).json({ code: 400, message: '请选择已上架的物理阻鼾器设备' });
+  }
 
   try {
     // Deactivate previous active treatments
+    const deviceProduct = await get(
+      `SELECT id, name, image_url, price, description
+       FROM products
+       WHERE id = ? AND category = 'device' AND status = 'on'
+       LIMIT 1`,
+      [device_product_id]
+    );
+    if (!deviceProduct) {
+      return res.status(400).json({ code: 400, message: '请选择已上架的物理阻鼾器设备' });
+    }
+
     await run(`UPDATE treatment_records SET status = 'paused' WHERE patient_id = ? AND status = 'active'`, [id]);
 
+    const deviceSnapshot = buildTreatmentDeviceSnapshot(deviceProduct);
     const result = await run(
-      `INSERT INTO treatment_records (patient_id, doctor_id, device_model, initial_advancement, current_advancement, start_date, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'active')`,
-      [id, doctor_id, device_model, initial_advancement, initial_advancement, start_date]
+      `INSERT INTO treatment_records (
+         patient_id, doctor_id, device_product_id,
+         device_product_name, device_product_image_url, device_product_price, device_product_description,
+         device_model, initial_advancement, current_advancement, start_date, status
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+      [
+        id,
+        doctor_id,
+        deviceSnapshot.id,
+        deviceSnapshot.name,
+        deviceSnapshot.imageUrl,
+        deviceSnapshot.price,
+        deviceSnapshot.description,
+        deviceSnapshot.name,
+        initial_advancement,
+        initial_advancement,
+        start_date
+      ]
     );
 
     res.json({ code: 200, message: '治疗建档成功', data: { id: result.id } });
@@ -1998,6 +2782,53 @@ app.put('/api/admin/patients/:id/follow-ups/:taskId', authenticateToken, async (
 // ----------------------------------------
 // 5. DOCTORS & SCHEDULES
 // ----------------------------------------
+async function getDoctorStoreRows(doctorIds) {
+  if (!doctorIds.length) return {};
+  const placeholders = doctorIds.map(() => '?').join(',');
+  const rows = await query(
+    `SELECT m.doctor_id, s.id as store_id, s.name as store_name
+     FROM doctor_store_mapping m
+     JOIN stores s ON m.store_id = s.id
+     WHERE m.doctor_id IN (${placeholders})
+     ORDER BY s.id ASC`,
+    doctorIds
+  );
+  return rows.reduce((acc, row) => {
+    if (!acc[row.doctor_id]) acc[row.doctor_id] = [];
+    acc[row.doctor_id].push(row);
+    return acc;
+  }, {});
+}
+
+async function normalizeDoctorStoreIds(storeIds, user) {
+  const ids = Array.isArray(storeIds)
+    ? storeIds.map(id => Number(id)).filter(id => Number.isInteger(id) && id > 0)
+    : [];
+  const uniqueIds = [...new Set(ids)];
+  if (uniqueIds.length === 0) {
+    throw new Error('请至少选择一个就诊门店');
+  }
+  if (user.role !== 'super_admin' && user.store_id) {
+    if (uniqueIds.length !== 1 || Number(uniqueIds[0]) !== Number(user.store_id)) {
+      throw new Error('您无权维护其他门店的医生');
+    }
+  }
+  const placeholders = uniqueIds.map(() => '?').join(',');
+  const stores = await query(`SELECT id FROM stores WHERE id IN (${placeholders})`, uniqueIds);
+  if (stores.length !== uniqueIds.length) {
+    throw new Error('选择的就诊门店不存在');
+  }
+  return uniqueIds;
+}
+
+async function assertDoctorStoreMapping(doctorId, storeId) {
+  const mapping = await get(
+    `SELECT id FROM doctor_store_mapping WHERE doctor_id = ? AND store_id = ? LIMIT 1`,
+    [doctorId, storeId]
+  );
+  return Boolean(mapping);
+}
+
 app.get('/api/admin/doctors', authenticateToken, async (req, res) => {
   const { store_id } = req.query;
   if (req.user.role === 'doctor' && !req.user.doctor_id) {
@@ -2029,9 +2860,10 @@ app.get('/api/admin/doctors', authenticateToken, async (req, res) => {
 
     sql += ` ORDER BY d.id ASC`;
     const list = await query(sql, params);
+    const storeMap = await getDoctorStoreRows(list.map(d => d.id));
     const formatted = [];
     for (const d of list) {
-      let consultSql = `SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ?`;
+      let consultSql = `SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ? AND status = 'completed'`;
       const consultParams = [d.id];
       if (req.user.role !== 'super_admin' && req.user.store_id) {
         consultSql += ` AND store_id = ?`;
@@ -2052,16 +2884,25 @@ app.get('/api/admin/doctors', authenticateToken, async (req, res) => {
       }
       const reviewRow = await get(reviewSql, reviewParams);
       const reviewCount = reviewRow ? reviewRow.count : 0;
+      const goodReviewRow = await get(
+        `${reviewSql.replace('COUNT(*) as count, AVG(rating) as avg_rating', 'COUNT(*) as count')} AND rating >= 4`,
+        reviewParams
+      );
+      const goodReviewCount = goodReviewRow ? goodReviewRow.count : 0;
       let rating = 5.0;
       if (reviewRow && reviewRow.avg_rating !== null) {
         rating = Math.round(Number(reviewRow.avg_rating) * 10) / 10;
       }
+      const storeRows = storeMap[d.id] || [];
 
       formatted.push({
         ...d,
         consult_count: consultCount,
         review_count: reviewCount,
-        rating: rating
+        rating: rating,
+        positive_rate: reviewCount > 0 ? Math.round((goodReviewCount / reviewCount) * 100) : null,
+        store_ids: storeRows.map(row => row.store_id),
+        store_names: storeRows.map(row => row.store_name)
       });
     }
     res.json({ code: 200, data: formatted });
@@ -2074,7 +2915,7 @@ app.post('/api/admin/doctors', authenticateToken, async (req, res) => {
   if (req.user.role !== 'super_admin') {
     return res.status(403).json({ code: 403, message: '只有系统管理员可执行此操作' });
   }
-  const { name, title, specialty, hospital, intro, consult_fee, status, expertise, experience_years, experienceYears } = req.body;
+  const { name, title, specialty, hospital, intro, consult_fee, status, expertise, experience_years, experienceYears, avatar_url, store_ids } = req.body;
   if (!name || !title || !specialty) {
     return res.status(400).json({ code: 400, message: '必填信息缺失（姓名、职称、科室）' });
   }
@@ -2082,14 +2923,23 @@ app.post('/api/admin/doctors', authenticateToken, async (req, res) => {
   const expYears = experience_years !== undefined ? Number(experience_years) : (experienceYears !== undefined ? Number(experienceYears) : 0);
 
   try {
-    const result = await run(
-      `INSERT INTO doctors (name, title, specialty, hospital, intro, consult_fee, status, avatar_url, expertise, experience_years)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, title, specialty, hospital || '', intro || '', consult_fee || 0, status !== undefined ? status : 1, '/static/demo/doctor-4.jpg', expertise ? JSON.stringify(expertise) : null, expYears]
-    );
-    res.json({ code: 200, message: '添加医生成功', data: { id: result.id } });
+    const normalizedStoreIds = await normalizeDoctorStoreIds(store_ids, req.user);
+    const resultId = await transaction(async (conn) => {
+      const [result] = await conn.execute(
+        `INSERT INTO doctors (name, title, specialty, hospital, intro, consult_fee, status, avatar_url, expertise, experience_years)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [name, title, specialty, hospital || '', intro || '', consult_fee || 0, status !== undefined ? status : 1, avatar_url || null, expertise ? JSON.stringify(expertise) : null, expYears]
+      );
+      for (const storeId of normalizedStoreIds) {
+        await conn.execute(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [result.insertId, storeId]);
+      }
+      return result.insertId;
+    });
+    await logAdminAction(req.user.id, 'create_doctor', 'doctor', resultId, { name, title, specialty }, req.ip || null);
+    res.json({ code: 200, message: '添加医生成功', data: { id: resultId } });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '添加医生失败' });
+    await logAdminAction(req.user.id, 'create_doctor', 'doctor', null, { name, title, specialty }, req.ip || null, 'fail', error.message || '添加医生失败');
+    res.status(400).json({ code: 400, message: error.message || '添加医生失败' });
   }
 });
 
@@ -2098,20 +2948,29 @@ app.put('/api/admin/doctors/:id', authenticateToken, async (req, res) => {
     return res.status(403).json({ code: 403, message: '只有系统管理员可执行此操作' });
   }
   const { id } = req.params;
-  const { name, title, specialty, hospital, intro, consult_fee, status, expertise, experience_years, experienceYears } = req.body;
+  const { name, title, specialty, hospital, intro, consult_fee, status, expertise, experience_years, experienceYears, avatar_url, store_ids } = req.body;
 
   const expYears = experience_years !== undefined ? Number(experience_years) : (experienceYears !== undefined ? Number(experienceYears) : 0);
 
   try {
-    await run(
-      `UPDATE doctors 
-       SET name = ?, title = ?, specialty = ?, hospital = ?, intro = ?, consult_fee = ?, status = ?, expertise = ?, experience_years = ?
-       WHERE id = ?`,
-      [name, title, specialty, hospital || '', intro || '', consult_fee || 0, status !== undefined ? status : 1, expertise ? JSON.stringify(expertise) : null, expYears, id]
-    );
+    const normalizedStoreIds = await normalizeDoctorStoreIds(store_ids, req.user);
+    await transaction(async (conn) => {
+      await conn.execute(
+        `UPDATE doctors
+         SET name = ?, title = ?, specialty = ?, hospital = ?, intro = ?, consult_fee = ?, status = ?, avatar_url = ?, expertise = ?, experience_years = ?
+         WHERE id = ?`,
+        [name, title, specialty, hospital || '', intro || '', consult_fee || 0, status !== undefined ? status : 1, avatar_url || null, expertise ? JSON.stringify(expertise) : null, expYears, id]
+      );
+      await conn.execute(`DELETE FROM doctor_store_mapping WHERE doctor_id = ?`, [id]);
+      for (const storeId of normalizedStoreIds) {
+        await conn.execute(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [id, storeId]);
+      }
+    });
+    await logAdminAction(req.user.id, 'update_doctor', 'doctor', id, { name, title, specialty, status }, req.ip || null);
     res.json({ code: 200, message: '编辑医生成功' });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '编辑医生失败' });
+    await logAdminAction(req.user.id, 'update_doctor', 'doctor', id, { name, title, specialty, status }, req.ip || null, 'fail', error.message || '编辑医生失败');
+    res.status(400).json({ code: 400, message: error.message || '编辑医生失败' });
   }
 });
 
@@ -2122,15 +2981,18 @@ app.delete('/api/admin/doctors/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
     const doctor = await get(`SELECT * FROM doctors WHERE id = ?`, [id]);
-    await run(`DELETE FROM doctors WHERE id = ?`, [id]);
+    if (!doctor) {
+      return res.status(404).json({ code: 404, message: '医生不存在' });
+    }
+    await run(`UPDATE doctors SET status = 0 WHERE id = ?`, [id]);
     
     if (doctor) {
-      await logAdminAction(req.user.id, 'delete_doctor', 'doctor', id, { name: doctor.name, title: doctor.title });
+      await logAdminAction(req.user.id, 'disable_doctor', 'doctor', id, { name: doctor.name, title: doctor.title });
     }
     
-    res.json({ code: 200, message: '删除医生成功' });
+    res.json({ code: 200, message: '医生已停用' });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '删除医生失败' });
+    res.status(500).json({ code: 500, message: '停用医生失败' });
   }
 });
 
@@ -2143,9 +3005,16 @@ app.get('/api/admin/schedules', authenticateToken, async (req, res) => {
   try {
     let sql = `
       SELECT s.*, d.name as doctor_name, d.title as doctor_title, d.specialty as doctor_specialty, st.name as store_name
+           , COALESCE(b.booked_count, 0) as booked_count
       FROM doctor_schedules s
       JOIN doctors d ON s.doctor_id = d.id
       JOIN stores st ON s.store_id = st.id
+      LEFT JOIN (
+        SELECT schedule_id, COUNT(*) as booked_count
+        FROM appointments
+        WHERE status NOT IN ('cancelled', 'no_show')
+        GROUP BY schedule_id
+      ) b ON b.schedule_id = s.id
       WHERE 1=1
     `;
     const params = [];
@@ -2175,7 +3044,9 @@ app.get('/api/admin/schedules', authenticateToken, async (req, res) => {
       ...item,
       date: item.date instanceof Date ? 
         `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, '0')}-${String(item.date.getDate()).padStart(2, '0')}` : 
-        String(item.date).slice(0, 10)
+        String(item.date).slice(0, 10),
+      capacity: Number(item.total_slots || 0) * Number(item.people_per_slot || 1),
+      available_capacity: Math.max(0, Number(item.total_slots || 0) * Number(item.people_per_slot || 1) - Number(item.booked_count || 0))
     }));
     res.json({ code: 200, data: formattedList });
   } catch (error) {
@@ -2196,11 +3067,14 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
   if (!is_rest && req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(store_id)) {
     return res.status(403).json({ code: 403, message: '您无权为其他门店排班' });
   }
-  if (req.user.role === 'doctor' && req.user.doctor_id && Number(req.user.doctor_id) !== Number(doctor_id)) {
-    return res.status(403).json({ code: 403, message: '医生账号只能维护自己的排班' });
-  }
+    if (req.user.role === 'doctor' && req.user.doctor_id && Number(req.user.doctor_id) !== Number(doctor_id)) {
+      return res.status(403).json({ code: 403, message: '医生账号只能维护自己的排班' });
+    }
+    if (!is_rest && !await assertDoctorStoreMapping(doctor_id, store_id)) {
+      return res.status(400).json({ code: 400, message: '该医生未绑定所选门店，不能排班' });
+    }
 
-  try {
+    try {
     const existing = await get(
       `SELECT id FROM doctor_schedules WHERE doctor_id = ? AND date = ? AND period = ?`,
       [doctor_id, date, period]
@@ -2217,6 +3091,7 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
         }
         await run(`DELETE FROM doctor_schedules WHERE id = ?`, [existing.id]);
       }
+      await logAdminAction(req.user.id, 'create_schedule', 'doctor', doctor_id, { date, period, is_rest: true }, req.ip || null);
       return res.json({ code: 200, message: '设置休息成功' });
     }
 
@@ -2242,8 +3117,10 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
         [doctor_id, store_id, date, period, start_time || '09:00:00', end_time || '12:00:00', total_slots || 6, people_per_slot || 1]
       );
     }
+    await logAdminAction(req.user.id, 'create_schedule', 'doctor', doctor_id, { date, period, is_rest: false, store_id }, req.ip || null);
     res.json({ code: 200, message: '设置排班成功' });
   } catch (error) {
+    await logAdminAction(req.user.id, 'create_schedule', 'doctor', doctor_id, { date, period, is_rest: !!is_rest }, req.ip || null, 'fail', error.message || '设置排班失败');
     res.status(500).json({ code: 500, message: '设置排班失败' });
   }
 });
@@ -2314,6 +3191,13 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
         } else {
           if (!store_id) {
             throw new Error('非休息排班必须选择门店');
+          }
+          const canScheduleStore = await get(
+            `SELECT id FROM doctor_store_mapping WHERE doctor_id = ? AND store_id = ? LIMIT 1`,
+            [doctor_id, store_id]
+          );
+          if (!canScheduleStore) {
+            throw new Error(`${date} ${period === 'morning' ? '上午' : '下午'}：该医生未绑定所选门店，不能排班`);
           }
 
           if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(store_id)) {
@@ -2395,9 +3279,11 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
       }
     });
 
+    await logAdminAction(req.user.id, 'batch_create_schedule', 'doctor', doctor_id, { count: list.length, dates: list.map(x => x.date) }, req.ip || null);
     res.json({ code: 200, message: '批量保存排班成功' });
   } catch (error) {
     console.error('Batch schedule save error:', error);
+    await logAdminAction(req.user.id, 'batch_create_schedule', 'doctor', doctor_id, { count: list ? list.length : 0 }, req.ip || null, 'fail', error.message || '批量保存排班失败');
     res.status(400).json({ code: 400, message: error.message || '批量保存排班失败' });
   }
 });
@@ -2512,11 +3398,12 @@ app.get('/api/admin/stores', authenticateToken, async (req, res) => {
 
     if (storeIds.length > 0) {
       const placeholders = storeIds.map(() => '?').join(',');
-      
+      const currentMonth = new Date().toISOString().slice(0, 7);
+
       allFeatures = await query(`SELECT store_id, feature FROM store_features WHERE store_id IN (${placeholders})`, storeIds);
       allHours = await query(`SELECT store_id, open_time, close_time FROM store_hours WHERE store_id IN (${placeholders})`, storeIds);
       allDocCounts = await query(`SELECT store_id, COUNT(DISTINCT doctor_id) as count FROM doctor_store_mapping WHERE store_id IN (${placeholders}) GROUP BY store_id`, storeIds);
-      
+
       allDeviceCounts = await query(`
         SELECT m.store_id, COUNT(DISTINCT t.id) as count 
         FROM treatment_records t
@@ -2524,16 +3411,23 @@ app.get('/api/admin/stores', authenticateToken, async (req, res) => {
         WHERE m.store_id IN (${placeholders})
         GROUP BY m.store_id
       `, storeIds);
-      
-      allBookingCounts = await query(`SELECT store_id, COUNT(*) as count FROM appointments WHERE store_id IN (${placeholders}) GROUP BY store_id`, storeIds);
-      
+      allBookingCounts = await query(
+          `SELECT store_id, COUNT(*) as count
+           FROM appointments
+           WHERE store_id IN (${placeholders})
+             AND appointment_date LIKE ?
+             AND status NOT IN ('cancelled', 'no_show')
+           GROUP BY store_id`,
+          [...storeIds, `${currentMonth}%`]
+        );
       allRevenueStats = await query(`
-        SELECT a.store_id, SUM(d.consult_fee) as total 
-        FROM appointments a 
-        JOIN doctors d ON a.doctor_id = d.id 
-        WHERE a.store_id IN (${placeholders}) AND a.status = 'completed'
-        GROUP BY a.store_id
-      `, storeIds);
+	        SELECT a.store_id, SUM(a.consult_fee + a.deposit_amount) as total
+	        FROM appointments a
+	        WHERE a.store_id IN (${placeholders})
+            AND a.appointment_date LIKE ?
+            AND a.status IN ('completed', 'arrived', 'settled')
+	        GROUP BY a.store_id
+	      `, [...storeIds, `${currentMonth}%`]);
       
       allManagers = await query(`
         SELECT store_id, name FROM admin_users 
@@ -2599,22 +3493,50 @@ app.get('/api/admin/stores', authenticateToken, async (req, res) => {
 
       store.doctors = docCountsMap[store.id] || 0;
 
-      const deviceCount = deviceCountsMap[store.id] || 0;
-      const defaultDevices = store.id === 1 ? 8 : (store.id === 2 ? 4 : 10);
-      store.devices = deviceCount > 0 ? deviceCount : defaultDevices;
+	      store.devices = deviceCountsMap[store.id] || 0;
 
       store.monthBookings = bookingCountsMap[store.id] || 0;
 
-      const totalConsultFee = revenueMap[store.id] || 0;
-      const revenueAmount = (totalConsultFee * 250) + (store.id * 35000); 
-      store.monthRevenue = `¥${(revenueAmount / 10000).toFixed(1)}w`;
+	      const revenueAmount = Number(revenueMap[store.id] || 0);
+	      store.monthRevenue = `¥${(revenueAmount / 100).toFixed(2)}`;
+        store.monthRevenueAmount = revenueAmount;
 
-      const defaultManager = store.id === 1 ? '陈经理' : (store.id === 2 ? '张经理' : '赵经理');
-      store.manager = managersMap[store.id] || defaultManager;
-    }
+	      store.manager = managersMap[store.id] || '';
+	    }
     res.json({ code: 200, data: list });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取门店列表失败' });
+  }
+	});
+
+app.get('/api/admin/stores/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(id)) {
+    return res.status(403).json({ code: 403, message: '您无权查看其他门店的信息' });
+  }
+
+  try {
+    const store = await get(`SELECT * FROM stores WHERE id = ?`, [id]);
+    if (!store) {
+      return res.status(404).json({ code: 404, message: '门店不存在' });
+    }
+    const features = await query(`SELECT feature FROM store_features WHERE store_id = ? ORDER BY id ASC`, [id]);
+    const hours = await query(`SELECT open_time, close_time FROM store_hours WHERE store_id = ? ORDER BY id ASC`, [id]);
+    const manager = await get(
+      `SELECT id, name, username FROM admin_users
+       WHERE store_id = ? AND role_id = (SELECT id FROM roles WHERE code = 'store_mgr')
+       ORDER BY id ASC LIMIT 1`,
+      [id]
+    );
+    store.features = features.map(item => item.feature);
+    store.hours = hours.length
+      ? hours.map(h => ({ openTime: h.open_time.slice(0, 5), closeTime: h.close_time.slice(0, 5) }))
+      : [{ openTime: String(store.open_time || '09:00').slice(0, 5), closeTime: String(store.close_time || '18:00').slice(0, 5) }];
+    store.manager = manager ? manager.name : '';
+    store.manager_user_id = manager ? manager.id : null;
+    res.json({ code: 200, data: store });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取门店详情失败' });
   }
 });
 
@@ -2622,7 +3544,10 @@ app.post('/api/admin/stores', authenticateToken, async (req, res) => {
   if (req.user.role !== 'super_admin') {
     return res.status(403).json({ code: 403, message: '只有系统管理员可新建门店' });
   }
-  const { name, code, address, city, district, phone, open_time, close_time, status, features, hours } = req.body;
+  const { name, code, address, city, district, phone, latitude, longitude, cover_url, image_urls, open_time, close_time, status, features, hours } = req.body;
+  if (!name || !code || !address) {
+    return res.status(400).json({ code: 400, message: '门店名称、编号、地址为必填项' });
+  }
 
   try {
     let mainOpen = open_time || '09:00:00';
@@ -2632,11 +3557,11 @@ app.post('/api/admin/stores', authenticateToken, async (req, res) => {
       mainClose = hours[0].closeTime + ':00';
     }
 
-    const result = await run(
-      `INSERT INTO stores (name, code, address, city, district, phone, open_time, close_time, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, code, address, city || '', district || '', phone || '', mainOpen, mainClose, status || 'open']
-    );
+	    const result = await run(
+	      `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, cover_url, image_urls, open_time, close_time, status)
+	       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	      [name, code, address, city || '', district || '', latitude || null, longitude || null, phone || '', cover_url || null, image_urls ? JSON.stringify(image_urls) : null, mainOpen, mainClose, status || 'open']
+	    );
 
     if (features && Array.isArray(features)) {
       for (const feature of features) {
@@ -2654,8 +3579,10 @@ app.post('/api/admin/stores', authenticateToken, async (req, res) => {
       await run(`INSERT INTO store_hours (store_id, open_time, close_time) VALUES (?, ?, ?)`, [result.id, '09:00', '18:00']);
     }
 
+    await logAdminAction(req.user.id, 'create_store', 'store', result.id, { name, code, address, status: status || 'open' }, req.ip || null);
     res.json({ code: 200, message: '添加门店成功', data: { id: result.id } });
   } catch (error) {
+    await logAdminAction(req.user.id, 'create_store', 'store', null, { name, code, address }, req.ip || null, 'fail', error.message || '添加门店失败');
     res.status(500).json({ code: 500, message: '添加门店失败' });
   }
 });
@@ -2665,7 +3592,10 @@ app.put('/api/admin/stores/:id', authenticateToken, async (req, res) => {
   if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(id)) {
     return res.status(403).json({ code: 403, message: '您无权修改其他门店的信息' });
   }
-  const { name, address, phone, status, features, hours } = req.body;
+  const { name, code, address, city, district, latitude, longitude, phone, cover_url, image_urls, status, features, hours } = req.body;
+  if (!name || !address) {
+    return res.status(400).json({ code: 400, message: '门店名称、地址为必填项' });
+  }
 
   try {
     let mainOpen = '09:00:00';
@@ -2675,10 +3605,10 @@ app.put('/api/admin/stores/:id', authenticateToken, async (req, res) => {
       mainClose = hours[0].closeTime + ':00';
     }
 
-    await run(
-      `UPDATE stores SET name = ?, address = ?, phone = ?, status = ?, open_time = ?, close_time = ? WHERE id = ?`,
-      [name, address, phone, status, mainOpen, mainClose, id]
-    );
+	    await run(
+	      `UPDATE stores SET name = ?, code = COALESCE(?, code), address = ?, city = ?, district = ?, latitude = ?, longitude = ?, phone = ?, cover_url = ?, image_urls = ?, status = ?, open_time = ?, close_time = ? WHERE id = ?`,
+	      [name, code || null, address, city || '', district || '', latitude || null, longitude || null, phone, cover_url || null, image_urls ? JSON.stringify(image_urls) : null, status, mainOpen, mainClose, id]
+	    );
 
     if (features && Array.isArray(features)) {
       await run(`DELETE FROM store_features WHERE store_id = ?`, [id]);
@@ -2701,6 +3631,24 @@ app.put('/api/admin/stores/:id', authenticateToken, async (req, res) => {
     res.json({ code: 200, message: '编辑门店成功' });
   } catch (error) {
     res.status(500).json({ code: 500, message: '编辑门店失败' });
+  }
+	});
+
+app.delete('/api/admin/stores/:id', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'super_admin') {
+    return res.status(403).json({ code: 403, message: '只有系统管理员可停用门店' });
+  }
+  const { id } = req.params;
+  try {
+    const store = await get(`SELECT id, name FROM stores WHERE id = ?`, [id]);
+    if (!store) {
+      return res.status(404).json({ code: 404, message: '门店不存在' });
+    }
+    await run(`UPDATE stores SET status = 'closed' WHERE id = ?`, [id]);
+    await logAdminAction(req.user.id, 'disable_store', 'store', id, { name: store.name });
+    res.json({ code: 200, message: '门店已停用' });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '停用门店失败' });
   }
 });
 
@@ -2854,6 +3802,9 @@ app.get('/api/admin/orders/:id', authenticateToken, async (req, res) => {
     try {
       order.shipping_address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : order.shipping_address;
     } catch (error) {}
+    try {
+      order.invoice_info = typeof order.invoice_info === 'string' ? JSON.parse(order.invoice_info || 'null') : order.invoice_info;
+    } catch (error) {}
     res.json({ code: 200, data: order });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取订单详情失败' });
@@ -2881,17 +3832,161 @@ app.post('/api/admin/orders/:id/ship', authenticateToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '只有快递待发货订单可以确认发货' });
     }
 
+    const carrier = (req.body.express_company || req.body.carrier || '').trim();
+    const trackingNo = (req.body.tracking_number || req.body.trackingNo || '').trim();
+    
+    if (!carrier || !trackingNo) {
+      return res.status(400).json({ code: 400, message: '快递公司和运单号不能为空' });
+    }
+    if (!/^[A-Za-z0-9-]{6,30}$/.test(trackingNo)) {
+      return res.status(400).json({ code: 400, message: '运单号格式不正确，应为6-30位字母、数字或横杠' });
+    }
+
     let addr = {};
     try {
       addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
     } catch (error) {}
-    addr.express_company = req.body.express_company || req.body.carrier || '';
-    addr.tracking_number = req.body.tracking_number || req.body.trackingNo || '';
+    addr.express_company = carrier;
+    addr.tracking_number = trackingNo;
 
     await run(`UPDATE orders SET status = 'shipped', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [JSON.stringify(addr), id]);
+    await logAdminAction(req.user.id, 'ship_order', 'order', id, { carrier, trackingNo }, req.ip || null);
     res.json({ code: 200, message: '发货成功' });
   } catch (error) {
+    await logAdminAction(req.user.id, 'ship_order', 'order', id, { express_company: req.body.express_company, tracking_number: req.body.tracking_number }, req.ip || null, 'fail', error.message || '发货失败');
     res.status(500).json({ code: 500, message: '操作失败' });
+  }
+});
+
+// GET order express tracking steps
+app.get('/api/admin/orders/:id/tracking', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    let checkSql = `SELECT * FROM orders WHERE id = ?`;
+    const checkParams = [id];
+    if (req.user.role !== 'super_admin' && req.user.store_id) {
+      checkSql += `
+        AND user_id IN (
+          SELECT p.user_id FROM patients p
+          WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
+             OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
+        )
+      `;
+      checkParams.push(req.user.store_id, req.user.store_id);
+    }
+    const order = await get(checkSql, checkParams);
+    if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+
+    let addr = {};
+    try {
+      addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
+    } catch (error) {}
+
+    const carrier = addr.express_company || '';
+    const trackingNo = addr.tracking_number || '';
+
+    if (!carrier || !trackingNo) {
+      return res.json({ code: 200, data: { carrier: '', trackingNo: '', steps: [] } });
+    }
+
+    // Generate realistic logistics events
+    const orderTime = new Date(order.created_at);
+    const formatDateStr = (d) => d.toISOString().replace('T', ' ').slice(0, 19).replace('.000Z', '');
+    
+    const steps = [
+      {
+        time: formatDateStr(new Date(orderTime.getTime())),
+        desc: `【发货】您的订单已由商家发货，发货快递：${carrier}，运单号：${trackingNo}`
+      },
+      {
+        time: formatDateStr(new Date(orderTime.getTime() + 2 * 3600000)),
+        desc: `【揽收】快件已由 [深圳福田区营业点] 揽收，揽收员：张华 (13800138000)`
+      },
+      {
+        time: formatDateStr(new Date(orderTime.getTime() + 6 * 3600000)),
+        desc: `【在途】快件已到达 [深圳转运中心]`
+      },
+      {
+        time: formatDateStr(new Date(orderTime.getTime() + 12 * 3600000)),
+        desc: `【在途】快件已从 [深圳转运中心] 发出，正在发往目的地`
+      }
+    ];
+
+    if (order.status === 'completed') {
+      steps.push({
+        time: formatDateStr(new Date(orderTime.getTime() + 24 * 3600000)),
+        desc: `【派送】快件已到达目的地营业点，正在派送中。派送员：王五 (13912345678)`
+      });
+      steps.push({
+        time: formatDateStr(new Date(orderTime.getTime() + 26 * 3600000)),
+        desc: `【签收】快件已签收，签收人：本人。感谢您使用${carrier}，期待再次为您服务！`
+      });
+    }
+
+    // Sort by time descending
+    steps.reverse();
+
+    res.json({
+      code: 200,
+      data: {
+        carrier,
+        trackingNo,
+        steps
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取物流信息失败' });
+  }
+});
+
+// POST issue e-invoice for order
+app.post('/api/admin/orders/:id/invoice', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { title, tax_id } = req.body || {};
+  try {
+    let checkSql = `SELECT * FROM orders WHERE id = ?`;
+    const checkParams = [id];
+    if (req.user.role !== 'super_admin' && req.user.store_id) {
+      checkSql += `
+        AND user_id IN (
+          SELECT p.user_id FROM patients p
+          WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
+             OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
+        )
+      `;
+      checkParams.push(req.user.store_id, req.user.store_id);
+    }
+    const order = await get(checkSql, checkParams);
+    if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (!['paid', 'completed', 'shipped'].includes(order.status)) {
+      return res.status(400).json({ code: 400, message: '只有已支付或已完成的订单可以开具发票' });
+    }
+
+    const items = await query('SELECT * FROM order_items WHERE order_id = ?', [id]);
+    
+    // Generate invoice model
+    const invoiceInfo = {
+      invoice_no: `INV${Date.now()}${String(Math.floor(Math.random() * 100)).padStart(2, '0')}`,
+      invoice_code: `INC${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`,
+      taxpayer_id: '91440300MA5HNJNG99',
+      company_name: '鼾静健康诊所（深圳）有限公司',
+      title: title || '个人',
+      tax_id: tax_id || '',
+      amount: order.pay_amount,
+      items: items.map(item => ({
+        name: item.product_name,
+        price: item.price,
+        quantity: item.quantity,
+        total: item.price * item.quantity
+      })),
+      created_at: new Date().toISOString()
+    };
+
+    await run('UPDATE orders SET invoice_info = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [JSON.stringify(invoiceInfo), id]);
+    res.json({ code: 200, message: '发票开具成功', data: invoiceInfo });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '开具发票失败' });
   }
 });
 
@@ -2976,6 +4071,14 @@ app.post('/api/admin/orders/:id/complete', authenticateToken, async (req, res) =
         `INSERT INTO user_notifications (user_id, title, content)
          VALUES (?, '订单已完成', ?)`,
         [order.user_id, `您的订单 ${order.order_no} 已完成。`]
+      );
+
+      const sysSetting = await get(`SELECT key_value FROM system_settings WHERE key_name = 'distribution_settle_days'`);
+      const settleDays = parseInt(sysSetting?.key_value, 10);
+      const days = Number.isInteger(settleDays) && settleDays >= 0 ? settleDays : 7;
+      await conn.execute(
+        `UPDATE distribution_orders SET lock_until = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL ? DAY) WHERE order_id = ?`,
+        [days, id]
       );
     });
     await logAdminAction(req.user.id, 'complete_order', 'order', id, { orderNo: order.order_no });
@@ -3083,7 +4186,9 @@ app.get('/api/admin/distribution/promoters', authenticateToken, async (req, res)
   try {
     const list = await query(
       `SELECT d.*, u.phone as user_phone, 
-             (SELECT COUNT(*) FROM distribution_relationships WHERE parent_user_id = d.user_id) as invitees_count
+             (SELECT COUNT(*) FROM distribution_relationships WHERE parent_user_id = d.user_id AND level = 1) as invitees_l1_count,
+             (SELECT COUNT(*) FROM distribution_relationships WHERE parent_user_id = d.user_id AND level = 2) as invitees_l2_count,
+             (SELECT COUNT(*) FROM distribution_orders WHERE distributor_id = d.id AND status != 'refunded') as total_orders
        FROM distributors d
        JOIN users u ON d.user_id = u.id
        ORDER BY d.created_at DESC`
@@ -3091,6 +4196,147 @@ app.get('/api/admin/distribution/promoters', authenticateToken, async (req, res)
     res.json({ code: 200, data: list });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取推广员列表失败' });
+  }
+});
+
+app.get('/api/admin/distribution/promoters/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const promoter = await get(
+      `SELECT d.*, u.phone as user_phone, u.nickname as user_nickname, u.created_at as user_reg_date
+       FROM distributors d
+       JOIN users u ON d.user_id = u.id
+       WHERE d.id = ?`,
+      [id]
+    );
+    if (!promoter) return res.status(404).json({ code: 404, message: '推广员不存在' });
+
+    const l1Count = await get('SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 1', [promoter.user_id]);
+    const l2Count = await get('SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 2', [promoter.user_id]);
+    const orderStats = await get(
+      `SELECT COUNT(*) as count, COALESCE(SUM(order_amount), 0) as amount
+       FROM distribution_orders
+       WHERE distributor_id = ? AND status <> 'refunded'`,
+      [promoter.id]
+    );
+
+    const parent = await get(
+      `SELECT d.nickname FROM distributors d
+       JOIN distribution_relationships dr ON d.user_id = dr.parent_user_id
+       WHERE dr.child_user_id = ? AND dr.level = 1`,
+      [promoter.user_id]
+    );
+
+    res.json({
+      code: 200,
+      data: {
+        id: promoter.id,
+        name: promoter.nickname,
+        avatar_url: promoter.avatar_url,
+        level: promoter.level,
+        code: promoter.invite_code,
+        phone: promoter.user_phone,
+        regDate: promoter.created_at,
+        status: promoter.status,
+        parentName: parent?.nickname || '无（自主加入）',
+        firstLevelDownline: l1Count.count,
+        secondLevelDownline: l2Count.count,
+        totalOrders: orderStats.count,
+        totalAmount: orderStats.amount,
+        totalCommission: promoter.total_commission,
+        availableCommission: promoter.available_commission,
+        withdrawnAmount: promoter.withdrawn_amount
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '获取推广员详情失败' });
+  }
+});
+
+app.get('/api/admin/distribution/promoters/:id/commissions', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const list = await query(
+      `SELECT do.*, MAX(o.order_no) as order_no, MAX(p.name) as patient_name,
+              GROUP_CONCAT(DISTINCT pr.name SEPARATOR '、') as product_names
+       FROM distribution_orders do
+       LEFT JOIN orders o ON do.order_id = o.id
+       LEFT JOIN patients p ON o.user_id = p.user_id
+       LEFT JOIN order_items oi ON oi.order_id = o.id
+       LEFT JOIN products pr ON oi.product_id = pr.id
+       WHERE do.distributor_id = ?
+       GROUP BY do.id
+       ORDER BY do.created_at DESC`,
+      [id]
+    );
+    res.json({ code: 200, data: list });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '获取佣金流水失败' });
+  }
+});
+
+app.get('/api/admin/distribution/promoters/:id/team', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const promoter = await get('SELECT user_id FROM distributors WHERE id = ?', [id]);
+    if (!promoter) return res.status(404).json({ code: 404, message: '推广员不存在' });
+
+    const l1 = await query(
+      `SELECT dr.child_user_id as user_id, COALESCE(d.nickname, u.nickname) as name, u.phone, d.level, d.id as distributor_id, dr.created_at
+       FROM distribution_relationships dr
+       JOIN users u ON dr.child_user_id = u.id
+       LEFT JOIN distributors d ON u.id = d.user_id
+       WHERE dr.parent_user_id = ? AND dr.level = 1`,
+      [promoter.user_id]
+    );
+
+    const l2 = await query(
+      `SELECT dr.child_user_id as user_id, COALESCE(d.nickname, u.nickname) as name, u.phone, d.level, d.id as distributor_id, dr.created_at
+       FROM distribution_relationships dr
+       JOIN users u ON dr.child_user_id = u.id
+       LEFT JOIN distributors d ON u.id = d.user_id
+       WHERE dr.parent_user_id = ? AND dr.level = 2`,
+      [promoter.user_id]
+    );
+
+    res.json({
+      code: 200,
+      data: {
+        level1: l1.map(item => ({
+          userId: item.user_id,
+          name: item.name,
+          phone: item.phone,
+          level: item.level || 'customer',
+          distributorId: item.distributor_id,
+          joinDate: item.created_at
+        })),
+        level2: l2.map(item => ({
+          userId: item.user_id,
+          name: item.name,
+          phone: item.phone,
+          level: item.level || 'customer',
+          distributorId: item.distributor_id,
+          joinDate: item.created_at
+        }))
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '获取团队关系失败' });
+  }
+});
+
+app.put('/api/admin/distribution/promoters/:id/status', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    await run('UPDATE distributors SET status = ? WHERE id = ?', [status || 'active', id]);
+    res.json({ code: 200, message: '状态修改成功' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: '修改状态失败' });
   }
 });
 
@@ -3416,6 +4662,52 @@ app.post('/api/admin/uploads/images', authenticateToken, async (req, res) => {
   }
 });
 
+app.post('/api/admin/uploads/files', authenticateToken, async (req, res) => {
+  const { fileName, mimeType, fileData, context } = req.body || {};
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+  if (!fileData || !mimeType || !allowedMimeTypes.includes(mimeType)) {
+    return res.status(400).json({ code: 400, message: '仅支持 JPG、PNG、WEBP、PDF 文件' });
+  }
+
+  try {
+    const buffer = Buffer.from(String(fileData).replace(/^data:[^;]+;base64,/, ''), 'base64');
+    if (!buffer.length || buffer.length > 10 * 1024 * 1024) {
+      return res.status(400).json({ code: 400, message: '附件大小不能超过 10MB' });
+    }
+
+    const extByMime = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/webp': '.webp',
+      'application/pdf': '.pdf'
+    };
+    const safeContext = String(context || 'common').replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'common';
+    const safeBaseName = path.basename(fileName || 'file').replace(/[^a-z0-9._-]/gi, '_');
+    const ext = extByMime[mimeType] || path.extname(safeBaseName) || '.dat';
+    const uploadDir = path.resolve('./uploads/admin/files', safeContext);
+    fs.mkdirSync(uploadDir, { recursive: true });
+    const storedName = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;
+    const storedPath = path.join(uploadDir, storedName);
+    fs.writeFileSync(storedPath, buffer);
+
+    const urlPath = `/uploads/admin/files/${safeContext}/${storedName}`;
+    res.json({
+      code: 200,
+      message: '上传成功',
+      data: {
+        url: `${buildRequestOrigin(req)}${urlPath}`,
+        path: urlPath,
+        name: safeBaseName,
+        size: buffer.length,
+        mimeType
+      }
+    });
+  } catch (error) {
+    console.error('Upload file failed:', error);
+    res.status(500).json({ code: 500, message: '上传附件失败' });
+  }
+});
+
 // Banners (小程序首页轮播)
 app.get('/api/admin/content/banners', authenticateToken, async (req, res) => {
   try {
@@ -3696,6 +4988,19 @@ app.get('/api/admin/content/articles', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/admin/content/articles/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const post = await get(`SELECT * FROM community_posts WHERE id = ?`, [id]);
+    if (!post) {
+      return res.status(404).json({ code: 404, message: '文章不存在' });
+    }
+    res.json({ code: 200, data: post });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取文章详情失败' });
+  }
+});
+
 app.post('/api/admin/content/articles', authenticateToken, async (req, res) => {
   const { title, content, cover_url, tags = [], status = 'pending' } = req.body;
   if (!title || !content) {
@@ -3771,6 +5076,67 @@ app.delete('/api/admin/content/articles/:id', authenticateToken, async (req, res
   }
 });
 
+// Article Categories (健康科普分类)
+app.get('/api/admin/content/categories', authenticateToken, async (req, res) => {
+  try {
+    const list = await query('SELECT * FROM article_categories ORDER BY sort_order ASC, id ASC');
+    res.json({ code: 200, data: list });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取分类列表失败' });
+  }
+});
+
+app.post('/api/admin/content/categories', authenticateToken, async (req, res) => {
+  const { name, sort_order } = req.body;
+  if (!name) return res.status(400).json({ code: 400, message: '分类名称为必填项' });
+  try {
+    const result = await run(
+      'INSERT INTO article_categories (name, sort_order) VALUES (?, ?)',
+      [name, sort_order || 0]
+    );
+    await logAdminAction(req.user.id, 'create_article_category', 'article_category', result.id, { name });
+    res.json({ code: 200, message: '创建分类成功', data: { id: result.id } });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ code: 400, message: '分类名称不能重复' });
+    }
+    res.status(500).json({ code: 500, message: '创建分类失败' });
+  }
+});
+
+app.put('/api/admin/content/categories/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { name, sort_order } = req.body;
+  try {
+    const category = await get('SELECT id FROM article_categories WHERE id = ?', [id]);
+    if (!category) return res.status(404).json({ code: 404, message: '分类不存在' });
+    await run(
+      'UPDATE article_categories SET name = COALESCE(?, name), sort_order = COALESCE(?, sort_order) WHERE id = ?',
+      [name || null, sort_order !== undefined ? Number(sort_order) : null, id]
+    );
+    await logAdminAction(req.user.id, 'update_article_category', 'article_category', id, { name });
+    res.json({ code: 200, message: '更新分类成功' });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ code: 400, message: '分类名称已存在' });
+    }
+    res.status(500).json({ code: 500, message: '更新分类失败' });
+  }
+});
+
+app.delete('/api/admin/content/categories/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const category = await get('SELECT id FROM article_categories WHERE id = ?', [id]);
+    if (!category) return res.status(404).json({ code: 404, message: '分类不存在' });
+    await run('DELETE FROM article_categories WHERE id = ?', [id]);
+    await logAdminAction(req.user.id, 'delete_article_category', 'article_category', id, {});
+    res.json({ code: 200, message: '删除分类成功' });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '删除分类失败' });
+  }
+});
+
 // Q&As
 app.get('/api/admin/content/qa', authenticateToken, async (req, res) => {
   res.json({
@@ -3825,8 +5191,10 @@ app.post('/api/admin/users', authenticateToken, async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [username, passwordHash, name || '', phone || '', role_id, store_id || null, doctor_id || null, status || 'online']
     );
+    await logAdminAction(req.user.id, 'create_admin', 'admin', result.id, { username, name, role_id, store_id, doctor_id }, req.ip || null);
     res.json({ code: 200, message: '创建账号成功', data: { id: result.id } });
   } catch (error) {
+    await logAdminAction(req.user.id, 'create_admin', 'admin', null, { username, name, role_id, store_id, doctor_id }, req.ip || null, 'fail', error.message || '创建账号失败');
     if (error.message.includes('UNIQUE')) {
       res.status(400).json({ code: 400, message: '用户名已存在' });
     } else {
@@ -3866,8 +5234,10 @@ app.put('/api/admin/users/:id', authenticateToken, async (req, res) => {
         [name || '', phone || '', role_id, store_id || null, doctor_id || null, status || 'online', id]
       );
     }
+    await logAdminAction(req.user.id, 'update_admin', 'admin', id, { name, phone, role_id, store_id, doctor_id, status }, req.ip || null);
     res.json({ code: 200, message: '修改账号成功' });
   } catch (error) {
+    await logAdminAction(req.user.id, 'update_admin', 'admin', id, { name, phone, role_id, store_id, doctor_id, status }, req.ip || null, 'fail', error.message || '修改账号失败');
     res.status(500).json({ code: 500, message: '修改账号失败' });
   }
 });
@@ -3892,7 +5262,7 @@ app.get('/api/admin/roles', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/roles', authenticateToken, async (req, res) => {
-  const { name, code, description, status, permissions = [] } = req.body;
+  const { name, code, description, status, permissions = [], memberIds = [] } = req.body;
   if (!name) {
     return res.status(400).json({ code: 400, message: '角色名称为必填项' });
   }
@@ -3911,9 +5281,16 @@ app.post('/api/admin/roles', authenticateToken, async (req, res) => {
           [roleId, permission]
         );
       }
+      if (Array.isArray(memberIds) && memberIds.length > 0) {
+        const placeholders = memberIds.map(() => '?').join(',');
+        await conn.execute(
+          `UPDATE admin_users SET role_id = ? WHERE id IN (${placeholders})`,
+          [roleId, ...memberIds]
+        );
+      }
       return { id: roleId };
     });
-    await logAdminAction(req.user.id, 'create_role', 'role', result.id, { name, roleCode });
+    await logAdminAction(req.user.id, 'create_role', 'role', result.id, { name, roleCode, memberCount: memberIds.length });
     res.json({ code: 200, message: '创建角色成功', data: result });
   } catch (error) {
     res.status(500).json({ code: 500, message: '创建角色失败' });
@@ -3950,6 +5327,25 @@ app.put('/api/admin/roles/:id', authenticateToken, async (req, res) => {
           );
         }
       }
+      if (Array.isArray(req.body.memberIds)) {
+        const memberIds = req.body.memberIds.map(String);
+        if (memberIds.length > 0) {
+          const placeholders = memberIds.map(() => '?').join(',');
+          await conn.execute(
+            `UPDATE admin_users SET role_id = NULL WHERE role_id = ? AND id NOT IN (${placeholders})`,
+            [id, ...memberIds]
+          );
+          await conn.execute(
+            `UPDATE admin_users SET role_id = ? WHERE id IN (${placeholders})`,
+            [id, ...memberIds]
+          );
+        } else {
+          await conn.execute(
+            `UPDATE admin_users SET role_id = NULL WHERE role_id = ?`,
+            [id]
+          );
+        }
+      }
     });
     await logAdminAction(req.user.id, 'update_role', 'role', id, { name: req.body.name, status: req.body.status });
     res.json({ code: 200, message: '保存角色成功' });
@@ -3960,17 +5356,79 @@ app.put('/api/admin/roles/:id', authenticateToken, async (req, res) => {
 
 app.get('/api/admin/logs', authenticateToken, async (req, res) => {
   try {
-    const list = await query(
-      `SELECT l.id, l.action, l.target_type, l.target_id, l.details, l.created_at,
-              u.username, u.name as operator_name, r.name as role_name
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 30;
+    const offset = (page - 1) * limit;
+
+    const { keyword, module: reqModule, action, status } = req.query;
+
+    let conditions = [];
+    let params = [];
+
+    if (keyword && keyword.trim()) {
+      const kw = `%${keyword.trim()}%`;
+      conditions.push(`(
+        u.username LIKE ? OR 
+        u.name LIKE ? OR 
+        l.details LIKE ? OR 
+        l.ip_address LIKE ?
+      )`);
+      params.push(kw, kw, kw, kw);
+    }
+
+    if (reqModule && reqModule.trim()) {
+      const modules = reqModule.split(',').map(m => m.trim()).filter(Boolean);
+      if (modules.length > 0) {
+        const placeholders = modules.map(() => '?').join(',');
+        conditions.push(`l.target_type IN (${placeholders})`);
+        params.push(...modules);
+      }
+    }
+
+    if (action && action.trim()) {
+      conditions.push(`l.action = ?`);
+      params.push(action.trim());
+    }
+
+    if (status && status.trim()) {
+      conditions.push(`l.status = ?`);
+      params.push(status.trim());
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const countResult = await get(
+      `SELECT COUNT(*) as total
        FROM audit_logs l
        LEFT JOIN admin_users u ON l.admin_id = u.id
-       LEFT JOIN roles r ON u.role_id = r.id
-       ORDER BY l.created_at DESC
-       LIMIT 500`
+       ${whereClause}`,
+      params
     );
-    res.json({ code: 200, data: list });
+    const total = countResult ? countResult.total : 0;
+
+    const listSql = `
+      SELECT l.id, l.action, l.target_type, l.target_id, l.details, l.ip_address, l.status, l.error_message, l.created_at,
+             u.username, u.name as operator_name, r.name as role_name
+      FROM audit_logs l
+      LEFT JOIN admin_users u ON l.admin_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      ${whereClause}
+      ORDER BY l.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+    const list = await query(listSql, params);
+
+    res.json({
+      code: 200,
+      data: {
+        list,
+        total,
+        page,
+        limit
+      }
+    });
   } catch (error) {
+    console.error('Fetch audit logs error:', error);
     res.status(500).json({ code: 500, message: '获取操作日志失败' });
   }
 });
@@ -4049,10 +5507,26 @@ app.get('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, r
 app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { promoter_user_id } = req.body;
+  if (!await verifyPatientAccess(id, req.user)) {
+    return res.status(403).json({ code: 403, message: '您无权维护该患者的推广关系' });
+  }
+  if (!promoter_user_id) {
+    return res.status(400).json({ code: 400, message: '请选择推广人' });
+  }
   try {
     const patient = await get('SELECT user_id FROM patients WHERE id = ?', [id]);
     if (!patient) {
       return res.status(404).json({ code: 404, message: '患者不存在' });
+    }
+    const promoter = await get(
+      `SELECT user_id FROM distributors WHERE user_id = ? AND status = 'active' LIMIT 1`,
+      [promoter_user_id]
+    );
+    if (!promoter) {
+      return res.status(400).json({ code: 400, message: '推广人不存在或已停用' });
+    }
+    if (Number(promoter_user_id) === Number(patient.user_id)) {
+      return res.status(400).json({ code: 400, message: '患者不能绑定自己为推广人' });
     }
     const child_user_id = patient.user_id;
     const existing = await get('SELECT id FROM distribution_relationships WHERE child_user_id = ?', [child_user_id]);
@@ -4061,8 +5535,10 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
     } else {
       await run('INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)', [promoter_user_id, child_user_id]);
     }
+    await logAdminAction(req.user.id, 'bind_patient_promoter', 'patient', id, { promoter_user_id });
     res.json({ code: 200, message: '绑定推广人成功' });
   } catch (error) {
+    console.error('Bind promoter failed:', error);
     res.status(500).json({ code: 500, message: '操作失败' });
   }
 });
@@ -4252,8 +5728,47 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
       return insertedId;
     });
 
+    const savedOrder = await get(
+      `SELECT id, order_no, type, total_amount, discount_amount, pay_amount, pay_method, pay_at, status, shipping_address
+       FROM orders WHERE id = ?`,
+      [orderId]
+    );
+    const savedItems = await query(
+      `SELECT product_id, product_name, price, quantity
+       FROM order_items WHERE order_id = ?
+       ORDER BY id ASC`,
+      [orderId]
+    );
+
     await logAdminAction(req.user.id, 'create_cashier_order', 'order', orderId, { orderNo: order_no, amount: calculatedPayAmount });
-    res.json({ code: 200, message: '收费收银成功', data: { order_no, order_id: orderId, pay_amount: calculatedPayAmount } });
+    res.json({
+      code: 200,
+      message: '收费收银成功',
+      data: {
+        order_no,
+        order_id: orderId,
+        pay_amount: calculatedPayAmount,
+        receipt: {
+          orderId,
+          orderNo: savedOrder.order_no,
+          patientName: patient.name,
+          totalAmount: Number(savedOrder.total_amount || 0),
+          discountAmount: Number(savedOrder.discount_amount || 0),
+          payAmount: Number(savedOrder.pay_amount || 0),
+          payMethod: savedOrder.pay_method,
+          payAt: savedOrder.pay_at,
+          status: savedOrder.status,
+          type: savedOrder.type,
+          shippingAddress: savedOrder.shipping_address,
+          items: savedItems.map(item => ({
+            productId: item.product_id,
+            productName: item.product_name,
+            price: Number(item.price || 0),
+            quantity: Number(item.quantity || 0)
+          }))
+        }
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ code: 500, message: '收银失败' });
@@ -4441,9 +5956,11 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
         );
       }
     });
+    await logAdminAction(req.user.id, 'update_settings', 'system', null, { keys: Object.keys(updates) }, req.ip || null);
     res.json({ code: 200, message: '设置保存成功' });
   } catch (error) {
     console.error('Update Settings Error:', error);
+    await logAdminAction(req.user.id, 'update_settings', 'system', null, { keys: Object.keys(req.body || {}) }, req.ip || null, 'fail', error.message || '保存设置失败');
     res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '保存设置失败' });
   }
 });

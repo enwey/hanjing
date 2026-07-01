@@ -37,6 +37,7 @@ service.interceptors.response.use(
       if (status === 401 || status === 403) {
         MessagePlugin.error(error.response.data?.message || '登录过期，请重新登录')
         localStorage.removeItem('auth_token')
+        localStorage.removeItem('user_info')
         router.push('/login')
       } else {
         MessagePlugin.error(error.response.data?.message || '系统繁忙，请稍后再试')

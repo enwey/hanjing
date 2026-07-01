@@ -135,18 +135,14 @@ const n = e.defineComponent({
     }
 
     function viewAgreement() {
-      e.index.showModal({
-        title: "用户协议",
-        content: "本协议是您与鼾静健康诊所关于使用本小程序各项服务所订立的契约。我们非常重视您的隐私，您的就诊信息、睡眠监测数据将严格受法律保护，不用于未经您授权的任何其他商业用途。",
-        showCancel: false
+      e.index.navigateTo({
+        url: "/pages/auth/agreement/index"
       });
     }
 
     function viewPrivacy() {
-      e.index.showModal({
-        title: "隐私政策",
-        content: "我们收集您的手机号码仅用于就诊档案实名绑定、预约挂号提醒及治疗追踪服务；收集您的地理位置仅用于为您匹配最近的线下诊所；麦克风权限仅在您启动“鼾声分析”时使用，且音频仅用于AI睡眠呼吸指标评估。我们绝不会向任何第三方披露您的敏感健康与个人隐私信息。",
-        showCancel: false
+      e.index.navigateTo({
+        url: "/pages/auth/privacy/index"
       });
     }
 

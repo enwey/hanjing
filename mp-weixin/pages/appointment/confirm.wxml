@@ -70,6 +70,6 @@
         u-p="{{l}}"
         >{{buttonText}}</hj-button
       ></view
-    ></view
-  ></view
->
+    ></view>
+    <hj-privacy-popup id="privacyPopup" />
+  </view>

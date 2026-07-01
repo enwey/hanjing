@@ -6,7 +6,15 @@
     u-i="c4ff781e-0"
     bind:__l="__l"
     u-p="{{b}}" /><view class="page-content data-v-c4ff781e"
-    ><view class="progress-section data-v-c4ff781e"
+    ><picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="{{onMemberChange}}" class="data-v-c4ff781e" style="background:#fff;padding:12px 16px;margin:12px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #F3F4F6;">
+      <view class="data-v-c4ff781e" style="display:flex;width:100%;justify-content:space-between;align-items:center;font-size:14px;color:#1F2937;">
+        <view class="data-v-c4ff781e" style="display:flex;align-items:center;gap:6px;">
+          <text class="data-v-c4ff781e" style="color:#4B5563;">当前评测人：</text>
+          <text class="data-v-c4ff781e" style="font-weight:600;color:#3B6BF5;">{{selectedMemberName}}</text>
+        </view>
+        <text class="data-v-c4ff781e" style="font-size:12px;color:#9CA3AF;font-weight:500;">切换 ▾</text>
+      </view>
+    </picker><view class="progress-section data-v-c4ff781e"
       ><view class="progress-bar data-v-c4ff781e"
         ><view
           class="progress-fill data-v-c4ff781e"

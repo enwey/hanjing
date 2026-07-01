@@ -7,6 +7,54 @@ const t = () => "../../../components/base/hj-navbar.js",
     __name: "index",
     setup(t) {
       const r = n.useAssessmentStore();
+      const api = require("../../../api/index.js");
+      const familyMembers = e.ref([]);
+      const memberNames = e.ref([]);
+      const memberIndex = e.ref(0);
+      const selectedMemberName = e.ref("本人");
+      const selectedMemberId = e.ref("");
+
+      async function loadFamilyMembers() {
+        try {
+          const res = await api.getFamilyMembers();
+          const list = res.data?.list || [];
+          familyMembers.value = list;
+          
+          const relationNames = {
+            self: "本人",
+            spouse: "配偶",
+            child: "子女",
+            parent: "父母",
+            sibling: "兄弟姐妹",
+            other: "其他"
+          };
+          memberNames.value = list.map(m => `${m.name} (${relationNames[m.relation] || m.relation})`);
+          
+          const selfIdx = list.findIndex(m => m.relation === "self");
+          if (selfIdx !== -1) {
+            memberIndex.value = selfIdx;
+            selectedMemberName.value = list[selfIdx].name;
+            selectedMemberId.value = list[selfIdx].id;
+          } else if (list.length > 0) {
+            memberIndex.value = 0;
+            selectedMemberName.value = list[0].name;
+            selectedMemberId.value = list[0].id;
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      function onMemberChange(event) {
+        const val = event.detail.value;
+        memberIndex.value = val;
+        const selected = familyMembers.value[val];
+        if (selected) {
+          selectedMemberName.value = selected.name;
+          selectedMemberId.value = selected.id;
+        }
+      }
+
       function s() {
         r.prev();
       }
@@ -15,7 +63,7 @@ const t = () => "../../../components/base/hj-navbar.js",
       }
       async function o() {
         try {
-          (await r.submit(),
+          (await r.submit(selectedMemberId.value),
             e.index.navigateTo({ url: "/pages/assessment/result/index" }));
         } catch (n) {
           e.index.showToast({ title: "提交失败，请重试", icon: "none" });
@@ -26,6 +74,7 @@ const t = () => "../../../components/base/hj-navbar.js",
       }
       return (
         e.onMounted(async () => {
+          await loadFamilyMembers();
           await r.fetchQuestions();
         }),
         (n, t) =>
@@ -33,6 +82,10 @@ const t = () => "../../../components/base/hj-navbar.js",
             {
               a: e.o(i, "98"),
               b: e.p({ title: "ESS嗜睡量表", showBack: !0 }),
+              memberNames: e.unref(memberNames),
+              memberIndex: e.unref(memberIndex),
+              selectedMemberName: e.unref(selectedMemberName),
+              onMemberChange: e.o(onMemberChange),
               c: 100 * e.unref(r).progress + "%",
               d: e.t(e.unref(r).currentQuestion + 1),
               e: e.t(e.unref(r).totalQuestions),

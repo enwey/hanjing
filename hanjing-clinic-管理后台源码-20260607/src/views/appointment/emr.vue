@@ -11,6 +11,7 @@ const apptId = route.params.id as string
 
 const loading = ref(true)
 const submitting = ref(false)
+const savingOnly = ref(false)
 
 // Data states
 const appt = ref<any>({})
@@ -27,7 +28,8 @@ const allergyHistory = ref('')
 
 // Treatment Profile States (for new treatment creation)
 const syncTreatment = ref(true)
-const deviceModel = ref('HJ-MAD-03')
+const deviceProductId = ref('')
+const deviceProducts = ref<any[]>([])
 const initialAdvancement = ref(4.0)
 const startDate = ref(new Date().toISOString().split('T')[0])
 const nextAdjustDate = ref(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
@@ -145,6 +147,19 @@ const fetchData = async () => {
       } catch (e) {
         console.error('获取治疗建档信息失败', e)
       }
+
+      // Fetch on-sale device products for treatment profile binding.
+      try {
+        const productRes: any = await request.get('/api/admin/products')
+        if (productRes.code === 200) {
+          deviceProducts.value = productRes.data.filter((item: any) => item.category === 'device' && item.status === 'on')
+          if (!deviceProductId.value && deviceProducts.value.length) {
+            deviceProductId.value = String(deviceProducts.value[0].id)
+          }
+        }
+      } catch (e) {
+        console.error('获取物理阻鼾器设备失败', e)
+      }
     } else {
       MessagePlugin.error('预约记录加载失败')
     }
@@ -178,66 +193,105 @@ const formatDuration = (seconds: number) => {
   return `${mins}分钟`
 }
 
-const handleSubmit = async () => {
+const buildConsultationPayload = (includeTreatment = true) => {
+  const payload: any = {
+    medical_record: {
+      doctor_id: appt.value.doctor_id,
+      store_id: appt.value.store_id,
+      visit_date: new Date().toISOString().split('T')[0],
+      diagnosis: diagnosis.value,
+      prescription: prescription.value,
+      doctor_advice: doctorAdvice.value,
+      note: note.value,
+      medical_history: medicalHistory.value,
+      allergy_history: allergyHistory.value
+    }
+  }
+
+  if (!includeTreatment) return payload
+
+  if (activeTreatment.value && syncAdjust.value) {
+    payload.treatment = { treatment_id: activeTreatment.value.id }
+    payload.adjustment = {
+      create: true,
+      adjust_date: new Date().toISOString().split('T')[0],
+      operator_id: appt.value.doctor_id,
+      adjusted_advancement: adjustedAdvancement.value,
+      patient_feedback: patientFeedback.value,
+      instructions: adjustInstructions.value,
+      next_adjust_date: nextAdjustDate.value
+    }
+    if (nextAdjustDate.value) {
+      payload.follow_up = {
+        create: true,
+        doctor_id: appt.value.doctor_id,
+        title: `阻鼾器参数微调 - 复查`,
+        description: `已调至 ${adjustedAdvancement.value}mm (反馈: ${patientFeedback.value})，安排门诊复诊。`,
+        due_date: nextAdjustDate.value
+      }
+    }
+  } else if (!activeTreatment.value && syncTreatment.value) {
+    const selectedDevice = deviceProducts.value.find(item => String(item.id) === String(deviceProductId.value))
+    if (!selectedDevice) {
+      throw new Error('请选择已上架的物理阻鼾器设备')
+    }
+    payload.treatment = {
+      create: true,
+      device_product_id: selectedDevice.id,
+      initial_advancement: initialAdvancement.value,
+      start_date: startDate.value
+    }
+    if (nextAdjustDate.value) {
+      payload.follow_up = {
+        create: true,
+        doctor_id: appt.value.doctor_id,
+        title: `阻鼾器物理微调 - 2周复查`,
+        description: `初次配戴 ${selectedDevice.name} (初始前伸量 ${initialAdvancement.value}mm) 满两周，到店复查微调下颌前伸度。`,
+        due_date: nextAdjustDate.value
+      }
+    }
+  }
+
+  return payload
+}
+
+const validateConsultationForm = () => {
   if (!diagnosis.value.trim()) {
     MessagePlugin.warning('请输入临床诊断结果')
-    return
+    return false
   }
+  return true
+}
+
+const handleSaveOnly = async () => {
+  if (!validateConsultationForm()) return
+
+  savingOnly.value = true
+  try {
+    const payload = buildConsultationPayload(false)
+    const saveRes: any = await request.post(`/api/admin/appointments/${appt.value.id}/save-consultation`, {
+      medical_record: payload.medical_record
+    })
+
+    if (saveRes.code === 200) {
+      MessagePlugin.success('诊疗信息已保存，预约未结束')
+    } else {
+      MessagePlugin.error(saveRes.message || '保存诊疗信息失败')
+    }
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error(error instanceof Error ? error.message : '保存诊疗信息失败')
+  } finally {
+    savingOnly.value = false
+  }
+}
+
+const handleSubmit = async () => {
+  if (!validateConsultationForm()) return
 
   submitting.value = true
   try {
-    const payload: any = {
-      medical_record: {
-        doctor_id: appt.value.doctor_id,
-        store_id: appt.value.store_id,
-        visit_date: new Date().toISOString().split('T')[0],
-        diagnosis: diagnosis.value,
-        prescription: prescription.value,
-        doctor_advice: doctorAdvice.value,
-        note: note.value,
-        medical_history: medicalHistory.value,
-        allergy_history: allergyHistory.value
-      }
-    }
-
-    if (activeTreatment.value && syncAdjust.value) {
-      payload.treatment = { treatment_id: activeTreatment.value.id }
-      payload.adjustment = {
-        create: true,
-        adjust_date: new Date().toISOString().split('T')[0],
-        operator_id: appt.value.doctor_id,
-        adjusted_advancement: adjustedAdvancement.value,
-        patient_feedback: patientFeedback.value,
-        instructions: adjustInstructions.value,
-        next_adjust_date: nextAdjustDate.value
-      }
-      if (nextAdjustDate.value) {
-        payload.follow_up = {
-          create: true,
-          doctor_id: appt.value.doctor_id,
-          title: `阻鼾器参数微调 - 复查`,
-          description: `已调至 ${adjustedAdvancement.value}mm (反馈: ${patientFeedback.value})，安排门诊复诊。`,
-          due_date: nextAdjustDate.value
-        }
-      }
-    } else if (!activeTreatment.value && syncTreatment.value) {
-      payload.treatment = {
-        create: true,
-        device_model: deviceModel.value,
-        initial_advancement: initialAdvancement.value,
-        start_date: startDate.value
-      }
-      if (nextAdjustDate.value) {
-        payload.follow_up = {
-          create: true,
-          doctor_id: appt.value.doctor_id,
-          title: `阻鼾器物理微调 - 2周复查`,
-          description: `初次配戴 ${deviceModel.value} (初始前伸量 ${initialAdvancement.value}mm) 满两周，到店复查微调下颌前伸度。`,
-          due_date: nextAdjustDate.value
-        }
-      }
-    }
-
+    const payload = buildConsultationPayload()
     const emrRes: any = await request.post(`/api/admin/appointments/${appt.value.id}/complete-consultation`, payload)
 
     if (emrRes.code === 200) {
@@ -248,7 +302,7 @@ const handleSubmit = async () => {
     }
   } catch (error) {
     console.error(error)
-    MessagePlugin.error('提交诊疗数据失败')
+    MessagePlugin.error(error instanceof Error ? error.message : '提交诊疗数据失败')
   } finally {
     submitting.value = false
   }
@@ -264,7 +318,10 @@ const handleSubmit = async () => {
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button class="btn btn-outline" @click="navigateToParent(router, route, '/appointment')">取消</button>
-        <button class="btn btn-primary" :disabled="submitting" @click="handleSubmit">
+        <button class="btn btn-outline" :disabled="savingOnly || submitting" @click="handleSaveOnly">
+          {{ savingOnly ? '保存中...' : '仅保存' }}
+        </button>
+        <button class="btn btn-primary" :disabled="submitting || savingOnly" @click="handleSubmit">
           {{ submitting ? '提交中...' : '保存并结束就诊' }}
         </button>
       </div>
@@ -680,14 +737,16 @@ const handleSubmit = async () => {
               </div>
 
               <div class="card-grid-2">
-                <div class="form-group">
-                  <label class="form-label">物理阻鼾器型号</label>
-                  <select v-model="deviceModel" class="form-control select-ctrl">
-                    <option value="HJ-MAD-03">HJ-MAD-03 (可调舌型旗舰款)</option>
-                    <option value="HJ-MAD-02">HJ-MAD-02 (经典可调式)</option>
-                    <option value="HJ-MAD-01">HJ-MAD-01 (标准固定式)</option>
-                  </select>
-                </div>
+	                <div class="form-group">
+	                  <label class="form-label">绑定物理阻鼾器设备</label>
+	                  <select v-model="deviceProductId" class="form-control select-ctrl">
+	                    <option value="" disabled>请选择商品管理中的上架设备</option>
+	                    <option v-for="device in deviceProducts" :key="device.id" :value="String(device.id)">
+	                      {{ device.name }}
+	                    </option>
+	                  </select>
+	                  <div v-if="!deviceProducts.length" class="form-hint danger">商品管理中暂无已上架的物理阻鼾器设备，请先到商品管理新增或上架设备。</div>
+	                </div>
 
                 <div class="form-group">
                   <label class="form-label">初始下颌前移量 (mm)</label>
@@ -1131,6 +1190,16 @@ const handleSubmit = async () => {
   color: var(--primary-600);
   min-width: 50px;
   text-align: right;
+}
+
+.form-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6B7280;
+}
+.form-hint.danger {
+  color: #DC2626;
 }
 
 .card-grid-2 {

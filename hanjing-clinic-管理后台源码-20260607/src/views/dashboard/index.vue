@@ -5,8 +5,9 @@ import * as echarts from 'echarts'
 import request from '@/utils/request'
 
 const router = useRouter()
-const filterTime = ref('month')
-const chartFilterTime = ref('month')
+const filterTime = ref(localStorage.getItem('dashboard_filter_time') || 'month')
+const chartFilterTime = ref(localStorage.getItem('dashboard_chart_filter_time') || 'month')
+const activeTrendType = ref<'appointment' | 'revenue'>((localStorage.getItem('dashboard_active_trend_type') as any) || 'appointment')
 
 // KPI cards ref
 const kpiCards = ref([
@@ -18,13 +19,7 @@ const kpiCards = ref([
 
 const updateTimeStr = ref('2026-06-09 18:00')
 
-// Departments Distribution (keep mock static as it is simple and doesn't affect main operations)
-const depts = ref([
-  { name: '睡眠呼吸科', percent: 42, color: '#3B6BF5' },
-  { name: '耳鼻喉科', percent: 28, color: '#5A85F5' },
-  { name: '口腔科', percent: 18, color: '#1A9D5C' },
-  { name: '心理科', percent: 12, color: '#F5A623' }
-])
+const depts = ref<any[]>([])
 
 // Today Appointments
 const todayAppointments = ref<any[]>([])
@@ -37,13 +32,28 @@ let chart: echarts.ECharts | null = null
 
 const updateChart = (xData: string[], yData: number[]) => {
   if (chart) {
+    const isAppt = activeTrendType.value === 'appointment'
     chart.setOption({
+      tooltip: {
+        trigger: 'axis',
+        formatter: isAppt ? '{b}: {c}个预约' : '{b}: ¥{c}'
+      },
+      yAxis: {
+        name: isAppt ? '预约数 (个)' : '营收 (元)'
+      },
       xAxis: {
         data: xData
       },
       series: [
         {
-          data: yData
+          name: isAppt ? '预约数' : '营业额 (元)',
+          data: yData,
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: isAppt ? '#3B6BF5' : '#10B981' },
+              { offset: 1, color: isAppt ? '#8EAFFF' : '#D1FAE5' }
+            ])
+          }
         }
       ]
     })
@@ -125,7 +135,10 @@ const fetchDashboardStats = async () => {
 const fetchTrendChartData = async () => {
   try {
     const res: any = await request.get(`/api/admin/dashboard/stats?range=${chartFilterTime.value}`)
-    const { appointmentTrends } = res.data
+    const { appointmentTrends, revenueTrends } = res.data
+
+    const isAppt = activeTrendType.value === 'appointment'
+    const sourceData = isAppt ? (appointmentTrends || []) : (revenueTrends || [])
 
     // Format Trend Chart Axis and pad missing data
     let xData: string[] = []
@@ -137,21 +150,22 @@ const fetchTrendChartData = async () => {
       const hourMap = new Map<string, number>()
       standardHours.forEach(h => hourMap.set(h, 0))
 
-      if (appointmentTrends && appointmentTrends.length > 0) {
-        appointmentTrends.forEach((t: any) => {
+      if (sourceData.length > 0) {
+        sourceData.forEach((t: any) => {
           if (t.date) {
             const match = String(t.date).match(/^(\d+)/)
             if (match) {
               const hStr = match[1].padStart(2, '0')
               if (hourMap.has(hStr)) {
-                hourMap.set(hStr, hourMap.get(hStr)! + t.count)
+                const val = isAppt ? (t.count || 0) : Number(((t.total || 0) / 100).toFixed(2))
+                hourMap.set(hStr, hourMap.get(hStr)! + val)
               }
             }
           }
         })
       }
       xData = standardHours.map(h => `${h}点`)
-      yData = standardHours.map(h => hourMap.get(h)!)
+      yData = standardHours.map(h => Number(hourMap.get(h)!.toFixed(2)))
 
     } else if (chartFilterTime.value === 'week') {
       // Monday to Sunday of the current week
@@ -179,16 +193,17 @@ const fetchTrendChartData = async () => {
       const weekMap = new Map<string, number>()
       weekDates.forEach(d => weekMap.set(d, 0))
 
-      if (appointmentTrends && appointmentTrends.length > 0) {
-        appointmentTrends.forEach((t: any) => {
+      if (sourceData.length > 0) {
+        sourceData.forEach((t: any) => {
           const norm = normalizeDate(t.date)
           if (norm && weekMap.has(norm)) {
-            weekMap.set(norm, t.count)
+            const val = isAppt ? (t.count || 0) : Number(((t.total || 0) / 100).toFixed(2))
+            weekMap.set(norm, val)
           }
         })
       }
       xData = weekDates.map((d, idx) => weekDays[idx])
-      yData = weekDates.map(d => weekMap.get(d)!)
+      yData = weekDates.map(d => Number(weekMap.get(d)!.toFixed(2)))
 
     } else { // month
       // All days of the current month
@@ -215,16 +230,17 @@ const fetchTrendChartData = async () => {
       const monthMap = new Map<string, number>()
       monthDates.forEach(item => monthMap.set(item.fullDate, 0))
 
-      if (appointmentTrends && appointmentTrends.length > 0) {
-        appointmentTrends.forEach((t: any) => {
+      if (sourceData.length > 0) {
+        sourceData.forEach((t: any) => {
           const norm = normalizeDate(t.date)
           if (norm && monthMap.has(norm)) {
-            monthMap.set(norm, t.count)
+            const val = isAppt ? (t.count || 0) : Number(((t.total || 0) / 100).toFixed(2))
+            monthMap.set(norm, val)
           }
         })
       }
       xData = monthDates.map(item => item.label)
-      yData = monthDates.map(item => monthMap.get(item.fullDate)!)
+      yData = monthDates.map(item => Number(monthMap.get(item.fullDate)!.toFixed(2)))
     }
 
     updateChart(xData, yData)
@@ -265,11 +281,14 @@ const fetchDataLists = async () => {
 }
 
 watch(filterTime, (newVal) => {
+  localStorage.setItem('dashboard_filter_time', newVal)
   chartFilterTime.value = newVal
   fetchDashboardStats()
 })
 
-watch(chartFilterTime, () => {
+watch([chartFilterTime, activeTrendType], ([newChartTime, newTrendType]) => {
+  localStorage.setItem('dashboard_chart_filter_time', newChartTime)
+  localStorage.setItem('dashboard_active_trend_type', newTrendType)
   fetchTrendChartData()
 })
 
@@ -391,7 +410,20 @@ onMounted(() => {
       <!-- Reservation Trend -->
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">预约趋势</div>
+          <div class="panel-title" style="display: flex; gap: 16px; align-items: center; user-select: none;">
+            <span 
+              :style="{ cursor: 'pointer', fontWeight: activeTrendType === 'appointment' ? '700' : '500', color: activeTrendType === 'appointment' ? '#3B6BF5' : '#4B5563', borderBottom: activeTrendType === 'appointment' ? '2px solid #3B6BF5' : '2px solid transparent', paddingBottom: '4px', transition: 'all 150ms' }"
+              @click="activeTrendType = 'appointment'"
+            >
+              预约趋势
+            </span>
+            <span 
+              :style="{ cursor: 'pointer', fontWeight: activeTrendType === 'revenue' ? '700' : '500', color: activeTrendType === 'revenue' ? '#3B6BF5' : '#4B5563', borderBottom: activeTrendType === 'revenue' ? '2px solid #3B6BF5' : '2px solid transparent', paddingBottom: '4px', transition: 'all 150ms' }"
+              @click="activeTrendType = 'revenue'"
+            >
+              营收趋势
+            </span>
+          </div>
           <div class="panel-actions">
             <button :class="['btn', 'btn-sm', chartFilterTime === 'today' ? 'btn-primary' : 'btn-outline']" @click="chartFilterTime = 'today'">日</button>
             <button :class="['btn', 'btn-sm', chartFilterTime === 'week' ? 'btn-primary' : 'btn-outline']" @click="chartFilterTime = 'week'">周</button>
@@ -409,7 +441,7 @@ onMounted(() => {
           <div class="panel-title">科室分布</div>
         </div>
         <div class="panel-body" style="padding: 20px;">
-          <div style="display: flex; flex-direction: column; gap: 14px; height: 100%; justify-content: center;">
+          <div v-if="depts.length > 0" style="display: flex; flex-direction: column; gap: 14px; height: 100%; justify-content: center;">
             <div v-for="dept in depts" :key="dept.name">
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                 <span style="font-size: 13px; color: #374151;">{{ dept.name }}</span>
@@ -419,6 +451,14 @@ onMounted(() => {
                 <div :style="{ width: dept.percent + '%', background: dept.color }" style="height: 100%; border-radius: 4px;"></div>
               </div>
             </div>
+          </div>
+          <div v-else style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 160px; color: #9CA3AF; font-size: 13px;">
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 8px; opacity: 0.6;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>暂无科室预约数据</span>
           </div>
         </div>
       </div>

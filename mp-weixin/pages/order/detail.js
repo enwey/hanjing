@@ -73,9 +73,6 @@ const a = () => "../../components/base/hj-navbar.js",
         return "¥" + (e / 100).toFixed(2);
       }
       function requestWxPay(payParams) {
-        if (payParams.mockPayment) {
-          return Promise.resolve();
-        }
         return new Promise((resolve, reject) => {
           e.index.requestPayment({
             timeStamp: payParams.timeStamp,

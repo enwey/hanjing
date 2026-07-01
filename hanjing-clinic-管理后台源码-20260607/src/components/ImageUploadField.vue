@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
@@ -32,6 +32,15 @@ const emit = defineEmits<{
 
 const inputRef = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
+const hasLoadError = ref(false)
+
+watch(() => props.modelValue, () => {
+  hasLoadError.value = false
+})
+
+function handleImgError() {
+  hasLoadError.value = true
+}
 
 const formatText = computed(() => props.accept
   .map(type => type.replace('image/', '').replace('jpeg', 'jpg').toUpperCase())
@@ -135,7 +144,11 @@ async function handleFileChange(event: Event) {
       :disabled="uploading"
       @click="inputRef?.click()"
     >
-      <img v-if="modelValue" :src="modelValue" :alt="label">
+      <img v-if="modelValue && !hasLoadError" :src="modelValue" :alt="label" @error="handleImgError">
+      <div v-else-if="modelValue && hasLoadError" class="image-load-failed">
+        <AppIcon name="alert-circle" size="24" style="color: #EF4444;" />
+        <span class="error-text">加载失败</span>
+      </div>
       <div v-else class="image-empty">
         <span class="empty-icon"><AppIcon name="image-plus" size="28" /></span>
         <span class="empty-title">上传{{ label }}</span>
@@ -346,5 +359,22 @@ async function handleFileChange(event: Event) {
   .image-preview {
     width: 100%;
   }
+}
+
+.image-load-failed {
+  height: 100%;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #EF4444;
+  background: #FFF5F5;
+}
+
+.image-load-failed .error-text {
+  font-size: 11px;
+  font-weight: 700;
 }
 </style>

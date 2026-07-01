@@ -3,6 +3,14 @@ import { ref, watch, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import {
+  createBillingItem,
+  createCheckoutReceiptResult,
+  fetchCheckoutProducts,
+  findCheckoutProduct,
+  type BillingItem,
+  type CheckoutProduct
+} from '@/utils/checkoutProducts'
 
 const router = useRouter()
 const route = useRoute()
@@ -15,21 +23,42 @@ const getTodayDateString = () => {
   return `${y}-${m}-${d}`
 }
 
-// Filter states matching UI mockup
-const activeTab = ref(localStorage.getItem('appt_list_active_tab') || 'all') // Default to 'all' (全部)
+const activeTab = ref(localStorage.getItem('appt_list_active_tab') || 'all')
 const filterStore = ref(localStorage.getItem('appt_list_filter_store') || '全部门店')
 const filterDoctor = ref(localStorage.getItem('appt_list_filter_doctor') || '全部医生')
-const filterDate = ref(localStorage.getItem('appt_list_filter_date') || '') // No date filter by default
+
+const getStoredFilterDate = () => {
+  const stored = localStorage.getItem('appt_list_filter_date')
+  if (!stored) return []
+  try {
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed : []
+  } catch (e) {
+    if (stored.includes(',')) return stored.split(',')
+    return stored ? [stored, stored] : []
+  }
+}
+const filterDate = ref<any[]>(getStoredFilterDate())
 const searchKeyword = ref(localStorage.getItem('appt_list_search_keyword') || '')
 
 watch(activeTab, (newVal) => { localStorage.setItem('appt_list_active_tab', newVal) })
 watch(filterStore, (newVal) => { localStorage.setItem('appt_list_filter_store', newVal) })
 watch(filterDoctor, (newVal) => { localStorage.setItem('appt_list_filter_doctor', newVal) })
-watch(filterDate, (newVal) => { localStorage.setItem('appt_list_filter_date', newVal) })
+watch(filterDate, (newVal) => {
+  if (Array.isArray(newVal) && newVal.length > 0) {
+    localStorage.setItem('appt_list_filter_date', JSON.stringify(newVal))
+  } else {
+    localStorage.removeItem('appt_list_filter_date')
+  }
+})
 watch(searchKeyword, (newVal) => { localStorage.setItem('appt_list_search_keyword', newVal) })
 
 const currentPage = ref(1)
 const pageSize = ref(30)
+const totalAppointments = ref(0)
+const stores = ref<any[]>([])
+const doctors = ref<any[]>([])
+const loading = ref(false)
 
 interface Appointment {
   id: string;
@@ -49,20 +78,62 @@ interface Appointment {
   createdAt: string;
 }
 
-const baseAppointments = [
-  { id: '1', patientId: '1', no: 'BK20260529001', patient: '张明华', phone: '13886666789', avatarChar: '张', avatarColor: '#3B6BF5', store: '龙岗总店', doctor: '古堪民', date: '2026-05-29', time: '09:30', type: '复诊', source: '小程序', status: 'arrived' },
-  { id: '2', patientId: '2', no: 'BK20260529002', patient: '李雪琴', phone: '13998882345', avatarChar: '李', avatarColor: '#9333EA', store: '龙岗总店', doctor: '王志远', date: '2026-05-29', time: '10:00', type: '初诊', source: '电话', status: 'waiting' },
-  { id: '3', patientId: '3', no: 'BK20260529003', patient: '陈建国', phone: '13556788901', avatarChar: '陈', avatarColor: '#F59E0B', store: '福田门诊部', doctor: '古堪民', date: '2026-05-29', time: '10:30', type: '复诊', source: '小程序', status: 'pending' },
-  { id: '4', patientId: '4', no: 'BK20260529004', patient: '周小燕', phone: '13667895678', avatarChar: '周', avatarColor: '#10B981', store: '南山分院', doctor: '刘婉清', date: '2026-05-29', time: '11:00', type: '初诊', source: '到店', status: 'cancelled' },
-  { id: '5', patientId: '5', no: 'BK20260529005', patient: '吴佳佳', phone: '13778903456', avatarChar: '吴', avatarColor: '#EC4899', store: '龙岗总店', doctor: '王志远', date: '2026-05-29', time: '14:00', type: '复诊', source: '分销推广', status: 'waiting' }
-]
-
 const appointments = ref<Appointment[]>([])
+
+const fetchStores = async () => {
+  try {
+    const res: any = await request.get('/api/admin/stores')
+    stores.value = res.data || []
+  } catch (error) {
+    console.error('Failed to load stores:', error)
+  }
+}
+
+const fetchDoctors = async () => {
+  try {
+    const res: any = await request.get('/api/admin/doctors')
+    doctors.value = res.data || []
+  } catch (error) {
+    console.error('Failed to load doctors:', error)
+  }
+}
 
 const fetchAppointments = async () => {
   try {
-    const res: any = await request.get('/api/admin/appointments')
-    appointments.value = res.data.map((item: any) => ({
+    loading.value = true
+    const params: any = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
+    if (searchKeyword.value && searchKeyword.value.trim()) {
+      params.search = searchKeyword.value.trim()
+    }
+    if (filterStore.value && filterStore.value !== '全部门店') {
+      params.store_name = filterStore.value
+    }
+    if (filterDoctor.value && filterDoctor.value !== '全部医生') {
+      params.doctor_name = filterDoctor.value
+    }
+    if (activeTab.value === 'today') {
+      params.date = getTodayDateString()
+    } else if (Array.isArray(filterDate.value) && filterDate.value.length === 2 && filterDate.value[0] && filterDate.value[1]) {
+      params.date = filterDate.value.join(',')
+    } else if (filterDate.value && typeof filterDate.value === 'string') {
+      params.date = filterDate.value
+    }
+    if (activeTab.value !== 'all' && activeTab.value !== 'today') {
+      params.status = activeTab.value
+    }
+
+    const res: any = await request.get('/api/admin/appointments', { params })
+    const rawList = res.data?.list || []
+    totalAppointments.value = res.data?.total || 0
+
+    if (res.data?.counts) {
+      counts.value = res.data.counts
+    }
+
+    appointments.value = rawList.map((item: any) => ({
       id: item.id.toString(),
       patientId: item.patient_id.toString(),
       no: item.appointment_no,
@@ -96,26 +167,27 @@ const fetchAppointments = async () => {
     }
   } catch (error) {
     console.error('Failed to load appointments:', error)
+  } finally {
+    loading.value = false
   }
 }
 
 onMounted(() => {
+  fetchStores()
+  fetchDoctors()
+  fetchProducts()
   fetchAppointments()
 })
 
-const storeOptions = [
+const storeOptions = computed(() => [
   { label: '全部门店', value: '全部门店' },
-  { label: '龙岗总店', value: '龙岗总店' },
-  { label: '南山分院', value: '南山分院' },
-  { label: '福田门诊部', value: '福田门诊部' },
-]
+  ...stores.value.map(store => ({ label: store.name, value: store.name }))
+])
 
-const doctorOptions = [
+const doctorOptions = computed(() => [
   { label: '全部医生', value: '全部医生' },
-  { label: '古堪民', value: '古堪民' },
-  { label: '王志远', value: '王志远' },
-  { label: '刘婉清', value: '刘婉清' },
-]
+  ...doctors.value.map(doc => ({ label: doc.name, value: doc.name }))
+])
 
 const tabOptions = [
   { label: '全部', value: 'all' },
@@ -141,164 +213,123 @@ const statusMap: Record<string, { label: string; theme: string }> = {
   cancelled: { label: '已取消', theme: 'danger' }
 }
 
-const counts = computed(() => {
-  let list = appointments.value
-
-  // 1. Search Keyword
-  if (searchKeyword.value) {
-    const kw = searchKeyword.value.toLowerCase()
-    list = list.filter(a => a.patient.includes(kw) || a.no.toLowerCase().includes(kw))
-  }
-
-  // 2. Store filter
-  if (filterStore.value && filterStore.value !== '全部门店') {
-    list = list.filter(a => a.store.includes(filterStore.value))
-  }
-
-  // 3. Doctor filter
-  if (filterDoctor.value && filterDoctor.value !== '全部医生') {
-    list = list.filter(a => a.doctor === filterDoctor.value)
-  }
-
-  // If date filter is set, it affects status tabs. Otherwise they show total counts for all dates.
-  let statusList = list
-  if (filterDate.value) {
-    statusList = list.filter(a => a.date === filterDate.value)
-  }
-
-  return {
-    all: statusList.length,
-    today: list.filter(a => a.date === getTodayDateString()).length,
-    pending_payment: statusList.filter(a => a.status === 'pending_payment').length,
-    pending: statusList.filter(a => a.status === 'pending').length,
-    waiting: statusList.filter(a => a.status === 'waiting').length,
-    checked_in: statusList.filter(a => a.status === 'checked_in').length,
-    completed: statusList.filter(a => a.status === 'completed').length,
-    arrived: statusList.filter(a => a.status === 'arrived').length,
-    no_show: statusList.filter(a => a.status === 'no_show').length,
-    cancelled: statusList.filter(a => a.status === 'cancelled').length,
-  }
+const counts = ref<Record<string, number>>({
+  all: 0,
+  today: 0,
+  pending_payment: 0,
+  pending: 0,
+  waiting: 0,
+  checked_in: 0,
+  completed: 0,
+  arrived: 0,
+  no_show: 0,
+  cancelled: 0
 })
 
 watch([activeTab, filterStore, filterDoctor, filterDate, searchKeyword], () => {
   currentPage.value = 1
+  fetchAppointments()
 })
 
-function getFilteredAppointments() {
-  let list = appointments.value
+watch([currentPage, pageSize], () => {
+  fetchAppointments()
+})
 
-  // 1. Tab filter
-  if (activeTab.value === 'today') {
-    list = list.filter(a => a.date === getTodayDateString())
-  } else if (activeTab.value === 'pending_payment') {
-    list = list.filter(a => a.status === 'pending_payment')
-  } else if (activeTab.value === 'pending') {
-    list = list.filter(a => a.status === 'pending')
-  } else if (activeTab.value === 'waiting') {
-    list = list.filter(a => a.status === 'waiting')
-  } else if (activeTab.value === 'checked_in') {
-    list = list.filter(a => a.status === 'checked_in')
-  } else if (activeTab.value === 'completed') {
-    list = list.filter(a => a.status === 'completed')
-  } else if (activeTab.value === 'arrived') {
-    list = list.filter(a => a.status === 'arrived')
-  } else if (activeTab.value === 'no_show') {
-    list = list.filter(a => a.status === 'no_show')
-  } else if (activeTab.value === 'cancelled') {
-    list = list.filter(a => a.status === 'cancelled')
-  }
-
-  // 2. Search Keyword
-  if (searchKeyword.value) {
-    const kw = searchKeyword.value.toLowerCase()
-    list = list.filter(a => a.patient.includes(kw) || a.no.toLowerCase().includes(kw))
-  }
-
-  // 3. Store filter
-  if (filterStore.value && filterStore.value !== '全部门店') {
-    list = list.filter(a => a.store.includes(filterStore.value))
-  }
-
-  // 4. Doctor filter
-  if (filterDoctor.value && filterDoctor.value !== '全部医生') {
-    list = list.filter(a => a.doctor === filterDoctor.value)
-  }
-
-  // 5. Date filter
-  if (filterDate.value) {
-    list = list.filter(a => a.date === filterDate.value)
-  }
-
-  return list
-}
-
-function handleExport() {
-  const list = getFilteredAppointments()
-  if (list.length === 0) {
-    MessagePlugin.warning('当前无匹配的预约记录可供导出')
-    return
-  }
-
-  const headers = [
-    '预约单号',
-    '患者姓名',
-    '手机号',
-    '就诊门店',
-    '就诊医生',
-    '预约日期',
-    '预约时间',
-    '就诊类型',
-    '来源渠道',
-    '预约状态'
-  ]
-
-  const rows = list.map(item => {
-    const escapeCsv = (val: string) => {
-      if (val === null || val === undefined) return ''
-      const str = String(val).replace(/"/g, '""')
-      return `"${str}"`
+async function handleExport() {
+  try {
+    const params: any = {}
+    if (searchKeyword.value && searchKeyword.value.trim()) {
+      params.search = searchKeyword.value.trim()
+    }
+    if (filterStore.value && filterStore.value !== '全部门店') {
+      params.store_name = filterStore.value
+    }
+    if (filterDoctor.value && filterDoctor.value !== '全部医生') {
+      params.doctor_name = filterDoctor.value
+    }
+    if (activeTab.value === 'today') {
+      params.date = getTodayDateString()
+    } else if (Array.isArray(filterDate.value) && filterDate.value.length === 2 && filterDate.value[0] && filterDate.value[1]) {
+      params.date = filterDate.value.join(',')
+    } else if (filterDate.value && typeof filterDate.value === 'string') {
+      params.date = filterDate.value
+    }
+    if (activeTab.value !== 'all' && activeTab.value !== 'today') {
+      params.status = activeTab.value
     }
 
-    const statusLabel = statusMap[item.status]?.label || item.status
+    const res: any = await request.get('/api/admin/appointments', { params })
+    const rawList = Array.isArray(res.data) ? res.data : (res.data?.list || [])
 
-    return [
-      escapeCsv(item.no),
-      escapeCsv(item.patient),
-      escapeCsv(item.phone),
-      escapeCsv(item.store),
-      escapeCsv(item.doctor),
-      escapeCsv(item.date),
-      escapeCsv(item.time),
-      escapeCsv(item.type),
-      escapeCsv(item.source),
-      escapeCsv(statusLabel)
+    if (rawList.length === 0) {
+      MessagePlugin.warning('当前无匹配的预约记录可供导出')
+      return
+    }
+
+    const headers = [
+      '预约单号',
+      '患者姓名',
+      '手机号',
+      '就诊门店',
+      '就诊医生',
+      '预约日期',
+      '预约时间',
+      '就诊类型',
+      '来源渠道',
+      '预约状态'
     ]
-  })
 
-  const csvContent = '\uFEFF' + [headers.join(',')].concat(rows.map(r => r.join(','))).join('\n')
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.setAttribute('href', url)
-  
-  const now = new Date()
-  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-  link.setAttribute('download', `预约挂号导出_${dateStr}.csv`)
-  
-  link.style.visibility = 'hidden'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  
-  MessagePlugin.success(`成功导出 ${list.length} 条预约记录`)
+    const rows = rawList.map(item => {
+      const escapeCsv = (val: string) => {
+        if (val === null || val === undefined) return ''
+        const str = String(val).replace(/"/g, '""')
+        return `"${str}"`
+      }
+
+      const rawStatus = item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' || item.status === 'called' ? 'waiting' : item.status === 'pending' ? 'pending' : item.status === 'pending_payment' ? 'pending_payment' : item.status === 'no_show' ? 'no_show' : 'cancelled'
+      const statusLabel = statusMap[rawStatus]?.label || item.status
+
+      return [
+        escapeCsv(item.appointment_no),
+        escapeCsv(item.patient_name),
+        escapeCsv(item.patient_phone),
+        escapeCsv(item.store_name),
+        escapeCsv(item.doctor_name),
+        escapeCsv(item.appointment_date ? item.appointment_date.substring(0, 10) : ''),
+        escapeCsv(item.appointment_time),
+        escapeCsv(item.type === 'first' ? '初诊' : '复诊'),
+        escapeCsv(item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店'),
+        escapeCsv(statusLabel)
+      ]
+    })
+
+    const csvContent = '\uFEFF' + [headers.join(',')].concat(rows.map(r => r.join(','))).join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    
+    const now = new Date()
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+    link.setAttribute('download', `预约挂号导出_${dateStr}.csv`)
+    
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    MessagePlugin.success(`成功导出 ${rawList.length} 条预约记录`)
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('导出失败')
+  }
 }
 
 const paginatedAppointments = computed(() => {
-  const filtered = getFilteredAppointments()
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filtered.slice(start, end)
+  return appointments.value
 })
+
+
 
 const operationColumnWidth = computed(() => {
   if (paginatedAppointments.value.length === 0) {
@@ -518,18 +549,10 @@ const shippingReceiver = ref<string>('')
 const shippingPhone = ref<string>('')
 const shippingAddressStr = ref<string>('')
 
-const productOptions = [
-  { id: '1', name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000 },
-  { id: '2', name: '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', price: 4900 },
-  { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
-  { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
-  { id: '5', name: '诊所专家诊断评估费', price: 50000 },
-  { id: '7', name: '快递运费', price: 1500 },
-  { id: '8', name: '就诊预约定金', price: 20000 }
-]
+const productOptions = ref<CheckoutProduct[]>([])
 
-const billingItems = ref<Array<{ product_id: string; product_name: string; price: number; quantity: number }>>([])
-const discountAmount = ref<number>(3000)
+const billingItems = ref<BillingItem[]>([])
+const discountAmount = ref<number>(0)
 const payMethod = ref<string>('wechat')
 
 const totalAmount = computed(() => {
@@ -542,7 +565,12 @@ const payableAmount = computed(() => {
 })
 
 function addBillingItem() {
-  billingItems.value.push({ product_id: '1', product_name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000, quantity: 1 })
+  const product = findCheckoutProduct(productOptions.value)
+  if (!product) {
+    MessagePlugin.warning('暂无可添加的上架商品')
+    return
+  }
+  billingItems.value.push(createBillingItem(product))
 }
 
 function removeBillingItem(idx: number) {
@@ -550,47 +578,75 @@ function removeBillingItem(idx: number) {
 }
 
 function onProductChange(idx: number, prodId: string) {
-  const prod = productOptions.find(p => p.id === prodId)
+  const prod = productOptions.value.find(p => p.id === prodId)
   if (prod) {
-    billingItems.value[idx].product_name = prod.name
-    billingItems.value[idx].price = prod.price
+    billingItems.value[idx] = createBillingItem(prod, { quantity: billingItems.value[idx].quantity })
   }
 }
 
 watch(deliveryType, (newVal) => {
   if (newVal === 'online') {
-    const exists = billingItems.value.some(item => item.product_id === '7')
+    const freightProduct = findCheckoutProduct(productOptions.value, '运费')
+    if (!freightProduct) {
+      MessagePlugin.warning('商品管理中暂无上架运费项目，请先配置后再选择快递邮寄')
+      deliveryType.value = 'offline_direct'
+      return
+    }
+    const exists = billingItems.value.some(item => item.product_id === freightProduct.id)
     if (!exists) {
-      billingItems.value.push({ product_id: '7', product_name: '快递运费', price: 1500, quantity: 1 })
+      billingItems.value.push(createBillingItem(freightProduct))
     }
   } else {
-    const idx = billingItems.value.findIndex(item => item.product_id === '7')
+    const freightProduct = findCheckoutProduct(productOptions.value, '运费')
+    const idx = billingItems.value.findIndex(item => item.product_id === freightProduct?.id || item.product_name.includes('运费'))
     if (idx !== -1) {
       billingItems.value.splice(idx, 1)
     }
   }
 })
 
+const fetchProducts = async () => {
+  try {
+    productOptions.value = await fetchCheckoutProducts(request)
+  } catch (error) {
+    console.error('获取商品列表失败:', error)
+    MessagePlugin.error('获取商品列表失败')
+  }
+}
 
-function openCheckoutDialog(row: Appointment) {
+async function openCheckoutDialog(row: Appointment) {
+  if (productOptions.value.length === 0) {
+    await fetchProducts()
+  }
+  const consultProduct = findCheckoutProduct(productOptions.value)
+  if (!consultProduct) {
+    MessagePlugin.warning('暂无上架商品，无法开立收费账单')
+    return
+  }
   selectedCheckoutRow.value = row
   if (row.status === 'pending_payment') {
-    const items = []
+    const items: BillingItem[] = []
     if (row.consult_fee && row.consult_fee > 0) {
-      items.push({ product_id: '4', product_name: `${row.doctor}医生挂号门诊费`, price: row.consult_fee, quantity: 1 })
+      items.push(createBillingItem(consultProduct, {
+        name: `${row.doctor}医生挂号门诊费`,
+        price: row.consult_fee
+      }))
     }
     if (row.deposit_amount && row.deposit_amount > 0) {
-      items.push({ product_id: '8', product_name: '就诊预约定金', price: row.deposit_amount, quantity: 1 })
+      const depositProduct = findCheckoutProduct(productOptions.value, '定金')
+      if (!depositProduct) {
+        MessagePlugin.warning('商品管理中暂无上架预约定金项目，请先配置后再收银')
+        return
+      }
+      items.push(createBillingItem(depositProduct, { price: row.deposit_amount }))
     }
-    billingItems.value = items.length > 0 ? items : [
-      { product_id: '4', product_name: '门诊挂号就诊费', price: 20000, quantity: 1 }
-    ]
+    billingItems.value = items.length > 0 ? items : [createBillingItem(consultProduct)]
   } else {
     billingItems.value = [
-      { product_id: '4', product_name: '诊所首诊挂号门诊费', price: 20000, quantity: 1 }
+      createBillingItem(consultProduct)
     ]
   }
-  discountAmount.value = row.status === 'pending_payment' ? 0 : 3000
+  discountAmount.value = 0
   payMethod.value = 'wechat'
   checkoutSuccess.value = false
   orderResult.value = null
@@ -604,8 +660,33 @@ function openCheckoutDialog(row: Appointment) {
 }
 
 function closeCheckoutDialog() {
+  if (checkoutSuccess.value) {
+    MessagePlugin.warning('请点击底部“完成结算”完成本次结算流程')
+    checkoutVisible.value = true
+    return
+  }
   checkoutVisible.value = false
   selectedCheckoutRow.value = null
+}
+
+async function completeCheckoutSettlement() {
+  if (!selectedCheckoutRow.value || !orderResult.value) return
+  checkoutLoading.value = true
+  try {
+    const nextStatus = selectedCheckoutRow.value.status === 'pending_payment' ? 'pending' : 'arrived'
+    await request.put(`/api/admin/appointments/${selectedCheckoutRow.value.id}`, { status: nextStatus })
+    MessagePlugin.success('结算已完成')
+    checkoutVisible.value = false
+    selectedCheckoutRow.value = null
+    checkoutSuccess.value = false
+    orderResult.value = null
+    fetchAppointments()
+  } catch (err) {
+    console.error('完成结算失败:', err)
+    MessagePlugin.error('完成结算失败，请稍后重试')
+  } finally {
+    checkoutLoading.value = false
+  }
 }
 
 function handlePrintInvoice() {
@@ -692,24 +773,9 @@ async function submitCheckout() {
     }
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
-      try {
-        const nextStatus = selectedCheckoutRow.value.status === 'pending_payment' ? 'pending' : 'arrived'
-        await request.put(`/api/admin/appointments/${selectedCheckoutRow.value.id}`, { status: nextStatus })
-      } catch (err) {
-        console.error('更新预约结算状态失败:', err)
-      }
       MessagePlugin.success('收银收费结算交易成功！')
-      orderResult.value = {
-        orderNo: res.data.order_no,
-        patientName: selectedCheckoutRow.value.patient,
-        total: (totalAmount.value / 100).toFixed(2),
-        discount: (discountAmount.value / 100).toFixed(2),
-        payable: (payableAmount.value / 100).toFixed(2),
-        payMethodText: payMethod.value === 'wechat' ? '微信支付' : payMethod.value === 'alipay' ? '支付宝' : 'POS线下刷卡',
-        time: new Date().toLocaleString()
-      }
+      orderResult.value = createCheckoutReceiptResult(res.data.receipt)
       checkoutSuccess.value = true
-      fetchAppointments()
     }
   } catch (error) {
     console.error(error)
@@ -775,7 +841,7 @@ async function submitCheckout() {
           />
           <t-select v-model="filterStore" :options="storeOptions" style="width: 125px;" />
           <t-select v-model="filterDoctor" :options="doctorOptions" style="width: 110px;" />
-          <t-date-picker v-model="filterDate" style="width: 135px;" clearable placeholder="选择日期" />
+          <t-date-range-picker v-model="filterDate" style="width: 240px;" clearable :placeholder="['开始日期', '结束日期']" />
         </div>
       </div>
 
@@ -904,7 +970,7 @@ async function submitCheckout() {
         <t-pagination
           v-model:current="currentPage"
           v-model:pageSize="pageSize"
-          :total="getFilteredAppointments().length"
+          :total="totalAppointments"
           :pageSizeOptions="[30, 60, 100]"
           style="border: none; padding: 0;"
         />
@@ -929,7 +995,7 @@ async function submitCheckout() {
           <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>结账客户:</span> <span>{{ orderResult?.patientName }}</span></div>
           <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>交易时间:</span> <span>{{ orderResult?.time }}</span></div>
           <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">--------------------------------</div>
-          <div v-for="item in billingItems" :key="item.product_id" style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+          <div v-for="item in orderResult?.items" :key="item.product_id" style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
             <span>{{ item.product_name }} x{{ item.quantity }}</span>
             <span>¥{{ ((item.price * item.quantity) / 100).toFixed(2) }}</span>
           </div>
@@ -947,7 +1013,7 @@ async function submitCheckout() {
         </div>
         <div style="margin-top: 20px; display: flex; gap: 12px;">
           <t-button variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
-          <t-button theme="primary" @click="closeCheckoutDialog">完成结算</t-button>
+          <t-button theme="primary" :loading="checkoutLoading" @click="completeCheckoutSettlement">完成结算</t-button>
         </div>
       </div>
 
@@ -1069,14 +1135,6 @@ async function submitCheckout() {
             <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
               <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
               <AppIcon name="wechat" />  微信支付
-            </label>
-            <label class="pay-method-label" :class="{ active: payMethod === 'alipay' }">
-              <input v-model="payMethod" type="radio" value="alipay" style="display: none;">
-              <AppIcon name="alipay" />  支付宝
-            </label>
-            <label class="pay-method-label" :class="{ active: payMethod === 'pos' }">
-              <input v-model="payMethod" type="radio" value="pos" style="display: none;">
-              <AppIcon name="coins" />  现金/刷卡
             </label>
           </div>
         </div>

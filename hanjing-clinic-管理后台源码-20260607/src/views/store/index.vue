@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import ImageUploadField from '@/components/ImageUploadField.vue'
 
 const router = useRouter()
 const currentPage = ref(1)
@@ -12,28 +13,27 @@ const editVisible = ref(false)
 const editStore = ref<any>(null)
 
 interface Store {
-  id: string; name: string; code: string; address: string; phone: string
+  id: string; name: string; code: string; address: string; city?: string; district?: string; phone: string
+  latitude?: string; longitude?: string
+  coverUrl?: string; imageUrls?: string[]
   openTime: string; closeTime: string; doctors: number; devices: number
   monthBookings: number; monthRevenue: string; status: string; manager: string; features: string[]
-  icon: string; iconBg: string
+  hours?: Array<{ openTime: string; closeTime: string }>; icon: string; iconBg: string
 }
 
-const initialStores: Store[] = [
-  { id: '1', name: '鼾静健康 · 龙岗总店', code: 'SZ-HQ', address: '深圳市龙岗区吉华路达成工业区3号',
-    phone: '0755-8888-1001', openTime: '08:30', closeTime: '18:00', doctors: 4, devices: 8,
-    monthBookings: 156, monthRevenue: '¥22.8w', status: 'open', manager: '陈经理',
-    features: ['VIP室', '睡眠监测', '直播室', '儿童专区'], icon: 'store', iconBg: 'linear-gradient(135deg, #EEF4FF, #D9E6FF)' },
-  { id: '2', name: '鼾静健康 · 南山分院', code: 'SZ-NS', address: '深圳市南山区科技园南区数字大厦2楼',
-    phone: '0755-8888-1002', openTime: '09:00', closeTime: '17:30', doctors: 3, devices: 4,
-    monthBookings: 98, monthRevenue: '¥10.5w', status: 'open', manager: '张经理',
-    features: ['睡眠监测', '直播室'], icon: 'store', iconBg: 'linear-gradient(135deg, #EDFBF5, #D3F5E3)' },
-  { id: '3', name: '鼾静健康 · 福田门诊部', code: 'SZ-FT', address: '深圳市福田区深南大道财富大厦A座3楼',
-    phone: '0755-8888-1003', openTime: '08:30', closeTime: '20:00', doctors: 5, devices: 10,
-    monthBookings: 213, monthRevenue: '¥5.3w', status: 'open', manager: '赵经理',
-    features: ['睡眠监测'], icon: 'store', iconBg: 'linear-gradient(135deg, #FFF7ED, #FFEDD5)' }
-]
-
 const stores = ref<Store[]>([])
+const isEdit = ref(false)
+
+function safeJsonArray(value: any) {
+  if (!value) return []
+  if (Array.isArray(value)) return value
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
 
 const fetchStores = async () => {
   try {
@@ -45,11 +45,17 @@ const fetchStores = async () => {
       'linear-gradient(135deg, #FFF7ED, #FFEDD5)'
     ]
     stores.value = res.data.map((s: any, index: number) => ({
-      id: s.id.toString(),
-      name: s.name,
-      code: s.code,
-      address: s.address,
-      phone: s.phone,
+	      id: s.id.toString(),
+	      name: s.name,
+	      code: s.code,
+	      address: s.address,
+        city: s.city || '',
+        district: s.district || '',
+	      phone: s.phone,
+        latitude: s.latitude || '',
+        longitude: s.longitude || '',
+        coverUrl: s.cover_url || '',
+        imageUrls: safeJsonArray(s.image_urls),
       openTime: s.open_time ? s.open_time.substring(0, 5) : '09:00',
       closeTime: s.close_time ? s.close_time.substring(0, 5) : '18:00',
       hours: s.hours || [{ openTime: s.open_time ? s.open_time.substring(0, 5) : '09:00', closeTime: s.close_time ? s.close_time.substring(0, 5) : '18:00' }],
@@ -58,7 +64,7 @@ const fetchStores = async () => {
       monthBookings: s.monthBookings,
       monthRevenue: s.monthRevenue,
       status: s.status,
-      manager: s.manager,
+	      manager: s.manager,
       features: s.features || [],
       icon: icons[index % icons.length],
       iconBg: iconBgs[index % iconBgs.length]
@@ -79,10 +85,33 @@ const paginatedStores = computed(() => {
 })
 
 function openEdit(store: any) {
+  isEdit.value = true
   editStore.value = { 
     ...store,
     featuresStr: store.features ? store.features.join(',') : '',
     hours: store.hours ? JSON.parse(JSON.stringify(store.hours)) : [{ openTime: '09:00', closeTime: '18:00' }]
+  }
+  editVisible.value = true
+}
+
+function openCreate() {
+  isEdit.value = false
+  editStore.value = {
+    id: '',
+    name: '',
+    code: '',
+    address: '',
+    city: '',
+    district: '',
+    phone: '',
+    latitude: '',
+    longitude: '',
+    status: 'open',
+    manager: '',
+    coverUrl: '',
+    imageUrls: [],
+    featuresStr: '',
+    hours: [{ openTime: '09:00', closeTime: '18:00' }]
   }
   editVisible.value = true
 }
@@ -92,20 +121,51 @@ async function saveEdit() {
     const tags = editStore.value.featuresStr
       ? editStore.value.featuresStr.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean)
       : []
-    await request.put(`/api/admin/stores/${editStore.value.id}`, {
+    const payload = {
       name: editStore.value.name,
+      code: editStore.value.code,
       address: editStore.value.address,
+      city: editStore.value.city,
+      district: editStore.value.district,
+      latitude: editStore.value.latitude || null,
+      longitude: editStore.value.longitude || null,
+      cover_url: editStore.value.coverUrl || null,
+      image_urls: (editStore.value.imageUrls || []).filter((url: string) => String(url || '').trim()),
       phone: editStore.value.phone,
       status: editStore.value.status,
       features: tags,
       hours: editStore.value.hours
-    })
-    MessagePlugin.success('修改门店信息成功')
+    }
+    if (isEdit.value) {
+      await request.put(`/api/admin/stores/${editStore.value.id}`, payload)
+      MessagePlugin.success('修改门店信息成功')
+    } else {
+      await request.post('/api/admin/stores', payload)
+      MessagePlugin.success('新增门店成功')
+    }
     fetchStores()
     editVisible.value = false
   } catch (error) {
     console.error(error)
   }
+}
+
+async function handleDisable(store: Store) {
+  try {
+    await request.delete(`/api/admin/stores/${store.id}`)
+    MessagePlugin.success('门店已停用')
+    fetchStores()
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+function openStoreSchedule(store: Store) {
+  router.push({ path: '/doctor', query: { store_id: store.id } })
+}
+
+function openStoreAccounts(store: Store) {
+  router.push({ path: '/settings/admin', query: { store_id: store.id } })
 }
 </script>
 
@@ -117,7 +177,7 @@ async function saveEdit() {
         <div class="page-title">门店管理</div>
         <div class="page-title-sub">管理所有门店/诊所信息</div>
       </div>
-      <button class="btn btn-primary"><AppIcon name="plus" />  新增门店</button>
+      <button class="btn btn-primary" @click="openCreate"><AppIcon name="plus" />  新增门店</button>
     </div>
 
     <!-- 门店卡片 -->
@@ -140,13 +200,13 @@ async function saveEdit() {
             <div style="flex:1; min-width: 0;">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
                 <span style="font-size:16px;font-weight:700;color:#111827;">{{ store.name }}</span>
-                <span :class="['status-tag', store.status === 'open' ? 'green' : 'gold']">
-                  {{ store.status === 'open' ? '营业中' : '筹备中' }}
+                <span :class="['status-tag', store.status === 'open' ? 'green' : (store.status === 'closed' ? 'gray' : 'gold')]">
+                  {{ store.status === 'open' ? '营业中' : (store.status === 'closed' ? '已停用' : '筹备中') }}
                 </span>
               </div>
               <div style="font-size:12px;color:#6B7280;line-height:1.6;" :title="store.address">{{ store.address }}</div>
               <div style="font-size:12px;color:#9CA3AF;margin-top:4px;">
-                <AppIcon name="phone" /> {{ store.phone }} · <AppIcon name="clock" /> {{ store.status === 'prepare' ? '待定' : store.hours.map(h => `${h.openTime}-${h.closeTime}`).join(' ') }}
+                <AppIcon name="phone" /> {{ store.phone || '未填写电话' }} · <AppIcon name="clock" /> {{ store.status === 'prepare' ? '待定' : (store.hours || []).map(h => `${h.openTime}-${h.closeTime}`).join(' ') }}
               </div>
               <!-- Tags / Features -->
               <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
@@ -183,8 +243,10 @@ async function saveEdit() {
           <!-- 底部操作按钮 -->
           <div style="display:flex;gap:8px;margin-top:16px;">
             <button class="btn btn-sm btn-outline" style="flex:1;" @click="openEdit(store)">编辑信息</button>
-            <button class="btn btn-sm btn-outline" style="flex:1;" @click="router.push('/doctor/schedule/' + store.id)">排班管理</button>
+            <button class="btn btn-sm btn-outline" style="flex:1;" @click="openStoreSchedule(store)">排班管理</button>
+            <button class="btn btn-sm btn-outline" style="flex:1;" @click="openStoreAccounts(store)">人员配置</button>
             <button class="btn btn-sm btn-outline" style="flex:1;" @click="router.push('/store/report/' + store.id)">数据报表</button>
+            <button v-if="store.status !== 'closed'" class="btn btn-sm btn-outline" style="flex:1;" @click="handleDisable(store)">停用</button>
           </div>
         </div>
       </div>
@@ -202,7 +264,7 @@ async function saveEdit() {
     <!-- 编辑弹窗 -->
     <t-dialog
       v-model:visible="editVisible"
-      header="编辑门店信息"
+      :header="isEdit ? '编辑门店信息' : '新增门店'"
       width="520px"
       @confirm="saveEdit"
     >
@@ -211,13 +273,56 @@ async function saveEdit() {
           <t-input v-model="editStore.name" />
         </t-form-item>
         <t-form-item label="门店编号">
-          <t-input v-model="editStore.code" disabled />
+          <t-input v-model="editStore.code" :disabled="isEdit" placeholder="例如：SZ-LG" />
+        </t-form-item>
+        <t-form-item label="城市">
+          <t-input v-model="editStore.city" placeholder="请输入城市" />
+        </t-form-item>
+        <t-form-item label="区域">
+          <t-input v-model="editStore.district" placeholder="请输入区域" />
         </t-form-item>
         <t-form-item label="详细地址">
           <t-textarea v-model="editStore.address" :autosize="{ minRows: 2 }" />
         </t-form-item>
+        <t-form-item label="经纬度">
+          <div style="display:flex; gap:8px; width:100%;">
+            <t-input v-model="editStore.latitude" placeholder="纬度" />
+            <t-input v-model="editStore.longitude" placeholder="经度" />
+          </div>
+        </t-form-item>
         <t-form-item label="联系电话">
           <t-input v-model="editStore.phone" />
+        </t-form-item>
+        <t-form-item label="门店封面">
+          <ImageUploadField
+            v-model="editStore.coverUrl"
+            label="门店封面"
+            context="store-cover"
+            :max-size-mb="3"
+            ratio-label="16:9"
+            :ratio="16 / 9"
+            :min-width="960"
+            :min-height="540"
+          />
+        </t-form-item>
+        <t-form-item label="环境图片">
+          <div style="display:flex; flex-direction:column; gap:12px; width:100%;">
+            <ImageUploadField
+              v-for="(_, idx) in editStore.imageUrls"
+              :key="idx"
+              v-model="editStore.imageUrls[idx]"
+              :label="`环境图${idx + 1}`"
+              context="store-gallery"
+              :max-size-mb="3"
+              ratio-label="4:3"
+              :ratio="4 / 3"
+              :min-width="800"
+              :min-height="600"
+            />
+            <t-button variant="dashed" style="width:100%;" @click="editStore.imageUrls.push('')">
+              + 添加环境图
+            </t-button>
+          </div>
         </t-form-item>
         <t-form-item label="营业时间">
           <div style="width: 100%;">
@@ -235,16 +340,17 @@ async function saveEdit() {
           </div>
         </t-form-item>
         <t-form-item label="负责人">
-          <t-input v-model="editStore.manager" />
+          <t-input v-model="editStore.manager" disabled placeholder="请在账号管理中设置门店管理员" />
         </t-form-item>
         <t-form-item label="特色标签">
           <t-input v-model="editStore.featuresStr" placeholder="请输入特色标签，用中/英文逗号隔开" />
         </t-form-item>
         <t-form-item label="状态">
-          <t-radio-group v-model="editStore.status">
-            <t-radio value="open">运营中</t-radio>
-            <t-radio value="prepare">筹备中</t-radio>
-          </t-radio-group>
+	          <t-radio-group v-model="editStore.status">
+	            <t-radio value="open">运营中</t-radio>
+	            <t-radio value="prepare">筹备中</t-radio>
+              <t-radio value="closed">已停用</t-radio>
+	          </t-radio-group>
         </t-form-item>
       </t-form>
     </t-dialog>

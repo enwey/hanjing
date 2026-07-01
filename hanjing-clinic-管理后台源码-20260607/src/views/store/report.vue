@@ -1,46 +1,120 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import * as echarts from 'echarts'
 import { navigateToParent } from '@/utils/routeNavigation'
+import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
-const storeId = ref(route.params.id as string || '1')
-const storeName = ref('龙岗总店')
-const selectedMonth = ref('5月')
+const storeId = ref(route.params.id as string || '')
+const doctorId = computed(() => typeof route.query.doctor_id === 'string' ? route.query.doctor_id : '')
+const storeName = ref('门店')
+const selectedYear = ref(new Date().getFullYear())
+const yearOptions = computed(() => {
+  const curr = new Date().getFullYear()
+  return [curr - 2, curr - 1, curr, curr + 1]
+})
+const selectedMonth = ref(`${new Date().getMonth() + 1}月`)
+const selectedMonthNumber = computed(() => Number(selectedMonth.value.replace('月', '')) || new Date().getMonth() + 1)
+const reportTitle = computed(() => doctorId.value ? `${doctorName.value || '医生'} · 数据报表` : `${storeName.value} · 数据报表`)
+const reportSubtitle = computed(() => `${selectedYear.value}年${selectedMonth.value}`)
+const monthOptions = Array.from({ length: 12 }, (_, index) => `${index + 1}月`)
+const doctorName = ref('')
+const appointments = ref<any[]>([])
+const doctors = ref<any[]>([])
 
 /* ---- Stats KPIs ---- */
-const kpis = ref([
-  { label: '本月预约', value: '156', icon: 'calendar', color: 'var(--primary-100)', iconColor: 'var(--primary-500)' },
-  { label: '本月营收', value: '¥22.8w', icon: 'money', color: 'var(--success-100)', iconColor: 'var(--success-500)' },
-  { label: '到诊率', value: '92.3%', icon: 'team', color: '#FFF9E6', iconColor: '#F5A623' },
-  { label: '患者评分', value: '4.9', icon: 'smile', color: 'var(--error-100)', iconColor: 'var(--error-500)' }
-])
+const scopedAppointments = computed(() => {
+  const year = selectedYear.value
+  return appointments.value.filter(item => {
+    const date = String(item.appointment_date || '').slice(0, 10)
+    const month = Number(date.slice(5, 7))
+    const sameMonth = date.startsWith(String(year)) && month === selectedMonthNumber.value
+    const sameDoctor = !doctorId.value || String(item.doctor_id) === String(doctorId.value)
+    const sameStore = doctorId.value || !storeId.value ? true : String(item.store_id) === String(storeId.value)
+    return sameMonth && sameDoctor && sameStore
+  })
+})
+
+const completedAppointments = computed(() => scopedAppointments.value.filter(item => ['completed', 'arrived', 'settled'].includes(item.status)))
+const reviewDoctors = computed(() => doctorId.value ? doctors.value.filter(d => String(d.id) === String(doctorId.value)) : doctors.value)
+
+const kpis = computed(() => {
+  const total = scopedAppointments.value.length
+  const completed = completedAppointments.value.length
+  const revenue = completedAppointments.value.reduce((sum, item) => sum + Number(item.consult_fee || 0), 0)
+  const avgRatingList = reviewDoctors.value.map(d => Number(d.rating || 0)).filter(Boolean)
+  const avgRating = avgRatingList.length
+    ? (avgRatingList.reduce((sum, val) => sum + val, 0) / avgRatingList.length).toFixed(1)
+    : '暂无'
+  return [
+    { label: '本月预约', value: String(total), icon: 'calendar', color: 'var(--primary-100)', iconColor: 'var(--primary-500)' },
+    { label: '本月营收', value: `¥${(revenue / 100).toFixed(2)}`, icon: 'money', color: 'var(--success-100)', iconColor: 'var(--success-500)' },
+    { label: '到诊率', value: total > 0 ? `${Math.round((completed / total) * 100)}%` : '暂无', icon: 'team', color: '#FFF9E6', iconColor: '#F5A623' },
+    { label: '患者评分', value: avgRating, icon: 'smile', color: 'var(--error-100)', iconColor: 'var(--error-500)' }
+  ]
+})
 
 /* ---- Doctor Rankings ---- */
-const doctorRankings = ref([
-  { name: '古堪民', visits: 68, revenue: '¥12.4w', rate: '98%' },
-  { name: '王志远', visits: 52, revenue: '¥7.2w', rate: '96%' },
-  { name: '刘婉清', visits: 36, revenue: '¥3.2w', rate: '99%' }
-])
+const doctorRankings = computed(() => {
+  const grouped = new Map<string, any>()
+  completedAppointments.value.forEach(item => {
+    const key = String(item.doctor_id)
+    const current = grouped.get(key) || {
+      doctorId: key,
+      name: item.doctor_name || '未知医生',
+      visits: 0,
+      revenueValue: 0,
+      rate: '暂无'
+    }
+    current.visits += 1
+    current.revenueValue += Number(item.consult_fee || 0)
+    grouped.set(key, current)
+  })
+  return Array.from(grouped.values())
+    .map(row => {
+      const doctor = doctors.value.find(d => String(d.id) === String(row.doctorId))
+      return {
+        ...row,
+        revenue: `¥${(row.revenueValue / 100).toFixed(2)}`,
+        rate: doctor?.positive_rate !== null && doctor?.positive_rate !== undefined ? `${doctor.positive_rate}%` : row.rate
+      }
+    })
+    .sort((a, b) => b.visits - a.visits)
+})
 
 /* ---- Chart Reference ---- */
 const revenueTrendChartRef = ref<HTMLDivElement | null>(null)
+let trendChart: echarts.ECharts | null = null
 
-onMounted(() => {
-  if (revenueTrendChartRef.value) {
-    const trendChart = echarts.init(revenueTrendChartRef.value)
-    trendChart.setOption({
+function renderTrendChart() {
+  if (!revenueTrendChartRef.value) return
+  if (!trendChart) trendChart = echarts.init(revenueTrendChartRef.value)
+  const year = selectedYear.value
+  const monthlyRevenue = Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1
+    const amount = appointments.value
+      .filter(item => {
+        const date = String(item.appointment_date || '').slice(0, 10)
+        const sameMonth = date.startsWith(String(year)) && Number(date.slice(5, 7)) === month
+        const sameDoctor = !doctorId.value || String(item.doctor_id) === String(doctorId.value)
+        const sameStore = doctorId.value || !storeId.value ? true : String(item.store_id) === String(storeId.value)
+        return sameMonth && sameDoctor && sameStore && ['completed', 'arrived', 'settled'].includes(item.status)
+      })
+      .reduce((sum, item) => sum + Number(item.consult_fee || 0), 0)
+    return Number((amount / 100).toFixed(2))
+  })
+  trendChart.setOption({
       title: {
-        text: '营收趋势 (1月 - 12月)',
+        text: '营收趋势',
         left: 'left',
         textStyle: { fontSize: 14, color: '#111827', fontWeight: 600 }
       },
       tooltip: {
         trigger: 'axis',
-        formatter: '{b}: {c} 万元'
+        formatter: '{b}: ¥{c}'
       },
       grid: {
         left: '4%',
@@ -57,15 +131,15 @@ onMounted(() => {
       },
       yAxis: {
         type: 'value',
-        name: '营收 (万元)',
-        axisLabel: { formatter: '{value}w' },
+        name: '营收 (元)',
+        axisLabel: { formatter: '¥{value}' },
         splitLine: { lineStyle: { color: '#F3F4F6' } }
       },
       series: [
         {
           name: '月度营收',
           type: 'bar',
-          data: [10.2, 12.5, 14.8, 16.2, 22.8, 19.5, 20.4, 25.1, 21.0, 23.5, 18.9, 21.6],
+          data: monthlyRevenue,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: '#3B6BF5' },
@@ -77,19 +151,70 @@ onMounted(() => {
         }
       ]
     })
-    
-    window.addEventListener('resize', () => {
-      trendChart.resize()
-    })
+}
+
+async function fetchReportData() {
+  try {
+    const requests: any[] = [
+      request.get(`/api/admin/appointments?year=${selectedYear.value}`),
+      request.get('/api/admin/doctors')
+    ]
+    if (storeId.value && !doctorId.value) {
+      requests.push(request.get(`/api/admin/stores/${storeId.value}`))
+    }
+    const [apptRes, doctorRes, storeRes]: any[] = await Promise.all(requests)
+    appointments.value = apptRes.data || []
+    doctors.value = doctorRes.data || []
+    if (storeRes?.data?.name) {
+      storeName.value = storeRes.data.name
+    }
+    if (doctorId.value) {
+      const doctor = doctors.value.find(d => String(d.id) === String(doctorId.value))
+      doctorName.value = doctor?.name || ''
+    }
+    renderTrendChart()
+  } catch (error) {
+    MessagePlugin.error('加载报表数据失败')
   }
+}
+
+onMounted(() => {
+  fetchReportData()
+  window.addEventListener('resize', () => {
+    trendChart?.resize()
+  })
+})
+
+watch([selectedMonth, appointments], () => renderTrendChart())
+watch(selectedYear, () => {
+  fetchReportData()
 })
 
 function handleBack() {
-  navigateToParent(router, route, '/store')
+  navigateToParent(router, route, doctorId.value ? '/doctor' : '/store')
 }
 
 function handleExport() {
-  MessagePlugin.success('报表数据已成功生成并开始下载。')
+  const rows = [
+    ['统计维度', reportTitle.value],
+    ['统计月份', reportSubtitle.value],
+    ['本月预约', kpis.value[0].value],
+    ['本月营收', kpis.value[1].value],
+    ['到诊率', kpis.value[2].value],
+    ['患者评分', kpis.value[3].value],
+    [],
+    ['医生', '接诊数', '总营收', '好评率'],
+    ...doctorRankings.value.map(row => [row.name, row.visits, row.revenue, row.rate])
+  ]
+  const csv = rows.map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
+  const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${reportTitle.value}-${selectedMonth.value}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+  MessagePlugin.success('报表已导出')
 }
 </script>
 
@@ -100,15 +225,16 @@ function handleExport() {
     <!-- Page Title Row -->
     <div class="page-title-row">
       <div>
-        <div class="page-title">{{ storeName }} · 数据报表</div>
-        <div class="page-title-sub">2026年{{ selectedMonth }}</div>
+        <div class="page-title">{{ reportTitle }}</div>
+        <div class="page-title-sub">{{ reportSubtitle }}</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出报表</button>
-        <select class="form-control" style="width: 120px;" v-model="selectedMonth">
-          <option>5月</option>
-          <option>4月</option>
-          <option>3月</option>
+        <button class="btn btn-outline" style="margin-right: 8px;" @click="handleExport"><AppIcon name="download" />  导出报表</button>
+        <select class="form-control" style="width: 100px; margin-right: 8px;" v-model="selectedYear">
+          <option v-for="yr in yearOptions" :key="yr" :value="yr">{{ yr }}年</option>
+        </select>
+        <select class="form-control" style="width: 80px;" v-model="selectedMonth">
+          <option v-for="month in monthOptions" :key="month">{{ month }}</option>
         </select>
       </div>
     </div>
@@ -154,6 +280,9 @@ function handleExport() {
               <td>{{ dr.visits }}</td>
               <td style="font-weight: 600; color: var(--primary-500);">{{ dr.revenue }}</td>
               <td>{{ dr.rate }}</td>
+            </tr>
+            <tr v-if="doctorRankings.length === 0">
+              <td colspan="4" style="text-align: center; color: #9CA3AF;">暂无已完成接诊数据</td>
             </tr>
           </tbody>
         </table>

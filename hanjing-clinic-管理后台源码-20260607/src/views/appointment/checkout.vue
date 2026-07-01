@@ -3,6 +3,14 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import {
+  createBillingItem,
+  createCheckoutReceiptResult,
+  fetchCheckoutProducts,
+  findCheckoutProduct,
+  type BillingItem,
+  type CheckoutProduct
+} from '@/utils/checkoutProducts'
 
 const route = useRoute()
 
@@ -12,32 +20,16 @@ interface PatientOption {
   phone: string;
 }
 
-interface ProductItem {
-  id: string;
-  name: string;
-  price: number; // in cents
-}
-
 const patients = ref<PatientOption[]>([])
 const selectedPatientId = ref<string>((route.query.patientId as string) || '')
 const loading = ref(false)
 
-const productOptions: ProductItem[] = [
-  { id: '1', name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000 },
-  { id: '2', name: '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', price: 4900 },
-  { id: '3', name: '鼾静智能阻鼾舒眠记忆枕', price: 29900 },
-  { id: '4', name: '诊所首诊挂号门诊费', price: 20000 },
-  { id: '5', name: '诊所专家诊断评估费', price: 50000 },
-  { id: '7', name: '快递运费', price: 1500 },
-  { id: '8', name: '就诊预约定金', price: 20000 }
-]
+const productOptions = ref<CheckoutProduct[]>([])
 
 // Billing items chosen
-const billingItems = ref<Array<{ product_id: string; product_name: string; price: number; quantity: number }>>([
-  { product_id: '4', product_name: '诊所首诊挂号门诊费', price: 20000, quantity: 1 }
-])
+const billingItems = ref<BillingItem[]>([])
 
-const discountAmount = ref<number>(3000) // 30 yuan coupon discount
+const discountAmount = ref<number>(0)
 const payMethod = ref<string>('wechat')
 const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
@@ -57,12 +49,19 @@ watch(selectedPatientId, (newVal) => {
 
 watch(deliveryType, (newVal) => {
   if (newVal === 'online') {
-    const exists = billingItems.value.some(item => item.product_id === '7')
+    const freightProduct = findCheckoutProduct(productOptions.value, '运费')
+    if (!freightProduct) {
+      MessagePlugin.warning('商品管理中暂无上架运费项目，请先配置后再选择快递邮寄')
+      deliveryType.value = 'offline_direct'
+      return
+    }
+    const exists = billingItems.value.some(item => item.product_id === freightProduct.id)
     if (!exists) {
-      billingItems.value.push({ product_id: '7', product_name: '快递运费', price: 1500, quantity: 1 })
+      billingItems.value.push(createBillingItem(freightProduct))
     }
   } else {
-    const idx = billingItems.value.findIndex(item => item.product_id === '7')
+    const freightProduct = findCheckoutProduct(productOptions.value, '运费')
+    const idx = billingItems.value.findIndex(item => item.product_id === freightProduct?.id || item.product_name.includes('运费'))
     if (idx !== -1) {
       billingItems.value.splice(idx, 1)
     }
@@ -83,8 +82,34 @@ const fetchPatients = async () => {
   }
 }
 
+const setDefaultBillingItem = () => {
+  const product = findCheckoutProduct(productOptions.value)
+  if (!product) {
+    billingItems.value = []
+    MessagePlugin.warning('暂无上架商品，无法开立收费账单')
+    return
+  }
+  billingItems.value = [createBillingItem(product)]
+}
+
+const fetchProducts = async () => {
+  try {
+    productOptions.value = await fetchCheckoutProducts(request)
+    setDefaultBillingItem()
+  } catch (error) {
+    console.error('获取商品列表失败:', error)
+    billingItems.value = []
+    MessagePlugin.error('获取商品列表失败')
+  }
+}
+
 const addBillingItem = () => {
-  billingItems.value.push({ product_id: '1', product_name: '定制式可调舌型阻鼾器 HJ-MAD-03', price: 298000, quantity: 1 })
+  const product = findCheckoutProduct(productOptions.value)
+  if (!product) {
+    MessagePlugin.warning('暂无可添加的上架商品')
+    return
+  }
+  billingItems.value.push(createBillingItem(product))
 }
 
 const removeBillingItem = (idx: number) => {
@@ -92,10 +117,9 @@ const removeBillingItem = (idx: number) => {
 }
 
 const onProductChange = (idx: number, prodId: string) => {
-  const prod = productOptions.find(p => p.id === prodId)
+  const prod = productOptions.value.find(p => p.id === prodId)
   if (prod) {
-    billingItems.value[idx].product_name = prod.name
-    billingItems.value[idx].price = prod.price
+    billingItems.value[idx] = createBillingItem(prod, { quantity: billingItems.value[idx].quantity })
   }
 }
 
@@ -196,15 +220,7 @@ const submitCheckout = async () => {
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
       MessagePlugin.success('收银收费交易成功！已打印交易小票。')
-      orderResult.value = {
-        orderNo: res.data.order_no,
-        patientName: patients.value.find(p => p.value === selectedPatientId.value)?.label,
-        total: (totalAmount.value / 100).toFixed(2),
-        discount: (discountAmount.value / 100).toFixed(2),
-        payable: (payableAmount.value / 100).toFixed(2),
-        payMethodText: payMethod.value === 'wechat' ? '微信支付' : payMethod.value === 'alipay' ? '支付宝' : 'POS线下刷卡',
-        time: new Date().toLocaleString()
-      }
+      orderResult.value = createCheckoutReceiptResult(res.data.receipt)
       checkoutSuccess.value = true
     }
   } catch (error) {
@@ -217,8 +233,8 @@ const submitCheckout = async () => {
 
 const resetCheckout = () => {
   selectedPatientId.value = ''
-  billingItems.value = [{ product_id: '4', product_name: '诊所首诊挂号门诊费', price: 20000, quantity: 1 }]
-  discountAmount.value = 3000
+  setDefaultBillingItem()
+  discountAmount.value = 0
   checkoutSuccess.value = false
   orderResult.value = null
   deliveryType.value = 'offline_direct'
@@ -229,6 +245,7 @@ const resetCheckout = () => {
 
 onMounted(() => {
   fetchPatients()
+  fetchProducts()
 })
 </script>
 
@@ -249,7 +266,7 @@ onMounted(() => {
         <div class="invoice-row"><span>结账客户:</span> <span>{{ orderResult.patientName }}</span></div>
         <div class="invoice-row"><span>交易时间:</span> <span>{{ orderResult.time }}</span></div>
         <div class="invoice-divider">--------------------------------</div>
-        <div v-for="item in billingItems" :key="item.product_id" class="invoice-row">
+        <div v-for="item in orderResult.items" :key="item.product_id" class="invoice-row">
           <span>{{ item.product_name }} x{{ item.quantity }}</span>
           <span>¥{{ ((item.price * item.quantity) / 100).toFixed(2) }}</span>
         </div>
@@ -312,9 +329,7 @@ onMounted(() => {
           <div class="form-item" style="flex: 1;">
             <label class="form-label">支付方式</label>
             <t-select v-model="payMethod" :options="[
-              { label: '微信支付', value: 'wechat' },
-              { label: '支付宝', value: 'alipay' },
-              { label: 'POS线下刷卡', value: 'pos' }
+              { label: '微信支付', value: 'wechat' }
             ]" />
           </div>
         </div>

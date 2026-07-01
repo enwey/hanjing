@@ -1,0 +1,34 @@
+<view class="privacy-page">
+  <hj-navbar title="隐私政策" showBack="{{true}}" />
+  <scroll-view scroll-y class="privacy-content">
+    <view class="article-title">鼾静健康诊所隐私政策</view>
+    <view class="article-meta">更新日期：2026年06月11日</view>
+    
+    <view class="section">
+      <view class="section-title">一、信息收集与使用</view>
+      <text class="section-text">
+        1. 微信手机号授权：我们仅在您主动授权时收集您的手机号码，用于建立您在鼾静健康诊所的实名就诊档案，以及向您发送预约成功、就诊提醒、设备调整通知服务。
+        2. 位置信息：经您授权后，我们会获取您的地理位置，仅用于为您查找并推荐距离最近的线下鼾静健康诊所门诊。
+        3. 麦克风录音权限：仅在您主动开启“AI鼾声分析”功能时，我们会请求使用您的麦克风进行音频录制。录制的音频数据仅用于本地及后端的睡眠鼾声指标分析，不会用于其他任何商业目的。
+      </text>
+    </view>
+    
+    <view class="section">
+      <view class="section-title">二、数据存储与安全保障</view>
+      <text class="section-text">
+        1. 我们会将您的敏感健康数据（如就诊记录、睡眠报告等）进行加密传输与存储。
+        2. 除非法律法规另有规定，或经您明示授权，我们不会向任何第三方披露、共享、出租或出售您的敏感健康数据和个人隐私信息。
+        3. 我们采取了符合行业标准的安全防御措施，保护您提供的信息免受未经授权的访问、公开披露、使用、修改、损坏或丢失。
+      </text>
+    </view>
+    
+    <view class="section">
+      <view class="section-title">三、您的权利与控制权</view>
+      <text class="section-text">
+        1. 您有权随时查看、修改您的个人资料和家庭成员档案。
+        2. 您可以通过微信系统设置随时撤回对麦克风、地理位置等系统权限的授权，但撤回后相应功能（如鼾声录音、距离排序）将无法使用。
+        3. 您可以通过注销账户来清除您在我们的所有注册信息和就诊数据，注销后我们将对您的数据进行删除或匿名化处理。
+      </text>
+    </view>
+  </scroll-view>
+</view>
