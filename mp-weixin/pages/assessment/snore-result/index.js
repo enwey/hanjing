@@ -80,7 +80,14 @@ const a = () => "../../../components/base/hj-navbar.js",
           );
         });
       function s() {
-        e.index.switchTab({ url: "/pages/appointment/index" });
+        if (o.value && o.value.id && o.value.id !== "local") {
+          e.index.setStorageSync("pending_appointment_assessment", {
+            type: "snore",
+            id: o.value.id,
+            label: "AI鼾声分析"
+          });
+        }
+        e.index.navigateTo({ url: "/pages/appointment/store-select" });
       }
       function v() {
         e.index.switchTab({ url: "/pages/index/index" });

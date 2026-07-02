@@ -11,6 +11,10 @@ const t = () => "../../../../components/base/hj-navbar.js",
         i = e.ref(!1),
         o = e.ref(0),
         u = e.ref("");
+      function currentParams() {
+        const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
+        return patientId ? { patientId } : {};
+      }
       async function v() {
         var t;
         if (0 === o.value)
@@ -20,18 +24,18 @@ const t = () => "../../../../components/base/hj-navbar.js",
             title: "请输入反馈内容",
             icon: "none",
           });
-        (await a.submitDeviceFeedback({ rating: o.value, content: u.value }),
+        (await a.submitDeviceFeedback({ ...currentParams(), rating: o.value, content: u.value }),
           (o.value = 0),
           (u.value = ""),
           (i.value = !1),
           e.index.showToast({ title: "提交成功", icon: "success" }));
-        const l = await a.getDeviceFeedback();
+        const l = await a.getDeviceFeedback(currentParams());
         n.value = (null == (t = l.data) ? void 0 : t.list) || l.list || [];
       }
       return (
         e.onMounted(async () => {
           var e;
-          const t = await a.getDeviceFeedback();
+          const t = await a.getDeviceFeedback(currentParams());
           ((n.value = (null == (e = t.data) ? void 0 : e.list) || t.list || []),
             (l.value = !1));
         }),

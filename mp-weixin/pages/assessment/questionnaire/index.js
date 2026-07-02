@@ -59,7 +59,36 @@ const t = () => "../../../components/base/hj-navbar.js",
         r.prev();
       }
       function u() {
+        if (r.answers[r.currentQuestion] < 0) {
+          e.index.showToast({
+            title: "请选择一个选项后再进行下一题",
+            icon: "none",
+            duration: 1500
+          });
+          return;
+        }
         r.currentQuestion < r.totalQuestions - 1 && r.next();
+      }
+      function handleDotClick(targetIdx) {
+        if (targetIdx > r.currentQuestion && r.answers[r.currentQuestion] < 0) {
+          e.index.showToast({
+            title: "请选择一个选项后再进行下一题",
+            icon: "none",
+            duration: 1500
+          });
+          return;
+        }
+        for (let i = r.currentQuestion; i < targetIdx; i++) {
+          if (r.answers[i] < 0) {
+            e.index.showToast({
+              title: "请按顺序回答所有题目",
+              icon: "none",
+              duration: 1500
+            });
+            return;
+          }
+        }
+        r.goToQuestion(targetIdx);
       }
       async function o() {
         try {
@@ -74,8 +103,7 @@ const t = () => "../../../components/base/hj-navbar.js",
       }
       return (
         e.onMounted(async () => {
-          await loadFamilyMembers();
-          await r.fetchQuestions();
+          await Promise.all([loadFamilyMembers(), r.fetchQuestions()]);
         }),
         (n, t) =>
           e.e(
@@ -146,7 +174,7 @@ const t = () => "../../../components/base/hj-navbar.js",
                 a: n,
                 b: e.unref(r).answers[n - 1] >= 0 ? 1 : "",
                 c: n - 1 === e.unref(r).currentQuestion ? 1 : "",
-                d: e.o((t) => e.unref(r).goToQuestion(n - 1), n),
+                d: e.o((t) => handleDotClick(n - 1), n),
               })),
               m: e.unref(r).currentQuestion > 0,
             },

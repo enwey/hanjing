@@ -15,19 +15,21 @@
           <image wx:if="{{status === 'pending'}}" class="status-icon data-v-7e5a1194" src="/static/icons/calendar.svg" />
           <image wx:elif="{{status === 'confirmed' || status === 'reminded'}}" class="status-icon data-v-7e5a1194" src="/static/icons/clock.svg" />
           <image wx:elif="{{status === 'checked_in'}}" class="status-icon data-v-7e5a1194" src="/static/icons/doctor.svg" />
-          <image wx:elif="{{status === 'completed'}}" class="status-icon data-v-7e5a1194" src="/static/icons/fee.svg" />
+          <image wx:elif="{{status === 'completed'}}" class="status-icon data-v-7e5a1194" src="/static/icons/success-medical.svg" />
           <image wx:elif="{{status === 'arrived'}}" class="status-icon data-v-7e5a1194" src="/static/icons/success-medical.svg" />
           <image wx:elif="{{status === 'cancelled' || status === 'no_show'}}" class="status-icon data-v-7e5a1194" src="/static/icons/warning.svg" />
           <image wx:else class="status-icon data-v-7e5a1194" src="/static/icons/info.svg" />
         </view>
         <view class="status-title-group data-v-7e5a1194">
           <text class="status-title data-v-7e5a1194">{{statusLabel}}</text>
-          <text wx:if="{{status === 'confirmed' || status === 'reminded'}}" class="status-desc data-v-7e5a1194">您已完成签到，排队候诊中，请留意叫号</text>
-          <text wx:elif="{{status === 'pending'}}" class="status-desc data-v-7e5a1194">预约成功，请准时前往门店就诊并完成签到</text>
+          <text wx:if="{{status === 'pending_payment'}}" class="status-desc data-v-7e5a1194">预约未成功，请及时完成支付</text>
+          <text wx:elif="{{status === 'pending'}}" class="status-desc data-v-7e5a1194">预约成功，请准时前往门店签到并就诊</text>
+          <text wx:elif="{{status === 'confirmed' || status === 'reminded'}}" class="status-desc data-v-7e5a1194">您已完成签到，请留意叫号</text>
           <text wx:elif="{{status === 'checked_in'}}" class="status-desc data-v-7e5a1194">医生已叫号，就诊进行中，请前往医生诊室</text>
-          <text wx:elif="{{status === 'completed'}}" class="status-desc data-v-7e5a1194">诊疗已结束，请前往前台收银处完成账单结算</text>
-          <text wx:elif="{{status === 'arrived'}}" class="status-desc data-v-7e5a1194">本次门诊服务已完成，期待再次为您守护健康</text>
+          <text wx:elif="{{status === 'arrived'}}" class="status-desc data-v-7e5a1194">本次服务已完成，期待再次为您守护健康</text>
+          <text wx:elif="{{status === 'completed'}}" class="status-desc data-v-7e5a1194">本次服务已完成，期待再次为您守护健康</text>
           <text wx:elif="{{status === 'cancelled'}}" class="status-desc data-v-7e5a1194">预约已成功取消，退款（若有）将原路退回</text>
+          <text wx:elif="{{status === 'no_show'}}" class="status-desc data-v-7e5a1194">由于您未按时到诊，本次服务已结束</text>
           <text wx:else class="status-desc data-v-7e5a1194">预约流程已更新，详情请见下方信息</text>
         </view>
       </view>
@@ -37,7 +39,7 @@
     <view wx:if="{{status !== 'arrived' && status !== 'cancelled' && status !== 'no_show' && status !== 'completed' && !canCancelOrReschedule}}" class="notice-card-warning data-v-7e5a1194">
       <view class="notice-content-wrapper data-v-7e5a1194">
         <image class="notice-icon data-v-7e5a1194" src="/static/icons/warning.svg" />
-        <text class="notice-text-warning data-v-7e5a1194">温馨提示：由于临近就诊时间（不足 2 小时），若需改约或取消，请联系客服为您处理。</text>
+        <text class="notice-text-warning data-v-7e5a1194">温馨提示：已超过改约或取消截止时间（{{cancelLimitText}}），如需处理请联系客服。</text>
       </view>
     </view>
 
@@ -116,6 +118,76 @@
       <text class="symptom-text-styled data-v-7e5a1194">{{m}}</text>
     </view>
 
+    <view wx:if="{{assessmentInfo && (assessmentInfo.ess || assessmentInfo.snore)}}" class="card-premium data-v-7e5a1194">
+      <view class="card-header-premium data-v-7e5a1194">
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/assessment.svg" />
+        <text class="header-title data-v-7e5a1194">关联睡眠评估</text>
+      </view>
+      <view class="detail-rows data-v-7e5a1194">
+        <view wx:if="{{assessmentInfo.ess}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">ESS嗜睡量表</text>
+          <text class="row-value data-v-7e5a1194">{{assessmentInfo.ess.score}}分 · {{assessmentInfo.ess.riskLevel}}</text>
+        </view>
+        <view wx:if="{{assessmentInfo.snore}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">AI鼾声分析</text>
+          <text class="row-value data-v-7e5a1194">{{assessmentInfo.snore.avgDecibel}}dB · {{assessmentInfo.snore.riskLevel}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{hasPreExam}}" class="card-premium data-v-7e5a1194">
+      <view class="card-header-premium data-v-7e5a1194">
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/report.svg" />
+        <text class="header-title data-v-7e5a1194">签到预检信息</text>
+      </view>
+      <view class="detail-rows data-v-7e5a1194">
+        <view wx:if="{{preExam.height}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">身高</text>
+          <text class="row-value data-v-7e5a1194">{{preExam.height}} cm</text>
+        </view>
+        <view wx:if="{{preExam.weight}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">体重</text>
+          <text class="row-value data-v-7e5a1194">{{preExam.weight}} kg</text>
+        </view>
+        <view wx:if="{{preExam.systolicBp || preExam.diastolicBp}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">血压</text>
+          <text class="row-value data-v-7e5a1194">{{preExam.systolicBp || '-'}}/{{preExam.diastolicBp || '-'}} mmHg</text>
+        </view>
+        <view wx:if="{{preExam.neckCircumference}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">颈围</text>
+          <text class="row-value data-v-7e5a1194">{{preExam.neckCircumference}} cm</text>
+        </view>
+        <view wx:if="{{preExam.bmi}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">BMI</text>
+          <text class="row-value data-v-7e5a1194">{{preExam.bmi}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{status === 'completed' || status === 'arrived'}}" class="card-premium data-v-7e5a1194">
+      <view class="card-header-premium data-v-7e5a1194">
+        <image class="header-icon data-v-7e5a1194" src="/static/icons/assessment.svg" />
+        <text class="header-title data-v-7e5a1194">门诊评价</text>
+      </view>
+      <view wx:if="{{evaluation}}" class="detail-rows data-v-7e5a1194">
+        <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">评分</text>
+          <text class="row-value data-v-7e5a1194">{{evaluation.rating}} 分</text>
+        </view>
+        <view wx:if="{{evaluation.content}}" class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">评价</text>
+          <text class="row-value data-v-7e5a1194">{{evaluation.content}}</text>
+        </view>
+      </view>
+      <view wx:else>
+        <view class="rating-row data-v-7e5a1194">
+          <text wx:for="{{ratingStars}}" wx:for-item="star" wx:key="*this" data-rating="{{star}}" bindtap="{{onEvalRatingChange}}" class="{{['rating-star','data-v-7e5a1194', star <= evalRating ? 'rating-star--active' : '']}}">★</text>
+        </view>
+        <textarea class="eval-textarea data-v-7e5a1194" placeholder="请写下本次就诊体验（选填）" maxlength="500" value="{{evalContent}}" bindinput="{{onEvalContentInput}}" />
+        <button class="inline-submit-btn data-v-7e5a1194" bindtap="{{onSubmitEvaluation}}">提交评价</button>
+      </view>
+    </view>
+
     <!-- 6. Cancel description Card -->
     <view wx:if="{{n}}" class="card-premium data-v-7e5a1194">
       <view class="card-header-premium data-v-7e5a1194">
@@ -190,15 +262,38 @@
       </view>
     </view>
 
+    <view class="visit-notice-card data-v-7e5a1194">
+      <view class="visit-notice-header data-v-7e5a1194">
+        <text class="visit-notice-header-icon data-v-7e5a1194">⚠</text>
+        <text class="visit-notice-title data-v-7e5a1194">就诊须知</text>
+      </view>
+      <view class="visit-notice-item data-v-7e5a1194">
+        <text class="visit-notice-index data-v-7e5a1194">1.</text>
+        <text class="visit-notice-text data-v-7e5a1194">请携带既往病历与阻鼾器</text>
+      </view>
+      <view class="visit-notice-item data-v-7e5a1194">
+        <text class="visit-notice-index data-v-7e5a1194">2.</text>
+        <text class="visit-notice-text data-v-7e5a1194">提前15分钟到达诊所签到</text>
+      </view>
+      <view class="visit-notice-item data-v-7e5a1194">
+        <text class="visit-notice-index data-v-7e5a1194">3.</text>
+        <text class="visit-notice-text data-v-7e5a1194">如需取消，请最晚于{{cancelLimitText}}操作</text>
+      </view>
+      <view class="visit-notice-item data-v-7e5a1194">
+        <text class="visit-notice-index data-v-7e5a1194">4.</text>
+        <text class="visit-notice-text data-v-7e5a1194">首次就诊需完成睡眠评估</text>
+      </view>
+    </view>
+
     <!-- 7. Bottom Fixed Action Panel -->
     <view wx:if="{{status === 'pending_payment'}}" class="action-footer data-v-7e5a1194">
       <button class="footer-btn btn-primary-full data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{payDeposit}}">立即支付</button>
-      <button wx:if="{{canCancelOrReschedule}}" class="footer-btn btn-danger-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onCancel}}">取消本次预约</button>
+      <button wx:if="{{canCancelOrReschedule}}" class="footer-btn btn-danger-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onCancel}}">取消</button>
     </view>
     
     <view wx:elif="{{status !== 'arrived' && status !== 'cancelled' && status !== 'no_show' && status !== 'completed' && canCancelOrReschedule}}" class="action-footer data-v-7e5a1194">
-      <button class="footer-btn btn-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onReschedule}}">修改就诊时间</button>
-      <button class="footer-btn btn-danger-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onCancel}}">取消本次预约</button>
+      <button class="footer-btn btn-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onReschedule}}">改约</button>
+      <button class="footer-btn btn-danger-ghost data-v-7e5a1194" hover-class="footer-btn-hover" bindtap="{{onCancel}}">取消</button>
     </view>
     
     <view wx:elif="{{status === 'arrived' || status === 'cancelled' || status === 'no_show' || status === 'completed'}}" class="action-footer data-v-7e5a1194">

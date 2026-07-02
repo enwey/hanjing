@@ -10,6 +10,10 @@ const t = () => "../../../components/base/hj-navbar.js",
         o = a.ref([]),
         r = a.ref(null),
         l = a.ref("week"),
+        currentParams = () => {
+          const patientId = a.index.getStorageSync("selected_treatment_patient_id") || "";
+          return patientId ? { patientId } : {};
+        },
         n = a.computed(() =>
           ("week" === l.value ? o.value.slice(-7) : o.value).map((a) => ({
             date: a.date.slice(5),
@@ -37,8 +41,8 @@ const t = () => "../../../components/base/hj-navbar.js",
         a.onMounted(async () => {
           try {
             const [a, t] = await Promise.all([
-              e.getWearingRecords(),
-              e.getWearingSummary(),
+              e.getWearingRecords(currentParams()),
+              e.getWearingSummary(currentParams()),
             ]);
             ((o.value = a.data), (r.value = t.data));
           } catch (a) {

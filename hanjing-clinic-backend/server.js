@@ -5,6 +5,7 @@ import { initDB } from './db.js';
 import { seedData } from './seed.js';
 import adminRouter from './routes/admin.js';
 import clientRouter from './routes/client.js';
+import { sendSystemAlert } from './alert-notifier.js';
 
 const app = express();
 const PORT = process.env.PORT || 5005;
@@ -43,14 +44,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// Log requests (Asynchronously, with 50MB size limit to prevent disk exhaustion)
+// High Performance HTTP Access Logger Middleware (Morgan-like)
 app.use((req, res, next) => {
-  const logMsg = `[${new Date().toISOString()}] ${req.method} ${req.url}\n`;
-  console.log(logMsg.trim());
-  fs.stat('./requests.log', (err, stats) => {
-    if (err || stats.size < 50 * 1024 * 1024) {
-      fs.appendFile('./requests.log', logMsg, () => {});
-    }
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const logMsg = `[${new Date().toISOString()}] ${ip} ${req.method} ${req.originalUrl || req.url} ${res.statusCode} - ${duration}ms\n`;
+    
+    console.log(logMsg.trim());
+    fs.stat('./requests.log', (err, stats) => {
+      if (err || stats.size < 50 * 1024 * 1024) {
+        fs.appendFile('./requests.log', logMsg, () => {});
+      }
+    });
   });
   next();
 });
@@ -60,6 +67,33 @@ import { initWebSocket } from './im-socket.js';
 // Register routers
 app.use(adminRouter);
 app.use(clientRouter);
+
+// 404 Handler for unmatched routes
+app.use((req, res, next) => {
+  res.status(404).json({ code: 404, message: '请求的接口地址不存在' });
+});
+
+// Global Exception / Error Handling Middleware
+app.use((err, req, res, next) => {
+  // 1. Catch bad JSON body payloads
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ code: 400, message: '请求报文 JSON 语法格式错误' });
+  }
+  
+  console.error('[Global Error] Caught unhandled exception:', err);
+  const status = err.statusCode || err.status || 500;
+  const message = err.message || '系统繁忙，请稍后再试';
+  
+  // Dispatch monitoring alert on internal 500 errors
+  if (status === 500) {
+    sendSystemAlert('error', `API 500 Error: ${req.method} ${req.path}`, err.message, err);
+  }
+  
+  res.status(status).json({
+    code: status,
+    message
+  });
+});
 
 // BOOTSTRAP DATABASE & SERVER
 const startServer = async () => {
@@ -83,15 +117,18 @@ const startServer = async () => {
     // 5. Start background jobs (run every 60s)
     setInterval(async () => {
       try {
-        const { autoUpdateExpiredAppointments, autoSettleDistributionCommissions } = await import('./db.js');
+        const { autoUpdateExpiredAppointments, autoSettleDistributionCommissions, autoProcessRefunds } = await import('./db.js');
         await autoUpdateExpiredAppointments();
         await autoSettleDistributionCommissions();
+        await autoProcessRefunds();
       } catch (err) {
         console.error('Failed to run periodic background jobs:', err);
+        sendSystemAlert('warning', 'Background Job Failed', err.message, err);
       }
     }, 60000);
   } catch (error) {
     console.error('Failed to start server:', error);
+    sendSystemAlert('critical', 'Server Bootstrap Failed', error.message, error);
     process.exit(1);
   }
 };
@@ -100,8 +137,11 @@ startServer();
 
 process.on('uncaughtException', (err) => {
   console.error('[CRITICAL] Uncaught Exception:', err);
+  sendSystemAlert('critical', 'Uncaught Exception Process Crash Protection', err.message, err);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  sendSystemAlert('critical', 'Unhandled Promise Rejection', err.message, err);
 });

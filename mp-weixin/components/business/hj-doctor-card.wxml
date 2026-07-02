@@ -21,8 +21,8 @@
       ></view
     ><view class="doctor-stats data-v-906afe6e"
       ><view class="doctor-rating data-v-906afe6e"
-        ><text class="doctor-rating-star data-v-906afe6e">⭐</text
-        ><text class="doctor-rating-value data-v-906afe6e">{{g}}</text
+        ><image class="doctor-rating-star data-v-906afe6e" src="/static/icons/star-filled.svg"
+        /><text class="doctor-rating-value data-v-906afe6e">{{g}}</text
         ><text class="doctor-rating-count data-v-906afe6e"
           >({{h}}评)</text
         ></view

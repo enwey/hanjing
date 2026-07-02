@@ -90,20 +90,22 @@ exports.getAssessments = async function () {
   );
 };
 
-exports.getDeviceFeedback = async function () {
+exports.getDeviceFeedback = async function (nQuery) {
   return req.request(
     {
       url: "/treatment/device-feedback",
       method: "GET",
+      data: nQuery,
     }
   );
 };
 
-exports.getDeviceMaintenance = async function () {
+exports.getDeviceMaintenance = async function (nQuery) {
   return req.request(
     {
       url: "/treatment/device-maintenance",
       method: "GET",
+      data: nQuery,
     }
   );
 };
@@ -149,6 +151,87 @@ exports.getDistributionCommissions = async function () {
   return req.request(
     {
       url: "/distribution/commissions",
+      method: "GET",
+    }
+  );
+};
+
+exports.uploadFile = async function (buffer, ext = 'jpg') {
+  return req.request(
+    {
+      url: `/user/upload?ext=${ext}`,
+      method: "POST",
+      data: buffer,
+      header: {
+        "content-type": "application/octet-stream"
+      }
+    }
+  );
+};
+
+exports.addMedicalAttachment = async function (id, url) {
+  return req.request(
+    {
+      url: `/user/medical-records/${id}/attachments`,
+      method: "POST",
+      data: { url }
+    }
+  );
+};
+
+exports.sendPhoneCode = async function (phone) {
+  return req.request(
+    {
+      url: "/user/send-code",
+      method: "POST",
+      data: { phone }
+    }
+  );
+};
+
+exports.changePhone = async function (phone, code) {
+  return req.request(
+    {
+      url: "/user/change-phone",
+      method: "POST",
+      data: { phone, code }
+    }
+  );
+};
+
+exports.verifyRealName = async function (realName, idCard) {
+  return req.request(
+    {
+      url: "/user/verify-realname",
+      method: "POST",
+      data: { realName, idCard }
+    }
+  );
+};
+
+exports.redeemCoupon = async function (couponId) {
+  return req.request(
+    {
+      url: "/user/coupons/redeem",
+      method: "POST",
+      data: { couponId }
+    }
+  );
+};
+
+exports.getAvailableCoupons = async function () {
+  return req.request(
+    {
+      url: "/user/coupons/available",
+      method: "GET",
+    }
+  );
+};
+
+exports.getOrderLogistics = async function (orderId) {
+  return req.request(
+    {
+      url: `/orders/${orderId}/logistics`,
       method: "GET",
     }
   );
@@ -331,6 +414,16 @@ exports.getStores = async function (nQuery) {
   );
 };
 
+exports.getUserCoupons = async function (nQuery) {
+  return req.request(
+    {
+      url: "/user/coupons",
+      method: "GET",
+      data: nQuery,
+    }
+  );
+};
+
 exports.getTeamMembers = async function () {
   return req.request(
     {
@@ -349,20 +442,32 @@ exports.getTimeSlots = async function (nId) {
   );
 };
 
-exports.getTimeline = async function () {
+exports.getTimeline = async function (nQuery) {
   return req.request(
     {
       url: "/treatment/timeline",
       method: "GET",
+      data: nQuery,
     }
   );
 };
 
-exports.getTreatmentRecord = async function () {
+exports.getTreatmentRecord = async function (nQuery) {
   return req.request(
     {
       url: "/treatment/record",
       method: "GET",
+      data: nQuery,
+    }
+  );
+};
+
+exports.getTreatmentRecords = async function (nQuery) {
+  return req.request(
+    {
+      url: "/treatment/records",
+      method: "GET",
+      data: nQuery,
     }
   );
 };
@@ -377,11 +482,12 @@ exports.getSleepReport = async function (query) {
   );
 };
 
-exports.getDeviceAdjustments = async function () {
+exports.getDeviceAdjustments = async function (nQuery) {
   return req.request(
     {
       url: "/treatment/adjustments",
-      method: "GET"
+      method: "GET",
+      data: nQuery
     }
   );
 };
@@ -405,11 +511,12 @@ exports.getWearingRecords = async function (nQuery) {
   );
 };
 
-exports.getWearingSummary = async function () {
+exports.getWearingSummary = async function (nQuery) {
   return req.request(
     {
       url: "/treatment/wearing-summary",
       method: "GET",
+      data: nQuery,
     }
   );
 };
@@ -596,6 +703,16 @@ exports.confirmAppointmentPayment = async function (id) {
   );
 };
 
+exports.submitAppointmentEvaluation = async function (id, data) {
+  return req.request(
+    {
+      url: `/appointments/${id}/evaluation`,
+      method: "POST",
+      data
+    }
+  );
+};
+
 exports.getBookingSettings = async function () {
   return req.request(
     {
@@ -651,11 +768,12 @@ exports.confirmReceipt = async function (id) {
   );
 };
 
-exports.applyRefund = async function (id) {
+exports.applyRefund = async function (id, data) {
   return req.request(
     {
       url: `/orders/${id}/refund`,
-      method: "POST"
+      method: "POST",
+      data: data || {}
     }
   );
 };

@@ -26,14 +26,34 @@ const o = () => "../../components/base/hj-navbar.js",
       });
       function onPatientChange(eDetail) {
         const val = parseInt(eDetail.detail.value);
-        patientIndex.value = val;
         if (patientList.value[val]) {
-          patientId.value = patientList.value[val].id;
+          const selected = patientList.value[val];
+          if (selected.age !== null && selected.age < 18) {
+            e.index.showModal({
+              title: "儿童就诊提示",
+              content: "本门诊定制式下颌前移防鼾器（牙套）仅适用于18岁以上发育成熟的成人。18岁以下儿童打鼾通常由扁桃体或腺样体肥大引起，建议优先预约小儿耳鼻喉科进行排查诊治。是否继续？",
+              confirmText: "继续预约",
+              cancelText: "取消",
+              success: (modalRes) => {
+                if (modalRes.confirm) {
+                  patientIndex.value = val;
+                  patientId.value = selected.id;
+                } else {
+                  // Do nothing, UI picker will keep current values
+                }
+              }
+            });
+          } else {
+            patientIndex.value = val;
+            patientId.value = selected.id;
+          }
         }
       }
       const requireDeposit = e.ref(false);
       const depositAmountYuan = e.ref("0.00");
+      const cancelLimitText = e.ref("就诊前2小时");
       const subscribeTemplateIds = e.ref([]);
+      const pendingAssessment = e.ref(e.index.getStorageSync("pending_appointment_assessment") || null);
       e.onMounted(async () => {
         try {
           const api = require("../../api/index.js");
@@ -42,6 +62,7 @@ const o = () => "../../components/base/hj-navbar.js",
             if (settingsRes && settingsRes.data) {
               requireDeposit.value = settingsRes.data.requireDeposit;
               depositAmountYuan.value = (settingsRes.data.depositAmount / 100).toFixed(2);
+              cancelLimitText.value = settingsRes.data.cancelLimit || "就诊前2小时";
               subscribeTemplateIds.value = settingsRes.data.subscribeTemplateIds || [];
             }
           } catch (settingsErr) {
@@ -113,6 +134,8 @@ const o = () => "../../components/base/hj-navbar.js",
               appointmentTime: r.selectedTimeSlot.label,
               type: "first",
               symptomDesc: i.value || void 0,
+              essAssessmentId: pendingAssessment.value && pendingAssessment.value.type === "ess" ? pendingAssessment.value.id : undefined,
+              snoreAssessmentId: pendingAssessment.value && pendingAssessment.value.type === "snore" ? pendingAssessment.value.id : undefined,
             });
             const appt = t.data || t;
             const apptId = appt.id || t.id;
@@ -145,11 +168,15 @@ const o = () => "../../components/base/hj-navbar.js",
                       e.index.hideLoading();
                       
                       const payParams = payRes.data || payRes;
-                      await requestWxPay(payParams);
-                      e.index.showLoading({ title: "同步支付状态..." });
-                      await api.confirmAppointmentPayment(apptId);
-                      e.index.hideLoading();
-                      e.index.showToast({ title: "支付成功", icon: "success" });
+                      if (payParams.mockPayment) {
+                        e.index.showLoading({ title: "开发环境模拟支付..." });
+                        await api.confirmAppointmentPayment(apptId);
+                        e.index.hideLoading();
+                      } else {
+                        await requestWxPay(payParams);
+                      }
+                      e.index.showToast({ title: "支付已提交", icon: "success" });
+                      e.index.removeStorageSync("pending_appointment_assessment");
                       setTimeout(() => {
                         requestSubscribe(() => {
                           e.index.reLaunch({
@@ -159,7 +186,7 @@ const o = () => "../../components/base/hj-navbar.js",
                       }, 1000);
                     } catch (err) {
                       e.index.hideLoading();
-                      e.index.showToast({ title: err && err.errMsg ? "已取消支付" : "发起支付失败，请稍后重试", icon: "none" });
+                      e.index.showToast({ title: err && err.errMsg ? "支付未完成，可稍后继续支付" : "发起支付失败，请稍后重试", icon: "none" });
                       setTimeout(() => {
                         e.index.reLaunch({
                           url: "/pages/appointment/index?tab=mine",
@@ -167,7 +194,12 @@ const o = () => "../../components/base/hj-navbar.js",
                       }, 1000);
                     }
                   } else {
-                    e.index.showToast({ title: "已取消支付", icon: "none" });
+                    try {
+                      await r.cancelAppointment(apptId, "支付窗口取消");
+                    } catch (cancelErr) {
+                      console.error("取消未支付预约失败", cancelErr);
+                    }
+                    e.index.showToast({ title: "已取消预约", icon: "none" });
                     setTimeout(() => {
                       e.index.reLaunch({
                         url: "/pages/appointment/index?tab=mine",
@@ -177,6 +209,7 @@ const o = () => "../../components/base/hj-navbar.js",
                 }
               });
             } else {
+              e.index.removeStorageSync("pending_appointment_assessment");
               requestSubscribe(() => {
                 e.index.reLaunch({
                   url: `/pages/appointment/success?id=${apptId}`,
@@ -217,10 +250,12 @@ const o = () => "../../components/base/hj-navbar.js",
             depositAmountYuan: e.unref(depositAmountYuan),
             totalAmountYuan: e.unref(totalAmountYuan),
             buttonText: e.unref(buttonText),
+            cancelLimitText: e.unref(cancelLimitText),
             selectedPatientName: e.unref(selectedPatientName),
             patientNames: e.unref(patientNames),
             patientIndex: e.unref(patientIndex),
             onPatientChange: e.o(onPatientChange),
+            assessmentLabel: pendingAssessment.value ? pendingAssessment.value.label : "",
           },
           e.unref(f) > 0 ? { g: e.t((e.unref(f) / 100).toFixed(2)) } : {},
           {

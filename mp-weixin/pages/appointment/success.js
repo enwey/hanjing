@@ -12,7 +12,8 @@ const n = () => "../../components/base/hj-navbar.js",
         a = t.useStoreStore(),
         i = t.useDoctorStore(),
         r = e.ref(null),
-        s = e.ref(!0);
+        s = e.ref(!0),
+        cancelLimitText = e.ref("就诊前2小时");
       function l() {
         e.index.switchTab({ url: "/pages/index/index" });
       }
@@ -26,13 +27,13 @@ const n = () => "../../components/base/hj-navbar.js",
           });
       }
       function u() {
-        var e;
-        return (null == (e = o.selectedStore) ? void 0 : e.name) || "加载中...";
+        var e, t;
+        return (null == (t = null == (e = r.value) ? void 0 : e.appointment) ? void 0 : t.storeName) || "";
       }
       function d() {
-        var e;
+        var e, t;
         return (
-          (null == (e = o.selectedDoctor) ? void 0 : e.name) || "加载中..."
+          (null == (t = null == (e = r.value) ? void 0 : e.appointment) ? void 0 : t.doctorName) || ""
         );
       }
       return (
@@ -40,6 +41,14 @@ const n = () => "../../components/base/hj-navbar.js",
           (await a.fetchStores(),
             await i.fetchDoctors(),
             (async function () {
+              try {
+                const settingsRes = await api.getBookingSettings();
+                if (settingsRes && settingsRes.data) {
+                  cancelLimitText.value = settingsRes.data.cancelLimit || "就诊前2小时";
+                }
+              } catch (settingsErr) {
+                console.error("加载预约设置失败", settingsErr);
+              }
               const pages = getCurrentPages();
               const curPage = pages[pages.length - 1] || {};
               const options = curPage.options || (curPage.$page && curPage.$page.options) || {};
@@ -59,21 +68,18 @@ const n = () => "../../components/base/hj-navbar.js",
           var a, i, s;
           return {
             a: e.p({ title: "预约成功", "show-back": !0 }),
-            b: e.t(
-              (null == (i = null == (a = r.value) ? void 0 : a.appointment)
-                ? void 0
-                : i.appointmentNo) || "AP20260604XXX",
-            ),
+            b: e.t((null == (i = null == (a = r.value) ? void 0 : a.appointment) ? void 0 : i.appointmentNo) || ""),
             c: e.t(u()),
             d: e.t(d()),
-            e: e.t(e.unref(o).selectedDate),
+            e: e.t((null == (s = null == r.value ? void 0 : r.value.appointment) ? void 0 : s.appointmentDate) || ""),
             f: e.t(
-              null == (s = e.unref(o).selectedTimeSlot) ? void 0 : s.label,
+              (null == (s = null == r.value ? void 0 : r.value.appointment) ? void 0 : s.appointmentTime) || "",
             ),
-            g: e.o(c, "32"),
-            h: e.p({ type: "primary", size: "lg", block: !0 }),
-            i: e.o(l, "07"),
-            j: e.p({ type: "ghost", size: "lg", block: !0 }),
+            g: e.t(cancelLimitText.value),
+            h: e.o(c, "32"),
+            i: e.p({ type: "primary", size: "lg", block: !0 }),
+            j: e.o(l, "07"),
+            k: e.p({ type: "ghost", size: "lg", block: !0 }),
           };
         }
       );

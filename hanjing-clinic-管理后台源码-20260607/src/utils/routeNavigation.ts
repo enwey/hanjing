@@ -86,14 +86,14 @@ export function resolveMenuPathFromRoute(route: RouteLocationNormalizedLoaded) {
 }
 
 export function resolveParentPath(router: Router, route: RouteLocationNormalizedLoaded) {
-  if (typeof route.query.from === 'string' && route.query.from) {
-    return route.query.from
-  }
-
   const currentRecord = router.getRoutes().find(item => item.name === route.name) || findRouteByPath(router, route.path)
   const parentPathPattern = currentRecord?.meta?.parentPath as string | undefined
   if (parentPathPattern) {
     return resolvePathPattern(parentPathPattern, route.params)
+  }
+
+  if (typeof route.query.from === 'string' && route.query.from) {
+    return route.query.from
   }
 
   return null
@@ -142,7 +142,10 @@ function buildBreadcrumbsFromRouteSnapshot(
 
   visited.add(uniqueKey)
 
-  const parentFullPath = typeof routeSnapshot.query.from === 'string' ? routeSnapshot.query.from : ''
+  const currentRecord = router.getRoutes().find(item => item.name === routeSnapshot.name) || findRouteByPath(router, routeSnapshot.path)
+  const hasLogicalParent = currentRecord?.meta?.parentPath
+
+  const parentFullPath = (!hasLogicalParent && typeof routeSnapshot.query.from === 'string') ? routeSnapshot.query.from : ''
   const parentItems = parentFullPath
     ? buildBreadcrumbsFromRouteSnapshot(router, router.resolve(parentFullPath), visited)
     : buildBreadcrumbChain(router, routeSnapshot.path, routeSnapshot)
@@ -152,7 +155,7 @@ function buildBreadcrumbsFromRouteSnapshot(
     return parentItems
   }
 
-  const currentPath = routeSnapshot.fullPath || routeSnapshot.path
+  const currentPath = routeSnapshot.path
   if (parentItems.some(item => item.path === currentPath)) {
     return parentItems
   }

@@ -16,6 +16,47 @@ const a = () => "../../../components/base/hj-navbar.js",
           });
         }
       }
+      function onUploadAttachment(recordId) {
+        e.index.chooseMedia({
+          count: 1,
+          mediaType: ["image"],
+          success: (res) => {
+            const tempFilePath = res.tempFiles[0].tempFilePath;
+            const ext = tempFilePath.split('.').pop() || 'jpg';
+            e.index.showLoading({ title: "正在上传..." });
+            const fs = e.index.getFileSystemManager();
+            fs.readFile({
+              filePath: tempFilePath,
+              success: async (readRes) => {
+                try {
+                  const uploadRes = await t.uploadFile(readRes.data, ext);
+                  if (uploadRes && uploadRes.code === 0 && uploadRes.data && uploadRes.data.url) {
+                    const saveRes = await t.addMedicalAttachment(recordId, uploadRes.data.url);
+                    if (saveRes && saveRes.code === 0) {
+                      e.index.showToast({ title: "上传成功", icon: "success" });
+                      const recordsRes = await t.getMedicalRecords();
+                      o.value = (null == (recordsRes.data) ? void 0 : recordsRes.data.list) || recordsRes.list || [];
+                    } else {
+                      e.index.showToast({ title: saveRes.message || "保存失败", icon: "none" });
+                    }
+                  } else {
+                    e.index.showToast({ title: (uploadRes && uploadRes.message) || "上传失败", icon: "none" });
+                  }
+                } catch (err) {
+                  console.error(err);
+                  e.index.showToast({ title: "上传失败，请重试", icon: "none" });
+                } finally {
+                  e.index.hideLoading();
+                }
+              },
+              fail: () => {
+                e.index.hideLoading();
+                e.index.showToast({ title: "读取文件失败", icon: "none" });
+              }
+            });
+          }
+        });
+      }
       e.onMounted(async () => {
         var e;
         const a = await t.getMedicalRecords();
@@ -48,7 +89,8 @@ const a = () => "../../../components/base/hj-navbar.js",
                       t.note ? { k: e.t(t.note) } : {},
                       {
                         hasAttachments: t.attachments && t.attachments.length > 0,
-                        onPreview: e.o(() => previewAttachment(t.attachments), t.id)
+                        onPreview: e.o(() => previewAttachment(t.attachments), t.id),
+                        onUpload: e.o(() => onUploadAttachment(t.id), t.id)
                       },
                       { l: t.id },
                     ),

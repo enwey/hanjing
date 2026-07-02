@@ -8,8 +8,12 @@ const t = () => "../../../../components/base/hj-navbar.js",
     setup(t) {
       const n = e.ref([]),
         r = e.ref(!0);
+      function currentParams() {
+        const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
+        return patientId ? { patientId } : {};
+      }
       e.onMounted(async () => {
-        const e = await a.getWearingRecords();
+        const e = await a.getWearingRecords(currentParams());
         ((n.value = e.data || e || []), (r.value = !1));
       });
       const o = { 1: "1", 2: "2", 3: "3", 4: "4", 5: "5" };

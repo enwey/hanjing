@@ -6,41 +6,66 @@ function getESSLevel(score) {
   return score <= 5
     ? {
         level: "正常（低嗜睡倾向）",
-        color: "#1A9D5C",
+        color: "linear-gradient(135deg, #10B981, #059669)",
         desc: "您的日间嗜睡程度在正常范围内，白天精神状态良好。",
         advice:
           "保持现有作息规律，定期关注睡眠质量变化。如仍存在打鼾问题，建议进行睡眠评估。",
+        adviceBg: "#f0fdf4",
+        adviceBorder: "#bbf7d0",
+        adviceTitleColor: "#166534",
+        adviceTextColor: "#15803d",
+        adviceIcon: "/static/icons/heart.svg",
       }
     : score <= 10
       ? {
           level: "正常偏高",
-          color: "#3B6BF5",
+          color: "linear-gradient(135deg, #3B82F6, #1D4ED8)",
           desc: "您的日间嗜睡程度略高于正常范围，可能存在轻度睡眠质量下降。",
           advice:
             "注意保持规律作息，避免熬夜。建议使用APP内的AI鼾声分析功能，了解夜间睡眠状况。",
+          adviceBg: "#eff6ff",
+          adviceBorder: "#bfdbfe",
+          adviceTitleColor: "#1e40af",
+          adviceTextColor: "#1d4ed8",
+          adviceIcon: "/static/icons/info.svg",
         }
       : score <= 12
         ? {
             level: "轻度嗜睡",
-            color: "#F59E0B",
+            color: "linear-gradient(135deg, #F59E0B, #D97706)",
             desc: "您存在轻度日间过度嗜睡，可能影响日常工作和生活质量。",
             advice:
               "建议在线预约睡眠呼吸门诊，进行专业的睡眠评估。及早干预可有效改善睡眠质量。",
+            adviceBg: "#fffbeb",
+            adviceBorder: "#fde68a",
+            adviceTitleColor: "#92400e",
+            adviceTextColor: "#b45309",
+            adviceIcon: "/static/icons/alert.svg",
           }
         : score <= 15
           ? {
               level: "中度嗜睡",
-              color: "#F97316",
+              color: "linear-gradient(135deg, #F97316, #C2410C)",
               desc: "您存在中度日间嗜睡，日常活动受到明显影响，需引起重视。",
               advice:
                 "强烈建议尽快预约专业门诊。可能需要进行睡眠监测，评估是否存在睡眠呼吸暂停。",
+              adviceBg: "#fff7ed",
+              adviceBorder: "#ffedd5",
+              adviceTitleColor: "#9a3412",
+              adviceTextColor: "#c2410c",
+              adviceIcon: "/static/icons/alert.svg",
             }
           : {
               level: "重度嗜睡",
-              color: "#EF4444",
+              color: "linear-gradient(135deg, #EF4444, #B91C1C)",
               desc: "您存在重度日间嗜睡，可能对健康和安全造成严重影响（如驾驶风险）。",
               advice:
                 "请立即预约鼾静健康门诊进行专业诊断。建议避免长途驾驶，尽快进行多导睡眠监测（PSG）。",
+              adviceBg: "#fef2f2",
+              adviceBorder: "#fee2e2",
+              adviceTitleColor: "#991b1b",
+              adviceTextColor: "#b91c1c",
+              adviceIcon: "/static/icons/alert.svg",
             };
 }
 

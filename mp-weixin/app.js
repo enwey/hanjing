@@ -2,6 +2,63 @@
 
 Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 
+// LocalStorage security hardening: Transparent XOR obfuscation for access_token PII
+(function() {
+  const origSet = wx.setStorageSync;
+  const origGet = wx.getStorageSync;
+  const key = "hj_salt_2026";
+  
+  function obf(val) {
+    if (!val || typeof val !== "string") return val;
+    try {
+      let xor = "";
+      for (let i = 0; i < val.length; i++) {
+        xor += String.fromCharCode(val.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+      }
+      let hex = "";
+      for (let i = 0; i < xor.length; i++) {
+        hex += ("00" + xor.charCodeAt(i).toString(16)).slice(-4);
+      }
+      return "obf:" + hex;
+    } catch (e) {
+      return val;
+    }
+  }
+
+  function deb(val) {
+    if (!val || typeof val !== "string" || !val.startsWith("obf:")) return val;
+    try {
+      const hex = val.slice(4);
+      let xor = "";
+      for (let i = 0; i < hex.length; i += 4) {
+        xor += String.fromCharCode(parseInt(hex.slice(i, i + 4), 16));
+      }
+      let res = "";
+      for (let i = 0; i < xor.length; i++) {
+        res += String.fromCharCode(xor.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+      }
+      return res;
+    } catch (e) {
+      return val;
+    }
+  }
+
+  wx.setStorageSync = function(k, v) {
+    if (k === "access_token") {
+      return origSet(k, obf(v));
+    }
+    return origSet(k, v);
+  };
+
+  wx.getStorageSync = function(k) {
+    const v = origGet(k);
+    if (k === "access_token") {
+      return deb(v);
+    }
+    return v;
+  };
+})();
+
 const e = require("./common/vendor.js");
 Math;
 

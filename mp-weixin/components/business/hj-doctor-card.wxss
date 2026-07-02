@@ -127,7 +127,9 @@
   gap: 2px;
 }
 .doctor-rating-star.data-v-906afe6e {
-  font-size: 12px;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 .doctor-rating-value.data-v-906afe6e {
   font-size: 14px;

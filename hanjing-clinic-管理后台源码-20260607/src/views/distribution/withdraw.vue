@@ -224,7 +224,51 @@ async function handleBatchApprove() {
 }
 
 function handleExport() {
-  MessagePlugin.success('导出报表成功！')
+  if (filteredRecords.value.length === 0) {
+    MessagePlugin.warning('当前无提现记录数据可供导出')
+    return
+  }
+  const headers = [
+    '提现单号',
+    '推广员姓名',
+    '手机号',
+    '提现金额',
+    '提现方式',
+    '收款账号',
+    '申请时间',
+    '状态',
+    '备注/驳回原因'
+  ]
+
+  const escapeCsv = (val: any) => {
+    if (val === null || val === undefined) return ''
+    const str = String(val).replace(/"/g, '""')
+    return `"${str}"`
+  }
+
+  const rows = filteredRecords.value.map(row => [
+    escapeCsv(row.no),
+    escapeCsv(row.name),
+    escapeCsv(row.phone),
+    escapeCsv(`¥${(row.amount / 100).toFixed(2)}`),
+    escapeCsv(row.method === 'wechat' ? '微信支付' : '银行卡'),
+    escapeCsv(row.account),
+    escapeCsv(row.time),
+    escapeCsv(row.status === 'approved' ? '已通过' : row.status === 'rejected' ? '已驳回' : '待审核'),
+    escapeCsv(row.reason || '—')
+  ])
+
+  const csvContent = '\uFEFF' + [headers.join(',')].concat(rows.map(r => r.join(','))).join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `提现记录报表-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  MessagePlugin.success('提现记录已成功导出')
 }
 
 function getAvatarBg(level: string) {

@@ -8,13 +8,17 @@ const t = () => "../../../components/base/hj-navbar.js",
     setup(t) {
       const n = e.ref(!0),
         o = e.ref(null);
+      function currentParams() {
+        const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
+        return patientId ? { patientId } : {};
+      }
       function u() {
         e.index.switchTab({ url: "/pages/appointment/index" });
       }
       return (
         e.onMounted(async () => {
           try {
-            const e = await a.getTreatmentRecord();
+            const e = await a.getTreatmentRecord(currentParams());
             o.value = e.data;
           } catch (e) {
             console.error(e);

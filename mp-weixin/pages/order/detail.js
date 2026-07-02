@@ -138,19 +138,18 @@ const a = () => "../../components/base/hj-navbar.js",
         });
       }
       async function onApplyRefund() {
-        e.index.showModal({
-          title: "提示",
-          content: "确定要申请退款吗？",
+        const reasons = ["不想要了", "商品信息不符", "地址/自提信息有误", "其他原因"];
+        e.index.showActionSheet({
+          itemList: reasons,
           success: async (res) => {
-            if (res.confirm) {
-              try {
-                await t.applyRefund(l.value.id);
-                e.index.showToast({ title: "退款申请已提交", icon: "success" });
-                const o = await t.getOrderDetail(l.value.id);
-                l.value = o.data || o;
-              } catch (err) {
-                e.index.showToast({ title: err.message || "申请失败", icon: "none" });
-              }
+            const reason = reasons[res.tapIndex] || "其他原因";
+            try {
+              await t.applyRefund(l.value.id, { reason });
+              e.index.showToast({ title: "退款申请已提交", icon: "success" });
+              const o = await t.getOrderDetail(l.value.id);
+              l.value = o.data || o;
+            } catch (err) {
+              e.index.showToast({ title: err.message || "申请失败", icon: "none" });
             }
           }
         });
@@ -162,6 +161,9 @@ const a = () => "../../components/base/hj-navbar.js",
           try {
             const o = await t.getOrderDetail(d);
             l.value = o.data || o;
+            if (["shipped", "completed"].includes(l.value.status)) {
+              await fetchLogistics(d);
+            }
           } catch (err) {
             e.index.showToast({ title: err.message || "订单详情加载失败", icon: "none" });
           } finally {
@@ -171,7 +173,17 @@ const a = () => "../../components/base/hj-navbar.js",
         (t, a) => {
           var s, p;
           return e.e(
-            { a: e.p({ title: "订单详情", "show-back": !0 }), b: n.value },
+            { 
+              a: e.p({ title: "订单详情", "show-back": !0 }), 
+              b: n.value,
+              hasLogistics: logisticsList.value.length > 0,
+              logisticsList: e.f(logisticsList.value, (item, index) => ({
+                time: item.time,
+                status: item.status,
+                desc: item.desc,
+                isFirst: index === 0
+              }))
+            },
             n.value
               ? {}
               : l.value
@@ -250,6 +262,13 @@ const a = () => "../../components/base/hj-navbar.js",
                         l.value.shippingAddress.district,
                         l.value.shippingAddress.detail
                       ].filter(Boolean).join("")),
+                      deliveryMethodText: l.value.shippingAddress && (l.value.shippingAddress.deliveryMethod === "pickup" ? "到店自提" : "快递邮寄"),
+                      pickupStoreName: l.value.shippingAddress && l.value.shippingAddress.storeName,
+                      pickupStorePhone: l.value.shippingAddress && l.value.shippingAddress.storePhone,
+                      pickupStoreHours: l.value.shippingAddress && l.value.shippingAddress.storeBusinessHours,
+                      expressCompany: l.value.shippingAddress && l.value.shippingAddress.express_company,
+                      trackingNumber: l.value.shippingAddress && l.value.shippingAddress.tracking_number,
+                      refundReason: l.value.shippingAddress && l.value.shippingAddress.refund_reason,
                       p0: l.value.status === "pending" || l.value.status === "shipping" || l.value.status === "shipped" || l.value.status === "paid",
                       p1: l.value.status === "pending",
                       p2: e.o(onCancelOrder),

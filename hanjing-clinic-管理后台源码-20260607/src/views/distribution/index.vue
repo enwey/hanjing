@@ -7,7 +7,35 @@ import request from '@/utils/request'
 const router = useRouter()
 
 function handleExport() {
-  MessagePlugin.success('导出报表成功！')
+  if (recentCommissions.value.length === 0) {
+    MessagePlugin.warning('当前无分销业绩记录可供导出')
+    return
+  }
+  const headers = ['时间', '推广员', '患者', '商品', '交易额', '产生佣金']
+  const escapeCsv = (val: any) => {
+    if (val === null || val === undefined) return ''
+    const str = String(val).replace(/"/g, '""')
+    return `"${str}"`
+  }
+  const rows = recentCommissions.value.map(row => [
+    escapeCsv(row.date),
+    escapeCsv(row.promoter),
+    escapeCsv(row.patient),
+    escapeCsv(row.product),
+    escapeCsv(`¥${yuan(row.amount)}`),
+    escapeCsv(`¥${yuan(row.commission)}`)
+  ])
+  const csvContent = '\uFEFF' + [headers.join(',')].concat(rows.map(r => r.join(','))).join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `分销动态业绩报表-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  MessagePlugin.success('分销业绩动态报表已成功导出')
 }
 
 const overview = ref({

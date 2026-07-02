@@ -133,6 +133,35 @@ export const autoSettleDistributionCommissions = async () => {
   }
 };
 
+export const autoProcessRefunds = async () => {
+  try {
+    const pendingRefunds = await query(
+      `SELECT id, pay_amount, user_id, order_no FROM orders
+       WHERE status = 'refunding'
+         AND pay_at <= DATE_SUB(NOW(), INTERVAL 3 DAY)`
+    );
+
+    if (!pendingRefunds.length) return;
+
+    for (const order of pendingRefunds) {
+      await transaction(async (conn) => {
+        await conn.execute(
+          `UPDATE orders SET status = 'refunded', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          [order.id]
+        );
+        await conn.execute(
+          `INSERT INTO user_notifications (user_id, title, content)
+           VALUES (?, '退款成功提醒', ?)`,
+          [order.user_id, `您取消预约退回的 ¥${(order.pay_amount / 100).toFixed(2)} 已成功原路退回您的支付账户。`]
+        );
+      });
+    }
+    console.log(`[Refund Processor] Auto-refunded ${pendingRefunds.length} orders.`);
+  } catch (err) {
+    console.error('[Refund Processor] Auto refund processing failed:', err);
+  }
+};
+
 // Initialize Tables
 export const initDB = async () => {
   console.log('Initializing MySQL connection...');
@@ -195,6 +224,13 @@ export const initDB = async () => {
       FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE SET NULL
     );
   `);
+
+  try {
+    await query(`ALTER TABLE patients ADD COLUMN id_card VARCHAR(18) DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE patients ADD COLUMN card_no VARCHAR(50) DEFAULT NULL;`);
+  } catch (err) {}
 
   // 3. stores
   await query(`
@@ -581,6 +617,11 @@ export const initDB = async () => {
   } catch (err) {
     // Ignore error if column already exists
   }
+  try {
+    await query(`ALTER TABLE wearing_logs ADD UNIQUE KEY uniq_wearing_log_treatment_date_source (treatment_id, date, source)`);
+  } catch (err) {
+    // Ignore error if index already exists
+  }
 
   // 14. device_adjustments
   await query(`
@@ -691,6 +732,7 @@ export const initDB = async () => {
       pay_method VARCHAR(30) DEFAULT 'wechat',
       pay_at TIMESTAMP NULL,
       status VARCHAR(30) DEFAULT 'pending',
+      appointment_id BIGINT UNSIGNED NULL,
       shipping_address JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -698,6 +740,9 @@ export const initDB = async () => {
       FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE SET NULL
     );
   `);
+  try {
+    await query(`ALTER TABLE orders ADD COLUMN appointment_id BIGINT UNSIGNED NULL AFTER status`);
+  } catch (err) {}
   try {
     await query(`ALTER TABLE orders ADD COLUMN invoice_info JSON NULL DEFAULT NULL`);
   } catch (err) {}
@@ -826,6 +871,19 @@ export const initDB = async () => {
       status VARCHAR(30) DEFAULT 'pending',
       account_info VARCHAR(255) NOT NULL,
       completed_at TIMESTAMP NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
+  // 25.1. points_logs
+  await query(`
+    CREATE TABLE IF NOT EXISTS points_logs (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      points INT NOT NULL,
+      type VARCHAR(50) NOT NULL,
+      description VARCHAR(255) DEFAULT '',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -1192,6 +1250,8 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS treatment_timelines (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       user_id BIGINT UNSIGNED NOT NULL,
+      patient_id BIGINT UNSIGNED DEFAULT NULL,
+      treatment_id BIGINT UNSIGNED DEFAULT NULL,
       event_date DATE NOT NULL,
       event_title VARCHAR(150) NOT NULL,
       event_desc TEXT,
@@ -1200,10 +1260,18 @@ export const initDB = async () => {
       color VARCHAR(50) DEFAULT NULL,
       icon VARCHAR(50) DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+      FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE CASCADE
     );
   `);
 
+  try {
+    await query(`ALTER TABLE treatment_timelines ADD COLUMN patient_id BIGINT UNSIGNED DEFAULT NULL AFTER user_id`);
+  } catch (e) {}
+  try {
+    await query(`ALTER TABLE treatment_timelines ADD COLUMN treatment_id BIGINT UNSIGNED DEFAULT NULL AFTER patient_id`);
+  } catch (e) {}
   try {
     await query(`ALTER TABLE treatment_timelines ADD COLUMN event_type VARCHAR(50) DEFAULT 'visit'`);
   } catch (e) {}
@@ -1222,6 +1290,7 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS device_maintenance (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       user_id BIGINT UNSIGNED NOT NULL,
+      treatment_id BIGINT UNSIGNED DEFAULT NULL,
       service_date DATE NOT NULL,
       service_type VARCHAR(100) NOT NULL,
       service_store VARCHAR(150) NOT NULL,
@@ -1230,10 +1299,14 @@ export const initDB = async () => {
       cost INT DEFAULT 0,
       status VARCHAR(30) DEFAULT 'completed',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE SET NULL
     );
   `);
 
+  try {
+    await query(`ALTER TABLE device_maintenance ADD COLUMN treatment_id BIGINT UNSIGNED DEFAULT NULL AFTER user_id`);
+  } catch (e) {}
   try {
     await query(`ALTER TABLE device_maintenance ADD COLUMN description TEXT DEFAULT NULL`);
   } catch (e) {}
@@ -1246,6 +1319,7 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS device_feedback (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       user_id BIGINT UNSIGNED NOT NULL,
+      treatment_id BIGINT UNSIGNED DEFAULT NULL,
       feedback_type VARCHAR(100) NULL,
       feedback_desc TEXT NOT NULL,
       contact_phone VARCHAR(50),
@@ -1254,10 +1328,14 @@ export const initDB = async () => {
       reply_content TEXT,
       processed_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE SET NULL
     );
   `);
 
+  try {
+    await query(`ALTER TABLE device_feedback ADD COLUMN treatment_id BIGINT UNSIGNED DEFAULT NULL AFTER user_id`);
+  } catch (e) {}
   try {
     await query(`ALTER TABLE device_feedback ADD COLUMN rating INT DEFAULT 5`);
   } catch (e) {}
@@ -1370,6 +1448,68 @@ export const initDB = async () => {
     console.error('Failed to seed sample device data:', err);
   }
 
+  // Ensure that all users with treatment records have seeded timeline and wearing records
+  try {
+    const treatmentRecordsList = await query(`
+      SELECT tr.id as treatment_id, tr.patient_id, p.user_id 
+      FROM treatment_records tr
+      JOIN patients p ON tr.patient_id = p.id
+    `);
+    
+    const today = new Date();
+    
+    for (const tr of treatmentRecordsList) {
+      const timelineCount = await query('SELECT COUNT(*) as count FROM treatment_timelines WHERE user_id = ? AND patient_id = ?', [tr.user_id, tr.patient_id]);
+      if (timelineCount[0].count === 0) {
+        const dates = [
+          new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000),
+          new Date(today.getTime() - 20 * 24 * 60 * 60 * 1000),
+          new Date(today.getTime() - 15 * 24 * 60 * 60 * 1000)
+        ];
+        const timelineData = [
+          ['建立疗程档案', '针对中重度阻塞性睡眠呼吸暂停(OSAHS)及顽固打鼾设计，采用食品级高分子材质，下颌前移微调精度达0.5mm，智能监测传感器自动上传睡眠佩戴时长与质量数据。', 'visit', '王芳', '#1A9D5C', 'start'],
+          ['阻鼾器设计与制作', '定制式阻鼾器设计制作完成，型号：HJ-MAD-03。', 'milestone', '陈技师', '#3B6BF5', 'device'],
+          ['阻鼾器佩戴调试', '王医生为您完成了阻鼾器首次试戴和下颌前移量微调（初始前移：4.0mm）。', 'adjust', '王医生', '#F59E0B', 'adjust']
+        ];
+        for (let j = 0; j < dates.length; j++) {
+          const dateStr = `${dates[j].getFullYear()}-${String(dates[j].getMonth() + 1).padStart(2, '0')}-${String(dates[j].getDate()).padStart(2, '0')}`;
+          await query(`
+            INSERT INTO treatment_timelines (user_id, patient_id, treatment_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `, [tr.user_id, tr.patient_id, tr.treatment_id, dateStr, timelineData[j][0], timelineData[j][1], timelineData[j][2], timelineData[j][3], timelineData[j][4], timelineData[j][5]]);
+        }
+      }
+      
+      const wearingCount = await query('SELECT COUNT(*) as count FROM wearing_records WHERE user_id = ?', [tr.user_id]);
+      if (wearingCount[0].count === 0) {
+        for (let i = 1; i <= 7; i++) {
+          const pastDate = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+          const dateStr = `${pastDate.getFullYear()}-${String(pastDate.getMonth() + 1).padStart(2, '0')}-${String(pastDate.getDate()).padStart(2, '0')}`;
+          const duration = Math.floor(400 + Math.random() * 120);
+          const comfort = Math.floor(4 + Math.random() * 2);
+          const decibel = Math.floor(35 + Math.random() * 15);
+          const apnea = Math.floor(Math.random() * 3);
+          const s = [
+            "首次佩戴，有轻微异物感",
+            "逐渐适应，无不适",
+            "佩戴感良好，睡眠质量改善",
+            "",
+            "颞下颌关节略有酸胀",
+            "调整后舒适度提升"
+          ];
+          const note = s[i % s.length];
+
+          await query(`
+            INSERT INTO wearing_records (user_id, wearing_date, start_time, end_time, duration_mins, comfort_score, snore_decibel, apnea_events, note)
+            VALUES (?, ?, '22:30:00', '06:30:00', ?, ?, ?, ?, ?)
+          `, [tr.user_id, dateStr, duration, comfort, decibel, apnea, note || null]);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to auto-seed timelines for active treatment records:', err);
+  }
+
   // Seed default system settings
   try {
     const settingsCount = await query('SELECT count(*) as count FROM system_settings');
@@ -1432,6 +1572,27 @@ export const initDB = async () => {
     console.error('Failed to ensure default products exist:', err);
   }
 
+  // Seed Coupons
+  try {
+    await query(`
+      INSERT INTO coupons (id, title, type, value, min_spend, status, valid_start, valid_end)
+      VALUES
+        (1, '打鼾初筛专属50元券', 'cash', 5000, 10000, 'active', '2026-01-01', '2028-12-31'),
+        (2, '阻鼾清洁泡腾片10元券', 'cash', 1000, 2000, 'active', '2026-01-01', '2028-12-31'),
+        (3, '门诊挂号立减30元券', 'cash', 3000, 5000, 'active', '2026-01-01', '2028-12-31'),
+        (4, '黄金会员专享100元券', 'cash', 10000, 20000, 'active', '2026-01-01', '2028-12-31')
+      ON DUPLICATE KEY UPDATE
+        title = VALUES(title),
+        type = VALUES(type),
+        value = VALUES(value),
+        min_spend = VALUES(min_spend),
+        status = VALUES(status)
+    `);
+    console.log('Ensured default coupons exist in database.');
+  } catch (err) {
+    console.error('Failed to ensure default coupons exist:', err);
+  }
+
   // Create High Performance Secondary Indexes
   try {
     await query(`CREATE INDEX idx_appt_date_status ON appointments (appointment_date, status);`);
@@ -1450,6 +1611,18 @@ export const initDB = async () => {
     console.log('Index idx_posts_status_top_date verified/created.');
   } catch (err) {
     // Ignore error if index already exists
+  }
+  try {
+    await query(`CREATE INDEX idx_patients_id_card ON patients (id_card);`);
+    console.log('Index idx_patients_id_card verified/created.');
+  } catch (err) {
+    // Ignore error
+  }
+  try {
+    await query(`CREATE INDEX idx_patients_phone ON patients (phone);`);
+    console.log('Index idx_patients_phone verified/created.');
+  } catch (err) {
+    // Ignore error
   }
 
   try {

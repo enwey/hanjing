@@ -12,12 +12,50 @@ const n = () => "../../../components/base/hj-navbar.js",
       function v(e) {
         return "¥" + (e / 100).toFixed(0);
       }
+      const redeemCoupons = e.ref([]);
+
+      async function loadAvailableCoupons() {
+        try {
+          const res = await l.getAvailableCoupons();
+          redeemCoupons.value = res.data?.list || res.list || [];
+        } catch (err) {
+          console.error("[Member Benefits] Fetch coupons error:", err);
+        }
+      }
+
+      async function onRedeemCoupon(couponId) {
+        e.index.showModal({
+          title: "确认兑换",
+          content: "确定要消耗积分兑换该代金券吗？",
+          success: async (res) => {
+            if (res.confirm) {
+              try {
+                e.index.showLoading({ title: "兑换中..." });
+                const redeemRes = await l.redeemCoupon(couponId);
+                if (redeemRes && redeemRes.code === 0) {
+                  e.index.showToast({ title: "兑换成功", icon: "success" });
+                  const infoRes = await l.getMemberInfo();
+                  t.value = infoRes.data || infoRes;
+                } else {
+                  e.index.showToast({ title: redeemRes.message || "兑换失败", icon: "none" });
+                }
+              } catch (err) {
+                e.index.showToast({ title: "兑换失败，请重试", icon: "none" });
+              } finally {
+                e.index.hideLoading();
+              }
+            }
+          }
+        });
+      }
+
       e.onMounted(async () => {
-        const [e, n] = await Promise.all([
+        const [eVal, nVal] = await Promise.all([
           l.getMemberInfo(),
           l.getMemberLevels(),
+          loadAvailableCoupons()
         ]);
-        ((t.value = e.data || e), (a.value = n.data || n), (r.value = !1));
+        ((t.value = eVal.data || eVal), (a.value = nVal.data || nVal), (r.value = !1));
       });
       const u = {
           normal: { bg: "#F3F4F6", color: "#9CA3AF" },
@@ -74,6 +112,15 @@ const n = () => "../../../components/base/hj-navbar.js",
                     e: e.t(v(t.value.totalSpent)),
                     f: e.t(t.value.points),
                     g: d().diff > 0,
+                    points: t.value.points,
+                    nRedeemCoupons: e.f(redeemCoupons.value, (item) => ({
+                      id: item.id,
+                      title: item.title,
+                      value: item.value,
+                      minSpend: item.minSpend,
+                      pointsCost: item.pointsCost,
+                      onRedeem: e.o(() => onRedeemCoupon(item.id), item.id),
+                    })),
                   },
                   d().diff > 0
                     ? {

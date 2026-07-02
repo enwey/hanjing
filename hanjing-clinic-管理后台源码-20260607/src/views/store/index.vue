@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -23,6 +23,36 @@ interface Store {
 
 const stores = ref<Store[]>([])
 const isEdit = ref(false)
+const mapVisible = ref(false)
+
+const handleMapMessage = (event: MessageEvent) => {
+  const loc = event.data
+  if (loc && loc.module === 'locationPicker') {
+    if (editStore.value) {
+      editStore.value.latitude = String(loc.latlng.lat)
+      editStore.value.longitude = String(loc.latlng.lng)
+      if (!editStore.value.address) {
+        editStore.value.address = loc.poiaddress + ' (' + loc.poiname + ')'
+      }
+      if (loc.cityname && !editStore.value.city) {
+        editStore.value.city = loc.cityname
+      }
+    }
+    mapVisible.value = false
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('message', handleMapMessage, false)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('message', handleMapMessage)
+})
+
+function openMapPicker() {
+  mapVisible.value = true
+}
 
 function safeJsonArray(value: any) {
   if (!value) return []
@@ -288,6 +318,7 @@ function openStoreAccounts(store: Store) {
           <div style="display:flex; gap:8px; width:100%;">
             <t-input v-model="editStore.latitude" placeholder="纬度" />
             <t-input v-model="editStore.longitude" placeholder="经度" />
+            <t-button variant="outline" @click="openMapPicker">地图选址</t-button>
           </div>
         </t-form-item>
         <t-form-item label="联系电话">
@@ -353,6 +384,20 @@ function openStoreAccounts(store: Store) {
 	          </t-radio-group>
         </t-form-item>
       </t-form>
+    </t-dialog>
+
+    <!-- 地图选址弹窗 -->
+    <t-dialog
+      v-model:visible="mapVisible"
+      header="地图选址"
+      width="820px"
+      :footer="false"
+      destroy-on-close
+    >
+      <iframe
+        src="https://apis.map.qq.com/tools/locpicker?search=1&type=1&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77&referer=myapp"
+        style="width:100%; height:550px; border:none;"
+      ></iframe>
     </t-dialog>
   </div>
 </template>

@@ -16,11 +16,39 @@ const a = () => "../../components/base/hj-navbar.js",
         o = e.ref(null),
         d = e.ref(null),
         r = e.ref(!1);
+      let originalDate = "";
+      let originalTime = "";
       async function c(e) {
         ((i.value = e), await l.fetchSchedules(u.value, s.value, e, e));
+        const firstBookable = l.schedules.find(item => item.status !== "full");
+        if (firstBookable) {
+          o.value = firstBookable;
+          await l.fetchTimeSlots(firstBookable.id);
+          const availableSlot = l.timeSlots.find(slot => {
+            if (slot.status !== "available") return false;
+            if (originalDate && originalTime) {
+              const selDate = firstBookable.date;
+              const selTime = slot.label;
+              if (selDate === originalDate && selTime.replace(/\s+/g, '') === originalTime.replace(/\s+/g, '')) {
+                return false;
+              }
+            }
+            return true;
+          });
+          d.value = availableSlot || null;
+        } else {
+          o.value = null;
+          d.value = null;
+        }
       }
       async function v() {
         if (o.value && d.value) {
+          const selDate = o.value.date;
+          const selTime = d.value.label;
+          if (originalDate && originalTime && selDate === originalDate && selTime.replace(/\s+/g, '') === originalTime.replace(/\s+/g, '')) {
+            e.index.showToast({ title: "不能选择相同的就诊时段", icon: "none" });
+            return;
+          }
           r.value = !0;
           try {
             (await l.rescheduleAppointment(n.value, {
@@ -37,7 +65,7 @@ const a = () => "../../components/base/hj-navbar.js",
           } finally {
             r.value = !1;
           }
-        } else e.index.showToast({ title: "请选择时段", icon: "error" });
+        } else e.index.showToast({ title: "请选择时段", icon: "none" });
       }
       return (
         e.onMounted(async () => {
@@ -49,6 +77,19 @@ const a = () => "../../components/base/hj-navbar.js",
             (u.value = a.doctorId || ""),
             (s.value = a.storeId || ""),
             await l.fetchScheduleDates(u.value, s.value));
+          try {
+            const api = require("../../api/index.js");
+            const apptRes = await api.getAppointmentDetail(n.value);
+            if (apptRes && apptRes.data && apptRes.data.appointment) {
+              originalDate = apptRes.data.appointment.appointmentDate;
+              originalTime = apptRes.data.appointment.appointmentTime;
+            }
+          } catch (err) {
+            console.error("加载预约详情失败", err);
+          }
+          if (l.scheduleDates && l.scheduleDates.length > 0) {
+            await c(l.scheduleDates[0]);
+          }
         }),
         (t, a) =>
           e.e(
@@ -60,6 +101,13 @@ const a = () => "../../components/base/hj-navbar.js",
                 "selected-date": i.value,
               }),
               d: i.value && e.unref(l).schedules.length > 0,
+              i: e.o(v, "78"),
+              j: e.p({
+                type: "primary",
+                size: "lg",
+                block: !0,
+                loading: r.value,
+              }),
             },
             i.value && e.unref(l).schedules.length > 0
               ? {
@@ -96,7 +144,15 @@ const a = () => "../../components/base/hj-navbar.js",
                                 f: e.o(
                                   (e) =>
                                     (function (e, t) {
-                                      d.value = t;
+                                      if (t.status === "available") {
+                                        const selDate = i.value;
+                                        const selTime = t.label;
+                                        if (originalDate && originalTime && selDate === originalDate && selTime.replace(/\s+/g, '') === originalTime.replace(/\s+/g, '')) {
+                                          e.index.showToast({ title: "不能选择原预约日期时段", icon: "none" });
+                                          return;
+                                        }
+                                        d.value = t;
+                                      }
                                     })(0, t),
                                   t.id,
                                 ),
@@ -106,20 +162,6 @@ const a = () => "../../components/base/hj-navbar.js",
                         : {},
                       { g: t.id },
                     );
-                  }),
-                }
-              : {},
-            { f: d.value },
-            d.value
-              ? {
-                  g: e.t(i.value),
-                  h: e.t(d.value.label),
-                  i: e.o(v, "78"),
-                  j: e.p({
-                    type: "primary",
-                    size: "lg",
-                    block: !0,
-                    loading: r.value,
                   }),
                 }
               : {},

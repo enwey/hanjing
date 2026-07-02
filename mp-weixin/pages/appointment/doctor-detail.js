@@ -17,17 +17,7 @@ const r = e.defineComponent({
 
     const getDoctorExpertise = (doc) => {
       if (!doc) return [];
-      if (doc.expertise && doc.expertise.length > 0) return doc.expertise;
-      const spec = doc.specialty || '';
-      if (spec === '睡眠呼吸科' || spec === '睡眠呼吸') {
-        return ['睡眠呼吸暂停综合症', '鼾症非手术治疗', '阻鼾器适配', '下颌前移治疗'];
-      } else if (spec === '耳鼻喉科') {
-        return ['鼻内镜诊断', '上气道评估', '过敏性鼻炎与鼾症', '多导睡眠监测'];
-      } else if (spec === '心理科' || spec === '口腔正畸') {
-        return ['正畸辅导', '睡眠行为干预', '情绪焦虑管理', '依从性辅导'];
-      } else {
-        return ['阻鼾器适配', '睡眠健康辅导'];
-      }
+      return Array.isArray(doc.expertise) ? doc.expertise : [];
     };
 
     const generateScheduleRows = (schedulesList = []) => {
@@ -183,7 +173,7 @@ const r = e.defineComponent({
               d: e.t(doc.name),
               e: e.t(doc.title),
               f: e.t(doc.specialty),
-              g: e.f([doc.experience + "年经验", "OSAHS专家", "在职/在线"], (tag, idx) => ({
+              g: e.f([doc.experience ? doc.experience + "年经验" : "", doc.title || "", doc.specialty || ""].filter(Boolean), (tag, idx) => ({
                 a: e.t(tag),
                 b: idx,
               })),

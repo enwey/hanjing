@@ -24,6 +24,14 @@ const t = () => "../../components/base/hj-navbar.js",
         (r.resetFlow(), e.index.switchTab({ url: "/pages/appointment/index" }));
       }
       function handleStoreClick(store) {
+        if (store.status === "prepare") {
+          e.index.showToast({
+            title: "该门店正在筹建中，暂未开放预约，敬请期待！",
+            icon: "none",
+            duration: 2000
+          });
+          return;
+        }
         r.resetFlow();
         r.selectStore(store);
         e.index.navigateTo({

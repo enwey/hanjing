@@ -9,6 +9,10 @@ const a = () => "../../../components/base/hj-navbar.js",
       const o = e.ref(!0),
         l = e.ref([]),
         n = e.ref(null),
+        currentParams = () => {
+          const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
+          return patientId ? { patientId } : {};
+        },
         c = {
           visit: "初诊",
           adjust: "调整",
@@ -20,8 +24,8 @@ const a = () => "../../../components/base/hj-navbar.js",
         e.onMounted(async () => {
           try {
             const [e, a] = await Promise.all([
-              t.getTimeline(),
-              t.getTreatmentRecord(),
+              t.getTimeline(currentParams()),
+              t.getTreatmentRecord(currentParams()),
             ]);
             ((l.value = e.data), (n.value = a.data));
           } catch (e) {

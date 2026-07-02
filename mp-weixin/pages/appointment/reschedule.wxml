@@ -35,17 +35,15 @@
           ></view
         ></view
       ></view
-    ><view wx:if="{{f}}" class="submit-area data-v-54e72399"
+    ><view class="submit-area data-v-54e72399"
       ><hj-button
-        wx:if="{{j}}"
         class="data-v-54e72399"
         u-s="{{['d']}}"
         bindclick="{{i}}"
         u-i="54e72399-2"
         bind:__l="__l"
         u-p="{{j}}"
-      >
-        确认改约至 {{g}} {{h}}</hj-button
+      >确认改约</hj-button
       ></view
     ></view
   ></view

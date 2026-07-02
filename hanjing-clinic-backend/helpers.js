@@ -209,3 +209,35 @@ export const verifyPassword = (password, storedHash) => {
   const verifyHash = crypto.pbkdf2Sync(password, salt, iterations, 64, 'sha512').toString('hex');
   return verifyHash === hash;
 };
+
+// PII Encryption / Decryption helpers using AES-256-CBC with deterministic IV
+const PII_SECRET = (process.env.PII_ENCRYPTION_KEY || 'hanjing_clinic_pii_secret_key_32').padEnd(32, '0').slice(0, 32);
+const DETERMINISTIC_IV = Buffer.from(PII_SECRET.slice(0, 16));
+
+export function encryptPII(text) {
+  if (!text) return text;
+  try {
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(PII_SECRET), DETERMINISTIC_IV);
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return 'det:' + encrypted.toString('hex');
+  } catch (err) {
+    console.error('encryptPII error:', err);
+    return text;
+  }
+}
+
+export function decryptPII(text) {
+  if (!text) return text;
+  try {
+    if (!text.startsWith('det:')) return text;
+    const encryptedText = Buffer.from(text.slice(4), 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(PII_SECRET), DETERMINISTIC_IV);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  } catch (err) {
+    // Fail-safe: fallback to plaintext
+    return text;
+  }
+}

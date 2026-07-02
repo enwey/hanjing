@@ -21,7 +21,9 @@
             ><text class="member-relation data-v-30acdad2">{{m.c}}</text></view
           ><text class="member-detail data-v-30acdad2"
             >{{m.d}} | {{m.e}}岁 | {{m.f}}</text
-          ><text wx:if="{{m.g}}" class="member-tag data-v-30acdad2">有打鼾</text
+          ><view wx:if="{{m.idCard}}" class="member-visit data-v-30acdad2" style="margin-top: 6rpx; color: #6b7280; font-size: 22rpx;">身份证: {{m.idCard}}</view>
+          <view wx:if="{{m.cardNo}}" class="member-visit data-v-30acdad2" style="margin-top: 4rpx; color: #6b7280; font-size: 22rpx;">就诊卡: {{m.cardNo}}</view>
+          <text wx:if="{{m.g}}" class="member-tag data-v-30acdad2">有打鼾</text
           ><text wx:if="{{m.h}}" class="member-visit data-v-30acdad2"
             >上次就诊: {{m.i}}</text
           ></view

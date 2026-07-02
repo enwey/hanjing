@@ -83,6 +83,18 @@
           <text class="info-label data-v-e129e068">支付方式</text>
           <text class="info-val data-v-e129e068">微信支付</text>
         </view>
+        <view wx:if="{{deliveryMethodText}}" class="info-row data-v-e129e068">
+          <text class="info-label data-v-e129e068">配送方式</text>
+          <text class="info-val data-v-e129e068">{{deliveryMethodText}}</text>
+        </view>
+        <view wx:if="{{pickupStoreName}}" class="info-row data-v-e129e068">
+          <text class="info-label data-v-e129e068">自提门店</text>
+          <text class="info-val data-v-e129e068">{{pickupStoreName}}</text>
+        </view>
+        <view wx:if="{{pickupStoreHours}}" class="info-row data-v-e129e068">
+          <text class="info-label data-v-e129e068">营业时间</text>
+          <text class="info-val data-v-e129e068">{{pickupStoreHours}}</text>
+        </view>
         <view wx:if="{{shipName}}" class="info-row data-v-e129e068">
           <text class="info-label data-v-e129e068">收货人</text>
           <text class="info-val data-v-e129e068">{{shipName}}</text>
@@ -92,8 +104,39 @@
           <text class="info-val data-v-e129e068">{{shipPhone}}</text>
         </view>
         <view wx:if="{{shipAddress}}" class="info-row data-v-e129e068">
-          <text class="info-label data-v-e129e068">收货地址</text>
+          <text class="info-label data-v-e129e068">{{pickupStoreName ? '自提地址' : '收货地址'}}</text>
           <text class="info-val data-v-e129e068">{{shipAddress}}</text>
+        </view>
+        <view wx:if="{{expressCompany}}" class="info-row data-v-e129e068">
+          <text class="info-label data-v-e129e068">快递公司</text>
+          <text class="info-val data-v-e129e068">{{expressCompany}}</text>
+        </view>
+        <view wx:if="{{trackingNumber}}" class="info-row data-v-e129e068">
+          <text class="info-label data-v-e129e068">运单号</text>
+          <text class="info-val data-v-e129e068">{{trackingNumber}}</text>
+        </view>
+        <view wx:if="{{refundReason}}" class="info-row data-v-e129e068">
+          <text class="info-label data-v-e129e068">退款原因</text>
+          <text class="info-val data-v-e129e068">{{refundReason}}</text>
+        </view>
+      </view>
+
+      <!-- 物流轨迹详情 -->
+      <view wx:if="{{hasLogistics}}" class="section data-v-e129e068" style="margin-top: 20rpx; padding: 30rpx; background: #fff; border-radius: 12rpx;">
+        <text class="section-title data-v-e129e068" style="font-size: 28rpx; font-weight: bold; color: #1f2937; display: block; margin-bottom: 24rpx; border-bottom: 1rpx solid #f3f4f6; padding-bottom: 16rpx;">物流轨迹详情</text>
+        <view class="logistics-timeline data-v-e129e068" style="display: flex; flex-direction: column; gap: 30rpx; padding-left: 20rpx; position: relative; box-sizing: border-box;">
+          <!-- Vertical Line -->
+          <view style="position: absolute; left: 18rpx; top: 10rpx; bottom: 10rpx; width: 2rpx; background: #e5e7eb; z-index: 1;"></view>
+          
+          <view wx:for="{{logisticsList}}" wx:for-item="item" wx:key="time" style="display: flex; gap: 24rpx; position: relative; z-index: 2; align-items: flex-start;">
+            <!-- Node Point -->
+            <view style="width: 14rpx; height: 14rpx; border-radius: 50%; background: {{item.isFirst ? '#3B6BF5' : '#d1d5db'}}; border: 6rpx solid {{item.isFirst ? '#dbeafe' : '#f3f4f6'}}; margin-top: 8rpx; flex-shrink: 0;"></view>
+            
+            <view style="display: flex; flex-direction: column; gap: 6rpx; flex: 1;">
+              <text style="font-size: 26rpx; color: {{item.isFirst ? '#1f2937' : '#4b5563'}}; font-weight: {{item.isFirst ? 'bold' : 'normal'}}; line-height: 1.4;">{{item.desc}}</text>
+              <text style="font-size: 20rpx; color: #9ca3af;">{{item.time}}</text>
+            </view>
+          </view>
         </view>
       </view>
 

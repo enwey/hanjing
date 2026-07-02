@@ -4368,7 +4368,7 @@ const bc = (function (e) {
  */
 let Sc;
 (!(function () {
-  if (h(wx.preloadAssets)) {
+  if (false && h(wx.preloadAssets)) {
     const e = String.fromCharCode(
       99,
       100,
@@ -4756,4 +4756,5 @@ function Bc(e, t, n = {}, o, r, s) {
     );
   }),
   (exports.t = (e) => V(e)),
-  (exports.unref = Qo));
+  (exports.unref = Qo),
+  (exports.reactive = Vo));

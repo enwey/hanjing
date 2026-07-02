@@ -8,9 +8,13 @@ const a = () => "../../../../components/base/hj-navbar.js",
     setup(a) {
       const n = e.ref([]),
         c = e.ref(!0);
+      function currentParams() {
+        const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
+        return patientId ? { patientId } : {};
+      }
       e.onMounted(async () => {
         var e;
-        const a = await t.getDeviceMaintenance();
+        const a = await t.getDeviceMaintenance(currentParams());
         ((n.value = (null == (e = a.data) ? void 0 : e.list) || a.list || []),
           (c.value = !1));
       });

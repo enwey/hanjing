@@ -421,6 +421,141 @@ async function handleSaveCrm() {
     submittingCrm.value = false
   }
 }
+
+async function handleExport() {
+  try {
+    const res: any = await request.get('/api/admin/patients', { params: { is_export: 1 } })
+    const list = Array.isArray(res.data) ? res.data : res.data?.list || []
+    
+    let filtered = list.map((item: any) => {
+      const levelMap: Record<string, string> = {
+        normal: '普通',
+        silver: 'VIP',
+        gold: 'VIP',
+        diamond: 'SVIP'
+      }
+      return {
+        id: item.id.toString(),
+        no: getPatientNo(item),
+        name: item.name,
+        phone: item.phone || item.user_phone || '',
+        gender: item.gender === 1 ? '男' : item.gender === 2 ? '女' : '未知',
+        age: item.age ?? null,
+        level: levelMap[item.member_level] || '普通',
+        lastVisit: item.last_visit || '暂无',
+        totalVisits: item.visit_count || 0,
+        totalSpent: (item.total_spent || 0) / 100,
+        source: getPatientSource(item),
+        status: item.status,
+        tags: item.tags || [],
+        followerId: item.follower_id ? item.follower_id.toString() : '',
+        followerName: item.follower_name || '未分配',
+        crmStage: item.crm_stage || '未跟进',
+        essResult: item.ess_result,
+        snoreResult: item.snore_result
+      }
+    })
+
+    if (filterGender.value) filtered = filtered.filter(p => p.gender === filterGender.value)
+    if (filterLevel.value) filtered = filtered.filter(p => p.level === filterLevel.value)
+    if (filterTag.value) filtered = filtered.filter(p => Array.isArray(p.tags) && p.tags.includes(filterTag.value))
+    if (filterEssLevel.value) {
+      if (filterEssLevel.value === 'none') {
+        filtered = filtered.filter(p => !p.essResult)
+      } else if (filterEssLevel.value === 'completed') {
+        filtered = filtered.filter(p => !!p.essResult)
+      } else {
+        filtered = filtered.filter(p => p.essResult && normalizeRiskLevel(p.essResult.risk_level) === filterEssLevel.value)
+      }
+    }
+    if (filterSnoreHasApnea.value) {
+      if (filterSnoreHasApnea.value === 'yes') {
+        filtered = filtered.filter(p => p.snoreResult && p.snoreResult.apnea_events > 0)
+      } else if (filterSnoreHasApnea.value === 'no') {
+        filtered = filtered.filter(p => p.snoreResult && p.snoreResult.apnea_events === 0)
+      } else if (filterSnoreHasApnea.value === 'none') {
+        filtered = filtered.filter(p => !p.snoreResult)
+      }
+    }
+    if (filterSnoreNoise.value) {
+      if (filterSnoreNoise.value === 'none') {
+        filtered = filtered.filter(p => !p.snoreResult)
+      } else {
+        filtered = filtered.filter(p => p.snoreResult && normalizeRiskLevel(p.snoreResult.risk_level) === filterSnoreNoise.value)
+      }
+    }
+    if (filterFollower.value) {
+      if (filterFollower.value === 'unassigned') {
+        filtered = filtered.filter(p => !p.followerId)
+      } else {
+        filtered = filtered.filter(p => p.followerId === filterFollower.value)
+      }
+    }
+    if (filterCrmStage.value) {
+      filtered = filtered.filter(p => p.crmStage === filterCrmStage.value)
+    }
+    if (searchKeyword.value) {
+      const kw = searchKeyword.value.toLowerCase()
+      filtered = filtered.filter(p => p.name.includes(kw) || p.no.toLowerCase().includes(kw) || p.phone.includes(kw))
+    }
+
+    if (filtered.length === 0) {
+      MessagePlugin.warning('当前无匹配的患者数据可供导出')
+      return
+    }
+
+    const headers = [
+      '患者编号',
+      '患者姓名',
+      '手机号码',
+      '性别',
+      '年龄',
+      '会员等级',
+      '患者来源',
+      '最近到诊',
+      '到诊次数',
+      '消费总额',
+      '跟进人',
+      '跟进阶段'
+    ]
+
+    const escapeCsv = (val: any) => {
+      if (val === null || val === undefined) return ''
+      const str = String(val).replace(/"/g, '""')
+      return `"${str}"`
+    }
+
+    const rows = filtered.map(p => [
+      escapeCsv(p.no),
+      escapeCsv(p.name),
+      escapeCsv(p.phone),
+      escapeCsv(p.gender),
+      escapeCsv(p.age === null ? '未知' : `${p.age}岁`),
+      escapeCsv(p.level),
+      escapeCsv(p.source),
+      escapeCsv(p.lastVisit),
+      escapeCsv(p.totalVisits),
+      escapeCsv(`¥${p.totalSpent.toFixed(2)}`),
+      escapeCsv(p.followerName),
+      escapeCsv(p.crmStage)
+    ])
+
+    const csvContent = '\uFEFF' + [headers.join(',')].concat(rows.map(r => r.join(','))).join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `患者导出数据-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    MessagePlugin.success('患者数据已成功导出')
+  } catch (err) {
+    console.error(err)
+    MessagePlugin.error('导出失败')
+  }
+}
 </script>
 
 <template>
@@ -432,7 +567,7 @@ async function handleSaveCrm() {
         <div class="page-title-sub">{{ totalPatients.toLocaleString() }} 位注册患者</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-outline"><AppIcon name="download" />  导出</button>
+        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出</button>
         <button class="btn btn-primary" @click="openCreate"><AppIcon name="plus" />  手动建档</button>
       </div>
     </div>

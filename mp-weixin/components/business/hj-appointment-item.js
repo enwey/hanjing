@@ -19,6 +19,9 @@ const n = () => "../base/hj-tag.js",
         if (['arrived', 'cancelled', 'no_show', 'completed'].includes(p.appointment.status)) {
           return false;
         }
+        if (p.appointment.status === 'pending_payment') {
+          return true;
+        }
         try {
           const [year, month, day] = p.appointment.appointmentDate.split('-').map(Number);
           const [hours, minutes] = p.appointment.appointmentTime.split('-')[0].trim().split(':').map(Number);
@@ -41,7 +44,7 @@ const n = () => "../base/hj-tag.js",
                   confirmed: "primary",
                   reminded: "primary",
                   checked_in: "success",
-                  completed: "danger",
+                  completed: "default",
                   cancelled: "default",
                   no_show: "default",
                   pending: "success",

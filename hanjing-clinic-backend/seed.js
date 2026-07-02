@@ -79,7 +79,7 @@ export const seedData = async () => {
   const store4 = await run(
     `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['鼾静健康 · 广州天河店', 'GZ-TH', '广州市天河区天河路385号太古汇2座', '广州', '天河区', 23.1342, 113.3352, '020-38688888', '09:00:00', '18:00:00', 'closed', 1]
+    ['鼾静健康 · 广州天河店', 'GZ-TH', '广州市天河区天河路385号太古汇2座', '广州', '天河区', 23.1342, 113.3352, '020-38688888', '09:00:00', '18:00:00', 'prepare', 1]
   );
 
   // Store Features

@@ -178,20 +178,87 @@ const t = () => "../../../components/base/hj-navbar.js",
         }
       }
 
+      function onUploadImage() {
+        e.index.chooseMedia({
+          count: 1,
+          mediaType: ["image"],
+          success: (res) => {
+            const tempFilePath = res.tempFiles[0].tempFilePath;
+            const ext = tempFilePath.split('.').pop() || 'jpg';
+            e.index.showLoading({ title: "上传中..." });
+            const fs = e.index.getFileSystemManager();
+            fs.readFile({
+              filePath: tempFilePath,
+              success: async (readRes) => {
+                try {
+                  const uploadRes = await require("../../../api/index.js").uploadFile(readRes.data, ext);
+                  if (uploadRes && uploadRes.code === 0 && uploadRes.data && uploadRes.data.url) {
+                    const imageUrl = uploadRes.data.url;
+                    const text = `[image]${imageUrl}`;
+                    const newMsgObj = {
+                      id: String(Date.now()),
+                      from: "user",
+                      text,
+                      time: new Date().toTimeString().slice(0, 5),
+                      status: "sending"
+                    };
+                    i.value.push(newMsgObj);
+                    sendMsgWithRetry(newMsgObj);
+                  } else {
+                    e.index.showToast({ title: "上传图片失败", icon: "none" });
+                  }
+                } catch (err) {
+                  console.error(err);
+                  e.index.showToast({ title: "上传图片失败，请重试", icon: "none" });
+                } finally {
+                  e.index.hideLoading();
+                }
+              },
+              fail: () => {
+                e.index.hideLoading();
+                e.index.showToast({ title: "读取文件失败", icon: "none" });
+              }
+            });
+          }
+        });
+      }
+
+      function onPreviewImage(evt) {
+        const src = evt.currentTarget.dataset.src;
+        if (src) {
+          const BASE_URL = require("../../../api/request.js").BASE_URL;
+          const fullUrl = src.startsWith('http') ? src : `${BASE_URL}${src}`;
+          e.index.previewImage({
+            urls: [fullUrl],
+            current: fullUrl
+          });
+        }
+      }
+
       return (t, s) => {
         var o;
         return {
           a: e.p({ title: "在线客服", "show-back": !0 }),
-          b: e.f(i.value, (t, i, a) => ({
-            a: e.t(t.text),
-            b: e.t(t.time),
-            c: e.n(t.from),
-            d: t.id,
-            e: "msg-" + t.id,
-            f: e.n(t.from),
-            sending: t.status === "sending" ? 1 : "",
-            failed: t.status === "fail" ? 1 : "",
-          })),
+          b: e.f(i.value, (t, i, a) => {
+            const isImg = t.text.startsWith("[image]") || t.text.startsWith("/uploads/") || t.text.startsWith("http");
+            let displayUrl = t.text.startsWith("[image]") ? t.text.slice(7) : t.text;
+            if (displayUrl && !displayUrl.startsWith('http') && displayUrl.startsWith('/uploads')) {
+              const BASE_URL = require("../../../api/request.js").BASE_URL;
+              displayUrl = `${BASE_URL}${displayUrl}`;
+            }
+            return {
+              a: e.t(t.text),
+              b: e.t(t.time),
+              c: e.n(t.from),
+              d: t.id,
+              e: "msg-" + t.id,
+              f: e.n(t.from),
+              sending: t.status === "sending" ? 1 : "",
+              failed: t.status === "fail" ? 1 : "",
+              isImg,
+              displayUrl,
+            };
+          }),
           c:
             "msg-" +
             (null == (o = i.value[i.value.length - 1]) ? void 0 : o.id),
@@ -200,6 +267,8 @@ const t = () => "../../../components/base/hj-navbar.js",
           f: e.o((e) => (a.value = e.detail.value), "ad"),
           g: e.o(n, "08"),
           retrySendMessage: e.o(retrySendMessage),
+          onUploadImage: e.o(onUploadImage),
+          onPreviewImage: e.o(onPreviewImage),
         };
       };
     },

@@ -256,7 +256,7 @@ function handleExport() {
       `¥${formatFen(raw.pay_amount)}`,
       raw.user_id || '',
       raw.buyer_nickname || '—',
-      raw.buyer_phone ? maskPhone(raw.buyer_phone) : '—',
+      raw.buyer_phone || '—',
       addr.receiver || '—',
       addr.phone || '—',
       raw.type === 'online' ? (addr.detail || '—') : (addr.detail || addr.store_name || addr.status || '门店自提'),

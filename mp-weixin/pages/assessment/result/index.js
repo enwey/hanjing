@@ -9,13 +9,21 @@ const t = () => "../../../components/base/hj-navbar.js",
       const s = n.useAssessmentStore(),
         o = e.computed(() => !s.currentResult);
       function i() {
-        e.index.navigateBack({ delta: 2 });
+        e.index.navigateBack({ delta: 1 });
       }
       function r() {
         e.index.switchTab({ url: "/pages/index/index" });
       }
       function a() {
-        e.index.switchTab({ url: "/pages/appointment/index" });
+        const result = e.unref(s).currentResult;
+        if (result && result.id) {
+          e.index.setStorageSync("pending_appointment_assessment", {
+            type: "ess",
+            id: result.id,
+            label: `ESS嗜睡量表 ${e.unref(s).totalScore}分`
+          });
+        }
+        e.index.navigateTo({ url: "/pages/appointment/store-select" });
       }
       function u() {
         (s.reset(),
@@ -60,16 +68,27 @@ const t = () => "../../../components/base/hj-navbar.js",
                   f: e.t(e.unref(s).levelInfo.level),
                   g: e.unref(s).levelInfo.color,
                   h: e.t(e.unref(s).levelInfo.desc),
-                  i: e.f(e.unref(s).questions, (n, t, o) => ({
-                    a: e.t(n.emoji),
-                    b: e.t(n.situation),
-                    c: e.t(
-                      ["从不", "轻度", "中度", "高度"][e.unref(s).answers[t]] ||
-                        "未答",
-                    ),
-                    d: n.id,
-                  })),
+                  i: e.f(e.unref(s).questions, (n, t, o) => {
+                    const score = e.unref(s).answers[t];
+                    const color = score === 0 ? "#10B981"
+                                : score === 1 ? "#F59E0B"
+                                : score === 2 ? "#F97316"
+                                : score === 3 ? "#EF4444"
+                                : "#94A3B8";
+                    return {
+                      a: e.t(t + 1),
+                      b: e.t(n.situation),
+                      c: e.t(["从不", "轻度", "中度", "高度"][score] || "未答"),
+                      color: color,
+                      d: n.id,
+                    };
+                  }),
                   j: e.t(e.unref(s).levelInfo.advice),
+                  adviceBg: e.unref(s).levelInfo.adviceBg,
+                  adviceBorder: e.unref(s).levelInfo.adviceBorder,
+                  adviceTitleColor: e.unref(s).levelInfo.adviceTitleColor,
+                  adviceTextColor: e.unref(s).levelInfo.adviceTextColor,
+                  adviceIcon: e.unref(s).levelInfo.adviceIcon,
                   k: e.o(a, "1e"),
                   l: e.o(r, "50"),
                   m: e.o(u, "73"),

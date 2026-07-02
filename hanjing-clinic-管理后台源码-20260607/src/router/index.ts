@@ -252,13 +252,10 @@ const router = createRouter({
 import request from '@/utils/request'
 
 function shouldPreserveNavigationContext(to: any, from: any) {
-  const targetMeta = to.matched[to.matched.length - 1]?.meta || {}
-  if (!targetMeta.parentPath) return false
-  if (!from?.name || from.name === 'login') return false
-  if (to.fullPath === from.fullPath) return false
-  if (typeof to.query.from === 'string' && to.query.from) return false
-  if (typeof to.query.menu === 'string' && to.query.menu) return false
-  return true
+  // Disabling redirect-based context preservation. The logical parent path mapping (parentPath) 
+  // is now prioritized and correctly resolved, meaning query.from redirection is no longer needed.
+  // This also prevents Vue Router's 'replace: true' from overwriting the list view in the history stack.
+  return false
 }
 
 router.beforeEach(async (to, from, next) => {
@@ -308,6 +305,32 @@ router.beforeEach(async (to, from, next) => {
   }
   
   continueNavigation()
+})
+
+let isPrepending = false
+
+router.afterEach(async (to, from) => {
+  if (isPrepending) return
+  if (to.name === 'login') return
+  if (!from?.name || from.name === 'login') {
+    const { resolveBreadcrumbs } = await import('@/utils/routeNavigation')
+    const chain = resolveBreadcrumbs(router, to)
+    if (chain && chain.length > 1) {
+      isPrepending = true
+      try {
+        // Replace the initial landing history entry with the root of the chain
+        await router.replace(chain[0].path)
+        // Sequentially push each child route in the breadcrumb chain up to the target route
+        for (let i = 1; i < chain.length; i++) {
+          await router.push(chain[i].path)
+        }
+      } catch (err) {
+        console.error('History prepending failed:', err)
+      } finally {
+        isPrepending = false
+      }
+    }
+  }
 })
 
 export default router

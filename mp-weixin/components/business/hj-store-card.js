@@ -6,7 +6,10 @@ const e = require("../../common/vendor.js"),
     emits: ["click"],
     setup: (t) => (t, s) =>
       e.e(
-        { a: !t.store.isOpen },
+        {
+          statusPrepare: t.store.status === "prepare",
+          a: !t.store.isOpen,
+        },
         (t.store.isOpen, {}),
         {
           b: e.t(t.store.name),

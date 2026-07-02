@@ -11,6 +11,10 @@ const t = () => "../../../components/base/hj-navbar.js",
         n = e.reactive({ hasData: false, compliance: 0, weekAvg: 0, avgComfort: 0, streak: 0, score: 0, betterThan: 0, trend: [] }),
         l = e.reactive({ hasData: false, compliance: 0, weekAvg: 0, avgComfort: 0, streak: 0, score: 0, betterThan: 0, trend: [] }),
         v = e.computed(() => ("week" === o.value ? n : l));
+      function currentParams() {
+        const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
+        return patientId ? { patientId } : {};
+      }
       const c = e.computed(() => {
           const currentData = "week" === o.value ? n : l;
           if (currentData.trend && currentData.trend.length > 0) {
@@ -36,8 +40,8 @@ const t = () => "../../../components/base/hj-navbar.js",
         }),
         g = e.computed(() => ({
           betterThan: v.value.betterThan || 0,
-          avgDuration: 5.8,
-          avgCompliance: 72,
+          avgDuration: v.value.platformAvgDuration || 0,
+          avgCompliance: v.value.platformAvgCompliance || 0,
           yourDurationPct: Math.min(
             100,
             Math.round((v.value.weekAvg / 8) * 100),
@@ -103,7 +107,7 @@ const t = () => "../../../components/base/hj-navbar.js",
       async function loadReportData() {
         try {
           const api = require("../../../api/index.js");
-          const res = await api.getSleepReport({ range: o.value });
+          const res = await api.getSleepReport({ range: o.value, ...currentParams() });
           if (res && res.data) {
             const target = o.value === "week" ? n : l;
             Object.assign(target, res.data);

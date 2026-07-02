@@ -237,7 +237,7 @@ watch([currentPage, pageSize], () => {
 
 async function handleExport() {
   try {
-    const params: any = {}
+    const params: any = { is_export: 1 }
     if (searchKeyword.value && searchKeyword.value.trim()) {
       params.search = searchKeyword.value.trim()
     }

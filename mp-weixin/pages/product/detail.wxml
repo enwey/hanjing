@@ -65,6 +65,23 @@
           </view>
         </view>
         <view class="checkout-delivery-section data-v-5e948475">
+          <text class="checkout-section-title data-v-5e948475">优惠券</text>
+          <view wx:if="{{hasCoupons}}" class="coupon-list data-v-5e948475">
+            <view
+              wx:for="{{coupons}}"
+              wx:for-item="coupon"
+              wx:key="id"
+              data-id="{{coupon.id}}"
+              class="delivery-option {{coupon.selected ? 'active' : ''}} data-v-5e948475"
+              bindtap="{{coupon.select}}"
+            >
+              <text class="delivery-title data-v-5e948475">{{coupon.title}}</text>
+              <text class="delivery-desc data-v-5e948475">{{coupon.valueText}} · {{coupon.minSpendText}}</text>
+            </view>
+          </view>
+          <text wx:else class="delivery-desc data-v-5e948475">暂无可用优惠券</text>
+        </view>
+        <view class="checkout-delivery-section data-v-5e948475">
           <text class="checkout-section-title data-v-5e948475">配送方式</text>
           <view class="delivery-options data-v-5e948475">
             <view class="delivery-option {{deliveryMethod === 'online' ? 'active' : ''}} data-v-5e948475" bindtap="selectDeliveryOnline">
@@ -76,6 +93,24 @@
               <text class="delivery-desc data-v-5e948475">支付后进入待取货</text>
             </view>
           </view>
+        </view>
+        <view wx:if="{{!isOnlineDelivery}}" class="checkout-delivery-section data-v-5e948475">
+          <text class="checkout-section-title data-v-5e948475">自提门店</text>
+          <view wx:if="{{hasStores}}" class="store-list data-v-5e948475">
+            <view
+              wx:for="{{stores}}"
+              wx:for-item="store"
+              wx:key="id"
+              data-id="{{store.id}}"
+              class="delivery-option {{store.selected ? 'active' : ''}} data-v-5e948475"
+              bindtap="{{store.select}}"
+            >
+              <text class="delivery-title data-v-5e948475">{{store.name}}</text>
+              <text class="delivery-desc data-v-5e948475">{{store.address}}</text>
+              <text wx:if="{{store.hours}}" class="delivery-desc data-v-5e948475">营业时间：{{store.hours}}</text>
+            </view>
+          </view>
+          <text wx:else class="delivery-desc data-v-5e948475">暂无可用自提门店</text>
         </view>
         <view class="checkout-address-section data-v-5e948475">
           <view class="checkout-section-head data-v-5e948475">
@@ -97,6 +132,7 @@
         </view>
         <view class="checkout-footer data-v-5e948475">
           <view class="checkout-total data-v-5e948475">
+            <text wx:if="{{hasDiscount}}" class="checkout-total-label data-v-5e948475">优惠：-{{discountAmountText}}</text>
             <text class="checkout-total-label data-v-5e948475">实付款：</text>
             <text class="checkout-total-val data-v-5e948475">{{totalPayAmountText}}</text>
           </view>

@@ -1026,7 +1026,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
       const list = await query(dataSql, listParams);
       const maskedList = list.map(item => ({
         ...item,
-        patient_phone: maskPhone(item.patient_phone)
+        patient_phone: (req.query.is_export === '1' || req.query.is_export === 1) ? item.patient_phone : maskPhone(item.patient_phone)
       }));
 
       res.json({
@@ -1046,11 +1046,12 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
         JOIN patients p ON a.patient_id = p.id
         WHERE 1=1 ${listWhere}
         ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC
+        LIMIT 200
       `;
       const list = await query(dataSql, listParams);
       const maskedList = list.map(item => ({
         ...item,
-        patient_phone: maskPhone(item.patient_phone)
+        patient_phone: (req.query.is_export === '1' || req.query.is_export === 1) ? item.patient_phone : maskPhone(item.patient_phone)
       }));
       res.json({ code: 200, data: maskedList });
     }
@@ -1492,8 +1493,8 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
         return {
           ...item,
           patient_no: item.patient_no,
-          phone: maskPhone(item.phone),
-          user_phone: maskPhone(item.user_phone),
+          phone: (req.query.is_export === '1' || req.query.is_export === 1) ? item.phone : maskPhone(item.phone),
+          user_phone: (req.query.is_export === '1' || req.query.is_export === 1) ? item.user_phone : maskPhone(item.user_phone),
           total_spent: spentByPatient[item.id] || 0,
           last_visit: item.last_visit instanceof Date ? item.last_visit.toISOString().slice(0, 10) : item.last_visit,
           resolved_source: item.patient_source || item.latest_source || (item.openid && item.openid.startsWith('manual_') ? 'walk_in' : 'mini_app'),
@@ -2372,6 +2373,19 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
           ]
         );
         treatmentId = trResult.insertId;
+        await conn.execute(
+          `INSERT INTO treatment_timelines (user_id, patient_id, treatment_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
+           VALUES (?, ?, ?, ?, ?, ?, 'milestone', ?, '#3B6BF5', 'device')`,
+          [
+            appt.user_id,
+            appt.patient_id,
+            treatmentId,
+            treatment.start_date || visitDate,
+            '建立物理阻鼾治疗档案',
+            `绑定设备：${deviceSnapshot.name}，初始前伸量 ${treatment.initial_advancement}mm`,
+            appt.doctor_name || ''
+          ]
+        );
       }
 
       if (adjustment && adjustment.create && treatmentId) {
@@ -2395,6 +2409,18 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
         await conn.execute(
           `UPDATE treatment_records SET current_advancement = ?, next_adjust_date = ? WHERE id = ?`,
           [adjustment.adjusted_advancement, adjustment.next_adjust_date || null, treatmentId]
+        );
+        await conn.execute(
+          `INSERT INTO treatment_timelines (user_id, patient_id, treatment_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
+           VALUES (?, ?, ?, ?, '设备参数调整', ?, 'adjust', ?, '#F59E0B', 'adjust')`,
+          [
+            appt.user_id,
+            appt.patient_id,
+            treatmentId,
+            adjustment.adjust_date || visitDate,
+            `前伸量调整至 ${adjustment.adjusted_advancement}mm${adjustment.instructions ? `，${adjustment.instructions}` : ''}`,
+            appt.doctor_name || ''
+          ]
         );
       }
 
@@ -2558,6 +2584,10 @@ app.post('/api/admin/patients/:id/treatment', authenticateToken, async (req, res
   }
 
   try {
+    const patient = await get(`SELECT id, user_id FROM patients WHERE id = ?`, [id]);
+    if (!patient) {
+      return res.status(404).json({ code: 404, message: '患者不存在' });
+    }
     // Deactivate previous active treatments
     const deviceProduct = await get(
       `SELECT id, name, image_url, price, description
@@ -2569,6 +2599,8 @@ app.post('/api/admin/patients/:id/treatment', authenticateToken, async (req, res
     if (!deviceProduct) {
       return res.status(400).json({ code: 400, message: '请选择已上架的物理阻鼾器设备' });
     }
+
+    const treatmentStartDate = start_date || new Date().toISOString().slice(0, 10);
 
     await run(`UPDATE treatment_records SET status = 'paused' WHERE patient_id = ? AND status = 'active'`, [id]);
 
@@ -2591,7 +2623,20 @@ app.post('/api/admin/patients/:id/treatment', authenticateToken, async (req, res
         deviceSnapshot.name,
         initial_advancement,
         initial_advancement,
-        start_date
+        treatmentStartDate
+      ]
+    );
+    await run(
+      `INSERT INTO treatment_timelines (user_id, patient_id, treatment_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
+       VALUES (?, ?, ?, ?, ?, ?, 'milestone', (SELECT name FROM doctors WHERE id = ?), '#3B6BF5', 'device')`,
+      [
+        patient.user_id,
+        id,
+        result.id,
+        treatmentStartDate,
+        '建立物理阻鼾治疗档案',
+        `绑定设备：${deviceSnapshot.name}，初始前伸量 ${initial_advancement}mm`,
+        doctor_id
       ]
     );
 
@@ -2632,6 +2677,25 @@ app.post('/api/admin/patients/:id/treatment/adjustments', authenticateToken, asy
        WHERE id = ?`,
       [adjusted_advancement, next_adjust_date || null, treatment_id]
     );
+    const treatment = await get(`SELECT tr.patient_id, p.user_id, d.name as doctor_name
+                                FROM treatment_records tr
+                                JOIN patients p ON tr.patient_id = p.id
+                                LEFT JOIN doctors d ON d.id = ?
+                                WHERE tr.id = ?`, [operator_id, treatment_id]);
+    if (treatment) {
+      await run(
+        `INSERT INTO treatment_timelines (user_id, patient_id, treatment_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
+         VALUES (?, ?, ?, ?, '设备参数调整', ?, 'adjust', ?, '#F59E0B', 'adjust')`,
+        [
+          treatment.user_id,
+          treatment.patient_id,
+          treatment_id,
+          adjust_date,
+          `前伸量调整至 ${adjusted_advancement}mm${instructions ? `，${instructions}` : ''}`,
+          treatment.doctor_name || ''
+        ]
+      );
+    }
 
     // Log admin action
     await logAdminAction(req.user.id, 'create_device_adjustment', 'device_adjustment', result.id, {
@@ -3673,7 +3737,7 @@ app.get('/api/admin/orders', authenticateToken, async (req, res) => {
       `;
       params.push(req.user.store_id, req.user.store_id);
     }
-    sql += ` ORDER BY o.created_at DESC`;
+    sql += ` ORDER BY o.created_at DESC LIMIT 100`;
     const list = await query(sql, params);
 
     const orderIds = list.map(o => o.id);
@@ -3705,7 +3769,27 @@ app.get('/api/admin/orders', authenticateToken, async (req, res) => {
     });
 
     for (const order of list) {
-      order.items = orderItemsMap[order.id] || [];
+      let items = orderItemsMap[order.id] || [];
+      if (items.length === 0) {
+        if (order.type === 'appointment_deposit' || order.type === 'appointment') {
+          items = [{
+            product_id: 8,
+            product_name: '就诊预约定金',
+            product_image: '/static/product/screening.png',
+            price: order.pay_amount,
+            quantity: 1
+          }];
+        } else {
+          items = [{
+            product_id: 1,
+            product_name: '医疗商品服务',
+            product_image: '/static/product/hj-mad-03.png',
+            price: order.pay_amount,
+            quantity: 1
+          }];
+        }
+      }
+      order.items = items;
       order.commissions = commissionsMap[order.id] || [];
       order.commission_total = order.commissions.reduce((sum, commission) => {
         if (commission.status === 'refunded') return sum;
@@ -4021,7 +4105,7 @@ app.post('/api/admin/orders/:id/notify', authenticateToken, async (req, res) => 
 
     let addr = {};
     try {
-      addr = JSON.parse(order.shipping_address || '{}');
+      addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
     } catch(e) {}
 
     // Update delivery status in shipping_address JSON

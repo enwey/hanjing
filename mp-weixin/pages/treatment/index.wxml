@@ -6,6 +6,9 @@
     bind:__l="__l"
     u-p="{{a}}"
   /><view wx:if="{{b}}" class="page-content data-v-8badcb8c"
+    ><picker wx:if="{{showMemberPicker}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="{{memberChange}}" class="data-v-8badcb8c" style="display:block;background:#fff;border-radius:14px;padding:12px 16px;margin-bottom:14px;color:#1f2937;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.04);">
+      <view class="data-v-8badcb8c">当前治疗人：{{memberNames[memberIndex]}}</view>
+    </picker
     ><view class="hero-card data-v-8badcb8c"
       ><view class="hero-top data-v-8badcb8c"
         ><view class="hero-badge data-v-8badcb8c">治疗中</view

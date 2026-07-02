@@ -11,6 +11,8 @@ const l = () => "../../../../components/base/hj-navbar.js",
         o = e.ref("1"),
         v = e.ref(35),
         n = e.ref(""),
+        idCard = e.ref(""),
+        cardNo = e.ref(""),
         i = [
           { value: "spouse", label: "配偶" },
           { value: "child", label: "子女" },
@@ -38,12 +40,20 @@ const l = () => "../../../../components/base/hj-navbar.js",
           e.index.showToast({ title: "手机号格式不正确", icon: "none" });
           return;
         }
+        const idCardVal = idCard.value.trim();
+        if (idCardVal && !/^\d{17}[\dXx]$/.test(idCardVal)) {
+          e.index.showToast({ title: "身份证格式不正确", icon: "none" });
+          return;
+        }
+        const cardNoVal = cardNo.value.trim();
         await a.addFamilyMember({
           name: name,
           relation: t.value,
           gender: o.value,
           age: ageVal,
           phone: phoneVal,
+          idCard: idCardVal,
+          cardNo: cardNoVal,
         });
         e.index.showToast({ title: "添加成功", icon: "success" });
         setTimeout(() => e.index.navigateBack(), 800);
@@ -66,6 +76,10 @@ const l = () => "../../../../components/base/hj-navbar.js",
         j: e.o((e) => (v.value = e.detail.value), "06"),
         k: n.value,
         l: e.o((e) => (n.value = e.detail.value), "a9"),
+        nIdCard: idCard.value,
+        oIdCardInput: e.o((e) => (idCard.value = e.detail.value), "id1"),
+        pCardNo: cardNo.value,
+        qCardNoInput: e.o((e) => (cardNo.value = e.detail.value), "id2"),
         m: e.o(s, "90"),
       });
     },

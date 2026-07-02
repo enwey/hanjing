@@ -44,7 +44,7 @@ const l = () => "../../components/base/hj-navbar.js",
             {
               icon: "/static/icons/treatment_green.svg",
               label: "阻鼾器管理",
-              url: "/pages/profile/device-manage/wearing-data/index",
+              url: "/pages/profile/device-manage/index",
             },
             {
               icon: "/static/icons/community.svg",

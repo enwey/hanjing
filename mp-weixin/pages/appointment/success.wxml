@@ -28,24 +28,36 @@
           >{{e}} {{f}}</text
         ></view
       ></view
+    ><view class="visit-notice-card data-v-baa6e4ef"
+      ><view class="visit-notice-header data-v-baa6e4ef"
+        ><text class="visit-notice-header-icon data-v-baa6e4ef">⚠</text><text class="visit-notice-title data-v-baa6e4ef">就诊须知</text></view
+      ><view class="visit-notice-item data-v-baa6e4ef"
+        ><text class="visit-notice-index data-v-baa6e4ef">1.</text><text class="visit-notice-text data-v-baa6e4ef">请携带既往病历与阻鼾器</text></view
+      ><view class="visit-notice-item data-v-baa6e4ef"
+        ><text class="visit-notice-index data-v-baa6e4ef">2.</text><text class="visit-notice-text data-v-baa6e4ef">提前15分钟到达诊所签到</text></view
+      ><view class="visit-notice-item data-v-baa6e4ef"
+        ><text class="visit-notice-index data-v-baa6e4ef">3.</text><text class="visit-notice-text data-v-baa6e4ef">如需取消，请最晚于{{g}}操作</text></view
+      ><view class="visit-notice-item data-v-baa6e4ef"
+        ><text class="visit-notice-index data-v-baa6e4ef">4.</text><text class="visit-notice-text data-v-baa6e4ef">首次就诊需完成睡眠评估</text></view
+      ></view
     ><view class="actions data-v-baa6e4ef"
       ><hj-button
-        wx:if="{{h}}"
+        wx:if="{{i}}"
         class="data-v-baa6e4ef"
         u-s="{{['d']}}"
-        bindclick="{{g}}"
+        bindclick="{{h}}"
         u-i="baa6e4ef-1"
         bind:__l="__l"
-        u-p="{{h}}"
+        u-p="{{i}}"
         >查看预约详情</hj-button
       ><hj-button
-        wx:if="{{j}}"
+        wx:if="{{k}}"
         class="data-v-baa6e4ef"
         u-s="{{['d']}}"
-        bindclick="{{i}}"
+        bindclick="{{j}}"
         u-i="baa6e4ef-2"
         bind:__l="__l"
-        u-p="{{j}}"
+        u-p="{{k}}"
         >返回首页</hj-button
       ></view
     ><view class="remind data-v-baa6e4ef"

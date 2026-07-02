@@ -53,6 +53,20 @@
         placeholder="选填"
         value="{{k}}"
         bindinput="{{l}}" /></view
+    ><view class="form-group data-v-33d45858"
+      ><text class="form-label data-v-33d45858">身份证号</text
+      ><input
+        class="form-input data-v-33d45858"
+        placeholder="选填"
+        value="{{nIdCard}}"
+        bindinput="{{oIdCardInput}}" /></view
+    ><view class="form-group data-v-33d45858"
+      ><text class="form-label data-v-33d45858">就诊卡号</text
+      ><input
+        class="form-input data-v-33d45858"
+        placeholder="选填"
+        value="{{pCardNo}}"
+        bindinput="{{qCardNoInput}}" /></view
     ><view class="btn-submit data-v-33d45858" bindtap="{{m}}"
       ><text class="data-v-33d45858">确认添加</text></view
     ><view class="safe-bottom data-v-33d45858" /></view

@@ -94,7 +94,10 @@ export function initWebSocket(server) {
           // Trigger simulated assistant auto-reply after 1.5 seconds to close loop
           setTimeout(async () => {
             try {
-              const assistantReply = `您好！这里是鼾静健康诊所客服助手。我们已收到您的消息："${data.text}"。专业医生及健康顾问稍后会为您解答，请耐心等待。`;
+              let assistantReply = `您好！这里是鼾静健康诊所客服助手。我们已收到您的消息："${data.text}"。专业医生及健康顾问稍后会为您解答，请耐心等待。`;
+              if (data.text.startsWith('[image]') || data.text.startsWith('/uploads/') || data.text.startsWith('http')) {
+                assistantReply = `您好！这里是鼾静健康诊所客服助手。我们已收到您发送的图片附件。专业医生及健康顾问稍后会为您进行解答，请您耐心等待。`;
+              }
               const autoMsgResult = await run(
                 `INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read) 
                  VALUES (?, 'doctor', '智能助理', ?, 0)`,

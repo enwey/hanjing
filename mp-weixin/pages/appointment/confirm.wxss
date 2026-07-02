@@ -130,26 +130,50 @@
   color: #374151;
   border: 1px solid #e5e7eb;
 }
-.tips.data-v-03365e87 {
-  margin-bottom: 24px;
+.visit-notice-card.data-v-03365e87 {
+  background: #fffaf0;
+  border: 1px solid #fde6b8;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
 }
-.tip-item.data-v-03365e87 {
+.visit-notice-header.data-v-03365e87 {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.visit-notice-header-icon.data-v-03365e87 {
+  width: 18px;
+  margin-right: 6px;
+  color: #f59e0b;
+  font-size: 15px;
+  line-height: 1;
+}
+.visit-notice-title.data-v-03365e87 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #d97706;
+}
+.visit-notice-item.data-v-03365e87 {
   display: flex;
   align-items: flex-start;
-  margin-bottom: 8px;
+  padding: 4px 0;
 }
-.tip-icon.data-v-03365e87 {
-  width: 14px;
-  height: 14px;
-  margin-right: 6px;
-  margin-top: 5px;
+.visit-notice-index.data-v-03365e87 {
+  width: 16px;
+  margin-right: 4px;
   flex-shrink: 0;
+  font-size: 13px;
+  font-weight: normal;
+  color: #4b5563;
+  line-height: 1.5;
 }
-.tips-text.data-v-03365e87 {
+.visit-notice-text.data-v-03365e87 {
   flex: 1;
   font-size: 13px;
-  color: #9ca3af;
-  line-height: 1.8;
+  font-weight: normal;
+  color: #4b5563;
+  line-height: 1.5;
 }
 .submit-area.data-v-03365e87 {
   padding-bottom: 24px;

@@ -5,16 +5,71 @@
     u-i="75e661b4-0"
     bind:__l="__l"
     u-p="{{a}}" /><view class="page-content data-v-75e661b4"
-    ><view class="device-card data-v-75e661b4"
-      ><text class="device-model data-v-75e661b4">HJ-MAD-03</text
-      ><text class="device-name data-v-75e661b4">定制式可调舌型阻鼾器</text
+    ><view wx:if="{{loading}}" class="device-card data-v-75e661b4"
+      ><text class="device-name data-v-75e661b4">加载中...</text></view
+    ><view wx:elif="{{hasDevice}}" class="device-card data-v-75e661b4"
+      ><image wx:if="{{deviceImage}}" src="{{deviceImage}}" mode="aspectFill" class="device-image data-v-75e661b4" />
+      <text class="device-model data-v-75e661b4">{{deviceModel}}</text
+      ><text class="device-name data-v-75e661b4">{{deviceName}}</text
       ><view class="device-status data-v-75e661b4"
         ><view class="status-dot data-v-75e661b4" /><text
           class="status-text data-v-75e661b4"
-          >使用中</text
+          >{{deviceStatus}}</text
         ></view
       ></view
-    ><view class="menu-list data-v-75e661b4"
+    ><view wx:else class="device-card data-v-75e661b4"
+      ><text class="device-name data-v-75e661b4">暂无绑定阻鼾器</text
+      ><text class="status-text data-v-75e661b4">完成医生治疗建档后，这里会显示绑定设备</text></view
+    >
+
+    <!-- 蓝牙数据同步面板 -->
+    <view wx:if="{{hasDevice}}" class="device-card data-v-75e661b4" style="margin-top: 20rpx; padding: 30rpx; display: flex; flex-direction: column; gap: 20rpx;">
+      <text style="font-size: 28rpx; font-weight: bold; color: #1f2937;">蓝牙数据同步</text>
+      
+      <!-- Disconnected State -->
+      <view wx:if="{{bluetoothState === 'disconnected'}}" style="display: flex; flex-direction: column; align-items: center; gap: 16rpx; padding: 20rpx 0;">
+        <text style="font-size: 24rpx; color: #6b7280;">未连接阻鼾器设备，请先开启手机蓝牙</text>
+        <button bindtap="{{startScan}}" style="margin: 0; background: #3B6BF5; color: #fff; font-size: 26rpx; border-radius: 40rpx; width: 300rpx; height: 72rpx; line-height: 72rpx; display: flex; align-items: center; justify-content: center;">🔍 搜索周边设备</button>
+      </view>
+      
+      <!-- Searching State -->
+      <view wx:if="{{bluetoothState === 'searching'}}" style="display: flex; flex-direction: column; align-items: center; gap: 16rpx; padding: 20rpx 0; width: 100%; box-sizing: border-box;">
+        <text style="font-size: 24rpx; color: #3B6BF5;">📡 正在搜索周边设备，请保持设备开启...</text>
+        <view wx:for="{{scannedDevices}}" wx:for-item="dev" wx:key="deviceId" bindtap="{{connectDevice}}" data-dev="{{dev}}" style="width: 100%; border: 1rpx solid #3B6BF5; background: #eff6ff; border-radius: 12rpx; padding: 20rpx; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;">
+          <text style="font-size: 26rpx; font-weight: bold; color: #1e3a8a;">{{dev.name}}</text>
+          <text style="font-size: 22rpx; color: #2563eb;">点击连接 ›</text>
+        </view>
+        <text wx:if="{{scannedDevices.length === 0}}" style="font-size: 22rpx; color: #9ca3af;">正在寻找设备...</text>
+      </view>
+      
+      <!-- Connected State -->
+      <view wx:if="{{bluetoothState === 'connected'}}" style="display: flex; flex-direction: column; align-items: center; gap: 20rpx; padding: 20rpx 0;">
+        <view style="display: flex; align-items: center; gap: 12rpx;">
+          <view style="width: 12rpx; height: 12rpx; border-radius: 50%; background: #10b981;"></view>
+          <text style="font-size: 26rpx; color: #10b981; font-weight: bold;">已连接：{{selectedDeviceName}}</text>
+        </view>
+        <view style="display: flex; gap: 20rpx; width: 100%;">
+          <button bindtap="{{resetBluetooth}}" style="flex: 1; background: #f3f4f6; color: #4b5563; font-size: 26rpx; border-radius: 40rpx; height: 72rpx; line-height: 72rpx; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0;">断开连接</button>
+          <button bindtap="{{startSync}}" style="flex: 1; background: #1A9D5C; color: #fff; font-size: 26rpx; border-radius: 40rpx; height: 72rpx; line-height: 72rpx; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0;">🔄 同步佩戴日志</button>
+        </view>
+      </view>
+      
+      <!-- Syncing State -->
+      <view wx:if="{{bluetoothState === 'syncing'}}" style="display: flex; flex-direction: column; align-items: center; gap: 20rpx; padding: 20rpx 0; width: 100%; box-sizing: border-box;">
+        <text style="font-size: 26rpx; font-weight: bold; color: #3B6BF5;">正在同步佩戴日志数据 ({{syncProgress}}%)</text>
+        <view style="width: 100%; height: 12rpx; background: #e5e7eb; border-radius: 6rpx; overflow: hidden;">
+          <view style="{{'width: ' + syncProgress + '%; height: 100%; background: #3B6BF5; transition: width 0.2s;'}}"></view>
+        </view>
+      </view>
+      
+      <!-- Synced State -->
+      <view wx:if="{{bluetoothState === 'synced'}}" style="display: flex; flex-direction: column; align-items: center; gap: 20rpx; padding: 20rpx 0;">
+        <text style="font-size: 26rpx; font-weight: bold; color: #10b981;">🎉 数据同步成功！今日日志已更新</text>
+        <button bindtap="{{resetBluetooth}}" style="margin: 0; background: #f3f4f6; color: #4b5563; font-size: 26rpx; border-radius: 40rpx; width: 260rpx; height: 72rpx; line-height: 72rpx; display: flex; align-items: center; justify-content: center;">返回主面板</button>
+      </view>
+    </view>
+
+    <view class="menu-list data-v-75e661b4"
       ><view
         wx:for="{{b}}"
         wx:for-item="item"

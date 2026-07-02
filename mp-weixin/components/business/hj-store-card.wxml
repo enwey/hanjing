@@ -1,8 +1,10 @@
 <view class="store-card data-v-3c596062" bindtap="{{i}}"
   ><view class="store-card-image data-v-3c596062"
     ><view class="store-card-image-placeholder data-v-3c596062"
-      ><text class="store-card-emoji data-v-3c596062">🏥</text></view
-    ><view wx:if="{{a}}" class="store-card-status-badge closed data-v-3c596062"
+      ><image class="store-card-placeholder-icon data-v-3c596062" src="/static/icons/moon.svg" /></view
+    ><view wx:if="{{statusPrepare}}" class="store-card-status-badge prepare data-v-3c596062"
+      ><text class="data-v-3c596062">筹备中</text></view
+    ><view wx:elif="{{a}}" class="store-card-status-badge closed data-v-3c596062"
       ><text class="data-v-3c596062">休息中</text></view
     ><view wx:else class="store-card-status-badge open data-v-3c596062"
       ><text class="data-v-3c596062">营业中</text></view
@@ -19,12 +21,17 @@
           >{{tag.a}}</text
         ></view
       ></view
-    ><text class="store-card-address data-v-3c596062">📍 {{d}}</text
+    ><view class="store-card-address data-v-3c596062"
+      ><image class="store-card-icon data-v-3c596062" src="/static/icons/map-pin.svg"
+      /><text class="data-v-3c596062">{{d}}</text></view
     ><view class="store-card-footer data-v-3c596062"
       ><view class="store-card-meta data-v-3c596062"
-        ><text class="store-card-meta-item data-v-3c596062">👨‍⚕️ {{e}}位医生</text
-        ><text class="store-card-meta-item data-v-3c596062"
-          >🕐 {{f}}</text
+        ><view class="store-card-meta-item data-v-3c596062"
+          ><image class="store-card-icon data-v-3c596062" src="/static/icons/doctor.svg"
+          /><text class="data-v-3c596062">{{e}}位医生</text></view
+        ><view class="store-card-meta-item data-v-3c596062"
+          ><image class="store-card-icon data-v-3c596062" src="/static/icons/clock.svg"
+          /><text class="data-v-3c596062">{{f}}</text></view
         ></view
       ><text wx:if="{{g}}" class="store-card-distance data-v-3c596062"
         >{{h}}</text

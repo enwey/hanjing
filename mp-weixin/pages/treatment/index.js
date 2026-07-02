@@ -18,13 +18,17 @@ const t = () => "../../components/base/hj-navbar.js",
         c = e.ref(""),
         s = e.ref(!1),
         f = e.ref(!1),
+        members = e.ref([]),
+        selectedPatientId = e.ref(e.index.getStorageSync("selected_treatment_patient_id") || ""),
+        memberNames = e.computed(() => members.value.map(item => item.relation === "self" ? `${item.name}（本人）` : `${item.name}（${item.relation || "成员"}）`)),
+        memberIndex = e.computed(() => Math.max(0, members.value.findIndex(item => String(item.id) === String(selectedPatientId.value)))),
         m = e.computed(() =>
           u.value
             ? {
                 model: u.value.deviceModel,
                 adjustValue: u.value.adjustmentValue,
                 startDate: u.value.createdAt.split("T")[0],
-                doctorName: u.value.doctorName || "王芳",
+                doctorName: u.value.doctorName || "",
                 nextAdjust: u.value.nextAdjustDate,
               }
             : null,
@@ -91,20 +95,57 @@ const t = () => "../../components/base/hj-navbar.js",
       function y() {
         i.value = !1;
       }
+      function queryParams() {
+        return selectedPatientId.value ? { patientId: selectedPatientId.value } : {};
+      }
+      async function loadData() {
+        const memberRes = await a.getFamilyMembers();
+        members.value = (memberRes.data && memberRes.data.list) || memberRes.list || [];
+        if (!selectedPatientId.value && members.value.length) {
+          const self = members.value.find(item => item.relation === "self") || members.value[0];
+          selectedPatientId.value = String(self.id);
+          e.index.setStorageSync("selected_treatment_patient_id", selectedPatientId.value);
+        }
+        const params = queryParams();
+        const [res1, res2, res3, res4] = await Promise.all([
+          a.getTreatmentRecord(params),
+          a.getWearingRecords(params),
+          a.getWearingSummary(params),
+          a.getTimeline(params),
+        ]);
+        u.value = res1.data;
+        o.value = res2.data || [];
+        r.value = res3.data;
+        l.value = res4.data || [];
+      }
+      async function onMemberChange(evt) {
+        const idx = Number(evt.detail.value || 0);
+        const member = members.value[idx];
+        if (!member) return;
+        selectedPatientId.value = String(member.id);
+        e.index.setStorageSync("selected_treatment_patient_id", selectedPatientId.value);
+        n.value = !0;
+        try {
+          await loadData();
+        } finally {
+          n.value = !1;
+        }
+      }
       async function T() {
         s.value = !0;
         try {
           const todayObj = new Date(),
             t = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`;
           await a.submitWearingCheckin({
+            ...queryParams(),
             date: t,
             wearDuration: v.value,
             comfort: d.value,
             note: c.value || void 0,
           });
           const [n, u] = await Promise.all([
-            a.getWearingRecords(),
-            a.getWearingSummary(),
+            a.getWearingRecords(queryParams()),
+            a.getWearingSummary(queryParams()),
           ]);
           ((o.value = n.data),
             (r.value = u.data),
@@ -142,16 +183,7 @@ const t = () => "../../components/base/hj-navbar.js",
             return;
           }
           try {
-            const [res1, res2, res3, res4] = await Promise.all([
-              a.getTreatmentRecord(),
-              a.getWearingRecords(),
-              a.getWearingSummary(),
-              a.getTimeline(),
-            ]);
-            u.value = res1.data;
-            o.value = res2.data;
-            r.value = res3.data;
-            l.value = res4.data;
+            await loadData();
           } catch (err) {
             console.error("[Treatment onShow] 加载失败", err);
           }
@@ -163,16 +195,7 @@ const t = () => "../../components/base/hj-navbar.js",
             return;
           }
           try {
-            const [res1, res2, res3, res4] = await Promise.all([
-              a.getTreatmentRecord(),
-              a.getWearingRecords(),
-              a.getWearingSummary(),
-              a.getTimeline(),
-            ]);
-            u.value = res1.data;
-            o.value = res2.data;
-            r.value = res3.data;
-            l.value = res4.data;
+            await loadData();
           } catch (err) {
             console.error("[Treatment onMounted] 加载失败", err);
           } finally {
@@ -182,7 +205,14 @@ const t = () => "../../components/base/hj-navbar.js",
         (a, t) => {
           var o, r, f;
           return e.e(
-            { a: e.p({ title: "治疗追踪" }), b: !n.value && u.value },
+            {
+              a: e.p({ title: "治疗追踪" }),
+              memberNames: memberNames.value,
+              memberIndex: memberIndex.value,
+              memberChange: e.o(onMemberChange),
+              showMemberPicker: members.value.length > 1,
+              b: !n.value && u.value
+            },
             !n.value && u.value
               ? {
                   c: e.t(w.value.streak),
@@ -248,7 +278,7 @@ const t = () => "../../components/base/hj-navbar.js",
             i.value
               ? {
                   z1: e.t(checkinDateStr.value),
-                  B: e.f([4, 5, 6, 7, 8], (a, t, n) => ({
+                  B: e.f([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], (a, t, n) => ({
                     a: e.t(a),
                     b: a,
                     c: v.value === a ? 1 : "",

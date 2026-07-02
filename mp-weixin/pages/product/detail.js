@@ -42,7 +42,20 @@ const i = () => "../../components/base/hj-navbar.js",
           phone: "",
           detailAddress: ""
         }),
-        deliveryMethod = e.ref("online");
+        deliveryMethod = e.ref("online"),
+        coupons = e.ref([]),
+        selectedCouponId = e.ref(""),
+        stores = e.ref([]),
+        selectedStoreId = e.ref("");
+      const discountAmount = e.computed(() => {
+        const coupon = coupons.value.find(item => String(item.id) === String(selectedCouponId.value));
+        if (!coupon) return 0;
+        return Math.min(Number(coupon.value || 0), t.value ? t.value.price * quantity.value : 0);
+      });
+      const totalPayAmount = e.computed(() => Math.max(0, (t.value ? t.value.price * quantity.value : 0) - discountAmount.value));
+      function formatStoreHours(store) {
+        return store.businessHours || "";
+      }
       function validateAddress() {
         if (!address.value.contactName.trim()) {
           e.index.showToast({ title: deliveryMethod.value === "online" ? "请填写收货人" : "请填写取货人", icon: "none" });
@@ -54,6 +67,10 @@ const i = () => "../../components/base/hj-navbar.js",
         }
         if (deliveryMethod.value === "online" && !address.value.detailAddress.trim()) {
           e.index.showToast({ title: "请填写详细地址", icon: "none" });
+          return !1;
+        }
+        if (deliveryMethod.value === "pickup" && !selectedStoreId.value) {
+          e.index.showToast({ title: "请选择自提门店", icon: "none" });
           return !1;
         }
         return !0;
@@ -97,21 +114,50 @@ const i = () => "../../components/base/hj-navbar.js",
           return;
         }
         showCheckout.value = !0;
+        loadCheckoutOptions();
       }
       function closeCheckout() {
         showCheckout.value = !1;
       }
+      async function loadCheckoutOptions() {
+        try {
+          const [couponRes, storeRes] = await Promise.all([
+            a.getUserCoupons({ status: "active", minAmount: t.value ? t.value.price * quantity.value : 0 }),
+            a.getStores()
+          ]);
+          coupons.value = ((couponRes.data && couponRes.data.list) || couponRes.list || []).filter(item => Number(item.minSpend || 0) <= (t.value ? t.value.price * quantity.value : 0));
+          stores.value = ((storeRes.data || storeRes) || []).filter(item => item.status === "open" || item.isOpen);
+          if (!selectedStoreId.value && stores.value.length) {
+            selectedStoreId.value = String(stores.value[0].id);
+          }
+        } catch (err) {
+          console.error("加载结算选项失败", err);
+        }
+      }
       function increaseQty() {
         quantity.value++;
+        selectedCouponId.value = "";
+        loadCheckoutOptions();
       }
       function decreaseQty() {
-        quantity.value > 1 && quantity.value--;
+        if (quantity.value > 1) {
+          quantity.value--;
+          selectedCouponId.value = "";
+          loadCheckoutOptions();
+        }
       }
       function selectDeliveryOnline() {
         deliveryMethod.value = "online";
       }
       function selectDeliveryPickup() {
         deliveryMethod.value = "pickup";
+      }
+      function selectCoupon(event) {
+        const id = event.currentTarget.dataset.id || "";
+        selectedCouponId.value = String(selectedCouponId.value) === String(id) ? "" : id;
+      }
+      function selectStore(event) {
+        selectedStoreId.value = event.currentTarget.dataset.id || "";
       }
       async function submitOrder() {
         if (isSubmitting.value) return;
@@ -120,10 +166,12 @@ const i = () => "../../components/base/hj-navbar.js",
         try {
           const res = await a.createOrder({
             items: [{ productId: t.value.id.toString(), quantity: quantity.value }],
+            couponId: selectedCouponId.value || undefined,
             shippingAddress: {
               ...address.value,
               deliveryMethod: deliveryMethod.value,
-              detailAddress: deliveryMethod.value === "online" ? address.value.detailAddress : (address.value.detailAddress || "到店自提")
+              detailAddress: deliveryMethod.value === "online" ? address.value.detailAddress : (address.value.detailAddress || "到店自提"),
+              storeId: deliveryMethod.value === "pickup" ? selectedStoreId.value : undefined
             }
           });
           const orderId = res.data.id;
@@ -187,7 +235,7 @@ const i = () => "../../components/base/hj-navbar.js",
                     {
                       l: e.t(t.value.name),
                       m: e.t(t.value.sales),
-                      n: e.t(t.value.description),
+                      n: t.value.description, // Keep description as parsed html string (rich-text)
                       o: e.t(r(t.value.price)),
                       p: e.o(openCheckout, "d5"),
                       showCheckout: showCheckout.value,
@@ -202,13 +250,34 @@ const i = () => "../../components/base/hj-navbar.js",
                       chooseWxAddress: e.o(chooseWxAddress),
                       submitOrder: e.o(submitOrder),
                       isSubmitting: isSubmitting.value,
+                      coupons: coupons.value.map(item => ({
+                        id: item.id,
+                        title: item.title,
+                        valueText: r(item.value || 0),
+                        minSpendText: Number(item.minSpend || 0) > 0 ? `满${r(item.minSpend)}可用` : "无门槛",
+                        selected: String(item.id) === String(selectedCouponId.value),
+                        select: e.o(selectCoupon, item.id)
+                      })),
+                      hasCoupons: coupons.value.length > 0,
+                      stores: stores.value.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        address: item.address,
+                        phone: item.phone,
+                        hours: formatStoreHours(item),
+                        selected: String(item.id) === String(selectedStoreId.value),
+                        select: e.o(selectStore, item.id)
+                      })),
+                      hasStores: stores.value.length > 0,
                       contactName: address.value.contactName,
                       phone: address.value.phone,
                       detailAddress: address.value.detailAddress,
                       inputName: e.o((e) => (address.value.contactName = e.detail.value)),
                       inputPhone: e.o((e) => (address.value.phone = e.detail.value)),
                       inputDetail: e.o((e) => (address.value.detailAddress = e.detail.value)),
-                      totalPayAmountText: e.t(r(t.value.price * quantity.value)),
+                      discountAmountText: e.t(r(discountAmount.value)),
+                      hasDiscount: discountAmount.value > 0,
+                      totalPayAmountText: e.t(r(totalPayAmount.value)),
                       productImageUrl: t.value.imageUrl
                     },
                   )

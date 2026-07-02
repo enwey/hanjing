@@ -78,7 +78,53 @@ async function openDetail(d: Distributor) {
 }
 
 function handleExport() {
-  MessagePlugin.success('导出报表成功！')
+  if (filteredDistributors.value.length === 0) {
+    MessagePlugin.warning('当前无推广员数据可供导出')
+    return
+  }
+  const headers = [
+    '推广员姓名',
+    '手机号',
+    '推广等级',
+    '下属一级分销员人数',
+    '下属二级分销员人数',
+    '产生推广订单数',
+    '累计推广佣金',
+    '可提现佣金',
+    '加入时间',
+    '状态'
+  ]
+
+  const escapeCsv = (val: any) => {
+    if (val === null || val === undefined) return ''
+    const str = String(val).replace(/"/g, '""')
+    return `"${str}"`
+  }
+
+  const rows = filteredDistributors.value.map(row => [
+    escapeCsv(row.name),
+    escapeCsv(row.phone),
+    escapeCsv(row.level),
+    escapeCsv(row.firstLevelDownline),
+    escapeCsv(row.secondLevelDownline),
+    escapeCsv(row.totalOrders),
+    escapeCsv(`¥${row.totalCommission.toFixed(2)}`),
+    escapeCsv(`¥${row.withdrawableCommission.toFixed(2)}`),
+    escapeCsv(row.joinDate),
+    escapeCsv(row.status === 'active' ? '正常' : '已禁用')
+  ])
+
+  const csvContent = '\uFEFF' + [headers.join(',')].concat(rows.map(r => r.join(','))).join('\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `推广员列表报表-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  MessagePlugin.success('推广员列表已成功导出')
 }
 
 function levelLabel(level: string) {

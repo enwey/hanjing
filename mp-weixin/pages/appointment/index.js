@@ -34,20 +34,20 @@ const o = () => "../../components/base/hj-navbar.js",
       const d = e.ref([]),
         u = e.ref([]);
       function p() {
-        const e = ["pending_payment", "pending", "confirmed", "reminded", "checked_in", "completed"];
+        const e = ["pending_payment", "pending", "confirmed", "reminded", "checked_in"];
         ((d.value = n.appointments.filter((t) => e.includes(t.status))),
           (u.value = n.appointments.filter((t) => !e.includes(t.status))));
       }
       function l(e) {
         var t;
         return (
-          (null == (t = s.getStoreById(e)) ? void 0 : t.name) || "未知门店"
+          (null == (t = s.getStoreById(e)) ? void 0 : t.name) || ""
         );
       }
       function m(e) {
         var t;
         return (
-          (null == (t = a.getDoctorById(e)) ? void 0 : t.name) || "未知医生"
+          (null == (t = a.getDoctorById(e)) ? void 0 : t.name) || ""
         );
       }
       function f() {
@@ -63,7 +63,7 @@ const o = () => "../../components/base/hj-navbar.js",
           const [hours, minutes] = t.appointmentTime.split('-')[0].trim().split(':').map(Number);
           const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
           const now = new Date();
-          if (apptDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
+          if (t.status !== 'pending_payment' && apptDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
             e.index.showToast({ title: "距离预约时间已不足2小时，不支持取消预约", icon: "none" });
             return;
           }
@@ -107,11 +107,14 @@ const o = () => "../../components/base/hj-navbar.js",
             const payRes = await api.payAppointmentDeposit(t.id);
             const payParams = payRes.data || payRes;
             e.index.hideLoading();
-            await requestWxPay(payParams);
-            e.index.showLoading({ title: "同步支付状态..." });
-            await api.confirmAppointmentPayment(t.id);
-            e.index.hideLoading();
-            e.index.showToast({ title: "支付成功", icon: "success" });
+            if (payParams.mockPayment) {
+              e.index.showLoading({ title: "开发环境模拟支付..." });
+              await api.confirmAppointmentPayment(t.id);
+              e.index.hideLoading();
+            } else {
+              await requestWxPay(payParams);
+            }
+            e.index.showToast({ title: "支付已提交，请稍后刷新", icon: "success" });
             await n.fetchAppointments();
             p();
           } catch (err) {
@@ -186,8 +189,8 @@ const o = () => "../../components/base/hj-navbar.js",
                           e: "801bfeef-2-" + n,
                           f: e.p({
                             appointment: t,
-                            "store-name": l(t.storeId),
-                            "doctor-name": m(t.doctorId),
+                            "store-name": t.storeName || l(t.storeId),
+                            "doctor-name": t.doctorName || m(t.doctorId),
                           }),
                         })),
                       }
@@ -210,8 +213,8 @@ const o = () => "../../components/base/hj-navbar.js",
                           c: "801bfeef-5-" + n,
                           d: e.p({
                             appointment: t,
-                            "store-name": l(t.storeId),
-                            "doctor-name": m(t.doctorId),
+                            "store-name": t.storeName || l(t.storeId),
+                            "doctor-name": t.doctorName || m(t.doctorId),
                           }),
                         })),
                       }

@@ -266,10 +266,11 @@ const fetchDataLists = async () => {
     // 2. Fetch orders
     const ordersRes: any = await request.get('/api/admin/orders')
     latestOrders.value = ordersRes.data.slice(0, 5).map((o: any) => {
-      const prodName = o.items && o.items[0] ? o.items[0].product_name : '健康包/产品'
+      const prodName = o.items && o.items[0] ? o.items[0].product_name : '订单商品'
+      const productDesc = o.items && o.items.length > 1 ? `${prodName} 等${o.items.length}件` : prodName
       return {
         orderNo: '#' + o.order_no.substring(o.order_no.length - 8),
-        product: prodName.length > 12 ? prodName.substring(0, 12) + '...' : prodName,
+        product: productDesc,
         amount: '¥' + (o.pay_amount / 100).toFixed(2),
         status: o.status === 'completed' ? '已完成' : o.status === 'paid' ? '已支付' : o.status === 'pending' ? '待付款' : '退款中',
         statusTheme: o.status === 'completed' ? 'green' : o.status === 'paid' ? 'blue' : o.status === 'pending' ? 'gold' : 'red'
