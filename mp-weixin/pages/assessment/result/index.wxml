@@ -33,11 +33,11 @@
         ><view class="answer-list data-v-1973d3c1"
           ><view
             wx:for="{{j}}"
-            wx:for-item="q"
+            wx:for-item="question"
             wx:key="e"
             class="answer-item data-v-1973d3c1"
-            ><text class="answer-q data-v-1973d3c1">第{{q.a}}题. {{q.b}}</text
-            ><text class="answer-s data-v-1973d3c1" style="{{q.d}}">{{q.c}}</text></view
+            ><text class="answer-q data-v-1973d3c1">第{{question.a}}题. {{question.b}}</text
+            ><text class="answer-s data-v-1973d3c1" style="{{question.d}}">{{question.c}}</text></view
           ></view
         ></view
       ><view class="advice-card data-v-1973d3c1" style="{{'background:' + adviceBg + '; border-color:' + adviceBorder}}"

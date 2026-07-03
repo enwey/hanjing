@@ -15,20 +15,20 @@
     ><block wx:else
       ><view
         wx:for="{{f}}"
-        wx:for-item="n"
+        wx:for-item="notification"
         wx:key="h"
-        class="{{['noti-card', 'data-v-c3158b61', n.i && 'unread']}}"
-        bindtap="{{n.j}}"
+        class="{{['noti-card', 'data-v-c3158b61', notification.i && 'unread']}}"
+        bindtap="{{notification.j}}"
         ><view
-          class="{{['noti-dot', 'data-v-c3158b61', n.a && 'active']}}"
+          class="{{['noti-dot', 'data-v-c3158b61', notification.a && 'active']}}"
         /><view
           class="noti-icon data-v-c3158b61"
-          style="{{'background:' + n.c + ';' + ('color:' + n.d)}}"
-          ><text class="data-v-c3158b61">{{n.b}}</text></view
+          style="{{'background:' + notification.c + ';' + ('color:' + notification.d)}}"
+          ><text class="data-v-c3158b61">{{notification.b}}</text></view
         ><view class="noti-body data-v-c3158b61"
-          ><text class="noti-title data-v-c3158b61">{{n.e}}</text
-          ><text class="noti-content data-v-c3158b61">{{n.f}}</text
-          ><text class="noti-time data-v-c3158b61">{{n.g}}</text></view
+          ><text class="noti-title data-v-c3158b61">{{notification.e}}</text
+          ><text class="noti-content data-v-c3158b61">{{notification.f}}</text
+          ><text class="noti-time data-v-c3158b61">{{notification.g}}</text></view
         ></view
       ><view wx:if="{{g}}" class="empty data-v-c3158b61"
         ><text class="data-v-c3158b61">暂无消息</text></view

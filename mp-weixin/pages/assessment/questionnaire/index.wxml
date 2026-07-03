@@ -37,10 +37,10 @@
     ><view class="dots data-v-c4ff781e"
       ><view
         wx:for="{{l}}"
-        wx:for-item="i"
+        wx:for-item="option"
         wx:key="a"
-        class="{{['dot', 'data-v-c4ff781e', i.b && 'completed', i.c && 'current']}}"
-        bindtap="{{i.d}}" /></view
+        class="{{['dot', 'data-v-c4ff781e', option.b && 'completed', option.c && 'current']}}"
+        bindtap="{{option.d}}" /></view
     ><view class="bottom-actions data-v-c4ff781e"
       ><view wx:if="{{m}}" class="btn-prev data-v-c4ff781e" bindtap="{{n}}"
         ><text class="data-v-c4ff781e">‹ 上一题</text></view

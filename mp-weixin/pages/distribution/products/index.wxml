@@ -2,19 +2,19 @@
   ><hj-navbar title="推广商品" show-back="{{true}}" /><view class="list data-v-17829149"
     ><view
       wx:for="{{a}}"
-      wx:for-item="p"
+      wx:for-item="product"
       wx:key="f"
       class="item data-v-17829149"
-      bindtap="{{p.g}}"
+      bindtap="{{product.g}}"
       ><image
         class="item-img data-v-17829149"
-        src="{{p.a}}"
+        src="{{product.a}}"
         mode="aspectFill"
       /><view class="item-info data-v-17829149"
-        ><text class="item-name data-v-17829149">{{p.b}}</text
-        ><text class="item-price data-v-17829149">{{p.c}}</text
+        ><text class="item-name data-v-17829149">{{product.b}}</text
+        ><text class="item-price data-v-17829149">{{product.c}}</text
         ><text class="item-rate data-v-17829149"
-          >佣金 {{p.d}}% · {{p.e}}</text
+          >佣金 {{product.d}}% · {{product.e}}</text
         ></view
       ><text class="item-arrow data-v-17829149">&gt;</text></view
     ><hj-empty

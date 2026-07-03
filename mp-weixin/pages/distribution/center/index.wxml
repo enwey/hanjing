@@ -41,19 +41,19 @@
     ><scroll-view scroll-x class="product-scroll data-v-6a5afdbe" enhanced="{{true}}" show-scrollbar="{{false}}"
       ><view
         wx:for="{{i}}"
-        wx:for-item="p"
+        wx:for-item="product"
         wx:key="e"
         class="product-card data-v-6a5afdbe"
-        bindtap="{{p.f}}"
+        bindtap="{{product.f}}"
         ><image
           class="product-img data-v-6a5afdbe"
-          src="{{p.a}}"
+          src="{{product.a}}"
           mode="aspectFill"
         /><view class="product-info data-v-6a5afdbe"
-          ><text class="product-name data-v-6a5afdbe">{{p.b}}</text
-          ><text class="product-price data-v-6a5afdbe">{{p.c}}</text
+          ><text class="product-name data-v-6a5afdbe">{{product.b}}</text
+          ><text class="product-price data-v-6a5afdbe">{{product.c}}</text
           ><text class="product-commission data-v-6a5afdbe"
-            >佣金 {{p.d}}</text
+            >佣金 {{product.d}}</text
           ></view
         ></view
       ></scroll-view
@@ -67,22 +67,22 @@
     ><view class="order-list data-v-6a5afdbe"
       ><view
         wx:for="{{k}}"
-        wx:for-item="o"
+        wx:for-item="order"
         wx:key="h"
         class="order-item data-v-6a5afdbe"
         ><image
           class="order-img data-v-6a5afdbe"
-          src="{{o.a}}"
+          src="{{order.a}}"
           mode="aspectFill"
         /><view class="order-info data-v-6a5afdbe"
-          ><text class="order-name data-v-6a5afdbe">{{o.b}}</text
+          ><text class="order-name data-v-6a5afdbe">{{order.b}}</text
           ><text class="order-meta data-v-6a5afdbe"
-            >{{o.c}} | {{o.d}}</text
+            >{{order.c}} | {{order.d}}</text
           ></view
         ><view class="order-amount data-v-6a5afdbe"
-          ><text class="amount-val data-v-6a5afdbe">+{{o.e}}</text
-          ><text class="{{['amount-tag', 'data-v-6a5afdbe', o.g]}}"
-            >{{o.f}}</text
+          ><text class="amount-val data-v-6a5afdbe">+{{order.e}}</text
+          ><text class="{{['amount-tag', 'data-v-6a5afdbe', order.g]}}"
+            >{{order.f}}</text
           ></view
         ></view
       ><hj-empty

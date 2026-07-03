@@ -13,32 +13,32 @@
   ><scroll-view scroll-x class="tabs data-v-8fd26dea" enhanced="{{true}}" show-scrollbar="{{false}}"
     ><text
       wx:for="{{d}}"
-      wx:for-item="t"
+      wx:for-item="tab"
       wx:key="b"
-      class="{{['tab', 'data-v-8fd26dea', t.c && 'active']}}"
-      bindtap="{{t.d}}"
-      >{{t.a}}</text
+      class="{{['tab', 'data-v-8fd26dea', tab.c && 'active']}}"
+      bindtap="{{tab.d}}"
+      >{{tab.a}}</text
     ></scroll-view
   ><view class="list data-v-8fd26dea"
     ><view
       wx:for="{{e}}"
-      wx:for-item="o"
+      wx:for-item="commission"
       wx:key="i"
       class="item data-v-8fd26dea"
       ><image
         class="item-img data-v-8fd26dea"
-        src="{{o.a}}"
+        src="{{commission.a}}"
         mode="aspectFill"
       /><view class="item-info data-v-8fd26dea"
-        ><text class="item-name data-v-8fd26dea">{{o.b}}</text
-        ><text class="item-meta data-v-8fd26dea">{{o.c}} | {{o.d}}</text
-        ><text wx:if="{{o.e}}" class="item-level data-v-8fd26dea"
+        ><text class="item-name data-v-8fd26dea">{{commission.b}}</text
+        ><text class="item-meta data-v-8fd26dea">{{commission.c}} | {{commission.d}}</text
+        ><text wx:if="{{commission.e}}" class="item-level data-v-8fd26dea"
           >二级佣金</text
         ></view
       ><view class="item-right data-v-8fd26dea"
-        ><text class="item-amount data-v-8fd26dea">+{{o.f}}</text
-        ><text class="{{['item-tag', 'data-v-8fd26dea', o.h]}}"
-          >{{o.g}}</text
+        ><text class="item-amount data-v-8fd26dea">+{{commission.f}}</text
+        ><text class="{{['item-tag', 'data-v-8fd26dea', commission.h]}}"
+          >{{commission.g}}</text
         ></view
       ></view
     ><hj-empty

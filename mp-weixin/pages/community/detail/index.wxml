@@ -47,29 +47,29 @@
       ><view class="comment-list data-v-d95e15f4"
         ><view
           wx:for="{{s}}"
-          wx:for-item="c"
+          wx:for-item="comment"
           wx:key="k"
           class="comment-item data-v-d95e15f4"
           ><view class="comment-header data-v-d95e15f4"
-            ><view class="comment-avatar data-v-d95e15f4">{{c.a}}</view
+            ><view class="comment-avatar data-v-d95e15f4">{{comment.a}}</view
             ><view class="comment-info data-v-d95e15f4"
-              ><text class="comment-author data-v-d95e15f4">{{c.b}}</text
-              ><text class="comment-time data-v-d95e15f4">{{c.c}}</text></view
+              ><text class="comment-author data-v-d95e15f4">{{comment.b}}</text
+              ><text class="comment-time data-v-d95e15f4">{{comment.c}}</text></view
             ></view
-          ><text class="comment-content data-v-d95e15f4">{{c.d}}</text
-          ><view wx:if="{{c.e}}" class="reply-list data-v-d95e15f4"
+          ><text class="comment-content data-v-d95e15f4">{{comment.d}}</text
+          ><view wx:if="{{comment.e}}" class="reply-list data-v-d95e15f4"
             ><view
-              wx:for="{{c.f}}"
-              wx:for-item="r"
+              wx:for="{{comment.f}}"
+              wx:for-item="reply"
               wx:key="c"
               class="reply-item data-v-d95e15f4"
-              ><text class="reply-author data-v-d95e15f4">{{r.a}}：</text
-              ><text class="reply-content data-v-d95e15f4">{{r.b}}</text></view
+              ><text class="reply-author data-v-d95e15f4">{{reply.a}}：</text
+              ><text class="reply-content data-v-d95e15f4">{{reply.b}}</text></view
             ></view
           ><view class="comment-actions data-v-d95e15f4"
-            ><text class="data-v-d95e15f4" bindtap="{{c.i}}"
-              >{{c.g}} {{c.h}}</text
-            ><text class="data-v-d95e15f4" bindtap="{{c.j}}">回复</text></view
+            ><text class="data-v-d95e15f4" bindtap="{{comment.i}}"
+              >{{comment.g}} {{comment.h}}</text
+            ><text class="data-v-d95e15f4" bindtap="{{comment.j}}">回复</text></view
           ></view
         ></view
       ></view

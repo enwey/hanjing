@@ -17,11 +17,11 @@
       ><view class="form-chips data-v-33d45858"
         ><view
           wx:for="{{d}}"
-          wx:for-item="r"
+          wx:for-item="relation"
           wx:key="b"
-          class="{{['chip', 'data-v-33d45858', r.c && 'active']}}"
-          bindtap="{{r.d}}"
-          ><text class="data-v-33d45858">{{r.a}}</text></view
+          class="{{['chip', 'data-v-33d45858', relation.c && 'active']}}"
+          bindtap="{{relation.d}}"
+          ><text class="data-v-33d45858">{{relation.a}}</text></view
         ></view
       ></view
     ><view class="form-group data-v-33d45858"

@@ -10,24 +10,24 @@
     ><block wx:else
       ><view
         wx:for="{{c}}"
-        wx:for-item="m"
+        wx:for-item="member"
         wx:key="k"
         class="member-card data-v-30acdad2"
         ><view class="member-avatar data-v-30acdad2"
-          ><text class="data-v-30acdad2">{{m.a}}</text></view
+          ><text class="data-v-30acdad2">{{member.a}}</text></view
         ><view class="member-info data-v-30acdad2"
           ><view class="member-name-row data-v-30acdad2"
-            ><text class="member-name data-v-30acdad2">{{m.b}}</text
-            ><text class="member-relation data-v-30acdad2">{{m.c}}</text></view
+            ><text class="member-name data-v-30acdad2">{{member.b}}</text
+            ><text class="member-relation data-v-30acdad2">{{member.c}}</text></view
           ><text class="member-detail data-v-30acdad2"
-            >{{m.d}} | {{m.e}}岁 | {{m.f}}</text
-          ><view wx:if="{{m.idCard}}" class="member-visit data-v-30acdad2" style="margin-top: 6rpx; color: #6b7280; font-size: 22rpx;">身份证: {{m.idCard}}</view>
-          <view wx:if="{{m.cardNo}}" class="member-visit data-v-30acdad2" style="margin-top: 4rpx; color: #6b7280; font-size: 22rpx;">就诊卡: {{m.cardNo}}</view>
-          <text wx:if="{{m.g}}" class="member-tag data-v-30acdad2">有打鼾</text
-          ><text wx:if="{{m.h}}" class="member-visit data-v-30acdad2"
-            >上次就诊: {{m.i}}</text
+            >{{member.d}} | {{member.e}}岁 | {{member.f}}</text
+          ><view wx:if="{{member.idCard}}" class="member-visit data-v-30acdad2" style="margin-top: 6rpx; color: #6b7280; font-size: 22rpx;">身份证: {{member.idCard}}</view>
+          <view wx:if="{{member.cardNo}}" class="member-visit data-v-30acdad2" style="margin-top: 4rpx; color: #6b7280; font-size: 22rpx;">就诊卡: {{member.cardNo}}</view>
+          <text wx:if="{{member.g}}" class="member-tag data-v-30acdad2">有打鼾</text
+          ><text wx:if="{{member.h}}" class="member-visit data-v-30acdad2"
+            >上次就诊: {{member.i}}</text
           ></view
-        ><text class="member-delete data-v-30acdad2" bindtap="{{m.j}}"
+        ><text class="member-delete data-v-30acdad2" bindtap="{{member.j}}"
           >X</text
         ></view
       ><view wx:if="{{d}}" class="empty data-v-30acdad2"

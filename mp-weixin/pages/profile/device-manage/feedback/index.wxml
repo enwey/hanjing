@@ -18,10 +18,10 @@
           ><view class="fb-stars data-v-86cd8c34"
             ><text
               wx:for="{{fb.b}}"
-              wx:for-item="i"
+              wx:for-item="item"
               wx:key="b"
-              class="{{['star', 'data-v-86cd8c34', i.c && 'active']}}"
-              >{{i.a}}</text
+              class="{{['star', 'data-v-86cd8c34', item.c && 'active']}}"
+              >{{item.a}}</text
             ></view
           ></view
         ><text class="fb-content data-v-86cd8c34">{{fb.c}}</text
@@ -40,11 +40,11 @@
         ><view class="form-stars data-v-86cd8c34"
           ><text
             wx:for="{{g}}"
-            wx:for-item="i"
+            wx:for-item="item"
             wx:key="b"
-            class="{{['form-star', 'data-v-86cd8c34', i.c && 'active']}}"
-            bindtap="{{i.d}}"
-            >{{i.a}}</text
+            class="{{['form-star', 'data-v-86cd8c34', item.c && 'active']}}"
+            bindtap="{{item.d}}"
+            >{{item.a}}</text
           ></view
         ><block wx:if="{{r0}}">
           <textarea

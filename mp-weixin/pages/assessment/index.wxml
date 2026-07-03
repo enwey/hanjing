@@ -41,22 +41,22 @@
     ><view wx:if="{{d}}" class="data-v-35dabd14"
       ><view
         wx:for="{{e}}"
-        wx:for-item="r"
+        wx:for-item="record"
         wx:key="g"
         class="record-card data-v-35dabd14"
-        bindtap="{{r.h}}"
+        bindtap="{{record.h}}"
         ><view class="record-left data-v-35dabd14"
           ><view
             class="record-type-dot data-v-35dabd14"
-            style="{{'background:' + r.a}}"
+            style="{{'background:' + record.a}}"
           /><view class="record-info data-v-35dabd14"
-            ><text class="record-type data-v-35dabd14">{{r.b}}</text
-            ><text class="record-desc data-v-35dabd14">{{r.c}}</text
-            ><text class="record-date data-v-35dabd14">{{r.d}}</text></view
+            ><text class="record-type data-v-35dabd14">{{record.b}}</text
+            ><text class="record-desc data-v-35dabd14">{{record.c}}</text
+            ><text class="record-date data-v-35dabd14">{{record.d}}</text></view
           ></view
         ><view class="record-right data-v-35dabd14"
-          ><text class="record-level data-v-35dabd14" style="{{'color:' + r.f}}"
-            >{{r.e}}</text
+          ><text class="record-level data-v-35dabd14" style="{{'color:' + record.f}}"
+            >{{record.e}}</text
           ><text class="record-arrow data-v-35dabd14">›</text></view
         ></view
       ></view

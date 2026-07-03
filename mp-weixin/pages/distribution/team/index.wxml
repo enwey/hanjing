@@ -13,20 +13,20 @@
   ><view class="list data-v-e9b2690b"
     ><view
       wx:for="{{d}}"
-      wx:for-item="m"
+      wx:for-item="member"
       wx:key="g"
       class="item data-v-e9b2690b"
-      ><view class="avatar data-v-e9b2690b">{{m.a}}</view
+      ><view class="avatar data-v-e9b2690b">{{member.a}}</view
       ><view class="info data-v-e9b2690b"
         ><view class="name-wrap data-v-e9b2690b"
-          ><text class="name data-v-e9b2690b">{{m.b}}</text
-          ><text wx:if="{{m.h}}" class="{{['status-badge', 'data-v-e9b2690b', m.i]}}">{{m.h}}</text></view
+          ><text class="name data-v-e9b2690b">{{member.b}}</text
+          ><text wx:if="{{member.h}}" class="{{['status-badge', 'data-v-e9b2690b', member.i]}}">{{member.h}}</text></view
         ><text class="meta data-v-e9b2690b"
-          >{{m.c}}单 · 加入{{m.j}}</text
+          >{{member.c}}单 · 加入{{member.j}}</text
         ></view
       ><view class="right data-v-e9b2690b"
-        ><text class="{{['level', 'data-v-e9b2690b', m.e]}}">{{m.d}}</text
-        ><text class="sales data-v-e9b2690b">{{m.f}}w</text></view
+        ><text class="{{['level', 'data-v-e9b2690b', member.e]}}">{{member.d}}</text
+        ><text class="sales data-v-e9b2690b">{{member.f}}w</text></view
       ></view
     ><hj-empty
       wx:if="{{e}}"

@@ -171,21 +171,21 @@
       ><view class="duration-grid data-v-8badcb8c"
         ><view
           wx:for="{{B}}"
-          wx:for-item="h"
+          wx:for-item="history"
           wx:key="b"
-          class="{{['duration-chip', 'data-v-8badcb8c', h.c && 'duration-chip--active']}}"
-          bindtap="{{h.d}}"
-          ><text class="data-v-8badcb8c">{{h.a}}h</text></view
+          class="{{['duration-chip', 'data-v-8badcb8c', history.c && 'duration-chip--active']}}"
+          bindtap="{{history.d}}"
+          ><text class="data-v-8badcb8c">{{history.a}}h</text></view
         ></view
       ><text class="checkin-label data-v-8badcb8c">舒适度评分</text
       ><view class="comfort-row data-v-8badcb8c"
         ><view
           wx:for="{{C}}"
-          wx:for-item="s"
+          wx:for-item="suggestion"
           wx:key="b"
-          class="{{['comfort-star', 'data-v-8badcb8c', s.c]}}"
-          bindtap="{{s.d}}"
-          ><text class="data-v-8badcb8c">{{s.a}}</text></view
+          class="{{['comfort-star', 'data-v-8badcb8c', suggestion.c]}}"
+          bindtap="{{suggestion.d}}"
+          ><text class="data-v-8badcb8c">{{suggestion.a}}</text></view
         ></view
       ><text class="checkin-label data-v-8badcb8c">备注（选填）</text
       ><block wx:if="{{r0}}">

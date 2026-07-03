@@ -14,52 +14,52 @@
     ><view class="tabs data-v-b7ab25fd"
       ><view
         wx:for="{{c}}"
-        wx:for-item="t"
+        wx:for-item="tab"
         wx:key="b"
-        class="{{['tab', 'data-v-b7ab25fd', t.c && 'active']}}"
-        bindtap="{{t.d}}"
-        >{{t.a}}</view
+        class="{{['tab', 'data-v-b7ab25fd', tab.c && 'active']}}"
+        bindtap="{{tab.d}}"
+        >{{tab.a}}</view
       ></view
     ><view class="post-list data-v-b7ab25fd"
       ><view
         wx:for="{{d}}"
-        wx:for-item="p"
+        wx:for-item="post"
         wx:key="s"
         class="post-card data-v-b7ab25fd"
-        bindtap="{{p.t}}"
-        ><view wx:if="{{p.a}}" class="post-top data-v-b7ab25fd"
+        bindtap="{{post.t}}"
+        ><view wx:if="{{post.a}}" class="post-top data-v-b7ab25fd"
           ><text class="top-icon data-v-b7ab25fd">📌</text
           ><text class="top-text data-v-b7ab25fd">置顶</text></view
         ><view class="post-header data-v-b7ab25fd"
           ><view
             class="post-avatar data-v-b7ab25fd"
-            style="{{'background:' + p.c}}"
-            >{{p.b}}</view
+            style="{{'background:' + post.c}}"
+            >{{post.b}}</view
           ><view class="post-author-info data-v-b7ab25fd"
             ><view class="post-author-row data-v-b7ab25fd"
-              ><text class="post-author data-v-b7ab25fd">{{p.d}}</text
-              ><text class="{{['post-role', 'data-v-b7ab25fd', p.f]}}"
-                >{{p.e}}</text
+              ><text class="post-author data-v-b7ab25fd">{{post.d}}</text
+              ><text class="{{['post-role', 'data-v-b7ab25fd', post.f]}}"
+                >{{post.e}}</text
               ></view
-            ><text class="post-time data-v-b7ab25fd">{{p.g}}</text></view
+            ><text class="post-time data-v-b7ab25fd">{{post.g}}</text></view
           ></view
-        ><text wx:if="{{p.h}}" class="post-title data-v-b7ab25fd">{{p.i}}</text
-        ><text class="post-content data-v-b7ab25fd">{{p.j}}</text
-        ><view wx:if="{{p.k}}" class="post-tags data-v-b7ab25fd"
+        ><text wx:if="{{post.h}}" class="post-title data-v-b7ab25fd">{{post.i}}</text
+        ><text class="post-content data-v-b7ab25fd">{{post.j}}</text
+        ><view wx:if="{{post.k}}" class="post-tags data-v-b7ab25fd"
           ><text
-            wx:for="{{p.l}}"
+            wx:for="{{post.l}}"
             wx:for-item="tag"
             wx:key="b"
             class="post-tag data-v-b7ab25fd"
             >{{tag.a}}</text
           ></view
         ><view class="post-actions data-v-b7ab25fd"
-          ><view class="action-item data-v-b7ab25fd" catchtap="{{p.p}}"
-            ><text class="{{['data-v-b7ab25fd', p.n]}}">{{p.m}}</text
-            ><text class="action-count data-v-b7ab25fd">{{p.o}}</text></view
-          ><view class="action-item data-v-b7ab25fd" catchtap="{{p.r}}"
+          ><view class="action-item data-v-b7ab25fd" catchtap="{{post.p}}"
+            ><text class="{{['data-v-b7ab25fd', post.n]}}">{{post.m}}</text
+            ><text class="action-count data-v-b7ab25fd">{{post.o}}</text></view
+          ><view class="action-item data-v-b7ab25fd" catchtap="{{post.r}}"
             ><text class="action-icon data-v-b7ab25fd">💬</text
-            ><text class="action-count data-v-b7ab25fd">{{p.q}}</text></view
+            ><text class="action-count data-v-b7ab25fd">{{post.q}}</text></view
           ><view class="action-item data-v-b7ab25fd"
             ><text class="action-icon data-v-b7ab25fd">↗️</text
             ><text class="action-count data-v-b7ab25fd">分享</text></view

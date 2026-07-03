@@ -31,17 +31,17 @@
       ><view class="chart-bars data-v-eb41b617"
         ><view
           wx:for="{{j}}"
-          wx:for-item="d"
+          wx:for-item="dataItem"
           wx:key="f"
           class="bar-col data-v-eb41b617"
-          ><text wx:if="{{d.a}}" class="bar-value data-v-eb41b617"
-            >{{d.b}}h</text
+          ><text wx:if="{{dataItem.a}}" class="bar-value data-v-eb41b617"
+            >{{dataItem.b}}h</text
           ><text wx:else class="bar-value bar-value--zero data-v-eb41b617"
             >-</text
           ><view
             class="bar-fill data-v-eb41b617"
-            style="{{'height:' + d.c + ';' + ('background:' + d.d)}}"
-          /><text class="bar-label data-v-eb41b617">{{d.e}}</text></view
+            style="{{'height:' + dataItem.c + ';' + ('background:' + dataItem.d)}}"
+          /><text class="bar-label data-v-eb41b617">{{dataItem.e}}</text></view
         ></view
       ><text class="chart-hint data-v-eb41b617">参考线：目标 7h</text></view
     ><view class="chart-card data-v-eb41b617"
@@ -49,16 +49,16 @@
       ><view class="comfort-grid data-v-eb41b617"
         ><view
           wx:for="{{k}}"
-          wx:for-item="d"
+          wx:for-item="dataItem"
           wx:key="c"
-          class="{{['comfort-cell', 'data-v-eb41b617', d.d && 'comfort-cell--empty']}}"
+          class="{{['comfort-cell', 'data-v-eb41b617', dataItem.d && 'comfort-cell--empty']}}"
           ><view class="comfort-dots data-v-eb41b617"
             ><view
-              wx:for="{{d.a}}"
+              wx:for="{{dataItem.a}}"
               wx:for-item="dot"
               wx:key="a"
               class="{{['comfort-dot', 'data-v-eb41b617', dot.b && 'comfort-dot--on']}}" /></view
-          ><text class="comfort-date data-v-eb41b617">{{d.b}}</text></view
+          ><text class="comfort-date data-v-eb41b617">{{dataItem.b}}</text></view
         ></view
       ></view
     ><view class="safe-bottom data-v-eb41b617" /></view

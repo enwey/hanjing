@@ -24,10 +24,10 @@
       ><view wx:if="{{b}}" class="waveform data-v-70350287"
         ><view
           wx:for="{{c}}"
-          wx:for-item="h"
+          wx:for-item="history"
           wx:key="a"
           class="{{['wave-bar', 'data-v-70350287', d && 'wave-bar--live']}}"
-          style="{{'height:' + h.b + ';' + ('animation-delay:' + h.c)}}" /></view
+          style="{{'height:' + history.b + ';' + ('animation-delay:' + history.c)}}" /></view
       ><text wx:if="{{e}}" class="record-time data-v-70350287">{{f}}</text
       ><view class="mic-btn-wrapper data-v-70350287"
         ><view

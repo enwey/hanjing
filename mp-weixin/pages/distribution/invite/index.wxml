@@ -40,13 +40,13 @@
     ><text class="section-title data-v-466378e0">如何推广</text
     ><view
       wx:for="{{d}}"
-      wx:for-item="s"
+      wx:for-item="step"
       wx:key="d"
       class="step-item data-v-466378e0"
-      ><view class="step-num data-v-466378e0">{{s.a}}</view
+      ><view class="step-num data-v-466378e0">{{step.a}}</view
       ><view class="step-info data-v-466378e0"
-        ><text class="step-title data-v-466378e0">{{s.b}}</text
-        ><text class="step-desc data-v-466378e0">{{s.c}}</text></view
+        ><text class="step-title data-v-466378e0">{{step.b}}</text
+        ><text class="step-desc data-v-466378e0">{{step.c}}</text></view
       ></view
     ></view
   ></view
