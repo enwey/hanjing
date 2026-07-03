@@ -21,6 +21,7 @@ const t = e.defineComponent({
     bgColor: { default: "#FFFFFF" },
     textColor: { default: "#1F2937" },
     showBack: { type: Boolean, default: !1 },
+    customBack: { type: Boolean, default: !1 },
     fixed: { type: Boolean, default: !0 },
     transparent: { type: Boolean, default: !1 },
   },
@@ -79,6 +80,9 @@ const t = e.defineComponent({
     });
     function l() {
       o("back");
+      if (t.customBack) {
+        return;
+      }
       e.index.navigateBack({
         delta: 1,
         fail() {

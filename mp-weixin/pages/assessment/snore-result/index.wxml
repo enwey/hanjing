@@ -2,22 +2,23 @@
   ><hj-navbar
     wx:if="{{a}}"
     class="data-v-45b6ad14"
+    bindback="{{b}}"
     u-i="45b6ad14-0"
     bind:__l="__l"
     u-p="{{a}}"
-  /><view wx:if="{{b}}" class="page-content data-v-45b6ad14"
-    ><view class="risk-card data-v-45b6ad14" style="{{'background:' + h}}"
-      ><text class="risk-badge data-v-45b6ad14" style="{{'background:' + d}}"
-        >{{c}}</text
+  /><view wx:if="{{c}}" class="page-content data-v-45b6ad14"
+    ><view class="risk-card data-v-45b6ad14" style="{{'background:' + i}}"
+      ><text class="risk-badge data-v-45b6ad14" style="{{'background:' + e}}"
+        >{{d}}</text
       ><text class="risk-score-title data-v-45b6ad14">鼾声风险指数</text
-      ><text class="risk-score data-v-45b6ad14" style="{{'color:' + f}}"
-        >{{e}}% </text
-      ><text class="risk-desc data-v-45b6ad14">{{g}}</text></view
+      ><text class="risk-score data-v-45b6ad14" style="{{'color:' + g}}"
+        >{{f}}% </text
+      ><text class="risk-desc data-v-45b6ad14">{{h}}</text></view
     ><view class="risk-bar-section data-v-45b6ad14"
       ><view class="risk-bar-track data-v-45b6ad14"
         ><view
           class="risk-bar-fill data-v-45b6ad14"
-          style="{{'width:' + i + ';' + ('background:' + j)}}"
+          style="{{'width:' + j + ';' + ('background:' + k)}}"
         /><view class="risk-marker data-v-45b6ad14" style="left: 33%">低</view
         ><view class="risk-marker data-v-45b6ad14" style="left: 66%">中</view
         ><view
@@ -29,7 +30,7 @@
     ><view class="section-title data-v-45b6ad14">📊 鼾声数据详情</view
     ><view class="stats-grid data-v-45b6ad14"
       ><view
-        wx:for="{{k}}"
+        wx:for="{{l}}"
         wx:for-item="item"
         wx:key="d"
         class="stat-card data-v-45b6ad14"
@@ -39,11 +40,11 @@
       ></view
     ><view class="section-title data-v-45b6ad14">💊 专业建议</view
     ><view class="advice-card data-v-45b6ad14"
-      ><text class="advice-text data-v-45b6ad14">{{l}}</text></view
+      ><text class="advice-text data-v-45b6ad14">{{m}}</text></view
     ><view class="section-title data-v-45b6ad14">✨ 改善小贴士</view
     ><view class="tips-grid data-v-45b6ad14"
       ><view
-        wx:for="{{m}}"
+        wx:for="{{n}}"
         wx:for-item="tip"
         wx:key="c"
         class="tip-chip data-v-45b6ad14"
@@ -51,11 +52,11 @@
         ><text class="tip-content data-v-45b6ad14">{{tip.b}}</text></view
       ></view
     ><view class="cta-section data-v-45b6ad14"
-      ><view class="btn btn--primary data-v-45b6ad14" bindtap="{{n}}">
+      ><view class="btn btn--primary data-v-45b6ad14" bindtap="{{o}}">
         📅 立即预约门诊 </view
-      ><view class="btn btn--outline data-v-45b6ad14" bindtap="{{o}}">
+      ><view class="btn btn--outline data-v-45b6ad14" bindtap="{{p}}">
         🔄 重新测试 </view
-      ><view class="btn btn--ghost data-v-45b6ad14" bindtap="{{p}}">
+      ><view class="btn btn--ghost data-v-45b6ad14" bindtap="{{q}}">
         🏠 返回首页
       </view></view
     ></view

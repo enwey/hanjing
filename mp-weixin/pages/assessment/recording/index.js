@@ -74,6 +74,17 @@ const l = () => "../../../components/base/hj-navbar.js",
         console.error("[RecorderManager] Error:", err);
       });
 
+      function toPcmInt16Array(arrayBuffer) {
+        const validByteLength = arrayBuffer.byteLength - (arrayBuffer.byteLength % 2);
+        if (validByteLength <= 0) {
+          return new Int16Array(0);
+        }
+        if (validByteLength === arrayBuffer.byteLength) {
+          return new Int16Array(arrayBuffer);
+        }
+        return new Int16Array(arrayBuffer.slice(0, validByteLength));
+      }
+
       const s = e.computed(() => {
           const e = Math.floor(t.value / 60),
             a = t.value % 60;
@@ -232,7 +243,7 @@ const l = () => "../../../components/base/hj-navbar.js",
             try {
               const fs = wx.getFileSystemManager();
               const arrayBuffer = fs.readFileSync(tempFilePath.value);
-              const pcmData = new Int16Array(arrayBuffer);
+              const pcmData = toPcmInt16Array(arrayBuffer);
               analysisResult = analyzePcmOnClient(pcmData, t.value);
               console.log("[SnoreRecording] Client analysis completed:", analysisResult);
             } catch (fsErr) {
@@ -271,7 +282,7 @@ const l = () => "../../../components/base/hj-navbar.js",
           try {
             const l = (await a.submitSnoreRecording(payload)).data;
             if (l && l.id) {
-              e.index.navigateTo({
+              e.index.redirectTo({
                 url: "/pages/assessment/snore-result/index?id=" + l.id,
               });
             } else {
@@ -284,7 +295,7 @@ const l = () => "../../../components/base/hj-navbar.js",
             wx.setStorageSync('pending_snore_uploads', pending);
             e.index.showToast({ title: "已离线生成报告，联网后将自动同步", icon: "none", duration: 2500 });
             setTimeout(() => {
-              e.index.navigateTo({
+              e.index.redirectTo({
                 url: "/pages/assessment/snore-result/index?id=local",
               });
             }, 1000);

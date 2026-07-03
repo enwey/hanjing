@@ -1,6 +1,6 @@
 "use strict";
 const e = require("../../../common/vendor.js"),
-  l = require("../../../api/index.js");
+  api = require("../../../api/index.js");
 Math || a();
 
 function getSnoreRiskInfo(riskLevel) {
@@ -47,18 +47,18 @@ const a = () => "../../../components/base/hj-navbar.js",
   o = e.defineComponent({
     __name: "index",
     setup(a) {
-      const o = e.ref(null),
-        u = e.ref(!0),
-        i = e.computed(() => {
+      const reportDetail = e.ref(null),
+        isLoading = e.ref(!0),
+        riskInfo = e.computed(() => {
           var e;
-          return (null == (e = o.value) ? void 0 : e.snoreAnalysis)
-            ? getSnoreRiskInfo(o.value.snoreAnalysis.riskLevel)
+          return (null == (e = reportDetail.value) ? void 0 : e.snoreAnalysis)
+            ? getSnoreRiskInfo(reportDetail.value.snoreAnalysis.riskLevel)
             : null;
         }),
-        t = e.computed(() => {
+        statCards = e.computed(() => {
           var e;
-          if (!(null == (e = o.value) ? void 0 : e.snoreAnalysis)) return [];
-          const n = o.value.snoreAnalysis;
+          if (!(null == (e = reportDetail.value) ? void 0 : e.snoreAnalysis)) return [];
+          const n = reportDetail.value.snoreAnalysis;
           return [
             { label: "平均分贝", value: n.avgDecibel + " dB", icon: "🔊" },
             { label: "峰值分贝", value: n.peakDecibel + " dB", icon: "📈" },
@@ -66,10 +66,10 @@ const a = () => "../../../components/base/hj-navbar.js",
             { label: "呼吸暂停", value: n.apneaEvents + " 次", icon: "⚠️" },
           ];
         }),
-        r = e.computed(() => {
+        riskScore = e.computed(() => {
           var e;
-          if (!(null == (e = o.value) ? void 0 : e.snoreAnalysis)) return 0;
-          const n = o.value.snoreAnalysis;
+          if (!(null == (e = reportDetail.value) ? void 0 : e.snoreAnalysis)) return 0;
+          const n = reportDetail.value.snoreAnalysis;
           return Math.min(
             100,
             Math.round(
@@ -79,21 +79,29 @@ const a = () => "../../../components/base/hj-navbar.js",
             ),
           );
         });
-      function s() {
-        if (o.value && o.value.id && o.value.id !== "local") {
+      function goAppointment() {
+        if (reportDetail.value && reportDetail.value.id && reportDetail.value.id !== "local") {
           e.index.setStorageSync("pending_appointment_assessment", {
             type: "snore",
-            id: o.value.id,
+            id: reportDetail.value.id,
             label: "AI鼾声分析"
           });
         }
         e.index.navigateTo({ url: "/pages/appointment/store-select" });
       }
-      function v() {
+      function goHome() {
         e.index.switchTab({ url: "/pages/index/index" });
       }
-      function c() {
+      function restartRecording() {
         e.index.redirectTo({ url: "/pages/assessment/recording/index" });
+      }
+      function handleBack() {
+        e.index.navigateBack({
+          delta: 1,
+          fail() {
+            e.index.navigateTo({ url: "/pages/assessment/index" });
+          },
+        });
       }
       return (
         e.onMounted(async () => {
@@ -104,54 +112,55 @@ const a = () => "../../../components/base/hj-navbar.js",
               idVal = null == (e = null == a ? void 0 : a.options) ? void 0 : e.id;
             if (idVal) {
               if (idVal === 'local') {
-                o.value = wx.getStorageSync('last_local_snore_result');
+                reportDetail.value = wx.getStorageSync('last_local_snore_result');
               } else {
                 try {
-                  const res = await l.getSnoreAnalysis(idVal);
-                  o.value = res.data;
+                  const res = await api.getAssessmentDetail(idVal);
+                  reportDetail.value = res.data;
                 } catch (apiErr) {
                   console.warn("[SnoreResult] API load failed, trying local stash fallback:", apiErr);
-                  o.value = wx.getStorageSync('last_local_snore_result');
+                  reportDetail.value = wx.getStorageSync('last_local_snore_result');
                 }
               }
             }
           } catch (n) {
             console.error("[SnoreResult] 加载失败", n);
           } finally {
-            u.value = !1;
+            isLoading.value = !1;
           }
         }),
         (n, l) => {
           var a, d, p, b, f, g, m, x;
           return e.e(
             {
-              a: e.p({ title: "鼾声分析报告", showBack: !0 }),
-              b: !u.value && o.value,
+              a: e.p({ title: "鼾声分析报告", showBack: !0, customBack: !0 }),
+              b: e.o(handleBack, "0"),
+              c: !isLoading.value && reportDetail.value,
             },
-            !u.value && o.value
+            !isLoading.value && reportDetail.value
               ? {
-                  c: e.t(null == (a = i.value) ? void 0 : a.title),
-                  d: null == (d = i.value) ? void 0 : d.color,
-                  e: e.t(r.value),
-                  f: null == (p = i.value) ? void 0 : p.color,
-                  g: e.t(null == (b = i.value) ? void 0 : b.desc),
-                  h: null == (f = i.value) ? void 0 : f.bgColor,
-                  i: r.value + "%",
-                  j: null == (g = i.value) ? void 0 : g.color,
-                  k: e.f(t.value, (n, l, a) => ({
+                  d: e.t(null == (a = riskInfo.value) ? void 0 : a.title),
+                  e: null == (d = riskInfo.value) ? void 0 : d.color,
+                  f: e.t(riskScore.value),
+                  g: null == (p = riskInfo.value) ? void 0 : p.color,
+                  h: e.t(null == (b = riskInfo.value) ? void 0 : b.desc),
+                  i: null == (f = riskInfo.value) ? void 0 : f.bgColor,
+                  j: riskScore.value + "%",
+                  k: null == (g = riskInfo.value) ? void 0 : g.color,
+                  l: e.f(statCards.value, (n, l, a) => ({
                     a: e.t(n.icon),
                     b: e.t(n.value),
                     c: e.t(n.label),
                     d: n.label,
                   })),
-                  l: e.t(null == (m = i.value) ? void 0 : m.advice),
-                  m: e.f(
-                    null == (x = i.value) ? void 0 : x.tips,
+                  m: e.t(null == (m = riskInfo.value) ? void 0 : m.advice),
+                  n: e.f(
+                    null == (x = riskInfo.value) ? void 0 : x.tips,
                     (n, l, a) => ({ a: e.t(l + 1), b: e.t(n), c: l }),
                   ),
-                  n: e.o(s, "c6"),
-                  o: e.o(c, "42"),
-                  p: e.o(v, "69"),
+                  o: e.o(goAppointment, "c6"),
+                  p: e.o(restartRecording, "42"),
+                  q: e.o(goHome, "69"),
                 }
               : {},
           );

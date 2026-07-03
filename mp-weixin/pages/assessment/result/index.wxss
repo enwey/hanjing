@@ -170,22 +170,28 @@
 }
 .answer-item.data-v-1973d3c1 {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   padding: 8px 12px;
   background: #f9fafb;
   border-radius: 10px;
+  gap: 12px;
 }
 .answer-q.data-v-1973d3c1 {
   font-size: 13px;
   color: #4b5563;
   flex: 1;
+  line-height: 1.6;
 }
 .answer-s.data-v-1973d3c1 {
   font-size: 13px;
   font-weight: 600;
   color: #3b6bf5;
-  min-width: 48px;
-  text-align: right;
+  min-width: 56px;
+  text-align: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border-width: 1px;
+  border-style: solid;
 }
 .advice-card.data-v-1973d3c1 {
   border-radius: 16px;

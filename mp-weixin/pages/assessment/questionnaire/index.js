@@ -6,13 +6,14 @@ const t = () => "../../../components/base/hj-navbar.js",
   r = e.defineComponent({
     __name: "index",
     setup(t) {
-      const r = n.useAssessmentStore();
+      const questionnaireStore = n.useAssessmentStore();
       const api = require("../../../api/index.js");
       const familyMembers = e.ref([]);
       const memberNames = e.ref([]);
       const memberIndex = e.ref(0);
       const selectedMemberName = e.ref("本人");
       const selectedMemberId = e.ref("");
+      const isPageReady = e.ref(!1);
 
       async function loadFamilyMembers() {
         try {
@@ -56,10 +57,10 @@ const t = () => "../../../components/base/hj-navbar.js",
       }
 
       function s() {
-        r.prev();
+        questionnaireStore.prev();
       }
       function u() {
-        if (r.answers[r.currentQuestion] < 0) {
+        if (questionnaireStore.answers[questionnaireStore.currentQuestion] < 0) {
           e.index.showToast({
             title: "请选择一个选项后再进行下一题",
             icon: "none",
@@ -67,10 +68,10 @@ const t = () => "../../../components/base/hj-navbar.js",
           });
           return;
         }
-        r.currentQuestion < r.totalQuestions - 1 && r.next();
+        questionnaireStore.currentQuestion < questionnaireStore.totalQuestions - 1 && questionnaireStore.next();
       }
       function handleDotClick(targetIdx) {
-        if (targetIdx > r.currentQuestion && r.answers[r.currentQuestion] < 0) {
+        if (targetIdx > questionnaireStore.currentQuestion && questionnaireStore.answers[questionnaireStore.currentQuestion] < 0) {
           e.index.showToast({
             title: "请选择一个选项后再进行下一题",
             icon: "none",
@@ -78,8 +79,8 @@ const t = () => "../../../components/base/hj-navbar.js",
           });
           return;
         }
-        for (let i = r.currentQuestion; i < targetIdx; i++) {
-          if (r.answers[i] < 0) {
+        for (let i = questionnaireStore.currentQuestion; i < targetIdx; i++) {
+          if (questionnaireStore.answers[i] < 0) {
             e.index.showToast({
               title: "请按顺序回答所有题目",
               icon: "none",
@@ -88,12 +89,13 @@ const t = () => "../../../components/base/hj-navbar.js",
             return;
           }
         }
-        r.goToQuestion(targetIdx);
+        questionnaireStore.goToQuestion(targetIdx);
       }
-      async function o() {
+      async function submitQuestionnaire() {
         try {
-          (await r.submit(selectedMemberId.value),
-            e.index.navigateTo({ url: "/pages/assessment/result/index" }));
+          const result = await questionnaireStore.submit(selectedMemberId.value);
+          e.index.setStorageSync("last_ess_assessment_result", result);
+          e.index.redirectTo({ url: "/pages/assessment/result/index" });
         } catch (n) {
           e.index.showToast({ title: "提交失败，请重试", icon: "none" });
         }
@@ -103,7 +105,9 @@ const t = () => "../../../components/base/hj-navbar.js",
       }
       return (
         e.onMounted(async () => {
-          await Promise.all([loadFamilyMembers(), r.fetchQuestions()]);
+          questionnaireStore.reset();
+          await Promise.all([loadFamilyMembers(), questionnaireStore.fetchQuestions()]);
+          isPageReady.value = !0;
         }),
         (n, t) =>
           e.e(
@@ -114,21 +118,21 @@ const t = () => "../../../components/base/hj-navbar.js",
               memberIndex: e.unref(memberIndex),
               selectedMemberName: e.unref(selectedMemberName),
               onMemberChange: e.o(onMemberChange),
-              c: 100 * e.unref(r).progress + "%",
-              d: e.t(e.unref(r).currentQuestion + 1),
-              e: e.t(e.unref(r).totalQuestions),
-              f: e.unref(r).questions.length > 0,
+              c: 100 * e.unref(questionnaireStore).progress + "%",
+              d: e.t(e.unref(questionnaireStore).currentQuestion + 1),
+              e: e.t(e.unref(questionnaireStore).totalQuestions),
+              f: isPageReady.value && e.unref(questionnaireStore).questions.length > 0,
             },
-            e.unref(r).questions.length > 0
+            isPageReady.value && e.unref(questionnaireStore).questions.length > 0
               ? {
                   g: e.t(
-                    e.unref(r).questions[e.unref(r).currentQuestion].emoji,
+                    e.unref(questionnaireStore).questions[e.unref(questionnaireStore).currentQuestion].emoji,
                   ),
-                  h: e.t(e.unref(r).questions[e.unref(r).currentQuestion].id),
+                  h: e.t(e.unref(questionnaireStore).questions[e.unref(questionnaireStore).currentQuestion].id),
                   i: e.t(
-                    e.unref(r).questions[e.unref(r).currentQuestion].situation,
+                    e.unref(questionnaireStore).questions[e.unref(questionnaireStore).currentQuestion].situation,
                   ),
-                  j: e.t(e.unref(r).questions[e.unref(r).currentQuestion].hint),
+                  j: e.t(e.unref(questionnaireStore).questions[e.unref(questionnaireStore).currentQuestion].hint),
                   k: e.f(
                     [
                       { score: 0, label: "从不打瞌睡", emoji: "😀" },
@@ -142,26 +146,26 @@ const t = () => "../../../components/base/hj-navbar.js",
                           a: e.t(n.emoji),
                           b: e.t(n.label),
                           c:
-                            e.unref(r).answers[e.unref(r).currentQuestion] ===
+                            e.unref(questionnaireStore).answers[e.unref(questionnaireStore).currentQuestion] ===
                             n.score,
                         },
-                        (e.unref(r).answers[e.unref(r).currentQuestion],
+                        (e.unref(questionnaireStore).answers[e.unref(questionnaireStore).currentQuestion],
                         n.score,
                         {}),
                         {
                           d:
-                            e.unref(r).answers[e.unref(r).currentQuestion] ===
+                            e.unref(questionnaireStore).answers[e.unref(questionnaireStore).currentQuestion] ===
                             n.score
                               ? 1
                               : "",
                           e: n.score,
                           f:
-                            e.unref(r).answers[e.unref(r).currentQuestion] ===
+                            e.unref(questionnaireStore).answers[e.unref(questionnaireStore).currentQuestion] ===
                             n.score
                               ? 1
                               : "",
                           g: e.o((e) => {
-                            return ((t = n.score), void r.selectAnswer(t));
+                            return ((t = n.score), void questionnaireStore.selectAnswer(t));
                             var t;
                           }, n.score),
                         },
@@ -170,27 +174,27 @@ const t = () => "../../../components/base/hj-navbar.js",
                 }
               : {},
             {
-              l: e.f(e.unref(r).totalQuestions, (n, t, s) => ({
+              l: e.f(e.unref(questionnaireStore).totalQuestions, (n, t, s) => ({
                 a: n,
-                b: e.unref(r).answers[n - 1] >= 0 ? 1 : "",
-                c: n - 1 === e.unref(r).currentQuestion ? 1 : "",
+                b: e.unref(questionnaireStore).answers[n - 1] >= 0 ? 1 : "",
+                c: n - 1 === e.unref(questionnaireStore).currentQuestion ? 1 : "",
                 d: e.o((t) => handleDotClick(n - 1), n),
               })),
-              m: e.unref(r).currentQuestion > 0,
+              m: e.unref(questionnaireStore).currentQuestion > 0,
             },
-            e.unref(r).currentQuestion > 0 ? { n: e.o(s, "18") } : {},
-            { o: e.unref(r).currentQuestion < e.unref(r).totalQuestions - 1 },
-            e.unref(r).currentQuestion < e.unref(r).totalQuestions - 1
+            e.unref(questionnaireStore).currentQuestion > 0 ? { n: e.o(s, "18") } : {},
+            { o: e.unref(questionnaireStore).currentQuestion < e.unref(questionnaireStore).totalQuestions - 1 },
+            e.unref(questionnaireStore).currentQuestion < e.unref(questionnaireStore).totalQuestions - 1
               ? { p: e.o(u, "0a") }
               : {},
             {
               q:
-                e.unref(r).currentQuestion === e.unref(r).totalQuestions - 1 &&
-                e.unref(r).answers.every((e) => e >= 0),
+                e.unref(questionnaireStore).currentQuestion === e.unref(questionnaireStore).totalQuestions - 1 &&
+                e.unref(questionnaireStore).answers.every((e) => e >= 0),
             },
-            e.unref(r).currentQuestion === e.unref(r).totalQuestions - 1 &&
-              e.unref(r).answers.every((e) => e >= 0)
-              ? { r: e.o(o, "03") }
+            e.unref(questionnaireStore).currentQuestion === e.unref(questionnaireStore).totalQuestions - 1 &&
+              e.unref(questionnaireStore).answers.every((e) => e >= 0)
+              ? { r: e.o(submitQuestionnaire, "03") }
               : {},
           )
       );

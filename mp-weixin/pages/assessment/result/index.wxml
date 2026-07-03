@@ -7,48 +7,50 @@
     bind:__l="__l"
     u-p="{{b}}" /><view class="page-content data-v-1973d3c1"
     ><view wx:if="{{c}}" class="empty-state data-v-1973d3c1"
+      ><text class="empty-desc data-v-1973d3c1">正在加载评估结果...</text></view
+    ><view wx:elif="{{d}}" class="empty-state data-v-1973d3c1"
       ><view class="empty-icon-img data-v-1973d3c1" style="-webkit-mask-image: url(/static/icons/report.svg); mask-image: url(/static/icons/report.svg); background-color: #94a3b8;"
       ></view><text class="empty-title data-v-1973d3c1">暂无评估结果</text
       ><text class="empty-desc data-v-1973d3c1">请先完成ESS嗜睡量表评估</text
-      ><view class="btn-retake data-v-1973d3c1" bindtap="{{d}}"
+      ><view class="btn-retake data-v-1973d3c1" bindtap="{{e}}"
         ><text class="data-v-1973d3c1">开始评估</text></view
       ></view
     ><block wx:else
-      ><view class="score-card data-v-1973d3c1" style="{{'background:' + g}}"
+      ><view class="score-card data-v-1973d3c1" style="{{'background:' + h}}"
         ><text class="score-label data-v-1973d3c1">ESS 评分</text
-        ><text class="score-value data-v-1973d3c1">{{e}}</text
+        ><text class="score-value data-v-1973d3c1">{{f}}</text
         ><text class="score-unit data-v-1973d3c1">/ 24 分</text
-        ><text class="score-level data-v-1973d3c1">{{f}}</text></view
+        ><text class="score-level data-v-1973d3c1">{{g}}</text></view
       ><view class="result-card data-v-1973d3c1"
         ><view class="result-title-container data-v-1973d3c1"
           ><view class="title-icon data-v-1973d3c1" style="-webkit-mask-image: url(/static/icons/trend.svg); mask-image: url(/static/icons/trend.svg); background-color: #3b6bf5;"
           ></view><text class="result-title data-v-1973d3c1">评分解读</text></view
-        ><text class="result-desc data-v-1973d3c1">{{h}}</text></view
+        ><text class="result-desc data-v-1973d3c1">{{i}}</text></view
       ><view class="result-card data-v-1973d3c1"
         ><view class="result-title-container data-v-1973d3c1"
           ><view class="title-icon data-v-1973d3c1" style="-webkit-mask-image: url(/static/icons/report.svg); mask-image: url(/static/icons/report.svg); background-color: #3b6bf5;"
           ></view><text class="result-title data-v-1973d3c1">答案回顾</text></view
         ><view class="answer-list data-v-1973d3c1"
           ><view
-            wx:for="{{i}}"
+            wx:for="{{j}}"
             wx:for-item="q"
-            wx:key="d"
+            wx:key="e"
             class="answer-item data-v-1973d3c1"
             ><text class="answer-q data-v-1973d3c1">第{{q.a}}题. {{q.b}}</text
-            ><text class="answer-s data-v-1973d3c1" style="{{'color:' + q.color}}">{{q.c}}</text></view
+            ><text class="answer-s data-v-1973d3c1" style="{{q.d}}">{{q.c}}</text></view
           ></view
         ></view
       ><view class="advice-card data-v-1973d3c1" style="{{'background:' + adviceBg + '; border-color:' + adviceBorder}}"
         ><view class="advice-header-container data-v-1973d3c1"
           ><view class="advice-icon-img data-v-1973d3c1" style="{{'-webkit-mask-image: url(' + adviceIcon + '); mask-image: url(' + adviceIcon + '); background-color: ' + adviceTitleColor}}"
           ></view><text class="advice-title data-v-1973d3c1" style="{{'color:' + adviceTitleColor}}">专业建议</text></view
-        ><text class="advice-text data-v-1973d3c1" style="{{'color:' + adviceTextColor}}">{{j}}</text></view
+        ><text class="advice-text data-v-1973d3c1" style="{{'color:' + adviceTextColor}}">{{k}}</text></view
       ><view class="action-buttons data-v-1973d3c1"
-        ><view class="btn-primary data-v-1973d3c1" bindtap="{{k}}"
+        ><view class="btn-primary data-v-1973d3c1" bindtap="{{l}}"
           ><text class="data-v-1973d3c1">立即预约门诊</text></view
-        ><view class="btn-secondary data-v-1973d3c1" bindtap="{{l}}"
+        ><view class="btn-secondary data-v-1973d3c1" bindtap="{{m}}"
           ><text class="data-v-1973d3c1">返回首页</text></view
-        ><view class="btn-outline data-v-1973d3c1" bindtap="{{m}}"
+        ><view class="btn-outline data-v-1973d3c1" bindtap="{{n}}"
           ><text class="data-v-1973d3c1">重新评估</text></view
         ></view
       ></block

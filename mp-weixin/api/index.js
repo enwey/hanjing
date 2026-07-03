@@ -404,6 +404,15 @@ exports.getSnoreAnalysis = async function (oId) {
   );
 };
 
+exports.getAssessmentDetail = async function (assessmentId) {
+  return req.request(
+    {
+      url: `/assessments/snore-analysis/${assessmentId}`,
+      method: "GET",
+    }
+  );
+};
+
 exports.getStores = async function (nQuery) {
   return req.request(
     {
