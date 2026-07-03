@@ -4,11 +4,11 @@ const e = require("../../../common/vendor.js"),
   a = e.defineComponent({
     __name: "index",
     setup(a) {
-      const n = e.ref(""),
-        t = e.computed(
+      const rulesContent = e.ref(""),
+        formattedHtmlRules = e.computed(
           () =>
             "<div>" +
-            n.value
+            rulesContent.value
               .replace(/^### (.+)$/gm, "<h3>$1</h3>")
               .replace(/^## (.+)$/gm, "<h2>$1</h2>")
               .replace(/^# (.+)$/gm, "<h1>$1</h1>")
@@ -23,11 +23,11 @@ const e = require("../../../common/vendor.js"),
           var e;
           try {
             const a = await r.getDistributionRules();
-            n.value =
+            rulesContent.value =
               (null == (e = a.data) ? void 0 : e.rules) || a.rules || "";
-          } catch (a) {}
+          } catch (err) {}
         }),
-        (e, r) => ({ a: t.value })
+        (e, r) => ({ a: formattedHtmlRules.value })
       );
     },
   }),

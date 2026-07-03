@@ -8,56 +8,56 @@ Math;
 const a = e.defineComponent({
     __name: "index",
     setup(a) {
-      const l = e.ref([]),
-        o = e.ref({
+      const commissionList = e.ref([]),
+        commissionStats = e.ref({
           totalCommission: 0,
           availableCommission: 0,
           frozenCommission: 0,
         }),
-        i = e.ref("all"),
-        n = [
+        activeTab = e.ref("all"),
+        tabList = [
           { key: "all", label: "全部" },
           { key: "settled", label: "已结算" },
           { key: "pending", label: "待结算" },
           { key: "refunded", label: "已撤销" },
         ],
-        s = { settled: "已结算", pending: "待结算", refunded: "已撤销" },
-        u = e.computed(() => (o.value.totalCommission || 0)),
-        r = e.computed(() => (o.value.frozenCommission || 0)),
-        d = e.computed(() => (o.value.availableCommission || 0)),
-        v = e.computed(() =>
-          "all" === i.value
-            ? l.value
-            : l.value.filter((e) => e.status === i.value),
+        statusNames = { settled: "已结算", pending: "待结算", refunded: "已撤销" },
+        totalCommission = e.computed(() => (commissionStats.value.totalCommission || 0)),
+        frozenCommission = e.computed(() => (commissionStats.value.frozenCommission || 0)),
+        availableCommission = e.computed(() => (commissionStats.value.availableCommission || 0)),
+        filteredCommissionList = e.computed(() =>
+          "all" === activeTab.value
+            ? commissionList.value
+            : commissionList.value.filter((e) => e.status === activeTab.value),
         ),
-        c = async () => {
+        loadData = async () => {
           try {
-            const [a, i] = await Promise.all([
+            const [statsRes, listRes] = await Promise.all([
               t.getDistributionCommissionStats(),
               t.getDistributionCommissions(),
             ]);
-            o.value = a.data || a;
-            l.value = (i.data && i.data.list) || i.list || [];
-          } catch (a) {
+            commissionStats.value = statsRes.data || statsRes;
+            commissionList.value = (listRes.data && listRes.data.list) || listRes.list || [];
+          } catch (err) {
             e.index.showToast({ title: "加载佣金明细失败", icon: "none" });
           }
         };
       return (
-        e.onMounted(c),
-        e.onShow(c),
+        e.onMounted(loadData),
+        e.onShow(loadData),
         (t, a) =>
           e.e(
             {
-              a: e.t((u.value / 100).toFixed(2)),
-              b: e.t((r.value / 100).toFixed(2)),
-              c: e.t((d.value / 100).toFixed(2)),
-              d: e.f(n, (t, a, l) => ({
+              a: e.t((totalCommission.value / 100).toFixed(2)),
+              b: e.t((frozenCommission.value / 100).toFixed(2)),
+              c: e.t((availableCommission.value / 100).toFixed(2)),
+              d: e.f(tabList, (t, a, l) => ({
                 a: e.t(t.label),
                 b: t.key,
-                c: i.value === t.key ? 1 : "",
-                d: e.o((e) => (i.value = t.key), t.key),
+                c: activeTab.value === t.key ? 1 : "",
+                d: e.o((e) => (activeTab.value = t.key), t.key),
               })),
-              e: e.f(v.value, (t, a, l) => {
+              e: e.f(filteredCommissionList.value, (t, a, l) => {
                 return e.e(
                   {
                     a: t.productImage || "",
@@ -69,15 +69,15 @@ const a = e.defineComponent({
                   (t.commissionLevel, {}),
                   {
                     f: e.t((t.commission / 100).toFixed(2)),
-                    g: e.t(s[t.status] || "处理中"),
+                    g: e.t(statusNames[t.status] || "处理中"),
                     h: e.n(t.status),
                     i: t.id,
                   },
                 );
               }),
-              f: !v.value.length,
+              f: !filteredCommissionList.value.length,
             },
-            v.value.length ? {} : { g: e.p({ text: "暂无佣金记录" }) },
+            filteredCommissionList.value.length ? {} : { g: e.p({ text: "暂无佣金记录" }) },
           )
       );
     },

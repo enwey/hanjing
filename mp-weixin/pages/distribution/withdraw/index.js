@@ -4,88 +4,88 @@ const e = require("../../../common/vendor.js"),
   t = e.defineComponent({
     __name: "index",
     setup(t) {
-      const o = e.ref(""),
-        i = e.ref("wechat"),
-        u = e.ref(0),
-        n = e.ref(0),
-        l = e.ref(0),
-        r = e.ref(""),
-        s = e.ref(""),
-        v = e.ref(""),
-        c = e.computed(() => parseFloat(o.value) || 0),
-        d = e.computed(() => n.value / 100),
-        m = e.computed(() => {
-          if (c.value <= 0) return 0;
-          if ("bank" !== i.value) return 0;
-          return Math.max(c.value * 0.01, 1);
+      const withdrawAmountInput = e.ref(""),
+        withdrawMethod = e.ref("wechat"),
+        totalCommission = e.ref(0),
+        availableCommission = e.ref(0),
+        withdrawnAmount = e.ref(0),
+        bankName = e.ref(""),
+        bankAccountName = e.ref(""),
+        bankAccountNo = e.ref(""),
+        parsedWithdrawAmount = e.computed(() => parseFloat(withdrawAmountInput.value) || 0),
+        maxWithdrawAmount = e.computed(() => availableCommission.value / 100),
+        serviceFee = e.computed(() => {
+          if (parsedWithdrawAmount.value <= 0) return 0;
+          if ("bank" !== withdrawMethod.value) return 0;
+          return Math.max(parsedWithdrawAmount.value * 0.01, 1);
         }),
-        f = e.computed(() => Math.max(c.value - m.value, 0)),
-        p = e.computed(() => {
-          if (c.value < 50) return !1;
-          if (c.value > d.value) return !1;
-          if ("bank" === i.value && (!r.value || !s.value || !v.value)) return !1;
+        actualAmount = e.computed(() => Math.max(parsedWithdrawAmount.value - serviceFee.value, 0)),
+        isSubmitEnabled = e.computed(() => {
+          if (parsedWithdrawAmount.value < 50) return !1;
+          if (parsedWithdrawAmount.value > maxWithdrawAmount.value) return !1;
+          if ("bank" === withdrawMethod.value && (!bankName.value || !bankAccountName.value || !bankAccountNo.value)) return !1;
           return !0;
         }),
-        h = async () => {
-          if (!p.value) return;
+        submitWithdraw = async () => {
+          if (!isSubmitEnabled.value) return;
           try {
             await a.applyWithdraw(
-              Math.round(100 * c.value),
-              i.value,
-              "bank" === i.value
+              Math.round(100 * parsedWithdrawAmount.value),
+              withdrawMethod.value,
+              "bank" === withdrawMethod.value
                 ? {
-                    bankName: r.value,
-                    accountName: s.value,
-                    accountNo: v.value,
+                    bankName: bankName.value,
+                    accountName: bankAccountName.value,
+                    accountNo: bankAccountNo.value,
                   }
                 : null,
             );
             e.index.showToast({ title: "提现申请已提交", icon: "success" });
-            o.value = "";
+            withdrawAmountInput.value = "";
             const t = await a.getDistributorInfo(),
               iData = t.data || t;
-            n.value = iData.availableCommission || 0;
-            l.value = iData.withdrawnAmount || 0;
-          } catch (t) {
+            availableCommission.value = iData.availableCommission || 0;
+            withdrawnAmount.value = iData.withdrawnAmount || 0;
+          } catch (err) {
             e.index.showToast({
-              title: t && t.message ? t.message : "提现失败",
+              title: err && err.message ? err.message : "提现失败",
               icon: "none",
             });
           }
         },
-        g = async () => {
+        loadData = async () => {
           try {
             const eData = await a.getDistributorInfo(),
               tData = eData.data || eData;
-            u.value = tData.totalCommission || 0;
-            n.value = tData.availableCommission || 0;
-            l.value = tData.withdrawnAmount || 0;
-          } catch (eData) {}
+            totalCommission.value = tData.totalCommission || 0;
+            availableCommission.value = tData.availableCommission || 0;
+            withdrawnAmount.value = tData.withdrawnAmount || 0;
+          } catch (err) {}
         };
       return (
-        e.onMounted(g),
-        e.onShow(g),
+        e.onMounted(loadData),
+        e.onShow(loadData),
         (a, t) => ({
-          a: e.t((n.value / 100).toFixed(2)),
-          b: e.t((u.value / 100).toFixed(2)),
-          c: e.t((l.value / 100).toFixed(2)),
-          d: o.value,
-          e: e.o((e) => (o.value = e.detail.value), "f1"),
-          f: "wechat" === i.value ? 1 : "",
-          g: e.o((e) => (i.value = "wechat"), "c3"),
-          h: "bank" === i.value ? 1 : "",
-          i: e.o((e) => (i.value = "bank"), "ff"),
-          j: "bank" === i.value,
-          k: r.value,
-          l: e.o((e) => (r.value = e.detail.value), "bank-name"),
-          m: s.value,
-          n: e.o((e) => (s.value = e.detail.value), "bank-account-name"),
-          o: v.value,
-          p: e.o((e) => (v.value = e.detail.value), "bank-account-no"),
-          q: e.t(m.value.toFixed(2)),
-          r: e.t(f.value.toFixed(2)),
-          s: p.value ? "" : 1,
-          t: e.o(h, "06"),
+          a: e.t((availableCommission.value / 100).toFixed(2)),
+          b: e.t((totalCommission.value / 100).toFixed(2)),
+          c: e.t((withdrawnAmount.value / 100).toFixed(2)),
+          d: withdrawAmountInput.value,
+          e: e.o((e) => (withdrawAmountInput.value = e.detail.value), "f1"),
+          f: "wechat" === withdrawMethod.value ? 1 : "",
+          g: e.o((e) => (withdrawMethod.value = "wechat"), "c3"),
+          h: "bank" === withdrawMethod.value ? 1 : "",
+          i: e.o((e) => (withdrawMethod.value = "bank"), "ff"),
+          j: "bank" === withdrawMethod.value,
+          k: bankName.value,
+          l: e.o((e) => (bankName.value = e.detail.value), "bank-name"),
+          m: bankAccountName.value,
+          n: e.o((e) => (bankAccountName.value = e.detail.value), "bank-account-name"),
+          o: bankAccountNo.value,
+          p: e.o((e) => (bankAccountNo.value = e.detail.value), "bank-account-no"),
+          q: e.t(serviceFee.value.toFixed(2)),
+          r: e.t(actualAmount.value.toFixed(2)),
+          s: isSubmitEnabled.value ? "" : 1,
+          t: e.o(submitWithdraw, "06"),
           u: e.o((a) => {
             return (
               (t = "/pages/distribution/withdraw-records/index"),

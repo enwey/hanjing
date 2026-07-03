@@ -7,7 +7,7 @@ const s = () => "../../components/base/hj-navbar.js",
   n = e.defineComponent({
     __name: "store-select",
     setup(s) {
-      const o = t.useStoreStore(),
+      const clinicStore = t.useClinicStore(),
         n = t.useAppointmentStore(),
         docStore = t.useDoctorStore(),
         r = e.ref(!0),
@@ -51,7 +51,7 @@ const s = () => "../../components/base/hj-navbar.js",
         return `${km.toFixed(1)}km`;
       }
 
-      function a(t) {
+      function handleStoreSelect(t) {
         if (t.status === "prepare") {
           e.index.showToast({
             title: "该门店正在筹建中，暂未开放预约，敬请期待！",
@@ -73,16 +73,16 @@ const s = () => "../../components/base/hj-navbar.js",
       const filteredStores = e.computed(() => {
         let list = [];
         if (schedulesChecked.value) {
-          list = o.stores.filter(s => s.status === "prepare" || storesWithSchedules.value.some(id => t.matchStoreId(id, s.id)));
+          list = clinicStore.stores.filter(s => s.status === "prepare" || storesWithSchedules.value.some(id => t.matchStoreId(id, s.id)));
         } else if (doctorId.value) {
           const doc = docStore.getDoctorById(doctorId.value);
           if (doc && doc.storeIds) {
-            list = o.stores.filter(s => s.status === "prepare" || (doc.storeIds.some(id => t.matchStoreId(id, s.id)) && storesWithSchedules.value.some(id => t.matchStoreId(id, s.id))));
+            list = clinicStore.stores.filter(s => s.status === "prepare" || (doc.storeIds.some(id => t.matchStoreId(id, s.id)) && storesWithSchedules.value.some(id => t.matchStoreId(id, s.id))));
           } else {
-            list = o.stores.filter(s => s.status === "prepare");
+            list = clinicStore.stores.filter(s => s.status === "prepare");
           }
         } else {
-          list = [...o.stores];
+          list = [...clinicStore.stores];
         }
 
         if (userLocation.value) {
@@ -134,13 +134,13 @@ const s = () => "../../components/base/hj-navbar.js",
           if (0 === docStore.doctors.length) {
             initPromises.push(docStore.fetchDoctors());
           }
-          if (0 === o.stores.length) {
-            initPromises.push(o.fetchStores());
+          if (0 === clinicStore.stores.length) {
+            initPromises.push(clinicStore.fetchStores());
           }
           if (initPromises.length > 0) {
             await Promise.all(initPromises);
           }
-          console.log("[StoreSelect] fetched stores:", JSON.stringify(o.stores));
+          console.log("[StoreSelect] fetched stores:", JSON.stringify(clinicStore.stores));
 
           const today = new Date();
           const year = today.getFullYear();
@@ -169,7 +169,7 @@ const s = () => "../../components/base/hj-navbar.js",
             }
           } else {
             await Promise.all(
-              o.stores.map(async (store) => {
+              clinicStore.stores.map(async (store) => {
                 const doctors = docStore.getDoctorsByStore(store.id);
                 const doctorSchedulesResults = await Promise.all(
                   doctors.map(async (doc) => {
@@ -199,7 +199,7 @@ const s = () => "../../components/base/hj-navbar.js",
           b: e.t(filteredStores.value.length),
           c: e.f(filteredStores.value, (t, s, o) => ({
             a: t.id,
-            b: e.o(a, t.id),
+            b: e.o(handleStoreSelect, t.id),
             c: "c4ad3ae9-1-" + o,
             d: e.p({ store: t, distance: t._distanceStr || "" }),
           })),

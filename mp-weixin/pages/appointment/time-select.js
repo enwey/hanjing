@@ -15,13 +15,13 @@ const a = () => "../../components/base/hj-navbar.js",
         i = e.ref(""),
         d = e.ref("");
       const c = e.ref(null);
-      async function v(e) {
+      async function selectPeriod(e) {
         c.value = e;
         if ("full" !== e.status) {
           await l.fetchTimeSlots(e.id);
         }
       }
-      async function r(e) {
+      async function selectDate(e) {
         n.value = e;
         await l.fetchSchedules(u.value, i.value, e, e);
         o.value = l.schedules;
@@ -30,7 +30,7 @@ const a = () => "../../components/base/hj-navbar.js",
         if (o.value && o.value.length > 0) {
           const firstBookable = o.value.find(item => item.status !== 'full');
           if (firstBookable) {
-            await v(firstBookable);
+            await selectPeriod(firstBookable);
           } else {
             c.value = null;
           }
@@ -70,14 +70,14 @@ const a = () => "../../components/base/hj-navbar.js",
             }
           }
         }
-        await r(defaultDate);
+        await selectDate(defaultDate);
         s.value = !1;
       });
       return (t, a) =>
         e.e(
           {
             a: e.p({ title: d.value || "选择时段", "show-back": !0 }),
-            b: e.o(r, "0e"),
+            b: e.o(selectDate, "0e"),
             c: e.p({
               dates: e.unref(l).scheduleDates,
               "selected-date": n.value,
@@ -99,7 +99,7 @@ const a = () => "../../components/base/hj-navbar.js",
                                 morning: "上午",
                                 afternoon: "下午",
                                 full_day: "全天",
-                              }[u] || u),
+                                }[u] || u),
                             ),
                             b: e.t(t.startTime),
                             c: e.t(t.endTime),
@@ -109,7 +109,7 @@ const a = () => "../../components/base/hj-navbar.js",
                                 : `余${t.totalSlots - t.bookedSlots}位`,
                             ),
                             e: "full" === t.status ? 1 : "",
-                            f: e.o((e) => v(t), t.id),
+                            f: e.o((e) => selectPeriod(t), t.id),
                             g:
                               (null == (n = c.value) ? void 0 : n.id) ===
                                 t.id && e.unref(l).timeSlots.length > 0,

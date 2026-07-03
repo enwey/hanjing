@@ -27,15 +27,15 @@ const t = e.defineComponent({
   },
   emits: ["back"],
   setup(t, { emit: a }) {
-    const o = a,
-      n = e.ref(0),
+    const emit = a,
+      statusBarHeight = e.ref(0),
       cHeight = e.ref(44),
       showNavbar = e.ref(!1),
       isTabbarPage = e.ref(!1),
       pageRoute = e.ref("");
     e.onMounted(() => {
       const t = e.index.getWindowInfo();
-      n.value = t.statusBarHeight || 20;
+      statusBarHeight.value = t.statusBarHeight || 20;
       
       let capsule = { top: 0, height: 0 };
       try {
@@ -45,7 +45,7 @@ const t = e.defineComponent({
       }
       
       if (capsule && capsule.top && capsule.height) {
-        const gap = capsule.top - n.value;
+        const gap = capsule.top - statusBarHeight.value;
         cHeight.value = (gap * 2) + capsule.height;
       } else {
         cHeight.value = 44;
@@ -64,7 +64,7 @@ const t = e.defineComponent({
       ].includes(r);
       showNavbar.value = true;
     });
-    const r = e.computed(() => n.value + cHeight.value);
+    const totalHeight = e.computed(() => statusBarHeight.value + cHeight.value);
     const shouldShowBack = e.computed(() => {
       if (t.showBack) return true;
       const pages = getCurrentPages();
@@ -78,8 +78,8 @@ const t = e.defineComponent({
       }
       return "";
     });
-    function l() {
-      o("back");
+    function goBack() {
+      emit("back");
       if (t.customBack) {
         return;
       }
@@ -96,19 +96,19 @@ const t = e.defineComponent({
       e.e(
         { showNavbar: showNavbar.value },
         { a: e.unref(shouldShowBack) },
-        e.unref(shouldShowBack) ? { b: t.textColor, c: e.o(l, "99") } : {},
+        e.unref(shouldShowBack) ? { b: t.textColor, c: e.o(goBack, "99") } : {},
         {
           d: e.t(e.unref(navbarTitle)),
           e: t.textColor,
           f: cHeight.value + "px",
           g: t.fixed ? 1 : "",
           h: t.transparent ? 1 : "",
-          i: r.value + "px",
-          j: n.value + "px",
+          i: totalHeight.value + "px",
+          j: statusBarHeight.value + "px",
           k: t.transparent ? "transparent" : t.bgColor,
           l: t.fixed,
         },
-        t.fixed ? { m: r.value + "px" } : {},
+        t.fixed ? { m: totalHeight.value + "px" } : {},
       );
   },
 });

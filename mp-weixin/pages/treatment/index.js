@@ -69,7 +69,7 @@ const t = () => "../../components/base/hj-navbar.js",
           const weeks = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
           return `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日 ${weeks[today.getDay()]}`;
         });
-      function x(e) {
+      function getRecordColor(e) {
         if (e.isFuture) return "#E5E7EB";
         if (!e.record || 0 === e.record.wearDuration) return "#F3F4F6";
         const comfort = e.record.comfort || 3;
@@ -80,10 +80,10 @@ const t = () => "../../components/base/hj-navbar.js",
         if (comfort === 5) return "#15803D";
         return "#06B6D4";
       }
-      function D() {
+      function openCheckinModal() {
         const todayObj = new Date(),
-          e = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`,
-          a = o.value.find((a) => a.date === e);
+          e = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`;
+          const a = o.value.find((a) => a.date === e);
         ((null == a ? void 0 : a.wearDuration) && a.wearDuration > 0
           ? ((f.value = !0),
             (v.value = a.wearDuration),
@@ -92,7 +92,7 @@ const t = () => "../../components/base/hj-navbar.js",
           : ((f.value = !1), (v.value = 6), (d.value = 4), (c.value = "")),
           (i.value = !0));
       }
-      function y() {
+      function closeCheckinModal() {
         i.value = !1;
       }
       function queryParams() {
@@ -131,7 +131,7 @@ const t = () => "../../components/base/hj-navbar.js",
           n.value = !1;
         }
       }
-      async function T() {
+      async function submitCheckin() {
         s.value = !0;
         try {
           const todayObj = new Date(),
@@ -157,16 +157,16 @@ const t = () => "../../components/base/hj-navbar.js",
           s.value = !1;
         }
       }
-      function b() {
+      function goSleepTrend() {
         e.index.navigateTo({ url: "/pages/treatment/sleep-trend/index" });
       }
-      function h() {
+      function goTimeline() {
         e.index.navigateTo({ url: "/pages/treatment/timeline/index" });
       }
-      function j() {
+      function goSleepReport() {
         e.index.navigateTo({ url: "/pages/treatment/sleep-report/index" });
       }
-      function k() {
+      function goCommunity() {
         e.index.navigateTo({ url: "/pages/community/index" });
       }
       function A() {
@@ -221,10 +221,10 @@ const t = () => "../../components/base/hj-navbar.js",
                   f: p.value + "%",
                   g: e.t(p.value),
                   h: e.t(null == (f = m.value) ? void 0 : f.startDate),
-                  i: e.o(b, "aa"),
+                  i: e.o(goSleepTrend, "aa"),
                   j: e.f(g.value, (a, t, n) => ({
                     a: e.t(a.dayOfWeek),
-                    b: x(a),
+                    b: getRecordColor(a),
                     c: a.record ? a.record.wearDuration + "h" : "未佩戴",
                     d: e.t(a.dayNum),
                     e: a.date,
@@ -234,14 +234,14 @@ const t = () => "../../components/base/hj-navbar.js",
                   l: e.t(w.value.avgHours),
                   m: e.t(w.value.avgComfort),
                   n: e.t(w.value.streak),
-                  o: e.o(D, "7d"),
-                  p: e.o(b, "9b"),
-                  q: e.o(j, "12"),
-                  r: e.o(h, "4c"),
+                  o: e.o(openCheckinModal, "7d"),
+                  p: e.o(goSleepTrend, "9b"),
+                  q: e.o(goSleepReport, "12"),
+                  r: e.o(goTimeline, "4c"),
                   s: e.o(A, "70"),
                   t: e.o(C, "23"),
-                  v: e.o(k, "f0"),
-                  w: e.o(h, "d1"),
+                  v: e.o(goCommunity, "f0"),
+                  w: e.o(goTimeline, "d1"),
                   x: e.f(l.value.slice(0, 2), (a, t, n) =>
                     e.e(
                       { a: a.color, b: t < l.value.slice(0, 2).length - 1 },
@@ -298,12 +298,12 @@ const t = () => "../../components/base/hj-navbar.js",
                   })),
                   D: c.value,
                   E: e.o((e) => (c.value = e.detail.value), "41"),
-                  F: e.o(y, "8b"),
+                  F: e.o(closeCheckinModal, "8b"),
                   G: e.t(s.value ? "保存中..." : "确认打卡"),
                   H: s.value ? 1 : "",
-                  I: e.o(T, "08"),
+                  I: e.o(submitCheckin, "08"),
                   J: e.o(() => {}, "21"),
-                  K: e.o(y, "0b"),
+                  K: e.o(closeCheckinModal, "0b"),
                 }
               : {},
           );

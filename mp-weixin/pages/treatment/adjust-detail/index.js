@@ -6,9 +6,9 @@ const o = () => "../../../components/base/hj-navbar.js",
   a = e.defineComponent({
     __name: "index",
     setup(o) {
-      const a = e.ref(!0),
-        c = e.ref(null),
-        r = e.reactive([]);
+      const loading = e.ref(!0),
+        recordDetail = e.ref(null),
+        adjustmentHistory = e.reactive([]);
       function currentParams() {
         const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
         return patientId ? { patientId } : {};
@@ -17,32 +17,32 @@ const o = () => "../../../components/base/hj-navbar.js",
         e.onMounted(async () => {
           try {
             const e = await t.getTreatmentRecord(currentParams());
-            c.value = e.data;
+            recordDetail.value = e.data;
 
             const adjRes = await t.getDeviceAdjustments(currentParams());
             if (adjRes && adjRes.data) {
-              r.splice(0, r.length, ...adjRes.data);
+              adjustmentHistory.splice(0, adjustmentHistory.length, ...adjRes.data);
             }
-          } catch (e) {
-            console.error(e);
+          } catch (err) {
+            console.error(err);
           } finally {
-            a.value = !1;
+            loading.value = !1;
           }
         }),
         (t, o) =>
           e.e(
             {
               a: e.p({ title: "设备调整", showBack: !0 }),
-              b: !a.value && c.value,
+              b: !loading.value && recordDetail.value,
             },
-            !a.value && c.value
+            !loading.value && recordDetail.value
               ? {
-                  c: e.t(c.value.deviceModel),
-                  d: e.t(c.value.adjustmentValue),
-                  e: e.t(r.filter((e) => e.comfort > 0).length),
-                  f: e.t(c.value.nextAdjustDate || "待定"),
-                  hasHistory: r.length > 0,
-                  g: e.f(r, (t, o, a) =>
+                  c: e.t(recordDetail.value.deviceModel),
+                  d: e.t(recordDetail.value.adjustmentValue),
+                  e: e.t(adjustmentHistory.filter((e) => e.comfort > 0).length),
+                  f: e.t(recordDetail.value.nextAdjustDate || "待定"),
+                  hasHistory: adjustmentHistory.length > 0,
+                  g: e.f(adjustmentHistory, (t, o, a) =>
                     e.e(
                       {
                         a: e.t(t.date),

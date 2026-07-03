@@ -31,7 +31,7 @@ const i = () => "../../components/base/hj-navbar.js",
       const t = e.ref(null),
         n = e.ref(!0),
         l = e.ref(0);
-      function r(e) {
+      function formatPriceYuan(e) {
         return "¥" + (e / 100).toFixed(2);
       }
       const showCheckout = e.ref(!1),
@@ -216,11 +216,11 @@ const i = () => "../../components/base/hj-navbar.js",
                       d: e.f(t.value.galleryUrls || (t.value.imageUrl ? [t.value.imageUrl] : []), (e, a, i) => ({ a: e, b: a })),
                       e: l.value,
                       f: e.o((e) => (l.value = e.detail.current), "05"),
-                      g: e.t(r(t.value.price)),
+                      g: e.t(formatPriceYuan(t.value.price)),
                       h: t.value.originalPrice,
                     },
                     t.value.originalPrice
-                      ? { i: e.t(r(t.value.originalPrice)) }
+                      ? { i: e.t(formatPriceYuan(t.value.originalPrice)) }
                       : {},
                     { j: t.value.originalPrice },
                     t.value.originalPrice
@@ -236,7 +236,7 @@ const i = () => "../../components/base/hj-navbar.js",
                       l: e.t(t.value.name),
                       m: e.t(t.value.sales),
                       n: t.value.description, // Keep description as parsed html string (rich-text)
-                      o: e.t(r(t.value.price)),
+                      o: e.t(formatPriceYuan(t.value.price)),
                       p: e.o(openCheckout, "d5"),
                       showCheckout: showCheckout.value,
                       closeCheckout: e.o(closeCheckout),
@@ -253,8 +253,8 @@ const i = () => "../../components/base/hj-navbar.js",
                       coupons: coupons.value.map(item => ({
                         id: item.id,
                         title: item.title,
-                        valueText: r(item.value || 0),
-                        minSpendText: Number(item.minSpend || 0) > 0 ? `满${r(item.minSpend)}可用` : "无门槛",
+                        valueText: formatPriceYuan(item.value || 0),
+                        minSpendText: Number(item.minSpend || 0) > 0 ? `满${formatPriceYuan(item.minSpend)}可用` : "无门槛",
                         selected: String(item.id) === String(selectedCouponId.value),
                         select: e.o(selectCoupon, item.id)
                       })),
@@ -275,9 +275,9 @@ const i = () => "../../components/base/hj-navbar.js",
                       inputName: e.o((e) => (address.value.contactName = e.detail.value)),
                       inputPhone: e.o((e) => (address.value.phone = e.detail.value)),
                       inputDetail: e.o((e) => (address.value.detailAddress = e.detail.value)),
-                      discountAmountText: e.t(r(discountAmount.value)),
+                      discountAmountText: e.t(formatPriceYuan(discountAmount.value)),
                       hasDiscount: discountAmount.value > 0,
-                      totalPayAmountText: e.t(r(totalPayAmount.value)),
+                      totalPayAmountText: e.t(formatPriceYuan(totalPayAmount.value)),
                       productImageUrl: t.value.imageUrl
                     },
                   )

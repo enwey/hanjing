@@ -9,7 +9,7 @@ const n = () => "../../../components/base/hj-navbar.js",
       const t = e.ref(null),
         a = e.ref([]),
         r = e.ref(!0);
-      function v(e) {
+      function formatPriceYuan(e) {
         return "¥" + (e / 100).toFixed(0);
       }
       const redeemCoupons = e.ref([]);
@@ -77,7 +77,7 @@ const n = () => "../../../components/base/hj-navbar.js",
           channel: "C",
           free: "F",
         };
-      function d() {
+      function calculateNextLevelProgress() {
         if (!t.value || !a.value.length) return { percent: 0, diff: 0 };
         const e = a.value.find((e) => e.level === t.value.currentLevel),
           l = a.value.findIndex((e) => e.level === t.value.currentLevel) + 1;
@@ -109,9 +109,9 @@ const n = () => "../../../components/base/hj-navbar.js",
                             ? "白银会员"
                             : "普通会员",
                     ),
-                    e: e.t(v(t.value.totalSpent)),
+                    e: e.t(formatPriceYuan(t.value.totalSpent)),
                     f: e.t(t.value.points),
-                    g: d().diff > 0,
+                    g: calculateNextLevelProgress().diff > 0,
                     points: t.value.points,
                     nRedeemCoupons: e.f(redeemCoupons.value, (item) => ({
                       id: item.id,
@@ -122,11 +122,11 @@ const n = () => "../../../components/base/hj-navbar.js",
                       onRedeem: e.o(() => onRedeemCoupon(item.id), item.id),
                     })),
                   },
-                  d().diff > 0
+                  calculateNextLevelProgress().diff > 0
                     ? {
-                        h: e.t(v(d().diff)),
-                        i: e.t(d().nextTitle),
-                        j: d().percent + "%",
+                        h: e.t(formatPriceYuan(calculateNextLevelProgress().diff)),
+                        i: e.t(calculateNextLevelProgress().nextTitle),
+                        j: calculateNextLevelProgress().percent + "%",
                       }
                     : {},
                   {
@@ -182,7 +182,7 @@ const n = () => "../../../components/base/hj-navbar.js",
                         {
                           a: l.color,
                           b: e.t(l.title),
-                          c: e.t(v(l.spentRequired)),
+                          c: e.t(formatPriceYuan(l.spentRequired)),
                           d: e.t("normal" === l.level ? "即享" : "升级"),
                           e: l.level === t.value.currentLevel,
                         },

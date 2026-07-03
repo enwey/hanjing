@@ -18,7 +18,7 @@ const a = () => "../../components/base/hj-navbar.js",
         r = e.ref(!1);
       let originalDate = "";
       let originalTime = "";
-      async function c(e) {
+      async function loadSchedules(e) {
         ((i.value = e), await l.fetchSchedules(u.value, s.value, e, e));
         const firstBookable = l.schedules.find(item => item.status !== "full");
         if (firstBookable) {
@@ -41,7 +41,7 @@ const a = () => "../../components/base/hj-navbar.js",
           d.value = null;
         }
       }
-      async function v() {
+      async function submitReschedule() {
         if (o.value && d.value) {
           const selDate = o.value.date;
           const selTime = d.value.label;
@@ -88,20 +88,20 @@ const a = () => "../../components/base/hj-navbar.js",
             console.error("加载预约详情失败", err);
           }
           if (l.scheduleDates && l.scheduleDates.length > 0) {
-            await c(l.scheduleDates[0]);
+            await loadSchedules(l.scheduleDates[0]);
           }
         }),
         (t, a) =>
           e.e(
             {
               a: e.p({ title: "改约", "show-back": !0 }),
-              b: e.o(c, "2b"),
+              b: e.o(loadSchedules, "2b"),
               c: e.p({
                 dates: e.unref(l).scheduleDates,
                 "selected-date": i.value,
               }),
               d: i.value && e.unref(l).schedules.length > 0,
-              i: e.o(v, "78"),
+              i: e.o(submitReschedule, "78"),
               j: e.p({
                 type: "primary",
                 size: "lg",

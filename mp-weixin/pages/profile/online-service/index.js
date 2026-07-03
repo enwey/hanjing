@@ -153,7 +153,7 @@ const t = () => "../../../components/base/hj-navbar.js",
         });
       }
 
-      function n() {
+      function sendMessage() {
         const text = a.value.trim();
         if (!text) return;
 
@@ -262,10 +262,10 @@ const t = () => "../../../components/base/hj-navbar.js",
           c:
             "msg-" +
             (null == (o = i.value[i.value.length - 1]) ? void 0 : o.id),
-          d: e.o(n, "ef"),
+          d: e.o(sendMessage, "ef"),
           e: a.value,
           f: e.o((e) => (a.value = e.detail.value), "ad"),
-          g: e.o(n, "08"),
+          g: e.o(sendMessage, "08"),
           retrySendMessage: e.o(retrySendMessage),
           onUploadImage: e.o(onUploadImage),
           onPreviewImage: e.o(onPreviewImage),

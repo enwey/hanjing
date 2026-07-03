@@ -9,7 +9,7 @@ const t = () => "../../components/base/hj-navbar.js",
   r = e.defineComponent({
     __name: "index",
     setup(t) {
-      const n = o.useStoreStore(),
+      const clinicStore = o.useClinicStore(),
         s = o.useDoctorStore(),
         r = o.useAppointmentStore(),
         a = e.ref(!0),
@@ -17,7 +17,7 @@ const t = () => "../../components/base/hj-navbar.js",
         j = e.ref("10,000+"),
         k = e.ref("98%"),
         l = e.ref("3");
-      function c() {
+      function goStoreSelect() {
         (r.resetFlow(), e.index.navigateTo({ url: "/pages/appointment/store-select" }));
       }
       function navigateToApptTab() {
@@ -38,17 +38,17 @@ const t = () => "../../components/base/hj-navbar.js",
           url: `/pages/appointment/doctor-list?storeId=${store.id}`
         });
       }
-      function d(o) {
+      function goDoctorDetail(o) {
         (r.resetFlow(),
           r.selectDoctor(o),
           e.index.navigateTo({
             url: `/pages/appointment/doctor-detail?id=${o.id}`,
           }));
       }
-      function p() {
+      function goAssessment() {
         e.index.navigateTo({ url: "/pages/assessment/index" });
       }
-      function u() {
+      function goMedicalRecords() {
         const token = e.index.getStorageSync("access_token");
         if (!token) {
           e.index.navigateTo({ url: "/pages/auth/login" });
@@ -70,7 +70,7 @@ const t = () => "../../components/base/hj-navbar.js",
           } catch (err) {
             // ignore
           }
-          (await Promise.all([n.fetchStores(), s.fetchDoctors(coords || undefined)]),
+          (await Promise.all([clinicStore.fetchStores(), s.fetchDoctors(coords || undefined)]),
             (i.value = s.doctors.slice(0, 3)));
           try {
             const res = await api.getHomeStats();
@@ -86,25 +86,25 @@ const t = () => "../../components/base/hj-navbar.js",
         }),
         (o, t) => ({
           a: e.p({ transparent: !0, "text-color": "#FFFFFF" }),
-          b: e.o(c, "69"),
+          b: e.o(goStoreSelect, "69"),
           c: e.o(navigateToApptTab, "23"),
-          d: e.o(p, "f5"),
+          d: e.o(goAssessment, "f5"),
           e: e.o(
             (o) => e.index.switchTab({ url: "/pages/treatment/index" }),
             "82",
           ),
-          f: e.o(u, "04"),
+          f: e.o(goMedicalRecords, "04"),
           g: e.o(
             (o) => e.index.navigateTo({ url: "/pages/appointment/doctor-list" }),
             "af",
           ),
           h: e.f(i.value, (o, t, n) => ({
             a: o.id,
-            b: e.o(d, o.id),
+            b: e.o(goDoctorDetail, o.id),
             c: "e9eb3795-1-" + n,
             d: e.p({ doctor: o }),
           })),
-          i: e.f(e.unref(n).stores, (o, t, n) => ({
+          i: e.f(e.unref(clinicStore).stores, (o, t, n) => ({
             a: o.id,
             b: e.o(handleStoreClick, o.id),
             c: "e9eb3795-2-" + n,

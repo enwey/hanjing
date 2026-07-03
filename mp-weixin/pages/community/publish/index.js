@@ -19,7 +19,7 @@ const t = () => "../../../components/base/hj-navbar.js",
           "情感支持",
           "经验交流",
         ];
-      async function s() {
+      async function submitPublish() {
         if (a.value.trim() && n.value.trim()) {
           o.value = !0;
           try {
@@ -42,7 +42,7 @@ const t = () => "../../../components/base/hj-navbar.js",
             o.value = !1;
           }
         } else {
-          e.index.showToast({ title: "请填写标题和内容", icon: "none" });
+          e.index.showToast({ title: "请填写标题 and 内容", icon: "none" });
         }
       }
       return (t, u) => ({
@@ -69,7 +69,7 @@ const t = () => "../../../components/base/hj-navbar.js",
         })),
         h: e.t(o.value ? "发布中..." : "发布帖子"),
         i: a.value.trim() && n.value.trim() && !o.value ? "" : 1,
-        j: e.o(s, "76"),
+        j: e.o(submitPublish, "76"),
       });
     },
   }),

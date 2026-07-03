@@ -9,10 +9,10 @@ const n = () => "../base/hj-tag.js",
     emits: ["click", "cancel", "reschedule"],
     setup(n) {
       const p = n,
-        o =
+        statusInfo =
           e.AppointmentStatusMap[p.appointment.status] ||
           e.AppointmentStatusMap.pending,
-        a = e.AppointmentTypeMap[p.appointment.type] || p.appointment.type;
+        typeLabel = e.AppointmentTypeMap[p.appointment.type] || p.appointment.type;
 
       const canCancelOrReschedule = t.computed(() => {
         if (!p.appointment) return false;
@@ -38,7 +38,7 @@ const n = () => "../base/hj-tag.js",
           {
             a: t.t(e.appointment.appointmentNo),
             b: t.p({
-              text: t.unref(o).label,
+              text: t.unref(statusInfo).label,
               type:
                 {
                   confirmed: "primary",
@@ -55,7 +55,7 @@ const n = () => "../base/hj-tag.js",
             d: t.t(e.doctorName || e.appointment.doctorId),
             e: t.t(e.appointment.appointmentDate),
             f: t.t(e.appointment.appointmentTime),
-            g: t.t(t.unref(a)),
+            g: t.t(t.unref(typeLabel)),
             h: e.appointment.symptomDesc,
             btnText: t.t(p.appointment.status === 'pending_payment' ? '支付' : '改约'),
           },

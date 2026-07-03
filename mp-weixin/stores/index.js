@@ -416,7 +416,7 @@ const o = e.defineStore("user", () => {
 ((exports.useAppointmentStore = l),
   (exports.useAssessmentStore = s),
   (exports.useDoctorStore = r),
-  (exports.useStoreStore = a),
+  (exports.useClinicStore = a),
   (exports.useUserStore = o),
   (exports.matchStoreId = matchStoreId),
   (exports.matchDoctorId = matchDoctorId));

@@ -20,7 +20,7 @@ const l = () => "../../../../components/base/hj-navbar.js",
           { value: "sibling", label: "兄弟姐妹" },
           { value: "other", label: "其他" },
         ];
-      async function s() {
+      async function submitAddMember() {
         const name = u.value.trim();
         if (!name) {
           e.index.showToast({ title: "请输入姓名", icon: "none" });
@@ -80,7 +80,7 @@ const l = () => "../../../../components/base/hj-navbar.js",
         oIdCardInput: e.o((e) => (idCard.value = e.detail.value), "id1"),
         pCardNo: cardNo.value,
         qCardNoInput: e.o((e) => (cardNo.value = e.detail.value), "id2"),
-        m: e.o(s, "90"),
+        m: e.o(submitAddMember, "90"),
       });
     },
   }),

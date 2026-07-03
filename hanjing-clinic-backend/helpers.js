@@ -14,9 +14,9 @@ export const checkStoreIsOpen = (status, hours, openTimeColumn, closeTimeColumn)
   const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
   if (hours && hours.length > 0) {
-    return hours.some(h => {
-      const open = (h.openTime || h.open_time || '').slice(0, 5);
-      const close = (h.closeTime || h.close_time || '').slice(0, 5);
+    return hours.some(hourRange => {
+      const open = (hourRange.openTime || hourRange.open_time || '').slice(0, 5);
+      const close = (hourRange.closeTime || hourRange.close_time || '').slice(0, 5);
       return open && close && currentTime >= open && currentTime <= close;
     });
   } else {

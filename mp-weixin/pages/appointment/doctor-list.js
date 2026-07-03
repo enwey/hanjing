@@ -8,7 +8,7 @@ const o = () => "../../components/base/hj-navbar.js",
     __name: "doctor-list",
     setup(o) {
       const n = t.useDoctorStore(),
-        r = t.useStoreStore(),
+        clinicStore = t.useClinicStore(),
         s = t.useAppointmentStore(),
         a = e.ref(!0),
         d = e.ref("");
@@ -39,14 +39,14 @@ const o = () => "../../components/base/hj-navbar.js",
       const c = e.computed(() =>
           d.value ? n.getDoctorsByStore(d.value) : n.doctors,
         ),
-        l = e.computed(() => {
-          var e, t;
-          return (
-            (null == (e = s.selectedStore) ? void 0 : e.name) ||
-            (null == (t = r.getStoreById(d.value)) ? void 0 : t.name) ||
-            ""
-          );
-        });
+      l = e.computed(() => {
+        var e, t;
+        return (
+          (null == (e = s.selectedStore) ? void 0 : e.name) ||
+          (null == (t = clinicStore.getStoreById(d.value)) ? void 0 : t.name) ||
+          ""
+        );
+      });
 
       return (t, o) =>
         e.e(

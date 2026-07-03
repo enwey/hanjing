@@ -35,12 +35,12 @@ const o = () => "../../components/base/hj-navbar.js",
           i.value = false;
         }
       }
-      function s(post) {
+      function handleNewPost(post) {
         a.value.unshift(post);
         n.value = "latest";
         e.index.showToast({ title: "帖子已发布", icon: "success" });
       }
-      function r(e) {
+      function formatTimeAgo(e) {
         const t = new Date("2026-06-04"),
           o = new Date(e),
           i = (t.getTime() - o.getTime()) / 1e3 / 60;
@@ -50,25 +50,25 @@ const o = () => "../../components/base/hj-navbar.js",
             ? `${Math.round(i / 60)}小时前`
             : `${Math.round(i / 1440)}天前`;
       }
-      function u(postId) {
+      function goPostDetail(postId) {
         e.index.navigateTo({ url: `/pages/community/detail/index?id=${postId}` });
       }
-      function d() {
+      function goPublishPost() {
         e.index.navigateTo({ url: "/pages/community/publish/index" });
       }
       return (
         e.onMounted(() => {
           loadPosts();
-          e.index.$on("newPost", s);
+          e.index.$on("newPost", handleNewPost);
         }),
         e.onUnmounted(() => {
-          e.index.$off("newPost", s);
+          e.index.$off("newPost", handleNewPost);
         }),
         (t, o) =>
           e.e(
             {
               a: e.p({ title: "医患社区", "show-back": !0 }),
-              b: e.o(d, "61"),
+              b: e.o(goPublishPost, "61"),
               c: e.f(
                 [
                   { key: "hot", label: "热门" },
@@ -100,7 +100,7 @@ const o = () => "../../components/base/hj-navbar.js",
                     d: e.t(t.author),
                     e: e.t(t.roleLabel),
                     f: e.n("role--" + t.role),
-                    g: e.t(r(t.createdAt)),
+                    g: e.t(formatTimeAgo(t.createdAt)),
                     h: t.title,
                   },
                   t.title ? { i: e.t(t.title) } : {},
@@ -126,16 +126,16 @@ const o = () => "../../components/base/hj-navbar.js",
                       t.id,
                     ),
                     q: e.t(t.comments),
-                    r: e.o((e) => u(t.id), t.id),
+                    r: e.o((e) => goPostDetail(t.id), t.id),
                     s: t.id,
-                    t: e.o((e) => u(t.id), t.id),
+                    t: e.o((e) => goPostDetail(t.id), t.id),
                   },
                 ),
               ),
               e: !l.value.length && !i.value,
             },
             (l.value.length || i.value, {}),
-            { f: e.o(d, "9e") },
+            { f: e.o(goPublishPost, "9e") },
           )
       );
     },

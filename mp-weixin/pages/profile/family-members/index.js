@@ -8,21 +8,21 @@ const t = () => "../../../components/base/hj-navbar.js",
     setup(t) {
       const n = e.ref([]),
         i = e.ref(!0);
-      async function s() {
+      async function fetchFamilyMembers() {
         var e;
         i.value = !0;
         const t = await a.getFamilyMembers();
         ((n.value = (null == (e = t.data) ? void 0 : e.list) || t.list || []),
           (i.value = !1));
       }
-      function o() {
+      function goAddMember() {
         e.index.navigateTo({
           url: "/pages/profile/family-members/add-member/index",
         });
       }
       return (
         e.onMounted(async () => {
-          await s();
+          await fetchFamilyMembers();
         }),
         (t, c) =>
           e.e(
@@ -58,7 +58,7 @@ const t = () => "../../../components/base/hj-navbar.js",
                                   success: async (n) => {
                                     n.confirm &&
                                       (await a.deleteFamilyMember(t),
-                                      await s(),
+                                      await fetchFamilyMembers(),
                                       e.index.showToast({
                                         title: "已删除",
                                         icon: "success",
@@ -76,7 +76,7 @@ const t = () => "../../../components/base/hj-navbar.js",
                   },
                   (n.value.length, {}),
                 ),
-            { e: e.o(o, "c5") },
+            { e: e.o(goAddMember, "c5") },
           )
       );
     },

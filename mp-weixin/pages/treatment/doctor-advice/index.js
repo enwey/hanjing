@@ -12,7 +12,7 @@ const t = () => "../../../components/base/hj-navbar.js",
         const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
         return patientId ? { patientId } : {};
       }
-      function u() {
+      function goAppointment() {
         e.index.switchTab({ url: "/pages/appointment/index" });
       }
       return (
@@ -38,7 +38,7 @@ const t = () => "../../../components/base/hj-navbar.js",
                   d: e.t(o.value.treatmentPlan),
                   e: e.t(o.value.doctorAdvice),
                   f: e.t(o.value.followupDate || "待预约"),
-                  g: e.o(u, "f2"),
+                  g: e.o(goAppointment, "f2"),
                 }
               : {},
           )

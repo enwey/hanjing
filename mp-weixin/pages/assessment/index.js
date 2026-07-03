@@ -117,7 +117,7 @@ const t = () => "../../components/base/hj-navbar.js",
           a.value = [];
         }
       });
-      function s() {
+      function startEssAssessment() {
         const token = e.index.getStorageSync("access_token");
         if (!token) {
           e.index.navigateTo({ url: "/pages/auth/login" });
@@ -125,7 +125,7 @@ const t = () => "../../components/base/hj-navbar.js",
         }
         e.index.navigateTo({ url: "/pages/assessment/questionnaire/index" });
       }
-      function o() {
+      function startSnoreAssessment() {
         const token = e.index.getStorageSync("access_token");
         if (!token) {
           e.index.navigateTo({ url: "/pages/auth/login" });
@@ -137,8 +137,8 @@ const t = () => "../../components/base/hj-navbar.js",
         e.e(
           {
             a: e.p({ title: "睡眠评估", "show-back": !0 }),
-            b: e.o(s, "47"),
-            c: e.o(o, "5f"),
+            b: e.o(startEssAssessment, "47"),
+            c: e.o(startSnoreAssessment, "5f"),
             d: a.value.length,
             pendingCount: pendingCount.value,
             handleForceSync: e.o(handleForceSync, "sync"),

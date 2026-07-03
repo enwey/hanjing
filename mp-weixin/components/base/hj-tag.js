@@ -4,7 +4,7 @@ const e = require("../../common/vendor.js"),
     __name: "hj-tag",
     props: { text: {}, type: { default: "default" }, size: { default: "sm" } },
     setup(o) {
-      const t = {
+      const typeStyles = {
         primary: { color: "#3B6BF5", bg: "#EEF4FF" },
         success: { color: "#16A34A", bg: "#D3F5E3" },
         warning: { color: "#D97706", bg: "#FFFBEB" },
@@ -15,8 +15,8 @@ const e = require("../../common/vendor.js"),
       return (o, r) => ({
         a: e.t(o.text),
         b: e.n(`hj-tag--${o.size}`),
-        c: t[o.type].color,
-        d: t[o.type].bg,
+        c: typeStyles[o.type].color,
+        d: typeStyles[o.type].bg,
       });
     },
   }),

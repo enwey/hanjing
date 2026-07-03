@@ -119,11 +119,11 @@ const t = () => "../../../components/base/hj-navbar.js",
         }
       }
 
-      async function d(val) {
+      async function selectDateRange(val) {
         o.value = val;
         await loadReportData();
       }
-      function w() {
+      function goAppointment() {
         e.index.switchTab({ url: "/pages/appointment/index" });
       }
       function handleGoCheckin() {
@@ -147,9 +147,9 @@ const t = () => "../../../components/base/hj-navbar.js",
               : e.e(
                   {
                     c: "week" === o.value ? 1 : "",
-                    d: e.o((e) => d("week"), "7a"),
+                    d: e.o((e) => selectDateRange("week"), "7a"),
                     e: "month" === o.value ? 1 : "",
-                    f: e.o((e) => d("month"), "2c"),
+                    f: e.o((e) => selectDateRange("month"), "2c"),
                     g: e.t(p.value),
                     h: i.value.color,
                     i: e.t(i.value.label),
@@ -189,7 +189,7 @@ const t = () => "../../../components/base/hj-navbar.js",
                     })),
                     J: h.value,
                   },
-                  h.value ? { K: e.o(w, "ec") } : {},
+                  h.value ? { K: e.o(goAppointment, "ec") } : {},
                 ),
           )
       );

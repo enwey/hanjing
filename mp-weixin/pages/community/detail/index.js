@@ -7,9 +7,9 @@ const a = () => "../../../components/base/hj-navbar.js",
     __name: "index",
     setup(a) {
       var o, l, i;
-      const u = e.ref(""),
-        n = e.ref(null),
-        s = e.ref([]);
+      const postId = e.ref(""),
+        postDetail = e.ref(null),
+        commentsList = e.ref([]);
       e.index.$on("pageLoad", () => {});
       const v = getCurrentPages(),
         r = v[v.length - 1],
@@ -20,12 +20,12 @@ const a = () => "../../../components/base/hj-navbar.js",
             ? void 0
             : i.id);
 
-      async function loadPostDetail(postId) {
+      async function loadPostDetail(id) {
         try {
-          const res = await api.getCommunityPostDetail(postId);
+          const res = await api.getCommunityPostDetail(id);
           if (res && res.code === 0) {
-            n.value = res.data;
-            s.value = res.data.comments || [];
+            postDetail.value = res.data;
+            commentsList.value = res.data.comments || [];
           }
         } catch (err) {
           console.error(err);
@@ -33,13 +33,13 @@ const a = () => "../../../components/base/hj-navbar.js",
       }
 
       if (d) {
-        u.value = d;
+        postId.value = d;
         loadPostDetail(d);
       }
 
-      const c = e.ref(""),
-        m = e.ref(!1),
-        k = (e) => {
+      const commentInput = e.ref(""),
+        isSubmitting = e.ref(!1),
+        formatTimeAgo = (e) => {
           const t = new Date("2026-06-04"),
             a = new Date(e),
             o = (t.getTime() - a.getTime()) / 1e3 / 60;
@@ -49,22 +49,22 @@ const a = () => "../../../components/base/hj-navbar.js",
               ? `${Math.round(o / 60)}小时前`
               : `${Math.round(o / 1440)}天前`;
         },
-        h = async () => {
-          if (c.value.trim()) {
-            m.value = true;
+        submitComment = async () => {
+          if (commentInput.value.trim()) {
+            isSubmitting.value = true;
             try {
-              const res = await api.commentCommunityPost(u.value, c.value);
+              const res = await api.commentCommunityPost(postId.value, commentInput.value);
               if (res && res.code === 0) {
-                s.value.unshift(res.data);
-                n.value.comments++;
-                c.value = "";
+                commentsList.value.unshift(res.data);
+                postDetail.value.comments++;
+                commentInput.value = "";
                 e.index.showToast({ title: "评论成功", icon: "success" });
               }
             } catch (err) {
               console.error(err);
               e.index.showToast({ title: "评论失败", icon: "none" });
             } finally {
-              m.value = false;
+              isSubmitting.value = false;
             }
           }
         };
@@ -75,7 +75,7 @@ const a = () => "../../../components/base/hj-navbar.js",
             const reasons = ["垃圾广告", "违规言论", "侮辱谩骂", "涉嫌欺诈", "其他原因"];
             e.index.showLoading({ title: "提交举报..." });
             try {
-              await api.reportCommunityPost(u.value, reasons[res.tapIndex] || "其他原因");
+              await api.reportCommunityPost(postId.value, reasons[res.tapIndex] || "其他原因");
               e.index.hideLoading();
               e.index.showToast({ title: "举报成功，感谢您的反馈！", icon: "success" });
             } catch (err) {
@@ -87,52 +87,52 @@ const a = () => "../../../components/base/hj-navbar.js",
       }
       return (t, a) =>
         e.e(
-          { a: e.p({ title: "帖子详情", showBack: !0 }), b: n.value },
-          n.value
+          { a: e.p({ title: "帖子详情", showBack: !0 }), b: postDetail.value },
+          postDetail.value
             ? e.e(
                 {
                   reportPost: e.o(reportPost),
-                  c: e.t(n.value.author[0]),
+                  c: e.t(postDetail.value.author[0]),
                   d:
-                    "doctor" === n.value.role
+                    "doctor" === postDetail.value.role
                       ? "#3B6BF5"
-                      : "expert" === n.value.role
+                      : "expert" === postDetail.value.role
                         ? "#8B5CF6"
                         : "#1A9D5C",
-                  e: e.t(n.value.author),
-                  f: e.t(n.value.roleLabel),
-                  g: e.n("role--" + n.value.role),
-                  h: e.t(k(n.value.createdAt)),
-                  i: e.t(n.value.title),
-                  j: e.t(n.value.content),
-                  k: n.value.tags.length,
+                  e: e.t(postDetail.value.author),
+                  f: e.t(postDetail.value.roleLabel),
+                  g: e.n("role--" + postDetail.value.role),
+                  h: e.t(formatTimeAgo(postDetail.value.createdAt)),
+                  i: e.t(postDetail.value.title),
+                  j: e.t(postDetail.value.content),
+                  k: postDetail.value.tags.length,
                 },
-                n.value.tags.length
-                  ? { l: e.f(n.value.tags, (t, a, o) => ({ a: e.t(t), b: t })) }
+                postDetail.value.tags.length
+                  ? { l: e.f(postDetail.value.tags, (t, a, o) => ({ a: e.t(t), b: t })) }
                   : {},
                 {
-                  m: e.t(n.value.isLiked ? "❤️" : "🤍"),
-                  n: e.n(n.value.isLiked ? "action-icon liked" : "action-icon"),
-                  o: e.t(n.value.likes),
+                  m: e.t(postDetail.value.isLiked ? "❤️" : "🤍"),
+                  n: e.n(postDetail.value.isLiked ? "action-icon liked" : "action-icon"),
+                  o: e.t(postDetail.value.likes),
                   p: e.o(async (e) => {
-                    const newLiked = !n.value.isLiked;
-                    n.value.isLiked = newLiked;
-                    n.value.likes += newLiked ? 1 : -1;
+                    const newLiked = !postDetail.value.isLiked;
+                    postDetail.value.isLiked = newLiked;
+                    postDetail.value.likes += newLiked ? 1 : -1;
                     try {
-                      await api.likeCommunityPost(n.value.id, newLiked);
+                      await api.likeCommunityPost(postDetail.value.id, newLiked);
                     } catch (err) {
                       console.error(err);
                     }
                   }, "78"),
-                  q: e.t(n.value.comments),
-                  r: e.t(n.value.comments),
-                  s: e.f(s.value, (t, a, o) => {
+                  q: e.t(postDetail.value.comments),
+                  r: e.t(postDetail.value.comments),
+                  s: e.f(commentsList.value, (t, a, o) => {
                     var l, i;
                     return e.e(
                       {
                         a: e.t(t.author[0]),
                         b: e.t(t.author),
-                        c: e.t(k(t.createdAt)),
+                        c: e.t(formatTimeAgo(t.createdAt)),
                         d: e.t(t.content),
                         e: null == (l = t.replies) ? void 0 : l.length,
                       },
@@ -155,7 +155,7 @@ const a = () => "../../../components/base/hj-navbar.js",
                           );
                           var a;
                         }, t.id),
-                        j: e.o((e) => (c.value = "@" + t.author + " "), t.id),
+                        j: e.o((e) => (commentInput.value = "@" + t.author + " "), t.id),
                         k: t.id,
                       },
                     );
@@ -164,11 +164,11 @@ const a = () => "../../../components/base/hj-navbar.js",
               )
             : {},
           {
-            t: e.o(h, "24"),
-            v: c.value,
-            w: e.o((e) => (c.value = e.detail.value), "e3"),
-            x: c.value.trim() ? "" : 1,
-            y: e.o(h, "80"),
+            t: e.o(submitComment, "24"),
+            v: commentInput.value,
+            w: e.o((e) => (commentInput.value = e.detail.value), "e3"),
+            x: commentInput.value.trim() ? "" : 1,
+            y: e.o(submitComment, "80"),
           },
         );
     },

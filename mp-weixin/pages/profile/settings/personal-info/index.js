@@ -10,10 +10,10 @@ const n = () => "../../../../components/base/hj-navbar.js",
         l = e.ref(!0),
         t = e.ref(!1),
         v = e.ref({ nickname: "", gender: 1, birthday: "" });
-      function i() {
+      function startEdit() {
         t.value = !0;
       }
-      async function r() {
+      async function saveProfile() {
         try {
           await a.updateUserProfile(v.value);
           u.value = { ...u.value, ...v.value };
@@ -46,7 +46,7 @@ const n = () => "../../../../components/base/hj-navbar.js",
           e.index.showToast({ title: "更新失败", icon: "none" });
         }
       }
-      function c() {
+      function cancelEdit() {
         (Object.assign(v.value, {
           nickname: u.value.nickname,
           gender: u.value.gender,
@@ -102,8 +102,8 @@ const n = () => "../../../../components/base/hj-navbar.js",
                     : { r: e.t(u.value.birthday || "未设置") },
                   { s: !t.value },
                   t.value
-                    ? { v: e.o(r, "8f"), w: e.o(c, "9a") }
-                    : { t: e.o(i, "fc") },
+                    ? { v: e.o(saveProfile, "8f"), w: e.o(cancelEdit, "9a") }
+                    : { t: e.o(startEdit, "fc") },
                 ),
           )
       );

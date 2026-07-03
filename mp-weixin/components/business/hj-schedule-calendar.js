@@ -5,8 +5,8 @@ const e = require("../../common/vendor.js"),
     props: { dates: {}, selectedDate: {} },
     emits: ["select"],
     setup(t, { emit: a }) {
-      const s = t,
-        d = a,
+      const props = t,
+        emit = a,
         currentYear = e.ref(new Date().getFullYear()),
         currentMonth = e.ref(new Date().getMonth()),
         prevMonth = () => {
@@ -25,12 +25,12 @@ const e = require("../../common/vendor.js"),
             currentMonth.value++;
           }
         },
-        n = e.ref(""),
-        c = ["日", "一", "二", "三", "四", "五", "六"],
-        i = e.computed(() => {
+        monthTitle = e.ref(""),
+        weekdays = ["日", "一", "二", "三", "四", "五", "六"],
+        calendarDays = e.computed(() => {
           const t = currentYear.value,
             a = currentMonth.value;
-          n.value = `${t}年${a + 1}月`;
+          monthTitle.value = `${t}年${a + 1}月`;
           const d = new Date(t, a, 1).getDay(),
             c = new Date(t, a + 1, 0).getDate(),
             today = new Date(),
@@ -52,17 +52,17 @@ const e = require("../../common/vendor.js"),
               day: n,
               isToday: e === i,
               isPast: e < i,
-              hasSchedule: s.dates.includes(e),
-              disabled: e < i || !s.dates.includes(e),
+              hasSchedule: props.dates.includes(e),
+              disabled: e < i || !props.dates.includes(e),
             });
           }
           return l;
         });
 
       return (t, a) => ({
-        a: e.t(n.value),
-        b: e.f(c, (t, a, s) => ({ a: e.t(t), b: t })),
-        c: e.f(i.value, (a, s, n) =>
+        a: e.t(monthTitle.value),
+        b: e.f(weekdays, (t, a, s) => ({ a: e.t(t), b: t })),
+        c: e.f(calendarDays.value, (a, s, n) =>
           e.e(
             { a: a.date },
             a.date ? { b: e.t(a.day) } : {},
@@ -80,7 +80,7 @@ const e = require("../../common/vendor.js"),
               k: e.o(
                 (e) =>
                   (function (e) {
-                    !e.disabled && e.date && d("select", e.date);
+                    !e.disabled && e.date && emit("select", e.date);
                   })(a),
                 s,
               ),

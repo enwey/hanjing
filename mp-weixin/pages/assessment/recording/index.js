@@ -67,7 +67,7 @@ const l = () => "../../../components/base/hj-navbar.js",
         console.log("[RecorderManager] Stopped, tempFilePath:", res.tempFilePath);
         tempFilePath.value = res.tempFilePath;
         setTimeout(() => {
-          d();
+          submitRecording();
         }, 100);
       });
       recorderManager.onError((err) => {
@@ -85,19 +85,19 @@ const l = () => "../../../components/base/hj-navbar.js",
         return new Int16Array(arrayBuffer.slice(0, validByteLength));
       }
 
-      const s = e.computed(() => {
+      const durationStr = e.computed(() => {
           const e = Math.floor(t.value / 60),
             a = t.value % 60;
           return `${String(e).padStart(2, "0")}:${String(a).padStart(2, "0")}`;
         }),
-        i = e.computed(() => {
+        audioLevels = e.computed(() => {
           const e = [];
           for (let a = 0; a < 16; a++)
             u.value ? e.push(10 + Math.floor(40 * Math.random())) : e.push(6);
           return e;
         });
 
-      function c() {
+      function startRecording() {
         wx.authorize({
           scope: "scope.record",
           success: () => {
@@ -139,7 +139,7 @@ const l = () => "../../../components/base/hj-navbar.js",
             recorderManager.stop();
           }
         } else {
-          c();
+          startRecording();
         }
       }
 
@@ -231,7 +231,7 @@ const l = () => "../../../components/base/hj-navbar.js",
         return { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel };
       }
 
-      async function d() {
+      async function submitRecording() {
         if (t.value < 5) {
           e.index.showToast({ title: "录音时间过短，分析前请至少录制5秒", icon: "none" });
           return;
@@ -337,7 +337,7 @@ const l = () => "../../../components/base/hj-navbar.js",
             },
             u.value || n.value
               ? {
-                  c: e.f(i.value, (e, a, l) => ({
+                  c: e.f(audioLevels.value, (e, a, l) => ({
                     a: a,
                     b: e + "px",
                     c: 0.05 * a + "s",
@@ -346,7 +346,7 @@ const l = () => "../../../components/base/hj-navbar.js",
                 }
               : {},
             { e: u.value || n.value },
-            u.value || n.value ? { f: e.t(s.value) } : {},
+            u.value || n.value ? { f: e.t(durationStr.value) } : {},
             { g: u.value && !v.value ? 1 : "", h: !u.value && !n.value },
             u.value || n.value ? (o.value || n.value, {}) : {},
             {
@@ -373,7 +373,7 @@ const l = () => "../../../components/base/hj-navbar.js",
               t: o.value,
               v: n.value && !o.value,
             },
-            n.value && !o.value ? { w: e.o(c, "2f"), x: e.o(d, "5b") } : {},
+            n.value && !o.value ? { w: e.o(startRecording, "2f"), x: e.o(submitRecording, "5b") } : {},
             { y: o.value },
             (o.value, {}),
           )

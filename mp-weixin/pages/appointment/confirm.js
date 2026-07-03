@@ -112,7 +112,7 @@ const o = () => "../../components/base/hj-navbar.js",
           });
         });
       }
-      async function v() {
+      async function submitAppointment() {
         if (
           r.selectedStore &&
           r.selectedDoctor &&
@@ -261,7 +261,7 @@ const o = () => "../../components/base/hj-navbar.js",
           {
             h: i.value,
             i: e.o((e) => (i.value = e.detail.value), "b2"),
-            k: e.o(v, "0a"),
+            k: e.o(submitAppointment, "0a"),
             l: e.p({
               type: "primary",
               size: "lg",

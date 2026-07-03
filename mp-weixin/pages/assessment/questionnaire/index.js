@@ -56,10 +56,10 @@ const t = () => "../../../components/base/hj-navbar.js",
         }
       }
 
-      function s() {
+      function prevQuestion() {
         questionnaireStore.prev();
       }
-      function u() {
+      function nextQuestion() {
         if (questionnaireStore.answers[questionnaireStore.currentQuestion] < 0) {
           e.index.showToast({
             title: "请选择一个选项后再进行下一题",
@@ -100,7 +100,7 @@ const t = () => "../../../components/base/hj-navbar.js",
           e.index.showToast({ title: "提交失败，请重试", icon: "none" });
         }
       }
-      function i() {
+      function handleBack() {
         e.index.navigateBack({ delta: 1 });
       }
       return (
@@ -112,7 +112,7 @@ const t = () => "../../../components/base/hj-navbar.js",
         (n, t) =>
           e.e(
             {
-              a: e.o(i, "98"),
+              a: e.o(handleBack, "98"),
               b: e.p({ title: "ESS嗜睡量表", showBack: !0 }),
               memberNames: e.unref(memberNames),
               memberIndex: e.unref(memberIndex),
@@ -182,10 +182,10 @@ const t = () => "../../../components/base/hj-navbar.js",
               })),
               m: e.unref(questionnaireStore).currentQuestion > 0,
             },
-            e.unref(questionnaireStore).currentQuestion > 0 ? { n: e.o(s, "18") } : {},
+            e.unref(questionnaireStore).currentQuestion > 0 ? { n: e.o(prevQuestion, "18") } : {},
             { o: e.unref(questionnaireStore).currentQuestion < e.unref(questionnaireStore).totalQuestions - 1 },
             e.unref(questionnaireStore).currentQuestion < e.unref(questionnaireStore).totalQuestions - 1
-              ? { p: e.o(u, "0a") }
+              ? { p: e.o(nextQuestion, "0a") }
               : {},
             {
               q:

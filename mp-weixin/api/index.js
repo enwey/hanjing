@@ -4,50 +4,50 @@ Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 
 const req = require("./request.js");
 
-exports.addFamilyMember = async function (nData) {
+exports.addFamilyMember = async function (data) {
   return req.request(
     {
       url: "/user/family-members",
       method: "POST",
-      data: nData,
+      data: data,
     }
   );
 };
 
-exports.applyWithdraw = async function (nAmount, method = "wechat", bankInfo = null) {
+exports.applyWithdraw = async function (amount, method = "wechat", bankInfo = null) {
   return req.request(
     {
       url: "/distribution/withdraw",
       method: "POST",
-      data: { amount: nAmount, method, bankInfo },
+      data: { amount, method, bankInfo },
     }
   );
 };
 
-exports.cancelAppointment = async function (nId, oReason) {
+exports.cancelAppointment = async function (id, reason) {
   return req.request(
     {
-      url: `/appointments/${nId}/cancel`,
+      url: `/appointments/${id}/cancel`,
       method: "POST",
-      data: { reason: oReason },
+      data: { reason },
     }
   );
 };
 
-exports.createAppointment = async function (nData) {
+exports.createAppointment = async function (data) {
   return req.request(
     {
       url: "/appointments",
       method: "POST",
-      data: nData,
+      data: data,
     }
   );
 };
 
-exports.deleteFamilyMember = async function (oId) {
+exports.deleteFamilyMember = async function (id) {
   return req.request(
     {
-      url: `/user/family-members/${oId}`,
+      url: `/user/family-members/${id}`,
       method: "DELETE",
     }
   );
@@ -62,21 +62,21 @@ exports.getAccountSecurity = async function () {
   );
 };
 
-exports.getAppointmentDetail = async function (nId) {
+exports.getAppointmentDetail = async function (id) {
   return req.request(
     {
-      url: `/appointments/${nId}`,
+      url: `/appointments/${id}`,
       method: "GET",
     }
   );
 };
 
-exports.getAppointments = async function (nQuery) {
+exports.getAppointments = async function (query) {
   return req.request(
     {
       url: "/appointments",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
@@ -90,32 +90,32 @@ exports.getAssessments = async function () {
   );
 };
 
-exports.getDeviceFeedback = async function (nQuery) {
+exports.getDeviceFeedback = async function (query) {
   return req.request(
     {
       url: "/treatment/device-feedback",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
 
-exports.getDeviceMaintenance = async function (nQuery) {
+exports.getDeviceMaintenance = async function (query) {
   return req.request(
     {
       url: "/treatment/device-maintenance",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
 
-exports.getDistributionOrders = async function (nQuery) {
+exports.getDistributionOrders = async function (query) {
   return req.request(
     {
       url: "/distribution/orders",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
@@ -255,12 +255,12 @@ exports.getDistributionInviteInfo = async function () {
   );
 };
 
-exports.getDoctors = async function (nQuery) {
+exports.getDoctors = async function (query) {
   return req.request(
     {
       url: "/doctors",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
@@ -283,10 +283,10 @@ exports.getFamilyMembers = async function () {
   );
 };
 
-exports.getLiveRoomDetail = async function (oId) {
+exports.getLiveRoomDetail = async function (id) {
   return req.request(
     {
-      url: `/live/rooms/${oId}`,
+      url: `/live/rooms/${id}`,
       method: "GET",
     }
   );
@@ -337,68 +337,68 @@ exports.getNotifications = async function () {
   );
 };
 
-exports.getOrders = async function (nQuery) {
+exports.getOrders = async function (query) {
   return req.request(
     {
       url: "/orders",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
 
-exports.getOrderDetail = async function (oId) {
+exports.getOrderDetail = async function (id) {
   return req.request(
     {
-      url: `/orders/${oId}`,
+      url: `/orders/${id}`,
       method: "GET",
     }
   );
 };
 
-exports.getProductDetail = async function (oId) {
+exports.getProductDetail = async function (id) {
   return req.request(
     {
-      url: `/products/${oId}`,
+      url: `/products/${id}`,
       method: "GET",
     }
   );
 };
 
-exports.getProducts = async function (nQuery) {
+exports.getProducts = async function (query) {
   return req.request(
     {
       url: "/products",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
 
-exports.getScheduleDates = async function (nQuery) {
+exports.getScheduleDates = async function (query) {
   return req.request(
     {
       url: "/schedules/dates",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
 
-exports.getSchedules = async function (nQuery) {
+exports.getSchedules = async function (query) {
   return req.request(
     {
       url: "/schedules",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
 
-exports.getSnoreAnalysis = async function (oId) {
+exports.getSnoreAnalysis = async function (id) {
   return req.request(
     {
-      url: `/assessments/snore-analysis/${oId}`,
+      url: `/assessments/snore-analysis/${id}`,
       method: "GET",
     }
   );
@@ -413,22 +413,22 @@ exports.getAssessmentDetail = async function (assessmentId) {
   );
 };
 
-exports.getStores = async function (nQuery) {
+exports.getStores = async function (query) {
   return req.request(
     {
       url: "/stores",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
 
-exports.getUserCoupons = async function (nQuery) {
+exports.getUserCoupons = async function (query) {
   return req.request(
     {
       url: "/user/coupons",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
@@ -442,41 +442,41 @@ exports.getTeamMembers = async function () {
   );
 };
 
-exports.getTimeSlots = async function (nId) {
+exports.getTimeSlots = async function (id) {
   return req.request(
     {
-      url: `/schedules/${nId}/slots`,
+      url: `/schedules/${id}/slots`,
       method: "GET",
     }
   );
 };
 
-exports.getTimeline = async function (nQuery) {
+exports.getTimeline = async function (query) {
   return req.request(
     {
       url: "/treatment/timeline",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
 
-exports.getTreatmentRecord = async function (nQuery) {
+exports.getTreatmentRecord = async function (query) {
   return req.request(
     {
       url: "/treatment/record",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
 
-exports.getTreatmentRecords = async function (nQuery) {
+exports.getTreatmentRecords = async function (query) {
   return req.request(
     {
       url: "/treatment/records",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
@@ -491,12 +491,12 @@ exports.getSleepReport = async function (query) {
   );
 };
 
-exports.getDeviceAdjustments = async function (nQuery) {
+exports.getDeviceAdjustments = async function (query) {
   return req.request(
     {
       url: "/treatment/adjustments",
       method: "GET",
-      data: nQuery
+      data: query
     }
   );
 };
@@ -510,22 +510,22 @@ exports.getUserProfile = async function () {
   );
 };
 
-exports.getWearingRecords = async function (nQuery) {
+exports.getWearingRecords = async function (query) {
   return req.request(
     {
       url: "/treatment/wearing-records",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
 
-exports.getWearingSummary = async function (nQuery) {
+exports.getWearingSummary = async function (query) {
   return req.request(
     {
       url: "/treatment/wearing-summary",
       method: "GET",
-      data: nQuery,
+      data: query,
     }
   );
 };
@@ -548,81 +548,81 @@ exports.markAllNotificationsRead = async function () {
   );
 };
 
-exports.markNotificationRead = async function (nId) {
+exports.markNotificationRead = async function (id) {
   return req.request(
     {
-      url: `/user/notifications/${nId}/read`,
+      url: `/user/notifications/${id}/read`,
       method: "POST",
     }
   );
 };
 
-exports.rescheduleAppointment = async function (nId, oData) {
+exports.rescheduleAppointment = async function (id, data) {
   return req.request(
     {
-      url: `/appointments/${nId}/reschedule`,
+      url: `/appointments/${id}/reschedule`,
       method: "POST",
-      data: oData,
+      data: data,
     }
   );
 };
 
-exports.submitDeviceFeedback = async function (nData) {
+exports.submitDeviceFeedback = async function (data) {
   return req.request(
     {
       url: "/treatment/feedback",
       method: "POST",
-      data: nData,
+      data: data,
     }
   );
 };
 
-exports.submitESS = async function (nData) {
+exports.submitESS = async function (data) {
   return req.request(
     {
       url: "/assessments/ess",
       method: "POST",
-      data: nData,
+      data: data,
     }
   );
 };
 
-exports.submitSnoreRecording = async function (nData) {
+exports.submitSnoreRecording = async function (data) {
   return req.request(
     {
       url: "/assessments/snore",
       method: "POST",
-      data: nData,
+      data: data,
     }
   );
 };
 
-exports.submitWearingCheckin = async function (nData) {
+exports.submitWearingCheckin = async function (data) {
   return req.request(
     {
       url: "/treatment/wearing",
       method: "POST",
-      data: nData,
+      data: data,
     }
   );
 };
 
-exports.updateUserProfile = async function (nData) {
+exports.updateUserProfile = async function (data) {
   return req.request(
     {
       url: "/user/profile",
       method: "PUT",
-      data: nData,
+      data: data,
     }
   );
 };
 
-exports.wxLogin = async function (nCode, phoneCode) {
+exports.wxLogin = async function (code, phoneCode) {
   return req.request(
     {
       url: "/auth/wx-login",
       method: "POST",
-      data: { code: nCode, phoneCode: phoneCode },
+      data: { code: code, phoneCode: phoneCode },
     }
   );
 };

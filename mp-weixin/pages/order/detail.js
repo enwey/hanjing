@@ -8,11 +8,20 @@ const a = () => "../../components/base/hj-navbar.js",
     setup(a) {
       const l = e.ref(null),
         n = e.ref(!0),
-        d = {
-          pending: {
-            current: 0,
-            steps: [
-              { label: "待付款", done: !0 },
+        logisticsList = e.ref([]);
+      async function fetchLogistics(orderId) {
+        try {
+          const res = await t.getOrderLogistics(orderId);
+          logisticsList.value = res.data && res.data.steps ? res.data.steps : [];
+        } catch (err) {
+          console.error("加载物流失败", err);
+        }
+      }
+      const d = {
+        pending: {
+          current: 0,
+          steps: [
+            { label: "待付款", done: !0 },
               { label: "待取货", done: !1 },
               { label: "已发货", done: !1 },
               { label: "已完成", done: !1 },
@@ -69,7 +78,7 @@ const a = () => "../../components/base/hj-navbar.js",
           refunded: "已退款",
           confirmed: "已确认",
         };
-      function u(e) {
+      function formatPriceYuan(e) {
         return "¥" + (e / 100).toFixed(2);
       }
       function requestWxPay(payParams) {
@@ -221,19 +230,19 @@ const a = () => "../../components/base/hj-navbar.js",
                           {
                             c: e.t(t.productName),
                             d: e.t(t.quantity),
-                            e: e.t(u(t.price)),
+                            e: e.t(formatPriceYuan(t.price)),
                             f: t.productId,
                           },
                         ),
                       ),
-                      g: e.t(u(l.value.totalAmount)),
+                      g: e.t(formatPriceYuan(l.value.totalAmount)),
                       h: l.value.discountAmount > 0,
                     },
                     l.value.discountAmount > 0
-                      ? { i: e.t(u(l.value.discountAmount)) }
+                      ? { i: e.t(formatPriceYuan(l.value.discountAmount)) }
                       : {},
                     {
-                      j: e.t(u(l.value.payAmount)),
+                      j: e.t(formatPriceYuan(l.value.payAmount)),
                       k: e.t(l.value.orderNo),
                       l: e.t(
                         null == (s = l.value.createdAt)

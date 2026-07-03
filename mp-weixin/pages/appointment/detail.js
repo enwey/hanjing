@@ -9,7 +9,7 @@ const o = () => "../../components/base/hj-navbar.js",
   s = e.defineComponent({
     __name: "detail",
     setup(o) {
-      const l = t.useStoreStore(),
+      const l = t.useClinicStore(),
         s = t.useDoctorStore(),
         r = e.ref(null),
         u = e.ref(null),
@@ -22,7 +22,7 @@ const o = () => "../../components/base/hj-navbar.js",
         assessmentInfo = e.ref(null),
         evalRating = e.ref(5),
         evalContent = e.ref("");
-      function c(e) {
+      function getStatusTagType(status) {
         return (
           {
             confirmed: "primary",
@@ -33,7 +33,7 @@ const o = () => "../../components/base/hj-navbar.js",
             no_show: "default",
             pending: "success",
             pending_payment: "danger",
-          }[e] || "default"
+          }[status] || "default"
         );
       }
       function getDoctorExpertise(doc) {
@@ -310,8 +310,8 @@ const o = () => "../../components/base/hj-navbar.js",
                     c: e.p({
                       text: ((v = r.value.status),
                       n.AppointmentStatusMap[v] ||
-                        n.AppointmentStatusMap.pending).label,
-                      type: c(r.value.status),
+                      n.AppointmentStatusMap.pending).label,
+                      type: getStatusTagType(r.value.status),
                       size: "md",
                     }),
                     d: e.t(r.value.appointmentNo),

@@ -8,22 +8,22 @@ Math;
 const i = e.defineComponent({
     __name: "index",
     setup(i) {
-      const a = e.ref([]),
-        o = async () => {
+      const productList = e.ref([]),
+        loadProducts = async () => {
           try {
-            const i = await t.getDistributionProducts();
-            a.value = (i.data && i.data.list) || i.list || [];
-          } catch (i) {
+            const res = await t.getDistributionProducts();
+            productList.value = (res.data && res.data.list) || res.list || [];
+          } catch (err) {
             e.index.showToast({ title: "加载推广商品失败", icon: "none" });
           }
         };
       return (
-        e.onMounted(o),
-        e.onShow(o),
+        e.onMounted(loadProducts),
+        e.onShow(loadProducts),
         (t, i) =>
           e.e(
             {
-              a: e.f(a.value, (t, i, a) => ({
+              a: e.f(productList.value, (t, i, a) => ({
                 a: t.image,
                 b: e.t(t.name),
                 c: e.t((t.price / 100).toFixed(2)),
@@ -38,9 +38,9 @@ const i = e.defineComponent({
                   var a;
                 }, t.id),
               })),
-              b: !a.value.length,
+              b: !productList.value.length,
             },
-            a.value.length ? {} : { c: e.p({ text: "暂无推广商品" }) },
+            productList.value.length ? {} : { c: e.p({ text: "暂无推广商品" }) },
           )
       );
     },

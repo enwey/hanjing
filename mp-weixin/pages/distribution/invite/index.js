@@ -4,10 +4,10 @@ const e = require("../../../common/vendor.js"),
   s = e.defineComponent({
     __name: "index",
     setup(s) {
-      const a = e.ref(""),
-        o = e.ref(""),
-        n = e.ref("/pages/index/index"),
-        i = [
+      const inviteCode = e.ref(""),
+        inviteQrCode = e.ref(""),
+        sharePath = e.ref("/pages/index/index"),
+        stepList = [
           {
             title: "分享邀请码/海报",
             desc: "通过微信发送给好友，或保存海报发朋友圈",
@@ -18,49 +18,49 @@ const e = require("../../../common/vendor.js"),
             desc: "订单完成后进入冻结期，满14天自动转为可提现余额",
           },
         ],
-        c = () => {
-          if (!a.value) {
+        copyInviteCode = () => {
+          if (!inviteCode.value) {
             e.index.showToast({ title: "邀请码加载中", icon: "none" });
             return;
           }
-          e.index.setClipboardData({ data: a.value });
+          e.index.setClipboardData({ data: inviteCode.value });
         },
-        r = () =>
+        savePoster = () =>
           e.index.showModal({
             title: "保存海报",
             content: "当前版本可先使用“分享好友”发送带邀请码的小程序路径，海报可长按页面截图保存。",
             showCancel: !1,
           }),
-        d = async () => {
+        loadData = async () => {
           try {
             const eData = await t.getDistributionInviteInfo();
             const s = eData.data || eData;
-            a.value = s.inviteCode || "";
-            o.value = s.inviteQrCode || "";
-            n.value = s.sharePath || "/pages/index/index";
-          } catch (s) {
+            inviteCode.value = s.inviteCode || "";
+            inviteQrCode.value = s.inviteQrCode || "";
+            sharePath.value = s.sharePath || "/pages/index/index";
+          } catch (err) {
             e.index.showToast({ title: "加载邀请信息失败", icon: "none" });
           }
         };
       return (
-        e.onMounted(d),
-        e.onShow(d),
+        e.onMounted(loadData),
+        e.onShow(loadData),
         e.onShareAppMessage(() => ({
           title: "邀请你体验鼾静健康诊所，扫码下单可享专业睡眠健康服务",
-          path: n.value || "/pages/index/index",
-          imageUrl: o.value || "",
+          path: sharePath.value || "/pages/index/index",
+          imageUrl: inviteQrCode.value || "",
         })),
         (t, s) => ({
-          a: e.t(a.value),
-          b: e.o(c, "a0"),
-          c: e.o(r, "fd"),
-          d: e.f(i, (t, s, a) => ({
+          a: e.t(inviteCode.value),
+          b: e.o(copyInviteCode, "a0"),
+          c: e.o(savePoster, "fd"),
+          d: e.f(stepList, (t, s, a) => ({
             a: e.t(s + 1),
             b: e.t(t.title),
             c: e.t(t.desc),
             d: s,
           })),
-          e: o.value,
+          e: inviteQrCode.value,
         })
       );
     },

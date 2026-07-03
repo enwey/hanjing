@@ -15,7 +15,7 @@ const t = () => "../../../../components/base/hj-navbar.js",
         const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
         return patientId ? { patientId } : {};
       }
-      async function v() {
+      async function submitFeedback() {
         var t;
         if (0 === o.value)
           return void e.index.showToast({ title: "请选择评分", icon: "none" });
@@ -81,7 +81,7 @@ const t = () => "../../../../components/base/hj-navbar.js",
                   h: u.value,
                   i: e.o((e) => (u.value = e.detail.value), "c9"),
                   j: e.o((e) => (i.value = !1), "16"),
-                  k: e.o(v, "c8"),
+                  k: e.o(submitFeedback, "c8"),
                   l: e.o(() => {}, "a7"),
                   m: e.o((e) => (i.value = !1), "0c"),
                 }

@@ -40,7 +40,7 @@ const a = () => "../../components/base/hj-navbar.js",
             ? r.value
             : r.value.filter((e) => e.status === n.value),
         );
-      function i(e) {
+      function formatPriceYuan(e) {
         return "¥" + (e / 100).toFixed(2);
       }
       const navbarHeight = e.ref(88);
@@ -99,13 +99,13 @@ const a = () => "../../components/base/hj-navbar.js",
                         {
                           c: e.t(a.productName),
                           d: e.t(a.quantity),
-                          e: e.t(i(a.price)),
+                          e: e.t(formatPriceYuan(a.price)),
                           f: a.productId,
                         },
                       ),
                     ),
                     e: e.t(a.items.length),
-                    f: e.t(i(a.payAmount)),
+                    f: e.t(formatPriceYuan(a.payAmount)),
                     g: a.id,
                     h: e.o((t) => {
                       return (

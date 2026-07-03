@@ -26,15 +26,15 @@ function checkSensitiveWords(text) {
   return SENSITIVE_WORDS.some(word => text.includes(word));
 }
 
-const formatDate = (d) => {
-  if (!d) return '';
-  if (d instanceof Date) {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+const formatDate = (dateVal) => {
+  if (!dateVal) return '';
+  if (dateVal instanceof Date) {
+    const year = dateVal.getFullYear();
+    const month = String(dateVal.getMonth() + 1).padStart(2, '0');
+    const day = String(dateVal.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
-  return String(d).slice(0, 10);
+  return String(dateVal).slice(0, 10);
 };
 
 async function resolveUserPatient(req, patientIdSource = 'query') {

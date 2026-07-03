@@ -8,8 +8,8 @@ Math;
 const a = e.defineComponent({
     __name: "index",
     setup(a) {
-      const n = e.ref([]),
-        s = {
+      const recordList = e.ref([]),
+        statusNames = {
           pending: "待审核",
           processing: "处理中",
           approved: "已通过",
@@ -18,10 +18,10 @@ const a = e.defineComponent({
           rejected: "已驳回",
           failed: "已驳回",
         },
-        o = async () => {
+        loadRecords = async () => {
           try {
-            const a = await t.getWithdrawRecords();
-            n.value = ((a.data && a.data.list) || a.list || []).map((e) => {
+            const res = await t.getWithdrawRecords();
+            recordList.value = ((res.data && res.data.list) || res.list || []).map((e) => {
               const info = e.accountInfo || {};
               const accountLabel = info.label
                 || (info.method === "bank"
@@ -32,29 +32,29 @@ const a = e.defineComponent({
                 accountLabel,
               };
             });
-          } catch (a) {
+          } catch (err) {
             e.index.showToast({ title: "加载提现记录失败", icon: "none" });
           }
         };
       return (
-        e.onMounted(o),
-        e.onShow(o),
+        e.onMounted(loadRecords),
+        e.onShow(loadRecords),
         (t, a) =>
           e.e(
             {
-              a: e.f(n.value, (t, a, n) => {
+              a: e.f(recordList.value, (t, a, n) => {
                 return {
                   a: e.t((t.amount / 100).toFixed(2)),
                   b: e.t(t.accountLabel),
-                  c: e.t(s[t.status] || "处理中"),
+                  c: e.t(statusNames[t.status] || "处理中"),
                   d: e.n(t.status),
                   e: e.t(String(t.createdAt || "").split("T")[0]),
                   f: t.id,
                 };
               }),
-              b: !n.value.length,
+              b: !recordList.value.length,
             },
-            n.value.length ? {} : { c: e.p({ text: "暂无提现记录" }) },
+            recordList.value.length ? {} : { c: e.p({ text: "暂无提现记录" }) },
           )
       );
     },

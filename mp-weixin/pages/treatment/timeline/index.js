@@ -6,14 +6,14 @@ const a = () => "../../../components/base/hj-navbar.js",
   o = e.defineComponent({
     __name: "index",
     setup(a) {
-      const o = e.ref(!0),
-        l = e.ref([]),
-        n = e.ref(null),
+      const loading = e.ref(!0),
+        timelineList = e.ref([]),
+        recordDetail = e.ref(null),
         currentParams = () => {
           const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
           return patientId ? { patientId } : {};
         },
-        c = {
+        timelineTypeNames = {
           visit: "初诊",
           adjust: "调整",
           followup: "随访",
@@ -27,44 +27,44 @@ const a = () => "../../../components/base/hj-navbar.js",
               t.getTimeline(currentParams()),
               t.getTreatmentRecord(currentParams()),
             ]);
-            ((l.value = e.data), (n.value = a.data));
-          } catch (e) {
-            console.error(e);
+            ((timelineList.value = e.data), (recordDetail.value = a.data));
+          } catch (err) {
+            console.error(err);
           } finally {
-            o.value = !1;
+            loading.value = !1;
           }
         }),
         (t, a) =>
           e.e(
-            { a: e.p({ title: "治疗时间线", showBack: !0 }), b: !o.value },
-            o.value
+            { a: e.p({ title: "治疗时间线", showBack: !0 }), b: !loading.value },
+            loading.value
               ? {}
               : e.e(
-                  { c: n.value },
-                  n.value
+                  { c: recordDetail.value },
+                  recordDetail.value
                     ? {
-                        d: e.t(n.value.deviceModel),
-                        e: e.t(n.value.adjustmentValue),
-                        f: e.t(n.value.nextAdjustDate || "待定"),
+                        d: e.t(recordDetail.value.deviceModel),
+                        e: e.t(recordDetail.value.adjustmentValue),
+                        f: e.t(recordDetail.value.nextAdjustDate || "待定"),
                       }
                     : {},
                   {
-                    g: e.f(l.value, (t, a, o) =>
+                    g: e.f(timelineList.value, (t, a, o) =>
                       e.e(
                         {
                           a: e.t(t.date.slice(5)),
-                          b: e.t(c[t.type] || t.type),
+                          b: e.t(timelineTypeNames[t.type] || t.type),
                           c: t.color,
-                          d: a < l.value.length - 1,
+                          d: a < timelineList.value.length - 1,
                         },
-                        a < l.value.length - 1 ? { e: t.color + "30" } : {},
+                        a < timelineList.value.length - 1 ? { e: t.color + "30" } : {},
                         {
                           f: e.t(t.title),
                           g: e.t(t.description),
                           h: t.doctorName,
                         },
                         t.doctorName ? { i: e.t(t.doctorName) } : {},
-                        { j: t.id, k: a === l.value.length - 1 ? 1 : "" },
+                        { j: t.id, k: a === timelineList.value.length - 1 ? 1 : "" },
                       ),
                     ),
                   },

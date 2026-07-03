@@ -7,7 +7,7 @@ const r = e.defineComponent({
   __name: "doctor-detail",
   setup() {
     const docStore = t.useDoctorStore(),
-      storeStore = t.useStoreStore(),
+      clinicStore = t.useClinicStore(),
       apptStore = t.useAppointmentStore(),
       doctor = e.ref(null),
       avatarChar = e.ref(""),
@@ -89,8 +89,8 @@ const r = e.defineComponent({
         await docStore.fetchDoctors();
       }
       
-      if (storeStore.stores.length === 0) {
-        await storeStore.fetchStores();
+      if (clinicStore.stores.length === 0) {
+        await clinicStore.fetchStores();
       }
 
       let doc = docStore.getDoctorById(docId);

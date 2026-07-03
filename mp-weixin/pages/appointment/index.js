@@ -11,7 +11,7 @@ const o = () => "../../components/base/hj-navbar.js",
     setup(o) {
       const n = t.useAppointmentStore(),
         i = t.useUserStore(),
-        s = t.useStoreStore(),
+        clinicStore = t.useClinicStore(),
         a = t.useDoctorStore(),
         r = e.ref(!0),
         c = e.ref("upcoming");
@@ -25,7 +25,7 @@ const o = () => "../../components/base/hj-navbar.js",
       });
       e.onMounted(async () => {
         (await Promise.all([
-          s.fetchStores(),
+          clinicStore.fetchStores(),
           a.fetchDoctors(),
           i.fetchProfile(),
         ]),
@@ -33,31 +33,31 @@ const o = () => "../../components/base/hj-navbar.js",
       });
       const d = e.ref([]),
         u = e.ref([]);
-      function p() {
+      function filterAppointments() {
         const e = ["pending_payment", "pending", "confirmed", "reminded", "checked_in"];
         ((d.value = n.appointments.filter((t) => e.includes(t.status))),
           (u.value = n.appointments.filter((t) => !e.includes(t.status))));
       }
-      function l(e) {
+      function getStoreName(e) {
         var t;
         return (
-          (null == (t = s.getStoreById(e)) ? void 0 : t.name) || ""
+          (null == (t = clinicStore.getStoreById(e)) ? void 0 : t.name) || ""
         );
       }
-      function m(e) {
+      function getDoctorName(e) {
         var t;
         return (
           (null == (t = a.getDoctorById(e)) ? void 0 : t.name) || ""
         );
       }
-      function f() {
+      function goStoreSelect() {
         (n.resetFlow(),
           e.index.navigateTo({ url: "/pages/appointment/store-select" }));
       }
-      function v(t) {
+      function goDetail(t) {
         e.index.navigateTo({ url: `/pages/appointment/detail?id=${t.id}` });
       }
-      async function h(t) {
+      async function cancelAppointment(t) {
         try {
           const [year, month, day] = t.appointmentDate.split('-').map(Number);
           const [hours, minutes] = t.appointmentTime.split('-')[0].trim().split(':').map(Number);
@@ -79,7 +79,7 @@ const o = () => "../../components/base/hj-navbar.js",
               try {
                 (await n.cancelAppointment(t.id, "用户主动取消"),
                   e.index.showToast({ title: "已取消", icon: "success" }),
-                  p());
+                  filterAppointments());
               } catch {
                 e.index.showToast({ title: "取消失败", icon: "error" });
               }
@@ -99,7 +99,7 @@ const o = () => "../../components/base/hj-navbar.js",
           });
         });
       }
-      async function g(t) {
+      async function handlePayOrReschedule(t) {
         if (t.status === 'pending_payment') {
           e.index.showLoading({ title: "发起支付..." });
           try {
@@ -116,7 +116,7 @@ const o = () => "../../components/base/hj-navbar.js",
             }
             e.index.showToast({ title: "支付已提交，请稍后刷新", icon: "success" });
             await n.fetchAppointments();
-            p();
+            filterAppointments();
           } catch (err) {
             e.index.hideLoading();
             e.index.showToast({ title: err && err.errMsg ? "已取消支付" : "发起支付失败，请稍后重试", icon: "none" });
@@ -153,7 +153,7 @@ const o = () => "../../components/base/hj-navbar.js",
           await i.login(o.code);
           e.index.hideLoading();
           e.index.showToast({ title: "登录成功", icon: "success" });
-          f();
+          goStoreSelect();
         } catch (r) {
           e.index.hideLoading();
           e.index.showToast({ title: "登录失败，请重试", icon: "none" });
@@ -161,12 +161,12 @@ const o = () => "../../components/base/hj-navbar.js",
         }
       }
       return (
-        setTimeout(p, 300),
+        setTimeout(filterAppointments, 300),
         (t, o) =>
           e.e(
             {
               a: e.p({ title: "预约挂号" }),
-              b: e.o(f, "46"),
+              b: e.o(goStoreSelect, "46"),
               c: e.p({ type: "primary", size: "md" }),
               isLoggedIn: e.unref(i).isLoggedIn,
               onGetPhoneNumber: e.o(onGetPhoneNumber, "phone"),
@@ -183,19 +183,19 @@ const o = () => "../../components/base/hj-navbar.js",
                     ? {
                         j: e.f(d.value, (t, o, n) => ({
                           a: t.id,
-                          b: e.o(v, t.id),
-                          c: e.o(h, t.id),
-                          d: e.o(g, t.id),
+                          b: e.o(goDetail, t.id),
+                          c: e.o(cancelAppointment, t.id),
+                          d: e.o(handlePayOrReschedule, t.id),
                           e: "801bfeef-2-" + n,
                           f: e.p({
                             appointment: t,
-                            "store-name": t.storeName || l(t.storeId),
-                            "doctor-name": t.doctorName || m(t.doctorId),
+                            "store-name": t.storeName || getStoreName(t.storeId),
+                            "doctor-name": t.doctorName || getDoctorName(t.doctorId),
                           }),
                         })),
                       }
                     : {
-                        k: e.o(f, "37"),
+                        k: e.o(goStoreSelect, "37"),
                         l: e.p({ type: "primary", size: "md" }),
                         m: e.p({ text: "暂无进行中的预约", icon: "📅" }),
                       },
@@ -209,12 +209,12 @@ const o = () => "../../components/base/hj-navbar.js",
                     ? {
                         p: e.f(u.value, (t, o, n) => ({
                           a: t.id,
-                          b: e.o(v, t.id),
+                          b: e.o(goDetail, t.id),
                           c: "801bfeef-5-" + n,
                           d: e.p({
                             appointment: t,
-                            "store-name": t.storeName || l(t.storeId),
-                            "doctor-name": t.doctorName || m(t.doctorId),
+                            "store-name": t.storeName || getStoreName(t.storeId),
+                            "doctor-name": t.doctorName || getDoctorName(t.doctorId),
                           }),
                         })),
                       }

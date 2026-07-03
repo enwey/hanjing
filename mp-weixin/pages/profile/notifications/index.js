@@ -9,7 +9,7 @@ const a = () => "../../../components/base/hj-navbar.js",
       const n = e.ref([]),
         i = e.ref(0),
         o = e.ref(!0);
-      async function r() {
+      async function fetchNotifications() {
         o.value = !0;
         const e = (await t.getNotifications()).data;
         ((n.value = (null == e ? void 0 : e.list) || e || []),
@@ -18,11 +18,11 @@ const a = () => "../../../components/base/hj-navbar.js",
             n.value.filter((e) => !e.isRead).length),
           (o.value = !1));
       }
-      async function s() {
-        (await t.markAllNotificationsRead(), await r());
+      async function markAllRead() {
+        (await t.markAllNotificationsRead(), await fetchNotifications());
       }
       e.onMounted(async () => {
-        await r();
+        await fetchNotifications();
       });
       const l = {
           appointment: "A",
@@ -45,7 +45,7 @@ const a = () => "../../../components/base/hj-navbar.js",
             b: e.t(i.value),
             c: i.value > 0,
           },
-          i.value > 0 ? { d: e.o(s, "31") } : {},
+          i.value > 0 ? { d: e.o(markAllRead, "31") } : {},
           { e: o.value },
           o.value
             ? {}
@@ -70,7 +70,7 @@ const a = () => "../../../components/base/hj-navbar.js",
                       j: e.o(
                         (e) =>
                           (async function (e) {
-                            (await t.markNotificationRead(e), await r());
+                            (await t.markNotificationRead(e), await fetchNotifications());
                           })(a.id),
                         a.id,
                       ),

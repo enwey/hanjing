@@ -9,15 +9,15 @@ const n = () => "../../components/base/hj-navbar.js",
     __name: "success",
     setup(n) {
       const o = t.useAppointmentStore(),
-        a = t.useStoreStore(),
+        clinicStore = t.useClinicStore(),
         i = t.useDoctorStore(),
         r = e.ref(null),
         s = e.ref(!0),
         cancelLimitText = e.ref("就诊前2小时");
-      function l() {
+      function goHome() {
         e.index.switchTab({ url: "/pages/index/index" });
       }
-      function c() {
+      function goDetail() {
         var t, n;
         (null == (n = null == (t = r.value) ? void 0 : t.appointment)
           ? void 0
@@ -26,11 +26,11 @@ const n = () => "../../components/base/hj-navbar.js",
             url: `/pages/appointment/detail?id=${r.value.appointment.id}`,
           });
       }
-      function u() {
+      function getStoreName() {
         var e, t;
         return (null == (t = null == (e = r.value) ? void 0 : e.appointment) ? void 0 : t.storeName) || "";
       }
-      function d() {
+      function getDoctorName() {
         var e, t;
         return (
           (null == (t = null == (e = r.value) ? void 0 : e.appointment) ? void 0 : t.doctorName) || ""
@@ -38,7 +38,7 @@ const n = () => "../../components/base/hj-navbar.js",
       }
       return (
         e.onMounted(async () => {
-          (await a.fetchStores(),
+          (await clinicStore.fetchStores(),
             await i.fetchDoctors(),
             (async function () {
               try {
@@ -69,16 +69,16 @@ const n = () => "../../components/base/hj-navbar.js",
           return {
             a: e.p({ title: "预约成功", "show-back": !0 }),
             b: e.t((null == (i = null == (a = r.value) ? void 0 : a.appointment) ? void 0 : i.appointmentNo) || ""),
-            c: e.t(u()),
-            d: e.t(d()),
+            c: e.t(getStoreName()),
+            d: e.t(getDoctorName()),
             e: e.t((null == (s = null == r.value ? void 0 : r.value.appointment) ? void 0 : s.appointmentDate) || ""),
             f: e.t(
               (null == (s = null == r.value ? void 0 : r.value.appointment) ? void 0 : s.appointmentTime) || "",
             ),
             g: e.t(cancelLimitText.value),
-            h: e.o(c, "32"),
+            h: e.o(goDetail, "32"),
             i: e.p({ type: "primary", size: "lg", block: !0 }),
-            j: e.o(l, "07"),
+            j: e.o(goHome, "07"),
             k: e.p({ type: "ghost", size: "lg", block: !0 }),
           };
         }
