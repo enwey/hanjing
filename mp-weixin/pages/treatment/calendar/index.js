@@ -10,6 +10,7 @@ const t = () => "../../../components/base/hj-navbar.js",
         wearingRecords = e.ref([]),
         currentMonth = e.ref(new Date()),
         wearingSummary = e.ref(null),
+        treatmentRecord = e.ref(null),
         showCheckinModal = e.ref(!1),
         submitting = e.ref(!1),
         isEditCheckin = e.ref(!1),
@@ -128,6 +129,10 @@ const t = () => "../../../components/base/hj-navbar.js",
       }
 
       function openCheckinModal() {
+        if (!(treatmentRecord.value && treatmentRecord.value.isRealTreatmentRecord)) {
+          e.index.showToast({ title: "当前治疗人尚未绑定设备，请先完成适配", icon: "none" });
+          return;
+        }
         const todayObj = new Date(),
           todayDate = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`;
         const todayRecord = wearingRecords.value.find((recordItem) => recordItem.date === todayDate);
@@ -179,16 +184,19 @@ const t = () => "../../../components/base/hj-navbar.js",
         loading.value = !0;
         try {
           const params = currentParams();
-          const [resRecords, resSummary] = await Promise.all([
+          const [resRecords, resSummary, resTreatment] = await Promise.all([
             a.getWearingRecords(params),
             a.getWearingSummary(params),
+            a.getTreatmentRecord(params),
           ]);
           wearingRecords.value = (resRecords && resRecords.data) || [];
           wearingSummary.value = resSummary.data || null;
+          treatmentRecord.value = (resTreatment && resTreatment.data) || null;
         } catch (err) {
           console.error(err);
           wearingRecords.value = [];
           wearingSummary.value = null;
+          treatmentRecord.value = null;
         } finally {
           loading.value = !1;
         }

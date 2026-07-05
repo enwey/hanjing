@@ -1,42 +1,55 @@
-<view class="page data-v-04031480"
-  ><hj-navbar
-    wx:if="{{a}}"
-    class="data-v-04031480"
-    u-i="04031480-0"
-    bind:__l="__l"
-    u-p="{{a}}" /><view class="page-content data-v-04031480"
-    ><view wx:if="{{b}}" class="loading-wrap data-v-04031480"
-      ><text class="loading-text data-v-04031480">加载中...</text></view
-    ><block wx:else
-      ><view
-        wx:for="{{c}}"
-        wx:for-item="record"
-        wx:key="l"
-        class="record-card data-v-04031480"
-        ><view class="record-header data-v-04031480"
-          ><view
-            class="record-type data-v-04031480"
-            style="{{'background:' + record.b + ';' + ('color:' + record.c)}}"
-            ><text class="data-v-04031480">{{record.a}}</text></view
-          ><text class="record-date data-v-04031480">{{record.d}}</text></view
-        ><text class="record-doctor data-v-04031480"
-          >{{record.e}} 医生 | {{record.f}}</text
-        ><view class="record-section data-v-04031480"
-          ><text class="record-label data-v-04031480">诊断</text
-          ><text class="record-value data-v-04031480">{{record.g}}</text></view
-        ><view wx:if="{{record.h}}" class="record-section data-v-04031480"
-          ><text class="record-label data-v-04031480">处方/方案</text
-          ><text class="record-value data-v-04031480">{{record.i}}</text></view
-        ><view wx:if="{{record.j}}" class="record-note data-v-04031480"
-          ><text class="data-v-04031480">{{record.k}}</text></view
-        ><view class="record-action data-v-04031480" style="margin-top: 20rpx; padding-top: 20rpx; border-top: 1rpx solid #f3f4f6; display: flex; justify-content: space-between; align-items: center;">
-          <text bindtap="{{record.onUpload}}" class="data-v-04031480" style="color: #1A9D5C; font-size: 26rpx; display: flex; align-items: center;">📤 上传报告图片附件</text>
-          <text wx:if="{{record.hasAttachments}}" bindtap="{{record.onPreview}}" class="data-v-04031480" style="color: #3B6BF5; font-size: 26rpx; display: flex; align-items: center;">📎 查看电子检查报告附件 ›</text>
-        </view></view
-      ><view wx:if="{{d}}" class="empty-state data-v-04031480"
-        ><text class="empty-text data-v-04031480">暂无就诊记录</text></view
-      ></block
-    ><view class="safe-bottom data-v-04031480" />
-    <hj-privacy-popup id="privacyPopup" />
+<view class="page">
+  <hj-navbar title="病历档案" show-back></hj-navbar>
+
+  <view class="page-content">
+    <picker wx:if="{{memberOptions.length}}" mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker">
+      <view class="member-picker-content">
+        <view class="member-info">
+          <text class="member-label">当前就诊人：</text>
+          <text class="member-value">{{memberOptions[memberIndex]}}</text>
+        </view>
+        <view class="member-action">
+          <text class="member-action-text">切换</text>
+          <image class="member-action-arrow" src="/static/icons/chevron-right.svg" mode="aspectFit"></image>
+        </view>
+      </view>
+    </picker>
+
+    <view wx:if="{{loading}}" class="loading-wrap">
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <block wx:else>
+      <view wx:for="{{records}}" wx:key="id" class="record-card">
+        <view class="record-header">
+          <view class="record-type" style="{{'background:' + item.typeBg + ';color:' + item.typeColor}}">
+            <text>{{item.typeLabel}}</text>
+          </view>
+          <text class="record-date">{{item.visitDate}}</text>
+        </view>
+        <text class="record-patient">{{item.patientName}}</text>
+        <text class="record-doctor">{{item.doctorName}} 医生 | {{item.hospital}}</text>
+
+        <view class="record-section">
+          <text class="record-label">诊断</text>
+          <text class="record-value">{{item.diagnosis}}</text>
+        </view>
+
+        <view wx:if="{{item.prescription}}" class="record-section">
+          <text class="record-label">处方/方案</text>
+          <text class="record-value">{{item.prescription}}</text>
+        </view>
+
+        <view wx:if="{{item.note}}" class="record-note">
+          <text>{{item.note}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{!records.length}}" class="empty-state">
+        <text class="empty-text">当前就诊人暂无病历档案</text>
+      </view>
+    </block>
+
+    <view class="safe-bottom"></view>
   </view>
 </view>

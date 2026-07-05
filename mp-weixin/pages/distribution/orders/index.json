@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "推广订单",
+  "usingComponents": {
+    "hj-navbar": "../../../components/base/hj-navbar",
+    "hj-empty": "../../../components/base/hj-empty"
+  }
+}

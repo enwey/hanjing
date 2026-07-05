@@ -1,4 +1,54 @@
 <view class="page data-v-9e9a64dc"
   ><hj-navbar title="分销规则" show-back="{{true}}" /><view class="content data-v-9e9a64dc"
-    ><rich-text class="data-v-9e9a64dc" nodes="{{a}}"></rich-text></view
+    ><view class="card data-v-9e9a64dc"
+      ><text class="card-title data-v-9e9a64dc">开通条件</text
+      ><text class="card-desc data-v-9e9a64dc">{{a}}</text></view
+    ><view class="card data-v-9e9a64dc"
+      ><text class="card-title data-v-9e9a64dc">推广员等级</text
+      ><view class="level-head data-v-9e9a64dc"
+        ><text class="level-col data-v-9e9a64dc">等级</text
+        ><text class="level-col data-v-9e9a64dc">直推单量</text
+        ><text class="level-col data-v-9e9a64dc">一级</text
+        ><text class="level-col data-v-9e9a64dc">二级</text></view
+      ><view
+        wx:for="{{b}}"
+        wx:for-item="level"
+        wx:key="e"
+        class="level-row data-v-9e9a64dc"
+        ><text class="level-col strong data-v-9e9a64dc">{{level.a}}</text
+        ><text class="level-col data-v-9e9a64dc">{{level.b}}单</text
+        ><text class="level-col data-v-9e9a64dc">{{level.c}}%</text
+        ><text class="level-col data-v-9e9a64dc">{{level.d}}%</text></view
+      ></view
+    ><view class="card data-v-9e9a64dc"
+      ><text class="card-title data-v-9e9a64dc">佣金规则</text
+      ><view
+        wx:for="{{c}}"
+        wx:for-item="item"
+        wx:key="b"
+        class="rule-item data-v-9e9a64dc"
+        ><text class="rule-index data-v-9e9a64dc">{{item.b + 1}}</text
+        ><text class="rule-text data-v-9e9a64dc">{{item.a}}</text></view
+      ></view
+    ><view class="card data-v-9e9a64dc"
+      ><text class="card-title data-v-9e9a64dc">推广方式</text
+      ><view
+        wx:for="{{d}}"
+        wx:for-item="item"
+        wx:key="b"
+        class="rule-item data-v-9e9a64dc"
+        ><text class="rule-index data-v-9e9a64dc">{{item.b + 1}}</text
+        ><text class="rule-text data-v-9e9a64dc">{{item.a}}</text></view
+      ></view
+    ><view class="card data-v-9e9a64dc"
+      ><text class="card-title data-v-9e9a64dc">提现规则</text
+      ><view
+        wx:for="{{e}}"
+        wx:for-item="item"
+        wx:key="b"
+        class="rule-item data-v-9e9a64dc"
+        ><text class="rule-index data-v-9e9a64dc">{{item.b + 1}}</text
+        ><text class="rule-text data-v-9e9a64dc">{{item.a}}</text></view
+      ></view
+    ></view
 ></view>

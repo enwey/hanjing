@@ -1,146 +1,120 @@
-<view class="page data-v-5e948475"
-  ><hj-navbar
-    wx:if="{{a}}"
+<view class="page data-v-5e948475">
+  <hj-navbar
+    wx:if="{{true}}"
     class="data-v-5e948475"
-    u-i="5e948475-0"
-    bind:__l="__l"
-    u-p="{{a}}"
-  /><view wx:if="{{b}}" class="loading-wrap data-v-5e948475"
-    ><text class="data-v-5e948475">加载中...</text></view
-  ><block wx:elif="{{c}}"
-    ><swiper
-      class="img-swiper data-v-5e948475"
-      current="{{e}}"
-      bindchange="{{f}}"
-      indicator-dots
-      indicator-color="rgba(255,255,255,0.5)"
-      indicator-active-color="#3B6BF5"
-      ><swiper-item
-        wx:for="{{d}}"
-        wx:for-item="img"
-        wx:key="b"
-        class="data-v-5e948475"
-        ><image
-          class="swiper-img data-v-5e948475"
-          src="{{img.a}}"
-          mode="aspectFill" /></swiper-item></swiper
-    ><view class="body data-v-5e948475"
-      ><view class="header data-v-5e948475"
-        ><view class="price-row data-v-5e948475"
-          ><text class="price data-v-5e948475">{{g}}</text
-          ><text wx:if="{{h}}" class="price-original data-v-5e948475"
-            >{{i}}</text
-          ><text wx:if="{{j}}" class="discount-tag data-v-5e948475"
-            >{{k}}% OFF</text
-          ></view
-        ><text class="name data-v-5e948475">{{l}}</text
-        ><text class="sales data-v-5e948475">已售 {{m}}</text></view
-      ><view class="section data-v-5e948475"
-        ><text class="section-title data-v-5e948475">商品详情</text
-        ><rich-text class="desc-rich data-v-5e948475" nodes="{{n}}"></rich-text></view
-      ></view
-    ><view class="bottom-bar data-v-5e948475"
-      ><view class="bottom-price data-v-5e948475"
-        ><text class="bottom-price-val data-v-5e948475">{{o}}</text></view
-      ><view class="btn-buy data-v-5e948475" bindtap="{{p}}"
-        ><text class="data-v-5e948475">立即购买</text></view
-      ></view
-    ><view wx:if="{{showCheckout}}" class="checkout-overlay data-v-5e948475" bindtap="closeCheckout">
-      <view class="checkout-panel data-v-5e948475" catchtap="true">
+    title="商品详情"
+    show-back
+  ></hj-navbar>
+
+  <view wx:if="{{loading}}" class="loading-wrap data-v-5e948475">
+    <text class="data-v-5e948475">加载中...</text>
+  </view>
+
+  <block wx:elif="{{product}}">
+    <block wx:if="{{galleryImages.length}}">
+      <swiper
+        class="img-swiper data-v-5e948475"
+        current="{{currentImageIndex}}"
+        bindchange="onSwiperChange"
+        indicator-dots
+        indicator-color="rgba(255,255,255,0.5)"
+        indicator-active-color="#3B6BF5"
+      >
+        <swiper-item wx:for="{{galleryImages}}" wx:key="*this">
+          <image class="swiper-img data-v-5e948475" src="{{item}}" mode="aspectFill"></image>
+        </swiper-item>
+      </swiper>
+    </block>
+    <view wx:else class="swiper-placeholder data-v-5e948475">
+      <view class="placeholder-mark data-v-5e948475"
+        ><view class="placeholder-line placeholder-line--horizontal data-v-5e948475"></view
+        ><view class="placeholder-line placeholder-line--vertical data-v-5e948475"></view></view
+      >
+    </view>
+
+    <view class="body data-v-5e948475">
+      <view class="header data-v-5e948475">
+        <view class="price-row data-v-5e948475">
+          <text class="price data-v-5e948475">{{displayPrice}}</text>
+          <text wx:if="{{hasDiscount}}" class="price-original data-v-5e948475">{{displayOriginalPrice}}</text>
+          <text wx:if="{{hasDiscount}}" class="discount-tag data-v-5e948475">{{discountText}}</text>
+        </view>
+        <text class="name data-v-5e948475">{{product.name}}</text>
+        <text class="sales data-v-5e948475">已售 {{displaySalesCount}}</text>
+      </view>
+
+      <view class="section data-v-5e948475">
+        <text class="section-title data-v-5e948475">商品详情</text>
+        <rich-text class="desc-rich data-v-5e948475" nodes="{{product.descriptionHtml}}"></rich-text>
+      </view>
+    </view>
+
+    <view class="bottom-fixed-bar data-v-5e948475">
+      <button class="bar-primary-btn data-v-5e948475" bindtap="handlePrimaryPay">立即支付</button>
+    </view>
+
+    <view wx:if="{{showCheckout}}" class="checkout-overlay data-v-5e948475" bindtap="closeCheckout">
+      <view class="checkout-panel data-v-5e948475" catchtap="noop">
         <view class="checkout-close data-v-5e948475" bindtap="closeCheckout">×</view>
         <text class="checkout-title data-v-5e948475">确认订单</text>
-        <view class="checkout-product-card data-v-5e948475">
-          <image class="checkout-product-img data-v-5e948475" src="{{productImageUrl}}" mode="aspectFill" />
-          <view class="checkout-product-info data-v-5e948475">
-            <text class="checkout-product-name data-v-5e948475">{{l}}</text>
-            <text class="checkout-product-price data-v-5e948475">{{o}}</text>
-          </view>
-        </view>
-        <view class="checkout-row data-v-5e948475">
-          <text class="checkout-label data-v-5e948475">购买数量</text>
-          <view class="qty-selector data-v-5e948475">
-            <view class="qty-btn data-v-5e948475" bindtap="decreaseQty">-</view>
-            <text class="qty-val data-v-5e948475">{{quantity}}</text>
-            <view class="qty-btn data-v-5e948475" bindtap="increaseQty">+</view>
-          </view>
-        </view>
-        <view class="checkout-delivery-section data-v-5e948475">
-          <text class="checkout-section-title data-v-5e948475">优惠券</text>
-          <view wx:if="{{hasCoupons}}" class="coupon-list data-v-5e948475">
-            <view
-              wx:for="{{coupons}}"
-              wx:for-item="coupon"
-              wx:key="id"
-              data-id="{{coupon.id}}"
-              class="delivery-option {{coupon.selected ? 'active' : ''}} data-v-5e948475"
-              bindtap="{{coupon.select}}"
-            >
-              <text class="delivery-title data-v-5e948475">{{coupon.title}}</text>
-              <text class="delivery-desc data-v-5e948475">{{coupon.valueText}} · {{coupon.minSpendText}}</text>
+
+        <scroll-view class="checkout-scroll data-v-5e948475" scroll-y>
+          <view class="checkout-product-card data-v-5e948475">
+            <block wx:if="{{product.imageUrl}}">
+              <image class="checkout-product-img data-v-5e948475" src="{{product.imageUrl}}" mode="aspectFill"></image>
+            </block>
+            <view wx:else class="checkout-product-img checkout-product-img--placeholder data-v-5e948475">
+              <view class="checkout-placeholder-mark data-v-5e948475"
+                ><view class="checkout-placeholder-line checkout-placeholder-line--horizontal data-v-5e948475"></view
+                ><view class="checkout-placeholder-line checkout-placeholder-line--vertical data-v-5e948475"></view></view
+              >
+            </view>
+            <view class="checkout-product-info data-v-5e948475">
+              <text class="checkout-product-name data-v-5e948475">{{product.name}}</text>
+              <text class="checkout-product-price data-v-5e948475">{{displayPrice}}</text>
             </view>
           </view>
-          <text wx:else class="delivery-desc data-v-5e948475">暂无可用优惠券</text>
-        </view>
-        <view class="checkout-delivery-section data-v-5e948475">
-          <text class="checkout-section-title data-v-5e948475">配送方式</text>
-          <view class="delivery-options data-v-5e948475">
-            <view class="delivery-option {{deliveryMethod === 'online' ? 'active' : ''}} data-v-5e948475" bindtap="selectDeliveryOnline">
-              <text class="delivery-title data-v-5e948475">快递邮寄</text>
-              <text class="delivery-desc data-v-5e948475">支付后进入待发货</text>
-            </view>
-            <view class="delivery-option {{deliveryMethod === 'pickup' ? 'active' : ''}} data-v-5e948475" bindtap="selectDeliveryPickup">
-              <text class="delivery-title data-v-5e948475">到店自提</text>
-              <text class="delivery-desc data-v-5e948475">支付后进入待取货</text>
+
+          <view class="checkout-row data-v-5e948475">
+            <text class="checkout-label data-v-5e948475">购买数量</text>
+            <view class="qty-selector data-v-5e948475">
+              <view class="qty-btn data-v-5e948475" bindtap="decreaseQty">-</view>
+              <text class="qty-val data-v-5e948475">{{quantity}}</text>
+              <view class="qty-btn data-v-5e948475" bindtap="increaseQty">+</view>
             </view>
           </view>
-        </view>
-        <view wx:if="{{!isOnlineDelivery}}" class="checkout-delivery-section data-v-5e948475">
-          <text class="checkout-section-title data-v-5e948475">自提门店</text>
-          <view wx:if="{{hasStores}}" class="store-list data-v-5e948475">
-            <view
-              wx:for="{{stores}}"
-              wx:for-item="store"
-              wx:key="id"
-              data-id="{{store.id}}"
-              class="delivery-option {{store.selected ? 'active' : ''}} data-v-5e948475"
-              bindtap="{{store.select}}"
-            >
-              <text class="delivery-title data-v-5e948475">{{store.name}}</text>
-              <text class="delivery-desc data-v-5e948475">{{store.address}}</text>
-              <text wx:if="{{store.hours}}" class="delivery-desc data-v-5e948475">营业时间：{{store.hours}}</text>
+
+          <view class="checkout-section data-v-5e948475">
+            <view class="checkout-section-head data-v-5e948475">
+              <text class="checkout-section-title data-v-5e948475">收货人信息</text>
+              <text class="checkout-address-choose data-v-5e948475" bindtap="chooseWxAddress">选择微信地址</text>
+            </view>
+            <view class="input-group data-v-5e948475">
+              <text class="input-label data-v-5e948475">收货人</text>
+              <input class="checkout-input data-v-5e948475" type="text" value="{{contactName}}" bindinput="onInputName" placeholder="收货人姓名" />
+            </view>
+            <view class="input-group data-v-5e948475">
+              <text class="input-label data-v-5e948475">联系电话</text>
+              <input class="checkout-input data-v-5e948475" type="number" value="{{phone}}" bindinput="onInputPhone" placeholder="联系手机号" />
+            </view>
+            <view class="input-group input-group--textarea data-v-5e948475">
+              <text class="input-label data-v-5e948475">详细地址</text>
+              <textarea class="checkout-textarea data-v-5e948475" value="{{detailAddress}}" bindinput="onInputDetail" placeholder="省市区及详细地址"></textarea>
             </view>
           </view>
-          <text wx:else class="delivery-desc data-v-5e948475">暂无可用自提门店</text>
-        </view>
-        <view class="checkout-address-section data-v-5e948475">
-          <view class="checkout-section-head data-v-5e948475">
-            <text class="checkout-section-title data-v-5e948475">{{isOnlineDelivery ? '收货人信息' : '取货人信息'}}</text>
-            <text wx:if="{{isOnlineDelivery}}" class="checkout-address-choose data-v-5e948475" bindtap="chooseWxAddress">选择微信地址</text>
-          </view>
-          <view class="input-group data-v-5e948475">
-            <text class="input-label data-v-5e948475">{{isOnlineDelivery ? '收货人' : '取货人'}}</text>
-            <input class="checkout-input data-v-5e948475" type="text" value="{{contactName}}" bindinput="inputName" placeholder="{{isOnlineDelivery ? '收货人姓名' : '取货人姓名'}}" />
-          </view>
-          <view class="input-group data-v-5e948475">
-            <text class="input-label data-v-5e948475">联系电话</text>
-            <input class="checkout-input data-v-5e948475" type="number" value="{{phone}}" bindinput="inputPhone" placeholder="联系手机号" />
-          </view>
-          <view wx:if="{{isOnlineDelivery}}" class="input-group data-v-5e948475">
-            <text class="input-label data-v-5e948475">详细地址</text>
-            <input class="checkout-input data-v-5e948475" type="text" value="{{detailAddress}}" bindinput="inputDetail" placeholder="省市区及详细地址" />
-          </view>
-        </view>
-        <view class="checkout-footer data-v-5e948475">
+          <view class="checkout-scroll-spacer data-v-5e948475"></view>
+        </scroll-view>
+
+        <view class="checkout-fixed-bar data-v-5e948475" catchtap="noop">
           <view class="checkout-total data-v-5e948475">
-            <text wx:if="{{hasDiscount}}" class="checkout-total-label data-v-5e948475">优惠：-{{discountAmountText}}</text>
-            <text class="checkout-total-label data-v-5e948475">实付款：</text>
+            <text class="checkout-total-label data-v-5e948475">实付款</text>
             <text class="checkout-total-val data-v-5e948475">{{totalPayAmountText}}</text>
           </view>
-          <view class="checkout-btn-submit data-v-5e948475" bindtap="submitOrder">
-            <text class="data-v-5e948475">{{isSubmitting ? '正在提交...' : '确认支付'}}</text>
+          <view class="bar-primary-btn data-v-5e948475" bindtap="onCheckoutSubmitTap">
+            <text class="bar-primary-btn-text data-v-5e948475">{{isSubmitting ? '正在提交...' : '确认支付'}}</text>
           </view>
         </view>
       </view>
-    </view></block
-  ></view
->
+    </view>
+  </block>
+</view>

@@ -19,9 +19,68 @@ import {
 } from '../helpers.js';
 
 const app = express.Router();
+const WECHAT_TOKEN_CACHE = {
+  value: '',
+  expiresAt: 0
+};
 
 const SENSITIVE_WORDS = ['广告', '疗效', '包治', '神药', '加微信', '兼职', '刷单'];
 const PLACEHOLDER_TREATMENT_DEVICE_NAME = '待适配阻鼾器';
+const MEMBER_LEVEL_RULES = [
+  {
+    level: 'normal',
+    title: '普通会员',
+    color: '#9CA3AF',
+    bgColor: '#F3F4F6',
+    spentRequired: 0,
+    benefits: [
+      { icon: 'appointment', title: '在线预约', desc: '随时预约睡眠门诊' },
+      { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' }
+    ]
+  },
+  {
+    level: 'silver',
+    title: '白银会员',
+    color: '#6B7280',
+    bgColor: '#F3F4F6',
+    spentRequired: 100000,
+    benefits: [
+      { icon: 'appointment', title: '在线预约', desc: '优先时段选择' },
+      { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' },
+      { icon: 'discount', title: '购物9.5折', desc: '商城商品享95折优惠' }
+    ]
+  },
+  {
+    level: 'gold',
+    title: '黄金会员',
+    color: '#F5A623',
+    bgColor: '#FFF9E6',
+    spentRequired: 300000,
+    benefits: [
+      { icon: 'appointment', title: '在线预约', desc: 'VIP优先预约通道' },
+      { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' },
+      { icon: 'discount', title: '购物9折', desc: '商城商品享9折优惠' },
+      { icon: 'service', title: '专属客服', desc: '1v1健康顾问服务' },
+      { icon: 'channel', title: '分销权限', desc: '可申请成为推广员' }
+    ]
+  },
+  {
+    level: 'diamond',
+    title: '钻石会员',
+    color: '#3B6BF5',
+    bgColor: '#EEF4FF',
+    spentRequired: 1000000,
+    benefits: [
+      { icon: 'appointment', title: '在线预约', desc: '院长级专家优先约' },
+      { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' },
+      { icon: 'discount', title: '购物8.5折', desc: '商城商品享85折优惠' },
+      { icon: 'service', title: '专属客服', desc: '1v1健康顾问服务' },
+      { icon: 'channel', title: '分销权限', desc: '推广员+高佣金比例' },
+      { icon: 'free', title: '年度免费检查', desc: '每年1次免费睡眠监测' }
+    ]
+  }
+];
+
 function checkSensitiveWords(text) {
   if (!text) return false;
   return SENSITIVE_WORDS.some(word => text.includes(word));
@@ -37,6 +96,98 @@ const formatDate = (dateVal) => {
   }
   return String(dateVal).slice(0, 10);
 };
+
+function buildRequestOrigin(req) {
+  const configuredBaseUrl = process.env.PUBLIC_BASE_URL || process.env.API_PUBLIC_BASE_URL;
+  if (configuredBaseUrl) return configuredBaseUrl.replace(/\/$/, '');
+  const protocol = req?.headers?.['x-forwarded-proto'] || req?.protocol || 'http';
+  const host = req?.get ? req.get('host') : '';
+  return host ? `${protocol}://${host}` : '';
+}
+
+function toAbsoluteAssetUrl(req, assetPath) {
+  const value = String(assetPath || '').trim();
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+  const origin = buildRequestOrigin(req);
+  if (!origin) return value;
+  return `${origin}${value.startsWith('/') ? value : `/${value}`}`;
+}
+
+async function getWechatMiniAccessToken() {
+  const now = Date.now();
+  if (WECHAT_TOKEN_CACHE.value && WECHAT_TOKEN_CACHE.expiresAt > now + 60_000) {
+    return WECHAT_TOKEN_CACHE.value;
+  }
+
+  const appId = process.env.WX_MINI_APP_ID;
+  const appSecret = process.env.WX_MINI_APP_SECRET;
+  if (!appId || !appSecret) {
+    const error = new Error('未配置微信小程序 AppID / AppSecret');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(appSecret)}`;
+  const response = await fetch(url);
+  const data = await response.json();
+  if (!response.ok || data.errcode) {
+    const error = new Error(data.errmsg || '获取微信 access_token 失败');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  WECHAT_TOKEN_CACHE.value = data.access_token;
+  WECHAT_TOKEN_CACHE.expiresAt = now + Math.max((Number(data.expires_in) || 7200) - 120, 60) * 1000;
+  return WECHAT_TOKEN_CACHE.value;
+}
+
+function getMemberLevelBySpent(totalSpent) {
+  const spent = Number(totalSpent || 0);
+  let matched = MEMBER_LEVEL_RULES[0];
+  for (const rule of MEMBER_LEVEL_RULES) {
+    if (spent >= Number(rule.spentRequired || 0)) {
+      matched = rule;
+    }
+  }
+  return matched;
+}
+
+async function calculateUserTotalSpent(userId, conn = null) {
+  const sql = `SELECT COALESCE(SUM(pay_amount), 0) AS total_spent
+     FROM orders
+     WHERE user_id = ?
+       AND status IN ('paid', 'shipping', 'shipped', 'completed')`;
+  const row = conn
+    ? (await conn.execute(sql, [userId]))[0][0]
+    : await get(sql, [userId]);
+  return Number(row?.total_spent || 0);
+}
+
+async function syncUserMembership(userId, conn = null) {
+  const totalSpent = await calculateUserTotalSpent(userId, conn);
+  const matched = getMemberLevelBySpent(totalSpent);
+  const sql = `UPDATE users
+     SET total_spent = ?, member_level = ?
+     WHERE id = ?`;
+  if (conn) {
+    await conn.execute(sql, [totalSpent, matched.level, userId]);
+  } else {
+    await run(sql, [totalSpent, matched.level, userId]);
+  }
+  return {
+    id: userId,
+    member_level: matched.level,
+    total_spent: totalSpent,
+  };
+}
+
+async function syncUserMemberLevel(userId) {
+  const user = await get(`SELECT id, member_level, total_spent, points FROM users WHERE id = ?`, [userId]);
+  if (!user) return null;
+  const syncedUser = await syncUserMembership(userId);
+  return { ...user, ...syncedUser };
+}
 
 async function ensureUserPatientLink(userId, patientId, relation = 'other') {
   const normalizedRelation = relation ? escapeHtml(String(relation)) : 'other';
@@ -150,12 +301,13 @@ async function getLinkedPatientIdentityFilter(userId, tableAlias = 'p') {
   const values = {
     phone: new Set(),
     id_card: new Set(),
-    card_no: new Set(),
+    patient_no: new Set(),
   };
   for (const patient of linkedPatients) {
     if (patient.phone) values.phone.add(patient.phone);
     if (patient.id_card) values.id_card.add(patient.id_card);
-    if (patient.card_no) values.card_no.add(patient.card_no);
+    const patientNo = getPatientRecordNo(patient);
+    if (patientNo) values.patient_no.add(patientNo);
   }
   const conditions = [];
   const params = [];
@@ -167,32 +319,80 @@ async function getLinkedPatientIdentityFilter(userId, tableAlias = 'p') {
     conditions.push(`${tableAlias}.id_card = ?`);
     params.push(idCard);
   }
-  for (const cardNo of values.card_no) {
-    conditions.push(`${tableAlias}.card_no = ?`);
-    params.push(cardNo);
+  for (const patientNo of values.patient_no) {
+    conditions.push(`${tableAlias}.patient_no = ?`);
+    params.push(patientNo);
   }
   return { conditions, params };
 }
 
-async function generateUniqueCardNo() {
-  const rows = await query(`SELECT card_no FROM patients WHERE card_no IS NOT NULL AND card_no != ''`);
-  const existing = new Set(
-    rows
-      .map((row) => String(row.card_no || '').trim())
-      .filter(Boolean)
-  );
-  let next = 1;
-  for (const value of existing) {
-    if (/^\d+$/.test(value)) {
-      next = Math.max(next, Number(value) + 1);
+function buildSqlPlaceholders(values = []) {
+  return values.map(() => '?').join(',');
+}
+
+function getPatientRecordNo(patient) {
+  return String(patient?.patient_no || patient?.card_no || '').trim();
+}
+
+async function getPatientDataScope(patient) {
+  if (!patient) {
+    return { primaryPatient: null, patientIds: [], patients: [], isSelfScope: false };
+  }
+
+  const isSelfScope = patient.link_relation === 'self' || patient.relation === 'self';
+  let scopedPatients = [patient];
+
+  if (isSelfScope) {
+    if (patient.id_card) {
+      scopedPatients = await query(
+        `SELECT * FROM patients
+         WHERE id_card = ?
+         ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, id ASC`,
+        [patient.id_card, patient.id]
+      );
+    } else if (patient.phone) {
+      scopedPatients = await query(
+        `SELECT * FROM patients
+         WHERE phone = ?
+           AND (id_card IS NULL OR id_card = '')
+         ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, id ASC`,
+        [patient.phone, patient.id]
+      );
     }
   }
-  let candidate = String(next).padStart(2, '0');
-  while (existing.has(candidate)) {
-    next += 1;
-    candidate = String(next).padStart(2, '0');
+
+  const patientMap = new Map();
+  for (const scopedPatient of scopedPatients) {
+    if (scopedPatient && scopedPatient.id) {
+      patientMap.set(Number(scopedPatient.id), scopedPatient);
+    }
   }
-  return candidate;
+  patientMap.set(Number(patient.id), patient);
+
+  const patients = Array.from(patientMap.values());
+  return {
+    primaryPatient: patient,
+    patientIds: patients.map((item) => Number(item.id)),
+    patients,
+    isSelfScope
+  };
+}
+
+async function resolvePatientScope(req, patientIdSource = 'query') {
+  const patient = await resolveUserPatient(req, patientIdSource);
+  return getPatientDataScope(patient);
+}
+
+async function getAccessiblePatientIdsForUser(userId) {
+  const linkedPatients = await getLinkedPatientsForUser(userId);
+  const patientIds = new Set();
+  for (const linkedPatient of linkedPatients) {
+    const scope = await getPatientDataScope(linkedPatient);
+    for (const patientId of scope.patientIds) {
+      patientIds.add(Number(patientId));
+    }
+  }
+  return Array.from(patientIds);
 }
 
 async function getIdentityMatchedPatientWithConn(conn, { phoneEnc = null, idCardEnc = null, excludePatientId = null }) {
@@ -233,11 +433,10 @@ async function reassignPatientDataWithConn(conn, fromPatientId, toPatientId) {
 }
 
 async function createPatientCloneForLinkWithConn(conn, sourcePatient, { name, gender, age, phoneEnc, idCardEnc, cardNo }) {
-  const patientNo = await generateUniquePatientNo(async (candidate) => {
+  const patientNo = cardNo || await generateUniquePatientNo(async (candidate) => {
     const row = await get(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
     return Boolean(row);
   });
-  const resolvedCardNo = cardNo || await generateUniqueCardNo();
   const [created] = await conn.execute(
     `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, id_card, card_no, source, has_snore, medical_history)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -250,7 +449,7 @@ async function createPatientCloneForLinkWithConn(conn, sourcePatient, { name, ge
       age,
       phoneEnc,
       idCardEnc,
-      resolvedCardNo,
+      patientNo,
       sourcePatient.source || 'mini_app',
       Number(sourcePatient.has_snore || 0),
       sourcePatient.medical_history || null
@@ -430,46 +629,75 @@ async function resolveUserPatient(req, patientIdSource = 'query') {
 
 async function resolveTreatmentForPatient(patient, treatmentId) {
   if (!patient) return null;
+  const scope = await getPatientDataScope(patient);
+  if (!scope.patientIds.length) return null;
+  const placeholders = buildSqlPlaceholders(scope.patientIds);
   if (treatmentId) {
-    return get(`SELECT * FROM treatment_records WHERE id = ? AND patient_id = ?`, [treatmentId, patient.id]);
+    return get(
+      `SELECT * FROM treatment_records WHERE id = ? AND patient_id IN (${placeholders})`,
+      [treatmentId, ...scope.patientIds]
+    );
   }
-  return get(`SELECT * FROM treatment_records WHERE patient_id = ? AND status = 'active' ORDER BY start_date DESC, id DESC LIMIT 1`, [patient.id]);
+  return get(
+    `SELECT * FROM treatment_records
+     WHERE patient_id IN (${placeholders}) AND status = 'active'
+     ORDER BY start_date DESC, id DESC LIMIT 1`,
+    scope.patientIds
+  );
 }
 
-async function ensureTreatmentForCheckin(patient, treatmentId, checkinDate) {
-  const existingTreatment = await resolveTreatmentForPatient(patient, treatmentId);
-  if (existingTreatment) return existingTreatment;
-
-  const fallbackDoctor = await get(`SELECT id FROM doctors WHERE status = 1 ORDER BY id ASC LIMIT 1`);
-  if (!fallbackDoctor) {
-    const err = new Error('当前暂无可关联医生，暂时无法创建治疗档案');
-    err.statusCode = 500;
-    throw err;
+async function resolvePatientDeviceForPatient(patient, treatmentId = null) {
+  if (!patient) return null;
+  const scope = await getPatientDataScope(patient);
+  if (!scope.patientIds.length) return null;
+  const placeholders = buildSqlPlaceholders(scope.patientIds);
+  if (treatmentId) {
+    return get(
+      `SELECT pd.*, tr.medical_record_id, tr.created_at as treatment_created_at
+       FROM patient_devices pd
+       LEFT JOIN treatment_records tr ON tr.id = pd.bind_treatment_record_id
+       WHERE pd.patient_id IN (${placeholders})
+         AND (pd.id = ? OR pd.bind_treatment_record_id = ?)
+       ORDER BY pd.id DESC
+       LIMIT 1`,
+      [...scope.patientIds, treatmentId, treatmentId]
+    );
   }
-
-  const startDate = formatDate(checkinDate || getShanghaiNow());
-  const placeholderDeviceName = PLACEHOLDER_TREATMENT_DEVICE_NAME;
-  const created = await run(
-    `INSERT INTO treatment_records (
-      patient_id,
-      doctor_id,
-      device_product_name,
-      device_model,
-      initial_advancement,
-      current_advancement,
-      start_date,
-      status
-    ) VALUES (?, ?, ?, ?, 0, 0, ?, 'active')`,
-    [patient.id, fallbackDoctor.id, placeholderDeviceName, placeholderDeviceName, startDate]
+  return get(
+    `SELECT pd.*, tr.medical_record_id, tr.created_at as treatment_created_at
+     FROM patient_devices pd
+     LEFT JOIN treatment_records tr ON tr.id = pd.bind_treatment_record_id
+     WHERE pd.patient_id IN (${placeholders}) AND pd.status = 'active'
+     ORDER BY pd.bound_at DESC, pd.id DESC
+     LIMIT 1`,
+    scope.patientIds
   );
-
-  return get(`SELECT * FROM treatment_records WHERE id = ?`, [created.id]);
 }
 
 function isPlaceholderTreatmentRecord(record) {
   if (!record) return false;
-  const deviceName = String(record.device_product_name || record.device_model || '').trim();
-  return !record.medical_record_id && deviceName === PLACEHOLDER_TREATMENT_DEVICE_NAME;
+  const deviceName = String(record.device_product_name || record.device_name_snapshot || record.device_model || '').trim();
+  const medicalRecordId = record.medical_record_id ?? record.bind_medical_record_id ?? null;
+  return !medicalRecordId && deviceName === PLACEHOLDER_TREATMENT_DEVICE_NAME;
+}
+
+async function getMiniProgramWearingLogsForPatientScope(scope, options = {}) {
+  if (!scope?.primaryPatient) {
+    return { patientDevice: null, logs: [] };
+  }
+  const patientDevice = await resolvePatientDeviceForPatient(scope.primaryPatient, options.treatmentId);
+  if (!patientDevice || isPlaceholderTreatmentRecord(patientDevice)) {
+    return { patientDevice: null, logs: [] };
+  }
+  const params = [patientDevice.id, 'mini_program_checkin'];
+  let sql = `SELECT * FROM wearing_logs WHERE patient_device_id = ? AND source = ?`;
+  if (options.limit) {
+    sql += ` ORDER BY date DESC LIMIT ${Number(options.limit)}`;
+  } else {
+    sql += ` ORDER BY date DESC`;
+  }
+  const logs = await query(sql, params);
+  return { patientDevice, logs };
 }
 
 async function createDefaultSelfPatientForUser(user) {
@@ -481,9 +709,9 @@ async function createDefaultSelfPatientForUser(user) {
   const phoneEnc = rawPhone ? encryptPII(rawPhone) : null;
   const displayName = String(user?.nickname || '本人').trim() || '本人';
   const created = await run(
-    `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, source, has_snore)
-     VALUES (?, ?, ?, 'self', 0, NULL, ?, 'mini_app', 0)`,
-    [patientNo, user.id, displayName, phoneEnc]
+    `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, card_no, source, has_snore)
+     VALUES (?, ?, ?, 'self', 0, NULL, ?, ?, 'mini_app', 0)`,
+    [patientNo, user.id, displayName, phoneEnc, patientNo]
   );
   await ensureUserPatientLink(user.id, created.id, 'self');
   await run(`UPDATE users SET self_patient_id = ? WHERE id = ?`, [created.id, user.id]);
@@ -492,13 +720,13 @@ async function createDefaultSelfPatientForUser(user) {
 
 function buildTreatmentPhases(treatment, adjustments = []) {
   if (!treatment) return [];
-  const start = new Date(treatment.start_date || treatment.created_at);
+  const start = new Date(treatment.start_date || treatment.bound_at || treatment.created_at);
   const formatYmd = (date) => formatDate(date);
   const firstAdjustment = adjustments.length > 0 ? adjustments[adjustments.length - 1] : null;
   const latestAdjustment = adjustments.length > 0 ? adjustments[0] : null;
   const observationEnd = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
   const phases = [
-    { name: '治疗建档', desc: `绑定设备：${treatment.device_product_name || treatment.device_model}`, date: formatYmd(start), status: 'completed', dot: '1' },
+    { name: '治疗建档', desc: `绑定设备：${treatment.device_product_name || treatment.device_name_snapshot || treatment.device_model}`, date: formatYmd(start), status: 'completed', dot: '1' },
     { name: '初始适配', desc: `初始前伸量 ${Number(treatment.initial_advancement || 0)}mm`, date: formatYmd(start), status: 'completed', dot: '2' },
     {
       name: '舒适观察',
@@ -581,6 +809,8 @@ async function getAppointmentPayAmount(appt) {
 
 async function finalizePaidAppointment(conn, appt, userId) {
   const totalPayAmount = await getAppointmentPayAmount(appt);
+  const depositProduct = await get(`SELECT id, name, image_url FROM products WHERE id = 8 LIMIT 1`);
+  const resolvedUserId = userId || appt.user_id;
   await conn.execute(
     `UPDATE appointments SET status = 'pending', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending_payment'`,
     [appt.id]
@@ -589,22 +819,29 @@ async function finalizePaidAppointment(conn, appt, userId) {
   const [result] = await conn.execute(
     `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, appointment_id)
      VALUES (?, ?, 'appointment_deposit', ?, 0, NULL, ?, 'wechat', CURRENT_TIMESTAMP, 'paid', ?)`,
-    [orderNo, userId || appt.user_id, totalPayAmount, totalPayAmount, appt.id]
+    [orderNo, resolvedUserId, totalPayAmount, totalPayAmount, appt.id]
   );
   const orderId = result.insertId;
   await conn.execute(
     `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity)
-     VALUES (?, 8, '就诊预约定金', '/static/product/screening.png', ?, 1)`,
-    [orderId, totalPayAmount]
+     VALUES (?, ?, ?, ?, ?, 1)`,
+    [
+      orderId,
+      depositProduct?.id || 8,
+      depositProduct?.name || '就诊预约定金',
+      depositProduct?.image_url || '',
+      totalPayAmount
+    ]
   );
   await conn.execute(
-    `INSERT INTO user_notifications (user_id, title, content)
-     VALUES (?, '预约支付成功', ?)`,
+    `INSERT INTO user_notifications (user_id, title, content, type)
+     VALUES (?, '预约支付成功', ?, 'appointment')`,
     [
-      userId || appt.user_id,
+      resolvedUserId,
       `您已成功支付预约费用 ¥${(totalPayAmount / 100).toFixed(2)} 元。预约号: ${appt.appointment_no}。`
     ]
   );
+  await syncUserMembership(resolvedUserId, conn);
 }
 
 async function notifyAppointmentUser(userId, title, content) {
@@ -653,7 +890,7 @@ function getMissingWechatPayConfig() {
 }
 
 function allowDevMockWechatPay() {
-  return process.env.NODE_ENV !== 'production' && process.env.ENABLE_MOCK_WECHAT_PAY !== 'false';
+  return process.env.ENABLE_MOCK_WECHAT_PAY !== 'false';
 }
 
 function signWechatPayMessage(message, privateKey) {
@@ -770,8 +1007,8 @@ async function finalizePaidProductOrder(conn, order) {
   );
 
   await conn.execute(
-    `INSERT INTO user_notifications (user_id, title, content)
-     VALUES (?, '商品购买成功', ?)`,
+    `INSERT INTO user_notifications (user_id, title, content, type)
+     VALUES (?, '商品购买成功', ?, 'order')`,
     [
       order.user_id,
       `您已成功支付商品订单，支付金额 ¥${(order.pay_amount / 100).toFixed(2)}。订单号: ${order.order_no}。${nextStatus === 'shipping' ? '我们会尽快为您安排发货。' : '请按门店通知到店取货。'}`
@@ -779,10 +1016,13 @@ async function finalizePaidProductOrder(conn, order) {
   );
 
   await createPendingDistributionCommission(conn, order, order.user_id);
+  await syncUserMembership(order.user_id, conn);
 }
 
 const DEFAULT_DISTRIBUTION_SETTLE_DAYS = 14;
 const DISTRIBUTION_MIN_WITHDRAW_AMOUNT = 5000;
+const DISTRIBUTION_BANK_FEE_RATE = 0.01;
+const DISTRIBUTION_QRCODE_PLACEHOLDER = '/static/demo/qrcode.png';
 const DISTRIBUTOR_LEVEL_RULES = {
   silver: { level1Rate: 0.1, level2Rate: 0.03, label: '银牌' },
   gold: { level1Rate: 0.15, level2Rate: 0.05, label: '金牌' },
@@ -800,6 +1040,23 @@ async function getDistributionSettleDays() {
     return DEFAULT_DISTRIBUTION_SETTLE_DAYS;
   }
   return days;
+}
+
+async function getDistributionFeatureConfig() {
+  const [settleDays, enableDistributionRow] = await Promise.all([
+    getDistributionSettleDays(),
+    get(`SELECT key_value FROM system_settings WHERE key_name = 'enable_distribution'`)
+  ]);
+  return {
+    settleDays,
+    enableDistribution: String(enableDistributionRow?.key_value || 'true') !== 'false',
+    minWithdrawAmount: DISTRIBUTION_MIN_WITHDRAW_AMOUNT,
+    withdrawFeeRates: {
+      wechat: 0,
+      bank: DISTRIBUTION_BANK_FEE_RATE
+    },
+    eligibleLevels: ['gold', 'diamond']
+  };
 }
 
 function buildInviteCode(userId) {
@@ -828,6 +1085,77 @@ async function ensureDistributor(userId, conn = null) {
   );
 
   return get(`SELECT * FROM distributors WHERE user_id = ?`, [userId]);
+}
+
+async function ensureDistributionInviteQrUrl(distributor, req) {
+  if (!distributor?.id || !distributor.invite_code) return '';
+  if (distributor.invite_qr_url && distributor.invite_qr_url !== DISTRIBUTION_QRCODE_PLACEHOLDER) {
+    return toAbsoluteAssetUrl(req, distributor.invite_qr_url);
+  }
+
+  try {
+    const token = await getWechatMiniAccessToken();
+    const response = await fetch(
+      `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${encodeURIComponent(token)}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          page: 'pages/index/index',
+          scene: `inviteCode=${distributor.invite_code}`,
+          check_path: false,
+          env_version: process.env.WX_MINI_QRCODE_ENV || 'release',
+          width: 430
+        })
+      }
+    );
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+    if (!response.ok || contentType.includes('application/json')) {
+      let message = '生成邀请二维码失败';
+      try {
+        const data = await response.json();
+        message = data.errmsg || message;
+      } catch (error) {}
+      console.warn('[Distribution] generate invite qr skipped:', message);
+      return '';
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const qrDir = path.resolve('./uploads/distribution/qrcodes');
+    fs.mkdirSync(qrDir, { recursive: true });
+    const fileName = `${distributor.invite_code}.png`;
+    const absoluteFilePath = path.join(qrDir, fileName);
+    fs.writeFileSync(absoluteFilePath, buffer);
+    const assetPath = `/uploads/distribution/qrcodes/${fileName}`;
+    await run(`UPDATE distributors SET invite_qr_url = ? WHERE id = ?`, [assetPath, distributor.id]);
+    return toAbsoluteAssetUrl(req, assetPath);
+  } catch (error) {
+    console.warn('[Distribution] generate invite qr skipped:', error.message || error);
+    return '';
+  }
+}
+
+async function getDistributionWithdrawRecordList(userId) {
+  const list = await query(
+    `SELECT * FROM withdraw_records WHERE user_id = ? ORDER BY created_at DESC`,
+    [userId]
+  );
+  return list.map(item => ({
+    id: item.id.toString(),
+    amount: item.amount,
+    fee: item.fee,
+    actualAmount: item.actual_amount,
+    accountInfo: (() => {
+      try {
+        return typeof item.account_info === 'string' ? JSON.parse(item.account_info) : item.account_info;
+      } catch (error) {
+        return { label: item.account_info };
+      }
+    })(),
+    status: item.status,
+    createdAt: item.created_at,
+    completedAt: item.completed_at
+  }));
 }
 
 async function refreshDistributorLevel(distributorId, conn = null) {
@@ -899,14 +1227,26 @@ async function settleEligibleDistributionCommissions(userId) {
   return total;
 }
 
-async function getDistributionSummary(userId) {
+async function getDistributionSummary(userId, req = null) {
   await settleEligibleDistributionCommissions(userId);
-  const settleDays = await getDistributionSettleDays();
+  const featureConfig = await getDistributionFeatureConfig();
+  const user = await get(`SELECT member_level FROM users WHERE id = ?`, [userId]);
+  const memberLevel = String(user?.member_level || 'normal');
+  const distributor = await get(`SELECT * FROM distributors WHERE user_id = ?`, [userId]);
+  const canOpenDistribution = featureConfig.enableDistribution && featureConfig.eligibleLevels.includes(memberLevel);
+  let openDisabledReason = '';
+  if (!featureConfig.enableDistribution) {
+    openDisabledReason = '分销功能暂未开放';
+  } else if (!canOpenDistribution) {
+    openDisabledReason = '当前需黄金会员及以上才可开通分销';
+  }
 
-  const distributor = await ensureDistributor(userId);
   if (!distributor) {
     return {
       isDistributor: false,
+      canOpenDistribution,
+      openDisabledReason,
+      memberLevel,
       teamCount: 0,
       teamLevel2Count: 0,
       totalInvites: 0,
@@ -920,11 +1260,13 @@ async function getDistributionSummary(userId) {
       levelLabel: getDistributorLevelRule('silver').label,
       inviteCode: '',
       inviteQrCode: '',
-      settleDays,
-      minWithdrawAmount: DISTRIBUTION_MIN_WITHDRAW_AMOUNT,
-      withdrawFeeRates: { wechat: 0, bank: 0.01 }
+      settleDays: featureConfig.settleDays,
+      minWithdrawAmount: featureConfig.minWithdrawAmount,
+      withdrawFeeRates: featureConfig.withdrawFeeRates
     };
   }
+
+  const inviteQrCode = await ensureDistributionInviteQrUrl(distributor, req);
 
   const [lv1, lv2, orderStats, pendingStats] = await Promise.all([
     get(`SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 1`, [userId]),
@@ -944,7 +1286,10 @@ async function getDistributionSummary(userId) {
   ]);
 
   return {
-    isDistributor: true,
+    isDistributor: distributor.status === 'active',
+    canOpenDistribution: false,
+    openDisabledReason: distributor.status === 'active' ? '' : '推广员资格已停用',
+    memberLevel,
     teamCount: Number(lv1?.count || 0),
     teamLevel2Count: Number(lv2?.count || 0),
     totalInvites: Number(lv1?.count || 0) + Number(lv2?.count || 0),
@@ -957,10 +1302,10 @@ async function getDistributionSummary(userId) {
     level: distributor.level,
     levelLabel: getDistributorLevelRule(distributor.level).label,
     inviteCode: distributor.invite_code,
-    inviteQrCode: distributor.invite_qr_url || '/static/demo/qrcode.png',
-    settleDays,
-    minWithdrawAmount: DISTRIBUTION_MIN_WITHDRAW_AMOUNT,
-    withdrawFeeRates: { wechat: 0, bank: 0.01 }
+    inviteQrCode,
+    settleDays: featureConfig.settleDays,
+    minWithdrawAmount: featureConfig.minWithdrawAmount,
+    withdrawFeeRates: featureConfig.withdrawFeeRates
   };
 }
 
@@ -1212,7 +1557,7 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
         age: patient ? patient.age : 30,
         phone: decryptPII(user.phone) || (patient ? decryptPII(patient.phone) : '138****8888'),
         idCard: patient ? (decryptPII(patient.id_card) || '') : '',
-        cardNo: patient ? (patient.card_no || '') : '',
+        cardNo: patient ? getPatientRecordNo(patient) : '',
         birthday: user.birthday ? formatDate(user.birthday) : '1995-01-01',
         memberLevel: user.member_level || 'normal',
         isDistributor: !!distributor,
@@ -1250,30 +1595,36 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
     }
     if (selfPatient) {
       if (idCardEnc && selfPatient.id_card !== idCardEnc) {
-        const matchedPatient = await getIdentityMatchedPatient({ idCardEnc });
-        if (matchedPatient) {
-          await bindUserToSelfPatient(req.user.id, matchedPatient.id, {
-            preferName: nicknameClean || selfPatient.name,
-            phoneEnc: phoneEnc || selfPatient.phone || null,
-            idCardEnc
-          });
-        } else {
-          await bindUserToSelfPatient(req.user.id, selfPatient.id, {
-            preferName: nicknameClean || selfPatient.name,
-            phoneEnc: phoneEnc || selfPatient.phone || null,
-            idCardEnc
+        const occupiedPatient = await get(
+          `SELECT p.id
+           FROM patients p
+           LEFT JOIN users u ON u.self_patient_id = p.id
+           WHERE p.id_card = ?
+             AND p.id != ?
+             AND (
+               u.id IS NOT NULL
+               OR (p.user_id IS NOT NULL AND p.relation = 'self')
+             )
+           ORDER BY p.id ASC
+           LIMIT 1`,
+          [idCardEnc, selfPatient.id]
+        );
+        if (occupiedPatient) {
+          return res.status(400).json({
+            code: 400,
+            message: '该身份证号已绑定到其他登录用户，本页面不能直接修改，请通过关联管理处理'
           });
         }
-        selfPatient = await getSelfPatientForUser(req.user.id);
       }
       await run(
         `UPDATE patients
          SET name = COALESCE(?, name),
              gender = COALESCE(?, gender),
              age = COALESCE(?, age),
-             phone = COALESCE(?, phone)
+             phone = COALESCE(?, phone),
+             id_card = COALESCE(?, id_card)
          WHERE id = ?`,
-        [nicknameClean, genderClean, ageClean, phoneEnc, selfPatient.id]
+        [nicknameClean, genderClean, ageClean, phoneEnc, idCardEnc, selfPatient.id]
       );
     }
 
@@ -1290,7 +1641,7 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
         age: patient ? patient.age : 30,
         phone: decryptPII(user.phone),
         idCard: patient ? (decryptPII(patient.id_card) || '') : '',
-        cardNo: patient ? (patient.card_no || '') : '',
+        cardNo: patient ? getPatientRecordNo(patient) : '',
         birthday: user.birthday ? formatDate(user.birthday) : null,
         memberLevel: user.member_level || 'normal'
       }
@@ -1554,18 +1905,33 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
     let essList, snoreList;
 
     if (patientId) {
-      let dbPatientId = null;
-      if (patientId === 'pat-self') {
-        const selfPatient = await getSelfPatientForUser(req.user.id);
-        if (selfPatient) dbPatientId = selfPatient.id;
-      } else {
-        dbPatientId = Number(patientId);
+      const scope = await resolvePatientScope(req, 'query');
+      if (!scope.patientIds.length) {
+        return res.json({ code: 0, message: 'success', data: [] });
       }
-      essList = await query(`SELECT * FROM ess_assessments WHERE user_id = ? AND patient_id = ?`, [req.user.id, dbPatientId]);
-      snoreList = await query(`SELECT * FROM snore_assessments WHERE user_id = ? AND patient_id = ?`, [req.user.id, dbPatientId]);
+      const placeholders = buildSqlPlaceholders(scope.patientIds);
+      essList = await query(
+        `SELECT * FROM ess_assessments WHERE patient_id IN (${placeholders}) ORDER BY created_at DESC`,
+        scope.patientIds
+      );
+      snoreList = await query(
+        `SELECT * FROM snore_assessments WHERE patient_id IN (${placeholders}) ORDER BY created_at DESC`,
+        scope.patientIds
+      );
     } else {
-      essList = await query(`SELECT * FROM ess_assessments WHERE user_id = ?`, [req.user.id]);
-      snoreList = await query(`SELECT * FROM snore_assessments WHERE user_id = ?`, [req.user.id]);
+      const accessiblePatientIds = await getAccessiblePatientIdsForUser(req.user.id);
+      if (!accessiblePatientIds.length) {
+        return res.json({ code: 0, message: 'success', data: [] });
+      }
+      const placeholders = buildSqlPlaceholders(accessiblePatientIds);
+      essList = await query(
+        `SELECT * FROM ess_assessments WHERE patient_id IN (${placeholders}) ORDER BY created_at DESC`,
+        accessiblePatientIds
+      );
+      snoreList = await query(
+        `SELECT * FROM snore_assessments WHERE patient_id IN (${placeholders}) ORDER BY created_at DESC`,
+        accessiblePatientIds
+      );
     }
 
     const formattedEss = essList.map(item => {
@@ -1869,9 +2235,17 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
 app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (req, res) => {
   const paramId = req.params.id;
   try {
+    const accessiblePatientIds = await getAccessiblePatientIdsForUser(req.user.id);
+    if (!accessiblePatientIds.length) {
+      return res.status(404).json({ code: 404, message: '评估记录不存在' });
+    }
+    const placeholders = buildSqlPlaceholders(accessiblePatientIds);
     if (paramId.startsWith('snore-')) {
       const realId = parseInt(paramId.replace('snore-', ''), 10);
-      const item = await get(`SELECT * FROM snore_assessments WHERE id = ?`, [realId]);
+      const item = await get(
+        `SELECT * FROM snore_assessments WHERE id = ? AND patient_id IN (${placeholders})`,
+        [realId, ...accessiblePatientIds]
+      );
       if (!item) {
         return res.status(404).json({ code: 404, message: '评估记录不存在' });
       }
@@ -1905,7 +2279,10 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
       });
     } else if (paramId.startsWith('asmt-')) {
       const realId = parseInt(paramId.replace('asmt-', ''), 10);
-      const item = await get(`SELECT * FROM ess_assessments WHERE id = ?`, [realId]);
+      const item = await get(
+        `SELECT * FROM ess_assessments WHERE id = ? AND patient_id IN (${placeholders})`,
+        [realId, ...accessiblePatientIds]
+      );
       if (!item) {
         return res.status(404).json({ code: 404, message: '评估记录不存在' });
       }
@@ -1943,21 +2320,54 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
 
 // --- Community Forum Endpoints ---
 
+function getOptionalWxUser(req) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) {
+    return null;
+  }
+  try {
+    const user = jwt.verify(token, JWT_SECRET);
+    return user && user.openid ? user : null;
+  } catch (error) {
+    return null;
+  }
+}
+
 // GET /api/v1/community/posts
 app.get('/api/v1/community/posts', async (req, res) => {
   try {
+    const currentUser = getOptionalWxUser(req);
     const list = await query(
-      `SELECT p.*, u.nickname as author_name, u.avatar_url as author_avatar
+      `SELECT p.*, u.nickname as author_name, u.avatar_url as author_avatar,
+              COALESCE(comment_stats.approved_comments_count, 0) AS approved_comments_count,
+              COALESCE(p.publish_at, p.created_at) AS published_at
        FROM community_posts p
        LEFT JOIN users u ON p.user_id = u.id
+       LEFT JOIN (
+         SELECT post_id, COUNT(*) AS approved_comments_count
+         FROM post_comments
+         WHERE status = 'approved'
+         GROUP BY post_id
+       ) comment_stats ON comment_stats.post_id = p.id
        WHERE p.status = 'approved'
-       ORDER BY p.is_top DESC, p.created_at DESC`
+       ORDER BY p.is_top DESC, COALESCE(p.publish_at, p.created_at) DESC`
     );
+
+    let likedPostIds = new Set();
+    if (currentUser?.id && list.length) {
+      const placeholders = buildSqlPlaceholders(list);
+      const likedRows = await query(
+        `SELECT post_id FROM community_post_likes WHERE user_id = ? AND post_id IN (${placeholders})`,
+        [currentUser.id, ...list.map(item => item.id)]
+      );
+      likedPostIds = new Set(likedRows.map(row => Number(row.post_id)));
+    }
 
     const formatted = list.map(p => ({
       id: p.id,
-      author: p.author_name || '普通患者',
-      avatar: p.author_avatar || '/static/demo/avatar.jpg',
+      author: p.author_name || '',
+      avatar: p.author_avatar || '',
       role: p.user_role,
       roleLabel: p.user_role === 'doctor' ? '专家医生' : p.user_role === 'expert' ? '睡眠专家' : '鼾友',
       title: p.title,
@@ -1974,10 +2384,10 @@ app.get('/api/v1/community/posts', async (req, res) => {
         return trimmed.split(',').map(t => t.trim()).filter(Boolean);
       })(),
       likes: p.likes_count,
-      comments: p.comments_count,
+      comments: Number(p.approved_comments_count || 0),
       isTop: p.is_top === 1,
-      createdAt: p.created_at,
-      isLiked: false
+      createdAt: p.published_at,
+      isLiked: likedPostIds.has(Number(p.id))
     }));
 
     res.json({
@@ -1995,10 +2405,19 @@ app.get('/api/v1/community/posts', async (req, res) => {
 app.get('/api/v1/community/posts/:id', async (req, res) => {
   const postId = req.params.id;
   try {
+    const currentUser = getOptionalWxUser(req);
     const post = await get(
-      `SELECT p.*, u.nickname as author_name, u.avatar_url as author_avatar
+      `SELECT p.*, u.nickname as author_name, u.avatar_url as author_avatar,
+              COALESCE(comment_stats.approved_comments_count, 0) AS approved_comments_count,
+              COALESCE(p.publish_at, p.created_at) AS published_at
        FROM community_posts p
        LEFT JOIN users u ON p.user_id = u.id
+       LEFT JOIN (
+         SELECT post_id, COUNT(*) AS approved_comments_count
+         FROM post_comments
+         WHERE status = 'approved'
+         GROUP BY post_id
+       ) comment_stats ON comment_stats.post_id = p.id
        WHERE p.id = ? AND p.status = 'approved'`,
       [postId]
     );
@@ -2008,21 +2427,46 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
     }
 
     const comments = await query(
-      `SELECT c.*, u.nickname as author_name, u.avatar_url as author_avatar
+      `SELECT c.*, u.nickname as author_name, u.avatar_url as author_avatar,
+              parent.user_id AS parent_user_id,
+              parent_author.nickname AS parent_author_name
        FROM post_comments c
        LEFT JOIN users u ON c.user_id = u.id
+       LEFT JOIN post_comments parent ON parent.id = c.parent_id
+       LEFT JOIN users parent_author ON parent_author.id = parent.user_id
        WHERE c.post_id = ? AND c.status = 'approved'
        ORDER BY c.created_at ASC`,
       [postId]
     );
 
+    let likedCommentIds = new Set();
+    let isPostLiked = false;
+    if (currentUser?.id) {
+      const postLike = await get(
+        `SELECT id FROM community_post_likes WHERE post_id = ? AND user_id = ? LIMIT 1`,
+        [postId, currentUser.id]
+      );
+      isPostLiked = !!postLike;
+      if (comments.length) {
+        const placeholders = buildSqlPlaceholders(comments);
+        const likedRows = await query(
+          `SELECT comment_id FROM post_comment_likes WHERE user_id = ? AND comment_id IN (${placeholders})`,
+          [currentUser.id, ...comments.map(item => item.id)]
+        );
+        likedCommentIds = new Set(likedRows.map(row => Number(row.comment_id)));
+      }
+    }
+
     const formattedComments = comments.map(c => ({
       id: c.id,
-      author: c.author_name || '普通患者',
-      avatar: c.author_avatar || '/static/demo/avatar.jpg',
+      author: c.author_name || '',
+      avatar: c.author_avatar || '',
       content: c.content,
       likes: c.likes_count,
-      createdAt: c.created_at
+      createdAt: c.created_at,
+      parentId: c.parent_id || null,
+      parentAuthor: c.parent_author_name || '',
+      isLiked: likedCommentIds.has(Number(c.id))
     }));
 
     res.json({
@@ -2030,8 +2474,8 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
       message: 'success',
       data: {
         id: post.id,
-        author: post.author_name || '普通患者',
-        avatar: post.author_avatar || '/static/demo/avatar.jpg',
+        author: post.author_name || '',
+        avatar: post.author_avatar || '',
         role: post.user_role,
         roleLabel: post.user_role === 'doctor' ? '专家医生' : post.user_role === 'expert' ? '睡眠专家' : '鼾友',
         title: post.title,
@@ -2048,10 +2492,10 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
           return trimmed.split(',').map(t => t.trim()).filter(Boolean);
         })(),
         likes: post.likes_count,
-        commentsCount: post.comments_count,
+        commentsCount: Number(post.approved_comments_count || 0),
         isTop: post.is_top === 1,
-        createdAt: post.created_at,
-        isLiked: false,
+        createdAt: post.published_at,
+        isLiked: isPostLiked,
         comments: formattedComments
       }
     });
@@ -2126,8 +2570,8 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
       message: 'success',
       data: {
         id: result.id,
-        author: user.nickname,
-        avatar: user.avatar_url || '/static/demo/avatar.jpg',
+        author: user.nickname || '',
+        avatar: user.avatar_url || '',
         role,
         roleLabel: role === 'doctor' ? '专家医生' : '鼾友',
         title: titleClean,
@@ -2150,11 +2594,46 @@ app.post('/api/v1/community/posts/:id/like', authenticateWxToken, async (req, re
   const postId = req.params.id;
   const { isLiked } = req.body;
   try {
-    const change = isLiked ? 1 : -1;
-    await run(
-      `UPDATE community_posts SET likes_count = GREATEST(0, likes_count + ?) WHERE id = ?`,
-      [change, postId]
-    );
+    const post = await get(`SELECT id, user_id, title FROM community_posts WHERE id = ? AND status = 'approved'`, [postId]);
+    if (!post) {
+      return res.status(404).json({ code: 404, message: '帖子不存在' });
+    }
+    if (isLiked) {
+      const actor = await get(`SELECT nickname FROM users WHERE id = ?`, [req.user.id]);
+      const result = await run(
+        `INSERT IGNORE INTO community_post_likes (post_id, user_id) VALUES (?, ?)`,
+        [postId, req.user.id]
+      );
+      if (result.changes > 0) {
+        await run(
+          `UPDATE community_posts SET likes_count = likes_count + 1 WHERE id = ?`,
+          [postId]
+        );
+        if (post.user_id && Number(post.user_id) !== Number(req.user.id)) {
+          await run(
+            `INSERT INTO user_notifications (user_id, title, content, type)
+             VALUES (?, ?, ?, ?)`,
+            [
+              post.user_id,
+              '帖子收到点赞',
+              `${actor?.nickname || '有用户'} 点赞了你的帖子《${post.title}》`,
+              'community'
+            ]
+          );
+        }
+      }
+    } else {
+      const result = await run(
+        `DELETE FROM community_post_likes WHERE post_id = ? AND user_id = ?`,
+        [postId, req.user.id]
+      );
+      if (result.changes > 0) {
+        await run(
+          `UPDATE community_posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = ?`,
+          [postId]
+        );
+      }
+    }
     res.json({ code: 0, message: 'success' });
   } catch (error) {
     console.error('likePost error:', error);
@@ -2162,10 +2641,68 @@ app.post('/api/v1/community/posts/:id/like', authenticateWxToken, async (req, re
   }
 });
 
+// POST /api/v1/community/comments/:id/like
+app.post('/api/v1/community/comments/:id/like', authenticateWxToken, async (req, res) => {
+  const commentId = req.params.id;
+  const { isLiked } = req.body;
+  try {
+    const comment = await get(
+      `SELECT c.id, c.user_id, c.post_id, p.title
+       FROM post_comments c
+       LEFT JOIN community_posts p ON p.id = c.post_id
+       WHERE c.id = ? AND c.status = 'approved'`,
+      [commentId]
+    );
+    if (!comment) {
+      return res.status(404).json({ code: 404, message: '评论不存在' });
+    }
+    if (isLiked) {
+      const actor = await get(`SELECT nickname FROM users WHERE id = ?`, [req.user.id]);
+      const result = await run(
+        `INSERT IGNORE INTO post_comment_likes (comment_id, user_id) VALUES (?, ?)`,
+        [commentId, req.user.id]
+      );
+      if (result.changes > 0) {
+        await run(
+          `UPDATE post_comments SET likes_count = likes_count + 1 WHERE id = ?`,
+          [commentId]
+        );
+        if (comment.user_id && Number(comment.user_id) !== Number(req.user.id)) {
+          await run(
+            `INSERT INTO user_notifications (user_id, title, content, type)
+             VALUES (?, ?, ?, ?)`,
+            [
+              comment.user_id,
+              '评论收到点赞',
+              `${actor?.nickname || '有用户'} 点赞了你在《${comment.title || '社区帖子'}》中的评论`,
+              'community'
+            ]
+          );
+        }
+      }
+    } else {
+      const result = await run(
+        `DELETE FROM post_comment_likes WHERE comment_id = ? AND user_id = ?`,
+        [commentId, req.user.id]
+      );
+      if (result.changes > 0) {
+        await run(
+          `UPDATE post_comments SET likes_count = GREATEST(0, likes_count - 1) WHERE id = ?`,
+          [commentId]
+        );
+      }
+    }
+    res.json({ code: 0, message: 'success' });
+  } catch (error) {
+    console.error('likeComment error:', error);
+    res.status(500).json({ code: 500, message: '评论点赞失败' });
+  }
+});
+
 // POST /api/v1/community/posts/:id/comment
 app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
-  const { content } = req.body;
+  const { content, parentId } = req.body;
   if (!content) {
     return res.status(400).json({ code: 400, message: '评论内容不能为空' });
   }
@@ -2176,10 +2713,31 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
     if (checkSensitiveWords(content)) {
       return res.status(400).json({ code: 400, message: '评论中包含敏感或违规内容，已被系统拦截' });
     }
+    const post = await get(
+      `SELECT id, user_id, title FROM community_posts WHERE id = ? AND status = 'approved'`,
+      [postId]
+    );
+    if (!post) {
+      return res.status(404).json({ code: 404, message: '帖子不存在' });
+    }
+    let parentComment = null;
+    if (parentId) {
+      parentComment = await get(
+        `SELECT c.id, c.user_id, c.post_id, u.nickname AS author_name
+         FROM post_comments c
+         LEFT JOIN users u ON u.id = c.user_id
+         WHERE c.id = ? AND c.status = 'approved'`,
+        [parentId]
+      );
+      if (!parentComment || Number(parentComment.post_id) !== Number(postId)) {
+        return res.status(400).json({ code: 400, message: '回复的评论不存在' });
+      }
+    }
     const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
     const result = await run(
-      `INSERT INTO post_comments (post_id, user_id, content, likes_count, status) VALUES (?, ?, ?, 0, 'approved')`,
-      [postId, req.user.id, contentClean]
+      `INSERT INTO post_comments (post_id, user_id, parent_id, content, likes_count, status)
+       VALUES (?, ?, ?, ?, 0, 'approved')`,
+      [postId, req.user.id, parentComment ? parentComment.id : null, contentClean]
     );
 
     await run(
@@ -2187,16 +2745,44 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
       [postId]
     );
 
+    const actorName = user.nickname || '有用户';
+    if (parentComment && parentComment.user_id && Number(parentComment.user_id) !== Number(req.user.id)) {
+      await run(
+        `INSERT INTO user_notifications (user_id, title, content, type)
+         VALUES (?, ?, ?, ?)`,
+        [
+          parentComment.user_id,
+          '社区新回复',
+          `${actorName} 回复了你在《${post.title}》中的评论`,
+          'community'
+        ]
+      );
+    } else if (post.user_id && Number(post.user_id) !== Number(req.user.id)) {
+      await run(
+        `INSERT INTO user_notifications (user_id, title, content, type)
+         VALUES (?, ?, ?, ?)`,
+        [
+          post.user_id,
+          '社区新评论',
+          `${actorName} 评论了你的帖子《${post.title}》`,
+          'community'
+        ]
+      );
+    }
+
     res.json({
       code: 0,
       message: 'success',
       data: {
         id: result.id,
-        author: user.nickname,
-        avatar: user.avatar_url || '/static/demo/avatar.jpg',
+        author: user.nickname || '',
+        avatar: user.avatar_url || '',
         content: contentClean,
         likes: 0,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        parentId: parentComment ? parentComment.id : null,
+        parentAuthor: parentComment ? (parentComment.author_name || '') : '',
+        isLiked: false
       }
     });
   } catch (error) {
@@ -2208,8 +2794,11 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
 
 app.get('/api/v1/user/member-info', authenticateWxToken, async (req, res) => {
   try {
-    const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
-    let points = user.points || 0;
+    const user = await syncUserMemberLevel(req.user.id);
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '用户不存在' });
+    }
+    let points = Number(user.points);
 
     // Check if the user is real-name verified (has self patient id_card)
     const selfPatient = await getSelfPatientForUser(req.user.id);
@@ -2234,14 +2823,31 @@ app.get('/api/v1/user/member-info', authenticateWxToken, async (req, res) => {
       code: 0,
       message: 'success',
       data: {
-        memberLevel: user.member_level || 'normal',
-        currentLevel: user.member_level || 'normal',
+        memberLevel: user.member_level,
+        currentLevel: user.member_level,
         points: points,
-        totalSpent: user.total_spent || 0
+        totalSpent: Number(user.total_spent)
       }
     });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取会员信息失败' });
+  }
+});
+
+app.get('/api/v1/user/member-levels', authenticateWxToken, async (req, res) => {
+  try {
+    const user = await syncUserMemberLevel(req.user.id);
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '用户不存在' });
+    }
+    res.json({
+      code: 0,
+      message: 'success',
+      data: MEMBER_LEVEL_RULES
+    });
+  } catch (error) {
+    console.error('Get member levels error:', error);
+    res.status(500).json({ code: 500, message: '获取会员等级失败' });
   }
 });
 
@@ -2266,7 +2872,7 @@ app.get('/api/v1/user/family-members', authenticateWxToken, async (req, res) => 
         phone: decPhone,
         hasSnore: p.has_snore === 1,
         idCard: maskedIdCard,
-        cardNo: p.card_no || ''
+        cardNo: getPatientRecordNo(p)
       };
     });
     res.json({
@@ -2327,21 +2933,26 @@ app.post('/api/v1/user/family-members', authenticateWxToken, async (req, res) =>
     }
 
     if (!patient) {
-      const resolvedCardNo = cardNoClean || await generateUniqueCardNo();
-      const patientNo = await generateUniquePatientNo(async (candidate) => {
+      const patientNo = cardNoClean || await generateUniquePatientNo(async (candidate) => {
         const row = await get(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
         return Boolean(row);
       });
+      if (cardNoClean) {
+        const duplicatedPatientNo = await get(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [cardNoClean]);
+        if (duplicatedPatientNo) {
+          return res.status(400).json({ code: 400, message: '该病历号已存在，请核对后重试' });
+        }
+      }
       const result = await run(
         `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, id_card, card_no, source, has_snore)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'mini_app', 0)`,
-        [patientNo, req.user.id, nameClean, relationClean, genderVal, ageVal, phoneEnc, idCardEnc, resolvedCardNo]
+        [patientNo, req.user.id, nameClean, relationClean, genderVal, ageVal, phoneEnc, idCardEnc, patientNo]
       );
       patient = await get(`SELECT * FROM patients WHERE id = ?`, [result.id]);
     } else {
       const nextPhone = patient.phone || phoneEnc || null;
       const nextIdCard = patient.id_card || idCardEnc || null;
-      const nextCardNo = patient.card_no || cardNoClean || await generateUniqueCardNo();
+      const nextCardNo = patient.card_no || patient.patient_no || null;
       if (nextPhone !== patient.phone || nextIdCard !== patient.id_card || nextCardNo !== patient.card_no) {
         await run(
           `UPDATE patients SET phone = ?, id_card = ?, card_no = ? WHERE id = ?`,
@@ -2373,7 +2984,7 @@ app.post('/api/v1/user/family-members', authenticateWxToken, async (req, res) =>
         age: patient.age,
         phone: decPatientPhone,
         idCard: decPatientIdCard ? `${decPatientIdCard.slice(0, 3)}***********${decPatientIdCard.slice(-4)}` : '',
-        cardNo: patient.card_no || '',
+        cardNo: getPatientRecordNo(patient),
         hasSnore: patient.has_snore === 1
       }
     });
@@ -2408,7 +3019,7 @@ app.get('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
         age: link.age,
         phone: link.phone ? decryptPII(link.phone) : '',
         idCard: link.id_card ? decryptPII(link.id_card) : '',
-        cardNo: link.card_no || '',
+        cardNo: getPatientRecordNo(link),
         hasSnore: Boolean(link.has_snore)
       }
     });
@@ -2462,6 +3073,12 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
     if (link.user_id === req.user.id && link.relation === 'self') {
       return res.status(400).json({ code: 400, message: '本人信息请前往个人信息页修改' });
     }
+    if (cardNoClean && cardNoClean !== getPatientRecordNo(link)) {
+      const duplicatedPatientNo = await get(`SELECT id FROM patients WHERE patient_no = ? AND id != ? LIMIT 1`, [cardNoClean, id]);
+      if (duplicatedPatientNo) {
+        return res.status(400).json({ code: 400, message: '该病历号已存在，请核对后重试' });
+      }
+    }
 
     const identityChanged = (link.phone || null) !== (phoneEnc || null) || (link.id_card || null) !== (idCardEnc || null);
 
@@ -2495,14 +3112,15 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
             [req.user.id, matchedPatient.id, relationClean]
           );
 
-          const nextMatchedCardNo = matchedPatient.card_no || cardNoClean || null;
+          const nextMatchedPatientNo = matchedPatient.patient_no || cardNoClean || null;
           await conn.execute(
             `UPDATE patients
-             SET phone = COALESCE(phone, ?),
-                 id_card = COALESCE(id_card, ?),
-                 card_no = COALESCE(card_no, ?)
+             SET patient_no = COALESCE(patient_no, ?),
+                 card_no = COALESCE(card_no, ?),
+                 phone = COALESCE(phone, ?),
+                 id_card = COALESCE(id_card, ?)
              WHERE id = ?`,
-            [phoneEnc, idCardEnc, nextMatchedCardNo, matchedPatient.id]
+            [nextMatchedPatientNo, nextMatchedPatientNo, phoneEnc, idCardEnc, matchedPatient.id]
           );
           targetPatientId = Number(matchedPatient.id);
 
@@ -2536,9 +3154,10 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
           } else {
             await conn.execute(
               `UPDATE patients
-               SET name = ?, gender = ?, age = ?, phone = ?, id_card = ?, card_no = ?
+               SET patient_no = COALESCE(?, patient_no),
+                   name = ?, gender = ?, age = ?, phone = ?, id_card = ?, card_no = COALESCE(?, card_no, patient_no)
                WHERE id = ?`,
-              [nameClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean, id]
+              [cardNoClean || null, nameClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean || null, id]
             );
           }
         }
@@ -2547,9 +3166,10 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
       if (!identityChanged) {
         await conn.execute(
           `UPDATE patients
-           SET name = ?, gender = ?, age = ?, phone = ?, id_card = ?, card_no = ?
+           SET patient_no = COALESCE(?, patient_no),
+               name = ?, gender = ?, age = ?, phone = ?, id_card = ?, card_no = COALESCE(?, card_no, patient_no)
            WHERE id = ?`,
-          [nameClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean, id]
+          [cardNoClean || null, nameClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean || null, id]
         );
       }
 
@@ -2562,6 +3182,8 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
       responsePatientId = String(targetPatientId);
     });
 
+    const responsePatient = await get(`SELECT * FROM patients WHERE id = ?`, [responsePatientId]);
+
     res.json({
       code: 0,
       message: 'success',
@@ -2573,7 +3195,7 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
         age: ageVal,
         phone: phoneClean,
         idCard: idCardClean ? `${idCardClean.slice(0, 3)}***********${idCardClean.slice(-4)}` : '',
-        cardNo: cardNoClean
+        cardNo: getPatientRecordNo(responsePatient)
       }
     });
   } catch (error) {
@@ -3356,12 +3978,22 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
 
     const essId = normalizeNumericId(essAssessmentId);
     const snoreId = normalizeNumericId(snoreAssessmentId);
+    const appointmentPatient = await get(`SELECT * FROM patients WHERE id = ? LIMIT 1`, [resolvedPatientId]);
+    const appointmentPatientScope = await getPatientDataScope(appointmentPatient);
+    const appointmentPatientIds = appointmentPatientScope.patientIds.length ? appointmentPatientScope.patientIds : [resolvedPatientId];
+    const assessmentPlaceholders = buildSqlPlaceholders(appointmentPatientIds);
     if (essId) {
-      const ess = await get(`SELECT id FROM ess_assessments WHERE id = ? AND user_id = ? AND patient_id = ?`, [essId, req.user.id, resolvedPatientId]);
+      const ess = await get(
+        `SELECT id FROM ess_assessments WHERE id = ? AND patient_id IN (${assessmentPlaceholders})`,
+        [essId, ...appointmentPatientIds]
+      );
       if (!ess) return res.status(400).json({ code: 400, message: 'ESS评估记录无效' });
     }
     if (snoreId) {
-      const snore = await get(`SELECT id FROM snore_assessments WHERE id = ? AND user_id = ? AND patient_id = ?`, [snoreId, req.user.id, resolvedPatientId]);
+      const snore = await get(
+        `SELECT id FROM snore_assessments WHERE id = ? AND patient_id IN (${assessmentPlaceholders})`,
+        [snoreId, ...appointmentPatientIds]
+      );
       if (!snore) return res.status(400).json({ code: 400, message: '鼾声评估记录无效' });
     }
 
@@ -3769,21 +4401,21 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
 
     let treatmentRecord = null;
     if (medicalRecord) {
-      // 1. Try to find a treatment record that was created at this appointment (first fit)
+      // 1. Try to find a device binding that was created at this appointment
       treatmentRecord = await get(
-        `SELECT tr.*
-         FROM treatment_records tr
-         WHERE tr.medical_record_id = ?`,
+        `SELECT pd.*
+         FROM patient_devices pd
+         WHERE pd.bind_medical_record_id = ?`,
         [medicalRecord.id]
       );
 
-      // 2. If not found, see if there was a device adjustment on the date of this medical record (follow-up)
+      // 2. If not found, see if there was a device adjustment on the date of this medical record
       if (!treatmentRecord) {
         const adjustment = await get(
-          `SELECT tr.*, da.adjusted_advancement, da.patient_feedback, da.instructions
-           FROM treatment_records tr
-           JOIN device_adjustments da ON da.treatment_id = tr.id
-           WHERE tr.patient_id = ? AND (DATE(da.adjust_date) = DATE(?) OR da.adjust_date = ?)
+          `SELECT pd.*, da.adjusted_advancement, da.patient_feedback, da.instructions
+           FROM patient_devices pd
+           JOIN device_adjustments da ON da.patient_device_id = pd.id
+           WHERE pd.patient_id = ? AND (DATE(da.adjust_date) = DATE(?) OR da.adjust_date = ?)
            ORDER BY da.id DESC LIMIT 1`,
           [medicalRecord.patient_id, medicalRecord.visit_date, medicalRecord.visit_date]
         );
@@ -3795,7 +4427,7 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
             current_advancement: adjustment.adjusted_advancement, // use the adjusted value from that day!
             next_adjust_date: adjustment.next_adjust_date,
             status: adjustment.status,
-            start_date: adjustment.start_date
+            start_date: adjustment.bound_at
           };
         }
       }
@@ -3965,6 +4597,7 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
           `UPDATE orders SET status = 'refunding', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
           [paidOrder.id]
         );
+        await syncUserMembership(req.user.id, conn);
         await conn.execute(
           `INSERT INTO user_notifications (user_id, title, content)
            VALUES (?, '预约退款申请已提交', ?)`,
@@ -4274,15 +4907,27 @@ app.get('/api/v1/products/:id', async (req, res) => {
 // 20. Medical Records (GET)
 app.get('/api/v1/user/medical-records', authenticateWxToken, async (req, res) => {
   try {
+    const accessiblePatientIds = await getAccessiblePatientIdsForUser(req.user.id);
+    if (!accessiblePatientIds.length) {
+      return res.json({ code: 0, message: 'success', data: { list: [], total: 0 } });
+    }
+    const selectedPatientId = req.query.patientId ? String(req.query.patientId) : '';
+    const scopedPatientIds = selectedPatientId
+      ? accessiblePatientIds.filter((item) => String(item) === selectedPatientId)
+      : accessiblePatientIds;
+    if (!scopedPatientIds.length) {
+      return res.json({ code: 0, message: 'success', data: { list: [], total: 0 } });
+    }
+    const placeholders = buildSqlPlaceholders(scopedPatientIds);
     const list = await query(
       `SELECT mr.*, p.name as patient_name, d.name as doctor_name, s.name as store_name
        FROM medical_records mr
        JOIN patients p ON mr.patient_id = p.id
        JOIN doctors d ON mr.doctor_id = d.id
        JOIN stores s ON mr.store_id = s.id
-       WHERE p.user_id = ?
+       WHERE mr.patient_id IN (${placeholders})
        ORDER BY mr.visit_date DESC`,
-      [req.user.id]
+      scopedPatientIds
     );
 
     const formatted = list.map(mr => ({
@@ -4349,12 +4994,17 @@ app.post('/api/v1/user/medical-records/:id/attachments', authenticateWxToken, as
     return res.status(400).json({ code: 400, message: '附件地址不能为空' });
   }
   try {
+    const accessiblePatientIds = await getAccessiblePatientIdsForUser(req.user.id);
+    if (!accessiblePatientIds.length) {
+      return res.status(404).json({ code: 404, message: '该病历不存在或无权操作' });
+    }
+    const placeholders = buildSqlPlaceholders(accessiblePatientIds);
     // Check ownership of the medical record
     const mrCheck = await get(
       `SELECT mr.id FROM medical_records mr
        JOIN patients p ON mr.patient_id = p.id
-       WHERE mr.id = ? AND p.user_id = ?`,
-      [id, req.user.id]
+       WHERE mr.id = ? AND mr.patient_id IN (${placeholders})`,
+      [id, ...accessiblePatientIds]
     );
     if (!mrCheck) {
       return res.status(404).json({ code: 404, message: '该病历不存在或无权操作' });
@@ -4398,18 +5048,21 @@ app.post('/api/v1/user/medical-records/:id/attachments', authenticateWxToken, as
 
 app.get('/api/v1/treatment/records', authenticateWxToken, async (req, res) => {
   try {
-    const patient = await resolveUserPatient(req);
-    if (!patient) {
+    const scope = await resolvePatientScope(req);
+    const patient = scope.primaryPatient;
+    if (!patient || !scope.patientIds.length) {
       return res.json({ code: 0, message: 'success', data: { list: [], total: 0 } });
     }
-    const records = await query(
-      `SELECT tr.*, d.name as doctor_name
-       FROM treatment_records tr
-       LEFT JOIN doctors d ON tr.doctor_id = d.id
-       WHERE tr.patient_id = ?
-       ORDER BY FIELD(tr.status, 'active', 'paused', 'completed'), tr.start_date DESC, tr.id DESC`,
-      [patient.id]
+    const placeholders = buildSqlPlaceholders(scope.patientIds);
+    const rawRecords = await query(
+      `SELECT pd.*, d.name as doctor_name
+       FROM patient_devices pd
+       LEFT JOIN doctors d ON pd.bind_doctor_id = d.id
+       WHERE pd.patient_id IN (${placeholders})
+       ORDER BY FIELD(pd.status, 'active', 'inactive', 'replaced'), pd.bound_at DESC, pd.id DESC`,
+      scope.patientIds
     );
+    const records = rawRecords.filter((record) => !isPlaceholderTreatmentRecord(record));
     res.json({
       code: 0,
       message: 'success',
@@ -4419,9 +5072,9 @@ app.get('/api/v1/treatment/records', authenticateWxToken, async (req, res) => {
           patientId: patient.id.toString(),
           patientName: patient.name,
           doctorName: record.doctor_name || '',
-          deviceModel: record.device_product_name || record.device_model,
+          deviceModel: record.device_name_snapshot || record.device_model,
           adjustmentValue: Number(record.current_advancement || 0),
-          startDate: formatDate(record.start_date || record.created_at),
+          startDate: formatDate(record.bound_at || record.created_at),
           nextAdjustDate: record.next_adjust_date ? formatDate(record.next_adjust_date) : '',
           status: record.status
         })),
@@ -4441,17 +5094,17 @@ app.get('/api/v1/treatment/adjustments', authenticateWxToken, async (req, res) =
     if (!patient) {
       return res.status(400).json({ code: 400, message: '未找到就诊人档案' });
     }
-    const tr = await resolveTreatmentForPatient(patient, req.query.treatmentId);
-    if (!tr) {
+    const patientDevice = await resolvePatientDeviceForPatient(patient, req.query.treatmentId);
+    if (!patientDevice || isPlaceholderTreatmentRecord(patientDevice)) {
       return res.json({ code: 0, data: [] });
     }
     const adjustments = await query(
       `SELECT da.*, d.name as doctor_name
        FROM device_adjustments da
        LEFT JOIN doctors d ON da.operator_id = d.id
-       WHERE da.treatment_id = ?
+       WHERE da.patient_device_id = ?
        ORDER BY da.adjust_date DESC`,
-      [tr.id]
+      [patientDevice.id]
     );
     const formatted = adjustments.map(a => ({
       id: a.id.toString(),
@@ -4475,34 +5128,14 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
   const limitDays = range === 'month' ? 30 : 7;
 
   try {
-    const patient = await resolveUserPatient(req);
-    if (!patient) {
+    const scope = await resolvePatientScope(req);
+    const patient = scope.primaryPatient;
+    if (!patient || !scope.patientIds.length) {
       return res.status(400).json({ code: 400, message: '未找到就诊人档案' });
     }
-    const tr = await resolveTreatmentForPatient(patient, req.query.treatmentId);
-    if (!tr) {
-      return res.json({
-        code: 0,
-        data: {
-          hasData: false,
-          compliance: 0,
-          weekAvg: 0,
-          avgComfort: 0,
-          streak: 0,
-          score: 0,
-          betterThan: 0,
-          trend: []
-        }
-      });
-    }
-
     const safeLimitDays = limitDays === 30 ? 30 : 7;
-    const logs = await query(
-      `SELECT * FROM wearing_logs
-       WHERE treatment_id = ? AND source = 'mini_program_checkin'
-       ORDER BY date DESC LIMIT ${safeLimitDays}`,
-      [tr.id]
-    );
+    const wearResult = await getMiniProgramWearingLogsForPatientScope(scope, { limit: safeLimitDays, treatmentId: req.query.treatmentId });
+    const logs = wearResult?.logs || [];
 
     let totalDuration = 0;
     let totalComfort = 0;
@@ -4563,9 +5196,22 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
       ? Math.min(100, Math.round(0.35 * compliance + (weekAvg / 8) * 100 * 0.35 + (avgComfort / 5) * 100 * 0.2 + (avgAhi === null ? 100 : Math.max(0, 100 - avgAhi * 4)) * 0.1))
       : 0;
     const betterThan = wearCount > 0 ? Math.min(95, Math.max(5, Math.round(score * 0.82))) : 0;
+    const assessmentPlaceholders = buildSqlPlaceholders(scope.patientIds);
     const [latestEss, latestSnore] = await Promise.all([
-      get(`SELECT total_score, risk_level, created_at FROM ess_assessments WHERE patient_id = ? ORDER BY created_at DESC LIMIT 1`, [patient.id]),
-      get(`SELECT avg_decibel, apnea_events, risk_level, created_at FROM snore_assessments WHERE patient_id = ? ORDER BY created_at DESC LIMIT 1`, [patient.id])
+      get(
+        `SELECT total_score, risk_level, created_at
+         FROM ess_assessments
+         WHERE patient_id IN (${assessmentPlaceholders})
+         ORDER BY created_at DESC LIMIT 1`,
+        scope.patientIds
+      ),
+      get(
+        `SELECT avg_decibel, apnea_events, risk_level, created_at
+         FROM snore_assessments
+         WHERE patient_id IN (${assessmentPlaceholders})
+         ORDER BY created_at DESC LIMIT 1`,
+        scope.patientIds
+      )
     ]);
     const platformStats = await get(
       `SELECT
@@ -4614,8 +5260,9 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
 // 21. Active Treatment Record (GET)
 async function sendTreatmentRecord(req, res, explicitTreatmentId = null) {
   try {
-    let patient = await resolveUserPatient(req);
-    if (!patient) {
+    const scope = await resolvePatientScope(req);
+    const patient = scope.primaryPatient;
+    if (!patient || !scope.patientIds.length) {
       return res.json({
         code: 0,
         message: '暂无就诊人档案',
@@ -4623,24 +5270,24 @@ async function sendTreatmentRecord(req, res, explicitTreatmentId = null) {
       });
     }
     const treatmentId = explicitTreatmentId || req.query.treatmentId;
-    let tr = treatmentId ? await get(
-      `SELECT tr.*, mr.diagnosis, mr.doctor_advice, d.name as doctor_name
-       FROM treatment_records tr
-       LEFT JOIN medical_records mr ON tr.medical_record_id = mr.id
-       LEFT JOIN doctors d ON tr.doctor_id = d.id
-       WHERE tr.id = ? AND tr.patient_id = ?
-       LIMIT 1`,
-      [treatmentId, patient.id]
-    ) : await get(
-      `SELECT tr.*, mr.diagnosis, mr.doctor_advice, d.name as doctor_name
-       FROM treatment_records tr
-       LEFT JOIN medical_records mr ON tr.medical_record_id = mr.id
-       LEFT JOIN doctors d ON tr.doctor_id = d.id
-       WHERE tr.patient_id = ? AND tr.status = 'active'
-       ORDER BY tr.start_date DESC, tr.id DESC
-       LIMIT 1`,
-      [patient.id]
-    );
+    const patientDevice = await resolvePatientDeviceForPatient(patient, treatmentId);
+    let tr = null;
+    if (patientDevice && !isPlaceholderTreatmentRecord(patientDevice)) {
+      tr = await get(
+        `SELECT pd.*,
+                mr.diagnosis,
+                mr.doctor_advice,
+                d.name as doctor_name,
+                tr.created_at as treatment_created_at
+         FROM patient_devices pd
+         LEFT JOIN treatment_records tr ON tr.id = pd.bind_treatment_record_id
+         LEFT JOIN medical_records mr ON mr.id = pd.bind_medical_record_id
+         LEFT JOIN doctors d ON d.id = pd.bind_doctor_id
+         WHERE pd.id = ?
+         LIMIT 1`,
+        [patientDevice.id]
+      );
+    }
 
     if (!tr) {
       return res.json({
@@ -4651,10 +5298,9 @@ async function sendTreatmentRecord(req, res, explicitTreatmentId = null) {
     }
 
     const adjustments = await query(
-      `SELECT * FROM device_adjustments WHERE treatment_id = ? ORDER BY adjust_date DESC, id DESC`,
+      `SELECT * FROM device_adjustments WHERE patient_device_id = ? ORDER BY adjust_date DESC, id DESC`,
       [tr.id]
     );
-    const isPlaceholderRecord = isPlaceholderTreatmentRecord(tr);
 
     res.json({
       code: 0,
@@ -4663,29 +5309,29 @@ async function sendTreatmentRecord(req, res, explicitTreatmentId = null) {
         id: tr.id.toString(),
         patientId: tr.patient_id.toString(),
         patientName: patient.name,
-        appointmentId: tr.medical_record_id ? tr.medical_record_id.toString() : '',
-        doctorId: tr.doctor_id.toString(),
+        appointmentId: tr.bind_medical_record_id ? tr.bind_medical_record_id.toString() : '',
+        doctorId: tr.bind_doctor_id ? tr.bind_doctor_id.toString() : '',
         doctorName: tr.doctor_name || '',
-        isPlaceholderRecord,
-        isRealTreatmentRecord: !isPlaceholderRecord,
+        isPlaceholderRecord: false,
+        isRealTreatmentRecord: true,
         diagnosis: tr.diagnosis || '',
         treatmentPlan: `下颌前移式阻鼾器治疗，初始前移量${tr.initial_advancement}mm，当前前移量${tr.current_advancement}mm`,
         deviceModel: tr.device_model,
         deviceProductId: tr.device_product_id ? tr.device_product_id.toString() : '',
         device: tr.device_product_id ? {
           id: tr.device_product_id.toString(),
-          name: tr.device_product_name || tr.device_model,
-          imageUrl: tr.device_product_image_url || '',
-          price: Number(tr.device_product_price || 0),
-          description: tr.device_product_description || '',
+          name: tr.device_name_snapshot || tr.device_model,
+          imageUrl: tr.device_image_snapshot || '',
+          price: Number(tr.device_price_snapshot || 0),
+          description: tr.device_description_snapshot || '',
           status: 'bound'
         } : null,
         adjustmentValue: Number(tr.current_advancement),
         nextAdjustDate: tr.next_adjust_date ? formatDate(tr.next_adjust_date) : '',
         doctorAdvice: tr.doctor_advice || '',
         followupDate: tr.next_adjust_date ? formatDate(tr.next_adjust_date) : '',
-        createdAt: tr.created_at,
-        startDate: formatDate(tr.start_date || tr.created_at),
+        createdAt: tr.created_at || tr.treatment_created_at,
+        startDate: formatDate(tr.bound_at || tr.created_at || tr.treatment_created_at),
         status: tr.status,
         phases: buildTreatmentPhases(tr, adjustments)
       }
@@ -4710,15 +5356,13 @@ app.get('/api/v1/treatment/device', authenticateWxToken, async (req, res) => {
 // 21.1 WeChat Client Wearing Records (GET)
 app.get('/api/v1/treatment/wearing-records', authenticateWxToken, async (req, res) => {
   try {
-    const patient = await resolveUserPatient(req);
-    if (!patient) {
+    const scope = await resolvePatientScope(req);
+    const patient = scope.primaryPatient;
+    if (!patient || !scope.patientIds.length) {
       return res.json({ code: 0, message: 'success', data: [] });
     }
-    const tr = await resolveTreatmentForPatient(patient, req.query.treatmentId);
-    if (!tr) {
-      return res.json({ code: 0, message: 'success', data: [] });
-    }
-    const logs = await query(`SELECT * FROM wearing_logs WHERE treatment_id = ? AND source = 'mini_program_checkin' ORDER BY date DESC`, [tr.id]);
+    const wearResult = await getMiniProgramWearingLogsForPatientScope(scope, { treatmentId: req.query.treatmentId });
+    const logs = wearResult?.logs || [];
     const formatTime = (d) => {
       if (!d) return '';
       const date = new Date(d);
@@ -4748,7 +5392,8 @@ app.get('/api/v1/treatment/wearing-records', authenticateWxToken, async (req, re
 // 21.2 WeChat Client Wearing Summary (GET)
 app.get('/api/v1/treatment/wearing-summary', authenticateWxToken, async (req, res) => {
   try {
-    const patient = await resolveUserPatient(req);
+    const scope = await resolvePatientScope(req);
+    const patient = scope.primaryPatient;
     const defaultSummary = {
       totalDays: 0,
       wornDays: 0,
@@ -4759,14 +5404,11 @@ app.get('/api/v1/treatment/wearing-summary', authenticateWxToken, async (req, re
       weekWorn: 0,
       weekAvg: 0
     };
-    if (!patient) {
+    if (!patient || !scope.patientIds.length) {
       return res.json({ code: 0, message: 'success', data: defaultSummary });
     }
-    const tr = await resolveTreatmentForPatient(patient, req.query.treatmentId);
-    if (!tr) {
-      return res.json({ code: 0, message: 'success', data: defaultSummary });
-    }
-    const logs = await query(`SELECT * FROM wearing_logs WHERE treatment_id = ? AND source = 'mini_program_checkin' ORDER BY date ASC`, [tr.id]);
+    const wearResult = await getMiniProgramWearingLogsForPatientScope(scope, { treatmentId: req.query.treatmentId });
+    const logs = (wearResult?.logs || []).reverse();
     if (logs.length === 0) {
       return res.json({ code: 0, message: 'success', data: defaultSummary });
     }
@@ -4812,22 +5454,23 @@ app.get('/api/v1/treatment/wearing-summary', authenticateWxToken, async (req, re
 // 21.3 WeChat Client Treatment Timeline (GET)
 app.get('/api/v1/treatment/timeline', authenticateWxToken, async (req, res) => {
   try {
-    const patient = await resolveUserPatient(req);
-    if (!patient) {
+    const scope = await resolvePatientScope(req);
+    const patient = scope.primaryPatient;
+    if (!patient || !scope.patientIds.length) {
       return res.json({ code: 0, message: 'success', data: [] });
     }
-    const params = [req.user.id, patient.id];
-    let sql = `SELECT * FROM treatment_timelines WHERE user_id = ? AND (patient_id = ?`;
-    if (patient.relation === 'self') {
-      sql += ` OR patient_id IS NULL`;
+    const treatment = await resolveTreatmentForPatient(patient, req.query.treatmentId);
+    if (!treatment || isPlaceholderTreatmentRecord(treatment)) {
+      return res.json({ code: 0, message: 'success', data: [] });
     }
-    sql += `)`;
-    if (req.query.treatmentId) {
-      sql += ` AND (treatment_id = ? OR treatment_id IS NULL)`;
-      params.push(req.query.treatmentId);
-    }
-    sql += ` ORDER BY event_date DESC, id DESC`;
-    const timelines = await query(sql, params);
+
+    const timelines = await query(
+      `SELECT *
+       FROM treatment_timelines
+       WHERE treatment_id = ?
+       ORDER BY event_date DESC, id DESC`,
+      [treatment.id]
+    );
     const formatTime = (d) => {
       if (!d) return '';
       const date = new Date(d);
@@ -4881,19 +5524,36 @@ app.post('/api/v1/treatment/wearing', authenticateWxToken, async (req, res) => {
     if (!patient) {
       return res.status(404).json({ code: 404, message: '患者档案未找到' });
     }
-    const tr = await ensureTreatmentForCheckin(patient, req.body.treatmentId, date);
+    const patientDevice = req.body.treatmentId
+      ? await resolvePatientDeviceForPatient(patient, req.body.treatmentId)
+      : await resolvePatientDeviceForPatient(patient);
+    if (!patientDevice || isPlaceholderTreatmentRecord(patientDevice)) {
+      return res.status(400).json({ code: 400, message: '当前治疗人尚未绑定设备，请先完成设备适配后再打卡' });
+    }
 
     // Check if check-in log already exists for this date
-    const existingLog = await get(`SELECT id FROM wearing_logs WHERE treatment_id = ? AND date = ? AND source = 'mini_program_checkin'`, [tr.id, date]);
+    const existingLog = await get(
+      `SELECT id FROM wearing_logs WHERE patient_device_id = ? AND date = ? AND source = 'mini_program_checkin'`,
+      [patientDevice.id, date]
+    );
     if (existingLog) {
       await run(
-        `UPDATE wearing_logs SET wear_duration = ?, comfort = ?, ahi_index = ?, note = ?, source = 'mini_program_checkin' WHERE id = ?`,
-        [durationVal, comfortVal, ahiIndex ?? null, note || null, existingLog.id]
+        `UPDATE wearing_logs
+         SET patient_device_id = ?,
+             treatment_id = ?,
+             wear_duration = ?,
+             comfort = ?,
+             ahi_index = ?,
+             note = ?,
+             source = 'mini_program_checkin'
+         WHERE id = ?`,
+        [patientDevice.id, patientDevice.bind_treatment_record_id || null, durationVal, comfortVal, ahiIndex ?? null, note || null, existingLog.id]
       );
     } else {
       await run(
-        `INSERT INTO wearing_logs (treatment_id, date, wear_duration, comfort, ahi_index, note, source) VALUES (?, ?, ?, ?, ?, ?, 'mini_program_checkin')`,
-        [tr.id, date, durationVal, comfortVal, ahiIndex ?? null, note || null]
+        `INSERT INTO wearing_logs (patient_id, patient_device_id, treatment_id, date, wear_duration, comfort, ahi_index, note, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'mini_program_checkin')`,
+        [patient.id, patientDevice.id, patientDevice.bind_treatment_record_id || null, date, durationVal, comfortVal, ahiIndex ?? null, note || null]
       );
     }
 
@@ -4937,28 +5597,7 @@ app.get('/api/v1/orders', authenticateWxToken, async (req, res) => {
         address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {});
       } catch (e) {}
 
-      let items = orderItemsMap[order.id] || [];
-      if (items.length === 0) {
-        if (order.type === 'appointment_deposit' || order.type === 'appointment') {
-          items = [{
-            id: 0,
-            product_id: 8,
-            product_name: '就诊预约定金',
-            product_image: '/static/product/screening.png',
-            price: order.pay_amount,
-            quantity: 1
-          }];
-        } else {
-          items = [{
-            id: 0,
-            product_id: 1,
-            product_name: '医疗商品服务',
-            product_image: '/static/product/hj-mad-03.png',
-            price: order.pay_amount,
-            quantity: 1
-          }];
-        }
-      }
+      const items = orderItemsMap[order.id] || [];
 
       return {
         id: order.id.toString(),
@@ -4999,28 +5638,7 @@ app.get('/api/v1/orders/:id', authenticateWxToken, async (req, res) => {
     if (!order) {
       return res.status(404).json({ code: 404, message: '订单未找到' });
     }
-    let items = await query(`SELECT * FROM order_items WHERE order_id = ?`, [order.id]);
-    if (items.length === 0) {
-      if (order.type === 'appointment_deposit' || order.type === 'appointment') {
-        items = [{
-          id: 0,
-          product_id: 8,
-          product_name: '就诊预约定金',
-          product_image: '/static/product/screening.png',
-          price: order.pay_amount,
-          quantity: 1
-        }];
-      } else {
-        items = [{
-          id: 0,
-          product_id: 1,
-          product_name: '医疗商品服务',
-          product_image: '/static/product/hj-mad-03.png',
-          price: order.pay_amount,
-          quantity: 1
-        }];
-      }
-    }
+    const items = await query(`SELECT * FROM order_items WHERE order_id = ?`, [order.id]);
 
     let address = {};
     try {
@@ -5276,6 +5894,21 @@ app.post('/api/v1/orders/:id/pay', authenticateWxToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '订单非待支付状态' });
     }
 
+    const missingPayConfig = getMissingWechatPayConfig();
+    if (missingPayConfig.length > 0 && allowDevMockWechatPay()) {
+      return res.json({
+        code: 0,
+        message: '开发环境模拟支付',
+        data: {
+          orderId: order.id.toString(),
+          orderNo: order.order_no,
+          payAmount: order.pay_amount,
+          mockPayment: true,
+          missingConfig: missingPayConfig
+        }
+      });
+    }
+
     const payParams = await buildPaymentParams(order.order_no, order.pay_amount, order.order_no, req.user.openid);
 
     res.json({
@@ -5381,8 +6014,8 @@ app.post('/api/v1/orders/:id/cancel', authenticateWxToken, async (req, res) => {
       }
 
       await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content)
-         VALUES (?, '订单已取消', ?)`,
+        `INSERT INTO user_notifications (user_id, title, content, type)
+         VALUES (?, '订单已取消', ?, 'order')`,
         [req.user.id, `您的订单 ${order.order_no} 已取消，库存和优惠券已恢复。`]
       );
     });
@@ -5412,8 +6045,8 @@ app.post('/api/v1/orders/:id/confirm-receipt', authenticateWxToken, async (req, 
         [id]
       );
       await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content)
-         VALUES (?, '订单已完成', ?)`,
+        `INSERT INTO user_notifications (user_id, title, content, type)
+         VALUES (?, '订单已完成', ?, 'order')`,
         [req.user.id, `您已确认收到订单 ${order.order_no} 的商品，感谢您的购买。`]
       );
 
@@ -5486,9 +6119,10 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
       for (const distributorId of distributorIds) {
         await refreshDistributorLevel(distributorId, conn);
       }
+      await syncUserMembership(req.user.id, conn);
       await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content)
-         VALUES (?, '退款申请已提交', ?)`,
+        `INSERT INTO user_notifications (user_id, title, content, type)
+         VALUES (?, '退款申请已提交', ?, 'order')`,
         [req.user.id, `订单 ${order.order_no} 的退款申请已提交，审核结果会通过通知中心告知您。`]
       );
     });
@@ -5550,7 +6184,6 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
         );
       }
 
-      await ensureDistributor(childUserId, conn);
     });
 
     res.json({ code: 0, message: '推荐关系绑定成功', data: { status: 'bound' } });
@@ -5570,7 +6203,7 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
 // 21b. WeChat Client Distribution (分销管理)
 app.get('/api/v1/distribution/info', authenticateWxToken, async (req, res) => {
   try {
-    const summary = await getDistributionSummary(req.user.id);
+    const summary = await getDistributionSummary(req.user.id, req);
     res.json({ code: 0, data: summary });
   } catch (error) {
     console.error('Get distribution info error:', error);
@@ -5578,9 +6211,28 @@ app.get('/api/v1/distribution/info', authenticateWxToken, async (req, res) => {
   }
 });
 
+app.post('/api/v1/distribution/open', authenticateWxToken, async (req, res) => {
+  try {
+    const summary = await getDistributionSummary(req.user.id, req);
+    if (summary.isDistributor) {
+      return res.json({ code: 0, message: '您已开通分销', data: summary });
+    }
+    if (!summary.canOpenDistribution) {
+      return res.status(400).json({ code: 400, message: summary.openDisabledReason || '当前暂不满足开通条件' });
+    }
+
+    await ensureDistributor(req.user.id);
+    const latestSummary = await getDistributionSummary(req.user.id, req);
+    res.json({ code: 0, message: '分销已开通', data: latestSummary });
+  } catch (error) {
+    console.error('Open distribution error:', error);
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '开通分销失败' });
+  }
+});
+
 app.get('/api/v1/distribution/commission-stats', authenticateWxToken, async (req, res) => {
   try {
-    const summary = await getDistributionSummary(req.user.id);
+    const summary = await getDistributionSummary(req.user.id, req);
     res.json({
       code: 0,
       message: 'success',
@@ -5600,7 +6252,7 @@ app.get('/api/v1/distribution/commission-stats', authenticateWxToken, async (req
 
 app.get('/api/v1/distribution/invite-info', authenticateWxToken, async (req, res) => {
   try {
-    const summary = await getDistributionSummary(req.user.id);
+    const summary = await getDistributionSummary(req.user.id, req);
     if (!summary.isDistributor) {
       return res.json({
         code: 0,
@@ -5609,7 +6261,7 @@ app.get('/api/v1/distribution/invite-info', authenticateWxToken, async (req, res
           isDistributor: false,
           inviteCode: '',
           inviteQrCode: '',
-          sharePath: '/pages/distribution/center/index',
+          sharePath: '',
           shareTitle: '邀请好友体验鼾静健康诊所'
         }
       });
@@ -5654,8 +6306,6 @@ app.get('/api/v1/distribution/team', authenticateWxToken, async (req, res) => {
     const childUserIds = relationships.map(r => r.child_user_id);
 
     let allStats = [];
-    let allPromoted = [];
-
     if (distributorIds.length > 0) {
       const placeholders = distributorIds.map(() => '?').join(',');
       allStats = await query(
@@ -5667,52 +6317,32 @@ app.get('/api/v1/distribution/team', authenticateWxToken, async (req, res) => {
       );
     }
 
-    if (childUserIds.length > 0) {
-      const placeholders = childUserIds.map(() => '?').join(',');
-      allPromoted = await query(
-        `SELECT parent_user_id, child_user_id
-         FROM distribution_relationships
-         WHERE parent_user_id IN (${placeholders})`,
-        childUserIds
-      );
-    }
-
     const statsMap = {};
     allStats.forEach(s => {
       statsMap[s.distributor_id] = { count: s.count, sales: s.sales };
     });
-
-    const promotedPatientsMap = {};
-    const allPromotedPatientIdsSet = new Set();
-    allPromoted.forEach(p => {
-      if (!promotedPatientsMap[p.parent_user_id]) promotedPatientsMap[p.parent_user_id] = [];
-      promotedPatientsMap[p.parent_user_id].push(p.child_user_id);
-      allPromotedPatientIdsSet.add(p.child_user_id);
-    });
-
-    const allPromotedPatientIds = Array.from(allPromotedPatientIdsSet);
     let paidOrdersSet = new Set();
     let completedAptsSet = new Set();
     let anyAptsSet = new Set();
 
-    if (allPromotedPatientIds.length > 0) {
-      const placeholders = allPromotedPatientIds.map(() => '?').join(',');
+    if (childUserIds.length > 0) {
+      const placeholders = childUserIds.map(() => '?').join(',');
 
       const paidOrders = await query(
         `SELECT DISTINCT user_id FROM orders WHERE user_id IN (${placeholders}) AND pay_at IS NOT NULL`,
-        allPromotedPatientIds
+        childUserIds
       );
       paidOrders.forEach(o => paidOrdersSet.add(o.user_id));
 
       const completedApts = await query(
         `SELECT DISTINCT user_id FROM appointments WHERE user_id IN (${placeholders}) AND status = 'completed'`,
-        allPromotedPatientIds
+        childUserIds
       );
       completedApts.forEach(a => completedAptsSet.add(a.user_id));
 
       const anyApts = await query(
         `SELECT DISTINCT user_id FROM appointments WHERE user_id IN (${placeholders})`,
-        allPromotedPatientIds
+        childUserIds
       );
       anyApts.forEach(a => anyAptsSet.add(a.user_id));
     }
@@ -5725,44 +6355,29 @@ app.get('/api/v1/distribution/team', authenticateWxToken, async (req, res) => {
         totalSales = statsMap[rel.distributor_id].sales || 0;
       }
 
-      const promotedPatients = promotedPatientsMap[rel.child_user_id] || [];
-
       let status = null;
       let statusText = '';
       let statusClass = '';
 
-      if (promotedPatients.length > 0) {
-        const hasPaid = promotedPatients.some(id => paidOrdersSet.has(id));
-        if (hasPaid) {
-          status = 'paid';
-          statusText = '已成交';
-          statusClass = 'paid';
-        } else {
-          const hasCompleted = promotedPatients.some(id => completedAptsSet.has(id));
-          if (hasCompleted) {
-            status = 'unpaid';
-            statusText = '未成交';
-            statusClass = 'unpaid';
-          } else {
-            const hasAny = promotedPatients.some(id => anyAptsSet.has(id));
-            if (hasAny) {
-              status = 'booked';
-              statusText = '已预约';
-              statusClass = 'booked';
-            }
-          }
-        }
-      } else {
-        status = null;
-        statusText = '';
-        statusClass = '';
+      if (paidOrdersSet.has(rel.child_user_id)) {
+        status = 'paid';
+        statusText = '已成交';
+        statusClass = 'paid';
+      } else if (completedAptsSet.has(rel.child_user_id)) {
+        status = 'unpaid';
+        statusText = '已到诊';
+        statusClass = 'unpaid';
+      } else if (anyAptsSet.has(rel.child_user_id)) {
+        status = 'booked';
+        statusText = '已预约';
+        statusClass = 'booked';
       }
 
       list.push({
         id: rel.child_user_id.toString(),
         nickname: rel.nickname,
         avatar: rel.avatar_url || '',
-        level: rel.level || 'silver',
+        level: rel.level || 'member',
         orderCount: orderCount,
         totalSales: totalSales,
         joinedAt: formatDate(rel.joined_at),
@@ -5823,7 +6438,7 @@ app.get('/api/v1/distribution/commissions', authenticateWxToken, async (req, res
           orderId: item.order_id.toString(),
           orderNo: item.order_no,
           buyerName: item.buyer_name,
-          productName: item.product_name || '订单佣金',
+          productName: item.product_name || '',
           productImage: item.product_image || '',
           orderAmount: item.order_amount,
           commission: item.commission_amount,
@@ -5877,7 +6492,7 @@ app.get('/api/v1/distribution/orders', authenticateWxToken, async (req, res) => 
           orderId: item.order_id.toString(),
           orderNo: item.order_no,
           buyerName: item.buyer_name,
-          productName: item.product_name || '订单佣金',
+          productName: item.product_name || '',
           productImage: item.product_image || '',
           orderAmount: item.order_amount,
           commission: item.commission_amount,
@@ -5922,42 +6537,58 @@ app.get('/api/v1/distribution/products', async (req, res) => {
 });
 
 app.get('/api/v1/distribution/rules', async (req, res) => {
-  const settleDays = await getDistributionSettleDays();
+  const featureConfig = await getDistributionFeatureConfig();
+  const levels = [
+    {
+      level: 'silver',
+      label: '银牌推广员',
+      directOrderRequired: 0,
+      level1Rate: 10,
+      level2Rate: 3
+    },
+    {
+      level: 'gold',
+      label: '金牌推广员',
+      directOrderRequired: 10,
+      level1Rate: 15,
+      level2Rate: 5
+    },
+    {
+      level: 'diamond',
+      label: '钻石推广员',
+      directOrderRequired: 50,
+      level1Rate: 20,
+      level2Rate: 8
+    }
+  ];
   res.json({
     code: 0,
     message: 'success',
     data: {
-      rules: `
-## 鼾静健康·推广员计划
-
-### 一、推广员等级
-| 等级 | 升级条件 | 佣金比例 |
-|------|---------|---------|
-| 银牌推广员 | 注册并开通即可 | 一级10% / 二级3% |
-| 金牌推广员 | 累计直推订单≥10单 | 一级15% / 二级5% |
-| 钻石推广员 | 累计直推订单≥50单 | 一级20% / 二级8% |
-
-### 二、佣金规则
-1. 一级佣金：优先按商品配置佣金比例计算，未配置时按推广员等级比例计算
-2. 二级佣金：按您的推广员等级对应二级佣金比例计算
-3. 佣金状态：下单后冻结，订单完成满 ${settleDays} 天自动转为可提现
-4. 退款/撤单：对应佣金自动撤销，已结算金额会从可提现余额中冲抵
-
-### 三、推广方式
-1. 分享小程序商品页给微信好友/微信群
-2. 通过邀请码或分享路径绑定推荐关系
-3. 生成专属海报，引导好友进入小程序咨询/下单
-
-### 四、注意事项
-- 禁止虚假宣传、夸大疗效
-- 禁止诱导用户进行不必要的消费
-- 违规推广将冻结佣金并取消推广资格
-
-### 五、提现规则
-- 最低提现金额：¥${(DISTRIBUTION_MIN_WITHDRAW_AMOUNT / 100).toFixed(0)}
-- 微信零钱：手续费 0%
-- 银行卡：手续费 1%，最低 1 元
-`
+      enabled: featureConfig.enableDistribution,
+      qualificationText: '当前黄金会员及以上可开通分销权限',
+      levels,
+      commissionRules: [
+        '一级佣金优先按商品配置的专属佣金比例计算，未配置时按推广员等级比例计算。',
+        '二级佣金按推广员当前等级对应的二级佣金比例计算。',
+        `佣金在订单完成后进入冻结期，满 ${featureConfig.settleDays} 天后自动转为可提现余额。`,
+        '订单退款或撤单后，对应佣金会自动撤销；已结算部分会从可提现余额中冲抵。'
+      ],
+      promotionWays: [
+        '分享小程序首页、商品页或邀请页给微信好友/微信群。',
+        '好友通过您的邀请码或分享路径首次进入并完成绑定后，后续成交会计入您的推广关系。',
+        '可使用邀请页中的专属海报和邀请码进行推广。'
+      ],
+      notices: [
+        '禁止虚假宣传、夸大疗效或承诺治疗结果。',
+        '禁止诱导用户进行不必要的消费。',
+        '违规推广将冻结佣金并取消推广资格。'
+      ],
+      withdrawRules: [
+        `最低提现金额：¥${(featureConfig.minWithdrawAmount / 100).toFixed(0)}`,
+        '微信零钱：手续费 0%',
+        `银行卡：手续费 ${(featureConfig.withdrawFeeRates.bank * 100).toFixed(0)}%，最低 1 元`
+      ]
     }
   });
 });
@@ -5992,7 +6623,7 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
       }
     }
 
-    const fee = method === 'bank' ? Math.max(Math.round(amount * 0.01), 100) : 0;
+    const fee = method === 'bank' ? Math.max(Math.round(amount * DISTRIBUTION_BANK_FEE_RATE), 100) : 0;
     const actualAmount = amount - fee;
     const accountInfo = method === 'bank'
       ? JSON.stringify({
@@ -6042,30 +6673,11 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
 
 app.get('/api/v1/distribution/withdraws', authenticateWxToken, async (req, res) => {
   try {
-    const list = await query(
-      `SELECT * FROM withdraw_records WHERE user_id = ? ORDER BY created_at DESC`,
-      [req.user.id]
-    );
     res.json({
       code: 0,
       message: 'success',
       data: {
-        list: list.map(item => ({
-          id: item.id.toString(),
-          amount: item.amount,
-          fee: item.fee,
-          actualAmount: item.actual_amount,
-          accountInfo: (() => {
-            try {
-              return typeof item.account_info === 'string' ? JSON.parse(item.account_info) : item.account_info;
-            } catch (error) {
-              return { label: item.account_info };
-            }
-          })(),
-          status: item.status,
-          createdAt: item.created_at,
-          completedAt: item.completed_at
-        }))
+        list: await getDistributionWithdrawRecordList(req.user.id)
       }
     });
   } catch (error) {
@@ -6076,30 +6688,11 @@ app.get('/api/v1/distribution/withdraws', authenticateWxToken, async (req, res) 
 
 app.get('/api/v1/distribution/withdraw-records', authenticateWxToken, async (req, res) => {
   try {
-    const list = await query(
-      `SELECT * FROM withdraw_records WHERE user_id = ? ORDER BY created_at DESC`,
-      [req.user.id]
-    );
     res.json({
       code: 0,
       message: 'success',
       data: {
-        list: list.map(item => ({
-          id: item.id.toString(),
-          amount: item.amount,
-          fee: item.fee,
-          actualAmount: item.actual_amount,
-          accountInfo: (() => {
-            try {
-              return typeof item.account_info === 'string' ? JSON.parse(item.account_info) : item.account_info;
-            } catch (error) {
-              return { label: item.account_info };
-            }
-          })(),
-          status: item.status,
-          createdAt: item.created_at,
-          completedAt: item.completed_at
-        }))
+        list: await getDistributionWithdrawRecordList(req.user.id)
       }
     });
   } catch (error) {
@@ -6142,16 +6735,18 @@ app.get('/api/v1/home/stats', async (req, res) => {
 // 1) 获取与客服的聊天记录
 app.get('/api/v1/im/messages', authenticateWxToken, async (req, res) => {
   try {
-    const patient = await getSelfPatientForUser(req.user.id);
-    if (!patient) {
+    const selfPatient = await getSelfPatientForUser(req.user.id);
+    const scope = await getPatientDataScope(selfPatient);
+    if (!scope.primaryPatient || !scope.patientIds.length) {
       return res.json({ code: 0, message: 'success', data: [] });
     }
+    const placeholders = buildSqlPlaceholders(scope.patientIds);
     const messages = await query(`
       SELECT id, sender, sender_name as senderName, text, DATE_FORMAT(created_at, '%H:%i') as time, is_read as isRead
       FROM im_messages
-      WHERE patient_id = ?
+      WHERE patient_id IN (${placeholders})
       ORDER BY created_at ASC`,
-      [patient.id]
+      scope.patientIds
     );
     res.json({ code: 0, message: 'success', data: messages });
   } catch (error) {
@@ -6185,13 +6780,23 @@ app.post('/api/v1/im/send', authenticateWxToken, async (req, res) => {
 // 3) 获取维护记录
 app.get('/api/v1/treatment/device-maintenance', authenticateWxToken, async (req, res) => {
   try {
-    const patient = await resolveUserPatient(req);
-    const treatment = patient ? await resolveTreatmentForPatient(patient, req.query.treatmentId) : null;
-    const params = [req.user.id];
-    let sql = `SELECT * FROM device_maintenance WHERE user_id = ?`;
-    if (treatment) {
-      sql += ` AND (treatment_id = ? OR treatment_id IS NULL)`;
-      params.push(treatment.id);
+    const scope = await resolvePatientScope(req);
+    const patient = scope.primaryPatient;
+    const patientDevice = patient ? await resolvePatientDeviceForPatient(patient, req.query.treatmentId) : null;
+    const params = [];
+    let sql = `SELECT * FROM device_maintenance WHERE 1 = 0`;
+    if (patientDevice && !isPlaceholderTreatmentRecord(patientDevice)) {
+      sql = `SELECT * FROM device_maintenance WHERE patient_device_id = ?`;
+      params.push(patientDevice.id);
+      if (scope.isSelfScope) {
+        sql += ` OR (user_id = ? AND patient_device_id IS NULL)`;
+        params.push(req.user.id);
+      }
+    } else if (scope.isSelfScope) {
+      sql = `SELECT * FROM device_maintenance WHERE user_id = ?`;
+      params.push(req.user.id);
+    } else {
+      return res.json({ code: 0, message: 'success', list: [], total: 0 });
     }
     sql += ` ORDER BY service_date DESC`;
     const records = await query(
@@ -6201,6 +6806,7 @@ app.get('/api/v1/treatment/device-maintenance', authenticateWxToken, async (req,
     const mapped = records.map(r => ({
       id: r.id.toString(),
       treatmentId: r.treatment_id ? r.treatment_id.toString() : '',
+      patientDeviceId: r.patient_device_id ? r.patient_device_id.toString() : '',
       date: formatDate(r.service_date),
       type: r.service_type,
       description: r.description || '',
@@ -6216,13 +6822,23 @@ app.get('/api/v1/treatment/device-maintenance', authenticateWxToken, async (req,
 // 4) 获取设备反馈记录
 app.get('/api/v1/treatment/device-feedback', authenticateWxToken, async (req, res) => {
   try {
-    const patient = await resolveUserPatient(req);
-    const treatment = patient ? await resolveTreatmentForPatient(patient, req.query.treatmentId) : null;
-    const params = [req.user.id];
-    let sql = `SELECT * FROM device_feedback WHERE user_id = ?`;
-    if (treatment) {
-      sql += ` AND (treatment_id = ? OR treatment_id IS NULL)`;
-      params.push(treatment.id);
+    const scope = await resolvePatientScope(req);
+    const patient = scope.primaryPatient;
+    const patientDevice = patient ? await resolvePatientDeviceForPatient(patient, req.query.treatmentId) : null;
+    const params = [];
+    let sql = `SELECT * FROM device_feedback WHERE 1 = 0`;
+    if (patientDevice && !isPlaceholderTreatmentRecord(patientDevice)) {
+      sql = `SELECT * FROM device_feedback WHERE patient_device_id = ?`;
+      params.push(patientDevice.id);
+      if (scope.isSelfScope) {
+        sql += ` OR (user_id = ? AND patient_device_id IS NULL)`;
+        params.push(req.user.id);
+      }
+    } else if (scope.isSelfScope) {
+      sql = `SELECT * FROM device_feedback WHERE user_id = ?`;
+      params.push(req.user.id);
+    } else {
+      return res.json({ code: 0, message: 'success', list: [], total: 0 });
     }
     sql += ` ORDER BY created_at DESC`;
     const records = await query(
@@ -6232,6 +6848,7 @@ app.get('/api/v1/treatment/device-feedback', authenticateWxToken, async (req, re
     const mapped = records.map(r => ({
       id: r.id.toString(),
       treatmentId: r.treatment_id ? r.treatment_id.toString() : '',
+      patientDeviceId: r.patient_device_id ? r.patient_device_id.toString() : '',
       date: formatDate(r.created_at),
       rating: r.rating || 5,
       content: r.feedback_desc,
@@ -6253,10 +6870,10 @@ app.post('/api/v1/treatment/feedback', authenticateWxToken, async (req, res) => 
   }
   try {
     const patient = await resolveUserPatient(req, 'body');
-    const treatment = patient ? await resolveTreatmentForPatient(patient, treatmentId) : null;
+    const patientDevice = patient ? await resolvePatientDeviceForPatient(patient, treatmentId) : null;
     const result = await run(
-      `INSERT INTO device_feedback (user_id, treatment_id, rating, feedback_desc, status) VALUES (?, ?, ?, ?, 'pending')`,
-      [req.user.id, treatment ? treatment.id : null, rating || 5, content]
+      `INSERT INTO device_feedback (user_id, patient_device_id, treatment_id, rating, feedback_desc, status) VALUES (?, ?, ?, ?, ?, 'pending')`,
+      [req.user.id, patientDevice ? patientDevice.id : null, patientDevice ? patientDevice.bind_treatment_record_id || null : null, rating || 5, content]
     );
     res.json({
       code: 0,

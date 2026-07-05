@@ -153,9 +153,12 @@
   font-weight: 700;
   margin-right: 12rpx;
 }
+.method-icon-image.data-v-6825c219 {
+  width: 26rpx;
+  height: 26rpx;
+}
 .method.active .method-icon.data-v-6825c219 {
   background: #f5a623;
-  color: #fff;
 }
 .method-text.data-v-6825c219 {
   font-size: 26rpx;

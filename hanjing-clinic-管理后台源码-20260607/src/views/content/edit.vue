@@ -5,12 +5,15 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import { navigateToParent } from '@/utils/routeNavigation'
 import ImageUploadField from '@/components/ImageUploadField.vue'
+import { MdEditor, MdPreview } from 'md-editor-v3'
+import 'md-editor-v3/lib/style.css'
 
 const router = useRouter()
 const route = useRoute()
 
 const articleId = ref(route.params.id as string || '')
 const isEdit = ref(!!route.params.id)
+const editorMode = ref<'edit' | 'preview'>('edit')
 
 const title = ref('')
 const category = ref('睡眠科普')
@@ -18,9 +21,10 @@ const tags = ref('')
 const summary = ref('')
 const relatedProduct = ref('')
 const relatedDoctor = ref('')
-const publishTime = ref('')
 const sortWeight = ref(100)
 const coverUrl = ref('')
+const productOptions = ref<Array<{ label: string; value: string }>>([])
+const doctorOptions = ref<Array<{ label: string; value: string }>>([])
 
 // Rich text editor state
 const editorHtml = ref('')
@@ -32,8 +36,12 @@ async function fetchArticle() {
     if (res.code === 200 && res.data) {
       const data = res.data
       title.value = data.title || ''
+      summary.value = data.summary || ''
       editorHtml.value = data.content || ''
       coverUrl.value = data.cover_url || ''
+      relatedProduct.value = data.related_product_name || ''
+      relatedDoctor.value = data.related_doctor_name || ''
+      sortWeight.value = Number(data.sort_weight ?? 100)
       
       let tagList: string[] = []
       if (data.tags) {
@@ -63,31 +71,39 @@ function handlePreview() {
   MessagePlugin.info('正在生成预览页面...')
 }
 
+function normalizeTextInput(value: string) {
+  return String(value || '').trim()
+}
+
 function buildPayload(status: string) {
-  const cat = category.value
+  const cat = normalizeTextInput(category.value)
   const list = tags.value.split(/[,，]/).map(item => item.trim()).filter(Boolean)
   if (cat) {
     list.unshift(cat)
   }
   return {
-    title: title.value,
-    content: editorHtml.value,
+    title: normalizeTextInput(title.value),
+    summary: normalizeTextInput(summary.value),
+    content: editorHtml.value.trim(),
     tags: list,
-    cover_url: coverUrl.value,
+    cover_url: normalizeTextInput(coverUrl.value),
+    related_product_name: normalizeTextInput(relatedProduct.value),
+    related_doctor_name: normalizeTextInput(relatedDoctor.value),
+    sort_weight: Number.isFinite(Number(sortWeight.value)) ? Number(sortWeight.value) : 100,
     status
   }
 }
 
 async function handleSaveDraft() {
   if (!title.value.trim() || !editorHtml.value.trim()) {
-    MessagePlugin.warning('请填写文章标题 and 正文')
+    MessagePlugin.warning('请填写文章标题和正文')
     return
   }
   try {
-    const payload = buildPayload('pending')
+    const payload = buildPayload('draft')
     if (isEdit.value && articleId.value) {
       await request.put(`/api/admin/content/articles/${articleId.value}`, payload)
-      MessagePlugin.success('保存文章修改成功')
+      MessagePlugin.success('草稿保存成功')
     } else {
       await request.post('/api/admin/content/articles', payload)
       MessagePlugin.success('草稿已成功保存')
@@ -101,7 +117,7 @@ async function handleSaveDraft() {
 
 async function handlePublish() {
   if (!title.value.trim() || !editorHtml.value.trim()) {
-    MessagePlugin.warning('请填写文章标题 and 正文')
+    MessagePlugin.warning('请填写文章标题和正文')
     return
   }
   try {
@@ -133,10 +149,71 @@ async function fetchCategories() {
   }
 }
 
+async function fetchProducts() {
+  try {
+    const res: any = await request.get('/api/admin/products')
+    if (res.code === 200 && Array.isArray(res.data)) {
+      productOptions.value = res.data
+        .filter((item: any) => String(item.name || '').trim())
+        .map((item: any) => ({
+          label: item.name,
+          value: item.name
+        }))
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+async function fetchDoctors() {
+  try {
+    const res: any = await request.get('/api/admin/doctors')
+    if (res.code === 200 && Array.isArray(res.data)) {
+      doctorOptions.value = res.data
+        .filter((item: any) => String(item.name || '').trim())
+        .map((item: any) => ({
+          label: item.title ? `${item.name} ${item.title}` : item.name,
+          value: item.title ? `${item.name} ${item.title}` : item.name
+        }))
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 onMounted(() => {
   fetchCategories()
+  fetchProducts()
+  fetchDoctors()
   fetchArticle()
 })
+
+async function handleDescImageUpload(files: File[], callback: (urls: string[]) => void) {
+  try {
+    const urls = await Promise.all(
+      files.map(async (file) => {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result || ''))
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+        const res: any = await request.post('/api/admin/uploads/images', {
+          fileName: file.name,
+          mimeType: file.type,
+          fileData: dataUrl,
+          context: 'article-content'
+        })
+        return res.data?.url || ''
+      })
+    )
+    callback(urls.filter(Boolean))
+    MessagePlugin.success('插图上传成功')
+  } catch (error) {
+    console.error(error)
+    MessagePlugin.error('插图上传失败')
+  }
+}
 </script>
 
 <template>
@@ -206,26 +283,27 @@ onMounted(() => {
           <div class="form-group full">
             <label class="form-label">正文内容</label>
             <div class="rich-editor-box">
-              <!-- Toolbar -->
               <div class="editor-toolbar">
-                <button class="toolbar-btn bold-btn">B</button>
-                <button class="toolbar-btn italic-btn">I</button>
-                <button class="toolbar-btn underline-btn">U</button>
-                <span class="toolbar-sep">|</span>
-                <button class="toolbar-btn">H1</button>
-                <button class="toolbar-btn">H2</button>
-                <span class="toolbar-sep">|</span>
-                <button class="toolbar-btn"><AppIcon name="image-plus" /> </button>
-                <button class="toolbar-btn"><AppIcon name="link" /> </button>
-                <button class="toolbar-btn"><AppIcon name="clipboard" /> </button>
+                <div class="editor-toolbar-title">详情图文描述 (Markdown 编辑器)</div>
+                <div class="editor-tabs">
+                  <span class="editor-tab" :class="{ active: editorMode === 'edit' }" @click="editorMode = 'edit'">编辑内容</span>
+                  <span class="editor-tab" :class="{ active: editorMode === 'preview' }" @click="editorMode = 'preview'">查看预览</span>
+                </div>
               </div>
-              
-              <!-- Content Area -->
-              <div
-                contenteditable="true"
-                class="editor-content-area"
-                v-html="editorHtml"
-              ></div>
+              <MdEditor
+                v-if="editorMode === 'edit'"
+                v-model="editorHtml"
+                placeholder="用 Markdown 编写文章正文内容，支持标题、图片、引用、列表和表格。"
+                style="height: 460px;"
+                :preview="false"
+                :toolbars="['bold', 'underline', 'italic', '-', 'title', 'strikeThrough', 'quote', 'unorderedList', 'orderedList', 'task', '-', 'codeRow', 'code', 'link', 'image', 'table', '-', 'revoke', 'next']"
+                @onUploadImg="handleDescImageUpload"
+              />
+              <MdPreview
+                v-else
+                v-model="editorHtml"
+                style="height: 460px; overflow-y: auto; padding: 12px;"
+              />
             </div>
           </div>
 
@@ -233,9 +311,10 @@ onMounted(() => {
           <div class="form-group">
             <label class="form-label">关联商品</label>
             <select class="form-control" v-model="relatedProduct">
-              <option>无</option>
-              <option>睡眠监测套餐</option>
-              <option>CPAP呼吸机</option>
+              <option value="">无</option>
+              <option v-for="product in productOptions" :key="product.value" :value="product.value">
+                {{ product.label }}
+              </option>
             </select>
           </div>
 
@@ -243,15 +322,11 @@ onMounted(() => {
           <div class="form-group">
             <label class="form-label">关联医生</label>
             <select class="form-control" v-model="relatedDoctor">
-              <option>无</option>
-              <option>古堪民 主任医师</option>
+              <option value="">无</option>
+              <option v-for="doctor in doctorOptions" :key="doctor.value" :value="doctor.value">
+                {{ doctor.label }}
+              </option>
             </select>
-          </div>
-
-          <!-- Publish Date -->
-          <div class="form-group">
-            <label class="form-label">发布时间</label>
-            <input type="datetime-local" class="form-control" v-model="publishTime">
           </div>
 
           <!-- Order Weight -->
@@ -431,40 +506,35 @@ select.form-control {
 }
 .editor-toolbar {
   display: flex;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
   padding: 8px 12px;
   background: #F9FAFB;
   border-bottom: 1px solid #E5E7EB;
-  font-size: 14px;
 }
-.toolbar-btn {
-  padding: 4px 8px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: 4px;
-  font-weight: 500;
-  color: #4B5563;
+.editor-toolbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
 }
-.toolbar-btn:hover {
-  background: #F3F4F6;
-  color: #111827;
-}
-.toolbar-btn.bold-btn { font-weight: 700; }
-.toolbar-btn.italic-btn { font-style: italic; }
-.toolbar-btn.underline-btn { text-decoration: underline; }
-.toolbar-sep {
-  color: #E5E7EB;
-  margin: 0 4px;
-  display: flex;
+.editor-tabs {
+  display: inline-flex;
   align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #EEF2FF;
 }
-.editor-content-area {
-  min-height: 220px;
-  padding: 16px;
-  font-size: 14px;
-  line-height: 1.8;
-  outline: none;
-  background: #fff;
+.editor-tab {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  cursor: pointer;
+}
+.editor-tab.active {
+  background: #3B6BF5;
+  color: #fff;
 }
 </style>

@@ -1,37 +1,42 @@
-<view class="page data-v-0ef6c91e"
-  ><hj-navbar
-    wx:if="{{a}}"
-    class="data-v-0ef6c91e"
-    u-i="0ef6c91e-0"
-    bind:__l="__l"
-    u-p="{{a}}" /><view class="page-content data-v-0ef6c91e"
-    ><view wx:if="{{b}}" class="loading-wrap data-v-0ef6c91e"
-      ><text class="data-v-0ef6c91e">加载中...</text></view
-    ><block wx:else
-      ><view
-        wx:for="{{c}}"
-        wx:for-item="rec"
-        wx:key="k"
-        class="data-card data-v-0ef6c91e"
-        ><view class="data-header data-v-0ef6c91e"
-          ><text class="data-date data-v-0ef6c91e">{{rec.a}}</text
-          ><view class="data-tags data-v-0ef6c91e"
-            ><text wx:if="{{rec.b}}" class="tag duration data-v-0ef6c91e"
-              >{{rec.c}}h</text
-            ><text wx:else class="tag skip data-v-0ef6c91e">未佩戴</text
-            ><text wx:if="{{rec.d}}" class="tag comfort data-v-0ef6c91e"
-              >舒适 {{rec.e}}</text
-            ></view
-          ></view
-        ><view wx:if="{{rec.f}}" class="data-bar data-v-0ef6c91e"
-          ><view
-            class="bar-fill data-v-0ef6c91e"
-            style="{{'width:' + rec.g + ';' + ('background:' + rec.h)}}" /></view
-        ><text wx:if="{{rec.i}}" class="data-note data-v-0ef6c91e"
-          >{{rec.j}}</text
-        ></view
-      ><view wx:if="{{d}}" class="empty data-v-0ef6c91e"
-        ><text class="data-v-0ef6c91e">暂无佩戴记录</text></view
-      ></block
-    ><view class="safe-bottom data-v-0ef6c91e" /></view
-></view>
+<view class="page">
+  <hj-navbar title="佩戴数据" show-back></hj-navbar>
+
+  <view class="page-content">
+    <picker wx:if="{{memberOptions.length}}" mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker">
+      <view class="member-picker-content">
+        <view class="member-info">
+          <text class="member-label">当前就诊人：</text>
+          <text class="member-value">{{memberOptions[memberIndex]}}</text>
+        </view>
+        <view class="member-action">
+          <text class="member-action-text">切换</text>
+          <image class="member-action-arrow" src="/static/icons/chevron-right.svg" mode="aspectFit"></image>
+        </view>
+      </view>
+    </picker>
+
+    <view wx:if="{{loading}}" class="state-wrap">
+      <text class="state-text">加载中...</text>
+    </view>
+
+    <block wx:else>
+      <view wx:for="{{records}}" wx:key="id" class="record-card">
+        <view class="record-head">
+          <text class="record-date">{{item.date}}</text>
+          <text class="record-hours">{{item.wearDuration > 0 ? item.wearDuration + '小时' : '未佩戴'}}</text>
+        </view>
+        <view class="record-progress">
+          <view class="record-progress__bar" style="{{'width:' + item.progressWidth + ';background:' + item.progressColor}}"></view>
+        </view>
+        <text class="record-comfort">舒适度：{{item.comfort || 3}} / 5</text>
+        <text wx:if="{{item.note}}" class="record-note">{{item.note}}</text>
+      </view>
+
+      <view wx:if="{{!records.length}}" class="state-wrap">
+        <text class="state-text">当前就诊人暂无佩戴数据</text>
+      </view>
+    </block>
+
+    <view class="safe-bottom"></view>
+  </view>
+</view>

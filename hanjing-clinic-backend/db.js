@@ -209,7 +209,7 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS patients (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       patient_no VARCHAR(32) UNIQUE,
-      user_id BIGINT UNSIGNED NOT NULL,
+      user_id BIGINT UNSIGNED DEFAULT NULL,
       name VARCHAR(100) NOT NULL,
       relation VARCHAR(30) DEFAULT 'self',
       gender TINYINT DEFAULT 0,
@@ -220,7 +220,7 @@ export const initDB = async () => {
       follower_id BIGINT UNSIGNED DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
       FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE SET NULL
     );
   `);
@@ -236,6 +236,26 @@ export const initDB = async () => {
   } catch (err) {}
   try {
     await query(`ALTER TABLE users ADD CONSTRAINT fk_users_self_patient FOREIGN KEY (self_patient_id) REFERENCES patients(id) ON DELETE SET NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE patients MODIFY COLUMN user_id BIGINT UNSIGNED DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    const patientUserFkRows = await query(`
+      SELECT CONSTRAINT_NAME
+      FROM information_schema.KEY_COLUMN_USAGE
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'patients'
+        AND COLUMN_NAME = 'user_id'
+        AND REFERENCED_TABLE_NAME = 'users'
+    `);
+    for (const row of patientUserFkRows) {
+      if (!row.CONSTRAINT_NAME) continue;
+      try {
+        await query(`ALTER TABLE patients DROP FOREIGN KEY \`${row.CONSTRAINT_NAME}\``);
+      } catch (err) {}
+    }
+    await query(`ALTER TABLE patients ADD CONSTRAINT fk_patients_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;`);
   } catch (err) {}
 
   await query(`
@@ -367,6 +387,30 @@ export const initDB = async () => {
 
   try {
     await query(`
+      UPDATE patients
+      SET patient_no = card_no
+      WHERE (patient_no IS NULL OR patient_no = '')
+        AND card_no IS NOT NULL
+        AND card_no != ''
+    `);
+  } catch (err) {
+    console.error('Failed to backfill patient_no from card_no:', err);
+  }
+
+  try {
+    await query(`
+      UPDATE patients
+      SET card_no = patient_no
+      WHERE patient_no IS NOT NULL
+        AND patient_no != ''
+        AND (card_no IS NULL OR card_no = '')
+    `);
+  } catch (err) {
+    console.error('Failed to sync card_no from patient_no:', err);
+  }
+
+  try {
+    await query(`
       INSERT IGNORE INTO user_patient_links (user_id, patient_id, relation)
       SELECT user_id, id, COALESCE(NULLIF(relation, ''), 'other')
       FROM patients
@@ -374,6 +418,17 @@ export const initDB = async () => {
     `);
   } catch (err) {
     console.error('Failed to backfill user-patient links:', err);
+  }
+
+  try {
+    await query(`
+      UPDATE users u
+      JOIN user_patient_links upl ON upl.user_id = u.id AND upl.relation = 'self'
+      SET u.self_patient_id = upl.patient_id
+      WHERE u.self_patient_id IS NULL
+    `);
+  } catch (err) {
+    console.error('Failed to backfill users.self_patient_id from links:', err);
   }
 
   try {
@@ -633,12 +688,98 @@ export const initDB = async () => {
       WHERE tr.device_product_id IS NOT NULL
     `);
   } catch (err) {}
+  await query(`
+    CREATE TABLE IF NOT EXISTS patient_devices (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      bind_treatment_record_id BIGINT UNSIGNED DEFAULT NULL,
+      bind_medical_record_id BIGINT UNSIGNED DEFAULT NULL,
+      bind_doctor_id BIGINT UNSIGNED DEFAULT NULL,
+      device_product_id BIGINT UNSIGNED DEFAULT NULL,
+      device_name_snapshot VARCHAR(255) DEFAULT NULL,
+      device_image_snapshot VARCHAR(255) DEFAULT NULL,
+      device_price_snapshot INT DEFAULT 0,
+      device_description_snapshot TEXT,
+      device_model VARCHAR(100) NOT NULL,
+      initial_advancement DECIMAL(4, 2) DEFAULT 0.0,
+      current_advancement DECIMAL(4, 2) DEFAULT 0.0,
+      bound_at DATE NOT NULL,
+      next_adjust_date DATE DEFAULT NULL,
+      status VARCHAR(30) DEFAULT 'active',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+      FOREIGN KEY (bind_treatment_record_id) REFERENCES treatment_records(id) ON DELETE SET NULL,
+      FOREIGN KEY (bind_medical_record_id) REFERENCES medical_records(id) ON DELETE SET NULL,
+      FOREIGN KEY (bind_doctor_id) REFERENCES doctors(id) ON DELETE SET NULL
+    );
+  `);
+  try {
+    await query(`ALTER TABLE treatment_records ADD COLUMN patient_device_id BIGINT UNSIGNED DEFAULT NULL AFTER medical_record_id`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE treatment_records ADD CONSTRAINT fk_treatment_records_patient_device FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL`);
+  } catch (err) {}
+  try {
+    await query(`
+      INSERT INTO patient_devices (
+        patient_id, bind_treatment_record_id, bind_medical_record_id, bind_doctor_id, device_product_id,
+        device_name_snapshot, device_image_snapshot, device_price_snapshot, device_description_snapshot,
+        device_model, initial_advancement, current_advancement, bound_at, next_adjust_date, status
+      )
+      SELECT
+        tr.patient_id,
+        tr.id,
+        tr.medical_record_id,
+        tr.doctor_id,
+        tr.device_product_id,
+        tr.device_product_name,
+        tr.device_product_image_url,
+        COALESCE(tr.device_product_price, 0),
+        tr.device_product_description,
+        tr.device_model,
+        COALESCE(tr.initial_advancement, 0),
+        COALESCE(tr.current_advancement, 0),
+        COALESCE(tr.start_date, DATE(tr.created_at)),
+        tr.next_adjust_date,
+        COALESCE(tr.status, 'active')
+      FROM treatment_records tr
+      LEFT JOIN patient_devices pd ON pd.bind_treatment_record_id = tr.id
+      WHERE pd.id IS NULL
+        AND COALESCE(NULLIF(tr.device_model, ''), NULLIF(tr.device_product_name, '')) IS NOT NULL
+    `);
+  } catch (err) {
+    console.error('Failed to backfill patient_devices from treatment_records:', err);
+  }
+  try {
+    await query(`
+      UPDATE treatment_records tr
+      JOIN patient_devices pd ON pd.bind_treatment_record_id = tr.id
+      SET tr.patient_device_id = pd.id
+      WHERE tr.patient_device_id IS NULL
+    `);
+  } catch (err) {
+    console.error('Failed to backfill treatment_records.patient_device_id:', err);
+  }
+  try {
+    await query(`
+      UPDATE patient_devices
+      SET status = 'inactive'
+      WHERE bind_medical_record_id IS NULL
+        AND COALESCE(NULLIF(device_name_snapshot, ''), device_model) = '待适配阻鼾器'
+        AND status = 'active'
+    `);
+  } catch (err) {
+    console.error('Failed to deactivate placeholder patient devices:', err);
+  }
 
   // 13. wearing_logs
   await query(`
     CREATE TABLE IF NOT EXISTS wearing_logs (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-      treatment_id BIGINT UNSIGNED NOT NULL,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      patient_device_id BIGINT UNSIGNED DEFAULT NULL,
+      treatment_id BIGINT UNSIGNED DEFAULT NULL,
       date DATE NOT NULL,
       wear_duration DECIMAL(4, 2) DEFAULT 0.0,
       comfort TINYINT DEFAULT 3,
@@ -646,9 +787,40 @@ export const initDB = async () => {
       note TEXT,
       source VARCHAR(30) DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
       FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE CASCADE
     );
   `);
+  try {
+    await query(`ALTER TABLE wearing_logs ADD COLUMN patient_id BIGINT UNSIGNED DEFAULT NULL FIRST`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE wearing_logs ADD COLUMN patient_device_id BIGINT UNSIGNED DEFAULT NULL AFTER patient_id`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE wearing_logs MODIFY COLUMN patient_id BIGINT UNSIGNED NOT NULL`);
+  } catch (err) {
+    // Ignore error when historical rows are not backfilled yet
+  }
+  try {
+    await query(`ALTER TABLE wearing_logs MODIFY COLUMN treatment_id BIGINT UNSIGNED DEFAULT NULL`);
+  } catch (err) {
+    // Ignore error if already nullable
+  }
+  try {
+    await query(`ALTER TABLE wearing_logs ADD CONSTRAINT fk_wearing_logs_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE`);
+  } catch (err) {
+    // Ignore error if constraint already exists
+  }
+  try {
+    await query(`ALTER TABLE wearing_logs ADD CONSTRAINT fk_wearing_logs_patient_device FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL`);
+  } catch (err) {
+    // Ignore error if constraint already exists
+  }
   try {
     await query(`ALTER TABLE wearing_logs ADD COLUMN source VARCHAR(30) DEFAULT NULL`);
   } catch (err) {
@@ -664,20 +836,78 @@ export const initDB = async () => {
   } catch (err) {
     // Ignore error if index already exists
   }
+  try {
+    await query(`ALTER TABLE wearing_logs ADD UNIQUE KEY uniq_wearing_log_patient_date_source (patient_id, date, source)`);
+  } catch (err) {
+    // Ignore error if index already exists
+  }
+  try {
+    await query(`ALTER TABLE wearing_logs ADD INDEX idx_wearing_logs_patient_id (patient_id)`);
+  } catch (err) {
+    // Ignore error if index already exists
+  }
+  try {
+    await query(`ALTER TABLE wearing_logs DROP INDEX uniq_wearing_log_patient_date_source`);
+  } catch (err) {
+    // Ignore error if index does not exist
+  }
+  try {
+    await query(`
+      UPDATE wearing_logs wl
+      JOIN treatment_records tr ON tr.id = wl.treatment_id
+      SET wl.patient_id = tr.patient_id
+      WHERE (wl.patient_id IS NULL OR wl.patient_id = 0)
+    `);
+  } catch (err) {
+    console.error('Failed to backfill wearing_logs.patient_id:', err);
+  }
+  try {
+    await query(`
+      UPDATE wearing_logs wl
+      JOIN treatment_records tr ON tr.id = wl.treatment_id
+      SET wl.patient_device_id = tr.patient_device_id
+      WHERE wl.patient_device_id IS NULL
+    `);
+  } catch (err) {
+    console.error('Failed to backfill wearing_logs.patient_device_id:', err);
+  }
+  try {
+    await query(`ALTER TABLE wearing_logs MODIFY COLUMN patient_id BIGINT UNSIGNED NOT NULL`);
+  } catch (err) {
+    // Ignore error if there are still unexpected legacy rows
+  }
 
   // 14. device_adjustments
   await query(`
     CREATE TABLE IF NOT EXISTS device_adjustments (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      patient_device_id BIGINT UNSIGNED DEFAULT NULL,
       treatment_id BIGINT UNSIGNED NOT NULL,
       adjust_date DATE NOT NULL,
       operator_id BIGINT UNSIGNED NOT NULL,
       adjusted_advancement DECIMAL(4, 2) NOT NULL,
       patient_feedback VARCHAR(255),
       instructions TEXT,
+      FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL,
       FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE CASCADE
     );
   `);
+  try {
+    await query(`ALTER TABLE device_adjustments ADD COLUMN patient_device_id BIGINT UNSIGNED DEFAULT NULL FIRST`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE device_adjustments ADD CONSTRAINT fk_device_adjustments_patient_device FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL`);
+  } catch (err) {}
+  try {
+    await query(`
+      UPDATE device_adjustments da
+      JOIN treatment_records tr ON tr.id = da.treatment_id
+      SET da.patient_device_id = tr.patient_device_id
+      WHERE da.patient_device_id IS NULL
+    `);
+  } catch (err) {
+    console.error('Failed to backfill device_adjustments.patient_device_id:', err);
+  }
 
   // 15. follow_up_tasks
   await query(`
@@ -938,11 +1168,15 @@ export const initDB = async () => {
       user_id BIGINT UNSIGNED NOT NULL,
       title VARCHAR(150) NOT NULL,
       content TEXT NOT NULL,
+      type VARCHAR(30) DEFAULT 'system',
       is_read TINYINT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+  try {
+    await query(`ALTER TABLE user_notifications ADD COLUMN type VARCHAR(30) DEFAULT 'system' AFTER content`);
+  } catch (err) {}
 
   // 27. live_rooms
   await query(`
@@ -1013,10 +1247,15 @@ export const initDB = async () => {
       user_id BIGINT UNSIGNED NOT NULL,
       user_role VARCHAR(30) DEFAULT 'patient',
       title VARCHAR(255) NOT NULL,
+      summary TEXT,
       content TEXT NOT NULL,
       cover_url VARCHAR(255),
       image_urls JSON,
       tags JSON,
+      related_product_name VARCHAR(255),
+      related_doctor_name VARCHAR(255),
+      publish_at DATETIME NULL,
+      sort_weight INT DEFAULT 100,
       likes_count INT DEFAULT 0,
       comments_count INT DEFAULT 0,
       is_top TINYINT DEFAULT 0,
@@ -1031,6 +1270,36 @@ export const initDB = async () => {
   } catch (err) {
     // Ignore error if column already exists
   }
+  try {
+    await query(`ALTER TABLE community_posts ADD COLUMN summary TEXT DEFAULT NULL AFTER title;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE community_posts ADD COLUMN related_product_name VARCHAR(255) DEFAULT NULL AFTER tags;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE community_posts ADD COLUMN related_doctor_name VARCHAR(255) DEFAULT NULL AFTER related_product_name;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE community_posts ADD COLUMN publish_at DATETIME DEFAULT NULL AFTER related_doctor_name;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE community_posts ADD COLUMN sort_weight INT DEFAULT 100 AFTER publish_at;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`UPDATE community_posts SET publish_at = created_at WHERE publish_at IS NULL AND status = 'approved';`);
+  } catch (err) {
+    // Ignore data migration failure here
+  }
 
   // 29. post_comments
   await query(`
@@ -1044,6 +1313,30 @@ export const initDB = async () => {
       status VARCHAR(30) DEFAULT 'approved',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS community_post_likes (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      post_id BIGINT UNSIGNED NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_post_like (post_id, user_id),
+      FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS post_comment_likes (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      comment_id BIGINT UNSIGNED NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_comment_like (comment_id, user_id),
+      FOREIGN KEY (comment_id) REFERENCES post_comments(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
@@ -1131,9 +1424,27 @@ export const initDB = async () => {
   try {
     await query(`
       UPDATE ess_assessments e
+      JOIN users u ON e.user_id = u.id
+      SET e.patient_id = u.self_patient_id
+      WHERE e.patient_id IS NULL
+        AND u.self_patient_id IS NOT NULL
+    `);
+  } catch (e) {}
+  try {
+    await query(`
+      UPDATE ess_assessments e
       JOIN patients p ON e.user_id = p.user_id AND p.relation = 'self'
       SET e.patient_id = p.id
       WHERE e.patient_id IS NULL
+    `);
+  } catch (e) {}
+  try {
+    await query(`
+      UPDATE snore_assessments s
+      JOIN users u ON s.user_id = u.id
+      SET s.patient_id = u.self_patient_id
+      WHERE s.patient_id IS NULL
+        AND u.self_patient_id IS NOT NULL
     `);
   } catch (e) {}
   try {
@@ -1332,6 +1643,7 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS device_maintenance (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       user_id BIGINT UNSIGNED NOT NULL,
+      patient_device_id BIGINT UNSIGNED DEFAULT NULL,
       treatment_id BIGINT UNSIGNED DEFAULT NULL,
       service_date DATE NOT NULL,
       service_type VARCHAR(100) NOT NULL,
@@ -1342,12 +1654,19 @@ export const initDB = async () => {
       status VARCHAR(30) DEFAULT 'completed',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL,
       FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE SET NULL
     );
   `);
 
   try {
+    await query(`ALTER TABLE device_maintenance ADD COLUMN patient_device_id BIGINT UNSIGNED DEFAULT NULL AFTER user_id`);
+  } catch (e) {}
+  try {
     await query(`ALTER TABLE device_maintenance ADD COLUMN treatment_id BIGINT UNSIGNED DEFAULT NULL AFTER user_id`);
+  } catch (e) {}
+  try {
+    await query(`ALTER TABLE device_maintenance ADD CONSTRAINT fk_device_maintenance_patient_device FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL`);
   } catch (e) {}
   try {
     await query(`ALTER TABLE device_maintenance ADD COLUMN description TEXT DEFAULT NULL`);
@@ -1355,12 +1674,21 @@ export const initDB = async () => {
   try {
     await query(`ALTER TABLE device_maintenance ADD COLUMN cost INT DEFAULT 0`);
   } catch (e) {}
+  try {
+    await query(`
+      UPDATE device_maintenance dm
+      JOIN treatment_records tr ON tr.id = dm.treatment_id
+      SET dm.patient_device_id = tr.patient_device_id
+      WHERE dm.patient_device_id IS NULL
+    `);
+  } catch (e) {}
 
   // 41. device_feedback
   await query(`
     CREATE TABLE IF NOT EXISTS device_feedback (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       user_id BIGINT UNSIGNED NOT NULL,
+      patient_device_id BIGINT UNSIGNED DEFAULT NULL,
       treatment_id BIGINT UNSIGNED DEFAULT NULL,
       feedback_type VARCHAR(100) NULL,
       feedback_desc TEXT NOT NULL,
@@ -1371,18 +1699,33 @@ export const initDB = async () => {
       processed_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL,
       FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE SET NULL
     );
   `);
 
   try {
+    await query(`ALTER TABLE device_feedback ADD COLUMN patient_device_id BIGINT UNSIGNED DEFAULT NULL AFTER user_id`);
+  } catch (e) {}
+  try {
     await query(`ALTER TABLE device_feedback ADD COLUMN treatment_id BIGINT UNSIGNED DEFAULT NULL AFTER user_id`);
+  } catch (e) {}
+  try {
+    await query(`ALTER TABLE device_feedback ADD CONSTRAINT fk_device_feedback_patient_device FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL`);
   } catch (e) {}
   try {
     await query(`ALTER TABLE device_feedback ADD COLUMN rating INT DEFAULT 5`);
   } catch (e) {}
   try {
     await query(`ALTER TABLE device_feedback MODIFY COLUMN feedback_type VARCHAR(100) NULL`);
+  } catch (e) {}
+  try {
+    await query(`
+      UPDATE device_feedback df
+      JOIN treatment_records tr ON tr.id = df.treatment_id
+      SET df.patient_device_id = tr.patient_device_id
+      WHERE df.patient_device_id IS NULL
+    `);
   } catch (e) {}
 
   // 42. article_categories
@@ -1398,7 +1741,7 @@ export const initDB = async () => {
   try {
     const catCount = await get(`SELECT COUNT(*) as count FROM article_categories`);
     if (catCount && catCount.count === 0) {
-      const defaults = ['睡眠科普', '治疗知识', '设备介绍', '患者故事'];
+      const defaults = ['睡眠科普', '治疗知识', '设备介绍', '患者故事', '专家'];
       for (let i = 0; i < defaults.length; i++) {
         await query(`INSERT INTO article_categories (name, sort_order) VALUES (?, ?)`, [defaults[i], i * 10]);
       }
@@ -1406,6 +1749,17 @@ export const initDB = async () => {
     }
   } catch (e) {
     console.error('Failed to seed article categories:', e);
+  }
+  try {
+    await query(
+      `INSERT INTO article_categories (name, sort_order)
+       SELECT '专家', 40
+       WHERE NOT EXISTS (
+         SELECT 1 FROM article_categories WHERE name = '专家'
+       )`
+    );
+  } catch (e) {
+    console.error('Failed to ensure expert article category:', e);
   }
 
   // Seed sample records for new tables
@@ -1492,8 +1846,20 @@ export const initDB = async () => {
 
   // Ensure that all users with treatment records have seeded timeline and wearing records
   try {
+    await query(`
+      DELETE tt
+      FROM treatment_timelines tt
+      JOIN treatment_records tr ON tr.id = tt.treatment_id
+      WHERE tr.medical_record_id IS NULL
+        AND COALESCE(NULLIF(tr.device_product_name, ''), tr.device_model) = '待适配阻鼾器'
+    `);
+  } catch (err) {
+    console.error('Failed to clear placeholder treatment timelines:', err);
+  }
+
+  try {
     const treatmentRecordsList = await query(`
-      SELECT tr.id as treatment_id, tr.patient_id, p.user_id 
+      SELECT tr.id as treatment_id, tr.patient_id, p.user_id, tr.medical_record_id, tr.device_product_name, tr.device_model
       FROM treatment_records tr
       JOIN patients p ON tr.patient_id = p.id
     `);
@@ -1501,6 +1867,11 @@ export const initDB = async () => {
     const today = new Date();
     
     for (const tr of treatmentRecordsList) {
+      const treatmentDeviceName = String(tr.device_product_name || tr.device_model || '').trim();
+      const isPlaceholderTreatment = !tr.medical_record_id && treatmentDeviceName === '待适配阻鼾器';
+      if (isPlaceholderTreatment) {
+        continue;
+      }
       const timelineCount = await query('SELECT COUNT(*) as count FROM treatment_timelines WHERE user_id = ? AND patient_id = ?', [tr.user_id, tr.patient_id]);
       if (timelineCount[0].count === 0) {
         const dates = [
@@ -1597,11 +1968,11 @@ export const initDB = async () => {
         (1, '定制式可调舌型阻鼾器 HJ-MAD-03', 'device', '/static/product/hj-mad-03.png', 298000, 368000, '针对中轻度阻塞性睡眠呼吸暂停(OSAHS)及顽固打鼾设计，采用食品级高分子材质，下颌前移微调精度达0.5mm，智能监测传感器自动上传睡眠佩戴时长与质量数据。', 120, 58, 'on'),
         (2, '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', 'accessory', '/static/product/pillow.png', 4900, 6900, '专为阻鼾器高分子材料研发 of 温和除菌清洁片。能有效杀灭99.9%的口腔常见细菌，防止异味积聚，不损伤阻鼾器金属调节螺丝与树脂基托。', 800, 340, 'on'),
         (3, '鼾静智能阻鼾舒眠记忆枕', 'accessory', '/static/product/pillow.png', 29900, 39900, '人体工学设计，智能控温与防鼾姿势引导，提升整晚睡眠舒适度与深睡比例。', 150, 85, 'on'),
-        (4, '诊所首诊挂号门诊费', 'service', '/static/product/screening.png', 20000, 20000, '挂号门诊费，包含初次就诊及基础筛查服务。', 99999, 1200, 'on'),
-        (5, '诊所专家诊断评估费', 'service', '/static/product/screening.png', 50000, 50000, '专家诊断评估费，包含专家一对一问诊及阻鼾器物理适配评估。', 99999, 650, 'on'),
-        (6, '专业睡眠呼吸多导初筛服务套餐', 'service', '/static/product/screening.png', 19900, 29900, '包含一次线上睡眠嗜睡问卷评估、三晚鼾声监测报告、以及一次门诊专家面对面的物理阻鼾器适应性筛查与出诊挂号费用。', 9999, 125, 'on'),
-        (7, '快递运费', 'service', '/static/product/screening.png', 1500, 1500, '顺丰快递或挂号邮寄服务费。', 99999, 500, 'on'),
-        (8, '就诊预约定金', 'service', '/static/product/screening.png', 20000, 20000, '就诊预约定金。', 99999, 100, 'on')
+        (4, '诊所首诊挂号门诊费', 'service', '', 20000, 20000, '挂号门诊费，包含初次就诊及基础筛查服务。', 99999, 1200, 'on'),
+        (5, '诊所专家诊断评估费', 'service', '', 50000, 50000, '专家诊断评估费，包含专家一对一问诊及阻鼾器物理适配评估。', 99999, 650, 'on'),
+        (6, '专业睡眠呼吸多导初筛服务套餐', 'service', '', 19900, 29900, '包含一次线上睡眠嗜睡问卷评估、三晚鼾声监测报告、以及一次门诊专家面对面的物理阻鼾器适应性筛查与出诊挂号费用。', 9999, 125, 'on'),
+        (7, '快递运费', 'service', '', 1500, 1500, '顺丰快递或挂号邮寄服务费。', 99999, 500, 'on'),
+        (8, '就诊预约定金', 'service', '', 20000, 20000, '就诊预约定金。', 99999, 100, 'on')
       ON DUPLICATE KEY UPDATE
         name = VALUES(name),
         category = VALUES(category),
@@ -1612,6 +1983,19 @@ export const initDB = async () => {
     console.log('Ensured products 1-7 exist in database.');
   } catch (err) {
     console.error('Failed to ensure default products exist:', err);
+  }
+
+  try {
+    await query(`
+      UPDATE products
+      SET image_url = '',
+          gallery_urls = NULL
+      WHERE image_url = '/static/product/screening.png'
+        AND category = 'service'
+    `);
+    console.log('Removed placeholder service product images.');
+  } catch (err) {
+    console.error('Failed to remove placeholder service product images:', err);
   }
 
   // Seed Coupons

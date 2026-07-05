@@ -9,6 +9,8 @@ import {
   JWT_SECRET,
   checkStoreIsOpen,
   authenticateToken,
+  getPrimaryPatientForUser,
+  getScopedPatientIdsForUser,
   verifyPatientAccess,
   verifyUserAccess,
   maskPhone,
@@ -1238,6 +1240,16 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       return res.json({ code: 200, message: '预约改约成功' });
     }
 
+    let appointmentRow = null;
+    if (isNo) {
+      appointmentRow = await get(`SELECT id, user_id, appointment_no FROM appointments WHERE appointment_no = ?`, [id]);
+    } else {
+      appointmentRow = await get(`SELECT id, user_id, appointment_no FROM appointments WHERE id = ?`, [id]);
+    }
+    if (!appointmentRow) {
+      return res.status(404).json({ code: 404, message: '预约记录不存在' });
+    }
+
     if (cancel_reason) {
       let updateSql = `UPDATE appointments SET status = ?, cancel_reason = ?, updated_at = CURRENT_TIMESTAMP`;
       if (isNo) {
@@ -1255,6 +1267,25 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       }
       await run(updateSql, [status, id]);
     }
+
+    const appointmentStatusTextMap = {
+      pending_payment: '待支付',
+      pending: '待就诊',
+      confirmed: '已确认',
+      completed: '已完成',
+      cancelled: '已取消',
+      refunding: '退款处理中',
+      refunded: '已退款',
+      no_show: '爽约'
+    };
+    await run(
+      `INSERT INTO user_notifications (user_id, title, content, type)
+       VALUES (?, '预约状态更新', ?, 'appointment')`,
+      [
+        appointmentRow.user_id,
+        `您的预约 ${appointmentRow.appointment_no} 状态已更新为${appointmentStatusTextMap[status] || status}${cancel_reason ? `，原因：${cancel_reason}` : ''}。`
+      ]
+    );
 
     res.json({ code: 200, message: '更新预约状态成功' });
   } catch (error) {
@@ -1691,8 +1722,15 @@ app.post('/api/admin/patients', authenticateToken, async (req, res) => {
       );
 
       const [patientResult] = await conn.execute(
-        `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, source, has_snore) VALUES (?, ?, ?, 'self', ?, ?, ?, ?, 0)`,
-        [patientNo, userResult.insertId, name, genderVal, age || null, phone, patientSource]
+        `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, card_no, source, has_snore) VALUES (?, ?, ?, 'self', ?, ?, ?, ?, ?, 0)`,
+        [patientNo, userResult.insertId, name, genderVal, age || null, phone, patientNo, patientSource]
+      );
+      await conn.execute(`UPDATE users SET self_patient_id = ? WHERE id = ?`, [patientResult.insertId, userResult.insertId]);
+      await conn.execute(
+        `INSERT INTO user_patient_links (user_id, patient_id, relation)
+         VALUES (?, ?, 'self')
+         ON DUPLICATE KEY UPDATE relation = 'self', updated_at = CURRENT_TIMESTAMP`,
+        [userResult.insertId, patientResult.insertId]
       );
 
       return {
@@ -1827,9 +1865,9 @@ app.get('/api/admin/patients/:id/sleep-diagnostics', authenticateToken, async (r
               COALESCE(AVG(wl.wear_duration), 0) as avg_duration,
               COALESCE(AVG(wl.comfort), 0) as avg_comfort,
               COALESCE(AVG(wl.ahi_index), 0) as avg_ahi
-       FROM treatment_records tr
-       LEFT JOIN wearing_logs wl ON wl.treatment_id = tr.id AND wl.source = 'mini_program_checkin'
-       WHERE tr.patient_id = ?`,
+       FROM patient_devices pd
+       LEFT JOIN wearing_logs wl ON wl.patient_device_id = pd.id AND wl.source = 'mini_program_checkin'
+       WHERE pd.patient_id = ?`,
       [id]
     );
 
@@ -2349,6 +2387,7 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
         }
 
         await conn.execute(`UPDATE treatment_records SET status = 'paused' WHERE patient_id = ? AND status = 'active'`, [appt.patient_id]);
+        await conn.execute(`UPDATE patient_devices SET status = 'replaced' WHERE patient_id = ? AND status = 'active'`, [appt.patient_id]);
         const deviceSnapshot = buildTreatmentDeviceSnapshot(selectedDevice);
         const [trResult] = await conn.execute(
           `INSERT INTO treatment_records (
@@ -2373,6 +2412,30 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
           ]
         );
         treatmentId = trResult.insertId;
+        const [patientDeviceResult] = await conn.execute(
+          `INSERT INTO patient_devices (
+             patient_id, bind_treatment_record_id, bind_medical_record_id, bind_doctor_id, device_product_id,
+             device_name_snapshot, device_image_snapshot, device_price_snapshot, device_description_snapshot,
+             device_model, initial_advancement, current_advancement, bound_at, next_adjust_date, status
+           )
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'active')`,
+          [
+            appt.patient_id,
+            treatmentId,
+            medicalRecordId,
+            doctorId,
+            deviceSnapshot.id,
+            deviceSnapshot.name,
+            deviceSnapshot.imageUrl,
+            deviceSnapshot.price,
+            deviceSnapshot.description,
+            deviceSnapshot.name,
+            treatment.initial_advancement,
+            treatment.initial_advancement,
+            treatment.start_date || visitDate
+          ]
+        );
+        await conn.execute(`UPDATE treatment_records SET patient_device_id = ? WHERE id = ?`, [patientDeviceResult.insertId, treatmentId]);
         await conn.execute(
           `INSERT INTO treatment_timelines (user_id, patient_id, treatment_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
            VALUES (?, ?, ?, ?, ?, ?, 'milestone', ?, '#3B6BF5', 'device')`,
@@ -2394,10 +2457,12 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
           err.statusCode = 400;
           throw err;
         }
+        const [[treatmentDeviceRows]] = await conn.execute(`SELECT patient_device_id FROM treatment_records WHERE id = ? LIMIT 1`, [treatmentId]);
         await conn.execute(
-          `INSERT INTO device_adjustments (treatment_id, adjust_date, operator_id, adjusted_advancement, patient_feedback, instructions)
-           VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO device_adjustments (patient_device_id, treatment_id, adjust_date, operator_id, adjusted_advancement, patient_feedback, instructions)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [
+            treatmentDeviceRows ? treatmentDeviceRows.patient_device_id : null,
             treatmentId,
             adjustment.adjust_date || visitDate,
             adjustment.operator_id || doctorId,
@@ -2410,6 +2475,12 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
           `UPDATE treatment_records SET current_advancement = ?, next_adjust_date = ? WHERE id = ?`,
           [adjustment.adjusted_advancement, adjustment.next_adjust_date || null, treatmentId]
         );
+        if (treatmentDeviceRows && treatmentDeviceRows.patient_device_id) {
+          await conn.execute(
+            `UPDATE patient_devices SET current_advancement = ?, next_adjust_date = ? WHERE id = ?`,
+            [adjustment.adjusted_advancement, adjustment.next_adjust_date || null, treatmentDeviceRows.patient_device_id]
+          );
+        }
         await conn.execute(
           `INSERT INTO treatment_timelines (user_id, patient_id, treatment_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
            VALUES (?, ?, ?, ?, '设备参数调整', ?, 'adjust', ?, '#F59E0B', 'adjust')`,
@@ -2485,8 +2556,12 @@ app.get('/api/admin/assessments/ess/:id', authenticateToken, async (req, res) =>
   try {
     const ess = await get('SELECT * FROM ess_assessments WHERE id = ?', [id]);
     if (!ess) return res.status(404).json({ code: 404, message: 'ESS评估记录不存在' });
-    
-    if (!await verifyUserAccess(ess.user_id, req.user)) {
+
+    if (ess.patient_id) {
+      if (!await verifyPatientAccess(ess.patient_id, req.user)) {
+        return res.status(403).json({ code: 403, message: '您无权访问该评估记录' });
+      }
+    } else if (!await verifyUserAccess(ess.user_id, req.user)) {
       return res.status(403).json({ code: 403, message: '您无权访问该评估记录' });
     }
 
@@ -2501,8 +2576,12 @@ app.get('/api/admin/assessments/snore/:id', authenticateToken, async (req, res) 
   try {
     const snore = await get('SELECT * FROM snore_assessments WHERE id = ?', [id]);
     if (!snore) return res.status(404).json({ code: 404, message: '鼾声评估记录不存在' });
-    
-    if (!await verifyUserAccess(snore.user_id, req.user)) {
+
+    if (snore.patient_id) {
+      if (!await verifyPatientAccess(snore.patient_id, req.user)) {
+        return res.status(403).json({ code: 403, message: '您无权访问该评估记录' });
+      }
+    } else if (!await verifyUserAccess(snore.user_id, req.user)) {
       return res.status(403).json({ code: 403, message: '您无权访问该评估记录' });
     }
 
@@ -2522,10 +2601,11 @@ app.get('/api/admin/patients/:id/treatment', authenticateToken, async (req, res)
 
   try {
     const tr = await get(
-      `SELECT t.*, d.name as doctor_name
-       FROM treatment_records t
-       JOIN doctors d ON t.doctor_id = d.id
-       WHERE t.patient_id = ? AND t.status = 'active'`,
+      `SELECT pd.*,
+              d.name as doctor_name
+       FROM patient_devices pd
+       LEFT JOIN doctors d ON pd.bind_doctor_id = d.id
+       WHERE pd.patient_id = ? AND pd.status = 'active'`,
       [id]
     );
 
@@ -2535,8 +2615,8 @@ app.get('/api/admin/patients/:id/treatment', authenticateToken, async (req, res)
 
     // Fetch wearing logs
     const logs = await query(
-      `SELECT * FROM wearing_logs WHERE treatment_id = ? AND source = 'mini_program_checkin' ORDER BY date DESC LIMIT 30`,
-      [tr.id]
+      `SELECT * FROM wearing_logs WHERE patient_device_id = ? AND source = 'mini_program_checkin' ORDER BY date DESC LIMIT 30`,
+      [tr.patient_device_id || tr.id]
     );
 
     // Fetch device adjustments
@@ -2544,9 +2624,9 @@ app.get('/api/admin/patients/:id/treatment', authenticateToken, async (req, res)
       `SELECT a.*, d.name as operator_name 
        FROM device_adjustments a
        JOIN doctors d ON a.operator_id = d.id
-       WHERE a.treatment_id = ? 
+       WHERE a.patient_device_id = ? 
        ORDER BY a.adjust_date DESC`,
-      [tr.id]
+      [tr.patient_device_id || tr.id]
     );
 
     res.json({
@@ -2555,10 +2635,10 @@ app.get('/api/admin/patients/:id/treatment', authenticateToken, async (req, res)
         ...tr,
         device: tr.device_product_id ? {
           id: String(tr.device_product_id),
-          name: tr.device_product_name || tr.device_model,
-          image_url: tr.device_product_image_url || '',
-          price: Number(tr.device_product_price || 0),
-          description: tr.device_product_description || ''
+          name: tr.device_name_snapshot || tr.device_model,
+          image_url: tr.device_image_snapshot || '',
+          price: Number(tr.device_price_snapshot || 0),
+          description: tr.device_description_snapshot || ''
         } : null,
         logs,
         adjustments
@@ -2603,6 +2683,7 @@ app.post('/api/admin/patients/:id/treatment', authenticateToken, async (req, res
     const treatmentStartDate = start_date || new Date().toISOString().slice(0, 10);
 
     await run(`UPDATE treatment_records SET status = 'paused' WHERE patient_id = ? AND status = 'active'`, [id]);
+    await run(`UPDATE patient_devices SET status = 'replaced' WHERE patient_id = ? AND status = 'active'`, [id]);
 
     const deviceSnapshot = buildTreatmentDeviceSnapshot(deviceProduct);
     const result = await run(
@@ -2626,6 +2707,29 @@ app.post('/api/admin/patients/:id/treatment', authenticateToken, async (req, res
         treatmentStartDate
       ]
     );
+    const patientDeviceResult = await run(
+      `INSERT INTO patient_devices (
+         patient_id, bind_treatment_record_id, bind_doctor_id, device_product_id,
+         device_name_snapshot, device_image_snapshot, device_price_snapshot, device_description_snapshot,
+         device_model, initial_advancement, current_advancement, bound_at, next_adjust_date, status
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'active')`,
+      [
+        id,
+        result.id,
+        doctor_id,
+        deviceSnapshot.id,
+        deviceSnapshot.name,
+        deviceSnapshot.imageUrl,
+        deviceSnapshot.price,
+        deviceSnapshot.description,
+        deviceSnapshot.name,
+        initial_advancement,
+        initial_advancement,
+        treatmentStartDate
+      ]
+    );
+    await run(`UPDATE treatment_records SET patient_device_id = ? WHERE id = ?`, [patientDeviceResult.id, result.id]);
     await run(
       `INSERT INTO treatment_timelines (user_id, patient_id, treatment_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
        VALUES (?, ?, ?, ?, ?, ?, 'milestone', (SELECT name FROM doctors WHERE id = ?), '#3B6BF5', 'device')`,
@@ -2664,10 +2768,11 @@ app.post('/api/admin/patients/:id/treatment/adjustments', authenticateToken, asy
 
   try {
     // 1. Add adjustment record
+    const device = await get(`SELECT patient_device_id FROM treatment_records WHERE id = ?`, [treatment_id]);
     const result = await run(
-      `INSERT INTO device_adjustments (treatment_id, adjust_date, operator_id, adjusted_advancement, patient_feedback, instructions)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [treatment_id, adjust_date, operator_id, adjusted_advancement, patient_feedback || null, instructions || null]
+      `INSERT INTO device_adjustments (patient_device_id, treatment_id, adjust_date, operator_id, adjusted_advancement, patient_feedback, instructions)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [device?.patient_device_id || null, treatment_id, adjust_date, operator_id, adjusted_advancement, patient_feedback || null, instructions || null]
     );
 
     // 2. Update current advancement and next adjust date in treatment master table
@@ -2677,6 +2782,14 @@ app.post('/api/admin/patients/:id/treatment/adjustments', authenticateToken, asy
        WHERE id = ?`,
       [adjusted_advancement, next_adjust_date || null, treatment_id]
     );
+    if (device?.patient_device_id) {
+      await run(
+        `UPDATE patient_devices
+         SET current_advancement = ?, next_adjust_date = ?
+         WHERE id = ?`,
+        [adjusted_advancement, next_adjust_date || null, device.patient_device_id]
+      );
+    }
     const treatment = await get(`SELECT tr.patient_id, p.user_id, d.name as doctor_name
                                 FROM treatment_records tr
                                 JOIN patients p ON tr.patient_id = p.id
@@ -4113,8 +4226,8 @@ app.post('/api/admin/orders/:id/notify', authenticateToken, async (req, res) => 
     await transaction(async (conn) => {
       await conn.execute('UPDATE orders SET shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [JSON.stringify(addr), id]);
       await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content)
-         VALUES (?, '商品已到店', ?)`,
+        `INSERT INTO user_notifications (user_id, title, content, type)
+         VALUES (?, '商品已到店', ?, 'order')`,
         [order.user_id, `您的订单 ${order.order_no} 商品已到店，可到门店自提。`]
       );
     });
@@ -4152,8 +4265,8 @@ app.post('/api/admin/orders/:id/complete', authenticateToken, async (req, res) =
     await transaction(async (conn) => {
       await conn.execute(`UPDATE orders SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [id]);
       await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content)
-         VALUES (?, '订单已完成', ?)`,
+        `INSERT INTO user_notifications (user_id, title, content, type)
+         VALUES (?, '订单已完成', ?, 'order')`,
         [order.user_id, `您的订单 ${order.order_no} 已完成。`]
       );
 
@@ -4244,8 +4357,8 @@ app.put('/api/admin/orders/:id/refund', authenticateToken, async (req, res) => {
       }
 
       await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content)
-         VALUES (?, ?, ?)`,
+        `INSERT INTO user_notifications (user_id, title, content, type)
+         VALUES (?, ?, ?, 'order')`,
         [
           order.user_id,
           approve ? '退款审核通过' : '退款申请未通过',
@@ -5059,11 +5172,12 @@ app.delete('/api/admin/content/live-rooms/:id', authenticateToken, async (req, r
 app.get('/api/admin/content/articles', authenticateToken, async (req, res) => {
   try {
     const list = await query(
-      `SELECT p.id, p.title, p.content, p.cover_url, p.tags, p.likes_count, p.comments_count,
-              p.is_top, p.status, p.created_at, u.nickname, u.phone
+      `SELECT p.id, p.title, p.summary, p.content, p.cover_url, p.tags,
+              p.related_product_name, p.related_doctor_name, p.publish_at, p.sort_weight,
+              p.likes_count, p.comments_count, p.is_top, p.status, p.created_at, u.nickname, u.phone
        FROM community_posts p
        LEFT JOIN users u ON p.user_id = u.id
-       ORDER BY p.is_top DESC, p.created_at DESC
+       ORDER BY p.is_top DESC, p.sort_weight DESC, COALESCE(p.publish_at, p.created_at) DESC, p.id DESC
        LIMIT 500`
     );
     res.json({ code: 200, data: list });
@@ -5086,11 +5200,22 @@ app.get('/api/admin/content/articles/:id', authenticateToken, async (req, res) =
 });
 
 app.post('/api/admin/content/articles', authenticateToken, async (req, res) => {
-  const { title, content, cover_url, tags = [], status = 'pending' } = req.body;
+  const {
+    title,
+    summary,
+    content,
+    cover_url,
+    tags = [],
+    related_product_name,
+    related_doctor_name,
+    publish_at,
+    sort_weight,
+    status = 'draft'
+  } = req.body;
   if (!title || !content) {
     return res.status(400).json({ code: 400, message: '文章标题和正文为必填项' });
   }
-  if (!['pending', 'approved', 'rejected', 'draft'].includes(status)) {
+  if (!['draft', 'pending', 'approved', 'rejected'].includes(status)) {
     return res.status(400).json({ code: 400, message: '文章状态不合法' });
   }
 
@@ -5099,12 +5224,44 @@ app.post('/api/admin/content/articles', authenticateToken, async (req, res) => {
     if (!author) {
       return res.status(400).json({ code: 400, message: '缺少系统用户，无法发布文章' });
     }
+    const normalizedTags = Array.isArray(tags)
+      ? tags.map((item) => String(item || '').trim()).filter(Boolean)
+      : [];
+    const normalizedSummary = String(summary || '').trim() || null;
+    const normalizedRelatedProduct = String(related_product_name || '').trim() || null;
+    const normalizedRelatedDoctor = String(related_doctor_name || '').trim() || null;
+    const normalizedPublishAt = publish_at ? new Date(publish_at) : null;
+    const publishAtValue = normalizedPublishAt && !Number.isNaN(normalizedPublishAt.getTime())
+      ? normalizedPublishAt
+      : (status === 'approved' ? new Date() : null);
+    const normalizedSortWeight = Number.isFinite(Number(sort_weight))
+      ? Number(sort_weight)
+      : 100;
     const result = await run(
-      `INSERT INTO community_posts (user_id, user_role, title, content, cover_url, tags, status)
-       VALUES (?, 'admin', ?, ?, ?, ?, ?)`,
-      [author.id, title, content, cover_url || null, JSON.stringify(tags), status === 'draft' ? 'pending' : status]
+      `INSERT INTO community_posts (
+        user_id, user_role, title, summary, content, cover_url, tags,
+        related_product_name, related_doctor_name, publish_at, sort_weight, status
+      )
+       VALUES (?, 'admin', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        author.id,
+        String(title).trim(),
+        normalizedSummary,
+        String(content).trim(),
+        cover_url || null,
+        JSON.stringify(normalizedTags),
+        normalizedRelatedProduct,
+        normalizedRelatedDoctor,
+        publishAtValue,
+        normalizedSortWeight,
+        status
+      ]
     );
-    await logAdminAction(req.user.id, 'create_article', 'community_post', result.id, { title, status });
+    await logAdminAction(req.user.id, 'create_article', 'community_post', result.id, {
+      title,
+      status,
+      sort_weight: normalizedSortWeight
+    });
     res.json({ code: 200, message: '保存文章成功', data: { id: result.id } });
   } catch (error) {
     res.status(500).json({ code: 500, message: '保存文章失败' });
@@ -5113,36 +5270,96 @@ app.post('/api/admin/content/articles', authenticateToken, async (req, res) => {
 
 app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { title, content, cover_url, tags, status, is_top } = req.body;
-  const post = await get(`SELECT id FROM community_posts WHERE id = ?`, [id]);
+  const {
+    title,
+    summary,
+    content,
+    cover_url,
+    tags,
+    related_product_name,
+    related_doctor_name,
+    publish_at,
+    sort_weight,
+    status,
+    is_top
+  } = req.body;
+  const post = await get(`SELECT * FROM community_posts WHERE id = ?`, [id]);
   if (!post) {
     return res.status(404).json({ code: 404, message: '内容不存在' });
   }
-  if (status && !['pending', 'approved', 'rejected'].includes(status)) {
+  if (status && !['draft', 'pending', 'approved', 'rejected'].includes(status)) {
     return res.status(400).json({ code: 400, message: '内容状态不合法' });
   }
 
   try {
+    const hasField = (key) => Object.prototype.hasOwnProperty.call(req.body, key);
+    const normalizedTags = Array.isArray(tags)
+      ? tags.map((item) => String(item || '').trim()).filter(Boolean)
+      : null;
+    const normalizedPublishAt = publish_at ? new Date(publish_at) : null;
+    const requestedStatus = hasField('status') ? (status ?? post.status) : post.status;
+    const publishAtValue = !hasField('publish_at')
+      ? (requestedStatus === 'approved' && !post.publish_at ? new Date() : post.publish_at)
+      : publish_at === ''
+        ? null
+        : normalizedPublishAt && !Number.isNaN(normalizedPublishAt.getTime())
+          ? normalizedPublishAt
+          : post.publish_at;
+    const resolvedTitle = hasField('title') ? (title ?? '') : post.title;
+    const resolvedSummary = hasField('summary')
+      ? (String(summary || '').trim() || null)
+      : (post.summary || null);
+    const resolvedContent = hasField('content') ? (content ?? '') : post.content;
+    const resolvedCoverUrl = hasField('cover_url') ? (cover_url || null) : (post.cover_url || null);
+    const resolvedTags = hasField('tags')
+      ? JSON.stringify(normalizedTags || [])
+      : post.tags;
+    const resolvedRelatedProduct = hasField('related_product_name')
+      ? (String(related_product_name || '').trim() || null)
+      : (post.related_product_name || null);
+    const resolvedRelatedDoctor = hasField('related_doctor_name')
+      ? (String(related_doctor_name || '').trim() || null)
+      : (post.related_doctor_name || null);
+    const resolvedSortWeight = hasField('sort_weight')
+      ? (Number.isFinite(Number(sort_weight)) ? Number(sort_weight) : 100)
+      : Number(post.sort_weight ?? 100);
+    const resolvedStatus = requestedStatus;
+    const resolvedIsTop = typeof is_top === 'boolean' ? (is_top ? 1 : 0) : post.is_top;
     await run(
       `UPDATE community_posts
-       SET title = COALESCE(?, title),
-           content = COALESCE(?, content),
-           cover_url = COALESCE(?, cover_url),
-           tags = COALESCE(?, tags),
-           status = COALESCE(?, status),
-           is_top = COALESCE(?, is_top)
+       SET title = ?,
+           summary = ?,
+           content = ?,
+           cover_url = ?,
+           tags = ?,
+           related_product_name = ?,
+           related_doctor_name = ?,
+           publish_at = ?,
+           sort_weight = ?,
+           status = ?,
+           is_top = ?
        WHERE id = ?`,
       [
-        title ?? null,
-        content ?? null,
-        cover_url ?? null,
-        Array.isArray(tags) ? JSON.stringify(tags) : null,
-        status ?? null,
-        typeof is_top === 'boolean' ? (is_top ? 1 : 0) : null,
+        resolvedTitle,
+        resolvedSummary,
+        resolvedContent,
+        resolvedCoverUrl,
+        resolvedTags,
+        resolvedRelatedProduct,
+        resolvedRelatedDoctor,
+        publishAtValue,
+        resolvedSortWeight,
+        resolvedStatus,
+        resolvedIsTop,
         id
       ]
     );
-    await logAdminAction(req.user.id, 'update_article', 'community_post', id, { title, status, is_top });
+    await logAdminAction(req.user.id, 'update_article', 'community_post', id, {
+      title,
+      status,
+      is_top,
+      sort_weight
+    });
     res.json({ code: 200, message: '更新内容成功' });
   } catch (error) {
     res.status(500).json({ code: 500, message: '更新内容失败' });
@@ -5522,7 +5739,7 @@ app.post('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, 
   const { id } = req.params;
   const { height, weight, systolicBp, diastolicBp, neckCircumference, bmi } = req.body;
   try {
-    const appt = await get('SELECT a.doctor_id, a.store_id, p.user_id FROM appointments a JOIN patients p ON a.patient_id = p.id WHERE a.id = ?', [id]);
+    const appt = await get('SELECT a.doctor_id, a.store_id, a.patient_id, p.user_id FROM appointments a JOIN patients p ON a.patient_id = p.id WHERE a.id = ?', [id]);
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
     }
@@ -5532,7 +5749,26 @@ app.post('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, 
     if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(appt.store_id)) {
       return res.status(403).json({ code: 403, message: '您无权维护该门店预约预检信息' });
     }
-    const userId = appt ? appt.user_id : null;
+    let userId = appt ? appt.user_id : null;
+    if (appt?.patient_id) {
+      const primaryPatient = await getPrimaryPatientForUser(appt.user_id);
+      if (!primaryPatient || Number(primaryPatient.id) !== Number(appt.patient_id)) {
+        const scopedPatientIds = await getScopedPatientIdsForUser(appt.user_id);
+        if (scopedPatientIds.includes(Number(appt.patient_id))) {
+          const owner = await get(
+            `SELECT upl.user_id
+             FROM user_patient_links upl
+             WHERE upl.patient_id = ? AND upl.relation = 'self'
+             ORDER BY upl.id ASC
+             LIMIT 1`,
+            [appt.patient_id]
+          );
+          if (owner?.user_id) {
+            userId = owner.user_id;
+          }
+        }
+      }
+    }
 
     const existing = await get('SELECT id FROM appointment_pre_exams WHERE appointment_id = ?', [id]);
     if (existing) {

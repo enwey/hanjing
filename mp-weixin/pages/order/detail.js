@@ -117,15 +117,20 @@ const a = () => "../../components/base/hj-navbar.js",
         try {
           const payRes = await t.payOrder(l.value.id);
           const payParams = payRes.data || payRes;
-          await requestWxPay(payParams);
-          await t.confirmOrderPayment(l.value.id);
           e.index.hideLoading();
-          e.index.showToast({ title: "支付成功", icon: "success" });
+          if (payParams.mockPayment) {
+            e.index.showLoading({ title: "开发环境模拟支付..." });
+            await t.confirmOrderPayment(l.value.id);
+            e.index.hideLoading();
+          } else {
+            await requestWxPay(payParams);
+          }
+          e.index.showToast({ title: "支付已提交，请稍后刷新", icon: "success" });
           const o = await t.getOrderDetail(l.value.id);
           l.value = o.data || o;
         } catch (err) {
           e.index.hideLoading();
-          e.index.showToast({ title: err.message || "支付失败", icon: "none" });
+          e.index.showToast({ title: err && err.errMsg ? "支付未完成，可稍后继续支付" : "发起支付失败，请稍后重试", icon: "none" });
         }
       }
       async function onConfirmReceipt() {

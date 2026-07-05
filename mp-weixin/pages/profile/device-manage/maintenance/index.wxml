@@ -1,30 +1,41 @@
-<view class="page data-v-6756cb81"
-  ><hj-navbar
-    wx:if="{{a}}"
-    class="data-v-6756cb81"
-    u-i="6756cb81-0"
-    bind:__l="__l"
-    u-p="{{a}}" /><view class="page-content data-v-6756cb81"
-    ><view wx:if="{{b}}" class="loading-wrap data-v-6756cb81"
-      ><text class="data-v-6756cb81">加载中...</text></view
-    ><block wx:else
-      ><view
-        wx:for="{{c}}"
-        wx:for-item="rec"
-        wx:key="h"
-        class="record-card data-v-6756cb81"
-        ><view class="record-header data-v-6756cb81"
-          ><view
-            class="record-type data-v-6756cb81"
-            style="{{'background:' + rec.b + ';' + ('color:' + rec.c)}}"
-            ><text class="data-v-6756cb81">{{rec.a}}</text></view
-          ><text class="record-date data-v-6756cb81">{{rec.d}}</text></view
-        ><text class="record-desc data-v-6756cb81">{{rec.e}}</text
-        ><text wx:if="{{rec.f}}" class="record-cost data-v-6756cb81"
-          >¥{{rec.g}}</text
-        ></view
-      ><view wx:if="{{d}}" class="empty data-v-6756cb81"
-        ><text class="data-v-6756cb81">暂无维护记录</text></view
-      ></block
-    ><view class="safe-bottom data-v-6756cb81" /></view
-></view>
+<view class="page">
+  <hj-navbar title="维护记录" show-back></hj-navbar>
+
+  <view class="page-content">
+    <picker wx:if="{{memberOptions.length}}" mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker">
+      <view class="member-picker-content">
+        <view class="member-info">
+          <text class="member-label">当前就诊人：</text>
+          <text class="member-value">{{memberOptions[memberIndex]}}</text>
+        </view>
+        <view class="member-action">
+          <text class="member-action-text">切换</text>
+          <image class="member-action-arrow" src="/static/icons/chevron-right.svg" mode="aspectFit"></image>
+        </view>
+      </view>
+    </picker>
+
+    <view wx:if="{{loading}}" class="state-wrap">
+      <text class="state-text">加载中...</text>
+    </view>
+
+    <block wx:else>
+      <view wx:for="{{records}}" wx:key="id" class="record-card">
+        <view class="record-head">
+          <view class="record-type" style="{{'background:' + item.typeBg + ';color:' + item.typeColor}}">
+            <text>{{item.typeLabel}}</text>
+          </view>
+          <text class="record-date">{{item.date}}</text>
+        </view>
+        <text class="record-desc">{{item.description}}</text>
+        <text wx:if="{{item.costText}}" class="record-cost">费用：{{item.costText}}</text>
+      </view>
+
+      <view wx:if="{{!records.length}}" class="state-wrap">
+        <text class="state-text">当前就诊人暂无维护记录</text>
+      </view>
+    </block>
+
+    <view class="safe-bottom"></view>
+  </view>
+</view>

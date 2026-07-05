@@ -5,81 +5,151 @@ if (!Array) {
   e.resolveComponent("hj-empty")();
 }
 Math;
-const i = e.defineComponent({
+const i = {
+    normal: "普通会员",
+    silver: "白银会员",
+    gold: "黄金会员",
+    diamond: "钻石会员",
+  },
+  a = { pending: "冻结中", settled: "已结算", refunded: "已撤销" },
+  o = e.defineComponent({
     __name: "index",
-    setup(i) {
-      const distributorInfo = e.ref({
+    setup(o) {
+      const n = e.ref({
           totalCommission: 0,
           availableCommission: 0,
           teamCount: 0,
           isDistributor: !1,
+          canOpenDistribution: !1,
+          openDisabledReason: "",
+          memberLevel: "normal",
         }),
-        commissionList = e.ref([]),
-        productList = e.ref([]),
-        totalCommission = e.computed(() => (distributorInfo.value.totalCommission || 0)),
-        availableCommission = e.computed(() => (distributorInfo.value.availableCommission || 0)),
-        teamCount = e.computed(() => (distributorInfo.value.teamCount || 0)),
-        recentCommissions = e.computed(() => commissionList.value.slice(0, 5)),
-        hotProducts = e.computed(() => productList.value.slice(0, 4)),
-        commissionStatusNames = { pending: "冻结中", settled: "已结算", refunded: "已撤销" },
-        goPage = (t) => e.index.navigateTo({ url: t }),
-        loadData = async () => {
+        r = e.ref([]),
+        c = e.ref(!1),
+        d = e.computed(() => !!n.value.isDistributor),
+        u = e.computed(() => !!n.value.canOpenDistribution),
+        l = e.computed(() => i[n.value.memberLevel] || "普通会员"),
+        m = e.computed(() =>
+          n.value.openDisabledReason || "开通后即可拥有邀请码、推广海报、佣金明细和团队数据。",
+        ),
+        p = e.computed(() => [
+          {
+            icon: "/static/icons/fee.svg",
+            label: "提现",
+            tap: () => y("/pages/distribution/withdraw/index"),
+          },
+          {
+            icon: "/static/icons/price.svg",
+            label: "佣金明细",
+            tap: () => y("/pages/distribution/commission/index"),
+          },
+          {
+            icon: "/static/icons/community.svg",
+            label: "团队成员",
+            tap: () => y("/pages/distribution/team/index"),
+          },
+          {
+            icon: "/static/icons/paper-plane.svg",
+            label: "邀请好友",
+            tap: () => y("/pages/distribution/invite/index"),
+          },
+        ]),
+        
+        f = e.computed(() =>
+          r.value.slice(0, 5).map((t) => ({
+            id: t.id,
+            name: t.productName || "",
+            buyerName: t.buyerName || "",
+            dateText: String(t.createdAt || "").slice(0, 10),
+            commissionText: (Number(t.commission || 0) / 100).toFixed(2),
+            statusText: a[t.status] || "",
+            statusClass: t.status || "",
+            image: t.productImage || "",
+          })),
+        ),
+        y = (t) => e.index.navigateTo({ url: t }),
+        h = async () => {
+          c.value = !0;
           try {
-            const infoRes = await t.getDistributorInfo();
-            const infoResData = infoRes.data || infoRes;
-            const [commissionsRes, productsRes] = await Promise.all([
-              t.getDistributionCommissions(),
-              t.getDistributionProducts(),
+            const [iData, aData] = await Promise.all([
+              t.getDistributorInfo(),
+              t.getDistributionOrders(),
             ]);
-            distributorInfo.value = infoResData;
-            commissionList.value = (commissionsRes.data && commissionsRes.data.list) || commissionsRes.list || [];
-            productList.value = (productsRes.data && productsRes.data.list) || productsRes.list || [];
-          } catch (err) {
+            n.value = iData.data || iData || {};
+            r.value = (aData.data && aData.data.list) || aData.list || [];
+          } catch (iErr) {
             e.index.showToast({ title: "加载分销数据失败", icon: "none" });
+          } finally {
+            c.value = !1;
+          }
+        },
+        v = async () => {
+          if (!u.value || c.value) return;
+          try {
+            e.index.showLoading({ title: "开通中..." });
+            await t.openDistribution();
+            e.index.hideLoading();
+            e.index.showToast({ title: "分销已开通", icon: "success" });
+            await h();
+          } catch (iErr) {
+            e.index.hideLoading();
+            e.index.showToast({
+              title: (iErr && iErr.message) || "开通失败",
+              icon: "none",
+            });
           }
         };
       return (
-        e.onMounted(loadData),
-        e.onShow(loadData),
+        e.onMounted(h),
+        e.onShow(h),
         (t, i) =>
           e.e(
             {
-              a: e.t((totalCommission.value / 100).toFixed(2)),
-              b: e.t((availableCommission.value / 100).toFixed(2)),
-              c: e.t(teamCount.value),
-              d: e.o((e) => goPage("/pages/distribution/withdraw/index"), "b3"),
-              e: e.o((e) => goPage("/pages/distribution/commission/index"), "36"),
-              f: e.o((e) => goPage("/pages/distribution/team/index"), "40"),
-              g: e.o((e) => goPage("/pages/distribution/invite/index"), "2e"),
-              h: e.o((e) => goPage("/pages/distribution/products/index"), "de"),
-              i: e.f(hotProducts.value, (t, i, a) => ({
-                a: t.image,
-                b: e.t(t.name),
-                c: e.t((t.price / 100).toFixed(2)),
-                d: e.t(`¥${((t.commission || 0) / 100).toFixed(2)}`),
-                e: t.id,
-                f: e.o((e) => goPage("/pages/product/detail?id=" + t.id), t.id),
-              })),
-              j: e.o((e) => goPage("/pages/distribution/commission/index"), "5f"),
-              k: e.f(recentCommissions.value, (t, i, a) => {
-                return {
-                  a: t.productImage || "",
-                  b: e.t(t.productName || "订单佣金"),
-                  c: e.t(t.buyerName),
-                  d: e.t(String(t.createdAt || "").split("T")[0]),
-                  e: e.t((t.commission / 100).toFixed(2)),
-                  f: e.t(commissionStatusNames[t.status] || "处理中"),
-                  g: e.n(t.status),
-                  h: t.id,
-                };
-              }),
-              l: !recentCommissions.value.length,
+              a: d.value,
             },
-            recentCommissions.value.length ? {} : { m: e.p({ text: "暂无推广订单" }) },
-            { n: e.o((e) => goPage("/pages/distribution/rules/index"), "d5") },
+            d.value
+              ? {
+                  b: e.t((Number(n.value.totalCommission || 0) / 100).toFixed(2)),
+                  c: e.t((Number(n.value.availableCommission || 0) / 100).toFixed(2)),
+                  d: e.t(n.value.teamCount || 0),
+                  e: e.f(p.value, (t, i, a) => ({
+                    a: t.icon,
+                    b: e.t(t.label),
+                    c: t.label,
+                    d: e.o(t.tap, t.label),
+                  })),
+                }
+              : {
+                  f: e.t(l.value),
+                  g: e.t(m.value),
+                  h: u.value ? "" : 1,
+                  i: e.t(u.value ? "立即开通分销" : "暂不满足开通条件"),
+                  j: e.o(v, "1c"),
+                },
+            d.value
+              ? e.e(
+                  {
+                    o: e.o((e) => y("/pages/distribution/orders/index"), "99"),
+                    p: e.f(f.value, (t, i, a) => ({
+                      a: t.image,
+                      b: !t.image,
+                      c: e.t(t.name),
+                      d: e.t(t.buyerName),
+                      e: e.t(t.dateText),
+                      f: e.t(t.commissionText),
+                      g: e.t(t.statusText),
+                      h: e.n(t.statusClass),
+                      i: t.id,
+                    })),
+                    q: !f.value.length,
+                  },
+                  f.value.length ? {} : { r: e.p({ text: "暂无推广订单" }) },
+                )
+              : {},
+            { s: e.o((e) => y("/pages/distribution/rules/index"), "b9") },
           )
       );
     },
   }),
-  a = e._export_sfc(i, [["__scopeId", "data-v-6a5afdbe"]]);
-wx.createPage(a);
+  n = e._export_sfc(o, [["__scopeId", "data-v-6a5afdbe"]]);
+wx.createPage(n);

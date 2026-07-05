@@ -1,66 +1,58 @@
-<view class="page data-v-86cd8c34"
-  ><hj-navbar
-    wx:if="{{a}}"
-    class="data-v-86cd8c34"
-    u-i="86cd8c34-0"
-    bind:__l="__l"
-    u-p="{{a}}" /><view class="page-content data-v-86cd8c34"
-    ><view wx:if="{{b}}" class="loading-wrap data-v-86cd8c34"
-      ><text class="data-v-86cd8c34">加载中...</text></view
-    ><block wx:else
-      ><view
-        wx:for="{{c}}"
-        wx:for-item="fb"
-        wx:key="f"
-        class="feedback-card data-v-86cd8c34"
-        ><view class="fb-header data-v-86cd8c34"
-          ><text class="fb-date data-v-86cd8c34">{{fb.a}}</text
-          ><view class="fb-stars data-v-86cd8c34"
-            ><text
-              wx:for="{{fb.b}}"
-              wx:for-item="item"
-              wx:key="b"
-              class="{{['star', 'data-v-86cd8c34', item.c && 'active']}}"
-              >{{item.a}}</text
-            ></view
-          ></view
-        ><text class="fb-content data-v-86cd8c34">{{fb.c}}</text
-        ><view wx:if="{{fb.d}}" class="fb-reply data-v-86cd8c34"
-          ><text class="reply-label data-v-86cd8c34">医生回复：</text
-          ><text class="data-v-86cd8c34">{{fb.e}}</text></view
-        ></view
-      ><view wx:if="{{d}}" class="empty data-v-86cd8c34"
-        ><text class="data-v-86cd8c34">暂无反馈记录</text></view
-      ></block
-    ><view class="btn-add data-v-86cd8c34" bindtap="{{e}}"
-      ><text class="data-v-86cd8c34">+ 写反馈</text></view
-    ><view wx:if="{{f}}" class="form-overlay data-v-86cd8c34" bindtap="{{m}}"
-      ><view class="form-card data-v-86cd8c34" catchtap="{{l}}"
-        ><text class="form-title data-v-86cd8c34">使用反馈</text
-        ><view class="form-stars data-v-86cd8c34"
-          ><text
-            wx:for="{{g}}"
-            wx:for-item="item"
-            wx:key="b"
-            class="{{['form-star', 'data-v-86cd8c34', item.c && 'active']}}"
-            bindtap="{{item.d}}"
-            >{{item.a}}</text
-          ></view
-        ><block wx:if="{{r0}}">
-          <textarea
-            class="form-textarea data-v-86cd8c34"
-            placeholder="请描述您的使用感受..."
-            maxlength="500"
-            value="{{h}}"
-            bindinput="{{i}}"
-          /></block
-        ><view class="form-actions data-v-86cd8c34"
-          ><view class="btn-cancel data-v-86cd8c34" bindtap="{{j}}"
-            ><text class="data-v-86cd8c34">取消</text></view
-          ><view class="btn-submit data-v-86cd8c34" bindtap="{{k}}"
-            ><text class="data-v-86cd8c34">提交</text></view
-          ></view
-        ></view
-      ></view
-    ><view class="safe-bottom data-v-86cd8c34" /></view
-></view>
+<view class="page">
+  <hj-navbar title="使用反馈" show-back></hj-navbar>
+
+  <view class="page-content">
+    <picker wx:if="{{memberOptions.length}}" mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker">
+      <view class="member-picker-content">
+        <view class="member-info">
+          <text class="member-label">当前就诊人：</text>
+          <text class="member-value">{{memberOptions[memberIndex]}}</text>
+        </view>
+        <view class="member-action">
+          <text class="member-action-text">切换</text>
+          <image class="member-action-arrow" src="/static/icons/chevron-right.svg" mode="aspectFit"></image>
+        </view>
+      </view>
+    </picker>
+
+    <view class="page-action">
+      <button class="page-action__btn" bindtap="openComposer">提交反馈</button>
+    </view>
+
+    <view wx:if="{{loading}}" class="state-wrap">
+      <text class="state-text">加载中...</text>
+    </view>
+
+    <block wx:else>
+      <view wx:for="{{records}}" wx:key="id" class="record-card">
+        <view class="record-head">
+          <text class="record-date">{{item.date}}</text>
+          <text class="record-rating">{{item.rating}} / 5</text>
+        </view>
+        <text class="record-content">{{item.content}}</text>
+        <view wx:if="{{item.reply}}" class="record-reply">
+          <text class="record-reply__label">回复</text>
+          <text class="record-reply__content">{{item.reply}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{!records.length}}" class="state-wrap">
+        <text class="state-text">当前就诊人暂无使用反馈</text>
+      </view>
+    </block>
+  </view>
+
+  <view wx:if="{{showComposer}}" class="composer-mask" bindtap="closeComposer">
+    <view class="composer-panel" catchtap="noop">
+      <text class="composer-title">提交反馈</text>
+      <view class="composer-stars">
+        <text wx:for="{{ratingOptions}}" wx:key="*this" class="composer-star {{item <= rating ? 'active' : ''}}" data-value="{{item}}" bindtap="chooseRating">★</text>
+      </view>
+      <textarea class="composer-input" value="{{content}}" bindinput="onInputContent" placeholder="请输入佩戴体验、问题或建议"></textarea>
+      <view class="composer-actions">
+        <button class="composer-btn composer-btn--ghost" bindtap="closeComposer">取消</button>
+        <button class="composer-btn composer-btn--primary" bindtap="submitFeedback">{{submitting ? '提交中...' : '确认提交'}}</button>
+      </view>
+    </view>
+  </view>
+</view>

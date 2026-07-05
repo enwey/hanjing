@@ -1,23 +1,24 @@
-<view class="page data-v-2c4614d4"
-  ><hj-navbar
-    wx:if="{{a}}"
-    class="data-v-2c4614d4"
-    u-i="2c4614d4-0"
-    bind:__l="__l"
-    u-p="{{a}}" /><view class="page-content data-v-2c4614d4"
-    ><view class="menu-list data-v-2c4614d4"
-      ><view
-        wx:for="{{b}}"
-        wx:for-item="item"
-        wx:key="e"
-        class="menu-item data-v-2c4614d4"
-        bindtap="{{item.f}}"
-        ><view
-          class="menu-icon data-v-2c4614d4"
-          style="{{'background:' + item.b}}"
-          ><image class="menu-icon-img data-v-2c4614d4" src="{{item.a}}" style="width: 20px; height: 20px;" /></view
-        ><text class="menu-label data-v-2c4614d4">{{item.d}}</text
-        ><image class="menu-arrow data-v-2c4614d4" src="/static/icons/chevron-right.svg" style="width: 14px; height: 14px; margin-left: auto;" /></view
-      ></view
-    ><view class="safe-bottom data-v-2c4614d4" /></view
-></view>
+<view class="page">
+  <hj-navbar title="设置" show-back></hj-navbar>
+
+  <view class="page-content">
+    <view wx:for="{{sections}}" wx:key="key" class="section">
+      <text class="section-title">{{item.title}}</text>
+      <view class="menu-list">
+        <view wx:for="{{item.items}}" wx:key="key" class="menu-item" data-url="{{item.url}}" bindtap="goItem">
+          <view class="menu-item__icon">
+            <image class="menu-item__icon-img" src="{{item.icon}}" mode="aspectFit"></image>
+          </view>
+          <view class="menu-item__body">
+            <text class="menu-item__label">{{item.label}}</text>
+            <text class="menu-item__desc">{{item.desc}}</text>
+          </view>
+          <image class="menu-item__arrow" src="/static/icons/chevron-right.svg" mode="aspectFit"></image>
+        </view>
+      </view>
+    </view>
+
+    <button class="logout-btn" bindtap="logout">退出登录</button>
+    <view class="safe-bottom"></view>
+  </view>
+</view>

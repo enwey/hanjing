@@ -83,19 +83,84 @@ export const verifyPatientAccess = async (patientId, user) => {
   return !!record;
 };
 
+export const getPrimaryPatientForUser = async (userId) => {
+  if (!userId) return null;
+
+  const selfPatient = await get(
+    `SELECT p.*
+     FROM users u
+     JOIN patients p ON p.id = u.self_patient_id
+     WHERE u.id = ?
+     LIMIT 1`,
+    [userId]
+  );
+  if (selfPatient) {
+    return selfPatient;
+  }
+
+  const legacySelfPatient = await get(
+    `SELECT * FROM patients WHERE user_id = ? AND relation = 'self' ORDER BY id ASC LIMIT 1`,
+    [userId]
+  );
+  if (legacySelfPatient) {
+    return legacySelfPatient;
+  }
+
+  return get(
+    `SELECT p.*
+     FROM user_patient_links upl
+     JOIN patients p ON p.id = upl.patient_id
+     WHERE upl.user_id = ?
+     ORDER BY CASE WHEN upl.relation = 'self' THEN 0 ELSE 1 END, upl.created_at ASC, upl.id ASC
+     LIMIT 1`,
+    [userId]
+  );
+};
+
+export const getScopedPatientIdsForUser = async (userId) => {
+  const primaryPatient = await getPrimaryPatientForUser(userId);
+  if (!primaryPatient?.id) {
+    return [];
+  }
+
+  if (primaryPatient.id_card) {
+    const rows = await query(`SELECT id FROM patients WHERE id_card = ?`, [primaryPatient.id_card]);
+    return rows.map((row) => Number(row.id));
+  }
+
+  if (primaryPatient.phone) {
+    const rows = await query(
+      `SELECT id
+       FROM patients
+       WHERE phone = ?
+         AND (id_card IS NULL OR id_card = '')`,
+      [primaryPatient.phone]
+    );
+    return rows.map((row) => Number(row.id));
+  }
+
+  return [Number(primaryPatient.id)];
+};
+
 // Helper to verify if a user's patients are accessible to the current user
 export const verifyUserAccess = async (userId, user) => {
+  const scopedPatientIds = await getScopedPatientIdsForUser(userId);
+  if (!scopedPatientIds.length) {
+    return false;
+  }
+
+  const placeholders = scopedPatientIds.map(() => '?').join(',');
   if (user.role === 'doctor' && !user.doctor_id) {
     return false;
   }
   if (user.role === 'super_admin' || !user.store_id) {
     if (user.role === 'doctor' && user.doctor_id) {
       const doctorRecord = await get(
-        `SELECT 1 FROM patients p WHERE p.user_id = ? AND (
+        `SELECT 1 FROM patients p WHERE p.id IN (${placeholders}) AND (
           p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ?)
           OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ?)
         ) LIMIT 1`,
-        [userId, user.doctor_id, user.doctor_id]
+        [...scopedPatientIds, user.doctor_id, user.doctor_id]
       );
       return !!doctorRecord;
     }
@@ -103,21 +168,21 @@ export const verifyUserAccess = async (userId, user) => {
   }
   if (user.role === 'doctor' && user.doctor_id) {
     const record = await get(
-      `SELECT 1 FROM patients p WHERE p.user_id = ? AND (
+      `SELECT 1 FROM patients p WHERE p.id IN (${placeholders}) AND (
         p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ? AND store_id = ?)
         OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ? AND store_id = ?)
       ) LIMIT 1`,
-      [userId, user.doctor_id, user.store_id, user.doctor_id, user.store_id]
+      [...scopedPatientIds, user.doctor_id, user.store_id, user.doctor_id, user.store_id]
     );
     return !!record;
   }
   // Check if any patient belonging to this user has visited this store
   const record = await get(
-    `SELECT 1 FROM patients p WHERE p.user_id = ? AND (
+    `SELECT 1 FROM patients p WHERE p.id IN (${placeholders}) AND (
       p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
       OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
     ) LIMIT 1`,
-    [userId, user.store_id, user.store_id]
+    [...scopedPatientIds, user.store_id, user.store_id]
   );
   return !!record;
 };

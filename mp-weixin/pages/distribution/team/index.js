@@ -12,7 +12,7 @@ const a = e.defineComponent({
         teamCount = e.ref(0),
         level2Count = e.ref(0),
         totalSales = e.ref(0),
-        levelNames = { gold: "金牌", silver: "银牌", diamond: "钻石" },
+        levelNames = { gold: "金牌", silver: "银牌", diamond: "钻石", member: "成员" },
         loadData = async () => {
           try {
             const [membersRes, infoRes] = await Promise.all([
@@ -46,7 +46,7 @@ const a = e.defineComponent({
                 a: e.t(t.avatarText),
                 b: e.t(t.nickname),
                 c: e.t(t.orderCount),
-                d: e.t(levelNames[t.level] || "银牌"),
+                d: e.t(levelNames[t.level] || ""),
                 e: e.n(t.level),
                 f: e.t((t.totalSales / 1e4).toFixed(1)),
                 g: t.id,

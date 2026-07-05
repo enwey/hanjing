@@ -23,42 +23,39 @@
         ><view
           wx:for="{{d}}"
           wx:for-item="product"
-          wx:key="n"
+          wx:key="l"
           wx:if="{{index % 2 === 0}}"
           class="product-card data-v-789c78ca"
-          bindtap="{{product.o}}"
+          bindtap="{{product.m}}"
           ><view
             class="product-img-wrap data-v-789c78ca"
-            style="{{'background:' + product.h}}"
+            style="{{'background:' + product.f}}"
             ><image
               wx:if="{{product.a}}"
               class="product-img data-v-789c78ca"
               src="{{product.b}}"
               mode="widthFix"
             /><view wx:else class="product-img-placeholder data-v-789c78ca"
-              ><text class="placeholder-icon data-v-789c78ca"
-                >{{product.c}}</text
+              ><view class="placeholder-mark data-v-789c78ca"
+                ><view class="placeholder-line placeholder-line--horizontal data-v-789c78ca"></view
+                ><view class="placeholder-line placeholder-line--vertical data-v-789c78ca"></view></view
               ></view
-            ><view
-              wx:if="{{product.d}}"
-              class="product-badge product-badge--custom data-v-789c78ca"
-              ><text class="data-v-789c78ca">{{product.e}}</text></view
-            ><view wx:elif="{{product.f}}" class="product-badge data-v-789c78ca"
-              ><text class="data-v-789c78ca">{{product.g}}% OFF</text></view
+            ><view wx:if="{{product.d}}" class="product-badge data-v-789c78ca"
+              ><text class="data-v-789c78ca">{{product.e}}% OFF</text></view
             ></view
           ><view class="product-body data-v-789c78ca"
-            ><text class="product-name data-v-789c78ca">{{product.i}}</text
+            ><text class="product-name data-v-789c78ca">{{product.g}}</text
             ><view class="product-footer data-v-789c78ca"
               ><view class="product-price-sales-row data-v-789c78ca"
-                ><text class="price data-v-789c78ca">{{product.j}}</text
+                ><text class="price data-v-789c78ca">{{product.h}}</text
                 ><text class="product-sales data-v-789c78ca"
-                  >已售 {{product.m}}</text
+                  >已售 {{product.k}}</text
                 ></view
               ><view
-                wx:if="{{product.k}}"
+                wx:if="{{product.i}}"
                 class="product-price-original-row data-v-789c78ca"
                 ><text class="price-original data-v-789c78ca"
-                  >{{product.l}}</text
+                  >{{product.j}}</text
                 ></view
               ></view
             ></view
@@ -68,42 +65,39 @@
         ><view
           wx:for="{{d}}"
           wx:for-item="product"
-          wx:key="n"
+          wx:key="l"
           wx:if="{{index % 2 === 1}}"
           class="product-card data-v-789c78ca"
-          bindtap="{{product.o}}"
+          bindtap="{{product.m}}"
           ><view
             class="product-img-wrap data-v-789c78ca"
-            style="{{'background:' + product.h}}"
+            style="{{'background:' + product.f}}"
             ><image
               wx:if="{{product.a}}"
               class="product-img data-v-789c78ca"
               src="{{product.b}}"
               mode="widthFix"
             /><view wx:else class="product-img-placeholder data-v-789c78ca"
-              ><text class="placeholder-icon data-v-789c78ca"
-                >{{product.c}}</text
+              ><view class="placeholder-mark data-v-789c78ca"
+                ><view class="placeholder-line placeholder-line--horizontal data-v-789c78ca"></view
+                ><view class="placeholder-line placeholder-line--vertical data-v-789c78ca"></view></view
               ></view
-            ><view
-              wx:if="{{product.d}}"
-              class="product-badge product-badge--custom data-v-789c78ca"
-              ><text class="data-v-789c78ca">{{product.e}}</text></view
-            ><view wx:elif="{{product.f}}" class="product-badge data-v-789c78ca"
-              ><text class="data-v-789c78ca">{{product.g}}% OFF</text></view
+            ><view wx:if="{{product.d}}" class="product-badge data-v-789c78ca"
+              ><text class="data-v-789c78ca">{{product.e}}% OFF</text></view
             ></view
           ><view class="product-body data-v-789c78ca"
-            ><text class="product-name data-v-789c78ca">{{product.i}}</text
+            ><text class="product-name data-v-789c78ca">{{product.g}}</text
             ><view class="product-footer data-v-789c78ca"
               ><view class="product-price-sales-row data-v-789c78ca"
-                ><text class="price data-v-789c78ca">{{product.j}}</text
+                ><text class="price data-v-789c78ca">{{product.h}}</text
                 ><text class="product-sales data-v-789c78ca"
-                  >已售 {{product.m}}</text
+                  >已售 {{product.k}}</text
                 ></view
               ><view
-                wx:if="{{product.k}}"
+                wx:if="{{product.i}}"
                 class="product-price-original-row data-v-789c78ca"
                 ><text class="price-original data-v-789c78ca"
-                  >{{product.l}}</text
+                  >{{product.j}}</text
                 ></view
               ></view
             ></view

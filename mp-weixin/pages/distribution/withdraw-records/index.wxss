@@ -101,6 +101,7 @@
   color: #1a9d5c;
 }
 .item-tag.approved.data-v-1157dc5a,
+.item-tag.completed.data-v-1157dc5a,
 .item-tag.transferred.data-v-1157dc5a {
   background: #d3f5e3;
   color: #1a9d5c;

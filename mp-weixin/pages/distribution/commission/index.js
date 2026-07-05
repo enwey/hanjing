@@ -61,7 +61,7 @@ const a = e.defineComponent({
                 return e.e(
                   {
                     a: t.productImage || "",
-                    b: e.t(t.productName || "订单佣金"),
+                    b: e.t(t.productName || ""),
                     c: e.t(t.buyerName),
                     d: e.t(String(t.createdAt || "").split("T")[0]),
                     e: 2 === t.commissionLevel,
@@ -69,7 +69,7 @@ const a = e.defineComponent({
                   (t.commissionLevel, {}),
                   {
                     f: e.t((t.commission / 100).toFixed(2)),
-                    g: e.t(statusNames[t.status] || "处理中"),
+                    g: e.t(statusNames[t.status] || ""),
                     h: e.n(t.status),
                     i: t.id,
                   },

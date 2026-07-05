@@ -6,70 +6,89 @@ const t = () => "../../../components/base/hj-navbar.js",
   a = e.defineComponent({
     __name: "index",
     setup(t) {
-      const a = e.ref(""),
-        n = e.ref(""),
-        i = e.ref([]),
-        o = e.ref(!1),
-        l = [
+      const title = e.ref(""),
+        content = e.ref(""),
+        selectedCategory = e.ref("睡眠科普"),
+        selectedTags = e.ref([]),
+        isSubmitting = e.ref(!1),
+        categoryOptions = [
+          "睡眠科普",
+          "治疗知识",
+          "设备介绍",
+          "患者故事",
+          "阻鼾器配戴",
+          "科普问答",
+        ],
+        tagOptions = [
           "适应期",
           "治疗分享",
           "AHI改善",
           "设备保养",
-          "科普问答",
           "情感支持",
           "经验交流",
         ];
       async function submitPublish() {
-        if (a.value.trim() && n.value.trim()) {
-          o.value = !0;
-          try {
-            const res = await api.createCommunityPost({
-              title: a.value.trim(),
-              content: n.value.trim(),
-              tags: [...i.value]
-            });
-            if (res && res.code === 0) {
-              e.index.$emit("newPost", res.data);
-              e.index.showToast({ title: "发布成功", icon: "success" });
-              setTimeout(() => e.index.navigateBack(), 800);
-            } else {
-              e.index.showToast({ title: "发布失败，请重试", icon: "none" });
-            }
-          } catch (err) {
-            console.error(err);
+        if (!title.value.trim() || !content.value.trim()) {
+          e.index.showToast({ title: "请填写标题和内容", icon: "none" });
+          return;
+        }
+        isSubmitting.value = !0;
+        try {
+          const res = await api.createCommunityPost({
+            title: title.value.trim(),
+            content: content.value.trim(),
+            tags: [selectedCategory.value, ...selectedTags.value],
+          });
+          if (res && res.code === 0) {
+            e.index.$emit("newPost", res.data);
+            e.index.showToast({ title: "发布成功", icon: "success" });
+            setTimeout(() => e.index.navigateBack(), 800);
+          } else {
             e.index.showToast({ title: "发布失败，请重试", icon: "none" });
-          } finally {
-            o.value = !1;
           }
-        } else {
-          e.index.showToast({ title: "请填写标题 and 内容", icon: "none" });
+        } catch (err) {
+          console.error(err);
+          e.index.showToast({ title: "发布失败，请重试", icon: "none" });
+        } finally {
+          isSubmitting.value = !1;
         }
       }
-      return (t, u) => ({
+      function toggleTag(tag) {
+        const index = selectedTags.value.indexOf(tag);
+        if (index >= 0) {
+          selectedTags.value.splice(index, 1);
+          return;
+        }
+        if (selectedTags.value.length >= 3) {
+          e.index.showToast({ title: "最多选择3个标签", icon: "none" });
+          return;
+        }
+        selectedTags.value.push(tag);
+      }
+      return (t, n) => ({
         a: e.p({ title: "发帖", showBack: !0 }),
-        b: a.value,
-        c: e.o((e) => (a.value = e.detail.value), "31"),
-        d: n.value,
-        e: e.o((e) => (n.value = e.detail.value), "f3"),
-        f: e.t(n.value.length),
-        g: e.f(l, (t, a, n) => ({
+        b: e.f(categoryOptions, (t, a, n) => ({
           a: e.t(t),
           b: t,
-          c: i.value.includes(t) ? 1 : "",
-          d: e.o(
-            (e) =>
-              (function (e) {
-                const t = i.value.indexOf(e);
-                t >= 0
-                  ? i.value.splice(t, 1)
-                  : i.value.length < 3 && i.value.push(e);
-              })(t),
-            t,
-          ),
+          c: selectedCategory.value === t ? 1 : "",
+          d: e.o(() => {
+            selectedCategory.value = t;
+          }, t),
         })),
-        h: e.t(o.value ? "发布中..." : "发布帖子"),
-        i: a.value.trim() && n.value.trim() && !o.value ? "" : 1,
-        j: e.o(submitPublish, "76"),
+        c: title.value,
+        d: e.o((e) => (title.value = e.detail.value), "title"),
+        e: content.value,
+        f: e.o((e) => (content.value = e.detail.value), "content"),
+        g: e.t(content.value.length),
+        h: e.f(tagOptions, (t, a, n) => ({
+          a: e.t(t),
+          b: t,
+          c: selectedTags.value.includes(t) ? 1 : "",
+          d: e.o(() => toggleTag(t), t),
+        })),
+        i: e.t(isSubmitting.value ? "发布中..." : "发布帖子"),
+        j: title.value.trim() && content.value.trim() && !isSubmitting.value ? "" : 1,
+        k: e.o(submitPublish, "submit"),
       });
     },
   }),

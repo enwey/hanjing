@@ -406,7 +406,7 @@ export const seedData = async () => {
   await run(
     `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
+     ON DUPLICATE KEY UPDATE name = VALUES(name), image_url = VALUES(image_url), gallery_urls = VALUES(gallery_urls), price = VALUES(price), original_price = VALUES(original_price)`,
     [
       1,
       '定制式可调舌型阻鼾器 HJ-MAD-03',
@@ -427,7 +427,7 @@ export const seedData = async () => {
   await run(
     `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
+     ON DUPLICATE KEY UPDATE name = VALUES(name), image_url = VALUES(image_url), gallery_urls = VALUES(gallery_urls), price = VALUES(price), original_price = VALUES(original_price)`,
     [
       2,
       '鼾静阻鼾器专用清洁泡腾片 (60片/盒)',
@@ -448,7 +448,7 @@ export const seedData = async () => {
   await run(
     `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
+     ON DUPLICATE KEY UPDATE name = VALUES(name), image_url = VALUES(image_url), gallery_urls = VALUES(gallery_urls), price = VALUES(price), original_price = VALUES(original_price)`,
     [
       3,
       '鼾静智能阻鼾舒眠记忆枕',
@@ -469,13 +469,13 @@ export const seedData = async () => {
   await run(
     `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
+     ON DUPLICATE KEY UPDATE name = VALUES(name), image_url = VALUES(image_url), gallery_urls = VALUES(gallery_urls), price = VALUES(price), original_price = VALUES(original_price)`,
     [
       4,
       '诊所首诊挂号门诊费',
       'service',
-      '/static/product/screening.png',
-      JSON.stringify(['/static/product/screening.png']),
+      '',
+      null,
       20000,
       20000,
       '挂号门诊费，包含初次就诊及基础筛查服务。',
@@ -490,13 +490,13 @@ export const seedData = async () => {
   await run(
     `INSERT INTO products (id, name, category, image_url, gallery_urls, price, original_price, description, stock, sales_count, is_distribution, commission_rate, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE name = VALUES(name), price = VALUES(price), original_price = VALUES(original_price)`,
+     ON DUPLICATE KEY UPDATE name = VALUES(name), image_url = VALUES(image_url), gallery_urls = VALUES(gallery_urls), price = VALUES(price), original_price = VALUES(original_price)`,
     [
       5,
       '诊所专家诊断评估费',
       'service',
-      '/static/product/screening.png',
-      JSON.stringify(['/static/product/screening.png']),
+      '',
+      null,
       50000,
       50000,
       '专家诊断评估费，包含专家一对一问诊及阻鼾器物理适配评估。',
@@ -516,8 +516,8 @@ export const seedData = async () => {
       6,
       '专业睡眠呼吸多导初筛服务套餐',
       'service',
-      '/static/product/screening.png',
-      JSON.stringify(['/static/product/screening.png']),
+      '',
+      null,
       19900,
       29900,
       '包含一次线上睡眠嗜睡问卷评估、三晚鼾声监测报告、以及一次门诊专家面对面的物理阻鼾器适应性筛查与出诊挂号费用。',
@@ -537,8 +537,8 @@ export const seedData = async () => {
       7,
       '快递运费',
       'service',
-      '/static/product/screening.png',
-      JSON.stringify(['/static/product/screening.png']),
+      '',
+      null,
       1500,
       1500,
       '顺丰快递或挂号邮寄服务费。',
@@ -558,8 +558,8 @@ export const seedData = async () => {
       8,
       '就诊预约定金',
       'service',
-      '/static/product/screening.png',
-      JSON.stringify(['/static/product/screening.png']),
+      '',
+      null,
       20000,
       20000,
       '就诊预约定金。',
@@ -746,7 +746,7 @@ export const seedData = async () => {
       '以前睡觉打鼾震天响，经常憋醒。在鼾静诊所定制了HJ-MAD-03。刚配戴的前三天有些流口水，牙齿酸胀，不过按照古医生的建议清晨做做嘴部张合操，第四天就完全适应了。现在老婆说我基本上不打鼾了，白天精神也好了很多，整个人神清气爽！',
       JSON.stringify(['阻鼾器配戴', '打鼾治疗', 'OSAHS改善']),
       28,
-      5,
+      2,
       1,
       'approved'
     ]

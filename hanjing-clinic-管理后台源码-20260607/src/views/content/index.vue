@@ -8,7 +8,7 @@ const router = useRouter()
 
 const searchKeyword = ref('')
 const filterCategory = ref('')
-const activeStatusTab = ref('all') // 'all', 'pending', 'approved', 'rejected'
+const activeStatusTab = ref('all') // 'all', 'draft', 'pending', 'approved', 'rejected'
 
 const currentPage = ref(1)
 const pageSize = ref(30)
@@ -40,7 +40,9 @@ const filteredPosts = computed(() => {
   let list = posts.value
 
   // 1. Status Tab Filter
-  if (activeStatusTab.value === 'pending') {
+  if (activeStatusTab.value === 'draft') {
+    list = list.filter(p => p.status === 'draft')
+  } else if (activeStatusTab.value === 'pending') {
     list = list.filter(p => p.status === 'pending')
   } else if (activeStatusTab.value === 'approved') {
     list = list.filter(p => p.status === 'approved')
@@ -79,9 +81,9 @@ function formatTime(value: string) {
 function parseCategory(tags: any) {
   try {
     const list = typeof tags === 'string' ? JSON.parse(tags) : tags
-    return Array.isArray(list) && list.length ? list[0] : '睡眠科普'
+    return Array.isArray(list) && list.length ? list[0] : '未分类'
   } catch (error) {
-    return '睡眠科普'
+    return '未分类'
   }
 }
 
@@ -98,7 +100,7 @@ async function fetchPosts() {
       likes: Number(row.likes_count || 0),
       comments: Number(row.comments_count || 0),
       createTime: formatTime(row.created_at),
-      status: row.status || 'pending',
+      status: row.status || 'draft',
       isTop: Boolean(row.is_top)
     }))
   } catch (error) {
@@ -144,6 +146,7 @@ async function handleDelete(id: string) {
 
 const stats = computed(() => ({
   total: posts.value.length,
+  draft: posts.value.filter(p => p.status === 'draft').length,
   pending: posts.value.filter(p => p.status === 'pending').length,
   today: posts.value.filter(p => p.createTime.startsWith('2026-06-05') || p.createTime.startsWith('2026-06-04')).length,
 }))
@@ -245,6 +248,13 @@ watch(operationColumnWidth, () => {
           </div>
           <div 
             class="filter-tab" 
+            :class="{ active: activeStatusTab === 'draft' }" 
+            @click="activeStatusTab = 'draft'"
+          >
+            草稿 <span style="opacity: 0.6; margin-left: 4px;">{{ stats.draft }}</span>
+          </div>
+          <div 
+            class="filter-tab" 
             :class="{ active: activeStatusTab === 'pending' }" 
             @click="activeStatusTab = 'pending'"
           >
@@ -323,7 +333,8 @@ watch(operationColumnWidth, () => {
               <td style="font-weight: 600;">{{ post.comments }}</td>
               <td style="font-size: 12px; color: #9CA3AF;">{{ post.createTime }}</td>
               <td>
-                <span class="status-tag gold" v-if="post.status === 'pending'">待审核</span>
+                <span class="status-tag gray" v-if="post.status === 'draft'">草稿</span>
+                <span class="status-tag gold" v-else-if="post.status === 'pending'">待审核</span>
                 <span class="status-tag green" v-else-if="post.status === 'approved'">已通过</span>
                 <span class="status-tag red" v-else-if="post.status === 'rejected'">已下架</span>
               </td>

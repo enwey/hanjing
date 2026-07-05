@@ -272,12 +272,7 @@ const o = () => "../../components/base/hj-navbar.js",
             h: i.value,
             i: e.o((e) => (i.value = e.detail.value), "b2"),
             k: e.o(submitAppointment, "0a"),
-            l: e.p({
-              type: "primary",
-              size: "lg",
-              block: !0,
-              loading: d.value,
-            }),
+            j: d.value,
           },
         );
     },

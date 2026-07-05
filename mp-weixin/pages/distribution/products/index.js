@@ -28,7 +28,7 @@ const i = e.defineComponent({
                 b: e.t(t.name),
                 c: e.t((t.price / 100).toFixed(2)),
                 d: e.t(Number(t.commissionRate || 0)),
-                e: e.t(((t.commission || 0) / 100).toFixed(2)),
+                e: e.t((Number(t.commission || 0) / 100).toFixed(2)),
                 f: t.id,
                 g: e.o((i) => {
                   return (

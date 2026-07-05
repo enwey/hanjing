@@ -1,58 +1,73 @@
 "use strict";
-const e = require("../../../../common/vendor.js"),
-  a = require("../../../../api/index.js");
-Math || t();
-const t = () => "../../../../components/base/hj-navbar.js",
-  n = e.defineComponent({
-    __name: "index",
-    setup(t) {
-      const n = e.ref([]),
-        r = e.ref(!0);
-      function currentParams() {
-        const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
-        return patientId ? { patientId } : {};
+const api = require("../../../../api/index.js");
+
+const MEMBER_LABEL_MAP = {
+  self: "本人",
+  spouse: "配偶",
+  child: "子女",
+  parent: "父母",
+  sibling: "兄弟姐妹",
+  other: "其他",
+};
+
+Page({
+  data: {
+    loading: true,
+    members: [],
+    memberOptions: [],
+    memberIndex: 0,
+    selectedPatientId: "",
+    records: [],
+  },
+
+  onShow() {
+    this.loadPage();
+  },
+
+  getStoragePatientId() {
+    return wx.getStorageSync("selected_treatment_patient_id") || "";
+  },
+
+  setStoragePatientId(patientId) {
+    if (patientId) {
+      wx.setStorageSync("selected_treatment_patient_id", String(patientId));
+    }
+  },
+
+  async loadPage() {
+    this.setData({ loading: true });
+    try {
+      const memberRes = await api.getFamilyMembers();
+      const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
+      let selectedPatientId = this.getStoragePatientId();
+      if (!selectedPatientId || !members.some((item) => String(item.id) === String(selectedPatientId))) {
+        const selfMember = members.find((item) => item.relation === "self") || members[0] || null;
+        selectedPatientId = selfMember ? String(selfMember.id) : "";
+        this.setStoragePatientId(selectedPatientId);
       }
-      e.onMounted(async () => {
-        const e = await a.getWearingRecords(currentParams());
-        ((n.value = e.data || e || []), (r.value = !1));
-      });
-      const o = { 1: "1", 2: "2", 3: "3", 4: "4", 5: "5" };
-      return (a, t) =>
-        e.e(
-          { a: e.p({ title: "佩戴数据", "show-back": !0 }), b: r.value },
-          r.value
-            ? {}
-            : e.e(
-                {
-                  c: e.f(n.value, (a, t, n) =>
-                    e.e(
-                      { a: e.t(a.date), b: a.wearDuration > 0 },
-                      a.wearDuration > 0 ? { c: e.t(a.wearDuration) } : {},
-                      { d: a.wearDuration > 0 },
-                      a.wearDuration > 0 ? { e: e.t(o[a.comfort || 3]) } : {},
-                      { f: a.wearDuration > 0 },
-                      a.wearDuration > 0
-                        ? {
-                            g: (a.wearDuration / 8) * 100 + "%",
-                            h:
-                              a.wearDuration >= 6
-                                ? "#1A9D5C"
-                                : a.wearDuration >= 4
-                                  ? "#F59E0B"
-                                  : "#EF4444",
-                          }
-                        : {},
-                      { i: a.note },
-                      a.note ? { j: e.t(a.note) } : {},
-                      { k: a.id },
-                    ),
-                  ),
-                  d: 0 === n.value.length,
-                },
-                (n.value.length, {}),
-              ),
-        );
-    },
-  }),
-  r = e._export_sfc(n, [["__scopeId", "data-v-0ef6c91e"]]);
-wx.createPage(r);
+      const memberOptions = members.map((item) => `${item.name}（${MEMBER_LABEL_MAP[item.relation] || "成员"}）`);
+      const memberIndex = Math.max(0, members.findIndex((item) => String(item.id) === String(selectedPatientId)));
+      const res = await api.getWearingRecords(selectedPatientId ? { patientId: selectedPatientId } : {});
+      const records = (res.data || res || []).map((item) => ({
+        ...item,
+        progressWidth: `${Math.max(0, Math.min(100, Number(item.wearDuration || 0) / 8 * 100))}%`,
+        progressColor: Number(item.wearDuration || 0) >= 6 ? "#1A9D5C" : Number(item.wearDuration || 0) >= 4 ? "#F59E0B" : "#EF4444",
+      }));
+      this.setData({ members, memberOptions, memberIndex, selectedPatientId, records });
+    } catch (err) {
+      console.error("加载佩戴数据失败", err);
+      wx.showToast({ title: err.message || "加载佩戴数据失败", icon: "none" });
+      this.setData({ records: [] });
+    } finally {
+      this.setData({ loading: false });
+    }
+  },
+
+  async onMemberChange(event) {
+    const nextIndex = Number(event.detail.value || 0);
+    const nextMember = this.data.members[nextIndex];
+    if (!nextMember) return;
+    this.setStoragePatientId(nextMember.id);
+    await this.loadPage();
+  },
+});

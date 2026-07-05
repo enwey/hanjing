@@ -1,50 +1,61 @@
-<view class="page data-v-03365e87"
-  ><hj-navbar
+<view class="page data-v-03365e87">
+  <hj-navbar
     wx:if="{{a}}"
     class="data-v-03365e87"
     u-i="03365e87-0"
     bind:__l="__l"
     u-p="{{a}}"
-  /><view class="page-content data-v-03365e87"
-    ><view class="info-card data-v-03365e87"
-      ><text class="info-title data-v-03365e87">预约信息确认</text
-      ><view class="info-row data-v-03365e87"
-        ><image class="row-icon data-v-03365e87" src="/static/icons/tab-home.png" /><text class="info-label data-v-03365e87">门店</text
-        ><text class="info-value data-v-03365e87">{{b}}</text></view
-      ><view class="info-row data-v-03365e87"
-        ><image class="row-icon data-v-03365e87" src="/static/icons/tab-profile.png" /><text class="info-label data-v-03365e87">医生</text
-        ><text class="info-value data-v-03365e87">{{c}}</text></view
-      ><view class="info-row data-v-03365e87"
-        ><image class="row-icon data-v-03365e87" src="/static/icons/tab-appointment.png" /><text class="info-label data-v-03365e87">日期</text
-        ><text class="info-value data-v-03365e87">{{d}}</text></view
-      ><view class="info-row data-v-03365e87"
-        ><image class="row-icon data-v-03365e87" src="/static/icons/clock.svg" /><text class="info-label data-v-03365e87">时段</text
-        ><text class="info-value info-value--bold data-v-03365e87"
-          >{{e}}</text
-        ></view
-      ><picker bindchange="{{onPatientChange}}" value="{{patientIndex}}" range="{{patientNames}}" class="data-v-03365e87"
-        ><view class="info-row data-v-03365e87" style="position: relative;"
-          ><image class="row-icon data-v-03365e87" src="/static/icons/tab-profile.png" /><text class="info-label data-v-03365e87">就诊人</text
-          ><text class="info-value data-v-03365e87" style="padding-right: 30rpx; color: #3B6BF5;">{{selectedPatientName}} ›</text></view
-        ></picker
-      ><view wx:if="{{requireDeposit}}" class="info-row data-v-03365e87"
-        ><image class="row-icon data-v-03365e87" src="/static/icons/price.svg" /><text class="info-label data-v-03365e87">定金</text
-        ><text class="info-value info-value--price data-v-03365e87"
-          >¥{{depositAmountYuan}}</text
-        ></view
-      ><view wx:if="{{f}}" class="info-row data-v-03365e87"
-        ><image class="row-icon data-v-03365e87" src="/static/icons/fee.svg" /><text class="info-label data-v-03365e87">挂号费</text
-        ><text class="info-value info-value--price data-v-03365e87"
-          >¥{{g}}</text
-        ></view
-      ><view wx:if="{{assessmentLabel}}" class="info-row data-v-03365e87"
-        ><image class="row-icon data-v-03365e87" src="/static/icons/assessment.svg" /><text class="info-label data-v-03365e87">关联评估</text
-        ><text class="info-value data-v-03365e87">{{assessmentLabel}}</text></view
-      ></view
+  />
+  <view class="page-content data-v-03365e87">
+    <view class="info-card data-v-03365e87">
+      <text class="info-title data-v-03365e87">预约信息确认</text>
+      <view class="info-row data-v-03365e87">
+        <image class="row-icon data-v-03365e87" src="/static/icons/tab-home.png" />
+        <text class="info-label data-v-03365e87">门店</text>
+        <text class="info-value data-v-03365e87">{{b}}</text>
+      </view>
+      <view class="info-row data-v-03365e87">
+        <image class="row-icon data-v-03365e87" src="/static/icons/tab-profile.png" />
+        <text class="info-label data-v-03365e87">医生</text>
+        <text class="info-value data-v-03365e87">{{c}}</text>
+      </view>
+      <view class="info-row data-v-03365e87">
+        <image class="row-icon data-v-03365e87" src="/static/icons/tab-appointment.png" />
+        <text class="info-label data-v-03365e87">日期</text>
+        <text class="info-value data-v-03365e87">{{d}}</text>
+      </view>
+      <view class="info-row data-v-03365e87">
+        <image class="row-icon data-v-03365e87" src="/static/icons/clock.svg" />
+        <text class="info-label data-v-03365e87">时段</text>
+        <text class="info-value info-value--bold data-v-03365e87">{{e}}</text>
+      </view>
+      <picker bindchange="{{onPatientChange}}" value="{{patientIndex}}" range="{{patientNames}}" class="data-v-03365e87">
+        <view class="info-row data-v-03365e87" style="position: relative;">
+          <image class="row-icon data-v-03365e87" src="/static/icons/tab-profile.png" />
+          <text class="info-label data-v-03365e87">就诊人</text>
+          <text class="info-value data-v-03365e87" style="padding-right: 30rpx; color: #3B6BF5;">{{selectedPatientName}} ›</text>
+        </view>
+      </picker>
+      <view wx:if="{{requireDeposit}}" class="info-row data-v-03365e87">
+        <image class="row-icon data-v-03365e87" src="/static/icons/price.svg" />
+        <text class="info-label data-v-03365e87">定金</text>
+        <text class="info-value info-value--price data-v-03365e87">¥{{depositAmountYuan}}</text>
+      </view>
+      <view wx:if="{{f}}" class="info-row data-v-03365e87">
+        <image class="row-icon data-v-03365e87" src="/static/icons/fee.svg" />
+        <text class="info-label data-v-03365e87">挂号费</text>
+        <text class="info-value info-value--price data-v-03365e87">¥{{g}}</text>
+      </view>
+      <view wx:if="{{assessmentLabel}}" class="info-row data-v-03365e87">
+        <image class="row-icon data-v-03365e87" src="/static/icons/assessment.svg" />
+        <text class="info-label data-v-03365e87">关联评估</text>
+        <text class="info-value data-v-03365e87">{{assessmentLabel}}</text>
+      </view>
+    </view>
 
-    ><view class="symptom-card data-v-03365e87"
-      ><text class="symptom-title data-v-03365e87">症状描述（选填）</text
-      ><block wx:if="{{r0}}">
+    <view class="symptom-card data-v-03365e87">
+      <text class="symptom-title data-v-03365e87">症状描述（选填）</text>
+      <block wx:if="{{r0}}">
         <textarea
           class="symptom-textarea data-v-03365e87"
           placeholder="请描述您的症状，例如：夜间打鼾几年、白天是否嗜睡、是否有呼吸暂停等..."
@@ -52,30 +63,40 @@
           maxlength="500"
           value="{{h}}"
           bindinput="{{i}}"
-        /></block></view
-    ><view class="visit-notice-card data-v-03365e87"
-      ><view class="visit-notice-header data-v-03365e87"
-        ><text class="visit-notice-header-icon data-v-03365e87">⚠</text><text class="visit-notice-title data-v-03365e87">就诊须知</text></view
-      ><view class="visit-notice-item data-v-03365e87"
-        ><text class="visit-notice-index data-v-03365e87">1.</text><text class="visit-notice-text data-v-03365e87">请携带既往病历与阻鼾器</text></view
-      ><view class="visit-notice-item data-v-03365e87"
-        ><text class="visit-notice-index data-v-03365e87">2.</text><text class="visit-notice-text data-v-03365e87">提前15分钟到达诊所签到</text></view
-      ><view class="visit-notice-item data-v-03365e87"
-        ><text class="visit-notice-index data-v-03365e87">3.</text><text class="visit-notice-text data-v-03365e87">如需取消，请最晚于{{cancelLimitText}}操作</text></view
-      ><view class="visit-notice-item data-v-03365e87"
-        ><text class="visit-notice-index data-v-03365e87">4.</text><text class="visit-notice-text data-v-03365e87">首次就诊需完成睡眠评估</text></view
-      ></view
-    ><view class="submit-area data-v-03365e87"
-      ><hj-button
-        wx:if="{{l}}"
-        class="data-v-03365e87"
-        u-s="{{['d']}}"
-        bindclick="{{k}}"
-        u-i="03365e87-1"
-        bind:__l="__l"
-        u-p="{{l}}"
-        >{{buttonText}}</hj-button
-      ></view
-    ></view>
+        />
+      </block>
+    </view>
+
+    <view class="visit-notice-card data-v-03365e87">
+      <view class="visit-notice-header data-v-03365e87">
+        <text class="visit-notice-header-icon data-v-03365e87">⚠</text>
+        <text class="visit-notice-title data-v-03365e87">就诊须知</text>
+      </view>
+      <view class="visit-notice-item data-v-03365e87">
+        <text class="visit-notice-index data-v-03365e87">1.</text>
+        <text class="visit-notice-text data-v-03365e87">请携带既往病历与阻鼾器</text>
+      </view>
+      <view class="visit-notice-item data-v-03365e87">
+        <text class="visit-notice-index data-v-03365e87">2.</text>
+        <text class="visit-notice-text data-v-03365e87">提前15分钟到达诊所签到</text>
+      </view>
+      <view class="visit-notice-item data-v-03365e87">
+        <text class="visit-notice-index data-v-03365e87">3.</text>
+        <text class="visit-notice-text data-v-03365e87">如需取消，请最晚于{{cancelLimitText}}操作</text>
+      </view>
+      <view class="visit-notice-item data-v-03365e87">
+        <text class="visit-notice-index data-v-03365e87">4.</text>
+        <text class="visit-notice-text data-v-03365e87">首次就诊需完成睡眠评估</text>
+      </view>
+    </view>
+
+    <view class="safe-bottom data-v-03365e87" />
     <hj-privacy-popup id="privacyPopup" />
   </view>
+
+  <view class="bottom-fixed-bar data-v-03365e87">
+    <button class="bar-primary-btn data-v-03365e87" bindtap="{{k}}" loading="{{j}}">
+      {{buttonText}}
+    </button>
+  </view>
+</view>

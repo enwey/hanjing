@@ -1,110 +1,122 @@
-.data-v-6756cb81:root {
-  --color-primary-50: #eef4ff;
-  --color-primary-100: #d9e6ff;
-  --color-primary-300: #8eafff;
-  --color-primary-500: #3b6bf5;
-  --color-primary-600: #2a52d4;
-  --color-primary-800: #1a3580;
-  --color-secondary-100: #d3f5e3;
-  --color-secondary-500: #1a9d5c;
-  --color-success-500: #22c55e;
-  --color-warning-500: #f59e0b;
-  --color-error-500: #ef4444;
-  --color-gold-400: #f5a623;
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
-  --gradient-primary: linear-gradient(
-    135deg,
-    #3b6bf5 0%,
-    #5a85f5 50%,
-    #8eafff 100%
-  );
-  --gradient-hero: linear-gradient(
-    160deg,
-    #1a3580 0%,
-    #3b6bf5 40%,
-    #8eafff 100%
-  );
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-full: 9999px;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
-  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
-  --font-sans:
-    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
-    BlinkMacSystemFont, sans-serif;
-  --text-xs: 11px;
-  --text-sm: 13px;
-  --text-base: 15px;
-  --text-lg: 17px;
-  --text-xl: 20px;
-  --text-2xl: 24px;
-  --safe-bottom: env(safe-area-inset-bottom, 34px);
-}
-.page.data-v-6756cb81 {
+.page {
   min-height: 100vh;
   background: #f9fafb;
-  display: flex;
-  flex-direction: column;
 }
-.page-content.data-v-6756cb81 {
-  flex: 1;
+
+.page-content {
   padding: 16px;
 }
-.loading-wrap.data-v-6756cb81,
-.empty.data-v-6756cb81 {
-  padding: 100px 0;
-  text-align: center;
-  color: #9ca3af;
-}
-.record-card.data-v-6756cb81 {
+
+.member-picker,
+.record-card {
   background: #fff;
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 10px;
-  box-shadow: var(--card-shadow);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
-.record-header.data-v-6756cb81 {
+
+.member-picker {
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  display: block;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  border: 1px solid #f1f5f9;
+}
+
+.member-picker-content {
   display: flex;
+  width: 100%;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
 }
-.record-type.data-v-6756cb81 {
-  padding: 3px 10px;
-  border-radius: 6px;
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.member-label {
+  color: #64748b;
+}
+
+.member-value {
+  font-weight: 600;
+  color: #3b6bf5;
+}
+
+.member-action {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: #94a3b8;
+}
+
+.member-action-text {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: normal;
+}
+
+.member-action-arrow {
+  width: 14px;
+  height: 14px;
+  transform: rotate(90deg);
+  transform-origin: center;
+  display: block;
+  flex-shrink: 0;
+}
+
+.state-wrap {
+  padding: 100px 0;
+  text-align: center;
+}
+
+.state-text {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.record-card {
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.record-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.record-type {
+  padding: 4px 10px;
+  border-radius: 9999px;
   font-size: 12px;
   font-weight: 600;
 }
-.record-date.data-v-6756cb81 {
+
+.record-date {
   font-size: 13px;
   color: #9ca3af;
 }
-.record-desc.data-v-6756cb81 {
-  font-size: 14px;
-  color: #374151;
+
+.record-desc {
   display: block;
-  line-height: 1.5;
-}
-.record-cost.data-v-6756cb81 {
   font-size: 14px;
+  color: #1f2937;
+  line-height: 1.7;
+}
+
+.record-cost {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #3b6bf5;
   font-weight: 600;
-  color: #ef4444;
-  display: block;
-  margin-top: 6px;
 }
-.safe-bottom.data-v-6756cb81 {
+
+.safe-bottom {
   height: calc(env(safe-area-inset-bottom, 34px) + 20px);
 }

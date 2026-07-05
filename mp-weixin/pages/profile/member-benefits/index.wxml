@@ -28,50 +28,25 @@
       ><view class="section data-v-bf62d399"
         ><text class="section-title data-v-bf62d399">当前权益</text
         ><view class="benefit-list data-v-bf62d399"
-          ><block wx:for="{{l}}" wx:for-item="level" wx:key="e"
-            ><block wx:if="{{level.a}}"
-              ><view
-                wx:for="{{level.b}}"
-                wx:for-item="ben"
-                wx:key="d"
-                class="benefit-item data-v-bf62d399"
-                ><view
-                  class="{{['benefit-icon', 'data-v-bf62d399', level.c && 'owned']}}"
-                  ><text class="data-v-bf62d399">{{ben.a}}</text></view
-                ><view class="benefit-body data-v-bf62d399"
-                  ><text class="benefit-title data-v-bf62d399">{{ben.b}}</text
-                  ><text class="benefit-desc data-v-bf62d399"
-                    >{{ben.c}}</text
-                  ></view
-                ><text wx:if="{{level.d}}" class="benefit-check data-v-bf62d399"
-                  >V</text
-                ></view
-              ></block
-            ></block
+          ><view
+            wx:for="{{l}}"
+            wx:for-item="ben"
+            wx:key="e"
+            class="benefit-item data-v-bf62d399"
+            ><view
+              class="benefit-icon data-v-bf62d399"
+              style="{{'background:' + ben.d}}"
+              ><image class="benefit-icon-image data-v-bf62d399" src="{{ben.a}}" mode="aspectFit" /></view
+            ><view class="benefit-body data-v-bf62d399"
+              ><text class="benefit-title data-v-bf62d399">{{ben.b}}</text
+              ><text class="benefit-desc data-v-bf62d399"
+                >{{ben.c}}</text
+              ></view
+            ><view class="benefit-check data-v-bf62d399"
+              ><image class="benefit-check-icon data-v-bf62d399" src="/static/icons/success-medical.svg" mode="aspectFit" /></view
+            ></view
           ></view>
         </view>
-      
-      <!-- 积分兑换中心 -->
-      <view class="section data-v-bf62d399">
-        <text class="section-title data-v-bf62d399">积分兑换中心</text>
-        <view class="benefit-list data-v-bf62d399" style="margin-top:20rpx;">
-          <view wx:for="{{nRedeemCoupons}}" wx:for-item="item" wx:key="id" class="benefit-item data-v-bf62d399" style="display:flex; justify-content:space-between; align-items:center; background:#fff; border-radius:12rpx; padding:24rpx; margin-bottom:20rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.02); border: 1rpx solid #f3f4f6;">
-            <view style="display:flex; align-items:center; gap:20rpx;">
-              <view style="background:#fff2f0; color:#ff4d4f; border-radius:8rpx; width:100rpx; height:100rpx; display:flex; flex-direction:column; align-items:center; justify-content:center; border: 1rpx dashed #ffccc7;">
-                <text style="font-size:32rpx; font-weight:bold; color:#ff4d4f;">¥{{item.value / 100}}</text>
-                <text style="font-size:18rpx; transform:scale(0.85); color:#ff4d4f;">代金券</text>
-              </view>
-              <view style="display:flex; flex-direction:column; gap:6rpx;">
-                <text style="font-size:26rpx; font-weight:bold; color:#1f2937;">{{item.title}}</text>
-                <text style="font-size:20rpx; color:#6b7280;">满{{item.minSpend / 100}}元可用</text>
-                <text style="font-size:20rpx; color:#3B6BF5; font-weight:600;">{{item.pointsCost}} 积分</text>
-              </view>
-            </view>
-            <button bindtap="{{item.onRedeem}}" disabled="{{points < item.pointsCost}}" style="margin:0; background:{{points >= item.pointsCost ? '#3B6BF5' : '#d1d5db'}}; color:#fff; font-size:22rpx; border:none; border-radius:30rpx; width:140rpx; height:56rpx; line-height:56rpx; text-align:center; padding:0; display:flex; align-items:center; justify-content:center;">{{points >= item.pointsCost ? '立即兑换' : '积分不足'}}</button>
-          </view>
-        </view>
-      </view>
-      
       <view class="section data-v-bf62d399"
         ><text class="section-title data-v-bf62d399">等级体系</text
         ><view class="level-list data-v-bf62d399"
@@ -94,5 +69,7 @@
           ></view
         ></view
       ></block
+    ><view wx:else class="loading-wrap data-v-bf62d399"
+      ><text class="data-v-bf62d399">{{n}}</text></view
     ><view class="safe-bottom data-v-bf62d399" /></view
 ></view>

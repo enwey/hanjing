@@ -163,6 +163,10 @@
   background: #f3f4f6;
   color: #6b7280;
 }
+.level.member.data-v-e9b2690b {
+  background: #f3f4f6;
+  color: #6b7280;
+}
 .level.diamond.data-v-e9b2690b {
   background: #eef4ff;
   color: #3b6bf5;

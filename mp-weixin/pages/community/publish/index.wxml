@@ -7,30 +7,39 @@
     u-p="{{a}}"
   /><view class="form data-v-c3d232f9"
     ><view class="field data-v-c3d232f9"
+      ><text class="field-label data-v-c3d232f9">分类</text
+      ><view class="category-list data-v-c3d232f9"
+        ><view
+          wx:for="{{b}}"
+          wx:for-item="category"
+          wx:key="b"
+          class="{{['category-chip', 'data-v-c3d232f9', category.c && 'active']}}"
+          bindtap="{{category.d}}"
+          >{{category.a}}</view
+        ></view
+      ></view
+    ><view class="field data-v-c3d232f9"
       ><text class="field-label data-v-c3d232f9">标题</text
       ><input
         class="field-input data-v-c3d232f9"
         placeholder="简洁描述你的问题或分享"
         maxlength="40"
-        value="{{b}}"
-        bindinput="{{c}}" /></view
+        value="{{c}}"
+        bindinput="{{d}}" /></view
     ><view class="field data-v-c3d232f9"
       ><text class="field-label data-v-c3d232f9">内容</text
-      ><block wx:if="{{r0}}">
-        <textarea
-          class="field-textarea data-v-c3d232f9"
-          placeholder="详细描述你的情况、问题或分享经验..."
-          maxlength="1000"
-          auto-height
-          value="{{d}}"
-          bindinput="{{e}}"
-        /></block
-      ><text class="field-count data-v-c3d232f9">{{f}}/1000</text></view
+      ><textarea
+        class="field-textarea data-v-c3d232f9"
+        placeholder="详细描述你的情况、问题或分享经验..."
+        maxlength="1000"
+        value="{{e}}"
+        bindinput="{{f}}"
+      /><text class="field-count data-v-c3d232f9">{{g}}/1000</text></view
     ><view class="field data-v-c3d232f9"
       ><text class="field-label data-v-c3d232f9">标签（最多3个）</text
       ><view class="tag-list data-v-c3d232f9"
         ><view
-          wx:for="{{g}}"
+          wx:for="{{h}}"
           wx:for-item="tag"
           wx:key="b"
           class="{{['tag', 'data-v-c3d232f9', tag.c && 'active']}}"
@@ -38,17 +47,12 @@
           >{{tag.a}}</view
         ></view
       ></view
-    ><view class="field data-v-c3d232f9"
-      ><text class="field-label data-v-c3d232f9">图片（选填）</text
-      ><view class="img-upload data-v-c3d232f9"
-        ><view class="img-add data-v-c3d232f9">+ 添加图片</view></view
-      ></view
     ></view
   ><view class="submit-bar data-v-c3d232f9"
     ><view
-      class="{{['submit-btn', 'data-v-c3d232f9', i && 'disabled']}}"
-      bindtap="{{j}}"
-      >{{h}}</view
+      class="{{['submit-btn', 'data-v-c3d232f9', j && 'disabled']}}"
+      bindtap="{{k}}"
+      >{{i}}</view
     ></view
   ></view
 >

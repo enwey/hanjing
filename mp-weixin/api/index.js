@@ -265,6 +265,15 @@ exports.getDistributorInfo = async function () {
   );
 };
 
+exports.openDistribution = async function () {
+  return req.request(
+    {
+      url: "/distribution/open",
+      method: "POST",
+    }
+  );
+};
+
 exports.getDistributionInviteInfo = async function () {
   return req.request(
     {
@@ -320,11 +329,12 @@ exports.getLiveRooms = async function () {
   );
 };
 
-exports.getMedicalRecords = async function () {
+exports.getMedicalRecords = async function (query) {
   return req.request(
     {
       url: "/user/medical-records",
       method: "GET",
+      data: query,
     }
   );
 };
@@ -693,12 +703,22 @@ exports.likeCommunityPost = async function (id, isLiked) {
   );
 };
 
-exports.commentCommunityPost = async function (id, content) {
+exports.likeCommunityComment = async function (id, isLiked) {
+  return req.request(
+    {
+      url: `/community/comments/${id}/like`,
+      method: "POST",
+      data: { isLiked },
+    }
+  );
+};
+
+exports.commentCommunityPost = async function (id, content, parentId = null) {
   return req.request(
     {
       url: `/community/posts/${id}/comment`,
       method: "POST",
-      data: { content },
+      data: { content, parentId },
     }
   );
 };

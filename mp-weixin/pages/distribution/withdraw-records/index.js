@@ -13,6 +13,7 @@ const a = e.defineComponent({
           pending: "待审核",
           processing: "处理中",
           approved: "已通过",
+          completed: "已到账",
           transferred: "已到账",
           success: "已到账",
           rejected: "已驳回",
@@ -46,7 +47,7 @@ const a = e.defineComponent({
                 return {
                   a: e.t((t.amount / 100).toFixed(2)),
                   b: e.t(t.accountLabel),
-                  c: e.t(statusNames[t.status] || "处理中"),
+                  c: e.t(statusNames[t.status] || ""),
                   d: e.n(t.status),
                   e: e.t(String(t.createdAt || "").split("T")[0]),
                   f: t.id,

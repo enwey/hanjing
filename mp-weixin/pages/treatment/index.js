@@ -126,6 +126,10 @@ const t = () => "../../components/base/hj-navbar.js",
         scrollSelectedDurationToCenter(durationHours);
       }
       function openCheckinModal() {
+        if (!hasRealTreatmentRecord.value) {
+          e.index.showToast({ title: "当前治疗人尚未绑定设备，请先完成适配", icon: "none" });
+          return;
+        }
         const todayObj = new Date(),
           todayDate = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`;
           const todayRecord = o.value.find((recordItem) => recordItem.date === todayDate);
@@ -285,7 +289,7 @@ const t = () => "../../components/base/hj-navbar.js",
                   heroDoctorText: e.t(hasTreatmentRecord.value ? `主治：${(null == (r = m.value) ? void 0 : r.doctorName) || "--"} 医生` : "完成初诊适配后将在此展示"),
                   heroProgressText: e.t(hasTreatmentRecord.value ? `依从率 ${p.value}%` : "依从率 --"),
                   heroStartText: e.t(hasTreatmentRecord.value ? `初配日期：${(null == (f = m.value) ? void 0 : f.startDate) || "--"}` : "初配日期：--"),
-                  emptyTreatmentNotice: "该治疗人暂无诊疗记录，完成初诊适配后将显示完整治疗追踪内容，当前也可先进行佩戴打卡。",
+                  emptyTreatmentNotice: "该治疗人暂无已绑定设备的治疗记录，完成初诊适配后将显示完整治疗追踪内容并支持设备打卡。",
                   showTimelineLink: hasRealTreatmentRecord.value,
                   c: e.t(w.value.streak),
                   d: e.t(null == (o = m.value) ? void 0 : o.model),

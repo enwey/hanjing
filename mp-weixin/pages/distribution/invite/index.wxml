@@ -4,7 +4,7 @@
     ><view class="banner-content data-v-466378e0"
       ><text class="banner-title data-v-466378e0">邀请好友，一起赚钱</text
       ><text class="banner-desc data-v-466378e0"
-        >好友通过您的邀请码购买，您可获得佣金奖励</text
+        >好友通过您的邀请码或专属海报下单后，您将获得推广佣金</text
       ><view class="code-box data-v-466378e0"
         ><text class="code-label data-v-466378e0">我的邀请码</text
         ><text class="code-value data-v-466378e0">{{a}}</text
@@ -19,15 +19,17 @@
       ><view class="poster data-v-466378e0"
         ><view class="poster-top data-v-466378e0">鼾静健康</view
         ><view class="poster-body data-v-466378e0"
-          ><text class="poster-slogan data-v-466378e0"
-            >告别打鼾<view class="data-v-466378e0"></view
-            >让每一晚都睡得安稳</text
+          ><text class="poster-slogan data-v-466378e0">告别打鼾</text
+          ><text class="poster-slogan data-v-466378e0">让每一晚都睡得安稳</text
           ><view class="poster-qr data-v-466378e0"
-            ><image wx:if="{{e}}" class="poster-qr-image data-v-466378e0" src="{{e}}" mode="aspectFill" />
-            <text wx:else class="data-v-466378e0">扫码咨询</text></view
+            ><image wx:if="{{!f}}" class="poster-qr-image data-v-466378e0" src="{{e}}" mode="aspectFill" />
+            <view wx:else class="poster-code-box data-v-466378e0"
+              ><text class="poster-code-label data-v-466378e0">邀请码</text
+              ><text class="poster-code-value data-v-466378e0">{{g}}</text></view
+            ></view
           ></view
         ><view class="poster-bottom data-v-466378e0"
-          >长按保存海报，分享给好友</view
+          >保存海报后可发送给好友或朋友圈</view
         ></view
       ></view
     ><view class="poster-actions data-v-466378e0"
@@ -49,5 +51,5 @@
         ><text class="step-desc data-v-466378e0">{{step.c}}</text></view
       ></view
     ></view
-  ></view
+  ><canvas canvas-id="distributionInvitePoster" class="poster-canvas data-v-466378e0"></canvas></view
 >

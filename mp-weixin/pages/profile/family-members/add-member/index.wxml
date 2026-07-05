@@ -65,7 +65,7 @@
         bindinput="{{oIdCardInput}}"
         disabled="{{isSelf}}" /></view
     ><view class="form-group data-v-33d45858"
-      ><text class="form-label data-v-33d45858">就诊卡号（选填）</text
+      ><text class="form-label data-v-33d45858">病历号（就诊卡号）（选填）</text
       ><input
         class="form-input data-v-33d45858"
         placeholder="用于匹配已存在档案，可单独填写"

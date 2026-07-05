@@ -35,7 +35,7 @@
             value="{{j}}"
             bindinput="{{k}}" /><text wx:else class="form-value disabled data-v-acab1652">{{l}}</text></view
         ><view class="form-row data-v-acab1652"
-          ><text class="form-label data-v-acab1652">就诊卡号</text
+          ><text class="form-label data-v-acab1652">病历号（就诊卡号）</text
           ><text class="form-value disabled data-v-acab1652">{{m}}</text></view
         ><view class="form-row data-v-acab1652"
           ><text class="form-label data-v-acab1652">性别</text

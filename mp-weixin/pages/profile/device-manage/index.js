@@ -1,133 +1,105 @@
 "use strict";
-const e = require("../../../common/vendor.js"),
-  api = require("../../../api/index.js");
-Math || a();
-const a = () => "../../../components/base/hj-navbar.js",
-  o = e.defineComponent({
-    __name: "index",
-    setup(a) {
-      const device = e.ref(null),
-        loading = e.ref(!0),
-        o = [
-        {
-          icon: "data",
-          label: "佩戴数据",
-          desc: "每日佩戴时长与舒适度",
-          url: "/pages/profile/device-manage/wearing-data",
-          color: "#3B6BF5",
-        },
-        {
-          icon: "maintain",
-          label: "维护记录",
-          desc: "清洁、调整与维修记录",
-          url: "/pages/profile/device-manage/maintenance",
-          color: "#1A9D5C",
-        },
-        {
-          icon: "feedback",
-          label: "使用反馈",
-          desc: "提交使用感受与问题",
-          url: "/pages/profile/device-manage/feedback",
-          color: "#F59E0B",
-        },
-      ];
-      const bluetoothState = e.ref("disconnected"), // disconnected, searching, connected, syncing, synced
-        scannedDevices = e.ref([]),
-        syncProgress = e.ref(0),
-        selectedDevice = e.ref(null);
+const api = require("../../../api/index.js");
 
-      function currentParams() {
-        const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
-        return patientId ? { patientId } : {};
+const MEMBER_LABEL_MAP = {
+  self: "本人",
+  spouse: "配偶",
+  child: "子女",
+  parent: "父母",
+  sibling: "兄弟姐妹",
+  other: "其他",
+};
+
+Page({
+  data: {
+    loading: true,
+    members: [],
+    memberOptions: [],
+    memberIndex: 0,
+    selectedPatientId: "",
+    device: null,
+    menuItems: [
+      {
+        key: "wearing",
+        icon: "/static/icons/trend.svg",
+        label: "佩戴数据",
+        desc: "查看当前就诊人的佩戴记录",
+        url: "/pages/profile/device-manage/wearing-data/index",
+      },
+      {
+        key: "maintenance",
+        icon: "/static/icons/adjust.svg",
+        label: "维护记录",
+        desc: "查看清洁、调整与维修记录",
+        url: "/pages/profile/device-manage/maintenance/index",
+      },
+      {
+        key: "feedback",
+        icon: "/static/icons/chat.svg",
+        label: "使用反馈",
+        desc: "提交问题并查看处理进度",
+        url: "/pages/profile/device-manage/feedback/index",
+      },
+    ],
+  },
+
+  onShow() {
+    this.loadPage();
+  },
+
+  getStoragePatientId() {
+    return wx.getStorageSync("selected_treatment_patient_id") || "";
+  },
+
+  setStoragePatientId(patientId) {
+    if (patientId) {
+      wx.setStorageSync("selected_treatment_patient_id", String(patientId));
+    } else {
+      wx.removeStorageSync("selected_treatment_patient_id");
+    }
+  },
+
+  async loadPage() {
+    this.setData({ loading: true });
+    try {
+      const memberRes = await api.getFamilyMembers();
+      const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
+      let selectedPatientId = this.getStoragePatientId();
+      if (!selectedPatientId || !members.some((item) => String(item.id) === String(selectedPatientId))) {
+        const selfMember = members.find((item) => item.relation === "self") || members[0] || null;
+        selectedPatientId = selfMember ? String(selfMember.id) : "";
+        this.setStoragePatientId(selectedPatientId);
       }
+      const memberOptions = members.map((item) => `${item.name}（${MEMBER_LABEL_MAP[item.relation] || "成员"}）`);
+      const memberIndex = Math.max(0, members.findIndex((item) => String(item.id) === String(selectedPatientId)));
+      const treatmentRes = await api.getTreatmentRecord(selectedPatientId ? { patientId: selectedPatientId } : {});
+      this.setData({
+        members,
+        memberOptions,
+        memberIndex,
+        selectedPatientId,
+        device: treatmentRes.data || null,
+      });
+    } catch (err) {
+      console.error("加载阻鼾器管理失败", err);
+      wx.showToast({ title: err.message || "加载阻鼾器失败", icon: "none" });
+      this.setData({ device: null });
+    } finally {
+      this.setData({ loading: false });
+    }
+  },
 
-      function startScan() {
-        bluetoothState.value = "searching";
-        scannedDevices.value = [];
-        setTimeout(() => {
-          if (bluetoothState.value === "searching") {
-            scannedDevices.value = [
-              { name: "鼾静智能阻鼾器 HJ-MAD-03", deviceId: "HJ:MAD:03:9E:F2", rssi: -62 }
-            ];
-          }
-        }, 1500);
-      }
+  async onMemberChange(event) {
+    const nextIndex = Number(event.detail.value || 0);
+    const nextMember = this.data.members[nextIndex];
+    if (!nextMember) return;
+    this.setStoragePatientId(nextMember.id);
+    await this.loadPage();
+  },
 
-      function connectDevice(dev) {
-        e.index.showLoading({ title: "正在连接蓝牙..." });
-        setTimeout(() => {
-          e.index.hideLoading();
-          selectedDevice.value = dev;
-          bluetoothState.value = "connected";
-          e.index.showToast({ title: "蓝牙直连成功", icon: "success" });
-        }, 1000);
-      }
-
-      function startSync() {
-        bluetoothState.value = "syncing";
-        syncProgress.value = 0;
-        const timer = setInterval(() => {
-          syncProgress.value += 10;
-          if (syncProgress.value >= 100) {
-            clearInterval(timer);
-            bluetoothState.value = "synced";
-            e.index.showToast({ title: "数据同步完成", icon: "success" });
-          }
-        }, 200);
-      }
-
-      function resetBluetooth() {
-        bluetoothState.value = "disconnected";
-        selectedDevice.value = null;
-        scannedDevices.value = [];
-        syncProgress.value = 0;
-      }
-
-      return (
-        e.onMounted(async () => {
-          try {
-            const res = await api.getTreatmentRecord(currentParams());
-            device.value = res.data;
-          } catch (err) {
-            console.error(err);
-          } finally {
-            loading.value = !1;
-          }
-        }),
-        (a, n) => ({
-          a: e.p({ title: "阻鼾器管理", "show-back": !0 }),
-          loading: loading.value,
-          hasDevice: !!device.value,
-          deviceModel: device.value ? device.value.deviceModel : "",
-          deviceName: device.value && device.value.device ? device.value.device.name : (device.value ? device.value.deviceModel : ""),
-          deviceImage: device.value && device.value.device ? device.value.device.imageUrl : "",
-          deviceStatus: device.value && device.value.status === "active" ? "使用中" : "暂无活跃治疗",
-          bluetoothState: bluetoothState.value,
-          scannedDevices: scannedDevices.value,
-          syncProgress: syncProgress.value,
-          selectedDeviceName: selectedDevice.value ? selectedDevice.value.name : "",
-          startScan: e.o(startScan),
-          connectDevice: e.o((o) => {
-            const dev = o.currentTarget.dataset.dev || scannedDevices.value[0];
-            connectDevice(dev);
-          }),
-          startSync: e.o(startSync),
-          resetBluetooth: e.o(resetBluetooth),
-          b: e.f(o, (a, o, n) => ({
-            a: e.t("data" === a.icon ? "T" : "maintain" === a.icon ? "M" : "F"),
-            b: a.color + "15",
-            c: a.color,
-            d: e.t(a.label),
-            e: e.t(a.desc),
-            f: a.label,
-            g: e.o((o) => {
-              return ((n = a.url), void e.index.navigateTo({ url: n }));
-              var n;
-            }, a.label),
-          })),
-        })
-      );
-    },
-  }),
-  n = e._export_sfc(o, [["__scopeId", "data-v-75e661b4"]]);
-wx.createPage(n);
+  goMenu(event) {
+    const { url } = event.currentTarget.dataset;
+    if (!url) return;
+    wx.navigateTo({ url });
+  },
+});

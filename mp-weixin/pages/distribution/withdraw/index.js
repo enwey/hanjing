@@ -9,6 +9,8 @@ const e = require("../../../common/vendor.js"),
         totalCommission = e.ref(0),
         availableCommission = e.ref(0),
         withdrawnAmount = e.ref(0),
+        minWithdrawAmount = e.ref(50),
+        withdrawFeeRate = e.ref(0.01),
         bankName = e.ref(""),
         bankAccountName = e.ref(""),
         bankAccountNo = e.ref(""),
@@ -17,11 +19,11 @@ const e = require("../../../common/vendor.js"),
         serviceFee = e.computed(() => {
           if (parsedWithdrawAmount.value <= 0) return 0;
           if ("bank" !== withdrawMethod.value) return 0;
-          return Math.max(parsedWithdrawAmount.value * 0.01, 1);
+          return Math.max(parsedWithdrawAmount.value * withdrawFeeRate.value, 1);
         }),
         actualAmount = e.computed(() => Math.max(parsedWithdrawAmount.value - serviceFee.value, 0)),
         isSubmitEnabled = e.computed(() => {
-          if (parsedWithdrawAmount.value < 50) return !1;
+          if (parsedWithdrawAmount.value < minWithdrawAmount.value) return !1;
           if (parsedWithdrawAmount.value > maxWithdrawAmount.value) return !1;
           if ("bank" === withdrawMethod.value && (!bankName.value || !bankAccountName.value || !bankAccountNo.value)) return !1;
           return !0;
@@ -60,6 +62,8 @@ const e = require("../../../common/vendor.js"),
             totalCommission.value = tData.totalCommission || 0;
             availableCommission.value = tData.availableCommission || 0;
             withdrawnAmount.value = tData.withdrawnAmount || 0;
+            minWithdrawAmount.value = Number(tData.minWithdrawAmount || 5000) / 100;
+            withdrawFeeRate.value = Number((tData.withdrawFeeRates && tData.withdrawFeeRates.bank) || 0.01);
           } catch (err) {}
         };
       return (
@@ -82,11 +86,13 @@ const e = require("../../../common/vendor.js"),
           n: e.o((e) => (bankAccountName.value = e.detail.value), "bank-account-name"),
           o: bankAccountNo.value,
           p: e.o((e) => (bankAccountNo.value = e.detail.value), "bank-account-no"),
-          q: e.t(serviceFee.value.toFixed(2)),
-          r: e.t(actualAmount.value.toFixed(2)),
-          s: isSubmitEnabled.value ? "" : 1,
-          t: e.o(submitWithdraw, "06"),
-          u: e.o((a) => {
+          q: e.t(minWithdrawAmount.value.toFixed(0)),
+          r: e.t((100 * withdrawFeeRate.value).toFixed(0)),
+          s: e.t(serviceFee.value.toFixed(2)),
+          t: e.t(actualAmount.value.toFixed(2)),
+          u: isSubmitEnabled.value ? "" : 1,
+          v: e.o(submitWithdraw, "06"),
+          w: e.o((a) => {
             return (
               (t = "/pages/distribution/withdraw-records/index"),
               e.index.navigateTo({ url: t })

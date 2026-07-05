@@ -140,42 +140,32 @@
         </view>
       </view>
 
-      <view
-        wx:if="{{p0}}"
-        class="action-footer data-v-e129e068"
-        style="padding: 20rpx 30rpx; background: #fff; border-top: 1rpx solid #eee; display: flex; justify-content: flex-end; gap: 20rpx; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;"
-      >
+      <view wx:if="{{p0}}" class="action-footer data-v-e129e068">
         <button
           wx:if="{{p1}}"
           bindtap="{{p2}}"
-          size="mini"
-          style="margin: 0; color: #666; background: #f5f5f5; border-radius: 40rpx; border: 1rpx solid #ddd; line-height: 2;"
+          class="action-btn action-btn--ghost data-v-e129e068"
         >
           取消订单
         </button>
         <button
           wx:if="{{p3}}"
           bindtap="{{p4}}"
-          size="mini"
-          type="primary"
-          style="margin: 0; background: #3B6BF5; border-radius: 40rpx; line-height: 2;"
+          class="action-btn action-btn--primary data-v-e129e068"
         >
           立即支付
         </button>
         <button
           wx:if="{{p5}}"
           bindtap="{{p6}}"
-          size="mini"
-          type="primary"
-          style="margin: 0; background: #3B6BF5; border-radius: 40rpx; line-height: 2;"
+          class="action-btn action-btn--primary data-v-e129e068"
         >
           确认收货
         </button>
         <button
           wx:if="{{p7}}"
           bindtap="{{p8}}"
-          size="mini"
-          style="margin: 0; color: #666; background: #f5f5f5; border-radius: 40rpx; border: 1rpx solid #ddd; line-height: 2;"
+          class="action-btn action-btn--ghost data-v-e129e068"
         >
           申请退款
         </button>

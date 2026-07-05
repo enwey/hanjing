@@ -35,9 +35,11 @@ const a = () => "../../components/base/hj-navbar.js",
           const api = require("../../api/index.js");
           const res = await api.getProducts();
           if (res && res.data && res.data.list) {
-            c.value = res.data.list.map(item => ({
+            c.value = res.data.list.map((item) => ({
               ...item,
-              sales: item.salesCount !== undefined ? item.salesCount : item.sales
+              salesCount: Number(item.salesCount || 0),
+              price: Number(item.price || 0),
+              originalPrice: Number(item.originalPrice || 0),
             }));
           }
         } catch (err) {
@@ -74,44 +76,40 @@ const a = () => "../../components/base/hj-navbar.js",
             ? {}
             : {
                 d: e.f(d.value, (a, i, r) => {
+                  const hasDiscount = Number(a.originalPrice) > Number(a.price) && Number(a.price) > 0;
                   return e.e(
-                    { a: a.imageUrl || a.image },
-                    (a.imageUrl || a.image)
-                      ? { b: a.imageUrl || a.image }
+                    { a: a.imageUrl },
+                    a.imageUrl
+                      ? { b: a.imageUrl }
                       : {
-                          c: e.t(
-                            "device" === a.category
-                              ? "⚕"
-                              : "service" === a.category
-                                ? "★"
-                                : "◆",
-                          ),
+                          c: "device" === a.category
+                            ? "/static/icons/tab-treatment-active.png"
+                            : "service" === a.category
+                              ? "/static/icons/tab-appointment-active.png"
+                              : "/static/icons/tab-profile-active.png",
                         },
-                    { d: a.badge },
-                    a.badge
-                      ? { e: e.t(a.badge) }
-                      : a.originalPrice
-                        ? {
-                            g: e.t(
-                              Math.round(100 * (1 - a.price / a.originalPrice)),
-                            ),
-                          }
-                        : {},
+                    { d: hasDiscount },
+                    hasDiscount
+                      ? {
+                          e: e.t(
+                            Math.round(100 * (1 - a.price / a.originalPrice)),
+                          ),
+                        }
+                      : {},
                     {
-                      f: a.originalPrice,
-                      h: ((o = a.category), s[o] || "#F3F4F6"),
-                      i: e.t(a.name),
-                      j: e.t(formatPriceYuan(a.price)),
-                      k: a.originalPrice,
+                      f: ((o = a.category), s[o] || "#F3F4F6"),
+                      g: e.t(a.name),
+                      h: e.t(formatPriceYuan(a.price)),
+                      i: hasDiscount,
                     },
-                    a.originalPrice ? { l: e.t(formatPriceYuan(a.originalPrice)) } : {},
+                    hasDiscount ? { j: e.t(formatPriceYuan(a.originalPrice)) } : {},
                     {
-                      m: e.t(
-                        ((c = a.sales),
+                      k: e.t(
+                        ((c = a.salesCount),
                         c >= 1e3 ? (c / 1e3).toFixed(1) + "k" : String(c)),
                       ),
-                      n: a.id,
-                      o: e.o((i) => {
+                      l: a.id,
+                      m: e.o((i) => {
                         return (
                           (r = a.id),
                           void e.index.navigateTo({

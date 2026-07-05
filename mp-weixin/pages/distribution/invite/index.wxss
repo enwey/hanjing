@@ -167,6 +167,23 @@
   height: 100rpx;
   border-radius: 12rpx;
 }
+.poster-code-box.data-v-466378e0 {
+  text-align: center;
+  padding: 8rpx;
+}
+.poster-code-label.data-v-466378e0 {
+  font-size: 18rpx;
+  color: #6b7280;
+  display: block;
+}
+.poster-code-value.data-v-466378e0 {
+  font-size: 20rpx;
+  font-weight: 700;
+  color: #f59e0b;
+  margin-top: 8rpx;
+  display: block;
+  word-break: break-all;
+}
 .poster-bottom.data-v-466378e0 {
   text-align: center;
   padding: 20rpx;
@@ -233,4 +250,13 @@
   color: #9ca3af;
   margin-top: 4rpx;
   display: block;
+}
+.poster-canvas.data-v-466378e0 {
+  position: fixed;
+  left: -9999rpx;
+  top: -9999rpx;
+  width: 600px;
+  height: 960px;
+  opacity: 0;
+  pointer-events: none;
 }

@@ -141,10 +141,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #e5e7eb;
 }
-.placeholder-icon.data-v-789c78ca {
-  font-size: 52px;
-  opacity: 0.35;
+.placeholder-mark.data-v-789c78ca {
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(107, 114, 128, 0.28);
+  border-radius: 10px;
+  position: relative;
+}
+.placeholder-line.data-v-789c78ca {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: rgba(107, 114, 128, 0.28);
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+}
+.placeholder-line--horizontal.data-v-789c78ca {
+  width: 14px;
+  height: 2px;
+}
+.placeholder-line--vertical.data-v-789c78ca {
+  width: 2px;
+  height: 14px;
 }
 .product-badge.data-v-789c78ca {
   position: absolute;
@@ -153,9 +173,6 @@
   background: #ef4444;
   padding: 2px 8px;
   border-radius: 4px;
-}
-.product-badge--custom.data-v-789c78ca {
-  background: #f59e0b;
 }
 .product-badge text.data-v-789c78ca {
   color: #fff;

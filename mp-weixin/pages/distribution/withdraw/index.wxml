@@ -32,23 +32,27 @@
           class="{{['method', 'data-v-6825c219', f && 'active']}}"
           bindtap="{{g}}"
         >
-          <text class="method-icon data-v-6825c219">W</text>
+          <view class="method-icon data-v-6825c219"
+            ><image class="method-icon-image data-v-6825c219" src="/static/icons/chat.svg" mode="aspectFit" /></view
+          >
           <text class="method-text data-v-6825c219">微信零钱</text>
         </view>
         <view
           class="{{['method', 'data-v-6825c219', h && 'active']}}"
           bindtap="{{i}}"
         >
-          <text class="method-icon data-v-6825c219">B</text>
+          <view class="method-icon data-v-6825c219"
+            ><image class="method-icon-image data-v-6825c219" src="/static/icons/price.svg" mode="aspectFit" /></view
+          >
           <text class="method-text data-v-6825c219">银行卡</text>
         </view>
       </view>
     </view>
 
     <view class="tip-box data-v-6825c219">
-      <text class="tip data-v-6825c219">最低提现金额 50 元，微信零钱手续费 0%，银行卡手续费 1%（最低 1 元）</text>
-      <text class="tip data-v-6825c219">手续费：¥{{q}}</text>
-      <text class="tip data-v-6825c219">预计到账：¥{{r}}</text>
+      <text class="tip data-v-6825c219">最低提现金额 {{q}} 元，微信零钱手续费 0%，银行卡手续费 {{r}}%（最低 1 元）</text>
+      <text class="tip data-v-6825c219">手续费：¥{{s}}</text>
+      <text class="tip data-v-6825c219">预计到账：¥{{t}}</text>
     </view>
 
     <view wx:if="{{j}}" class="form-item data-v-6825c219">
@@ -90,13 +94,13 @@
   </view>
 
   <view
-    class="{{['submit-btn', 'data-v-6825c219', s && 'disabled']}}"
-    bindtap="{{t}}"
+    class="{{['submit-btn', 'data-v-6825c219', u && 'disabled']}}"
+    bindtap="{{v}}"
   >
     确认提现
   </view>
 
-  <view class="records-link data-v-6825c219" bindtap="{{u}}">
+  <view class="records-link data-v-6825c219" bindtap="{{w}}">
     <text class="data-v-6825c219">查看提现记录</text>
     <text class="arrow data-v-6825c219">&gt;</text>
   </view>

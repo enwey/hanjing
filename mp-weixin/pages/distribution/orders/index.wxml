@@ -1,0 +1,43 @@
+<view class="page data-v-63e8a384"
+  ><hj-navbar title="推广订单" show-back="{{true}}" /><scroll-view scroll-x class="tabs data-v-63e8a384" enhanced="{{true}}" show-scrollbar="{{false}}"
+    ><text
+      wx:for="{{a}}"
+      wx:for-item="tab"
+      wx:key="b"
+      class="{{['tab', 'data-v-63e8a384', tab.c && 'active']}}"
+      bindtap="{{tab.d}}"
+      >{{tab.a}}</text
+    ></scroll-view
+  ><view class="list data-v-63e8a384"
+    ><view
+      wx:for="{{b}}"
+      wx:for-item="order"
+      wx:key="k"
+      class="item data-v-63e8a384"
+      ><image
+        wx:if="{{!order.b}}"
+        class="item-img data-v-63e8a384"
+        src="{{order.a}}"
+        mode="aspectFill"
+      /><view wx:else class="item-placeholder data-v-63e8a384"
+        ><image class="item-placeholder-icon data-v-63e8a384" src="/static/icons/distribution.svg" mode="aspectFit" /></view
+      ><view class="item-info data-v-63e8a384"
+        ><text class="item-name data-v-63e8a384">{{order.c}}</text
+        ><text class="item-meta data-v-63e8a384">{{order.d}} | {{order.e}}</text
+        ><text class="item-order data-v-63e8a384">{{order.f}}</text
+        ><text wx:if="{{order.j}}" class="item-level data-v-63e8a384"
+          >二级佣金</text
+        ></view
+      ><view class="item-right data-v-63e8a384"
+        ><text class="item-amount data-v-63e8a384">{{order.g}}</text
+        ><text class="{{['item-tag', 'data-v-63e8a384', order.i]}}"
+          >{{order.h}}</text
+        ></view
+      ></view
+    ><hj-empty
+      wx:if="{{c}}"
+      class="data-v-63e8a384"
+      u-i="63e8a384-0"
+      bind:__l="__l"
+      u-p="{{d}}" /></view
+></view>

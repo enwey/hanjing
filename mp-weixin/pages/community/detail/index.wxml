@@ -1,92 +1,153 @@
-<view class="page data-v-d95e15f4"
-  ><hj-navbar
+<view class="page data-v-d95e15f4">
+  <hj-navbar
     wx:if="{{a}}"
     class="data-v-d95e15f4"
     u-i="d95e15f4-0"
     bind:__l="__l"
     u-p="{{a}}"
-  /><view wx:if="{{b}}" class="page-content data-v-d95e15f4"
-    ><view class="post-card data-v-d95e15f4"
-      ><view class="post-header data-v-d95e15f4"
-        ><view class="post-avatar data-v-d95e15f4" style="{{'background:' + d}}"
-          >{{c}}</view
-        ><view class="post-author-info data-v-d95e15f4"
-          ><view class="post-author-row data-v-d95e15f4"
-            ><text class="post-author data-v-d95e15f4">{{e}}</text
-            ><text class="{{['post-role', 'data-v-d95e15f4', g]}}"
-              >{{f}}</text
-            ></view
-          ><text class="post-time data-v-d95e15f4">{{h}}</text></view
-        ><view class="post-report data-v-d95e15f4" bindtap="{{reportPost}}" style="margin-left: auto; align-self: center; padding: 10rpx 20rpx; border: 1rpx solid #ddd; border-radius: 20rpx; color: #999; font-size: 22rpx;">
-          <text class="data-v-d95e15f4">⚠️ 举报</text>
-        </view></view
-      ><text class="post-title data-v-d95e15f4">{{i}}</text
-      ><text class="post-content data-v-d95e15f4">{{j}}</text
-      ><view wx:if="{{k}}" class="post-tags data-v-d95e15f4"
-        ><text
-          wx:for="{{l}}"
-          wx:for-item="tag"
-          wx:key="b"
-          class="post-tag data-v-d95e15f4"
-          >{{tag.a}}</text
-        ></view
-      ><view class="post-actions data-v-d95e15f4"
-        ><view class="action-item data-v-d95e15f4" bindtap="{{p}}"
-          ><text class="{{['data-v-d95e15f4', n]}}">{{m}}</text
-          ><text class="action-count data-v-d95e15f4">{{o}}</text></view
-        ><view class="action-item data-v-d95e15f4"
-          ><text class="action-icon data-v-d95e15f4">💬</text
-          ><text class="action-count data-v-d95e15f4">{{q}}</text></view
-        ><view class="action-item data-v-d95e15f4"
-          ><text class="action-icon data-v-d95e15f4">↗️</text
-          ><text class="action-count data-v-d95e15f4">分享</text></view
-        ></view
-      ></view
-    ><view class="comment-section data-v-d95e15f4"
-      ><text class="comment-title data-v-d95e15f4">评论 ({{r}})</text
-      ><view class="comment-list data-v-d95e15f4"
-        ><view
-          wx:for="{{s}}"
+  ></hj-navbar>
+
+  <view wx:if="{{b}}" class="state-card data-v-d95e15f4">
+    <text class="state-title data-v-d95e15f4">正在加载帖子详情...</text>
+    <text class="state-desc data-v-d95e15f4">请稍候，社区内容正在同步。</text>
+  </view>
+
+  <view wx:elif="{{c}}" class="state-card state-card--error data-v-d95e15f4">
+    <text class="state-title data-v-d95e15f4">加载失败</text>
+    <text class="state-desc data-v-d95e15f4">{{d}}</text>
+    <button class="state-btn data-v-d95e15f4" bindtap="{{e}}">重新加载</button>
+  </view>
+
+  <view wx:elif="{{f}}" class="page-content data-v-d95e15f4">
+    <view class="post-card data-v-d95e15f4">
+      <view class="post-header data-v-d95e15f4">
+        <view class="post-avatar data-v-d95e15f4">
+          <image
+            wx:if="{{g}}"
+            class="post-avatar-image data-v-d95e15f4"
+            src="{{g}}"
+            mode="aspectFill"
+          ></image>
+        </view>
+
+        <view class="post-author-info data-v-d95e15f4">
+          <view class="post-author-row data-v-d95e15f4">
+            <text class="post-author data-v-d95e15f4">{{h}}</text>
+            <text class="{{['post-role', 'data-v-d95e15f4', j]}}">{{i}}</text>
+          </view>
+          <text class="post-time data-v-d95e15f4">{{k}}</text>
+        </view>
+
+        <view class="post-report data-v-d95e15f4" bindtap="{{l}}">
+          <image class="post-report-icon data-v-d95e15f4" src="/static/icons/alert.svg" mode="aspectFit"></image>
+          <text class="post-report-text data-v-d95e15f4">举报</text>
+        </view>
+      </view>
+
+      <text class="post-title data-v-d95e15f4">{{m}}</text>
+      <text class="post-content data-v-d95e15f4">{{n}}</text>
+
+      <image
+        wx:if="{{o}}"
+        class="post-cover data-v-d95e15f4"
+        src="{{o}}"
+        mode="aspectFill"
+      ></image>
+
+      <view class="post-tags data-v-d95e15f4">
+        <text wx:if="{{p}}" class="{{['post-category', 'data-v-d95e15f4', r]}}">{{q}}</text>
+        <block wx:if="{{s}}">
+          <text
+            wx:for="{{t}}"
+            wx:for-item="tag"
+            wx:key="b"
+            class="post-tag data-v-d95e15f4"
+          >{{tag.a}}</text>
+        </block>
+      </view>
+
+      <view class="post-actions data-v-d95e15f4">
+        <view class="action-item data-v-d95e15f4" bindtap="{{x}}">
+          <image class="{{['action-icon', 'data-v-d95e15f4', v]}}" src="{{u}}" mode="aspectFit"></image>
+          <text class="action-count data-v-d95e15f4">{{w}}</text>
+        </view>
+        <view class="action-item action-item--passive data-v-d95e15f4">
+          <image class="action-icon data-v-d95e15f4" src="/static/icons/chat.svg" mode="aspectFit"></image>
+          <text class="action-count data-v-d95e15f4">{{y}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="comment-section data-v-d95e15f4">
+      <view class="comment-section-header data-v-d95e15f4">
+        <text class="comment-title data-v-d95e15f4">全部评论</text>
+        <text class="comment-total data-v-d95e15f4">{{z}} 条</text>
+      </view>
+
+      <view wx:if="{{A}}" class="comment-list data-v-d95e15f4">
+        <view
+          wx:for="{{B}}"
           wx:for-item="comment"
-          wx:key="k"
+          wx:key="m"
           class="comment-item data-v-d95e15f4"
-          ><view class="comment-header data-v-d95e15f4"
-            ><view class="comment-avatar data-v-d95e15f4">{{comment.a}}</view
-            ><view class="comment-info data-v-d95e15f4"
-              ><text class="comment-author data-v-d95e15f4">{{comment.b}}</text
-              ><text class="comment-time data-v-d95e15f4">{{comment.c}}</text></view
-            ></view
-          ><text class="comment-content data-v-d95e15f4">{{comment.d}}</text
-          ><view wx:if="{{comment.e}}" class="reply-list data-v-d95e15f4"
-            ><view
-              wx:for="{{comment.f}}"
-              wx:for-item="reply"
-              wx:key="c"
-              class="reply-item data-v-d95e15f4"
-              ><text class="reply-author data-v-d95e15f4">{{reply.a}}：</text
-              ><text class="reply-content data-v-d95e15f4">{{reply.b}}</text></view
-            ></view
-          ><view class="comment-actions data-v-d95e15f4"
-            ><text class="data-v-d95e15f4" bindtap="{{comment.i}}"
-              >{{comment.g}} {{comment.h}}</text
-            ><text class="data-v-d95e15f4" bindtap="{{comment.j}}">回复</text></view
-          ></view
-        ></view
-      ></view
-    ><view class="safe-bottom data-v-d95e15f4" /></view
-  ><view class="comment-bar data-v-d95e15f4"
-    ><input
-      class="comment-input data-v-d95e15f4"
-      placeholder="写评论..."
-      confirm-type="send"
-      bindconfirm="{{t}}"
-      value="{{v}}"
-      bindinput="{{w}}"
-    /><view
-      class="{{['comment-send', 'data-v-d95e15f4', x && 'disabled']}}"
-      bindtap="{{y}}"
-    >
-      发送
-    </view></view
-  ></view
->
+        >
+          <view class="comment-header data-v-d95e15f4">
+            <view class="comment-avatar data-v-d95e15f4">
+              <image
+                wx:if="{{comment.a}}"
+                class="comment-avatar-image data-v-d95e15f4"
+                src="{{comment.b}}"
+                mode="aspectFill"
+              ></image>
+            </view>
+            <view class="comment-info data-v-d95e15f4">
+              <text class="comment-author data-v-d95e15f4">{{comment.c}}</text>
+              <text class="comment-time data-v-d95e15f4">{{comment.d}}</text>
+            </view>
+          </view>
+
+          <text wx:if="{{comment.e}}" class="comment-reply-prefix data-v-d95e15f4">回复 {{comment.f}}：</text>
+          <text class="comment-content data-v-d95e15f4">{{comment.g}}</text>
+
+          <view class="comment-actions data-v-d95e15f4">
+            <view class="comment-action-btn data-v-d95e15f4" bindtap="{{comment.k}}">
+              <image class="{{['comment-action-icon', 'data-v-d95e15f4', comment.i]}}" src="{{comment.h}}" mode="aspectFit"></image>
+              <text class="comment-like-count data-v-d95e15f4">{{comment.j}}</text>
+            </view>
+            <text class="comment-reply-link data-v-d95e15f4" bindtap="{{comment.l}}">回复</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:else class="comment-empty data-v-d95e15f4">
+        <text class="comment-empty-title data-v-d95e15f4">还没有评论</text>
+        <text class="comment-empty-desc data-v-d95e15f4">写下第一条评论，分享你的看法或经验。</text>
+      </view>
+    </view>
+
+    <view class="safe-bottom data-v-d95e15f4"></view>
+  </view>
+
+  <view wx:if="{{D}}" class="comment-bar data-v-d95e15f4">
+    <view wx:if="{{E}}" class="reply-target data-v-d95e15f4">
+      <text class="reply-target-text data-v-d95e15f4">正在回复 {{F}}</text>
+      <text class="reply-target-clear data-v-d95e15f4" bindtap="{{G}}">取消</text>
+    </view>
+    <view class="comment-input-row data-v-d95e15f4">
+      <input
+        class="comment-input data-v-d95e15f4"
+        placeholder="{{I}}"
+        confirm-type="send"
+        bindconfirm="{{H}}"
+        value="{{J}}"
+        bindinput="{{K}}"
+      />
+      <view
+        class="{{['comment-send', 'data-v-d95e15f4', L && 'disabled']}}"
+        bindtap="{{N}}"
+      >
+        {{M}}
+      </view>
+    </view>
+  </view>
+</view>

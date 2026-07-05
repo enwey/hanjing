@@ -1,6 +1,7 @@
 import { WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
-import { run, get } from './db.js';
+import { run } from './db.js';
+import { getPrimaryPatientForUser } from './helpers.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hanjing_clinic_secret_key_2026';
 
@@ -29,7 +30,7 @@ export function initWebSocket(server) {
           }
 
           // Verify patient exists
-          get(`SELECT id, name FROM patients WHERE user_id = ? AND relation = 'self'`, [decoded.id])
+          getPrimaryPatientForUser(decoded.id)
             .then((patient) => {
               if (!patient) {
                 socket.write('HTTP/1.1 404 Not Found\r\n\r\n');

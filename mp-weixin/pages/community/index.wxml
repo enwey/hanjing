@@ -7,7 +7,7 @@
     u-p="{{a}}"
   /><view class="page-content data-v-b7ab25fd"
     ><view class="publish-entry data-v-b7ab25fd" bindtap="{{b}}"
-      ><view class="publish-icon data-v-b7ab25fd">✏️</view
+      ><image class="publish-icon data-v-b7ab25fd" src="/static/icons/compose.svg" mode="aspectFit"></image
       ><text class="publish-placeholder data-v-b7ab25fd"
         >分享你的治疗经验...</text
       ><view class="publish-btn data-v-b7ab25fd">发帖</view></view
@@ -24,44 +24,51 @@
       ><view
         wx:for="{{d}}"
         wx:for-item="post"
-        wx:key="s"
+        wx:key="u"
         class="post-card data-v-b7ab25fd"
-        bindtap="{{post.t}}"
+        bindtap="{{post.v}}"
         ><view wx:if="{{post.a}}" class="post-top data-v-b7ab25fd"
-          ><text class="top-icon data-v-b7ab25fd">📌</text
+          ><image class="top-icon data-v-b7ab25fd" src="/static/icons/pin.svg" mode="aspectFit"></image
           ><text class="top-text data-v-b7ab25fd">置顶</text></view
         ><view class="post-header data-v-b7ab25fd"
-          ><view
-            class="post-avatar data-v-b7ab25fd"
-            style="{{'background:' + post.c}}"
-            >{{post.b}}</view
+          ><view class="post-avatar data-v-b7ab25fd"
+            ><image
+              wx:if="{{post.b}}"
+              class="post-avatar-image data-v-b7ab25fd"
+              src="{{post.b}}"
+              mode="aspectFill"
+            ></image></view
           ><view class="post-author-info data-v-b7ab25fd"
             ><view class="post-author-row data-v-b7ab25fd"
-              ><text class="post-author data-v-b7ab25fd">{{post.d}}</text
-              ><text class="{{['post-role', 'data-v-b7ab25fd', post.f]}}"
-                >{{post.e}}</text
+              ><text class="post-author data-v-b7ab25fd">{{post.c}}</text
+              ><text class="{{['post-role', 'data-v-b7ab25fd', post.e]}}"
+                >{{post.d}}</text
               ></view
-            ><text class="post-time data-v-b7ab25fd">{{post.g}}</text></view
+            ><text class="post-time data-v-b7ab25fd">{{post.f}}</text></view
           ></view
-        ><text wx:if="{{post.h}}" class="post-title data-v-b7ab25fd">{{post.i}}</text
-        ><text class="post-content data-v-b7ab25fd">{{post.j}}</text
-        ><view wx:if="{{post.k}}" class="post-tags data-v-b7ab25fd"
-          ><text
-            wx:for="{{post.l}}"
-            wx:for-item="tag"
-            wx:key="b"
-            class="post-tag data-v-b7ab25fd"
-            >{{tag.a}}</text
+        ><text wx:if="{{post.g}}" class="post-title data-v-b7ab25fd">{{post.h}}</text
+        ><text class="post-content data-v-b7ab25fd">{{post.i}}</text
+        ><view class="post-tags data-v-b7ab25fd"
+          ><text wx:if="{{post.j}}" class="{{['post-category', 'data-v-b7ab25fd', post.l]}}"
+            >{{post.k}}</text
+          ><block wx:if="{{post.m}}"
+            ><text
+              wx:for="{{post.n}}"
+              wx:for-item="tag"
+              wx:key="b"
+              class="post-tag data-v-b7ab25fd"
+              >{{tag.a}}</text
+            ></block
           ></view
         ><view class="post-actions data-v-b7ab25fd"
-          ><view class="action-item data-v-b7ab25fd" catchtap="{{post.p}}"
-            ><text class="{{['data-v-b7ab25fd', post.n]}}">{{post.m}}</text
-            ><text class="action-count data-v-b7ab25fd">{{post.o}}</text></view
           ><view class="action-item data-v-b7ab25fd" catchtap="{{post.r}}"
-            ><text class="action-icon data-v-b7ab25fd">💬</text
+            ><image class="{{['action-icon', 'data-v-b7ab25fd', post.p]}}" src="{{post.o}}" mode="aspectFit"></image
             ><text class="action-count data-v-b7ab25fd">{{post.q}}</text></view
+          ><view class="action-item data-v-b7ab25fd" catchtap="{{post.t}}"
+            ><image class="action-icon data-v-b7ab25fd" src="/static/icons/chat.svg" mode="aspectFit"></image
+            ><text class="action-count data-v-b7ab25fd">{{post.s}}</text></view
           ><view class="action-item data-v-b7ab25fd"
-            ><text class="action-icon data-v-b7ab25fd">↗️</text
+            ><image class="action-icon data-v-b7ab25fd" src="/static/icons/paper-plane.svg" mode="aspectFit"></image
             ><text class="action-count data-v-b7ab25fd">分享</text></view
           ></view
         ></view
@@ -69,5 +76,5 @@
         ><text class="data-v-b7ab25fd">暂无帖子，来发第一帖吧！</text></view
       ></view
     ></view
-  ><view class="fab data-v-b7ab25fd" bindtap="{{f}}">✏️</view></view
+  ><view class="fab data-v-b7ab25fd" bindtap="{{f}}"><image class="fab-icon data-v-b7ab25fd" src="/static/icons/compose-white.svg" mode="aspectFit"></image></view></view
 >

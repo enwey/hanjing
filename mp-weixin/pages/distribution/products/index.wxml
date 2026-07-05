@@ -16,7 +16,7 @@
         ><text class="item-rate data-v-17829149"
           >佣金 {{product.d}}% · {{product.e}}</text
         ></view
-      ><text class="item-arrow data-v-17829149">&gt;</text></view
+      ><text class="item-arrow data-v-17829149">去推广</text></view
     ><hj-empty
       wx:if="{{b}}"
       class="data-v-17829149"

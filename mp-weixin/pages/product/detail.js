@@ -1,291 +1,298 @@
 "use strict";
-const e = require("../../common/vendor.js"),
-  a = require("../../api/index.js");
-Math || i();
+const api = require("../../api/index.js");
+
 function parseMarkdownToHtml(markdown) {
-  if (!markdown) return '';
-  var html = markdown;
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; display: block; margin: 12px auto; border-radius: 8px;" />');
-  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color: #3B6BF5; text-decoration: underline;">$1</a>');
+  if (!markdown) return "";
+  let html = String(markdown);
+  html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(
+    /!\[(.*?)\]\((.*?)\)/g,
+    '<img src="$2" alt="$1" style="max-width: 100%; display: block; margin: 12px auto; border-radius: 8px;" />',
+  );
+  html = html.replace(
+    /\[(.*?)\]\((.*?)\)/g,
+    '<a href="$2" target="_blank" style="color: #3B6BF5; text-decoration: underline;">$1</a>',
+  );
   html = html.replace(/^### (.*?)$/gm, '<h3 style="font-size: 14px; font-weight: 700; margin: 16px 0 8px 0; color: #1F2937;">$1</h3>');
   html = html.replace(/^## (.*?)$/gm, '<h2 style="font-size: 16px; font-weight: 700; margin: 18px 0 10px 0; color: #1F2937;">$1</h2>');
   html = html.replace(/^# (.*?)$/gm, '<h1 style="font-size: 18px; font-weight: 700; margin: 20px 0 12px 0; color: #111827;">$1</h1>');
   html = html.replace(/^\- (.*?)$/gm, '<li style="margin-left: 18px; list-style-type: disc;">$1</li>');
-  
-  var lines = html.split('\n');
-  var processedLines = lines.map(function(line) {
-    var trimmed = line.trim();
-    if (!trimmed) return '<br/>';
-    if (trimmed.indexOf('<h') === 0 || trimmed.indexOf('<li') === 0 || trimmed.indexOf('<img') === 0 || trimmed.indexOf('<a') === 0 || trimmed.indexOf('<p') === 0) {
-      return line;
-    }
-    return '<p style="margin-bottom: 8px; color: #4b5563; line-height: 1.8;">' + line + '</p>';
-  });
-  return processedLines.join('\n');
+  return html
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return "<br/>";
+      if (
+        trimmed.indexOf("<h") === 0 ||
+        trimmed.indexOf("<li") === 0 ||
+        trimmed.indexOf("<img") === 0 ||
+        trimmed.indexOf("<a") === 0 ||
+        trimmed.indexOf("<p") === 0
+      ) {
+        return line;
+      }
+      return `<p style="margin-bottom: 8px; color: #4b5563; line-height: 1.8;">${line}</p>`;
+    })
+    .join("\n");
 }
-const i = () => "../../components/base/hj-navbar.js",
-  t = e.defineComponent({
-    __name: "detail",
-    setup(i) {
-      const t = e.ref(null),
-        n = e.ref(!0),
-        l = e.ref(0);
-      function formatPriceYuan(e) {
-        return "¥" + (e / 100).toFixed(2);
+
+Page({
+  data: {
+    loading: true,
+    product: null,
+    galleryImages: [],
+    hasDiscount: false,
+    discountText: "",
+    displayPrice: "",
+    displayOriginalPrice: "",
+    displaySalesCount: "0",
+    currentImageIndex: 0,
+    showCheckout: false,
+    quantity: 1,
+    isSubmitting: false,
+    totalPayAmountText: "¥0.00",
+    contactName: "",
+    phone: "",
+    detailAddress: "",
+  },
+
+  onLoad(options) {
+    const id = options && options.id;
+    if (!id) {
+      wx.navigateBack();
+      return;
+    }
+    this.loadProduct(id);
+  },
+
+  async loadProduct(id) {
+    this.setData({ loading: true });
+    try {
+      const res = await api.getProductDetail(id);
+      const rawProduct = (res && res.data) || res;
+      if (!rawProduct) {
+        throw new Error("商品不存在");
       }
-      const showCheckout = e.ref(!1),
-        quantity = e.ref(1),
-        isSubmitting = e.ref(!1),
-        address = e.ref({
-          contactName: "",
-          phone: "",
-          detailAddress: ""
-        }),
-        deliveryMethod = e.ref("online"),
-        coupons = e.ref([]),
-        selectedCouponId = e.ref(""),
-        stores = e.ref([]),
-        selectedStoreId = e.ref("");
-      const discountAmount = e.computed(() => {
-        const coupon = coupons.value.find(item => String(item.id) === String(selectedCouponId.value));
-        if (!coupon) return 0;
-        return Math.min(Number(coupon.value || 0), t.value ? t.value.price * quantity.value : 0);
+      const galleryImages = Array.isArray(rawProduct.galleryUrls)
+        ? rawProduct.galleryUrls.filter(Boolean)
+        : [];
+      const resolvedImages = galleryImages.length
+        ? galleryImages
+        : rawProduct.imageUrl
+          ? [rawProduct.imageUrl]
+          : [];
+      const product = {
+        id: rawProduct.id,
+        name: rawProduct.name || "",
+        imageUrl: rawProduct.imageUrl || "",
+        galleryUrls: resolvedImages,
+        price: Number(rawProduct.price || 0),
+        originalPrice: Number(rawProduct.originalPrice || 0),
+        salesCount: Number(rawProduct.salesCount || 0),
+        descriptionHtml: parseMarkdownToHtml(rawProduct.description || ""),
+      };
+      this.setData({
+        product,
+        galleryImages: resolvedImages,
+        hasDiscount: product.originalPrice > product.price && product.price > 0,
+        discountText:
+          product.originalPrice > product.price && product.price > 0
+            ? `${Math.round(100 * (1 - product.price / product.originalPrice))}% OFF`
+            : "",
+        displayPrice: this.formatPriceYuan(product.price),
+        displayOriginalPrice: this.formatPriceYuan(product.originalPrice),
+        displaySalesCount: this.formatSalesCount(product.salesCount),
+        loading: false,
+      }, () => this.refreshCheckoutView());
+    } catch (err) {
+      console.error(err);
+      wx.showToast({ title: err.message || "获取商品详情失败", icon: "none" });
+      this.setData({ loading: false, product: null, galleryImages: [] });
+    }
+  },
+
+  onSwiperChange(event) {
+    this.setData({ currentImageIndex: event.detail.current || 0 });
+  },
+
+  formatPriceYuan(value) {
+    return `¥${(Number(value || 0) / 100).toFixed(2)}`;
+  },
+
+  formatSalesCount(value) {
+    const count = Number(value || 0);
+    return count >= 1000 ? `${(count / 1000).toFixed(1)}k` : String(count);
+  },
+
+  getDiscountAmount() {
+    return 0;
+  },
+
+  getTotalPayAmount() {
+    const product = this.data.product;
+    if (!product) return 0;
+    return Math.max(0, product.price * this.data.quantity - this.getDiscountAmount());
+  },
+
+  async openCheckout() {
+    const token = wx.getStorageSync("access_token");
+    if (!token) {
+      wx.navigateTo({ url: "/pages/auth/login" });
+      return;
+    }
+    this.setData({ showCheckout: true });
+  },
+
+  async handlePrimaryPay() {
+    const token = wx.getStorageSync("access_token");
+    if (!token) {
+      wx.navigateTo({ url: "/pages/auth/login" });
+      return;
+    }
+    if (
+      String(this.data.contactName || "").trim() &&
+      /^1\d{10}$/.test(String(this.data.phone || "")) &&
+      String(this.data.detailAddress || "").trim()
+    ) {
+      await this.submitOrder();
+      return;
+    }
+    await this.openCheckout();
+  },
+
+  closeCheckout() {
+    this.setData({ showCheckout: false });
+  },
+
+  noop() {},
+
+  async onCheckoutSubmitTap() {
+    await this.submitOrder();
+  },
+
+  refreshCheckoutView() {
+    this.setData({
+      totalPayAmountText: this.formatPriceYuan(this.getTotalPayAmount()),
+    });
+  },
+
+  increaseQty() {
+    this.setData(
+      {
+        quantity: this.data.quantity + 1,
+      },
+      () => this.refreshCheckoutView(),
+    );
+  },
+
+  decreaseQty() {
+    if (this.data.quantity <= 1) return;
+    this.setData(
+      {
+        quantity: this.data.quantity - 1,
+      },
+      () => this.refreshCheckoutView(),
+    );
+  },
+
+  chooseWxAddress() {
+    if (!wx.chooseAddress) {
+      wx.showToast({ title: "当前微信版本不支持选择地址", icon: "none" });
+      return;
+    }
+    wx.chooseAddress({
+      success: (res) => {
+        this.setData({
+          contactName: res.userName || "",
+          phone: res.telNumber || "",
+          detailAddress: `${res.provinceName || ""}${res.cityName || ""}${res.countyName || ""}${res.detailInfo || ""}`,
+        });
+      },
+      fail: () => {
+        wx.showToast({ title: "可手动填写收货地址", icon: "none" });
+      },
+    });
+  },
+
+  onInputName(event) {
+    this.setData({ contactName: event.detail.value });
+  },
+
+  onInputPhone(event) {
+    this.setData({ phone: event.detail.value });
+  },
+
+  onInputDetail(event) {
+    this.setData({ detailAddress: event.detail.value });
+  },
+
+  validateAddress() {
+    if (!String(this.data.contactName || "").trim()) {
+      wx.showToast({ title: "请填写收货人", icon: "none" });
+      return false;
+    }
+    if (!/^1\d{10}$/.test(String(this.data.phone || ""))) {
+      wx.showToast({ title: "请填写正确手机号", icon: "none" });
+      return false;
+    }
+    if (!String(this.data.detailAddress || "").trim()) {
+      wx.showToast({ title: "请填写详细地址", icon: "none" });
+      return false;
+    }
+    return true;
+  },
+
+  requestWxPay(payParams) {
+    return new Promise((resolve, reject) => {
+      wx.requestPayment({
+        timeStamp: payParams.timeStamp,
+        nonceStr: payParams.nonceStr,
+        package: payParams.package,
+        signType: payParams.signType,
+        paySign: payParams.paySign,
+        success: resolve,
+        fail: reject,
       });
-      const totalPayAmount = e.computed(() => Math.max(0, (t.value ? t.value.price * quantity.value : 0) - discountAmount.value));
-      function formatStoreHours(store) {
-        return store.businessHours || "";
+    });
+  },
+
+  async submitOrder() {
+    if (this.data.isSubmitting || !this.data.product) return;
+    if (!this.validateAddress()) return;
+    this.setData({ isSubmitting: true });
+    try {
+      wx.showLoading({ title: "发起支付..." });
+      const res = await api.createOrder({
+        items: [{ productId: String(this.data.product.id), quantity: this.data.quantity }],
+        shippingAddress: {
+          contactName: this.data.contactName,
+          phone: this.data.phone,
+          detailAddress: this.data.detailAddress,
+          deliveryMethod: "online",
+        },
+      });
+      const orderId = res.data.id;
+      const payRes = await api.payOrder(orderId);
+      const payParams = payRes.data || payRes;
+      wx.hideLoading();
+      if (payParams.mockPayment) {
+        wx.showLoading({ title: "开发环境模拟支付..." });
+        await api.confirmOrderPayment(orderId);
+        wx.hideLoading();
+      } else {
+        await this.requestWxPay(payParams);
       }
-      function validateAddress() {
-        if (!address.value.contactName.trim()) {
-          e.index.showToast({ title: deliveryMethod.value === "online" ? "请填写收货人" : "请填写取货人", icon: "none" });
-          return !1;
-        }
-        if (!/^1\d{10}$/.test(address.value.phone)) {
-          e.index.showToast({ title: "请填写正确手机号", icon: "none" });
-          return !1;
-        }
-        if (deliveryMethod.value === "online" && !address.value.detailAddress.trim()) {
-          e.index.showToast({ title: "请填写详细地址", icon: "none" });
-          return !1;
-        }
-        if (deliveryMethod.value === "pickup" && !selectedStoreId.value) {
-          e.index.showToast({ title: "请选择自提门店", icon: "none" });
-          return !1;
-        }
-        return !0;
-      }
-      function requestWxPay(payParams) {
-        return new Promise((resolve, reject) => {
-          e.index.requestPayment({
-            timeStamp: payParams.timeStamp,
-            nonceStr: payParams.nonceStr,
-            package: payParams.package,
-            signType: payParams.signType,
-            paySign: payParams.paySign,
-            success: resolve,
-            fail: reject
-          });
-        });
-      }
-      function chooseWxAddress() {
-        if (!wx.chooseAddress) {
-          e.index.showToast({ title: "当前微信版本不支持选择地址", icon: "none" });
-          return;
-        }
-        wx.chooseAddress({
-          success: (res) => {
-            address.value = {
-              contactName: res.userName || "",
-              phone: res.telNumber || "",
-              detailAddress: `${res.provinceName || ""}${res.cityName || ""}${res.countyName || ""}${res.detailInfo || ""}`
-            };
-            deliveryMethod.value = "online";
-          },
-          fail: () => {
-            e.index.showToast({ title: "可手动填写收货地址", icon: "none" });
-          }
-        });
-      }
-      function openCheckout() {
-        const token = e.index.getStorageSync("access_token");
-        if (!token) {
-          e.index.navigateTo({ url: "/pages/auth/login" });
-          return;
-        }
-        showCheckout.value = !0;
-        loadCheckoutOptions();
-      }
-      function closeCheckout() {
-        showCheckout.value = !1;
-      }
-      async function loadCheckoutOptions() {
-        try {
-          const [couponRes, storeRes] = await Promise.all([
-            a.getUserCoupons({ status: "active", minAmount: t.value ? t.value.price * quantity.value : 0 }),
-            a.getStores()
-          ]);
-          coupons.value = ((couponRes.data && couponRes.data.list) || couponRes.list || []).filter(item => Number(item.minSpend || 0) <= (t.value ? t.value.price * quantity.value : 0));
-          stores.value = ((storeRes.data || storeRes) || []).filter(item => item.status === "open" || item.isOpen);
-          if (!selectedStoreId.value && stores.value.length) {
-            selectedStoreId.value = String(stores.value[0].id);
-          }
-        } catch (err) {
-          console.error("加载结算选项失败", err);
-        }
-      }
-      function increaseQty() {
-        quantity.value++;
-        selectedCouponId.value = "";
-        loadCheckoutOptions();
-      }
-      function decreaseQty() {
-        if (quantity.value > 1) {
-          quantity.value--;
-          selectedCouponId.value = "";
-          loadCheckoutOptions();
-        }
-      }
-      function selectDeliveryOnline() {
-        deliveryMethod.value = "online";
-      }
-      function selectDeliveryPickup() {
-        deliveryMethod.value = "pickup";
-      }
-      function selectCoupon(event) {
-        const id = event.currentTarget.dataset.id || "";
-        selectedCouponId.value = String(selectedCouponId.value) === String(id) ? "" : id;
-      }
-      function selectStore(event) {
-        selectedStoreId.value = event.currentTarget.dataset.id || "";
-      }
-      async function submitOrder() {
-        if (isSubmitting.value) return;
-        if (!validateAddress()) return;
-        isSubmitting.value = !0;
-        try {
-          const res = await a.createOrder({
-            items: [{ productId: t.value.id.toString(), quantity: quantity.value }],
-            couponId: selectedCouponId.value || undefined,
-            shippingAddress: {
-              ...address.value,
-              deliveryMethod: deliveryMethod.value,
-              detailAddress: deliveryMethod.value === "online" ? address.value.detailAddress : (address.value.detailAddress || "到店自提"),
-              storeId: deliveryMethod.value === "pickup" ? selectedStoreId.value : undefined
-            }
-          });
-          const orderId = res.data.id;
-          const payRes = await a.payOrder(orderId);
-          const payParams = payRes.data || payRes;
-          await requestWxPay(payParams);
-          await a.confirmOrderPayment(orderId);
-          e.index.showToast({ title: "支付成功", icon: "success" });
-          showCheckout.value = !1;
-          setTimeout(() => {
-            e.index.navigateTo({
-              url: `/pages/order/detail?id=${orderId}`
-            });
-          }, 1000);
-        } catch (err) {
-          console.error(err);
-          e.index.showToast({ title: "支付失败", icon: "none" });
-        } finally {
-          isSubmitting.value = !1;
-        }
-      }
-      return (
-        e.onLoad(async (i) => {
-          const l = null == i ? void 0 : i.id;
-          if (!l) return void e.index.navigateBack();
-          const r = await a.getProductDetail(l);
-          const rawProd = r.data || r;
-          if (rawProd) {
-            rawProd.description = parseMarkdownToHtml(rawProd.description || '');
-          }
-          t.value = rawProd;
-          n.value = false;
-        }),
-        (a, i) =>
-          e.e(
-            { a: e.p({ title: "商品详情", "show-back": !0 }), b: n.value },
-            n.value
-              ? {}
-              : t.value
-                ? e.e(
-                    {
-                      d: e.f(t.value.galleryUrls || (t.value.imageUrl ? [t.value.imageUrl] : []), (e, a, i) => ({ a: e, b: a })),
-                      e: l.value,
-                      f: e.o((e) => (l.value = e.detail.current), "05"),
-                      g: e.t(formatPriceYuan(t.value.price)),
-                      h: t.value.originalPrice,
-                    },
-                    t.value.originalPrice
-                      ? { i: e.t(formatPriceYuan(t.value.originalPrice)) }
-                      : {},
-                    { j: t.value.originalPrice },
-                    t.value.originalPrice
-                      ? {
-                          k: e.t(
-                            Math.round(
-                              100 * (1 - t.value.price / t.value.originalPrice),
-                            ),
-                          ),
-                        }
-                      : {},
-                    {
-                      l: e.t(t.value.name),
-                      m: e.t(t.value.sales),
-                      n: t.value.description, // Keep description as parsed html string (rich-text)
-                      o: e.t(formatPriceYuan(t.value.price)),
-                      p: e.o(openCheckout, "d5"),
-                      showCheckout: showCheckout.value,
-                      closeCheckout: e.o(closeCheckout),
-                      quantity: quantity.value,
-                      increaseQty: e.o(increaseQty),
-                      decreaseQty: e.o(decreaseQty),
-                      deliveryMethod: deliveryMethod.value,
-                      isOnlineDelivery: deliveryMethod.value === "online",
-                      selectDeliveryOnline: e.o(selectDeliveryOnline),
-                      selectDeliveryPickup: e.o(selectDeliveryPickup),
-                      chooseWxAddress: e.o(chooseWxAddress),
-                      submitOrder: e.o(submitOrder),
-                      isSubmitting: isSubmitting.value,
-                      coupons: coupons.value.map(item => ({
-                        id: item.id,
-                        title: item.title,
-                        valueText: formatPriceYuan(item.value || 0),
-                        minSpendText: Number(item.minSpend || 0) > 0 ? `满${formatPriceYuan(item.minSpend)}可用` : "无门槛",
-                        selected: String(item.id) === String(selectedCouponId.value),
-                        select: e.o(selectCoupon, item.id)
-                      })),
-                      hasCoupons: coupons.value.length > 0,
-                      stores: stores.value.map(item => ({
-                        id: item.id,
-                        name: item.name,
-                        address: item.address,
-                        phone: item.phone,
-                        hours: formatStoreHours(item),
-                        selected: String(item.id) === String(selectedStoreId.value),
-                        select: e.o(selectStore, item.id)
-                      })),
-                      hasStores: stores.value.length > 0,
-                      contactName: address.value.contactName,
-                      phone: address.value.phone,
-                      detailAddress: address.value.detailAddress,
-                      inputName: e.o((e) => (address.value.contactName = e.detail.value)),
-                      inputPhone: e.o((e) => (address.value.phone = e.detail.value)),
-                      inputDetail: e.o((e) => (address.value.detailAddress = e.detail.value)),
-                      discountAmountText: e.t(formatPriceYuan(discountAmount.value)),
-                      hasDiscount: discountAmount.value > 0,
-                      totalPayAmountText: e.t(formatPriceYuan(totalPayAmount.value)),
-                      productImageUrl: t.value.imageUrl
-                    },
-                  )
-                : {},
-            { c: t.value },
-          )
-      );
-    },
-  }),
-  n = e._export_sfc(t, [["__scopeId", "data-v-5e948475"]]);
-wx.createPage(n);
+      wx.showToast({ title: "支付已提交", icon: "success" });
+      this.setData({ showCheckout: false });
+      setTimeout(() => {
+        wx.navigateTo({ url: `/pages/order/detail?id=${orderId}` });
+      }, 300);
+    } catch (err) {
+      console.error(err);
+      wx.hideLoading();
+      wx.showToast({ title: err && err.errMsg ? "支付未完成，可稍后继续支付" : "发起支付失败，请稍后重试", icon: "none" });
+    } finally {
+      this.setData({ isSubmitting: false });
+    }
+  },
+});

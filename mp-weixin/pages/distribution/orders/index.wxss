@@ -1,0 +1,113 @@
+.data-v-63e8a384:root {
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+.page.data-v-63e8a384 {
+  min-height: 100vh;
+  background: #f5f6f8;
+  padding-bottom: 32rpx;
+}
+.tabs.data-v-63e8a384 {
+  white-space: nowrap;
+  padding: 24rpx 24rpx 12rpx;
+}
+.tab.data-v-63e8a384 {
+  display: inline-block;
+  padding: 12rpx 24rpx;
+  font-size: 26rpx;
+  color: #6b7280;
+  border-radius: 8rpx;
+  margin-right: 12rpx;
+  background: #fff;
+}
+.tab.active.data-v-63e8a384 {
+  background: #f5a623;
+  color: #fff;
+}
+.list.data-v-63e8a384 {
+  background: #fff;
+  margin: 0 24rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+.item.data-v-63e8a384 {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 24rpx;
+  border-bottom: 1rpx solid #f3f4f6;
+}
+.item.data-v-63e8a384:last-child {
+  border-bottom: none;
+}
+.item-img.data-v-63e8a384,
+.item-placeholder.data-v-63e8a384 {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 12rpx;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+.item-placeholder.data-v-63e8a384 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.item-placeholder-icon.data-v-63e8a384 {
+  width: 42rpx;
+  height: 42rpx;
+  opacity: 0.35;
+}
+.item-info.data-v-63e8a384 {
+  flex: 1;
+  margin: 0 16rpx;
+  overflow: hidden;
+}
+.item-name.data-v-63e8a384 {
+  font-size: 28rpx;
+  color: #1f2937;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.item-meta.data-v-63e8a384,
+.item-order.data-v-63e8a384 {
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-top: 4rpx;
+  display: block;
+}
+.item-level.data-v-63e8a384 {
+  font-size: 20rpx;
+  color: #8b5cf6;
+  margin-top: 4rpx;
+  display: block;
+}
+.item-right.data-v-63e8a384 {
+  text-align: right;
+  flex-shrink: 0;
+}
+.item-amount.data-v-63e8a384 {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1a9d5c;
+  display: block;
+}
+.item-tag.data-v-63e8a384 {
+  font-size: 20rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  display: inline-block;
+  margin-top: 6rpx;
+}
+.item-tag.settled.data-v-63e8a384 {
+  background: #d3f5e3;
+  color: #1a9d5c;
+}
+.item-tag.pending.data-v-63e8a384 {
+  background: #fff9e6;
+  color: #f5a623;
+}
+.item-tag.refunded.data-v-63e8a384 {
+  background: #fee2e2;
+  color: #ef4444;
+}
