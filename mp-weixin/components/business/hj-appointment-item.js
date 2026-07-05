@@ -1,6 +1,37 @@
 "use strict";
 const t = require("../../common/vendor.js"),
   e = require("../../api/types.js");
+
+let bookingSettingsCache = null;
+let bookingSettingsPromise = null;
+
+async function getSharedCancelLimitMs() {
+  if (bookingSettingsCache !== null) {
+    return bookingSettingsCache;
+  }
+  if (!bookingSettingsPromise) {
+    const api = require("../../api/index.js");
+    bookingSettingsPromise = api.getBookingSettings().then(res => {
+      let limitText = "就诊前2小时";
+      if (res && res.data && res.data.cancelLimit) {
+        limitText = res.data.cancelLimit;
+      }
+      const hourMatch = limitText.match(/(\d+(?:\.\d+)?)\s*小时/);
+      if (hourMatch) return Number(hourMatch[1]) * 60 * 60 * 1000;
+      const minuteMatch = limitText.match(/(\d+(?:\.\d+)?)\s*分钟/);
+      if (minuteMatch) return Number(minuteMatch[1]) * 60 * 1000;
+      const dayMatch = limitText.match(/(\d+(?:\.\d+)?)\s*天/);
+      if (dayMatch) return Number(dayMatch[1]) * 24 * 60 * 60 * 1000;
+      return 2 * 60 * 60 * 1000;
+    }).catch(() => {
+      return 2 * 60 * 60 * 1000;
+    });
+  }
+  const limitMs = await bookingSettingsPromise;
+  bookingSettingsCache = limitMs;
+  return limitMs;
+}
+
 Math || n();
 const n = () => "../base/hj-tag.js",
   p = t.defineComponent({
@@ -14,9 +45,14 @@ const n = () => "../base/hj-tag.js",
           e.AppointmentStatusMap.pending,
         typeLabel = e.AppointmentTypeMap[p.appointment.type] || p.appointment.type;
 
+      const cancelLimitMs = t.ref(2 * 60 * 60 * 1000);
+      t.onMounted(async () => {
+        cancelLimitMs.value = await getSharedCancelLimitMs();
+      });
+
       const canCancelOrReschedule = t.computed(() => {
         if (!p.appointment) return false;
-        if (['arrived', 'cancelled', 'no_show', 'completed'].includes(p.appointment.status)) {
+        if (['arrived', 'cancelled', 'no_show', 'completed', 'confirmed', 'reminded', 'checked_in'].includes(p.appointment.status)) {
           return false;
         }
         if (p.appointment.status === 'pending_payment') {
@@ -27,7 +63,7 @@ const n = () => "../base/hj-tag.js",
           const [hours, minutes] = p.appointment.appointmentTime.split('-')[0].trim().split(':').map(Number);
           const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
           const now = new Date();
-          return (apptDateTime.getTime() - now.getTime()) >= 2 * 60 * 60 * 1000;
+          return (apptDateTime.getTime() - now.getTime()) >= cancelLimitMs.value;
         } catch (err) {
           return false;
         }
@@ -52,24 +88,25 @@ const n = () => "../base/hj-tag.js",
               size: "sm",
             }),
             c: t.t(e.storeName || e.appointment.storeId),
-            d: t.t(e.doctorName || e.appointment.doctorId),
-            e: t.t(e.appointment.appointmentDate),
-            f: t.t(e.appointment.appointmentTime),
-            g: t.t(t.unref(typeLabel)),
-            h: e.appointment.symptomDesc,
+            d: t.t(e.appointment.patientName || "--"),
+            e: t.t(e.doctorName || e.appointment.doctorId),
+            f: t.t(e.appointment.appointmentDate),
+            g: t.t(e.appointment.appointmentTime),
+            h: t.t(t.unref(typeLabel)),
+            i: e.appointment.symptomDesc,
             btnText: t.t(p.appointment.status === 'pending_payment' ? '支付' : '改约'),
           },
           e.appointment.symptomDesc
-            ? { i: t.t(e.appointment.symptomDesc) }
+            ? { j: t.t(e.appointment.symptomDesc) }
             : {},
-          { j: t.unref(canCancelOrReschedule) },
+          { k: t.unref(canCancelOrReschedule) },
           t.unref(canCancelOrReschedule)
             ? {
-                k: t.o((t) => e.$emit("reschedule", e.appointment), "4d"),
-                l: t.o((t) => e.$emit("cancel", e.appointment), "b1"),
+                l: t.o((t) => e.$emit("reschedule", e.appointment), "4d"),
+                m: t.o((t) => e.$emit("cancel", e.appointment), "b1"),
               }
             : {},
-          { m: t.o((t) => e.$emit("click", e.appointment), "a7") },
+          { n: t.o((t) => e.$emit("click", e.appointment), "a7") },
         );
     },
   }),

@@ -1,13 +1,13 @@
 "use strict";
 const e = require("../../../common/vendor.js"),
-  n = require("../../../stores/index.js");
+  assessmentStores = require("../../../stores/index.js"),
+  assessmentApi = require("../../../api/index.js");
 Math || t();
-const t = () => "../../../components/base/hj-navbar.js",
-  r = e.defineComponent({
+const loadNavbarComponent = () => "../../../components/base/hj-navbar.js",
+  pageComponent = e.defineComponent({
     __name: "index",
-    setup(t) {
-      const questionnaireStore = n.useAssessmentStore();
-      const api = require("../../../api/index.js");
+    setup() {
+      const questionnaireStore = assessmentStores.useAssessmentStore();
       const familyMembers = e.ref([]);
       const memberNames = e.ref([]);
       const memberIndex = e.ref(0);
@@ -17,8 +17,8 @@ const t = () => "../../../components/base/hj-navbar.js",
 
       async function loadFamilyMembers() {
         try {
-          const res = await api.getFamilyMembers();
-          const list = res.data?.list || [];
+          const response = await assessmentApi.getFamilyMembers();
+          const list = response.data?.list || [];
           familyMembers.value = list;
           
           const relationNames = {
@@ -113,7 +113,7 @@ const t = () => "../../../components/base/hj-navbar.js",
           e.e(
             {
               a: e.o(handleBack, "98"),
-              b: e.p({ title: "ESS嗜睡量表", showBack: !0 }),
+              b: e.p({ title: "ESS嗜睡量表", showBack: !0, customBack: !0 }),
               memberNames: e.unref(memberNames),
               memberIndex: e.unref(memberIndex),
               selectedMemberName: e.unref(selectedMemberName),
@@ -200,5 +200,5 @@ const t = () => "../../../components/base/hj-navbar.js",
       );
     },
   }),
-  s = e._export_sfc(r, [["__scopeId", "data-v-c4ff781e"]]);
+  s = e._export_sfc(pageComponent, [["__scopeId", "data-v-c4ff781e"]]);
 wx.createPage(s);

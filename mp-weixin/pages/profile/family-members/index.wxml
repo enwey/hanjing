@@ -4,7 +4,7 @@
     class="data-v-30acdad2"
     u-i="30acdad2-0"
     bind:__l="__l"
-    u-p="{{a}}" /><view class="page-content data-v-30acdad2"
+    u-p="{{a}}"></hj-navbar><view class="page-content data-v-30acdad2"
     ><view wx:if="{{b}}" class="loading-wrap data-v-30acdad2"
       ><text class="data-v-30acdad2">加载中...</text></view
     ><block wx:else
@@ -12,7 +12,7 @@
         wx:for="{{c}}"
         wx:for-item="member"
         wx:key="k"
-        class="member-card data-v-30acdad2"
+        class="member-card data-v-30acdad2" bindtap="{{member.j}}"
         ><view class="member-avatar data-v-30acdad2"
           ><text class="data-v-30acdad2">{{member.a}}</text></view
         ><view class="member-info data-v-30acdad2"
@@ -27,13 +27,13 @@
           ><text wx:if="{{member.h}}" class="member-visit data-v-30acdad2"
             >上次就诊: {{member.i}}</text
           ></view
-        ><text class="member-delete data-v-30acdad2" bindtap="{{member.j}}"
-          >X</text
         ></view
       ><view wx:if="{{d}}" class="empty data-v-30acdad2"
-        ><text class="data-v-30acdad2">暂无家庭成员</text></view
+        ><text class="data-v-30acdad2">暂无已关联就诊人</text></view
       ></block
-    ><view class="btn-add data-v-30acdad2" bindtap="{{e}}"
-      ><text class="data-v-30acdad2">+ 添加成员</text></view
+    ><view class="bottom-fixed-bar data-v-30acdad2"
+      ><button class="bar-primary-btn data-v-30acdad2" bindtap="{{e}}"
+        >+ 添加家庭成员</button
+      ></view
     ><view class="safe-bottom data-v-30acdad2" /></view
 ></view>

@@ -36,7 +36,7 @@
     </view>
 
     <!-- 2b. Notice block for cancel/reschedule limit -->
-    <view wx:if="{{status !== 'arrived' && status !== 'cancelled' && status !== 'no_show' && status !== 'completed' && !canCancelOrReschedule}}" class="notice-card-warning data-v-7e5a1194">
+    <view wx:if="{{status !== 'arrived' && status !== 'cancelled' && status !== 'no_show' && status !== 'completed' && status !== 'confirmed' && status !== 'reminded' && status !== 'checked_in' && !canCancelOrReschedule}}" class="notice-card-warning data-v-7e5a1194">
       <view class="notice-content-wrapper data-v-7e5a1194">
         <image class="notice-icon data-v-7e5a1194" src="/static/icons/warning.svg" />
         <text class="notice-text-warning data-v-7e5a1194">温馨提示：已超过改约或取消截止时间（{{cancelLimitText}}），如需处理请联系客服。</text>
@@ -83,6 +83,10 @@
           <text class="row-value row-value--bold data-v-7e5a1194">{{i}} {{j}}</text>
         </view>
         <view class="detail-row data-v-7e5a1194">
+          <text class="row-label data-v-7e5a1194">就诊人</text>
+          <text class="row-value data-v-7e5a1194">{{patientName}}</text>
+        </view>
+        <view class="detail-row data-v-7e5a1194">
           <text class="row-label data-v-7e5a1194">就诊门诊</text>
           <text class="row-value data-v-7e5a1194">{{e}}</text>
         </view>
@@ -98,7 +102,7 @@
           <text class="row-value data-v-7e5a1194">{{k}}</text>
         </view>
         <view class="detail-row data-v-7e5a1194" wx:if="{{requireDeposit}}">
-          <text class="row-label data-v-7e5a1194">预约定金</text>
+          <text class="row-label data-v-7e5a1194">定金</text>
           <text class="row-value row-value--price data-v-7e5a1194">¥{{depositAmountYuan}}</text>
         </view>
         <view class="detail-row data-v-7e5a1194" wx:if="{{consultFeeYuan}}">

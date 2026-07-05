@@ -8,11 +8,18 @@ const a = () => "../../../components/base/hj-navbar.js",
     setup(a) {
       const loading = e.ref(!0),
         timelineList = e.ref([]),
-        recordDetail = e.ref(null),
-        currentParams = () => {
-          const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
-          return patientId ? { patientId } : {};
-        },
+        recordDetail = e.ref(null);
+      function currentParams() {
+        const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
+        const params = {
+          _t: Date.now(),
+        };
+        if (patientId) {
+          params.patientId = patientId;
+        }
+        return params;
+      }
+      const hasRealTreatmentRecord = e.computed(() => !!(recordDetail.value && recordDetail.value.isRealTreatmentRecord)),
         timelineTypeNames = {
           visit: "初诊",
           adjust: "调整",
@@ -20,55 +27,80 @@ const a = () => "../../../components/base/hj-navbar.js",
           advice: "医嘱",
           milestone: "节点",
         };
+      async function loadData() {
+        loading.value = !0;
+        try {
+          const [timelineRes, recordRes] = await Promise.all([
+            t.getTimeline(currentParams()),
+            t.getTreatmentRecord(currentParams()),
+          ]);
+          timelineList.value = (timelineRes && timelineRes.data) || [];
+          recordDetail.value = (recordRes && recordRes.data) || null;
+        } catch (err) {
+          console.error(err);
+          timelineList.value = [];
+          recordDetail.value = null;
+        } finally {
+          loading.value = !1;
+        }
+      }
+      function goAppointment() {
+        e.index.switchTab({ url: "/pages/appointment/index" });
+      }
       return (
-        e.onMounted(async () => {
-          try {
-            const [e, a] = await Promise.all([
-              t.getTimeline(currentParams()),
-              t.getTreatmentRecord(currentParams()),
-            ]);
-            ((timelineList.value = e.data), (recordDetail.value = a.data));
-          } catch (err) {
-            console.error(err);
-          } finally {
-            loading.value = !1;
-          }
-        }),
+        e.onMounted(loadData),
+        e.onShow(loadData),
         (t, a) =>
           e.e(
-            { a: e.p({ title: "治疗时间线", showBack: !0 }), b: !loading.value },
-            loading.value
-              ? {}
-              : e.e(
-                  { c: recordDetail.value },
-                  recordDetail.value
-                    ? {
-                        d: e.t(recordDetail.value.deviceModel),
-                        e: e.t(recordDetail.value.adjustmentValue),
-                        f: e.t(recordDetail.value.nextAdjustDate || "待定"),
-                      }
-                    : {},
+            {
+              a: e.p({ title: "治疗时间线", showBack: !0 }),
+              b: !loading.value,
+            },
+            !loading.value
+              ? e.e(
                   {
-                    g: e.f(timelineList.value, (t, a, o) =>
-                      e.e(
-                        {
-                          a: e.t(t.date.slice(5)),
-                          b: e.t(timelineTypeNames[t.type] || t.type),
-                          c: t.color,
-                          d: a < timelineList.value.length - 1,
-                        },
-                        a < timelineList.value.length - 1 ? { e: t.color + "30" } : {},
-                        {
-                          f: e.t(t.title),
-                          g: e.t(t.description),
-                          h: t.doctorName,
-                        },
-                        t.doctorName ? { i: e.t(t.doctorName) } : {},
-                        { j: t.id, k: a === timelineList.value.length - 1 ? 1 : "" },
-                      ),
-                    ),
+                    c: hasRealTreatmentRecord.value,
                   },
-                ),
+                  hasRealTreatmentRecord.value
+                    ? e.e(
+                        {
+                          d: recordDetail.value,
+                        },
+                        recordDetail.value
+                          ? {
+                              e: e.t(recordDetail.value.deviceModel),
+                              f: e.t(recordDetail.value.adjustmentValue),
+                              g: recordDetail.value.nextAdjustDate,
+                              h: e.t(recordDetail.value.nextAdjustDate),
+                            }
+                          : {},
+                        {
+                          i: timelineList.value.length === 0,
+                          j: e.f(timelineList.value, (item, index, key) =>
+                            e.e(
+                              {
+                                a: e.t(String(item.date || "").slice(5)),
+                                b: e.t(timelineTypeNames[item.type] || item.type),
+                                c: item.color,
+                                d: index < timelineList.value.length - 1,
+                              },
+                              index < timelineList.value.length - 1 ? { e: item.color + "30" } : {},
+                              {
+                                f: e.t(item.title),
+                                g: e.t(item.description),
+                                h: item.doctorName,
+                              },
+                              item.doctorName ? { i: e.t(item.doctorName) } : {},
+                              { j: item.id, k: index === timelineList.value.length - 1 ? 1 : "" },
+                            ),
+                          ),
+                        },
+                      )
+                    : {
+                        l: e.o(goAppointment),
+                      },
+                )
+              : {},
           )
       );
     },

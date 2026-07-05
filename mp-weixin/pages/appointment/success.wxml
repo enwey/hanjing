@@ -27,6 +27,18 @@
         ><text class="summary-value summary-value--bold data-v-baa6e4ef"
           >{{e}} {{f}}</text
         ></view
+      ><view class="summary-row data-v-baa6e4ef"
+        ><text class="summary-label data-v-baa6e4ef">就诊人</text
+        ><text class="summary-value data-v-baa6e4ef">{{patientName}}</text></view
+      ><view wx:if="{{requireDeposit}}" class="summary-row data-v-baa6e4ef"
+        ><text class="summary-label data-v-baa6e4ef">定金</text
+        ><text class="summary-value summary-value--price data-v-baa6e4ef">¥{{depositAmount}}</text></view
+      ><view class="summary-row data-v-baa6e4ef"
+        ><text class="summary-label data-v-baa6e4ef">挂号费</text
+        ><text class="summary-value summary-value--price data-v-baa6e4ef">¥{{consultFee}}</text></view
+      ><view class="summary-row data-v-baa6e4ef"
+        ><text class="summary-label data-v-baa6e4ef">病症描述</text
+        ><text class="summary-value data-v-baa6e4ef">{{symptomDesc}}</text></view
       ></view
     ><view class="visit-notice-card data-v-baa6e4ef"
       ><view class="visit-notice-header data-v-baa6e4ef"

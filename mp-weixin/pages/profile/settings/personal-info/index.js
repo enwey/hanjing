@@ -9,7 +9,7 @@ const n = () => "../../../../components/base/hj-navbar.js",
       const u = e.ref(null),
         l = e.ref(!0),
         t = e.ref(!1),
-        v = e.ref({ nickname: "", gender: 1, birthday: "" });
+        v = e.ref({ nickname: "", gender: 1, birthday: "", idCard: "" });
       function startEdit() {
         t.value = !0;
       }
@@ -31,6 +31,7 @@ const n = () => "../../../../components/base/hj-navbar.js",
                   nickname: v.value.nickname,
                   gender: v.value.gender,
                   birthday: v.value.birthday,
+                  idCard: v.value.idCard,
                 };
               }
               console.log("[Personal Info Save] Pinia userStore.profile updated:", JSON.stringify(userStore.profile));
@@ -47,10 +48,11 @@ const n = () => "../../../../components/base/hj-navbar.js",
         }
       }
       function cancelEdit() {
-        (Object.assign(v.value, {
-          nickname: u.value.nickname,
-          gender: u.value.gender,
-          birthday: u.value.birthday || "",
+          (Object.assign(v.value, {
+            nickname: u.value.nickname,
+            gender: u.value.gender,
+            birthday: u.value.birthday || "",
+            idCard: u.value.idCard || "",
         }),
           (t.value = !1));
       }
@@ -62,6 +64,7 @@ const n = () => "../../../../components/base/hj-navbar.js",
               nickname: u.value.nickname,
               gender: u.value.gender,
               birthday: u.value.birthday || "",
+              idCard: u.value.idCard || "",
             }),
             (l.value = !1));
         }),
@@ -81,29 +84,29 @@ const n = () => "../../../../components/base/hj-navbar.js",
                         ),
                       }
                     : { g: e.t(u.value.nickname) },
-                  { h: e.t(u.value.phone), i: !t.value },
+                  { h: e.t(u.value.phone), i: t.value, j: v.value.idCard, k: e.o((e) => (v.value.idCard = e.detail.value), "idc"), l: e.t(u.value.idCard || "未认证"), m: e.t(u.value.cardNo || "未生成"), n: !t.value },
                   t.value
                     ? {
-                        k: 1 === v.value.gender ? 1 : "",
-                        l: e.o((e) => (v.value.gender = 1), "20"),
-                        m: 2 === v.value.gender ? 1 : "",
-                        n: e.o((e) => (v.value.gender = 2), "8a"),
+                        o: 1 === v.value.gender ? 1 : "",
+                        p: e.o((e) => (v.value.gender = 1), "20"),
+                        q: 2 === v.value.gender ? 1 : "",
+                        r: e.o((e) => (v.value.gender = 2), "8a"),
                       }
-                    : { j: e.t(1 === u.value.gender ? "男" : "女") },
-                  { o: t.value },
+                    : { s: e.t(1 === u.value.gender ? "男" : "女") },
+                  { t: t.value },
                   t.value
                     ? {
-                        p: v.value.birthday,
-                        q: e.o(
+                        u: v.value.birthday,
+                        v: e.o(
                           (e) => (v.value.birthday = e.detail.value),
                           "24",
                         ),
                       }
-                    : { r: e.t(u.value.birthday || "未设置") },
-                  { s: !t.value },
+                    : { w: e.t(u.value.birthday || "未设置") },
+                  { x: !t.value },
                   t.value
-                    ? { v: e.o(saveProfile, "8f"), w: e.o(cancelEdit, "9a") }
-                    : { t: e.o(startEdit, "fc") },
+                    ? { y: e.o(saveProfile, "8f"), z: e.o(cancelEdit, "9a") }
+                    : { A: e.o(startEdit, "fc") },
                 ),
           )
       );

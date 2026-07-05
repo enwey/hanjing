@@ -1,0 +1,130 @@
+<view class="page data-v-c9f86960"
+  ><hj-navbar
+    wx:if="{{a}}"
+    class="data-v-c9f86960"
+    u-i="c9f86960-0"
+    bind:__l="__l"
+    u-p="{{a}}" /><view class="page-content data-v-c9f86960"
+    ><view class="month-bar data-v-c9f86960"
+      ><view class="month-nav data-v-c9f86960" bindtap="{{c}}"
+        ><text class="nav-arrow data-v-c9f86960">◀</text>上月</view
+      ><text class="month-title data-v-c9f86960">{{b}}</text
+      ><view class="month-nav data-v-c9f86960" bindtap="{{d}}"
+        >下月<text class="nav-arrow data-v-c9f86960">▶</text></view
+      ></view
+    ><view class="calendar-card data-v-c9f86960"
+      ><view class="week-row data-v-c9f86960"
+        ><text
+          wx:for="{{e}}"
+          wx:for-item="weekday"
+          wx:key="b"
+          class="week-label data-v-c9f86960"
+          >{{weekday.a}}</text
+        ></view
+      ><view class="calendar-grid data-v-c9f86960"
+        ><view
+          wx:for="{{f}}"
+          wx:for-item="day"
+          wx:key="f"
+          class="{{['calendar-day', 'data-v-c9f86960', day.e]}}"
+          ><block wx:if="{{!day.a}}"
+            ><text class="calendar-day-num data-v-c9f86960">{{day.b}}</text
+            ><text
+              wx:if="{{day.c}}"
+              class="calendar-day-duration data-v-c9f86960"
+              >{{day.c}}</text
+            ></block
+          ></view
+        ></view
+      ><view class="calendar-divider data-v-c9f86960"></view
+      ><view class="calendar-legend data-v-c9f86960"
+        ><text class="legend-item legend-item--5 data-v-c9f86960"
+          ><view class="legend-dot data-v-c9f86960 legend-dot--5" />极佳(5)</text
+        ><text class="legend-item legend-item--4 data-v-c9f86960"
+          ><view class="legend-dot data-v-c9f86960 legend-dot--4" />舒适(4)</text
+        ><text class="legend-item legend-item--3 data-v-c9f86960"
+          ><view class="legend-dot data-v-c9f86960 legend-dot--3" />一般(3)</text
+        ><text class="legend-item legend-item--2 data-v-c9f86960"
+          ><view class="legend-dot data-v-c9f86960 legend-dot--2" />较差(2)</text
+        ><text class="legend-item legend-item--1 data-v-c9f86960"
+          ><view class="legend-dot data-v-c9f86960 legend-dot--1" />难受(1)</text
+        ></view
+      ></view
+    ><view class="stats-row data-v-c9f86960"
+      ><view class="stat-card data-v-c9f86960"
+        ><text class="stat-value data-v-c9f86960">{{k}}/7</text
+        ><text class="stat-label data-v-c9f86960">本周佩戴</text></view
+      ><view class="stat-card data-v-c9f86960"
+        ><text class="stat-value data-v-c9f86960">{{l}}h</text
+        ><text class="stat-label data-v-c9f86960">平均时长</text></view
+      ><view class="stat-card data-v-c9f86960"
+        ><text class="stat-value data-v-c9f86960">{{m}}/5</text
+        ><text class="stat-label data-v-c9f86960">舒适度</text></view
+      ><view class="stat-card data-v-c9f86960"
+        ><text class="stat-value data-v-c9f86960">{{n}}天</text
+        ><text class="stat-label data-v-c9f86960">连续天数</text></view
+      ></view
+    ><view class="checkin-btn-wrap data-v-c9f86960"
+      ><view class="checkin-btn data-v-c9f86960" bindtap="{{o}}"
+        ><text class="checkin-btn-text data-v-c9f86960">今日打卡</text
+        ><text class="checkin-btn-hint data-v-c9f86960"
+          >记录今日佩戴时长和感受</text
+        ></view
+      ></view
+    ><view wx:if="{{g}}" class="state-card data-v-c9f86960"
+      ><text class="state-text data-v-c9f86960">加载中...</text></view
+    ><view wx:elif="{{h}}" class="state-card data-v-c9f86960"
+      ><text class="state-text data-v-c9f86960">当前月暂无佩戴记录</text></view
+    ><view class="safe-bottom data-v-c9f86960" /></view
+  ><view
+    wx:if="{{A}}"
+    class="checkin-overlay data-v-c9f86960"
+    bindtap="{{K}}"
+    ><view class="checkin-panel data-v-c9f86960" catchtap="{{J}}"
+      ><text class="checkin-panel-title data-v-c9f86960">今日佩戴打卡</text
+      ><text class="checkin-panel-date data-v-c9f86960">{{z1}}</text
+      ><text class="checkin-label data-v-c9f86960">佩戴时长（小时）</text
+      ><scroll-view
+        class="duration-scroll data-v-c9f86960"
+        scroll-x="true"
+        scroll-left="{{durationScrollLeft}}"
+        scroll-with-animation="true"
+        show-scrollbar="false"
+        enhanced="true"
+        ><view class="duration-grid data-v-c9f86960"
+          ><view
+            wx:for="{{B}}"
+            wx:for-item="history"
+            wx:key="b"
+            class="{{['duration-chip', 'data-v-c9f86960', history.c && 'duration-chip--active']}}"
+            bindtap="{{history.d}}"
+            ><text class="data-v-c9f86960">{{history.a}}h</text></view
+          ></view
+        ></scroll-view
+      ><text class="checkin-label data-v-c9f86960">舒适度评分</text
+      ><view class="comfort-row data-v-c9f86960"
+        ><view
+          wx:for="{{C}}"
+          wx:for-item="suggestion"
+          wx:key="b"
+          class="{{['comfort-star', 'data-v-c9f86960', suggestion.c]}}"
+          bindtap="{{suggestion.d}}"
+          ><text class="data-v-c9f86960">{{suggestion.a}}</text></view
+        ></view
+      ><text class="checkin-label data-v-c9f86960">备注（选填）</text
+      ><textarea
+        class="checkin-textarea data-v-c9f86960"
+        placeholder="记录今日感受，如：轻微牙齿酸胀、睡眠质量改善..."
+        maxlength="200"
+        value="{{D}}"
+        bindinput="{{E}}" /><view class="checkin-actions data-v-c9f86960"
+        ><view class="checkin-btn-cancel data-v-c9f86960" bindtap="{{F}}"
+          ><text class="data-v-c9f86960">取消</text></view
+        ><view
+          class="{{['checkin-btn-submit', 'data-v-c9f86960', H && 'checkin-btn-submit--loading']}}"
+          bindtap="{{I}}"
+          ><text class="data-v-c9f86960">{{G}}</text></view
+        ></view
+      ></view
+    ></view
+></view>

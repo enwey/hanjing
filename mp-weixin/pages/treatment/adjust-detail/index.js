@@ -11,52 +11,74 @@ const o = () => "../../../components/base/hj-navbar.js",
         adjustmentHistory = e.reactive([]);
       function currentParams() {
         const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
-        return patientId ? { patientId } : {};
+        const params = {
+          _t: Date.now(),
+        };
+        if (patientId) {
+          params.patientId = patientId;
+        }
+        return params;
+      }
+      const hasRealTreatmentRecord = e.computed(() => !!(recordDetail.value && recordDetail.value.isRealTreatmentRecord));
+      async function loadData() {
+        loading.value = !0;
+        try {
+          const recordRes = await t.getTreatmentRecord(currentParams());
+          recordDetail.value = (recordRes && recordRes.data) || null;
+          const adjustmentRes = await t.getDeviceAdjustments(currentParams());
+          adjustmentHistory.splice(0, adjustmentHistory.length, ...(((adjustmentRes && adjustmentRes.data) || [])));
+        } catch (err) {
+          console.error(err);
+          recordDetail.value = null;
+          adjustmentHistory.splice(0, adjustmentHistory.length);
+        } finally {
+          loading.value = !1;
+        }
+      }
+      function goAppointment() {
+        e.index.switchTab({ url: "/pages/appointment/index" });
       }
       return (
-        e.onMounted(async () => {
-          try {
-            const e = await t.getTreatmentRecord(currentParams());
-            recordDetail.value = e.data;
-
-            const adjRes = await t.getDeviceAdjustments(currentParams());
-            if (adjRes && adjRes.data) {
-              adjustmentHistory.splice(0, adjustmentHistory.length, ...adjRes.data);
-            }
-          } catch (err) {
-            console.error(err);
-          } finally {
-            loading.value = !1;
-          }
-        }),
+        e.onMounted(loadData),
+        e.onShow(loadData),
         (t, o) =>
           e.e(
             {
               a: e.p({ title: "设备调整", showBack: !0 }),
-              b: !loading.value && recordDetail.value,
+              b: !loading.value,
             },
-            !loading.value && recordDetail.value
-              ? {
-                  c: e.t(recordDetail.value.deviceModel),
-                  d: e.t(recordDetail.value.adjustmentValue),
-                  e: e.t(adjustmentHistory.filter((e) => e.comfort > 0).length),
-                  f: e.t(recordDetail.value.nextAdjustDate || "待定"),
-                  hasHistory: adjustmentHistory.length > 0,
-                  g: e.f(adjustmentHistory, (t, o, a) =>
-                    e.e(
-                      {
-                        a: e.t(t.date),
-                        b: e.t(t.value),
-                        c: e.t(t.note),
-                        d: t.doctor,
+            !loading.value
+              ? e.e(
+                  {
+                    c: hasRealTreatmentRecord.value,
+                  },
+                  hasRealTreatmentRecord.value
+                    ? {
+                        d: e.t(recordDetail.value ? recordDetail.value.deviceModel : ""),
+                        e: e.t(recordDetail.value ? recordDetail.value.adjustmentValue : ""),
+                        f: e.t(adjustmentHistory.length),
+                        g: recordDetail.value && recordDetail.value.nextAdjustDate,
+                        h: e.t(recordDetail.value ? recordDetail.value.nextAdjustDate : ""),
+                        i: adjustmentHistory.length > 0,
+                        j: e.f(adjustmentHistory, (item, index, key) =>
+                          e.e(
+                            {
+                              a: e.t(item.date),
+                              b: e.t(item.value),
+                              c: e.t(item.note),
+                              d: item.doctor,
+                            },
+                            item.doctor ? { e: e.t(item.doctor) } : {},
+                            { f: item.comfort > 0 },
+                            item.comfort > 0 ? { g: e.t(item.comfort) } : {},
+                            { h: index },
+                          ),
+                        ),
+                      }
+                    : {
+                        k: e.o(goAppointment),
                       },
-                      t.doctor ? { e: e.t(t.doctor) } : {},
-                      { f: t.comfort > 0 },
-                      t.comfort > 0 ? { g: e.t(t.comfort) } : {},
-                      { h: o },
-                    ),
-                  ),
-                }
+                )
               : {},
           )
       );

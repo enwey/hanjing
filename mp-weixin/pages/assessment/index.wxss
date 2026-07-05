@@ -71,16 +71,17 @@
   margin-bottom: 16px;
 }
 .hero-emoji.data-v-35dabd14 {
-  font-size: 48px;
+  width: 48px;
+  height: 48px;
   display: block;
-  margin-bottom: 12px;
+  margin: 0 auto 18px;
 }
 .hero-title.data-v-35dabd14 {
   font-size: 20px;
   font-weight: 700;
   color: #1f2937;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 .hero-desc.data-v-35dabd14 {
   font-size: 13px;
@@ -223,7 +224,7 @@
 }
 .record-date.data-v-35dabd14 {
   font-size: 11px;
-  color: #d1d5db;
+  color: #6b7280;
 }
 .record-right.data-v-35dabd14 {
   display: flex;

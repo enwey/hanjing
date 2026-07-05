@@ -11,7 +11,8 @@
         class="form-input data-v-33d45858"
         placeholder="请输入姓名"
         value="{{b}}"
-        bindinput="{{c}}" /></view
+        bindinput="{{c}}"
+        disabled="{{isSelf}}" /></view
     ><view class="form-group data-v-33d45858"
       ><text class="form-label data-v-33d45858">关系</text
       ><view class="form-chips data-v-33d45858"
@@ -20,7 +21,7 @@
           wx:for-item="relation"
           wx:key="b"
           class="{{['chip', 'data-v-33d45858', relation.c && 'active']}}"
-          bindtap="{{relation.d}}"
+          bindtap="{{!isSelf ? relation.d : ''}}"
           ><text class="data-v-33d45858">{{relation.a}}</text></view
         ></view
       ></view
@@ -29,11 +30,11 @@
       ><view class="form-chips data-v-33d45858"
         ><view
           class="{{['chip', 'data-v-33d45858', e && 'active']}}"
-          bindtap="{{f}}"
+          bindtap="{{!isSelf ? f : ''}}"
           ><text class="data-v-33d45858">男</text></view
         ><view
           class="{{['chip', 'data-v-33d45858', g && 'active']}}"
-          bindtap="{{h}}"
+          bindtap="{{!isSelf ? h : ''}}"
           ><text class="data-v-33d45858">女</text></view
         ></view
       ></view
@@ -44,30 +45,44 @@
         type="number"
         placeholder="请输入年龄"
         value="{{i}}"
-        bindinput="{{j}}" /></view
+        bindinput="{{j}}"
+        disabled="{{isSelf}}" /></view
     ><view class="form-group data-v-33d45858"
-      ><text class="form-label data-v-33d45858">手机号</text
+      ><text class="form-label data-v-33d45858">手机号（选填）</text
       ><input
         class="form-input data-v-33d45858"
         type="number"
-        placeholder="选填"
+        placeholder="用于匹配已存在档案，可单独填写"
         value="{{k}}"
-        bindinput="{{l}}" /></view
+        bindinput="{{l}}"
+        disabled="{{isSelf}}" /></view
     ><view class="form-group data-v-33d45858"
-      ><text class="form-label data-v-33d45858">身份证号</text
+      ><text class="form-label data-v-33d45858">身份证号（选填）</text
       ><input
         class="form-input data-v-33d45858"
-        placeholder="选填"
+        placeholder="用于匹配已存在档案，可单独填写"
         value="{{nIdCard}}"
-        bindinput="{{oIdCardInput}}" /></view
+        bindinput="{{oIdCardInput}}"
+        disabled="{{isSelf}}" /></view
     ><view class="form-group data-v-33d45858"
-      ><text class="form-label data-v-33d45858">就诊卡号</text
+      ><text class="form-label data-v-33d45858">就诊卡号（选填）</text
       ><input
         class="form-input data-v-33d45858"
-        placeholder="选填"
+        placeholder="用于匹配已存在档案，可单独填写"
         value="{{pCardNo}}"
-        bindinput="{{qCardNoInput}}" /></view
-    ><view class="btn-submit data-v-33d45858" bindtap="{{m}}"
-      ><text class="data-v-33d45858">确认添加</text></view
-    ><view class="safe-bottom data-v-33d45858" /></view
+        bindinput="{{qCardNoInput}}"
+        disabled="{{isSelf}}" /></view
+    ><view class="bottom-fixed-bar data-v-33d45858" wx:if="{{!isSelf}}"
+      ><block wx:if="{{isEdit}}"
+        ><button class="bar-primary-btn bar-save-btn data-v-33d45858" bindtap="{{m}}"
+          >保存修改</button
+        ><button class="bar-danger-btn bar-delete-btn data-v-33d45858" bindtap="{{onDeleteTap}}"
+          >解除关联</button
+        ></block
+      ><block wx:else
+        ><button class="bar-primary-btn data-v-33d45858" bindtap="{{m}}"
+          >确认关联</button
+        ></block
+      ></view
+    ><view class="safe-bottom data-v-33d45858" style="{{isSelf ? 'height: 40rpx;' : ''}}" /></view
 ></view>

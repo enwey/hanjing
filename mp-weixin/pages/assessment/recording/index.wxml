@@ -1,91 +1,73 @@
 <view class="page data-v-70350287"
+  ><view class="star star-1 data-v-70350287"></view
+  ><view class="star star-2 data-v-70350287"></view
+  ><view class="star star-3 data-v-70350287"></view
+  ><view class="star star-4 data-v-70350287"></view
   ><hj-navbar
-    wx:if="{{a}}"
+    wx:if="{{navbarProps}}"
     class="data-v-70350287"
+    bindback="{{handleBack}}"
     u-i="70350287-0"
     bind:__l="__l"
-    u-p="{{a}}" /><view class="page-content data-v-70350287"
-    ><picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="{{onMemberChange}}" disabled="{{disabledSelector}}" class="data-v-70350287" style="background:#fff;padding:12px 16px;margin:12px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #F3F4F6;">
-      <view class="data-v-70350287" style="display:flex;width:100%;justify-content:space-between;align-items:center;font-size:14px;color:#1F2937;">
-        <view class="data-v-70350287" style="display:flex;align-items:center;gap:6px;">
-          <text class="data-v-70350287" style="color:#4B5563;">当前检测人：</text>
-          <text class="data-v-70350287" style="font-weight:600;color:#3B6BF5;">{{selectedMemberName}}</text>
-        </view>
-        <text wx:if="{{!disabledSelector}}" class="data-v-70350287" style="font-size:12px;color:#9CA3AF;font-weight:500;">切换 ▾</text>
-      </view>
-    </picker><view class="guide-card data-v-70350287"
-      ><text class="guide-emoji data-v-70350287">Zzz</text
-      ><text class="guide-title data-v-70350287">录制夜间鼾声</text
-      ><text class="guide-desc data-v-70350287">
-        请在安静环境下，将手机放在床头距头部约50cm处， 录制 30秒~60秒
-        的睡眠时段声音
-      </text></view
+    u-p="{{navbarProps}}" /><view wx:if="{{!y}}" class="page-content data-v-70350287"
+    ><picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="{{onMemberChange}}" disabled="{{disabledSelector}}" class="member-picker data-v-70350287"
+      ><view class="member-picker-content data-v-70350287"
+        ><view class="member-info data-v-70350287"
+          ><text class="member-label data-v-70350287">当前检测人：</text
+          ><text class="member-value data-v-70350287">{{selectedMemberName}}</text></view
+        ><view wx:if="{{!disabledSelector}}" class="member-action data-v-70350287"
+          ><text class="member-action-text data-v-70350287">切换</text
+          ><image class="member-action-arrow data-v-70350287" src="/static/icons/chevron-right.svg" mode="aspectFit" /></view
+      ></view
+    ></picker><view class="guide-card data-v-70350287"
+      ><text class="guide-emoji data-v-70350287">💤</text
+      ><text class="guide-title data-v-70350287">睡眠呼吸监测</text
+      ><text class="guide-desc data-v-70350287">本地AI离线解析 · 0音频上传保障隐私</text></view
     ><view class="record-area data-v-70350287"
-      ><view wx:if="{{b}}" class="waveform data-v-70350287"
+      ><view class="{{['waveform', 'data-v-70350287', waveVisible ? 'is-visible' : 'is-hidden']}}" style="{{'--volume-scale:' + volScale}}"
         ><view
           wx:for="{{c}}"
           wx:for-item="history"
           wx:key="a"
           class="{{['wave-bar', 'data-v-70350287', d && 'wave-bar--live']}}"
           style="{{'height:' + history.b + ';' + ('animation-delay:' + history.c)}}" /></view
-      ><text wx:if="{{e}}" class="record-time data-v-70350287">{{f}}</text
+      ><text class="{{['record-time', 'data-v-70350287', e ? 'is-visible' : 'is-hidden']}}">{{f}}</text
       ><view class="mic-btn-wrapper data-v-70350287"
-        ><view
+        ><view class="ring-glow ring-glow-1 data-v-70350287"
+        /><view class="ring-glow ring-glow-2 data-v-70350287"
+        /><view class="ring-glow ring-glow-3 data-v-70350287"
+        /><view
           class="{{['mic-pulse', 'data-v-70350287', g && 'mic-pulse--active']}}"
         /><view
           class="{{['mic-btn', 'data-v-70350287', k && 'mic-btn--recording', l && 'mic-btn--paused', m && 'mic-btn--done', n && 'mic-btn--analyzing']}}"
           bindtap="{{o}}"
-          ><text wx:if="{{h}}" class="mic-icon data-v-70350287">MIC</text
-          ><text wx:elif="{{i}}" class="mic-icon data-v-70350287">...</text
-          ><text wx:elif="{{j}}" class="mic-icon data-v-70350287">OK</text
-          ><text wx:else class="mic-icon mic-icon--stop data-v-70350287"
-            >■</text
+          ><text wx:if="{{showPlayIcon}}" class="mic-icon data-v-70350287">▶</text
+          ><text wx:elif="{{showPauseIcon}}" class="mic-icon data-v-70350287">⏸</text
+          ><text wx:elif="{{showAnalyzingIcon}}" class="mic-icon data-v-70350287">...</text
           ></view
         ></view
-      ><text wx:if="{{p}}" class="status-text data-v-70350287">
-        点击麦克风开始录制 </text
-      ><text
-        wx:elif="{{q}}"
-        class="status-text status-text--recording data-v-70350287"
-      >
-        正在录制中... </text
-      ><text
-        wx:elif="{{r}}"
-        class="status-text status-text--paused data-v-70350287"
-      >
-        已暂停 </text
-      ><text
-        wx:elif="{{s}}"
-        class="status-text status-text--done data-v-70350287"
-      >
-        录制完成 · 点击提交进行分析 </text
-      ><text
-        wx:elif="{{t}}"
-        class="status-text status-text--analyzing data-v-70350287"
-      >
-        AI正在分析鼾声数据...
-      </text></view
-    ><view wx:if="{{v}}" class="actions data-v-70350287"
-      ><view class="btn btn--outline data-v-70350287" bindtap="{{w}}"
-        ><text class="data-v-70350287">重新录制</text></view
+      ><text class="{{['status-text', 'data-v-70350287', statusClass, showStatusText ? 'is-visible' : 'is-hidden']}}"
+        >{{statusText}}</text></view
+    ><view class="{{['actions', 'data-v-70350287', v ? 'is-visible' : 'is-hidden']}}"
       ><view class="btn btn--primary data-v-70350287" bindtap="{{x}}"
-        ><text class="data-v-70350287">AI分析鼾声</text></view
+        ><text class="data-v-70350287">生成分析报告</text></view
       ></view
-    ><view wx:if="{{y}}" class="analyzing-card data-v-70350287"
+    ><view class="tips-card data-v-70350287"
+      ><text class="tips-title data-v-70350287">使用指引</text
+      ><view class="tips-list data-v-70350287"
+        ><text class="tip-item data-v-70350287">• 手机放置于床头约50cm处</text
+        ><text class="tip-item data-v-70350287">• 麦克风朝上并避开持续强噪</text
+        ><text class="tip-item data-v-70350287"
+          >• 建议连接充电器监测整夜</text
+        ></view
+      ></view
+    ></view
+  ><view wx:else class="analyzing-screen data-v-70350287"
+    ><view class="analyzing-card data-v-70350287"
       ><view class="spinner data-v-70350287" /><text
         class="analyzing-text data-v-70350287"
         >正在分析...</text
       ><text class="analyzing-hint data-v-70350287">约需 2-3 秒</text></view
-    ><view class="tips-card data-v-70350287"
-      ><text class="tips-title data-v-70350287">录音小贴士</text
-      ><view class="tips-list data-v-70350287"
-        ><text class="tip-item data-v-70350287">• 建议在睡前开始录制</text
-        ><text class="tip-item data-v-70350287">• 手机麦克风朝向上方</text
-        ><text class="tip-item data-v-70350287">• 避免风扇/空调直达噪音</text
-        ><text class="tip-item data-v-70350287"
-          >• 可配合手机支架使用</text
-        ></view
-      ></view
     ></view
   ><view class="safe-bottom data-v-70350287" />
   <hj-privacy-popup id="privacyPopup" />

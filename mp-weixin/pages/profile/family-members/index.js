@@ -3,6 +3,14 @@ const e = require("../../../common/vendor.js"),
   a = require("../../../api/index.js");
 Math || t();
 const t = () => "../../../components/base/hj-navbar.js",
+  relationLabels = {
+    spouse: "配偶",
+    child: "子女",
+    parent: "父母",
+    sibling: "兄弟姐妹",
+    other: "其他",
+    self: "本人",
+  },
   n = e.defineComponent({
     __name: "index",
     setup(t) {
@@ -36,7 +44,7 @@ const t = () => "../../../components/base/hj-navbar.js",
                         {
                           a: e.t(t.name.slice(0, 1)),
                           b: e.t(t.name),
-                          c: e.t(t.relation),
+                          c: e.t(relationLabels[t.relation] || t.relation),
                           d: e.t("1" === t.gender || 1 === t.gender ? "男" : "女"),
                           e: e.t(t.age),
                           f: e.t(t.phone),
@@ -49,24 +57,12 @@ const t = () => "../../../components/base/hj-navbar.js",
                         t.lastVisit ? { i: e.t(t.lastVisit) } : {},
                         {
                           j: e.o(
-                            (n) =>
-                              (async function (t) {
-                                e.index.showModal({
-                                  title: "确认删除",
-                                  content:
-                                    "删除后不可恢复，确定要移除该家庭成员吗？",
-                                  success: async (n) => {
-                                    n.confirm &&
-                                      (await a.deleteFamilyMember(t),
-                                      await fetchFamilyMembers(),
-                                      e.index.showToast({
-                                        title: "已删除",
-                                        icon: "success",
-                                      }));
-                                  },
-                                });
-                              })(t.id),
-                            t.id,
+                            (n) => {
+                              e.index.navigateTo({
+                                url: "/pages/profile/family-members/add-member/index?id=" + t.id,
+                              });
+                            },
+                            t.id
                           ),
                           k: t.id,
                         },

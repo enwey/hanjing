@@ -5,40 +5,35 @@
     u-i="64c0d952-0"
     bind:__l="__l"
     u-p="{{a}}" /><view wx:if="{{b}}" class="page-content data-v-64c0d952"
-    ><view class="param-card data-v-64c0d952"
+    ><block wx:if="{{c}}"
+      ><view class="param-card data-v-64c0d952"
       ><text class="param-title data-v-64c0d952">当前设备参数</text
       ><view class="param-grid data-v-64c0d952"
         ><view class="param-item data-v-64c0d952"
           ><text class="param-label data-v-64c0d952">设备型号</text
-          ><text class="param-val data-v-64c0d952">{{c}}</text></view
+          ><text class="param-val data-v-64c0d952">{{d}}</text></view
         ><view class="param-item data-v-64c0d952"
           ><text class="param-label data-v-64c0d952">下颌前移量</text
           ><text class="param-val param-val--big data-v-64c0d952"
-            >{{d}}mm</text
+            >{{e}}mm</text
           ></view
         ><view class="param-item data-v-64c0d952"
           ><text class="param-label data-v-64c0d952">调整次数</text
-          ><text class="param-val data-v-64c0d952">{{e}}次</text></view
-        ><view class="param-item data-v-64c0d952"
+          ><text class="param-val data-v-64c0d952">{{f}}次</text></view
+        ><view wx:if="{{g}}" class="param-item data-v-64c0d952"
           ><text class="param-label data-v-64c0d952">下次调整</text
           ><text class="param-val data-v-64c0d952" style="color: #f59e0b"
-            >{{f}}</text
+            >{{h}}</text
           ></view
         ></view
       ></view
-    ><view class="advice-card data-v-64c0d952"
-      ><text class="advice-title data-v-64c0d952">调整建议</text
-      ><text class="advice-text data-v-64c0d952">
-        每次调整增量通常为 0.5-1mm，根据患者适应情况和治疗效果进行个性化调整。
-        请勿自行调整阻鼾器参数，必须在医生指导下进行。
-      </text></view
     ><text class="section-title data-v-64c0d952">调整历史</text
-    ><view wx:if="{{!hasHistory}}" class="empty-history data-v-64c0d952"
+    ><view wx:if="{{!i}}" class="empty-history data-v-64c0d952"
       >暂无医生调整记录，后续调整会在这里同步展示</view
     >
     <view class="history-list data-v-64c0d952"
       ><view
-        wx:for="{{g}}"
+        wx:for="{{j}}"
         wx:for-item="item"
         wx:key="h"
         class="history-item data-v-64c0d952"
@@ -57,6 +52,12 @@
             >即将进行</view
           ></view
         ></view
+      ></view></block
+    ><view wx:else class="empty-card data-v-64c0d952"
+      ><text class="empty-title data-v-64c0d952">暂无治疗记录</text
+      ><text class="empty-desc data-v-64c0d952">当前治疗人还没有完成门诊建档或阻鼾器适配，暂时无法查看设备调整信息。完成预约就诊后，这里会同步展示医生调整记录。</text
+      ><button class="empty-btn data-v-64c0d952" bindtap="{{k}}"
+        >前往预约</button
       ></view
     ><view class="safe-bottom data-v-64c0d952" /></view
 ></view>

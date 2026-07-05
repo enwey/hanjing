@@ -123,10 +123,20 @@
   color: #ef4444;
 }
 .section-title.data-v-45b6ad14 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 0 10px;
+}
+.section-title-icon.data-v-45b6ad14 {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.section-title-text.data-v-45b6ad14 {
   font-size: 16px;
   font-weight: 700;
   color: #1f2937;
-  padding: 20px 0 10px;
 }
 .stats-grid.data-v-45b6ad14 {
   display: grid;
@@ -141,8 +151,11 @@
   box-shadow: var(--card-shadow);
 }
 .stat-icon.data-v-45b6ad14 {
-  font-size: 24px;
   display: block;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 6px;
 }
 .stat-value.data-v-45b6ad14 {
@@ -198,32 +211,58 @@
   color: #374151;
   line-height: 1.5;
 }
-.cta-section.data-v-45b6ad14 {
+.action-buttons.data-v-45b6ad14 {
   margin-top: 24px;
-  padding-bottom: 32px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding: 4px 0 32px;
 }
-.btn.data-v-45b6ad14 {
-  text-align: center;
-  padding: 15px;
-  border-radius: 14px;
+.btn-primary.data-v-45b6ad14 {
+  height: 44px;
+  background: linear-gradient(135deg, #3b6bf5 0%, #5a85f5 50%, #8eafff 100%);
+  border-radius: 9999px;
+  color: #fff;
   font-size: 16px;
   font-weight: 600;
+  box-shadow: 0 4px 14px rgba(59, 107, 245, 0.25);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.btn--primary.data-v-45b6ad14 {
-  background: linear-gradient(135deg, #3b6bf5, #2563eb);
-  color: #fff;
+.btn-primary.data-v-45b6ad14:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(59, 107, 245, 0.2);
 }
-.btn--outline.data-v-45b6ad14 {
-  background: #fff;
-  color: #3b6bf5;
-  border: 1.5px solid #3b6bf5;
+.btn-secondary.data-v-45b6ad14 {
+  height: 44px;
+  background: #f1f5f9;
+  border-radius: 9999px;
+  font-size: 15px;
+  color: #475569;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.btn--ghost.data-v-45b6ad14 {
-  background: transparent;
-  color: #9ca3af;
+.btn-secondary.data-v-45b6ad14:active {
+  background: #e2e8f0;
+}
+.btn-outline.data-v-45b6ad14 {
+  height: 44px;
+  border-radius: 9999px;
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-outline.data-v-45b6ad14:active {
+  opacity: 0.7;
 }
 .loading-card.data-v-45b6ad14 {
   padding: 60px 0;

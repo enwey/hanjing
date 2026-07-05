@@ -1,4 +1,4 @@
-<view class="apt-item data-v-74fd48b7" bindtap="{{m}}">
+<view class="apt-item data-v-74fd48b7" bindtap="{{n}}">
   <view class="apt-header data-v-74fd48b7">
     <text class="apt-no data-v-74fd48b7">{{a}}</text>
     <hj-tag
@@ -22,9 +22,17 @@
     <view class="apt-info-row data-v-74fd48b7">
       <view class="apt-label data-v-74fd48b7">
         <image class="apt-label-icon data-v-74fd48b7" src="/static/icons/tab-profile.png" />
-        <text class="data-v-74fd48b7">医生</text>
+        <text class="data-v-74fd48b7">就诊人</text>
       </view>
       <text class="apt-value data-v-74fd48b7">{{d}}</text>
+    </view>
+    
+    <view class="apt-info-row data-v-74fd48b7">
+      <view class="apt-label data-v-74fd48b7">
+        <image class="apt-label-icon data-v-74fd48b7" src="/static/icons/tab-profile.png" />
+        <text class="data-v-74fd48b7">医生</text>
+      </view>
+      <text class="apt-value data-v-74fd48b7">{{e}}</text>
     </view>
     
     <view class="apt-info-row data-v-74fd48b7">
@@ -32,7 +40,7 @@
         <image class="apt-label-icon data-v-74fd48b7" src="/static/icons/tab-appointment.png" />
         <text class="data-v-74fd48b7">时间</text>
       </view>
-      <text class="apt-value apt-value--bold data-v-74fd48b7">{{e}} {{f}}</text>
+      <text class="apt-value apt-value--bold data-v-74fd48b7">{{f}} {{g}}</text>
     </view>
     
     <view class="apt-info-row data-v-74fd48b7">
@@ -40,19 +48,20 @@
         <image class="apt-label-icon data-v-74fd48b7" src="/static/icons/tab-treatment.png" />
         <text class="data-v-74fd48b7">类型</text>
       </view>
-      <text class="apt-value data-v-74fd48b7">{{g}}</text>
+      <text class="apt-value data-v-74fd48b7">{{h}}</text>
     </view>
     
-    <view wx:if="{{h}}" class="apt-info-row data-v-74fd48b7">
+    <view wx:if="{{i}}" class="apt-info-row data-v-74fd48b7">
       <view class="apt-label data-v-74fd48b7">
+        <image class="apt-label-icon data-v-74fd48b7" src="/static/icons/chat.svg" />
         <text class="data-v-74fd48b7">主诉</text>
       </view>
-      <text class="apt-value apt-value--desc data-v-74fd48b7">{{i}}</text>
+      <text class="apt-value apt-value--desc data-v-74fd48b7">{{j}}</text>
     </view>
   </view>
   
-  <view wx:if="{{j}}" class="apt-actions data-v-74fd48b7">
-    <button class="apt-btn apt-btn--ghost data-v-74fd48b7" catchtap="{{k}}">{{btnText}}</button>
-    <button class="apt-btn apt-btn--ghost apt-btn--danger data-v-74fd48b7" catchtap="{{l}}">取消</button>
+  <view wx:if="{{k}}" class="apt-actions data-v-74fd48b7">
+    <button class="apt-btn apt-btn--ghost data-v-74fd48b7" catchtap="{{l}}">{{btnText}}</button>
+    <button class="apt-btn apt-btn--ghost apt-btn--danger data-v-74fd48b7" catchtap="{{m}}">取消</button>
   </view>
 </view>

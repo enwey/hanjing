@@ -21,6 +21,7 @@ import {
 const app = express.Router();
 
 const SENSITIVE_WORDS = ['广告', '疗效', '包治', '神药', '加微信', '兼职', '刷单'];
+const PLACEHOLDER_TREATMENT_DEVICE_NAME = '待适配阻鼾器';
 function checkSensitiveWords(text) {
   if (!text) return false;
   return SENSITIVE_WORDS.some(word => text.includes(word));
@@ -37,11 +38,386 @@ const formatDate = (dateVal) => {
   return String(dateVal).slice(0, 10);
 };
 
+async function ensureUserPatientLink(userId, patientId, relation = 'other') {
+  const normalizedRelation = relation ? escapeHtml(String(relation)) : 'other';
+  await run(
+    `INSERT INTO user_patient_links (user_id, patient_id, relation)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE relation = VALUES(relation), updated_at = CURRENT_TIMESTAMP`,
+    [userId, patientId, normalizedRelation]
+  );
+}
+
+async function getLinkedPatientsForUser(userId) {
+  return query(
+    `SELECT p.*, upl.relation AS link_relation
+     FROM user_patient_links upl
+     JOIN patients p ON p.id = upl.patient_id
+     WHERE upl.user_id = ?
+     ORDER BY CASE WHEN p.user_id = ? AND p.relation = 'self' THEN 0 ELSE 1 END, upl.created_at ASC, upl.id ASC`,
+    [userId, userId]
+  );
+}
+
+function isPlaceholderSelfName(name) {
+  const value = String(name || '').trim();
+  return !value || value === '本人' || value === '微信用户' || value.startsWith('微信用户_');
+}
+
+async function getIdentityMatchedPatient({ phoneEnc = null, idCardEnc = null }) {
+  if (idCardEnc) {
+    return get(`SELECT * FROM patients WHERE id_card = ? ORDER BY id ASC LIMIT 1`, [idCardEnc]);
+  }
+  if (phoneEnc) {
+    const phoneMatchedPatient = await get(`SELECT * FROM patients WHERE phone = ? ORDER BY id ASC LIMIT 1`, [phoneEnc]);
+    if (phoneMatchedPatient && !phoneMatchedPatient.id_card) {
+      return phoneMatchedPatient;
+    }
+  }
+  return null;
+}
+
+async function getSelfPatientForUser(userId) {
+  const explicitSelf = await get(
+    `SELECT p.*
+     FROM users u
+     JOIN patients p ON p.id = u.self_patient_id
+     WHERE u.id = ?
+     LIMIT 1`,
+    [userId]
+  );
+  if (explicitSelf) return explicitSelf;
+
+  const legacySelf = await get(`SELECT * FROM patients WHERE user_id = ? AND relation = 'self' LIMIT 1`, [userId]);
+  if (legacySelf) return legacySelf;
+
+  return get(
+    `SELECT p.*
+     FROM user_patient_links upl
+     JOIN patients p ON p.id = upl.patient_id
+     WHERE upl.user_id = ? AND upl.relation = 'self'
+     ORDER BY upl.id ASC
+     LIMIT 1`,
+    [userId]
+  );
+}
+
+async function getSelfPatientForUserWithConn(conn, userId) {
+  const [[explicitRows]] = await conn.execute(
+    `SELECT p.*
+     FROM users u
+     JOIN patients p ON p.id = u.self_patient_id
+     WHERE u.id = ?
+     LIMIT 1`,
+    [userId]
+  );
+  if (explicitRows) return explicitRows;
+
+  const [[legacyRows]] = await conn.execute(
+    `SELECT * FROM patients WHERE user_id = ? AND relation = 'self' LIMIT 1`,
+    [userId]
+  );
+  if (legacyRows) return legacyRows;
+
+  const [[linkedRows]] = await conn.execute(
+    `SELECT p.*
+     FROM user_patient_links upl
+     JOIN patients p ON p.id = upl.patient_id
+     WHERE upl.user_id = ? AND upl.relation = 'self'
+     ORDER BY upl.id ASC
+     LIMIT 1`,
+    [userId]
+  );
+  return linkedRows || null;
+}
+
+async function getDefaultPatientForUser(userId) {
+  const selfPatient = await getSelfPatientForUser(userId);
+  if (selfPatient) return selfPatient;
+  return get(
+    `SELECT p.*
+     FROM user_patient_links upl
+     JOIN patients p ON p.id = upl.patient_id
+     WHERE upl.user_id = ?
+     ORDER BY upl.created_at ASC, upl.id ASC
+     LIMIT 1`,
+    [userId]
+  );
+}
+
+async function getLinkedPatientIdentityFilter(userId, tableAlias = 'p') {
+  const linkedPatients = await getLinkedPatientsForUser(userId);
+  const values = {
+    phone: new Set(),
+    id_card: new Set(),
+    card_no: new Set(),
+  };
+  for (const patient of linkedPatients) {
+    if (patient.phone) values.phone.add(patient.phone);
+    if (patient.id_card) values.id_card.add(patient.id_card);
+    if (patient.card_no) values.card_no.add(patient.card_no);
+  }
+  const conditions = [];
+  const params = [];
+  for (const phone of values.phone) {
+    conditions.push(`${tableAlias}.phone = ?`);
+    params.push(phone);
+  }
+  for (const idCard of values.id_card) {
+    conditions.push(`${tableAlias}.id_card = ?`);
+    params.push(idCard);
+  }
+  for (const cardNo of values.card_no) {
+    conditions.push(`${tableAlias}.card_no = ?`);
+    params.push(cardNo);
+  }
+  return { conditions, params };
+}
+
+async function generateUniqueCardNo() {
+  const rows = await query(`SELECT card_no FROM patients WHERE card_no IS NOT NULL AND card_no != ''`);
+  const existing = new Set(
+    rows
+      .map((row) => String(row.card_no || '').trim())
+      .filter(Boolean)
+  );
+  let next = 1;
+  for (const value of existing) {
+    if (/^\d+$/.test(value)) {
+      next = Math.max(next, Number(value) + 1);
+    }
+  }
+  let candidate = String(next).padStart(2, '0');
+  while (existing.has(candidate)) {
+    next += 1;
+    candidate = String(next).padStart(2, '0');
+  }
+  return candidate;
+}
+
+async function getIdentityMatchedPatientWithConn(conn, { phoneEnc = null, idCardEnc = null, excludePatientId = null }) {
+  if (idCardEnc) {
+    const params = [idCardEnc];
+    let sql = `SELECT * FROM patients WHERE id_card = ?`;
+    if (excludePatientId) {
+      sql += ` AND id != ?`;
+      params.push(excludePatientId);
+    }
+    sql += ` ORDER BY id ASC LIMIT 1`;
+    const [[patient]] = await conn.execute(sql, params);
+    return patient || null;
+  }
+  if (phoneEnc) {
+    const params = [phoneEnc];
+    let sql = `SELECT * FROM patients WHERE phone = ?`;
+    if (excludePatientId) {
+      sql += ` AND id != ?`;
+      params.push(excludePatientId);
+    }
+    sql += ` ORDER BY id ASC LIMIT 1`;
+    const [[patient]] = await conn.execute(sql, params);
+    if (patient && !patient.id_card) {
+      return patient;
+    }
+  }
+  return null;
+}
+
+async function reassignPatientDataWithConn(conn, fromPatientId, toPatientId) {
+  await conn.execute(`UPDATE appointments SET patient_id = ? WHERE patient_id = ?`, [toPatientId, fromPatientId]);
+  await conn.execute(`UPDATE medical_records SET patient_id = ? WHERE patient_id = ?`, [toPatientId, fromPatientId]);
+  await conn.execute(`UPDATE treatment_records SET patient_id = ? WHERE patient_id = ?`, [toPatientId, fromPatientId]);
+  await conn.execute(`UPDATE follow_up_tasks SET patient_id = ? WHERE patient_id = ?`, [toPatientId, fromPatientId]);
+  await conn.execute(`UPDATE ess_assessments SET patient_id = ? WHERE patient_id = ?`, [toPatientId, fromPatientId]);
+  await conn.execute(`UPDATE snore_assessments SET patient_id = ? WHERE patient_id = ?`, [toPatientId, fromPatientId]);
+}
+
+async function createPatientCloneForLinkWithConn(conn, sourcePatient, { name, gender, age, phoneEnc, idCardEnc, cardNo }) {
+  const patientNo = await generateUniquePatientNo(async (candidate) => {
+    const row = await get(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
+    return Boolean(row);
+  });
+  const resolvedCardNo = cardNo || await generateUniqueCardNo();
+  const [created] = await conn.execute(
+    `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, id_card, card_no, source, has_snore, medical_history)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      patientNo,
+      sourcePatient.user_id || null,
+      name,
+      sourcePatient.relation || 'other',
+      gender,
+      age,
+      phoneEnc,
+      idCardEnc,
+      resolvedCardNo,
+      sourcePatient.source || 'mini_app',
+      Number(sourcePatient.has_snore || 0),
+      sourcePatient.medical_history || null
+    ]
+  );
+  const [[patient]] = await conn.execute(`SELECT * FROM patients WHERE id = ? LIMIT 1`, [created.insertId]);
+  return patient || null;
+}
+
+async function bindUserToSelfPatient(userId, patientId, { preferName = '', phoneEnc = null, idCardEnc = null } = {}) {
+  return transaction(async (conn) => {
+    const [[patient]] = await conn.execute(`SELECT * FROM patients WHERE id = ? LIMIT 1`, [patientId]);
+    if (!patient) {
+      const err = new Error('患者档案不存在');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const [[user]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [userId]);
+    if (!user) {
+      const err = new Error('用户不存在');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const currentSelf = await getSelfPatientForUserWithConn(conn, userId);
+
+    if (currentSelf && Number(currentSelf.id) !== Number(patientId)) {
+      await conn.execute(`UPDATE appointments SET patient_id = ? WHERE patient_id = ?`, [patientId, currentSelf.id]);
+      await conn.execute(`UPDATE medical_records SET patient_id = ? WHERE patient_id = ?`, [patientId, currentSelf.id]);
+      await conn.execute(`UPDATE treatment_records SET patient_id = ? WHERE patient_id = ?`, [patientId, currentSelf.id]);
+      await conn.execute(`UPDATE follow_up_tasks SET patient_id = ? WHERE patient_id = ?`, [patientId, currentSelf.id]);
+      await conn.execute(`UPDATE ess_assessments SET patient_id = ? WHERE patient_id = ?`, [patientId, currentSelf.id]);
+      await conn.execute(`UPDATE snore_assessments SET patient_id = ? WHERE patient_id = ?`, [patientId, currentSelf.id]);
+      await conn.execute(`DELETE FROM user_patient_links WHERE user_id = ? AND patient_id = ?`, [userId, currentSelf.id]);
+
+      const [[remainingLinks]] = await conn.execute(`SELECT COUNT(*) AS count FROM user_patient_links WHERE patient_id = ?`, [currentSelf.id]);
+      if (remainingLinks && Number(remainingLinks.count) === 0) {
+        await conn.execute(`DELETE FROM patients WHERE id = ?`, [currentSelf.id]);
+      }
+    }
+
+    const nextPatientName = isPlaceholderSelfName(patient.name) && preferName ? preferName : patient.name;
+    const nextPatientPhone = patient.phone || phoneEnc || null;
+    const nextPatientIdCard = patient.id_card || idCardEnc || null;
+
+    await conn.execute(
+      `UPDATE patients
+       SET user_id = ?, relation = 'self', name = ?, phone = ?, id_card = ?
+       WHERE id = ?`,
+      [userId, nextPatientName, nextPatientPhone, nextPatientIdCard, patientId]
+    );
+    await conn.execute(
+      `INSERT INTO user_patient_links (user_id, patient_id, relation)
+       VALUES (?, ?, 'self')
+       ON DUPLICATE KEY UPDATE relation = 'self', updated_at = CURRENT_TIMESTAMP`,
+      [userId, patientId]
+    );
+    await conn.execute(
+      `UPDATE users SET self_patient_id = ?, phone = COALESCE(phone, ?) WHERE id = ?`,
+      [patientId, phoneEnc, userId]
+    );
+  });
+}
+
+async function mergeUserAccountIntoExistingUser(sourceUserId, targetUserId, { openid = null, phoneEnc = null } = {}) {
+  if (!sourceUserId || !targetUserId || Number(sourceUserId) === Number(targetUserId)) {
+    return get(`SELECT * FROM users WHERE id = ?`, [targetUserId || sourceUserId]);
+  }
+
+  return transaction(async (conn) => {
+    const [[sourceUser]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [sourceUserId]);
+    const [[targetUser]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [targetUserId]);
+    if (!sourceUser || !targetUser) {
+      const err = new Error('待合并账号不存在');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const sourceSelf = await getSelfPatientForUserWithConn(conn, sourceUserId);
+    const targetSelf = await getSelfPatientForUserWithConn(conn, targetUserId);
+
+    if (sourceSelf && targetSelf && Number(sourceSelf.id) !== Number(targetSelf.id)) {
+      await conn.execute(`UPDATE appointments SET patient_id = ? WHERE patient_id = ?`, [targetSelf.id, sourceSelf.id]);
+      await conn.execute(`UPDATE medical_records SET patient_id = ? WHERE patient_id = ?`, [targetSelf.id, sourceSelf.id]);
+      await conn.execute(`UPDATE treatment_records SET patient_id = ? WHERE patient_id = ?`, [targetSelf.id, sourceSelf.id]);
+      await conn.execute(`UPDATE follow_up_tasks SET patient_id = ? WHERE patient_id = ?`, [targetSelf.id, sourceSelf.id]);
+      await conn.execute(`UPDATE ess_assessments SET patient_id = ? WHERE patient_id = ?`, [targetSelf.id, sourceSelf.id]);
+      await conn.execute(`UPDATE snore_assessments SET patient_id = ? WHERE patient_id = ?`, [targetSelf.id, sourceSelf.id]);
+      await conn.execute(`DELETE FROM user_patient_links WHERE user_id = ? AND patient_id = ?`, [sourceUserId, sourceSelf.id]);
+
+      const [[remainingLinks]] = await conn.execute(`SELECT COUNT(*) AS count FROM user_patient_links WHERE patient_id = ?`, [sourceSelf.id]);
+      if (remainingLinks && Number(remainingLinks.count) === 0) {
+        await conn.execute(`DELETE FROM patients WHERE id = ?`, [sourceSelf.id]);
+      }
+    } else if (sourceSelf && !targetSelf) {
+      await conn.execute(
+        `UPDATE patients
+         SET user_id = ?, relation = 'self', phone = COALESCE(phone, ?)
+         WHERE id = ?`,
+        [targetUserId, phoneEnc || targetUser.phone || null, sourceSelf.id]
+      );
+      await conn.execute(
+        `INSERT INTO user_patient_links (user_id, patient_id, relation)
+         VALUES (?, ?, 'self')
+         ON DUPLICATE KEY UPDATE relation = 'self', updated_at = CURRENT_TIMESTAMP`,
+        [targetUserId, sourceSelf.id]
+      );
+      await conn.execute(`UPDATE users SET self_patient_id = ? WHERE id = ?`, [sourceSelf.id, targetUserId]);
+    }
+
+    const [sourceLinks] = await conn.execute(
+      `SELECT patient_id, relation FROM user_patient_links WHERE user_id = ?`,
+      [sourceUserId]
+    );
+    for (const link of sourceLinks) {
+      if (link.relation === 'self') {
+        continue;
+      }
+      const normalizedRelation = link.relation === 'self' ? 'other' : link.relation;
+      await conn.execute(
+        `INSERT INTO user_patient_links (user_id, patient_id, relation)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE relation = VALUES(relation), updated_at = CURRENT_TIMESTAMP`,
+        [targetUserId, link.patient_id, normalizedRelation]
+      );
+    }
+    await conn.execute(`DELETE FROM user_patient_links WHERE user_id = ?`, [sourceUserId]);
+
+    await conn.execute(`UPDATE orders SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await conn.execute(`UPDATE user_notifications SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await conn.execute(`UPDATE treatment_timelines SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await conn.execute(`UPDATE snore_assessments SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await conn.execute(`UPDATE ess_assessments SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await conn.execute(`UPDATE appointments SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await conn.execute(`UPDATE user_coupons SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await conn.execute(`UPDATE device_maintenance SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await conn.execute(`UPDATE device_feedback SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await conn.execute(`UPDATE points_logs SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await conn.execute(`UPDATE withdraw_records SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+
+    await conn.execute(
+      `UPDATE users
+       SET openid = COALESCE(?, openid),
+           phone = COALESCE(phone, ?),
+           self_patient_id = COALESCE(self_patient_id, ?)
+       WHERE id = ?`,
+      [openid, phoneEnc, targetSelf?.id || sourceSelf?.id || null, targetUserId]
+    );
+    await conn.execute(`DELETE FROM users WHERE id = ?`, [sourceUserId]);
+
+    const [[mergedUser]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [targetUserId]);
+    return mergedUser;
+  });
+}
+
 async function resolveUserPatient(req, patientIdSource = 'query') {
   const source = patientIdSource === 'body' ? req.body : req.query;
   const rawPatientId = source?.patientId || source?.memberId;
   if (rawPatientId && rawPatientId !== 'pat-self') {
-    const patient = await get(`SELECT * FROM patients WHERE id = ? AND user_id = ?`, [rawPatientId, req.user.id]);
+    const patient = await get(
+      `SELECT p.*
+       FROM user_patient_links upl
+       JOIN patients p ON p.id = upl.patient_id
+       WHERE upl.user_id = ? AND upl.patient_id = ?`,
+      [req.user.id, rawPatientId]
+    );
     if (!patient) {
       const err = new Error('就诊人不存在或无权访问');
       err.statusCode = 404;
@@ -49,9 +425,7 @@ async function resolveUserPatient(req, patientIdSource = 'query') {
     }
     return patient;
   }
-  const self = await get(`SELECT * FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
-  if (self) return self;
-  return get(`SELECT * FROM patients WHERE user_id = ? ORDER BY id ASC LIMIT 1`, [req.user.id]);
+  return getDefaultPatientForUser(req.user.id);
 }
 
 async function resolveTreatmentForPatient(patient, treatmentId) {
@@ -60,6 +434,60 @@ async function resolveTreatmentForPatient(patient, treatmentId) {
     return get(`SELECT * FROM treatment_records WHERE id = ? AND patient_id = ?`, [treatmentId, patient.id]);
   }
   return get(`SELECT * FROM treatment_records WHERE patient_id = ? AND status = 'active' ORDER BY start_date DESC, id DESC LIMIT 1`, [patient.id]);
+}
+
+async function ensureTreatmentForCheckin(patient, treatmentId, checkinDate) {
+  const existingTreatment = await resolveTreatmentForPatient(patient, treatmentId);
+  if (existingTreatment) return existingTreatment;
+
+  const fallbackDoctor = await get(`SELECT id FROM doctors WHERE status = 1 ORDER BY id ASC LIMIT 1`);
+  if (!fallbackDoctor) {
+    const err = new Error('当前暂无可关联医生，暂时无法创建治疗档案');
+    err.statusCode = 500;
+    throw err;
+  }
+
+  const startDate = formatDate(checkinDate || getShanghaiNow());
+  const placeholderDeviceName = PLACEHOLDER_TREATMENT_DEVICE_NAME;
+  const created = await run(
+    `INSERT INTO treatment_records (
+      patient_id,
+      doctor_id,
+      device_product_name,
+      device_model,
+      initial_advancement,
+      current_advancement,
+      start_date,
+      status
+    ) VALUES (?, ?, ?, ?, 0, 0, ?, 'active')`,
+    [patient.id, fallbackDoctor.id, placeholderDeviceName, placeholderDeviceName, startDate]
+  );
+
+  return get(`SELECT * FROM treatment_records WHERE id = ?`, [created.id]);
+}
+
+function isPlaceholderTreatmentRecord(record) {
+  if (!record) return false;
+  const deviceName = String(record.device_product_name || record.device_model || '').trim();
+  return !record.medical_record_id && deviceName === PLACEHOLDER_TREATMENT_DEVICE_NAME;
+}
+
+async function createDefaultSelfPatientForUser(user) {
+  const patientNo = await generateUniquePatientNo(async (candidate) => {
+    const row = await get(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
+    return Boolean(row);
+  });
+  const rawPhone = typeof user?.phone === 'string' ? user.phone.trim() : '';
+  const phoneEnc = rawPhone ? encryptPII(rawPhone) : null;
+  const displayName = String(user?.nickname || '本人').trim() || '本人';
+  const created = await run(
+    `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, source, has_snore)
+     VALUES (?, ?, ?, 'self', 0, NULL, ?, 'mini_app', 0)`,
+    [patientNo, user.id, displayName, phoneEnc]
+  );
+  await ensureUserPatientLink(user.id, created.id, 'self');
+  await run(`UPDATE users SET self_patient_id = ? WHERE id = ?`, [created.id, user.id]);
+  return get(`SELECT * FROM patients WHERE id = ?`, [created.id]);
 }
 
 function buildTreatmentPhases(treatment, adjustments = []) {
@@ -683,75 +1111,54 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
       const existingUserByPhone = encryptedPhone ? await get(`SELECT * FROM users WHERE phone = ?`, [encryptedPhone]) : null;
       if (existingUserByPhone) {
         await run(`UPDATE users SET openid = ? WHERE id = ?`, [openid, existingUserByPhone.id]);
-        user = existingUserByPhone;
-        user.openid = openid;
+        user = await get(`SELECT * FROM users WHERE id = ?`, [existingUserByPhone.id]);
       } else {
         const nickname = `微信用户_${code.slice(-4)}`;
         const result = await run(
           `INSERT INTO users (openid, nickname, phone, member_level, points, total_spent) VALUES (?, ?, ?, 'normal', 0, 0)`,
           [openid, nickname, encryptedPhone]
         );
-
-        const patientNo = await generateUniquePatientNo(async (candidate) => {
-          const row = await get(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
-          return Boolean(row);
-        });
-        await run(
-          `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, source) VALUES (?, ?, ?, 'self', 1, 30, ?, 'mini_app')`,
-          [patientNo, result.id, nickname, encryptedPhone]
-        );
-
         user = await get(`SELECT * FROM users WHERE id = ?`, [result.id]);
       }
     } else {
-      if (encryptedPhone && !user.phone) {
+      if (encryptedPhone) {
         const existingUserByPhone = await get(`SELECT * FROM users WHERE phone = ? AND id != ?`, [encryptedPhone, user.id]);
-        if (!existingUserByPhone) {
+        if (existingUserByPhone) {
+          user = await mergeUserAccountIntoExistingUser(user.id, existingUserByPhone.id, { openid, phoneEnc: encryptedPhone });
+        } else if (!user.phone) {
           await run(`UPDATE users SET phone = ? WHERE id = ?`, [encryptedPhone, user.id]);
-          await run(`UPDATE patients SET phone = ? WHERE user_id = ? AND relation = 'self'`, [encryptedPhone, user.id]);
           user.phone = encryptedPhone;
-        } else {
-          // Merge anonymous temporary user data into the existing manually created profile
-          await transaction(async (conn) => {
-            const [tempPRows] = await conn.execute(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [user.id]);
-            const [realPRows] = await conn.execute(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [existingUserByPhone.id]);
-            const tempPatientId = tempPRows[0]?.id;
-            const realPatientId = realPRows[0]?.id;
-
-            if (tempPatientId && realPatientId) {
-              await conn.execute(`UPDATE appointments SET patient_id = ? WHERE patient_id = ?`, [realPatientId, tempPatientId]);
-              await conn.execute(`UPDATE medical_records SET patient_id = ? WHERE patient_id = ?`, [realPatientId, tempPatientId]);
-              await conn.execute(`UPDATE treatment_records SET patient_id = ? WHERE patient_id = ?`, [realPatientId, tempPatientId]);
-              await conn.execute(`UPDATE follow_up_tasks SET patient_id = ? WHERE patient_id = ?`, [realPatientId, tempPatientId]);
-
-              // Move any other family member patient profiles to the real user
-              await conn.execute(`UPDATE patients SET user_id = ? WHERE user_id = ? AND id != ?`, [existingUserByPhone.id, user.id, tempPatientId]);
-
-              // Delete the temporary self patient record
-              await conn.execute(`DELETE FROM patients WHERE id = ?`, [tempPatientId]);
-            }
-
-            // Move other user-linked records to the real user ID
-            await conn.execute(`UPDATE orders SET user_id = ? WHERE user_id = ?`, [existingUserByPhone.id, user.id]);
-            await conn.execute(`UPDATE user_notifications SET user_id = ? WHERE user_id = ?`, [existingUserByPhone.id, user.id]);
-            await conn.execute(`UPDATE treatment_timelines SET user_id = ? WHERE user_id = ?`, [existingUserByPhone.id, user.id]);
-            await conn.execute(`UPDATE snore_assessments SET user_id = ? WHERE user_id = ?`, [existingUserByPhone.id, user.id]);
-            await conn.execute(`UPDATE user_coupons SET user_id = ? WHERE user_id = ?`, [existingUserByPhone.id, user.id]);
-            await conn.execute(`UPDATE device_maintenance SET user_id = ? WHERE user_id = ?`, [existingUserByPhone.id, user.id]);
-            await conn.execute(`UPDATE device_feedback SET user_id = ? WHERE user_id = ?`, [existingUserByPhone.id, user.id]);
-
-            // Delete the temporary user
-            await conn.execute(`DELETE FROM users WHERE id = ?`, [user.id]);
-
-            // Bind openid to the existing user profile
-            await conn.execute(`UPDATE users SET openid = ? WHERE id = ?`, [openid, existingUserByPhone.id]);
-          });
-
-          user = existingUserByPhone;
-          user.openid = openid;
         }
       }
     }
+
+    if (encryptedPhone && !user.phone) {
+      await run(`UPDATE users SET phone = ? WHERE id = ?`, [encryptedPhone, user.id]);
+    }
+
+    user = await get(`SELECT * FROM users WHERE id = ?`, [user.id]);
+    let selfPatient = encryptedPhone ? await getIdentityMatchedPatient({ phoneEnc: encryptedPhone }) : null;
+    if (selfPatient) {
+      await bindUserToSelfPatient(user.id, selfPatient.id, {
+        preferName: user.nickname,
+        phoneEnc: encryptedPhone
+      });
+    } else {
+      selfPatient = await getSelfPatientForUser(user.id);
+      if (!selfPatient) {
+        selfPatient = await createDefaultSelfPatientForUser({
+          ...user,
+          phone: encryptedPhone || user.phone
+        });
+      } else if ((encryptedPhone && !selfPatient.phone) || isPlaceholderSelfName(selfPatient.name)) {
+        await bindUserToSelfPatient(user.id, selfPatient.id, {
+          preferName: user.nickname,
+          phoneEnc: encryptedPhone || user.phone
+        });
+      }
+    }
+
+    user = await get(`SELECT * FROM users WHERE id = ?`, [user.id]);
 
     const token = jwt.sign(
       { id: user.id, openid: user.openid },
@@ -792,7 +1199,7 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
     if (!user) {
       return res.status(404).json({ code: 404, message: '用户未找到' });
     }
-    const patient = await get(`SELECT * FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    const patient = await getSelfPatientForUser(req.user.id);
     const distributor = await get(`SELECT id, level FROM distributors WHERE user_id = ?`, [req.user.id]);
     res.json({
       code: 0,
@@ -804,6 +1211,8 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
         gender: patient ? patient.gender : 1,
         age: patient ? patient.age : 30,
         phone: decryptPII(user.phone) || (patient ? decryptPII(patient.phone) : '138****8888'),
+        idCard: patient ? (decryptPII(patient.id_card) || '') : '',
+        cardNo: patient ? (patient.card_no || '') : '',
         birthday: user.birthday ? formatDate(user.birthday) : '1995-01-01',
         memberLevel: user.member_level || 'normal',
         isDistributor: !!distributor,
@@ -817,26 +1226,59 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
 
 // 3. User Profile (PUT)
 app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
-  const { nickname, phone, gender, age, birthday } = req.body;
+  const { nickname, phone, gender, age, birthday, idCard } = req.body;
   const nicknameClean = nickname ? escapeHtml(nickname) : null;
   const phoneClean = phone ? escapeHtml(phone) : null;
   const phoneEnc = phoneClean ? encryptPII(phoneClean) : null;
+  const idCardClean = idCard ? escapeHtml(idCard).toUpperCase() : null;
+  const idCardEnc = idCardClean ? encryptPII(idCardClean) : null;
   const birthdayClean = birthday === '' || !birthday ? null : birthday;
   const genderClean = gender !== undefined ? gender : null;
   const ageClean = age !== undefined ? age : null;
+  if (idCard && !/^\d{17}[\dXx]$/.test(String(idCard))) {
+    return res.status(400).json({ code: 400, message: '身份证格式不正确' });
+  }
   try {
     await run(
       `UPDATE users SET nickname = COALESCE(?, nickname), phone = COALESCE(?, phone), birthday = COALESCE(?, birthday) WHERE id = ?`,
       [nicknameClean, phoneEnc, birthdayClean, req.user.id]
     );
-    await run(
-      `UPDATE patients SET name = COALESCE(?, name), gender = COALESCE(?, gender), age = COALESCE(?, age), phone = COALESCE(?, phone)
-       WHERE user_id = ? AND relation = 'self'`,
-      [nicknameClean, genderClean, ageClean, phoneEnc, req.user.id]
-    );
+    let selfPatient = await getSelfPatientForUser(req.user.id);
+    if (!selfPatient) {
+      const currentUser = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
+      selfPatient = await createDefaultSelfPatientForUser(currentUser);
+    }
+    if (selfPatient) {
+      if (idCardEnc && selfPatient.id_card !== idCardEnc) {
+        const matchedPatient = await getIdentityMatchedPatient({ idCardEnc });
+        if (matchedPatient) {
+          await bindUserToSelfPatient(req.user.id, matchedPatient.id, {
+            preferName: nicknameClean || selfPatient.name,
+            phoneEnc: phoneEnc || selfPatient.phone || null,
+            idCardEnc
+          });
+        } else {
+          await bindUserToSelfPatient(req.user.id, selfPatient.id, {
+            preferName: nicknameClean || selfPatient.name,
+            phoneEnc: phoneEnc || selfPatient.phone || null,
+            idCardEnc
+          });
+        }
+        selfPatient = await getSelfPatientForUser(req.user.id);
+      }
+      await run(
+        `UPDATE patients
+         SET name = COALESCE(?, name),
+             gender = COALESCE(?, gender),
+             age = COALESCE(?, age),
+             phone = COALESCE(?, phone)
+         WHERE id = ?`,
+        [nicknameClean, genderClean, ageClean, phoneEnc, selfPatient.id]
+      );
+    }
 
     const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
-    const patient = await get(`SELECT * FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    const patient = await getSelfPatientForUser(req.user.id);
     res.json({
       code: 0,
       message: 'success',
@@ -847,6 +1289,8 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
         gender: patient ? patient.gender : 1,
         age: patient ? patient.age : 30,
         phone: decryptPII(user.phone),
+        idCard: patient ? (decryptPII(patient.id_card) || '') : '',
+        cardNo: patient ? (patient.card_no || '') : '',
         birthday: user.birthday ? formatDate(user.birthday) : null,
         memberLevel: user.member_level || 'normal'
       }
@@ -864,7 +1308,7 @@ app.get('/api/v1/user/account-security', authenticateWxToken, async (req, res) =
     if (!user) {
       return res.status(404).json({ code: 404, message: '用户未找到' });
     }
-    const patient = await get(`SELECT * FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    const patient = await getSelfPatientForUser(req.user.id);
 
     // Masking helper for phone
     const phoneFull = decryptPII(user.phone) || (patient ? decryptPII(patient.phone) : '');
@@ -940,14 +1384,21 @@ app.post('/api/v1/user/change-phone', authenticateWxToken, async (req, res) => {
     return res.status(400).json({ code: 400, message: '验证码错误或已过期' });
   }
   try {
-    // Check if phone already bound to another user
     const encryptedPhone = encryptPII(phone);
     const existing = await get(`SELECT id FROM users WHERE phone = ? AND id != ?`, [encryptedPhone, req.user.id]);
     if (existing) {
       return res.status(400).json({ code: 400, message: '该手机号已被其他账号绑定' });
     }
     await run(`UPDATE users SET phone = ? WHERE id = ?`, [encryptedPhone, req.user.id]);
-    await run(`UPDATE patients SET phone = ? WHERE user_id = ? AND relation = 'self'`, [encryptedPhone, req.user.id]);
+    const matchedPatient = await getIdentityMatchedPatient({ phoneEnc: encryptedPhone });
+    if (matchedPatient) {
+      await bindUserToSelfPatient(req.user.id, matchedPatient.id, { phoneEnc: encryptedPhone });
+    } else {
+      const selfPatient = await getSelfPatientForUser(req.user.id);
+      if (selfPatient) {
+        await bindUserToSelfPatient(req.user.id, selfPatient.id, { phoneEnc: encryptedPhone });
+      }
+    }
     delete global.smsCodes[phone];
     res.json({ code: 0, message: '更换绑定手机成功' });
   } catch (error) {
@@ -969,27 +1420,33 @@ app.post('/api/v1/user/verify-realname', authenticateWxToken, async (req, res) =
     const cleanName = realName.trim();
     const cleanIdCard = idCard.trim().toUpperCase();
     const encryptedIdCard = encryptPII(cleanIdCard);
-
-    // Check if there is a 'self' patient record, if not create one
-    let selfPatient = await get(`SELECT * FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
-    if (!selfPatient) {
-      const patientNo = generateUniquePatientNo();
-      const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
-      await run(
-        `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, id_card)
-         VALUES (?, ?, ?, 'self', ?, 30, ?, ?)`,
-        [patientNo, req.user.id, cleanName, user.gender || 1, user.phone, encryptedIdCard]
-      );
+    const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
+    const matchedPatient = await getIdentityMatchedPatient({
+      idCardEnc: encryptedIdCard
+    });
+    if (matchedPatient) {
+      await bindUserToSelfPatient(req.user.id, matchedPatient.id, {
+        preferName: cleanName,
+        phoneEnc: user?.phone || null,
+        idCardEnc: encryptedIdCard
+      });
     } else {
-      await run(
-        `UPDATE patients SET name = ?, id_card = ? WHERE user_id = ? AND relation = 'self'`,
-        [cleanName, encryptedIdCard, req.user.id]
-      );
+      let selfPatient = await getSelfPatientForUser(req.user.id);
+      if (!selfPatient) {
+        selfPatient = await createDefaultSelfPatientForUser({
+          ...user,
+          nickname: cleanName
+        });
+      }
+      await bindUserToSelfPatient(req.user.id, selfPatient.id, {
+        preferName: cleanName,
+        phoneEnc: user?.phone || null,
+        idCardEnc: encryptedIdCard
+      });
     }
 
-    // Update users table nickname as well if it is '微信用户' or empty
-    const user = await get(`SELECT nickname FROM users WHERE id = ?`, [req.user.id]);
-    if (!user.nickname || user.nickname === '微信用户' || user.nickname.startsWith('微信用户_')) {
+    const latestUser = await get(`SELECT nickname FROM users WHERE id = ?`, [req.user.id]);
+    if (!latestUser.nickname || latestUser.nickname === '微信用户' || latestUser.nickname.startsWith('微信用户_')) {
       await run(`UPDATE users SET nickname = ? WHERE id = ?`, [cleanName, req.user.id]);
     }
 
@@ -1099,7 +1556,7 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
     if (patientId) {
       let dbPatientId = null;
       if (patientId === 'pat-self') {
-        const selfPatient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+        const selfPatient = await getSelfPatientForUser(req.user.id);
         if (selfPatient) dbPatientId = selfPatient.id;
       } else {
         dbPatientId = Number(patientId);
@@ -1211,7 +1668,7 @@ app.post('/api/v1/assessments/ess', authenticateWxToken, async (req, res) => {
     if (patientId && patientId !== 'pat-self') {
       dbPatientId = Number(patientId);
     } else {
-      const selfPatient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+      const selfPatient = await getSelfPatientForUser(req.user.id);
       if (selfPatient) dbPatientId = selfPatient.id;
     }
 
@@ -1260,7 +1717,7 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
     if (patientId && patientId !== 'pat-self') {
       dbPatientId = Number(patientId);
     } else {
-      const selfPatient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+      const selfPatient = await getSelfPatientForUser(req.user.id);
       if (selfPatient) dbPatientId = selfPatient.id;
     }
   } catch (e) {
@@ -1755,7 +2212,7 @@ app.get('/api/v1/user/member-info', authenticateWxToken, async (req, res) => {
     let points = user.points || 0;
 
     // Check if the user is real-name verified (has self patient id_card)
-    const selfPatient = await get(`SELECT id_card FROM patients WHERE user_id = ? AND relation = 'self' LIMIT 1`, [req.user.id]);
+    const selfPatient = await getSelfPatientForUser(req.user.id);
     const hasRealname = selfPatient && selfPatient.id_card ? true : false;
 
     if (points === 0 && hasRealname) {
@@ -1791,7 +2248,7 @@ app.get('/api/v1/user/member-info', authenticateWxToken, async (req, res) => {
 // 5. Family Members (GET)
 app.get('/api/v1/user/family-members', authenticateWxToken, async (req, res) => {
   try {
-    const list = await query(`SELECT * FROM patients WHERE user_id = ?`, [req.user.id]);
+    const list = await getLinkedPatientsForUser(req.user.id);
     const formatted = list.map(p => {
       const decIdCard = decryptPII(p.id_card) || '';
       const decPhone = decryptPII(p.phone) || '';
@@ -1803,7 +2260,7 @@ app.get('/api/v1/user/family-members', authenticateWxToken, async (req, res) => 
       return {
         id: p.id.toString(),
         name: p.name,
-        relation: p.relation,
+        relation: p.link_relation || p.relation || 'other',
         gender: p.gender,
         age: p.age,
         phone: decPhone,
@@ -1853,28 +2310,71 @@ app.post('/api/v1/user/family-members', authenticateWxToken, async (req, res) =>
 
   try {
     const genderVal = gender === '男' || gender === 1 || gender === '1' ? 1 : gender === '女' || gender === 2 || gender === '2' ? 2 : 0;
-    const patientNo = await generateUniquePatientNo(async (candidate) => {
-      const row = await get(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
-      return Boolean(row);
-    });
-    const result = await run(
-      `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, id_card, card_no, source, has_snore)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'mini_app', 0)`,
-      [patientNo, req.user.id, nameClean, relationClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean]
+    let patient = null;
+    if (idCardEnc) {
+      patient = await get(
+        `SELECT * FROM patients WHERE id_card = ? ORDER BY id ASC LIMIT 1`,
+        [idCardEnc]
+      );
+    } else if (phoneEnc) {
+      const phoneMatchedPatient = await get(
+        `SELECT * FROM patients WHERE phone = ? ORDER BY id ASC LIMIT 1`,
+        [phoneEnc]
+      );
+      if (phoneMatchedPatient && !phoneMatchedPatient.id_card) {
+        patient = phoneMatchedPatient;
+      }
+    }
+
+    if (!patient) {
+      const resolvedCardNo = cardNoClean || await generateUniqueCardNo();
+      const patientNo = await generateUniquePatientNo(async (candidate) => {
+        const row = await get(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
+        return Boolean(row);
+      });
+      const result = await run(
+        `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, id_card, card_no, source, has_snore)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'mini_app', 0)`,
+        [patientNo, req.user.id, nameClean, relationClean, genderVal, ageVal, phoneEnc, idCardEnc, resolvedCardNo]
+      );
+      patient = await get(`SELECT * FROM patients WHERE id = ?`, [result.id]);
+    } else {
+      const nextPhone = patient.phone || phoneEnc || null;
+      const nextIdCard = patient.id_card || idCardEnc || null;
+      const nextCardNo = patient.card_no || cardNoClean || await generateUniqueCardNo();
+      if (nextPhone !== patient.phone || nextIdCard !== patient.id_card || nextCardNo !== patient.card_no) {
+        await run(
+          `UPDATE patients SET phone = ?, id_card = ?, card_no = ? WHERE id = ?`,
+          [nextPhone, nextIdCard, nextCardNo, patient.id]
+        );
+        patient = await get(`SELECT * FROM patients WHERE id = ?`, [patient.id]);
+      }
+    }
+
+    const existingLink = await get(
+      `SELECT id FROM user_patient_links WHERE user_id = ? AND patient_id = ?`,
+      [req.user.id, patient.id]
     );
+    if (existingLink) {
+      return res.status(400).json({ code: 400, message: '该就诊人已在当前关联列表中' });
+    }
+
+    await ensureUserPatientLink(req.user.id, patient.id, relationClean);
+    const decPatientIdCard = decryptPII(patient.id_card) || idCardClean || '';
+    const decPatientPhone = decryptPII(patient.phone) || phoneClean || '';
     res.json({
       code: 0,
       message: 'success',
       data: {
-        id: result.id.toString(),
-        name: nameClean,
+        id: patient.id.toString(),
+        name: patient.name,
         relation: relationClean,
-        gender: genderVal,
-        age: ageVal,
-        phone: phoneClean,
-        idCard: idCardClean ? `${idCardClean.slice(0, 3)}***********${idCardClean.slice(-4)}` : '',
-        cardNo: cardNoClean,
-        hasSnore: false
+        gender: patient.gender,
+        age: patient.age,
+        phone: decPatientPhone,
+        idCard: decPatientIdCard ? `${decPatientIdCard.slice(0, 3)}***********${decPatientIdCard.slice(-4)}` : '',
+        cardNo: patient.card_no || '',
+        hasSnore: patient.has_snore === 1
       }
     });
   } catch (error) {
@@ -1883,18 +2383,223 @@ app.post('/api/v1/user/family-members', authenticateWxToken, async (req, res) =>
   }
 });
 
+// 6.5 Get Family Member Detail (GET)
+app.get('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const link = await get(
+      `SELECT p.*, upl.relation AS link_relation
+       FROM user_patient_links upl
+       JOIN patients p ON p.id = upl.patient_id
+       WHERE upl.user_id = ? AND upl.patient_id = ?`,
+      [req.user.id, id]
+    );
+    if (!link) {
+      return res.status(404).json({ code: 404, message: '家庭成员不存在' });
+    }
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        id: link.id.toString(),
+        name: link.name,
+        relation: link.link_relation || link.relation || 'other',
+        gender: link.gender,
+        age: link.age,
+        phone: link.phone ? decryptPII(link.phone) : '',
+        idCard: link.id_card ? decryptPII(link.id_card) : '',
+        cardNo: link.card_no || '',
+        hasSnore: Boolean(link.has_snore)
+      }
+    });
+  } catch (error) {
+    console.error('Get family member error:', error);
+    res.status(500).json({ code: 500, message: '获取家庭成员详情失败' });
+  }
+});
+
+// 6.6 Update Family Member (PUT)
+app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res) => {
+  const { id } = req.params;
+  const { name, relation, gender, age, phone, idCard, cardNo } = req.body;
+  if (!name) {
+    return res.status(400).json({ code: 400, message: '姓名不能为空' });
+  }
+  const ageVal = age === undefined || age === null || age === '' ? null : parseInt(age, 10);
+  if (ageVal !== null && (!Number.isInteger(ageVal) || ageVal < 1 || ageVal > 120)) {
+    return res.status(400).json({ code: 400, message: '年龄必须在1至120之间' });
+  }
+  if (phone && !/^1[3-9]\d{9}$/.test(String(phone))) {
+    return res.status(400).json({ code: 400, message: '手机号格式不正确' });
+  }
+  if (idCard && !/^\d{17}[\dXx]$/.test(String(idCard))) {
+    return res.status(400).json({ code: 400, message: '身份证格式不正确' });
+  }
+
+  const nameClean = escapeHtml(name);
+  const relationClean = relation ? escapeHtml(relation) : 'other';
+  const phoneClean = phone ? escapeHtml(phone) : null;
+  const idCardClean = idCard ? escapeHtml(idCard).toUpperCase() : null;
+  const cardNoClean = cardNo ? escapeHtml(cardNo) : null;
+
+  const phoneEnc = phoneClean ? encryptPII(phoneClean) : null;
+  const idCardEnc = idCardClean ? encryptPII(idCardClean) : null;
+
+  try {
+    const genderVal = gender === '男' || gender === 1 || gender === '1' ? 1 : gender === '女' || gender === 2 || gender === '2' ? 2 : 0;
+    let responsePatientId = String(id);
+
+    const link = await get(
+      `SELECT p.*, upl.relation AS link_relation
+       FROM user_patient_links upl
+       JOIN patients p ON p.id = upl.patient_id
+       WHERE upl.user_id = ? AND upl.patient_id = ?`,
+      [req.user.id, id]
+    );
+    if (!link) {
+      return res.status(404).json({ code: 404, message: '关联的家庭成员不存在' });
+    }
+    if (link.user_id === req.user.id && link.relation === 'self') {
+      return res.status(400).json({ code: 400, message: '本人信息请前往个人信息页修改' });
+    }
+
+    const identityChanged = (link.phone || null) !== (phoneEnc || null) || (link.id_card || null) !== (idCardEnc || null);
+
+    await transaction(async (conn) => {
+      let targetPatientId = Number(id);
+
+      if (identityChanged) {
+        const matchedPatient = await getIdentityMatchedPatientWithConn(conn, {
+          phoneEnc,
+          idCardEnc,
+          excludePatientId: id
+        });
+
+        if (matchedPatient) {
+          const [[duplicatedLink]] = await conn.execute(
+            `SELECT id FROM user_patient_links WHERE user_id = ? AND patient_id = ? LIMIT 1`,
+            [req.user.id, matchedPatient.id]
+          );
+          if (duplicatedLink) {
+            const err = new Error('修改后的身份已在当前关联列表中');
+            err.statusCode = 400;
+            throw err;
+          }
+
+          await reassignPatientDataWithConn(conn, id, matchedPatient.id);
+          await conn.execute(`DELETE FROM user_patient_links WHERE user_id = ? AND patient_id = ?`, [req.user.id, id]);
+          await conn.execute(
+            `INSERT INTO user_patient_links (user_id, patient_id, relation)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE relation = VALUES(relation), updated_at = CURRENT_TIMESTAMP`,
+            [req.user.id, matchedPatient.id, relationClean]
+          );
+
+          const nextMatchedCardNo = matchedPatient.card_no || cardNoClean || null;
+          await conn.execute(
+            `UPDATE patients
+             SET phone = COALESCE(phone, ?),
+                 id_card = COALESCE(id_card, ?),
+                 card_no = COALESCE(card_no, ?)
+             WHERE id = ?`,
+            [phoneEnc, idCardEnc, nextMatchedCardNo, matchedPatient.id]
+          );
+          targetPatientId = Number(matchedPatient.id);
+
+          const [[remainingLinks]] = await conn.execute(`SELECT COUNT(*) AS count FROM user_patient_links WHERE patient_id = ?`, [id]);
+          if (Number(remainingLinks?.count || 0) === 0) {
+            await conn.execute(`DELETE FROM patients WHERE id = ?`, [id]);
+          }
+        } else {
+          const [[linkCountRow]] = await conn.execute(
+            `SELECT COUNT(*) AS count FROM user_patient_links WHERE patient_id = ?`,
+            [id]
+          );
+          const shouldSplitIdentity = Number(linkCountRow?.count || 0) > 1 || (link.user_id && Number(link.user_id) !== Number(req.user.id)) || link.relation === 'self';
+
+          if (shouldSplitIdentity) {
+            const clonedPatient = await createPatientCloneForLinkWithConn(conn, link, {
+              name: nameClean,
+              gender: genderVal,
+              age: ageVal,
+              phoneEnc,
+              idCardEnc,
+              cardNo: cardNoClean
+            });
+            await conn.execute(
+              `UPDATE user_patient_links
+               SET patient_id = ?, relation = ?
+               WHERE user_id = ? AND patient_id = ?`,
+              [clonedPatient.id, relationClean, req.user.id, id]
+            );
+            targetPatientId = Number(clonedPatient.id);
+          } else {
+            await conn.execute(
+              `UPDATE patients
+               SET name = ?, gender = ?, age = ?, phone = ?, id_card = ?, card_no = ?
+               WHERE id = ?`,
+              [nameClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean, id]
+            );
+          }
+        }
+      }
+
+      if (!identityChanged) {
+        await conn.execute(
+          `UPDATE patients
+           SET name = ?, gender = ?, age = ?, phone = ?, id_card = ?, card_no = ?
+           WHERE id = ?`,
+          [nameClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean, id]
+        );
+      }
+
+      await conn.execute(
+        `UPDATE user_patient_links
+         SET relation = ?
+         WHERE user_id = ? AND patient_id = ?`,
+         [relationClean, req.user.id, targetPatientId]
+      );
+      responsePatientId = String(targetPatientId);
+    });
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: {
+        id: responsePatientId,
+        name: nameClean,
+        relation: relationClean,
+        gender: genderVal,
+        age: ageVal,
+        phone: phoneClean,
+        idCard: idCardClean ? `${idCardClean.slice(0, 3)}***********${idCardClean.slice(-4)}` : '',
+        cardNo: cardNoClean
+      }
+    });
+  } catch (error) {
+    console.error('Update family member error:', error);
+    res.status(500).json({ code: 500, message: '更新家庭成员失败' });
+  }
+});
+
 // 7. Family Member (DELETE)
 app.delete('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const patient = await get(`SELECT * FROM patients WHERE id = ? AND user_id = ?`, [id, req.user.id]);
-    if (!patient) {
+    const linkedPatient = await get(
+      `SELECT p.*, upl.relation AS link_relation
+       FROM user_patient_links upl
+       JOIN patients p ON p.id = upl.patient_id
+       WHERE upl.user_id = ? AND upl.patient_id = ?`,
+      [req.user.id, id]
+    );
+    if (!linkedPatient) {
       return res.status(404).json({ code: 404, message: '成员不存在' });
     }
-    if (patient.relation === 'self') {
-      return res.status(400).json({ code: 400, message: '不能删除本人建档' });
+    if (linkedPatient.user_id === req.user.id && linkedPatient.relation === 'self') {
+      return res.status(400).json({ code: 400, message: '不能移除当前登录账号本人的关联档案' });
     }
-    await run(`DELETE FROM patients WHERE id = ?`, [id]);
+    await run(`DELETE FROM user_patient_links WHERE user_id = ? AND patient_id = ?`, [req.user.id, id]);
     res.json({ code: 0, message: 'success', data: null });
   } catch (error) {
     res.status(500).json({ code: 500, message: '删除失败' });
@@ -2597,7 +3302,13 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
     if (!Number.isInteger(resolvedPatientId)) {
       return res.status(400).json({ code: 400, message: '请选择有效就诊人' });
     }
-    const patient = await get(`SELECT id, age FROM patients WHERE id = ? AND user_id = ?`, [resolvedPatientId, req.user.id]);
+    const patient = await get(
+      `SELECT p.id, p.age
+       FROM user_patient_links upl
+       JOIN patients p ON p.id = upl.patient_id
+       WHERE upl.user_id = ? AND upl.patient_id = ?`,
+      [req.user.id, resolvedPatientId]
+    );
     if (!patient) {
       return res.status(403).json({ code: 403, message: '无权使用该就诊人档案' });
     }
@@ -2903,11 +3614,19 @@ app.get('/api/v1/appointments', authenticateWxToken, async (req, res) => {
   }
   try {
     await autoUpdateExpiredAppointments();
+
     let sql = `SELECT a.*, p.name as patient_name, a.doctor_name, a.doctor_title, a.doctor_avatar, a.store_name
                FROM appointments a
                JOIN patients p ON a.patient_id = p.id
-               WHERE a.user_id = ?`;
+               WHERE (a.user_id = ?`;
     const params = [req.user.id];
+
+    const identityFilter = await getLinkedPatientIdentityFilter(req.user.id, 'p');
+    if (identityFilter.conditions.length > 0) {
+      sql += ` OR ${identityFilter.conditions.join(' OR ')}`;
+      params.push(...identityFilter.params);
+    }
+    sql += `)`;
 
     if (status) {
       sql += ` AND a.status = ?`;
@@ -2953,14 +3672,22 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
     await autoUpdateExpiredAppointments();
-    const row = await get(
-      `SELECT a.*, p.name as patient_name, d.hospital as doctor_hospital, d.intro as doctor_intro, d.experience_years as doctor_experience_years, d.expertise as doctor_expertise
-       FROM appointments a
-       JOIN patients p ON a.patient_id = p.id
-       LEFT JOIN doctors d ON a.doctor_id = d.id
-       WHERE a.id = ? AND a.user_id = ?`,
-      [id, req.user.id]
-    );
+
+    let sql = `SELECT a.*, p.name as patient_name, d.hospital as doctor_hospital, d.intro as doctor_intro, d.experience_years as doctor_experience_years, d.expertise as doctor_expertise
+               FROM appointments a
+               JOIN patients p ON a.patient_id = p.id
+               LEFT JOIN doctors d ON a.doctor_id = d.id
+               WHERE a.id = ? AND (a.user_id = ?`;
+    const params = [id, req.user.id];
+
+    const identityFilter = await getLinkedPatientIdentityFilter(req.user.id, 'p');
+    if (identityFilter.conditions.length > 0) {
+      sql += ` OR ${identityFilter.conditions.join(' OR ')}`;
+      params.push(...identityFilter.params);
+    }
+    sql += `)`;
+
+    const row = await get(sql, params);
 
     if (!row) {
       return res.status(404).json({ code: 404, message: '预约记录不存在' });
@@ -3192,7 +3919,17 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
   const { reason } = req.body;
   const reasonClean = reason ? escapeHtml(reason) : '';
   try {
-    const appt = await get(`SELECT * FROM appointments WHERE id = ? AND user_id = ?`, [id, req.user.id]);
+    let sql = `SELECT a.* FROM appointments a JOIN patients p ON a.patient_id = p.id WHERE a.id = ? AND (a.user_id = ?`;
+    const params = [id, req.user.id];
+
+    const identityFilter = await getLinkedPatientIdentityFilter(req.user.id, 'p');
+    if (identityFilter.conditions.length > 0) {
+      sql += ` OR ${identityFilter.conditions.join(' OR ')}`;
+      params.push(...identityFilter.params);
+    }
+    sql += `)`;
+
+    const appt = await get(sql, params);
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
     }
@@ -3259,7 +3996,17 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
   const { scheduleId, appointmentDate, appointmentTime } = req.body;
 
   try {
-    const appt = await get(`SELECT * FROM appointments WHERE id = ? AND user_id = ?`, [id, req.user.id]);
+    let sql = `SELECT a.* FROM appointments a JOIN patients p ON a.patient_id = p.id WHERE a.id = ? AND (a.user_id = ?`;
+    const params = [id, req.user.id];
+
+    const identityFilter = await getLinkedPatientIdentityFilter(req.user.id, 'p');
+    if (identityFilter.conditions.length > 0) {
+      sql += ` OR ${identityFilter.conditions.join(' OR ')}`;
+      params.push(...identityFilter.params);
+    }
+    sql += `)`;
+
+    const appt = await get(sql, params);
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
     }
@@ -3749,11 +4496,12 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
       });
     }
 
+    const safeLimitDays = limitDays === 30 ? 30 : 7;
     const logs = await query(
       `SELECT * FROM wearing_logs
        WHERE treatment_id = ? AND source = 'mini_program_checkin'
-       ORDER BY date DESC LIMIT ?`,
-      [tr.id, limitDays]
+       ORDER BY date DESC LIMIT ${safeLimitDays}`,
+      [tr.id]
     );
 
     let totalDuration = 0;
@@ -3777,9 +4525,9 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
         const ahiPenalty = log.ahi_index !== null && log.ahi_index !== undefined
           ? Math.max(0, 100 - Number(log.ahi_index || 0) * 4)
           : 100;
-        dayScore = Math.min(100, Math.round((log.wear_duration / 8) * 100 * 0.45 + (log.comfort / 5) * 100 * 0.25 + ahiPenalty * 0.3));
-        totalDuration += log.wear_duration;
-        totalComfort += log.comfort;
+        dayScore = Math.min(100, Math.round((Number(log.wear_duration || 0) / 8) * 100 * 0.45 + (Number(log.comfort || 0) / 5) * 100 * 0.25 + ahiPenalty * 0.3));
+        totalDuration += Number(log.wear_duration || 0);
+        totalComfort += Number(log.comfort || 0);
         if (log.ahi_index !== null && log.ahi_index !== undefined) {
           totalAhi += Number(log.ahi_index || 0);
           ahiCount++;
@@ -3906,6 +4654,7 @@ async function sendTreatmentRecord(req, res, explicitTreatmentId = null) {
       `SELECT * FROM device_adjustments WHERE treatment_id = ? ORDER BY adjust_date DESC, id DESC`,
       [tr.id]
     );
+    const isPlaceholderRecord = isPlaceholderTreatmentRecord(tr);
 
     res.json({
       code: 0,
@@ -3917,6 +4666,8 @@ async function sendTreatmentRecord(req, res, explicitTreatmentId = null) {
         appointmentId: tr.medical_record_id ? tr.medical_record_id.toString() : '',
         doctorId: tr.doctor_id.toString(),
         doctorName: tr.doctor_name || '',
+        isPlaceholderRecord,
+        isRealTreatmentRecord: !isPlaceholderRecord,
         diagnosis: tr.diagnosis || '',
         treatmentPlan: `下颌前移式阻鼾器治疗，初始前移量${tr.initial_advancement}mm，当前前移量${tr.current_advancement}mm`,
         deviceModel: tr.device_model,
@@ -4107,6 +4858,7 @@ app.get('/api/v1/treatment/timeline', authenticateWxToken, async (req, res) => {
 // 21.4 WeChat Client Wearing Check-in (POST)
 app.post('/api/v1/treatment/wearing', authenticateWxToken, async (req, res) => {
   const { date, wearDuration, comfort, note, ahiIndex } = req.body;
+  const explicitPatientId = req.body?.patientId || req.body?.memberId;
   if (!date || wearDuration === undefined) {
     return res.status(400).json({ code: 400, message: '打卡日期和时长不能为空' });
   }
@@ -4122,14 +4874,14 @@ app.post('/api/v1/treatment/wearing', authenticateWxToken, async (req, res) => {
     return res.status(400).json({ code: 400, message: '不能提交未来日期的佩戴记录' });
   }
   try {
-    const patient = await resolveUserPatient(req, 'body');
+    let patient = await resolveUserPatient(req, 'body');
+    if (!patient && !explicitPatientId) {
+      patient = await createDefaultSelfPatientForUser(req.user);
+    }
     if (!patient) {
       return res.status(404).json({ code: 404, message: '患者档案未找到' });
     }
-    const tr = await resolveTreatmentForPatient(patient, req.body.treatmentId);
-    if (!tr) {
-      return res.status(404).json({ code: 404, message: '当前无活跃治疗，无法打卡' });
-    }
+    const tr = await ensureTreatmentForCheckin(patient, req.body.treatmentId, date);
 
     // Check if check-in log already exists for this date
     const existingLog = await get(`SELECT id FROM wearing_logs WHERE treatment_id = ? AND date = ? AND source = 'mini_program_checkin'`, [tr.id, date]);
@@ -4147,7 +4899,8 @@ app.post('/api/v1/treatment/wearing', authenticateWxToken, async (req, res) => {
 
     res.json({ code: 0, message: '打卡成功' });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '佩戴打卡失败' });
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({ code: statusCode, message: error.message || '佩戴打卡失败' });
   }
 });
 
@@ -5389,7 +6142,7 @@ app.get('/api/v1/home/stats', async (req, res) => {
 // 1) 获取与客服的聊天记录
 app.get('/api/v1/im/messages', authenticateWxToken, async (req, res) => {
   try {
-    const patient = await get(`SELECT id FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    const patient = await getSelfPatientForUser(req.user.id);
     if (!patient) {
       return res.json({ code: 0, message: 'success', data: [] });
     }
@@ -5414,7 +6167,7 @@ app.post('/api/v1/im/send', authenticateWxToken, async (req, res) => {
     return res.status(400).json({ code: 400, message: '消息内容不能为空' });
   }
   try {
-    const patient = await get(`SELECT id, name FROM patients WHERE user_id = ? AND relation = 'self'`, [req.user.id]);
+    const patient = await getSelfPatientForUser(req.user.id);
     if (!patient) {
       return res.status(404).json({ code: 404, message: '未找到关联患者' });
     }

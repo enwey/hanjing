@@ -5,24 +5,27 @@
     u-i="50b7be62-0"
     bind:__l="__l"
     u-p="{{a}}" /><view wx:if="{{b}}" class="page-content data-v-50b7be62"
-    ><view wx:if="{{c}}" class="status-card data-v-50b7be62"
+    ><block wx:if="{{c}}"
+      ><view wx:if="{{d}}" class="status-card data-v-50b7be62"
       ><text class="status-title data-v-50b7be62">当前治疗</text
       ><view class="status-row data-v-50b7be62"
         ><text class="status-label data-v-50b7be62">设备型号</text
-        ><text class="status-value data-v-50b7be62">{{d}}</text></view
+        ><text class="status-value data-v-50b7be62">{{e}}</text></view
       ><view class="status-row data-v-50b7be62"
         ><text class="status-label data-v-50b7be62">下颌前移量</text
-        ><text class="status-value data-v-50b7be62">{{e}}mm</text></view
-      ><view class="status-row data-v-50b7be62"
+        ><text class="status-value data-v-50b7be62">{{f}}mm</text></view
+      ><view wx:if="{{g}}" class="status-row data-v-50b7be62"
         ><text class="status-label data-v-50b7be62">下次调整</text
         ><text class="status-value data-v-50b7be62" style="color: #f59e0b"
-          >{{f}}</text
+          >{{h}}</text
         ></view
       ></view
     ><view class="section-title data-v-50b7be62">治疗历程</view
-    ><view class="timeline data-v-50b7be62"
+    ><view wx:if="{{i}}" class="section-empty data-v-50b7be62"
+      ><text class="section-empty-text data-v-50b7be62">暂无治疗时间线记录，完成门诊诊疗后会按时间顺序同步展示。</text></view
+    ><view wx:else class="timeline data-v-50b7be62"
       ><view
-        wx:for="{{g}}"
+        wx:for="{{j}}"
         wx:for-item="event"
         wx:key="j"
         class="{{['tl-item', 'data-v-50b7be62', event.k && 'tl-item--last']}}"
@@ -45,6 +48,12 @@
             ></view
           ></view
         ></view
+      ></view></block
+    ><view wx:else class="empty-card data-v-50b7be62"
+      ><text class="empty-title data-v-50b7be62">暂无治疗记录</text
+      ><text class="empty-desc data-v-50b7be62">当前治疗人还没有完成门诊建档或阻鼾器适配，暂时无法生成治疗时间线。完成预约就诊后，这里会同步展示初诊、复诊和调整记录。</text
+      ><button class="empty-btn data-v-50b7be62" bindtap="{{l}}"
+        >前往预约</button
       ></view
     ><view class="safe-bottom data-v-50b7be62" /></view
 ></view>

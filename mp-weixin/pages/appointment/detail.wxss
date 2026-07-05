@@ -353,6 +353,10 @@
   color: #6b7280;
   line-height: 1.4;
 }
+.row-value--price.data-v-7e5a1194 {
+  color: #ef4444 !important;
+  font-weight: 600;
+}
 
 /* 5. Symptom card styles */
 .symptom-card.data-v-7e5a1194 {

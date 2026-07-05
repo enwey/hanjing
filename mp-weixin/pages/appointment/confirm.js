@@ -19,7 +19,17 @@ const o = () => "../../components/base/hj-navbar.js",
       const patientId = e.ref("");
       const patientList = e.ref([]);
       const patientIndex = e.ref(0);
-      const patientNames = e.computed(() => patientList.value.map(item => `${item.name} (${item.relation === 'self' ? '本人' : item.relation})`));
+      const relationLabelMap = {
+        self: "本人",
+        spouse: "配偶",
+        child: "子女",
+        parent: "父母",
+        other: "其他",
+      };
+      const patientNames = e.computed(() => patientList.value.map(item => {
+        const relationChinese = relationLabelMap[item.relation] || item.relation || '其他';
+        return `${item.name} (${relationChinese})`;
+      }));
       const selectedPatientName = e.computed(() => {
         const p = patientList.value[patientIndex.value];
         return p ? p.name : "本人";

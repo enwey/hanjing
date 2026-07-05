@@ -53,6 +53,25 @@ exports.deleteFamilyMember = async function (id) {
   );
 };
 
+exports.getFamilyMemberDetail = async function (id) {
+  return req.request(
+    {
+      url: `/user/family-members/${id}`,
+      method: "GET",
+    }
+  );
+};
+
+exports.updateFamilyMember = async function (id, data) {
+  return req.request(
+    {
+      url: `/user/family-members/${id}`,
+      method: "PUT",
+      data: data,
+    }
+  );
+};
+
 exports.getAccountSecurity = async function () {
   return req.request(
     {

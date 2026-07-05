@@ -13,14 +13,31 @@ const t = () => "../../components/base/hj-navbar.js",
         l = e.ref([]),
         r = e.ref(null),
         i = e.ref(!1),
-        v = e.ref(6),
+        v = e.ref(7),
         d = e.ref(4),
         c = e.ref(""),
         s = e.ref(!1),
         f = e.ref(!1),
+        durationScrollLeft = e.ref(0),
         members = e.ref([]),
         selectedPatientId = e.ref(e.index.getStorageSync("selected_treatment_patient_id") || ""),
-        memberNames = e.computed(() => members.value.map(item => item.relation === "self" ? `${item.name}（本人）` : `${item.name}（${item.relation || "成员"}）`)),
+        durationOptionValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        hasTreatmentRecord = e.computed(() => !!u.value),
+        hasRealTreatmentRecord = e.computed(() => !!(u.value && u.value.isRealTreatmentRecord)),
+        memberNames = e.computed(() => {
+          const relationLabelMap = {
+            self: "本人",
+            spouse: "配偶",
+            child: "子女",
+            parent: "父母",
+            sibling: "兄弟姐妹",
+            other: "其他",
+          };
+          return members.value.map((item) => {
+            const relationLabel = relationLabelMap[item.relation] || item.relation || "成员";
+            return `${item.name}（${relationLabel}）`;
+          });
+        }),
         memberIndex = e.computed(() => Math.max(0, members.value.findIndex(item => String(item.id) === String(selectedPatientId.value)))),
         m = e.computed(() =>
           u.value
@@ -31,7 +48,13 @@ const t = () => "../../components/base/hj-navbar.js",
                 doctorName: u.value.doctorName || "",
                 nextAdjust: u.value.nextAdjustDate,
               }
-            : null,
+            : {
+                model: "暂无治疗记录",
+                adjustValue: "",
+                startDate: "--",
+                doctorName: "",
+                nextAdjust: "",
+              },
         ),
         g = e.computed(() => {
           const e = [],
@@ -80,27 +103,63 @@ const t = () => "../../components/base/hj-navbar.js",
         if (comfort === 5) return "#15803D";
         return "#06B6D4";
       }
+      function scrollSelectedDurationToCenter(selectedDuration) {
+        const selectedIndex = durationOptionValues.indexOf(selectedDuration);
+        if (selectedIndex < 0) {
+          durationScrollLeft.value = 0;
+          return;
+        }
+        let windowWidth = 375;
+        try {
+          const windowInfo = e.index.getWindowInfo();
+          windowWidth = windowInfo.windowWidth || windowWidth;
+        } catch (err) {}
+        const panelHorizontalPadding = 40;
+        const optionWidth = 80;
+        const optionGap = 8;
+        const viewportWidth = Math.max(0, windowWidth - panelHorizontalPadding);
+        const nextScrollLeft = selectedIndex * (optionWidth + optionGap) - (viewportWidth - optionWidth) / 2;
+        durationScrollLeft.value = Math.max(0, Math.round(nextScrollLeft));
+      }
+      function selectWearDuration(durationHours) {
+        v.value = durationHours;
+        scrollSelectedDurationToCenter(durationHours);
+      }
       function openCheckinModal() {
         const todayObj = new Date(),
-          e = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`;
-          const a = o.value.find((a) => a.date === e);
-        ((null == a ? void 0 : a.wearDuration) && a.wearDuration > 0
+          todayDate = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`;
+          const todayRecord = o.value.find((recordItem) => recordItem.date === todayDate);
+        ((null == todayRecord ? void 0 : todayRecord.wearDuration) && todayRecord.wearDuration > 0
           ? ((f.value = !0),
-            (v.value = a.wearDuration),
-            (d.value = a.comfort),
-            (c.value = a.note || ""))
-          : ((f.value = !1), (v.value = 6), (d.value = 4), (c.value = "")),
+            (v.value = todayRecord.wearDuration),
+            (d.value = todayRecord.comfort),
+            (c.value = todayRecord.note || ""))
+          : ((f.value = !1), (v.value = 7), (d.value = 4), (c.value = "")),
           (i.value = !0));
+        setTimeout(() => {
+          scrollSelectedDurationToCenter(v.value);
+        }, 0);
       }
       function closeCheckinModal() {
         i.value = !1;
       }
       function queryParams() {
-        return selectedPatientId.value ? { patientId: selectedPatientId.value } : {};
+        const params = {
+          _t: Date.now(),
+        };
+        if (selectedPatientId.value) {
+          params.patientId = selectedPatientId.value;
+        }
+        return params;
       }
       async function loadData() {
         const memberRes = await a.getFamilyMembers();
         members.value = (memberRes.data && memberRes.data.list) || memberRes.list || [];
+        const hasSelectedMember = members.value.length > 0 && members.value.some(item => String(item.id) === String(selectedPatientId.value));
+        if (selectedPatientId.value && members.value.length > 0 && !hasSelectedMember) {
+          selectedPatientId.value = "";
+          e.index.removeStorageSync("selected_treatment_patient_id");
+        }
         if (!selectedPatientId.value && members.value.length) {
           const self = members.value.find(item => item.relation === "self") || members.value[0];
           selectedPatientId.value = String(self.id);
@@ -151,11 +210,15 @@ const t = () => "../../components/base/hj-navbar.js",
             (r.value = u.data),
             (i.value = !1),
             e.index.showToast({ title: "打卡成功", icon: "success" }));
-        } catch {
-          e.index.showToast({ title: "打卡失败", icon: "none" });
+        } catch (err) {
+          const title = err && err.message ? err.message : "打卡失败";
+          e.index.showToast({ title, icon: "none" });
         } finally {
           s.value = !1;
         }
+      }
+      function goCalendar() {
+        e.index.navigateTo({ url: "/pages/treatment/calendar/index" });
       }
       function goSleepTrend() {
         e.index.navigateTo({ url: "/pages/treatment/sleep-trend/index" });
@@ -211,17 +274,26 @@ const t = () => "../../components/base/hj-navbar.js",
               memberIndex: memberIndex.value,
               memberChange: e.o(onMemberChange),
               showMemberPicker: members.value.length > 1,
-              b: !n.value && u.value
+              b: !n.value
             },
-            !n.value && u.value
+            !n.value
               ? {
+                  hasTreatmentRecord: hasTreatmentRecord.value,
+                  heroBadgeText: e.t(hasTreatmentRecord.value ? "治疗中" : "未开始"),
+                  heroSubText: e.t(hasTreatmentRecord.value ? `已佩戴 ${w.value.streak} 天` : "暂无诊疗记录"),
+                  heroDeviceText: e.t((null == (o = m.value) ? void 0 : o.model) || "暂无治疗记录"),
+                  heroDoctorText: e.t(hasTreatmentRecord.value ? `主治：${(null == (r = m.value) ? void 0 : r.doctorName) || "--"} 医生` : "完成初诊适配后将在此展示"),
+                  heroProgressText: e.t(hasTreatmentRecord.value ? `依从率 ${p.value}%` : "依从率 --"),
+                  heroStartText: e.t(hasTreatmentRecord.value ? `初配日期：${(null == (f = m.value) ? void 0 : f.startDate) || "--"}` : "初配日期：--"),
+                  emptyTreatmentNotice: "该治疗人暂无诊疗记录，完成初诊适配后将显示完整治疗追踪内容，当前也可先进行佩戴打卡。",
+                  showTimelineLink: hasRealTreatmentRecord.value,
                   c: e.t(w.value.streak),
                   d: e.t(null == (o = m.value) ? void 0 : o.model),
                   e: e.t(null == (r = m.value) ? void 0 : r.doctorName),
                   f: p.value + "%",
                   g: e.t(p.value),
                   h: e.t(null == (f = m.value) ? void 0 : f.startDate),
-                  i: e.o(goSleepTrend, "aa"),
+                  i: e.o(goCalendar, "aa"),
                   j: e.f(g.value, (a, t, n) => ({
                     a: e.t(a.dayOfWeek),
                     b: getRecordColor(a),
@@ -255,7 +327,7 @@ const t = () => "../../components/base/hj-navbar.js",
                       },
                     ),
                   ),
-                  phases: e.f(u.value.phases || [], (phase, t, n) => ({
+                  phases: e.f(((u.value && u.value.phases) || []), (phase, t, n) => ({
                     a: phase.status === 'completed' ? '✓' : phase.dot,
                     b: phase.status === 'completed' ? 'completed' : (phase.status === 'active' ? 'active' : 'pending'),
                     c: phase.status === 'completed' ? 'completed' : (phase.status === 'active' ? 'active' : 'pending'),
@@ -263,30 +335,22 @@ const t = () => "../../components/base/hj-navbar.js",
                     e: phase.status === 'active' ? 'active-name' : '',
                     f: e.t(phase.desc),
                     g: e.t(phase.date),
-                    h: t === u.value.phases.length - 1 ? '' : (phase.status === 'completed' ? 'completed' : (phase.status === 'active' ? 'active' : 'pending')),
-                    i: t === u.value.phases.length - 1 ? 1 : ""
+                    h: t === (((u.value && u.value.phases) || []).length - 1) ? '' : (phase.status === 'completed' ? 'completed' : (phase.status === 'active' ? 'active' : 'pending')),
+                    i: t === (((u.value && u.value.phases) || []).length - 1) ? 1 : ""
                   }))
                 }
               : {},
-            { y: !n.value && !u.value },
-            n.value || u.value
-              ? {}
-              : {
-                  z: e.p({ text: "暂无治疗记录", icon: "💊" })
-                },
             { A: i.value },
             i.value
               ? {
                   z1: e.t(checkinDateStr.value),
-                  B: e.f([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], (a, t, n) => ({
+                  durationScrollLeft: e.unref(durationScrollLeft),
+                  B: e.f(durationOptionValues, (a, t, n) => ({
                     a: e.t(a),
                     b: a,
                     c: v.value === a ? 1 : "",
                     d: e.o(
-                      (e) =>
-                        (function (e) {
-                          v.value = e;
-                        })(a),
+                      () => selectWearDuration(a),
                       a,
                     ),
                   })),

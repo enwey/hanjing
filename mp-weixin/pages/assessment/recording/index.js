@@ -1,28 +1,32 @@
 "use strict";
 const e = require("../../../common/vendor.js"),
-  a = require("../../../api/index.js");
+  assessmentApi = require("../../../api/index.js");
 Math || l();
-const l = () => "../../../components/base/hj-navbar.js",
-  u = e.defineComponent({
+const loadNavbarComponent = () => "../../../components/base/hj-navbar.js",
+  pageComponent = e.defineComponent({
     __name: "index",
-    setup(l) {
-      const u = e.ref(!1),
-        v = e.ref(!1),
-        n = e.ref(!1),
-        t = e.ref(0),
-        o = e.ref(!1);
+    setup() {
+      const isRecording = e.ref(!1),
+        hasRecordingEnded = e.ref(!1),
+        isSubmitting = e.ref(!1),
+        recordingDurationSeconds = e.ref(0),
+        isAnalyzing = e.ref(!1);
+      const originalScreenBrightness = e.ref(null);
+      const hasDimmedScreen = e.ref(!1);
 
       const familyMembers = e.ref([]);
       const memberNames = e.ref([]);
       const memberIndex = e.ref(0);
       const selectedMemberName = e.ref("本人");
       const selectedMemberId = e.ref("");
-      const disabledSelector = e.computed(() => u.value || n.value || o.value);
+      const disabledSelector = e.computed(
+        () => isRecording.value || isSubmitting.value || isAnalyzing.value,
+      );
 
       async function loadFamilyMembers() {
         try {
-          const res = await a.getFamilyMembers();
-          const list = res.data?.list || [];
+          const response = await assessmentApi.getFamilyMembers();
+          const list = response.data?.list || [];
           familyMembers.value = list;
           
           const relationNames = {
@@ -60,18 +64,55 @@ const l = () => "../../../components/base/hj-navbar.js",
         }
       }
       let r = null;
+      let simInterval = null;
+      let lastFrameTime = 0;
+      let recordingStartTime = 0;
       const recorderManager = wx.getRecorderManager();
       const tempFilePath = e.ref("");
+      const volumeScale = e.ref(1.0);
+      const minimumScreenBrightness = 0.01;
 
       recorderManager.onStop((res) => {
         console.log("[RecorderManager] Stopped, tempFilePath:", res.tempFilePath);
         tempFilePath.value = res.tempFilePath;
-        setTimeout(() => {
-          submitRecording();
-        }, 100);
+        simInterval && clearInterval(simInterval);
+        submitRecording();
       });
       recorderManager.onError((err) => {
         console.error("[RecorderManager] Error:", err);
+      });
+      const factors = [0.15, 0.25, 0.4, 0.6, 0.8, 0.95, 1.0, 1.0, 1.0, 1.0, 0.95, 0.8, 0.6, 0.4, 0.25, 0.15];
+      recorderManager.onFrameRecorded((res) => {
+        if (res && res.frameBuffer) {
+          try {
+            // Use safe utility to convert frameBuffer to pcm
+            const pcm = toPcmInt16Array(res.frameBuffer);
+            let sum = 0;
+            const len = pcm.length;
+            if (len > 0) {
+              lastFrameTime = Date.now();
+              for (let i = 0; i < len; i++) {
+                sum += Math.abs(pcm[i]);
+              }
+              const avgAbs = sum / len;
+              // Map avgAbs (usually 50 to 5000) to 0.0 to 1.0
+              const scale = Math.min(1.0, Math.max(0.0, (avgAbs - 80) / 1800));
+              
+              // Generate new heights for the 16 bars based on sound decibels
+              const newLevels = [];
+              for (let i = 0; i < 16; i++) {
+                const maxJump = 32;
+                const noise = 0.85 + Math.random() * 0.3; // Staggered organic variance
+                const height = 6 + Math.floor(maxJump * scale * factors[i] * noise);
+                newLevels.push(Math.min(38, Math.max(6, height)));
+              }
+              audioLevels.value = newLevels;
+              volumeScale.value = Math.min(1.3, Math.max(0.15, avgAbs / 1500));
+            }
+          } catch (e) {
+            console.error("Frame volume calc error:", e);
+          }
+        }
       });
 
       function toPcmInt16Array(arrayBuffer) {
@@ -85,33 +126,138 @@ const l = () => "../../../components/base/hj-navbar.js",
         return new Int16Array(arrayBuffer.slice(0, validByteLength));
       }
 
-      const durationStr = e.computed(() => {
-          const e = Math.floor(t.value / 60),
-            a = t.value % 60;
-          return `${String(e).padStart(2, "0")}:${String(a).padStart(2, "0")}`;
-        }),
-        audioLevels = e.computed(() => {
-          const e = [];
-          for (let a = 0; a < 16; a++)
-            u.value ? e.push(10 + Math.floor(40 * Math.random())) : e.push(6);
-          return e;
+      function rememberCurrentScreenBrightness() {
+        if (typeof originalScreenBrightness.value === "number") {
+          return Promise.resolve(originalScreenBrightness.value);
+        }
+        return new Promise((resolve) => {
+          wx.getScreenBrightness({
+            success(res) {
+              const currentBrightness =
+                res && typeof res.value === "number" ? res.value : 1;
+              originalScreenBrightness.value = currentBrightness;
+              resolve(currentBrightness);
+            },
+            fail(err) {
+              console.warn("[SnoreRecording] 获取当前亮度失败", err);
+              resolve(null);
+            },
+          });
         });
+      }
+
+      async function dimScreenForRecording() {
+        if (hasDimmedScreen.value) {
+          return;
+        }
+        await rememberCurrentScreenBrightness();
+        wx.setScreenBrightness({
+          value: minimumScreenBrightness,
+          success() {
+            hasDimmedScreen.value = !0;
+          },
+          fail(err) {
+            console.warn("[SnoreRecording] 降低屏幕亮度失败", err);
+          },
+        });
+      }
+
+      function restoreScreenBrightness() {
+        if (!hasDimmedScreen.value) {
+          return;
+        }
+        const targetBrightness =
+          typeof originalScreenBrightness.value === "number"
+            ? originalScreenBrightness.value
+            : 1;
+        wx.setScreenBrightness({
+          value: targetBrightness,
+          complete() {
+            hasDimmedScreen.value = !1;
+            originalScreenBrightness.value = null;
+          },
+        });
+      }
+
+      function handleBack() {
+        restoreScreenBrightness();
+        e.index.navigateBack({
+          delta: 1,
+          fail() {
+            e.index.navigateTo({ url: "/pages/assessment/index" });
+          },
+        });
+      }
+
+      const durationStr = e.computed(() => {
+          const minutes = Math.floor(recordingDurationSeconds.value / 60),
+            seconds = recordingDurationSeconds.value % 60;
+          return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+        });
+      const audioLevels = e.ref(new Array(16).fill(6));
+      const statusText = e.computed(() => {
+        if (isAnalyzing.value) return "AI正在离线分析呼吸指标...";
+        if (isRecording.value && !hasRecordingEnded.value) return "正在监测睡眠声音...";
+        if (!isRecording.value && !isSubmitting.value) return "点击麦克风开启睡眠监测";
+        return "正在监测睡眠声音...";
+      });
+      const statusClass = e.computed(() => {
+        if (isAnalyzing.value) return "status-text--analyzing";
+        if (isRecording.value && !hasRecordingEnded.value) return "status-text--recording";
+        if (hasRecordingEnded.value) return "status-text--paused";
+        return "";
+      });
+      const showStatusText = e.computed(() => {
+        if (isAnalyzing.value) return true;
+        if (isRecording.value && !hasRecordingEnded.value) return true;
+        if (!isRecording.value && !isSubmitting.value) return true;
+        return false;
+      });
 
       function startRecording() {
         wx.authorize({
           scope: "scope.record",
-          success: () => {
-            u.value = !0;
-            v.value = !1;
-            t.value = 0;
+          success: async () => {
+            await dimScreenForRecording();
+            isRecording.value = !0;
+            hasRecordingEnded.value = !1;
+            recordingDurationSeconds.value = 0;
+            volumeScale.value = 0.5;
+            audioLevels.value = new Array(16).fill(6);
+            recordingStartTime = Date.now();
+            lastFrameTime = 0;
+            
+            // Start simulation interval fallback (for WeChat Simulator where microphone input frames may be mock-disabled)
+            simInterval && clearInterval(simInterval);
+            simInterval = setInterval(() => {
+              if (Date.now() - lastFrameTime > 400) {
+                const elapsed = (Date.now() - recordingStartTime) / 1000;
+                const breathe = Math.sin(elapsed * Math.PI / 2.0); // deep breath oscillation
+                const isSnoring = Math.sin(elapsed * Math.PI / 10) > 0.6; // sleep snore surge
+                const baseScale = isSnoring ? 0.6 : 0.2;
+                const scale = Math.min(1.0, Math.max(0.02, baseScale + breathe * baseScale + (Math.random() * 0.12)));
+                
+                const newLevels = [];
+                for (let i = 0; i < 16; i++) {
+                  const maxJump = 32;
+                  const noise = 0.8 + Math.random() * 0.4;
+                  const height = 6 + Math.floor(maxJump * scale * factors[i] * noise);
+                  newLevels.push(Math.min(38, Math.max(6, height)));
+                }
+                audioLevels.value = newLevels;
+                volumeScale.value = Math.min(1.3, Math.max(0.15, scale * 1.2));
+              }
+            }, 150);
+
             r = setInterval(() => {
-              t.value++;
+              recordingDurationSeconds.value++;
             }, 1000);
             recorderManager.start({
               duration: 600000,
               sampleRate: 8000,
               numberOfChannels: 1,
               format: "pcm",
+              frameSize: 2,
             });
           },
           fail: () => {
@@ -129,15 +275,76 @@ const l = () => "../../../components/base/hj-navbar.js",
         });
       }
 
+      function pauseRecording() {
+        if (isRecording.value) {
+          r && clearInterval(r);
+          simInterval && clearInterval(simInterval);
+          isRecording.value = !1;
+          hasRecordingEnded.value = !0;
+          isSubmitting.value = !0;
+          volumeScale.value = 1.0;
+          audioLevels.value = new Array(16).fill(6);
+          recorderManager.pause();
+          restoreScreenBrightness();
+        }
+      }
+
+      function resumeRecording() {
+        if (!isRecording.value && hasRecordingEnded.value) {
+          dimScreenForRecording();
+          isRecording.value = !0;
+          hasRecordingEnded.value = !1;
+          isSubmitting.value = !1;
+          volumeScale.value = 0.5;
+          audioLevels.value = new Array(16).fill(6);
+          recordingStartTime = Date.now();
+          lastFrameTime = 0;
+          
+          simInterval && clearInterval(simInterval);
+          simInterval = setInterval(() => {
+            if (Date.now() - lastFrameTime > 400) {
+              const elapsed = (Date.now() - recordingStartTime) / 1000;
+              const breathe = Math.sin(elapsed * Math.PI / 2.0);
+              const isSnoring = Math.sin(elapsed * Math.PI / 10) > 0.6;
+              const baseScale = isSnoring ? 0.6 : 0.2;
+              const scale = Math.min(1.0, Math.max(0.02, baseScale + breathe * baseScale + (Math.random() * 0.12)));
+              
+              const newLevels = [];
+              for (let i = 0; i < 16; i++) {
+                const maxJump = 32;
+                const noise = 0.8 + Math.random() * 0.4;
+                const height = 6 + Math.floor(maxJump * scale * factors[i] * noise);
+                newLevels.push(Math.min(38, Math.max(6, height)));
+              }
+              audioLevels.value = newLevels;
+              volumeScale.value = Math.min(1.3, Math.max(0.15, scale * 1.2));
+            }
+          }, 150);
+
+          r = setInterval(() => {
+            recordingDurationSeconds.value++;
+          }, 1000);
+          recorderManager.resume();
+        }
+      }
+
+      function stopAndAnalyze() {
+        if (recordingDurationSeconds.value < 5) {
+          e.index.showToast({
+            title: "录音时间过短，分析前请至少录制5秒",
+            icon: "none",
+          });
+          return;
+        }
+        isAnalyzing.value = !0;
+        recorderManager.stop();
+      }
+
       function onMicTap() {
-        if (u.value || n.value) {
-          if (u.value) {
-            r && clearInterval(r);
-            u.value = !1;
-            v.value = !1;
-            n.value = !0;
-            recorderManager.stop();
-          }
+        if (isRecording.value) {
+          pauseRecording();
+        } else if (hasRecordingEnded.value) {
+          resumeRecording();
         } else {
           startRecording();
         }
@@ -232,11 +439,12 @@ const l = () => "../../../components/base/hj-navbar.js",
       }
 
       async function submitRecording() {
-        if (t.value < 5) {
+        if (recordingDurationSeconds.value < 5) {
           e.index.showToast({ title: "录音时间过短，分析前请至少录制5秒", icon: "none" });
           return;
         }
-        o.value = !0;
+        isAnalyzing.value = !0;
+        let shouldExitAnalyzingState = !0;
         try {
           let analysisResult = null;
           if (tempFilePath.value) {
@@ -244,7 +452,7 @@ const l = () => "../../../components/base/hj-navbar.js",
               const fs = wx.getFileSystemManager();
               const arrayBuffer = fs.readFileSync(tempFilePath.value);
               const pcmData = toPcmInt16Array(arrayBuffer);
-              analysisResult = analyzePcmOnClient(pcmData, t.value);
+              analysisResult = analyzePcmOnClient(pcmData, recordingDurationSeconds.value);
               console.log("[SnoreRecording] Client analysis completed:", analysisResult);
             } catch (fsErr) {
               console.error("[SnoreRecording] Local DSP analysis failed:", fsErr);
@@ -260,7 +468,7 @@ const l = () => "../../../components/base/hj-navbar.js",
             type: "ai_snore",
             snoreRecordUrl: "",
             snoreAnalysis: {
-              duration: t.value,
+              duration: recordingDurationSeconds.value,
               avgDecibel: analysisResult.avgDecibel,
               peakDecibel: analysisResult.peakDecibel,
               snoreRate: analysisResult.snoreRate,
@@ -271,34 +479,36 @@ const l = () => "../../../components/base/hj-navbar.js",
             recommendation: "这是在微信小程序端本地进行实时声学分析得出的报告结论。",
             createdAt: new Date().toISOString()
           };
-          wx.setStorageSync('last_local_snore_result', localReport);
+          wx.setStorageSync("last_local_snore_result", localReport);
           const payload = { 
-            duration: t.value,
+            duration: recordingDurationSeconds.value,
             client_side_analysis: !0,
             analysis_result: analysisResult,
             timestamp: Date.now(),
             patientId: selectedMemberId.value
           };
           try {
-            const l = (await a.submitSnoreRecording(payload)).data;
-            if (l && l.id) {
+            const submitResult = (await assessmentApi.submitSnoreRecording(payload)).data;
+            if (submitResult && submitResult.id) {
+              shouldExitAnalyzingState = !1;
               e.index.redirectTo({
-                url: "/pages/assessment/snore-result/index?id=" + l.id,
+                url: "/pages/assessment/snore-result/index?id=" + submitResult.id,
               });
+              return;
             } else {
               throw new Error("Invalid response");
             }
           } catch (uploadErr) {
             console.warn("[SnoreRecording] Upload failed, caching for silent retry:", uploadErr);
-            const pending = wx.getStorageSync('pending_snore_uploads') || [];
+            const pending = wx.getStorageSync("pending_snore_uploads") || [];
             pending.push(payload);
-            wx.setStorageSync('pending_snore_uploads', pending);
+            wx.setStorageSync("pending_snore_uploads", pending);
             e.index.showToast({ title: "已离线生成报告，联网后将自动同步", icon: "none", duration: 2500 });
-            setTimeout(() => {
-              e.index.redirectTo({
-                url: "/pages/assessment/snore-result/index?id=local",
-              });
-            }, 1000);
+            shouldExitAnalyzingState = !1;
+            e.index.redirectTo({
+              url: "/pages/assessment/snore-result/index?id=local",
+            });
+            return;
           }
         } catch (l) {
           (console.error("[SnoreRecording] 提交失败", l),
@@ -307,22 +517,28 @@ const l = () => "../../../components/base/hj-navbar.js",
               icon: "none",
             }));
         } finally {
-          o.value = !1;
+          if (shouldExitAnalyzingState) {
+            isAnalyzing.value = !1;
+          }
         }
       }
 
       e.onMounted(async () => {
         try {
           await loadFamilyMembers();
-          await a.syncPendingSnoreRecordings();
+          await assessmentApi.syncPendingSnoreRecordings();
         } catch (err) {
           console.error("Silent sync error:", err);
         }
+      });
+      e.onHide(() => {
+        restoreScreenBrightness();
       });
 
       return (
         e.onUnmounted(() => {
           r && clearInterval(r);
+          restoreScreenBrightness();
         }),
         (a, l) =>
           e.e(
@@ -332,53 +548,61 @@ const l = () => "../../../components/base/hj-navbar.js",
               selectedMemberName: e.unref(selectedMemberName),
               onMemberChange: e.o(onMemberChange),
               disabledSelector: e.unref(disabledSelector),
-              a: e.p({ title: "AI鼾声分析", showBack: !0 }),
-              b: u.value || n.value,
+              handleBack: e.o(handleBack, "2f"),
+              navbarProps: e.p({ title: "AI鼾声分析", showBack: !0, customBack: !0, transparent: !0, textColor: "#ffffff" }),
+              waveVisible: isRecording.value || isSubmitting.value,
+              volScale: e.unref(volumeScale),
+              showPlayIcon: !isRecording.value || hasRecordingEnded.value,
+              showPauseIcon: isRecording.value && !hasRecordingEnded.value,
+              showAnalyzingIcon: isAnalyzing.value,
+              statusText: e.unref(statusText),
+              statusClass: e.unref(statusClass),
+              showStatusText: e.unref(showStatusText),
             },
-            u.value || n.value
+            isRecording.value || isSubmitting.value
               ? {
                   c: e.f(audioLevels.value, (e, a, l) => ({
                     a: a,
                     b: e + "px",
                     c: 0.05 * a + "s",
                   })),
-                  d: u.value && !v.value ? 1 : "",
+                  d: isRecording.value && !hasRecordingEnded.value ? 1 : "",
                 }
               : {},
-            { e: u.value || n.value },
-            u.value || n.value ? { f: e.t(durationStr.value) } : {},
-            { g: u.value && !v.value ? 1 : "", h: !u.value && !n.value },
-            u.value || n.value ? (o.value || n.value, {}) : {},
+            { e: isRecording.value || isSubmitting.value },
+            isRecording.value || isSubmitting.value ? { f: e.t(durationStr.value) } : {},
+            { g: isRecording.value && !hasRecordingEnded.value ? 1 : "", h: !isRecording.value && !isSubmitting.value },
+            isRecording.value || isSubmitting.value ? (isAnalyzing.value || isSubmitting.value, {}) : {},
             {
-              i: o.value,
-              j: n.value,
-              k: u.value && !v.value ? 1 : "",
-              l: v.value ? 1 : "",
-              m: n.value && !u.value ? 1 : "",
-              n: o.value ? 1 : "",
+              i: isAnalyzing.value,
+              j: isSubmitting.value,
+              k: isRecording.value && !hasRecordingEnded.value ? 1 : "",
+              l: hasRecordingEnded.value ? 1 : "",
+              m: isSubmitting.value && !isRecording.value ? 1 : "",
+              n: isAnalyzing.value ? 1 : "",
               o: e.o(onMicTap, "e5"),
-              p: !u.value && !n.value,
+              p: !isRecording.value && !isSubmitting.value,
             },
-            u.value || n.value
-              ? ((u.value && !v.value) ||
-                  v.value ||
-                  (n.value && !o.value) ||
-                  o.value,
+            isRecording.value || isSubmitting.value
+              ? ((isRecording.value && !hasRecordingEnded.value) ||
+                  hasRecordingEnded.value ||
+                  (isSubmitting.value && !isAnalyzing.value) ||
+                  isAnalyzing.value,
                 {})
               : {},
             {
-              q: u.value && !v.value,
-              r: v.value,
-              s: n.value && !o.value,
-              t: o.value,
-              v: n.value && !o.value,
+              q: isRecording.value && !hasRecordingEnded.value,
+              r: hasRecordingEnded.value,
+              s: isSubmitting.value && !isAnalyzing.value,
+              t: isAnalyzing.value,
+              v: isSubmitting.value && !isAnalyzing.value,
             },
-            n.value && !o.value ? { w: e.o(startRecording, "2f"), x: e.o(submitRecording, "5b") } : {},
-            { y: o.value },
-            (o.value, {}),
+            isSubmitting.value && !isAnalyzing.value ? { w: e.o(resumeRecording, "2f"), x: e.o(stopAndAnalyze, "5b") } : {},
+            { y: isAnalyzing.value },
+            (isAnalyzing.value, {}),
           )
       );
     },
   }),
-  v = e._export_sfc(u, [["__scopeId", "data-v-70350287"]]);
+  v = e._export_sfc(pageComponent, [["__scopeId", "data-v-70350287"]]);
 wx.createPage(v);

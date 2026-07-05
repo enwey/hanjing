@@ -2,64 +2,64 @@
 const e = require("../../common/vendor.js"),
   api = require("../../api/index.js");
 Math || t();
-const t = () => "../../components/base/hj-navbar.js",
-  a = e.defineComponent({
+const loadNavbarComponent = () => "../../components/base/hj-navbar.js",
+  pageComponent = e.defineComponent({
     __name: "index",
-    setup(t) {
-      const a = e.ref([]);
+    setup() {
+      const assessmentRecords = e.ref([]);
       
-      function mapRecord(item) {
-        const isEss = item.type === 'ess';
-        let typeLabel = isEss ? 'ESS嗜睡量表' : 'AI鼾声分析';
-        let date = item.createdAt ? item.createdAt.split('T')[0] : '';
+      function mapAssessmentRecord(assessmentItem) {
+        const isEssAssessment = assessmentItem.type === "ess";
+        let assessmentTypeLabel = isEssAssessment ? "ESS嗜睡量表" : "AI鼾声分析";
+        let assessmentDate = assessmentItem.createdAt ? assessmentItem.createdAt.split("T")[0] : "";
         
-        let scoreStr = '';
-        let level = '';
-        let levelColor = '#3B6BF5';
+        let summaryText = "";
+        let riskLabel = "";
+        let riskLabelColor = "#3B6BF5";
         
-        if (isEss) {
-          scoreStr = `得分${item.essScore}分`;
-          level = {
-            normal: '正常',
-            mild: '轻度嗜睡',
-            moderate: '中度嗜睡',
-            severe: '重度嗜睡'
-          }[item.essLevel] || '正常';
+        if (isEssAssessment) {
+          summaryText = `得分${assessmentItem.essScore}分`;
+          riskLabel = {
+            normal: "正常",
+            mild: "轻度嗜睡",
+            moderate: "中度嗜睡",
+            severe: "重度嗜睡",
+          }[assessmentItem.essLevel] || "正常";
           
-          levelColor = {
-            normal: '#22C55E',
-            mild: '#3B6BF5',
-            moderate: '#F59E0B',
-            severe: '#EF4444'
-          }[item.essLevel] || '#22C55E';
+          riskLabelColor = {
+            normal: "#22C55E",
+            mild: "#3B6BF5",
+            moderate: "#F59E0B",
+            severe: "#EF4444",
+          }[assessmentItem.essLevel] || "#22C55E";
         } else {
-          scoreStr = `时长${item.snoreAnalysis.duration}秒`;
-          level = {
-            normal: '正常',
-            low: '低风险',
-            mild: '轻度风险',
-            moderate: '中度风险',
-            severe: '重度风险'
-          }[item.snoreAnalysis.riskLevel] || '正常';
+          summaryText = `时长${assessmentItem.snoreAnalysis.duration}秒`;
+          riskLabel = {
+            normal: "正常",
+            low: "低风险",
+            mild: "轻度风险",
+            moderate: "中度风险",
+            severe: "重度风险",
+          }[assessmentItem.snoreAnalysis.riskLevel] || "正常";
           
-          levelColor = {
-            normal: '#22C55E',
-            low: '#22C55E',
-            mild: '#3B6BF5',
-            moderate: '#F59E0B',
-            severe: '#EF4444'
-          }[item.snoreAnalysis.riskLevel] || '#22C55E';
+          riskLabelColor = {
+            normal: "#22C55E",
+            low: "#22C55E",
+            mild: "#3B6BF5",
+            moderate: "#F59E0B",
+            severe: "#EF4444",
+          }[assessmentItem.snoreAnalysis.riskLevel] || "#22C55E";
         }
         
         return {
-          id: item.id,
-          type: item.type,
-          typeLabel: typeLabel,
-          score: isEss ? item.essScore : 0,
-          level: level,
-          levelColor: levelColor,
-          date: date,
-          desc: `${scoreStr}，${item.recommendation || ''}`
+          id: assessmentItem.id,
+          type: assessmentItem.type,
+          typeLabel: assessmentTypeLabel,
+          score: isEssAssessment ? assessmentItem.essScore : 0,
+          level: riskLabel,
+          levelColor: riskLabelColor,
+          date: assessmentDate,
+          desc: `${summaryText}，${assessmentItem.recommendation || ""}`,
         };
       }
 
@@ -80,9 +80,9 @@ const t = () => "../../components/base/hj-navbar.js",
           checkPendingCount();
           e.index.hideLoading();
           e.index.showToast({ title: "同步成功", icon: "success" });
-          const res = await api.getAssessments();
-          if (res && res.code === 0 && Array.isArray(res.data)) {
-            a.value = res.data.map(mapRecord);
+          const response = await api.getAssessments();
+          if (response && response.code === 0 && Array.isArray(response.data)) {
+            assessmentRecords.value = response.data.map(mapAssessmentRecord);
           }
         } catch (err) {
           e.index.hideLoading();
@@ -95,7 +95,7 @@ const t = () => "../../components/base/hj-navbar.js",
       e.onShow(async () => {
         const token = e.index.getStorageSync("access_token");
         if (!token) {
-          a.value = [];
+          assessmentRecords.value = [];
           return;
         }
         checkPendingCount();
@@ -106,15 +106,15 @@ const t = () => "../../components/base/hj-navbar.js",
           console.error("Silent sync failed on index show:", syncErr);
         }
         try {
-          const res = await api.getAssessments();
-          if (res && res.code === 0 && Array.isArray(res.data)) {
-            a.value = res.data.map(mapRecord);
+          const response = await api.getAssessments();
+          if (response && response.code === 0 && Array.isArray(response.data)) {
+            assessmentRecords.value = response.data.map(mapAssessmentRecord);
           } else {
-            a.value = [];
+            assessmentRecords.value = [];
           }
         } catch (err) {
           console.error("加载评估记录失败", err);
-          a.value = [];
+          assessmentRecords.value = [];
         }
       });
       function startEssAssessment() {
@@ -139,13 +139,13 @@ const t = () => "../../components/base/hj-navbar.js",
             a: e.p({ title: "睡眠评估", "show-back": !0 }),
             b: e.o(startEssAssessment, "47"),
             c: e.o(startSnoreAssessment, "5f"),
-            d: a.value.length,
+            d: assessmentRecords.value.length,
             pendingCount: pendingCount.value,
             handleForceSync: e.o(handleForceSync, "sync"),
           },
-          a.value.length
+          assessmentRecords.value.length
             ? {
-                e: e.f(a.value, (t, a, s) => ({
+                e: e.f(assessmentRecords.value, (t, a, s) => ({
                   a: t.levelColor,
                   b: e.t(t.typeLabel),
                   c: e.t(t.desc),
@@ -159,7 +159,7 @@ const t = () => "../../components/base/hj-navbar.js",
                       e.index.navigateTo({ url: "/pages/auth/login" });
                       return;
                     }
-                    if (t.type === 'ess') {
+                    if (t.type === "ess") {
                       e.index.navigateTo({
                         url: `/pages/assessment/result/index?id=${t.id}`
                       });
@@ -175,5 +175,5 @@ const t = () => "../../components/base/hj-navbar.js",
         );
     },
   }),
-  s = e._export_sfc(a, [["__scopeId", "data-v-35dabd14"]]);
+  s = e._export_sfc(pageComponent, [["__scopeId", "data-v-35dabd14"]]);
 wx.createPage(s);

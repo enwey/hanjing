@@ -27,21 +27,24 @@
           >高</view
         ></view
       ></view
-    ><view class="section-title data-v-45b6ad14">📊 鼾声数据详情</view
+    ><view class="section-title data-v-45b6ad14"
+      ><image class="section-title-icon data-v-45b6ad14" src="/static/icons/report.svg" /><text class="section-title-text data-v-45b6ad14">鼾声数据详情</text></view
     ><view class="stats-grid data-v-45b6ad14"
       ><view
         wx:for="{{l}}"
         wx:for-item="item"
         wx:key="d"
         class="stat-card data-v-45b6ad14"
-        ><text class="stat-icon data-v-45b6ad14">{{item.a}}</text
-        ><text class="stat-value data-v-45b6ad14">{{item.b}}</text
+        ><image class="stat-icon data-v-45b6ad14" src="{{item.a}}" mode="aspectFit" />
+        <text class="stat-value data-v-45b6ad14">{{item.b}}</text
         ><text class="stat-label data-v-45b6ad14">{{item.c}}</text></view
       ></view
-    ><view class="section-title data-v-45b6ad14">💊 专业建议</view
+    ><view class="section-title data-v-45b6ad14"
+      ><image class="section-title-icon data-v-45b6ad14" src="/static/icons/advice.svg" /><text class="section-title-text data-v-45b6ad14">专业建议</text></view
     ><view class="advice-card data-v-45b6ad14"
       ><text class="advice-text data-v-45b6ad14">{{m}}</text></view
-    ><view class="section-title data-v-45b6ad14">✨ 改善小贴士</view
+    ><view class="section-title data-v-45b6ad14"
+      ><image class="section-title-icon data-v-45b6ad14" src="/static/icons/heart.svg" /><text class="section-title-text data-v-45b6ad14">改善小贴士</text></view
     ><view class="tips-grid data-v-45b6ad14"
       ><view
         wx:for="{{n}}"
@@ -51,14 +54,14 @@
         ><text class="tip-num data-v-45b6ad14">{{tip.a}}</text
         ><text class="tip-content data-v-45b6ad14">{{tip.b}}</text></view
       ></view
-    ><view class="cta-section data-v-45b6ad14"
-      ><view class="btn btn--primary data-v-45b6ad14" bindtap="{{o}}">
-        📅 立即预约门诊 </view
-      ><view class="btn btn--outline data-v-45b6ad14" bindtap="{{p}}">
-        🔄 重新测试 </view
-      ><view class="btn btn--ghost data-v-45b6ad14" bindtap="{{q}}">
-        🏠 返回首页
-      </view></view
+    ><view class="action-buttons data-v-45b6ad14"
+      ><view class="btn-primary data-v-45b6ad14" bindtap="{{o}}"
+        ><text class="data-v-45b6ad14">立即预约门诊</text></view
+      ><view class="btn-secondary data-v-45b6ad14" bindtap="{{q}}"
+        ><text class="data-v-45b6ad14">返回睡眠评估</text></view
+      ><view class="btn-outline data-v-45b6ad14" bindtap="{{p}}"
+        ><text class="data-v-45b6ad14">重新测试</text></view
+      ></view
     ></view
   ><view wx:else class="loading-card data-v-45b6ad14"
     ><text class="loading-text data-v-45b6ad14">正在加载报告...</text></view

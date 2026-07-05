@@ -66,6 +66,7 @@ const n = () => "../../components/base/hj-navbar.js",
         }),
         (t, n) => {
           var a, i, s;
+          const apptData = (null == r.value ? void 0 : r.value.appointment) || {};
           return {
             a: e.p({ title: "预约成功", "show-back": !0 }),
             b: e.t((null == (i = null == (a = r.value) ? void 0 : a.appointment) ? void 0 : i.appointmentNo) || ""),
@@ -80,6 +81,11 @@ const n = () => "../../components/base/hj-navbar.js",
             i: e.p({ type: "primary", size: "lg", block: !0 }),
             j: e.o(goHome, "07"),
             k: e.p({ type: "ghost", size: "lg", block: !0 }),
+            patientName: e.t(apptData.patientName || "本人"),
+            consultFee: e.t(((apptData.consultFee || 0) / 100).toFixed(2)),
+            requireDeposit: apptData.requireDeposit || false,
+            depositAmount: e.t(((apptData.depositAmount || 0) / 100).toFixed(2)),
+            symptomDesc: e.t(apptData.symptomDesc || "无"),
           };
         }
       );

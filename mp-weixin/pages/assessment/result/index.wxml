@@ -49,7 +49,7 @@
         ><view class="btn-primary data-v-1973d3c1" bindtap="{{l}}"
           ><text class="data-v-1973d3c1">立即预约门诊</text></view
         ><view class="btn-secondary data-v-1973d3c1" bindtap="{{m}}"
-          ><text class="data-v-1973d3c1">返回首页</text></view
+          ><text class="data-v-1973d3c1">返回睡眠评估</text></view
         ><view class="btn-outline data-v-1973d3c1" bindtap="{{n}}"
           ><text class="data-v-1973d3c1">重新评估</text></view
         ></view

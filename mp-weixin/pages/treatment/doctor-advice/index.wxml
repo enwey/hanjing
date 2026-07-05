@@ -5,35 +5,31 @@
     u-i="3fe7702c-0"
     bind:__l="__l"
     u-p="{{a}}" /><view wx:if="{{b}}" class="page-content data-v-3fe7702c"
-    ><view class="card data-v-3fe7702c"
-      ><text class="card-title data-v-3fe7702c">诊断结果</text
-      ><text class="card-text data-v-3fe7702c">{{c}}</text></view
-    ><view class="card data-v-3fe7702c"
-      ><text class="card-title data-v-3fe7702c">治疗方案</text
-      ><text class="card-text data-v-3fe7702c">{{d}}</text></view
-    ><view class="card card--highlight data-v-3fe7702c"
-      ><text class="card-title data-v-3fe7702c">医生建议</text
-      ><text class="card-text data-v-3fe7702c">{{e}}</text></view
-    ><view class="card data-v-3fe7702c"
-      ><text class="card-title data-v-3fe7702c">佩戴注意事项</text
-      ><view class="tips-list data-v-3fe7702c"
-        ><text class="tip data-v-3fe7702c">每晚佩戴不少于 6 小时</text
-        ><text class="tip data-v-3fe7702c"
-          >初期不适属正常反应，3-5天后逐渐适应</text
-        ><text class="tip data-v-3fe7702c"
-          >如出现明显颞下颌关节疼痛请及时联系医生</text
-        ><text class="tip data-v-3fe7702c">定期复诊调整，确保治疗效果</text
-        ><text class="tip data-v-3fe7702c">配合侧卧睡眠姿势效果更佳</text></view
-      ></view
-    ><view class="card card--followup data-v-3fe7702c"
+    ><block wx:if="{{c}}"
+      ><view
+        wx:for="{{d}}"
+        wx:for-item="section"
+        wx:key="d"
+        class="{{['card', 'data-v-3fe7702c', section.c && 'card--highlight']}}"
+        ><text class="card-title data-v-3fe7702c">{{section.a}}</text
+        ><text class="card-text data-v-3fe7702c">{{section.b}}</text></view
+      ><view wx:if="{{e}}" class="empty-section data-v-3fe7702c"
+        ><text class="empty-section-text data-v-3fe7702c">医生暂未同步本次诊疗的医嘱内容，请在复诊后回来查看。</text></view
+      ><view wx:if="{{f}}" class="card card--followup data-v-3fe7702c"
       ><text class="card-title data-v-3fe7702c">下次随访</text
-      ><text class="followup-date data-v-3fe7702c">{{f}}</text
+      ><text class="followup-date data-v-3fe7702c">{{g}}</text
       ><text class="followup-hint data-v-3fe7702c"
         >请按时复诊，医生将评估治疗效果并调整参数</text
       ></view
     ><view class="btn-wrap data-v-3fe7702c"
-      ><button class="book-btn data-v-3fe7702c" bindtap="{{g}}"
+      ><button class="book-btn data-v-3fe7702c" bindtap="{{h}}"
         >预约复诊</button
+      ></view></block
+    ><view wx:else class="empty-card data-v-3fe7702c"
+      ><text class="empty-title data-v-3fe7702c">暂无治疗记录</text
+      ><text class="empty-desc data-v-3fe7702c">当前治疗人还没有完成门诊建档或阻鼾器适配，暂时无法查看医嘱建议。完成预约就诊后，医生建议会同步展示在这里。</text
+      ><button class="book-btn data-v-3fe7702c" bindtap="{{i}}"
+        >前往预约</button
       ></view
     ><view class="safe-bottom data-v-3fe7702c" /></view
 ></view>

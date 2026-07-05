@@ -120,6 +120,10 @@
   font-weight: 600;
   color: #3b6bf5;
 }
+.summary-value--price.data-v-baa6e4ef {
+  color: #ef4444;
+  font-weight: 600;
+}
 .actions.data-v-baa6e4ef {
   display: flex;
   flex-direction: column;

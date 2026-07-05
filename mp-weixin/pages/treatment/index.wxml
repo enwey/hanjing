@@ -6,24 +6,31 @@
     bind:__l="__l"
     u-p="{{a}}"
   /><view wx:if="{{b}}" class="page-content data-v-8badcb8c"
-    ><picker wx:if="{{showMemberPicker}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="{{memberChange}}" class="data-v-8badcb8c" style="display:block;background:#fff;border-radius:14px;padding:12px 16px;margin-bottom:14px;color:#1f2937;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.04);">
-      <view class="data-v-8badcb8c">当前治疗人：{{memberNames[memberIndex]}}</view>
-    </picker
+    ><picker wx:if="{{showMemberPicker}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="{{memberChange}}" class="member-picker data-v-8badcb8c"
+      ><view class="member-picker-content data-v-8badcb8c"
+        ><view class="member-info data-v-8badcb8c"
+          ><text class="member-label data-v-8badcb8c">当前治疗人：</text
+          ><text class="member-value data-v-8badcb8c">{{memberNames[memberIndex]}}</text></view
+        ><view class="member-action data-v-8badcb8c"
+          ><text class="member-action-text data-v-8badcb8c">切换</text
+          ><image class="member-action-arrow data-v-8badcb8c" src="/static/icons/chevron-right.svg" mode="aspectFit" /></view
+      ></view></picker
     ><view class="hero-card data-v-8badcb8c"
       ><view class="hero-top data-v-8badcb8c"
-        ><view class="hero-badge data-v-8badcb8c">治疗中</view
-        ><text class="hero-sub data-v-8badcb8c">已佩戴 {{c}} 天</text></view
-      ><text class="hero-device data-v-8badcb8c">{{d}}</text
-      ><text class="hero-doctor data-v-8badcb8c">主治：{{e}} 医生</text
+        ><view class="hero-badge data-v-8badcb8c">{{heroBadgeText}}</view
+        ><text class="hero-sub data-v-8badcb8c">{{heroSubText}}</text></view
+      ><text class="hero-device data-v-8badcb8c">{{heroDeviceText}}</text
+      ><text class="hero-doctor data-v-8badcb8c">{{heroDoctorText}}</text
       ><view class="hero-progress-wrap data-v-8badcb8c"
         ><view class="hero-progress-bar data-v-8badcb8c"
           ><view
             class="hero-progress-fill data-v-8badcb8c"
             style="{{'width:' + f}}" /></view
-        ><text class="hero-progress-num data-v-8badcb8c"
-          >依从率 {{g}}%</text
+        ><text class="hero-progress-num data-v-8badcb8c">{{heroProgressText}}</text
         ></view
-      ><text class="hero-start data-v-8badcb8c">初配日期：{{h}}</text></view
+      ><text class="hero-start data-v-8badcb8c">{{heroStartText}}</text></view
+    ><view wx:if="{{!hasTreatmentRecord}}" class="treatment-empty-card data-v-8badcb8c"
+      ><text class="treatment-empty-text data-v-8badcb8c">{{emptyTreatmentNotice}}</text></view
     ><view class="section-header data-v-8badcb8c"
       ><text class="section-title data-v-8badcb8c">打卡日历</text
       ><view class="section-link data-v-8badcb8c" bindtap="{{i}}"
@@ -44,19 +51,19 @@
         /><text class="cal-num data-v-8badcb8c">{{day.d}}</text></view
       ></view
     ><view class="calendar-legend data-v-8badcb8c"
-      ><text class="legend-item data-v-8badcb8c"
+      ><text class="legend-item legend-item--5 data-v-8badcb8c"
         ><view class="legend-dot data-v-8badcb8c" style="background: #15803d" />
         极佳(5)</text
-      ><text class="legend-item data-v-8badcb8c"
+      ><text class="legend-item legend-item--4 data-v-8badcb8c"
         ><view class="legend-dot data-v-8badcb8c" style="background: #4ade80" />
         舒适(4)</text
-      ><text class="legend-item data-v-8badcb8c"
+      ><text class="legend-item legend-item--3 data-v-8badcb8c"
         ><view class="legend-dot data-v-8badcb8c" style="background: #06b6d4" />
         一般(3)</text
-      ><text class="legend-item data-v-8badcb8c"
+      ><text class="legend-item legend-item--2 data-v-8badcb8c"
         ><view class="legend-dot data-v-8badcb8c" style="background: #eab308" />
         较差(2)</text
-      ><text class="legend-item data-v-8badcb8c"
+      ><text class="legend-item legend-item--1 data-v-8badcb8c"
         ><view class="legend-dot data-v-8badcb8c" style="background: #ef4444" />
         难受(1)</text
       ></view
@@ -79,23 +86,6 @@
         ><text class="checkin-btn-text data-v-8badcb8c">今日打卡</text
         ><text class="checkin-btn-hint data-v-8badcb8c"
           >记录佩戴时长和感受</text
-        ></view
-      ></view
-    ><view class="section-header data-v-8badcb8c" style="margin-top: 20px"
-      ><text class="section-title data-v-8badcb8c">治疗进度</text></view
-    ><view class="treatment-timeline data-v-8badcb8c"
-      ><view
-        wx:for="{{phases}}"
-        wx:for-item="phase"
-        wx:key="f"
-        class="treatment-phase data-v-8badcb8c"
-        ><view class="phase-indicator data-v-8badcb8c"
-          ><view class="{{['phase-dot', 'data-v-8badcb8c', phase.b]}}">{{phase.a}}</view
-          ><view wx:if="{{!phase.i}}" class="{{['phase-line', 'data-v-8badcb8c', phase.h]}}" /></view
-        ><view class="phase-content data-v-8badcb8c"
-          ><text class="{{['phase-name', 'data-v-8badcb8c', phase.e]}}">{{phase.d}}</text
-          ><text class="phase-desc data-v-8badcb8c">{{phase.f}}</text
-          ><text class="phase-date data-v-8badcb8c">{{phase.g}}</text></view
         ></view
       ></view
     ><view class="section-header data-v-8badcb8c" style="margin-top: 20px"
@@ -128,11 +118,13 @@
       ></view
     ><view class="section-header data-v-8badcb8c" style="margin-top: 20px"
       ><text class="section-title data-v-8badcb8c">治疗动态</text
-      ><view class="section-link data-v-8badcb8c" bindtap="{{w}}"
-        ><text class="data-v-8badcb8c">全部</text></view
+      ><view wx:if="{{showTimelineLink}}" class="section-link data-v-8badcb8c" bindtap="{{w}}"
+        ><text class="data-v-8badcb8c">全部</text
+        ><view class="more-arrow data-v-8badcb8c" /></view
       ></view
     ><view class="timeline-preview data-v-8badcb8c"
-      ><view
+      ><block wx:if="{{x.length}}"
+        ><view
         wx:for="{{x}}"
         wx:for-item="event"
         wx:key="f"
@@ -146,29 +138,18 @@
           ><text class="tl-title data-v-8badcb8c">{{event.d}}</text
           ><text class="tl-desc data-v-8badcb8c">{{event.e}}</text></view
         ></view
+      ></block
+      ><view wx:else class="section-empty data-v-8badcb8c"
+        ><text class="section-empty-text data-v-8badcb8c">暂无治疗动态记录</text></view
       ></view
     ><view class="safe-bottom data-v-8badcb8c" /></view
-  ><view wx:if="{{y}}" class="page-content data-v-8badcb8c"
-    ><hj-empty
-      wx:if="{{z}}"
-      class="data-v-8badcb8c"
-      u-s="{{['d']}}"
-      u-i="8badcb8c-1"
-      bind:__l="__l"
-      u-p="{{z}}"
-      ><text
-        class="data-v-8badcb8c"
-        style="font-size: 13px; color: #d1d5db; text-align: center; display: block;"
-      >
-        完成初诊适配后，治疗追踪将在此显示
-      </text></hj-empty
-    ></view
   ><view wx:if="{{A}}" class="checkin-overlay data-v-8badcb8c" bindtap="{{K}}"
     ><view class="checkin-panel data-v-8badcb8c" catchtap="{{J}}"
       ><text class="checkin-panel-title data-v-8badcb8c">今日佩戴打卡</text
       ><text class="checkin-panel-date data-v-8badcb8c">{{z1}}</text
       ><text class="checkin-label data-v-8badcb8c">佩戴时长（小时）</text
-      ><view class="duration-grid data-v-8badcb8c"
+      ><scroll-view class="duration-scroll data-v-8badcb8c" scroll-x="true" scroll-left="{{durationScrollLeft}}" scroll-with-animation="true" show-scrollbar="false" enhanced="true"
+        ><view class="duration-grid data-v-8badcb8c"
         ><view
           wx:for="{{B}}"
           wx:for-item="history"
@@ -176,7 +157,7 @@
           class="{{['duration-chip', 'data-v-8badcb8c', history.c && 'duration-chip--active']}}"
           bindtap="{{history.d}}"
           ><text class="data-v-8badcb8c">{{history.a}}h</text></view
-        ></view
+        ></view></scroll-view
       ><text class="checkin-label data-v-8badcb8c">舒适度评分</text
       ><view class="comfort-row data-v-8badcb8c"
         ><view

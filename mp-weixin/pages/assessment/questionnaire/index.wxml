@@ -13,7 +13,7 @@
           ><text class="member-value data-v-c4ff781e">{{selectedMemberName}}</text></view
         ><view class="member-action data-v-c4ff781e"
           ><text class="member-action-text data-v-c4ff781e">切换</text
-          ><text class="member-action-arrow data-v-c4ff781e">▾</text></view
+          ><image class="member-action-arrow data-v-c4ff781e" src="/static/icons/chevron-right.svg" mode="aspectFit" /></view
       ></view></picker
     ><view wx:if="{{f}}" class="question-card data-v-c4ff781e"
       ><text class="question-title data-v-c4ff781e">第{{h}}题</text

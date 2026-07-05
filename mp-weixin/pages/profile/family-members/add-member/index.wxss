@@ -103,18 +103,63 @@
   color: #fff;
   font-weight: 600;
 }
-.btn-submit.data-v-33d45858 {
-  background: #3b6bf5;
-  border-radius: 12px;
-  padding: 14px;
-  text-align: center;
-  margin-top: 24px;
+.bottom-fixed-bar.data-v-33d45858 {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+  z-index: 99;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: content-box;
 }
-.btn-submit text.data-v-33d45858 {
+
+.bar-primary-btn.data-v-33d45858 {
+  flex: 1;
+  height: 44px;
+  background: linear-gradient(135deg, #3b6bf5 0%, #5a85f5 50%, #8eafff 100%);
   color: #fff;
   font-size: 16px;
   font-weight: 600;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(59, 107, 245, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+.bar-danger-btn.data-v-33d45858 {
+  flex: 1;
+  height: 44px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.2);
+}
+
+.bar-save-btn.data-v-33d45858 {
+  flex: 1.8; /* 保存按钮占比大 */
+}
+
+.bar-delete-btn.data-v-33d45858 {
+  flex: 1; /* 删除按钮占比小 */
+}
+
 .safe-bottom.data-v-33d45858 {
-  height: calc(env(safe-area-inset-bottom, 34px) + 20px);
+  height: calc(env(safe-area-inset-bottom, 0px) + 90px);
 }

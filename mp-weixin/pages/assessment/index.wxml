@@ -13,8 +13,8 @@
       <button class="sync-btn data-v-35dabd14" bindtap="{{handleForceSync}}">立即同步</button>
     </view>
     <view class="hero-card data-v-35dabd14"
-      ><text class="hero-emoji data-v-35dabd14">🌙</text
-      ><text class="hero-title data-v-35dabd14">了解您的睡眠质量</text
+      ><image class="hero-emoji data-v-35dabd14" src="/static/icons/assessment_purple.svg"
+      /><text class="hero-title data-v-35dabd14">了解您的睡眠质量</text
       ><text class="hero-desc data-v-35dabd14">
         通过专业的ESS嗜睡量表和AI鼾声分析，全面评估您的睡眠呼吸健康状况
       </text></view

@@ -214,7 +214,7 @@ export const initDB = async () => {
       relation VARCHAR(30) DEFAULT 'self',
       gender TINYINT DEFAULT 0,
       age INT,
-      phone VARCHAR(20),
+      phone VARCHAR(100),
       source VARCHAR(30) DEFAULT 'mini_app',
       has_snore TINYINT DEFAULT 0,
       follower_id BIGINT UNSIGNED DEFAULT NULL,
@@ -226,11 +226,31 @@ export const initDB = async () => {
   `);
 
   try {
-    await query(`ALTER TABLE patients ADD COLUMN id_card VARCHAR(18) DEFAULT NULL;`);
+    await query(`ALTER TABLE patients ADD COLUMN id_card VARCHAR(100) DEFAULT NULL;`);
   } catch (err) {}
   try {
     await query(`ALTER TABLE patients ADD COLUMN card_no VARCHAR(50) DEFAULT NULL;`);
   } catch (err) {}
+  try {
+    await query(`ALTER TABLE users ADD COLUMN self_patient_id BIGINT UNSIGNED DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE users ADD CONSTRAINT fk_users_self_patient FOREIGN KEY (self_patient_id) REFERENCES patients(id) ON DELETE SET NULL;`);
+  } catch (err) {}
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS user_patient_links (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      relation VARCHAR(30) DEFAULT 'other',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_user_patient_link (user_id, patient_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+    );
+  `);
 
   // 3. stores
   await query(`
@@ -343,6 +363,28 @@ export const initDB = async () => {
     }
   } catch (err) {
     console.error('Failed to backfill patient numbers:', err);
+  }
+
+  try {
+    await query(`
+      INSERT IGNORE INTO user_patient_links (user_id, patient_id, relation)
+      SELECT user_id, id, COALESCE(NULLIF(relation, ''), 'other')
+      FROM patients
+      WHERE user_id IS NOT NULL
+    `);
+  } catch (err) {
+    console.error('Failed to backfill user-patient links:', err);
+  }
+
+  try {
+    await query(`
+      UPDATE users u
+      JOIN patients p ON p.user_id = u.id AND p.relation = 'self'
+      SET u.self_patient_id = p.id
+      WHERE u.self_patient_id IS NULL
+    `);
+  } catch (err) {
+    console.error('Failed to backfill users.self_patient_id:', err);
   }
 
   try {

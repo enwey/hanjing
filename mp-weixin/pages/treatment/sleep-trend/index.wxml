@@ -5,32 +5,33 @@
     u-i="eb41b617-0"
     bind:__l="__l"
     u-p="{{a}}" /><view wx:if="{{b}}" class="page-content data-v-eb41b617"
-    ><view class="mode-switch data-v-eb41b617"
+    ><block wx:if="{{c}}"
+      ><view class="mode-switch data-v-eb41b617"
       ><view
-        class="{{['mode-btn', 'data-v-eb41b617', c && 'mode-btn--active']}}"
-        bindtap="{{d}}"
+        class="{{['mode-btn', 'data-v-eb41b617', d && 'mode-btn--active']}}"
+        bindtap="{{e}}"
         >本周</view
       ><view
-        class="{{['mode-btn', 'data-v-eb41b617', e && 'mode-btn--active']}}"
-        bindtap="{{f}}"
+        class="{{['mode-btn', 'data-v-eb41b617', f && 'mode-btn--active']}}"
+        bindtap="{{g}}"
         >全部</view
       ></view
     ><view class="summary-row data-v-eb41b617"
       ><view class="summary-item data-v-eb41b617"
-        ><text class="summary-val data-v-eb41b617">{{g}}天</text
+        ><text class="summary-val data-v-eb41b617">{{h}}天</text
         ><text class="summary-lbl data-v-eb41b617">佩戴天数</text></view
       ><view class="summary-item data-v-eb41b617"
-        ><text class="summary-val data-v-eb41b617">{{h}}h</text
+        ><text class="summary-val data-v-eb41b617">{{i}}h</text
         ><text class="summary-lbl data-v-eb41b617">日均时长</text></view
       ><view class="summary-item data-v-eb41b617"
-        ><text class="summary-val data-v-eb41b617">{{i}}%</text
+        ><text class="summary-val data-v-eb41b617">{{j}}%</text
         ><text class="summary-lbl data-v-eb41b617">依从率</text></view
       ></view
     ><view class="chart-card data-v-eb41b617"
       ><text class="chart-title data-v-eb41b617">每日佩戴时长</text
       ><view class="chart-bars data-v-eb41b617"
         ><view
-          wx:for="{{j}}"
+          wx:for="{{k}}"
           wx:for-item="dataItem"
           wx:key="f"
           class="bar-col data-v-eb41b617"
@@ -48,7 +49,7 @@
       ><text class="chart-title data-v-eb41b617">舒适度评分</text
       ><view class="comfort-grid data-v-eb41b617"
         ><view
-          wx:for="{{k}}"
+          wx:for="{{l}}"
           wx:for-item="dataItem"
           wx:key="c"
           class="{{['comfort-cell', 'data-v-eb41b617', dataItem.d && 'comfort-cell--empty']}}"
@@ -60,6 +61,9 @@
               class="{{['comfort-dot', 'data-v-eb41b617', dot.b && 'comfort-dot--on']}}" /></view
           ><text class="comfort-date data-v-eb41b617">{{dataItem.b}}</text></view
         ></view
-      ></view
+      ></view></block
+    ><view wx:else class="empty-card data-v-eb41b617"
+      ><text class="empty-title data-v-eb41b617">{{m}}</text
+      ><text class="empty-desc data-v-eb41b617">{{n}}</text></view
     ><view class="safe-bottom data-v-eb41b617" /></view
 ></view>

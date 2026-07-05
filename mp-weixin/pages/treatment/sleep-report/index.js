@@ -13,7 +13,13 @@ const t = () => "../../../components/base/hj-navbar.js",
         v = e.computed(() => ("week" === o.value ? n : l));
       function currentParams() {
         const patientId = e.index.getStorageSync("selected_treatment_patient_id") || "";
-        return patientId ? { patientId } : {};
+        const params = {
+          _t: Date.now(),
+        };
+        if (patientId) {
+          params.patientId = patientId;
+        }
+        return params;
       }
       const c = e.computed(() => {
           const currentData = "week" === o.value ? n : l;

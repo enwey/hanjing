@@ -9,18 +9,58 @@ const l = () => "../../../../components/base/hj-navbar.js",
       const u = e.ref(""),
         t = e.ref("spouse"),
         o = e.ref("1"),
-        v = e.ref(35),
+        v = e.ref(""),
         n = e.ref(""),
         idCard = e.ref(""),
         cardNo = e.ref(""),
-        i = [
-          { value: "spouse", label: "配偶" },
-          { value: "child", label: "子女" },
-          { value: "parent", label: "父母" },
-          { value: "sibling", label: "兄弟姐妹" },
-          { value: "other", label: "其他" },
-        ];
+        isEdit = e.ref(false),
+        isSelf = e.ref(false);
+
+      let memberId = "";
+
+      const baseRelationOptions = [
+        { value: "spouse", label: "配偶" },
+        { value: "child", label: "子女" },
+        { value: "parent", label: "父母" },
+        { value: "sibling", label: "兄弟姐妹" },
+        { value: "other", label: "其他" },
+      ];
+      const relationOptions = e.computed(() => isSelf.value
+        ? [{ value: "self", label: "本人" }, ...baseRelationOptions]
+        : baseRelationOptions);
+
+      e.onLoad(async (options) => {
+        if (options && options.id) {
+          memberId = options.id;
+          isEdit.value = true;
+          await loadMemberDetails(options.id);
+        }
+      });
+
+      async function loadMemberDetails(id) {
+        try {
+          const res = await a.getFamilyMemberDetail(id);
+          if (res && res.data) {
+            const data = res.data;
+            u.value = data.name || "";
+            t.value = data.relation || "spouse";
+            isSelf.value = data.relation === "self";
+            o.value = String(data.gender || "1");
+            v.value = data.age === null || data.age === undefined ? "" : String(data.age);
+            n.value = data.phone || "";
+            idCard.value = data.idCard || "";
+            cardNo.value = data.cardNo || "";
+          }
+        } catch (err) {
+          console.error("加载家庭成员详情失败:", err);
+          e.index.showToast({ title: "加载详情失败", icon: "none" });
+        }
+      }
+
       async function submitAddMember() {
+        if (isSelf.value) {
+          return;
+        }
         const name = u.value.trim();
         if (!name) {
           e.index.showToast({ title: "请输入姓名", icon: "none" });
@@ -46,7 +86,7 @@ const l = () => "../../../../components/base/hj-navbar.js",
           return;
         }
         const cardNoVal = cardNo.value.trim();
-        await a.addFamilyMember({
+        const payload = {
           name: name,
           relation: t.value,
           gender: o.value,
@@ -54,24 +94,75 @@ const l = () => "../../../../components/base/hj-navbar.js",
           phone: phoneVal,
           idCard: idCardVal,
           cardNo: cardNoVal,
-        });
-        e.index.showToast({ title: "添加成功", icon: "success" });
-        setTimeout(() => e.index.navigateBack(), 800);
+        };
+
+        try {
+          if (isEdit.value) {
+            await a.updateFamilyMember(memberId, payload);
+            e.index.showToast({ title: "保存成功", icon: "success" });
+          } else {
+            await a.addFamilyMember(payload);
+            e.index.showToast({ title: "关联成功", icon: "success" });
+          }
+          setTimeout(() => {
+            const pages = getCurrentPages();
+            const prevPage = pages[pages.length - 2];
+            if (prevPage && prevPage.$vm && typeof prevPage.$vm.fetchFamilyMembers === 'function') {
+              prevPage.$vm.fetchFamilyMembers();
+            } else if (prevPage && typeof prevPage.fetchFamilyMembers === 'function') {
+              prevPage.fetchFamilyMembers();
+            }
+            e.index.navigateBack();
+          }, 800);
+        } catch (err) {
+          console.error("提交家庭成员失败:", err);
+        }
       }
+
+      function deleteMember() {
+        if (isSelf.value) {
+          return;
+        }
+        e.index.showModal({
+          title: "确认解除关联",
+          content: "确定要解除与该家庭成员的关联吗？解除后不会删除对方的独立档案。",
+          success: async (resModal) => {
+            if (resModal.confirm) {
+              try {
+                await a.deleteFamilyMember(memberId);
+                e.index.showToast({ title: "已解除关联", icon: "success" });
+                setTimeout(() => {
+                  const pages = getCurrentPages();
+                  const prevPage = pages[pages.length - 2];
+                  if (prevPage && prevPage.$vm && typeof prevPage.$vm.fetchFamilyMembers === 'function') {
+                    prevPage.$vm.fetchFamilyMembers();
+                  } else if (prevPage && typeof prevPage.fetchFamilyMembers === 'function') {
+                    prevPage.fetchFamilyMembers();
+                  }
+                  e.index.navigateBack();
+                }, 800);
+              } catch (err) {
+                console.error("解除关联失败:", err);
+              }
+            }
+          }
+        });
+      }
+
       return (a, l) => ({
-        a: e.p({ title: "添加成员", "show-back": !0 }),
+        a: e.p({ title: isEdit.value ? "成员详情" : "添加家庭成员", "show-back": !0 }),
         b: u.value,
         c: e.o((e) => (u.value = e.detail.value), "01"),
-        d: e.f(i, (a, l, u) => ({
+        d: e.f(relationOptions.value, (a, l, u) => ({
           a: e.t(a.label),
           b: a.value,
           c: t.value === a.value ? 1 : "",
-          d: e.o((e) => (t.value = a.value), a.value),
+          d: e.o((e) => { if (!isSelf.value) t.value = a.value; }, a.value),
         })),
         e: "1" === o.value ? 1 : "",
-        f: e.o((e) => (o.value = "1"), "31"),
+        f: e.o((e) => { if (!isSelf.value) o.value = "1"; }, "31"),
         g: "2" === o.value ? 1 : "",
-        h: e.o((e) => (o.value = "2"), "fb"),
+        h: e.o((e) => { if (!isSelf.value) o.value = "2"; }, "fb"),
         i: v.value,
         j: e.o((e) => (v.value = e.detail.value), "06"),
         k: n.value,
@@ -81,6 +172,9 @@ const l = () => "../../../../components/base/hj-navbar.js",
         pCardNo: cardNo.value,
         qCardNoInput: e.o((e) => (cardNo.value = e.detail.value), "id2"),
         m: e.o(submitAddMember, "90"),
+        isEdit: isEdit.value,
+        isSelf: isSelf.value,
+        onDeleteTap: e.o(deleteMember, "del")
       });
     },
   }),

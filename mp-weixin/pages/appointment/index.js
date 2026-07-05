@@ -18,7 +18,7 @@ const o = () => "../../components/base/hj-navbar.js",
       e.onShow(async () => {
         try {
           await n.fetchAppointments();
-          p();
+          filterAppointments();
         } catch (err) {
           console.error("加载预约失败", err);
         }

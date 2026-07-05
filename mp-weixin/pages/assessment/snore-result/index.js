@@ -43,10 +43,10 @@ function getSnoreRiskInfo(riskLevel) {
   return levels[key] || levels.low;
 }
 
-const a = () => "../../../components/base/hj-navbar.js",
-  o = e.defineComponent({
+const loadNavbarComponent = () => "../../../components/base/hj-navbar.js",
+  pageComponent = e.defineComponent({
     __name: "index",
-    setup(a) {
+    setup() {
       const reportDetail = e.ref(null),
         isLoading = e.ref(!0),
         riskInfo = e.computed(() => {
@@ -60,10 +60,10 @@ const a = () => "../../../components/base/hj-navbar.js",
           if (!(null == (e = reportDetail.value) ? void 0 : e.snoreAnalysis)) return [];
           const n = reportDetail.value.snoreAnalysis;
           return [
-            { label: "平均分贝", value: n.avgDecibel + " dB", icon: "🔊" },
-            { label: "峰值分贝", value: n.peakDecibel + " dB", icon: "📈" },
-            { label: "鼾声占比", value: n.snoreRate + "%", icon: "💤" },
-            { label: "呼吸暂停", value: n.apneaEvents + " 次", icon: "⚠️" },
+            { label: "平均分贝", value: n.avgDecibel + " dB", iconPath: "/static/icons/microphone.svg" },
+            { label: "峰值分贝", value: n.peakDecibel + " dB", iconPath: "/static/icons/trend.svg" },
+            { label: "鼾声占比", value: n.snoreRate + "%", iconPath: "/static/icons/moon.svg" },
+            { label: "呼吸暂停", value: n.apneaEvents + " 次", iconPath: "/static/icons/warning.svg" },
           ];
         }),
         riskScore = e.computed(() => {
@@ -90,7 +90,12 @@ const a = () => "../../../components/base/hj-navbar.js",
         e.index.navigateTo({ url: "/pages/appointment/store-select" });
       }
       function goHome() {
-        e.index.switchTab({ url: "/pages/index/index" });
+        e.index.navigateBack({
+          delta: 1,
+          fail() {
+            e.index.navigateTo({ url: "/pages/assessment/index" });
+          },
+        });
       }
       function restartRecording() {
         e.index.redirectTo({ url: "/pages/assessment/recording/index" });
@@ -105,21 +110,22 @@ const a = () => "../../../components/base/hj-navbar.js",
       }
       return (
         e.onMounted(async () => {
-          var e;
           try {
-            const n = getCurrentPages(),
-              a = n[n.length - 1],
-              idVal = null == (e = null == a ? void 0 : a.options) ? void 0 : e.id;
-            if (idVal) {
-              if (idVal === 'local') {
-                reportDetail.value = wx.getStorageSync('last_local_snore_result');
+            const currentPages = getCurrentPages();
+            const currentPage = currentPages[currentPages.length - 1];
+            const assessmentId = currentPage && currentPage.options ? currentPage.options.id : "";
+            if (assessmentId) {
+              if (assessmentId === "local") {
+                reportDetail.value = wx.getStorageSync("last_local_snore_result");
               } else {
                 try {
-                  const res = await api.getAssessmentDetail(idVal);
-                  reportDetail.value = res.data;
+                  const response = await api.getAssessmentDetail(assessmentId);
+                  if (response && response.code === 0 && response.data) {
+                    reportDetail.value = response.data;
+                  }
                 } catch (apiErr) {
                   console.warn("[SnoreResult] API load failed, trying local stash fallback:", apiErr);
-                  reportDetail.value = wx.getStorageSync('last_local_snore_result');
+                  reportDetail.value = wx.getStorageSync("last_local_snore_result");
                 }
               }
             }
@@ -148,7 +154,7 @@ const a = () => "../../../components/base/hj-navbar.js",
                   j: riskScore.value + "%",
                   k: null == (g = riskInfo.value) ? void 0 : g.color,
                   l: e.f(statCards.value, (n, l, a) => ({
-                    a: e.t(n.icon),
+                    a: n.iconPath,
                     b: e.t(n.value),
                     c: e.t(n.label),
                     d: n.label,
@@ -168,5 +174,5 @@ const a = () => "../../../components/base/hj-navbar.js",
       );
     },
   }),
-  u = e._export_sfc(o, [["__scopeId", "data-v-45b6ad14"]]);
+  u = e._export_sfc(pageComponent, [["__scopeId", "data-v-45b6ad14"]]);
 wx.createPage(u);

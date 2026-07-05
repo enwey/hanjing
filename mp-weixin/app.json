@@ -22,6 +22,7 @@
     "pages/assessment/result/index",
     "pages/assessment/recording/index",
     "pages/assessment/snore-result/index",
+    "pages/treatment/calendar/index",
     "pages/treatment/sleep-trend/index",
     "pages/treatment/timeline/index",
     "pages/treatment/doctor-advice/index",

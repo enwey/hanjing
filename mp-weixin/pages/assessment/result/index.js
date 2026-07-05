@@ -86,10 +86,10 @@ function getAnswerPresentation(answerScore) {
   return { label: "未答", color: "#64748B", background: "#F8FAFC", borderColor: "#E2E8F0" };
 }
 
-const t = () => "../../../components/base/hj-navbar.js",
-  s = e.defineComponent({
+const loadNavbarComponent = () => "../../../components/base/hj-navbar.js",
+  pageComponent = e.defineComponent({
     __name: "index",
-    setup(t) {
+    setup() {
       const questionList = e.ref([]);
       const resultDetail = e.ref(null);
       const isLoading = e.ref(!0);
@@ -129,7 +129,12 @@ const t = () => "../../../components/base/hj-navbar.js",
         });
       }
       function goHome() {
-        e.index.switchTab({ url: "/pages/index/index" });
+        e.index.navigateBack({
+          delta: 1,
+          fail() {
+            e.index.navigateTo({ url: "/pages/assessment/index" });
+          },
+        });
       }
       function goAppointment() {
         const result = resultDetail.value;
@@ -230,5 +235,5 @@ const t = () => "../../../components/base/hj-navbar.js",
       );
     },
   }),
-  o = e._export_sfc(s, [["__scopeId", "data-v-1973d3c1"]]);
+  o = e._export_sfc(pageComponent, [["__scopeId", "data-v-1973d3c1"]]);
 wx.createPage(o);
