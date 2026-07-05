@@ -42,4 +42,11 @@ compare_pages.py
 scratch/dump_doctors.js
 scratch/parse_pages.py
 
+# Temporary directories
+.codex-tmp/
+
+# Log files
+*.log
+logs/
+
 
