@@ -1232,38 +1232,9 @@ async function getDistributionSummary(userId, req = null) {
   const featureConfig = await getDistributionFeatureConfig();
   const user = await get(`SELECT member_level FROM users WHERE id = ?`, [userId]);
   const memberLevel = String(user?.member_level || 'normal');
-  const distributor = await get(`SELECT * FROM distributors WHERE user_id = ?`, [userId]);
-  const canOpenDistribution = featureConfig.enableDistribution && featureConfig.eligibleLevels.includes(memberLevel);
-  let openDisabledReason = '';
-  if (!featureConfig.enableDistribution) {
-    openDisabledReason = '分销功能暂未开放';
-  } else if (!canOpenDistribution) {
-    openDisabledReason = '当前需黄金会员及以上才可开通分销';
-  }
-
+  const distributor = await ensureDistributor(userId);
   if (!distributor) {
-    return {
-      isDistributor: false,
-      canOpenDistribution,
-      openDisabledReason,
-      memberLevel,
-      teamCount: 0,
-      teamLevel2Count: 0,
-      totalInvites: 0,
-      totalOrders: 0,
-      totalSales: 0,
-      availableCommission: 0,
-      totalCommission: 0,
-      withdrawnAmount: 0,
-      frozenCommission: 0,
-      level: 'silver',
-      levelLabel: getDistributorLevelRule('silver').label,
-      inviteCode: '',
-      inviteQrCode: '',
-      settleDays: featureConfig.settleDays,
-      minWithdrawAmount: featureConfig.minWithdrawAmount,
-      withdrawFeeRates: featureConfig.withdrawFeeRates
-    };
+    throw new Error('生成分销身份失败');
   }
 
   const inviteQrCode = await ensureDistributionInviteQrUrl(distributor, req);
@@ -1287,8 +1258,6 @@ async function getDistributionSummary(userId, req = null) {
 
   return {
     isDistributor: distributor.status === 'active',
-    canOpenDistribution: false,
-    openDisabledReason: distributor.status === 'active' ? '' : '推广员资格已停用',
     memberLevel,
     teamCount: Number(lv1?.count || 0),
     teamLevel2Count: Number(lv2?.count || 0),
@@ -6213,17 +6182,9 @@ app.get('/api/v1/distribution/info', authenticateWxToken, async (req, res) => {
 
 app.post('/api/v1/distribution/open', authenticateWxToken, async (req, res) => {
   try {
-    const summary = await getDistributionSummary(req.user.id, req);
-    if (summary.isDistributor) {
-      return res.json({ code: 0, message: '您已开通分销', data: summary });
-    }
-    if (!summary.canOpenDistribution) {
-      return res.status(400).json({ code: 400, message: summary.openDisabledReason || '当前暂不满足开通条件' });
-    }
-
     await ensureDistributor(req.user.id);
     const latestSummary = await getDistributionSummary(req.user.id, req);
-    res.json({ code: 0, message: '分销已开通', data: latestSummary });
+    res.json({ code: 0, message: '分销身份已生成', data: latestSummary });
   } catch (error) {
     console.error('Open distribution error:', error);
     res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '开通分销失败' });
@@ -6253,25 +6214,11 @@ app.get('/api/v1/distribution/commission-stats', authenticateWxToken, async (req
 app.get('/api/v1/distribution/invite-info', authenticateWxToken, async (req, res) => {
   try {
     const summary = await getDistributionSummary(req.user.id, req);
-    if (!summary.isDistributor) {
-      return res.json({
-        code: 0,
-        message: 'success',
-        data: {
-          isDistributor: false,
-          inviteCode: '',
-          inviteQrCode: '',
-          sharePath: '',
-          shareTitle: '邀请好友体验鼾静健康诊所'
-        }
-      });
-    }
-
     res.json({
       code: 0,
       message: 'success',
       data: {
-        isDistributor: true,
+        isDistributor: summary.isDistributor,
         inviteCode: summary.inviteCode,
         inviteQrCode: summary.inviteQrCode,
         sharePath: `/pages/index/index?inviteCode=${summary.inviteCode}`,

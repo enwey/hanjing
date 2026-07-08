@@ -1,7 +1,8 @@
 "use strict";
 const e = require("../../../common/vendor.js"),
   t = require("../../../api/index.js"),
-  a = "distributionInvitePoster";
+  a = "distributionInvitePoster",
+  shareImageUrl = "/static/images/distribution-invite-share-cover.png";
 const o = (t) =>
     new Promise((a, o) => {
       e.index.getImageInfo({
@@ -11,11 +12,11 @@ const o = (t) =>
       });
     }),
   i = () =>
-    new Promise((t, o) => {
+    new Promise((t, a) => {
       e.index.authorize({
         scope: "scope.writePhotosAlbum",
         success: t,
-        fail: o,
+        fail: a,
       });
     });
 const n = e.defineComponent({
@@ -25,33 +26,29 @@ const n = e.defineComponent({
         s = e.ref(""),
         c = e.ref(""),
         d = e.ref(""),
-        u = e.ref(!1),
-        l = [
-          { title: "分享邀请码或海报", desc: "转发给好友，邀请对方进入小程序。" },
-          { title: "好友完成绑定和下单", desc: "首次通过您的邀请进入后，会记录推荐关系。" },
-          { title: "订单完成后结算佣金", desc: "冻结期结束后，佣金会自动转入可提现余额。" },
-        ],
-        m = () => {
+        l = e.computed(() => !s.value),
+        m = e.computed(() => (l.value ? "当前环境未生成小程序码，将使用邀请码海报进行分享。" : "")),
+        p = () => {
           if (!r.value) {
             e.index.showToast({ title: "邀请码加载中", icon: "none" });
             return;
           }
           e.index.setClipboardData({ data: r.value });
         },
-        p = async () => {
-          if (!u.value || !r.value) {
-            e.index.showToast({ title: "当前暂不可保存海报", icon: "none" });
+        g = async () => {
+          if (!r.value) {
+            e.index.showToast({ title: "邀请码加载中", icon: "none" });
             return;
           }
           try {
             e.index.showLoading({ title: "生成海报中..." });
             const n = e.index.createCanvasContext(a),
-              l = 600,
-              m = 960;
+              u = 600,
+              l = 960;
             n.setFillStyle("#1a3580");
-            n.fillRect(0, 0, l, m);
+            n.fillRect(0, 0, u, l);
             n.setFillStyle("#3b6bf5");
-            n.fillRect(0, 0, l, 300);
+            n.fillRect(0, 0, u, 300);
             n.setFillStyle("#ffffff");
             n.setFontSize(22);
             n.fillText("鼾静健康", 48, 72);
@@ -78,7 +75,7 @@ const n = e.defineComponent({
                 n.setFillStyle("#6b7280");
                 n.setFontSize(22);
                 n.fillText("扫码进入小程序", 223, 772);
-              } catch (err) {
+              } catch (tErr) {
                 n.setStrokeStyle("#dbeafe");
                 n.setLineWidth(2);
                 n.strokeRect(160, 500, 280, 180);
@@ -106,10 +103,10 @@ const n = e.defineComponent({
             n.draw(!1, () => {
               e.index.canvasToTempFilePath({
                 canvasId: a,
-                width: l,
-                height: m,
-                destWidth: l,
-                destHeight: m,
+                width: u,
+                height: l,
+                destWidth: u,
+                destHeight: l,
                 success: async (aData) => {
                   try {
                     try {
@@ -124,7 +121,7 @@ const n = e.defineComponent({
                     });
                     e.index.hideLoading();
                     e.index.showToast({ title: "海报已保存", icon: "success" });
-                  } catch (tErr) {
+                  } catch (oErr) {
                     e.index.hideLoading();
                     e.index.showModal({
                       title: "保存失败",
@@ -144,7 +141,7 @@ const n = e.defineComponent({
             e.index.showToast({ title: "生成海报失败", icon: "none" });
           }
         },
-        g = async () => {
+        f = async () => {
           try {
             const [aData, oData] = await Promise.all([
               t.getDistributionInviteInfo(),
@@ -152,45 +149,35 @@ const n = e.defineComponent({
             ]);
             const iData = aData.data || aData || {},
               nData = oData.data || oData || {};
-            u.value = !!iData.isDistributor;
             r.value = iData.inviteCode || nData.inviteCode || nData.invite_code || "";
             s.value = iData.inviteQrCode || nData.inviteQrCode || "";
-            c.value = iData.sharePath || "";
+            c.value = iData.sharePath || (r.value ? `/pages/index/index?inviteCode=${r.value}` : "/pages/index/index");
             d.value = iData.shareTitle || "邀请好友体验鼾静健康诊所";
-            if (!u.value) {
-              e.index.showToast({ title: "请先开通分销权限", icon: "none" });
-            }
-            if (!s.value && nData.inviteQrCode) {
-              s.value = nData.inviteQrCode;
-            }
           } catch (aErr) {
             e.index.showToast({ title: "加载邀请信息失败", icon: "none" });
           }
         };
       return (
-        e.onMounted(g),
-        e.onShow(g),
+        e.onMounted(f),
+        e.onShow(f),
         e.onShareAppMessage(() => ({
           title: d.value || "邀请好友体验鼾静健康诊所",
           path: c.value || "/pages/index/index",
-          imageUrl: s.value || "",
+          imageUrl: shareImageUrl,
         })),
         (t, a) => ({
           a: e.t(r.value),
-          b: e.o(m, "f0"),
-          c: e.o(p, "2d"),
-          d: e.f(l, (t, a, o) => ({
-            a: e.t(a + 1),
-            b: e.t(t.title),
-            c: e.t(t.desc),
-            d: a,
-          })),
-          e: s.value,
-          f: !s.value,
-          g: e.t(r.value),
+          b: e.o(p, "29"),
+          c: l.value,
+          d: e.t(m.value),
+          e: l.value,
+          f: e.t(r.value),
+          g: !l.value,
+          h: s.value,
+          i: e.o(g, "b5"),
         })
       );
     },
   }),
-  r = e._export_sfc(n, [["__scopeId", "data-v-466378e0"]]);
-wx.createPage(r);
+  s = e._export_sfc(n, [["__scopeId", "data-v-466378e0"]]);
+wx.createPage(s);
