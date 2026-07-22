@@ -1,0 +1,73 @@
+<view class="container invite-page">
+  <hj-navbar title="邀请好友" showBack="{{true}}" />
+  <view class="invite-banner">
+    <text class="invite-banner__title">邀请好友，一起赚钱</text>
+    <text class="invite-banner__desc">分享专属海报给好友，好友完成下单后，系统会自动记录邀请关系并结算推广佣金。</text>
+    <view class="invite-banner__tags">
+      <text class="invite-tag" bindtap="handleCopyInviteCode">复制邀请码</text>
+      <text class="invite-tag">绑定关系</text>
+      <text class="invite-tag">下单后计佣</text>
+    </view>
+  </view>
+  <view class="page-section invite-poster-section">
+    <text class="page-title invite-section-title">推广海报</text>
+    <text class="page-description invite-section-desc">保存后可直接发好友或朋友圈</text>
+    <view wx:if="{{qrUnavailableNotice}}" class="invite-notice">{{qrUnavailableNotice}}</view>
+    <view class="invite-poster">
+      <text class="invite-poster__brand">鼾静健康 · 睡眠评估与治疗</text>
+      <text class="invite-poster__kicker">AI SLEEP CARE</text>
+      <text class="invite-poster__headline">告别打鼾</text>
+      <text class="invite-poster__subhead">让每一晚都睡得安稳</text>
+      <view class="invite-poster__qr">
+        <image wx:if="{{inviteQrCode}}" class="invite-poster__qr-image" src="{{inviteQrCode}}" mode="aspectFit" />
+        <view wx:else class="invite-poster__code-box">
+          <text class="invite-poster__code-label">邀请码</text>
+          <text class="invite-poster__code-value">{{inviteCode}}</text>
+        </view>
+      </view>
+      <text class="invite-poster__footer">您的专属邀请码：{{inviteCode}}</text>
+    </view>
+  </view>
+  <view class="page-section invite-guide">
+    <text class="invite-guide__title">如何推广</text>
+    <view class="invite-guide__flow">
+      <view class="invite-guide__line"></view>
+      <view class="invite-guide__step">
+        <text class="invite-guide__number">01</text>
+        <view class="invite-guide__content">
+          <text class="invite-guide__step-title">分享邀请海报</text>
+          <text class="invite-guide__step-desc">保存专属海报到相册发送给好友或分享给好友或发布朋友圈</text>
+        </view>
+      </view>
+      <view class="invite-guide__step">
+        <text class="invite-guide__number">02</text>
+        <view class="invite-guide__content">
+          <text class="invite-guide__step-title">绑定关系</text>
+          <text class="invite-guide__step-desc">好友微信通过海报/小程序码登录，自动锁定并绑定关系</text>
+        </view>
+      </view>
+      <view class="invite-guide__step">
+        <text class="invite-guide__number">03</text>
+        <view class="invite-guide__content">
+          <text class="invite-guide__step-title">下单后计佣</text>
+          <text class="invite-guide__step-desc">受邀好友后续在小程序完成下单，系统将实时为您结算发放推广佣金</text>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="invite-actions">
+    <view class="invite-actions__button invite-actions__button--secondary" bindtap="handleSavePoster">
+      <image class="invite-actions__icon" src="/static/icons/poster-save.svg" mode="aspectFit" />
+      <text class="invite-actions__text">保存海报</text>
+    </view>
+    <button class="invite-actions__button invite-actions__button--primary" open-type="share">
+      <image class="invite-actions__icon invite-actions__icon--light" src="/static/icons/paper-plane.svg" mode="aspectFit" />
+      <text class="invite-actions__text">分享好友</text>
+    </button>
+  </view>
+  <canvas
+    canvas-id="distributionInvitePoster"
+    class="poster-canvas"
+    disable-scroll="{{true}}"
+  ></canvas>
+</view>

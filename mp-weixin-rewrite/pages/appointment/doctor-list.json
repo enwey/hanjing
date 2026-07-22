@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "选择医生",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "hj-navbar": "../../components/base/hj-navbar/index",
+    "hj-doctor-card": "../../components/business/hj-doctor-card/index"
+  }
+}

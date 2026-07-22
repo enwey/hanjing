@@ -1,0 +1,76 @@
+<view class="container withdraw-page">
+  <hj-navbar title="提现申请" showBack="{{true}}" />
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载提现信息...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-section balance-card">
+      <text class="balance-card__label">可提现佣金</text>
+      <text class="balance-card__value">{{availableCommissionLabel}}</text>
+      <view class="balance-card__meta-row">
+        <text class="balance-card__meta">累计佣金 {{totalCommissionLabel}}</text>
+        <text class="balance-card__meta">已提现 {{withdrawnAmountLabel}}</text>
+      </view>
+    </view>
+
+    <view class="page-section form-card">
+      <view class="form-item">
+        <text class="form-label">提现金额</text>
+        <view class="amount-input-wrap">
+          <text class="amount-prefix">¥</text>
+          <input class="amount-input" type="digit" placeholder="请输入提现金额" value="{{withdrawAmountInput}}" bindinput="handleAmountInput" />
+        </view>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">到账方式</text>
+        <view class="method-row">
+          <view class="method-card {{withdrawMethod === 'wechat' ? 'method-card--active' : ''}}" data-method="wechat" bindtap="chooseMethod">
+            <image src="/static/icons/chat.svg" mode="aspectFit" class="method-card__icon" />
+            <text class="method-card__label">微信零钱</text>
+          </view>
+          <view class="method-card {{withdrawMethod === 'bank' ? 'method-card--active' : ''}}" data-method="bank" bindtap="chooseMethod">
+            <image src="/static/icons/price.svg" mode="aspectFit" class="method-card__icon" />
+            <text class="method-card__label">银行卡</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="tip-box">
+        <text class="tip-box__text">最低提现金额 {{minWithdrawAmount}} 元，微信零钱手续费 0%，银行卡手续费 {{withdrawFeeRate * 100}}%</text>
+        <text class="tip-box__text">手续费：{{serviceFeeLabel}}</text>
+        <text class="tip-box__text">预计到账：{{actualAmountLabel}}</text>
+      </view>
+
+      <block wx:if="{{withdrawMethod === 'bank'}}">
+        <view class="form-item">
+          <text class="form-label">开户银行</text>
+          <input class="bank-input" placeholder="请输入开户银行" data-field="bankName" value="{{bankName}}" bindinput="handleBankInput" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">开户姓名</text>
+          <input class="bank-input" placeholder="请输入开户姓名" data-field="bankAccountName" value="{{bankAccountName}}" bindinput="handleBankInput" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">银行卡号</text>
+          <input class="bank-input" type="number" placeholder="请输入银行卡号" data-field="bankAccountNo" value="{{bankAccountNo}}" bindinput="handleBankInput" />
+        </view>
+      </block>
+    </view>
+
+    <view class="page-section">
+      <view class="submit-button {{!isSubmitEnabled ? 'submit-button--disabled' : ''}}" bindtap="submitWithdraw">确认提现</view>
+      <view class="records-entry" bindtap="openWithdrawRecords">
+        <text class="records-entry__text">查看提现记录</text>
+        <image src="/static/icons/chevron-right.svg" mode="aspectFit" class="records-entry__arrow" />
+      </view>
+    </view>
+  </block>
+</view>

@@ -1,0 +1,6 @@
+.navbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; height: calc(88rpx + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 24rpx 0; box-sizing: border-box; border-bottom: 1rpx solid #f3f4f6; }
+.navbar--transparent { border-bottom: none; }
+.navbar--static { position: relative; }
+.navbar__side { width: 72rpx; display: flex; align-items: center; }
+.navbar__back { width: 22rpx; height: 22rpx; border-left: 4rpx solid currentColor; border-bottom: 4rpx solid currentColor; transform: rotate(45deg); }
+.navbar__title { max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 32rpx; font-weight: 700; }

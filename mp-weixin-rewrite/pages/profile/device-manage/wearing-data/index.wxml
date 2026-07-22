@@ -1,0 +1,54 @@
+<view class="container wearing-page">
+  <hj-navbar title="佩戴数据" showBack="{{true}}" />
+
+  <view class="page-section summary-card">
+    <text class="summary-card__title">{{selectedMemberLabel}}</text>
+    <view class="summary-grid">
+      <view class="summary-item">
+        <text class="summary-item__value">{{summaryDays}}</text>
+        <text class="summary-item__label">记录天数</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-item__value">{{averageHoursLabel}}</text>
+        <text class="summary-item__label">平均时长</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-item__value">{{qualifiedDays}}</text>
+        <text class="summary-item__label">达标天数</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-item__value">{{maxHoursLabel}}</text>
+        <text class="summary-item__label">最长单日佩戴</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载佩戴数据...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{!records.length}}">
+    <text class="state-title">暂无佩戴记录</text>
+    <text class="page-description">当前设备还没有产生有效的佩戴打卡数据。</text>
+  </view>
+
+  <view class="page-section" wx:else>
+    <view class="record-list">
+      <view wx:for="{{records}}" wx:key="id" class="record-card">
+        <view class="record-card__header">
+          <text class="record-card__date">{{item.dateLabel}}</text>
+          <text class="record-card__status" style="color: {{item.statusColor}}; background: {{item.statusColor}}18;">{{item.statusLabel}}</text>
+        </view>
+        <text class="record-card__hours">{{item.wearHoursLabel}}</text>
+        <view class="record-card__progress">
+          <view class="record-card__progress-bar" style="width: {{item.progressWidth}}; background: {{item.statusColor}};"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

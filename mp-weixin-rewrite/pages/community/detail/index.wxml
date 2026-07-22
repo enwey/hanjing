@@ -1,0 +1,103 @@
+<view class="container community-detail-page">
+  <hj-navbar title="帖子详情" showBack="{{true}}" />
+
+  <view wx:if="{{loading}}" class="page-section state-card">
+    <text class="state-title">正在加载帖子详情...</text>
+    <text class="state-desc">请稍候，社区内容正在同步。</text>
+  </view>
+
+  <view wx:elif="{{loadError}}" class="page-section state-card state-card--error">
+    <text class="state-title">加载失败</text>
+    <text class="state-desc">{{loadError}}</text>
+    <view class="state-button" bindtap="retryLoad">重新加载</view>
+  </view>
+
+  <view wx:elif="{{postDetail}}" class="community-detail-content">
+    <view class="post-card">
+      <view class="post-header">
+        <view class="post-avatar">
+          <image wx:if="{{postDetail.avatar}}" class="post-avatar__image" src="{{postDetail.avatar}}" mode="aspectFill"></image>
+        </view>
+        <view class="post-author">
+          <view class="post-author__row">
+            <text class="post-author__name">{{postDetail.author}}</text>
+            <text class="post-author__role {{postDetail.roleClass}}">{{postDetail.roleLabel}}</text>
+          </view>
+          <text class="post-author__time">{{postDetail.displayTime}}</text>
+        </view>
+        <view class="post-report" bindtap="reportPost">
+          <image class="post-report__icon" src="/static/icons/alert.svg" mode="aspectFit"></image>
+          <text class="post-report__text">举报</text>
+        </view>
+      </view>
+
+      <text class="post-title">{{postDetail.title}}</text>
+      <text class="post-content">{{postDetail.content}}</text>
+      <image wx:if="{{postDetail.coverUrl}}" class="post-cover" src="{{postDetail.coverUrl}}" mode="aspectFill"></image>
+
+      <view class="post-tags">
+        <text wx:if="{{postDetail.category}}" class="post-category {{postDetail.categoryClass}}">{{postDetail.category}}</text>
+        <text wx:for="{{postDetail.labels}}" wx:key="*this" class="post-tag">{{item}}</text>
+      </view>
+
+      <view class="post-actions">
+        <view class="post-action" bindtap="handlePostLike">
+          <image class="post-action__icon {{postDetail.isLiked ? 'post-action__icon--liked' : ''}}" src="{{postDetail.isLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg'}}" mode="aspectFit"></image>
+          <text class="post-action__count">{{postDetail.likes}}</text>
+        </view>
+        <view class="post-action post-action--passive">
+          <image class="post-action__icon" src="/static/icons/chat.svg" mode="aspectFit"></image>
+          <text class="post-action__count">{{postDetail.commentsCount}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="comment-section">
+      <view class="comment-section__header">
+        <text class="comment-section__title">全部评论</text>
+        <text class="comment-section__total">{{postDetail.commentsCount}} 条</text>
+      </view>
+
+      <view wx:if="{{commentsList.length}}" class="comment-list">
+        <view wx:for="{{commentsList}}" wx:key="id" class="comment-item">
+          <view class="comment-item__header">
+            <view class="comment-item__avatar">
+              <image wx:if="{{item.avatar}}" class="comment-item__avatar-image" src="{{item.avatar}}" mode="aspectFill"></image>
+            </view>
+            <view class="comment-item__info">
+              <text class="comment-item__author">{{item.author}}</text>
+              <text class="comment-item__time">{{item.displayTime}}</text>
+            </view>
+          </view>
+          <text wx:if="{{item.parentAuthor}}" class="comment-item__reply-prefix">回复 {{item.parentAuthor}}：</text>
+          <text class="comment-item__content">{{item.content}}</text>
+          <view class="comment-item__actions">
+            <view class="comment-item__action" bindtap="handleCommentLike" data-comment-id="{{item.id}}">
+              <image class="comment-item__action-icon {{item.isLiked ? 'comment-item__action-icon--liked' : ''}}" src="{{item.isLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg'}}" mode="aspectFit"></image>
+              <text class="comment-item__action-count">{{item.likes}}</text>
+            </view>
+            <text class="comment-item__reply-link" bindtap="handleReply" data-comment-id="{{item.id}}">回复</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:else class="comment-empty">
+        <text class="comment-empty__title">还没有评论</text>
+        <text class="comment-empty__desc">写下第一条评论，分享你的看法或经验。</text>
+      </view>
+    </view>
+
+    <view class="community-detail-content__safe-space"></view>
+  </view>
+
+  <view wx:if="{{postDetail}}" class="comment-bar">
+    <view wx:if="{{replyTarget}}" class="reply-target">
+      <text class="reply-target__text">正在回复 {{replyTarget.author}}</text>
+      <text class="reply-target__clear" bindtap="clearReplyTarget">取消</text>
+    </view>
+    <view class="comment-bar__row">
+      <input class="comment-bar__input" placeholder="{{replyTarget ? '回复 ' + replyTarget.author : '写评论...'}}" confirm-type="send" bindconfirm="submitComment" value="{{commentInput}}" bindinput="handleCommentInput" />
+      <view class="comment-bar__send {{(!commentInput.trim() || isSubmitting) ? 'comment-bar__send--disabled' : ''}}" bindtap="submitComment">{{isSubmitting ? '发送中' : '发送'}}</view>
+    </view>
+  </view>
+</view>

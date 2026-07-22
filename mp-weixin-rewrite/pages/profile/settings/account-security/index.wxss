@@ -1,0 +1,18 @@
+.account-security-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.info-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 18rpx 0; border-bottom: 1rpx solid #eef2f7; }
+.info-label { font-size: 26rpx; color: #6b7280; }
+.info-value { flex: 1; text-align: right; font-size: 26rpx; color: #1f2937; }
+.info-value--link { color: #3b6bf5; }
+.logout-button { padding: 24rpx 0; border-radius: 20rpx; background: #fef2f2; text-align: center; font-size: 28rpx; font-weight: 600; color: #ef4444; }
+.modal-mask { position: fixed; inset: 0; background: rgba(15,23,42,0.4); display: flex; align-items: center; justify-content: center; padding: 40rpx; box-sizing: border-box; }
+.modal-card { width: 100%; padding: 36rpx; border-radius: 24rpx; background: #ffffff; box-sizing: border-box; }
+.modal-title { display: block; margin-bottom: 24rpx; font-size: 32rpx; font-weight: 700; color: #1f2937; text-align: center; }
+.modal-input { width: 100%; min-height: 44rpx; margin-top: 16rpx; padding: 18rpx 0; border-bottom: 1rpx solid #e5e7eb; font-size: 26rpx; box-sizing: border-box; }
+.code-row { display: flex; align-items: center; gap: 20rpx; }
+.code-row__input { flex: 1; }
+.code-row__button { white-space: nowrap; font-size: 24rpx; font-weight: 600; color: #3b6bf5; }
+.modal-actions { display: flex; gap: 16rpx; margin-top: 28rpx; }
+.primary-button, .ghost-button { flex: 1; padding: 22rpx 0; border-radius: 18rpx; text-align: center; font-size: 26rpx; font-weight: 600; }
+.primary-button { background: #3b6bf5; color: #ffffff; }
+.ghost-button { background: #f3f4f6; color: #4b5563; }

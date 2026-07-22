@@ -1,0 +1,32 @@
+<view class="page-container appointment-map-page">
+  <hj-navbar title="门店地图" showBack="{{true}}" />
+
+  <view class="map-wrapper">
+    <map
+      wx:if="{{latitude && longitude}}"
+      id="storeMap"
+      class="store-map"
+      latitude="{{latitude}}"
+      longitude="{{longitude}}"
+      scale="16"
+      markers="{{markers}}"
+      show-location="{{true}}"
+    />
+
+    <view wx:else class="map-empty">
+      <text class="map-empty__text">当前门店暂未提供导航坐标，请先通过门店地址或联系电话与门诊确认到店路线。</text>
+    </view>
+
+    <view class="store-card">
+      <view class="store-info">
+        <text class="store-name">{{name}}</text>
+        <text class="store-address">{{address}}</text>
+      </view>
+
+      <button class="nav-btn" bindtap="openLocation">
+        <image class="btn-icon" src="/static/icons/paper-plane.svg" />
+        <text>开始导航</text>
+      </button>
+    </view>
+  </view>
+</view>

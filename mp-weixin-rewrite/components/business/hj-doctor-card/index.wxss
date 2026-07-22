@@ -1,0 +1,107 @@
+.doctor-card {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
+.doctor-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b6bf5, #8eafff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.doctor-avatar-text {
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.doctor-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.doctor-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.doctor-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.doctor-specialty {
+  font-size: 13px;
+  color: #6b7280;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.doctor-expertise {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  height: 20px;
+  overflow: hidden;
+}
+
+.doctor-expertise-tag {
+  font-size: 11px;
+  color: #1a9d5c;
+  background: #d3f5e3;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.doctor-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.doctor-rating {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.doctor-rating-star {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.doctor-rating-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.doctor-rating-count,
+.doctor-consult {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.doctor-arrow {
+  font-size: 24px;
+  color: #d1d5db;
+  margin-left: 8px;
+}

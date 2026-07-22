@@ -1,0 +1,45 @@
+.community-page { min-height: 100vh; background: #f3f4f6; padding-bottom: calc(env(safe-area-inset-bottom, 34px) + 120rpx); }
+.community-content { padding: 0 24rpx 0; }
+.publish-entry { display: flex; align-items: center; gap: 16rpx; margin: 20rpx 0; padding: 20rpx 24rpx; border-radius: 24rpx; background: #ffffff; }
+.publish-entry__icon { width: 34rpx; height: 34rpx; flex-shrink: 0; }
+.publish-entry__placeholder { flex: 1; font-size: 26rpx; color: #9ca3af; }
+.publish-entry__button { padding: 10rpx 24rpx; border-radius: 16rpx; background: #3b6bf5; color: #ffffff; font-size: 24rpx; font-weight: 700; }
+.community-tabs { display: flex; padding: 8rpx; border-radius: 20rpx; background: #ffffff; }
+.community-tab { flex: 1; text-align: center; padding: 16rpx 0; border-radius: 16rpx; font-size: 26rpx; color: #6b7280; }
+.community-tab--active { background: #3b6bf5; color: #ffffff; font-weight: 700; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.post-list { display: flex; flex-direction: column; gap: 18rpx; margin-top: 20rpx; }
+.post-card { padding: 24rpx; border-radius: 28rpx; background: #ffffff; box-shadow: 0 12rpx 28rpx rgba(15, 23, 42, 0.05); }
+.post-top { display: inline-flex; align-items: center; gap: 6rpx; padding: 6rpx 14rpx; border-radius: 9999rpx; background: #fff9e6; margin-bottom: 16rpx; }
+.post-top__icon { width: 22rpx; height: 22rpx; }
+.post-top__text { font-size: 20rpx; font-weight: 700; color: #f5a623; }
+.post-header { display: flex; align-items: center; gap: 18rpx; margin-bottom: 16rpx; }
+.post-avatar { width: 80rpx; height: 80rpx; border-radius: 9999rpx; background: #e5e7eb; overflow: hidden; flex-shrink: 0; }
+.post-avatar__image { width: 100%; height: 100%; }
+.post-author { flex: 1; min-width: 0; }
+.post-author__row { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; }
+.post-author__name { font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.post-author__role { padding: 4rpx 12rpx; border-radius: 10rpx; font-size: 20rpx; }
+.post-author__role--doctor { background: #eef4ff; color: #3b6bf5; }
+.post-author__role--expert { background: #f5f3ff; color: #8b5cf6; }
+.post-author__role--patient { background: #f0fdf4; color: #1a9d5c; }
+.post-author__time { display: block; margin-top: 6rpx; font-size: 22rpx; color: #9ca3af; }
+.post-title { display: block; margin-bottom: 10rpx; font-size: 30rpx; line-height: 1.5; font-weight: 700; color: #1f2937; }
+.post-content { display: block; margin-bottom: 12rpx; font-size: 24rpx; line-height: 1.7; color: #4b5563; }
+.post-tags { display: flex; gap: 10rpx; flex-wrap: wrap; margin-bottom: 14rpx; }
+.post-category, .post-tag { padding: 4rpx 14rpx; border-radius: 9999rpx; font-size: 20rpx; }
+.post-tag { color: #3b6bf5; background: #eef4ff; }
+.tag-theme--blue { color: #2a52d4; background: #e8f0ff; }
+.tag-theme--green { color: #138a52; background: #e8f8ef; }
+.tag-theme--orange { color: #d97706; background: #fff3df; }
+.tag-theme--amber { color: #b7791f; background: #fff8db; }
+.tag-theme--pink { color: #c2417a; background: #ffe8f1; }
+.tag-theme--violet { color: #6d4fd6; background: #f0ebff; }
+.post-actions { display: flex; gap: 28rpx; padding-top: 14rpx; border-top: 1rpx solid #f3f4f6; }
+.post-action { display: flex; align-items: center; gap: 8rpx; }
+.post-action__icon { width: 30rpx; height: 30rpx; }
+.post-action__icon--liked { transform: scale(1.04); }
+.post-action__count { font-size: 22rpx; color: #9ca3af; }
+.publish-fab { position: fixed; right: 32rpx; bottom: calc(32rpx + env(safe-area-inset-bottom, 0)); z-index: 20; width: 104rpx; height: 104rpx; border-radius: 9999rpx; background: linear-gradient(135deg, #3b6bf5, #5a85f5); display: flex; align-items: center; justify-content: center; box-shadow: 0 12rpx 28rpx rgba(59, 107, 245, 0.35); }
+.publish-fab__icon { width: 42rpx; height: 42rpx; }

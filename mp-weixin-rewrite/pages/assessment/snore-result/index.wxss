@@ -1,0 +1,33 @@
+.snore-result-page { min-height: 100vh; background: #f9fafb; }
+.page-content { padding: 32rpx 24rpx 40rpx; }
+.loading-card { padding: 180rpx 40rpx; text-align: center; }
+.loading-text { font-size: 28rpx; color: #9ca3af; }
+.risk-card { padding: 36rpx 30rpx; border-radius: 30rpx; }
+.risk-badge { display: inline-flex; padding: 8rpx 18rpx; border-radius: 9999rpx; color: #ffffff; font-size: 22rpx; font-weight: 700; }
+.risk-score-title { display: block; margin-top: 18rpx; font-size: 24rpx; color: #475569; }
+.risk-score { display: block; margin-top: 10rpx; font-size: 84rpx; font-weight: 800; line-height: 1; }
+.risk-desc { display: block; margin-top: 14rpx; font-size: 24rpx; line-height: 1.7; color: #4b5563; }
+.risk-bar-section { margin-top: 24rpx; margin-bottom: 28rpx; }
+.risk-bar-track { position: relative; height: 20rpx; border-radius: 9999rpx; background: #e5e7eb; overflow: visible; }
+.risk-bar-fill { height: 100%; border-radius: 9999rpx; }
+.risk-marker { position: absolute; top: 28rpx; transform: translateX(-50%); font-size: 20rpx; color: #94a3b8; }
+.risk-marker--high { color: #ef4444; }
+.section-title { display: flex; align-items: center; margin-bottom: 16rpx; }
+.section-title-icon { width: 28rpx; height: 28rpx; margin-right: 8rpx; }
+.section-title-text { font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16rpx; margin-bottom: 24rpx; }
+.stat-card { padding: 24rpx 18rpx; border-radius: 24rpx; background: #ffffff; text-align: center; }
+.stat-icon { width: 34rpx; height: 34rpx; margin: 0 auto 12rpx; }
+.stat-value { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.stat-label { display: block; margin-top: 8rpx; font-size: 22rpx; color: #6b7280; }
+.advice-card { padding: 24rpx; border-radius: 24rpx; background: #ffffff; margin-bottom: 24rpx; }
+.advice-text { display: block; font-size: 24rpx; line-height: 1.75; color: #4b5563; }
+.tips-grid { display: flex; flex-direction: column; gap: 14rpx; margin-bottom: 24rpx; }
+.tip-chip { display: flex; align-items: center; gap: 14rpx; padding: 18rpx 20rpx; border-radius: 20rpx; background: #ffffff; }
+.tip-num { width: 40rpx; height: 40rpx; border-radius: 9999rpx; background: #eef4ff; color: #3b6bf5; font-size: 22rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.tip-content { flex: 1; font-size: 24rpx; line-height: 1.65; color: #4b5563; }
+.action-buttons { display: flex; flex-direction: column; gap: 16rpx; }
+.btn-primary, .btn-secondary, .btn-outline { display: flex; align-items: center; justify-content: center; min-height: 88rpx; border-radius: 9999rpx; font-size: 28rpx; font-weight: 700; }
+.btn-primary { color: #ffffff; background: linear-gradient(135deg, #3b6bf5, #6366f1); box-shadow: 0 10rpx 26rpx rgba(59,107,245,0.24); }
+.btn-secondary { color: #475569; background: #f1f5f9; }
+.btn-outline { color: #3b6bf5; background: #ffffff; border: 1rpx solid #bfdbfe; }

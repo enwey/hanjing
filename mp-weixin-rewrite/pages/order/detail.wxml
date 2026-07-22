@@ -1,0 +1,90 @@
+<view class="page order-detail-page">
+  <hj-navbar title="订单详情" showBack="{{true}}" />
+
+  <view wx:if="{{loading}}" class="loading-wrap">
+    <text>加载中...</text>
+  </view>
+
+  <block wx:elif="{{order}}">
+    <view class="body">
+      <view class="status-card">
+        <text class="status-card__label">{{order.statusLabel}}</text>
+        <view class="status-progress">
+          <block wx:for="{{order.steps}}" wx:key="label">
+            <view class="status-progress__dot {{item.done ? 'status-progress__dot--done' : ''}}"></view>
+            <view wx:if="{{index < order.steps.length - 1}}" class="status-progress__line {{order.steps[index + 1].done ? 'status-progress__line--done' : ''}}"></view>
+          </block>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <text class="section-title">商品信息</text>
+        <view wx:for="{{order.items}}" wx:key="productId" class="order-item-row">
+          <image wx:if="{{item.productImage}}" class="order-item-row__image" src="{{item.productImage}}" mode="aspectFill"></image>
+          <view wx:else class="order-item-row__image order-item-row__image--empty"></view>
+          <view class="order-item-row__body">
+            <text class="order-item-row__name">{{item.productName}}</text>
+            <text class="order-item-row__count">x{{item.quantity}}</text>
+          </view>
+          <text class="order-item-row__price">{{item.priceLabel}}</text>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <text class="section-title">金额明细</text>
+        <view class="amount-row">
+          <text class="amount-row__label">商品总价</text>
+          <text class="amount-row__value">{{order.totalAmountLabel}}</text>
+        </view>
+        <view wx:if="{{order.hasDiscount}}" class="amount-row">
+          <text class="amount-row__label">优惠减免</text>
+          <text class="amount-row__value amount-row__value--discount">-{{order.discountAmountLabel}}</text>
+        </view>
+        <view class="amount-row amount-row--total">
+          <text class="amount-row__label">实付金额</text>
+          <text class="amount-row__value amount-row__value--total">{{order.payAmountLabel}}</text>
+        </view>
+      </view>
+
+      <view class="section-card">
+        <text class="section-title">订单信息</text>
+        <view class="info-row"><text class="info-row__label">订单编号</text><text class="info-row__value">{{order.orderNo}}</text></view>
+        <view class="info-row"><text class="info-row__label">下单时间</text><text class="info-row__value">{{order.createdAtText}}</text></view>
+        <view wx:if="{{order.payAtText}}" class="info-row"><text class="info-row__label">支付时间</text><text class="info-row__value">{{order.payAtText}}</text></view>
+        <view wx:if="{{order.payMethod}}" class="info-row"><text class="info-row__label">支付方式</text><text class="info-row__value">微信支付</text></view>
+        <view wx:if="{{order.deliveryMethodText}}" class="info-row"><text class="info-row__label">配送方式</text><text class="info-row__value">{{order.deliveryMethodText}}</text></view>
+        <view wx:if="{{order.shippingAddress.storeName}}" class="info-row"><text class="info-row__label">自提门店</text><text class="info-row__value">{{order.shippingAddress.storeName}}</text></view>
+        <view wx:if="{{order.shippingAddress.storeBusinessHours}}" class="info-row"><text class="info-row__label">营业时间</text><text class="info-row__value">{{order.shippingAddress.storeBusinessHours}}</text></view>
+        <view wx:if="{{order.shippingAddress.contactName || order.shippingAddress.receiver}}" class="info-row"><text class="info-row__label">收货人</text><text class="info-row__value">{{order.shippingAddress.contactName || order.shippingAddress.receiver}}</text></view>
+        <view wx:if="{{order.shippingAddress.phone}}" class="info-row"><text class="info-row__label">联系电话</text><text class="info-row__value">{{order.shippingAddress.phone}}</text></view>
+        <view wx:if="{{order.shippingAddress.detailAddress}}" class="info-row"><text class="info-row__label">{{order.shippingAddress.storeName ? '自提地址' : '收货地址'}}</text><text class="info-row__value">{{order.shippingAddress.detailAddress}}</text></view>
+        <view wx:if="{{order.shippingAddress.express_company}}" class="info-row"><text class="info-row__label">快递公司</text><text class="info-row__value">{{order.shippingAddress.express_company}}</text></view>
+        <view wx:if="{{order.shippingAddress.tracking_number}}" class="info-row"><text class="info-row__label">运单号</text><text class="info-row__value">{{order.shippingAddress.tracking_number}}</text></view>
+        <view wx:if="{{order.shippingAddress.refund_reason}}" class="info-row"><text class="info-row__label">退款原因</text><text class="info-row__value">{{order.shippingAddress.refund_reason}}</text></view>
+      </view>
+
+      <view wx:if="{{logisticsList.length}}" class="section-card section-card--logistics">
+        <text class="section-title">物流轨迹详情</text>
+        <view class="logistics-list">
+          <view class="logistics-list__line"></view>
+          <view wx:for="{{logisticsList}}" wx:key="time" class="logistics-item">
+            <view class="logistics-item__dot {{item.isFirst ? 'logistics-item__dot--first' : ''}}"></view>
+            <view class="logistics-item__content">
+              <text class="logistics-item__desc {{item.isFirst ? 'logistics-item__desc--first' : ''}}">{{item.desc}}</text>
+              <text class="logistics-item__time">{{item.time}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{order.actionFlags.canCancel || order.actionFlags.canPay || order.actionFlags.canConfirmReceipt || order.actionFlags.canRefund}}" class="action-footer">
+        <button wx:if="{{order.actionFlags.canCancel}}" bindtap="onCancelOrder" class="action-button action-button--ghost">取消订单</button>
+        <button wx:if="{{order.actionFlags.canPay}}" bindtap="onPayOrder" class="action-button action-button--primary">立即支付</button>
+        <button wx:if="{{order.actionFlags.canConfirmReceipt}}" bindtap="onConfirmReceipt" class="action-button action-button--primary">确认收货</button>
+        <button wx:if="{{order.actionFlags.canRefund}}" bindtap="onApplyRefund" class="action-button action-button--ghost">申请退款</button>
+      </view>
+
+      <view class="safe-bottom"></view>
+    </view>
+  </block>
+</view>

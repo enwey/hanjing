@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "改约",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "hj-navbar": "../../components/base/hj-navbar",
+    "hj-button": "../../components/base/hj-button",
+    "hj-schedule-calendar": "../../components/business/hj-schedule-calendar"
+  }
+}

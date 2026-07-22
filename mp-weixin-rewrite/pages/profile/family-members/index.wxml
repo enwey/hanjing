@@ -1,0 +1,64 @@
+<view class="container family-page">
+  <hj-navbar title="家庭成员" showBack="{{true}}" />
+
+  <view class="page-section family-page__hero">
+    <text class="page-title">当前就诊人</text>
+    <text class="family-page__patient-name">{{currentPatientName || '暂无就诊人'}}</text>
+    <text class="page-description" wx:if="{{currentPatientRelation}}">{{currentPatientRelation}}</text>
+    <text class="page-description" wx:if="{{currentPatientCard}}">就诊卡号：{{currentPatientCard}}</text>
+  </view>
+
+  <view class="page-section family-summary">
+    <view class="family-summary__item">
+      <text class="family-summary__value">{{summary.memberCount}}</text>
+      <text class="family-summary__label">成员数量</text>
+    </view>
+    <view class="family-summary__item">
+      <text class="family-summary__value">{{summary.linkedCardCount}}</text>
+      <text class="family-summary__label">已有就诊卡</text>
+    </view>
+    <view class="family-summary__item">
+      <text class="family-summary__value">{{summary.recentVisitCount}}</text>
+      <text class="family-summary__label">近期开诊记录</text>
+    </view>
+  </view>
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载家庭成员...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{!members.length}}">
+    <text class="state-title">暂无家庭成员</text>
+    <text class="page-description">你还没有关联任何家庭成员。</text>
+  </view>
+
+  <view class="page-section" wx:else>
+    <text class="section-title">成员列表</text>
+    <view class="member-list">
+      <view wx:for="{{members}}" wx:key="id" class="member-card {{item.isCurrent ? 'member-card--active' : ''}}" data-member-id="{{item.id}}" bindtap="openMemberDetail">
+        <view class="member-card__avatar">{{item.avatarText}}</view>
+        <view class="member-card__body">
+          <view class="member-card__header">
+            <text class="member-card__name">{{item.name}}</text>
+            <text class="member-card__relation">{{item.relationLabel}}</text>
+            <text wx:if="{{item.isCurrent}}" class="member-card__current-tag">当前就诊人</text>
+          </view>
+          <text class="member-card__meta">{{item.ageLabel}}</text>
+          <text class="member-card__meta" wx:if="{{item.phone}}">手机号：{{item.phone}}</text>
+          <text class="member-card__meta" wx:if="{{item.idCard}}">身份证号：{{item.idCard}}</text>
+          <text class="member-card__meta" wx:if="{{item.medicalCardNo}}">就诊卡号：{{item.medicalCardNo}}</text>
+          <text class="member-card__meta" wx:if="{{item.lastVisit}}">最近就诊：{{item.lastVisit}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="page-section family-page__action-bar">
+    <hj-button text="添加成员" bind:tap="openAddMember" />
+  </view>
+</view>

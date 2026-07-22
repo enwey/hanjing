@@ -1,0 +1,23 @@
+.treatment-calendar-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.calendar-header { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 20rpx; }
+.calendar-nav { width: 52rpx; height: 52rpx; border-radius: 9999rpx; background: #eef4ff; text-align: center; line-height: 52rpx; font-size: 28rpx; color: #3b6bf5; }
+.calendar-title { font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.week-row, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10rpx; }
+.week-label { text-align: center; font-size: 22rpx; color: #6b7280; }
+.calendar-day { min-height: 96rpx; padding: 12rpx 6rpx; border-radius: 18rpx; background: #ffffff; text-align: center; }
+.calendar-day--empty { background: transparent; }
+.calendar-day--today { border: 1rpx solid #3b6bf5; }
+.calendar-day--comfort5 { background: #dcfce7; }
+.calendar-day--comfort4 { background: #e0f2fe; }
+.calendar-day--comfort3 { background: #fef9c3; }
+.calendar-day--comfort2 { background: #ffedd5; }
+.calendar-day--comfort1 { background: #fee2e2; }
+.calendar-day__num { display: block; font-size: 24rpx; color: #1f2937; }
+.calendar-day__duration { display: block; margin-top: 10rpx; font-size: 20rpx; color: #6b7280; }
+.section-title { display: block; margin-bottom: 20rpx; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18rpx; }
+.summary-card { padding: 22rpx 16rpx; border-radius: 20rpx; background: linear-gradient(135deg, #eef4ff 0%, #ffffff 100%); text-align: center; }
+.summary-card__value { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.summary-card__label { display: block; margin-top: 8rpx; font-size: 22rpx; color: #6b7280; }

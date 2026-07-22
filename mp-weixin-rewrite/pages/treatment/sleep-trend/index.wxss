@@ -1,0 +1,24 @@
+.sleep-trend-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.current-patient-label { display: block; margin-bottom: 18rpx; font-size: 24rpx; color: #6b7280; }
+.range-tabs { display: flex; gap: 16rpx; }
+.range-tab { flex: 1; padding: 18rpx 0; border-radius: 18rpx; text-align: center; font-size: 26rpx; color: #6b7280; background: #f3f4f6; }
+.range-tab--active { background: #3b6bf5; color: #ffffff; font-weight: 600; }
+.summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18rpx; margin-top: 22rpx; }
+.summary-card { padding: 22rpx 16rpx; border-radius: 20rpx; background: linear-gradient(135deg, #eef4ff 0%, #ffffff 100%); text-align: center; }
+.summary-card__value { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.summary-card__label { display: block; margin-top: 8rpx; font-size: 22rpx; color: #6b7280; }
+.section-header { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 20rpx; }
+.section-title { font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.section-more { font-size: 24rpx; color: #3b6bf5; }
+.chart { display: flex; align-items: flex-end; justify-content: space-between; gap: 12rpx; min-height: 220rpx; }
+.chart-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 10rpx; }
+.chart-item__value, .chart-item__date, .comfort-item__date { font-size: 22rpx; color: #6b7280; }
+.chart-item__bar-wrap { display: flex; align-items: flex-end; height: 132px; }
+.chart-item__bar { width: 28rpx; border-radius: 9999rpx; min-height: 6px; }
+.comfort-list { display: flex; flex-direction: column; gap: 14rpx; }
+.comfort-item { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.comfort-dots { display: flex; gap: 10rpx; }
+.comfort-dot { width: 16rpx; height: 16rpx; border-radius: 9999rpx; background: #e5e7eb; }
+.comfort-dot--active { background: #22c55e; }

@@ -1,0 +1,67 @@
+<view class="container medical-record-page">
+  <hj-navbar title="病历档案" showBack="{{true}}" />
+
+  <view class="page-section">
+    <text class="section-title">就诊人</text>
+    <picker mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="handleMemberChange">
+      <view class="patient-switcher">
+        <view class="patient-switcher__body">
+          <text class="patient-switcher__label">{{selectedMemberLabel}}</text>
+          <text wx:if="{{selectedPatientCard}}" class="patient-switcher__meta">就诊卡号：{{selectedPatientCard}}</text>
+        </view>
+        <text class="patient-switcher__action">{{memberOptions.length ? '切换' : '暂无成员'}}</text>
+      </view>
+    </picker>
+  </view>
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载病历档案...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{!records.length}}">
+    <text class="state-title">暂无病历档案</text>
+    <text class="page-description">当前就诊人还没有病历记录。</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-section summary-bar">
+      <view class="summary-item">
+        <text class="summary-item__value">{{summary.totalCount}}</text>
+        <text class="summary-item__label">病历记录</text>
+      </view>
+      <view class="summary-item" wx:if="{{summary.latestVisitLabel}}">
+        <text class="summary-item__value">{{summary.latestVisitLabel}}</text>
+        <text class="summary-item__label">最近就诊</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-item__value">{{summary.doctorCount}}</text>
+        <text class="summary-item__label">涉及医生</text>
+      </view>
+    </view>
+
+    <view class="page-section">
+    <text class="section-title">档案列表</text>
+    <view class="record-list">
+      <view wx:for="{{records}}" wx:key="id" class="record-card">
+        <view class="record-card__header">
+          <text class="record-card__title">{{item.visitDate || '未填写就诊日期'}}</text>
+          <text class="record-card__type" style="color: {{item.typeColor}}; background: {{item.typeBackground}};">
+            {{item.typeLabel}}
+          </text>
+        </view>
+        <text class="record-card__meta" wx:if="{{item.patientName}}">就诊人：{{item.patientName}}</text>
+        <text class="record-card__meta" wx:if="{{item.doctorName}}">医生：{{item.doctorName}}</text>
+        <text class="record-card__meta" wx:if="{{item.hospital}}">门店/机构：{{item.hospital}}</text>
+        <text class="record-card__content" wx:if="{{item.diagnosis}}">诊断：{{item.diagnosis}}</text>
+        <text class="record-card__content" wx:if="{{item.prescription}}">处方：{{item.prescription}}</text>
+        <text class="record-card__content" wx:if="{{item.note}}">备注：{{item.note}}</text>
+      </view>
+    </view>
+    </view>
+  </block>
+</view>

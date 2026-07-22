@@ -1,0 +1,13 @@
+.distribution-rules-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.rule-card__title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.rule-card__desc { display: block; margin-top: 16rpx; font-size: 26rpx; line-height: 1.75; color: #4b5563; }
+.level-table { margin-top: 20rpx; border-radius: 20rpx; overflow: hidden; border: 1rpx solid #e5e7eb; }
+.level-row { display: grid; grid-template-columns: 1.1fr 1fr 0.8fr 0.8fr; background: #ffffff; }
+.level-row--head { background: #eef4ff; }
+.level-col { padding: 18rpx 12rpx; font-size: 22rpx; text-align: center; color: #4b5563; border-bottom: 1rpx solid #e5e7eb; }
+.level-col--strong { font-weight: 700; color: #1f2937; }
+.rule-item { display: flex; gap: 16rpx; margin-top: 18rpx; }
+.rule-item__index { width: 36rpx; height: 36rpx; border-radius: 9999rpx; background: #eef4ff; color: #3b6bf5; font-size: 22rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.rule-item__text { flex: 1; font-size: 24rpx; line-height: 1.7; color: #4b5563; }

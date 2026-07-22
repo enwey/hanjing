@@ -1,0 +1,79 @@
+<view class="assessment-page">
+  <hj-navbar title="睡眠评估" />
+
+  <view class="hero-card">
+    <text class="hero-card__eyebrow">SLEEP SCREENING</text>
+    <text class="hero-card__title">从嗜睡量表到鼾声分析</text>
+    <text class="hero-card__desc">基于真实问卷与录音数据，帮助判断睡眠呼吸问题的风险等级，并引导进入后续就诊流程。</text>
+  </view>
+
+  <view class="page-section">
+    <view class="section-heading">
+      <text class="section-heading__title">开始评估</text>
+      <text class="section-heading__desc">请选择适合当前情况的评估方式</text>
+    </view>
+    <view class="assessment-card-list">
+      <view
+        wx:for="{{assessmentCards}}"
+        wx:key="key"
+        class="assessment-card"
+        data-url="{{item.url}}"
+        bindtap="openAssessment"
+      >
+        <image class="assessment-card__icon" src="{{item.icon}}" mode="aspectFit" />
+        <view class="assessment-card__content">
+          <view class="assessment-card__top">
+            <text class="assessment-card__title">{{item.title}}</text>
+            <text class="assessment-card__tag">{{item.tag}}</text>
+          </view>
+          <text class="assessment-card__desc">{{item.description}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{!isLoggedIn}}" class="page-section">
+    <view class="empty-card">
+      <text class="empty-card__title">登录后查看您的评估记录</text>
+      <text class="empty-card__desc">完成 ESS 或 AI 鼾声分析后，系统会生成对应结果页，并在这里保留历史记录。</text>
+      <button class="empty-card__button" bindtap="goLogin">去登录</button>
+    </view>
+  </view>
+
+  <view wx:if="{{isLoggedIn && loadError}}" class="page-section">
+    <text class="state-text">{{loadError}}</text>
+  </view>
+
+  <view wx:if="{{isLoggedIn}}" class="page-section">
+    <view class="section-heading">
+      <text class="section-heading__title">我的评估记录</text>
+      <text class="section-heading__desc">点击查看对应的评估报告详情</text>
+    </view>
+    <view wx:if="{{loading}}" class="state-card">
+      <text class="state-text">加载评估记录中...</text>
+    </view>
+    <view wx:elif="{{records.length}}" class="record-list">
+      <view
+        wx:for="{{records}}"
+        wx:key="id"
+        class="record-card"
+        data-record-id="{{item.id}}"
+        data-type="{{item.type}}"
+        bindtap="openRecord"
+      >
+        <view class="record-card__top">
+          <text class="record-card__type">{{item.typeLabel}}</text>
+          <text class="record-card__level" style="color: {{item.levelColor}};">{{item.levelLabel}}</text>
+        </view>
+        <text class="record-card__summary">{{item.summary}}</text>
+        <text class="record-card__recommendation" wx:if="{{item.recommendation}}">{{item.recommendation}}</text>
+        <text class="record-card__date">{{item.dateLabel}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty-card">
+      <text class="empty-card__title">暂无评估记录</text>
+      <text class="empty-card__desc">完成评估后，这里会保留真实的评估时间、结果等级和报告入口。</text>
+    </view>
+  </view>
+  <hj-privacy-popup id="privacyPopup" />
+</view>

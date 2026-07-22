@@ -1,0 +1,17 @@
+.withdraw-records-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.summary-bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16rpx; }
+.summary-item { padding: 22rpx 16rpx; border-radius: 20rpx; background: linear-gradient(135deg, #eef4ff 0%, #ffffff 100%); text-align: center; }
+.summary-item__value { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.summary-item__label { display: block; margin-top: 10rpx; font-size: 22rpx; color: #6b7280; }
+.record-list { display: flex; flex-direction: column; gap: 16rpx; }
+.record-card { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 24rpx; border-radius: 22rpx; background: #ffffff; border: 1rpx solid #e5e7eb; }
+.record-card__amount { display: block; font-size: 30rpx; font-weight: 700; color: #ef4444; }
+.record-card__meta { display: block; margin-top: 10rpx; font-size: 22rpx; color: #9ca3af; }
+.record-card__right { text-align: right; }
+.record-card__status { display: inline-block; padding: 6rpx 16rpx; border-radius: 9999rpx; font-size: 22rpx; }
+.record-card__status--pending, .record-card__status--processing { color: #b45309; background: rgba(245, 158, 11, 0.14); }
+.record-card__status--approved, .record-card__status--completed, .record-card__status--transferred, .record-card__status--success { color: #1a9d5c; background: rgba(26, 157, 92, 0.14); }
+.record-card__status--rejected, .record-card__status--failed { color: #ef4444; background: rgba(239, 68, 68, 0.12); }
+.record-card__date { display: block; margin-top: 10rpx; font-size: 22rpx; color: #d1d5db; }

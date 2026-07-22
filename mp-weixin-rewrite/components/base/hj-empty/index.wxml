@@ -1,0 +1,6 @@
+<view class="empty">
+  <view class="empty__icon">{{displayIcon}}</view>
+  <text class="empty__title">{{displayTitle}}</text>
+  <text wx:if="{{displayDescription}}" class="empty__description">{{displayDescription}}</text>
+  <slot />
+</view>

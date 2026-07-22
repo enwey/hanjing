@@ -1,0 +1,41 @@
+<view class="store-card" bindtap="handleTap">
+  <view class="store-card-image">
+    <view class="store-card-image-placeholder">
+      <image class="store-card-placeholder-icon" src="/static/icons/moon.svg" />
+    </view>
+    <view wx:if="{{store.status === 'prepare'}}" class="store-card-status-badge prepare">
+      <text>筹备中</text>
+    </view>
+    <view wx:elif="{{!store.isOpen}}" class="store-card-status-badge closed">
+      <text>休息中</text>
+    </view>
+    <view wx:else class="store-card-status-badge open">
+      <text>营业中</text>
+    </view>
+  </view>
+  <view class="store-card-body">
+    <view class="store-card-header">
+      <text class="store-card-name">{{store.name}}</text>
+      <view class="store-card-tags">
+        <text wx:for="{{store.tags}}" wx:key="*this" class="store-card-tag">{{item}}</text>
+      </view>
+    </view>
+    <view class="store-card-address">
+      <image class="store-card-icon" src="/static/icons/map-pin.svg" />
+      <text>{{store.address}}</text>
+    </view>
+    <view class="store-card-footer">
+      <view class="store-card-meta">
+        <view class="store-card-meta-item">
+          <image class="store-card-icon" src="/static/icons/doctor.svg" />
+          <text>{{store.doctorCount}}位医生</text>
+        </view>
+        <view class="store-card-meta-item">
+          <image class="store-card-icon" src="/static/icons/clock.svg" />
+          <text>{{store.businessHours}}</text>
+        </view>
+      </view>
+      <text wx:if="{{distance}}" class="store-card-distance">{{distance}}</text>
+    </view>
+  </view>
+</view>

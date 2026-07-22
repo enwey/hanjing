@@ -1,0 +1,7 @@
+<view class="navbar {{transparent ? 'navbar--transparent' : ''}} {{!sticky ? 'navbar--static' : ''}}" style="background: {{backgroundColor}}; color: {{textColor}};">
+  <view class="navbar__side">
+    <view wx:if="{{showBack}}" class="navbar__back" bindtap="handleBackTap"></view>
+  </view>
+  <text class="navbar__title">{{title}}</text>
+  <view class="navbar__side"></view>
+</view>

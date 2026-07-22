@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "门店地图",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "hj-navbar": "../../components/base/hj-navbar"
+  }
+}

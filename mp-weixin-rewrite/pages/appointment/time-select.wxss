@@ -1,0 +1,109 @@
+.page {
+  min-height: 100vh;
+  background: #f9fafb;
+}
+
+.page-content {
+  padding: 0 32rpx;
+}
+
+.schedule-section {
+  margin-bottom: 32rpx;
+}
+
+.schedule-date {
+  display: block;
+  margin-bottom: 24rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.schedule-group {
+  margin-bottom: 24rpx;
+}
+
+.schedule-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding: 28rpx 32rpx;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 24rpx;
+  background: #ffffff;
+}
+
+.schedule-header--full {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.schedule-period {
+  margin-right: 24rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.schedule-time {
+  flex: 1;
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
+.schedule-avail {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #1a9d5c;
+}
+
+.slot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  padding: 0 8rpx;
+}
+
+.slot {
+  width: calc((100% - 32rpx) / 3);
+  padding: 24rpx 0;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 20rpx;
+  background: #ffffff;
+  text-align: center;
+  font-size: 28rpx;
+}
+
+.slot--available {
+  border-color: #3b6bf5;
+  color: #3b6bf5;
+}
+
+.slot--booked {
+  background: #f9fafb;
+  color: #d1d5db;
+  pointer-events: none;
+}
+
+.slot--disabled {
+  color: #d1d5db;
+  pointer-events: none;
+}
+
+.slot-time {
+  font-weight: 500;
+}
+
+.empty-text {
+  padding: 80rpx 0;
+  text-align: center;
+  font-size: 28rpx;
+  color: #9ca3af;
+}
+
+.select-hint {
+  padding: 120rpx 0;
+  text-align: center;
+  font-size: 30rpx;
+  color: #9ca3af;
+}

@@ -1,0 +1,98 @@
+.page {
+  min-height: 100vh;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content {
+  flex: 1;
+  padding: 32rpx 32rpx 0;
+}
+
+.booking-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32rpx;
+  padding: 40rpx;
+  border-radius: 32rpx;
+  background: linear-gradient(135deg, #eef4ff, #d9e6ff);
+}
+
+.booking-banner-text {
+  flex: 1;
+  margin-right: 32rpx;
+}
+
+.booking-banner-title {
+  display: block;
+  margin-bottom: 8rpx;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.booking-banner-desc {
+  font-size: 26rpx;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.tabs {
+  display: flex;
+  margin-bottom: 32rpx;
+  padding: 8rpx;
+  border-radius: 24rpx;
+  background: #ffffff;
+}
+
+.tab {
+  flex: 1;
+  padding: 20rpx 0;
+  border-radius: 20rpx;
+  text-align: center;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.tab--active {
+  background: #eef4ff;
+  color: #3b6bf5;
+  font-weight: 600;
+}
+
+.apt-list {
+  padding-bottom: 32rpx;
+}
+
+.safe-bottom {
+  height: env(safe-area-inset-bottom, 34px);
+}
+
+.auth-btn-custom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 176rpx;
+  height: 88rpx;
+  margin: 0;
+  padding: 0 48rpx;
+  border: none;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #3b6bf5, #5a85f5);
+  box-shadow: 0 8rpx 28rpx rgba(59, 107, 245, 0.25);
+  color: #ffffff;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: normal;
+}
+
+.auth-btn-custom::after {
+  border: none;
+}
+
+.auth-btn-custom-hover {
+  background: linear-gradient(135deg, #2a52d4, #3b6bf5) !important;
+}

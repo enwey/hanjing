@@ -1,0 +1,43 @@
+<view class="questionnaire-page">
+  <hj-navbar title="ESS嗜睡量表" showBack="{{true}}" bindback="handleBack" />
+  <view class="page-content">
+    <picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker">
+      <view class="member-picker-content">
+        <view class="member-info">
+          <text class="member-label">当前评测人：</text>
+          <text class="member-value">{{selectedMemberName}}</text>
+        </view>
+        <view class="member-action">
+          <text class="member-action-text">切换</text>
+          <image class="member-action-arrow" src="/static/icons/chevron-right.svg" mode="aspectFit" />
+        </view>
+      </view>
+    </picker>
+
+    <view wx:if="{{isPageReady && questions.length}}" class="question-card">
+      <text class="question-title">第{{questions[currentQuestionIndex].id}}题</text>
+      <text class="question-situation">{{questions[currentQuestionIndex].situation}}</text>
+      <text class="question-hint">💡 {{questions[currentQuestionIndex].hint}}</text>
+
+      <view class="options-list">
+        <view wx:for="{{answerOptions}}" wx:key="score" class="option-item {{answers[currentQuestionIndex] === item.score ? 'is-selected' : ''}}" data-score="{{item.score}}" bindtap="selectAnswer">
+          <text class="option-emoji">{{item.emoji}}</text>
+          <text class="option-label">{{item.label}}</text>
+          <view class="option-radio {{answers[currentQuestionIndex] === item.score ? 'checked' : ''}}">
+            <text wx:if="{{answers[currentQuestionIndex] === item.score}}">✓</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="dots">
+      <view wx:for="{{totalQuestions}}" wx:key="*this" class="dot {{answers[index] >= 0 ? 'completed' : ''}} {{index === currentQuestionIndex ? 'current' : ''}}" data-index="{{index}}" bindtap="handleDotClick"></view>
+    </view>
+
+    <view class="bottom-actions">
+      <view wx:if="{{currentQuestionIndex > 0}}" class="btn-prev" bindtap="prevQuestion">‹ 上一题</view>
+      <view wx:if="{{currentQuestionIndex < totalQuestions - 1}}" class="btn-next" bindtap="nextQuestion">下一题 ›</view>
+      <view wx:if="{{currentQuestionIndex === totalQuestions - 1 && answers.length && answers.indexOf(-1) === -1}}" class="btn-submit" bindtap="submitQuestionnaire">提交评估</view>
+    </view>
+  </view>
+</view>

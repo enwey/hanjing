@@ -1,0 +1,75 @@
+<view class="container sleep-report-page">
+  <hj-navbar title="睡眠健康报告" showBack="{{true}}" />
+
+  <view class="range-tabs">
+    <view class="range-tab {{selectedRange === 'week' ? 'range-tab--active' : ''}}" data-range="week" bindtap="selectDateRange">过去7天</view>
+    <view class="range-tab {{selectedRange === 'month' ? 'range-tab--active' : ''}}" data-range="month" bindtap="selectDateRange">过去30天</view>
+  </view>
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在生成睡眠健康报告...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <block wx:elif="{{report}}">
+    <view class="page-section score-card">
+      <text wx:if="{{currentPatientLabel}}" class="score-card__patient">{{currentPatientLabel}}</text>
+      <text class="score-card__label">综合睡眠评分</text>
+      <text class="score-card__value">{{report.score}}</text>
+      <text class="score-card__meta" wx:if="{{report.hasData}}">超过 {{report.betterThan}}% 的用户</text>
+      <text class="score-card__meta" wx:else>暂无有效佩戴数据</text>
+    </view>
+
+    <view class="page-section metrics-grid">
+      <view class="metric-card">
+        <text class="metric-card__value">{{report.weekAvg}}h</text>
+        <text class="metric-card__label">平均时长</text>
+      </view>
+      <view class="metric-card">
+        <text class="metric-card__value">{{report.compliance}}%</text>
+        <text class="metric-card__label">依从率</text>
+      </view>
+      <view class="metric-card">
+        <text class="metric-card__value">{{report.avgComfort}} / 5</text>
+        <text class="metric-card__label">舒适度</text>
+      </view>
+      <view class="metric-card">
+        <text class="metric-card__value">{{report.streak}}</text>
+        <text class="metric-card__label">连续达标天数</text>
+      </view>
+    </view>
+
+    <view class="page-section state-card" wx:if="{{!report.hasData}}">
+      <text class="state-title">暂无睡眠报告</text>
+      <text class="page-description">当前治疗人还没有足够的真实佩戴记录，完成打卡后会自动生成报告。</text>
+      <view class="empty-action" bindtap="goAppointment">前往预约</view>
+    </view>
+
+    <view class="page-section" wx:else>
+      <text class="section-title">趋势分布</text>
+      <view class="trend-bars">
+        <view wx:for="{{report.trend}}" wx:key="date" class="trend-bar-item">
+          <view class="trend-bar-track">
+            <view class="trend-bar-fill" style="height: {{(item.score || 0)}}%; background: {{item.score >= 80 ? '#1A9D5C' : item.score >= 60 ? '#F59E0B' : '#EF4444'}};"></view>
+          </view>
+          <text class="trend-bar-label">{{item.date}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="page-section">
+      <text class="section-title">报告建议</text>
+      <view class="insight-card insight-card--{{item.type}}" wx:for="{{insights}}" wx:key="id">
+        <text class="insight-card__text">{{item.text}}</text>
+      </view>
+    </view>
+  </block>
+  <view wx:else class="page-section state-card">
+    <text class="state-title">暂无睡眠报告</text>
+    <text class="page-description">当前还没有可展示的睡眠报告数据。</text>
+  </view>
+</view>

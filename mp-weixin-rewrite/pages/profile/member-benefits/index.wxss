@@ -1,0 +1,29 @@
+.member-benefits-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.level-card { overflow: hidden; }
+.level-card__title { display: block; font-size: 40rpx; font-weight: 700; }
+.level-card__stats { display: flex; gap: 24rpx; margin-top: 28rpx; }
+.level-card__stat { flex: 1; padding: 24rpx; border-radius: 20rpx; background: rgba(255, 255, 255, 0.28); }
+.level-card__stat-value { display: block; font-size: 34rpx; font-weight: 700; }
+.level-card__stat-label { display: block; margin-top: 10rpx; font-size: 24rpx; opacity: 0.88; }
+.level-card__progress { margin-top: 28rpx; }
+.level-card__progress-text { display: block; font-size: 24rpx; }
+.level-card__progress-track { height: 14rpx; margin-top: 14rpx; border-radius: 9999rpx; background: rgba(255, 255, 255, 0.35); overflow: hidden; }
+.level-card__progress-fill { height: 100%; border-radius: 9999rpx; background: rgba(255, 255, 255, 0.92); }
+.section-title { display: block; margin-bottom: 20rpx; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.benefit-list, .level-row-list { display: flex; flex-direction: column; gap: 20rpx; }
+.benefit-card { display: flex; gap: 20rpx; align-items: center; padding: 24rpx; border-radius: 22rpx; background: #ffffff; border: 1rpx solid #eef2f7; }
+.benefit-card__icon { width: 88rpx; height: 88rpx; border-radius: 24rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.benefit-card__icon-image { width: 42rpx; height: 42rpx; }
+.benefit-card__body { flex: 1; min-width: 0; }
+.benefit-card__title { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.benefit-card__description { display: block; margin-top: 10rpx; font-size: 24rpx; line-height: 1.7; color: #6b7280; }
+.benefit-card__status { width: 52rpx; height: 52rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.benefit-card__status-icon { width: 36rpx; height: 36rpx; }
+.level-row { display: flex; gap: 18rpx; align-items: center; padding: 24rpx; border-radius: 22rpx; background: #ffffff; border: 1rpx solid #eef2f7; }
+.level-row__dot { width: 18rpx; height: 18rpx; border-radius: 9999rpx; flex-shrink: 0; }
+.level-row__body { flex: 1; min-width: 0; }
+.level-row__title { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.level-row__description { display: block; margin-top: 8rpx; font-size: 24rpx; color: #6b7280; }
+.level-row__badge { padding: 8rpx 16rpx; border-radius: 9999rpx; font-size: 22rpx; font-weight: 600; color: #3b6bf5; background: rgba(59, 107, 245, 0.12); }

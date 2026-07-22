@@ -1,0 +1,54 @@
+<view class="container live-detail-page">
+  <hj-navbar title="直播详情" showBack="{{true}}" />
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载直播详情...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <block wx:elif="{{room}}">
+    <view class="live-hero">
+      <image wx:if="{{room.cover}}" class="live-hero__cover" src="{{room.cover}}" mode="aspectFill" />
+      <view wx:else class="live-hero__cover live-hero__cover--empty"></view>
+      <view class="live-hero__mask"></view>
+      <view class="live-hero__content">
+        <view class="live-hero__status live-hero__status--{{room.status}}">{{room.statusText}}</view>
+        <text class="live-hero__title">{{room.title}}</text>
+        <text wx:if="{{room.displayRoomId}}" class="live-hero__sub">微信直播间ID：{{room.displayRoomId}}</text>
+      </view>
+    </view>
+
+    <view class="page-section live-info">
+      <view class="live-info__meta">
+        <view wx:if="{{room.anchorName}}" class="live-info__anchor">
+          <text class="live-info__anchor-avatar">{{room.anchorInitial}}</text>
+          <text class="live-info__anchor-name">{{room.anchorName}}</text>
+        </view>
+        <text wx:if="{{room.displayTime}}" class="live-info__time">{{room.displayTime}}</text>
+      </view>
+      <text wx:if="{{room.status !== 'upcoming'}}" class="live-info__viewer">{{room.displayViewerCount}}人观看</text>
+      <text wx:if="{{room.displayDescription}}" class="live-info__desc">{{room.displayDescription}}</text>
+      <button class="live-info__button" bindtap="openWechatLiveRoom">{{room.actionText}}</button>
+    </view>
+
+    <view class="page-section" wx:if="{{products.length}}">
+      <text class="section-title">直播好物</text>
+      <scroll-view scroll-x class="product-scroll">
+        <view class="product-scroll__list">
+          <view wx:for="{{products}}" wx:key="id" class="live-product-card" data-id="{{item.id}}" bindtap="openProductDetail">
+            <image wx:if="{{item.image}}" class="live-product-card__image" src="{{item.image}}" mode="aspectFill" />
+            <view wx:else class="live-product-card__image live-product-card__image--empty"></view>
+            <view class="live-product-card__body">
+              <text class="live-product-card__name">{{item.name}}</text>
+              <text class="live-product-card__price">{{item.displayPrice}}</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </block>
+</view>

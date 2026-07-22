@@ -1,0 +1,108 @@
+<view class="page">
+  <hj-navbar title="预约确认" showBack="{{true}}" />
+
+  <view class="page-content">
+    <view class="info-card" wx:if="{{draft}}">
+      <text class="info-title">预约信息确认</text>
+
+      <view class="info-row">
+        <image class="row-icon" src="/static/icons/tab-home.png" />
+        <text class="info-label">门店</text>
+        <text class="info-value">{{storeName}}</text>
+      </view>
+
+      <view class="info-row">
+        <image class="row-icon" src="/static/icons/tab-profile.png" />
+        <text class="info-label">医生</text>
+        <text class="info-value">{{doctorName}}</text>
+      </view>
+
+      <view class="info-row">
+        <image class="row-icon" src="/static/icons/tab-appointment.png" />
+        <text class="info-label">日期</text>
+        <text class="info-value">{{draft.appointmentDate}}</text>
+      </view>
+
+      <view class="info-row">
+        <image class="row-icon" src="/static/icons/clock.svg" />
+        <text class="info-label">时段</text>
+        <text class="info-value info-value--bold">{{draft.timeSlot.label}}</text>
+      </view>
+
+      <picker bindchange="handleMemberChange" value="{{memberIndex}}" range="{{memberOptions}}">
+        <view class="info-row" style="position: relative;">
+          <image class="row-icon" src="/static/icons/tab-profile.png" />
+          <text class="info-label">就诊人</text>
+          <text class="info-value" style="padding-right: 30rpx; color: #3B6BF5;">{{selectedMemberName}} ›</text>
+        </view>
+      </picker>
+
+      <view wx:if="{{requireDeposit}}" class="info-row">
+        <image class="row-icon" src="/static/icons/price.svg" />
+        <text class="info-label">定金</text>
+        <text class="info-value info-value--price">{{depositAmountYuan}}</text>
+      </view>
+
+      <view wx:if="{{showConsultFee}}" class="info-row">
+        <image class="row-icon" src="/static/icons/fee.svg" />
+        <text class="info-label">挂号费</text>
+        <text class="info-value info-value--price">{{consultFeeLabel}}</text>
+      </view>
+
+      <view wx:if="{{assessmentLabel}}" class="info-row">
+        <image class="row-icon" src="/static/icons/assessment.svg" />
+        <text class="info-label">关联评估</text>
+        <text class="info-value">{{assessmentLabel}}</text>
+      </view>
+    </view>
+
+    <view class="symptom-card" wx:if="{{draft}}">
+      <text class="symptom-title">症状描述（选填）</text>
+      <textarea
+        class="symptom-textarea"
+        placeholder="请描述您的症状，例如：夜间打鼾几年、白天是否嗜睡、是否有呼吸暂停等..."
+        placeholder-style="color: #D1D5DB;"
+        maxlength="500"
+        value="{{symptomDesc}}"
+        bindinput="handleSymptomInput"
+      />
+    </view>
+
+    <view class="visit-notice-card" wx:if="{{draft}}">
+      <view class="visit-notice-header">
+        <text class="visit-notice-header-icon">⚠</text>
+        <text class="visit-notice-title">就诊须知</text>
+      </view>
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">1.</text>
+        <text class="visit-notice-text">请携带既往病历与阻鼾器</text>
+      </view>
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">2.</text>
+        <text class="visit-notice-text">提前15分钟到达诊所签到</text>
+      </view>
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">3.</text>
+        <text class="visit-notice-text">如需取消，请最晚于{{cancelLimitText}}操作</text>
+      </view>
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">4.</text>
+        <text class="visit-notice-text">首次就诊需完成睡眠评估</text>
+      </view>
+    </view>
+
+    <view class="state-card" wx:if="{{loadError}}">
+      <text class="state-title">加载失败</text>
+      <text class="state-description">{{loadError}}</text>
+    </view>
+
+    <view class="safe-bottom" />
+    <hj-privacy-popup id="privacyPopup" />
+  </view>
+
+  <view class="bottom-fixed-bar" wx:if="{{!loadError}}">
+    <button class="bar-primary-btn" bindtap="submitAppointment" loading="{{isSubmitting}}">
+      {{buttonText}}
+    </button>
+  </view>
+</view>

@@ -1,0 +1,28 @@
+<view class="calendar">
+  <view class="calendar-header">
+    <view class="calendar-month-selector">
+      <text class="month-arrow month-prev" bindtap="goPrevMonth">‹</text>
+      <text class="calendar-month">{{monthTitle}}</text>
+      <text class="month-arrow month-next" bindtap="goNextMonth">›</text>
+    </view>
+    <text class="calendar-hint">蓝色日期可预约</text>
+  </view>
+
+  <view class="calendar-weekdays">
+    <text wx:for="{{weekdays}}" wx:key="*this" class="calendar-weekday">{{item}}</text>
+  </view>
+
+  <view class="calendar-grid">
+    <view
+      wx:for="{{calendarDays}}"
+      wx:key="date"
+      class="calendar-day {{item.isEmpty ? 'calendar-day--empty' : ''}} {{item.isToday ? 'calendar-day--today' : ''}} {{item.isPast ? 'calendar-day--past' : ''}} {{item.hasSchedule && !item.isPast ? 'calendar-day--has-schedule' : ''}} {{item.disabled ? 'calendar-day--disabled' : ''}} {{item.isSelected ? 'calendar-day--selected' : ''}} {{item.isTodayUnbookable ? 'calendar-day--today-unbookable' : ''}}"
+      data-date="{{item.date}}"
+      data-disabled="{{item.disabled}}"
+      bindtap="handleDayTap"
+    >
+      <text wx:if="{{item.date}}" class="calendar-day-text">{{item.day}}</text>
+      <view wx:if="{{item.hasSchedule && !item.isPast}}" class="calendar-day-dot" />
+    </view>
+  </view>
+</view>

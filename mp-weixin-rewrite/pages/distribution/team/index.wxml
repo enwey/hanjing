@@ -1,0 +1,52 @@
+<view class="container distribution-team-page">
+  <hj-navbar title="团队成员" showBack="{{true}}" />
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载团队成员...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-section stats-bar">
+      <view class="stats-item">
+        <text class="stats-item__value">{{teamCount}}</text>
+        <text class="stats-item__label">一级成员</text>
+      </view>
+      <view class="stats-item">
+        <text class="stats-item__value">{{level2Count}}</text>
+        <text class="stats-item__label">二级成员</text>
+      </view>
+      <view class="stats-item">
+        <text class="stats-item__value">{{totalSalesLabel}}</text>
+        <text class="stats-item__label">团队销售额</text>
+      </view>
+    </view>
+
+    <view class="page-section state-card" wx:if="{{!members.length}}">
+      <text class="state-title">暂无团队成员</text>
+    </view>
+
+    <view class="page-section" wx:else>
+      <view class="member-list">
+        <view wx:for="{{members}}" wx:key="id" class="member-card">
+          <view class="member-card__avatar">{{item.avatarText}}</view>
+          <view class="member-card__body">
+            <view class="member-card__name-row">
+              <text class="member-card__name">{{item.nickname}}</text>
+              <text wx:if="{{item.statusLabel}}" class="member-card__status member-card__status--{{item.statusClass}}">{{item.statusLabel}}</text>
+            </view>
+            <text class="member-card__meta">{{item.orderCount}}单 · 加入{{item.joinedAtText}}</text>
+          </view>
+          <view class="member-card__aside">
+            <text class="member-card__level member-card__level--{{item.levelClass}}">{{item.levelLabel}}</text>
+            <text class="member-card__sales">{{item.totalSalesLabel}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

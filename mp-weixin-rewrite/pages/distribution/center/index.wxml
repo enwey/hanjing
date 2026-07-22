@@ -1,0 +1,72 @@
+<view class="container distribution-center-page">
+  <hj-navbar title="分销中心" showBack="{{true}}" />
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载分销数据...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-section distribution-banner">
+      <text class="distribution-banner__title">我的推广</text>
+      <view class="distribution-banner__stats">
+        <view class="distribution-banner__stat">
+          <text class="distribution-banner__value">{{totalCommissionLabel}}</text>
+          <text class="distribution-banner__label">累计佣金</text>
+        </view>
+        <view class="distribution-banner__stat">
+          <text class="distribution-banner__value distribution-banner__value--highlight">{{availableCommissionLabel}}</text>
+          <text class="distribution-banner__label">可提现</text>
+        </view>
+        <view class="distribution-banner__stat">
+          <text class="distribution-banner__value">{{teamCountLabel}}</text>
+          <text class="distribution-banner__label">团队成员</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="page-section action-grid">
+      <view wx:for="{{actionEntries}}" wx:key="label" class="action-card" data-url="{{item.url}}" bindtap="openEntry">
+        <view class="action-card__icon-wrap">
+          <image src="{{item.icon}}" mode="aspectFit" class="action-card__icon" />
+        </view>
+        <text class="action-card__label">{{item.label}}</text>
+      </view>
+    </view>
+
+    <view class="page-section">
+      <view class="section-header">
+        <text class="section-title">近期推广订单</text>
+        <text class="section-more" data-url="/pages/distribution/orders/index" bindtap="openEntry">全部</text>
+      </view>
+      <view class="distribution-order-list" wx:if="{{recentOrders.length}}">
+        <view wx:for="{{recentOrders}}" wx:key="id" class="distribution-order-card">
+          <view class="distribution-order-card__cover">
+            <image wx:if="{{item.productImage}}" src="{{item.productImage}}" mode="aspectFill" class="distribution-order-card__cover-image" />
+            <view wx:else class="distribution-order-card__placeholder">
+              <image src="/static/icons/distribution.svg" mode="aspectFit" class="distribution-order-card__placeholder-icon" />
+            </view>
+          </view>
+          <view class="distribution-order-card__body">
+            <text class="distribution-order-card__title">{{item.productName}}</text>
+            <text class="distribution-order-card__meta">{{item.metaLabel}}</text>
+          </view>
+          <view class="distribution-order-card__amount">
+            <text class="distribution-order-card__amount-value">{{item.commissionLabel}}</text>
+            <text class="distribution-order-card__status distribution-order-card__status--{{item.statusClass}}">{{item.statusLabel}}</text>
+          </view>
+        </view>
+      </view>
+      <hj-empty wx:else title="暂无推广订单" />
+    </view>
+
+    <view class="page-section distribution-rule-entry" data-url="/pages/distribution/rules/index" bindtap="openEntry">
+      <text class="distribution-rule-entry__text">分销规则与说明</text>
+      <text class="distribution-rule-entry__arrow">&gt;</text>
+    </view>
+  </block>
+</view>

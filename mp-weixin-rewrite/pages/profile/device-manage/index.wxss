@@ -1,0 +1,23 @@
+.device-page { background: #f9fafb; padding-bottom: 40rpx; }
+.section-title { display: block; margin-bottom: 20rpx; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.patient-switcher { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 24rpx; border-radius: 24rpx; background: linear-gradient(135deg, #eef4ff 0%, #ffffff 100%); border: 1rpx solid #d9e6ff; }
+.patient-switcher__info { flex: 1; min-width: 0; }
+.patient-switcher__name { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.patient-switcher__meta { display: block; margin-top: 10rpx; font-size: 24rpx; color: #6b7280; }
+.patient-switcher__action { font-size: 24rpx; color: #3b6bf5; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.device-card { display: flex; gap: 22rpx; align-items: flex-start; }
+.device-card__icon-wrap { width: 112rpx; height: 112rpx; border-radius: 28rpx; background: linear-gradient(135deg, #2456d7 0%, #5c96ff 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.device-card__icon { width: 50rpx; height: 50rpx; }
+.device-card__body { flex: 1; min-width: 0; }
+.device-card__name { display: block; font-size: 32rpx; font-weight: 700; color: #1f2937; }
+.device-card__meta { display: block; margin-top: 10rpx; font-size: 24rpx; line-height: 1.6; color: #4b5563; }
+.action-list { display: flex; flex-direction: column; gap: 18rpx; }
+.action-card { display: flex; align-items: center; gap: 20rpx; padding: 24rpx; border-radius: 24rpx; background: #ffffff; border: 1rpx solid #e5e7eb; }
+.action-card__icon-wrap { width: 88rpx; height: 88rpx; border-radius: 24rpx; background: linear-gradient(135deg, #eef4ff 0%, #f8fbff 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.action-card__icon { width: 40rpx; height: 40rpx; }
+.action-card__body { flex: 1; min-width: 0; }
+.action-card__title { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.action-card__desc { display: block; margin-top: 10rpx; font-size: 24rpx; line-height: 1.6; color: #6b7280; }
+.action-card__arrow { width: 28rpx; height: 28rpx; flex-shrink: 0; }

@@ -1,0 +1,16 @@
+.hj-tag {
+  display: inline-block;
+  border-radius: 8rpx;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.hj-tag--sm {
+  padding: 4rpx 12rpx;
+  font-size: 22rpx;
+}
+
+.hj-tag--md {
+  padding: 8rpx 16rpx;
+  font-size: 26rpx;
+}

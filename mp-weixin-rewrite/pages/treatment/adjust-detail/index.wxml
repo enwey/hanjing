@@ -1,0 +1,45 @@
+<view class="container adjust-detail-page">
+  <hj-navbar title="设备调整" showBack="{{true}}" />
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载设备调整记录...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <block wx:elif="{{hasRealTreatmentRecord}}">
+    <view class="page-section summary-card">
+      <text wx:if="{{recordDetail.deviceModel}}" class="summary-card__title">{{recordDetail.deviceModel}}</text>
+      <text wx:if="{{recordDetail.adjustmentValue}}" class="summary-card__meta">当前参数：{{recordDetail.adjustmentValue}}</text>
+      <text class="summary-card__meta">调整次数：{{adjustmentHistory.length}}</text>
+      <text class="summary-card__meta" wx:if="{{recordDetail.nextAdjustDate}}">建议下次调整：{{recordDetail.nextAdjustDate}}</text>
+    </view>
+
+    <view class="page-section state-card" wx:if="{{!adjustmentHistory.length}}">
+      <text class="state-title">暂无调整记录</text>
+    </view>
+
+    <view class="page-section" wx:else>
+      <view class="history-list">
+        <view wx:for="{{adjustmentHistory}}" wx:key="id" class="history-card">
+          <view class="history-card__header">
+            <text class="history-card__date">{{item.date}}</text>
+            <text class="history-card__value">{{item.value}}</text>
+          </view>
+          <text class="history-card__content" wx:if="{{item.note}}">{{item.note}}</text>
+          <text class="history-card__meta" wx:if="{{item.doctor}}">医生：{{item.doctor}}</text>
+          <text class="history-card__meta" wx:if="{{item.comfort > 0}}">舒适度：{{item.comfort}} / 5</text>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view class="page-section state-card" wx:else>
+    <text class="state-title">当前还没有治疗记录</text>
+    <text class="page-description">完成真实问诊并生成治疗档案后，这里会展示设备调整记录和参数变化。</text>
+    <view class="empty-action" bindtap="goAppointment">前往预约</view>
+  </view>
+</view>

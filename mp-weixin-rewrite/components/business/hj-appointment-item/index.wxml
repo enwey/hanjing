@@ -1,0 +1,66 @@
+<view class="apt-item" bindtap="handleItemTap">
+  <view class="apt-header">
+    <text class="apt-no">{{appointmentNo}}</text>
+    <hj-tag
+      wx:if="{{statusLabel}}"
+      text="{{statusLabel}}"
+      type="{{statusTagType}}"
+      size="sm"
+    />
+  </view>
+
+  <view class="apt-body">
+    <view class="apt-info-row">
+      <view class="apt-label">
+        <image class="apt-label-icon" src="/static/icons/tab-home.png" />
+        <text>门店</text>
+      </view>
+      <text class="apt-value">{{resolvedStoreName}}</text>
+    </view>
+
+    <view class="apt-info-row">
+      <view class="apt-label">
+        <image class="apt-label-icon" src="/static/icons/tab-profile.png" />
+        <text>就诊人</text>
+      </view>
+      <text class="apt-value">{{patientName}}</text>
+    </view>
+
+    <view class="apt-info-row">
+      <view class="apt-label">
+        <image class="apt-label-icon" src="/static/icons/tab-profile.png" />
+        <text>医生</text>
+      </view>
+      <text class="apt-value">{{resolvedDoctorName}}</text>
+    </view>
+
+    <view class="apt-info-row">
+      <view class="apt-label">
+        <image class="apt-label-icon" src="/static/icons/tab-appointment.png" />
+        <text>时间</text>
+      </view>
+      <text class="apt-value apt-value--bold">{{appointmentDate}} {{appointmentTime}}</text>
+    </view>
+
+    <view class="apt-info-row">
+      <view class="apt-label">
+        <image class="apt-label-icon" src="/static/icons/tab-treatment.png" />
+        <text>类型</text>
+      </view>
+      <text class="apt-value">{{typeLabel}}</text>
+    </view>
+
+    <view wx:if="{{symptomDesc}}" class="apt-info-row">
+      <view class="apt-label">
+        <image class="apt-label-icon" src="/static/icons/chat.svg" />
+        <text>主诉</text>
+      </view>
+      <text class="apt-value apt-value--desc">{{symptomDesc}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{showActions}}" class="apt-actions">
+    <button class="apt-btn apt-btn--ghost" catchtap="handleRescheduleTap">{{actionButtonText}}</button>
+    <button class="apt-btn apt-btn--ghost apt-btn--danger" catchtap="handleCancelTap">取消</button>
+  </view>
+</view>

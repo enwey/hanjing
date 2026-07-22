@@ -1,0 +1,74 @@
+<view class="container community-page">
+  <hj-navbar title="患者社区" showBack="{{true}}" />
+
+  <view class="community-content">
+    <view class="publish-entry" bindtap="goPublishPost">
+      <image class="publish-entry__icon" src="/static/icons/compose.svg" mode="aspectFit"></image>
+      <text class="publish-entry__placeholder">分享你的治疗经验...</text>
+      <view class="publish-entry__button">发帖</view>
+    </view>
+
+    <view class="community-tabs">
+      <view wx:for="{{tabs}}" wx:key="key" class="community-tab {{activeTab === item.key ? 'community-tab--active' : ''}}" data-tab-key="{{item.key}}" bindtap="handleTabTap">{{item.label}}</view>
+    </view>
+
+    <view class="page-section state-card" wx:if="{{loading}}">
+      <text class="page-description">正在加载社区帖子...</text>
+    </view>
+
+    <view class="page-section state-card" wx:elif="{{loadError}}">
+      <text class="state-title">加载失败</text>
+      <text class="page-description">{{loadError}}</text>
+    </view>
+
+    <view class="page-section state-card" wx:elif="{{!visiblePosts.length}}">
+      <text class="state-title">暂无帖子</text>
+      <text class="page-description">还没有符合当前筛选条件的社区帖子。</text>
+    </view>
+
+    <view class="post-list" wx:else>
+      <view wx:for="{{visiblePosts}}" wx:key="id" class="post-card" data-post-id="{{item.id}}" bindtap="openPostDetail">
+        <view wx:if="{{item.isTop}}" class="post-top">
+          <image class="post-top__icon" src="/static/icons/pin.svg" mode="aspectFit"></image>
+          <text class="post-top__text">置顶</text>
+        </view>
+        <view class="post-header">
+          <view class="post-avatar">
+            <image wx:if="{{item.avatar}}" class="post-avatar__image" src="{{item.avatar}}" mode="aspectFill"></image>
+          </view>
+          <view class="post-author">
+            <view class="post-author__row">
+              <text class="post-author__name">{{item.author}}</text>
+              <text class="post-author__role post-author__role--{{item.role}}">{{item.roleLabel}}</text>
+            </view>
+            <text class="post-author__time">{{item.displayTime}}</text>
+          </view>
+        </view>
+        <text wx:if="{{item.title}}" class="post-title">{{item.title}}</text>
+        <text class="post-content">{{item.content}}</text>
+        <view class="post-tags">
+          <text wx:if="{{item.category}}" class="post-category {{item.categoryClass}}">{{item.category}}</text>
+          <text wx:for="{{item.labels}}" wx:key="*this" class="post-tag">{{item}}</text>
+        </view>
+        <view class="post-actions">
+          <view class="post-action" catchtap="handleLikeTap" data-post-id="{{item.id}}">
+            <image class="post-action__icon {{item.isLiked ? 'post-action__icon--liked' : ''}}" src="{{item.isLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg'}}" mode="aspectFit"></image>
+            <text class="post-action__count">{{item.likes}}</text>
+          </view>
+          <view class="post-action" catchtap="openPostDetail" data-post-id="{{item.id}}">
+            <image class="post-action__icon" src="/static/icons/chat.svg" mode="aspectFit"></image>
+            <text class="post-action__count">{{item.comments}}</text>
+          </view>
+          <view class="post-action">
+            <image class="post-action__icon" src="/static/icons/paper-plane.svg" mode="aspectFit"></image>
+            <text class="post-action__count">分享</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="publish-fab" bindtap="goPublishPost">
+    <image class="publish-fab__icon" src="/static/icons/compose-white.svg" mode="aspectFit"></image>
+  </view>
+</view>

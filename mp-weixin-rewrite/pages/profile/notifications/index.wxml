@@ -1,0 +1,61 @@
+<view class="container notification-page">
+  <hj-navbar title="消息通知" showBack="{{true}}" />
+
+  <view class="page-section notification-page__hero">
+    <text class="page-title">消息通知</text>
+    <text class="page-description">未读消息 {{unreadCount}} 条</text>
+    <text class="notification-page__mark-all" wx:if="{{unreadCount > 0}}" bindtap="markAllRead">全部标记已读</text>
+  </view>
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载消息通知...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{!notifications.length}}">
+    <text class="state-title">暂无通知</text>
+    <text class="page-description">当前还没有消息通知。</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-section summary-bar">
+      <view class="summary-item">
+        <text class="summary-item__value">{{summary.totalCount}}</text>
+        <text class="summary-item__label">通知总数</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-item__value">{{summary.unreadCount}}</text>
+        <text class="summary-item__label">未读消息</text>
+      </view>
+      <view class="summary-item" wx:if="{{summary.latestTimeLabel}}">
+        <text class="summary-item__value">{{summary.latestTimeLabel}}</text>
+        <text class="summary-item__label">最近通知时间</text>
+      </view>
+    </view>
+
+    <view class="page-section">
+    <view class="notification-list">
+      <view
+        wx:for="{{notifications}}"
+        wx:key="id"
+        class="notification-card {{item.isRead ? 'notification-card--read' : ''}}"
+        data-notification-id="{{item.id}}"
+        bindtap="markNotificationRead"
+      >
+        <view class="notification-card__badge" style="background: {{item.badgeColor}};">{{item.typeLabel}}</view>
+        <view class="notification-card__body">
+          <view class="notification-card__header">
+            <text class="notification-card__title">{{item.title}}</text>
+            <text class="notification-card__time">{{item.timeLabel}}</text>
+          </view>
+          <text class="notification-card__content">{{item.content}}</text>
+        </view>
+      </view>
+    </view>
+    </view>
+  </block>
+</view>

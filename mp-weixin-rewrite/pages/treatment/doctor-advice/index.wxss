@@ -1,0 +1,10 @@
+.doctor-advice-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.advice-card { padding: 24rpx; border-radius: 22rpx; background: #ffffff; border: 1rpx solid #eef2f7; }
+.advice-card + .advice-card { margin-top: 18rpx; }
+.advice-card--highlight { background: linear-gradient(135deg, #fff9ef 0%, #ffffff 100%); border-color: #fde7b3; }
+.advice-card__title { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.advice-card__content, .detail-text { display: block; margin-top: 12rpx; font-size: 24rpx; line-height: 1.7; color: #4b5563; }
+.section-title { display: block; margin-bottom: 20rpx; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.empty-action { display: inline-block; margin-top: 20rpx; font-size: 26rpx; font-weight: 600; color: #3b6bf5; }

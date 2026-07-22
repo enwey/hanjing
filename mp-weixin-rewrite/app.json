@@ -1,0 +1,148 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/appointment/index",
+    "pages/assessment/index",
+    "pages/treatment/index",
+    "pages/product/index",
+    "pages/profile/index",
+    "pages/auth/login",
+    "pages/auth/agreement/index",
+    "pages/auth/privacy/index",
+    "pages/appointment/store-select",
+    "pages/appointment/doctor-detail",
+    "pages/appointment/doctor-list",
+    "pages/appointment/time-select",
+    "pages/appointment/confirm",
+    "pages/appointment/success",
+    "pages/appointment/detail",
+    "pages/appointment/map",
+    "pages/appointment/reschedule",
+    "pages/assessment/questionnaire/index",
+    "pages/assessment/result/index",
+    "pages/assessment/recording/index",
+    "pages/assessment/snore-result/index",
+    "pages/treatment/calendar/index",
+    "pages/treatment/sleep-trend/index",
+    "pages/treatment/timeline/index",
+    "pages/treatment/doctor-advice/index",
+    "pages/treatment/adjust-detail/index",
+    "pages/treatment/sleep-report/index",
+    "pages/product/detail",
+    "pages/profile/medical-records/index",
+    "pages/profile/device-manage/index",
+    "pages/profile/device-manage/wearing-data/index",
+    "pages/profile/device-manage/maintenance/index",
+    "pages/profile/device-manage/feedback/index",
+    "pages/profile/family-members/index",
+    "pages/profile/family-members/add-member/index",
+    "pages/profile/member-benefits/index",
+    "pages/profile/settings/index",
+    "pages/profile/settings/personal-info/index",
+    "pages/profile/settings/account-security/index",
+    "pages/profile/notifications/index",
+    "pages/profile/online-service/index"
+  ],
+  "subpackages": [
+    {
+      "root": "pages/order",
+      "pages": [
+        "index",
+        "detail"
+      ]
+    },
+    {
+      "root": "pages/distribution",
+      "pages": [
+        "center/index",
+        "commission/index",
+        "orders/index",
+        "withdraw/index",
+        "withdraw-records/index",
+        "team/index",
+        "invite/index",
+        "products/index",
+        "rules/index"
+      ]
+    },
+    {
+      "root": "pages/live",
+      "pages": [
+        "list/index",
+        "playback/index"
+      ]
+    },
+    {
+      "root": "pages/community",
+      "pages": [
+        "index",
+        "detail/index",
+        "publish/index"
+      ]
+    }
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "鼾静健康诊所",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F9FAFB",
+    "navigationStyle": "custom"
+  },
+  "tabBar": {
+    "color": "#9CA3AF",
+    "selectedColor": "#3B6BF5",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/icons/tab-home.png",
+        "selectedIconPath": "static/icons/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/appointment/index",
+        "text": "预约",
+        "iconPath": "static/icons/tab-appointment.png",
+        "selectedIconPath": "static/icons/tab-appointment-active.png"
+      },
+      {
+        "pagePath": "pages/treatment/index",
+        "text": "治疗",
+        "iconPath": "static/icons/tab-treatment.png",
+        "selectedIconPath": "static/icons/tab-treatment-active.png"
+      },
+      {
+        "pagePath": "pages/product/index",
+        "text": "商城",
+        "iconPath": "static/icons/tab-mall.png",
+        "selectedIconPath": "static/icons/tab-mall-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "static/icons/tab-profile.png",
+        "selectedIconPath": "static/icons/tab-profile-active.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于查找离您最近的门店"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation"
+  ],
+  "navigateToMiniProgramAppIdList": [
+    "wxdb9a5899edef2670",
+    "wx92f72a912e753443"
+  ],
+  "lazyCodeLoading": "requiredComponents",
+  "usingComponents": {
+    "hj-navbar": "/components/base/hj-navbar/index",
+    "hj-button": "/components/base/hj-button/index",
+    "hj-empty": "/components/base/hj-empty/index",
+    "hj-privacy-popup": "/components/business/hj-privacy-popup/index"
+  }
+}

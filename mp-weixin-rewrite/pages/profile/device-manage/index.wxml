@@ -1,0 +1,63 @@
+<view class="container device-page">
+  <hj-navbar title="阻鼾器管理" showBack="{{true}}" />
+
+  <view class="page-section">
+    <text class="section-title">当前就诊人</text>
+    <picker mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="handleMemberChange">
+      <view class="patient-switcher">
+        <view class="patient-switcher__info">
+          <text class="patient-switcher__name">{{currentPatientName || '请选择就诊人'}}</text>
+          <text class="patient-switcher__meta" wx:if="{{currentPatientRelation || currentPatientCard}}">
+            {{currentPatientRelation}}{{currentPatientCard ? ' · ' + currentPatientCard : ''}}
+          </text>
+        </view>
+        <text class="patient-switcher__action">{{memberOptions.length ? '切换' : '暂无成员'}}</text>
+      </view>
+    </picker>
+  </view>
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载设备信息...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{!deviceSummary}}">
+    <text class="state-title">暂无阻鼾器记录</text>
+    <text class="page-description">当前就诊人还没有已生效的设备绑定记录，绑定设备后会在这里展示佩戴、维护和反馈入口。</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-section device-card">
+      <view class="device-card__icon-wrap">
+        <image src="/static/icons/assessment.svg" mode="aspectFit" class="device-card__icon" />
+      </view>
+      <view class="device-card__body">
+        <text class="device-card__name">{{deviceSummary.deviceName}}</text>
+        <text class="device-card__meta" wx:if="{{deviceSummary.deviceCode}}">设备编号：{{deviceSummary.deviceCode}}</text>
+        <text class="device-card__meta" wx:if="{{deviceSummary.bindDate}}">绑定时间：{{deviceSummary.bindDate}}</text>
+        <text class="device-card__meta" wx:if="{{deviceSummary.pressureRange}}">参数范围：{{deviceSummary.pressureRange}}</text>
+        <text class="device-card__meta" wx:if="{{deviceSummary.sleepStage}}">当前阶段：{{deviceSummary.sleepStage}}</text>
+      </view>
+    </view>
+
+    <view class="page-section">
+      <text class="section-title">设备服务</text>
+      <view class="action-list">
+        <view wx:for="{{actionEntries}}" wx:key="key" class="action-card" data-url="{{item.url}}" bindtap="openEntry">
+          <view class="action-card__icon-wrap">
+            <image src="{{item.icon}}" mode="aspectFit" class="action-card__icon" />
+          </view>
+          <view class="action-card__body">
+            <text class="action-card__title">{{item.label}}</text>
+            <text class="action-card__desc">{{item.description}}</text>
+          </view>
+          <image src="/static/icons/chevron-right.svg" mode="aspectFit" class="action-card__arrow" />
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

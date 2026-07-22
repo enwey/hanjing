@@ -1,0 +1,100 @@
+<view class="page">
+  <hj-navbar title="预约成功" showBack="{{true}}" />
+
+  <view wx:if="{{loading}}" class="page-content state-card">
+    <text class="state-text">正在加载预约结果...</text>
+  </view>
+
+  <view wx:elif="{{loadError}}" class="page-content state-card">
+    <text class="state-text">{{loadError}}</text>
+  </view>
+
+  <view wx:else class="page-content">
+    <view class="success-icon">
+      <image class="success-medical-icon" mode="aspectFit" src="/static/icons/success-medical.svg" />
+    </view>
+    <text class="success-title">预约成功</text>
+    <text class="success-desc">您的预约已提交，请按时就诊</text>
+
+    <view class="summary-card">
+      <view class="summary-row">
+        <text class="summary-label">预约单号</text>
+        <text class="summary-value summary-value--no">{{appointmentNo}}</text>
+      </view>
+
+      <view class="summary-row">
+        <text class="summary-label">就诊门店</text>
+        <text class="summary-value">{{storeName}}</text>
+      </view>
+
+      <view class="summary-row">
+        <text class="summary-label">就诊医生</text>
+        <text class="summary-value">{{doctorName}}</text>
+      </view>
+
+      <view class="summary-row">
+        <text class="summary-label">就诊时间</text>
+        <text class="summary-value summary-value--bold">{{appointmentDate}} {{appointmentTime}}</text>
+      </view>
+
+      <view class="summary-row">
+        <text class="summary-label">就诊人</text>
+        <text class="summary-value">{{patientName}}</text>
+      </view>
+
+      <view wx:if="{{requireDeposit}}" class="summary-row">
+        <text class="summary-label">定金</text>
+        <text class="summary-value summary-value--price">{{depositAmountLabel}}</text>
+      </view>
+
+      <view class="summary-row">
+        <text class="summary-label">挂号费</text>
+        <text class="summary-value summary-value--price">{{consultFeeLabel}}</text>
+      </view>
+
+      <view class="summary-row">
+        <text class="summary-label">病症描述</text>
+        <text class="summary-value">{{symptomDesc}}</text>
+      </view>
+    </view>
+
+    <view class="visit-notice-card">
+      <view class="visit-notice-header">
+        <text class="visit-notice-header-icon">⚠</text>
+        <text class="visit-notice-title">就诊须知</text>
+      </view>
+
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">1.</text>
+        <text class="visit-notice-text">请携带既往病历与阻鼾器</text>
+      </view>
+
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">2.</text>
+        <text class="visit-notice-text">提前15分钟到达诊所签到</text>
+      </view>
+
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">3.</text>
+        <text class="visit-notice-text">如需取消，请最晚于{{cancelLimitText}}操作</text>
+      </view>
+
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">4.</text>
+        <text class="visit-notice-text">首次就诊需完成睡眠评估</text>
+      </view>
+    </view>
+
+    <view class="actions">
+      <hj-button text="查看预约详情" bind:tap="openAppointmentDetail" />
+      <hj-button text="返回首页" type="secondary" bind:tap="goHome" />
+    </view>
+
+    <view class="remind">
+      <view class="remind-item">
+        <image class="remind-icon" src="/static/icons/bell.svg" />
+        <text class="remind-text">就诊当天将通过微信消息提醒您</text>
+      </view>
+    </view>
+  </view>
+</view>

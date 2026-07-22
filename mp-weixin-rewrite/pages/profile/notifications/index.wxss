@@ -1,0 +1,18 @@
+.notification-page { background: #f9fafb; padding-bottom: 40rpx; }
+.notification-page__hero { background: linear-gradient(135deg, #ffffff 0%, #eef4ff 100%); }
+.notification-page__mark-all { display: inline-block; margin-top: 18rpx; font-size: 24rpx; font-weight: 600; color: #3b6bf5; }
+.summary-bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16rpx; }
+.summary-item { padding: 22rpx 16rpx; border-radius: 20rpx; background: linear-gradient(135deg, #eef4ff 0%, #ffffff 100%); text-align: center; }
+.summary-item__value { display: block; font-size: 26rpx; font-weight: 700; color: #1f2937; }
+.summary-item__label { display: block; margin-top: 10rpx; font-size: 22rpx; color: #6b7280; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.notification-list { display: flex; flex-direction: column; gap: 20rpx; }
+.notification-card { display: flex; gap: 20rpx; padding: 28rpx; border-radius: 24rpx; background: #ffffff; border: 1rpx solid #e5e7eb; }
+.notification-card--read { opacity: 0.72; }
+.notification-card__badge { width: 72rpx; height: 72rpx; border-radius: 22rpx; display: flex; align-items: center; justify-content: center; font-size: 26rpx; font-weight: 700; color: #ffffff; flex-shrink: 0; }
+.notification-card__body { flex: 1; min-width: 0; }
+.notification-card__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
+.notification-card__title { flex: 1; font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.notification-card__time { font-size: 22rpx; color: #9ca3af; }
+.notification-card__content { display: block; margin-top: 12rpx; font-size: 24rpx; line-height: 1.7; color: #4b5563; }

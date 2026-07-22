@@ -1,0 +1,47 @@
+<view class="page-container">
+  <hj-navbar title="登录" showBack="{{true}}" />
+  <view class="page-content login-page">
+    <view class="brand-section">
+      <view class="logo-container">
+        <text class="logo-emoji">💤</text>
+      </view>
+      <text class="brand-name">鼾静健康诊所</text>
+      <text class="brand-slogan">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</text>
+    </view>
+
+    <view class="auth-section">
+      <view class="auth-tip-card">
+        <view class="tip-header">
+          <text class="tip-icon">🔒</text>
+          <text class="tip-title">安全授权提示</text>
+        </view>
+        <text class="tip-content">根据国家网络安全法及就诊真实性要求，预约挂号、病历管理、睡眠监测等功能需绑定您的手机号码。</text>
+      </view>
+
+      <button
+        class="auth-btn"
+        open-type="{{(agreed && !isDevTools) ? 'getPhoneNumber' : ''}}"
+        bindtap="{{isDevTools ? 'onDeveloperLogin' : 'onLoginTap'}}"
+        bindgetphonenumber="onGetPhoneNumber"
+      >
+        微信手机号一键登录
+      </button>
+
+      <button class="cancel-btn" bindtap="onCancel">
+        暂不登录
+      </button>
+    </view>
+
+    <view class="protocol-section">
+      <checkbox-group bindchange="handleAgreementChange">
+        <label class="protocol-label">
+          <checkbox class="protocol-checkbox" value="agree" checked="{{agreed}}" color="#3b6bf5" />
+          <text class="protocol-text">我已阅读并同意 </text>
+        </label>
+      </checkbox-group>
+      <text class="protocol-link" bindtap="viewAgreement">《用户协议》</text>
+      <text class="protocol-text">与</text>
+      <text class="protocol-link" bindtap="viewPrivacy">《隐私政策》</text>
+    </view>
+  </view>
+</view>

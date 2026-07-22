@@ -1,0 +1,28 @@
+.sleep-report-page { background: #f9fafb; padding-bottom: 40rpx; }
+.range-tabs { display: flex; gap: 16rpx; padding: 20rpx 24rpx 0; }
+.range-tab { flex: 1; min-height: 76rpx; border-radius: 18rpx; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 26rpx; color: #6b7280; }
+.range-tab--active { background: #eef4ff; color: #3b6bf5; font-weight: 700; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.score-card { background: linear-gradient(135deg, #2456d7 0%, #5c96ff 100%); color: #ffffff; text-align: center; }
+.score-card__patient { display: block; margin-bottom: 12rpx; font-size: 24rpx; opacity: 0.84; }
+.score-card__label { display: block; font-size: 24rpx; opacity: 0.88; }
+.score-card__value { display: block; margin-top: 12rpx; font-size: 72rpx; font-weight: 700; }
+.score-card__meta { display: block; margin-top: 12rpx; font-size: 24rpx; opacity: 0.84; }
+.metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18rpx; }
+.metric-card { padding: 24rpx; border-radius: 22rpx; background: #ffffff; text-align: center; }
+.metric-card__value { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.metric-card__label { display: block; margin-top: 10rpx; font-size: 22rpx; color: #6b7280; }
+.section-title { display: block; margin-bottom: 20rpx; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.trend-bars { display: flex; align-items: flex-end; gap: 16rpx; overflow-x: auto; }
+.trend-bar-item { width: 68rpx; flex-shrink: 0; text-align: center; }
+.trend-bar-track { height: 180rpx; padding: 0 10rpx; border-radius: 18rpx; background: #eef2f7; display: flex; align-items: flex-end; }
+.trend-bar-fill { width: 100%; border-radius: 14rpx 14rpx 0 0; min-height: 12rpx; }
+.trend-bar-label { display: block; margin-top: 10rpx; font-size: 20rpx; color: #6b7280; }
+.insight-card { padding: 22rpx 24rpx; border-radius: 22rpx; background: #ffffff; }
+.insight-card + .insight-card { margin-top: 16rpx; }
+.insight-card--good { background: rgba(26, 157, 92, 0.08); }
+.insight-card--warn { background: rgba(245, 158, 11, 0.10); }
+.insight-card--info { background: rgba(59, 107, 245, 0.08); }
+.insight-card__text { display: block; font-size: 24rpx; line-height: 1.7; color: #4b5563; }
+.empty-action { display: inline-block; margin-top: 20rpx; font-size: 26rpx; font-weight: 600; color: #3b6bf5; }

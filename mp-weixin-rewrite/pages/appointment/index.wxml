@@ -1,0 +1,88 @@
+<view class="page">
+  <hj-navbar title="预约挂号" />
+
+  <view class="page-content">
+    <view class="booking-banner">
+      <view class="booking-banner-text">
+        <text class="booking-banner-title">在线预约</text>
+        <text class="booking-banner-desc">{{bookingNotice}}</text>
+      </view>
+      <hj-button
+        wx:if="{{isLoggedIn}}"
+        text="立即预约"
+        type="primary"
+        bind:tap="startAppointment"
+      />
+      <button
+        wx:else
+        class="auth-btn-custom"
+        hover-class="auth-btn-custom-hover"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onGetPhoneNumber"
+      >
+        立即预约
+      </button>
+    </view>
+
+    <view class="tabs">
+      <view class="tab {{currentTab === 'upcoming' ? 'tab--active' : ''}}" bindtap="switchToUpcoming">
+        <text>进行中</text>
+      </view>
+      <view class="tab {{currentTab === 'history' ? 'tab--active' : ''}}" bindtap="switchToHistory">
+        <text>历史记录</text>
+      </view>
+    </view>
+
+    <view wx:if="{{currentTab === 'upcoming'}}" class="apt-list">
+      <block wx:if="{{upcomingAppointments.length > 0}}">
+        <hj-appointment-item
+          wx:for="{{upcomingAppointments}}"
+          wx:key="id"
+          appointment="{{item}}"
+          storeName="{{item.storeName}}"
+          doctorName="{{item.doctorName}}"
+          cancelLimitHours="{{cancelLimitHours}}"
+          bind:click="openDetail"
+          bind:cancel="cancelAppointment"
+          bind:reschedule="handlePrimaryAction"
+        />
+      </block>
+      <hj-empty wx:else text="暂无进行中的预约" icon="📅">
+        <hj-button
+          wx:if="{{isLoggedIn}}"
+          text="去预约"
+          type="primary"
+          bind:tap="startAppointment"
+          style="margin-top: 16px;"
+        />
+        <button
+          wx:else
+          class="auth-btn-custom"
+          hover-class="auth-btn-custom-hover"
+          style="margin-top: 16px;"
+          open-type="getPhoneNumber"
+          bindgetphonenumber="onGetPhoneNumber"
+        >
+          去预约
+        </button>
+      </hj-empty>
+    </view>
+
+    <view wx:if="{{currentTab === 'history'}}" class="apt-list">
+      <block wx:if="{{historyAppointments.length > 0}}">
+        <hj-appointment-item
+          wx:for="{{historyAppointments}}"
+          wx:key="id"
+          appointment="{{item}}"
+          storeName="{{item.storeName}}"
+          doctorName="{{item.doctorName}}"
+          cancelLimitHours="{{cancelLimitHours}}"
+          bind:click="openDetail"
+        />
+      </block>
+      <hj-empty wx:else text="暂无历史预约" icon="📭" />
+    </view>
+  </view>
+
+  <view class="safe-bottom" />
+</view>

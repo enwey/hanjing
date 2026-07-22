@@ -1,0 +1,36 @@
+<view class="container doctor-advice-page">
+  <hj-navbar title="医嘱建议" showBack="{{true}}" />
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载医嘱建议...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <block wx:elif="{{hasRealTreatmentRecord}}">
+    <view class="page-section" wx:if="{{adviceSections.length}}">
+      <view wx:for="{{adviceSections}}" wx:key="key" class="advice-card {{item.highlight ? 'advice-card--highlight' : ''}}">
+        <text class="advice-card__title">{{item.title}}</text>
+        <text class="advice-card__content">{{item.content}}</text>
+      </view>
+    </view>
+    <view class="page-section state-card" wx:else>
+      <text class="state-title">暂无医嘱内容</text>
+    </view>
+
+    <view class="page-section" wx:if="{{followupDate}}">
+      <text class="section-title">复诊提醒</text>
+      <text class="detail-text">建议复诊时间：{{followupDate}}</text>
+      <view class="empty-action" bindtap="goAppointment">前往预约</view>
+    </view>
+  </block>
+
+  <view class="page-section state-card" wx:else>
+    <text class="state-title">还没有治疗记录</text>
+    <text class="page-description">当前治疗人还没有真实诊疗记录，完成预约问诊后这里会展示医生建议。</text>
+    <view class="empty-action" bindtap="goAppointment">前往预约</view>
+  </view>
+</view>

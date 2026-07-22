@@ -1,0 +1,48 @@
+<view class="page">
+  <hj-navbar title="{{doctorName || '选择时段'}}" showBack="{{true}}" />
+
+  <view class="page-content">
+    <hj-schedule-calendar
+      wx:if="{{scheduleDates.length}}"
+      dates="{{scheduleDates}}"
+      selectedDate="{{selectedDate}}"
+      bind:select="handleDateSelect"
+    />
+
+    <view wx:if="{{selectedDate}}" class="schedule-section">
+      <text class="schedule-date">{{selectedDate}}</text>
+
+      <block wx:if="{{schedules.length > 0}}">
+        <view wx:for="{{schedules}}" wx:key="id" class="schedule-group">
+          <view
+            class="schedule-header {{item.status === 'full' ? 'schedule-header--full' : ''}}"
+            data-schedule-id="{{item.id}}"
+            bindtap="handleScheduleTap"
+          >
+            <text class="schedule-period">{{item.periodLabel}}</text>
+            <text class="schedule-time">{{item.startTime}}-{{item.endTime}}</text>
+            <text class="schedule-avail">{{item.slotsLabel}}</text>
+          </view>
+
+          <view wx:if="{{selectedScheduleId === item.id && timeSlots.length > 0}}" class="slot-grid">
+            <view
+              wx:for="{{timeSlots}}"
+              wx:key="id"
+              class="slot {{item.isAvailable ? 'slot--available' : ''}} {{item.status === 'booked' ? 'slot--booked' : ''}} {{item.status === 'disabled' ? 'slot--disabled' : ''}}"
+              data-time-slot-id="{{item.id}}"
+              bindtap="handleTimeSlotTap"
+            >
+              <text class="slot-time">{{item.label}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <view wx:else class="empty-text">该日期暂无可约时段</view>
+    </view>
+
+    <view wx:else class="select-hint">
+      <text>👆 请先选择就诊日期</text>
+    </view>
+  </view>
+</view>

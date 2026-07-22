@@ -1,0 +1,34 @@
+<view class="container community-publish-page">
+  <hj-navbar title="发帖" showBack="{{true}}" />
+
+  <view class="publish-form">
+    <view class="publish-field">
+      <text class="publish-field__label">分类</text>
+      <view class="publish-category-list">
+        <view wx:for="{{categoryOptions}}" wx:key="*this" class="publish-chip {{selectedCategory === item ? 'publish-chip--active' : ''}}" data-category="{{item}}" bindtap="chooseCategory">{{item}}</view>
+      </view>
+    </view>
+
+    <view class="publish-field">
+      <text class="publish-field__label">标题</text>
+      <input class="publish-field__input" placeholder="简洁描述你的问题或分享" maxlength="40" value="{{title}}" bindinput="handleTitleInput" />
+    </view>
+
+    <view class="publish-field">
+      <text class="publish-field__label">内容</text>
+      <textarea class="publish-field__textarea" placeholder="详细描述你的情况、问题或分享经验..." maxlength="1000" value="{{content}}" bindinput="handleContentInput"></textarea>
+      <text class="publish-field__count">{{content.length}}/1000</text>
+    </view>
+
+    <view class="publish-field">
+      <text class="publish-field__label">标签（最多3个）</text>
+      <view class="publish-tag-list">
+        <view wx:for="{{tagOptions}}" wx:key="*this" class="publish-chip {{selectedTags.indexOf(item) !== -1 ? 'publish-chip--active' : ''}}" data-tag="{{item}}" bindtap="toggleTag">{{item}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="publish-submit-bar">
+    <view class="publish-submit-button {{(!title.trim() || !content.trim() || isSubmitting) ? 'publish-submit-button--disabled' : ''}}" bindtap="submitPublish">{{isSubmitting ? '发布中...' : '发布帖子'}}</view>
+  </view>
+</view>

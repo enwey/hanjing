@@ -1,0 +1,30 @@
+.distribution-commission-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.commission-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18rpx; }
+.commission-summary__item { padding: 24rpx 16rpx; border-radius: 20rpx; background: linear-gradient(135deg, #eef4ff 0%, #ffffff 100%); text-align: center; }
+.commission-summary__value { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.commission-summary__label { display: block; margin-top: 10rpx; font-size: 22rpx; color: #6b7280; }
+.commission-tabs { display: flex; gap: 24rpx; padding: 12rpx 24rpx 0; overflow-x: auto; white-space: nowrap; }
+.commission-tab { position: relative; flex-shrink: 0; padding: 0 0 14rpx; }
+.commission-tab__text { font-size: 28rpx; font-weight: 600; color: #6b7280; }
+.commission-tab--active .commission-tab__text { color: #3b6bf5; }
+.commission-tab--active::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 6rpx; border-radius: 9999rpx; background: #3b6bf5; }
+.summary-bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16rpx; }
+.summary-item { padding: 22rpx 16rpx; border-radius: 20rpx; background: #ffffff; text-align: center; box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.04); }
+.summary-item__value { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.summary-item__label { display: block; margin-top: 8rpx; font-size: 22rpx; color: #6b7280; }
+.commission-list { display: flex; flex-direction: column; gap: 20rpx; }
+.commission-card { display: flex; gap: 20rpx; align-items: center; }
+.commission-card__cover { width: 120rpx; height: 120rpx; border-radius: 20rpx; overflow: hidden; background: #eef2f7; flex-shrink: 0; }
+.commission-card__cover-image { width: 100%; height: 100%; }
+.commission-card__placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%); }
+.commission-card__body { flex: 1; min-width: 0; }
+.commission-card__title { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.commission-card__meta { display: block; margin-top: 8rpx; font-size: 24rpx; color: #6b7280; }
+.commission-card__aside { display: flex; flex-direction: column; align-items: flex-end; gap: 10rpx; flex-shrink: 0; }
+.commission-card__amount { font-size: 28rpx; font-weight: 700; color: #ef4444; }
+.commission-card__status { padding: 8rpx 16rpx; border-radius: 9999rpx; font-size: 22rpx; }
+.commission-card__status--pending { color: #b45309; background: rgba(245, 158, 11, 0.14); }
+.commission-card__status--settled { color: #1a9d5c; background: rgba(26, 157, 92, 0.14); }
+.commission-card__status--refunded { color: #6b7280; background: rgba(107, 114, 128, 0.14); }

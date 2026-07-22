@@ -1,0 +1,171 @@
+<view class="treatment-page">
+  <hj-navbar title="治疗追踪" />
+
+  <view class="page-section">
+    <view class="section-title-row">
+      <text class="section-title">当前治疗人</text>
+    </view>
+    <picker mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="handleMemberChange">
+      <view class="patient-switcher">
+        <view class="patient-switcher__content">
+          <text class="patient-switcher__name">{{currentPatientName || '请选择治疗人'}}</text>
+          <text class="patient-switcher__meta" wx:if="{{currentPatientRelation}}">{{currentPatientRelation}}</text>
+          <text class="patient-switcher__meta" wx:if="{{currentPatientCard}}">就诊卡号：{{currentPatientCard}}</text>
+        </view>
+        <view class="patient-switcher__action">
+          <text class="patient-switcher__action-text">{{memberOptions.length ? '切换' : '暂无成员'}}</text>
+          <image class="patient-switcher__action-icon" src="/static/icons/chevron-right.svg" mode="aspectFit" />
+        </view>
+      </view>
+    </picker>
+  </view>
+
+  <view wx:if="{{loadError}}" class="page-section">
+    <text class="state-text">{{loadError}}</text>
+  </view>
+
+  <view class="hero-card">
+    <view class="hero-card__top">
+      <text class="hero-card__badge">{{treatmentStatusLabel}}</text>
+      <text class="hero-card__compliance">依从率 {{complianceLabel}}</text>
+    </view>
+    <text class="hero-card__title">{{treatmentDeviceLabel || '当前尚未绑定治疗设备'}}</text>
+    <text class="hero-card__meta" wx:if="{{treatmentDoctorLabel}}">{{treatmentDoctorLabel}}</text>
+    <text class="hero-card__meta" wx:if="{{treatmentStartLabel}}">{{treatmentStartLabel}}</text>
+    <view class="hero-card__progress">
+      <view class="hero-card__progress-bar">
+        <view class="hero-card__progress-fill" style="width: {{progressWidth}};"></view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{!hasRealTreatmentRecord}}" class="page-section">
+    <view class="empty-card">
+      <text class="empty-card__title">当前治疗人暂无真实治疗记录</text>
+      <text class="empty-card__desc">完成首次问诊、设备适配和治疗建档后，这里会展示治疗设备、佩戴数据、医嘱和时间线。</text>
+      <button class="empty-card__button" bindtap="goAppointment">前往预约</button>
+    </view>
+  </view>
+
+  <block wx:if="{{hasRealTreatmentRecord}}">
+    <view class="page-section">
+      <view class="section-title-row">
+        <text class="section-title">最近 7 天打卡</text>
+        <view class="section-link" data-url="/pages/treatment/calendar/index" bindtap="openEntry">
+          <text class="section-link__text">完整日历</text>
+        </view>
+      </view>
+      <view class="recent-days">
+        <view wx:for="{{recentDays}}" wx:key="id" class="recent-day {{item.isToday ? 'recent-day--today' : ''}}">
+          <text class="recent-day__week">{{item.weekLabel}}</text>
+          <view class="recent-day__bar {{item.colorClass}}"></view>
+          <text class="recent-day__date">{{item.dayLabel}}</text>
+          <text class="recent-day__duration">{{item.wearDurationLabel}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="page-section">
+      <view class="summary-grid">
+        <view wx:for="{{summaryCards}}" wx:key="key" class="summary-card">
+          <text class="summary-card__value">{{item.value}}</text>
+          <text class="summary-card__label">{{item.label}}</text>
+        </view>
+      </view>
+      <button class="checkin-button" bindtap="openCheckinModal">今日打卡</button>
+    </view>
+
+    <view class="page-section">
+      <view class="section-title-row">
+        <text class="section-title">治疗入口</text>
+      </view>
+      <view class="entry-grid">
+        <view
+          wx:for="{{entries}}"
+          wx:key="key"
+          class="entry-card"
+          data-url="{{item.url}}"
+          bindtap="openEntry"
+        >
+          <image class="entry-card__icon" src="{{item.icon}}" mode="aspectFit" />
+          <text class="entry-card__title">{{item.title}}</text>
+          <text class="entry-card__desc">{{item.description}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="page-section">
+      <view class="section-title-row">
+        <text class="section-title">治疗动态</text>
+        <view class="section-link" data-url="/pages/treatment/timeline/index" bindtap="openEntry">
+          <text class="section-link__text">全部</text>
+        </view>
+      </view>
+      <view wx:if="{{timelinePreview.length}}" class="timeline-list">
+        <view wx:for="{{timelinePreview}}" wx:key="id" class="timeline-item">
+          <view class="timeline-item__left">
+            <view class="timeline-item__dot"></view>
+            <view wx:if="{{item.showLine}}" class="timeline-item__line"></view>
+          </view>
+          <view class="timeline-item__content">
+            <text class="timeline-item__title">{{item.title}}</text>
+            <text class="timeline-item__desc" wx:if="{{item.description}}">{{item.description}}</text>
+            <text class="timeline-item__date">{{item.dateLabel}}</text>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="state-card">
+        <text class="state-text">暂无治疗动态记录</text>
+      </view>
+    </view>
+  </block>
+
+  <view wx:if="{{checkinVisible}}" class="checkin-mask" bindtap="closeCheckinModal">
+    <view class="checkin-panel" catchtap="noop">
+      <text class="checkin-panel__title">今日佩戴打卡</text>
+      <text class="checkin-panel__label">佩戴时长</text>
+      <scroll-view class="duration-scroll" scroll-x="true" show-scrollbar="false">
+        <view class="duration-list">
+          <view
+            wx:for="{{durationOptions}}"
+            wx:key="*this"
+            class="duration-chip {{selectedWearDuration === item ? 'duration-chip--active' : ''}}"
+            data-value="{{item}}"
+            bindtap="handleDurationTap"
+          >
+            {{item}}h
+          </view>
+        </view>
+      </scroll-view>
+
+      <text class="checkin-panel__label">舒适度</text>
+      <view class="comfort-list">
+        <view
+          wx:for="{{comfortOptions}}"
+          wx:key="*this"
+          class="comfort-chip {{selectedComfort >= item ? 'comfort-chip--active' : ''}}"
+          data-value="{{item}}"
+          bindtap="handleComfortTap"
+        >
+          {{item}}
+        </view>
+      </view>
+
+      <text class="checkin-panel__label">备注</text>
+      <textarea
+        class="checkin-textarea"
+        maxlength="200"
+        placeholder="记录今天的佩戴感受或不适情况"
+        value="{{checkinNote}}"
+        bindinput="handleNoteInput"
+      ></textarea>
+
+      <view class="checkin-panel__actions">
+        <button class="checkin-panel__button checkin-panel__button--light" bindtap="closeCheckinModal">取消</button>
+        <button class="checkin-panel__button checkin-panel__button--primary" bindtap="submitCheckin">
+          {{isSubmittingCheckin ? '提交中...' : '确认打卡'}}
+        </button>
+      </view>
+    </view>
+  </view>
+</view>

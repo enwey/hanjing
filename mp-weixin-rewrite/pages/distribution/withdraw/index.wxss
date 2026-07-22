@@ -1,0 +1,26 @@
+.withdraw-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.balance-card { background: linear-gradient(135deg, #c58b1c 0%, #f2c14e 100%); color: #ffffff; }
+.balance-card__label { display: block; font-size: 24rpx; opacity: 0.88; }
+.balance-card__value { display: block; margin-top: 12rpx; font-size: 58rpx; font-weight: 700; }
+.balance-card__meta-row { display: flex; justify-content: space-between; gap: 16rpx; margin-top: 16rpx; }
+.balance-card__meta { font-size: 22rpx; opacity: 0.82; }
+.form-item + .form-item { margin-top: 24rpx; }
+.form-label { display: block; margin-bottom: 14rpx; font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.amount-input-wrap { display: flex; align-items: center; gap: 14rpx; padding: 20rpx 22rpx; border-radius: 20rpx; background: #f9fafb; }
+.amount-prefix { font-size: 36rpx; font-weight: 700; color: #c58b1c; }
+.amount-input { flex: 1; font-size: 36rpx; color: #1f2937; }
+.method-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16rpx; }
+.method-card { display: flex; align-items: center; gap: 14rpx; padding: 20rpx; border-radius: 20rpx; border: 2rpx solid #e5e7eb; }
+.method-card--active { border-color: #c58b1c; background: #fff9ec; }
+.method-card__icon { width: 30rpx; height: 30rpx; }
+.method-card__label { font-size: 26rpx; color: #4b5563; }
+.tip-box { margin-top: 24rpx; padding: 18rpx 20rpx; border-radius: 18rpx; background: #fff8e7; }
+.tip-box__text { display: block; font-size: 22rpx; line-height: 1.7; color: #92400e; }
+.bank-input { width: 100%; padding: 22rpx; border-radius: 20rpx; background: #f9fafb; font-size: 26rpx; color: #1f2937; box-sizing: border-box; }
+.submit-button { display: flex; align-items: center; justify-content: center; min-height: 92rpx; border-radius: 9999rpx; background: linear-gradient(135deg, #c58b1c 0%, #f2c14e 100%); color: #ffffff; font-size: 28rpx; font-weight: 700; }
+.submit-button--disabled { opacity: 0.48; }
+.records-entry { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-top: 20rpx; padding: 24rpx; border-radius: 22rpx; background: #ffffff; border: 1rpx solid #e5e7eb; }
+.records-entry__text { font-size: 26rpx; color: #4b5563; }
+.records-entry__arrow { width: 28rpx; height: 28rpx; }

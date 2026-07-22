@@ -1,0 +1,26 @@
+.result-page { min-height: 100vh; background: #f9fafb; }
+.page-content { padding: 32rpx 24rpx 40rpx; }
+.empty-state { padding: 160rpx 40rpx; text-align: center; }
+.empty-icon-img { width: 128rpx; height: 128rpx; margin: 0 auto 24rpx; -webkit-mask-size: cover; mask-size: cover; }
+.empty-title { display: block; font-size: 36rpx; font-weight: 700; color: #374151; margin-bottom: 12rpx; }
+.empty-desc { display: block; font-size: 26rpx; color: #9ca3af; margin-bottom: 28rpx; }
+.btn-retake, .btn-primary, .btn-secondary, .btn-outline { display: flex; align-items: center; justify-content: center; min-height: 88rpx; border-radius: 9999rpx; font-size: 28rpx; font-weight: 700; }
+.btn-retake, .btn-primary { color: #ffffff; background: linear-gradient(135deg, #3b6bf5, #6366f1); box-shadow: 0 10rpx 26rpx rgba(59,107,245,0.24); }
+.score-card { padding: 40rpx 32rpx; border-radius: 32rpx; margin-bottom: 24rpx; text-align: center; color: #ffffff; }
+.score-label { display: block; margin-bottom: 12rpx; font-size: 26rpx; opacity: 0.85; }
+.score-value { display: block; font-size: 108rpx; line-height: 1; font-weight: 800; }
+.score-unit { display: block; margin-top: 8rpx; font-size: 24rpx; opacity: 0.72; }
+.score-level { display: inline-flex; margin-top: 20rpx; padding: 12rpx 22rpx; border-radius: 20rpx; background: rgba(255,255,255,0.2); font-size: 30rpx; font-weight: 700; }
+.result-card, .advice-card { padding: 28rpx; border-radius: 24rpx; background: #ffffff; margin-bottom: 20rpx; }
+.result-title-container, .advice-header-container { display: flex; align-items: center; margin-bottom: 18rpx; padding-bottom: 14rpx; border-bottom: 1rpx solid #f3f4f6; }
+.title-icon, .advice-icon-img { width: 32rpx; height: 32rpx; margin-right: 10rpx; -webkit-mask-size: cover; mask-size: cover; }
+.result-title, .advice-title { font-size: 28rpx; font-weight: 700; color: #1f2937; }
+.result-desc, .advice-text { display: block; font-size: 26rpx; line-height: 1.75; color: #4b5563; }
+.answer-list { display: flex; flex-direction: column; gap: 14rpx; }
+.answer-item { display: flex; align-items: flex-start; gap: 16rpx; padding: 16rpx 18rpx; border-radius: 18rpx; background: #f9fafb; }
+.answer-q { flex: 1; font-size: 24rpx; line-height: 1.7; color: #4b5563; }
+.answer-s { min-width: 96rpx; padding: 8rpx 14rpx; border-radius: 9999rpx; border-width: 1rpx; border-style: solid; font-size: 22rpx; text-align: center; font-weight: 700; }
+.advice-card { border-width: 1rpx; border-style: solid; }
+.action-buttons { display: flex; flex-direction: column; gap: 16rpx; padding-top: 8rpx; }
+.btn-secondary { color: #475569; background: #f1f5f9; }
+.btn-outline { color: #3b6bf5; background: #ffffff; border: 1rpx solid #bfdbfe; }

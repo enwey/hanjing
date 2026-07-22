@@ -1,0 +1,34 @@
+<view class="container family-member-form-page">
+  <hj-navbar title="{{isEdit ? '成员详情' : '添加家庭成员'}}" showBack="{{true}}" />
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">加载中...</text>
+  </view>
+  <block wx:else>
+    <view class="page-section">
+      <view class="form-list">
+        <view class="form-row"><text class="form-label">姓名</text><input class="form-input" data-field="name" value="{{form.name}}" bindinput="onInput" /></view>
+        <view class="form-row form-row--column">
+          <text class="form-label">关系</text>
+          <view class="tag-list">
+            <view wx:for="{{relationOptions}}" wx:key="value" class="tag-item {{form.relation === item.value ? 'tag-item--active' : ''}}" data-value="{{item.value}}" bindtap="chooseRelation">{{item.label}}</view>
+          </view>
+        </view>
+        <view class="form-row form-row--column">
+          <text class="form-label">性别</text>
+          <view class="tag-list">
+            <view class="tag-item {{form.gender === '1' ? 'tag-item--active' : ''}}" data-value="1" bindtap="chooseGender">男</view>
+            <view class="tag-item {{form.gender === '2' ? 'tag-item--active' : ''}}" data-value="2" bindtap="chooseGender">女</view>
+          </view>
+        </view>
+        <view class="form-row"><text class="form-label">年龄</text><input class="form-input" data-field="age" type="number" value="{{form.age}}" bindinput="onInput" /></view>
+        <view class="form-row"><text class="form-label">手机号</text><input class="form-input" data-field="phone" type="number" value="{{form.phone}}" bindinput="onInput" /></view>
+        <view class="form-row"><text class="form-label">身份证号</text><input class="form-input" data-field="idCard" maxlength="18" value="{{form.idCard}}" bindinput="onInput" /></view>
+        <view class="form-row"><text class="form-label">就诊卡号</text><input class="form-input" data-field="cardNo" value="{{form.cardNo}}" bindinput="onInput" /></view>
+      </view>
+    </view>
+    <view class="page-section family-member-form-page__actions">
+      <view class="primary-button" bindtap="saveMember">保存</view>
+      <view wx:if="{{isEdit && !isSelf}}" class="danger-button" bindtap="deleteMember">解除关联</view>
+    </view>
+  </block>
+</view>

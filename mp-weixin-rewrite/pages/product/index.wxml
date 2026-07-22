@@ -1,0 +1,101 @@
+<view class="page product-page">
+  <hj-navbar title="健康商城" />
+
+  <view class="page-content">
+    <view class="category-tabs" style="top: {{navbarHeight}}px;">
+    <view
+      wx:for="{{categories}}"
+      wx:key="key"
+      class="category-tab {{selectedCategory === item.key ? 'category-tab--active' : ''}}"
+      data-category-key="{{item.key}}"
+      bindtap="handleCategoryTap"
+    >
+      <text class="category-tab__text">{{item.label}}</text>
+    </view>
+  </view>
+
+    <view class="state-card" wx:if="{{loading}}">
+      <text class="state-text">加载中...</text>
+    </view>
+
+    <view class="waterfall-container" wx:elif="{{visibleProducts.length}}">
+      <view class="waterfall-column">
+        <view
+          wx:for="{{leftColumnProducts}}"
+          wx:key="id"
+          class="product-card"
+          data-product-id="{{item.id}}"
+          bindtap="openDetail"
+        >
+          <view class="product-card__cover" style="background: {{item.categoryColor}};">
+            <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="widthFix" class="product-card__cover-image" />
+            <view wx:else class="product-card__placeholder">
+              <view class="product-card__placeholder-mark">
+                <view class="product-card__placeholder-line product-card__placeholder-line--horizontal"></view>
+                <view class="product-card__placeholder-line product-card__placeholder-line--vertical"></view>
+              </view>
+            </view>
+            <view wx:if="{{item.hasDiscount}}" class="product-card__discount">
+              <text>{{item.discountPercent}}% OFF</text>
+            </view>
+          </view>
+
+          <view class="product-card__body">
+            <text class="product-card__name">{{item.name}}</text>
+            <view class="product-card__footer">
+              <view class="product-card__price-sales-row">
+                <text class="product-card__price">{{item.priceLabel}}</text>
+                <text class="product-card__sales">已售 {{item.salesLabel}}</text>
+              </view>
+              <view wx:if="{{item.hasDiscount}}" class="product-card__price-original-row">
+                <text class="product-card__original-price">{{item.originalPriceLabel}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="waterfall-column">
+        <view
+          wx:for="{{rightColumnProducts}}"
+          wx:key="id"
+          class="product-card"
+          data-product-id="{{item.id}}"
+          bindtap="openDetail"
+        >
+          <view class="product-card__cover" style="background: {{item.categoryColor}};">
+            <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="widthFix" class="product-card__cover-image" />
+            <view wx:else class="product-card__placeholder">
+              <view class="product-card__placeholder-mark">
+                <view class="product-card__placeholder-line product-card__placeholder-line--horizontal"></view>
+                <view class="product-card__placeholder-line product-card__placeholder-line--vertical"></view>
+              </view>
+            </view>
+            <view wx:if="{{item.hasDiscount}}" class="product-card__discount">
+              <text>{{item.discountPercent}}% OFF</text>
+            </view>
+          </view>
+
+          <view class="product-card__body">
+            <text class="product-card__name">{{item.name}}</text>
+            <view class="product-card__footer">
+              <view class="product-card__price-sales-row">
+                <text class="product-card__price">{{item.priceLabel}}</text>
+                <text class="product-card__sales">已售 {{item.salesLabel}}</text>
+              </view>
+              <view wx:if="{{item.hasDiscount}}" class="product-card__price-original-row">
+                <text class="product-card__original-price">{{item.originalPriceLabel}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="state-card">
+      <text class="state-text">暂无商品</text>
+    </view>
+
+    <view class="safe-bottom"></view>
+  </view>
+</view>

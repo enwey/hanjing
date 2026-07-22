@@ -1,0 +1,14 @@
+page {
+  background: #f9fafb;
+  color: #1f2937;
+  font-family: 'PingFang SC', 'HarmonyOS Sans', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.container { min-height: 100vh; box-sizing: border-box; }
+.page-section { margin: 24rpx; padding: 28rpx; background: #ffffff; border-radius: 24rpx; box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.06); }
+.page-title { font-size: 36rpx; font-weight: 700; color: #1f2937; }
+.page-description { margin-top: 12rpx; font-size: 26rpx; line-height: 1.6; color: #6b7280; }
+.card-list { display: flex; flex-direction: column; gap: 20rpx; }
+.card-link { padding: 24rpx; background: linear-gradient(135deg, #eef4ff 0%, #ffffff 100%); border: 1rpx solid #d9e6ff; border-radius: 20rpx; }
+.card-link__title { display: block; font-size: 30rpx; font-weight: 600; color: #1f2937; }
+.card-link__desc { display: block; margin-top: 8rpx; font-size: 24rpx; line-height: 1.6; color: #6b7280; }

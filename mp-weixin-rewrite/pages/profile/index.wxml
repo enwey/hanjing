@@ -1,0 +1,38 @@
+<view class="page profile-page">
+  <hj-navbar title="我的" />
+
+  <view class="page-content">
+    <view class="user-card" bindtap="handleProfileTap">
+      <view class="user-avatar">
+        <image wx:if="{{avatarText === '👤'}}" class="user-avatar-ecg" src="/static/icons/avatar-ecg.svg" />
+        <text wx:else class="user-avatar-text">{{avatarText}}</text>
+      </view>
+      <view class="user-info">
+        <text class="user-name">{{nickname}}</text>
+        <view class="user-level">
+          <text class="user-level-tag">{{memberLevelLabel}}</text>
+        </view>
+      </view>
+      <text class="user-arrow">›</text>
+    </view>
+
+    <view wx:for="{{menuGroups}}" wx:key="title" class="menu-group">
+      <text class="menu-group-title">{{item.title}}</text>
+      <view class="menu-list">
+        <view
+          wx:for="{{item.items}}"
+          wx:key="key"
+          class="menu-item"
+          data-url="{{item.url}}"
+          bindtap="openEntry"
+        >
+          <image class="menu-icon" src="{{item.icon}}" />
+          <text class="menu-label">{{item.label}}</text>
+          <text class="menu-arrow">›</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="safe-bottom"></view>
+</view>

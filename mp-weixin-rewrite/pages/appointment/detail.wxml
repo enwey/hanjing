@@ -1,0 +1,287 @@
+<view class="page">
+  <hj-navbar title="预约详情" showBack="{{true}}" />
+
+  <view class="page-content" wx:if="{{appointmentLoaded}}">
+    <view class="status-hero status--{{statusKey}}">
+      <view class="status-hero-main">
+        <view class="status-icon-wrapper">
+          <image wx:if="{{statusKey === 'pending'}}" class="status-icon" src="/static/icons/calendar.svg" />
+          <image wx:elif="{{statusKey === 'confirmed' || statusKey === 'reminded'}}" class="status-icon" src="/static/icons/clock.svg" />
+          <image wx:elif="{{statusKey === 'checked_in'}}" class="status-icon" src="/static/icons/doctor.svg" />
+          <image wx:elif="{{statusKey === 'completed' || statusKey === 'arrived'}}" class="status-icon" src="/static/icons/success-medical.svg" />
+          <image wx:elif="{{statusKey === 'cancelled' || statusKey === 'no_show'}}" class="status-icon" src="/static/icons/warning.svg" />
+          <image wx:else class="status-icon" src="/static/icons/info.svg" />
+        </view>
+        <view class="status-title-group">
+          <text class="status-title">{{statusLabel}}</text>
+          <text class="status-desc" wx:if="{{statusKey === 'pending_payment'}}">预约未成功，请及时完成支付</text>
+          <text class="status-desc" wx:elif="{{statusKey === 'pending'}}">预约成功，请准时前往门店签到并就诊</text>
+          <text class="status-desc" wx:elif="{{statusKey === 'confirmed' || statusKey === 'reminded'}}">您已完成签到，请留意叫号</text>
+          <text class="status-desc" wx:elif="{{statusKey === 'checked_in'}}">医生已叫号，就诊进行中，请前往医生诊室</text>
+          <text class="status-desc" wx:elif="{{statusKey === 'arrived' || statusKey === 'completed'}}">本次服务已完成，期待再次为您守护健康</text>
+          <text class="status-desc" wx:elif="{{statusKey === 'cancelled'}}">预约已成功取消，退款（若有）将原路退回</text>
+          <text class="status-desc" wx:elif="{{statusKey === 'no_show'}}">由于您未按时到诊，本次服务已结束</text>
+          <text class="status-desc" wx:else>预约流程已更新，详情请见下方信息</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{showLimitNotice}}" class="notice-card-warning">
+      <view class="notice-content-wrapper">
+        <image class="notice-icon" src="/static/icons/warning.svg" />
+        <text class="notice-text-warning">温馨提示：已超过改约或取消截止时间（{{cancelLimitText}}），如需处理请联系客服。</text>
+      </view>
+    </view>
+
+    <view class="order-no-bar">
+      <view class="no-text-group">
+        <text class="no-label">预约单号</text>
+        <text class="no-value">{{appointmentNo}}</text>
+      </view>
+      <button class="copy-btn-action" hover-class="copy-btn-hover" bindtap="copyAppointmentNo">复制</button>
+    </view>
+
+    <view class="card-premium doctor-card">
+      <view class="doc-avatar-large">
+        <text class="doc-avatar-text-large">{{doctorAvatar}}</text>
+      </view>
+      <view class="doc-info-detail">
+        <view class="doc-name-row">
+          <text class="doc-name-large">{{doctorName}}</text>
+          <text wx:if="{{doctorTitle}}" class="doc-title-badge">{{doctorTitle}}</text>
+        </view>
+        <text class="doc-dept">{{doctorDept}}</text>
+        <view class="doctor-expertise">
+          <text wx:for="{{doctorExpertise}}" wx:key="*this" class="doctor-expertise-tag">{{item}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card-premium">
+      <view class="card-header-premium">
+        <image class="header-icon" src="/static/icons/calendar.svg" />
+        <text class="header-title">就诊及门店信息</text>
+      </view>
+
+      <view class="detail-rows">
+        <view class="detail-row">
+          <text class="row-label">就诊时间</text>
+          <text class="row-value row-value--bold">{{appointmentDate}} {{appointmentTime}}</text>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">就诊人</text>
+          <text class="row-value">{{patientName}}</text>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">就诊门诊</text>
+          <text class="row-value">{{storeName}}</text>
+        </view>
+        <view class="detail-row detail-row--clickable" bindtap="openMap">
+          <text class="row-label">门店地址</text>
+          <view class="row-value-group">
+            <text class="row-value row-value--small">{{storeAddress}}</text>
+            <image class="nav-icon" src="/static/icons/paper-plane.svg" />
+          </view>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">门诊类型</text>
+          <text class="row-value">{{appointmentTypeLabel}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{requireDeposit}}">
+          <text class="row-label">定金</text>
+          <text class="row-value row-value--price">{{depositAmountLabel}}</text>
+        </view>
+        <view class="detail-row" wx:if="{{consultFeeLabel}}">
+          <text class="row-label">挂号费</text>
+          <text class="row-value row-value--price">{{consultFeeLabel}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{symptomDesc}}" class="card-premium symptom-card">
+      <view class="card-header-premium">
+        <image class="header-icon" src="/static/icons/chat.svg" />
+        <text class="header-title">主诉症状描述</text>
+      </view>
+      <text class="symptom-text-styled">{{symptomDesc}}</text>
+    </view>
+
+    <view wx:if="{{assessmentInfo && (assessmentInfo.ess || assessmentInfo.snore)}}" class="card-premium">
+      <view class="card-header-premium">
+        <image class="header-icon" src="/static/icons/assessment.svg" />
+        <text class="header-title">关联睡眠评估</text>
+      </view>
+      <view class="detail-rows">
+        <view wx:if="{{assessmentInfo.ess}}" class="detail-row">
+          <text class="row-label">ESS嗜睡量表</text>
+          <text class="row-value">{{assessmentInfo.ess.score}}分 · {{assessmentInfo.ess.riskLevel}}</text>
+        </view>
+        <view wx:if="{{assessmentInfo.snore}}" class="detail-row">
+          <text class="row-label">AI鼾声分析</text>
+          <text class="row-value">{{assessmentInfo.snore.avgDecibel}}dB · {{assessmentInfo.snore.riskLevel}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{hasPreExam}}" class="card-premium">
+      <view class="card-header-premium">
+        <image class="header-icon" src="/static/icons/report.svg" />
+        <text class="header-title">签到预检信息</text>
+      </view>
+      <view class="detail-rows">
+        <view wx:if="{{preExam.height}}" class="detail-row">
+          <text class="row-label">身高</text>
+          <text class="row-value">{{preExam.height}} cm</text>
+        </view>
+        <view wx:if="{{preExam.weight}}" class="detail-row">
+          <text class="row-label">体重</text>
+          <text class="row-value">{{preExam.weight}} kg</text>
+        </view>
+        <view wx:if="{{preExam.systolicBp || preExam.diastolicBp}}" class="detail-row">
+          <text class="row-label">血压</text>
+          <text class="row-value">{{preExam.systolicBp || '-'}}/{{preExam.diastolicBp || '-'}} mmHg</text>
+        </view>
+        <view wx:if="{{preExam.neckCircumference}}" class="detail-row">
+          <text class="row-label">颈围</text>
+          <text class="row-value">{{preExam.neckCircumference}} cm</text>
+        </view>
+        <view wx:if="{{preExam.bmi}}" class="detail-row">
+          <text class="row-label">BMI</text>
+          <text class="row-value">{{preExam.bmi}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{statusKey === 'completed' || statusKey === 'arrived'}}" class="card-premium">
+      <view class="card-header-premium">
+        <image class="header-icon" src="/static/icons/assessment.svg" />
+        <text class="header-title">门诊评价</text>
+      </view>
+      <view wx:if="{{evaluation}}" class="detail-rows">
+        <view class="detail-row">
+          <text class="row-label">评分</text>
+          <text class="row-value">{{evaluation.rating}} 分</text>
+        </view>
+        <view wx:if="{{evaluation.content}}" class="detail-row">
+          <text class="row-label">评价</text>
+          <text class="row-value">{{evaluation.content}}</text>
+        </view>
+      </view>
+      <view wx:else>
+        <view class="rating-row">
+          <text wx:for="{{ratingStars}}" wx:key="*this" data-rating="{{item}}" bindtap="onEvalRatingChange" class="rating-star {{item <= evalRating ? 'rating-star--active' : ''}}">★</text>
+        </view>
+        <textarea class="eval-textarea" placeholder="请写下本次就诊体验（选填）" maxlength="500" value="{{evalContent}}" bindinput="onEvalContentInput" />
+        <button class="inline-submit-btn" bindtap="submitEvaluation">提交评价</button>
+      </view>
+    </view>
+
+    <view wx:if="{{cancelReason}}" class="card-premium cancel-card-styled">
+      <view class="card-header-premium">
+        <image class="header-icon" src="/static/icons/alert.svg" />
+        <text class="header-title">取消原因</text>
+      </view>
+      <text class="cancel-text-styled">{{cancelReason}}</text>
+    </view>
+
+    <view wx:if="{{medicalRecord}}" class="card-premium">
+      <view class="card-header-premium">
+        <image class="header-icon" src="/static/icons/report.svg" />
+        <text class="header-title">就诊电子病历</text>
+      </view>
+      <view class="detail-rows">
+        <view class="detail-row">
+          <text class="row-label">就诊日期</text>
+          <text class="row-value">{{medicalRecord.visitDate}}</text>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">接诊医生</text>
+          <text class="row-value">{{medicalRecord.doctorName}}</text>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">临床诊断</text>
+          <text class="row-value">{{medicalRecord.diagnosis}}</text>
+        </view>
+        <view wx:if="{{medicalRecord.prescription}}" class="detail-row">
+          <text class="row-label">诊疗处方</text>
+          <text class="row-value">{{medicalRecord.prescription}}</text>
+        </view>
+        <view wx:if="{{medicalRecord.doctorAdvice}}" class="detail-row">
+          <text class="row-label">医嘱建议</text>
+          <text class="row-value">{{medicalRecord.doctorAdvice}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{treatmentRecord}}" class="card-premium">
+      <view class="card-header-premium">
+        <image class="header-icon" src="/static/icons/adjust.svg" />
+        <text class="header-title">阻鼾器微调参数</text>
+      </view>
+      <view class="detail-rows">
+        <view class="detail-row">
+          <text class="row-label">设备型号</text>
+          <text class="row-value">{{treatmentRecord.deviceModel}}</text>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">初始前移量</text>
+          <text class="row-value">{{treatmentRecord.initialAdvancement}} mm</text>
+        </view>
+        <view class="detail-row">
+          <text class="row-label">当前前移量</text>
+          <text class="row-value">{{treatmentRecord.currentAdvancement}} mm</text>
+        </view>
+        <view wx:if="{{treatmentRecord.nextAdjustDate}}" class="detail-row">
+          <text class="row-label">下次微调日期</text>
+          <text class="row-value">{{treatmentRecord.nextAdjustDate}}</text>
+        </view>
+        <view wx:if="{{treatmentRecord.startDate}}" class="detail-row">
+          <text class="row-label">配戴开始日期</text>
+          <text class="row-value">{{treatmentRecord.startDate}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="visit-notice-card">
+      <view class="visit-notice-header">
+        <text class="visit-notice-header-icon">⚠</text>
+        <text class="visit-notice-title">就诊须知</text>
+      </view>
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">1.</text>
+        <text class="visit-notice-text">请携带既往病历与阻鼾器</text>
+      </view>
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">2.</text>
+        <text class="visit-notice-text">提前15分钟到达诊所签到</text>
+      </view>
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">3.</text>
+        <text class="visit-notice-text">如需取消，请最晚于{{cancelLimitText}}操作</text>
+      </view>
+      <view class="visit-notice-item">
+        <text class="visit-notice-index">4.</text>
+        <text class="visit-notice-text">首次就诊需完成睡眠评估</text>
+      </view>
+    </view>
+
+    <view wx:if="{{canPay}}" class="action-footer">
+      <button class="footer-btn btn-primary-full" hover-class="footer-btn-hover" bindtap="payDeposit">立即支付</button>
+      <button wx:if="{{canCancelOrReschedule}}" class="footer-btn btn-danger-ghost" hover-class="footer-btn-hover" bindtap="cancelAppointment">取消</button>
+    </view>
+
+    <view wx:elif="{{showRescheduleCancelFooter}}" class="action-footer">
+      <button class="footer-btn btn-ghost" hover-class="footer-btn-hover" bindtap="openReschedule">改约</button>
+      <button class="footer-btn btn-danger-ghost" hover-class="footer-btn-hover" bindtap="cancelAppointment">取消</button>
+    </view>
+
+    <view wx:elif="{{showRebookFooter}}" class="action-footer">
+      <button class="footer-btn btn-primary-full" hover-class="footer-btn-hover" bindtap="openReschedule">重新预约门诊</button>
+    </view>
+  </view>
+
+  <view wx:elif="{{loadError}}" class="state-card">
+    <text class="state-title">加载失败</text>
+    <text class="state-description">{{loadError}}</text>
+  </view>
+</view>

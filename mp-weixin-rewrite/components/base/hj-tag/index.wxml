@@ -1,0 +1,4 @@
+<text
+  class="hj-tag hj-tag--{{size}}"
+  style="color: {{color}}; background-color: {{backgroundColor}};"
+>{{text}}</text>

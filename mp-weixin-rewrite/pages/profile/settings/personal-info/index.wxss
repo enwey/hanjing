@@ -1,0 +1,20 @@
+.personal-info-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.avatar-badge { width: 96rpx; height: 96rpx; border-radius: 28rpx; background: #dbeafe; color: #3b6bf5; display: flex; align-items: center; justify-content: center; font-size: 36rpx; font-weight: 700; margin-bottom: 24rpx; }
+.summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16rpx; margin-bottom: 24rpx; }
+.summary-item { padding: 22rpx 18rpx; border-radius: 20rpx; background: linear-gradient(135deg, #eef4ff 0%, #ffffff 100%); text-align: center; }
+.summary-item__value { display: block; font-size: 24rpx; font-weight: 700; color: #1f2937; line-height: 1.5; word-break: break-all; }
+.summary-item__label { display: block; margin-top: 10rpx; font-size: 22rpx; color: #6b7280; }
+.form-list { display: flex; flex-direction: column; gap: 18rpx; }
+.form-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.form-label { font-size: 26rpx; color: #6b7280; }
+.form-value, .form-input { flex: 1; text-align: right; font-size: 26rpx; color: #1f2937; }
+.form-value--muted { color: #4b5563; }
+.form-input { min-height: 40rpx; }
+.chip-row { display: flex; gap: 14rpx; }
+.chip { padding: 10rpx 18rpx; border-radius: 9999rpx; background: #f3f4f6; font-size: 24rpx; color: #4b5563; }
+.chip--active { background: #eef4ff; color: #3b6bf5; }
+.personal-info-page__actions { background: transparent; box-shadow: none; }
+.primary-button, .ghost-button { margin-top: 16rpx; padding: 24rpx 0; border-radius: 20rpx; text-align: center; font-size: 28rpx; font-weight: 600; }
+.primary-button { background: #3b6bf5; color: #ffffff; }
+.ghost-button { background: #f3f4f6; color: #4b5563; }

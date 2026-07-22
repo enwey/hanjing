@@ -1,0 +1,13 @@
+<view wx:if="{{showPrivacy}}" class="privacy-mask">
+  <view class="privacy-container">
+    <view class="privacy-title">用户隐私保护指引</view>
+    <view class="privacy-content">
+      感谢您选择鼾静健康诊所！为了提供更好的服务，我们需要收集您的手机号、地理位置以查找就近门店，并在鼾声分析时使用您的麦克风录音权限。我们会严格保护您的个人敏感健康数据。在您使用前，请阅读并同意
+      <text class="privacy-link" bindtap="openPrivacyContract">《鼾静健康小程序隐私保护指引》</text>。
+    </view>
+    <view class="privacy-actions">
+      <button class="btn-disagree" bindtap="handleDisagree">拒绝</button>
+      <button class="btn-agree" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="handleAgree">同意并授权</button>
+    </view>
+  </view>
+</view>

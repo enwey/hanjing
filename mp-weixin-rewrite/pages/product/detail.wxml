@@ -1,0 +1,117 @@
+<view class="page product-detail-page">
+  <hj-navbar title="商品详情" showBack="{{true}}" />
+
+  <view wx:if="{{loading}}" class="loading-wrap">
+    <text>加载中...</text>
+  </view>
+
+  <block wx:elif="{{product}}">
+    <block wx:if="{{galleryImages.length}}">
+      <swiper
+        class="product-gallery"
+        current="{{currentImageIndex}}"
+        bindchange="onSwiperChange"
+        indicator-dots
+        indicator-color="rgba(255,255,255,0.5)"
+        indicator-active-color="#3B6BF5"
+      >
+        <swiper-item wx:for="{{galleryImages}}" wx:key="*this">
+          <image class="product-gallery__image" src="{{item}}" mode="aspectFill"></image>
+        </swiper-item>
+      </swiper>
+    </block>
+    <view wx:else class="product-gallery product-gallery--empty">
+      <view class="product-gallery__placeholder-mark">
+        <view class="product-gallery__placeholder-line product-gallery__placeholder-line--horizontal"></view>
+        <view class="product-gallery__placeholder-line product-gallery__placeholder-line--vertical"></view>
+      </view>
+    </view>
+
+    <view class="body">
+      <view class="header">
+        <view class="price-row">
+          <text class="price">{{displayPrice}}</text>
+          <text wx:if="{{hasDiscount}}" class="price-original">{{displayOriginalPrice}}</text>
+          <text wx:if="{{hasDiscount}}" class="discount-tag">{{discountText}}</text>
+        </view>
+        <text class="name">{{product.name}}</text>
+        <text class="sales">已售 {{displaySalesCount}}</text>
+      </view>
+
+      <view class="section">
+        <text class="section-title">商品详情</text>
+        <rich-text class="product-rich-text" nodes="{{product.descriptionHtml}}"></rich-text>
+      </view>
+    </view>
+
+    <view class="bottom-fixed-bar">
+      <button class="bar-primary-btn" bindtap="handlePrimaryPay">立即支付</button>
+    </view>
+
+    <view wx:if="{{showCheckout}}" class="checkout-overlay" bindtap="closeCheckout">
+      <view class="checkout-panel" catchtap="noop">
+        <view class="checkout-close" bindtap="closeCheckout">×</view>
+        <text class="checkout-title">确认订单</text>
+
+        <scroll-view scroll-y class="checkout-scroll">
+          <view class="checkout-product-card">
+            <image wx:if="{{product.imageUrl}}" class="checkout-product-img" src="{{product.imageUrl}}" mode="aspectFill"></image>
+            <view wx:else class="checkout-product-img checkout-product-img--placeholder">
+              <view class="checkout-placeholder-mark">
+                <view class="checkout-placeholder-line checkout-placeholder-line--horizontal"></view>
+                <view class="checkout-placeholder-line checkout-placeholder-line--vertical"></view>
+              </view>
+            </view>
+            <view class="checkout-product-info">
+              <text class="checkout-product-name">{{product.name}}</text>
+              <text class="checkout-product-price">{{displayPrice}}</text>
+            </view>
+          </view>
+
+          <view class="checkout-row">
+            <text class="checkout-label">购买数量</text>
+            <view class="qty-selector">
+              <view class="qty-btn" bindtap="decreaseQty">-</view>
+              <text class="qty-val">{{quantity}}</text>
+              <view class="qty-btn" bindtap="increaseQty">+</view>
+            </view>
+          </view>
+
+          <view class="checkout-section">
+            <view class="checkout-section-head">
+              <text class="checkout-section-title">收货人信息</text>
+              <text class="checkout-address-choose" bindtap="chooseWxAddress">选择微信地址</text>
+            </view>
+
+            <view class="input-group">
+              <text class="input-label">收货人</text>
+              <input class="checkout-input" value="{{contactName}}" bindinput="onInputName" placeholder="收货人姓名" />
+            </view>
+
+            <view class="input-group">
+              <text class="input-label">联系电话</text>
+              <input class="checkout-input" type="number" value="{{phone}}" bindinput="onInputPhone" placeholder="联系手机号" />
+            </view>
+
+            <view class="input-group input-group--textarea">
+              <text class="input-label">详细地址</text>
+              <textarea class="checkout-textarea" value="{{detailAddress}}" bindinput="onInputDetail" placeholder="省市区及详细地址"></textarea>
+            </view>
+          </view>
+
+          <view class="checkout-scroll-spacer"></view>
+        </scroll-view>
+
+        <view class="checkout-fixed-bar" catchtap="noop">
+          <view class="checkout-total">
+            <text class="checkout-total-label">实付款</text>
+            <text class="checkout-total-val">{{totalPayAmountText}}</text>
+          </view>
+          <view class="bar-primary-btn" bindtap="onCheckoutSubmitTap">
+            <text class="bar-primary-btn-text">{{isSubmitting ? '正在提交...' : '确认支付'}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

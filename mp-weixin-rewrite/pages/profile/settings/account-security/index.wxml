@@ -1,0 +1,47 @@
+<view class="container account-security-page">
+  <hj-navbar title="账号安全" showBack="{{true}}" />
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">加载中...</text>
+  </view>
+  <block wx:elif="{{info}}">
+    <view class="page-section">
+      <view class="info-row" bindtap="openPhoneModal"><text class="info-label">绑定手机</text><text class="info-value info-value--link">{{info.phone}} ✎</text></view>
+      <view class="info-row"><text class="info-label">登录密码</text><text class="info-value">{{info.hasPassword ? '已设置' : '未设置'}}</text></view>
+      <view class="info-row" bindtap="openRealnameModal"><text class="info-label">实名认证</text><text class="info-value info-value--link">{{info.realNameVerified ? ('已认证（' + info.realName + '）') : '点击去认证'}} ✎</text></view>
+    </view>
+    <view class="page-section">
+      <view class="info-row"><text class="info-label">最近登录</text><text class="info-value">{{info.lastLogin}}</text></view>
+      <view class="info-row"><text class="info-label">登录设备</text><text class="info-value">{{info.loginDevice}}</text></view>
+    </view>
+    <view class="page-section account-security-page__actions">
+      <view class="logout-button" bindtap="logout">退出登录</view>
+    </view>
+  </block>
+
+  <view wx:if="{{showPhoneModal}}" class="modal-mask" bindtap="closePhoneModal">
+    <view class="modal-card" catchtap="true">
+      <text class="modal-title">更换绑定手机</text>
+      <input class="modal-input" placeholder="请输入新手机号" type="number" maxlength="11" value="{{inputPhone}}" bindinput="onPhoneInput" />
+      <view class="code-row">
+        <input class="modal-input code-row__input" placeholder="请输入短信验证码" type="number" maxlength="6" value="{{inputCode}}" bindinput="onCodeInput" />
+        <text class="code-row__button" bindtap="getCode">{{codeCountdown > 0 ? codeCountdown + 's' : '获取验证码'}}</text>
+      </view>
+      <view class="modal-actions">
+        <view class="ghost-button" bindtap="closePhoneModal">取消</view>
+        <view class="primary-button" bindtap="submitPhone">确认修改</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{showRealnameModal}}" class="modal-mask" bindtap="closeRealnameModal">
+    <view class="modal-card" catchtap="true">
+      <text class="modal-title">严肃医疗实名认证</text>
+      <input class="modal-input" placeholder="真实姓名（需与身份证一致）" value="{{inputRealName}}" bindinput="onRealNameInput" />
+      <input class="modal-input" placeholder="18位身份证号" maxlength="18" value="{{inputIdCard}}" bindinput="onIdCardInput" />
+      <view class="modal-actions">
+        <view class="ghost-button" bindtap="closeRealnameModal">取消</view>
+        <view class="primary-button" bindtap="submitRealname">立即认证</view>
+      </view>
+    </view>
+  </view>
+</view>

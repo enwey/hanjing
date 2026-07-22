@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "商品详情",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "hj-navbar": "../../components/base/hj-navbar"
+  }
+}

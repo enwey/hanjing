@@ -1,0 +1,79 @@
+<view class="page">
+  <view class="hero">
+    <hj-navbar title="" textColor="#FFFFFF" backgroundColor="transparent" transparent="{{true}}" sticky="{{false}}" />
+    <view class="hero-navbar-spacer"></view>
+    <view class="hero-content">
+      <text class="hero-title">鼾静健康诊所</text>
+      <text class="hero-subtitle">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</text>
+      <view class="hero-stats">
+        <view class="hero-stat">
+          <text class="hero-stat-num">{{patientCountLabel}}</text>
+          <text class="hero-stat-label">累计患者</text>
+        </view>
+        <view class="hero-stat">
+          <text class="hero-stat-num">{{satisfactionRateLabel}}</text>
+          <text class="hero-stat-label">满意率</text>
+        </view>
+        <view class="hero-stat">
+          <text class="hero-stat-num">{{storeCountLabel}}</text>
+          <text class="hero-stat-label">家门店</text>
+        </view>
+      </view>
+      <button class="hero-btn" bindtap="goStoreSelect">
+        <text>立即预约</text>
+        <text class="hero-btn-arrow">→</text>
+      </button>
+    </view>
+  </view>
+
+  <view class="section quick-actions">
+    <view class="quick-action" bindtap="navigateToApptTab">
+      <image class="quick-action-icon quick-action-icon--appointment" src="/static/icons/tab-appointment-active.png" />
+      <text class="quick-action-text">预约挂号</text>
+    </view>
+    <view class="quick-action" bindtap="goAssessment">
+      <image class="quick-action-icon quick-action-icon--assessment" src="/static/icons/assessment_purple.svg" />
+      <text class="quick-action-text">睡眠评估</text>
+    </view>
+    <view class="quick-action" bindtap="goTreatmentTab">
+      <image class="quick-action-icon quick-action-icon--treatment" src="/static/icons/tab-treatment-active.png" />
+      <text class="quick-action-text">治疗追踪</text>
+    </view>
+    <view class="quick-action" bindtap="goMedicalRecords">
+      <image class="quick-action-icon quick-action-icon--profile" src="/static/icons/profile_orange.svg" />
+      <text class="quick-action-text">我的档案</text>
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{loadError}}">
+    <text class="state-text">{{loadError}}</text>
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">推荐医生</text>
+      <text class="section-more" bindtap="goDoctorList">全部 ›</text>
+    </view>
+    <hj-doctor-card
+      wx:for="{{recommendedDoctors}}"
+      wx:key="id"
+      doctor="{{item}}"
+      bind:click="handleDoctorClick"
+    />
+  </view>
+
+  <view class="section">
+    <view class="section-header">
+      <text class="section-title">我们的门店</text>
+    </view>
+    <hj-store-card
+      wx:for="{{stores}}"
+      wx:key="id"
+      store="{{item}}"
+      bind:click="handleStoreClick"
+    />
+  </view>
+
+  <view class="safe-bottom" />
+  <hj-privacy-popup id="privacyPopup" />
+</view>

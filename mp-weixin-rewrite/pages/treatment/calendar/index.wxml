@@ -1,0 +1,41 @@
+<view class="container treatment-calendar-page">
+  <hj-navbar title="打卡日历" showBack="{{true}}" />
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载打卡日历...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-section">
+      <view class="calendar-header">
+        <text class="calendar-nav" bindtap="goPrevMonth">&lt;</text>
+        <text class="calendar-title">{{monthText}}</text>
+        <text class="calendar-nav" bindtap="goNextMonth">&gt;</text>
+      </view>
+      <view class="week-row">
+        <text wx:for="{{weekLabels}}" wx:key="*this" class="week-label">{{item}}</text>
+      </view>
+      <view class="calendar-grid">
+        <view wx:for="{{dayCells}}" wx:key="id" class="calendar-day {{item.dayClass}} {{item.isEmpty ? 'calendar-day--empty' : ''}}">
+          <text class="calendar-day__num">{{item.day}}</text>
+          <text class="calendar-day__duration">{{item.wearDurationLabel}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="page-section">
+      <text class="section-title">本期数据</text>
+      <view class="summary-grid">
+        <view class="summary-card"><text class="summary-card__value">{{monthStats.worn}}</text><text class="summary-card__label">佩戴天数</text></view>
+        <view class="summary-card"><text class="summary-card__value">{{monthStats.avgHours}}</text><text class="summary-card__label">平均时长</text></view>
+        <view class="summary-card"><text class="summary-card__value">{{monthStats.avgComfort}}</text><text class="summary-card__label">平均舒适度</text></view>
+        <view class="summary-card"><text class="summary-card__value">{{monthStats.streak}}</text><text class="summary-card__label">连续天数</text></view>
+      </view>
+    </view>
+  </block>
+</view>

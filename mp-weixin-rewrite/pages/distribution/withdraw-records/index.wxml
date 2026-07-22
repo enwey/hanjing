@@ -1,0 +1,47 @@
+<view class="container withdraw-records-page">
+  <hj-navbar title="提现记录" showBack="{{true}}" />
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载提现记录...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{!records.length}}">
+    <text class="state-title">暂无提现记录</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-section summary-bar">
+      <view class="summary-item">
+        <text class="summary-item__value">{{summary.totalAmountLabel}}</text>
+        <text class="summary-item__label">累计申请提现</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-item__value">{{summary.completedCount}}</text>
+        <text class="summary-item__label">已到账笔数</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-item__value">{{summary.processingCount}}</text>
+        <text class="summary-item__label">处理中笔数</text>
+      </view>
+    </view>
+
+    <view class="page-section">
+      <view class="record-list">
+        <view wx:for="{{records}}" wx:key="id" class="record-card">
+          <view class="record-card__left">
+            <text class="record-card__amount">-{{item.amountLabel}}</text>
+            <text class="record-card__meta">{{item.accountLabel}}</text>
+        </view>
+        <view class="record-card__right">
+          <text class="record-card__status record-card__status--{{item.status}}">{{item.statusLabel}}</text>
+          <text class="record-card__date">{{item.createdDate}}</text>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

@@ -1,0 +1,84 @@
+<view class="page">
+  <hj-navbar title="医生详情" showBack="{{true}}" />
+
+  <view class="page-content" wx:if="{{doctorLoaded}}">
+    <view class="doctor-detail-hero">
+      <view class="doc-avatar">
+        <text class="doc-avatar-text">{{avatarText}}</text>
+      </view>
+      <view class="doc-name">{{doctorName}}</view>
+      <view class="doc-title-text">{{doctorTitle}} · {{specialty}}</view>
+      <view class="doc-tags">
+        <text wx:for="{{heroTags}}" wx:key="*this" class="doc-hero-tag">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="doc-stats-row">
+      <view class="doc-stat">
+        <view class="val">
+          <text>{{experienceNumber}}</text>
+          <text class="unit">年</text>
+        </view>
+        <view class="lab">临床经验</view>
+      </view>
+      <view class="doc-stat">
+        <view class="val">
+          <text>{{consultCountLabel}}</text>
+          <text class="unit">+</text>
+        </view>
+        <view class="lab">累计诊疗</view>
+      </view>
+      <view class="doc-stat">
+        <view class="val">
+          <text>{{ratingLabel}}</text>
+          <text class="unit">%</text>
+        </view>
+        <view class="lab">好评率</view>
+      </view>
+    </view>
+
+    <view class="doc-section">
+      <view class="doc-section-title">
+        <image class="doc-section-icon" src="/static/icons/tab-profile-active.png" />
+        个人简介
+      </view>
+      <view class="doc-intro">{{introText}}</view>
+    </view>
+
+    <view class="doc-section">
+      <view class="doc-section-title">
+        <image class="doc-section-icon" src="/static/icons/tab-treatment-active.png" />
+        擅长领域
+      </view>
+      <view class="doc-specialties">
+        <text wx:for="{{expertiseTags}}" wx:key="*this" class="doc-spec-tag">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="doc-section doc-section--schedule">
+      <view class="doc-section-title">
+        <image class="doc-section-icon" src="/static/icons/tab-appointment-active.png" />
+        近期排班
+      </view>
+      <view class="doc-schedule">
+        <view wx:for="{{scheduleRows}}" wx:key="id" class="schedule-row">
+          <text class="date">{{item.dateLabel}}</text>
+          <text class="period">{{item.periodLabel}}</text>
+          <text class="status {{item.statusClass}}">{{item.statusLabel}}</text>
+        </view>
+        <view wx:if="{{!scheduleRows.length}}" class="schedule-empty">
+          <text>该医生近期暂无排班计划</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-fixed-bar" wx:if="{{doctorLoaded}}">
+    <button
+      class="bar-primary-btn {{!hasFutureSchedules ? 'bar-primary-btn--disabled' : ''}}"
+      bindtap="openBooking"
+    >
+      {{hasFutureSchedules ? '立即预约' : '暂不接诊'}}
+    </button>
+  </view>
+</view>

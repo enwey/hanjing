@@ -1,0 +1,58 @@
+<view class="recording-page">
+  <hj-navbar title="AI鼾声分析" showBack="{{true}}" bindback="handleBack" />
+
+  <view wx:if="{{!isAnalyzing}}" class="page-content">
+    <picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" disabled="{{disabledSelector}}" class="member-picker">
+      <view class="member-picker-content">
+        <view class="member-info">
+          <text class="member-label">当前检测人：</text>
+          <text class="member-value">{{selectedMemberName}}</text>
+        </view>
+        <view wx:if="{{!disabledSelector}}" class="member-action">
+          <text class="member-action-text">切换</text>
+          <image class="member-action-arrow" src="/static/icons/chevron-right.svg" mode="aspectFit" />
+        </view>
+      </view>
+    </picker>
+
+    <view class="guide-card">
+      <text class="guide-emoji">💤</text>
+      <text class="guide-title">睡眠呼吸监测</text>
+      <text class="guide-desc">本地 AI 离线解析，优先使用本地声学指标生成报告。</text>
+    </view>
+
+    <view class="record-area">
+      <view class="waveform">
+        <view wx:for="{{audioLevels}}" wx:key="index" class="wave-bar" style="height: {{item}}px;"></view>
+      </view>
+      <text class="record-time">{{durationText}}</text>
+      <view class="mic-btn {{isRecording ? 'mic-btn--recording' : hasRecordingEnded ? 'mic-btn--paused' : ''}}" bindtap="onMicTap">
+        <text class="mic-icon">{{isRecording ? '⏸' : hasRecordingEnded ? '▶' : '●'}}</text>
+      </view>
+      <text class="status-text">{{statusText}}</text>
+    </view>
+
+    <view wx:if="{{isSubmitting && !isAnalyzing}}" class="actions">
+      <view class="btn btn--ghost" bindtap="resumeRecording">继续录音</view>
+      <view class="btn btn--primary" bindtap="stopAndAnalyze">生成分析报告</view>
+    </view>
+
+    <view class="tips-card">
+      <text class="tips-title">使用指引</text>
+      <view class="tips-list">
+        <text class="tip-item">• 手机放置于床头约 50cm 处</text>
+        <text class="tip-item">• 麦克风朝上并避开持续强噪</text>
+        <text class="tip-item">• 录音期间会自动把屏幕亮度调到最低</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="analyzing-screen">
+    <view class="analyzing-card">
+      <view class="spinner"></view>
+      <text class="analyzing-text">正在分析...</text>
+      <text class="analyzing-hint">约需 2 到 3 秒</text>
+    </view>
+  </view>
+  <hj-privacy-popup id="privacyPopup" />
+</view>

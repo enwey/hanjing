@@ -1,0 +1,14 @@
+.family-member-form-page { background: #f9fafb; padding-bottom: 40rpx; }
+.state-card { text-align: center; }
+.form-list { display: flex; flex-direction: column; gap: 20rpx; }
+.form-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.form-row--column { align-items: flex-start; flex-direction: column; }
+.form-label { font-size: 26rpx; color: #6b7280; }
+.form-input { flex: 1; text-align: right; font-size: 26rpx; color: #1f2937; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 14rpx; }
+.tag-item { padding: 10rpx 18rpx; border-radius: 9999rpx; background: #f3f4f6; font-size: 24rpx; color: #4b5563; }
+.tag-item--active { background: #eef4ff; color: #3b6bf5; }
+.family-member-form-page__actions { background: transparent; box-shadow: none; }
+.primary-button, .danger-button { margin-top: 16rpx; padding: 24rpx 0; border-radius: 20rpx; text-align: center; font-size: 28rpx; font-weight: 600; }
+.primary-button { background: #3b6bf5; color: #ffffff; }
+.danger-button { background: #fef2f2; color: #ef4444; }

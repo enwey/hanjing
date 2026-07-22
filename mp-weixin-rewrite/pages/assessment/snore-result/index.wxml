@@ -1,0 +1,60 @@
+<view class="snore-result-page">
+  <hj-navbar title="鼾声分析报告" showBack="{{true}}" bindback="handleBack" />
+
+  <view wx:if="{{!isLoading && reportDetail}}" class="page-content">
+    <view class="risk-card" style="background: {{riskInfo.bgColor}}">
+      <text class="risk-badge" style="background: {{riskInfo.color}}">{{riskInfo.title}}</text>
+      <text class="risk-score-title">鼾声风险指数</text>
+      <text class="risk-score" style="color: {{riskInfo.color}}">{{riskScore}}%</text>
+      <text class="risk-desc">{{riskInfo.desc}}</text>
+    </view>
+
+    <view class="risk-bar-section">
+      <view class="risk-bar-track">
+        <view class="risk-bar-fill" style="width: {{riskScore}}%; background: {{riskInfo.color}}"></view>
+        <view class="risk-marker" style="left: 33%">低</view>
+        <view class="risk-marker" style="left: 66%">中</view>
+        <view class="risk-marker risk-marker--high" style="left: 90%">高</view>
+      </view>
+    </view>
+
+    <view class="section-title">
+      <image class="section-title-icon" src="/static/icons/report.svg"></image>
+      <text class="section-title-text">鼾声数据详情</text>
+    </view>
+    <view class="stats-grid">
+      <view wx:for="{{statCards}}" wx:key="label" class="stat-card">
+        <image class="stat-icon" src="{{item.iconPath}}" mode="aspectFit" />
+        <text class="stat-value">{{item.value}}</text>
+        <text class="stat-label">{{item.label}}</text>
+      </view>
+    </view>
+
+    <view class="section-title">
+      <image class="section-title-icon" src="/static/icons/advice.svg"></image>
+      <text class="section-title-text">专业建议</text>
+    </view>
+    <view class="advice-card"><text class="advice-text">{{riskInfo.advice}}</text></view>
+
+    <view class="section-title">
+      <image class="section-title-icon" src="/static/icons/heart.svg"></image>
+      <text class="section-title-text">改善小贴士</text>
+    </view>
+    <view class="tips-grid">
+      <view wx:for="{{riskInfo.tips}}" wx:key="*this" class="tip-chip">
+        <text class="tip-num">{{index + 1}}</text>
+        <text class="tip-content">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="action-buttons">
+      <view class="btn-primary" bindtap="goAppointment">立即预约门诊</view>
+      <view class="btn-secondary" bindtap="goHome">返回睡眠评估</view>
+      <view class="btn-outline" bindtap="restartRecording">重新测试</view>
+    </view>
+  </view>
+
+  <view wx:else class="loading-card">
+    <text class="loading-text">{{isLoading ? '正在加载报告...' : '暂无可展示的报告'}}</text>
+  </view>
+</view>

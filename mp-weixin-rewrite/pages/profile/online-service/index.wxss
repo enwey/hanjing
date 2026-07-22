@@ -1,0 +1,23 @@
+.online-service-page { min-height: 100vh; background: #f9fafb; display: flex; flex-direction: column; }
+.chat-area { flex: 1; padding: 24rpx; box-sizing: border-box; }
+.chat-list { display: flex; flex-direction: column; gap: 18rpx; }
+.chat-message { display: flex; max-width: 86%; }
+.chat-message--user { align-self: flex-end; margin-left: auto; }
+.chat-message--assistant { align-self: flex-start; }
+.chat-bubble { padding: 22rpx 24rpx; border-radius: 24rpx; position: relative; }
+.chat-bubble--user { background: #3b6bf5; }
+.chat-bubble--assistant { background: #ffffff; box-shadow: 0 6rpx 20rpx rgba(15, 23, 42, 0.06); }
+.chat-bubble__text { display: block; font-size: 26rpx; line-height: 1.7; white-space: pre-line; }
+.chat-bubble--user .chat-bubble__text { color: #ffffff; }
+.chat-bubble--assistant .chat-bubble__text { color: #1f2937; }
+.chat-bubble__image { max-width: 320rpx; border-radius: 16rpx; display: block; margin-bottom: 8rpx; }
+.chat-bubble__sending, .chat-bubble__failed, .chat-bubble__time { display: block; margin-top: 8rpx; font-size: 20rpx; text-align: right; }
+.chat-bubble__sending { color: rgba(255, 255, 255, 0.72); }
+.chat-bubble__failed { color: #ef4444; text-decoration: underline; }
+.chat-bubble__time { color: rgba(255, 255, 255, 0.72); }
+.chat-bubble--assistant .chat-bubble__sending, .chat-bubble--assistant .chat-bubble__time { color: #9ca3af; }
+.chat-input-bar { display: flex; align-items: center; gap: 14rpx; padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom, 0)); background: #ffffff; box-shadow: 0 -8rpx 24rpx rgba(15, 23, 42, 0.06); }
+.chat-input-bar__icon { width: 76rpx; height: 76rpx; border-radius: 20rpx; background: #eef4ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.chat-input-bar__icon-image { width: 34rpx; height: 34rpx; }
+.chat-input-bar__input { flex: 1; min-height: 76rpx; padding: 0 22rpx; border-radius: 9999rpx; background: #f3f4f6; font-size: 26rpx; }
+.chat-input-bar__button { display: flex; align-items: center; justify-content: center; min-width: 116rpx; min-height: 76rpx; padding: 0 20rpx; border-radius: 9999rpx; background: #3b6bf5; color: #ffffff; font-size: 26rpx; font-weight: 700; }

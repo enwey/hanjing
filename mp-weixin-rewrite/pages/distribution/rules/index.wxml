@@ -1,0 +1,62 @@
+<view class="container distribution-rules-page">
+  <hj-navbar title="分销规则" showBack="{{true}}" />
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载分销规则...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-section rule-card">
+      <text class="rule-card__title">开通条件</text>
+      <text class="rule-card__desc" wx:if="{{qualificationText}}">{{qualificationText}}</text>
+      <text class="rule-card__desc" wx:else>当前暂无分销开通说明</text>
+    </view>
+
+    <view class="page-section rule-card" wx:if="{{levels.length}}">
+      <text class="rule-card__title">推广员等级</text>
+      <view class="level-table">
+        <view class="level-row level-row--head">
+          <text class="level-col">等级</text>
+          <text class="level-col">直推单量</text>
+          <text class="level-col">一级</text>
+          <text class="level-col">二级</text>
+        </view>
+        <view wx:for="{{levels}}" wx:key="level" class="level-row">
+          <text class="level-col level-col--strong">{{item.label}}</text>
+          <text class="level-col">{{item.directOrderRequired}}单</text>
+          <text class="level-col">{{item.level1Rate}}%</text>
+          <text class="level-col">{{item.level2Rate}}%</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="page-section rule-card" wx:if="{{commissionRules.length}}">
+      <text class="rule-card__title">佣金规则</text>
+      <view wx:for="{{commissionRules}}" wx:key="index" class="rule-item">
+        <text class="rule-item__index">{{index + 1}}</text>
+        <text class="rule-item__text">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="page-section rule-card" wx:if="{{promotionWays.length}}">
+      <text class="rule-card__title">推广方式</text>
+      <view wx:for="{{promotionWays}}" wx:key="index" class="rule-item">
+        <text class="rule-item__index">{{index + 1}}</text>
+        <text class="rule-item__text">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="page-section rule-card" wx:if="{{withdrawRules.length}}">
+      <text class="rule-card__title">提现规则</text>
+      <view wx:for="{{withdrawRules}}" wx:key="index" class="rule-item">
+        <text class="rule-item__index">{{index + 1}}</text>
+        <text class="rule-item__text">{{item}}</text>
+      </view>
+    </view>
+  </block>
+</view>

@@ -1,0 +1,51 @@
+<view class="container live-list-page">
+  <hj-navbar title="直播中心" showBack="{{true}}" />
+
+  <view class="live-tabs">
+    <view class="live-tab {{activeTab === 'all' ? 'live-tab--active' : ''}}" data-tab="all" bindtap="switchTab">全部</view>
+    <view class="live-tab {{activeTab === 'live' ? 'live-tab--active' : ''}}" data-tab="live" bindtap="switchTab">直播中</view>
+    <view class="live-tab {{activeTab === 'upcoming' ? 'live-tab--active' : ''}}" data-tab="upcoming" bindtap="switchTab">预告</view>
+    <view class="live-tab {{activeTab === 'replay' ? 'live-tab--active' : ''}}" data-tab="replay" bindtap="switchTab">回放</view>
+  </view>
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载直播列表...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{!filteredRooms.length}}">
+    <text class="state-title">暂无直播</text>
+  </view>
+
+  <view class="page-section" wx:else>
+    <view class="live-card" wx:for="{{filteredRooms}}" wx:key="id" data-id="{{item.id}}" bindtap="openRoomDetail">
+      <view class="live-card__cover-wrap">
+        <image wx:if="{{item.cover}}" class="live-card__cover" src="{{item.cover}}" mode="aspectFill" />
+        <view wx:else class="live-card__cover live-card__cover--empty"></view>
+        <view class="live-card__status live-card__status--{{item.status}}">{{item.statusText}}</view>
+        <view wx:if="{{item.displayTime}}" class="live-card__time">{{item.displayTime}}</view>
+      </view>
+      <view class="live-card__body">
+        <text class="live-card__title">{{item.title}}</text>
+        <view class="live-card__meta">
+          <view wx:if="{{item.anchorName}}" class="live-card__anchor">
+            <text class="live-card__anchor-avatar">{{item.anchorInitial}}</text>
+            <text class="live-card__anchor-name">{{item.anchorName}}</text>
+          </view>
+          <text wx:if="{{item.showViewerCount}}" class="live-card__viewer">{{item.displayViewerCount}}人观看</text>
+        </view>
+        <view wx:if="{{item.tags.length}}" class="live-card__tags">
+          <text wx:for="{{item.tags}}" wx:key="*this" class="live-card__tag">{{item}}</text>
+        </view>
+        <view class="live-card__action-row">
+          <text wx:if="{{item.displayRoomId}}" class="live-card__room-id">微信直播间ID：{{item.displayRoomId}}</text>
+          <view class="live-card__action">{{item.actionText}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

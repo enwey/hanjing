@@ -1,0 +1,29 @@
+<view class="doctor-card" bindtap="handleTap">
+  <view class="doctor-avatar">
+    <text class="doctor-avatar-text">{{avatarText}}</text>
+  </view>
+  <view class="doctor-info">
+    <view class="doctor-header">
+      <text class="doctor-name">{{doctor.name}}</text>
+      <hj-tag wx:if="{{titleText}}" text="{{titleText}}" type="primary" size="sm" />
+    </view>
+    <text class="doctor-specialty">{{specialtyText}} · {{experienceText}}年经验</text>
+    <view class="doctor-expertise">
+      <text
+        wx:for="{{expertiseList}}"
+        wx:key="*this"
+        wx:for-item="exp"
+        class="doctor-expertise-tag"
+      >{{exp}}</text>
+    </view>
+    <view class="doctor-stats">
+      <view class="doctor-rating">
+        <image class="doctor-rating-star" src="/static/icons/star-filled.svg" />
+        <text class="doctor-rating-value">{{ratingText}}</text>
+        <text class="doctor-rating-count">({{reviewCountText}}评)</text>
+      </view>
+      <text class="doctor-consult">已接诊 {{consultCountText}}+</text>
+    </view>
+  </view>
+  <view class="doctor-arrow">›</view>
+</view>

@@ -1,0 +1,64 @@
+<view class="container distribution-orders-page">
+  <hj-navbar title="推广订单" showBack="{{true}}" />
+
+  <view class="distribution-order-tabs">
+    <view
+      wx:for="{{statusTabs}}"
+      wx:key="key"
+      class="distribution-order-tab {{selectedStatus === item.key ? 'distribution-order-tab--active' : ''}}"
+      data-status-key="{{item.key}}"
+      bindtap="handleTabTap"
+    >
+      <text class="distribution-order-tab__text">{{item.label}}</text>
+    </view>
+  </view>
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载推广订单...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{!visibleOrders.length}}">
+    <text class="state-title">暂无推广订单</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-section summary-bar">
+      <view class="summary-item">
+        <text class="summary-item__value">{{summary.orderCount}}</text>
+        <text class="summary-item__label">订单数量</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-item__value">{{summary.orderAmountLabel}}</text>
+        <text class="summary-item__label">订单总额</text>
+      </view>
+      <view class="summary-item">
+        <text class="summary-item__value">{{summary.commissionAmountLabel}}</text>
+        <text class="summary-item__label">预计佣金</text>
+      </view>
+    </view>
+
+    <view class="page-section">
+    <view class="distribution-order-list">
+      <view wx:for="{{visibleOrders}}" wx:key="id" class="distribution-order-item">
+        <view class="distribution-order-item__cover">
+          <image wx:if="{{item.productImage}}" src="{{item.productImage}}" mode="aspectFill" class="distribution-order-item__cover-image" />
+          <view wx:else class="distribution-order-item__placeholder"></view>
+        </view>
+        <view class="distribution-order-item__body">
+          <text class="distribution-order-item__title">{{item.productName}}</text>
+          <text class="distribution-order-item__meta">{{item.buyerName}}</text>
+          <text class="distribution-order-item__meta">{{item.dateLabel}}</text>
+          <text class="distribution-order-item__meta">{{item.orderAmountLabel}}</text>
+          <text class="distribution-order-item__commission">{{item.commissionAmountLabel}}</text>
+        </view>
+        <text class="distribution-order-item__status distribution-order-item__status--{{item.status}}">{{item.statusLabel}}</text>
+      </view>
+    </view>
+    </view>
+  </block>
+</view>

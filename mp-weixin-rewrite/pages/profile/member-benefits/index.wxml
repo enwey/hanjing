@@ -1,0 +1,66 @@
+<view class="container member-benefits-page">
+  <hj-navbar title="会员权益" showBack="{{true}}" />
+
+  <view class="page-section state-card" wx:if="{{loading}}">
+    <text class="page-description">正在加载会员信息...</text>
+  </view>
+
+  <view class="page-section state-card" wx:elif="{{loadError}}">
+    <text class="state-title">加载失败</text>
+    <text class="page-description">{{loadError}}</text>
+  </view>
+
+  <block wx:elif="{{memberInfo}}">
+    <view class="page-section level-card" style="background: {{currentLevelTheme.background}}; color: {{currentLevelTheme.textColor}};">
+      <text class="level-card__title">{{currentLevelTitle}}</text>
+      <view class="level-card__stats">
+        <view class="level-card__stat">
+          <text class="level-card__stat-value">{{totalSpentLabel}}</text>
+          <text class="level-card__stat-label">累计消费</text>
+        </view>
+        <view class="level-card__stat">
+          <text class="level-card__stat-value">{{pointsLabel}}</text>
+          <text class="level-card__stat-label">积分</text>
+        </view>
+      </view>
+      <view class="level-card__progress" wx:if="{{showProgress}}">
+        <text class="level-card__progress-text">再消费 {{amountToNextLevelLabel}} 升级{{nextLevelTitle}}</text>
+        <view class="level-card__progress-track">
+          <view class="level-card__progress-fill" style="width: {{progressWidth}};"></view>
+        </view>
+      </view>
+    </view>
+
+    <view class="page-section">
+      <text class="section-title">当前权益</text>
+      <view class="benefit-list">
+        <view wx:for="{{currentBenefits}}" wx:key="title" class="benefit-card">
+          <view class="benefit-card__icon" style="background: {{item.iconBackground}};">
+            <image src="{{item.icon}}" mode="aspectFit" class="benefit-card__icon-image" />
+          </view>
+          <view class="benefit-card__body">
+            <text class="benefit-card__title">{{item.title}}</text>
+            <text class="benefit-card__description">{{item.description}}</text>
+          </view>
+          <view class="benefit-card__status">
+            <image src="/static/icons/success-medical.svg" mode="aspectFit" class="benefit-card__status-icon" />
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="page-section">
+      <text class="section-title">等级体系</text>
+      <view class="level-row-list">
+        <view wx:for="{{levelRows}}" wx:key="id" class="level-row">
+          <view class="level-row__dot" style="background: {{item.color}};"></view>
+          <view class="level-row__body">
+            <text class="level-row__title">{{item.title}}</text>
+            <text class="level-row__description">累计消费满 {{item.spentRequiredLabel}} {{item.actionLabel}}</text>
+          </view>
+          <text wx:if="{{item.isCurrent}}" class="level-row__badge">当前</text>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

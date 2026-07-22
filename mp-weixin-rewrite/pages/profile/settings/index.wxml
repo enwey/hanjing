@@ -1,0 +1,28 @@
+<view class="settings-page">
+  <hj-navbar title="设置" showBack="{{true}}" />
+
+  <view class="settings-hero">
+    <text class="settings-hero__title">设置</text>
+    <text class="settings-hero__desc" wx:if="{{nickname}}">当前账号：{{nickname}}{{phoneMasked ? ' · ' + phoneMasked : ''}}</text>
+  </view>
+
+  <view wx:for="{{sections}}" wx:key="title" class="page-section">
+    <text class="section-title">{{item.title}}</text>
+    <view class="menu-list">
+      <view wx:for="{{item.items}}" wx:key="key" class="menu-item" data-url="{{item.url}}" bindtap="goItem">
+        <view class="menu-item__icon-wrap">
+          <image class="menu-item__icon" src="{{item.icon}}" mode="aspectFit" />
+        </view>
+        <view class="menu-item__body">
+          <text class="menu-item__title">{{item.label}}</text>
+          <text class="menu-item__desc">{{item.description}}</text>
+        </view>
+        <image class="menu-item__arrow" src="/static/icons/chevron-right.svg" mode="aspectFit" />
+      </view>
+    </view>
+  </view>
+
+  <view class="page-section settings-page__action-bar">
+    <button class="logout-button" bindtap="logout">退出登录</button>
+  </view>
+</view>
