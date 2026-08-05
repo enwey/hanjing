@@ -1,5 +1,5 @@
 <view class="container community-page">
-  <hj-navbar title="患者社区" showBack="{{true}}" />
+  <hj-navbar title="医患社区" showBack="{{true}}" />
 
   <view class="community-content">
     <view class="publish-entry" bindtap="goPublishPost">
@@ -9,24 +9,10 @@
     </view>
 
     <view class="community-tabs">
-      <view wx:for="{{tabs}}" wx:key="key" class="community-tab {{activeTab === item.key ? 'community-tab--active' : ''}}" data-tab-key="{{item.key}}" bindtap="handleTabTap">{{item.label}}</view>
+      <view wx:for="{{tabs}}" wx:key="key" class="community-tab {{item.activeClass}}" data-tab-key="{{item.key}}" bindtap="handleTabTap">{{item.label}}</view>
     </view>
 
-    <view class="page-section state-card" wx:if="{{loading}}">
-      <text class="page-description">正在加载社区帖子...</text>
-    </view>
-
-    <view class="page-section state-card" wx:elif="{{loadError}}">
-      <text class="state-title">加载失败</text>
-      <text class="page-description">{{loadError}}</text>
-    </view>
-
-    <view class="page-section state-card" wx:elif="{{!visiblePosts.length}}">
-      <text class="state-title">暂无帖子</text>
-      <text class="page-description">还没有符合当前筛选条件的社区帖子。</text>
-    </view>
-
-    <view class="post-list" wx:else>
+    <view class="post-list">
       <view wx:for="{{visiblePosts}}" wx:key="id" class="post-card" data-post-id="{{item.id}}" bindtap="openPostDetail">
         <view wx:if="{{item.isTop}}" class="post-top">
           <image class="post-top__icon" src="/static/icons/pin.svg" mode="aspectFit"></image>
@@ -39,7 +25,7 @@
           <view class="post-author">
             <view class="post-author__row">
               <text class="post-author__name">{{item.author}}</text>
-              <text class="post-author__role post-author__role--{{item.role}}">{{item.roleLabel}}</text>
+              <text class="post-author__role {{item.roleClass}}">{{item.roleLabel}}</text>
             </view>
             <text class="post-author__time">{{item.displayTime}}</text>
           </view>
@@ -52,7 +38,7 @@
         </view>
         <view class="post-actions">
           <view class="post-action" catchtap="handleLikeTap" data-post-id="{{item.id}}">
-            <image class="post-action__icon {{item.isLiked ? 'post-action__icon--liked' : ''}}" src="{{item.isLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg'}}" mode="aspectFit"></image>
+            <image class="post-action__icon {{item.likeClass}}" src="{{item.likeIcon}}" mode="aspectFit"></image>
             <text class="post-action__count">{{item.likes}}</text>
           </view>
           <view class="post-action" catchtap="openPostDetail" data-post-id="{{item.id}}">
@@ -64,6 +50,9 @@
             <text class="post-action__count">分享</text>
           </view>
         </view>
+      </view>
+      <view wx:if="{{!visiblePosts.length && !loading}}" class="empty-tip">
+        <text>暂无帖子，来发第一帖吧！</text>
       </view>
     </view>
   </view>

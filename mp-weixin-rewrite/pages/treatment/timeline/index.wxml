@@ -1,50 +1,37 @@
-<view class="container treatment-timeline-page">
+<view class="page data-v-50b7be62">
   <hj-navbar title="治疗时间线" showBack="{{true}}" />
-
-  <view class="page-section state-card" wx:if="{{loading}}">
-    <text class="page-description">正在加载治疗时间线...</text>
-  </view>
-
-  <view class="page-section state-card" wx:elif="{{loadError}}">
-    <text class="state-title">加载失败</text>
-    <text class="page-description">{{loadError}}</text>
-  </view>
-
-  <block wx:elif="{{hasRealTreatmentRecord}}">
-    <view class="page-section hero-card">
-      <text class="page-title">{{deviceModel || '已建立治疗档案'}}</text>
-      <text class="page-description" wx:if="{{adjustmentValue}}">当前参数：{{adjustmentValue}}</text>
-      <text class="page-description" wx:if="{{nextAdjustDate}}">下次调整：{{nextAdjustDate}}</text>
-    </view>
-
-    <view class="page-section" wx:if="{{timelineItems.length}}">
-      <text class="section-title">治疗动态</text>
-      <view class="timeline-list">
-        <view wx:for="{{timelineItems}}" wx:key="id" class="timeline-item">
-          <view class="timeline-item__axis">
-            <view class="timeline-item__dot" style="background: {{item.color}};"></view>
-            <view wx:if="{{item.showLine}}" class="timeline-item__line" style="background: {{item.color}}33;"></view>
+  <view class="page-content data-v-50b7be62">
+    <block wx:if="{{hasRealTreatmentRecord}}">
+      <view wx:if="{{deviceModel}}" class="status-card data-v-50b7be62">
+        <text class="status-title data-v-50b7be62">当前治疗</text>
+        <view class="status-row data-v-50b7be62"><text class="status-label data-v-50b7be62">设备型号</text><text class="status-value data-v-50b7be62">{{deviceModel}}</text></view>
+        <view class="status-row data-v-50b7be62"><text class="status-label data-v-50b7be62">下颌前移量</text><text class="status-value data-v-50b7be62">{{adjustmentValue}}</text></view>
+        <view wx:if="{{nextAdjustDate}}" class="status-row data-v-50b7be62"><text class="status-label data-v-50b7be62">下次调整</text><text class="status-value data-v-50b7be62" style="color: #f59e0b">{{nextAdjustDate}}</text></view>
+      </view>
+      <view class="section-title data-v-50b7be62">治疗历程</view>
+      <view wx:if="{{!timelineItems.length}}" class="section-empty data-v-50b7be62"><text class="section-empty-text data-v-50b7be62">暂无治疗时间线记录，完成门诊诊疗后会按时间顺序同步展示。</text></view>
+      <view wx:else class="timeline data-v-50b7be62">
+        <view wx:for="{{timelineItems}}" wx:key="id" class="tl-item data-v-50b7be62 {{!item.showLine ? 'tl-item--last' : ''}}">
+          <view class="tl-left data-v-50b7be62"><text class="tl-date data-v-50b7be62">{{item.dateLabel}}</text><text class="tl-type data-v-50b7be62">{{item.typeLabel}}</text></view>
+          <view class="tl-middle data-v-50b7be62">
+            <view class="tl-dot data-v-50b7be62" style="background: {{item.color}}"></view>
+            <view wx:if="{{item.showLine}}" class="tl-line data-v-50b7be62" style="background: {{item.color}}33"></view>
           </view>
-          <view class="timeline-item__body">
-            <view class="timeline-item__header">
-              <text class="timeline-item__date">{{item.dateLabel}}</text>
-              <text class="timeline-item__type">{{item.typeLabel}}</text>
+          <view class="tl-right data-v-50b7be62">
+            <view class="tl-card data-v-50b7be62">
+              <text class="tl-title data-v-50b7be62">{{item.title}}</text>
+              <text class="tl-desc data-v-50b7be62">{{item.description}}</text>
+              <text wx:if="{{item.doctorName}}" class="tl-doctor data-v-50b7be62">{{item.doctorName}} 医生</text>
             </view>
-            <text class="timeline-item__title">{{item.title}}</text>
-            <text class="timeline-item__desc">{{item.description}}</text>
-            <text class="timeline-item__doctor" wx:if="{{item.doctorName}}">{{item.doctorName}}</text>
           </view>
         </view>
       </view>
+    </block>
+    <view wx:else class="empty-card data-v-50b7be62">
+      <text class="empty-title data-v-50b7be62">暂无治疗记录</text>
+      <text class="empty-desc data-v-50b7be62">当前治疗人还没有完成门诊建档或阻鼾器适配，暂时无法生成治疗时间线。完成预约就诊后，这里会同步展示初诊、复诊和调整记录。</text>
+      <button class="empty-btn data-v-50b7be62" bindtap="goAppointment">前往预约</button>
     </view>
-    <view class="page-section state-card" wx:else>
-      <text class="state-title">暂无治疗进度记录</text>
-    </view>
-  </block>
-
-  <view class="page-section state-card" wx:else>
-    <text class="state-title">还没有治疗记录</text>
-    <text class="page-description">当前治疗人还没有真实诊疗记录，完成预约问诊后这里会展示完整治疗动态。</text>
-    <view class="empty-action" bindtap="goAppointment">前往预约</view>
+    <view class="safe-bottom data-v-50b7be62"></view>
   </view>
 </view>

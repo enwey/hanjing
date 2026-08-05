@@ -97,7 +97,7 @@
     </view>
     <view class="comment-bar__row">
       <input class="comment-bar__input" placeholder="{{replyTarget ? '回复 ' + replyTarget.author : '写评论...'}}" confirm-type="send" bindconfirm="submitComment" value="{{commentInput}}" bindinput="handleCommentInput" />
-      <view class="comment-bar__send {{(!commentInput.trim() || isSubmitting) ? 'comment-bar__send--disabled' : ''}}" bindtap="submitComment">{{isSubmitting ? '发送中' : '发送'}}</view>
+      <view class="comment-bar__send {{!canSubmitComment ? 'comment-bar__send--disabled' : ''}}" bindtap="submitComment">{{isSubmitting ? '发送中' : '发送'}}</view>
     </view>
   </view>
 </view>

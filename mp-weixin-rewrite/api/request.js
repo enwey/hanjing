@@ -1,13 +1,87 @@
-const { apiBaseUrl } = require('../common/config/env');
+const { apiBaseUrl, apiBaseUrls } = require('../common/config/env');
 
 let isRefreshing = false;
 let requestQueue = [];
+let resolvedApiBaseUrl = apiBaseUrl;
 
 function createRequestError(message, statusCode, data) {
   const error = new Error(message || '请求失败，请稍后重试');
   error.statusCode = statusCode;
   error.data = data;
   return error;
+}
+
+function normalizeAccessToken(token) {
+  const text = token === null || token === undefined ? '' : String(token);
+  if (!text) {
+    return '';
+  }
+  const normalized = text.trim().replace(/[^\x20-\x7E]/g, '');
+  if (!normalized) {
+    return '';
+  }
+  if (!/^[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+$/.test(normalized)) {
+    return '';
+  }
+  return normalized;
+}
+
+function getRequestBaseUrls() {
+  const candidates = Array.isArray(apiBaseUrls) && apiBaseUrls.length ? apiBaseUrls : [apiBaseUrl];
+  if (!resolvedApiBaseUrl) {
+    return candidates;
+  }
+  const ordered = [resolvedApiBaseUrl];
+  candidates.forEach((item) => {
+    if (item && item !== resolvedApiBaseUrl) {
+      ordered.push(item);
+    }
+  });
+  return ordered;
+}
+
+function executeWxRequest(options, token) {
+  const baseUrls = getRequestBaseUrls();
+  const headers = Object.assign({ 'content-type': 'application/json' }, options.header || {});
+  const safeToken = normalizeAccessToken(token);
+  if (safeToken) {
+    headers.Authorization = 'Bearer ' + safeToken;
+  }
+
+  return new Promise((resolve, reject) => {
+    let currentIndex = 0;
+
+    const tryNext = (lastErrorMessage) => {
+      if (currentIndex >= baseUrls.length) {
+        reject(createRequestError(lastErrorMessage || options.failMessage || '网络连接失败，请稍后重试'));
+        return;
+      }
+
+      const currentBaseUrl = baseUrls[currentIndex];
+      currentIndex += 1;
+
+      wx.request({
+        url: currentBaseUrl + options.url,
+        method: options.method || 'GET',
+        data: options.data,
+        header: headers,
+        timeout: options.timeout || 10000,
+        success(response) {
+          resolvedApiBaseUrl = currentBaseUrl;
+          resolve({
+            response,
+            baseUrl: currentBaseUrl,
+          });
+        },
+        fail(error) {
+          const errMsg = (error && error.errMsg) || options.failMessage || '网络连接失败，请稍后重试';
+          tryNext(errMsg);
+        },
+      });
+    };
+
+    tryNext('');
+  });
 }
 
 function syncSessionStoreAccessToken(accessToken) {
@@ -37,33 +111,32 @@ function refreshAccessToken() {
           reject(createRequestError('登录授权失败'));
           return;
         }
-        wx.request({
-          url: apiBaseUrl + '/auth/wx-login',
+        executeWxRequest({
+          url: '/auth/wx-login',
           method: 'POST',
           data: { code: loginResult.code },
           header: { 'content-type': 'application/json' },
           timeout: 10000,
-          success(response) {
-            if (response.statusCode < 200 || response.statusCode >= 300) {
-              reject(createRequestError(
-                (response.data && response.data.message) || '登录授权失败',
-                response.statusCode,
-                response.data,
-              ));
-              return;
-            }
-            const payload = extractRefreshPayload(response.data);
-            if (!payload || !payload.access_token) {
-              reject(createRequestError('登录授权失败'));
-              return;
-            }
-            wx.setStorageSync('access_token', payload.access_token);
-            syncSessionStoreAccessToken(payload.access_token);
-            resolve(payload.access_token);
-          },
-          fail() {
+          failMessage: '登录授权失败',
+        }).then(({ response }) => {
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            reject(createRequestError(
+              (response.data && response.data.message) || '登录授权失败',
+              response.statusCode,
+              response.data,
+            ));
+            return;
+          }
+          const payload = extractRefreshPayload(response.data);
+          if (!payload || !payload.access_token) {
             reject(createRequestError('登录授权失败'));
-          },
+            return;
+          }
+          wx.setStorageSync('access_token', payload.access_token);
+          syncSessionStoreAccessToken(payload.access_token);
+          resolve(payload.access_token);
+        }).catch((error) => {
+          reject(createRequestError((error && error.message) || '登录授权失败'));
         });
       },
       fail() {
@@ -74,17 +147,8 @@ function refreshAccessToken() {
 }
 
 function retryRequestWithToken(options, token, resolve, reject) {
-  const headers = Object.assign({ 'content-type': 'application/json' }, options.header || {});
-  if (token) {
-    headers.Authorization = 'Bearer ' + token;
-  }
-  wx.request({
-    url: apiBaseUrl + options.url,
-    method: options.method || 'GET',
-    data: options.data,
-    header: headers,
-    timeout: options.timeout || 10000,
-    success(response) {
+  executeWxRequest(options, token)
+    .then(({ response }) => {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         resolve(response.data);
         return;
@@ -94,28 +158,23 @@ function retryRequestWithToken(options, token, resolve, reject) {
         response.statusCode,
         response.data,
       ));
-    },
-    fail() {
-      reject(createRequestError(options.failMessage || '网络连接失败，请稍后重试'));
-    },
-  });
+    })
+    .catch((error) => {
+      reject(createRequestError((error && error.message) || options.failMessage || '网络连接失败，请稍后重试'));
+    });
 }
 
 function request(options) {
-  const token = wx.getStorageSync('access_token');
-  const headers = Object.assign({ 'content-type': 'application/json' }, options.header || {});
-  if (token) {
-    headers.Authorization = 'Bearer ' + token;
+  const rawToken = wx.getStorageSync('access_token');
+  const token = normalizeAccessToken(rawToken);
+  if (rawToken && !token) {
+    wx.removeStorageSync('access_token');
+    syncSessionStoreAccessToken('');
   }
 
   return new Promise((resolve, reject) => {
-    wx.request({
-      url: apiBaseUrl + options.url,
-      method: options.method || 'GET',
-      data: options.data,
-      header: headers,
-      timeout: options.timeout || 10000,
-      success(response) {
+    executeWxRequest(options, token)
+      .then(({ response }) => {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           resolve(response.data);
           return;
@@ -153,11 +212,12 @@ function request(options) {
           response.statusCode,
           response.data,
         ));
-      },
-      fail() {
-        reject(createRequestError(options.failMessage || '网络连接失败，请稍后重试'));
-      },
-    });
+      })
+      .catch((error) => {
+        reject(createRequestError(
+          (error && error.message) || options.failMessage || '网络连接失败，请稍后重试',
+        ));
+      });
   });
 }
 

@@ -8,7 +8,8 @@
           <image wx:if="{{statusKey === 'pending'}}" class="status-icon" src="/static/icons/calendar.svg" />
           <image wx:elif="{{statusKey === 'confirmed' || statusKey === 'reminded'}}" class="status-icon" src="/static/icons/clock.svg" />
           <image wx:elif="{{statusKey === 'checked_in'}}" class="status-icon" src="/static/icons/doctor.svg" />
-          <image wx:elif="{{statusKey === 'completed' || statusKey === 'arrived'}}" class="status-icon" src="/static/icons/success-medical.svg" />
+          <image wx:elif="{{statusKey === 'completed'}}" class="status-icon" src="/static/icons/success-medical.svg" />
+          <image wx:elif="{{statusKey === 'arrived'}}" class="status-icon" src="/static/icons/success-medical.svg" />
           <image wx:elif="{{statusKey === 'cancelled' || statusKey === 'no_show'}}" class="status-icon" src="/static/icons/warning.svg" />
           <image wx:else class="status-icon" src="/static/icons/info.svg" />
         </view>
@@ -44,6 +45,7 @@
     <view class="card-premium doctor-card">
       <view class="doc-avatar-large">
         <text class="doc-avatar-text-large">{{doctorAvatar}}</text>
+        <view class="pulse-ring-avatar"></view>
       </view>
       <view class="doc-info-detail">
         <view class="doc-name-row">
@@ -176,12 +178,17 @@
       </view>
     </view>
 
-    <view wx:if="{{cancelReason}}" class="card-premium cancel-card-styled">
+    <view wx:if="{{cancelReason}}" class="card-premium">
       <view class="card-header-premium">
         <image class="header-icon" src="/static/icons/alert.svg" />
         <text class="header-title">取消原因</text>
       </view>
-      <text class="cancel-text-styled">{{cancelReason}}</text>
+      <view class="detail-rows">
+        <view class="detail-row">
+          <text class="row-label">取消原因</text>
+          <text class="row-value">{{cancelReason}}</text>
+        </view>
+      </view>
     </view>
 
     <view wx:if="{{medicalRecord}}" class="card-premium">

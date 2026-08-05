@@ -2,7 +2,7 @@
   <hj-navbar title="佣金明细" showBack="{{true}}" />
 
   <view class="page-section state-card" wx:if="{{loading}}">
-    <text class="page-description">正在加载佣金明细...</text>
+    <text class="state-title">正在加载佣金明细...</text>
   </view>
 
   <view class="page-section state-card" wx:elif="{{loadError}}">
@@ -11,7 +11,7 @@
   </view>
 
   <block wx:else>
-    <view class="page-section commission-summary">
+    <view class="commission-summary">
       <view class="commission-summary__item">
         <text class="commission-summary__value">{{totalCommissionLabel}}</text>
         <text class="commission-summary__label">累计佣金</text>
@@ -22,38 +22,21 @@
       </view>
       <view class="commission-summary__item">
         <text class="commission-summary__value">{{availableCommissionLabel}}</text>
-        <text class="commission-summary__label">可提现</text>
+        <text class="commission-summary__label">已结算</text>
       </view>
     </view>
 
-    <view class="commission-tabs">
-      <view
+    <scroll-view scroll-x class="commission-tabs" enhanced="{{true}}" show-scrollbar="{{false}}">
+      <text
         wx:for="{{tabList}}"
         wx:key="key"
         class="commission-tab {{selectedTab === item.key ? 'commission-tab--active' : ''}}"
         data-tab-key="{{item.key}}"
         bindtap="handleTabTap"
-      >
-        <text class="commission-tab__text">{{item.label}}</text>
-      </view>
-    </view>
+      >{{item.label}}</text>
+    </scroll-view>
 
-    <view class="page-section summary-bar" wx:if="{{visibleCommissions.length}}">
-      <view class="summary-item">
-        <text class="summary-item__value">{{summary.recordCount}}</text>
-        <text class="summary-item__label">明细条数</text>
-      </view>
-      <view class="summary-item">
-        <text class="summary-item__value">{{summary.visibleCommissionLabel}}</text>
-        <text class="summary-item__label">当前筛选佣金</text>
-      </view>
-      <view class="summary-item">
-        <text class="summary-item__value">{{summary.settledCount}}</text>
-        <text class="summary-item__label">已结算条数</text>
-      </view>
-    </view>
-
-    <view class="page-section" wx:if="{{visibleCommissions.length}}">
+    <view class="page-section commission-list-wrap" wx:if="{{visibleCommissions.length}}">
       <view class="commission-list">
         <view wx:for="{{visibleCommissions}}" wx:key="id" class="commission-card">
           <view class="commission-card__cover">
@@ -62,9 +45,8 @@
           </view>
           <view class="commission-card__body">
             <text class="commission-card__title">{{item.productName}}</text>
-            <text class="commission-card__meta">{{item.buyerName}}</text>
-            <text class="commission-card__meta">{{item.dateLabel}}</text>
-            <text class="commission-card__meta">{{item.commissionLevelLabel}}</text>
+            <text class="commission-card__meta">{{item.buyerName}} | {{item.dateLabel}}</text>
+            <text wx:if="{{item.commissionLevelLabel === '二级佣金'}}" class="commission-card__level">二级佣金</text>
           </view>
           <view class="commission-card__aside">
             <text class="commission-card__amount">{{item.commissionAmountLabel}}</text>

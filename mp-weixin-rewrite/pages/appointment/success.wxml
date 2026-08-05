@@ -86,8 +86,8 @@
     </view>
 
     <view class="actions">
-      <hj-button text="查看预约详情" bind:tap="openAppointmentDetail" />
-      <hj-button text="返回首页" type="secondary" bind:tap="goHome" />
+      <hj-button block="{{true}}" bind:tap="openAppointmentDetail">查看预约详情</hj-button>
+      <hj-button block="{{true}}" type="secondary" bind:tap="goHome">返回首页</hj-button>
     </view>
 
     <view class="remind">

@@ -67,6 +67,19 @@
   padding-bottom: 32rpx;
 }
 
+.state-card {
+  margin-bottom: 32rpx;
+  padding: 48rpx 32rpx;
+  border-radius: 24rpx;
+  background: #ffffff;
+  text-align: center;
+}
+
+.state-text {
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
 .safe-bottom {
   height: env(safe-area-inset-bottom, 34px);
 }

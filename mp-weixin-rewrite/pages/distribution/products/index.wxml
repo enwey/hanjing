@@ -14,23 +14,7 @@
     <text class="state-title">暂无推广商品</text>
   </view>
 
-  <block wx:else>
-    <view class="page-section summary-bar">
-      <view class="summary-item">
-        <text class="summary-item__value">{{summary.productCount}}</text>
-        <text class="summary-item__label">可推广商品</text>
-      </view>
-      <view class="summary-item" wx:if="{{summary.averageCommissionRate}}">
-        <text class="summary-item__value">{{summary.averageCommissionRate}}</text>
-        <text class="summary-item__label">平均佣金比例</text>
-      </view>
-      <view class="summary-item" wx:if="{{summary.highestCommissionLabel}}">
-        <text class="summary-item__value">{{summary.highestCommissionLabel}}</text>
-        <text class="summary-item__label">最高预计佣金</text>
-      </view>
-    </view>
-
-    <view class="page-section">
+  <view class="page-section product-list-wrap" wx:else>
     <view class="product-list">
       <view wx:for="{{products}}" wx:key="id" class="product-card" data-id="{{item.id}}" bindtap="openProductDetail">
         <view class="product-card__cover">
@@ -41,12 +25,11 @@
         </view>
         <view class="product-card__body">
           <text class="product-card__name">{{item.name}}</text>
-          <text class="product-card__meta">售价 {{item.priceLabel}}</text>
-          <text wx:if="{{item.commissionRateLabel}}" class="product-card__meta">佣金比例 {{item.commissionRateLabel}}</text>
-          <text wx:if="{{item.commissionAmountLabel}}" class="product-card__commission">预计佣金 {{item.commissionAmountLabel}}</text>
+          <text class="product-card__meta">{{item.priceLabel}}</text>
+          <text class="product-card__meta">佣金 {{item.commissionRateLabel || '0%'}} · {{item.commissionAmountLabel || '¥0.00'}}</text>
         </view>
+        <text class="product-card__arrow">去推广</text>
       </view>
     </view>
-    </view>
-  </block>
+  </view>
 </view>

@@ -72,6 +72,13 @@ Page({
     commentInput: '',
     isSubmitting: false,
     replyTarget: null,
+    canSubmitComment: false,
+  },
+
+  refreshCommentSubmitState() {
+    this.setData({
+      canSubmitComment: Boolean(String(this.data.commentInput || '').trim() && !this.data.isSubmitting),
+    });
   },
 
   onLoad(options) {
@@ -160,10 +167,12 @@ Page({
 
   clearReplyTarget() {
     this.setData({ replyTarget: null, commentInput: '' });
+    this.refreshCommentSubmitState();
   },
 
   handleCommentInput(event) {
     this.setData({ commentInput: event.detail.value || '' });
+    this.refreshCommentSubmitState();
   },
 
   async submitComment() {
@@ -171,6 +180,7 @@ Page({
       return;
     }
     this.setData({ isSubmitting: true });
+    this.refreshCommentSubmitState();
     try {
       const response = await api.commentCommunityPost(
         this.data.postId,
@@ -189,8 +199,10 @@ Page({
         }),
       });
       wx.showToast({ title: '评论成功', icon: 'success' });
+      this.refreshCommentSubmitState();
     } catch (error) {
       this.setData({ isSubmitting: false });
+      this.refreshCommentSubmitState();
       wx.showToast({ title: '评论失败，请稍后重试', icon: 'none' });
     }
   },

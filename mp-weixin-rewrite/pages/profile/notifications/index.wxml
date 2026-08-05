@@ -1,61 +1,31 @@
-<view class="container notification-page">
+<view class="page data-v-c3158b61">
   <hj-navbar title="消息通知" showBack="{{true}}" />
-
-  <view class="page-section notification-page__hero">
-    <text class="page-title">消息通知</text>
-    <text class="page-description">未读消息 {{unreadCount}} 条</text>
-    <text class="notification-page__mark-all" wx:if="{{unreadCount > 0}}" bindtap="markAllRead">全部标记已读</text>
+  <view class="top-bar data-v-c3158b61">
+    <text class="unread-text data-v-c3158b61">{{unreadCount}} 条未读</text>
+    <text wx:if="{{unreadCount > 0}}" class="read-all data-v-c3158b61" bindtap="markAllRead">全部已读</text>
   </view>
-
-  <view class="page-section state-card" wx:if="{{loading}}">
-    <text class="page-description">正在加载消息通知...</text>
-  </view>
-
-  <view class="page-section state-card" wx:elif="{{loadError}}">
-    <text class="state-title">加载失败</text>
-    <text class="page-description">{{loadError}}</text>
-  </view>
-
-  <view class="page-section state-card" wx:elif="{{!notifications.length}}">
-    <text class="state-title">暂无通知</text>
-    <text class="page-description">当前还没有消息通知。</text>
-  </view>
-
-  <block wx:else>
-    <view class="page-section summary-bar">
-      <view class="summary-item">
-        <text class="summary-item__value">{{summary.totalCount}}</text>
-        <text class="summary-item__label">通知总数</text>
-      </view>
-      <view class="summary-item">
-        <text class="summary-item__value">{{summary.unreadCount}}</text>
-        <text class="summary-item__label">未读消息</text>
-      </view>
-      <view class="summary-item" wx:if="{{summary.latestTimeLabel}}">
-        <text class="summary-item__value">{{summary.latestTimeLabel}}</text>
-        <text class="summary-item__label">最近通知时间</text>
-      </view>
-    </view>
-
-    <view class="page-section">
-    <view class="notification-list">
+  <view class="page-content data-v-c3158b61">
+    <view wx:if="{{loading}}" class="loading-wrap data-v-c3158b61"><text class="data-v-c3158b61">加载中...</text></view>
+    <block wx:else>
       <view
         wx:for="{{notifications}}"
         wx:key="id"
-        class="notification-card {{item.isRead ? 'notification-card--read' : ''}}"
-        data-notification-id="{{item.id}}"
-        bindtap="markNotificationRead"
+        class="noti-card data-v-c3158b61 {{!item.isRead ? 'unread' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="openNotification"
       >
-        <view class="notification-card__badge" style="background: {{item.badgeColor}};">{{item.typeLabel}}</view>
-        <view class="notification-card__body">
-          <view class="notification-card__header">
-            <text class="notification-card__title">{{item.title}}</text>
-            <text class="notification-card__time">{{item.timeLabel}}</text>
-          </view>
-          <text class="notification-card__content">{{item.content}}</text>
+        <view class="noti-dot data-v-c3158b61 {{!item.isRead ? 'active' : ''}}" />
+        <view class="noti-icon data-v-c3158b61" style="background: {{item.iconBg}}; color: {{item.iconColor}}">
+          <text class="data-v-c3158b61">{{item.iconText}}</text>
+        </view>
+        <view class="noti-body data-v-c3158b61">
+          <text class="noti-title data-v-c3158b61">{{item.title}}</text>
+          <text class="noti-content data-v-c3158b61">{{item.content}}</text>
+          <text class="noti-time data-v-c3158b61">{{item.timeText}}</text>
         </view>
       </view>
-    </view>
-    </view>
-  </block>
+      <view wx:if="{{!notifications.length}}" class="empty data-v-c3158b61"><text class="data-v-c3158b61">暂无消息</text></view>
+    </block>
+    <view class="safe-bottom data-v-c3158b61" />
+  </view>
 </view>

@@ -23,12 +23,12 @@
     <view class="publish-field">
       <text class="publish-field__label">标签（最多3个）</text>
       <view class="publish-tag-list">
-        <view wx:for="{{tagOptions}}" wx:key="*this" class="publish-chip {{selectedTags.indexOf(item) !== -1 ? 'publish-chip--active' : ''}}" data-tag="{{item}}" bindtap="toggleTag">{{item}}</view>
+        <view wx:for="{{tagOptions}}" wx:key="*this" class="publish-chip {{selectedTagMap[item] ? 'publish-chip--active' : ''}}" data-tag="{{item}}" bindtap="toggleTag">{{item}}</view>
       </view>
     </view>
   </view>
 
   <view class="publish-submit-bar">
-    <view class="publish-submit-button {{(!title.trim() || !content.trim() || isSubmitting) ? 'publish-submit-button--disabled' : ''}}" bindtap="submitPublish">{{isSubmitting ? '发布中...' : '发布帖子'}}</view>
+    <view class="publish-submit-button {{!canSubmit ? 'publish-submit-button--disabled' : ''}}" bindtap="submitPublish">{{isSubmitting ? '发布中...' : '发布帖子'}}</view>
   </view>
 </view>

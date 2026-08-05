@@ -1,3 +1,4 @@
 {
-  "navigationBarTitleText": "睡眠报告"
+  "navigationBarTitleText": "睡眠报告",
+  "navigationStyle": "custom"
 }

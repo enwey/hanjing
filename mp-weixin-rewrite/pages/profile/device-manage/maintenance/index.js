@@ -1,82 +1,83 @@
-const api = require('../../../../api/index');
-const patientContextStore = require('../../../../stores/patient-context-store');
-const patientContextService = require('../../../../services/patient-context-service');
+"use strict";
+const api = require("../../../../api/index.js");
 
-const TYPE_MAP = {
-  clean: { label: '清洁', color: '#3b6bf5' },
-  repair: { label: '维修', color: '#ef4444' },
-  adjust: { label: '调整', color: '#f59e0b' },
-  replace: { label: '更换', color: '#1a9d5c' },
+const MEMBER_LABEL_MAP = {
+  self: "本人",
+  spouse: "配偶",
+  child: "子女",
+  parent: "父母",
+  sibling: "兄弟姐妹",
+  other: "其他",
 };
 
-function unwrapList(response) {
-  const payload = response && response.data ? response.data : response || {};
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload.list)) return payload.list;
-  if (Array.isArray(payload.items)) return payload.items;
-  return [];
-}
-
-function normalizeRecord(record) {
-  const typeMeta = TYPE_MAP[record.type] || TYPE_MAP.clean;
-  const cost = Number(record.cost || 0);
-  return {
-    id: String(record.id || ''),
-    title: record.title || record.deviceName || typeMeta.label,
-    dateLabel: record.recordDate || record.createdAt || '',
-    description: record.description || record.note || '',
-    operatorName: record.operatorName || record.engineerName || '',
-    cost,
-    costLabel: cost > 0 ? '¥' + (cost / 100).toFixed(2) : '',
-    typeLabel: typeMeta.label,
-    typeColor: typeMeta.color,
-  };
-}
+const TYPE_MAP = {
+  clean: { label: "清洁", color: "#3B6BF5" },
+  repair: { label: "维修", color: "#EF4444" },
+  adjust: { label: "调试", color: "#1A9D5C" },
+};
 
 Page({
   data: {
     loading: true,
-    loadError: '',
-    selectedMemberLabel: '',
+    members: [],
+    memberOptions: [],
+    memberIndex: 0,
+    selectedPatientId: "",
     records: [],
-    summary: {
-      totalCount: '0',
-      totalCostLabel: '',
-      latestDateLabel: '',
-    },
   },
 
-  async onShow() {
-    await this.loadPage();
+  onShow() {
+    this.loadPage();
+  },
+
+  getStoragePatientId() {
+    return wx.getStorageSync("selected_treatment_patient_id") || "";
+  },
+
+  setStoragePatientId(patientId) {
+    if (patientId) {
+      wx.setStorageSync("selected_treatment_patient_id", String(patientId));
+    }
   },
 
   async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+    this.setData({ loading: true });
     try {
-      const context = await patientContextStore.refresh();
-      const recordsResponse = await api.getDeviceMaintenance(
-        context.currentPatientId ? { patientId: context.currentPatientId, _t: Date.now() } : { _t: Date.now() },
-      );
-      const records = unwrapList(recordsResponse).map(normalizeRecord);
-      const totalCost = records.reduce((sum, item) => sum + Number(item.cost || 0), 0);
-      const latestDateLabel = records.length ? records[0].dateLabel || '' : '';
-
-      this.setData({
-        loading: false,
-        selectedMemberLabel: context.currentMember ? context.currentMember.name + '（' + patientContextService.getRelationLabel(context.currentMember.relation) + '）' : '',
-        records,
-        summary: {
-          totalCount: String(records.length),
-          totalCostLabel: totalCost > 0 ? '¥' + (totalCost / 100).toFixed(2) : '',
-          latestDateLabel,
-        },
+      const memberRes = await api.getFamilyMembers();
+      const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
+      let selectedPatientId = this.getStoragePatientId();
+      if (!selectedPatientId || !members.some((item) => String(item.id) === String(selectedPatientId))) {
+        const selfMember = members.find((item) => item.relation === "self") || members[0] || null;
+        selectedPatientId = selfMember ? String(selfMember.id) : "";
+        this.setStoragePatientId(selectedPatientId);
+      }
+      const memberOptions = members.map((item) => `${item.name}（${MEMBER_LABEL_MAP[item.relation] || "成员"}）`);
+      const memberIndex = Math.max(0, members.findIndex((item) => String(item.id) === String(selectedPatientId)));
+      const res = await api.getMaintenanceRecords(selectedPatientId ? { patientId: selectedPatientId } : {});
+      const records = ((res.data && res.data.list) || res.list || []).map((item) => {
+        const meta = TYPE_MAP[item.type] || TYPE_MAP.clean;
+        return {
+          ...item,
+          typeLabel: meta.label,
+          typeColor: meta.color,
+          typeBg: `${meta.color}18`,
+        };
       });
-    } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载维护记录失败',
-        records: [],
-      });
+      this.setData({ members, memberOptions, memberIndex, selectedPatientId, records });
+    } catch (err) {
+      console.error("加载维护记录失败", err);
+      wx.showToast({ title: err.message || "加载维护记录失败", icon: "none" });
+      this.setData({ records: [] });
+    } finally {
+      this.setData({ loading: false });
     }
+  },
+
+  async onMemberChange(event) {
+    const nextIndex = Number(event.detail.value || 0);
+    const nextMember = this.data.members[nextIndex];
+    if (!nextMember) return;
+    this.setStoragePatientId(nextMember.id);
+    await this.loadPage();
   },
 });

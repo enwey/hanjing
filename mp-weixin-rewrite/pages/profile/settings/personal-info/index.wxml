@@ -1,71 +1,55 @@
-<view class="container personal-info-page">
+<view class="page data-v-acab1652">
   <hj-navbar title="个人信息" showBack="{{true}}" />
-  <view class="page-section state-card" wx:if="{{loading}}">
-    <text class="page-description">加载中...</text>
-  </view>
-  <block wx:elif="{{profile}}">
-    <view class="page-section">
-      <view class="avatar-badge">{{summary.avatarBadge}}</view>
-      <view class="summary-grid">
-        <view class="summary-item">
-          <text class="summary-item__value">{{summary.nickname || '未设置'}}</text>
-          <text class="summary-item__label">昵称</text>
+  <view class="page-content data-v-acab1652">
+    <view wx:if="{{loading}}" class="loading-wrap data-v-acab1652"><text class="data-v-acab1652">加载中...</text></view>
+    <block wx:else>
+      <view class="form-card data-v-acab1652">
+        <view class="form-row data-v-acab1652">
+          <text class="form-label data-v-acab1652">头像</text>
+          <view class="avatar data-v-acab1652"><text class="data-v-acab1652">{{avatarText}}</text></view>
         </view>
-        <view class="summary-item">
-          <text class="summary-item__value">{{summary.genderLabel || '未设置'}}</text>
-          <text class="summary-item__label">性别</text>
+        <view class="form-row data-v-acab1652">
+          <text class="form-label data-v-acab1652">昵称</text>
+          <input wx:if="{{editing}}" class="form-value-input data-v-acab1652" value="{{nickname}}" bindinput="handleNicknameInput" />
+          <text wx:else class="form-value data-v-acab1652">{{profile.nickname}}</text>
         </view>
-        <view class="summary-item">
-          <text class="summary-item__value">{{summary.birthday || '未设置'}}</text>
-          <text class="summary-item__label">生日</text>
+        <view class="form-row data-v-acab1652">
+          <text class="form-label data-v-acab1652">手机号</text>
+          <text class="form-value disabled data-v-acab1652">{{profile.phone}}</text>
         </view>
-        <view class="summary-item">
-          <text class="summary-item__value">{{summary.cardNo || '未生成'}}</text>
-          <text class="summary-item__label">就诊卡号</text>
+        <view class="form-row data-v-acab1652">
+          <text class="form-label data-v-acab1652">身份证号</text>
+          <input wx:if="{{editing}}" class="form-value-input data-v-acab1652" placeholder="请输入18位身份证号" maxlength="18" value="{{idCard}}" bindinput="handleIdCardInput" />
+          <text wx:else class="form-value disabled data-v-acab1652">{{displayIdCard}}</text>
         </view>
-      </view>
-      <view class="form-list">
-        <view class="form-row">
-          <text class="form-label">昵称</text>
-          <input wx:if="{{editing}}" class="form-input" value="{{form.nickname}}" bindinput="onInputNickname" />
-          <text wx:else class="form-value">{{profile.nickname}}</text>
+        <view class="form-row data-v-acab1652">
+          <text class="form-label data-v-acab1652">病历号（就诊卡号）</text>
+          <text class="form-value disabled data-v-acab1652">{{displayCardNo}}</text>
         </view>
-        <view class="form-row">
-          <text class="form-label">手机号</text>
-          <text class="form-value form-value--muted">{{profile.phone}}</text>
-        </view>
-        <view class="form-row">
-          <text class="form-label">身份证号</text>
-          <input wx:if="{{editing}}" class="form-input" maxlength="18" value="{{form.idCard}}" bindinput="onInputIdCard" />
-          <text wx:else class="form-value form-value--muted">{{summary.idCardMasked || '未认证'}}</text>
-        </view>
-        <view class="form-row">
-          <text class="form-label">病历号（就诊卡号）</text>
-          <text class="form-value form-value--muted">{{profile.cardNo || '未生成'}}</text>
-        </view>
-        <view class="form-row">
-          <text class="form-label">性别</text>
-          <view wx:if="{{editing}}" class="chip-row">
-            <view class="chip {{form.gender === 1 ? 'chip--active' : ''}}" data-gender="1" bindtap="chooseGender">男</view>
-            <view class="chip {{form.gender === 2 ? 'chip--active' : ''}}" data-gender="2" bindtap="chooseGender">女</view>
+        <view class="form-row data-v-acab1652">
+          <text class="form-label data-v-acab1652">性别</text>
+          <text wx:if="{{!editing}}" class="form-value data-v-acab1652">{{displayGender}}</text>
+          <view wx:else class="form-chips data-v-acab1652">
+            <view class="{{maleChipClass}}" bindtap="selectMale"><text class="data-v-acab1652">男</text></view>
+            <view class="{{femaleChipClass}}" bindtap="selectFemale"><text class="data-v-acab1652">女</text></view>
           </view>
-          <text wx:else class="form-value">{{summary.genderLabel || '未设置'}}</text>
         </view>
-        <view class="form-row">
-          <text class="form-label">生日</text>
-          <picker wx:if="{{editing}}" mode="date" value="{{form.birthday}}" bindchange="chooseBirthday">
-            <view class="form-input">{{form.birthday || '请选择生日'}}</view>
+        <view class="form-row data-v-acab1652">
+          <text class="form-label data-v-acab1652">生日</text>
+          <picker wx:if="{{editing}}" class="form-value-input data-v-acab1652" mode="date" value="{{birthday}}" start="1900-01-01" end="{{maxBirthday}}" bindchange="handleBirthdayChange">
+            <view class="picker-text data-v-acab1652" style="min-height: 20px; line-height: 20px;">{{birthdayPickerText}}</view>
           </picker>
-          <text wx:else class="form-value">{{profile.birthday || '未设置'}}</text>
+          <text wx:else class="form-value data-v-acab1652">{{birthdayDisplayText}}</text>
         </view>
       </view>
-    </view>
-    <view class="page-section personal-info-page__actions">
-      <view wx:if="{{!editing}}" class="primary-button" bindtap="startEdit">编辑资料</view>
-      <block wx:else>
-        <view class="primary-button" bindtap="saveProfile">保存</view>
-        <view class="ghost-button" bindtap="cancelEdit">取消</view>
-      </block>
-    </view>
-  </block>
+      <view class="actions data-v-acab1652">
+        <view wx:if="{{!editing}}" class="btn-edit data-v-acab1652" bindtap="startEdit"><text class="data-v-acab1652">编辑资料</text></view>
+        <block wx:else>
+          <view class="btn-save data-v-acab1652" bindtap="saveProfile"><text class="data-v-acab1652">保存</text></view>
+          <view class="btn-cancel data-v-acab1652" bindtap="cancelEdit"><text class="data-v-acab1652">取消</text></view>
+        </block>
+      </view>
+    </block>
+    <view class="safe-bottom data-v-acab1652" />
+  </view>
 </view>

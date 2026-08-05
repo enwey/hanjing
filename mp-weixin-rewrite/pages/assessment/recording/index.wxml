@@ -1,57 +1,61 @@
-<view class="recording-page">
+<view class="page data-v-70350287">
+  <view class="star star-1 data-v-70350287"></view>
+  <view class="star star-2 data-v-70350287"></view>
+  <view class="star star-3 data-v-70350287"></view>
+  <view class="star star-4 data-v-70350287"></view>
   <hj-navbar title="AI鼾声分析" showBack="{{true}}" bindback="handleBack" />
-
-  <view wx:if="{{!isAnalyzing}}" class="page-content">
-    <picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" disabled="{{disabledSelector}}" class="member-picker">
-      <view class="member-picker-content">
-        <view class="member-info">
-          <text class="member-label">当前检测人：</text>
-          <text class="member-value">{{selectedMemberName}}</text>
+  <view wx:if="{{!isAnalyzing}}" class="page-content data-v-70350287">
+    <picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" disabled="{{disabledSelector}}" class="member-picker data-v-70350287">
+      <view class="member-picker-content data-v-70350287">
+        <view class="member-info data-v-70350287">
+          <text class="member-label data-v-70350287">当前检测人：</text>
+          <text class="member-value data-v-70350287">{{selectedMemberName}}</text>
         </view>
-        <view wx:if="{{!disabledSelector}}" class="member-action">
-          <text class="member-action-text">切换</text>
-          <image class="member-action-arrow" src="/static/icons/chevron-right.svg" mode="aspectFit" />
+        <view wx:if="{{!disabledSelector}}" class="member-action data-v-70350287">
+          <text class="member-action-text data-v-70350287">切换</text>
+          <image class="member-action-arrow data-v-70350287" src="/static/icons/chevron-right.svg" mode="aspectFit" />
         </view>
       </view>
     </picker>
-
-    <view class="guide-card">
-      <text class="guide-emoji">💤</text>
-      <text class="guide-title">睡眠呼吸监测</text>
-      <text class="guide-desc">本地 AI 离线解析，优先使用本地声学指标生成报告。</text>
+    <view class="guide-card data-v-70350287">
+      <text class="guide-emoji data-v-70350287">💤</text>
+      <text class="guide-title data-v-70350287">睡眠呼吸监测</text>
+      <text class="guide-desc data-v-70350287">本地AI离线解析 · 0音频上传保障隐私</text>
     </view>
-
-    <view class="record-area">
-      <view class="waveform">
-        <view wx:for="{{audioLevels}}" wx:key="index" class="wave-bar" style="height: {{item}}px;"></view>
+    <view class="record-area data-v-70350287">
+      <view class="waveform data-v-70350287">
+        <view wx:for="{{audioLevels}}" wx:key="index" class="wave-bar data-v-70350287 {{isRecording ? 'wave-bar--live' : ''}}" style="height: {{item}}px;"></view>
       </view>
-      <text class="record-time">{{durationText}}</text>
-      <view class="mic-btn {{isRecording ? 'mic-btn--recording' : hasRecordingEnded ? 'mic-btn--paused' : ''}}" bindtap="onMicTap">
-        <text class="mic-icon">{{isRecording ? '⏸' : hasRecordingEnded ? '▶' : '●'}}</text>
+      <text class="record-time data-v-70350287">{{durationText}}</text>
+      <view class="mic-btn-wrapper data-v-70350287">
+        <view class="ring-glow ring-glow-1 data-v-70350287"></view>
+        <view class="ring-glow ring-glow-2 data-v-70350287"></view>
+        <view class="ring-glow ring-glow-3 data-v-70350287"></view>
+        <view class="mic-pulse data-v-70350287 {{isRecording ? 'mic-pulse--active' : ''}}"></view>
+        <view class="mic-btn data-v-70350287 {{isRecording ? 'mic-btn--recording' : hasRecordingEnded ? 'mic-btn--paused' : ''}}" bindtap="onMicTap">
+          <text class="mic-icon data-v-70350287">{{isRecording ? '⏸' : hasRecordingEnded ? '▶' : '●'}}</text>
+        </view>
       </view>
-      <text class="status-text">{{statusText}}</text>
+      <text class="status-text data-v-70350287">{{statusText}}</text>
     </view>
-
-    <view wx:if="{{isSubmitting && !isAnalyzing}}" class="actions">
-      <view class="btn btn--ghost" bindtap="resumeRecording">继续录音</view>
-      <view class="btn btn--primary" bindtap="stopAndAnalyze">生成分析报告</view>
+    <view wx:if="{{isSubmitting && !isAnalyzing}}" class="actions data-v-70350287">
+      <view class="btn btn--ghost data-v-70350287" bindtap="resumeRecording">继续录音</view>
+      <view class="btn btn--primary data-v-70350287" bindtap="stopAndAnalyze">生成分析报告</view>
     </view>
-
-    <view class="tips-card">
-      <text class="tips-title">使用指引</text>
-      <view class="tips-list">
-        <text class="tip-item">• 手机放置于床头约 50cm 处</text>
-        <text class="tip-item">• 麦克风朝上并避开持续强噪</text>
-        <text class="tip-item">• 录音期间会自动把屏幕亮度调到最低</text>
+    <view class="tips-card data-v-70350287">
+      <text class="tips-title data-v-70350287">使用指引</text>
+      <view class="tips-list data-v-70350287">
+        <text class="tip-item data-v-70350287">• 手机放置于床头约 50cm 处</text>
+        <text class="tip-item data-v-70350287">• 麦克风朝上并避开持续强噪</text>
+        <text class="tip-item data-v-70350287">• 录音期间会自动把屏幕亮度调到最低</text>
       </view>
     </view>
   </view>
-
-  <view wx:else class="analyzing-screen">
-    <view class="analyzing-card">
-      <view class="spinner"></view>
-      <text class="analyzing-text">正在分析...</text>
-      <text class="analyzing-hint">约需 2 到 3 秒</text>
+  <view wx:else class="analyzing-screen data-v-70350287">
+    <view class="analyzing-card data-v-70350287">
+      <view class="spinner data-v-70350287"></view>
+      <text class="analyzing-text data-v-70350287">正在分析...</text>
+      <text class="analyzing-hint data-v-70350287">约需 2 到 3 秒</text>
     </view>
   </view>
   <hj-privacy-popup id="privacyPopup" />

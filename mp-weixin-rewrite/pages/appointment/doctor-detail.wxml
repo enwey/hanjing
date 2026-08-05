@@ -39,7 +39,7 @@
 
     <view class="doc-section">
       <view class="doc-section-title">
-        <image class="doc-section-icon" src="/static/icons/tab-profile-active.png" />
+        <image class="doc-section-icon" src="/static/icons/profile-settings.svg" />
         个人简介
       </view>
       <view class="doc-intro">{{introText}}</view>
@@ -47,7 +47,7 @@
 
     <view class="doc-section">
       <view class="doc-section-title">
-        <image class="doc-section-icon" src="/static/icons/tab-treatment-active.png" />
+        <image class="doc-section-icon" src="/static/icons/treatment_green.svg" />
         擅长领域
       </view>
       <view class="doc-specialties">
@@ -57,7 +57,7 @@
 
     <view class="doc-section doc-section--schedule">
       <view class="doc-section-title">
-        <image class="doc-section-icon" src="/static/icons/tab-appointment-active.png" />
+        <image class="doc-section-icon" src="/static/icons/calendar.svg" />
         近期排班
       </view>
       <view class="doc-schedule">

@@ -1,112 +1,99 @@
-const api = require('../../../api/index');
-const patientContextStore = require('../../../stores/patient-context-store');
-const patientContextService = require('../../../services/patient-context-service');
+"use strict";
+const api = require("../../../api/index.js");
 
-const RECORD_TYPE_MAP = {
-  first: { label: '初诊', color: '#3b6bf5' },
-  followup: { label: '复诊', color: '#1a9d5c' },
-  adjust: { label: '调整', color: '#f59e0b' },
+const MEMBER_LABEL_MAP = {
+  self: "本人",
+  spouse: "配偶",
+  child: "子女",
+  parent: "父母",
+  sibling: "兄弟姐妹",
+  other: "其他",
 };
 
-function unwrapList(response) {
-  const payload = response && response.data ? response.data : response || {};
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-  if (Array.isArray(payload.list)) {
-    return payload.list;
-  }
-  if (Array.isArray(payload.items)) {
-    return payload.items;
-  }
-  return [];
-}
-
-function normalizeRecord(record) {
-  const typeMeta = RECORD_TYPE_MAP[record.type] || RECORD_TYPE_MAP.first;
-  return {
-    id: String(record.id || ''),
-    patientName: record.patientName || '',
-    visitDate: record.visitDate || '',
-    doctorName: record.doctorName || '',
-    hospital: record.hospital || record.storeName || '',
-    diagnosis: record.diagnosis || '',
-    prescription: record.prescription || '',
-    note: record.note || '',
-    typeLabel: typeMeta.label,
-    typeColor: typeMeta.color,
-    typeBackground: typeMeta.color + '18',
-  };
-}
+const RECORD_TYPE_MAP = {
+  first: { label: "初诊", color: "#3B6BF5" },
+  followup: { label: "复诊", color: "#1A9D5C" },
+  adjust: { label: "调整", color: "#F59E0B" },
+};
 
 Page({
   data: {
     loading: true,
-    loadError: '',
+    members: [],
     memberOptions: [],
     memberIndex: 0,
-    selectedPatientId: '',
-    selectedMemberLabel: '请选择就诊人',
-    selectedPatientCard: '',
+    selectedPatientId: "",
     records: [],
-    summary: {
-      totalCount: '0',
-      latestVisitLabel: '',
-      doctorCount: '0',
-    },
   },
 
-  async onShow() {
-    await this.loadPage();
+  onShow() {
+    this.loadPage();
+  },
+
+  getStoragePatientId() {
+    return wx.getStorageSync("selected_medical_record_patient_id") || "";
+  },
+
+  setStoragePatientId(patientId) {
+    if (patientId) {
+      wx.setStorageSync("selected_medical_record_patient_id", String(patientId));
+    } else {
+      wx.removeStorageSync("selected_medical_record_patient_id");
+    }
   },
 
   async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+    this.setData({ loading: true });
     try {
-      const context = await patientContextStore.refresh();
-      const memberOptions = context.members.map((member) => member.name + '（' + patientContextService.getRelationLabel(member.relation) + '）');
-      const memberIndex = Math.max(
-        0,
-        context.members.findIndex((member) => String(member.id) === String(context.currentPatientId)),
-      );
-      const recordsResponse = await api.getMedicalRecords(
-        context.currentPatientId ? { patientId: context.currentPatientId } : {},
-      );
-      const records = unwrapList(recordsResponse).map(normalizeRecord);
-      const doctorSet = new Set(records.map((record) => record.doctorName).filter(Boolean));
-      const latestVisitLabel = records.length ? records[0].visitDate || '' : '';
-
+      const memberRes = await api.getFamilyMembers();
+      const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
+      let selectedPatientId = this.getStoragePatientId();
+      if (!selectedPatientId || !members.some((item) => String(item.id) === String(selectedPatientId))) {
+        const selfMember = members.find((item) => item.relation === "self") || members[0] || null;
+        selectedPatientId = selfMember ? String(selfMember.id) : "";
+        this.setStoragePatientId(selectedPatientId);
+      }
+      const memberOptions = members.map((item) => `${item.name}（${MEMBER_LABEL_MAP[item.relation] || "成员"}）`);
+      const memberIndex = Math.max(0, members.findIndex((item) => String(item.id) === String(selectedPatientId)));
+      const recordRes = await api.getMedicalRecords(selectedPatientId ? { patientId: selectedPatientId } : {});
+      const rawRecords = (recordRes.data && recordRes.data.list) || recordRes.list || [];
+      const records = rawRecords.map((item) => {
+        const typeMeta = RECORD_TYPE_MAP[item.type] || RECORD_TYPE_MAP.first;
+        return {
+          id: String(item.id),
+          patientName: item.patientName || "",
+          visitDate: item.visitDate || "",
+          doctorName: item.doctorName || "",
+          hospital: item.hospital || item.storeName || "",
+          diagnosis: item.diagnosis || "",
+          prescription: item.prescription || "",
+          note: item.note || "",
+          typeLabel: typeMeta.label,
+          typeColor: typeMeta.color,
+          typeBg: `${typeMeta.color}18`,
+        };
+      });
       this.setData({
-        loading: false,
+        members,
         memberOptions,
         memberIndex,
-        selectedPatientId: context.currentPatientId,
-        selectedMemberLabel: memberOptions[memberIndex] || '请选择就诊人',
-        selectedPatientCard: context.currentMember
-          ? context.currentMember.medicalCardNo || context.currentMember.medical_record_no || ''
-          : '',
+        selectedPatientId,
         records,
-        summary: {
-          totalCount: String(records.length),
-          latestVisitLabel,
-          doctorCount: String(doctorSet.size),
-        },
       });
-    } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载病历档案失败',
-        records: [],
-      });
+    } catch (err) {
+      console.error("加载病历档案失败", err);
+      wx.showToast({ title: err.message || "加载病历档案失败", icon: "none" });
+      this.setData({ records: [] });
+    } finally {
+      this.setData({ loading: false });
     }
   },
 
-  async handleMemberChange(event) {
-    const memberIndex = Number(event.detail.value || 0);
-    const selectedMember = patientContextStore.selectMemberByIndex(memberIndex);
-    if (!selectedMember) {
-      return;
-    }
+  async onMemberChange(event) {
+    const nextIndex = Number(event.detail.value || 0);
+    const nextMember = this.data.members[nextIndex];
+    if (!nextMember) return;
+    this.setStoragePatientId(nextMember.id);
     await this.loadPage();
   },
 });

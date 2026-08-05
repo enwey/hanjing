@@ -1,75 +1,48 @@
-<view class="container sleep-report-page">
-  <hj-navbar title="睡眠健康报告" showBack="{{true}}" />
-
-  <view class="range-tabs">
-    <view class="range-tab {{selectedRange === 'week' ? 'range-tab--active' : ''}}" data-range="week" bindtap="selectDateRange">过去7天</view>
-    <view class="range-tab {{selectedRange === 'month' ? 'range-tab--active' : ''}}" data-range="month" bindtap="selectDateRange">过去30天</view>
-  </view>
-
-  <view class="page-section state-card" wx:if="{{loading}}">
-    <text class="page-description">正在生成睡眠健康报告...</text>
-  </view>
-
-  <view class="page-section state-card" wx:elif="{{loadError}}">
-    <text class="state-title">加载失败</text>
-    <text class="page-description">{{loadError}}</text>
-  </view>
-
-  <block wx:elif="{{report}}">
-    <view class="page-section score-card">
-      <text wx:if="{{currentPatientLabel}}" class="score-card__patient">{{currentPatientLabel}}</text>
-      <text class="score-card__label">综合睡眠评分</text>
-      <text class="score-card__value">{{report.score}}</text>
-      <text class="score-card__meta" wx:if="{{report.hasData}}">超过 {{report.betterThan}}% 的用户</text>
-      <text class="score-card__meta" wx:else>暂无有效佩戴数据</text>
+<view class="page data-v-72813ef9">
+  <hj-navbar title="睡眠报告" showBack="{{true}}" />
+  <view class="page-content data-v-72813ef9">
+    <view class="period-switch data-v-72813ef9">
+      <view class="period-btn data-v-72813ef9 {{selectedRange === 'week' ? 'active' : ''}}" data-range="week" bindtap="selectDateRange">过去7天</view>
+      <view class="period-btn data-v-72813ef9 {{selectedRange === 'month' ? 'active' : ''}}" data-range="month" bindtap="selectDateRange">过去30天</view>
     </view>
-
-    <view class="page-section metrics-grid">
-      <view class="metric-card">
-        <text class="metric-card__value">{{report.weekAvg}}h</text>
-        <text class="metric-card__label">平均时长</text>
-      </view>
-      <view class="metric-card">
-        <text class="metric-card__value">{{report.compliance}}%</text>
-        <text class="metric-card__label">依从率</text>
-      </view>
-      <view class="metric-card">
-        <text class="metric-card__value">{{report.avgComfort}} / 5</text>
-        <text class="metric-card__label">舒适度</text>
-      </view>
-      <view class="metric-card">
-        <text class="metric-card__value">{{report.streak}}</text>
-        <text class="metric-card__label">连续达标天数</text>
-      </view>
-    </view>
-
-    <view class="page-section state-card" wx:if="{{!report.hasData}}">
-      <text class="state-title">暂无睡眠报告</text>
-      <text class="page-description">当前治疗人还没有足够的真实佩戴记录，完成打卡后会自动生成报告。</text>
-      <view class="empty-action" bindtap="goAppointment">前往预约</view>
-    </view>
-
-    <view class="page-section" wx:else>
-      <text class="section-title">趋势分布</text>
-      <view class="trend-bars">
-        <view wx:for="{{report.trend}}" wx:key="date" class="trend-bar-item">
-          <view class="trend-bar-track">
-            <view class="trend-bar-fill" style="height: {{(item.score || 0)}}%; background: {{item.score >= 80 ? '#1A9D5C' : item.score >= 60 ? '#F59E0B' : '#EF4444'}};"></view>
-          </view>
-          <text class="trend-bar-label">{{item.date}}</text>
+    <view wx:if="{{loading}}" class="empty-card data-v-72813ef9"><text class="empty-desc data-v-72813ef9">正在生成睡眠健康报告...</text></view>
+    <view wx:elif="{{loadError}}" class="empty-card data-v-72813ef9"><text class="empty-desc data-v-72813ef9">{{loadError}}</text></view>
+    <block wx:elif="{{report && report.hasData}}">
+      <view class="score-card data-v-72813ef9" style="background: {{report.scoreCardBg}}">
+        <view class="score-ring data-v-72813ef9">
+          <text class="score-num data-v-72813ef9">{{report.score}}</text>
+          <text class="score-unit data-v-72813ef9">分</text>
         </view>
+        <view class="score-info data-v-72813ef9">
+          <text class="score-level data-v-72813ef9">{{report.scoreLevel}}</text>
+          <text class="score-period data-v-72813ef9">{{report.patientLabel}} · {{report.rangeLabel}}</text>
+        </view>
+        <view class="score-bar-wrap data-v-72813ef9"><view class="score-bar data-v-72813ef9" style="width: {{report.score}}%; background: {{report.scoreBarColor}}"></view></view>
       </view>
-    </view>
-
-    <view class="page-section">
-      <text class="section-title">报告建议</text>
-      <view class="insight-card insight-card--{{item.type}}" wx:for="{{insights}}" wx:key="id">
-        <text class="insight-card__text">{{item.text}}</text>
+      <text class="section-title data-v-72813ef9">核心指标</text>
+      <view class="metrics-grid data-v-72813ef9">
+        <view class="metric-card data-v-72813ef9"><text class="metric-val data-v-72813ef9">{{report.weekAvg}}h</text><text class="metric-label data-v-72813ef9">平均时长</text><view class="metric-bar data-v-72813ef9"><view class="metric-fill green data-v-72813ef9" style="width: {{report.weekAvgWidth}}"></view></view></view>
+        <view class="metric-card data-v-72813ef9"><text class="metric-val data-v-72813ef9">{{report.compliance}}%</text><text class="metric-label data-v-72813ef9">依从率</text><view class="metric-bar data-v-72813ef9"><view class="metric-fill blue data-v-72813ef9" style="width: {{report.complianceWidth}}"></view></view></view>
+        <view class="metric-card data-v-72813ef9"><text class="metric-val data-v-72813ef9">{{report.avgComfort}}</text><text class="metric-label data-v-72813ef9">舒适度</text><view class="metric-bar data-v-72813ef9"><view class="metric-fill orange data-v-72813ef9" style="width: {{report.avgComfortWidth}}"></view></view></view>
+        <view class="metric-card data-v-72813ef9"><text class="metric-val data-v-72813ef9">{{report.streak}}</text><text class="metric-label data-v-72813ef9">连续天数</text><view class="metric-bar data-v-72813ef9"><view class="metric-fill blue data-v-72813ef9" style="width: {{report.streakWidth}}"></view></view></view>
       </view>
+      <text class="section-title data-v-72813ef9">趋势分布</text>
+      <view class="trend-chart data-v-72813ef9">
+        <view class="trend-bars data-v-72813ef9">
+          <view wx:for="{{report.trend}}" wx:key="date" class="trend-bar data-v-72813ef9" style="height: {{item.scoreHeight}}; background: {{item.scoreColor}}"></view>
+        </view>
+        <view class="trend-labels data-v-72813ef9"><text wx:for="{{report.trend}}" wx:key="date" class="trend-label data-v-72813ef9">{{item.date}}</text></view>
+      </view>
+      <text class="section-title data-v-72813ef9">报告建议</text>
+      <view wx:for="{{insights}}" wx:key="id" class="peer-card data-v-72813ef9">
+        <view class="peer-header data-v-72813ef9"><text class="peer-title data-v-72813ef9">{{item.title}}</text></view>
+        <view class="peer-row data-v-72813ef9"><text class="peer-label data-v-72813ef9">{{item.text}}</text></view>
+      </view>
+    </block>
+    <view wx:else class="empty-card data-v-72813ef9">
+      <text class="empty-title data-v-72813ef9">暂无睡眠报告</text>
+      <text class="empty-desc data-v-72813ef9">当前还没有可展示的睡眠报告数据。</text>
     </view>
-  </block>
-  <view wx:else class="page-section state-card">
-    <text class="state-title">暂无睡眠报告</text>
-    <text class="page-description">当前还没有可展示的睡眠报告数据。</text>
+    <view class="safe-bottom data-v-72813ef9"></view>
   </view>
 </view>

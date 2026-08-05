@@ -6,16 +6,17 @@ Component({
     icon: { type: String, value: '' },
   },
   data: {
-    displayTitle: '暂无数据',
-    displayDescription: '',
-    displayIcon: '',
+    displayText: '暂无数据',
+    displayIcon: '📭',
+    isImageIcon: false,
   },
   observers: {
-    'title, description, text, icon': function syncDisplay(title, description, text, icon) {
+    'title, text, icon': function syncDisplay(title, text, icon) {
+      const displayIcon = icon || '📭';
       this.setData({
-        displayTitle: text || title || '暂无数据',
-        displayDescription: description || '',
-        displayIcon: icon || '',
+        displayText: text || title || '暂无数据',
+        displayIcon,
+        isImageIcon: /^\/.*\.(svg|png|jpg|jpeg|webp)$/i.test(displayIcon),
       });
     },
   },

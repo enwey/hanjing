@@ -1,64 +1,11 @@
 const distributionApi = require('./api/index');
 
-(function secureAccessTokenStorage() {
-  const originalSetStorageSync = wx.setStorageSync;
-  const originalGetStorageSync = wx.getStorageSync;
-  const storageKey = 'hj_salt_2026';
-
-  function encodeValue(value) {
-    if (!value || typeof value !== 'string') {
-      return value;
-    }
-    try {
-      let xorResult = '';
-      for (let index = 0; index < value.length; index += 1) {
-        xorResult += String.fromCharCode(value.charCodeAt(index) ^ storageKey.charCodeAt(index % storageKey.length));
-      }
-      let hexText = '';
-      for (let index = 0; index < xorResult.length; index += 1) {
-        hexText += ('00' + xorResult.charCodeAt(index).toString(16)).slice(-4);
-      }
-      return 'obf:' + hexText;
-    } catch (error) {
-      return value;
-    }
+function clearLegacyObfuscatedAccessToken() {
+  const token = wx.getStorageSync('access_token');
+  if (typeof token === 'string' && token.indexOf('obf:') === 0) {
+    wx.removeStorageSync('access_token');
   }
-
-  function decodeValue(value) {
-    if (!value || typeof value !== 'string' || value.indexOf('obf:') !== 0) {
-      return value;
-    }
-    try {
-      const hexText = value.slice(4);
-      let xorResult = '';
-      for (let index = 0; index < hexText.length; index += 4) {
-        xorResult += String.fromCharCode(parseInt(hexText.slice(index, index + 4), 16));
-      }
-      let originalText = '';
-      for (let index = 0; index < xorResult.length; index += 1) {
-        originalText += String.fromCharCode(xorResult.charCodeAt(index) ^ storageKey.charCodeAt(index % storageKey.length));
-      }
-      return originalText;
-    } catch (error) {
-      return value;
-    }
-  }
-
-  wx.setStorageSync = function wrappedSetStorageSync(key, value) {
-    if (key === 'access_token') {
-      return originalSetStorageSync(key, encodeValue(value));
-    }
-    return originalSetStorageSync(key, value);
-  };
-
-  wx.getStorageSync = function wrappedGetStorageSync(key) {
-    const value = originalGetStorageSync(key);
-    if (key === 'access_token') {
-      return decodeValue(value);
-    }
-    return value;
-  };
-})();
+}
 
 function parseInviteCodeFromLaunchOptions(options) {
   if (!options || !options.query) return "";
@@ -98,6 +45,7 @@ async function tryBindPendingInvite() {
 App({
   globalData: { appName: "鼾静健康诊所" },
   onLaunch(options) {
+    clearLegacyObfuscatedAccessToken();
     const inviteCode = parseInviteCodeFromLaunchOptions(options);
     if (inviteCode) wx.setStorageSync("pending_invite_code", inviteCode);
     tryBindPendingInvite();
@@ -142,6 +90,7 @@ App({
     }
   },
   onShow(options) {
+    clearLegacyObfuscatedAccessToken();
     const inviteCode = parseInviteCodeFromLaunchOptions(options);
     if (inviteCode) wx.setStorageSync("pending_invite_code", inviteCode);
     tryBindPendingInvite();

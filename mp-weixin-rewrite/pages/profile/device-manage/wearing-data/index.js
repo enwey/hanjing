@@ -1,81 +1,73 @@
-const api = require('../../../../api/index');
-const patientContextStore = require('../../../../stores/patient-context-store');
-const patientContextService = require('../../../../services/patient-context-service');
+"use strict";
+const api = require("../../../../api/index.js");
 
-function unwrapList(response) {
-  const payload = response && response.data ? response.data : response || {};
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload.list)) return payload.list;
-  if (Array.isArray(payload.items)) return payload.items;
-  return [];
-}
-
-function normalizeRecord(record) {
-  const wearHours = Number(record.wearDuration || record.duration || 0);
-  let statusLabel = '待提升';
-  let statusColor = '#ef4444';
-  if (wearHours >= 6) {
-    statusLabel = '达标';
-    statusColor = '#1a9d5c';
-  } else if (wearHours >= 4) {
-    statusLabel = '接近达标';
-    statusColor = '#f59e0b';
-  }
-
-  return {
-    id: String(record.id || record.date || Math.random()),
-    dateLabel: record.checkinDate || record.date || '',
-    wearHours,
-    wearHoursLabel: wearHours.toFixed(1) + '小时',
-    statusLabel,
-    statusColor,
-    progressWidth: Math.max(10, Math.min(100, Math.round((wearHours / 8) * 100))) + '%',
-  };
-}
+const MEMBER_LABEL_MAP = {
+  self: "本人",
+  spouse: "配偶",
+  child: "子女",
+  parent: "父母",
+  sibling: "兄弟姐妹",
+  other: "其他",
+};
 
 Page({
   data: {
     loading: true,
-    loadError: '',
-    selectedMemberLabel: '',
-    summaryDays: 0,
-    averageHoursLabel: '0.0小时',
-    qualifiedDays: 0,
-    maxHoursLabel: '0.0小时',
+    members: [],
+    memberOptions: [],
+    memberIndex: 0,
+    selectedPatientId: "",
     records: [],
   },
 
-  async onShow() {
-    await this.loadPage();
+  onShow() {
+    this.loadPage();
+  },
+
+  getStoragePatientId() {
+    return wx.getStorageSync("selected_treatment_patient_id") || "";
+  },
+
+  setStoragePatientId(patientId) {
+    if (patientId) {
+      wx.setStorageSync("selected_treatment_patient_id", String(patientId));
+    }
   },
 
   async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+    this.setData({ loading: true });
     try {
-      const context = await patientContextStore.refresh();
-      const recordsResponse = await api.getWearingRecords(
-        context.currentPatientId ? { patientId: context.currentPatientId, _t: Date.now() } : { _t: Date.now() },
-      );
-      const records = unwrapList(recordsResponse).map(normalizeRecord);
-      const totalHours = records.reduce((sum, item) => sum + Number(item.wearHours || 0), 0);
-      const qualifiedDays = records.filter((item) => item.statusLabel === '达标').length;
-      const maxHours = records.reduce((maxValue, item) => Math.max(maxValue, Number(item.wearHours || 0)), 0);
-
-      this.setData({
-        loading: false,
-        selectedMemberLabel: context.currentMember ? context.currentMember.name + '（' + patientContextService.getRelationLabel(context.currentMember.relation) + '）' : '',
-        records,
-        summaryDays: records.length,
-        averageHoursLabel: records.length ? (totalHours / records.length).toFixed(1) + '小时' : '0.0小时',
-        qualifiedDays,
-        maxHoursLabel: maxHours > 0 ? maxHours.toFixed(1) + '小时' : '0.0小时',
-      });
-    } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载佩戴数据失败',
-        records: [],
-      });
+      const memberRes = await api.getFamilyMembers();
+      const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
+      let selectedPatientId = this.getStoragePatientId();
+      if (!selectedPatientId || !members.some((item) => String(item.id) === String(selectedPatientId))) {
+        const selfMember = members.find((item) => item.relation === "self") || members[0] || null;
+        selectedPatientId = selfMember ? String(selfMember.id) : "";
+        this.setStoragePatientId(selectedPatientId);
+      }
+      const memberOptions = members.map((item) => `${item.name}（${MEMBER_LABEL_MAP[item.relation] || "成员"}）`);
+      const memberIndex = Math.max(0, members.findIndex((item) => String(item.id) === String(selectedPatientId)));
+      const res = await api.getWearingRecords(selectedPatientId ? { patientId: selectedPatientId } : {});
+      const records = (res.data || res || []).map((item) => ({
+        ...item,
+        progressWidth: `${Math.max(0, Math.min(100, Number(item.wearDuration || 0) / 8 * 100))}%`,
+        progressColor: Number(item.wearDuration || 0) >= 6 ? "#1A9D5C" : Number(item.wearDuration || 0) >= 4 ? "#F59E0B" : "#EF4444",
+      }));
+      this.setData({ members, memberOptions, memberIndex, selectedPatientId, records });
+    } catch (err) {
+      console.error("加载佩戴数据失败", err);
+      wx.showToast({ title: err.message || "加载佩戴数据失败", icon: "none" });
+      this.setData({ records: [] });
+    } finally {
+      this.setData({ loading: false });
     }
+  },
+
+  async onMemberChange(event) {
+    const nextIndex = Number(event.detail.value || 0);
+    const nextMember = this.data.members[nextIndex];
+    if (!nextMember) return;
+    this.setStoragePatientId(nextMember.id);
+    await this.loadPage();
   },
 });

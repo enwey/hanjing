@@ -1,6 +1,53 @@
-.navbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; height: calc(88rpx + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 24rpx 0; box-sizing: border-box; border-bottom: 1rpx solid #f3f4f6; }
-.navbar--transparent { border-bottom: none; }
-.navbar--static { position: relative; }
-.navbar__side { width: 72rpx; display: flex; align-items: center; }
-.navbar__back { width: 22rpx; height: 22rpx; border-left: 4rpx solid currentColor; border-bottom: 4rpx solid currentColor; transform: rotate(45deg); }
-.navbar__title { max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 32rpx; font-weight: 700; }
+.hj-navbar {
+  width: 100%;
+  z-index: 100;
+}
+
+.hj-navbar.is-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.hj-navbar.is-transparent .hj-navbar-inner {
+  background: transparent;
+}
+
+.hj-navbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 0 16px;
+}
+
+.hj-navbar-back {
+  position: absolute;
+  left: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.hj-navbar-back-icon {
+  width: 12px;
+  height: 12px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  display: block;
+  margin-left: 4px;
+}
+
+.hj-navbar-title {
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+}

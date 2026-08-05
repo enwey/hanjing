@@ -30,7 +30,7 @@
       <text class="state-title">暂无团队成员</text>
     </view>
 
-    <view class="page-section" wx:else>
+    <view class="page-section team-list-wrap" wx:else>
       <view class="member-list">
         <view wx:for="{{members}}" wx:key="id" class="member-card">
           <view class="member-card__avatar">{{item.avatarText}}</view>

@@ -42,13 +42,16 @@ function formatPublishTime(value) {
 
 function normalizePost(post) {
   const tags = splitTags(post.tags);
+  const role = post.role || 'patient';
+  const liked = Boolean(post.isLiked);
   return {
     id: String(post.id || ''),
     isTop: Boolean(post.isTop),
     avatar: post.avatar || '',
     author: post.author || '',
-    role: post.role || 'patient',
-    roleLabel: post.roleLabel || (post.role === 'doctor' ? '专家医生' : post.role === 'expert' ? '睡眠专家' : '鼾友'),
+    role,
+    roleLabel: post.roleLabel || (role === 'doctor' ? '专家医生' : role === 'expert' ? '睡眠专家' : '鼾友'),
+    roleClass: 'role--' + role,
     createdAt: post.createdAt || '',
     displayTime: formatPublishTime(post.createdAt),
     title: post.title || '',
@@ -58,7 +61,9 @@ function normalizePost(post) {
     labels: tags.labels,
     likes: Number(post.likes || 0),
     comments: Number(post.comments || post.commentsCount || 0),
-    isLiked: Boolean(post.isLiked),
+    isLiked: liked,
+    likeIcon: liked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg',
+    likeClass: liked ? 'liked' : '',
   };
 }
 
@@ -67,7 +72,10 @@ Page({
     loading: true,
     loadError: '',
     activeTab: 'hot',
-    tabs: TAB_LIST,
+    tabs: TAB_LIST.map((tab) => Object.assign({}, tab, {
+      active: tab.key === 'hot',
+      activeClass: tab.key === 'hot' ? 'community-tab--active' : '',
+    })),
     posts: [],
     visiblePosts: [],
   },
@@ -109,7 +117,14 @@ Page({
       });
     }
     visiblePosts = visiblePosts.filter((post) => post.isTop).concat(visiblePosts.filter((post) => !post.isTop));
-    this.setData({ activeTab, visiblePosts });
+    this.setData({
+      activeTab,
+      tabs: TAB_LIST.map((tab) => Object.assign({}, tab, {
+        active: tab.key === activeTab,
+        activeClass: tab.key === activeTab ? 'community-tab--active' : '',
+      })),
+      visiblePosts,
+    });
   },
 
   handleTabTap(event) {
@@ -127,6 +142,8 @@ Page({
     const previousLikes = target.likes;
     target.isLiked = !target.isLiked;
     target.likes += target.isLiked ? 1 : -1;
+    target.likeIcon = target.isLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg';
+    target.likeClass = target.isLiked ? 'liked' : '';
     posts[index] = target;
     this.setData({ posts });
     this.refreshVisiblePosts(this.data.activeTab, posts);
@@ -135,6 +152,8 @@ Page({
     } catch (error) {
       target.isLiked = previousLiked;
       target.likes = previousLikes;
+      target.likeIcon = previousLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg';
+      target.likeClass = previousLiked ? 'liked' : '';
       posts[index] = target;
       this.setData({ posts });
       this.refreshVisiblePosts(this.data.activeTab, posts);

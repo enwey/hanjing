@@ -1,106 +1,87 @@
 const api = require('../../../api/index');
 
-const TYPE_META = {
-  appointment: { label: '约', color: '#3b6bf5' },
-  treatment: { label: '疗', color: '#1a9d5c' },
-  order: { label: '单', color: '#f59e0b' },
-  community: { label: '帖', color: '#8b5cf6' },
-  system: { label: '系', color: '#6b7280' },
-  promo: { label: '惠', color: '#ef4444' },
+const TYPE_LABELS = {
+  appointment: 'A',
+  treatment: 'T',
+  order: 'O',
+  community: '社',
+  system: 'S',
+  promo: 'P',
 };
 
-function unwrapNotificationPayload(response) {
+const TYPE_COLORS = {
+  appointment: '#3B6BF5',
+  treatment: '#1A9D5C',
+  order: '#F59E0B',
+  community: '#3B6BF5',
+  system: '#6B7280',
+  promo: '#EF4444',
+};
+
+function unwrapNotifications(response) {
   const payload = response && response.data ? response.data : response || {};
-  const list = Array.isArray(payload.list) ? payload.list : Array.isArray(payload) ? payload : [];
-  return {
-    list,
-    unread: Number(payload.unread || 0),
-  };
-}
+  const list = (payload && payload.list) || [];
+  const unread = typeof payload.unread === 'number'
+    ? payload.unread
+    : list.filter((item) => !item.isRead && !item.is_read).length;
 
-function formatTimeLabel(timestamp) {
-  if (!timestamp) {
-    return '';
-  }
-  return String(timestamp).slice(0, 16).replace('T', ' ');
-}
-
-function normalizeNotification(notification) {
-  const meta = TYPE_META[notification.type] || { label: '?', color: '#6b7280' };
-  const title = notification.title || notification.content || '';
   return {
-    id: String(notification.id || ''),
-    title,
-    content: notification.content || '',
-    typeLabel: meta.label,
-    badgeColor: meta.color,
-    timeLabel: formatTimeLabel(notification.createdAt),
-    isRead: Boolean(notification.isRead),
+    list: list.map((item) => ({
+      id: String(item.id || ''),
+      iconText: TYPE_LABELS[item.type] || '?',
+      iconBg: (TYPE_COLORS[item.type] || '#6B7280') + '15',
+      iconColor: TYPE_COLORS[item.type] || '#6B7280',
+      title: item.title || '',
+      content: item.content || '',
+      timeText: String(item.createdAt || item.created_at || '').slice(0, 16).replace('T', ' '),
+      isRead: Boolean(item.isRead || item.is_read),
+    })),
+    unread,
   };
 }
 
 Page({
   data: {
     loading: true,
-    loadError: '',
-    unreadCount: 0,
     notifications: [],
-    summary: {
-      totalCount: '0',
-      unreadCount: '0',
-      latestTimeLabel: '',
-    },
+    unreadCount: 0,
   },
 
-  async onShow() {
-    await this.loadNotifications();
+  onShow() {
+    this.fetchNotifications();
   },
 
-  async loadNotifications() {
-    this.setData({ loading: true, loadError: '' });
+  async fetchNotifications() {
+    this.setData({ loading: true });
     try {
       const response = await api.getNotifications();
-      const payload = unwrapNotificationPayload(response);
-      const notifications = payload.list.map(normalizeNotification);
-      const unreadCount = payload.unread || notifications.filter((notification) => !notification.isRead).length;
-
+      const { list, unread } = unwrapNotifications(response);
       this.setData({
         loading: false,
-        unreadCount,
-        notifications,
-        summary: {
-          totalCount: String(notifications.length),
-          unreadCount: String(unreadCount),
-          latestTimeLabel: notifications.length ? notifications[0].timeLabel || '' : '',
-        },
+        notifications: list,
+        unreadCount: unread,
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载消息通知失败',
-        notifications: [],
-      });
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载失败', icon: 'none' });
     }
   },
 
   async markAllRead() {
     try {
       await api.markAllNotificationsRead();
-      await this.loadNotifications();
-      wx.showToast({ title: '已全部标记为已读', icon: 'success' });
+      await this.fetchNotifications();
     } catch (error) {
       wx.showToast({ title: (error && error.message) || '操作失败', icon: 'none' });
     }
   },
 
-  async markNotificationRead(event) {
-    const notificationId = String(event.currentTarget.dataset.notificationId || '');
-    if (!notificationId) {
-      return;
-    }
+  async openNotification(event) {
+    const notificationId = String(event.currentTarget.dataset.id || '');
+    if (!notificationId) return;
     try {
       await api.markNotificationRead(notificationId);
-      await this.loadNotifications();
+      await this.fetchNotifications();
     } catch (error) {
       wx.showToast({ title: (error && error.message) || '操作失败', icon: 'none' });
     }

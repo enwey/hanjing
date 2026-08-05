@@ -12,7 +12,7 @@
   <view class="apt-body">
     <view class="apt-info-row">
       <view class="apt-label">
-        <image class="apt-label-icon" src="/static/icons/tab-home.png" />
+        <image class="apt-label-icon" src="/static/icons/store.svg" />
         <text>门店</text>
       </view>
       <text class="apt-value">{{resolvedStoreName}}</text>
@@ -20,7 +20,7 @@
 
     <view class="apt-info-row">
       <view class="apt-label">
-        <image class="apt-label-icon" src="/static/icons/tab-profile.png" />
+        <image class="apt-label-icon" src="/static/icons/profile_orange.svg" />
         <text>就诊人</text>
       </view>
       <text class="apt-value">{{patientName}}</text>
@@ -28,7 +28,7 @@
 
     <view class="apt-info-row">
       <view class="apt-label">
-        <image class="apt-label-icon" src="/static/icons/tab-profile.png" />
+        <image class="apt-label-icon" src="/static/icons/doctor.svg" />
         <text>医生</text>
       </view>
       <text class="apt-value">{{resolvedDoctorName}}</text>
@@ -36,7 +36,7 @@
 
     <view class="apt-info-row">
       <view class="apt-label">
-        <image class="apt-label-icon" src="/static/icons/tab-appointment.png" />
+        <image class="apt-label-icon" src="/static/icons/calendar.svg" />
         <text>时间</text>
       </view>
       <text class="apt-value apt-value--bold">{{appointmentDate}} {{appointmentTime}}</text>
@@ -44,7 +44,7 @@
 
     <view class="apt-info-row">
       <view class="apt-label">
-        <image class="apt-label-icon" src="/static/icons/tab-treatment.png" />
+        <image class="apt-label-icon" src="/static/icons/type.svg" />
         <text>类型</text>
       </view>
       <text class="apt-value">{{typeLabel}}</text>

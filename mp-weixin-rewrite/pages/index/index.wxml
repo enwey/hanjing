@@ -28,7 +28,7 @@
 
   <view class="section quick-actions">
     <view class="quick-action" bindtap="navigateToApptTab">
-      <image class="quick-action-icon quick-action-icon--appointment" src="/static/icons/tab-appointment-active.png" />
+      <image class="quick-action-icon quick-action-icon--appointment" src="/static/icons/appointment_blue.svg" />
       <text class="quick-action-text">预约挂号</text>
     </view>
     <view class="quick-action" bindtap="goAssessment">
@@ -36,7 +36,7 @@
       <text class="quick-action-text">睡眠评估</text>
     </view>
     <view class="quick-action" bindtap="goTreatmentTab">
-      <image class="quick-action-icon quick-action-icon--treatment" src="/static/icons/tab-treatment-active.png" />
+      <image class="quick-action-icon quick-action-icon--treatment" src="/static/icons/treatment_green.svg" />
       <text class="quick-action-text">治疗追踪</text>
     </view>
     <view class="quick-action" bindtap="goMedicalRecords">

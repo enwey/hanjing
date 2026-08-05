@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "睡眠评估"
+  "navigationBarTitleText": "睡眠评估",
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": false
 }

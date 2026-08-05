@@ -1,1 +1,11 @@
-<button class="button button--{{type}}" open-type="{{openType}}" bindtap="handleTap">{{text}}<slot /></button>
+<button
+  class="hj-button hj-button--{{type}} hj-button--{{size}} {{block ? 'hj-button--block' : ''}} {{disabled || loading ? 'hj-button--disabled' : ''}}"
+  disabled="{{disabled || loading}}"
+  hover-class="{{disabled || loading ? 'none' : 'hj-button--hover'}}"
+  open-type="{{openType}}"
+  bindtap="handleTap"
+>
+  <text wx:if="{{loading}}" class="hj-button-loading"></text>
+  <text wx:if="{{text}}">{{text}}</text>
+  <slot />
+</button>

@@ -232,6 +232,9 @@ export const initDB = async () => {
     await query(`ALTER TABLE patients ADD COLUMN card_no VARCHAR(50) DEFAULT NULL;`);
   } catch (err) {}
   try {
+    await query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(100) UNIQUE DEFAULT NULL;`);
+  } catch (err) {}
+  try {
     await query(`ALTER TABLE users ADD COLUMN self_patient_id BIGINT UNSIGNED DEFAULT NULL;`);
   } catch (err) {}
   try {

@@ -41,16 +41,17 @@ function normalizeDistributionOrder(order) {
   const createdAt = String(order.createdAt || '');
   const buyerName = order.buyerName || '';
   const dateLabel = createdAt ? createdAt.slice(0, 10) : '';
+  const image = order.productImage || '';
   return {
     id: String(order.id || ''),
-    productName: order.productName || '',
+    name: order.productName || '',
     buyerName,
     dateLabel,
-    metaLabel: buyerName && dateLabel ? buyerName + ' | ' + dateLabel : buyerName || dateLabel,
-    commissionLabel: '+' + (Number(order.commission || 0) / 100).toFixed(2),
-    statusLabel: ORDER_STATUS_LABEL_MAP[order.status] || order.status || '',
+    commissionText: (Number(order.commission || 0) / 100).toFixed(2),
+    statusText: ORDER_STATUS_LABEL_MAP[order.status] || order.status || '',
     statusClass: order.status || '',
-    productImage: order.productImage || '',
+    image,
+    hasImage: Boolean(image),
   };
 }
 
@@ -92,6 +93,7 @@ Page({
         loadError: (error && error.message) || '加载分销数据失败',
         recentOrders: [],
       });
+      wx.showToast({ title: '加载分销数据失败', icon: 'none' });
     }
   },
 

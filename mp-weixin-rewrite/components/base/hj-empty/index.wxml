@@ -1,6 +1,8 @@
-<view class="empty">
-  <view class="empty__icon">{{displayIcon}}</view>
-  <text class="empty__title">{{displayTitle}}</text>
-  <text wx:if="{{displayDescription}}" class="empty__description">{{displayDescription}}</text>
+<view class="hj-empty">
+  <view class="hj-empty-icon">
+    <image wx:if="{{isImageIcon}}" class="hj-empty-icon__image" src="{{displayIcon}}" mode="aspectFit" />
+    <text wx:else>{{displayIcon}}</text>
+  </view>
+  <text class="hj-empty-text">{{displayText}}</text>
   <slot />
 </view>

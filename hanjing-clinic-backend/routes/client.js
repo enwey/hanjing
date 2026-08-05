@@ -97,6 +97,20 @@ const formatDate = (dateVal) => {
   return String(dateVal).slice(0, 10);
 };
 
+const formatDateTimeInShanghai = (dateVal) => {
+  if (!dateVal) return '';
+  const date = dateVal instanceof Date ? dateVal : new Date(dateVal);
+  if (Number.isNaN(date.getTime())) {
+    return String(dateVal);
+  }
+  return date
+    .toLocaleString('sv-SE', {
+      timeZone: 'Asia/Shanghai',
+      hour12: false,
+    })
+    .replace(',', '');
+};
+
 function buildRequestOrigin(req) {
   const configuredBaseUrl = process.env.PUBLIC_BASE_URL || process.env.API_PUBLIC_BASE_URL;
   if (configuredBaseUrl) return configuredBaseUrl.replace(/\/$/, '');
@@ -1920,7 +1934,7 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
         essScore: score,
         essLevel: item.risk_level,
         recommendation: advice,
-        createdAt: item.created_at
+        createdAt: formatDateTimeInShanghai(item.created_at)
       };
     });
 
@@ -1946,7 +1960,7 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
           riskLevel: item.risk_level
         },
         recommendation: advice,
-        createdAt: item.created_at
+        createdAt: formatDateTimeInShanghai(item.created_at)
       };
     });
 
@@ -2007,9 +2021,46 @@ app.post('/api/v1/assessments/ess', authenticateWxToken, async (req, res) => {
       if (selfPatient) dbPatientId = selfPatient.id;
     }
 
+    const normalizedAnswers = JSON.stringify(answers);
+    const recentDuplicate = await get(
+      `SELECT id, user_id, patient_id, total_score, risk_level, answers, created_at
+       FROM ess_assessments
+       WHERE user_id = ?
+         AND ((patient_id IS NULL AND ? IS NULL) OR patient_id = ?)
+         AND answers = ?
+         AND created_at >= DATE_SUB(NOW(), INTERVAL 15 SECOND)
+       ORDER BY id DESC
+       LIMIT 1`,
+      [req.user.id, dbPatientId, dbPatientId, normalizedAnswers]
+    );
+
+    if (recentDuplicate) {
+      let advice = '';
+      if (recentDuplicate.total_score <= 5) advice = '您的白天嗜睡水平正常，请继续保持良好的睡眠习惯。';
+      else if (recentDuplicate.total_score <= 10) advice = '您有轻度白天嗜睡，建议合理安排作息，避免熬夜。';
+      else if (recentDuplicate.total_score <= 15) advice = '您有中度白天嗜睡，建议改善睡眠环境，必要时进行睡眠呼吸监测。';
+      else advice = '您有重度白天嗜睡，可能存在严重的睡眠呼吸暂停。建议立即预约医生进行线下排查。';
+
+      return res.json({
+        code: 0,
+        message: 'success',
+        data: {
+          id: 'asmt-' + recentDuplicate.id,
+          userId: recentDuplicate.user_id.toString(),
+          patientId: patientId || 'pat-self',
+          type: 'ess',
+          essAnswers: typeof recentDuplicate.answers === 'string' ? JSON.parse(recentDuplicate.answers) : (recentDuplicate.answers || []),
+          essScore: recentDuplicate.total_score,
+          essLevel: recentDuplicate.risk_level,
+          recommendation: advice,
+          createdAt: formatDateTimeInShanghai(recentDuplicate.created_at)
+        }
+      });
+    }
+
     const result = await run(
       `INSERT INTO ess_assessments (user_id, patient_id, total_score, risk_level, answers) VALUES (?, ?, ?, ?, ?)`,
-      [req.user.id, dbPatientId, totalScore, riskLevel, JSON.stringify(answers)]
+      [req.user.id, dbPatientId, totalScore, riskLevel, normalizedAnswers]
     );
 
     let advice = '';
@@ -2030,7 +2081,7 @@ app.post('/api/v1/assessments/ess', authenticateWxToken, async (req, res) => {
         essScore: totalScore,
         essLevel: riskLevel,
         recommendation: advice,
-        createdAt: new Date().toISOString()
+        createdAt: formatDateTimeInShanghai(new Date())
       }
     });
   } catch (error) {
@@ -2191,7 +2242,7 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
           riskLevel
         },
         recommendation: advice,
-        createdAt: new Date().toISOString()
+        createdAt: formatDateTimeInShanghai(new Date())
       }
     });
   } catch (error) {
@@ -2243,7 +2294,7 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
             riskLevel: item.risk_level
           },
           recommendation: advice,
-          createdAt: item.created_at
+          createdAt: formatDateTimeInShanghai(item.created_at)
         }
       });
     } else if (paramId.startsWith('asmt-')) {
@@ -2275,7 +2326,7 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
           essScore: score,
           essLevel: item.risk_level,
           recommendation: advice,
-          createdAt: item.created_at
+          createdAt: formatDateTimeInShanghai(item.created_at)
         }
       });
     }

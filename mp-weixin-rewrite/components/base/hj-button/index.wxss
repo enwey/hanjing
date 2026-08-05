@@ -1,3 +1,93 @@
-.button { height: 88rpx; line-height: 88rpx; border-radius: 9999rpx; font-size: 28rpx; font-weight: 600; border: none; }
-.button--primary { color: #ffffff; background: linear-gradient(135deg, #3b6bf5 0%, #5a85f5 100%); }
-.button--secondary { color: #3b6bf5; background: #eef4ff; }
+.hj-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  border-radius: 24rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.hj-button::after {
+  border: none;
+}
+
+.hj-button--primary {
+  background: linear-gradient(135deg, #3b6bf5, #5a85f5);
+  color: #ffffff;
+  box-shadow: 0 8rpx 28rpx rgba(59, 107, 245, 0.25);
+}
+
+.hj-button--primary.hj-button--hover {
+  background: linear-gradient(135deg, #2a52d4, #3b6bf5);
+}
+
+.hj-button--secondary {
+  background: #eef4ff;
+  color: #3b6bf5;
+}
+
+.hj-button--secondary.hj-button--hover {
+  background: #d9e6ff;
+}
+
+.hj-button--ghost {
+  background: transparent;
+  color: #3b6bf5;
+  border: 1rpx solid #3b6bf5;
+}
+
+.hj-button--danger {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.hj-button--danger.hj-button--hover {
+  background: #fee2e2;
+}
+
+.hj-button--sm {
+  height: 64rpx;
+  padding: 0 32rpx;
+  font-size: 26rpx;
+  border-radius: 16rpx;
+}
+
+.hj-button--md {
+  height: 88rpx;
+  padding: 0 48rpx;
+}
+
+.hj-button--lg {
+  height: 104rpx;
+  padding: 0 64rpx;
+  font-size: 34rpx;
+}
+
+.hj-button--block {
+  width: 100%;
+  display: flex;
+}
+
+.hj-button--disabled {
+  opacity: 0.5;
+}
+
+.hj-button-loading {
+  width: 32rpx;
+  height: 32rpx;
+  border: 4rpx solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: hj-button-spin 0.6s linear infinite;
+}
+
+@keyframes hj-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

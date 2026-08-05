@@ -22,6 +22,16 @@ Page({
       avgComfort: '0',
       streak: '0',
     },
+    hasMonthRecords: false,
+    checkinVisible: false,
+    selectedWearDuration: 7,
+    selectedComfort: 4,
+    checkinNote: '',
+    durationOptions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    comfortOptions: [1, 2, 3, 4, 5],
+    isSubmittingCheckin: false,
+    durationScrollLeft: 0,
+    checkinDateText: '',
   },
 
   onLoad() {
@@ -53,11 +63,13 @@ Page({
         }
       });
       const summary = (wearingSummaryResponse && wearingSummaryResponse.data) || wearingSummaryResponse || {};
+      this.wearingRecords = recordList;
 
       this.setData({
         loading: false,
         monthText: buildMonthText(this.currentMonth),
         dayCells: this.buildDayCells(recordMap),
+        hasMonthRecords: recordList.some((record) => record.date && record.date.indexOf(buildMonthDateText(this.currentMonth) + '-') === 0),
         monthStats: {
           worn: String(summary.weekWorn || summary.wornDays || 0),
           avgHours: String(summary.weekAvg || summary.avgDuration || 0),
@@ -69,6 +81,7 @@ Page({
       this.setData({
         loading: false,
         loadError: (error && error.message) || '加载打卡日历失败',
+        hasMonthRecords: false,
       });
     }
   },
@@ -125,5 +138,105 @@ Page({
   async goNextMonth() {
     this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 1);
     await this.loadPage();
+  },
+
+  openCheckinModal() {
+    const todayText = this.getTodayText();
+    const todayRecord = (this.wearingRecords || []).find((record) => record.date === todayText);
+    const selectedWearDuration = todayRecord && todayRecord.wearDuration ? Number(todayRecord.wearDuration) : 7;
+    this.setData({
+      checkinVisible: true,
+      selectedWearDuration,
+      selectedComfort: todayRecord && todayRecord.comfort ? Number(todayRecord.comfort) : 4,
+      checkinNote: todayRecord ? todayRecord.note || '' : '',
+      checkinDateText: this.getCheckinDateText(),
+    });
+    this.scrollSelectedDurationToCenter(selectedWearDuration);
+  },
+
+  closeCheckinModal() {
+    this.setData({ checkinVisible: false });
+  },
+
+  noop() {},
+
+  handleDurationTap(event) {
+    const value = Number(event.currentTarget.dataset.value || 0);
+    if (!value) return;
+    this.setData({ selectedWearDuration: value });
+    this.scrollSelectedDurationToCenter(value);
+  },
+
+  handleComfortTap(event) {
+    const value = Number(event.currentTarget.dataset.value || 0);
+    if (!value) return;
+    this.setData({ selectedComfort: value });
+  },
+
+  handleNoteInput(event) {
+    this.setData({ checkinNote: event.detail.value || '' });
+  },
+
+  async submitCheckin() {
+    if (this.data.isSubmittingCheckin) return;
+    this.setData({ isSubmittingCheckin: true });
+    try {
+      const context = await patientContextStore.refresh();
+      const params = context.currentPatientId ? { patientId: context.currentPatientId } : {};
+      await api.submitWearingCheckin({
+        ...params,
+        date: this.getTodayText(),
+        wearDuration: this.data.selectedWearDuration,
+        comfort: this.data.selectedComfort,
+        note: this.data.checkinNote || undefined,
+      });
+      wx.showToast({ title: '打卡成功', icon: 'success' });
+      this.setData({ checkinVisible: false });
+      await this.loadPage();
+    } catch (error) {
+      wx.showToast({
+        title: (error && error.message) || '打卡失败',
+        icon: 'none',
+      });
+    } finally {
+      this.setData({ isSubmittingCheckin: false });
+    }
+  },
+
+  getTodayText() {
+    const now = new Date();
+    return (
+      now.getFullYear() +
+      '-' +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      '-' +
+      String(now.getDate()).padStart(2, '0')
+    );
+  },
+
+  getCheckinDateText() {
+    const now = new Date();
+    const weekLabels = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    return now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + weekLabels[now.getDay()];
+  },
+
+  scrollSelectedDurationToCenter(selectedDuration) {
+    const optionValues = this.data.durationOptions || [];
+    const selectedIndex = optionValues.indexOf(selectedDuration);
+    if (selectedIndex < 0) {
+      this.setData({ durationScrollLeft: 0 });
+      return;
+    }
+    let windowWidth = 375;
+    try {
+      const systemInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      windowWidth = systemInfo.windowWidth || windowWidth;
+    } catch (error) {}
+    const panelHorizontalPadding = 40;
+    const optionWidth = 80;
+    const optionGap = 8;
+    const viewportWidth = Math.max(0, windowWidth - panelHorizontalPadding);
+    const scrollLeft = selectedIndex * (optionWidth + optionGap) - (viewportWidth - optionWidth) / 2;
+    this.setData({ durationScrollLeft: Math.max(0, Math.round(scrollLeft)) });
   },
 });

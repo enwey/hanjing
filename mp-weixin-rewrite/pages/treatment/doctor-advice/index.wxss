@@ -1,10 +1,140 @@
-.doctor-advice-page { background: #f9fafb; padding-bottom: 40rpx; }
-.state-card { text-align: center; }
-.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
-.advice-card { padding: 24rpx; border-radius: 22rpx; background: #ffffff; border: 1rpx solid #eef2f7; }
-.advice-card + .advice-card { margin-top: 18rpx; }
-.advice-card--highlight { background: linear-gradient(135deg, #fff9ef 0%, #ffffff 100%); border-color: #fde7b3; }
-.advice-card__title { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
-.advice-card__content, .detail-text { display: block; margin-top: 12rpx; font-size: 24rpx; line-height: 1.7; color: #4b5563; }
-.section-title { display: block; margin-bottom: 20rpx; font-size: 30rpx; font-weight: 700; color: #1f2937; }
-.empty-action { display: inline-block; margin-top: 20rpx; font-size: 26rpx; font-weight: 600; color: #3b6bf5; }
+.data-v-3fe7702c:root {
+  --color-primary-50: #eef4ff;
+  --color-primary-100: #d9e6ff;
+  --color-primary-300: #8eafff;
+  --color-primary-500: #3b6bf5;
+  --color-primary-600: #2a52d4;
+  --color-primary-800: #1a3580;
+  --color-secondary-100: #d3f5e3;
+  --color-secondary-500: #1a9d5c;
+  --color-success-500: #22c55e;
+  --color-warning-500: #f59e0b;
+  --color-error-500: #ef4444;
+  --color-gold-400: #f5a623;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --gradient-primary: linear-gradient(
+    135deg,
+    #3b6bf5 0%,
+    #5a85f5 50%,
+    #8eafff 100%
+  );
+  --gradient-hero: linear-gradient(
+    160deg,
+    #1a3580 0%,
+    #3b6bf5 40%,
+    #8eafff 100%
+  );
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
+  --font-sans:
+    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+.page.data-v-3fe7702c {
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+.page-content.data-v-3fe7702c {
+  padding: 16px 16px 0;
+}
+.card.data-v-3fe7702c {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 12px;
+}
+.card--highlight.data-v-3fe7702c {
+  border-left: 4px solid #3b6bf5;
+}
+.card--followup.data-v-3fe7702c {
+  background: linear-gradient(135deg, #fffbeb, #fff3d6);
+}
+.card-title.data-v-3fe7702c {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 8px;
+}
+.card-text.data-v-3fe7702c {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.7;
+}
+.followup-date.data-v-3fe7702c {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f59e0b;
+  display: block;
+  margin-bottom: 6px;
+}
+.followup-hint.data-v-3fe7702c {
+  font-size: 13px;
+  color: #9ca3af;
+}
+.safe-bottom.data-v-3fe7702c {
+  height: 32px;
+}
+.btn-wrap.data-v-3fe7702c {
+  padding: 12px 0 24px;
+}
+.book-btn.data-v-3fe7702c {
+  width: 100%;
+  height: 48px;
+  line-height: 48px;
+  background: linear-gradient(135deg, #3b6bf5, #2563eb);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(59, 107, 245, 0.25);
+}
+.empty-card.data-v-3fe7702c,
+.empty-section.data-v-3fe7702c {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+.empty-title.data-v-3fe7702c {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+.empty-desc.data-v-3fe7702c,
+.empty-section-text.data-v-3fe7702c {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.7;
+}
+.empty-card.data-v-3fe7702c .book-btn.data-v-3fe7702c {
+  margin-top: 18px;
+}

@@ -64,24 +64,7 @@ Page({
     loadError: '',
     isLoggedIn: false,
     records: [],
-    assessmentCards: [
-      {
-        key: 'ess',
-        title: 'ESS 嗜睡量表',
-        description: '8 道情境题，评估白天嗜睡倾向与睡眠风险。',
-        tag: '约 3 分钟',
-        icon: '/static/icons/assessment.svg',
-        url: '/pages/assessment/questionnaire/index',
-      },
-      {
-        key: 'snore',
-        title: 'AI 鼾声分析',
-        description: '录制夜间鼾声，生成风险等级与报告建议。',
-        tag: '录音分析',
-        icon: '/static/icons/microphone.svg',
-        url: '/pages/assessment/recording/index',
-      },
-    ],
+    pendingCount: 0,
   },
 
   async onShow() {
@@ -97,11 +80,15 @@ Page({
       records: [],
     });
 
+    this.checkPendingCount();
+
     if (!isLoggedIn) {
       return;
     }
 
     try {
+      await api.syncPendingSnoreRecordings();
+      this.checkPendingCount();
       const assessmentsResponse = await api.getAssessments();
       const records = unwrapList(assessmentsResponse).map(normalizeAssessmentRecord);
       this.setData({
@@ -116,16 +103,38 @@ Page({
     }
   },
 
-  openAssessment(event) {
-    const url = String(event.currentTarget.dataset.url || '');
-    if (!url) {
-      return;
+  checkPendingCount() {
+    const pending = wx.getStorageSync('pending_snore_uploads') || [];
+    this.setData({ pendingCount: Array.isArray(pending) ? pending.length : 0 });
+  },
+
+  async handleForceSync() {
+    wx.showLoading({ title: '同步中...' });
+    try {
+      await api.syncPendingSnoreRecordings();
+      wx.hideLoading();
+      wx.showToast({ title: '同步成功', icon: 'success' });
+      await this.loadPage();
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({ title: '同步失败，请检查网络', icon: 'none' });
     }
+  },
+
+  startEssAssessment() {
     if (!this.data.isLoggedIn) {
       navigation.openPage('/pages/auth/login');
       return;
     }
-    navigation.openPage(url);
+    navigation.openPage('/pages/assessment/questionnaire/index');
+  },
+
+  startSnoreAssessment() {
+    if (!this.data.isLoggedIn) {
+      navigation.openPage('/pages/auth/login');
+      return;
+    }
+    navigation.openPage('/pages/assessment/recording/index');
   },
 
   openRecord(event) {

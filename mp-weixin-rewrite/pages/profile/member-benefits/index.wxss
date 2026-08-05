@@ -1,29 +1,227 @@
-.member-benefits-page { background: #f9fafb; padding-bottom: 40rpx; }
-.state-card { text-align: center; }
-.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
-.level-card { overflow: hidden; }
-.level-card__title { display: block; font-size: 40rpx; font-weight: 700; }
-.level-card__stats { display: flex; gap: 24rpx; margin-top: 28rpx; }
-.level-card__stat { flex: 1; padding: 24rpx; border-radius: 20rpx; background: rgba(255, 255, 255, 0.28); }
-.level-card__stat-value { display: block; font-size: 34rpx; font-weight: 700; }
-.level-card__stat-label { display: block; margin-top: 10rpx; font-size: 24rpx; opacity: 0.88; }
-.level-card__progress { margin-top: 28rpx; }
-.level-card__progress-text { display: block; font-size: 24rpx; }
-.level-card__progress-track { height: 14rpx; margin-top: 14rpx; border-radius: 9999rpx; background: rgba(255, 255, 255, 0.35); overflow: hidden; }
-.level-card__progress-fill { height: 100%; border-radius: 9999rpx; background: rgba(255, 255, 255, 0.92); }
-.section-title { display: block; margin-bottom: 20rpx; font-size: 30rpx; font-weight: 700; color: #1f2937; }
-.benefit-list, .level-row-list { display: flex; flex-direction: column; gap: 20rpx; }
-.benefit-card { display: flex; gap: 20rpx; align-items: center; padding: 24rpx; border-radius: 22rpx; background: #ffffff; border: 1rpx solid #eef2f7; }
-.benefit-card__icon { width: 88rpx; height: 88rpx; border-radius: 24rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.benefit-card__icon-image { width: 42rpx; height: 42rpx; }
-.benefit-card__body { flex: 1; min-width: 0; }
-.benefit-card__title { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
-.benefit-card__description { display: block; margin-top: 10rpx; font-size: 24rpx; line-height: 1.7; color: #6b7280; }
-.benefit-card__status { width: 52rpx; height: 52rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.benefit-card__status-icon { width: 36rpx; height: 36rpx; }
-.level-row { display: flex; gap: 18rpx; align-items: center; padding: 24rpx; border-radius: 22rpx; background: #ffffff; border: 1rpx solid #eef2f7; }
-.level-row__dot { width: 18rpx; height: 18rpx; border-radius: 9999rpx; flex-shrink: 0; }
-.level-row__body { flex: 1; min-width: 0; }
-.level-row__title { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; }
-.level-row__description { display: block; margin-top: 8rpx; font-size: 24rpx; color: #6b7280; }
-.level-row__badge { padding: 8rpx 16rpx; border-radius: 9999rpx; font-size: 22rpx; font-weight: 600; color: #3b6bf5; background: rgba(59, 107, 245, 0.12); }
+.data-v-bf62d399:root {
+  --color-primary-50: #eef4ff;
+  --color-primary-100: #d9e6ff;
+  --color-primary-300: #8eafff;
+  --color-primary-500: #3b6bf5;
+  --color-primary-600: #2a52d4;
+  --color-primary-800: #1a3580;
+  --color-secondary-100: #d3f5e3;
+  --color-secondary-500: #1a9d5c;
+  --color-success-500: #22c55e;
+  --color-warning-500: #f59e0b;
+  --color-error-500: #ef4444;
+  --color-gold-400: #f5a623;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --gradient-primary: linear-gradient(
+    135deg,
+    #3b6bf5 0%,
+    #5a85f5 50%,
+    #8eafff 100%
+  );
+  --gradient-hero: linear-gradient(
+    160deg,
+    #1a3580 0%,
+    #3b6bf5 40%,
+    #8eafff 100%
+  );
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-primary: 0 4px 14px rgba(59, 107, 245, 0.25);
+  --font-sans:
+    PingFang SC, HarmonyOS Sans, Noto Sans SC, -apple-system,
+    BlinkMacSystemFont, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --safe-bottom: env(safe-area-inset-bottom, 34px);
+}
+.page.data-v-bf62d399 {
+  min-height: 100vh;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+}
+.page-content.data-v-bf62d399 {
+  flex: 1;
+  padding: 16px;
+}
+.loading-wrap.data-v-bf62d399 {
+  padding: 100px 0;
+  text-align: center;
+  color: #9ca3af;
+}
+.level-card.data-v-bf62d399 {
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+  color: #6f4a00;
+  box-shadow: 0 10px 28px rgba(217, 170, 60, 0.18);
+}
+.level-title.data-v-bf62d399 {
+  font-size: 22px;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 16px;
+}
+.level-stats.data-v-bf62d399 {
+  display: flex;
+  gap: 32px;
+  margin-bottom: 16px;
+}
+.stat-val.data-v-bf62d399 {
+  font-size: 24px;
+  font-weight: 700;
+  display: block;
+}
+.stat-label.data-v-bf62d399 {
+  font-size: 13px;
+  color: rgba(111, 74, 0, 0.72);
+  display: block;
+  margin-top: 2px;
+}
+.progress-section.data-v-bf62d399 {
+  margin-top: 4px;
+}
+.progress-hint.data-v-bf62d399 {
+  font-size: 13px;
+  color: rgba(111, 74, 0, 0.78);
+  display: block;
+  margin-bottom: 8px;
+}
+.progress-bar.data-v-bf62d399 {
+  height: 6px;
+  background: rgba(143, 95, 10, 0.16);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill.data-v-bf62d399 {
+  height: 100%;
+  background: linear-gradient(90deg, #d89b1d 0%, #f2c45c 100%);
+  border-radius: 3px;
+}
+.section.data-v-bf62d399 {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.section-title.data-v-bf62d399 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 12px;
+}
+.benefit-item.data-v-bf62d399 {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.benefit-item.data-v-bf62d399:last-child {
+  border-bottom: none;
+}
+.benefit-icon.data-v-bf62d399 {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+.benefit-icon-image.data-v-bf62d399 {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.benefit-body.data-v-bf62d399 {
+  flex: 1;
+}
+.benefit-title.data-v-bf62d399 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  display: block;
+}
+.benefit-desc.data-v-bf62d399 {
+  font-size: 12px;
+  color: #9ca3af;
+  display: block;
+  margin-top: 2px;
+}
+.benefit-check.data-v-bf62d399 {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #eef8f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.benefit-check-icon.data-v-bf62d399 {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.level-row.data-v-bf62d399 {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+}
+.level-row.data-v-bf62d399:not(:last-child) {
+  border-bottom: 1px solid #f3f4f6;
+}
+.level-dot.data-v-bf62d399 {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+.level-body.data-v-bf62d399 {
+  flex: 1;
+}
+.level-name.data-v-bf62d399 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  display: block;
+}
+.level-require.data-v-bf62d399 {
+  font-size: 12px;
+  color: #9ca3af;
+  display: block;
+  margin-top: 2px;
+}
+.level-badge.data-v-bf62d399 {
+  font-size: 11px;
+  color: #3b6bf5;
+  background: #eef4ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.safe-bottom.data-v-bf62d399 {
+  height: calc(env(safe-area-inset-bottom, 34px) + 20px);
+}

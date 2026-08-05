@@ -1,7 +1,19 @@
-<view class="navbar {{transparent ? 'navbar--transparent' : ''}} {{!sticky ? 'navbar--static' : ''}}" style="background: {{backgroundColor}}; color: {{textColor}};">
-  <view class="navbar__side">
-    <view wx:if="{{showBack}}" class="navbar__back" bindtap="handleBackTap"></view>
+<view
+  wx:if="{{showNavbar}}"
+  class="hj-navbar {{isFixed ? 'is-fixed' : ''}} {{transparent ? 'is-transparent' : ''}}"
+  style="height: {{totalHeight}}px; background: {{transparent ? 'transparent' : navbarBackgroundColor}};"
+>
+  <view style="height: {{statusBarHeight}}px;"></view>
+  <view class="hj-navbar-inner" style="height: {{capsuleHeight}}px;">
+    <view
+      wx:if="{{shouldShowBack}}"
+      class="hj-navbar-back"
+      style="color: {{textColor}};"
+      bindtap="handleBackTap"
+    >
+      <text class="hj-navbar-back-icon"></text>
+    </view>
+    <view class="hj-navbar-title" style="color: {{textColor}};">{{navbarTitle}}</view>
   </view>
-  <text class="navbar__title">{{title}}</text>
-  <view class="navbar__side"></view>
 </view>
+<view wx:if="{{showNavbar && isFixed}}" style="height: {{spacerHeight}}px;"></view>

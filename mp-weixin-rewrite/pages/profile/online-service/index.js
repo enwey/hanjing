@@ -1,27 +1,10 @@
-const requestModule = require('../../../api/request');
+const { request, apiBaseUrl } = require('../../../api/request');
 const api = require('../../../api/index');
-
-function formatMessage(message) {
-  const text = message.text || '';
-  const isImage = text.indexOf('[image]') === 0;
-  const displayUrl = isImage ? text.replace('[image]', '') : '';
-  return {
-    id: String(message.id || Date.now()),
-    from: message.sender === 'doctor' || message.from === 'assistant' ? 'assistant' : 'user',
-    bubbleClass: message.sender === 'doctor' || message.from === 'assistant' ? 'assistant' : 'user',
-    text: isImage ? '' : text,
-    displayUrl,
-    isImage,
-    time: message.time || '',
-    sending: message.status === 'sending',
-    failed: message.status === 'fail',
-  };
-}
 
 Page({
   data: {
     messages: [],
-    draftMessage: '',
+    inputText: '',
     scrollIntoView: '',
   },
 
@@ -40,74 +23,110 @@ Page({
     this.stopPolling();
   },
 
-  fetchHistory() {
-    requestModule.request({ url: '/im/messages', failMessage: '加载咨询记录失败' })
-      .then((response) => {
-        const payload = (response && response.data) || response || [];
-        const messages = payload.map(formatMessage);
-        this.setData({
-          messages,
-          scrollIntoView: messages.length ? 'message-' + messages[messages.length - 1].id : '',
-        });
-      })
-      .catch((error) => {
-        console.error('fetchHistory error', error);
-      });
+  setMessages(messages) {
+    const normalized = messages.map((item) => {
+      const rawText = String(item.text || '');
+      let displayUrl = rawText.startsWith('[image]') ? rawText.slice(7) : rawText;
+      if (displayUrl && !displayUrl.startsWith('http') && displayUrl.startsWith('/uploads')) {
+        displayUrl = apiBaseUrl + displayUrl;
+      }
+      return {
+        id: String(item.id || ''),
+        from: item.from,
+        bubbleClass: item.from,
+        rowClass: item.from,
+        text: rawText,
+        time: item.time || '',
+        sending: item.status === 'sending',
+        failed: item.status === 'fail',
+        isImg: rawText.startsWith('[image]') || rawText.startsWith('/uploads/') || rawText.startsWith('http'),
+        displayUrl,
+      };
+    });
+    const last = normalized[normalized.length - 1];
+    this.setData({
+      messages: normalized,
+      scrollIntoView: last ? 'msg-' + last.id : '',
+    });
+  },
+
+  getMutableMessages() {
+    return (this.data.messages || []).map((item) => ({
+      id: item.id,
+      from: item.from,
+      text: item.text,
+      time: item.time,
+      status: item.failed ? 'fail' : (item.sending ? 'sending' : 'success'),
+    }));
+  },
+
+  async fetchHistory() {
+    try {
+      const res = await request({ url: '/im/messages' });
+      if (res && res.code === 0 && Array.isArray(res.data)) {
+        this.setMessages(res.data.map((item) => ({
+          id: String(item.id),
+          from: item.sender === 'doctor' ? 'assistant' : 'user',
+          text: item.text,
+          time: item.time,
+          status: 'success',
+        })));
+      }
+    } catch (error) {
+      console.error('fetchHistory error:', error);
+    }
   },
 
   connectSocket() {
     const token = wx.getStorageSync('access_token');
     if (!token) return;
-    const wsUrl = requestModule.apiBaseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/im/ws?token=' + encodeURIComponent(token);
-    this.socketTask = wx.connectSocket({ url: wsUrl });
-    this.socketConnected = false;
+    const wsUrl = apiBaseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/im/ws?token=' + encodeURIComponent(token);
+    this.socketTask = wx.connectSocket({ url: wsUrl, complete() {} });
+    this.isSocketConnected = false;
 
     this.socketTask.onOpen(() => {
-      this.socketConnected = true;
+      this.isSocketConnected = true;
       this.stopPolling();
     });
 
-    this.socketTask.onMessage((event) => {
+    this.socketTask.onMessage((res) => {
       try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === 'pong') return;
-        if (payload.type === 'ack') {
-          const messages = this.data.messages.map((message) => {
-            if (message.sending && message.text === payload.text) {
-              return Object.assign({}, message, {
-                id: String(payload.id || message.id),
-                time: payload.time || message.time,
-                sending: false,
-                failed: false,
-              });
-            }
-            return message;
-          });
-          this.setData({ messages });
-          return;
-        }
-        if (payload.type === 'message') {
-          const exists = this.data.messages.some((message) => String(message.id) === String(payload.id));
-          if (!exists) {
-            const nextMessages = this.data.messages.concat([formatMessage(payload)]);
-            this.setData({
-              messages: nextMessages,
-              scrollIntoView: 'message-' + payload.id,
+        const data = JSON.parse(res.data);
+        if (data.type === 'pong') return;
+        const messages = this.getMutableMessages();
+
+        if (data.type === 'ack') {
+          const found = messages.find((item) => item.text === data.text && item.status === 'sending');
+          if (found) {
+            found.id = String(data.id);
+            found.status = 'success';
+            found.time = data.time;
+          }
+        } else if (data.type === 'message') {
+          const duplicated = messages.some((item) => String(item.id) === String(data.id));
+          if (!duplicated) {
+            messages.push({
+              id: String(data.id),
+              from: data.from,
+              text: data.text,
+              time: data.time,
+              status: 'success',
             });
           }
         }
+        this.setMessages(messages);
       } catch (error) {
-        console.error('socket message error', error);
+        console.error('[WebSocket] message error:', error);
       }
     });
 
     this.socketTask.onClose(() => {
-      this.socketConnected = false;
+      this.isSocketConnected = false;
       this.startPolling();
     });
 
     this.socketTask.onError(() => {
-      this.socketConnected = false;
+      this.isSocketConnected = false;
       this.startPolling();
     });
   },
@@ -117,7 +136,7 @@ Page({
       this.socketTask.close();
       this.socketTask = null;
     }
-    this.socketConnected = false;
+    this.isSocketConnected = false;
   },
 
   startPolling() {
@@ -132,40 +151,40 @@ Page({
     }
   },
 
-  handleDraftInput(event) {
-    this.setData({ draftMessage: event.detail.value || '' });
+  handleInput(event) {
+    this.setData({ inputText: event.detail.value || '' });
   },
 
-  sendMessage() {
-    const text = String(this.data.draftMessage || '').trim();
-    if (!text) return;
-
-    const tempId = String(Date.now());
-    const pendingMessage = {
-      id: tempId,
-      from: 'user',
-      bubbleClass: 'user',
-      text,
-      displayUrl: '',
-      isImage: false,
-      time: new Date().toTimeString().slice(0, 5),
-      sending: true,
-      failed: false,
-    };
-    const messages = this.data.messages.concat([pendingMessage]);
-    this.setData({
-      messages,
-      draftMessage: '',
-      scrollIntoView: 'message-' + tempId,
-    });
-
-    this.sendMessageWithRetry(pendingMessage);
+  async sendViaHttp(message) {
+    try {
+      const response = await request({
+        url: '/im/send',
+        method: 'POST',
+        data: { text: message.text },
+      });
+      message.status = response && response.code === 0 ? 'success' : 'fail';
+      this.setMessages(this.getMutableMessages().map((item) => String(item.id) === String(message.id) ? message : item));
+      if (message.status === 'success') {
+        setTimeout(() => this.fetchHistory(), 1600);
+      }
+    } catch (error) {
+      message.status = 'fail';
+      this.setMessages(this.getMutableMessages().map((item) => String(item.id) === String(message.id) ? message : item));
+    }
   },
 
-  sendMessageWithRetry(message) {
-    if (this.socketConnected && this.socketTask) {
+  sendMsgWithRetry(message) {
+    message.status = 'sending';
+    const messages = this.getMutableMessages();
+    const index = messages.findIndex((item) => String(item.id) === String(message.id));
+    if (index >= 0) {
+      messages[index] = message;
+      this.setMessages(messages);
+    }
+
+    if (this.isSocketConnected && this.socketTask) {
       this.socketTask.send({
-        data: JSON.stringify({ text: message.isImage ? '[image]' + message.displayUrl : message.text }),
+        data: JSON.stringify({ text: message.text }),
         fail: () => this.sendViaHttp(message),
       });
       return;
@@ -173,71 +192,62 @@ Page({
     this.sendViaHttp(message);
   },
 
-  sendViaHttp(message) {
-    requestModule.request({
-      url: '/im/send',
-      method: 'POST',
-      data: { text: message.isImage ? '[image]' + message.displayUrl : message.text },
-      failMessage: '发送消息失败',
-    }).then(() => {
-      setTimeout(() => this.fetchHistory(), 1200);
-    }).catch(() => {
-      const messages = this.data.messages.map((item) => {
-        if (item.id === message.id) {
-          return Object.assign({}, item, { sending: false, failed: true });
-        }
-        return item;
-      });
-      this.setData({ messages });
-    });
+  sendMessage() {
+    const text = String(this.data.inputText || '').trim();
+    if (!text) return;
+    const messages = this.getMutableMessages();
+    const message = {
+      id: String(Date.now()),
+      from: 'user',
+      text,
+      time: new Date().toTimeString().slice(0, 5),
+      status: 'sending',
+    };
+    messages.push(message);
+    this.setData({ inputText: '' });
+    this.setMessages(messages);
+    this.sendMsgWithRetry(message);
   },
 
   retrySendMessage(event) {
-    const messageId = event.currentTarget.dataset.id;
-    const message = this.data.messages.find((item) => item.id === messageId);
-    if (!message) return;
-    const messages = this.data.messages.map((item) => item.id === messageId ? Object.assign({}, item, { sending: true, failed: false }) : item);
-    this.setData({ messages });
-    this.sendMessageWithRetry(message);
+    const id = String(event.currentTarget.dataset.id || '');
+    const message = this.getMutableMessages().find((item) => String(item.id) === id);
+    if (message) {
+      this.sendMsgWithRetry(message);
+    }
   },
 
   onUploadImage() {
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
-      success: (chooseResult) => {
-        const tempFilePath = chooseResult.tempFiles[0].tempFilePath;
+      success: (res) => {
+        const tempFilePath = res.tempFiles[0].tempFilePath;
         const ext = tempFilePath.split('.').pop() || 'jpg';
         wx.showLoading({ title: '上传中...' });
-        wx.getFileSystemManager().readFile({
+        const fs = wx.getFileSystemManager();
+        fs.readFile({
           filePath: tempFilePath,
-          success: async (readResult) => {
+          success: async (readRes) => {
             try {
-              const uploadResponse = await api.uploadFile(readResult.data, ext);
-              const payload = (uploadResponse && uploadResponse.data) || uploadResponse || {};
-              if (!payload.url) {
-                throw new Error('上传图片失败');
+              const uploadRes = await api.uploadFile(readRes.data, ext);
+              if (uploadRes && uploadRes.code === 0 && uploadRes.data && uploadRes.data.url) {
+                const message = {
+                  id: String(Date.now()),
+                  from: 'user',
+                  text: '[image]' + uploadRes.data.url,
+                  time: new Date().toTimeString().slice(0, 5),
+                  status: 'sending',
+                };
+                const messages = this.getMutableMessages();
+                messages.push(message);
+                this.setMessages(messages);
+                this.sendMsgWithRetry(message);
+              } else {
+                wx.showToast({ title: '上传图片失败', icon: 'none' });
               }
-              const tempId = String(Date.now());
-              const pendingMessage = {
-                id: tempId,
-                from: 'user',
-                bubbleClass: 'user',
-                text: '',
-                displayUrl: payload.url,
-                isImage: true,
-                time: new Date().toTimeString().slice(0, 5),
-                sending: true,
-                failed: false,
-              };
-              const messages = this.data.messages.concat([pendingMessage]);
-              this.setData({
-                messages,
-                scrollIntoView: 'message-' + tempId,
-              });
-              this.sendMessageWithRetry(pendingMessage);
             } catch (error) {
-              wx.showToast({ title: (error && error.message) || '上传图片失败', icon: 'none' });
+              wx.showToast({ title: '上传图片失败，请重试', icon: 'none' });
             } finally {
               wx.hideLoading();
             }
@@ -252,8 +262,11 @@ Page({
   },
 
   onPreviewImage(event) {
-    const src = event.currentTarget.dataset.src;
+    const src = String(event.currentTarget.dataset.src || '');
     if (!src) return;
-    wx.previewImage({ urls: [src], current: src });
+    wx.previewImage({
+      urls: [src],
+      current: src,
+    });
   },
 });

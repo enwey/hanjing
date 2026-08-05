@@ -1,68 +1,46 @@
-const userApi = require('../../../../api/modules/user-api');
-
-function maskIdCard(idCard) {
-  const value = String(idCard || '');
-  if (value.length < 8) {
-    return value;
-  }
-  return value.slice(0, 4) + '**********' + value.slice(-4);
-}
-
-function getAvatarBadgeText(nickname) {
-  const value = String(nickname || '').trim();
-  return value ? value.slice(0, 1) : '?';
-}
+const api = require('../../../../api/index');
 
 Page({
   data: {
     loading: true,
-    profile: null,
+    profile: {},
     editing: false,
-    summary: {
-      avatarBadge: '?',
-      nickname: '',
-      genderLabel: '',
-      birthday: '',
-      idCardMasked: '',
-      cardNo: '',
-    },
-    form: {
-      nickname: '',
-      gender: 1,
-      birthday: '',
-      idCard: '',
-    },
+    nickname: '',
+    gender: 1,
+    birthday: '',
+    idCard: '',
+    maxBirthday: '2026-07-23',
+    avatarText: '?',
+    displayIdCard: '未认证',
+    displayCardNo: '未生成',
+    displayGender: '男',
+    birthdayPickerText: '请选择生日',
+    birthdayDisplayText: '未设置',
+    maleChipClass: 'chip data-v-acab1652 active',
+    femaleChipClass: 'chip data-v-acab1652',
   },
 
-  async onShow() {
-    await this.loadProfile();
+  onShow() {
+    this.loadProfile();
   },
 
   async loadProfile() {
     this.setData({ loading: true });
     try {
-      const response = await userApi.getUserProfile();
+      const response = await api.getUserProfile();
       const profile = (response && response.data) || response || {};
-      this.setData({
+      this.applyProfileData({
         loading: false,
         profile,
-        summary: {
-          avatarBadge: getAvatarBadgeText(profile.nickname),
-          nickname: profile.nickname || '',
-          genderLabel: Number(profile.gender || 1) === 1 ? '男' : '女',
-          birthday: profile.birthday || '',
-          idCardMasked: maskIdCard(profile.idCard),
-          cardNo: profile.cardNo || '',
-        },
-        form: {
-          nickname: profile.nickname || '',
-          gender: Number(profile.gender || 1),
-          birthday: profile.birthday || '',
-          idCard: profile.idCard || '',
-        },
+        editing: false,
+        nickname: profile.nickname || '',
+        gender: Number(profile.gender || 1),
+        birthday: profile.birthday || '',
+        idCard: profile.idCard || profile.id_card || '',
       });
     } catch (error) {
-      this.setData({ loading: false, profile: null });
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载失败', icon: 'none' });
     }
   },
 
@@ -72,46 +50,75 @@ Page({
 
   cancelEdit() {
     const profile = this.data.profile || {};
-    this.setData({
+    this.applyProfileData({
       editing: false,
-      form: {
-        nickname: profile.nickname || '',
-        gender: Number(profile.gender || 1),
-        birthday: profile.birthday || '',
-        idCard: profile.idCard || '',
-      },
+      gender: Number(profile.gender || 1),
+      nickname: profile.nickname || '',
+      idCard: profile.idCard || profile.id_card || '',
+      birthday: profile.birthday || '',
     });
   },
 
-  onInputNickname(event) {
-    this.setData({ 'form.nickname': event.detail.value || '' });
+  handleNicknameInput(event) {
+    this.applyProfileData({ nickname: event.detail.value || '' });
   },
 
-  onInputIdCard(event) {
-    this.setData({ 'form.idCard': event.detail.value || '' });
+  handleIdCardInput(event) {
+    this.applyProfileData({ idCard: event.detail.value || '' });
   },
 
-  chooseGender(event) {
-    this.setData({ 'form.gender': Number(event.currentTarget.dataset.gender || 1) });
+  selectMale() {
+    this.applyProfileData({ gender: 1 });
   },
 
-  chooseBirthday(event) {
-    this.setData({ 'form.birthday': event.detail.value || '' });
+  selectFemale() {
+    this.applyProfileData({ gender: 2 });
+  },
+
+  handleBirthdayChange(event) {
+    this.applyProfileData({ birthday: event.detail.value || '' });
+  },
+
+  applyProfileData(updates) {
+    const nextData = Object.assign({}, this.data, updates);
+    const profile = nextData.profile || {};
+    const nickname = String(nextData.nickname || profile.nickname || '').trim();
+    const birthday = nextData.birthday || '';
+    const gender = Number(nextData.gender || 1);
+
+    this.setData(
+      Object.assign({}, updates, {
+        avatarText: nickname ? nickname.slice(0, 1) : '?',
+        displayIdCard: profile.idCard || profile.id_card || '未认证',
+        displayCardNo: profile.cardNo || profile.card_no || '未生成',
+        displayGender: gender === 2 ? '女' : '男',
+        birthdayPickerText: birthday || '请选择生日',
+        birthdayDisplayText: birthday || '未设置',
+        maleChipClass: gender === 1 ? 'chip data-v-acab1652 active' : 'chip data-v-acab1652',
+        femaleChipClass: gender === 2 ? 'chip data-v-acab1652 active' : 'chip data-v-acab1652',
+      })
+    );
   },
 
   async saveProfile() {
-    if (!String(this.data.form.nickname || '').trim()) {
+    const nickname = String(this.data.nickname || '').trim();
+    const idCard = String(this.data.idCard || '').trim();
+    if (!nickname) {
       wx.showToast({ title: '请输入昵称', icon: 'none' });
       return;
     }
-    if (this.data.form.idCard && !/^\d{17}[\dXx]$/.test(String(this.data.form.idCard))) {
-      wx.showToast({ title: '请输入正确的身份证号', icon: 'none' });
+    if (idCard && !/^\d{17}[\dXx]$/.test(idCard)) {
+      wx.showToast({ title: '身份证号格式不正确', icon: 'none' });
       return;
     }
     try {
-      await userApi.updateUserProfile(this.data.form);
+      await api.updateUserProfile({
+        nickname,
+        gender: this.data.gender,
+        birthday: this.data.birthday,
+        idCard,
+      });
       wx.showToast({ title: '保存成功', icon: 'success' });
-      this.setData({ editing: false });
       await this.loadProfile();
     } catch (error) {
       wx.showToast({ title: (error && error.message) || '保存失败', icon: 'none' });

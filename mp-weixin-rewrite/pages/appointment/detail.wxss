@@ -197,12 +197,22 @@
   border-radius: 9999rpx;
   background: linear-gradient(135deg, #3b6bf5 0%, #8eafff 100%);
   flex-shrink: 0;
+  position: relative;
 }
 
 .doc-avatar-text-large {
   color: #ffffff;
   font-size: 44rpx;
   font-weight: 700;
+  z-index: 2;
+}
+
+.pulse-ring-avatar {
+  position: absolute;
+  inset: -8rpx;
+  border-radius: 9999rpx;
+  border: 2rpx solid rgba(59, 107, 245, 0.16);
+  z-index: 1;
 }
 
 .doc-info-detail {
@@ -345,17 +355,6 @@
   font-size: 26rpx;
   line-height: 1.6;
   color: #374151;
-}
-
-.cancel-card-styled {
-  border-left: 8rpx solid #ef4444;
-}
-
-.cancel-text-styled {
-  display: block;
-  font-size: 26rpx;
-  line-height: 1.6;
-  color: #ef4444;
 }
 
 .rating-row {

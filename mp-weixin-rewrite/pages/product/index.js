@@ -150,10 +150,10 @@ Page({
       categoryColor: CATEGORY_COLORS[product.category] || '#f3f4f6',
       placeholderIcon:
         product.category === 'device'
-          ? '/static/icons/tab-treatment-active.png'
+          ? '/static/icons/treatment_green.svg'
           : product.category === 'service'
-            ? '/static/icons/tab-appointment-active.png'
-            : '/static/icons/tab-profile-active.png',
+            ? '/static/icons/appointment_blue.svg'
+            : '/static/icons/profile_orange.svg',
     };
   },
 

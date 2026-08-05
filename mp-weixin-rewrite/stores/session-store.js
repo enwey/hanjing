@@ -1,5 +1,76 @@
 const api = require('../api/index');
 
+function decodeBase64Url(input) {
+  if (!input) {
+    return '';
+  }
+  let normalized = String(input).replace(/-/g, '+').replace(/_/g, '/');
+  while (normalized.length % 4 !== 0) {
+    normalized += '=';
+  }
+  try {
+    return wx.base64ToArrayBuffer
+      ? String.fromCharCode.apply(null, new Uint8Array(wx.base64ToArrayBuffer(normalized)))
+      : '';
+  } catch (error) {
+    return '';
+  }
+}
+
+function parseJwtPayload(token) {
+  const text = String(token || '');
+  const parts = text.split('.');
+  if (parts.length < 2) {
+    return null;
+  }
+  try {
+    const payloadText = decodeBase64Url(parts[1]);
+    return payloadText ? JSON.parse(payloadText) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function normalizeAccessToken(token) {
+  const text = token === null || token === undefined ? '' : String(token);
+  if (!text) {
+    return '';
+  }
+  const normalized = text.trim().replace(/[^\x20-\x7E]/g, '');
+  if (!normalized) {
+    return '';
+  }
+  if (!/^[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+$/.test(normalized)) {
+    return '';
+  }
+  return normalized;
+}
+
+function isTokenExpired(token) {
+  const payload = parseJwtPayload(token);
+  if (!payload || !payload.exp) {
+    return false;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  return now >= Number(payload.exp || 0);
+}
+
+function readStoredAccessToken() {
+  const rawToken = wx.getStorageSync('access_token') || '';
+  const token = normalizeAccessToken(rawToken);
+  if (!token) {
+    if (rawToken) {
+      wx.removeStorageSync('access_token');
+    }
+    return '';
+  }
+  if (isTokenExpired(token)) {
+    wx.removeStorageSync('access_token');
+    return '';
+  }
+  return token;
+}
+
 async function bindPendingInviteCode() {
   const pendingInviteCode = wx.getStorageSync('pending_invite_code');
   if (!pendingInviteCode) {
@@ -20,12 +91,16 @@ async function bindPendingInviteCode() {
 
 const sessionStore = {
   state: {
-    accessToken: wx.getStorageSync('access_token') || '',
+    accessToken: readStoredAccessToken(),
     profile: null,
     currentPatientId: wx.getStorageSync('current_patient_id') || '',
   },
 
-  isLoggedIn() { return Boolean(this.state.accessToken); },
+  isLoggedIn() {
+    const token = readStoredAccessToken();
+    this.state.accessToken = token;
+    return Boolean(token);
+  },
   setAccessToken(accessToken) {
     this.state.accessToken = accessToken || '';
     if (accessToken) { wx.setStorageSync("access_token", accessToken); } else { wx.removeStorageSync("access_token"); }

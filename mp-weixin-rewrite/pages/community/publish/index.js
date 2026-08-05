@@ -24,9 +24,22 @@ Page({
     content: '',
     selectedCategory: '睡眠科普',
     selectedTags: [],
+    selectedTagMap: {},
     isSubmitting: false,
+    canSubmit: false,
     categoryOptions: CATEGORY_OPTIONS,
     tagOptions: TAG_OPTIONS,
+  },
+
+  refreshFormState() {
+    const selectedTagMap = {};
+    this.data.selectedTags.forEach((tag) => {
+      selectedTagMap[tag] = true;
+    });
+    this.setData({
+      selectedTagMap,
+      canSubmit: Boolean(String(this.data.title || '').trim() && String(this.data.content || '').trim() && !this.data.isSubmitting),
+    });
   },
 
   chooseCategory(event) {
@@ -35,10 +48,12 @@ Page({
 
   handleTitleInput(event) {
     this.setData({ title: event.detail.value || '' });
+    this.refreshFormState();
   },
 
   handleContentInput(event) {
     this.setData({ content: event.detail.value || '' });
+    this.refreshFormState();
   },
 
   toggleTag(event) {
@@ -49,6 +64,7 @@ Page({
     if (index >= 0) {
       selectedTags.splice(index, 1);
       this.setData({ selectedTags });
+      this.refreshFormState();
       return;
     }
     if (selectedTags.length >= 3) {
@@ -57,6 +73,7 @@ Page({
     }
     selectedTags.push(tag);
     this.setData({ selectedTags });
+    this.refreshFormState();
   },
 
   async submitPublish() {
@@ -66,6 +83,7 @@ Page({
     }
     if (this.data.isSubmitting) return;
     this.setData({ isSubmitting: true });
+    this.refreshFormState();
     try {
       const response = await api.createCommunityPost({
         title: this.data.title.trim(),
@@ -79,6 +97,7 @@ Page({
       }, 400);
     } catch (error) {
       this.setData({ isSubmitting: false });
+      this.refreshFormState();
       wx.showToast({ title: '发布失败，请重试', icon: 'none' });
     }
   },

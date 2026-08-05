@@ -1,114 +1,99 @@
-const api = require('../../../api/index');
-const patientContextStore = require('../../../stores/patient-context-store');
-const patientContextService = require('../../../services/patient-context-service');
+"use strict";
+const api = require("../../../api/index.js");
 
-const DEVICE_ACTIONS = [
-  {
-    key: 'wearing',
-    icon: '/static/icons/trend.svg',
-    label: '佩戴数据',
-    description: '查看当前设备的佩戴记录',
-    url: '/pages/profile/device-manage/wearing-data/index',
-  },
-  {
-    key: 'maintenance',
-    icon: '/static/icons/adjust.svg',
-    label: '维护记录',
-    description: '查看清洁、维修与更换记录',
-    url: '/pages/profile/device-manage/maintenance/index',
-  },
-  {
-    key: 'feedback',
-    icon: '/static/icons/chat.svg',
-    label: '使用反馈',
-    description: '提交使用体验和问题反馈',
-    url: '/pages/profile/device-manage/feedback/index',
-  },
-];
-
-function unwrapObject(response) {
-  const payload = response && response.data ? response.data : response || {};
-  return payload.data || payload || null;
-}
-
-function buildDeviceSummary(record) {
-  if (!record || !record.id) {
-    return null;
-  }
-
-  return {
-    id: String(record.id),
-    deviceName: record.deviceName || record.deviceModel || '阻鼾器',
-    deviceCode: record.deviceCode || record.serialNumber || '',
-    bindDate: record.bindDate || record.createdAt || '',
-    pressureRange: record.pressureRange || record.pressureSetting || '',
-    sleepStage: record.stageName || record.phaseName || '',
-  };
-}
+const MEMBER_LABEL_MAP = {
+  self: "本人",
+  spouse: "配偶",
+  child: "子女",
+  parent: "父母",
+  sibling: "兄弟姐妹",
+  other: "其他",
+};
 
 Page({
   data: {
     loading: true,
-    loadError: '',
+    members: [],
     memberOptions: [],
     memberIndex: 0,
-    selectedMemberLabel: '请选择就诊人',
-    currentPatientName: '',
-    currentPatientRelation: '',
-    currentPatientCard: '',
-    deviceSummary: null,
-    actionEntries: DEVICE_ACTIONS,
+    selectedPatientId: "",
+    device: null,
+    menuItems: [
+      {
+        key: "wearing",
+        icon: "/static/icons/trend.svg",
+        label: "佩戴数据",
+        desc: "查看当前就诊人的佩戴记录",
+        url: "/pages/profile/device-manage/wearing-data/index",
+      },
+      {
+        key: "maintenance",
+        icon: "/static/icons/adjust.svg",
+        label: "维护记录",
+        desc: "查看清洁、调整与维修记录",
+        url: "/pages/profile/device-manage/maintenance/index",
+      },
+      {
+        key: "feedback",
+        icon: "/static/icons/chat.svg",
+        label: "使用反馈",
+        desc: "记录问题与建议，方便跟进",
+        url: "/pages/profile/device-manage/feedback/index",
+      },
+    ],
   },
 
-  async onShow() {
-    await this.loadPage();
+  onShow() {
+    this.loadPage();
+  },
+
+  getStoragePatientId() {
+    return wx.getStorageSync("selected_treatment_patient_id") || "";
+  },
+
+  setStoragePatientId(patientId) {
+    if (patientId) {
+      wx.setStorageSync("selected_treatment_patient_id", String(patientId));
+    }
   },
 
   async loadPage() {
-    this.setData({ loading: true, loadError: '' });
-
+    this.setData({ loading: true });
     try {
-      const context = await patientContextStore.refresh();
-      const memberOptions = context.members.map((member) => member.name + '（' + patientContextService.getRelationLabel(member.relation) + '）');
-      const memberIndex = Math.max(0, context.members.findIndex((member) => String(member.id) === String(context.currentPatientId)));
-      const treatmentResponse = await api.getTreatmentRecord(
-        context.currentPatientId ? { patientId: context.currentPatientId, _t: Date.now() } : { _t: Date.now() },
-      );
-      const deviceSummary = buildDeviceSummary(unwrapObject(treatmentResponse));
-
-      this.setData({
-        loading: false,
-        memberOptions,
-        memberIndex,
-        selectedMemberLabel: memberOptions[memberIndex] || '请选择就诊人',
-        currentPatientName: context.currentMember ? context.currentMember.name || '' : '',
-        currentPatientRelation: context.currentMember ? patientContextService.getRelationLabel(context.currentMember.relation) : '',
-        currentPatientCard: context.currentMember ? (context.currentMember.medicalCardNo || context.currentMember.medical_record_no || '') : '',
-        deviceSummary,
-      });
-    } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载阻鼾器管理失败',
-        deviceSummary: null,
-      });
+      const memberRes = await api.getFamilyMembers();
+      const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
+      let selectedPatientId = this.getStoragePatientId();
+      if (!selectedPatientId || !members.some((item) => String(item.id) === String(selectedPatientId))) {
+        const selfMember = members.find((item) => item.relation === "self") || members[0] || null;
+        selectedPatientId = selfMember ? String(selfMember.id) : "";
+        this.setStoragePatientId(selectedPatientId);
+      }
+      const memberOptions = members.map((item) => `${item.name}（${MEMBER_LABEL_MAP[item.relation] || "成员"}）`);
+      const memberIndex = Math.max(0, members.findIndex((item) => String(item.id) === String(selectedPatientId)));
+      const deviceRes = await api.getPatientDevice(selectedPatientId ? { patientId: selectedPatientId } : {});
+      const device = deviceRes.data || deviceRes || null;
+      this.setData({ members, memberOptions, memberIndex, selectedPatientId, device });
+    } catch (err) {
+      console.error("加载设备管理失败", err);
+      wx.showToast({ title: err.message || "加载设备信息失败", icon: "none" });
+      this.setData({ device: null });
+    } finally {
+      this.setData({ loading: false });
     }
   },
 
-  async handleMemberChange(event) {
-    const memberIndex = Number(event.detail.value || 0);
-    const selectedMember = patientContextStore.selectMemberByIndex(memberIndex);
-    if (!selectedMember) {
-      return;
-    }
+  async onMemberChange(event) {
+    const nextIndex = Number(event.detail.value || 0);
+    const nextMember = this.data.members[nextIndex];
+    if (!nextMember) return;
+    this.setStoragePatientId(nextMember.id);
     await this.loadPage();
   },
 
-  openEntry(event) {
-    const url = event.currentTarget.dataset.url;
-    if (!url || !this.data.deviceSummary) {
-      return;
+  goMenu(event) {
+    const { url } = event.currentTarget.dataset;
+    if (url) {
+      wx.navigateTo({ url });
     }
-    wx.navigateTo({ url });
   },
 });

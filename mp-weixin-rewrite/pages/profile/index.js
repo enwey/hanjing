@@ -14,7 +14,7 @@ const MENU_GROUPS = [
     title: '我的服务',
     items: [
       { key: 'benefits', label: '会员权益', icon: '/static/icons/fee.svg', url: '/pages/profile/member-benefits/index' },
-      { key: 'orders', label: '我的订单', icon: '/static/icons/tab-mall-active.png', url: '/pages/order/index' },
+      { key: 'orders', label: '我的订单', icon: '/static/icons/report.svg', url: '/pages/order/index' },
       { key: 'distribution', label: '分销中心', icon: '/static/icons/distribution.svg', url: '/pages/distribution/center/index' },
       { key: 'live', label: '直播中心', icon: '/static/icons/microphone.svg', url: '/pages/live/list/index' },
     ],

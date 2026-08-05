@@ -33,6 +33,7 @@ Page({
         loading: false,
         loadError: (error && error.message) || '加载分销规则失败',
       });
+      wx.showToast({ title: '加载分销规则失败', icon: 'none' });
     }
   },
 });

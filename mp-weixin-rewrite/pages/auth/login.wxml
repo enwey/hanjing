@@ -1,5 +1,5 @@
 <view class="page-container">
-  <hj-navbar title="登录" showBack="{{true}}" />
+  <hj-navbar title="微信授权登录" showBack="{{true}}" />
   <view class="page-content login-page">
     <view class="brand-section">
       <view class="logo-container">
@@ -19,9 +19,18 @@
       </view>
 
       <button
+        wx:if="{{isDevTools}}"
         class="auth-btn"
-        open-type="{{(agreed && !isDevTools) ? 'getPhoneNumber' : ''}}"
-        bindtap="{{isDevTools ? 'onDeveloperLogin' : 'onLoginTap'}}"
+        bindtap="onDeveloperLogin"
+      >
+        微信手机号一键登录
+      </button>
+
+      <button
+        wx:else
+        class="auth-btn"
+        open-type="getPhoneNumber"
+        bindtap="onLoginTap"
         bindgetphonenumber="onGetPhoneNumber"
       >
         微信手机号一键登录

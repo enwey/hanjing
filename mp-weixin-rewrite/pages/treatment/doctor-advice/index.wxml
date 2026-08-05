@@ -1,36 +1,25 @@
-<view class="container doctor-advice-page">
+<view class="page data-v-3fe7702c">
   <hj-navbar title="医嘱建议" showBack="{{true}}" />
-
-  <view class="page-section state-card" wx:if="{{loading}}">
-    <text class="page-description">正在加载医嘱建议...</text>
-  </view>
-
-  <view class="page-section state-card" wx:elif="{{loadError}}">
-    <text class="state-title">加载失败</text>
-    <text class="page-description">{{loadError}}</text>
-  </view>
-
-  <block wx:elif="{{hasRealTreatmentRecord}}">
-    <view class="page-section" wx:if="{{adviceSections.length}}">
-      <view wx:for="{{adviceSections}}" wx:key="key" class="advice-card {{item.highlight ? 'advice-card--highlight' : ''}}">
-        <text class="advice-card__title">{{item.title}}</text>
-        <text class="advice-card__content">{{item.content}}</text>
+  <view class="page-content data-v-3fe7702c">
+    <block wx:if="{{hasRealTreatmentRecord}}">
+      <view wx:for="{{adviceSections}}" wx:key="key" class="card data-v-3fe7702c {{item.highlight ? 'card--highlight' : ''}}">
+        <text class="card-title data-v-3fe7702c">{{item.title}}</text>
+        <text class="card-text data-v-3fe7702c">{{item.content}}</text>
       </view>
+      <view wx:if="{{!adviceSections.length}}" class="empty-section data-v-3fe7702c"><text class="empty-section-text data-v-3fe7702c">医生暂未同步本次诊疗的医嘱内容，请在复诊后回来查看。</text></view>
+      <view wx:if="{{followupDate}}" class="card card--followup data-v-3fe7702c">
+        <text class="card-title data-v-3fe7702c">下次随访</text>
+        <text class="followup-date data-v-3fe7702c">{{followupDate}}</text>
+        <text class="followup-hint data-v-3fe7702c">请按时复诊，医生将评估治疗效果并调整参数</text>
+      </view>
+      <view class="btn-wrap data-v-3fe7702c"><button class="book-btn data-v-3fe7702c" bindtap="goAppointment">预约复诊</button></view>
+    </block>
+    <view wx:elif="{{loading || loadError}}" class="empty-card data-v-3fe7702c"><text class="empty-desc data-v-3fe7702c">{{loading ? '正在加载医嘱建议...' : loadError}}</text></view>
+    <view wx:else class="empty-card data-v-3fe7702c">
+      <text class="empty-title data-v-3fe7702c">暂无治疗记录</text>
+      <text class="empty-desc data-v-3fe7702c">当前治疗人还没有完成门诊建档或阻鼾器适配，暂时无法查看医嘱建议。完成预约就诊后，医生建议会同步展示在这里。</text>
+      <button class="book-btn data-v-3fe7702c" bindtap="goAppointment">前往预约</button>
     </view>
-    <view class="page-section state-card" wx:else>
-      <text class="state-title">暂无医嘱内容</text>
-    </view>
-
-    <view class="page-section" wx:if="{{followupDate}}">
-      <text class="section-title">复诊提醒</text>
-      <text class="detail-text">建议复诊时间：{{followupDate}}</text>
-      <view class="empty-action" bindtap="goAppointment">前往预约</view>
-    </view>
-  </block>
-
-  <view class="page-section state-card" wx:else>
-    <text class="state-title">还没有治疗记录</text>
-    <text class="page-description">当前治疗人还没有真实诊疗记录，完成预约问诊后这里会展示医生建议。</text>
-    <view class="empty-action" bindtap="goAppointment">前往预约</view>
+    <view class="safe-bottom data-v-3fe7702c"></view>
   </view>
 </view>

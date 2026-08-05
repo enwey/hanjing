@@ -1,6 +1,5 @@
 {
   "navigationBarTitleText": "订单详情",
-  "navigationStyle": "custom",
   "usingComponents": {
     "hj-navbar": "../../components/base/hj-navbar"
   }

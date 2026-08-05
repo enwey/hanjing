@@ -44,7 +44,7 @@
       </view>
 
       <view class="tip-box">
-        <text class="tip-box__text">最低提现金额 {{minWithdrawAmount}} 元，微信零钱手续费 0%，银行卡手续费 {{withdrawFeeRate * 100}}%</text>
+        <text class="tip-box__text">最低提现金额 {{minWithdrawAmount}} 元，微信零钱手续费 0%，银行卡手续费 {{withdrawFeeRate * 100}}%（最低 1 元）</text>
         <text class="tip-box__text">手续费：{{serviceFeeLabel}}</text>
         <text class="tip-box__text">预计到账：{{actualAmountLabel}}</text>
       </view>

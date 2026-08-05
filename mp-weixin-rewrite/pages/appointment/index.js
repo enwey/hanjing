@@ -65,12 +65,24 @@ function normalizeAppointment(appointment, stores, doctors) {
 Page({
   data: {
     loading: true,
+    loadError: '',
     isLoggedIn: false,
     currentTab: 'upcoming',
     bookingNotice: '选择门店、医生和时段，轻松完成预约',
     cancelLimitHours: 2,
     upcomingAppointments: [],
     historyAppointments: [],
+  },
+
+  onLoad(options) {
+    this.options = options || {};
+    if (options && options.tab === 'history') {
+      this.setData({ currentTab: 'history' });
+      return;
+    }
+    if (options && options.tab === 'mine') {
+      this.setData({ currentTab: 'upcoming' });
+    }
   },
 
   onShow() {
@@ -86,6 +98,7 @@ Page({
     const isLoggedIn = sessionStore.isLoggedIn();
     this.setData({
       loading: true,
+      loadError: '',
       isLoggedIn,
       upcomingAppointments: [],
       historyAppointments: [],
@@ -117,11 +130,15 @@ Page({
       const appointmentList = unwrapList(appointmentsResponse).map((appointment) => normalizeAppointment(appointment, stores, doctors));
       this.setData({
         loading: false,
+        loadError: '',
         upcomingAppointments: appointmentList.filter((appointment) => ACTIVE_STATUSES.includes(appointment.status)),
         historyAppointments: appointmentList.filter((appointment) => !ACTIVE_STATUSES.includes(appointment.status)),
       });
     } catch (error) {
-      this.setData({ loading: false });
+      this.setData({
+        loading: false,
+        loadError: (error && error.message) || '加载预约失败',
+      });
       console.error('加载预约失败', error);
     }
   },

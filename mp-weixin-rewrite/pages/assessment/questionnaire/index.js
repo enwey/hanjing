@@ -27,6 +27,7 @@ function unwrapList(response) {
 Page({
   data: {
     isPageReady: false,
+    isSubmitting: false,
     questions: [],
     answers: [],
     currentQuestionIndex: 0,
@@ -76,6 +77,7 @@ Page({
   resetState() {
     this.setData({
       isPageReady: false,
+      isSubmitting: false,
       questions: [],
       answers: [],
       currentQuestionIndex: 0,
@@ -106,11 +108,13 @@ Page({
   },
 
   prevQuestion() {
+    if (this.data.isSubmitting) return;
     if (this.data.currentQuestionIndex <= 0) return;
     this.setData({ currentQuestionIndex: this.data.currentQuestionIndex - 1 });
   },
 
   nextQuestion() {
+    if (this.data.isSubmitting) return;
     if (this.data.answers[this.data.currentQuestionIndex] < 0) {
       wx.showToast({ title: '请选择一个选项后再进行下一题', icon: 'none' });
       return;
@@ -121,6 +125,7 @@ Page({
   },
 
   handleDotClick(event) {
+    if (this.data.isSubmitting) return;
     const targetIndex = Number(event.currentTarget.dataset.index || 0);
     if (targetIndex > this.data.currentQuestionIndex && this.data.answers[this.data.currentQuestionIndex] < 0) {
       wx.showToast({ title: '请选择一个选项后再进行下一题', icon: 'none' });
@@ -136,15 +141,28 @@ Page({
   },
 
   async submitQuestionnaire() {
+    if (this.data.isSubmitting) {
+      return;
+    }
+    if (this.data.answers[this.data.currentQuestionIndex] < 0) {
+      wx.showToast({ title: '请选择一个选项后再提交评估', icon: 'none' });
+      return;
+    }
+    if (this.data.answers.indexOf(-1) !== -1) {
+      wx.showToast({ title: '请先完成所有题目', icon: 'none' });
+      return;
+    }
     try {
+      this.setData({ isSubmitting: true });
       const response = await api.submitESS({
         patientId: this.data.selectedMemberId,
         answers: this.data.answers,
       });
       const result = (response && response.data) || response || {};
       wx.setStorageSync('last_ess_assessment_result', result);
-      wx.redirectTo({ url: '/pages/assessment/result/index' });
+      wx.redirectTo({ url: '/pages/assessment/result/index?id=' + encodeURIComponent(result.id || '') });
     } catch (error) {
+      this.setData({ isSubmitting: false });
       wx.showToast({ title: '提交失败，请重试', icon: 'none' });
     }
   },

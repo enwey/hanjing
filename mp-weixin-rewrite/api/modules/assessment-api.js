@@ -16,6 +16,24 @@ function submitSnoreRecording(data) {
   return request({ url: '/assessments/snore', method: 'POST', data, failMessage: '提交鼾声录音失败' });
 }
 
+async function syncPendingSnoreRecordings() {
+  const pending = wx.getStorageSync('pending_snore_uploads') || [];
+  if (!Array.isArray(pending) || pending.length === 0) {
+    return;
+  }
+
+  const remaining = [];
+  for (const item of pending) {
+    try {
+      await submitSnoreRecording(item);
+    } catch (error) {
+      remaining.push(item);
+    }
+  }
+
+  wx.setStorageSync('pending_snore_uploads', remaining);
+}
+
 function getSnoreAnalysis(assessmentId) {
   return request({ url: '/assessments/snore-analysis/' + assessmentId, method: 'GET', failMessage: '加载鼾声分析失败' });
 }
@@ -29,6 +47,7 @@ module.exports = {
   getESSQuestions,
   submitESS,
   submitSnoreRecording,
+  syncPendingSnoreRecordings,
   getSnoreAnalysis,
   getAssessmentDetail
 };
