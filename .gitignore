@@ -38,10 +38,13 @@ dist-ssr/
 # Hanjing Clinic ignores
 hanjing-clinic-backend/uploads/
 hanjing-clinic-backend/scratch/
+hanjing-clinic-backend/requests.log
 check_onclick.py
 compare_pages.py
-scratch/dump_doctors.js
-scratch/parse_pages.py
+scratch/
+
+# Temporary scratch files
+scratch/
 
 # Temporary directories
 .codex-tmp/
