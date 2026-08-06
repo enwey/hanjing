@@ -5,13 +5,36 @@ import { query, get, run } from './db.js';
 
 export const JWT_SECRET = process.env.JWT_SECRET || 'hanjing_clinic_secret_key_2026';
 
+export const getShanghaiNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+
+export const formatShanghaiDate = (date = getShanghaiNow()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export const addShanghaiDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+
+export const getShanghaiHourMinute = (date = new Date()) => {
+  const shanghaiParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(date);
+  return {
+    hour: shanghaiParts.find((part) => part.type === 'hour')?.value || '00',
+    minute: shanghaiParts.find((part) => part.type === 'minute')?.value || '00',
+  };
+};
+
 // Helper to check if a store is open based on status and business hours
 export const checkStoreIsOpen = (status, hours, openTimeColumn, closeTimeColumn) => {
   if (status !== 'open') return false;
 
-  const now = new Date();
-  const pad = (num) => String(num).padStart(2, '0');
-  const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const { hour, minute } = getShanghaiHourMinute();
+  const currentTime = `${hour}:${minute}`;
 
   if (hours && hours.length > 0) {
     return hours.some(hourRange => {

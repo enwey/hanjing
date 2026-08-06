@@ -83,12 +83,7 @@ Page({
   },
 
   handleBack() {
-    wx.navigateBack({
-      delta: 1,
-      fail() {
-        wx.navigateTo({ url: '/pages/assessment/index' });
-      },
-    });
+    wx.navigateBack({ delta: 1 });
   },
 
   goAppointment() {

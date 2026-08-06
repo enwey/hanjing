@@ -10,6 +10,31 @@ const RELATION_LABEL_MAP = {
 };
 
 const recorderManager = wx.getRecorderManager();
+const INITIAL_STATUS_TEXT = '点击麦克风开启睡眠监测';
+
+function getRecorderErrorMessage(error) {
+  const errMsg = String((error && error.errMsg) || error || '').toLowerCase();
+  if (/auth|permission|denied|authorize/.test(errMsg)) {
+    return '麦克风权限异常，请在系统设置中开启录音权限';
+  }
+  if (/space|storage|quota|disk|insufficient|no enough/.test(errMsg)) {
+    return '设备存储空间不足，清理空间后再开始录音';
+  }
+  if (/interrupt|abort|background|system/.test(errMsg)) {
+    return '录音被系统中断，请保持小程序在前台后重试';
+  }
+  return '录音发生异常，请重新开始';
+}
+
+function safeSetStorage(key, value) {
+  try {
+    wx.setStorageSync(key, value);
+    return true;
+  } catch (error) {
+    console.error('Set storage failed', key, error);
+    return false;
+  }
+}
 
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -26,6 +51,16 @@ function toPcmInt16Array(arrayBuffer) {
 }
 
 function analyzePcmOnClient(pcmData, durationSeconds) {
+  const lowCut = 80;
+  const highCut = 800;
+  const sampleRate = 8000;
+  const rcLow = 1 / (2 * Math.PI * lowCut);
+  const rcHigh = 1 / (2 * Math.PI * highCut);
+  const dt = 1 / sampleRate;
+  const alphaLow = dt / (rcLow + dt);
+  const alphaHigh = rcHigh / (rcHigh + dt);
+  let lastLowVal = 0;
+  let lastHighVal = 0;
   const frameSamples = 16000;
   const totalSamples = pcmData.length;
   const frameDuration = 2;
@@ -33,6 +68,9 @@ function analyzePcmOnClient(pcmData, durationSeconds) {
   let averageDecibelSum = 0;
   let decibelSamplesCount = 0;
   let peakDecibel = 30;
+  let tempSnoreEventStreak = 0;
+  let lastSnoreTime = 0;
+  let snoreCount = 0;
   let snoreDurationSeconds = 0;
   let silenceSeconds = 0;
   let inApneaState = false;
@@ -43,7 +81,11 @@ function analyzePcmOnClient(pcmData, durationSeconds) {
     if (size < 4000) continue;
     let sumAbsolute = 0;
     for (let index = offset; index < end; index += 1) {
-      sumAbsolute += Math.abs(pcmData[index] / 32768);
+      const rawSample = pcmData[index] / 32768;
+      lastLowVal += alphaLow * (rawSample - lastLowVal);
+      const filteredSample = alphaHigh * (lastLowVal - lastHighVal);
+      lastHighVal = lastLowVal;
+      sumAbsolute += Math.abs(filteredSample);
     }
     const avgEnergy = sumAbsolute / size;
     const frameDecibel = Math.min(95, Math.max(30, Math.round(30 + avgEnergy * 85)));
@@ -51,7 +93,21 @@ function analyzePcmOnClient(pcmData, durationSeconds) {
     averageDecibelSum += frameDecibel;
     decibelSamplesCount += 1;
     peakDecibel = Math.max(peakDecibel, frameDecibel);
-    if (frameDecibel >= 42) snoreDurationSeconds += frameDuration;
+
+    if (frameDecibel >= 42) {
+      const timeSinceLastSnore = totalDurationSeconds - lastSnoreTime;
+      if (timeSinceLastSnore >= 2 && timeSinceLastSnore <= 6) {
+        tempSnoreEventStreak += 1;
+        if (tempSnoreEventStreak >= 3) {
+          snoreCount += 1;
+          snoreDurationSeconds += frameDuration;
+        }
+      } else if (timeSinceLastSnore > 6) {
+        tempSnoreEventStreak = 1;
+      }
+      lastSnoreTime = totalDurationSeconds;
+    }
+
     if (frameDecibel < 35) {
       silenceSeconds += frameDuration;
       if (silenceSeconds >= 10 && !inApneaState) inApneaState = true;
@@ -67,9 +123,10 @@ function analyzePcmOnClient(pcmData, durationSeconds) {
   const hours = Math.max(0.1, durationSeconds / 3600);
   const ahi = apneaEvents / hours;
   let riskLevel = 'normal';
-  if (ahi >= 30) riskLevel = 'severe';
-  else if (ahi >= 15) riskLevel = 'moderate';
-  else if (ahi >= 5) riskLevel = 'mild';
+  if (ahi < 5) riskLevel = 'normal';
+  else if (ahi < 15) riskLevel = 'mild';
+  else if (ahi < 30) riskLevel = 'moderate';
+  else riskLevel = 'severe';
   return { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel };
 }
 
@@ -85,14 +142,16 @@ Page({
     memberIndex: 0,
     selectedMemberName: '本人',
     selectedMemberId: '',
+    initialPatientId: '',
     disabledSelector: false,
     audioLevels: new Array(16).fill(6),
     durationText: '00:00',
-    statusText: '点击麦克风开启睡眠监测',
+    statusText: INITIAL_STATUS_TEXT,
     tempFilePath: '',
   },
 
-  onLoad() {
+  onLoad(options) {
+    this.setData({ initialPatientId: options && options.patientId ? String(options.patientId) : '' });
     this.bindRecorderEvents();
   },
 
@@ -111,9 +170,16 @@ Page({
 
   bindRecorderEvents() {
     recorderManager.onStop((result) => {
+      if (this.ignoreNextStop) {
+        this.ignoreNextStop = false;
+        return;
+      }
       this.setData({ tempFilePath: result.tempFilePath || '' });
       this.clearTimers();
       this.submitRecording();
+    });
+    recorderManager.onError((error) => {
+      this.handleRecorderError(error);
     });
     recorderManager.onFrameRecorded((result) => {
       try {
@@ -138,13 +204,47 @@ Page({
     });
   },
 
+  handleRecorderError(error) {
+    console.error('Recorder error', error);
+    this.ignoreNextStop = true;
+    this.clearTimers();
+    this.restoreScreenBrightness();
+    this.setData({
+      isRecording: false,
+      hasRecordingEnded: false,
+      isSubmitting: false,
+      isAnalyzing: false,
+      recordingDurationSeconds: 0,
+      durationText: '00:00',
+      statusText: INITIAL_STATUS_TEXT,
+      audioLevels: new Array(16).fill(6),
+      tempFilePath: '',
+      disabledSelector: false,
+    });
+    wx.showModal({
+      title: '录音失败',
+      content: getRecorderErrorMessage(error),
+      showCancel: false,
+      confirmText: '知道了',
+    });
+  },
+
+  enqueuePendingSnoreRecording(payload) {
+    const pending = wx.getStorageSync('pending_snore_uploads') || [];
+    const nextPending = Array.isArray(pending) ? pending : [];
+    nextPending.push(Object.assign({ localId: 'snore_' + Date.now() }, payload));
+    return safeSetStorage('pending_snore_uploads', nextPending);
+  },
+
   async loadFamilyMembers() {
     try {
       const response = await api.getFamilyMembers();
       const memberList = unwrapList(response);
       const memberNames = memberList.map((member) => `${member.name}（${RELATION_LABEL_MAP[member.relation] || member.relation || '成员'}）`);
+      const initialPatientId = this.data.initialPatientId;
+      const initialIndex = initialPatientId ? memberList.findIndex((member) => String(member.id || '') === initialPatientId) : -1;
       const selfIndex = memberList.findIndex((member) => member.relation === 'self');
-      const memberIndex = selfIndex >= 0 ? selfIndex : 0;
+      const memberIndex = initialIndex >= 0 ? initialIndex : (selfIndex >= 0 ? selfIndex : 0);
       const selectedMember = memberList[memberIndex] || null;
       this.setData({
         memberList,
@@ -221,6 +321,7 @@ Page({
     wx.authorize({
       scope: 'scope.record',
       success: async () => {
+        this.ignoreNextStop = false;
         await this.dimScreenForRecording();
         this.clearTimers();
         this.setData({
@@ -271,7 +372,7 @@ Page({
       isRecording: false,
       hasRecordingEnded: true,
       isSubmitting: true,
-      statusText: '录音已暂停，可继续或生成报告',
+      statusText: '录音已暂停，可生成分析报告',
       audioLevels: new Array(16).fill(6),
       disabledSelector: true,
     });
@@ -298,6 +399,7 @@ Page({
       return;
     }
     this.setData({ isAnalyzing: true, statusText: '正在分析...', disabledSelector: true });
+    this.ignoreNextStop = false;
     recorderManager.stop();
     this.restoreScreenBrightness();
   },
@@ -327,33 +429,30 @@ Page({
         snoreAnalysis: Object.assign({ duration: this.data.recordingDurationSeconds, qualityScore: 85 }, analysisResult),
         createdAt: new Date().toISOString(),
       };
-      wx.setStorageSync('last_local_snore_result', localReport);
+      safeSetStorage('last_local_snore_result', localReport);
+      const submitPayload = {
+        duration: this.data.recordingDurationSeconds,
+        client_side_analysis: true,
+        analysis_result: analysisResult,
+        timestamp: Date.now(),
+        patientId: this.data.selectedMemberId,
+      };
       try {
-        const submitResponse = await api.submitSnoreRecording({
-          duration: this.data.recordingDurationSeconds,
-          client_side_analysis: true,
-          analysis_result: analysisResult,
-          timestamp: Date.now(),
-          patientId: this.data.selectedMemberId,
-        });
+        const submitResponse = await api.submitSnoreRecording(submitPayload);
         const createdRecord = (submitResponse && submitResponse.data) || submitResponse || {};
         wx.redirectTo({ url: '/pages/assessment/snore-result/index?id=' + (createdRecord.id || 'local') });
       } catch (error) {
+        this.enqueuePendingSnoreRecording(submitPayload);
         wx.redirectTo({ url: '/pages/assessment/snore-result/index?id=local' });
       }
     } catch (error) {
       wx.showToast({ title: (error && error.message) || '分析失败，请重试', icon: 'none' });
-      this.setData({ isAnalyzing: false, isSubmitting: false, disabledSelector: false, statusText: '点击麦克风开启睡眠监测' });
+      this.setData({ isAnalyzing: false, isSubmitting: false, disabledSelector: false, statusText: INITIAL_STATUS_TEXT });
     }
   },
 
   handleBack() {
     this.restoreScreenBrightness();
-    wx.navigateBack({
-      delta: 1,
-      fail() {
-        wx.navigateTo({ url: '/pages/assessment/index' });
-      },
-    });
+    wx.navigateBack({ delta: 1 });
   },
 });

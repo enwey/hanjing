@@ -1991,6 +1991,31 @@ export const initDB = async () => {
   try {
     await query(`
       UPDATE products
+      SET is_distribution = CASE id
+          WHEN 1 THEN 1
+          WHEN 2 THEN 1
+          WHEN 3 THEN 1
+          WHEN 6 THEN 1
+          ELSE is_distribution
+        END,
+        commission_rate = CASE id
+          WHEN 1 THEN 12.00
+          WHEN 2 THEN 10.00
+          WHEN 3 THEN 8.00
+          WHEN 6 THEN 6.00
+          ELSE commission_rate
+        END
+      WHERE id IN (1, 2, 3, 6)
+        AND status = 'on'
+    `);
+    console.log('Ensured default distribution products are enabled.');
+  } catch (err) {
+    console.error('Failed to ensure default distribution products:', err);
+  }
+
+  try {
+    await query(`
+      UPDATE products
       SET image_url = '',
           gallery_urls = NULL
       WHERE image_url = '/static/product/screening.png'

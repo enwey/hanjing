@@ -3,6 +3,6 @@
   "navigationStyle": "custom",
   "usingComponents": {
     "hj-navbar": "../../components/base/hj-navbar/index",
-    "hj-tag": "../../components/base/hj-tag/index"
+    "hj-tag": "/components/base/hj-tag/index"
   }
 }

@@ -15,7 +15,10 @@ import {
   authenticateWxToken,
   escapeHtml,
   encryptPII,
-  decryptPII
+  decryptPII,
+  getShanghaiNow,
+  formatShanghaiDate,
+  addShanghaiDays
 } from '../helpers.js';
 
 const app = express.Router();
@@ -700,18 +703,29 @@ async function getMiniProgramWearingLogsForPatientScope(scope, options = {}) {
     return { patientDevice: null, logs: [] };
   }
   const patientDevice = await resolvePatientDeviceForPatient(scope.primaryPatient, options.treatmentId);
-  if (!patientDevice || isPlaceholderTreatmentRecord(patientDevice)) {
+  const hasRealPatientDevice = patientDevice && !isPlaceholderTreatmentRecord(patientDevice);
+  const params = ['mini_program_checkin'];
+  let sql = `SELECT * FROM wearing_logs WHERE source = ?`;
+  if (options.treatmentId && hasRealPatientDevice) {
+    sql += ` AND patient_device_id = ?`;
+    params.push(patientDevice.id);
+  } else if (Array.isArray(scope.patientIds) && scope.patientIds.length) {
+    const placeholders = scope.patientIds.map(() => '?').join(',');
+    sql += ` AND patient_id IN (${placeholders})`;
+    params.push(...scope.patientIds);
+  } else if (hasRealPatientDevice) {
+    sql += ` AND patient_device_id = ?`;
+    params.push(patientDevice.id);
+  } else {
     return { patientDevice: null, logs: [] };
   }
-  const params = [patientDevice.id, 'mini_program_checkin'];
-  let sql = `SELECT * FROM wearing_logs WHERE patient_device_id = ? AND source = ?`;
   if (options.limit) {
     sql += ` ORDER BY date DESC LIMIT ${Number(options.limit)}`;
   } else {
     sql += ` ORDER BY date DESC`;
   }
   const logs = await query(sql, params);
-  return { patientDevice, logs };
+  return { patientDevice: hasRealPatientDevice ? patientDevice : null, logs };
 }
 
 async function createDefaultSelfPatientForUser(user) {
@@ -770,10 +784,6 @@ function buildTreatmentPhases(treatment, adjustments = []) {
 function normalizeNumericId(raw) {
   const id = Number(raw);
   return Number.isInteger(id) && id > 0 ? id : null;
-}
-
-function getShanghaiNow() {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
 }
 
 function buildScheduleSlots(schedule) {
@@ -1094,7 +1104,7 @@ async function ensureDistributor(userId, conn = null) {
 
   await executor.execute(
     `INSERT INTO distributors (user_id, nickname, avatar_url, level, invite_code, invite_qr_url, total_commission, available_commission, withdrawn_amount, status)
-     VALUES (?, ?, ?, 'silver', ?, ?, 0, 0, 0, 'active')`,
+     VALUES (?, ?, ?, 'silver', ?, ?, 0, 0, 0, 'pending')`,
     [userId, user.nickname || `用户${userId}`, user.avatar_url || null, inviteCode, '/static/demo/qrcode.png']
   );
 
@@ -1270,12 +1280,19 @@ async function getDistributionSummary(userId, req = null) {
     )
   ]);
 
+  const directTeamCount = Number(lv1?.count || 0);
+  const secondTeamCount = Number(lv2?.count || 0);
+  if (directTeamCount > 0 && distributor.status !== 'active') {
+    await run(`UPDATE distributors SET status = 'active' WHERE id = ?`, [distributor.id]);
+    distributor.status = 'active';
+  }
+
   return {
-    isDistributor: distributor.status === 'active',
+    isDistributor: distributor.status === 'active' && directTeamCount > 0,
     memberLevel,
-    teamCount: Number(lv1?.count || 0),
-    teamLevel2Count: Number(lv2?.count || 0),
-    totalInvites: Number(lv1?.count || 0) + Number(lv2?.count || 0),
+    teamCount: directTeamCount,
+    teamLevel2Count: secondTeamCount,
+    totalInvites: directTeamCount + secondTeamCount,
     totalOrders: Number(orderStats?.total_orders || 0),
     totalSales: Number(orderStats?.total_sales || 0),
     availableCommission: Number(distributor.available_commission || 0),
@@ -1309,7 +1326,7 @@ async function createPendingDistributionCommission(conn, order, userId) {
   if (!relL1) return;
 
   const promoterL1 = await get(
-    `SELECT id, level FROM distributors WHERE user_id = ?`,
+    `SELECT id, level FROM distributors WHERE user_id = ? AND status = 'active'`,
     [relL1.parent_user_id]
   );
   if (!promoterL1) return;
@@ -1354,7 +1371,7 @@ async function createPendingDistributionCommission(conn, order, userId) {
   const relL2 = relationships.find(r => r.level === 2);
   if (relL2 && commissionL1 > 0) {
     const promoterL2 = await get(
-      `SELECT id, level FROM distributors WHERE user_id = ?`,
+      `SELECT id, level FROM distributors WHERE user_id = ? AND status = 'active'`,
       [relL2.parent_user_id]
     );
     if (promoterL2) {
@@ -1506,7 +1523,17 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
           avatar: user.avatar_url || '/static/demo/avatar.jpg',
           phone: decryptPII(user.phone) || '138****8888',
           memberLevel: user.member_level,
-          isDistributor: !!(await get(`SELECT id FROM distributors WHERE user_id = ?`, [user.id]))
+          isDistributor: !!(await get(
+            `SELECT d.id
+             FROM distributors d
+             WHERE d.user_id = ?
+               AND d.status = 'active'
+               AND EXISTS (
+                 SELECT 1 FROM distribution_relationships r
+                 WHERE r.parent_user_id = d.user_id AND r.level = 1
+               )`,
+            [user.id]
+          ))
         },
         expires_in: 2592000
       }
@@ -1528,7 +1555,13 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
       return res.status(404).json({ code: 404, message: '用户未找到' });
     }
     const patient = await getSelfPatientForUser(req.user.id);
-    const distributor = await get(`SELECT id, level FROM distributors WHERE user_id = ?`, [req.user.id]);
+    const distributor = await get(
+      `SELECT d.id, d.level, d.status,
+              (SELECT COUNT(*) FROM distribution_relationships r WHERE r.parent_user_id = d.user_id AND r.level = 1) as direct_count
+       FROM distributors d
+       WHERE d.user_id = ?`,
+      [req.user.id]
+    );
     res.json({
       code: 0,
       message: 'success',
@@ -1543,7 +1576,7 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
         cardNo: patient ? getPatientRecordNo(patient) : '',
         birthday: user.birthday ? formatDate(user.birthday) : '1995-01-01',
         memberLevel: user.member_level || 'normal',
-        isDistributor: !!distributor,
+        isDistributor: !!distributor && distributor.status === 'active' && Number(distributor.direct_count || 0) > 0,
         distributorLevel: distributor?.level || ''
       }
     });
@@ -3476,7 +3509,7 @@ app.get('/api/v1/doctors', async (req, res) => {
         });
 
         // Seedable PRNG for stability (session or daily seed)
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const todayStr = formatShanghaiDate();
         const seedStr = (userId ? `user_${userId}_` : "anon_") + todayStr;
 
         // Seedable PRNG function (Mulberry32)
@@ -3696,11 +3729,9 @@ app.get('/api/v1/schedules/dates', async (req, res) => {
     const advanceDaysRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_advance_days'`);
     const advanceDays = advanceDaysRow ? parseInt(advanceDaysRow.key_value, 10) : 7;
 
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
-    const maxDate = new Date(today.getTime() + advanceDays * 24 * 60 * 60 * 1000);
-    const maxDateStr = `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
+    const today = getShanghaiNow();
+    const todayStr = formatShanghaiDate(today);
+    const maxDateStr = formatShanghaiDate(addShanghaiDays(today, advanceDays));
 
     const list = await query(
       `SELECT * FROM doctor_schedules
@@ -3770,8 +3801,8 @@ app.get('/api/v1/schedules', async (req, res) => {
   }
 
   try {
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const today = getShanghaiNow();
+    const todayStr = formatShanghaiDate(today);
 
     let list;
     if (startDate && endDate) {
@@ -3785,8 +3816,7 @@ app.get('/api/v1/schedules', async (req, res) => {
       const advanceDaysRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_advance_days'`);
       const advanceDays = advanceDaysRow ? parseInt(advanceDaysRow.key_value, 10) : 7;
 
-      const maxDate = new Date(today.getTime() + advanceDays * 24 * 60 * 60 * 1000);
-      const maxDateStr = `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
+      const maxDateStr = formatShanghaiDate(addShanghaiDays(today, advanceDays));
 
       list = await query(
         `SELECT * FROM doctor_schedules
@@ -3874,8 +3904,8 @@ app.get('/api/v1/schedules/:id/slots', async (req, res) => {
       return res.status(404).json({ code: 1004, message: '排班不存在' });
     }
 
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const today = getShanghaiNow();
+    const todayStr = formatShanghaiDate(today);
     const isToday = formatDate(t.date) === todayStr;
     const currentHour = today.getHours();
     const currentMinute = today.getMinutes();
@@ -4672,7 +4702,7 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
       const [year, month, day] = appt.appointment_date.split('-').map(Number);
       const [hours, minutes] = appt.appointment_time.split('-')[0].trim().split(':').map(Number);
       const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
-      const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
+      const now = getShanghaiNow();
       if (apptDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
         return res.status(400).json({ code: 400, message: '距离预约时间已不足2小时，不支持修改就诊时间' });
       }
@@ -5547,14 +5577,13 @@ app.post('/api/v1/treatment/wearing', authenticateWxToken, async (req, res) => {
     const patientDevice = req.body.treatmentId
       ? await resolvePatientDeviceForPatient(patient, req.body.treatmentId)
       : await resolvePatientDeviceForPatient(patient);
-    if (!patientDevice || isPlaceholderTreatmentRecord(patientDevice)) {
-      return res.status(400).json({ code: 400, message: '当前治疗人尚未绑定设备，请先完成设备适配后再打卡' });
-    }
-
+    const hasRealPatientDevice = patientDevice && !isPlaceholderTreatmentRecord(patientDevice);
+    const patientDeviceId = hasRealPatientDevice ? patientDevice.id : null;
+    const treatmentId = hasRealPatientDevice ? patientDevice.bind_treatment_record_id || null : null;
     // Check if check-in log already exists for this date
     const existingLog = await get(
-      `SELECT id FROM wearing_logs WHERE patient_device_id = ? AND date = ? AND source = 'mini_program_checkin'`,
-      [patientDevice.id, date]
+      `SELECT id FROM wearing_logs WHERE patient_id = ? AND date = ? AND source = 'mini_program_checkin'`,
+      [patient.id, date]
     );
     if (existingLog) {
       await run(
@@ -5567,13 +5596,13 @@ app.post('/api/v1/treatment/wearing', authenticateWxToken, async (req, res) => {
              note = ?,
              source = 'mini_program_checkin'
          WHERE id = ?`,
-        [patientDevice.id, patientDevice.bind_treatment_record_id || null, durationVal, comfortVal, ahiIndex ?? null, note || null, existingLog.id]
+        [patientDeviceId, treatmentId, durationVal, comfortVal, ahiIndex ?? null, note || null, existingLog.id]
       );
     } else {
       await run(
         `INSERT INTO wearing_logs (patient_id, patient_device_id, treatment_id, date, wear_duration, comfort, ahi_index, note, source)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'mini_program_checkin')`,
-        [patient.id, patientDevice.id, patientDevice.bind_treatment_record_id || null, date, durationVal, comfortVal, ahiIndex ?? null, note || null]
+        [patient.id, patientDeviceId, treatmentId, date, durationVal, comfortVal, ahiIndex ?? null, note || null]
       );
     }
 
@@ -6193,6 +6222,11 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
         [parentUserId, childUserId]
       );
 
+      await conn.execute(
+        `UPDATE distributors SET status = 'active' WHERE user_id = ?`,
+        [parentUserId]
+      );
+
       const grandParent = await get(
         `SELECT parent_user_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1`,
         [parentUserId]
@@ -6235,7 +6269,7 @@ app.post('/api/v1/distribution/open', authenticateWxToken, async (req, res) => {
   try {
     await ensureDistributor(req.user.id);
     const latestSummary = await getDistributionSummary(req.user.id, req);
-    res.json({ code: 0, message: '分销身份已生成', data: latestSummary });
+    res.json({ code: 0, message: '推广身份已生成，绑定首个下级后成为正式分销员', data: latestSummary });
   } catch (error) {
     console.error('Open distribution error:', error);
     res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '开通分销失败' });
@@ -6564,7 +6598,7 @@ app.get('/api/v1/distribution/rules', async (req, res) => {
     message: 'success',
     data: {
       enabled: featureConfig.enableDistribution,
-      qualificationText: '当前黄金会员及以上可开通分销权限',
+      qualificationText: '进入分销中心后系统会生成专属推广身份和邀请码；成功绑定至少 1 个一级下级后，才会成为正式分销员并获得佣金资格。',
       levels,
       commissionRules: [
         '一级佣金优先按商品配置的专属佣金比例计算，未配置时按推广员等级比例计算。',

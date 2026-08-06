@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: ./hanjing-clinic-backend
+    container_name: hanjing-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      TZ: Asia/Shanghai
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-hanjing_app}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_NAME: ${DB_NAME:-hanjing_clinic}
+      PORT: 5005
+      WX_MINI_APP_ID: ""
+      WX_MINI_APP_SECRET: ""
+    ports:
+      - "5005:5005"
+    volumes:
+      - hanjing_backend_uploads:/app/uploads
+
+volumes:
+  hanjing_backend_uploads:

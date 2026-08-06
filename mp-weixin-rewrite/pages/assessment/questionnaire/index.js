@@ -37,7 +37,12 @@ Page({
     memberIndex: 0,
     selectedMemberName: '本人',
     selectedMemberId: '',
+    initialPatientId: '',
     answerOptions: ANSWER_OPTIONS,
+  },
+
+  onLoad(options) {
+    this.setData({ initialPatientId: options && options.patientId ? String(options.patientId) : '' });
   },
 
   async onShow() {
@@ -54,8 +59,10 @@ Page({
       const memberList = unwrapList(membersResponse);
       const questions = unwrapList(questionsResponse);
       const memberNames = memberList.map((member) => (member.name || '') + '（' + (RELATION_LABEL_MAP[member.relation] || member.relation || '成员') + '）');
+      const initialPatientId = this.data.initialPatientId;
+      const initialIndex = initialPatientId ? memberList.findIndex((member) => String(member.id || '') === initialPatientId) : -1;
       const selfIndex = memberList.findIndex((member) => member.relation === 'self');
-      const memberIndex = selfIndex >= 0 ? selfIndex : 0;
+      const memberIndex = initialIndex >= 0 ? initialIndex : (selfIndex >= 0 ? selfIndex : 0);
       const selectedMember = memberList[memberIndex] || null;
 
       this.setData({

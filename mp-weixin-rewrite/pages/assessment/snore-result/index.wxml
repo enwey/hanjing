@@ -1,5 +1,5 @@
 <view class="snore-result-page">
-  <hj-navbar title="鼾声分析报告" showBack="{{true}}" bindback="handleBack" />
+  <hj-navbar title="鼾声分析报告" showBack="{{true}}" />
 
   <view wx:if="{{!isLoading && reportDetail}}" class="page-content">
     <view class="risk-card" style="background: {{riskInfo.bgColor}}">
@@ -11,10 +11,15 @@
 
     <view class="risk-bar-section">
       <view class="risk-bar-track">
+        <view class="risk-zone risk-zone--low"></view>
+        <view class="risk-zone risk-zone--mid"></view>
+        <view class="risk-zone risk-zone--high"></view>
         <view class="risk-bar-fill" style="width: {{riskScore}}%; background: {{riskInfo.color}}"></view>
-        <view class="risk-marker" style="left: 33%">低</view>
-        <view class="risk-marker" style="left: 66%">中</view>
-        <view class="risk-marker risk-marker--high" style="left: 90%">高</view>
+      </view>
+      <view class="risk-marker-row">
+        <text class="risk-marker" style="left: 30%">低</text>
+        <text class="risk-marker" style="left: 70%">中</text>
+        <text class="risk-marker risk-marker--high" style="left: 90%">高</text>
       </view>
     </view>
 

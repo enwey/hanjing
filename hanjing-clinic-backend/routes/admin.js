@@ -16,7 +16,8 @@ import {
   maskPhone,
   logAdminAction,
   hashPassword,
-  verifyPassword
+  verifyPassword,
+  formatShanghaiDate
 } from '../helpers.js';
 
 const app = express.Router();
@@ -2680,7 +2681,7 @@ app.post('/api/admin/patients/:id/treatment', authenticateToken, async (req, res
       return res.status(400).json({ code: 400, message: '请选择已上架的物理阻鼾器设备' });
     }
 
-    const treatmentStartDate = start_date || new Date().toISOString().slice(0, 10);
+    const treatmentStartDate = start_date || formatShanghaiDate();
 
     await run(`UPDATE treatment_records SET status = 'paused' WHERE patient_id = ? AND status = 'active'`, [id]);
     await run(`UPDATE patient_devices SET status = 'replaced' WHERE patient_id = ? AND status = 'active'`, [id]);
@@ -3272,6 +3273,9 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
       return res.json({ code: 200, message: '设置休息成功' });
     }
 
+    const targetStartTime = start_time || (period === 'morning' ? '09:00:00' : '14:00:00');
+    const targetEndTime = end_time || (period === 'morning' ? '12:00:00' : '18:00:00');
+
     if (existing) {
       const booked = await get(
         `SELECT COUNT(*) as count FROM appointments WHERE schedule_id = ? AND status NOT IN ('cancelled', 'no_show')`,
@@ -3285,13 +3289,13 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
 
       await run(
         `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ? WHERE id = ?`,
-        [store_id, start_time || '09:00:00', end_time || '12:00:00', total_slots || 6, people_per_slot || 1, existing.id]
+        [store_id, targetStartTime, targetEndTime, total_slots || 6, people_per_slot || 1, existing.id]
       );
     } else {
       await run(
         `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [doctor_id, store_id, date, period, start_time || '09:00:00', end_time || '12:00:00', total_slots || 6, people_per_slot || 1]
+        [doctor_id, store_id, date, period, targetStartTime, targetEndTime, total_slots || 6, people_per_slot || 1]
       );
     }
     await logAdminAction(req.user.id, 'create_schedule', 'doctor', doctor_id, { date, period, is_rest: false, store_id }, req.ip || null);
@@ -3381,7 +3385,7 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
             throw new Error('您无权为其他门店排班');
           }
 
-          const targetStartTime = start_time || '09:00:00';
+          const targetStartTime = start_time || (period === 'morning' ? '09:00:00' : '14:00:00');
           const targetEndTime = end_time || (period === 'morning' ? '12:00:00' : '18:00:00');
           const targetTotalSlots = total_slots || 6;
           const targetPeoplePerSlot = people_per_slot || 1;
@@ -3575,7 +3579,7 @@ app.get('/api/admin/stores', authenticateToken, async (req, res) => {
 
     if (storeIds.length > 0) {
       const placeholders = storeIds.map(() => '?').join(',');
-      const currentMonth = new Date().toISOString().slice(0, 7);
+      const currentMonth = formatShanghaiDate().slice(0, 7);
 
       allFeatures = await query(`SELECT store_id, feature FROM store_features WHERE store_id IN (${placeholders})`, storeIds);
       allHours = await query(`SELECT store_id, open_time, close_time FROM store_hours WHERE store_id IN (${placeholders})`, storeIds);
@@ -4543,7 +4547,10 @@ app.get('/api/admin/distribution/overview', authenticateToken, async (req, res) 
       `SELECT
          COALESCE(SUM(total_commission), 0) as total_commission,
          COUNT(*) as promoters_count,
-         SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_promoters
+         SUM(CASE WHEN status = 'active' AND EXISTS (
+           SELECT 1 FROM distribution_relationships r
+           WHERE r.parent_user_id = distributors.user_id AND r.level = 1
+         ) THEN 1 ELSE 0 END) as active_promoters
        FROM distributors`
     );
     const orders = await get(
@@ -5839,7 +5846,7 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
       return res.status(404).json({ code: 404, message: '患者不存在' });
     }
     const promoter = await get(
-      `SELECT user_id FROM distributors WHERE user_id = ? AND status = 'active' LIMIT 1`,
+      `SELECT user_id FROM distributors WHERE user_id = ? LIMIT 1`,
       [promoter_user_id]
     );
     if (!promoter) {
@@ -5855,6 +5862,7 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
     } else {
       await run('INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)', [promoter_user_id, child_user_id]);
     }
+    await run(`UPDATE distributors SET status = 'active' WHERE user_id = ?`, [promoter_user_id]);
     await logAdminAction(req.user.id, 'bind_patient_promoter', 'patient', id, { promoter_user_id });
     res.json({ code: 200, message: '绑定推广人成功' });
   } catch (error) {
@@ -5990,7 +5998,7 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
 
       if (relL1) {
         const promoter = await get(
-          `SELECT id, level FROM distributors WHERE user_id = ?`,
+          `SELECT id, level FROM distributors WHERE user_id = ? AND status = 'active'`,
           [relL1.parent_user_id]
         );
         if (promoter) {
@@ -6026,7 +6034,7 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
       const relL2 = relationships.find(r => r.level === 2);
       if (relL2 && calculatedL1Commission > 0) {
         const promoterL2 = await get(
-          `SELECT id FROM distributors WHERE user_id = ?`,
+          `SELECT id FROM distributors WHERE user_id = ? AND status = 'active'`,
           [relL2.parent_user_id]
         );
         if (promoterL2) {

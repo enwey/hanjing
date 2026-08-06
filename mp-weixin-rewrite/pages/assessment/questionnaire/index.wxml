@@ -1,5 +1,5 @@
 <view class="page data-v-c4ff781e">
-  <hj-navbar title="ESS嗜睡量表" showBack="{{true}}" bindback="handleBack" />
+  <hj-navbar title="ESS嗜睡量表" showBack="{{true}}" />
   <view class="page-content data-v-c4ff781e">
     <picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker data-v-c4ff781e">
       <view class="member-picker-content data-v-c4ff781e">

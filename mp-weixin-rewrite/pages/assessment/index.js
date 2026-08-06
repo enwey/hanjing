@@ -17,6 +17,15 @@ const SNORE_LEVEL_LABEL_MAP = {
   severe: '高度风险',
 };
 
+const RELATION_LABEL_MAP = {
+  self: '本人',
+  spouse: '配偶',
+  child: '子女',
+  parent: '父母',
+  sibling: '兄弟姐妹',
+  other: '其他',
+};
+
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
   if (Array.isArray(payload)) {
@@ -65,6 +74,11 @@ Page({
     isLoggedIn: false,
     records: [],
     pendingCount: 0,
+    memberList: [],
+    memberNames: [],
+    memberIndex: 0,
+    selectedMemberName: '本人',
+    selectedMemberId: '',
   },
 
   async onShow() {
@@ -89,12 +103,54 @@ Page({
     try {
       await api.syncPendingSnoreRecordings();
       this.checkPendingCount();
-      const assessmentsResponse = await api.getAssessments();
+      await this.ensureFamilyMembers();
+      const assessmentsResponse = await api.getAssessments(this.data.selectedMemberId ? { patientId: this.data.selectedMemberId } : {});
       const records = unwrapList(assessmentsResponse).map(normalizeAssessmentRecord);
       this.setData({
         loading: false,
         records,
       });
+    } catch (error) {
+      this.setData({
+        loading: false,
+        loadError: (error && error.message) || '加载评估记录失败',
+      });
+    }
+  },
+
+  async ensureFamilyMembers() {
+    if (this.data.memberList.length) return;
+    const membersResponse = await api.getFamilyMembers();
+    const memberList = unwrapList(membersResponse);
+    const memberNames = memberList.map((member) => (member.name || '') + '（' + (RELATION_LABEL_MAP[member.relation] || member.relation || '成员') + '）');
+    const selfIndex = memberList.findIndex((member) => member.relation === 'self');
+    const memberIndex = selfIndex >= 0 ? selfIndex : 0;
+    const selectedMember = memberList[memberIndex] || null;
+    this.setData({
+      memberList,
+      memberNames,
+      memberIndex,
+      selectedMemberName: selectedMember ? selectedMember.name || '本人' : '本人',
+      selectedMemberId: selectedMember ? String(selectedMember.id || '') : '',
+    });
+  },
+
+  async onMemberChange(event) {
+    const memberIndex = Number(event.detail.value || 0);
+    const selectedMember = this.data.memberList[memberIndex];
+    if (!selectedMember) return;
+    this.setData({
+      memberIndex,
+      selectedMemberName: selectedMember.name || '本人',
+      selectedMemberId: String(selectedMember.id || ''),
+      loading: true,
+      loadError: '',
+      records: [],
+    });
+    try {
+      const assessmentsResponse = await api.getAssessments(this.data.selectedMemberId ? { patientId: this.data.selectedMemberId } : {});
+      const records = unwrapList(assessmentsResponse).map(normalizeAssessmentRecord);
+      this.setData({ loading: false, records });
     } catch (error) {
       this.setData({
         loading: false,
@@ -126,7 +182,8 @@ Page({
       navigation.openPage('/pages/auth/login');
       return;
     }
-    navigation.openPage('/pages/assessment/questionnaire/index');
+    const query = this.data.selectedMemberId ? '?patientId=' + this.data.selectedMemberId : '';
+    navigation.openPage('/pages/assessment/questionnaire/index' + query);
   },
 
   startSnoreAssessment() {
@@ -134,7 +191,8 @@ Page({
       navigation.openPage('/pages/auth/login');
       return;
     }
-    navigation.openPage('/pages/assessment/recording/index');
+    const query = this.data.selectedMemberId ? '?patientId=' + this.data.selectedMemberId : '';
+    navigation.openPage('/pages/assessment/recording/index' + query);
   },
 
   openRecord(event) {

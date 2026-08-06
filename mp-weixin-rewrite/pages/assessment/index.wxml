@@ -8,6 +8,18 @@
       </view>
       <button class="sync-btn data-v-35dabd14" bindtap="handleForceSync">立即同步</button>
     </view>
+    <picker wx:if="{{isLoggedIn && memberNames.length}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker data-v-35dabd14">
+      <view class="member-picker-content data-v-35dabd14">
+        <view class="member-info data-v-35dabd14">
+          <text class="member-label data-v-35dabd14">当前评估人：</text>
+          <text class="member-value data-v-35dabd14">{{selectedMemberName}}</text>
+        </view>
+        <view class="member-action data-v-35dabd14">
+          <text class="member-action-text data-v-35dabd14">切换</text>
+          <image class="member-action-arrow data-v-35dabd14" src="/static/icons/chevron-right.svg" mode="aspectFit" />
+        </view>
+      </view>
+    </picker>
     <view class="hero-card data-v-35dabd14">
       <image class="hero-emoji data-v-35dabd14" src="/static/icons/assessment_purple.svg" />
       <text class="hero-title data-v-35dabd14">了解您的睡眠质量</text>

@@ -140,7 +140,7 @@ Component({
       wx.navigateBack({
         delta: 1,
         fail() {
-          wx.switchTab({ url: '/pages/appointment/index' });
+          wx.switchTab({ url: '/pages/index/index' });
         },
       });
     },

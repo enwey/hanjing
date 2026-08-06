@@ -1,9 +1,19 @@
 const api = require('../../../api/index');
 
+function unwrapObject(response) {
+  const payload = response && response.data ? response.data : response || {};
+  return payload.data || payload;
+}
+
+function formatYuan(amountInCents) {
+  return '¥' + (Number(amountInCents || 0) / 100).toFixed(2);
+}
+
 Page({
   data: {
     loading: true,
     loadError: '',
+    availableCommissionCents: 0,
     availableCommissionLabel: '¥0.00',
     totalCommissionLabel: '¥0.00',
     withdrawnAmountLabel: '¥0.00',
@@ -14,6 +24,7 @@ Page({
     bankAccountNo: '',
     minWithdrawAmount: 50,
     withdrawFeeRate: 0.01,
+    withdrawFeeRatePercentLabel: '1',
     serviceFeeLabel: '¥0.00',
     actualAmountLabel: '¥0.00',
     isSubmitEnabled: false,
@@ -27,15 +38,18 @@ Page({
     this.setData({ loading: true, loadError: '' });
     try {
       const response = await api.getDistributorInfo();
-      const info = (response && response.data) || response || {};
+      const info = unwrapObject(response);
+      const withdrawFeeRate = Number((info.withdrawFeeRates && info.withdrawFeeRates.bank) || 0.01);
+
       this.setData({
         loading: false,
         availableCommissionCents: Number(info.availableCommission || 0),
-        availableCommissionLabel: '¥' + (Number(info.availableCommission || 0) / 100).toFixed(2),
-        totalCommissionLabel: '¥' + (Number(info.totalCommission || 0) / 100).toFixed(2),
-        withdrawnAmountLabel: '¥' + (Number(info.withdrawnAmount || 0) / 100).toFixed(2),
+        availableCommissionLabel: formatYuan(info.availableCommission),
+        totalCommissionLabel: formatYuan(info.totalCommission),
+        withdrawnAmountLabel: formatYuan(info.withdrawnAmount),
         minWithdrawAmount: Number(info.minWithdrawAmount || 5000) / 100,
-        withdrawFeeRate: Number((info.withdrawFeeRates && info.withdrawFeeRates.bank) || 0.01),
+        withdrawFeeRate,
+        withdrawFeeRatePercentLabel: String(withdrawFeeRate * 100),
       });
       this.refreshAmountSummary();
     } catch (error) {
@@ -55,9 +69,9 @@ Page({
       : Math.max(withdrawAmount * Number(this.data.withdrawFeeRate || 0), 1);
     const actualAmount = Math.max(withdrawAmount - serviceFee, 0);
     const hasBankInfo = !needsBankInfo || (
-      String(this.data.bankName || '').trim() &&
-      String(this.data.bankAccountName || '').trim() &&
-      String(this.data.bankAccountNo || '').trim()
+      String(this.data.bankName || '').trim()
+      && String(this.data.bankAccountName || '').trim()
+      && String(this.data.bankAccountNo || '').trim()
     );
     const isSubmitEnabled = withdrawAmount >= Number(this.data.minWithdrawAmount || 0)
       && withdrawAmount <= maxWithdrawAmount

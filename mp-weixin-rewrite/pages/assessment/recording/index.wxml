@@ -3,7 +3,7 @@
   <view class="star star-2 data-v-70350287"></view>
   <view class="star star-3 data-v-70350287"></view>
   <view class="star star-4 data-v-70350287"></view>
-  <hj-navbar title="AI鼾声分析" showBack="{{true}}" bindback="handleBack" />
+  <hj-navbar title="AI鼾声分析" showBack="{{true}}" />
   <view wx:if="{{!isAnalyzing}}" class="page-content data-v-70350287">
     <picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" disabled="{{disabledSelector}}" class="member-picker data-v-70350287">
       <view class="member-picker-content data-v-70350287">
@@ -39,7 +39,6 @@
       <text class="status-text data-v-70350287">{{statusText}}</text>
     </view>
     <view wx:if="{{isSubmitting && !isAnalyzing}}" class="actions data-v-70350287">
-      <view class="btn btn--ghost data-v-70350287" bindtap="resumeRecording">继续录音</view>
       <view class="btn btn--primary data-v-70350287" bindtap="stopAndAnalyze">生成分析报告</view>
     </view>
     <view class="tips-card data-v-70350287">

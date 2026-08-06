@@ -328,10 +328,6 @@ Page({
   },
 
   openCheckinModal() {
-    if (!this.data.hasRealTreatmentRecord) {
-      wx.showToast({ title: '当前治疗人尚未绑定设备，请先完成适配', icon: 'none' });
-      return;
-    }
     const todayRecord = (this.wearingRecords || []).find((item) => item.date === getTodayText());
     this.setData({
       checkinVisible: true,

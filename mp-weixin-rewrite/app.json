@@ -142,6 +142,7 @@
   "usingComponents": {
     "hj-navbar": "/components/base/hj-navbar/index",
     "hj-button": "/components/base/hj-button/index",
+    "hj-tag": "/components/base/hj-tag/index",
     "hj-empty": "/components/base/hj-empty/index",
     "hj-privacy-popup": "/components/business/hj-privacy-popup/index"
   }

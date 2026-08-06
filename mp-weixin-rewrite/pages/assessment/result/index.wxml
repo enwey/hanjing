@@ -1,5 +1,5 @@
 <view class="page data-v-1973d3c1">
-  <hj-navbar title="评估结果" showBack="{{true}}" bindback="handleBack" />
+  <hj-navbar title="评估结果" showBack="{{true}}" />
   <view class="page-content data-v-1973d3c1">
     <view wx:if="{{isLoading}}" class="empty-state data-v-1973d3c1">
       <text class="empty-desc data-v-1973d3c1">正在加载评估结果...</text>

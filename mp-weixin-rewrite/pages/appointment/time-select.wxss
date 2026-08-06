@@ -7,16 +7,73 @@
   padding: 0 32rpx;
 }
 
+.state-card {
+  margin-top: 24rpx;
+  padding: 56rpx 32rpx;
+  border: 1rpx solid #e5e7eb;
+  border-radius: 24rpx;
+  background: #ffffff;
+  text-align: center;
+}
+
+.state-card--inline {
+  margin-top: 0;
+  padding: 40rpx 24rpx;
+}
+
+.state-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.state-desc {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #9ca3af;
+  line-height: 1.5;
+}
+
+.state-btn {
+  width: 200rpx;
+  margin: 28rpx auto 0;
+  padding: 0;
+  border-radius: 999rpx;
+  background: #3b6bf5;
+  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 72rpx;
+}
+
+.state-btn::after {
+  border: none;
+}
+
 .schedule-section {
   margin-bottom: 32rpx;
 }
 
 .schedule-date {
   display: block;
-  margin-bottom: 24rpx;
   font-size: 34rpx;
   font-weight: 600;
   color: #1f2937;
+}
+
+.schedule-date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.schedule-loading {
+  font-size: 24rpx;
+  color: #9ca3af;
 }
 
 .schedule-group {
@@ -62,6 +119,13 @@
   flex-wrap: wrap;
   gap: 16rpx;
   padding: 0 8rpx;
+}
+
+.slot-loading {
+  padding: 24rpx 8rpx 8rpx;
+  font-size: 26rpx;
+  color: #9ca3af;
+  text-align: center;
 }
 
 .slot {

@@ -1,7 +1,7 @@
 const { request } = require('../request');
 
-function getAssessments() {
-  return request({ url: '/assessments', method: 'GET', failMessage: '加载评估记录失败' });
+function getAssessments(query) {
+  return request({ url: '/assessments', method: 'GET', data: query || {}, failMessage: '加载评估记录失败' });
 }
 
 function getESSQuestions() {

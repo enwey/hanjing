@@ -1,4 +1,4 @@
-const distributionApi = require('../api/index');
+const distributionApi = require('../../../api/index');
 
 async function loadInviteShareInfo() {
   const results = await Promise.all([

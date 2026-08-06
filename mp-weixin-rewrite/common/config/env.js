@@ -1,15 +1,19 @@
 const accountInfo = (wx.getAccountInfoSync && wx.getAccountInfoSync()) || {};
 const miniProgram = accountInfo.miniProgram || {};
 const envVersion = miniProgram.envVersion || 'develop';
-const devApiHosts = ['localhost', '127.0.0.1'];
+const systemInfo = (wx.getSystemInfoSync && wx.getSystemInfoSync()) || {};
+const isDevtools = systemInfo.platform === 'devtools';
+const devApiHosts = isDevtools ? ['192.168.2.55', '127.0.0.1', 'localhost'] : ['192.168.2.55'];
+const forceLocalApi = true;
+const localApiBaseUrls = devApiHosts.map((host) => 'http://' + host + ':5005/api/v1');
 
 const apiBaseUrlMap = {
-  develop: devApiHosts.map((host) => 'http://' + host + ':5005/api/v1'),
+  develop: localApiBaseUrls,
   trial: 'https://test-api.hanjing.com/v1',
   release: 'https://api.hanjing.com/v1',
 };
 
-const apiBaseUrl = apiBaseUrlMap[envVersion] || apiBaseUrlMap.release;
+const apiBaseUrl = forceLocalApi ? localApiBaseUrls : apiBaseUrlMap[envVersion] || apiBaseUrlMap.release;
 
 module.exports = {
   envVersion,

@@ -1,4 +1,4 @@
-const inviteService = require('../../../services/invite-service');
+const inviteService = require('./invite-service');
 
 const POSTER_CANVAS_ID = 'distributionInvitePoster';
 const POSTER_WIDTH = 660;
