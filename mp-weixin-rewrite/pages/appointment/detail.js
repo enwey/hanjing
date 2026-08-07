@@ -1,5 +1,6 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
+const subscribe = require('../../common/utils/subscribe');
 
 const APPOINTMENT_STATUS_MAP = {
   pending_payment: '待支付',
@@ -15,11 +16,8 @@ const APPOINTMENT_STATUS_MAP = {
 
 const APPOINTMENT_TYPE_MAP = {
   first: '初诊',
-  first_visit: '初诊',
-  follow_up: '复诊',
-  review: '复查',
-  consultation: '问诊',
-  treatment: '治疗',
+  followup: '复诊',
+  adjust: '调整',
 };
 
 function unwrapObject(response) {
@@ -178,7 +176,7 @@ Page({
         patientName: appointment.patientName || '--',
         storeName: store.name || '',
         storeAddress: store.address || '',
-        appointmentTypeLabel: APPOINTMENT_TYPE_MAP[appointment.type] || appointment.type || '',
+        appointmentTypeLabel: APPOINTMENT_TYPE_MAP[String(appointment.type || '').trim()] || '门诊预约',
         symptomDesc: appointment.symptomDesc || '',
         cancelReason: appointment.cancelReason || '',
         requireDeposit: Boolean(appointment.requireDeposit),
@@ -277,6 +275,7 @@ Page({
     }
 
     try {
+      await subscribe.requestSubscribe({ force: true });
       await api.cancelAppointment(this.data.appointmentId, '用户主动取消');
       wx.showToast({ title: '已取消', icon: 'success' });
       await this.loadPage();

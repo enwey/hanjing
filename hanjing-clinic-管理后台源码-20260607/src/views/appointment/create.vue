@@ -46,6 +46,11 @@ const getLocalTodayStr = () => {
 const selectedDate = ref(getLocalTodayStr())
 const selectedSlot = ref('09:00-09:30')
 const visitType = ref('初诊')
+const visitTypeValueMap: Record<string, string> = {
+  初诊: 'first',
+  复诊: 'followup',
+  调整: 'adjust'
+}
 const consultFee = ref('0.00')
 const depositAmount = ref('0.00')
 const remarks = ref('')
@@ -58,6 +63,7 @@ const promoterOptions = ref<Array<{ label: string; value: string }>>([])
 const requireDeposit = ref(false)
 const stores = ref<any[]>([])
 const doctors = ref<any[]>([])
+const bookingInterval = ref(30)
 
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth())
@@ -141,6 +147,8 @@ const fetchSettings = async () => {
     if (res.code === 200 && res.data) {
       requireDeposit.value = res.data.require_deposit === true || res.data.require_deposit === 'true'
       depositAmount.value = (Number(res.data.deposit_amount || 0) / 100).toFixed(2)
+      const interval = Number(res.data.booking_interval || 30)
+      bookingInterval.value = Number.isFinite(interval) && interval > 0 ? interval : 30
     }
   } catch (error) {
     console.error('获取系统设置失败:', error)
@@ -188,10 +196,10 @@ function setSelectedPatientFromRecord(record: any) {
 }
 
 onMounted(async () => {
+  await fetchSettings()
   await fetchStoresAndDoctors()
   fetchProducts()
   fetchPromoters()
-  fetchSettings()
   if (isReschedule.value) {
     try {
       const res: any = await request.get(`/api/admin/appointments`)
@@ -385,15 +393,16 @@ function handleRemovePatient() {
 
 const timeSlots = ref<Array<{ time: string; status: string; label: string; period: string; booked?: number; total?: number }>>([])
 
-function buildSlots(start: string, end: string) {
+function buildSlots(start: string, end: string, intervalMinutes = 30) {
   const result: string[] = []
   const [startHour, startMinute] = start.slice(0, 5).split(':').map(Number)
   const [endHour, endMinute] = end.slice(0, 5).split(':').map(Number)
+  const safeInterval = Number.isFinite(intervalMinutes) && intervalMinutes > 0 ? intervalMinutes : 30
   const cursor = new Date(2026, 0, 1, startHour, startMinute)
   const endDate = new Date(2026, 0, 1, endHour, endMinute)
   while (cursor < endDate) {
     const startStr = `${String(cursor.getHours()).padStart(2, '0')}:${String(cursor.getMinutes()).padStart(2, '0')}`
-    cursor.setMinutes(cursor.getMinutes() + 30)
+    cursor.setMinutes(cursor.getMinutes() + safeInterval)
     if (cursor > endDate) {
       const endStr = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
       result.push(`${startStr}-${endStr}`)
@@ -426,7 +435,7 @@ async function fetchTimeSlots() {
 
     timeSlots.value = rows.flatMap((row: any) => {
       const peoplePerSlot = Number(row.people_per_slot || 1)
-      return buildSlots(row.start_time || '09:00:00', row.end_time || '12:00:00').map(time => {
+      return buildSlots(row.start_time || '09:00:00', row.end_time || '12:00:00', bookingInterval.value).map(time => {
         const bookedCount = doctorAppts.filter((appt: any) => appt.appointment_time === time).length
         const remaining = Math.max(0, peoplePerSlot - bookedCount)
         return {
@@ -513,7 +522,7 @@ async function handleCreate() {
         date: dateStr,
         period: period,
         time: selectedSlot.value,
-        type: visitType.value === '初诊' ? 'first' : 'followup',
+        type: visitTypeValueMap[visitType.value] || 'first',
         symptom_desc: remarks.value,
         consult_fee: parsedConsultFee,
         deposit_amount: parsedDepositAmount
@@ -957,10 +966,11 @@ async function submitCheckout() {
       <div class="panel-body">
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">初诊/复诊</label>
-            <t-select v-model="visitType" placeholder="初诊/复诊">
+            <label class="form-label">预约类型</label>
+            <t-select v-model="visitType" placeholder="预约类型">
               <t-option value="初诊" label="初诊" />
               <t-option value="复诊" label="复诊" />
+              <t-option value="调整" label="调整" />
             </t-select>
           </div>
           <div class="form-group">

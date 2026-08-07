@@ -12,6 +12,10 @@ function getTreatmentRecords(query) {
   return request({ url: '/treatment/records', method: 'GET', data: query, failMessage: '加载治疗记录列表失败' });
 }
 
+function getPatientDevice(query) {
+  return request({ url: '/treatment/device', method: 'GET', data: query, failMessage: '加载阻鼾器信息失败' });
+}
+
 function getSleepReport(query) {
   return request({ url: '/treatment/sleep-report', method: 'GET', data: query, failMessage: '加载睡眠报告失败' });
 }
@@ -48,6 +52,7 @@ module.exports = {
   getTimeline,
   getTreatmentRecord,
   getTreatmentRecords,
+  getPatientDevice,
   getSleepReport,
   getDeviceAdjustments,
   getDeviceMaintenance,

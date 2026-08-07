@@ -19,10 +19,51 @@ import {
   verifyPassword,
   formatShanghaiDate
 } from '../helpers.js';
+import { sendWechatSubscribeMessage } from '../wechatSubscribe.js';
+import {
+  allowDevMockWechatPay,
+  closeOrderByOutTradeNo,
+  createMicroPay,
+  createNativePayment,
+  createWechatRefund,
+  getMissingWechatPayConfig,
+  queryOrderByOutTradeNo
+} from '../wechatPay.js';
 
 const app = express.Router();
 const PAID_ORDER_STATUSES = ['paid', 'shipping', 'shipped', 'processing', 'completed'];
 const PAID_ORDER_STATUSES_SQL = PAID_ORDER_STATUSES.map(status => `'${status}'`).join(', ');
+const APPOINTMENT_TYPES = new Set(['first', 'followup', 'adjust']);
+
+const normalizeAppointmentType = (type) => {
+  const value = String(type || 'first').trim();
+  return APPOINTMENT_TYPES.has(value) ? value : null;
+};
+
+async function getBookingIntervalMinutes() {
+  const row = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_interval'`);
+  const interval = Number(row?.key_value || 30);
+  return Number.isFinite(interval) && interval > 0 ? interval : 30;
+}
+
+function buildScheduleSlots(schedule, intervalMinutes = 30) {
+  const startParts = String(schedule.start_time || '').slice(0, 5).split(':').map(Number);
+  const endParts = String(schedule.end_time || '').slice(0, 5).split(':').map(Number);
+  const startMins = (startParts[0] || 0) * 60 + (startParts[1] || 0);
+  const endMins = (endParts[0] || 0) * 60 + (endParts[1] || 0);
+  if (endMins <= startMins) return [];
+  const safeInterval = Number.isFinite(Number(intervalMinutes)) && Number(intervalMinutes) > 0 ? Number(intervalMinutes) : 30;
+  const slots = [];
+  for (let slotStart = startMins; slotStart < endMins; slotStart += safeInterval) {
+    const slotEnd = Math.min(slotStart + safeInterval, endMins);
+    const startH = Math.floor(slotStart / 60);
+    const startM = slotStart % 60;
+    const endH = Math.floor(slotEnd / 60);
+    const endM = slotEnd % 60;
+    slots.push(`${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}-${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
+  }
+  return slots;
+}
 
 const formatDate = (dateVal) => {
   if (!dateVal) return '';
@@ -34,6 +75,31 @@ const formatDate = (dateVal) => {
   }
   return String(dateVal).slice(0, 10);
 };
+
+function normalizePayMethod(method) {
+  const value = String(method || 'wechat').trim();
+  return ['wechat', 'wechat_native', 'wechat_micropay', 'cash', 'bank'].includes(value) ? value : 'wechat';
+}
+
+async function finalizeAdminPaidOrder(order, paymentPayload = null) {
+  if (!order || order.status !== 'pending') return order;
+  let address = {};
+  try {
+    address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
+  } catch (error) {}
+  const deliveryMethod = address.deliveryMethod === 'online' || order.type === 'online' ? 'online' : 'pickup';
+  const nextStatus = deliveryMethod === 'online' ? 'shipping' : 'paid';
+  await run(
+    `UPDATE orders
+     SET status = ?,
+         pay_at = CURRENT_TIMESTAMP,
+         wechat_transaction_id = COALESCE(?, wechat_transaction_id),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = ? AND status = 'pending'`,
+    [nextStatus, paymentPayload?.transaction_id || null, order.id]
+  );
+  return get(`SELECT * FROM orders WHERE id = ?`, [order.id]);
+}
 
 const buildTreatmentDeviceSnapshot = (product) => ({
   id: product.id,
@@ -1177,6 +1243,10 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       if (!nextSchedule) {
         return res.status(400).json({ code: 400, message: '目标日期没有医生排班' });
       }
+      const bookingInterval = await getBookingIntervalMinutes();
+      if (!buildScheduleSlots(nextSchedule, bookingInterval).includes(nextTime)) {
+        return res.status(400).json({ code: 400, message: '目标时段不在可约时段内' });
+      }
       // Allow overbooking in admin panel, bypass capacity checks
       /*
       if (nextSchedule.booked_slots >= nextSchedule.total_slots && Number(nextSchedule.id) !== Number(appt.schedule_id)) {
@@ -1238,6 +1308,22 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
         );
       });
       await logAdminAction(req.user.id, 'reschedule_appointment', 'appointment', appt.id, { nextDate, nextTime, nextDoctorId, nextStoreId });
+      setImmediate(() => {
+        sendWechatSubscribeMessage({
+          userId: appt.user_id,
+          event: 'appointment_changed',
+          businessId: `admin_appointment_changed:${appt.id}:${nextDate}:${nextTime}`,
+          page: `pages/appointment/detail/index?id=${appt.id}`,
+          payload: {
+            appointmentNo: appt.appointment_no,
+            appointmentTime: `${nextDate} ${nextTime}`,
+            doctorName: doctorObj ? doctorObj.name : appt.doctor_name,
+            storeName: storeObj ? storeObj.name : appt.store_name,
+            status: '已改期',
+            remark: appt.appointment_no
+          }
+        });
+      });
       return res.json({ code: 200, message: '预约改约成功' });
     }
 
@@ -1301,6 +1387,10 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
   if (!patient_id || !store_id || !doctor_id || !date || !time) {
     return res.status(400).json({ code: 400, message: '必填参数缺失' });
   }
+  const appointmentType = normalizeAppointmentType(type);
+  if (!appointmentType) {
+    return res.status(400).json({ code: 400, message: '预约类型无效' });
+  }
 
   if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(store_id)) {
     return res.status(403).json({ code: 403, message: '您无权在该门店创建预约' });
@@ -1322,6 +1412,10 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
     );
     if (!schedule) {
       return res.status(400).json({ code: 400, message: '所选医生当天没有对应门店和时段排班' });
+    }
+    const bookingInterval = await getBookingIntervalMinutes();
+    if (!buildScheduleSlots(schedule, bookingInterval).includes(time)) {
+      return res.status(400).json({ code: 400, message: '所选时段不在可约时段内' });
     }
     // Allow overbooking in admin panel, bypass capacity and conflict checks
     /*
@@ -1365,7 +1459,7 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
         schedule_id, 
         date, 
         time, 
-        type || 'first', 
+        appointmentType, 
         initialStatus,
         symptom_desc || '',
         doctorObj ? doctorObj.name : '',
@@ -1389,6 +1483,22 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
     });
 
     res.json({ code: 200, message: '新建预约成功', data: { appointment_no, id: result.id, status: initialStatus } });
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: user_id,
+        event: 'appointment_created',
+        businessId: `admin_appointment_created:${result.id}`,
+        page: `pages/appointment/detail/index?id=${result.id}`,
+        payload: {
+          appointmentNo: appointment_no,
+          appointmentTime: `${date} ${time}`,
+          doctorName: doctorObj ? doctorObj.name : '',
+          storeName: storeObj ? storeObj.name : '',
+          status: initialStatus === 'pending_payment' ? '待支付' : '待就诊',
+          remark: appointment_no
+        }
+      });
+    });
   } catch (error) {
     console.error('Failed to create appointment:', error);
     res.status(500).json({ code: 500, message: '新建预约失败' });
@@ -2521,6 +2631,22 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
     });
 
     await logAdminAction(req.user.id, 'complete_consultation', 'appointment', id, result);
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: appt.user_id,
+        event: 'appointment_status',
+        businessId: `appointment_completed:${id}`,
+        page: `pages/appointment/detail/index?id=${id}`,
+        payload: {
+          appointmentNo: appt.appointment_no,
+          appointmentTime: `${formatDate(appt.appointment_date)} ${appt.appointment_time}`,
+          doctorName: appt.doctor_name,
+          storeName: appt.store_name,
+          status: '已完成',
+          remark: '病历和医嘱已同步'
+        }
+      });
+    });
     res.json({ code: 200, message: '接诊已完成', data: result });
   } catch (error) {
     console.error('Complete consultation error:', error);
@@ -4236,6 +4362,20 @@ app.post('/api/admin/orders/:id/notify', authenticateToken, async (req, res) => 
       );
     });
     await logAdminAction(req.user.id, 'notify_order_arrival', 'order', id, { orderNo: order.order_no });
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: order.user_id,
+        event: 'order_status',
+        businessId: `order_arrival:${id}`,
+        page: `pages/order/detail/index?id=${id}`,
+        payload: {
+          orderNo: order.order_no,
+          status: '已到店',
+          storeName: addr.storeName || '',
+          remark: '商品已到店，可到店自提'
+        }
+      });
+    });
 
     res.json({ code: 200, message: '到货自提通知已成功推送给患者！' });
   } catch (error) {
@@ -4318,6 +4458,26 @@ app.put('/api/admin/orders/:id/refund', authenticateToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '订单已退款，不能重复审批' });
     }
 
+    let wechatRefundResult = null;
+    let outRefundNo = '';
+    if (approve && Number(order.pay_amount || 0) > 0) {
+      outRefundNo = `RF${String(order.order_no || id).replace(/\W/g, '').slice(0, 24)}${Date.now().toString().slice(-8)}`;
+      const missingPayConfig = await getMissingWechatPayConfig();
+      if (missingPayConfig.length > 0 && !allowDevMockWechatPay()) {
+        return res.status(503).json({ code: 503, message: `微信支付配置未完成：${missingPayConfig.join(', ')}` });
+      }
+      if (missingPayConfig.length === 0) {
+        wechatRefundResult = await createWechatRefund({
+          transactionId: order.wechat_transaction_id,
+          outTradeNo: order.order_no,
+          outRefundNo,
+          reason: '后台审核退款',
+          refundAmount: order.pay_amount,
+          totalAmount: order.pay_amount
+        });
+      }
+    }
+
     await transaction(async (conn) => {
       let addr = {};
       try {
@@ -4327,8 +4487,26 @@ app.put('/api/admin/orders/:id/refund', authenticateToken, async (req, res) => {
         ? addr.refund_from_status
         : (order.type === 'online' ? 'shipping' : 'paid');
       delete addr.refund_from_status;
-      const status = approve ? 'refunded' : restoreStatus;
-      await conn.execute(`UPDATE orders SET status = ?, shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [status, JSON.stringify(addr), id]);
+      const refundCompleted = approve && (!wechatRefundResult || wechatRefundResult.status === 'SUCCESS');
+      const status = approve ? (refundCompleted ? 'refunded' : 'refunding') : restoreStatus;
+      await conn.execute(
+        `UPDATE orders
+         SET status = ?,
+             shipping_address = ?,
+             wechat_refund_id = COALESCE(?, wechat_refund_id),
+             wechat_refund_no = COALESCE(?, wechat_refund_no),
+             refund_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE refund_at END,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [
+          status,
+          JSON.stringify(addr),
+          wechatRefundResult?.refund_id || null,
+          wechatRefundResult?.out_refund_no || outRefundNo || null,
+          refundCompleted,
+          id
+        ]
+      );
 
       if (approve) {
         const items = await query('SELECT oi.*, p.category FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = ?', [id]);
@@ -4373,6 +4551,35 @@ app.put('/api/admin/orders/:id/refund', authenticateToken, async (req, res) => {
       );
     });
     await logAdminAction(req.user.id, approve ? 'approve_refund' : 'reject_refund', 'order', id, { orderNo: order.order_no });
+    setImmediate(() => {
+      const refundDetailPage = order.appointment_id
+        ? `pages/appointment/detail/index?id=${order.appointment_id}`
+        : `pages/order/detail/index?id=${id}`;
+      sendWechatSubscribeMessage({
+        userId: order.user_id,
+        event: 'refund_result',
+        businessId: `order_refund_result_${approve ? 'approved' : 'rejected'}:${id}`,
+        page: refundDetailPage,
+        payload: {
+          orderNo: order.order_no,
+          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
+          status: approve ? '退款成功' : '退款失败',
+          time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          remark: approve ? '退款审核已通过' : '退款申请未通过'
+        }
+      });
+      sendWechatSubscribeMessage({
+        userId: order.user_id,
+        event: 'order_status',
+        businessId: `order_refund_${approve ? 'approved' : 'rejected'}:${id}`,
+        page: refundDetailPage,
+        payload: {
+          orderNo: order.order_no,
+          status: approve ? '退款通过' : '退款驳回',
+          remark: approve ? '退款审核已通过' : '退款申请未通过'
+        }
+      });
+    });
     res.json({ code: 200, message: approve ? '退款审批已通过，资金已原路退回' : '已拒绝退款申请' });
   } catch (error) {
     console.error(error);
@@ -4796,6 +5003,34 @@ app.put('/api/admin/distribution/withdraws/:id/status', authenticateToken, async
     });
 
     await logAdminAction(req.user.id, approve ? 'approve_withdraw' : 'reject_withdraw', 'withdraw', id, { remark });
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: record.user_id,
+        event: 'withdraw_result',
+        businessId: `withdraw_${approve ? 'approved' : 'rejected'}:${id}`,
+        page: `pages/distribution/withdraw/index?id=${id}`,
+        payload: {
+          amount: `¥${((approve ? record.actual_amount : record.amount) / 100).toFixed(2)}`,
+          status: approve ? '已通过' : '已驳回',
+          time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          remark: remark || (approve ? '请关注到账情况' : '金额已退回余额')
+        }
+      });
+      if (approve) {
+        sendWechatSubscribeMessage({
+          userId: record.user_id,
+          event: 'withdraw_paid',
+          businessId: `withdraw_paid:admin:${id}`,
+          page: `pages/distribution/withdraw/index?id=${id}`,
+          payload: {
+            amount: `¥${(Number(record.actual_amount || record.amount || 0) / 100).toFixed(2)}`,
+            status: '已到账',
+            time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            remark: remark || '提现已到账'
+          }
+        });
+      }
+    });
 
     res.json({ code: 200, message: approve ? '提现审批通过，打款中' : '已驳回提现申请' });
   } catch (error) {
@@ -5940,15 +6175,20 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
     } else if (status === 'processing' || status === 'paid') {
       orderType = 'offline';
     }
-    const orderStatus = status === 'processing'
+    const normalizedPayMethod = normalizePayMethod(pay_method);
+    const isDeferredWechatPay = ['wechat_native', 'wechat_micropay'].includes(normalizedPayMethod);
+    const orderStatus = isDeferredWechatPay
+      ? 'pending'
+      : status === 'processing'
       ? 'processing'
       : orderType === 'online'
         ? 'shipping'
         : 'paid';
+    const payAtValue = isDeferredWechatPay ? null : new Date();
     const orderId = await transaction(async (conn) => {
       const [orderResult] = await conn.execute(
         `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, shipping_address)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           order_no,
           user_id,
@@ -5957,7 +6197,8 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
           discount,
           coupon_id || null,
           calculatedPayAmount,
-          pay_method || 'wechat',
+          normalizedPayMethod,
+          payAtValue,
           orderStatus,
           shipping_address ? (typeof shipping_address === 'string' ? shipping_address : JSON.stringify(shipping_address)) : JSON.stringify({ receiver: patient.name, phone: patient.phone, province: '广东省', city: '深圳市', district: '到店自提', detail: '到店自提', deliveryMethod: 'pickup' })
         ]
@@ -6104,6 +6345,165 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
 });
 
 // 全局模糊搜索 API (支持预约单、患者姓名/电话、订单号)
+app.post('/api/admin/pay/native', authenticateToken, async (req, res) => {
+  const { orderId } = req.body;
+  try {
+    const order = await get(`SELECT * FROM orders WHERE id = ?`, [orderId]);
+    if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (order.status !== 'pending') {
+      return res.status(400).json({ code: 400, message: '订单不是待支付状态' });
+    }
+    const missingPayConfig = await getMissingWechatPayConfig();
+    if (missingPayConfig.length > 0) {
+      if (!allowDevMockWechatPay()) {
+        return res.status(503).json({ code: 503, message: `微信支付配置未完成：${missingPayConfig.join(', ')}` });
+      }
+      const paidOrder = await finalizeAdminPaidOrder(order, { transaction_id: `MOCK${Date.now()}` });
+      return res.json({
+        code: 200,
+        message: '开发环境模拟Native支付',
+        data: {
+          orderId: order.id,
+          orderNo: order.order_no,
+          payAmount: order.pay_amount,
+          mockPayment: true,
+          paid: true,
+          order: paidOrder,
+          codeUrl: `mock://wechat-pay/native/${order.order_no}`,
+          qrCodeImageUrl: ''
+        }
+      });
+    }
+    const result = await createNativePayment({
+      subject: order.order_no,
+      amount: order.pay_amount,
+      outTradeNo: order.order_no
+    });
+    res.json({
+      code: 200,
+      message: 'success',
+      data: {
+        orderId: order.id,
+        orderNo: order.order_no,
+        payAmount: order.pay_amount,
+        codeUrl: result.code_url,
+        qrCodeImageUrl: `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(result.code_url)}`
+      }
+    });
+  } catch (error) {
+    console.error('Create native payment failed:', error);
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '生成微信支付二维码失败' });
+  }
+});
+
+app.post('/api/admin/pay/micropay', authenticateToken, async (req, res) => {
+  const { orderId, authCode } = req.body;
+  try {
+    const order = await get(`SELECT * FROM orders WHERE id = ?`, [orderId]);
+    if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (order.status !== 'pending') {
+      return res.status(400).json({ code: 400, message: '订单不是待支付状态' });
+    }
+    const cleanAuthCode = String(authCode || '').trim();
+    if (!/^\d{10,32}$/.test(cleanAuthCode)) {
+      return res.status(400).json({ code: 400, message: '付款码格式不正确' });
+    }
+    const missingPayConfig = await getMissingWechatPayConfig('micropay');
+    if (missingPayConfig.length > 0) {
+      if (!allowDevMockWechatPay()) {
+        return res.status(503).json({ code: 503, message: `微信支付配置未完成：${missingPayConfig.join(', ')}` });
+      }
+      const paidOrder = await finalizeAdminPaidOrder(order, { transaction_id: `MOCK${Date.now()}` });
+      return res.json({ code: 200, message: '开发环境模拟付款成功', data: { order: paidOrder, tradeState: 'SUCCESS', mockPayment: true } });
+    }
+    const result = await createMicroPay({
+      subject: order.order_no,
+      amount: order.pay_amount,
+      outTradeNo: order.order_no,
+      authCode: cleanAuthCode
+    });
+    const tradeState = result.trade_state || result.status || '';
+    if (tradeState === 'SUCCESS' || result.success_time || result.transaction_id) {
+      const paidOrder = await finalizeAdminPaidOrder(order, result);
+      return res.json({ code: 200, message: '付款成功', data: { order: paidOrder, tradeState: 'SUCCESS' } });
+    }
+    res.json({ code: 200, message: '支付处理中', data: { order, tradeState: tradeState || 'USERPAYING', raw: result } });
+  } catch (error) {
+    console.error('Micropay failed:', error);
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '付款码支付失败' });
+  }
+});
+
+app.get('/api/admin/pay/orders/:id/status', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    let order = await get(`SELECT * FROM orders WHERE id = ?`, [id]);
+    if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (order.status === 'pending' && ['wechat_native', 'wechat_micropay'].includes(order.pay_method)) {
+      const missingPayConfig = await getMissingWechatPayConfig();
+      if (missingPayConfig.length === 0) {
+        try {
+          const payState = await queryOrderByOutTradeNo(order.order_no);
+          if (payState.trade_state === 'SUCCESS') {
+            order = await finalizeAdminPaidOrder(order, payState);
+          }
+        } catch (syncError) {
+          console.warn('Sync wechat pay status failed:', syncError.message || syncError);
+        }
+      }
+    }
+    res.json({
+      code: 200,
+      data: {
+        orderId: order.id,
+        orderNo: order.order_no,
+        status: order.status,
+        payMethod: order.pay_method,
+        payAt: order.pay_at,
+        transactionId: order.wechat_transaction_id || ''
+      }
+    });
+  } catch (error) {
+    console.error('Get pay status failed:', error);
+    res.status(500).json({ code: 500, message: '获取支付状态失败' });
+  }
+});
+
+app.post('/api/admin/pay/orders/:id/cancel', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const order = await get(`SELECT * FROM orders WHERE id = ?`, [id]);
+    if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (order.status !== 'pending') {
+      return res.status(400).json({ code: 400, message: '只能取消待支付订单' });
+    }
+    if (['wechat_native', 'wechat_micropay'].includes(order.pay_method)) {
+      const missingPayConfig = await getMissingWechatPayConfig();
+      if (missingPayConfig.length === 0) {
+        try {
+          await closeOrderByOutTradeNo(order.order_no);
+        } catch (closeError) {
+          console.warn('Close wechat pay order failed:', closeError.message || closeError);
+        }
+      }
+    }
+    await transaction(async (conn) => {
+      await conn.execute(`UPDATE orders SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [id]);
+      const items = await query(`SELECT * FROM order_items WHERE order_id = ?`, [id]);
+      for (const item of items) {
+        await conn.execute(
+          `UPDATE products SET stock = stock + ?, sales_count = GREATEST(0, sales_count - ?) WHERE id = ?`,
+          [item.quantity, item.quantity, item.product_id]
+        );
+      }
+    });
+    res.json({ code: 200, message: '订单已取消' });
+  } catch (error) {
+    console.error('Cancel pay order failed:', error);
+    res.status(500).json({ code: 500, message: '取消支付订单失败' });
+  }
+});
+
 app.get('/api/admin/global-search', authenticateToken, async (req, res) => {
   const { q } = req.query;
   if (!q) {
@@ -6277,6 +6677,14 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
             throw err;
           }
           strVal = String(days);
+        } else if (key === 'booking_interval') {
+          const minutes = Number(val);
+          if (!Number.isInteger(minutes) || minutes <= 0 || minutes > 240) {
+            const err = new Error('预约时段间隔需为1-240之间的整数分钟');
+            err.statusCode = 400;
+            throw err;
+          }
+          strVal = String(minutes);
         }
         await conn.execute(
           'INSERT INTO system_settings (key_name, key_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE key_value = ?',

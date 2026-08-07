@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const subscribe = require('../../../common/utils/subscribe');
 
 function unwrapObject(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -103,6 +104,7 @@ Page({
       return;
     }
     try {
+      await subscribe.requestSubscribe({ force: true });
       await api.applyWithdraw(
         Math.round((parseFloat(this.data.withdrawAmountInput || '0') || 0) * 100),
         this.data.withdrawMethod,

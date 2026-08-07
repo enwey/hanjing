@@ -6,6 +6,7 @@ import { seedData } from './seed.js';
 import adminRouter from './routes/admin.js';
 import clientRouter from './routes/client.js';
 import { sendSystemAlert } from './alert-notifier.js';
+import { processRevisitReminders, processVisitReminders } from './wechatSubscribe.js';
 
 const app = express();
 const PORT = process.env.PORT || 5005;
@@ -13,6 +14,9 @@ const PORT = process.env.PORT || 5005;
 app.disable('x-powered-by');
 
 app.use(cors());
+app.use('/api/v1/appointments/pay-callback', express.raw({ type: 'application/json' }));
+app.use('/api/v1/orders/pay-callback', express.raw({ type: 'application/json' }));
+app.use('/api/v1/pay/refund-callback', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10mb' }));
 
 // Lightweight memory rate limiter to protect backend APIs
@@ -121,6 +125,8 @@ const startServer = async () => {
         await autoUpdateExpiredAppointments();
         await autoSettleDistributionCommissions();
         await autoProcessRefunds();
+        await processVisitReminders();
+        await processRevisitReminders();
       } catch (err) {
         console.error('Failed to run periodic background jobs:', err);
         sendSystemAlert('warning', 'Background Job Failed', err.message, err);

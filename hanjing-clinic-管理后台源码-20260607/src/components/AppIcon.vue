@@ -117,6 +117,8 @@ const aliases: Record<string, string> = {
   pickup: 'pickup',
   '🟢': 'wechat',
   wechat: 'wechat',
+  qrcode: 'qrcode',
+  scan: 'scan',
   '🔵': 'alipay',
   alipay: 'alipay',
   '🪙': 'coins',
@@ -366,6 +368,20 @@ const iconMap: Record<string, ShapeNode[]> = {
     { tag: 'circle', attrs: { cx: 10.2, cy: 11.4, r: 0.8 } },
     { tag: 'circle', attrs: { cx: 14.2, cy: 14.2, r: 0.8 } },
     { tag: 'circle', attrs: { cx: 17.6, cy: 14.2, r: 0.8 } }
+  ],
+  qrcode: [
+    { tag: 'rect', attrs: { x: 3, y: 3, width: 6, height: 6, rx: 1 } },
+    { tag: 'rect', attrs: { x: 15, y: 3, width: 6, height: 6, rx: 1 } },
+    { tag: 'rect', attrs: { x: 3, y: 15, width: 6, height: 6, rx: 1 } },
+    { tag: 'path', attrs: { d: 'M15 15h2v2h-2zM19 15h2v6h-6v-2h4zM11 3h2v4h-2zM11 11h4v2h-4zM11 17h2v4h-2z' } }
+  ],
+  scan: [
+    { tag: 'path', attrs: { d: 'M4 7V5a1 1 0 0 1 1-1h2' } },
+    { tag: 'path', attrs: { d: 'M17 4h2a1 1 0 0 1 1 1v2' } },
+    { tag: 'path', attrs: { d: 'M20 17v2a1 1 0 0 1-1 1h-2' } },
+    { tag: 'path', attrs: { d: 'M7 20H5a1 1 0 0 1-1-1v-2' } },
+    { tag: 'line', attrs: { x1: 4, y1: 12, x2: 20, y2: 12 } },
+    { tag: 'rect', attrs: { x: 8, y: 7, width: 8, height: 10, rx: 1 } }
   ],
   alipay: [
     { tag: 'circle', attrs: { cx: 12, cy: 12, r: 9 } },

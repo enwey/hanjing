@@ -1,5 +1,6 @@
 const api = require('../../../api/index');
 const navigation = require('../../../common/utils/navigation');
+const subscribe = require('../../../common/utils/subscribe');
 
 const ORDER_STATUS_LABEL_MAP = {
   pending: '冻结中',
@@ -97,11 +98,12 @@ Page({
     }
   },
 
-  openEntry(event) {
+  async openEntry(event) {
     const url = event.currentTarget.dataset.url;
     if (!url) {
       return;
     }
+    await subscribe.requestSubscribe();
     navigation.openPage(url);
   },
 });

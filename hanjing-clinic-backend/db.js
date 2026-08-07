@@ -127,6 +127,23 @@ export const autoSettleDistributionCommissions = async () => {
         );
       });
     }
+    for (const [distributorId, data] of Object.entries(grouped)) {
+      setImmediate(async () => {
+        const { sendWechatSubscribeMessage } = await import('./wechatSubscribe.js');
+        await sendWechatSubscribeMessage({
+          userId: data.userId,
+          event: 'commission_settled',
+          businessId: `commission_settled:auto:${data.ids.join('-')}`,
+          page: 'pages/distribution/center/index',
+          payload: {
+            amount: `¥${(data.total / 100).toFixed(2)}`,
+            status: '已到账',
+            time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            remark: `${data.ids.length}笔推广佣金已转为可提现余额`
+          }
+        });
+      });
+    }
     console.log(`[Commission Settle] Auto-settled commissions for ${Object.keys(grouped).length} distributors.`);
   } catch (error) {
     console.error('[Commission Settle] Auto settlement failed:', error);
@@ -136,7 +153,7 @@ export const autoSettleDistributionCommissions = async () => {
 export const autoProcessRefunds = async () => {
   try {
     const pendingRefunds = await query(
-      `SELECT id, pay_amount, user_id, order_no FROM orders
+      `SELECT id, appointment_id, pay_amount, user_id, order_no FROM orders
        WHERE status = 'refunding'
          AND pay_at <= DATE_SUB(NOW(), INTERVAL 3 DAY)`
     );
@@ -154,6 +171,27 @@ export const autoProcessRefunds = async () => {
            VALUES (?, '退款成功提醒', ?)`,
           [order.user_id, `您取消预约退回的 ¥${(order.pay_amount / 100).toFixed(2)} 已成功原路退回您的支付账户。`]
         );
+      });
+    }
+    for (const order of pendingRefunds) {
+      setImmediate(async () => {
+        const { sendWechatSubscribeMessage } = await import('./wechatSubscribe.js');
+        const detailPage = order.appointment_id
+          ? `pages/appointment/detail/index?id=${order.appointment_id}`
+          : `pages/order/detail/index?id=${order.id}`;
+        await sendWechatSubscribeMessage({
+          userId: order.user_id,
+          event: 'refund_result',
+          businessId: `refund_success:auto:${order.id}`,
+          page: detailPage,
+          payload: {
+            orderNo: order.order_no,
+            amount: `¥${(order.pay_amount / 100).toFixed(2)}`,
+            status: '退款成功',
+            time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            remark: '退款已原路退回'
+          }
+        });
       });
     }
     console.log(`[Refund Processor] Auto-refunded ${pendingRefunds.length} orders.`);
@@ -1008,6 +1046,11 @@ export const initDB = async () => {
       pay_at TIMESTAMP NULL,
       status VARCHAR(30) DEFAULT 'pending',
       appointment_id BIGINT UNSIGNED NULL,
+      wechat_transaction_id VARCHAR(64) DEFAULT NULL,
+      wechat_prepay_id VARCHAR(128) DEFAULT NULL,
+      wechat_refund_id VARCHAR(64) DEFAULT NULL,
+      wechat_refund_no VARCHAR(64) DEFAULT NULL,
+      refund_at TIMESTAMP NULL,
       shipping_address JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1017,6 +1060,21 @@ export const initDB = async () => {
   `);
   try {
     await query(`ALTER TABLE orders ADD COLUMN appointment_id BIGINT UNSIGNED NULL AFTER status`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE orders ADD COLUMN wechat_transaction_id VARCHAR(64) DEFAULT NULL AFTER appointment_id`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE orders ADD COLUMN wechat_prepay_id VARCHAR(128) DEFAULT NULL AFTER wechat_transaction_id`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE orders ADD COLUMN wechat_refund_id VARCHAR(64) DEFAULT NULL AFTER wechat_prepay_id`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE orders ADD COLUMN wechat_refund_no VARCHAR(64) DEFAULT NULL AFTER wechat_refund_id`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE orders ADD COLUMN refund_at TIMESTAMP NULL AFTER wechat_refund_no`);
   } catch (err) {}
   try {
     await query(`ALTER TABLE orders ADD COLUMN invoice_info JSON NULL DEFAULT NULL`);
@@ -1180,6 +1238,23 @@ export const initDB = async () => {
   try {
     await query(`ALTER TABLE user_notifications ADD COLUMN type VARCHAR(30) DEFAULT 'system' AFTER content`);
   } catch (err) {}
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS wechat_subscribe_logs (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED,
+      openid VARCHAR(64) NOT NULL,
+      event VARCHAR(50) NOT NULL,
+      template_id VARCHAR(128) NOT NULL,
+      business_id VARCHAR(128) DEFAULT '',
+      status VARCHAR(20) NOT NULL,
+      error_message VARCHAR(255),
+      sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_wechat_subscribe_user (user_id),
+      INDEX idx_wechat_subscribe_event_business (event, business_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `);
 
   // 27. live_rooms
   await query(`
@@ -1984,6 +2059,31 @@ export const initDB = async () => {
         status = VALUES(status)
     `);
     console.log('Ensured products 1-7 exist in database.');
+    await query(`
+      INSERT IGNORE INTO system_settings (key_name, key_value, description)
+      VALUES
+        ('wechat_template_appointment_created', '', '微信订阅消息模板ID：预约创建成功'),
+        ('wechat_template_appointment_paid', '', '微信订阅消息模板ID：预约支付成功'),
+        ('wechat_template_appointment_changed', '', '微信订阅消息模板ID：预约改期'),
+        ('wechat_template_appointment_status', '', '微信订阅消息模板ID：预约状态变更'),
+        ('wechat_template_visit_reminder', '', '微信订阅消息模板ID：就诊提醒'),
+        ('wechat_template_revisit_reminder', '', '微信订阅消息模板ID：复诊/调整提醒'),
+        ('wechat_template_order_status', '', '微信订阅消息模板ID：订单状态'),
+        ('wechat_template_withdraw_result', '', '微信订阅消息模板ID：提现结果'),
+        ('wechat_template_withdraw_paid', '', '微信订阅消息模板ID：提现到账'),
+        ('wechat_template_commission_settled', '', '微信订阅消息模板ID：佣金到账'),
+        ('wechat_template_refund_result', '', '微信订阅消息模板ID：退款结果'),
+        ('wechat_pay_app_id', '', '微信支付小程序AppID'),
+        ('wechat_pay_mch_id', '', '微信支付商户号'),
+        ('wechat_pay_serial_no', '', '微信支付商户API证书序列号'),
+        ('wechat_pay_private_key', '', '微信支付商户API私钥或私钥文件路径'),
+        ('wechat_pay_api_v3_key', '', '微信支付API v3密钥'),
+        ('wechat_pay_api_v2_key', '', '微信支付API v2密钥（付款码支付）'),
+        ('wechat_pay_notify_url', '', '微信支付商品订单回调地址'),
+        ('wechat_pay_appointment_notify_url', '', '微信支付预约订单回调地址'),
+        ('wechat_pay_refund_notify_url', '', '微信支付退款回调地址'),
+        ('wechat_pay_platform_cert', '', '微信支付平台证书或证书文件路径')
+    `);
   } catch (err) {
     console.error('Failed to ensure default products exist:', err);
   }

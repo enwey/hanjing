@@ -80,6 +80,17 @@ interface Appointment {
 
 const appointments = ref<Appointment[]>([])
 
+const appointmentTypeMap: Record<string, string> = {
+  first: '初诊',
+  followup: '复诊',
+  adjust: '调整'
+}
+
+const formatAppointmentType = (type?: string) => {
+  const key = String(type || '').trim()
+  return appointmentTypeMap[key] || '门诊预约'
+}
+
 const fetchStores = async () => {
   try {
     const res: any = await request.get('/api/admin/stores')
@@ -151,7 +162,7 @@ const fetchAppointments = async () => {
         return `${year}-${month}-${day}`;
       })() : '',
       time: item.appointment_time,
-      type: item.type === 'first' ? '初诊' : '复诊',
+      type: formatAppointmentType(item.type),
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
       status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' || item.status === 'called' ? 'waiting' : item.status === 'pending' ? 'pending' : item.status === 'pending_payment' ? 'pending_payment' : item.status === 'no_show' ? 'no_show' : 'cancelled',
       createdAt: item.created_at ? new Date(item.created_at).toLocaleString('zh-CN', { hour12: false }) : '',
@@ -297,7 +308,7 @@ async function handleExport() {
         escapeCsv(item.doctor_name),
         escapeCsv(item.appointment_date ? item.appointment_date.substring(0, 10) : ''),
         escapeCsv(item.appointment_time),
-        escapeCsv(item.type === 'first' ? '初诊' : '复诊'),
+        escapeCsv(formatAppointmentType(item.type)),
         escapeCsv(item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店'),
         escapeCsv(statusLabel)
       ]

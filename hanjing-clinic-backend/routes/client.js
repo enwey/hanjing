@@ -1,8 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
 import { query, get, run, transaction, autoUpdateExpiredAppointments } from '../db.js';
 import { generateUniquePatientNo } from '../patientNo.js';
 import {
@@ -20,8 +18,26 @@ import {
   formatShanghaiDate,
   addShanghaiDays
 } from '../helpers.js';
+import { getAllSubscribeTemplateIds, sendWechatSubscribeMessage } from '../wechatSubscribe.js';
+import {
+  allowDevMockWechatPay as serviceAllowDevMockWechatPay,
+  buildPaymentParams as serviceBuildPaymentParams,
+  createWechatRefund,
+  decryptWechatPayResource as serviceDecryptWechatPayResource,
+  getMissingWechatPayConfig as serviceGetMissingWechatPayConfig,
+  verifyWechatPayCallback
+} from '../wechatPay.js';
 
 const app = express.Router();
+const APPOINTMENT_TYPES = new Set(['first', 'followup', 'adjust']);
+const APPOINTMENT_SLOT_STATUSES = ['pending_payment', 'pending', 'confirmed', 'checked_in', 'arrived'];
+const APPOINTMENT_SLOT_STATUSES_SQL = APPOINTMENT_SLOT_STATUSES.map(status => `'${status}'`).join(', ');
+
+const normalizeAppointmentType = (type) => {
+  const value = String(type || 'first').trim();
+  return APPOINTMENT_TYPES.has(value) ? value : null;
+};
+
 const WECHAT_TOKEN_CACHE = {
   value: '',
   expiresAt: 0
@@ -786,18 +802,23 @@ function normalizeNumericId(raw) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function buildScheduleSlots(schedule) {
-  const startParts = String(schedule.start_time || '').split(':').map(Number);
-  const endParts = String(schedule.end_time || '').split(':').map(Number);
+async function getBookingIntervalMinutes() {
+  const row = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_interval'`);
+  const interval = Number(row?.key_value || 30);
+  return Number.isFinite(interval) && interval > 0 ? interval : 30;
+}
+
+function buildScheduleSlots(schedule, intervalMinutes = 30) {
+  const startParts = String(schedule.start_time || '').slice(0, 5).split(':').map(Number);
+  const endParts = String(schedule.end_time || '').slice(0, 5).split(':').map(Number);
   const startMins = (startParts[0] || 0) * 60 + (startParts[1] || 0);
   const endMins = (endParts[0] || 0) * 60 + (endParts[1] || 0);
-  const totalSlots = Number(schedule.total_slots || 0);
-  if (totalSlots <= 0 || endMins <= startMins) return [];
-  const slotDuration = Math.floor((endMins - startMins) / totalSlots);
+  if (endMins <= startMins) return [];
+  const safeInterval = Number.isFinite(Number(intervalMinutes)) && Number(intervalMinutes) > 0 ? Number(intervalMinutes) : 30;
   const slots = [];
-  for (let idx = 0; idx < totalSlots; idx++) {
-    const slotStart = startMins + idx * slotDuration;
-    const slotEnd = idx === totalSlots - 1 ? endMins : startMins + (idx + 1) * slotDuration;
+  let idx = 0;
+  for (let slotStart = startMins; slotStart < endMins; slotStart += safeInterval) {
+    const slotEnd = Math.min(slotStart + safeInterval, endMins);
     const startH = Math.floor(slotStart / 60);
     const startM = slotStart % 60;
     const endH = Math.floor(slotEnd / 60);
@@ -809,6 +830,7 @@ function buildScheduleSlots(schedule) {
       endTime: `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`,
       label: `${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}-${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
     });
+    idx++;
   }
   return slots;
 }
@@ -831,7 +853,7 @@ async function getAppointmentPayAmount(appt) {
   return apptDepositAmount + Number(appt.consult_fee || 0);
 }
 
-async function finalizePaidAppointment(conn, appt, userId) {
+async function finalizePaidAppointment(conn, appt, userId, paymentPayload = null) {
   const totalPayAmount = await getAppointmentPayAmount(appt);
   const depositProduct = await get(`SELECT id, name, image_url FROM products WHERE id = 8 LIMIT 1`);
   const resolvedUserId = userId || appt.user_id;
@@ -841,9 +863,9 @@ async function finalizePaidAppointment(conn, appt, userId) {
   );
   const orderNo = `OD${new Date().getFullYear()}${Date.now().toString().slice(-8)}${Math.floor(100 + Math.random() * 900)}`;
   const [result] = await conn.execute(
-    `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, appointment_id)
-     VALUES (?, ?, 'appointment_deposit', ?, 0, NULL, ?, 'wechat', CURRENT_TIMESTAMP, 'paid', ?)`,
-    [orderNo, resolvedUserId, totalPayAmount, totalPayAmount, appt.id]
+    `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, appointment_id, wechat_transaction_id, wechat_prepay_id)
+     VALUES (?, ?, 'appointment_deposit', ?, 0, NULL, ?, 'wechat', CURRENT_TIMESTAMP, 'paid', ?, ?, ?)`,
+    [orderNo, resolvedUserId, totalPayAmount, totalPayAmount, appt.id, paymentPayload?.transaction_id || null, paymentPayload?.prepay_id || null]
   );
   const orderId = result.insertId;
   await conn.execute(
@@ -866,6 +888,22 @@ async function finalizePaidAppointment(conn, appt, userId) {
     ]
   );
   await syncUserMembership(resolvedUserId, conn);
+  setImmediate(() => {
+    sendWechatSubscribeMessage({
+      userId: resolvedUserId,
+      event: 'appointment_paid',
+      businessId: `appointment_paid:${appt.id}`,
+      page: `pages/appointment/detail/index?id=${appt.id}`,
+      payload: {
+        appointmentNo: appt.appointment_no,
+        appointmentTime: `${formatDate(appt.appointment_date)} ${appt.appointment_time}`,
+        doctorName: appt.doctor_name,
+        storeName: appt.store_name,
+        status: '已支付',
+        remark: `金额 ¥${(totalPayAmount / 100).toFixed(2)}`
+      }
+    });
+  });
 }
 
 async function notifyAppointmentUser(userId, title, content) {
@@ -1015,7 +1053,7 @@ function decryptWechatPayResource(resource) {
   return JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8'));
 }
 
-async function finalizePaidProductOrder(conn, order) {
+async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
   let address = {};
   try {
     address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {});
@@ -1026,8 +1064,14 @@ async function finalizePaidProductOrder(conn, order) {
   const nextStatus = deliveryMethod === 'online' ? 'shipping' : 'paid';
 
   await conn.execute(
-    `UPDATE orders SET status = ?, pay_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending'`,
-    [nextStatus, order.id]
+    `UPDATE orders
+     SET status = ?,
+         pay_at = CURRENT_TIMESTAMP,
+         wechat_transaction_id = COALESCE(?, wechat_transaction_id),
+         wechat_prepay_id = COALESCE(?, wechat_prepay_id),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = ? AND status = 'pending'`,
+    [nextStatus, paymentPayload?.transaction_id || null, paymentPayload?.prepay_id || null, order.id]
   );
 
   await conn.execute(
@@ -1041,6 +1085,20 @@ async function finalizePaidProductOrder(conn, order) {
 
   await createPendingDistributionCommission(conn, order, order.user_id);
   await syncUserMembership(order.user_id, conn);
+  setImmediate(() => {
+    sendWechatSubscribeMessage({
+      userId: order.user_id,
+      event: 'order_status',
+      businessId: `order_paid:${order.id}`,
+      page: `pages/order/detail/index?id=${order.id}`,
+      payload: {
+        orderNo: order.order_no,
+        status: nextStatus === 'shipping' ? '待发货' : '待自提',
+        amount: `¥${(order.pay_amount / 100).toFixed(2)}`,
+        remark: nextStatus === 'shipping' ? '订单已支付，等待发货' : '订单已支付，请等待门店通知'
+      }
+    });
+  });
 }
 
 const DEFAULT_DISTRIBUTION_SETTLE_DAYS = 14;
@@ -1246,6 +1304,21 @@ async function settleEligibleDistributionCommissions(userId) {
         `您有 ${(total / 100).toFixed(2)} 元推广佣金已转为可提现余额。`
       ]
     );
+  });
+
+  setImmediate(() => {
+    sendWechatSubscribeMessage({
+      userId,
+      event: 'commission_settled',
+      businessId: `commission_settled:manual:${ids.join('-')}`,
+      page: 'pages/distribution/center/index',
+      payload: {
+        amount: `¥${(total / 100).toFixed(2)}`,
+        status: '已到账',
+        time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        remark: `${ids.length}笔推广佣金已转为可提现余额`
+      }
+    });
   });
 
   return total;
@@ -3732,6 +3805,7 @@ app.get('/api/v1/schedules/dates', async (req, res) => {
     const today = getShanghaiNow();
     const todayStr = formatShanghaiDate(today);
     const maxDateStr = formatShanghaiDate(addShanghaiDays(today, advanceDays));
+    const bookingInterval = await getBookingIntervalMinutes();
 
     const list = await query(
       `SELECT * FROM doctor_schedules
@@ -3746,7 +3820,7 @@ app.get('/api/v1/schedules/dates', async (req, res) => {
       const appts = await query(
         `SELECT schedule_id, appointment_time, COUNT(*) as count
          FROM appointments
-         WHERE schedule_id IN (${scheduleIds.join(',')}) AND status NOT IN ('cancelled', 'no_show')
+         WHERE schedule_id IN (${scheduleIds.join(',')}) AND status IN (${APPOINTMENT_SLOT_STATUSES_SQL})
          GROUP BY schedule_id, appointment_time`
       );
       appts.forEach(appt => {
@@ -3764,7 +3838,7 @@ app.get('/api/v1/schedules/dates', async (req, res) => {
 
       const apptsForSchedule = apptMap[t.id] || {};
       let availableCount = 0;
-      for (const slot of buildScheduleSlots(t)) {
+      for (const slot of buildScheduleSlots(t, bookingInterval)) {
         const [startH, startM] = slot.startTime.split(':').map(Number);
         const slotBookedCount = apptsForSchedule[slot.label] || 0;
         let status = slotBookedCount >= t.people_per_slot ? 'booked' : 'available';
@@ -3803,6 +3877,7 @@ app.get('/api/v1/schedules', async (req, res) => {
   try {
     const today = getShanghaiNow();
     const todayStr = formatShanghaiDate(today);
+    const bookingInterval = await getBookingIntervalMinutes();
 
     let list;
     if (startDate && endDate) {
@@ -3832,7 +3907,7 @@ app.get('/api/v1/schedules', async (req, res) => {
       const appts = await query(
         `SELECT schedule_id, appointment_time, COUNT(*) as count
          FROM appointments
-         WHERE schedule_id IN (${scheduleIds.join(',')}) AND status NOT IN ('cancelled', 'no_show')
+         WHERE schedule_id IN (${scheduleIds.join(',')}) AND status IN (${APPOINTMENT_SLOT_STATUSES_SQL})
          GROUP BY schedule_id, appointment_time`
       );
       appts.forEach(appt => {
@@ -3849,10 +3924,13 @@ app.get('/api/v1/schedules', async (req, res) => {
 
       const apptsForSchedule = apptMap[row.id] || {};
       let availableCount = 0;
-      for (const slot of buildScheduleSlots(row)) {
+      let availableCapacity = 0;
+      const scheduleSlots = buildScheduleSlots(row, bookingInterval);
+      const peoplePerSlot = Number(row.people_per_slot || 1);
+      for (const slot of scheduleSlots) {
         const [startH, startM] = slot.startTime.split(':').map(Number);
         const slotBookedCount = apptsForSchedule[slot.label] || 0;
-        let status = slotBookedCount >= row.people_per_slot ? 'booked' : 'available';
+        let status = slotBookedCount >= peoplePerSlot ? 'booked' : 'available';
         if (isToday) {
           if (startH < currentHour || (startH === currentHour && startM < currentMinute)) {
             status = 'disabled';
@@ -3860,13 +3938,15 @@ app.get('/api/v1/schedules', async (req, res) => {
         }
         if (status === 'available') {
           availableCount++;
+          availableCapacity += Math.max(0, peoplePerSlot - slotBookedCount);
         }
       }
 
-      const displayBookedSlots = row.total_slots - availableCount;
-      const displayStatus = (availableCount === 0) ? 'full' : row.status;
+      const displayTotalSlots = scheduleSlots.length * peoplePerSlot;
+      const displayBookedSlots = displayTotalSlots - availableCapacity;
+      const displayStatus = availableCapacity === 0 ? 'full' : row.status;
 
-      if (isToday && availableCount === 0) {
+      if (isToday && availableCapacity === 0) {
         return null;
       }
 
@@ -3878,10 +3958,10 @@ app.get('/api/v1/schedules', async (req, res) => {
         period: row.period,
         startTime: row.start_time,
         endTime: row.end_time,
-        totalSlots: row.total_slots,
+        totalSlots: displayTotalSlots,
         bookedSlots: displayBookedSlots,
         status: displayStatus,
-        peoplePerSlot: row.people_per_slot
+        peoplePerSlot
       };
     }).filter(Boolean);
 
@@ -3909,11 +3989,12 @@ app.get('/api/v1/schedules/:id/slots', async (req, res) => {
     const isToday = formatDate(t.date) === todayStr;
     const currentHour = today.getHours();
     const currentMinute = today.getMinutes();
+    const bookingInterval = await getBookingIntervalMinutes();
 
     const appts = await query(
       `SELECT appointment_time, COUNT(*) as count
        FROM appointments
-       WHERE schedule_id = ? AND status NOT IN ('cancelled', 'no_show')
+       WHERE schedule_id = ? AND status IN (${APPOINTMENT_SLOT_STATUSES_SQL})
        GROUP BY appointment_time`,
       [id]
     );
@@ -3923,7 +4004,7 @@ app.get('/api/v1/schedules/:id/slots', async (req, res) => {
     });
 
     const slots = [];
-    for (const slot of buildScheduleSlots(t)) {
+    for (const slot of buildScheduleSlots(t, bookingInterval)) {
       const [startH, startM] = slot.startTime.split(':').map(Number);
       const slotBookedCount = apptMap[slot.label] || 0;
       let status = slotBookedCount >= t.people_per_slot ? 'booked' : 'available';
@@ -3959,6 +4040,10 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
   if (!doctorId || !storeId || !scheduleId || !appointmentDate || !appointmentTime || !patientId) {
     return res.status(400).json({ code: 400, message: '预约关键信息缺失' });
   }
+  const appointmentType = normalizeAppointmentType(type);
+  if (!appointmentType) {
+    return res.status(400).json({ code: 400, message: '预约类型无效' });
+  }
 
   const symptomDescClean = symptomDesc ? escapeHtml(symptomDesc) : '';
 
@@ -3983,12 +4068,6 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
     );
     if (!patient) {
       return res.status(403).json({ code: 403, message: '无权使用该就诊人档案' });
-    }
-    if (patient.age !== null && patient.age < 18 && (type === 'device_fitting' || type === 'device_adjustment')) {
-      return res.status(400).json({
-        code: 400,
-        message: '本门诊定制式下颌前移阻鼾器仅适用于18岁以上发育成熟的成人。18岁以下儿童打鼾建议预约小儿耳鼻喉科进行腺样体筛查诊治。'
-      });
     }
     const storeObj = await get(`SELECT * FROM stores WHERE id = ? AND status = 'open'`, [resolvedStoreId]);
     if (!storeObj) {
@@ -4017,7 +4096,8 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
     }
 
     // Generate slots to validate appointmentTime
-    const validSlots = buildScheduleSlots(schedule).map(slot => slot.label);
+    const bookingInterval = await getBookingIntervalMinutes();
+    const validSlots = buildScheduleSlots(schedule, bookingInterval).map(slot => slot.label);
 
     if (!validSlots.includes(appointmentTime)) {
       return res.status(400).json({ code: 400, message: '所选预约时段不符合排班规则' });
@@ -4064,7 +4144,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       const [slotApptCountRows] = await conn.execute(
         `SELECT COUNT(*) as count
          FROM appointments
-         WHERE schedule_id = ? AND appointment_time = ? AND status NOT IN ('cancelled', 'no_show') FOR UPDATE`,
+         WHERE schedule_id = ? AND appointment_time = ? AND status IN (${APPOINTMENT_SLOT_STATUSES_SQL}) FOR UPDATE`,
         [schedule.id, appointmentTime]
       );
       const slotApptCount = slotApptCountRows && slotApptCountRows[0] ? slotApptCountRows[0].count : 0;
@@ -4086,7 +4166,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
           schedule.id,
           appointmentDate,
           appointmentTime,
-          type || 'first',
+          appointmentType,
           initialStatus,
           symptomDescClean,
           essId || null,
@@ -4124,6 +4204,24 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       createdAt: new Date().toISOString()
     };
 
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: req.user.id,
+        event: 'appointment_created',
+        businessId: `appointment_created:${result.id}`,
+        page: `pages/appointment/detail/index?id=${result.id}`,
+        payload: {
+          patientName: appointmentPatient?.name || '',
+          appointmentNo: apptNo,
+          appointmentTime: `${appointmentDate} ${appointmentTime}`,
+          doctorName: doctorObj.name || '',
+          storeName: storeObj.name || '',
+          status: initialStatus === 'pending_payment' ? '待支付' : '待就诊',
+          remark: apptNo
+        }
+      });
+    });
+
     res.json({
       code: 0,
       message: 'success',
@@ -4159,8 +4257,8 @@ app.post('/api/v1/appointments/:id/pay', authenticateWxToken, async (req, res) =
     const depositAmountRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'deposit_amount'`);
     const depositAmount = depositAmountRow ? parseInt(depositAmountRow.key_value, 10) : 5000;
     const totalPayAmount = (appt.deposit_amount !== undefined && appt.deposit_amount !== null ? appt.deposit_amount : (requireDeposit ? depositAmount : 0)) + (appt.consult_fee || 0);
-    const missingPayConfig = getMissingWechatPayConfig();
-    if (missingPayConfig.length > 0 && allowDevMockWechatPay()) {
+    const missingPayConfig = await serviceGetMissingWechatPayConfig();
+    if (missingPayConfig.length > 0 && serviceAllowDevMockWechatPay()) {
       return res.json({
         code: 0,
         message: '开发环境模拟支付',
@@ -4172,12 +4270,12 @@ app.post('/api/v1/appointments/:id/pay', authenticateWxToken, async (req, res) =
         }
       });
     }
-    const payParams = await buildPaymentParams(
+    const payParams = await serviceBuildPaymentParams(
       appt.appointment_no,
       totalPayAmount,
       appt.appointment_no,
       req.user.openid,
-      process.env.WECHAT_APPOINTMENT_PAY_NOTIFY_URL || ''
+      'appointment'
     );
 
     res.json({
@@ -4199,7 +4297,7 @@ app.post('/api/v1/appointments/:id/pay', authenticateWxToken, async (req, res) =
 app.post('/api/v1/appointments/:id/confirm-pay', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const canUseMockConfirm = allowDevMockWechatPay() && getMissingWechatPayConfig().length > 0;
+    const canUseMockConfirm = serviceAllowDevMockWechatPay() && (await serviceGetMissingWechatPayConfig()).length > 0;
     if (process.env.ALLOW_CLIENT_APPOINTMENT_PAY_CONFIRM !== 'true' && !canUseMockConfirm) {
       return res.status(403).json({ code: 403, message: '预约支付状态以微信支付回调为准' });
     }
@@ -4237,11 +4335,17 @@ app.post('/api/v1/appointments/:id/confirm-pay', authenticateWxToken, async (req
 
 app.post('/api/v1/appointments/pay-callback', async (req, res) => {
   try {
-    const resource = req.body && req.body.resource;
+    const body = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString('utf8')) : req.body;
+    const resource = body && body.resource;
     if (!resource) {
       return res.status(400).json({ code: 400, message: '缺少支付回调数据' });
     }
-    const payload = decryptWechatPayResource(resource);
+    const rawBody = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body || {});
+    const signatureOk = await verifyWechatPayCallback(req, rawBody);
+    if (!signatureOk) {
+      return res.status(401).json({ code: 'FAIL', message: '微信支付回调验签失败' });
+    }
+    const payload = await serviceDecryptWechatPayResource(resource);
     if (payload.trade_state !== 'SUCCESS') {
       return res.json({ code: 'SUCCESS', message: 'ignored' });
     }
@@ -4253,7 +4357,7 @@ app.post('/api/v1/appointments/pay-callback', async (req, res) => {
       return res.json({ code: 'SUCCESS', message: 'already processed' });
     }
     await transaction(async (conn) => {
-      await finalizePaidAppointment(conn, appt, appt.user_id);
+      await finalizePaidAppointment(conn, appt, appt.user_id, payload);
     });
     res.json({ code: 'SUCCESS', message: 'success' });
   } catch (error) {
@@ -4268,16 +4372,15 @@ app.get('/api/v1/settings/booking', async (req, res) => {
     const requireDepositRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'require_deposit'`);
     const depositAmountRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'deposit_amount'`);
     const cancelLimitRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_cancel_limit'`);
-    const subscribeTemplatesRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'appointment_subscribe_template_ids'`);
-    const subscribeTemplateIds = subscribeTemplatesRow && subscribeTemplatesRow.key_value
-      ? subscribeTemplatesRow.key_value.split(',').map(item => item.trim()).filter(Boolean)
-      : [];
+    const bookingInterval = await getBookingIntervalMinutes();
+    const subscribeTemplateIds = await getAllSubscribeTemplateIds();
 
     res.json({
       code: 0,
       data: {
         requireDeposit: requireDepositRow ? requireDepositRow.key_value === 'true' : false,
         depositAmount: depositAmountRow ? parseInt(depositAmountRow.key_value, 10) : 5000,
+        bookingInterval,
         cancelLimit: cancelLimitRow ? cancelLimitRow.key_value : '就诊前2小时',
         subscribeTemplateIds
       }
@@ -4632,6 +4735,8 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
       }
     }
 
+    let refundAmount = 0;
+    let refundOrder = null;
     await transaction(async (conn) => {
       await conn.execute(
         `UPDATE appointments SET status = 'cancelled', cancel_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
@@ -4639,10 +4744,12 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
       );
       await conn.execute(`UPDATE doctor_schedules SET booked_slots = GREATEST(0, booked_slots - 1) WHERE id = ?`, [appt.schedule_id]);
       const paidOrder = await get(
-        `SELECT id, pay_amount FROM orders WHERE appointment_id = ? AND user_id = ? AND type = 'appointment_deposit' AND status = 'paid' ORDER BY id DESC LIMIT 1`,
+        `SELECT id, order_no, pay_amount, wechat_transaction_id FROM orders WHERE appointment_id = ? AND user_id = ? AND type = 'appointment_deposit' AND status = 'paid' ORDER BY id DESC LIMIT 1`,
         [id, req.user.id]
       );
       if (paidOrder) {
+        refundAmount = Number(paidOrder.pay_amount || 0);
+        refundOrder = paidOrder;
         await conn.execute(
           `UPDATE orders SET status = 'refunding', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
           [paidOrder.id]
@@ -4662,7 +4769,84 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
       }
     });
 
+    if (refundOrder && refundAmount > 0) {
+      try {
+        const missingPayConfig = await serviceGetMissingWechatPayConfig();
+        if (missingPayConfig.length === 0) {
+          const outRefundNo = `RFAPT${String(refundOrder.id).padStart(8, '0')}${Date.now().toString().slice(-8)}`;
+          const refundResult = await createWechatRefund({
+            transactionId: refundOrder.wechat_transaction_id,
+            outTradeNo: appt.appointment_no,
+            outRefundNo,
+            reason: reasonClean || '预约取消退款',
+            refundAmount,
+            totalAmount: refundAmount
+          });
+          await run(
+            `UPDATE orders
+             SET status = 'refunded',
+                 wechat_refund_id = ?,
+                 wechat_refund_no = ?,
+                 refund_at = CURRENT_TIMESTAMP,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?`,
+            [refundResult.refund_id || null, refundResult.out_refund_no || outRefundNo, refundOrder.id]
+          );
+          setImmediate(() => {
+            sendWechatSubscribeMessage({
+              userId: req.user.id,
+              event: 'refund_result',
+              businessId: `appointment_refund_success:${id}`,
+              page: `pages/appointment/detail/index?id=${id}`,
+              payload: {
+                orderNo: appt.appointment_no,
+                amount: `¥${(refundAmount / 100).toFixed(2)}`,
+                status: '退款成功',
+                time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+                remark: '退款已原路退回'
+              }
+            });
+          });
+        }
+      } catch (refundError) {
+        console.error('Wechat appointment refund error:', refundError);
+      }
+    }
+
     const updated = await get(`SELECT * FROM appointments WHERE id = ?`, [id]);
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: req.user.id,
+        event: 'appointment_status',
+        businessId: `appointment_cancelled:${id}`,
+        page: `pages/appointment/detail/index?id=${id}`,
+        payload: {
+          appointmentNo: appt.appointment_no,
+          appointmentTime: `${formatDate(appt.appointment_date)} ${appt.appointment_time}`,
+          doctorName: appt.doctor_name,
+          storeName: appt.store_name,
+          status: '已取消',
+          remark: reasonClean || '预约已取消'
+        }
+      });
+    });
+    if (refundAmount > 0) {
+      setImmediate(() => {
+        sendWechatSubscribeMessage({
+          userId: req.user.id,
+          event: 'refund_result',
+          businessId: `appointment_refund_apply:${id}`,
+          page: `pages/appointment/detail/index?id=${id}`,
+          payload: {
+            orderNo: appt.appointment_no,
+            amount: `¥${(refundAmount / 100).toFixed(2)}`,
+            status: '退款中',
+            time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            remark: '退款申请已提交'
+          }
+        });
+      });
+    }
     res.json({
       code: 0,
       message: 'success',
@@ -4714,7 +4898,8 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
     if (!newSchedule) {
       return res.status(400).json({ code: 400, message: '目标排班时段不存在' });
     }
-    if (!buildScheduleSlots(newSchedule).some(slot => slot.label === appointmentTime)) {
+    const bookingInterval = await getBookingIntervalMinutes();
+    if (!buildScheduleSlots(newSchedule, bookingInterval).some(slot => slot.label === appointmentTime)) {
       return res.status(400).json({ code: 400, message: '目标预约时段不符合排班规则' });
     }
     if (formatDate(newSchedule.date) !== appointmentDate) {
@@ -4726,7 +4911,7 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
     const slotCountRow = await get(
       `SELECT COUNT(*) as count
        FROM appointments
-       WHERE schedule_id = ? AND appointment_time = ? AND status NOT IN ('cancelled', 'no_show') AND id != ?`,
+       WHERE schedule_id = ? AND appointment_time = ? AND status IN (${APPOINTMENT_SLOT_STATUSES_SQL}) AND id != ?`,
       [scheduleId, appointmentTime, id]
     );
     if ((slotCountRow?.count || 0) >= newSchedule.people_per_slot) {
@@ -4747,6 +4932,22 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
     });
 
     const updated = await get(`SELECT * FROM appointments WHERE id = ?`, [id]);
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: req.user.id,
+        event: 'appointment_changed',
+        businessId: `appointment_changed:${id}:${appointmentDate}:${appointmentTime}`,
+        page: `pages/appointment/detail/index?id=${id}`,
+        payload: {
+          appointmentNo: appt.appointment_no,
+          appointmentTime: `${appointmentDate} ${appointmentTime}`,
+          doctorName: updated.doctor_name,
+          storeName: updated.store_name,
+          status: '已改期',
+          remark: appt.appointment_no
+        }
+      });
+    });
     res.json({
       code: 0,
       message: 'success',
@@ -5943,8 +6144,8 @@ app.post('/api/v1/orders/:id/pay', authenticateWxToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '订单非待支付状态' });
     }
 
-    const missingPayConfig = getMissingWechatPayConfig();
-    if (missingPayConfig.length > 0 && allowDevMockWechatPay()) {
+    const missingPayConfig = await serviceGetMissingWechatPayConfig();
+    if (missingPayConfig.length > 0 && serviceAllowDevMockWechatPay()) {
       return res.json({
         code: 0,
         message: '开发环境模拟支付',
@@ -5958,7 +6159,7 @@ app.post('/api/v1/orders/:id/pay', authenticateWxToken, async (req, res) => {
       });
     }
 
-    const payParams = await buildPaymentParams(order.order_no, order.pay_amount, order.order_no, req.user.openid);
+    const payParams = await serviceBuildPaymentParams(order.order_no, order.pay_amount, order.order_no, req.user.openid);
 
     res.json({
       code: 0,
@@ -6005,7 +6206,12 @@ app.post('/api/v1/orders/pay-callback', express.raw({ type: 'application/json' }
     if (!body || !body.resource) {
       return res.status(400).json({ code: 'FAIL', message: '回调参数缺失' });
     }
-    const payload = decryptWechatPayResource(body.resource);
+    const rawBody = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body || {});
+    const signatureOk = await verifyWechatPayCallback(req, rawBody);
+    if (!signatureOk) {
+      return res.status(401).json({ code: 'FAIL', message: '微信支付回调验签失败' });
+    }
+    const payload = await serviceDecryptWechatPayResource(body.resource);
     if (payload.trade_state !== 'SUCCESS') {
       return res.json({ code: 'SUCCESS', message: 'ignored' });
     }
@@ -6017,12 +6223,46 @@ app.post('/api/v1/orders/pay-callback', express.raw({ type: 'application/json' }
       return res.json({ code: 'SUCCESS', message: 'success' });
     }
     await transaction(async (conn) => {
-      await finalizePaidProductOrder(conn, order);
+      await finalizePaidProductOrder(conn, order, payload);
     });
     res.json({ code: 'SUCCESS', message: 'success' });
   } catch (error) {
     console.error('Wechat order pay callback error:', error);
     res.status(error.statusCode || 500).json({ code: 'FAIL', message: error.message || '支付回调处理失败' });
+  }
+});
+
+app.post('/api/v1/pay/refund-callback', async (req, res) => {
+  try {
+    const rawBody = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : JSON.stringify(req.body || {});
+    const signatureOk = await verifyWechatPayCallback(req, rawBody);
+    if (!signatureOk) {
+      return res.status(401).json({ code: 'FAIL', message: '微信支付回调验签失败' });
+    }
+    const body = Buffer.isBuffer(req.body) ? JSON.parse(rawBody) : req.body;
+    if (!body || !body.resource) {
+      return res.status(400).json({ code: 'FAIL', message: '回调参数缺失' });
+    }
+    const payload = await serviceDecryptWechatPayResource(body.resource);
+    const refundNo = payload.out_refund_no || '';
+    if (!refundNo) {
+      return res.json({ code: 'SUCCESS', message: 'ignored' });
+    }
+    if (payload.refund_status === 'SUCCESS') {
+      await run(
+        `UPDATE orders
+         SET status = 'refunded',
+             wechat_refund_id = COALESCE(?, wechat_refund_id),
+             refund_at = CURRENT_TIMESTAMP,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE wechat_refund_no = ?`,
+        [payload.refund_id || null, refundNo]
+      );
+    }
+    res.json({ code: 'SUCCESS', message: 'success' });
+  } catch (error) {
+    console.error('Wechat refund callback error:', error);
+    res.status(error.statusCode || 500).json({ code: 'FAIL', message: error.message || '退款回调处理失败' });
   }
 });
 
@@ -6070,6 +6310,15 @@ app.post('/api/v1/orders/:id/cancel', authenticateWxToken, async (req, res) => {
     });
 
     res.json({ code: 0, message: '订单取消成功' });
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: req.user.id,
+        event: 'order_status',
+        businessId: `order_cancelled:${id}`,
+        page: `pages/order/detail/index?id=${id}`,
+        payload: { orderNo: order.order_no, status: '已取消', remark: '订单已取消' }
+      });
+    });
   } catch (error) {
     console.error('Cancel client order error:', error);
     res.status(500).json({ code: 500, message: '订单取消失败' });
@@ -6109,6 +6358,15 @@ app.post('/api/v1/orders/:id/confirm-receipt', authenticateWxToken, async (req, 
     });
 
     res.json({ code: 0, message: '确认收货成功' });
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: req.user.id,
+        event: 'order_status',
+        businessId: `order_completed:${id}`,
+        page: `pages/order/detail/index?id=${id}`,
+        payload: { orderNo: order.order_no, status: '已完成', remark: '订单已完成' }
+      });
+    });
   } catch (error) {
     console.error('Confirm receipt error:', error);
     res.status(500).json({ code: 500, message: '确认收货失败' });
@@ -6177,6 +6435,30 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
     });
 
     res.json({ code: 0, message: '已提交退款申请' });
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: req.user.id,
+        event: 'order_status',
+        businessId: `order_refund_apply:${id}`,
+        page: `pages/order/detail/index?id=${id}`,
+        payload: { orderNo: order.order_no, status: '退款中', remark: reason || '退款申请已提交' }
+      });
+    });
+    setImmediate(() => {
+      sendWechatSubscribeMessage({
+        userId: req.user.id,
+        event: 'refund_result',
+        businessId: `order_refund_apply:${id}`,
+        page: `pages/order/detail/index?id=${id}`,
+        payload: {
+          orderNo: order.order_no,
+          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
+          status: '退款中',
+          time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          remark: reason || '退款申请已提交'
+        }
+      });
+    });
   } catch (error) {
     console.error('Apply refund error:', error);
     res.status(500).json({ code: 500, message: '退款申请失败' });
@@ -6686,6 +6968,18 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
           await run(`UPDATE withdraw_records SET status = 'completed', remark = '微信商家自动打款成功' WHERE id = ?`, [recordId]);
           await run(`UPDATE distributors SET withdrawn_amount = withdrawn_amount + ? WHERE user_id = ?`, [amount, req.user.id]);
           console.log(`[Mock Transfer] Asynchronously paid ¥${(amount / 100).toFixed(2)} to User ID ${req.user.id} loose change.`);
+          await sendWechatSubscribeMessage({
+            userId: req.user.id,
+            event: 'withdraw_paid',
+            businessId: `withdraw_paid:auto:${recordId}`,
+            page: `pages/distribution/withdraw/index?id=${recordId}`,
+            payload: {
+              amount: `¥${(actualAmount / 100).toFixed(2)}`,
+              status: '已到账',
+              time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+              remark: '微信提现已到账'
+            }
+          });
         } catch (err) {
           console.error('[Mock Transfer] Error during async payout:', err);
         }

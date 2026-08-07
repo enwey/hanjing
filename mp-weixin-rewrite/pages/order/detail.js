@@ -1,4 +1,5 @@
 const api = require('../../api/index');
+const subscribe = require('../../common/utils/subscribe');
 
 const ORDER_STATUS_STEPS = {
   pending: [{ label: '待付款', done: true }, { label: '待取货', done: false }, { label: '已发货', done: false }, { label: '已完成', done: false }],
@@ -196,6 +197,7 @@ Page({
       success: async (result) => {
         const reason = reasons[result.tapIndex] || '其他原因';
         try {
+          await subscribe.requestSubscribe({ force: true });
           await api.applyRefund(order.id, { reason });
           wx.showToast({ title: '退款申请已提交', icon: 'success' });
           await this.loadOrder(order.id);

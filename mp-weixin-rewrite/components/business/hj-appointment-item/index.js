@@ -11,11 +11,9 @@ const STATUS_MAP = {
 };
 
 const TYPE_MAP = {
-  initial_consultation: '初诊',
-  follow_up: '复诊',
-  review: '复查',
-  consultation: '问诊',
-  treatment: '治疗',
+  first: '初诊',
+  followup: '复诊',
+  adjust: '调整',
 };
 
 function parseDateTime(appointment) {
@@ -71,7 +69,7 @@ Component({
         patientName: record.patientName || record.patient_name || '--',
         appointmentDate: record.appointmentDate || record.appointment_date || '',
         appointmentTime: record.appointmentTime || record.appointment_time || '',
-        typeLabel: TYPE_MAP[record.type] || record.type || '门诊预约',
+        typeLabel: TYPE_MAP[String(record.type || '').trim()] || '门诊预约',
         symptomDesc: record.symptomDesc || record.symptom_desc || '',
         statusLabel: statusInfo.label,
         statusTagType: statusInfo.tagType,

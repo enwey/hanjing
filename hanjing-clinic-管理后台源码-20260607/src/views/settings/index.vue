@@ -35,6 +35,27 @@ const notifyNewBooking = ref(true)
 const notifyWithdrawApply = ref(true)
 const notifyVisitReminder = ref(true)
 const notifyRevisitReminder = ref(true)
+const wechatTemplateAppointmentCreated = ref('')
+const wechatTemplateAppointmentPaid = ref('')
+const wechatTemplateAppointmentChanged = ref('')
+const wechatTemplateAppointmentStatus = ref('')
+const wechatTemplateVisitReminder = ref('')
+const wechatTemplateRevisitReminder = ref('')
+const wechatTemplateOrderStatus = ref('')
+const wechatTemplateWithdrawResult = ref('')
+const wechatTemplateWithdrawPaid = ref('')
+const wechatTemplateCommissionSettled = ref('')
+const wechatTemplateRefundResult = ref('')
+const wechatPayAppId = ref('')
+const wechatPayMchId = ref('')
+const wechatPaySerialNo = ref('')
+const wechatPayPrivateKey = ref('')
+const wechatPayApiV3Key = ref('')
+const wechatPayApiV2Key = ref('')
+const wechatPayNotifyUrl = ref('')
+const wechatPayAppointmentNotifyUrl = ref('')
+const wechatPayRefundNotifyUrl = ref('')
+const wechatPayPlatformCert = ref('')
 
 // 4. 权限管理 (角色表格数据)
 const roles = ref([
@@ -69,6 +90,27 @@ onMounted(async () => {
       notifyWithdrawApply.value = data.notify_withdraw_apply ?? true
       notifyVisitReminder.value = data.notify_visit_reminder ?? true
       notifyRevisitReminder.value = data.notify_revisit_reminder ?? true
+      wechatTemplateAppointmentCreated.value = data.wechat_template_appointment_created ?? ''
+      wechatTemplateAppointmentPaid.value = data.wechat_template_appointment_paid ?? ''
+      wechatTemplateAppointmentChanged.value = data.wechat_template_appointment_changed ?? ''
+      wechatTemplateAppointmentStatus.value = data.wechat_template_appointment_status ?? ''
+      wechatTemplateVisitReminder.value = data.wechat_template_visit_reminder ?? ''
+      wechatTemplateRevisitReminder.value = data.wechat_template_revisit_reminder ?? ''
+      wechatTemplateOrderStatus.value = data.wechat_template_order_status ?? ''
+      wechatTemplateWithdrawResult.value = data.wechat_template_withdraw_result ?? ''
+      wechatTemplateWithdrawPaid.value = data.wechat_template_withdraw_paid ?? ''
+      wechatTemplateCommissionSettled.value = data.wechat_template_commission_settled ?? ''
+      wechatTemplateRefundResult.value = data.wechat_template_refund_result ?? ''
+      wechatPayAppId.value = data.wechat_pay_app_id ?? ''
+      wechatPayMchId.value = data.wechat_pay_mch_id ?? ''
+      wechatPaySerialNo.value = data.wechat_pay_serial_no ?? ''
+      wechatPayPrivateKey.value = data.wechat_pay_private_key ?? ''
+      wechatPayApiV3Key.value = data.wechat_pay_api_v3_key ?? ''
+      wechatPayApiV2Key.value = data.wechat_pay_api_v2_key ?? ''
+      wechatPayNotifyUrl.value = data.wechat_pay_notify_url ?? ''
+      wechatPayAppointmentNotifyUrl.value = data.wechat_pay_appointment_notify_url ?? ''
+      wechatPayRefundNotifyUrl.value = data.wechat_pay_refund_notify_url ?? ''
+      wechatPayPlatformCert.value = data.wechat_pay_platform_cert ?? ''
     }
   } catch (err) {
     console.error('加载系统设置失败', err)
@@ -98,7 +140,28 @@ async function handleSaveAll() {
       notify_new_booking: notifyNewBooking.value,
       notify_withdraw_apply: notifyWithdrawApply.value,
       notify_visit_reminder: notifyVisitReminder.value,
-      notify_revisit_reminder: notifyRevisitReminder.value
+      notify_revisit_reminder: notifyRevisitReminder.value,
+      wechat_template_appointment_created: wechatTemplateAppointmentCreated.value,
+      wechat_template_appointment_paid: wechatTemplateAppointmentPaid.value,
+      wechat_template_appointment_changed: wechatTemplateAppointmentChanged.value,
+      wechat_template_appointment_status: wechatTemplateAppointmentStatus.value,
+      wechat_template_visit_reminder: wechatTemplateVisitReminder.value,
+      wechat_template_revisit_reminder: wechatTemplateRevisitReminder.value,
+      wechat_template_order_status: wechatTemplateOrderStatus.value,
+      wechat_template_withdraw_result: wechatTemplateWithdrawResult.value,
+      wechat_template_withdraw_paid: wechatTemplateWithdrawPaid.value,
+      wechat_template_commission_settled: wechatTemplateCommissionSettled.value,
+      wechat_template_refund_result: wechatTemplateRefundResult.value,
+      wechat_pay_app_id: wechatPayAppId.value,
+      wechat_pay_mch_id: wechatPayMchId.value,
+      wechat_pay_serial_no: wechatPaySerialNo.value,
+      wechat_pay_private_key: wechatPayPrivateKey.value,
+      wechat_pay_api_v3_key: wechatPayApiV3Key.value,
+      wechat_pay_api_v2_key: wechatPayApiV2Key.value,
+      wechat_pay_notify_url: wechatPayNotifyUrl.value,
+      wechat_pay_appointment_notify_url: wechatPayAppointmentNotifyUrl.value,
+      wechat_pay_refund_notify_url: wechatPayRefundNotifyUrl.value,
+      wechat_pay_platform_cert: wechatPayPlatformCert.value
     }
     const res: any = await request.post('/api/admin/settings', payload)
     if (res && res.code === 200) {
@@ -337,6 +400,110 @@ function editRole(roleName: string) {
         </div>
       </div>
 
+      <div class="panel" style="margin: 0;">
+        <div class="panel-header">
+          <div class="panel-title"><AppIcon name="wechat" /> 微信支付配置</div>
+        </div>
+        <div class="panel-body">
+          <div class="template-grid">
+            <div class="form-group">
+              <label class="form-label">小程序AppID</label>
+              <input class="form-control" v-model="wechatPayAppId" placeholder="wx...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">商户号MchID</label>
+              <input class="form-control" v-model="wechatPayMchId">
+            </div>
+            <div class="form-group">
+              <label class="form-label">商户证书序列号</label>
+              <input class="form-control" v-model="wechatPaySerialNo">
+            </div>
+            <div class="form-group">
+              <label class="form-label">API v3密钥</label>
+              <input class="form-control" type="password" v-model="wechatPayApiV3Key">
+            </div>
+            <div class="form-group">
+              <label class="form-label">API v2密钥（付款码）</label>
+              <input class="form-control" type="password" v-model="wechatPayApiV2Key">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">商品支付回调地址</label>
+              <input class="form-control" v-model="wechatPayNotifyUrl" placeholder="https://域名/api/v1/orders/pay-callback">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">预约支付回调地址</label>
+              <input class="form-control" v-model="wechatPayAppointmentNotifyUrl" placeholder="https://域名/api/v1/appointments/pay-callback">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">退款回调地址</label>
+              <input class="form-control" v-model="wechatPayRefundNotifyUrl" placeholder="https://域名/api/v1/pay/refund-callback">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">商户API私钥或私钥文件路径</label>
+              <textarea class="form-control textarea-control" v-model="wechatPayPrivateKey" rows="4" placeholder="-----BEGIN PRIVATE KEY----- 或服务器文件路径"></textarea>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">微信支付平台证书或证书文件路径</label>
+              <textarea class="form-control textarea-control" v-model="wechatPayPlatformCert" rows="3" placeholder="可选；填写后会校验微信回调签名"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin: 0;">
+        <div class="panel-header">
+          <div class="panel-title"><AppIcon name="message" /> 微信订阅模板</div>
+        </div>
+        <div class="panel-body">
+          <div class="template-grid">
+            <div class="form-group">
+              <label class="form-label">预约创建模板ID</label>
+              <input class="form-control" v-model="wechatTemplateAppointmentCreated">
+            </div>
+            <div class="form-group">
+              <label class="form-label">预约支付模板ID</label>
+              <input class="form-control" v-model="wechatTemplateAppointmentPaid">
+            </div>
+            <div class="form-group">
+              <label class="form-label">预约改期模板ID</label>
+              <input class="form-control" v-model="wechatTemplateAppointmentChanged">
+            </div>
+            <div class="form-group">
+              <label class="form-label">预约状态模板ID</label>
+              <input class="form-control" v-model="wechatTemplateAppointmentStatus">
+            </div>
+            <div class="form-group">
+              <label class="form-label">就诊提醒模板ID</label>
+              <input class="form-control" v-model="wechatTemplateVisitReminder">
+            </div>
+            <div class="form-group">
+              <label class="form-label">复诊调整模板ID</label>
+              <input class="form-control" v-model="wechatTemplateRevisitReminder">
+            </div>
+            <div class="form-group">
+              <label class="form-label">订单状态模板ID</label>
+              <input class="form-control" v-model="wechatTemplateOrderStatus">
+            </div>
+            <div class="form-group">
+              <label class="form-label">提现结果模板ID</label>
+              <input class="form-control" v-model="wechatTemplateWithdrawResult">
+            </div>
+            <div class="form-group">
+              <label class="form-label">提现到账模板ID</label>
+              <input class="form-control" v-model="wechatTemplateWithdrawPaid">
+            </div>
+            <div class="form-group">
+              <label class="form-label">佣金到账模板ID</label>
+              <input class="form-control" v-model="wechatTemplateCommissionSettled">
+            </div>
+            <div class="form-group">
+              <label class="form-label">退款结果模板ID</label>
+              <input class="form-control" v-model="wechatTemplateRefundResult">
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Panel 4: 权限管理 -->
       <div class="panel" style="margin: 0;">
         <div class="panel-header">
@@ -493,6 +660,22 @@ select.form-control {
 }
 
 /* === 输入框组 (前缀/后缀) === */
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.textarea-control {
+  min-height: 96px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+@media (max-width: 768px) {
+  .template-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .input-group {
   display: flex;
   align-items: center;

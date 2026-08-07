@@ -10,6 +10,24 @@ const MEMBER_LABEL_MAP = {
   other: "其他",
 };
 
+function normalizeDevice(record) {
+  if (!record) return null;
+  const sourceDevice = record.device || {};
+  const name = sourceDevice.name || record.deviceName || record.deviceModel || "";
+  const model = record.deviceModel || sourceDevice.model || name || "";
+  if (!name && !model) return null;
+  return {
+    id: record.deviceProductId || sourceDevice.id || record.id || "",
+    name: name || model,
+    model,
+    status: record.status === "active" || sourceDevice.status === "active" || sourceDevice.status === "bound" ? "active" : (record.status || sourceDevice.status || ""),
+    serialNumber: record.serialNumber || sourceDevice.serialNumber || "",
+    wearDays: record.wearDays || sourceDevice.wearDays || 0,
+    lastMaintenance: record.lastMaintenance || sourceDevice.lastMaintenance || "",
+    nextFollowup: record.nextFollowup || record.followupDate || record.nextAdjustDate || "",
+  };
+}
+
 Page({
   data: {
     loading: true,
@@ -71,7 +89,7 @@ Page({
       const memberOptions = members.map((item) => `${item.name}（${MEMBER_LABEL_MAP[item.relation] || "成员"}）`);
       const memberIndex = Math.max(0, members.findIndex((item) => String(item.id) === String(selectedPatientId)));
       const deviceRes = await api.getPatientDevice(selectedPatientId ? { patientId: selectedPatientId } : {});
-      const device = deviceRes.data || deviceRes || null;
+      const device = normalizeDevice(deviceRes.data || deviceRes || null);
       this.setData({ members, memberOptions, memberIndex, selectedPatientId, device });
     } catch (err) {
       console.error("加载设备管理失败", err);
