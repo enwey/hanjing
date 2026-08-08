@@ -45,6 +45,14 @@
     <view class="card-premium doctor-card">
       <view class="doc-avatar-large">
         <text class="doc-avatar-text-large">{{doctorAvatar}}</text>
+        <image
+          wx:if="{{doctorAvatarUrl}}"
+          class="doc-avatar-image-large {{doctorAvatarLoaded ? 'doc-avatar-image-large--loaded' : ''}}"
+          src="{{doctorAvatarUrl}}"
+          mode="aspectFill"
+          bindload="handleDoctorAvatarLoad"
+          binderror="handleDoctorAvatarError"
+        />
         <view class="pulse-ring-avatar"></view>
       </view>
       <view class="doc-info-detail">
@@ -63,6 +71,16 @@
       <view class="card-header-premium">
         <image class="header-icon" src="/static/icons/calendar.svg" />
         <text class="header-title">就诊及门店信息</text>
+      </view>
+
+      <view wx:if="{{storeCoverUrl}}" class="store-cover">
+        <image
+          class="store-cover-image {{storeCoverLoaded ? 'store-cover-image--loaded' : ''}}"
+          src="{{storeCoverUrl}}"
+          mode="aspectFill"
+          bindload="handleStoreCoverLoad"
+          binderror="handleStoreCoverError"
+        />
       </view>
 
       <view class="detail-rows">

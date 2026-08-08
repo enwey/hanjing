@@ -65,6 +65,16 @@ function safeJsonArray(value: any) {
   }
 }
 
+function normalizeUploadUrl(value: any) {
+  const url = String(value || '').trim()
+  if (!url) return ''
+  if (url.startsWith('/uploads/') || url.startsWith('/static/')) return url
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(url)) {
+    return url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, '')
+  }
+  return url
+}
+
 const fetchStores = async () => {
   try {
     const res: any = await request.get('/api/admin/stores')
@@ -84,8 +94,8 @@ const fetchStores = async () => {
 	      phone: s.phone,
         latitude: s.latitude || '',
         longitude: s.longitude || '',
-        coverUrl: s.cover_url || '',
-        imageUrls: safeJsonArray(s.image_urls),
+        coverUrl: normalizeUploadUrl(s.cover_url),
+        imageUrls: safeJsonArray(s.image_urls).map(normalizeUploadUrl),
       openTime: s.open_time ? s.open_time.substring(0, 5) : '09:00',
       closeTime: s.close_time ? s.close_time.substring(0, 5) : '18:00',
       hours: s.hours || [{ openTime: s.open_time ? s.open_time.substring(0, 5) : '09:00', closeTime: s.close_time ? s.close_time.substring(0, 5) : '18:00' }],
@@ -216,17 +226,10 @@ function openStoreAccounts(store: Store) {
         <div class="panel-body" style="padding: 20px;">
           <!-- 上半部分：图标 + 基本信息 -->
           <div style="display:flex;gap:16px;">
-            <div :style="{
-              width: '80px',
-              height: '80px',
-              borderRadius: '8px',
-              background: store.iconBg,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '36px',
-              flexShrink: 0
-            }"><AppIcon :name="store.icon" size="36" /></div>
+            <div class="store-thumb" :style="{ background: store.coverUrl ? '#F8FAFC' : store.iconBg }">
+              <img v-if="store.coverUrl" class="store-thumb-img" :src="store.coverUrl" :alt="store.name">
+              <AppIcon v-else :name="store.icon" size="36" />
+            </div>
             <div style="flex:1; min-width: 0;">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
                 <span style="font-size:16px;font-weight:700;color:#111827;">{{ store.name }}</span>
@@ -334,6 +337,7 @@ function openStoreAccounts(store: Store) {
             :ratio="16 / 9"
             :min-width="960"
             :min-height="540"
+            :validate-specs="false"
           />
         </t-form-item>
         <t-form-item label="环境图片">
@@ -413,6 +417,25 @@ function openStoreAccounts(store: Store) {
 }
 .panel-body {
   padding: 20px;
+}
+
+.store-thumb {
+  width: 120px;
+  height: 68px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.store-thumb-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 /* Button styles matching mockup global CSS rules */

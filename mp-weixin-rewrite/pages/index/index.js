@@ -48,6 +48,7 @@ function normalizeDoctor(doctor) {
     id: doctor.id,
     name: doctor.name || '',
     avatarText: (doctor.name || '').slice(0, 1) || '?',
+    avatarUrl: doctor.avatarUrl || doctor.avatar || doctor.avatar_url || '',
     title: doctor.title || doctor.jobTitle || '',
     specialty: doctor.specialty || doctor.specialities || doctor.expertise || '',
     experience: Number(doctor.experienceYears || doctor.experience || 0),
@@ -67,6 +68,8 @@ function normalizeStore(store, location) {
   return {
     id: store.id,
     name: store.name || store.storeName || '',
+    coverUrl: store.coverUrl || store.cover_url || store.imageUrl || store.image_url || '',
+    imageUrls: store.imageUrls || store.image_urls || [],
     address: store.address || store.location || '',
     businessHours: store.businessHours || store.openingHours || '',
     doctorCount: Number(store.doctorCount || 0),

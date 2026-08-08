@@ -20,8 +20,8 @@
         </view>
       </view>
       <button class="hero-btn" bindtap="goStoreSelect">
-        <text>立即预约</text>
-        <text class="hero-btn-arrow">→</text>
+        <text class="hero-btn-text">立即预约</text>
+        <image class="hero-btn-arrow" src="/static/icons/arrow-right-blue.svg" mode="aspectFit" />
       </button>
     </view>
   </view>
@@ -52,7 +52,10 @@
   <view class="section">
     <view class="section-header">
       <text class="section-title">推荐医生</text>
-      <text class="section-more" bindtap="goDoctorList">全部 ›</text>
+      <view class="section-more" bindtap="goDoctorList">
+        <text class="section-more-text">全部</text>
+        <view class="section-more-arrow"></view>
+      </view>
     </view>
     <hj-doctor-card
       wx:for="{{recommendedDoctors}}"

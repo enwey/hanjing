@@ -11,7 +11,7 @@
 }
 
 .hero-navbar-spacer {
-  height: calc(env(safe-area-inset-top) + 52px);
+  height: calc(env(safe-area-inset-top) + 26px);
 }
 
 .hero::after {
@@ -26,7 +26,7 @@
 }
 
 .hero-content {
-  padding: 20px 16px 0;
+  padding: 10px 16px 0;
   position: relative;
   z-index: 1;
 }
@@ -92,8 +92,15 @@
   border: none;
 }
 
+.hero-btn-text {
+  display: block;
+  line-height: 22px;
+}
+
 .hero-btn-arrow {
-  font-size: 20px;
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .quick-actions {
@@ -167,8 +174,37 @@
 }
 
 .section-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  gap: 4rpx;
   font-size: 14px;
   color: #3b6bf5;
+}
+
+.section-more-text {
+  display: block;
+  line-height: 20px;
+}
+
+.section-more-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 20px;
+  color: inherit;
+}
+
+.section-more-arrow::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-top: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+  transform: rotate(45deg);
+  box-sizing: border-box;
 }
 
 .state-text {

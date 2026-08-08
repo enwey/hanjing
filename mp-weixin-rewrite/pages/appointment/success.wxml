@@ -17,6 +17,16 @@
     <text class="success-desc">您的预约已提交，请按时就诊</text>
 
     <view class="summary-card">
+      <view wx:if="{{storeCoverUrl}}" class="store-cover">
+        <image
+          class="store-cover-image {{storeCoverLoaded ? 'store-cover-image--loaded' : ''}}"
+          src="{{storeCoverUrl}}"
+          mode="aspectFill"
+          bindload="handleStoreCoverLoad"
+          binderror="handleStoreCoverError"
+        />
+      </view>
+
       <view class="summary-row">
         <text class="summary-label">预约单号</text>
         <text class="summary-value summary-value--no">{{appointmentNo}}</text>

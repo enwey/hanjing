@@ -19,12 +19,29 @@
   justify-content: center;
   flex-shrink: 0;
   margin-right: 12px;
+  overflow: hidden;
+  position: relative;
 }
 
 .doctor-avatar-text {
   color: #ffffff;
   font-size: 22px;
   font-weight: 700;
+}
+
+.doctor-avatar-image {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: block;
+  opacity: 0;
+}
+
+.doctor-avatar-image--loaded {
+  opacity: 1;
 }
 
 .doctor-info {

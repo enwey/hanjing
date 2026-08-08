@@ -1,4 +1,5 @@
 const api = require('../../api/index');
+const { getStoreCoverUrl } = require('../../common/utils/image-url');
 
 function unwrapObject(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -13,6 +14,14 @@ function toYuanLabel(amount) {
   return '¥' + (numberValue / 100).toFixed(2);
 }
 
+function unwrapList(response) {
+  const payload = response && response.data ? response.data : response || {};
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.list)) return payload.list;
+  if (Array.isArray(payload.items)) return payload.items;
+  return [];
+}
+
 Page({
   data: {
     loading: true,
@@ -20,6 +29,8 @@ Page({
     appointmentId: '',
     appointment: null,
     appointmentNo: '',
+    storeCoverUrl: '',
+    storeCoverLoaded: false,
     storeName: '',
     doctorName: '',
     appointmentDate: '',
@@ -63,13 +74,18 @@ Page({
       ]);
       const detailSource = unwrapObject(detailResponse);
       const appointment = detailSource.appointment || detailSource || {};
+      const storesResponse = await api.getStores();
+      const stores = unwrapList(storesResponse);
+      const store = detailSource.store || stores.find((item) => String(item.id) === String(appointment.storeId || appointment.store_id)) || {};
       const bookingSettings = unwrapObject(bookingSettingsResponse);
 
       this.setData({
         loading: false,
         appointment,
         appointmentNo: appointment.appointmentNo || appointment.appointment_no || '',
-        storeName: appointment.storeName || appointment.store_name || '',
+        storeCoverUrl: getStoreCoverUrl(store || appointment),
+        storeCoverLoaded: false,
+        storeName: appointment.storeName || appointment.store_name || store.name || store.storeName || '',
         doctorName: appointment.doctorName || appointment.doctor_name || '',
         appointmentDate: appointment.appointmentDate || appointment.appointment_date || '',
         appointmentTime: appointment.appointmentTime || appointment.appointment_time || '',
@@ -86,6 +102,16 @@ Page({
         loadError: (error && error.message) || '加载预约结果失败',
       });
     }
+  },
+
+  handleStoreCoverLoad() {
+    if (this.data.storeCoverUrl) {
+      this.setData({ storeCoverLoaded: true });
+    }
+  },
+
+  handleStoreCoverError() {
+    this.setData({ storeCoverLoaded: false });
   },
 
   openAppointmentDetail() {

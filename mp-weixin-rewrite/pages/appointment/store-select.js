@@ -67,6 +67,8 @@ function normalizeStore(store, location) {
     ...store,
     id: readString(store.id),
     name: store.name || store.storeName || '',
+    coverUrl: store.coverUrl || store.cover_url || store.imageUrl || store.image_url || '',
+    imageUrls: store.imageUrls || store.image_urls || [],
     address: store.address || store.location || '',
     businessHours: store.businessHours || store.openingHours || '',
     doctorCount: Number(store.doctorCount || 0),

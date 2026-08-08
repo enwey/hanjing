@@ -1,9 +1,13 @@
+const { normalizeImageUrl } = require('../../common/utils/image-url');
+
 Page({
   data: {
     latitude: 0,
     longitude: 0,
     name: '',
     address: '',
+    coverUrl: '',
+    coverLoaded: false,
     markers: [],
   },
 
@@ -12,12 +16,15 @@ Page({
     const longitude = Number(options && options.longitude) || 0;
     const name = decodeURIComponent((options && options.name) || '');
     const address = decodeURIComponent((options && options.address) || '');
+    const coverUrl = normalizeImageUrl(decodeURIComponent((options && options.coverUrl) || ''));
 
     this.setData({
       latitude,
       longitude,
       name,
       address,
+      coverUrl,
+      coverLoaded: false,
       markers:
         latitude && longitude
           ? [
@@ -33,6 +40,16 @@ Page({
             ]
           : [],
     });
+  },
+
+  handleCoverLoad() {
+    if (this.data.coverUrl) {
+      this.setData({ coverLoaded: true });
+    }
+  },
+
+  handleCoverError() {
+    this.setData({ coverLoaded: false });
   },
 
   gcj02ToBd09(longitude, latitude) {

@@ -1,5 +1,6 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
+const { apiBaseUrl } = require('../../api/request');
 
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -17,6 +18,18 @@ function unwrapList(response) {
 
 function readString(value) {
   return value === null || value === undefined ? '' : String(value);
+}
+
+function getApiOrigin() {
+  return String(apiBaseUrl || '').replace(/\/api\/v1\/?$/, '');
+}
+
+function normalizeAvatarUrl(value) {
+  const url = readString(value).trim();
+  if (!url) return '';
+  if (/^(https?:|wxfile:|cloud:|data:)/i.test(url)) return url;
+  if (url.indexOf('/uploads/') === 0) return getApiOrigin() + url;
+  return url;
 }
 
 function getDateText(offsetDays) {
@@ -81,6 +94,8 @@ Page({
     doctorTitle: '',
     specialty: '',
     avatarText: '',
+    avatarUrl: '',
+    avatarLoaded: false,
     heroTags: [],
     experienceNumber: '0',
     consultCountLabel: '0',
@@ -143,6 +158,8 @@ Page({
       doctorTitle: doctor ? doctor.title || '' : '',
       specialty: doctor ? doctor.specialty || '' : '',
       avatarText: doctor && doctor.name ? doctor.name.slice(0, 1) : '',
+      avatarUrl: normalizeAvatarUrl(doctor && (doctor.avatarUrl || doctor.avatar || doctor.avatar_url)),
+      avatarLoaded: false,
       heroTags,
       experienceNumber: String((doctor && doctor.experience) || 0),
       consultCountLabel: String((doctor && doctor.consultCount) || 0),
@@ -152,6 +169,16 @@ Page({
       scheduleRows: buildScheduleRows(schedules),
       hasFutureSchedules: schedules.some((item) => item.status === 'available'),
     });
+  },
+
+  handleAvatarLoad() {
+    if (this.data.avatarUrl) {
+      this.setData({ avatarLoaded: true });
+    }
+  },
+
+  handleAvatarError() {
+    this.setData({ avatarLoaded: false });
   },
 
   openBooking() {

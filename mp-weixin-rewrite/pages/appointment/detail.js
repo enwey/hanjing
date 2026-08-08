@@ -1,6 +1,8 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const subscribe = require('../../common/utils/subscribe');
+const { apiBaseUrl } = require('../../api/request');
+const { getStoreCoverUrl } = require('../../common/utils/image-url');
 
 const APPOINTMENT_STATUS_MAP = {
   pending_payment: '待支付',
@@ -23,6 +25,18 @@ const APPOINTMENT_TYPE_MAP = {
 function unwrapObject(response) {
   const payload = response && response.data ? response.data : response || {};
   return payload.data || payload;
+}
+
+function getApiOrigin() {
+  return String(apiBaseUrl || '').replace(/\/api\/v1\/?$/, '');
+}
+
+function normalizeAvatarUrl(value) {
+  const url = value === null || value === undefined ? '' : String(value).trim();
+  if (!url) return '';
+  if (/^(https?:|wxfile:|cloud:|data:)/i.test(url)) return url;
+  if (url.indexOf('/uploads/') === 0) return getApiOrigin() + url;
+  return url;
 }
 
 function parseAppointmentTimestamp(dateText, timeText) {
@@ -73,6 +87,8 @@ Page({
     statusLabel: '',
     appointmentNo: '',
     doctorAvatar: '医',
+    doctorAvatarUrl: '',
+    doctorAvatarLoaded: false,
     doctorName: '',
     doctorTitle: '',
     doctorDept: '',
@@ -82,6 +98,8 @@ Page({
     patientName: '',
     storeName: '',
     storeAddress: '',
+    storeCoverUrl: '',
+    storeCoverLoaded: false,
     appointmentTypeLabel: '',
     symptomDesc: '',
     cancelReason: '',
@@ -167,6 +185,8 @@ Page({
         statusLabel: APPOINTMENT_STATUS_MAP[appointment.status] || '预约详情',
         appointmentNo: appointment.appointmentNo || '',
         doctorAvatar: doctor.name ? doctor.name.slice(0, 1) : '医',
+        doctorAvatarUrl: normalizeAvatarUrl(doctor.avatarUrl || doctor.avatar || doctor.avatar_url || appointment.doctorAvatar || appointment.doctor_avatar),
+        doctorAvatarLoaded: false,
         doctorName: doctor.name || '',
         doctorTitle: doctor.title || '',
         doctorDept,
@@ -176,6 +196,8 @@ Page({
         patientName: appointment.patientName || '--',
         storeName: store.name || '',
         storeAddress: store.address || '',
+        storeCoverUrl: getStoreCoverUrl(store || appointment),
+        storeCoverLoaded: false,
         appointmentTypeLabel: APPOINTMENT_TYPE_MAP[String(appointment.type || '').trim()] || '门诊预约',
         symptomDesc: appointment.symptomDesc || '',
         cancelReason: appointment.cancelReason || '',
@@ -211,6 +233,26 @@ Page({
         loadError: (error && error.message) || '加载预约详情失败',
       });
     }
+  },
+
+  handleDoctorAvatarLoad() {
+    if (this.data.doctorAvatarUrl) {
+      this.setData({ doctorAvatarLoaded: true });
+    }
+  },
+
+  handleDoctorAvatarError() {
+    this.setData({ doctorAvatarLoaded: false });
+  },
+
+  handleStoreCoverLoad() {
+    if (this.data.storeCoverUrl) {
+      this.setData({ storeCoverLoaded: true });
+    }
+  },
+
+  handleStoreCoverError() {
+    this.setData({ storeCoverLoaded: false });
   },
 
   copyAppointmentNo() {
@@ -322,7 +364,9 @@ Page({
         '&name=' +
         encodeURIComponent(this.data.storeName) +
         '&address=' +
-        encodeURIComponent(this.data.storeAddress)
+        encodeURIComponent(this.data.storeAddress) +
+        '&coverUrl=' +
+        encodeURIComponent(this.data.storeCoverUrl || '')
     );
   },
 

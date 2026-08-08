@@ -7,7 +7,7 @@
 }
 
 .store-card-image {
-  height: 140px;
+  aspect-ratio: 16 / 9;
   position: relative;
   background: linear-gradient(135deg, #eef4ff, #d9e6ff);
 }
@@ -18,6 +18,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.store-card-cover {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+}
+
+.store-card-cover--loaded {
+  opacity: 1;
 }
 
 .store-card-placeholder-icon {

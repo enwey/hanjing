@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<{
   minWidth?: number
   minHeight?: number
   previewRatio?: string
+  validateSpecs?: boolean
 }>(), {
   label: '图片',
   context: 'common',
@@ -23,7 +24,8 @@ const props = withDefaults(defineProps<{
   ratioLabel: '',
   minWidth: 0,
   minHeight: 0,
-  previewRatio: '16 / 9'
+  previewRatio: '16 / 9',
+  validateSpecs: true
 })
 
 const emit = defineEmits<{
@@ -132,6 +134,61 @@ async function handleFileChange(event: Event) {
     target.value = ''
   }
 }
+
+async function handleFileChangeWithSpecToggle(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  try {
+    if (!props.accept.includes(file.type)) {
+      MessagePlugin.warning(`请上传 ${formatText.value} 格式图片`)
+      return
+    }
+
+    const dataUrl = await readFileAsDataUrl(file)
+
+    if (props.validateSpecs) {
+      if (file.size > props.maxSizeMb * 1024 * 1024) {
+        MessagePlugin.warning(`图片大小不能超过 ${props.maxSizeMb}MB`)
+        return
+      }
+
+      const size = await getImageSize(dataUrl)
+      if (props.minWidth && size.width < props.minWidth) {
+        MessagePlugin.warning(`图片宽度不能小于 ${props.minWidth}px`)
+        return
+      }
+      if (props.minHeight && size.height < props.minHeight) {
+        MessagePlugin.warning(`图片高度不能小于 ${props.minHeight}px`)
+        return
+      }
+      if (props.ratio) {
+        const currentRatio = size.width / size.height
+        const diff = Math.abs(currentRatio - props.ratio) / props.ratio
+        if (diff > 0.06) {
+          MessagePlugin.warning(`图片比例需接近 ${props.ratioLabel}`)
+          return
+        }
+      }
+    }
+
+    uploading.value = true
+    const res: any = await request.post('/api/admin/uploads/images', {
+      fileName: file.name,
+      mimeType: file.type,
+      fileData: dataUrl,
+      context: props.context
+    })
+    emit('update:modelValue', res.data?.url || '')
+    MessagePlugin.success('图片上传成功')
+  } catch (error) {
+    MessagePlugin.error('图片上传失败')
+  } finally {
+    uploading.value = false
+    target.value = ''
+  }
+}
 </script>
 
 <template>
@@ -165,7 +222,7 @@ async function handleFileChange(event: Event) {
         class="hidden-input"
         type="file"
         :accept="accept.join(',')"
-        @change="handleFileChange"
+        @change="handleFileChangeWithSpecToggle"
       >
       <button type="button" class="upload-button" :disabled="uploading" @click="inputRef?.click()">
         <AppIcon name="image-plus" />
@@ -196,8 +253,7 @@ async function handleFileChange(event: Event) {
 
 .image-preview {
   position: relative;
-  width: 152px;
-  min-height: 96px;
+  width: 180px;
   padding: 0;
   border-radius: 12px;
   overflow: hidden;
@@ -223,15 +279,20 @@ async function handleFileChange(event: Event) {
 }
 
 .image-preview img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .image-empty {
+  position: absolute;
+  inset: 0;
   height: 100%;
-  min-height: 96px;
+  padding: 10px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -362,8 +423,11 @@ async function handleFileChange(event: Event) {
 }
 
 .image-load-failed {
+  position: absolute;
+  inset: 0;
   height: 100%;
-  min-height: 96px;
+  padding: 10px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;

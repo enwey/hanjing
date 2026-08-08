@@ -1968,6 +1968,9 @@ app.post('/api/v1/user/notifications/:id/read', authenticateWxToken, async (req,
 // Static folder serving for uploaded snore audio files and medical attachments with hotlink and auth protection
 app.use('/uploads', (req, res, next) => {
   const referer = req.headers['referer'] || '';
+  if (req.path.startsWith('/admin/images/store-cover/') || req.path.startsWith('/admin/images/store-gallery/')) {
+    return next();
+  }
   // 1. Allow WeChat mini-program image rendering
   if (referer.startsWith('https://servicewechat.com/')) {
     return next();
@@ -3388,6 +3391,16 @@ app.get('/api/v1/stores', async (req, res) => {
       hoursMap[h.store_id].push(h);
     });
 
+    const parseImageUrls = (value) => {
+      if (!value) return [];
+      if (Array.isArray(value)) return value;
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
+      }
+    };
     const formatted = [];
     for (const store of list) {
       const features = featuresMap[store.id] || [];
@@ -3417,6 +3430,10 @@ app.get('/api/v1/stores', async (req, res) => {
         name: store.name,
         address: store.address,
         phone: store.phone,
+        coverUrl: store.cover_url || '',
+        cover_url: store.cover_url || '',
+        imageUrls: parseImageUrls(store.image_urls),
+        image_urls: parseImageUrls(store.image_urls),
         city: store.city,
         district: store.district,
         latitude: store.latitude,
@@ -4545,7 +4562,7 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
       [id]
     );
     const [storeDetail, evaluation, preExam, essAssessment, snoreAssessment] = await Promise.all([
-      get(`SELECT id, name, address, latitude, longitude, phone, open_time, close_time FROM stores WHERE id = ?`, [row.store_id]),
+      get(`SELECT id, name, address, latitude, longitude, phone, open_time, close_time, cover_url, image_urls FROM stores WHERE id = ?`, [row.store_id]),
       get(`SELECT id, rating, content, created_at FROM appointment_evaluations WHERE appointment_id = ? AND user_id = ?`, [id, req.user.id]),
       get(`SELECT * FROM appointment_pre_exams WHERE appointment_id = ? AND user_id = ?`, [id, req.user.id]),
       row.ess_assessment_id ? get(`SELECT id, total_score, risk_level, created_at FROM ess_assessments WHERE id = ?`, [row.ess_assessment_id]) : null,

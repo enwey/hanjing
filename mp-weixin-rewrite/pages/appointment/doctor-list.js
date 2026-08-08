@@ -25,6 +25,7 @@ function normalizeDoctor(doctor) {
     ...doctor,
     id: readString(doctor.id),
     name,
+    avatarUrl: doctor.avatarUrl || doctor.avatar || doctor.avatar_url || '',
     title: doctor.title || doctor.jobTitle || '',
     specialty: doctor.specialty || doctor.specialities || doctor.expertiseText || doctor.expertise || '',
     experience: Number(doctor.experience || doctor.yearsOfExperience || 0),

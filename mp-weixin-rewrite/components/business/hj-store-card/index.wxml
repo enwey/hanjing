@@ -3,6 +3,14 @@
     <view class="store-card-image-placeholder">
       <image class="store-card-placeholder-icon" src="/static/icons/moon.svg" />
     </view>
+    <image
+      wx:if="{{imageUrl}}"
+      class="store-card-cover {{imageLoaded ? 'store-card-cover--loaded' : ''}}"
+      src="{{imageUrl}}"
+      mode="aspectFill"
+      bindload="handleImageLoad"
+      binderror="handleImageError"
+    />
     <view wx:if="{{store.status === 'prepare'}}" class="store-card-status-badge prepare">
       <text>筹备中</text>
     </view>

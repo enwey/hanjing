@@ -1,5 +1,6 @@
 const api = require('../../api/index');
 const appointmentDraftStore = require('../../stores/appointment-draft-store');
+const { getStoreCoverUrl } = require('../../common/utils/image-url');
 
 const RELATION_LABEL_MAP = {
   self: '本人',
@@ -48,6 +49,8 @@ Page({
     loadError: '',
     draft: null,
     storeName: '',
+    storeCoverUrl: '',
+    storeCoverLoaded: false,
     doctorName: '',
     consultFeeAmount: 0,
     consultFeeLabel: '¥0.00',
@@ -120,6 +123,8 @@ Page({
         loadError: '',
         draft,
         storeName: store ? store.name || store.storeName || '' : '',
+        storeCoverUrl: getStoreCoverUrl(store),
+        storeCoverLoaded: false,
         doctorName: doctor ? doctor.name || draft.doctorName || '' : draft.doctorName || '',
         consultFeeAmount,
         consultFeeLabel: '¥' + (consultFeeAmount / 100).toFixed(2),
@@ -173,6 +178,16 @@ Page({
       memberIndex: nextIndex,
       selectedMemberName: this.data.memberOptions[nextIndex] || '本人',
     });
+  },
+
+  handleStoreCoverLoad() {
+    if (this.data.storeCoverUrl) {
+      this.setData({ storeCoverLoaded: true });
+    }
+  },
+
+  handleStoreCoverError() {
+    this.setData({ storeCoverLoaded: false });
   },
 
   handleSymptomInput(event) {

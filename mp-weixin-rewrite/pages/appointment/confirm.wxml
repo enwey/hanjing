@@ -5,6 +5,16 @@
     <view class="info-card" wx:if="{{draft}}">
       <text class="info-title">预约信息确认</text>
 
+      <view wx:if="{{storeCoverUrl}}" class="store-cover">
+        <image
+          class="store-cover-image {{storeCoverLoaded ? 'store-cover-image--loaded' : ''}}"
+          src="{{storeCoverUrl}}"
+          mode="aspectFill"
+          bindload="handleStoreCoverLoad"
+          binderror="handleStoreCoverError"
+        />
+      </view>
+
       <view class="info-row">
         <image class="row-icon" src="/static/icons/store.svg" />
         <text class="info-label">门店</text>

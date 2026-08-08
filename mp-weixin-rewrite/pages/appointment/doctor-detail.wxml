@@ -5,6 +5,14 @@
     <view class="doctor-detail-hero">
       <view class="doc-avatar">
         <text class="doc-avatar-text">{{avatarText}}</text>
+        <image
+          wx:if="{{avatarUrl}}"
+          class="doc-avatar-image {{avatarLoaded ? 'doc-avatar-image--loaded' : ''}}"
+          src="{{avatarUrl}}"
+          mode="aspectFill"
+          bindload="handleAvatarLoad"
+          binderror="handleAvatarError"
+        />
       </view>
       <view class="doc-name">{{doctorName}}</view>
       <view class="doc-title-text">{{doctorTitle}} · {{specialty}}</view>
