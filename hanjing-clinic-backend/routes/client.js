@@ -1968,7 +1968,7 @@ app.post('/api/v1/user/notifications/:id/read', authenticateWxToken, async (req,
 // Static folder serving for uploaded snore audio files and medical attachments with hotlink and auth protection
 app.use('/uploads', (req, res, next) => {
   const referer = req.headers['referer'] || '';
-  if (req.path.startsWith('/admin/images/store-cover/') || req.path.startsWith('/admin/images/store-gallery/')) {
+  if (req.path.startsWith('/admin/images/')) {
     return next();
   }
   // 1. Allow WeChat mini-program image rendering
