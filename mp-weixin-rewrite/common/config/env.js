@@ -4,13 +4,13 @@ const envVersion = miniProgram.envVersion || 'develop';
 const systemInfo = (wx.getSystemInfoSync && wx.getSystemInfoSync()) || {};
 const isDevtools = systemInfo.platform === 'devtools';
 const devApiHosts = isDevtools ? ['192.168.2.55', '127.0.0.1', 'localhost'] : ['192.168.2.55'];
-const forceLocalApi = true;
+const forceLocalApi = false;
 const localApiBaseUrls = devApiHosts.map((host) => 'http://' + host + ':5005/api/v1');
 
 const apiBaseUrlMap = {
   develop: localApiBaseUrls,
-  trial: 'https://test-api.hanjing.com/v1',
-  release: 'https://api.hanjing.com/v1',
+  trial: 'https://m.hanjinghealth.com/api/v1',
+  release: 'https://m.hanjinghealth.com/api/v1',
 };
 
 const apiBaseUrl = forceLocalApi ? localApiBaseUrls : apiBaseUrlMap[envVersion] || apiBaseUrlMap.release;
