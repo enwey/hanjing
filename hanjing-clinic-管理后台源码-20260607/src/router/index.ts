@@ -131,6 +131,12 @@ const router = createRouter({
           meta: { title: '商品管理' }
         },
         {
+          path: 'product-categories',
+          name: 'products-categories',
+          component: () => import('@/views/distribution/categories.vue'),
+          meta: { title: '商品分类' }
+        },
+        {
           path: 'products/edit/:id',
           name: 'products-edit-id',
           component: () => import('@/views/distribution/edit.vue'),

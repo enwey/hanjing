@@ -53,6 +53,11 @@ function getPaymentErrorMessage(error, canceledText) {
   return '发起支付失败';
 }
 
+async function syncPaidAppointment(appointmentId) {
+  if (!appointmentId) return;
+  await api.confirmAppointmentPayment(appointmentId);
+}
+
 Page({
   data: {
     loading: true,
@@ -283,6 +288,9 @@ Page({
                   wx.hideLoading();
                 } else {
                   await requestWxPay(payParams);
+                  wx.showLoading({ title: '同步预约状态...' });
+                  await syncPaidAppointment(appointmentId);
+                  wx.hideLoading();
                 }
                 wx.showToast({ title: '支付已提交', icon: 'success' });
                 appointmentDraftStore.clearDraft();

@@ -8,6 +8,8 @@ interface Product {
   id: string
   name: string
   desc: string
+  category: string
+  categoryName: string
   icon: string
   imageUrl: string
   price: number
@@ -103,7 +105,9 @@ function mapProduct(row: any): Product {
     id: String(row.id),
     name: row.name,
     desc: row.description || '',
-    icon: row.category === 'device' ? 'mask' : row.category === 'product' ? 'wind' : 'bed',
+    category: row.category || 'service',
+    categoryName: row.category_name || row.category || '服务套餐',
+    icon: row.category === 'device' ? 'mask' : row.category === 'accessory' ? 'wind' : 'bed',
     imageUrl: row.image_url || '',
     price: Number(row.price || 0) / 100,
     originalPrice: row.original_price ? Number(row.original_price) / 100 : 0,
@@ -253,7 +257,7 @@ onMounted(fetchProducts)
                       {{ product.name }}
                     </div>
                     <div style="font-size: 11px; color: #9CA3AF; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                      {{ product.desc }}
+                      {{ product.categoryName }} · {{ product.desc || '暂无商品描述' }}
                     </div>
                   </div>
                 </div>

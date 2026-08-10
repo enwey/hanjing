@@ -1016,6 +1016,49 @@ export const initDB = async () => {
     );
   `);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS product_categories (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      code VARCHAR(50) NOT NULL UNIQUE,
+      name VARCHAR(50) NOT NULL,
+      sort_order INT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  try {
+    await query(`UPDATE products SET category = 'accessory' WHERE category = 'product'`);
+  } catch (e) {
+    console.error('Failed to migrate legacy product category to accessory:', e);
+  }
+
+  try {
+    await query(
+      `INSERT INTO product_categories (code, name, sort_order)
+       SELECT 'device', '医疗器械', 10
+       WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE code = 'device')`
+    );
+    await query(
+      `INSERT INTO product_categories (code, name, sort_order)
+       SELECT 'accessory', '配件耗材', 20
+       WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE code = 'accessory')`
+    );
+    await query(
+      `INSERT INTO product_categories (code, name, sort_order)
+       SELECT 'service', '服务套餐', 30
+       WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE code = 'service')`
+    );
+    await query(
+      `INSERT INTO product_categories (code, name, sort_order)
+       SELECT DISTINCT p.category, p.category, 100
+       FROM products p
+       LEFT JOIN product_categories pc ON pc.code = p.category
+       WHERE p.category IS NOT NULL AND p.category != '' AND pc.id IS NULL`
+    );
+  } catch (e) {
+    console.error('Failed to seed product categories:', e);
+  }
+
   // 18. coupons
   await query(`
     CREATE TABLE IF NOT EXISTS coupons (

@@ -8,7 +8,12 @@ function getProductDetail(productId) {
   return request({ url: '/products/' + productId, method: 'GET', failMessage: '加载商品详情失败' });
 }
 
+function getProductCategories() {
+  return request({ url: '/product-categories', method: 'GET', failMessage: '加载商品分类失败' });
+}
+
 module.exports = {
   getProducts,
-  getProductDetail
+  getProductDetail,
+  getProductCategories
 };

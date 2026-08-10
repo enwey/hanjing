@@ -89,6 +89,13 @@ async function finalizeAdminPaidOrder(order, paymentPayload = null) {
   } catch (error) {}
   const deliveryMethod = address.deliveryMethod === 'online' || order.type === 'online' ? 'online' : 'pickup';
   const nextStatus = deliveryMethod === 'online' ? 'shipping' : 'paid';
+  const items = await query(
+    `SELECT oi.quantity, oi.product_id, p.category
+     FROM order_items oi
+     LEFT JOIN products p ON p.id = oi.product_id
+     WHERE oi.order_id = ?`,
+    [order.id]
+  );
   await run(
     `UPDATE orders
      SET status = ?,
@@ -98,6 +105,14 @@ async function finalizeAdminPaidOrder(order, paymentPayload = null) {
      WHERE id = ? AND status = 'pending'`,
     [nextStatus, paymentPayload?.transaction_id || null, order.id]
   );
+  for (const item of items) {
+    if (item.category !== 'service') {
+      await run(
+        `UPDATE products SET sales_count = sales_count + ? WHERE id = ?`,
+        [item.quantity, item.product_id]
+      );
+    }
+  }
   return get(`SELECT * FROM orders WHERE id = ?`, [order.id]);
 }
 
@@ -4812,14 +4827,102 @@ app.get('/api/admin/distribution/commissions', authenticateToken, async (req, re
 app.get('/api/admin/products', authenticateToken, async (req, res) => {
   try {
     const list = await query(
-      `SELECT id, name, category, image_url, price, description, stock, sales_count,
-              is_distribution, commission_rate, status, created_at, original_price, gallery_urls
-       FROM products
-       ORDER BY id DESC`
+      `SELECT p.id, p.name, p.category, pc.name AS category_name, p.image_url, p.price, p.description, p.stock, p.sales_count,
+              p.is_distribution, p.commission_rate, p.status, p.created_at, p.original_price, p.gallery_urls
+       FROM products p
+       LEFT JOIN product_categories pc ON pc.code = p.category
+       ORDER BY p.id DESC`
     );
     res.json({ code: 200, data: list });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取商品列表失败' });
+  }
+});
+
+app.get('/api/admin/product-categories', authenticateToken, async (req, res) => {
+  try {
+    const list = await query('SELECT * FROM product_categories ORDER BY sort_order ASC, id ASC');
+    res.json({ code: 200, data: list });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取商品分类失败' });
+  }
+});
+
+function buildProductCategoryCode(name = '') {
+  const normalized = String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized || 'category';
+}
+
+app.post('/api/admin/product-categories', authenticateToken, async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const sortOrder = Number(req.body.sort_order || 0);
+  if (!name) {
+    return res.status(400).json({ code: 400, message: '分类名称不能为空' });
+  }
+  try {
+    let code = String(req.body.code || '').trim().toLowerCase();
+    if (!code) {
+      const baseCode = buildProductCategoryCode(name);
+      code = baseCode;
+      let suffix = 2;
+      while (await get('SELECT id FROM product_categories WHERE code = ?', [code])) {
+        code = `${baseCode}-${suffix}`;
+        suffix += 1;
+      }
+    } else {
+      const exists = await get('SELECT id FROM product_categories WHERE code = ?', [code]);
+      if (exists) {
+        return res.status(400).json({ code: 400, message: '分类标识已存在' });
+      }
+    }
+    const result = await run(
+      'INSERT INTO product_categories (code, name, sort_order) VALUES (?, ?, ?)',
+      [code, name, sortOrder]
+    );
+    res.json({ code: 200, message: '添加商品分类成功', data: { id: result.id } });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '添加商品分类失败' });
+  }
+});
+
+app.put('/api/admin/product-categories/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const category = await get('SELECT * FROM product_categories WHERE id = ?', [id]);
+    if (!category) {
+      return res.status(404).json({ code: 404, message: '商品分类不存在' });
+    }
+    const nextName = req.body.name !== undefined ? String(req.body.name || '').trim() : category.name;
+    const nextSortOrder = req.body.sort_order !== undefined ? Number(req.body.sort_order || 0) : Number(category.sort_order || 0);
+    if (!nextName) {
+      return res.status(400).json({ code: 400, message: '分类名称不能为空' });
+    }
+    await run('UPDATE product_categories SET name = ?, sort_order = ? WHERE id = ?', [nextName, nextSortOrder, id]);
+    res.json({ code: 200, message: '更新商品分类成功' });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '更新商品分类失败' });
+  }
+});
+
+app.delete('/api/admin/product-categories/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const category = await get('SELECT * FROM product_categories WHERE id = ?', [id]);
+    if (!category) {
+      return res.status(404).json({ code: 404, message: '商品分类不存在' });
+    }
+    const productUsage = await get('SELECT COUNT(*) AS count FROM products WHERE category = ?', [category.code]);
+    if (productUsage && Number(productUsage.count || 0) > 0) {
+      return res.status(400).json({ code: 400, message: '该分类下仍有关联商品，无法删除' });
+    }
+    await run('DELETE FROM product_categories WHERE id = ?', [id]);
+    res.json({ code: 200, message: '删除商品分类成功' });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '删除商品分类失败' });
   }
 });
 
@@ -4829,6 +4932,13 @@ app.post('/api/admin/products', authenticateToken, async (req, res) => {
     return res.status(400).json({ code: 400, message: '商品名称和价格为必填项' });
   }
   try {
+    const normalizedCategory = String(category || 'service').trim().toLowerCase() === 'product'
+      ? 'accessory'
+      : String(category || 'service').trim().toLowerCase();
+    const categoryExists = await get('SELECT id FROM product_categories WHERE code = ?', [normalizedCategory]);
+    if (!categoryExists) {
+      return res.status(400).json({ code: 400, message: '商品分类不存在' });
+    }
     let galleryUrlsVal = '[]';
     if (gallery_urls !== undefined && gallery_urls !== null) {
       galleryUrlsVal = typeof gallery_urls === 'string' ? gallery_urls : JSON.stringify(gallery_urls);
@@ -4838,7 +4948,7 @@ app.post('/api/admin/products', authenticateToken, async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
-        category || 'service',
+        normalizedCategory,
         image_url || '/static/products/default.png',
         Number(price),
         description || '',
@@ -4877,6 +4987,17 @@ app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
     return res.status(404).json({ code: 404, message: '商品不存在' });
   }
   try {
+    let nextCategory = product.category;
+    if (req.body.category !== undefined) {
+      nextCategory = String(req.body.category || '').trim().toLowerCase() || product.category;
+      if (nextCategory === 'product') {
+        nextCategory = 'accessory';
+      }
+      const categoryExists = await get('SELECT id FROM product_categories WHERE code = ?', [nextCategory]);
+      if (!categoryExists) {
+        return res.status(400).json({ code: 400, message: '商品分类不存在' });
+      }
+    }
     let galleryUrlsVal = product.gallery_urls;
     if (req.body.gallery_urls !== undefined) {
       galleryUrlsVal = req.body.gallery_urls === null ? '[]' : (typeof req.body.gallery_urls === 'string' ? req.body.gallery_urls : JSON.stringify(req.body.gallery_urls));
@@ -4894,7 +5015,7 @@ app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
        WHERE id = ?`,
       [
         req.body.name ?? product.name,
-        req.body.category ?? product.category,
+        nextCategory,
         req.body.image_url ?? product.image_url,
         req.body.price !== undefined ? Number(req.body.price) : product.price,
         req.body.description ?? product.description,
@@ -6223,8 +6344,8 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
 
         if (item.product.category !== 'service') {
           await conn.execute(
-            `UPDATE products SET stock = stock - ?, sales_count = sales_count + ? WHERE id = ?`,
-            [item.quantity, item.quantity, item.product.id]
+            `UPDATE products SET stock = stock - ? WHERE id = ?`,
+            [item.quantity, item.product.id]
           );
         }
       }
@@ -6492,8 +6613,8 @@ app.post('/api/admin/pay/orders/:id/cancel', authenticateToken, async (req, res)
       const items = await query(`SELECT * FROM order_items WHERE order_id = ?`, [id]);
       for (const item of items) {
         await conn.execute(
-          `UPDATE products SET stock = stock + ?, sales_count = GREATEST(0, sales_count - ?) WHERE id = ?`,
-          [item.quantity, item.quantity, item.product_id]
+          `UPDATE products SET stock = stock + ? WHERE id = ?`,
+          [item.quantity, item.product_id]
         );
       }
     });

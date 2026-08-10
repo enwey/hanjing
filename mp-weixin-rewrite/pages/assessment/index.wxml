@@ -8,7 +8,7 @@
       </view>
       <button class="sync-btn data-v-35dabd14" bindtap="handleForceSync">立即同步</button>
     </view>
-    <picker wx:if="{{isLoggedIn && memberNames.length}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker data-v-35dabd14">
+    <picker wx:if="{{isLoggedIn && memberNames.length > 1}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker data-v-35dabd14">
       <view class="member-picker-content data-v-35dabd14">
         <view class="member-info data-v-35dabd14">
           <text class="member-label data-v-35dabd14">当前评估人：</text>

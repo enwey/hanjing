@@ -130,6 +130,7 @@ function buildTimelinePreview(timeline) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     entries: TREATMENT_ENTRIES,
     memberNames: [],
@@ -184,7 +185,7 @@ Page({
       wx.navigateTo({ url: '/pages/auth/login' });
       return;
     }
-    this.loadPage();
+    this.loadPage({ silent: this.data.hasLoaded });
   },
 
   queryParams() {
@@ -195,8 +196,11 @@ Page({
     return params;
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const memberRes = await api.getFamilyMembers();
       const members = unwrapList(memberRes);
@@ -238,6 +242,7 @@ Page({
 
       this.setData({
         loading: false,
+        hasLoaded: true,
         memberNames: buildMemberOptions(members),
         memberOptions: buildMemberOptions(members),
         memberIndex: Math.max(0, members.findIndex((item) => String(item.id) === String(this.selectedPatientId || ''))),
@@ -272,10 +277,14 @@ Page({
       });
     } catch (error) {
       console.error('[Treatment loadPage] 加载失败', error);
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载治疗页失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载治疗页失败',
+        });
+      } else {
+        this.setData({ loading: false });
+      }
     }
   },
 

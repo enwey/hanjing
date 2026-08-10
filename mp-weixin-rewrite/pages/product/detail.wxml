@@ -9,6 +9,7 @@
     <block wx:if="{{galleryImages.length}}">
       <swiper
         class="product-gallery"
+        style="background: {{galleryBackground}};"
         current="{{currentImageIndex}}"
         bindchange="onSwiperChange"
         indicator-dots
@@ -16,16 +17,17 @@
         indicator-active-color="#3B6BF5"
       >
         <swiper-item wx:for="{{galleryImages}}" wx:key="*this">
-          <image class="product-gallery__image" src="{{item}}" mode="aspectFill"></image>
+          <image
+            class="product-gallery__image"
+            src="{{item}}"
+            mode="aspectFill"
+            data-image-url="{{item}}"
+            binderror="handleGalleryImageError"
+          ></image>
         </swiper-item>
       </swiper>
     </block>
-    <view wx:else class="product-gallery product-gallery--empty">
-      <view class="product-gallery__placeholder-mark">
-        <view class="product-gallery__placeholder-line product-gallery__placeholder-line--horizontal"></view>
-        <view class="product-gallery__placeholder-line product-gallery__placeholder-line--vertical"></view>
-      </view>
-    </view>
+    <view wx:else class="product-gallery product-gallery--empty" style="background: {{galleryBackground}};"></view>
 
     <view class="body">
       <view class="header">
@@ -55,13 +57,19 @@
 
         <scroll-view scroll-y class="checkout-scroll">
           <view class="checkout-product-card">
-            <image wx:if="{{product.imageUrl}}" class="checkout-product-img" src="{{product.imageUrl}}" mode="aspectFill"></image>
-            <view wx:else class="checkout-product-img checkout-product-img--placeholder">
-              <view class="checkout-placeholder-mark">
-                <view class="checkout-placeholder-line checkout-placeholder-line--horizontal"></view>
-                <view class="checkout-placeholder-line checkout-placeholder-line--vertical"></view>
-              </view>
-            </view>
+            <image
+              wx:if="{{product.imageUrl}}"
+              class="checkout-product-img"
+              src="{{product.imageUrl}}"
+              mode="aspectFill"
+              data-image-url="{{product.imageUrl}}"
+              binderror="handleGalleryImageError"
+            ></image>
+            <view
+              wx:else
+              class="checkout-product-img checkout-product-img--placeholder"
+              style="background: {{product.categoryColor}};"
+            ></view>
             <view class="checkout-product-info">
               <text class="checkout-product-name">{{product.name}}</text>
               <text class="checkout-product-price">{{displayPrice}}</text>
@@ -80,7 +88,7 @@
           <view class="checkout-section">
             <view class="checkout-section-head">
               <text class="checkout-section-title">收货人信息</text>
-              <text class="checkout-address-choose" bindtap="chooseWxAddress">选择微信地址</text>
+              <button class="checkout-address-choose" bindtap="chooseWxAddress">选择微信地址</button>
             </view>
 
             <view class="input-group">
@@ -94,7 +102,7 @@
             </view>
 
             <view class="input-group input-group--textarea">
-              <text class="input-label">详细地址</text>
+              <text class="input-label input-label--textarea">详细地址</text>
               <textarea class="checkout-textarea" value="{{detailAddress}}" bindinput="onInputDetail" placeholder="省市区及详细地址"></textarea>
             </view>
           </view>
@@ -107,7 +115,7 @@
             <text class="checkout-total-label">实付款</text>
             <text class="checkout-total-val">{{totalPayAmountText}}</text>
           </view>
-          <view class="bar-primary-btn" bindtap="onCheckoutSubmitTap">
+          <view class="bar-primary-btn checkout-submit-btn" bindtap="onCheckoutSubmitTap">
             <text class="bar-primary-btn-text">{{isSubmitting ? '正在提交...' : '确认支付'}}</text>
           </view>
         </view>

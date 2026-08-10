@@ -1,5 +1,11 @@
 const api = require('../../api/index');
 
+const CATEGORY_COLORS = {
+  device: '#d9e6ff',
+  accessory: '#dff4e8',
+  service: '#fff1d6',
+};
+
 function parseMarkdownToHtml(markdown) {
   if (!markdown) return '';
   let html = String(markdown);
@@ -59,12 +65,39 @@ function getPaymentErrorMessage(error, canceledText) {
   return '发起支付失败';
 }
 
+async function syncPaidOrder(orderId) {
+  if (!orderId) return;
+  try {
+    await api.confirmOrderPayment(orderId);
+  } catch (error) {}
+}
+
+function normalizeAddressText(result) {
+  const detailText = result.detailInfoNew || result.detailInfo || result.streetName || '';
+  const parts = [
+    result.provinceName || '',
+    result.cityName || '',
+    result.countyName || '',
+    detailText,
+  ];
+  return parts.join('').trim();
+}
+
+function normalizeCategory(rawCategory) {
+  const category = String(rawCategory || '').trim().toLowerCase();
+  if (category === 'product') {
+    return 'accessory';
+  }
+  return category || 'service';
+}
+
 Page({
   data: {
     loading: true,
     loadError: '',
     product: null,
     galleryImages: [],
+    galleryBackground: '#fff1d6',
     currentImageIndex: 0,
     hasDiscount: false,
     discountText: '',
@@ -81,6 +114,7 @@ Page({
   },
 
   onLoad(options) {
+    this.imageLoadFailedMap = {};
     const productId = options && options.id;
     if (!productId) {
       wx.navigateBack();
@@ -103,9 +137,13 @@ Page({
       const resolvedImages = galleryImages.length
         ? galleryImages
         : (rawProduct.imageUrl ? [rawProduct.imageUrl] : []);
+      const category = normalizeCategory(rawProduct.category || rawProduct.categoryName);
+      this.imageLoadFailedMap = {};
       const product = {
         id: String(rawProduct.id || ''),
         name: rawProduct.name || '',
+        category,
+        categoryColor: CATEGORY_COLORS[category] || '#f3f4f6',
         imageUrl: rawProduct.imageUrl || '',
         galleryUrls: resolvedImages,
         price: Number(rawProduct.price || 0),
@@ -117,6 +155,7 @@ Page({
         loading: false,
         product,
         galleryImages: resolvedImages,
+        galleryBackground: product.categoryColor,
         hasDiscount: product.originalPrice > product.price && product.price > 0,
         discountText: product.originalPrice > product.price && product.price > 0
           ? Math.round((1 - product.price / product.originalPrice) * 100) + '% OFF'
@@ -139,6 +178,26 @@ Page({
 
   onSwiperChange(event) {
     this.setData({ currentImageIndex: event.detail.current || 0 });
+  },
+
+  handleGalleryImageError(event) {
+    const imageUrl = String(event.currentTarget.dataset.imageUrl || '');
+    if (!imageUrl || this.imageLoadFailedMap[imageUrl]) {
+      return;
+    }
+    this.imageLoadFailedMap[imageUrl] = true;
+    const galleryImages = (this.data.galleryImages || []).filter((item) => String(item) !== imageUrl);
+    const nextIndex = galleryImages.length
+      ? Math.min(this.data.currentImageIndex, galleryImages.length - 1)
+      : 0;
+    const nextProduct = this.data.product && String(this.data.product.imageUrl || '') === imageUrl
+      ? { ...this.data.product, imageUrl: '' }
+      : this.data.product;
+    this.setData({
+      galleryImages,
+      currentImageIndex: nextIndex,
+      product: nextProduct,
+    });
   },
 
   formatPriceYuan(value) {
@@ -201,23 +260,155 @@ Page({
     this.setData({ quantity: this.data.quantity - 1 }, () => this.refreshCheckoutView());
   },
 
-  chooseWxAddress() {
-    if (!wx.chooseAddress) {
-      wx.showToast({ title: '当前微信版本不支持选择地址', icon: 'none' });
-      return;
-    }
-    wx.chooseAddress({
-      success: (result) => {
-        this.setData({
-          contactName: result.userName || '',
-          phone: result.telNumber || '',
-          detailAddress: (result.provinceName || '') + (result.cityName || '') + (result.countyName || '') + (result.detailInfo || ''),
-        });
+  fillAddressFromWechat(result) {
+    this.setData({
+      contactName: result.userName || '',
+      phone: result.telNumber || '',
+      detailAddress: normalizeAddressText(result),
+    });
+  },
+
+  getAddressPermissionState() {
+    return new Promise((resolve) => {
+      wx.getSetting({
+        success: (result) => {
+          const authSetting = result && result.authSetting ? result.authSetting : {};
+          resolve(authSetting['scope.address']);
+        },
+        fail: () => resolve(undefined),
+      });
+    });
+  },
+
+  requestAddressPermission() {
+    return new Promise((resolve, reject) => {
+      wx.authorize({
+        scope: 'scope.address',
+        success: resolve,
+        fail: reject,
+      });
+    });
+  },
+
+  tryChooseWxAddress() {
+    return new Promise((resolve, reject) => {
+      wx.chooseAddress({
+        success: resolve,
+        fail: reject,
+      });
+    });
+  },
+
+  openAddressPermissionSettings() {
+    wx.openSetting({
+      success: (settingResult) => {
+        if (settingResult && settingResult.authSetting && settingResult.authSetting['scope.address']) {
+          this.chooseWxAddress();
+          return;
+        }
+        wx.showToast({ title: '未开启通讯地址权限，可继续手动填写', icon: 'none' });
       },
       fail: () => {
-        wx.showToast({ title: '可手动填写收货地址', icon: 'none' });
+        wx.showToast({ title: '请在设置中开启通讯地址权限', icon: 'none' });
       },
     });
+  },
+
+  handleChooseWxAddressFail(error) {
+    const errMsg = error && error.errMsg ? String(error.errMsg) : '';
+    console.error('[chooseWxAddress] failed:', error);
+    if (errMsg.indexOf('cancel') >= 0) {
+      return;
+    }
+    if (errMsg.indexOf('api not supported') >= 0 || errMsg.indexOf('function not exist') >= 0) {
+      wx.showToast({
+        title: '开发者工具不支持，请在微信真机中选择地址',
+        icon: 'none',
+      });
+      return;
+    }
+    if (errMsg.indexOf('auth deny') >= 0 || errMsg.indexOf('authorize no response') >= 0) {
+      wx.showModal({
+        title: '需要地址权限',
+        content: '请选择允许访问微信通讯地址，以便快速填充收货人和地址信息。',
+        confirmText: '去开启',
+        cancelText: '手动填写',
+        success: (result) => {
+          if (result.confirm) {
+            this.openAddressPermissionSettings();
+          }
+        },
+      });
+      return;
+    }
+    if (errMsg.indexOf('authorize:fail') >= 0) {
+      wx.showModal({
+        title: '地址权限未授权',
+        content: '请先允许小程序访问微信通讯地址；如果仍失败，请到小程序后台的“开发管理-接口设置”确认已开通收货地址接口。',
+        confirmText: '去设置',
+        cancelText: '知道了',
+        success: (result) => {
+          if (result.confirm) {
+            this.openAddressPermissionSettings();
+          }
+        },
+      });
+      return;
+    }
+    wx.showToast({
+      title: errMsg ? '选择微信地址失败' : '当前环境暂不支持选择微信地址',
+      icon: 'none',
+    });
+  },
+
+  onChooseWxAddress(event) {
+    const detail = event && event.detail ? event.detail : {};
+    if (detail && (detail.errMsg === 'chooseAddress:ok' || detail.userName)) {
+      this.fillAddressFromWechat(detail);
+      wx.showToast({ title: '已填充微信地址', icon: 'success' });
+      return;
+    }
+    this.handleChooseWxAddressFail(detail);
+  },
+
+  async chooseWxAddress() {
+    if (typeof wx.chooseAddress !== 'function') {
+      wx.showToast({ title: '当前环境暂不支持选择微信地址', icon: 'none' });
+      return;
+    }
+    try {
+      const permissionState = await this.getAddressPermissionState();
+      if (permissionState === false) {
+        wx.showModal({
+          title: '需要地址权限',
+          content: '请先开启微信通讯地址权限，然后直接从微信地址中选择收货信息。',
+          confirmText: '去开启',
+          cancelText: '取消',
+          success: (result) => {
+            if (result.confirm) {
+              this.openAddressPermissionSettings();
+            }
+          },
+        });
+        return;
+      }
+      if (permissionState === undefined && typeof wx.authorize === 'function') {
+        try {
+          await this.requestAddressPermission();
+        } catch (authError) {
+          this.handleChooseWxAddressFail(authError);
+          return;
+        }
+      }
+      wx.showLoading({ title: '读取微信地址...' });
+      const result = await this.tryChooseWxAddress();
+      wx.hideLoading();
+      this.fillAddressFromWechat(result || {});
+      wx.showToast({ title: '已填充微信地址', icon: 'success' });
+    } catch (error) {
+      wx.hideLoading();
+      this.handleChooseWxAddressFail(error);
+    }
   },
 
   onInputName(event) { this.setData({ contactName: event.detail.value || '' }); },
@@ -266,6 +457,9 @@ Page({
         wx.hideLoading();
       } else {
         await requestWxPay(payParams);
+        wx.showLoading({ title: '同步订单状态...' });
+        await syncPaidOrder(orderId);
+        wx.hideLoading();
       }
       wx.showToast({ title: '支付已提交', icon: 'success' });
       this.setData({ showCheckout: false });

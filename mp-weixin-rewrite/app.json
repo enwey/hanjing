@@ -132,7 +132,8 @@
     }
   },
   "requiredPrivateInfos": [
-    "getLocation"
+    "getLocation",
+    "chooseAddress"
   ],
   "navigateToMiniProgramAppIdList": [
     "wxdb9a5899edef2670",

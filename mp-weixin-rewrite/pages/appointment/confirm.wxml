@@ -39,13 +39,18 @@
         <text class="info-value info-value--bold">{{draft.timeSlot.label}}</text>
       </view>
 
-      <picker bindchange="handleMemberChange" value="{{memberIndex}}" range="{{memberOptions}}">
+      <picker wx:if="{{memberOptions.length > 1}}" bindchange="handleMemberChange" value="{{memberIndex}}" range="{{memberOptions}}">
         <view class="info-row" style="position: relative;">
           <image class="row-icon" src="/static/icons/profile_orange.svg" />
           <text class="info-label">就诊人</text>
           <text class="info-value" style="padding-right: 30rpx; color: #3B6BF5;">{{selectedMemberName}} ›</text>
         </view>
       </picker>
+      <view wx:else class="info-row">
+        <image class="row-icon" src="/static/icons/profile_orange.svg" />
+        <text class="info-label">就诊人</text>
+        <text class="info-value">{{selectedMemberName}}</text>
+      </view>
 
       <view wx:if="{{requireDeposit}}" class="info-row">
         <image class="row-icon" src="/static/icons/price.svg" />

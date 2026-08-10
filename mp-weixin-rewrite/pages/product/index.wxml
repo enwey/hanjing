@@ -28,13 +28,14 @@
           bindtap="openDetail"
         >
           <view class="product-card__cover" style="background: {{item.categoryColor}};">
-            <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="widthFix" class="product-card__cover-image" />
-            <view wx:else class="product-card__placeholder">
-              <view class="product-card__placeholder-mark">
-                <view class="product-card__placeholder-line product-card__placeholder-line--horizontal"></view>
-                <view class="product-card__placeholder-line product-card__placeholder-line--vertical"></view>
-              </view>
-            </view>
+            <image
+              wx:if="{{item.showImage}}"
+              src="{{item.imageUrl}}"
+              mode="aspectFill"
+              class="product-card__cover-image"
+              data-product-id="{{item.id}}"
+              binderror="handleProductImageError"
+            />
             <view wx:if="{{item.hasDiscount}}" class="product-card__discount">
               <text>{{item.discountPercent}}% OFF</text>
             </view>
@@ -64,13 +65,14 @@
           bindtap="openDetail"
         >
           <view class="product-card__cover" style="background: {{item.categoryColor}};">
-            <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="widthFix" class="product-card__cover-image" />
-            <view wx:else class="product-card__placeholder">
-              <view class="product-card__placeholder-mark">
-                <view class="product-card__placeholder-line product-card__placeholder-line--horizontal"></view>
-                <view class="product-card__placeholder-line product-card__placeholder-line--vertical"></view>
-              </view>
-            </view>
+            <image
+              wx:if="{{item.showImage}}"
+              src="{{item.imageUrl}}"
+              mode="aspectFill"
+              class="product-card__cover-image"
+              data-product-id="{{item.id}}"
+              binderror="handleProductImageError"
+            />
             <view wx:if="{{item.hasDiscount}}" class="product-card__discount">
               <text>{{item.discountPercent}}% OFF</text>
             </view>

@@ -52,6 +52,11 @@ function getPaymentErrorMessage(error, canceledText) {
   return '发起支付失败';
 }
 
+async function syncPaidAppointment(appointmentId) {
+  if (!appointmentId) return;
+  await api.confirmAppointmentPayment(appointmentId);
+}
+
 function normalizeAppointment(appointment, stores, doctors) {
   const store = stores.find((item) => String(item.id) === String(appointment.storeId || appointment.store_id)) || null;
   const doctor = doctors.find((item) => String(item.id) === String(appointment.doctorId || appointment.doctor_id)) || null;
@@ -75,6 +80,7 @@ function normalizeAppointment(appointment, stores, doctors) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     isLoggedIn: false,
     currentTab: 'upcoming',
@@ -96,23 +102,25 @@ Page({
   },
 
   onShow() {
-    this.loadPage();
+    this.loadPage({ silent: this.data.hasLoaded });
   },
 
   async onPullDownRefresh() {
-    await this.loadPage();
+    await this.loadPage({ silent: false });
     wx.stopPullDownRefresh();
   },
 
-  async loadPage() {
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
     const isLoggedIn = sessionStore.isLoggedIn();
-    this.setData({
-      loading: true,
-      loadError: '',
-      isLoggedIn,
-      upcomingAppointments: [],
-      historyAppointments: [],
-    });
+    const nextState = { isLoggedIn };
+    if (!silent) {
+      nextState.loading = true;
+      nextState.loadError = '';
+      nextState.upcomingAppointments = [];
+      nextState.historyAppointments = [];
+    }
+    this.setData(nextState);
 
     const [storesResult, doctorsResult, settingsResult] = await Promise.allSettled([
       api.getStores(),
@@ -131,7 +139,13 @@ Page({
     });
 
     if (!isLoggedIn) {
-      this.setData({ loading: false });
+      this.setData({
+        loading: false,
+        hasLoaded: true,
+        loadError: '',
+        upcomingAppointments: [],
+        historyAppointments: [],
+      });
       return;
     }
 
@@ -140,15 +154,20 @@ Page({
       const appointmentList = unwrapList(appointmentsResponse).map((appointment) => normalizeAppointment(appointment, stores, doctors));
       this.setData({
         loading: false,
+        hasLoaded: true,
         loadError: '',
         upcomingAppointments: appointmentList.filter((appointment) => ACTIVE_STATUSES.includes(appointment.status)),
         historyAppointments: appointmentList.filter((appointment) => !ACTIVE_STATUSES.includes(appointment.status)),
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载预约失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载预约失败',
+        });
+      } else {
+        this.setData({ loading: false });
+      }
       console.error('加载预约失败', error);
     }
   },
@@ -228,6 +247,9 @@ Page({
           wx.hideLoading();
         } else {
           await this.requestWxPay(payParams);
+          wx.showLoading({ title: '同步预约状态...' });
+          await syncPaidAppointment(appointment.id);
+          wx.hideLoading();
         }
         wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });
         await this.loadPage();

@@ -11,7 +11,7 @@ interface Product {
   id: string;
   name: string;
   desc: string;
-  icon: string; // 'bed', 'mask', 'wind'
+  category: string;
   imageUrl: string;
   price: number;
   originalPrice: number;
@@ -23,16 +23,30 @@ interface Product {
   status: string; // 'on', 'off'
 }
 
+interface ProductCategoryOption {
+  id: string;
+  code: string;
+  name: string;
+  sortOrder: number;
+}
+
+const DEFAULT_CATEGORY_OPTIONS: ProductCategoryOption[] = [
+  { id: 'device', code: 'device', name: '医疗器械', sortOrder: 10 },
+  { id: 'accessory', code: 'accessory', name: '配件耗材', sortOrder: 20 },
+  { id: 'service', code: 'service', name: '服务套餐', sortOrder: 30 }
+]
+
 const route = useRoute()
 const router = useRouter()
 
 const isEdit = ref(false)
 const editorMode = ref<'edit' | 'preview'>('edit')
+const categoryOptions = ref<ProductCategoryOption[]>([])
 
 const formData = ref<Partial<Product>>({
   name: '',
   desc: '',
-  icon: 'bed',
+  category: 'service',
   imageUrl: '',
   price: 0,
   originalPrice: 0,
@@ -49,6 +63,27 @@ const galleryImageInputRef = ref<HTMLInputElement | null>(null)
 
 function deleteMainImage() {
   formData.value.imageUrl = ''
+}
+
+async function fetchCategoryOptions() {
+  try {
+    const res: any = await request.get('/api/admin/product-categories')
+    categoryOptions.value = (res.data || []).map((row: any) => ({
+      id: String(row.id),
+      code: row.code,
+      name: row.name,
+      sortOrder: Number(row.sort_order || 0),
+    }))
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      categoryOptions.value = DEFAULT_CATEGORY_OPTIONS
+    } else {
+      throw error
+    }
+  }
+  if (!formData.value.category && categoryOptions.value.length > 0) {
+    formData.value.category = categoryOptions.value[0].code
+  }
 }
 
 function deleteGalleryImage(index: number) {
@@ -128,7 +163,7 @@ async function handleDescImageUpload(files: File[], callback: (urls: string[]) =
 function toPayload(prod: Partial<Product>) {
   return {
     name: prod.name,
-    category: prod.icon === 'mask' ? 'device' : prod.icon === 'wind' ? 'product' : 'service',
+    category: prod.category || 'service',
     image_url: prod.imageUrl || '/static/products/default.png',
     price: Math.round(Number(prod.price || 0) * 100),
     original_price: prod.originalPrice ? Math.round(Number(prod.originalPrice) * 100) : null,
@@ -166,6 +201,11 @@ async function handleSave() {
 }
 
 onMounted(async () => {
+  try {
+    await fetchCategoryOptions()
+  } catch (error) {
+    MessagePlugin.error('加载商品分类失败')
+  }
   const prodId = route.params.id
   if (prodId) {
     isEdit.value = true
@@ -185,7 +225,7 @@ onMounted(async () => {
           id: String(row.id),
           name: row.name,
           desc: row.description || '',
-          icon: row.category === 'device' ? 'mask' : row.category === 'product' ? 'wind' : 'bed',
+          category: row.category || categoryOptions.value[0]?.code || 'service',
           imageUrl: row.image_url || '',
           price: Number(row.price || 0) / 100,
           originalPrice: row.original_price ? Number(row.original_price) / 100 : 0,
@@ -206,7 +246,7 @@ onMounted(async () => {
     formData.value = {
       name: '',
       desc: '',
-      icon: 'bed',
+      category: categoryOptions.value[0]?.code || 'service',
       imageUrl: '',
       price: 0,
       originalPrice: 0,
@@ -250,10 +290,10 @@ onMounted(async () => {
               </div>
               <div class="form-group" style="margin-top: 14px;">
                 <label class="form-label">分类/类型</label>
-                <select class="form-control" v-model="formData.icon">
-                  <option value="bed">服务类型 (诊疗/睡眠咨询服务)</option>
-                  <option value="mask">医疗器械 (呼吸面罩/耗材)</option>
-                  <option value="wind">商城商品 (呼吸机/风机/配件)</option>
+                <select class="form-control" v-model="formData.category">
+                  <option v-for="category in categoryOptions" :key="category.id" :value="category.code">
+                    {{ category.name }}
+                  </option>
                 </select>
               </div>
             </div>

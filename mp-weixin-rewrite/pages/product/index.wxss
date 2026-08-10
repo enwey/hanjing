@@ -82,49 +82,15 @@
 .product-card__cover {
   position: relative;
   width: 100%;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background: #f3f4f6;
 }
 
 .product-card__cover-image {
   width: 100%;
+  height: 100%;
   display: block;
-}
-
-.product-card__placeholder {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #e5e7eb;
-}
-
-.product-card__placeholder-mark {
-  position: relative;
-  width: 68rpx;
-  height: 68rpx;
-  border: 4rpx solid rgba(107, 114, 128, 0.28);
-  border-radius: 20rpx;
-}
-
-.product-card__placeholder-line {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  background: rgba(107, 114, 128, 0.28);
-  transform: translate(-50%, -50%);
-  border-radius: 999rpx;
-}
-
-.product-card__placeholder-line--horizontal {
-  width: 28rpx;
-  height: 4rpx;
-}
-
-.product-card__placeholder-line--vertical {
-  width: 4rpx;
-  height: 28rpx;
 }
 
 .product-card__discount {

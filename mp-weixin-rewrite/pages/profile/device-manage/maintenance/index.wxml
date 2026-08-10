@@ -2,7 +2,7 @@
   <hj-navbar title="维护记录" show-back></hj-navbar>
 
   <view class="page-content">
-    <picker wx:if="{{memberOptions.length}}" mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker">
+    <picker wx:if="{{memberOptions.length > 1}}" mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker">
       <view class="member-picker-content">
         <view class="member-info">
           <text class="member-label">当前就诊人：</text>

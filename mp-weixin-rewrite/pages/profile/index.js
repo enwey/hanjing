@@ -48,6 +48,7 @@ function normalizeLevelLabel(level) {
 Page({
   data: {
     isLoggedIn: false,
+    hasLoaded: false,
     nickname: '点击登录',
     avatarText: '👤',
     memberLevelLabel: '未登录',
@@ -55,19 +56,30 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
     const isLoggedIn = sessionStore.isLoggedIn();
-    this.setData({
-      isLoggedIn,
-      nickname: isLoggedIn ? '加载中...' : '点击登录',
-      avatarText: '👤',
-      memberLevelLabel: isLoggedIn ? '会员信息加载中' : '未登录',
-    });
+    if (!silent) {
+      this.setData({
+        isLoggedIn,
+        nickname: isLoggedIn ? '加载中...' : '点击登录',
+        avatarText: '👤',
+        memberLevelLabel: isLoggedIn ? '会员信息加载中' : '未登录',
+      });
+    } else {
+      this.setData({ isLoggedIn });
+    }
 
     if (!isLoggedIn) {
+      this.setData({
+        hasLoaded: true,
+        nickname: '点击登录',
+        avatarText: '👤',
+        memberLevelLabel: '未登录',
+      });
       return;
     }
 
@@ -76,16 +88,19 @@ Page({
       const nickname = (profile && (profile.nickname || profile.name)) || '已登录用户';
 
       this.setData({
+        hasLoaded: true,
         nickname,
         avatarText: nickname.slice(0, 1),
         memberLevelLabel: normalizeLevelLabel(profile && (profile.memberLevel || profile.member_level)),
       });
     } catch (error) {
-      this.setData({
-        nickname: '已登录用户',
-        avatarText: '已',
-        memberLevelLabel: '会员信息加载失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          nickname: '已登录用户',
+          avatarText: '已',
+          memberLevelLabel: '会员信息加载失败',
+        });
+      }
     }
   },
 

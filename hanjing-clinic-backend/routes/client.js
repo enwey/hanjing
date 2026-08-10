@@ -25,6 +25,7 @@ import {
   createWechatRefund,
   decryptWechatPayResource as serviceDecryptWechatPayResource,
   getMissingWechatPayConfig as serviceGetMissingWechatPayConfig,
+  queryOrderByOutTradeNo,
   verifyWechatPayCallback
 } from '../wechatPay.js';
 
@@ -1087,6 +1088,13 @@ async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
     ? 'pickup'
     : (order.type === 'online' ? 'online' : 'pickup');
   const nextStatus = deliveryMethod === 'online' ? 'shipping' : 'paid';
+  const [items] = await conn.execute(
+    `SELECT oi.quantity, oi.product_id, p.category
+     FROM order_items oi
+     LEFT JOIN products p ON p.id = oi.product_id
+     WHERE oi.order_id = ?`,
+    [order.id]
+  );
 
   await conn.execute(
     `UPDATE orders
@@ -1098,6 +1106,15 @@ async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
      WHERE id = ? AND status = 'pending'`,
     [nextStatus, paymentPayload?.transaction_id || null, paymentPayload?.prepay_id || null, order.id]
   );
+
+  for (const item of items) {
+    if (item.category !== 'service') {
+      await conn.execute(
+        `UPDATE products SET sales_count = sales_count + ? WHERE id = ?`,
+        [item.quantity, item.product_id]
+      );
+    }
+  }
 
   await conn.execute(
     `INSERT INTO user_notifications (user_id, title, content, type)
@@ -4341,9 +4358,6 @@ app.post('/api/v1/appointments/:id/confirm-pay', authenticateWxToken, async (req
   const { id } = req.params;
   try {
     const canUseMockConfirm = serviceAllowDevMockWechatPay() && (await serviceGetMissingWechatPayConfig()).length > 0;
-    if (process.env.ALLOW_CLIENT_APPOINTMENT_PAY_CONFIRM !== 'true' && !canUseMockConfirm) {
-      return res.status(403).json({ code: 403, message: '预约支付状态以微信支付回调为准' });
-    }
     const appt = await get(
       `SELECT a.*, d.consult_fee
        FROM appointments a
@@ -4354,6 +4368,21 @@ app.post('/api/v1/appointments/:id/confirm-pay', authenticateWxToken, async (req
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
     }
+    if (appt.status !== 'pending_payment') {
+      return res.json({ code: 0, message: '预约支付状态已同步' });
+    }
+
+    let paymentPayload = null;
+    if (!canUseMockConfirm) {
+      const payResult = await queryOrderByOutTradeNo(appt.appointment_no);
+      if (!payResult || payResult.trade_state !== 'SUCCESS') {
+        return res.status(409).json({
+          code: 409,
+          message: '微信支付结果尚未确认，请稍后刷新重试'
+        });
+      }
+      paymentPayload = payResult;
+    }
 
     await transaction(async (conn) => {
       const [apptRows] = await conn.execute(
@@ -4361,12 +4390,15 @@ app.post('/api/v1/appointments/:id/confirm-pay', authenticateWxToken, async (req
         [id]
       );
       const curAppt = apptRows && apptRows[0];
-      if (!curAppt || curAppt.status !== 'pending_payment') {
-        const err = new Error('预约不需要支付或已支付');
-        err.statusCode = 400;
+      if (!curAppt) {
+        const err = new Error('预约不存在');
+        err.statusCode = 404;
         throw err;
       }
-      await finalizePaidAppointment(conn, appt, req.user.id);
+      if (curAppt.status !== 'pending_payment') {
+        return;
+      }
+      await finalizePaidAppointment(conn, appt, req.user.id, paymentPayload);
     });
 
     res.json({ code: 0, message: '支付同步成功' });
@@ -5002,14 +5034,33 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
 });
 
 // 18. Products (GET)
+app.get('/api/v1/product-categories', async (req, res) => {
+  try {
+    const list = await query('SELECT code, name, sort_order FROM product_categories ORDER BY sort_order ASC, id ASC');
+    res.json({
+      code: 200,
+      data: list.map((item) => ({
+        code: item.code,
+        name: item.name,
+        sortOrder: Number(item.sort_order || 0),
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取商品分类失败' });
+  }
+});
+
 app.get('/api/v1/products', async (req, res) => {
   const { category } = req.query;
   try {
     const params = [];
     let sql = `SELECT * FROM products WHERE status = 'on'`;
-    if (category && category !== 'all') {
+    const normalizedCategory = String(category || '').trim().toLowerCase() === 'product'
+      ? 'accessory'
+      : String(category || '').trim().toLowerCase();
+    if (normalizedCategory && normalizedCategory !== 'all') {
       sql += ` AND category = ?`;
-      params.push(category);
+      params.push(normalizedCategory);
     }
     sql += ` ORDER BY id DESC`;
     const list = await query(sql, params);
@@ -6144,8 +6195,8 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
         );
 
         await conn.execute(
-          `UPDATE products SET stock = stock - ?, sales_count = sales_count + ? WHERE id = ?`,
-          [item.quantity, item.quantity, item.product.id]
+          `UPDATE products SET stock = stock - ? WHERE id = ?`,
+          [item.quantity, item.product.id]
         );
       }
 
@@ -6229,11 +6280,37 @@ app.post('/api/v1/orders/:id/confirm-pay', authenticateWxToken, async (req, res)
       return res.status(404).json({ code: 404, message: '订单不存在' });
     }
     if (order.status !== 'pending') {
-      return res.status(400).json({ code: 400, message: '订单非待支付状态' });
+      return res.json({ code: 0, message: '订单支付状态已同步' });
+    }
+
+    const canUseMockConfirm = serviceAllowDevMockWechatPay() && (await serviceGetMissingWechatPayConfig()).length > 0;
+    let paymentPayload = null;
+    if (!canUseMockConfirm) {
+      const payResult = await queryOrderByOutTradeNo(order.order_no);
+      if (!payResult || payResult.trade_state !== 'SUCCESS') {
+        return res.status(409).json({
+          code: 409,
+          message: '微信支付结果尚未确认，请稍后刷新重试'
+        });
+      }
+      paymentPayload = payResult;
     }
 
     await transaction(async (conn) => {
-      await finalizePaidProductOrder(conn, order);
+      const [orderRows] = await conn.execute(
+        `SELECT status FROM orders WHERE id = ? FOR UPDATE`,
+        [id]
+      );
+      const currentOrder = orderRows && orderRows[0];
+      if (!currentOrder) {
+        const err = new Error('订单不存在');
+        err.statusCode = 404;
+        throw err;
+      }
+      if (currentOrder.status !== 'pending') {
+        return;
+      }
+      await finalizePaidProductOrder(conn, order, paymentPayload);
     });
 
     res.json({ code: 0, message: '支付同步成功' });
@@ -6332,8 +6409,8 @@ app.post('/api/v1/orders/:id/cancel', authenticateWxToken, async (req, res) => {
       const items = await query('SELECT * FROM order_items WHERE order_id = ?', [id]);
       for (const item of items) {
         await conn.execute(
-          `UPDATE products SET stock = stock + ?, sales_count = GREATEST(0, sales_count - ?) WHERE id = ?`,
-          [item.quantity, item.quantity, item.product_id]
+          `UPDATE products SET stock = stock + ? WHERE id = ?`,
+          [item.quantity, item.product_id]
         );
       }
 

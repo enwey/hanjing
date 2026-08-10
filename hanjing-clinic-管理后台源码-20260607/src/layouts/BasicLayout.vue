@@ -68,7 +68,8 @@ const menuGroups = computed(() => [
         badge: notifStats.value.withdrawCount > 0 ? String(notifStats.value.withdrawCount) : undefined, 
         badgeColor: 'gold' 
       },
-      { path: '/products', label: '商品管理', icon: '🛍️', permission: 'distribution:edit' }
+      { path: '/products', label: '商品管理', icon: '🛍️', permission: 'distribution:edit' },
+      { path: '/product-categories', label: '商品分类', icon: '🏷️', permission: 'distribution:edit' }
     ]
   },
   {

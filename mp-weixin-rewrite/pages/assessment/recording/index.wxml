@@ -5,7 +5,7 @@
   <view class="star star-4 data-v-70350287"></view>
   <hj-navbar title="AI鼾声分析" showBack="{{true}}" />
   <view wx:if="{{!isAnalyzing}}" class="page-content data-v-70350287">
-    <picker mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" disabled="{{disabledSelector}}" class="member-picker data-v-70350287">
+    <picker wx:if="{{memberNames.length > 1}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" disabled="{{disabledSelector}}" class="member-picker data-v-70350287">
       <view class="member-picker-content data-v-70350287">
         <view class="member-info data-v-70350287">
           <text class="member-label data-v-70350287">当前检测人：</text>

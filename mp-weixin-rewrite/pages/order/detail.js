@@ -48,6 +48,13 @@ function getPaymentErrorMessage(error, canceledText) {
   return '发起支付失败';
 }
 
+async function syncPaidOrder(orderId) {
+  if (!orderId) return;
+  try {
+    await api.confirmOrderPayment(orderId);
+  } catch (error) {}
+}
+
 Page({
   data: {
     loading: true,
@@ -167,6 +174,9 @@ Page({
         wx.hideLoading();
       } else {
         await requestWxPay(payParams);
+        wx.showLoading({ title: '同步订单状态...' });
+        await syncPaidOrder(order.id);
+        wx.hideLoading();
       }
       wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });
       await this.loadOrder(order.id);

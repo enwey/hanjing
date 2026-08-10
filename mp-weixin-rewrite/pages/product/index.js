@@ -1,17 +1,21 @@
 const api = require('../../api/index');
 
-const CATEGORY_TABS = [
+const CATEGORY_COLORS = {
+  device: '#d9e6ff',
+  accessory: '#dff4e8',
+  service: '#fff1d6',
+};
+
+const DEFAULT_CATEGORY_TABS = [
   { key: 'all', label: '全部' },
   { key: 'device', label: '医疗器械' },
   { key: 'accessory', label: '配件耗材' },
   { key: 'service', label: '服务套餐' },
 ];
 
-const CATEGORY_COLORS = {
-  device: '#d9e6ff',
-  accessory: '#dff4e8',
-  service: '#fff1d6',
-};
+function isNotFoundError(error) {
+  return !!(error && (error.statusCode === 404 || (error.data && error.data.code === 404)));
+}
 
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -48,17 +52,11 @@ function getPrimaryImage(product) {
 }
 
 function normalizeCategory(rawCategory) {
-  const category = String(rawCategory || '').toLowerCase();
-  if (category.includes('device') || category.includes('器械')) {
-    return 'device';
-  }
-  if (category.includes('accessory') || category.includes('耗材') || category.includes('配件')) {
+  const category = String(rawCategory || '').trim().toLowerCase();
+  if (category === 'product') {
     return 'accessory';
   }
-  if (category.includes('service') || category.includes('服务')) {
-    return 'service';
-  }
-  return 'service';
+  return category || 'service';
 }
 
 function normalizeProduct(product) {
@@ -76,8 +74,9 @@ function normalizeProduct(product) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     selectedCategory: 'all',
-    categories: CATEGORY_TABS,
+    categories: DEFAULT_CATEGORY_TABS,
     products: [],
     visibleProducts: [],
     leftColumnProducts: [],
@@ -86,10 +85,11 @@ Page({
   },
 
   async onShow() {
-    await this.loadProducts();
+    await this.loadProducts({ silent: this.data.hasLoaded });
   },
 
   onLoad() {
+    this.imageLoadFailedMap = {};
     try {
       const windowInfo = wx.getWindowInfo();
       const statusBarHeight = windowInfo.statusBarHeight || 44;
@@ -99,21 +99,50 @@ Page({
     }
   },
 
-  async loadProducts() {
-    this.setData({ loading: true });
+  async loadProducts(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true });
+    }
     try {
-      const response = await api.getProducts();
-      const products = unwrapList(response).map(normalizeProduct);
-      this.setData({ products });
-      this.refreshVisibleProducts(this.data.selectedCategory, products);
-    } catch (error) {
+      let categoryList = [];
+      try {
+        const categoryResponse = await api.getProductCategories();
+        categoryList = unwrapList(categoryResponse)
+          .map((item) => ({
+            key: normalizeCategory(item.code || item.key),
+            label: item.name || item.label || '',
+          }))
+          .filter((item) => item.key && item.key !== 'all' && item.label);
+      } catch (categoryError) {
+        if (!isNotFoundError(categoryError)) {
+          throw categoryError;
+        }
+      }
+      const productResponse = await api.getProducts();
+      const products = unwrapList(productResponse).map(normalizeProduct);
+      this.imageLoadFailedMap = {};
+      const nextCategories = [{ key: 'all', label: '全部' }].concat(categoryList.length ? categoryList : DEFAULT_CATEGORY_TABS.slice(1));
+      const selectedCategoryExists = nextCategories.some((item) => item.key === this.data.selectedCategory);
       this.setData({
-        loading: false,
-        products: [],
-        visibleProducts: [],
-        leftColumnProducts: [],
-        rightColumnProducts: [],
+        products,
+        hasLoaded: true,
+        categories: nextCategories,
+        selectedCategory: selectedCategoryExists ? this.data.selectedCategory : 'all',
       });
+      this.refreshVisibleProducts(selectedCategoryExists ? this.data.selectedCategory : 'all', products);
+    } catch (error) {
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          products: [],
+          visibleProducts: [],
+          leftColumnProducts: [],
+          rightColumnProducts: [],
+        });
+      } else {
+        this.setData({ loading: false });
+      }
       wx.showToast({ title: (error && error.message) || '商品加载失败', icon: 'none' });
     }
   },
@@ -140,21 +169,26 @@ Page({
   decorateProduct(product) {
     const salesCount = Number(product.salesCount || 0);
     const hasDiscount = product.originalPrice > product.price && product.price > 0;
+    const showImage = !!product.imageUrl && !this.imageLoadFailedMap[String(product.id)];
     return {
       ...product,
+      showImage,
       priceLabel: formatPriceYuan(product.price),
       originalPriceLabel: formatPriceYuan(product.originalPrice),
       hasDiscount,
       discountPercent: hasDiscount ? Math.round((1 - product.price / product.originalPrice) * 100) : 0,
       salesLabel: salesCount >= 1000 ? (salesCount / 1000).toFixed(1) + 'k' : String(salesCount),
       categoryColor: CATEGORY_COLORS[product.category] || '#f3f4f6',
-      placeholderIcon:
-        product.category === 'device'
-          ? '/static/icons/treatment_green.svg'
-          : product.category === 'service'
-            ? '/static/icons/appointment_blue.svg'
-            : '/static/icons/profile_orange.svg',
     };
+  },
+
+  handleProductImageError(event) {
+    const productId = String(event.currentTarget.dataset.productId || '');
+    if (!productId || this.imageLoadFailedMap[productId]) {
+      return;
+    }
+    this.imageLoadFailedMap[productId] = true;
+    this.refreshVisibleProducts(this.data.selectedCategory);
   },
 
   handleCategoryTap(event) {
