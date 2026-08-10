@@ -282,6 +282,17 @@ export async function createMicroPay({ subject, amount, outTradeNo, authCode }) 
   });
 }
 
+export async function queryMicroPayOrderByOutTradeNo(outTradeNo) {
+  if (!outTradeNo) {
+    const err = new Error('缺少商户订单号');
+    err.statusCode = 400;
+    throw err;
+  }
+  return requestWechatPayV2Xml('/pay/orderquery', {
+    out_trade_no: String(outTradeNo)
+  });
+}
+
 export async function queryOrderByOutTradeNo(outTradeNo) {
   const config = await getWechatPayConfig();
   return requestWechatPay('GET', `/v3/pay/transactions/out-trade-no/${encodeURIComponent(outTradeNo)}?mchid=${encodeURIComponent(config.mchId)}`);

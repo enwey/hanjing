@@ -161,7 +161,7 @@ const router = createRouter({
           meta: { title: '科普文章' }
         },
         {
-          path: 'content/category',
+          path: 'content-category',
           name: 'content-category',
           component: () => import('@/views/content/category.vue'),
           meta: { title: '分类管理', parentPath: '/content' }

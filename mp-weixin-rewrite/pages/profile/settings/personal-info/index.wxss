@@ -114,11 +114,27 @@
   align-items: center;
   justify-content: center;
   margin-left: auto;
+  overflow: hidden;
 }
 .avatar text.data-v-acab1652 {
   color: #fff;
   font-size: 20px;
   font-weight: 700;
+}
+.avatar-image.data-v-acab1652 {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.avatar-picker.data-v-acab1652 {
+  margin-left: auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  line-height: 1;
+}
+.avatar-picker.data-v-acab1652::after {
+  border: none;
 }
 .form-chips.data-v-acab1652 {
   display: flex;

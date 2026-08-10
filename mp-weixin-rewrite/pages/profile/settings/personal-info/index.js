@@ -1,4 +1,12 @@
 const api = require('../../../../api/index');
+const sessionStore = require('../../../../stores/session-store');
+const { normalizeImageUrl } = require('../../../../common/utils/image-url');
+
+function getFileExt(path) {
+  const match = String(path || '').match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
+  const ext = match && match[1] ? match[1].toLowerCase() : 'jpg';
+  return ['jpg', 'jpeg', 'png', 'gif'].includes(ext) ? ext : 'jpg';
+}
 
 Page({
   data: {
@@ -12,6 +20,7 @@ Page({
     idCard: '',
     maxBirthday: '2026-07-23',
     avatarText: '?',
+    avatarUrl: '',
     displayIdCard: '未认证',
     displayCardNo: '未生成',
     displayGender: '男',
@@ -19,6 +28,7 @@ Page({
     birthdayDisplayText: '未设置',
     maleChipClass: 'chip data-v-acab1652 active',
     femaleChipClass: 'chip data-v-acab1652',
+    avatarUploading: false,
   },
 
   onShow() {
@@ -33,6 +43,7 @@ Page({
     try {
       const response = await api.getUserProfile();
       const profile = (response && response.data) || response || {};
+      sessionStore.state.profile = profile;
       this.applyProfileData({
         hasLoaded: true,
         loading: false,
@@ -84,16 +95,56 @@ Page({
     this.applyProfileData({ birthday: event.detail.value || '' });
   },
 
+  async handleChooseAvatar(event) {
+    const avatarPath = event && event.detail ? event.detail.avatarUrl : '';
+    if (!avatarPath) {
+      wx.showToast({ title: '未选择头像', icon: 'none' });
+      return;
+    }
+    this.setData({ avatarUploading: true });
+    wx.showLoading({ title: '更新头像中...' });
+    try {
+      const fileBuffer = await new Promise((resolve, reject) => {
+        wx.getFileSystemManager().readFile({
+          filePath: avatarPath,
+          success: (result) => resolve(result.data),
+          fail: reject,
+        });
+      });
+      const uploadResponse = await api.uploadFile(fileBuffer, getFileExt(avatarPath));
+      const uploadData = (uploadResponse && uploadResponse.data) || uploadResponse || {};
+      if (!uploadData.url) {
+        throw new Error('头像上传失败');
+      }
+      const profileResponse = await api.updateUserProfile({ avatar: uploadData.url });
+      const profile = (profileResponse && profileResponse.data) || profileResponse || {};
+      sessionStore.state.profile = profile;
+      this.applyProfileData({
+        profile,
+        avatarUrl: normalizeImageUrl(profile.avatar || uploadData.url),
+      });
+      wx.hideLoading();
+      wx.showToast({ title: '头像已更新', icon: 'success' });
+    } catch (error) {
+      wx.hideLoading();
+      wx.showToast({ title: (error && error.message) || '头像更新失败', icon: 'none' });
+    } finally {
+      this.setData({ avatarUploading: false });
+    }
+  },
+
   applyProfileData(updates) {
     const nextData = Object.assign({}, this.data, updates);
     const profile = nextData.profile || {};
     const nickname = String(nextData.nickname || profile.nickname || '').trim();
     const birthday = nextData.birthday || '';
     const gender = Number(nextData.gender || 1);
+    const avatarUrl = normalizeImageUrl(nextData.avatarUrl || profile.avatar || profile.avatarUrl || profile.avatar_url);
 
     this.setData(
       Object.assign({}, updates, {
         avatarText: nickname ? nickname.slice(0, 1) : '?',
+        avatarUrl,
         displayIdCard: profile.idCard || profile.id_card || '未认证',
         displayCardNo: profile.cardNo || profile.card_no || '未生成',
         displayGender: gender === 2 ? '女' : '男',
@@ -117,12 +168,15 @@ Page({
       return;
     }
     try {
-      await api.updateUserProfile({
+      const response = await api.updateUserProfile({
         nickname,
         gender: this.data.gender,
         birthday: this.data.birthday,
         idCard,
+        avatar: (this.data.profile && this.data.profile.avatar) || '',
       });
+      const profile = (response && response.data) || response || {};
+      sessionStore.state.profile = profile;
       wx.showToast({ title: '保存成功', icon: 'success' });
       await this.loadProfile();
     } catch (error) {

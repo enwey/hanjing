@@ -470,7 +470,9 @@ async function handleCreate() {
       navigateToParent(router, route, `/appointment/detail/${rescheduleId.value}`)
     } else {
       const parsedConsultFee = Math.round((Number(consultFee.value) || 0) * 100)
-      const parsedDepositAmount = Math.round((Number(depositAmount.value) || 0) * 100)
+      const parsedDepositAmount = requireDeposit.value
+        ? Math.round((Number(depositAmount.value) || 0) * 100)
+        : 0
 
       const res: any = await request.post('/api/admin/appointments', {
         patient_id: parseInt(selectedPatient.value.id),

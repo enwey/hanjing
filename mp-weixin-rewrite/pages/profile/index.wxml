@@ -4,8 +4,15 @@
   <view class="page-content">
     <view class="user-card" bindtap="handleProfileTap">
       <view class="user-avatar">
-        <image wx:if="{{avatarText === '👤'}}" class="user-avatar-ecg" src="/static/icons/avatar-ecg.svg" />
-        <text wx:else class="user-avatar-text">{{avatarText}}</text>
+        <block wx:if="{{avatarUrl}}">
+          <image class="user-avatar-image" src="{{avatarUrl}}" mode="aspectFill" />
+        </block>
+        <block wx:elif="{{avatarText === '👤'}}">
+          <image class="user-avatar-ecg" src="/static/icons/avatar-ecg.svg" />
+        </block>
+        <block wx:else>
+          <text class="user-avatar-text">{{avatarText}}</text>
+        </block>
       </view>
       <view class="user-info">
         <text class="user-name">{{nickname}}</text>

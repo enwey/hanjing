@@ -76,7 +76,7 @@ const menuGroups = computed(() => [
     title: '内容',
     items: [
       { path: '/content', label: '科普文章', icon: '📝', permission: 'content:view' },
-      { path: '/content/category', label: '分类管理', icon: '🏷️', permission: 'content:edit' },
+      { path: '/content-category', label: '分类管理', icon: '🏷️', permission: 'content:edit' },
       { path: '/live', label: '直播管理', icon: 'video', permission: 'content:view' },
       { path: '/banner', label: '轮播图管理', icon: '🎨', permission: 'content:edit' }
     ]

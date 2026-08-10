@@ -27,6 +27,7 @@ import {
   createNativePayment,
   createWechatRefund,
   getMissingWechatPayConfig,
+  queryMicroPayOrderByOutTradeNo,
   queryOrderByOutTradeNo
 } from '../wechatPay.js';
 
@@ -6682,16 +6683,15 @@ app.get('/api/admin/pay/orders/:id/status', authenticateToken, async (req, res) 
     let order = await get(`SELECT * FROM orders WHERE id = ?`, [id]);
     if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
     if (order.status === 'pending' && ['wechat_native', 'wechat_micropay'].includes(order.pay_method)) {
-      const missingPayConfig = await getMissingWechatPayConfig();
-      if (missingPayConfig.length === 0) {
-        try {
-          const payState = await queryOrderByOutTradeNo(order.order_no);
-          if (payState.trade_state === 'SUCCESS') {
-            order = await finalizeAdminPaidOrder(order, payState);
-          }
-        } catch (syncError) {
-          console.warn('Sync wechat pay status failed:', syncError.message || syncError);
+      try {
+        const payState = order.pay_method === 'wechat_micropay'
+          ? await queryMicroPayOrderByOutTradeNo(order.order_no)
+          : await queryOrderByOutTradeNo(order.order_no);
+        if (payState.trade_state === 'SUCCESS') {
+          order = await finalizeAdminPaidOrder(order, payState);
         }
+      } catch (syncError) {
+        console.warn('Sync wechat pay status failed:', syncError.message || syncError);
       }
     }
     res.json({

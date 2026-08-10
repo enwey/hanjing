@@ -509,6 +509,22 @@ const payableAmount = computed(() => {
   return diff > 0 ? diff : 0
 })
 
+function formatWearingHours(value: unknown) {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) {
+    return '--'
+  }
+  return (amount / 60).toFixed(1)
+}
+
+function formatWearingComfort(value: unknown) {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) {
+    return '--'
+  }
+  return amount.toFixed(1)
+}
+
 const fetchProducts = async () => {
   try {
     productOptions.value = await fetchCheckoutProducts(request)
@@ -1100,7 +1116,7 @@ async function submitCreateAppt() {
                   <div v-if="patientDiagnostics?.wearing && patientDiagnostics.wearing.total_days > 0" style="margin-top: 4px; font-size: 12px; color: #374151;">
                     <div>累计佩戴: <span style="font-weight: 700; color: #10B981;">{{ patientDiagnostics.wearing.total_days }}天</span></div>
                     <div style="font-size: 11px; color: #6B7280; margin-top: 1px; line-height: 1.2;">
-                      均效: {{ (patientDiagnostics.wearing.avg_duration / 60).toFixed(1) }}h (舒分: {{ (patientDiagnostics.wearing.avg_comfort).toFixed(1) }}分)
+                      均效: {{ formatWearingHours(patientDiagnostics.wearing.avg_duration) }}h (舒分: {{ formatWearingComfort(patientDiagnostics.wearing.avg_comfort) }}分)
                     </div>
                   </div>
                   <div v-else style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">暂无佩戴记录</div>

@@ -47,4 +47,4 @@
 .invite-actions__icon { width: 30rpx; height: 30rpx; }
 .invite-actions__icon--light { filter: brightness(0) invert(1); }
 .invite-actions__text { font-size: 28rpx; font-weight: 600; }
-.poster-canvas { position: fixed; left: -9999rpx; top: -9999rpx; width: 660rpx; height: 960rpx; pointer-events: none; opacity: 0; }
+.poster-canvas { position: fixed; left: -9999rpx; top: -9999rpx; width: 900rpx; height: 1220rpx; pointer-events: none; opacity: 0; }

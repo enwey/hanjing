@@ -6,7 +6,22 @@
       <view class="form-card data-v-acab1652">
         <view class="form-row data-v-acab1652">
           <text class="form-label data-v-acab1652">头像</text>
-          <view class="avatar data-v-acab1652"><text class="data-v-acab1652">{{avatarText}}</text></view>
+          <button
+            wx:if="{{editing}}"
+            class="avatar-picker data-v-acab1652"
+            open-type="chooseAvatar"
+            bindchooseavatar="handleChooseAvatar"
+            loading="{{avatarUploading}}"
+          >
+            <view class="avatar data-v-acab1652">
+              <image wx:if="{{avatarUrl}}" class="avatar-image data-v-acab1652" src="{{avatarUrl}}" mode="aspectFill" />
+              <text wx:else class="data-v-acab1652">{{avatarText}}</text>
+            </view>
+          </button>
+          <view wx:else class="avatar data-v-acab1652">
+            <image wx:if="{{avatarUrl}}" class="avatar-image data-v-acab1652" src="{{avatarUrl}}" mode="aspectFill" />
+            <text wx:else class="data-v-acab1652">{{avatarText}}</text>
+          </view>
         </view>
         <view class="form-row data-v-acab1652">
           <text class="form-label data-v-acab1652">昵称</text>

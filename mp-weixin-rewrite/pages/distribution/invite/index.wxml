@@ -92,8 +92,11 @@
     </button>
   </view>
   <canvas
+    id="distributionInvitePoster"
     canvas-id="distributionInvitePoster"
+    type="2d"
     class="poster-canvas"
+    style="width: {{posterWidth}}px; height: {{posterHeight}}px;"
     disable-scroll="{{true}}"
   ></canvas>
 </view>

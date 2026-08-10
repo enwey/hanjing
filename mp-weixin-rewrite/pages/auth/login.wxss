@@ -20,15 +20,17 @@
   height: 176rpx;
   margin-bottom: 40rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3b6bf5, #8eafff);
-  box-shadow: 0 16rpx 48rpx rgba(59, 107, 245, 0.25);
+  background: rgba(59, 107, 245, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
-.logo-emoji {
-  font-size: 80rpx;
+.logo-image {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .brand-name {

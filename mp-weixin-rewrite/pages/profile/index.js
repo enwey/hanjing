@@ -1,6 +1,7 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const sessionStore = require('../../stores/session-store');
+const { normalizeImageUrl } = require('../../common/utils/image-url');
 
 const MENU_GROUPS = [
   {
@@ -90,6 +91,7 @@ Page({
     hasLoaded: false,
     nickname: '点击登录',
     avatarText: '👤',
+    avatarUrl: '',
     memberLevelLabel: '未登录',
     notificationsUnreadCount: 0,
     serviceUnreadCount: 0,
@@ -108,6 +110,7 @@ Page({
         isLoggedIn,
         nickname: isLoggedIn ? '加载中...' : '点击登录',
         avatarText: '👤',
+        avatarUrl: '',
         memberLevelLabel: isLoggedIn ? '会员信息加载中' : '未登录',
       });
     } else {
@@ -119,6 +122,7 @@ Page({
         hasLoaded: true,
         nickname: '点击登录',
         avatarText: '👤',
+        avatarUrl: '',
         memberLevelLabel: '未登录',
         notificationsUnreadCount: 0,
         serviceUnreadCount: 0,
@@ -167,6 +171,7 @@ Page({
         hasLoaded: true,
         nickname,
         avatarText: nickname.slice(0, 1),
+        avatarUrl: normalizeImageUrl(profile && (profile.avatar || profile.avatarUrl || profile.avatar_url)),
         memberLevelLabel: resolveMemberLevelLabel(profile, memberInfo, memberLevels),
         notificationsUnreadCount,
         serviceUnreadCount,
@@ -177,6 +182,7 @@ Page({
         this.setData({
           nickname: '已登录用户',
           avatarText: '已',
+          avatarUrl: '',
           memberLevelLabel: '会员信息加载失败',
           notificationsUnreadCount: 0,
           serviceUnreadCount: 0,

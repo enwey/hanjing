@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { createNativePay, getAdminPayStatus, isPaidStatus, submitMicropay } from '@/utils/wechatCashier'
 import {
   createBillingItem,
   createCheckoutReceiptResult,
@@ -33,6 +34,10 @@ const discountAmount = ref<number>(0)
 const payMethod = ref<string>('wechat')
 const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
+const nativePayInfo = ref<any>(null)
+const micropayAuthCode = ref('')
+const payWaiting = ref(false)
+let payPollTimer: number | undefined
 
 const deliveryType = ref<string>('offline_direct') // offline_direct (现场提走), online (快递寄送), offline_pending (缺货自提预订)
 const shippingReceiver = ref<string>('')
@@ -133,6 +138,37 @@ const payableAmount = computed(() => {
   return diff > 0 ? diff : 0
 })
 
+function stopPayPolling() {
+  if (payPollTimer) {
+    window.clearInterval(payPollTimer)
+    payPollTimer = undefined
+  }
+}
+
+async function markCheckoutPaid(receipt: any) {
+  stopPayPolling()
+  nativePayInfo.value = null
+  payWaiting.value = false
+  orderResult.value = createCheckoutReceiptResult(receipt)
+  checkoutSuccess.value = true
+  MessagePlugin.success('收款成功')
+}
+
+function startPayPolling(orderId: number | string, receipt: any) {
+  stopPayPolling()
+  payWaiting.value = true
+  payPollTimer = window.setInterval(async () => {
+    try {
+      const status = await getAdminPayStatus(orderId)
+      if (isPaidStatus(status.status)) {
+        await markCheckoutPaid(Object.assign({}, receipt, { payAt: status.payAt || new Date().toISOString() }))
+      }
+    } catch (error) {
+      console.error('查询支付状态失败:', error)
+    }
+  }, 2000)
+}
+
 const submitCheckout = async () => {
   if (!selectedPatientId.value) {
     MessagePlugin.warning('请先选择结账患者')
@@ -158,6 +194,10 @@ const submitCheckout = async () => {
   }
   if (deliveryType.value === 'online' && (!shippingAddressStr.value || !shippingAddressStr.value.trim())) {
     MessagePlugin.warning('请填写详细收货地址')
+    return
+  }
+  if (payMethod.value === 'wechat_micropay' && !micropayAuthCode.value.trim()) {
+    MessagePlugin.warning('请先扫描或输入顾客微信付款码')
     return
   }
 
@@ -219,9 +259,27 @@ const submitCheckout = async () => {
     }
     const res: any = await request.post('/api/admin/orders', payload)
     if (res.code === 200) {
-      MessagePlugin.success('收银收费交易成功！已打印交易小票。')
-      orderResult.value = createCheckoutReceiptResult(res.data.receipt)
-      checkoutSuccess.value = true
+      const receipt = res.data.receipt
+      if (payMethod.value === 'wechat_native') {
+        const payInfo = await createNativePay(res.data.order_id)
+        if (payInfo.paid || payInfo.mockPayment) {
+          await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信扫码支付', payAt: new Date().toISOString() }))
+        } else {
+          nativePayInfo.value = payInfo
+          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信扫码支付' }))
+          MessagePlugin.info('请顾客使用微信扫码完成支付')
+        }
+      } else if (payMethod.value === 'wechat_micropay') {
+        const payInfo = await submitMicropay(res.data.order_id, micropayAuthCode.value.trim())
+        if (payInfo.tradeState === 'SUCCESS') {
+          await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信付款码支付', payAt: new Date().toISOString() }))
+        } else {
+          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信付款码支付' }))
+          MessagePlugin.info('支付处理中，请等待顾客确认')
+        }
+      } else {
+        await markCheckoutPaid(receipt)
+      }
     }
   } catch (error) {
     console.error(error)
@@ -232,11 +290,16 @@ const submitCheckout = async () => {
 }
 
 const resetCheckout = () => {
+  stopPayPolling()
   selectedPatientId.value = ''
   setDefaultBillingItem()
   discountAmount.value = 0
+  payMethod.value = 'wechat'
   checkoutSuccess.value = false
   orderResult.value = null
+  nativePayInfo.value = null
+  micropayAuthCode.value = ''
+  payWaiting.value = false
   deliveryType.value = 'offline_direct'
   shippingReceiver.value = ''
   shippingPhone.value = ''
@@ -247,6 +310,8 @@ onMounted(() => {
   fetchPatients()
   fetchProducts()
 })
+
+onUnmounted(() => stopPayPolling())
 </script>
 
 <template>
@@ -329,9 +394,26 @@ onMounted(() => {
           <div class="form-item" style="flex: 1;">
             <label class="form-label">支付方式</label>
             <t-select v-model="payMethod" :options="[
-              { label: '微信支付', value: 'wechat' }
+              { label: '已收款登记', value: 'wechat' },
+              { label: '微信收款码', value: 'wechat_native' },
+              { label: '扫顾客付款码', value: 'wechat_micropay' }
             ]" />
           </div>
+        </div>
+
+        <div v-if="payMethod === 'wechat_micropay'" class="form-item" style="margin-top: 12px;">
+          <label class="form-label">顾客微信付款码</label>
+          <t-input v-model="micropayAuthCode" placeholder="请用扫码枪扫描或输入顾客微信付款码" />
+        </div>
+
+        <div v-if="nativePayInfo" style="margin-top: 16px; text-align: center; padding: 16px; border: 1px solid #E5E7EB; border-radius: 10px; background: #FAFBFC;">
+          <img v-if="nativePayInfo.qrCodeImageUrl" :src="nativePayInfo.qrCodeImageUrl" alt="微信支付二维码" style="width: 220px; height: 220px;">
+          <div style="font-size: 13px; color: #374151; margin-top: 10px;">请顾客使用微信扫码支付</div>
+          <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">订单号：{{ nativePayInfo.orderNo }}</div>
+        </div>
+
+        <div v-if="payWaiting" style="margin-top: 12px; color: #2563EB; font-size: 13px;">
+          正在等待微信支付结果...
         </div>
 
         <!-- Delivery Type Selection -->

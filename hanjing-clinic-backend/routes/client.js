@@ -1797,7 +1797,7 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
 
 // 3. User Profile (PUT)
 app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
-  const { nickname, phone, gender, age, birthday, idCard } = req.body;
+  const { nickname, phone, gender, age, birthday, idCard, avatar, avatarUrl } = req.body;
   const nicknameClean = nickname ? escapeHtml(nickname) : null;
   const phoneClean = phone ? escapeHtml(phone) : null;
   const phoneEnc = phoneClean ? encryptPII(phoneClean) : null;
@@ -1806,13 +1806,19 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
   const birthdayClean = birthday === '' || !birthday ? null : birthday;
   const genderClean = gender !== undefined ? gender : null;
   const ageClean = age !== undefined ? age : null;
+  const avatarClean = avatar || avatarUrl ? escapeHtml(String(avatar || avatarUrl).trim()) : null;
   if (idCard && !/^\d{17}[\dXx]$/.test(String(idCard))) {
     return res.status(400).json({ code: 400, message: '身份证格式不正确' });
   }
   try {
     await run(
-      `UPDATE users SET nickname = COALESCE(?, nickname), phone = COALESCE(?, phone), birthday = COALESCE(?, birthday) WHERE id = ?`,
-      [nicknameClean, phoneEnc, birthdayClean, req.user.id]
+      `UPDATE users
+       SET nickname = COALESCE(?, nickname),
+           phone = COALESCE(?, phone),
+           birthday = COALESCE(?, birthday),
+           avatar_url = COALESCE(?, avatar_url)
+       WHERE id = ?`,
+      [nicknameClean, phoneEnc, birthdayClean, avatarClean, req.user.id]
     );
     let selfPatient = await getSelfPatientForUser(req.user.id);
     if (!selfPatient) {
