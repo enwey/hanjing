@@ -49,6 +49,16 @@ function requestWxPay(payParams) {
   });
 }
 
+function getPaymentErrorMessage(error, canceledText) {
+  if (error && error.errMsg) {
+    return canceledText;
+  }
+  if (error && error.message) {
+    return error.message;
+  }
+  return '发起支付失败';
+}
+
 Page({
   data: {
     loading: true,
@@ -265,7 +275,7 @@ Page({
     } catch (error) {
       wx.hideLoading();
       wx.showToast({
-        title: error && error.errMsg ? '支付未完成，可稍后继续支付' : '发起支付失败，请稍后重试',
+        title: getPaymentErrorMessage(error, '支付未完成'),
         icon: 'none',
       });
     } finally {

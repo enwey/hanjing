@@ -43,6 +43,16 @@ function requestWxPay(payParams) {
   });
 }
 
+function getPaymentErrorMessage(error, canceledText) {
+  if (error && error.errMsg) {
+    return canceledText;
+  }
+  if (error && error.message) {
+    return error.message;
+  }
+  return '发起支付失败';
+}
+
 Page({
   data: {
     loading: true,
@@ -282,12 +292,12 @@ Page({
                     wx.reLaunch({ url: '/pages/appointment/success?id=' + appointmentId });
                   });
                 }, 1000);
-              } catch (error) {
-                wx.hideLoading();
-                wx.showToast({
-                  title: error && error.errMsg ? '支付未完成，可稍后继续支付' : '发起支付失败，请稍后重试',
-                  icon: 'none',
-                });
+                } catch (error) {
+                  wx.hideLoading();
+                  wx.showToast({
+                    title: getPaymentErrorMessage(error, '支付未完成'),
+                    icon: 'none',
+                  });
                 setTimeout(() => {
                   wx.reLaunch({ url: '/pages/appointment/index?tab=mine' });
                 }, 1000);

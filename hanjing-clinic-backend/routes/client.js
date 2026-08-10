@@ -175,6 +175,31 @@ async function getWechatMiniAccessToken() {
   return WECHAT_TOKEN_CACHE.value;
 }
 
+async function exchangeWechatMiniCode(code) {
+  const appId = process.env.WX_MINI_APP_ID;
+  const appSecret = process.env.WX_MINI_APP_SECRET;
+  if (!appId || !appSecret) {
+    const error = new Error('未配置微信小程序 AppID / AppSecret');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(appSecret)}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
+  const response = await fetch(url);
+  const data = await response.json();
+  if (!response.ok || data.errcode || !data.openid) {
+    const error = new Error(data.errmsg || '获取微信用户标识失败');
+    error.statusCode = 502;
+    error.data = data;
+    throw error;
+  }
+  return {
+    openid: String(data.openid || ''),
+    sessionKey: String(data.session_key || ''),
+    unionid: String(data.unionid || ''),
+  };
+}
+
 function getMemberLevelBySpent(totalSpent) {
   const spent = Number(totalSpent || 0);
   let matched = MEMBER_LEVEL_RULES[0];
@@ -1522,7 +1547,8 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
       encryptedPhone = encryptPII(phoneCode);
     }
 
-    const openid = `wx_openid_${code}`;
+    const session = await exchangeWechatMiniCode(code);
+    const openid = session.openid;
     let user = await get(`SELECT * FROM users WHERE openid = ?`, [openid]);
 
     if (!user) {

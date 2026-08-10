@@ -35,6 +35,7 @@ const notifyNewBooking = ref(true)
 const notifyWithdrawApply = ref(true)
 const notifyVisitReminder = ref(true)
 const notifyRevisitReminder = ref(true)
+const appointmentSubscribeTemplateIds = ref('')
 const wechatTemplateAppointmentCreated = ref('')
 const wechatTemplateAppointmentPaid = ref('')
 const wechatTemplateAppointmentChanged = ref('')
@@ -90,6 +91,7 @@ onMounted(async () => {
       notifyWithdrawApply.value = data.notify_withdraw_apply ?? true
       notifyVisitReminder.value = data.notify_visit_reminder ?? true
       notifyRevisitReminder.value = data.notify_revisit_reminder ?? true
+      appointmentSubscribeTemplateIds.value = data.appointment_subscribe_template_ids ?? ''
       wechatTemplateAppointmentCreated.value = data.wechat_template_appointment_created ?? ''
       wechatTemplateAppointmentPaid.value = data.wechat_template_appointment_paid ?? ''
       wechatTemplateAppointmentChanged.value = data.wechat_template_appointment_changed ?? ''
@@ -141,6 +143,7 @@ async function handleSaveAll() {
       notify_withdraw_apply: notifyWithdrawApply.value,
       notify_visit_reminder: notifyVisitReminder.value,
       notify_revisit_reminder: notifyRevisitReminder.value,
+      appointment_subscribe_template_ids: appointmentSubscribeTemplateIds.value,
       wechat_template_appointment_created: wechatTemplateAppointmentCreated.value,
       wechat_template_appointment_paid: wechatTemplateAppointmentPaid.value,
       wechat_template_appointment_changed: wechatTemplateAppointmentChanged.value,
@@ -194,6 +197,7 @@ function handleReset() {
   notifyWithdrawApply.value = true
   notifyVisitReminder.value = true
   notifyRevisitReminder.value = true
+  appointmentSubscribeTemplateIds.value = ''
 
   MessagePlugin.info('配置信息已重置为默认值')
 }
@@ -456,6 +460,15 @@ function editRole(roleName: string) {
         </div>
         <div class="panel-body">
           <div class="template-grid">
+            <div class="form-group full">
+              <label class="form-label">预约订阅模板池</label>
+              <textarea
+                class="form-control textarea-control"
+                v-model="appointmentSubscribeTemplateIds"
+                rows="3"
+                placeholder="多个模板ID请用英文逗号分隔，前端预约页会用这组模板发起订阅授权"
+              ></textarea>
+            </div>
             <div class="form-group">
               <label class="form-label">预约创建模板ID</label>
               <input class="form-control" v-model="wechatTemplateAppointmentCreated">

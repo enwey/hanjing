@@ -42,6 +42,16 @@ function parseAppointmentTimestamp(appointment) {
   }
 }
 
+function getPaymentErrorMessage(error, canceledText) {
+  if (error && error.errMsg) {
+    return canceledText;
+  }
+  if (error && error.message) {
+    return error.message;
+  }
+  return '发起支付失败';
+}
+
 function normalizeAppointment(appointment, stores, doctors) {
   const store = stores.find((item) => String(item.id) === String(appointment.storeId || appointment.store_id)) || null;
   const doctor = doctors.find((item) => String(item.id) === String(appointment.doctorId || appointment.doctor_id)) || null;
@@ -223,7 +233,7 @@ Page({
         await this.loadPage();
       } catch (error) {
         wx.hideLoading();
-        wx.showToast({ title: error && error.errMsg ? '已取消支付' : '发起支付失败，请稍后重试', icon: 'none' });
+        wx.showToast({ title: getPaymentErrorMessage(error, '已取消支付'), icon: 'none' });
       }
       return;
     }
