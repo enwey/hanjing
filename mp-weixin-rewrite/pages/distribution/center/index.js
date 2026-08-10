@@ -103,7 +103,7 @@ Page({
     if (!url) {
       return;
     }
-    await subscribe.requestSubscribe();
+    await subscribe.requestSubscribe({ scene: 'distribution' });
     navigation.openPage(url);
   },
 });

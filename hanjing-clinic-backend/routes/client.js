@@ -18,7 +18,7 @@ import {
   formatShanghaiDate,
   addShanghaiDays
 } from '../helpers.js';
-import { getAllSubscribeTemplateIds, sendWechatSubscribeMessage } from '../wechatSubscribe.js';
+import { getAllSubscribeTemplateIds, getSubscribeTemplateMap, sendWechatSubscribeMessage } from '../wechatSubscribe.js';
 import {
   allowDevMockWechatPay as serviceAllowDevMockWechatPay,
   buildPaymentParams as serviceBuildPaymentParams,
@@ -4449,6 +4449,7 @@ app.get('/api/v1/settings/booking', async (req, res) => {
     const cancelLimitRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_cancel_limit'`);
     const bookingInterval = await getBookingIntervalMinutes();
     const subscribeTemplateIds = await getAllSubscribeTemplateIds();
+    const subscribeTemplateMap = await getSubscribeTemplateMap();
 
     res.json({
       code: 0,
@@ -4457,7 +4458,8 @@ app.get('/api/v1/settings/booking', async (req, res) => {
         depositAmount: depositAmountRow ? parseInt(depositAmountRow.key_value, 10) : 5000,
         bookingInterval,
         cancelLimit: cancelLimitRow ? cancelLimitRow.key_value : '就诊前2小时',
-        subscribeTemplateIds
+        subscribeTemplateIds,
+        subscribeTemplateMap
       }
     });
   } catch (error) {
@@ -6436,7 +6438,12 @@ app.post('/api/v1/orders/:id/cancel', authenticateWxToken, async (req, res) => {
         event: 'order_status',
         businessId: `order_cancelled:${id}`,
         page: `pages/order/detail/index?id=${id}`,
-        payload: { orderNo: order.order_no, status: '已取消', remark: '订单已取消' }
+        payload: {
+          orderNo: order.order_no,
+          status: '已取消',
+          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
+          remark: '订单已取消'
+        }
       });
     });
   } catch (error) {
@@ -6484,7 +6491,12 @@ app.post('/api/v1/orders/:id/confirm-receipt', authenticateWxToken, async (req, 
         event: 'order_status',
         businessId: `order_completed:${id}`,
         page: `pages/order/detail/index?id=${id}`,
-        payload: { orderNo: order.order_no, status: '已完成', remark: '订单已完成' }
+        payload: {
+          orderNo: order.order_no,
+          status: '已完成',
+          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
+          remark: '订单已完成'
+        }
       });
     });
   } catch (error) {
@@ -6561,7 +6573,12 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
         event: 'order_status',
         businessId: `order_refund_apply:${id}`,
         page: `pages/order/detail/index?id=${id}`,
-        payload: { orderNo: order.order_no, status: '退款中', remark: reason || '退款申请已提交' }
+        payload: {
+          orderNo: order.order_no,
+          status: '退款中',
+          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
+          remark: reason || '退款申请已提交'
+        }
       });
     });
     setImmediate(() => {

@@ -335,7 +335,7 @@ Page({
     }
 
     try {
-      await subscribe.requestSubscribe({ force: true });
+      await subscribe.requestSubscribe({ force: true, scene: 'appointmentCancel' });
       await api.cancelAppointment(this.data.appointmentId, '用户主动取消');
       wx.showToast({ title: '已取消', icon: 'success' });
       await this.loadPage();

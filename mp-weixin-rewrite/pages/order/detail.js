@@ -217,7 +217,7 @@ Page({
       success: async (result) => {
         const reason = reasons[result.tapIndex] || '其他原因';
         try {
-          await subscribe.requestSubscribe({ force: true });
+          await subscribe.requestSubscribe({ force: true, scene: 'refund' });
           await api.applyRefund(order.id, { reason });
           wx.showToast({ title: '退款申请已提交', icon: 'success' });
           await this.loadOrder(order.id);

@@ -104,7 +104,7 @@ Page({
       return;
     }
     try {
-      await subscribe.requestSubscribe({ force: true });
+      await subscribe.requestSubscribe({ force: true, scene: 'withdraw' });
       await api.applyWithdraw(
         Math.round((parseFloat(this.data.withdrawAmountInput || '0') || 0) * 100),
         this.data.withdrawMethod,

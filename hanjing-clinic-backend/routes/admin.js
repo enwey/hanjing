@@ -4386,6 +4386,7 @@ app.post('/api/admin/orders/:id/notify', authenticateToken, async (req, res) => 
         payload: {
           orderNo: order.order_no,
           status: '已到店',
+          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
           storeName: addr.storeName || '',
           remark: '商品已到店，可到店自提'
         }
@@ -4591,6 +4592,7 @@ app.put('/api/admin/orders/:id/refund', authenticateToken, async (req, res) => {
         payload: {
           orderNo: order.order_no,
           status: approve ? '退款通过' : '退款驳回',
+          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
           remark: approve ? '退款审核已通过' : '退款申请未通过'
         }
       });
@@ -6465,6 +6467,16 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
   }
 });
 
+function sendAdminPayError(res, error, fallbackMessage) {
+  const rawStatus = error.statusCode || 500;
+  const status = rawStatus === 403 ? 400 : rawStatus;
+  res.status(status).json({
+    code: status,
+    message: error.message || fallbackMessage,
+    upstreamCode: rawStatus !== status ? rawStatus : undefined
+  });
+}
+
 // 全局模糊搜索 API (支持预约单、患者姓名/电话、订单号)
 app.post('/api/admin/pay/native', authenticateToken, async (req, res) => {
   const { orderId } = req.body;
@@ -6513,7 +6525,7 @@ app.post('/api/admin/pay/native', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Create native payment failed:', error);
-    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '生成微信支付二维码失败' });
+    sendAdminPayError(res, error, '生成微信支付二维码失败');
   }
 });
 
@@ -6551,7 +6563,7 @@ app.post('/api/admin/pay/micropay', authenticateToken, async (req, res) => {
     res.json({ code: 200, message: '支付处理中', data: { order, tradeState: tradeState || 'USERPAYING', raw: result } });
   } catch (error) {
     console.error('Micropay failed:', error);
-    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '付款码支付失败' });
+    sendAdminPayError(res, error, '付款码支付失败');
   }
 });
 

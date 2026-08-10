@@ -19,6 +19,19 @@ const EVENT_TEMPLATE_KEYS = {
   refund_result: ['wechat_template_refund_result', 'wechat_template_order_status']
 };
 
+const DEFAULT_TEMPLATE_IDS = {
+  wechat_template_appointment_created: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
+  wechat_template_appointment_paid: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
+  wechat_template_appointment_changed: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
+  wechat_template_appointment_status: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
+  wechat_template_visit_reminder: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
+  wechat_template_revisit_reminder: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
+  wechat_template_order_status: 'L2KhvQwmF894HvgrNJaYqft4ZXmI5JQVWzea92vp5Vw',
+  wechat_template_withdraw_result: 'OIlLpczSef8MJsw9vAslECSEEXKyrCjj_OQaaqcfZPM',
+  wechat_template_withdraw_paid: 'OIlLpczSef8MJsw9vAslECSEEXKyrCjj_OQaaqcfZPM',
+  wechat_template_refund_result: 'WQdjQRXxrBz9BMUA3DSohsAW8OzQZiZXR2kHLJ6KLeI'
+};
+
 const EVENT_SWITCH_KEYS = {
   appointment_created: 'notify_new_booking',
   visit_reminder: 'notify_visit_reminder',
@@ -42,6 +55,10 @@ function thing(value) {
   return { value: truncateValue(value, 20) || '-' };
 }
 
+function name(value) {
+  return { value: truncateValue(value, 10) || '-' };
+}
+
 function phrase(value) {
   return { value: truncateValue(value, 5) || '-' };
 }
@@ -61,20 +78,20 @@ function character(value) {
 function buildTemplateData(event, payload = {}) {
   if (event.startsWith('appointment_') || event === 'visit_reminder' || event === 'revisit_reminder') {
     return {
-      thing1: thing(payload.patientName || payload.storeName || '鼾静健康'),
-      time2: date(payload.appointmentTime || payload.dateTime || payload.date || ''),
-      thing3: thing(payload.doctorName || payload.storeName || '门诊服务'),
-      phrase4: phrase(payload.status || payload.statusText || '提醒'),
-      thing5: thing(payload.remark || payload.appointmentNo || '请按时到诊')
+      name1: name(payload.patientName || payload.storeName || '鼾静健康'),
+      date3: date(payload.appointmentTime || payload.dateTime || payload.date || ''),
+      thing69: thing(payload.doctorName || payload.storeName || '门诊服务'),
+      phrase14: phrase(payload.status || payload.statusText || '提醒'),
+      character_string15: character(payload.appointmentNo || payload.remark || '请按时到诊')
     };
   }
 
   if (event === 'order_status') {
     return {
-      character_string1: character(payload.orderNo || ''),
+      character_string6: character(payload.orderNo || ''),
       phrase2: phrase(payload.status || payload.statusText || '通知'),
-      thing3: thing(payload.productName || payload.storeName || '订单服务'),
-      amount4: amount(payload.amount || ''),
+      thing1: thing(payload.productName || payload.remark || payload.storeName || '订单服务'),
+      amount40: amount(payload.amount || ''),
       thing5: thing(payload.remark || '请查看订单详情')
     };
   }
@@ -82,18 +99,18 @@ function buildTemplateData(event, payload = {}) {
   if (event === 'withdraw_result') {
     return {
       amount1: amount(payload.amount || ''),
-      phrase2: phrase(payload.status || payload.statusText || '通知'),
-      time3: date(payload.time || ''),
-      thing4: thing(payload.remark || '请查看提现记录')
+      phrase3: phrase(payload.status || payload.statusText || '通知'),
+      time6: date(payload.time || ''),
+      thing5: thing(payload.remark || '请查看提现记录')
     };
   }
 
   if (event === 'withdraw_paid') {
     return {
       amount1: amount(payload.amount || ''),
-      phrase2: phrase(payload.status || payload.statusText || '已到账'),
-      time3: date(payload.time || ''),
-      thing4: thing(payload.remark || '提现已到账')
+      phrase3: phrase(payload.status || payload.statusText || '已到账'),
+      time6: date(payload.time || ''),
+      thing5: thing(payload.remark || '提现已到账')
     };
   }
 
@@ -108,10 +125,10 @@ function buildTemplateData(event, payload = {}) {
 
   if (event === 'refund_result') {
     return {
-      character_string1: character(payload.orderNo || ''),
-      phrase2: phrase(payload.status || payload.statusText || '退款'),
-      amount3: amount(payload.amount || ''),
-      time4: date(payload.time || ''),
+      character_string2: character(payload.orderNo || ''),
+      amount1: amount(payload.amount || ''),
+      time7: date(payload.time || ''),
+      phrase4: phrase(payload.status || payload.statusText || '退款'),
       thing5: thing(payload.remark || '请查看退款详情')
     };
   }
@@ -157,11 +174,15 @@ async function isEventEnabled(event) {
 async function getTemplateId(event) {
   const keys = EVENT_TEMPLATE_KEYS[event] || [];
   for (const key of keys) {
-    const setting = await get(`SELECT key_value FROM system_settings WHERE key_name = ?`, [key]);
-    const templateId = firstTemplateId(setting?.key_value || process.env[key.toUpperCase()]);
+    const templateId = await getTemplateIdByKey(key);
     if (templateId) return templateId;
   }
   return '';
+}
+
+async function getTemplateIdByKey(key) {
+  const setting = await get(`SELECT key_value FROM system_settings WHERE key_name = ?`, [key]);
+  return firstTemplateId(setting?.key_value || process.env[key.toUpperCase()] || DEFAULT_TEMPLATE_IDS[key]);
 }
 
 async function hasSent(event, businessId) {
@@ -186,7 +207,7 @@ export async function getAllSubscribeTemplateIds() {
   for (const keys of Object.values(EVENT_TEMPLATE_KEYS)) {
     for (const key of keys) {
       const setting = await get(`SELECT key_value FROM system_settings WHERE key_name = ?`, [key]);
-      String(setting?.key_value || '')
+      String(setting?.key_value || process.env[key.toUpperCase()] || DEFAULT_TEMPLATE_IDS[key] || '')
         .split(',')
         .map(item => item.trim())
         .filter(Boolean)
@@ -196,6 +217,20 @@ export async function getAllSubscribeTemplateIds() {
     }
   }
   return ids;
+}
+
+export async function getSubscribeTemplateMap() {
+  const map = {};
+  for (const [event, keys] of Object.entries(EVENT_TEMPLATE_KEYS)) {
+    for (const key of keys) {
+      const templateId = await getTemplateIdByKey(key);
+      if (templateId) {
+        map[event] = templateId;
+        break;
+      }
+    }
+  }
+  return map;
 }
 
 export async function sendWechatSubscribeMessage({ userId, event, businessId = '', page = '', payload = {} }) {

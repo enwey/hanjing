@@ -1,6 +1,7 @@
 const api = require('../../api/index');
 const appointmentDraftStore = require('../../stores/appointment-draft-store');
 const { getStoreCoverUrl } = require('../../common/utils/image-url');
+const subscribe = require('../../common/utils/subscribe');
 
 const RELATION_LABEL_MAP = {
   self: '本人',
@@ -212,17 +213,9 @@ Page({
   },
 
   requestSubscribe(callback) {
-    const templateIds = this.data.subscribeTemplateIds || [];
-    if (wx.requestSubscribeMessage && templateIds.length > 0) {
-      wx.requestSubscribeMessage({
-        tmplIds: templateIds,
-        complete: () => {
-          callback();
-        },
-      });
-      return;
-    }
-    callback();
+    subscribe.requestSubscribe({ force: true, scene: 'appointment' })
+      .then(() => callback())
+      .catch(() => callback());
   },
 
   async submitAppointment() {

@@ -34,7 +34,7 @@ service.interceptors.response.use(
   error => {
     if (error.response) {
       const status = error.response.status
-      if (status === 401 || status === 403) {
+      if (status === 401) {
         MessagePlugin.error(error.response.data?.message || '登录过期，请重新登录')
         localStorage.removeItem('auth_token')
         localStorage.removeItem('user_info')
