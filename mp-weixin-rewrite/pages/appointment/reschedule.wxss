@@ -4,7 +4,7 @@
 }
 
 .page-content {
-  padding: 0 32rpx 48rpx;
+  padding: 0 32rpx 200rpx;
 }
 
 .state-card {
@@ -84,6 +84,37 @@
   color: #9ca3af;
 }
 
-.submit-area {
-  padding-top: 24rpx;
+.bottom-fixed-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  padding: 24rpx 32rpx calc(env(safe-area-inset-bottom, 34px) + 24rpx);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -8rpx 32rpx rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(18rpx);
+}
+
+.bar-primary-btn {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 9999rpx;
+  background: linear-gradient(135deg, #3b6bf5 0%, #5a85f5 50%, #8eafff 100%);
+  box-shadow: 0 8rpx 28rpx rgba(59, 107, 245, 0.25);
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.bar-primary-btn::after {
+  border: none;
+}
+
+.safe-bottom {
+  height: calc(env(safe-area-inset-bottom, 34px) + 40rpx);
 }

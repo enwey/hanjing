@@ -26,6 +26,7 @@ function unwrapList(response) {
 
 Page({
   data: {
+    hasLoaded: false,
     isPageReady: false,
     isSubmitting: false,
     questions: [],
@@ -46,6 +47,9 @@ Page({
   },
 
   async onShow() {
+    if (this.data.hasLoaded) {
+      return;
+    }
     await this.loadPage();
   },
 
@@ -66,6 +70,7 @@ Page({
       const selectedMember = memberList[memberIndex] || null;
 
       this.setData({
+        hasLoaded: true,
         isPageReady: true,
         questions,
         answers: new Array(questions.length).fill(-1),

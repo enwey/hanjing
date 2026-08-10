@@ -10,10 +10,6 @@
             <text class="stat-val data-v-bf62d399">{{totalSpentText}}</text>
             <text class="stat-label data-v-bf62d399">累计消费</text>
           </view>
-          <view class="stat-item data-v-bf62d399">
-            <text class="stat-val data-v-bf62d399">{{pointsText}}</text>
-            <text class="stat-label data-v-bf62d399">积分</text>
-          </view>
         </view>
         <view wx:if="{{needUpgrade}}" class="progress-section data-v-bf62d399">
           <text class="progress-hint data-v-bf62d399">再消费 {{nextLevelDiffText}} 升级{{nextLevelTitle}}</text>

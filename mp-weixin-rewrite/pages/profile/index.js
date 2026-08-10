@@ -1,3 +1,4 @@
+const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const sessionStore = require('../../stores/session-store');
 
@@ -16,7 +17,6 @@ const MENU_GROUPS = [
       { key: 'benefits', label: '会员权益', icon: '/static/icons/fee.svg', url: '/pages/profile/member-benefits/index' },
       { key: 'orders', label: '我的订单', icon: '/static/icons/report.svg', url: '/pages/order/index' },
       { key: 'distribution', label: '分销中心', icon: '/static/icons/distribution.svg', url: '/pages/distribution/center/index' },
-      { key: 'live', label: '直播中心', icon: '/static/icons/microphone.svg', url: '/pages/live/list/index' },
     ],
   },
   {
@@ -24,7 +24,7 @@ const MENU_GROUPS = [
     items: [
       { key: 'service', label: '在线客服', icon: '/static/icons/chat.svg', url: '/pages/profile/online-service/index' },
       { key: 'notifications', label: '消息通知', icon: '/static/icons/bell.svg', url: '/pages/profile/notifications/index' },
-      { key: 'settings', label: '设置', icon: '/static/icons/adjust.svg', url: '/pages/profile/settings/index' },
+      { key: 'settings', label: '设置', icon: '/static/icons/settings-gear.svg', url: '/pages/profile/settings/index' },
     ],
   },
 ];
@@ -45,6 +45,45 @@ function normalizeLevelLabel(level) {
   return String(level);
 }
 
+function isPremiumServiceLevel(level) {
+  return level === 'gold' || level === 'diamond';
+}
+
+function resolveMemberLevelLabel(profile, memberInfo, memberLevels) {
+  const currentLevel = memberInfo && (memberInfo.currentLevel || memberInfo.level);
+  const matchedLevel = Array.isArray(memberLevels) && currentLevel
+    ? memberLevels.find((item) => item && item.level === currentLevel)
+    : null;
+  if (matchedLevel && matchedLevel.title) {
+    return String(matchedLevel.title);
+  }
+
+  const profileLevel = profile && (
+    profile.memberLevel ||
+    profile.member_level ||
+    profile.currentLevel ||
+    profile.current_level ||
+    profile.level
+  );
+  const matchedProfileLevel = Array.isArray(memberLevels) && profileLevel
+    ? memberLevels.find((item) => item && item.level === profileLevel)
+    : null;
+  if (matchedProfileLevel && matchedProfileLevel.title) {
+    return String(matchedProfileLevel.title);
+  }
+
+  if (currentLevel) {
+    return normalizeLevelLabel(currentLevel);
+  }
+
+  const levelTitle = memberInfo && (memberInfo.currentLevelTitle || memberInfo.levelTitle || memberInfo.title);
+  if (levelTitle) {
+    return String(levelTitle);
+  }
+
+  return normalizeLevelLabel(profileLevel);
+}
+
 Page({
   data: {
     isLoggedIn: false,
@@ -52,6 +91,8 @@ Page({
     nickname: '点击登录',
     avatarText: '👤',
     memberLevelLabel: '未登录',
+    notificationsUnreadCount: 0,
+    serviceUnreadCount: 0,
     menuGroups: MENU_GROUPS,
   },
 
@@ -79,19 +120,57 @@ Page({
         nickname: '点击登录',
         avatarText: '👤',
         memberLevelLabel: '未登录',
+        notificationsUnreadCount: 0,
+        serviceUnreadCount: 0,
       });
       return;
     }
 
     try {
-      const profile = await sessionStore.fetchProfile();
+      const [profile, memberInfoResponse, memberLevelsResponse, notificationsResponse, serviceUnreadResponse] = await Promise.all([
+        sessionStore.fetchProfile(),
+        api.getMemberInfo().catch(() => null),
+        api.getMemberLevels().catch(() => null),
+        api.getNotifications().catch(() => null),
+        api.getImUnreadCount().catch(() => null),
+      ]);
       const nickname = (profile && (profile.nickname || profile.name)) || '已登录用户';
+      const memberInfo =
+        memberInfoResponse && memberInfoResponse.code === 0
+          ? memberInfoResponse.data
+          : (memberInfoResponse && memberInfoResponse.data) || memberInfoResponse || null;
+      const memberLevels =
+        memberLevelsResponse && memberLevelsResponse.code === 0 && Array.isArray(memberLevelsResponse.data)
+          ? memberLevelsResponse.data
+          : [];
+      const notificationsPayload =
+        notificationsResponse && notificationsResponse.data ? notificationsResponse.data : notificationsResponse || {};
+      const notificationsList = Array.isArray(notificationsPayload.list) ? notificationsPayload.list : [];
+      const notificationsUnreadCount = typeof notificationsPayload.unread === 'number'
+        ? notificationsPayload.unread
+        : notificationsList.filter((item) => !(item.isRead || item.is_read)).length;
+      const servicePayload =
+        serviceUnreadResponse && serviceUnreadResponse.data ? serviceUnreadResponse.data : serviceUnreadResponse || {};
+      const serviceUnreadCount = Number(servicePayload.unread || 0);
+      const currentLevel = memberInfo && (memberInfo.currentLevel || memberInfo.memberLevel || memberInfo.level || '');
+      const menuGroups = MENU_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.map((item) => {
+          if (item.key !== 'service') return item;
+          return Object.assign({}, item, {
+            label: isPremiumServiceLevel(currentLevel) ? '专属客服' : '在线客服',
+          });
+        }),
+      }));
 
       this.setData({
         hasLoaded: true,
         nickname,
         avatarText: nickname.slice(0, 1),
-        memberLevelLabel: normalizeLevelLabel(profile && (profile.memberLevel || profile.member_level)),
+        memberLevelLabel: resolveMemberLevelLabel(profile, memberInfo, memberLevels),
+        notificationsUnreadCount,
+        serviceUnreadCount,
+        menuGroups,
       });
     } catch (error) {
       if (!this.data.hasLoaded) {
@@ -99,6 +178,8 @@ Page({
           nickname: '已登录用户',
           avatarText: '已',
           memberLevelLabel: '会员信息加载失败',
+          notificationsUnreadCount: 0,
+          serviceUnreadCount: 0,
         });
       }
     }
@@ -109,7 +190,7 @@ Page({
       navigation.openPage('/pages/auth/login');
       return;
     }
-    navigation.openPage('/pages/profile/settings/index');
+    navigation.openPage('/pages/profile/settings/personal-info/index');
   },
 
   openEntry(event) {

@@ -1,24 +1,32 @@
-.distribution-orders-page { min-height: 100vh; background: #f5f6f8; padding-bottom: 32rpx; }
-.distribution-order-tabs { white-space: nowrap; padding: 0 24rpx; }
-.distribution-order-tab { display: inline-block; margin-right: 32rpx; padding-bottom: 14rpx; font-size: 28rpx; color: #6b7280; position: relative; }
-.distribution-order-tab--active { color: #3b6bf5; font-weight: 600; }
-.distribution-order-tab--active::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 6rpx; border-radius: 9999rpx; background: #3b6bf5; }
-.state-card { text-align: center; }
-.state-title { display: block; font-size: 30rpx; font-weight: 700; color: #1f2937; }
-.distribution-order-list-wrap { background: #ffffff; margin: 24rpx; border-radius: 16rpx; }
-.distribution-order-list { display: flex; flex-direction: column; gap: 20rpx; }
-.distribution-order-list { padding: 24rpx; }
-.distribution-order-item { display: flex; gap: 20rpx; align-items: flex-start; }
-.distribution-order-item + .distribution-order-item { padding-top: 24rpx; border-top: 1rpx solid #f3f4f6; }
-.distribution-order-item__cover { width: 140rpx; height: 140rpx; border-radius: 12rpx; overflow: hidden; background: #eef2f7; flex-shrink: 0; }
-.distribution-order-item__cover-image { width: 100%; height: 100%; }
-.distribution-order-item__placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f3f4f6; }
-.distribution-order-item__placeholder-icon { width: 42rpx; height: 42rpx; }
+.distribution-orders-page { min-height: 100vh; background: #f9fafb; display: flex; flex-direction: column; }
+.page-content { flex: 1; padding: 0 24rpx; }
+.order-tabs { position: sticky; z-index: 99; display: flex; height: 96rpx; margin: 0 -24rpx; padding: 0 24rpx; box-sizing: border-box; background: #ffffff; border-bottom: 1rpx solid rgba(0, 0, 0, 0.08); white-space: nowrap; }
+.order-tab { position: relative; flex: 1; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+.order-tab__text { font-size: 30rpx; line-height: 1; font-weight: 500; color: rgba(0, 0, 0, 0.55); }
+.order-tab--active .order-tab__text { color: #3b6bf5; font-weight: 600; }
+.order-tab--active::after { content: ''; position: absolute; bottom: 0; left: 50%; width: 56rpx; height: 6rpx; border-radius: 6rpx; background: #3b6bf5; transform: translateX(-50%); }
+.state-card { padding: 160rpx 0; text-align: center; }
+.state-text { font-size: 28rpx; color: #9ca3af; }
+.distribution-order-list { padding: 0 8rpx; margin-top: 24rpx; }
+.distribution-order-card { margin-bottom: 24rpx; padding: 32rpx; border-radius: 28rpx; background: #ffffff; }
+.distribution-order-card__header { display: flex; justify-content: space-between; gap: 16rpx; margin-bottom: 24rpx; padding-bottom: 20rpx; border-bottom: 1rpx solid #f3f4f6; }
+.distribution-order-card__number { flex: 1; min-width: 0; font-size: 26rpx; color: #9ca3af; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.distribution-order-card__status { display: inline-block; padding: 4rpx 14rpx; border-radius: 8rpx; font-size: 22rpx; flex-shrink: 0; }
+.distribution-order-card__status--pending { color: #b45309; background: rgba(245, 158, 11, 0.14); }
+.distribution-order-card__status--settled { color: #1a9d5c; background: rgba(26, 157, 92, 0.14); }
+.distribution-order-card__status--refunded { color: #6b7280; background: rgba(107, 114, 128, 0.14); }
+.distribution-order-item { display: flex; align-items: center; gap: 20rpx; }
+.distribution-order-item__cover-image,
+.distribution-order-item__placeholder { width: 128rpx; height: 128rpx; border-radius: 16rpx; background: #f3f4f6; flex-shrink: 0; }
+.distribution-order-item__placeholder { display: flex; align-items: center; justify-content: center; background: #eef4ff; }
+.distribution-order-item__placeholder-icon { width: 40rpx; height: 40rpx; }
 .distribution-order-item__body { flex: 1; min-width: 0; }
-.distribution-order-item__title { display: block; font-size: 28rpx; font-weight: 600; color: #1f2937; }
-.distribution-order-item__meta { display: block; margin-top: 8rpx; font-size: 22rpx; color: #6b7280; }
-.distribution-order-item__commission { display: block; margin-top: 8rpx; font-size: 26rpx; font-weight: 600; color: #ef4444; }
-.distribution-order-item__status { display: inline-block; padding: 4rpx 14rpx; border-radius: 8rpx; font-size: 22rpx; flex-shrink: 0; }
-.distribution-order-item__status--pending { color: #b45309; background: rgba(245, 158, 11, 0.14); }
-.distribution-order-item__status--settled { color: #1a9d5c; background: rgba(26, 157, 92, 0.14); }
-.distribution-order-item__status--refunded { color: #6b7280; background: rgba(107, 114, 128, 0.14); }
+.distribution-order-item__title { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 28rpx; font-weight: 600; color: #1f2937; }
+.distribution-order-item__meta { display: block; margin-top: 8rpx; font-size: 24rpx; color: #6b7280; }
+.distribution-order-item__aside { flex-shrink: 0; text-align: right; }
+.distribution-order-item__label { display: block; font-size: 22rpx; color: #9ca3af; }
+.distribution-order-item__price { display: block; margin-top: 10rpx; font-size: 30rpx; font-weight: 700; color: #1f2937; }
+.distribution-order-card__footer { display: flex; justify-content: flex-end; align-items: baseline; gap: 8rpx; margin-top: 24rpx; padding-top: 20rpx; border-top: 1rpx solid #f3f4f6; }
+.distribution-order-card__count { font-size: 26rpx; color: #6b7280; }
+.distribution-order-card__amount { font-size: 34rpx; font-weight: 700; color: #ef4444; }
+.safe-bottom { height: calc(env(safe-area-inset-bottom, 34px) + 40rpx); }

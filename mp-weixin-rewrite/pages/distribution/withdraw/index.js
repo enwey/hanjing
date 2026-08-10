@@ -13,6 +13,7 @@ function formatYuan(amountInCents) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     availableCommissionCents: 0,
     availableCommissionLabel: '¥0.00',
@@ -32,17 +33,21 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const response = await api.getDistributorInfo();
       const info = unwrapObject(response);
       const withdrawFeeRate = Number((info.withdrawFeeRates && info.withdrawFeeRates.bank) || 0.01);
 
       this.setData({
+        hasLoaded: true,
         loading: false,
         availableCommissionCents: Number(info.availableCommission || 0),
         availableCommissionLabel: formatYuan(info.availableCommission),
@@ -54,10 +59,15 @@ Page({
       });
       this.refreshAmountSummary();
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载提现信息失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载提现信息失败',
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载提现信息失败', icon: 'none' });
     }
   },
 

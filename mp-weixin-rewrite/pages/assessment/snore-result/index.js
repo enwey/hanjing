@@ -37,6 +37,7 @@ function getSnoreRiskInfo(riskLevel) {
 Page({
   data: {
     isLoading: true,
+    hasLoaded: false,
     reportDetail: null,
     riskInfo: null,
     statCards: [],
@@ -48,11 +49,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ isLoading: true });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ isLoading: true });
+    }
     try {
       const assessmentId = (this.options && this.options.id) || '';
       let reportDetail = null;
@@ -75,7 +79,7 @@ Page({
         { iconPath: '/static/icons/warning.svg', value: analysis.apneaEvents + ' 次', label: '呼吸暂停' },
       ] : [];
       const riskScore = analysis ? Math.min(100, Math.round((analysis.avgDecibel / 80) * 30 + (analysis.snoreRate / 100) * 30 + (analysis.apneaEvents / 20) * 40)) : 0;
-      this.setData({ isLoading: false, reportDetail, riskInfo, statCards, riskScore });
+      this.setData({ hasLoaded: true, isLoading: false, reportDetail, riskInfo, statCards, riskScore });
     } catch (error) {
       console.error('[SnoreResult] 加载失败', error);
       this.setData({ isLoading: false });

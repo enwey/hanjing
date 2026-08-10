@@ -21,9 +21,9 @@ function normalizeDevice(record) {
     name: name || model,
     model,
     status: record.status === "active" || sourceDevice.status === "active" || sourceDevice.status === "bound" ? "active" : (record.status || sourceDevice.status || ""),
-    serialNumber: record.serialNumber || sourceDevice.serialNumber || "",
-    wearDays: record.wearDays || sourceDevice.wearDays || 0,
-    lastMaintenance: record.lastMaintenance || sourceDevice.lastMaintenance || "",
+    serialNumber: record.serialNumber || sourceDevice.serialNumber || record.deviceProductId || sourceDevice.id || "",
+    wearDays: 0,
+    lastMaintenance: "",
     nextFollowup: record.nextFollowup || record.followupDate || record.nextAdjustDate || "",
   };
 }
@@ -31,6 +31,7 @@ function normalizeDevice(record) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     members: [],
     memberOptions: [],
     memberIndex: 0,
@@ -62,7 +63,7 @@ Page({
   },
 
   onShow() {
-    this.loadPage();
+    this.loadPage({ silent: this.data.hasLoaded });
   },
 
   getStoragePatientId() {
@@ -75,8 +76,11 @@ Page({
     }
   },
 
-  async loadPage() {
-    this.setData({ loading: true });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true });
+    }
     try {
       const memberRes = await api.getFamilyMembers();
       const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
@@ -88,15 +92,27 @@ Page({
       }
       const memberOptions = members.map((item) => `${item.name}（${MEMBER_LABEL_MAP[item.relation] || "成员"}）`);
       const memberIndex = Math.max(0, members.findIndex((item) => String(item.id) === String(selectedPatientId)));
-      const deviceRes = await api.getPatientDevice(selectedPatientId ? { patientId: selectedPatientId } : {});
+      const [deviceRes, maintenanceRes, summaryRes] = await Promise.all([
+        api.getPatientDevice(selectedPatientId ? { patientId: selectedPatientId } : {}),
+        api.getDeviceMaintenance(selectedPatientId ? { patientId: selectedPatientId } : {}),
+        api.getWearingSummary(selectedPatientId ? { patientId: selectedPatientId } : {}),
+      ]);
       const device = normalizeDevice(deviceRes.data || deviceRes || null);
-      this.setData({ members, memberOptions, memberIndex, selectedPatientId, device });
+      if (device) {
+        const maintenanceList = (maintenanceRes.data && maintenanceRes.data.list) || maintenanceRes.list || [];
+        const summary = (summaryRes.data && Object.keys(summaryRes.data).length ? summaryRes.data : summaryRes) || {};
+        device.lastMaintenance = maintenanceList[0] && maintenanceList[0].date ? maintenanceList[0].date : "";
+        device.wearDays = Number(summary.wornDays || summary.weekWorn || 0);
+      }
+      this.setData({ hasLoaded: true, members, memberOptions, memberIndex, selectedPatientId, device, loading: false });
     } catch (err) {
       console.error("加载设备管理失败", err);
       wx.showToast({ title: err.message || "加载设备信息失败", icon: "none" });
-      this.setData({ device: null });
-    } finally {
-      this.setData({ loading: false });
+      if (!this.data.hasLoaded) {
+        this.setData({ device: null, loading: false });
+      } else {
+        this.setData({ loading: false });
+      }
     }
   },
 

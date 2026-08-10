@@ -16,9 +16,15 @@ const RECORD_TYPE_MAP = {
   adjust: { label: "调整", color: "#F59E0B" },
 };
 
+function formatDateTimeText(value) {
+  if (!value) return "";
+  return String(value).replace("T", " ").slice(0, 16);
+}
+
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     members: [],
     memberOptions: [],
     memberIndex: 0,
@@ -27,7 +33,7 @@ Page({
   },
 
   onShow() {
-    this.loadPage();
+    this.loadPage({ silent: this.data.hasLoaded });
   },
 
   getStoragePatientId() {
@@ -42,8 +48,11 @@ Page({
     }
   },
 
-  async loadPage() {
-    this.setData({ loading: true });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true });
+    }
     try {
       const memberRes = await api.getFamilyMembers();
       const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
@@ -63,6 +72,7 @@ Page({
           id: String(item.id),
           patientName: item.patientName || "",
           visitDate: item.visitDate || "",
+          visitDateText: formatDateTimeText(item.visitDate),
           doctorName: item.doctorName || "",
           hospital: item.hospital || item.storeName || "",
           diagnosis: item.diagnosis || "",
@@ -74,18 +84,22 @@ Page({
         };
       });
       this.setData({
+        hasLoaded: true,
         members,
         memberOptions,
         memberIndex,
         selectedPatientId,
         records,
+        loading: false,
       });
     } catch (err) {
       console.error("加载病历档案失败", err);
       wx.showToast({ title: err.message || "加载病历档案失败", icon: "none" });
-      this.setData({ records: [] });
-    } finally {
-      this.setData({ loading: false });
+      if (!this.data.hasLoaded) {
+        this.setData({ records: [], loading: false });
+      } else {
+        this.setData({ loading: false });
+      }
     }
   },
 

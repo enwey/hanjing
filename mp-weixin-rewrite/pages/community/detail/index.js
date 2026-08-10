@@ -22,11 +22,25 @@ function splitTags(tags) {
   return { category: values[0] || '', labels: values.slice(1) };
 }
 
+function getAvatarColor(name) {
+  const colors = ['#3B6BF5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+  const text = String(name || '');
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = text.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
 function normalizeComment(comment) {
+  const author = comment.author || '';
   return {
     id: String(comment.id || ''),
-    author: comment.author || '',
+    author,
     avatar: comment.avatar || '',
+    avatarLoaded: false,
+    avatarText: (author || '友').slice(0, 1),
+    avatarBg: getAvatarColor(author || '友'),
     content: comment.content || '',
     likes: Number(comment.likes || 0),
     createdAt: comment.createdAt || '',
@@ -40,10 +54,14 @@ function normalizeComment(comment) {
 function normalizePostDetail(detail) {
   const tags = splitTags(detail.tags);
   const role = detail.role || 'patient';
+  const author = detail.author || '';
   return {
     id: String(detail.id || ''),
-    author: detail.author || '',
+    author,
     avatar: detail.avatar || '',
+    avatarLoaded: false,
+    avatarText: (author || '友').slice(0, 1),
+    avatarBg: getAvatarColor(author || '友'),
     role,
     roleLabel: detail.roleLabel || (role === 'doctor' ? '专家医生' : role === 'expert' ? '睡眠专家' : '鼾友'),
     roleClass: 'role--' + role,
@@ -55,10 +73,24 @@ function normalizePostDetail(detail) {
     labels: tags.labels,
     likes: Number(detail.likes || 0),
     commentsCount: Number(detail.commentsCount || 0),
+    viewsCount: Number(detail.viewsCount || 0),
+    favoritesCount: Number(detail.favoritesCount || 0),
+    sharesCount: Number(detail.sharesCount || 0),
     createdAt: detail.createdAt || '',
     displayTime: formatDateTime(detail.createdAt),
     isLiked: Boolean(detail.isLiked),
+    isFavorited: Boolean(detail.isFavorited),
     comments: Array.isArray(detail.comments) ? detail.comments.map(normalizeComment) : [],
+  };
+}
+
+function normalizeCurrentUserAvatar(profile) {
+  const nickname = String((profile && (profile.nickname || profile.name)) || '我');
+  return {
+    avatar: (profile && profile.avatar) || '',
+    avatarLoaded: false,
+    avatarText: nickname.slice(0, 1) || '我',
+    avatarBg: getAvatarColor(nickname),
   };
 }
 
@@ -66,6 +98,7 @@ Page({
   data: {
     postId: '',
     loading: true,
+    hasLoaded: false,
     loadError: '',
     postDetail: null,
     commentsList: [],
@@ -73,6 +106,9 @@ Page({
     isSubmitting: false,
     replyTarget: null,
     canSubmitComment: false,
+    currentUserAvatar: normalizeCurrentUserAvatar(null),
+    composerExpanded: false,
+    composerFocus: false,
   },
 
   refreshCommentSubmitState() {
@@ -92,27 +128,41 @@ Page({
       return;
     }
     this.setData({ postId });
-    await this.loadPostDetail(postId);
+    await this.loadPostDetail(postId, { silent: this.data.hasLoaded });
   },
 
-  async loadPostDetail(postId) {
-    this.setData({ loading: true, loadError: '' });
+  async loadPostDetail(postId, options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
-      const response = await api.getCommunityPostDetail(postId);
+      const [response, profileResponse] = await Promise.all([
+        api.getCommunityPostDetail(postId),
+        api.getUserProfile().catch(() => null),
+      ]);
       const payload = (response && response.data) || response || null;
+      const profile = (profileResponse && profileResponse.data) || profileResponse || null;
       const postDetail = normalizePostDetail(payload || {});
       this.setData({
+        hasLoaded: true,
         loading: false,
         postDetail,
         commentsList: postDetail.comments,
+        currentUserAvatar: normalizeCurrentUserAvatar(profile),
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载帖子详情失败，请稍后重试',
-        postDetail: null,
-        commentsList: [],
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载帖子详情失败，请稍后重试',
+          postDetail: null,
+          commentsList: [],
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载帖子详情失败，请稍后重试', icon: 'none' });
     }
   },
 
@@ -134,6 +184,48 @@ Page({
       });
       wx.showToast({ title: '点赞失败，请稍后重试', icon: 'none' });
     }
+  },
+
+  handlePostAvatarLoad() {
+    if (!this.data.postDetail) return;
+    this.setData({
+      postDetail: Object.assign({}, this.data.postDetail, { avatarLoaded: true }),
+    });
+  },
+
+  handlePostAvatarError() {
+    if (!this.data.postDetail) return;
+    this.setData({
+      postDetail: Object.assign({}, this.data.postDetail, { avatarLoaded: false, avatar: '' }),
+    });
+  },
+
+  handleCommentAvatarLoad(event) {
+    const commentId = String(event.currentTarget.dataset.commentId || '');
+    if (!commentId) return;
+    const commentsList = this.data.commentsList.map((comment) => (
+      comment.id === commentId ? Object.assign({}, comment, { avatarLoaded: true }) : comment
+    ));
+    this.setData({ commentsList });
+  },
+
+  handleCommentAvatarError(event) {
+    const commentId = String(event.currentTarget.dataset.commentId || '');
+    if (!commentId) return;
+    const commentsList = this.data.commentsList.map((comment) => (
+      comment.id === commentId ? Object.assign({}, comment, { avatarLoaded: false, avatar: '' }) : comment
+    ));
+    this.setData({ commentsList });
+  },
+
+  handleCurrentUserAvatarLoad() {
+    const currentUserAvatar = Object.assign({}, this.data.currentUserAvatar, { avatarLoaded: true });
+    this.setData({ currentUserAvatar });
+  },
+
+  handleCurrentUserAvatarError() {
+    const currentUserAvatar = Object.assign({}, this.data.currentUserAvatar, { avatarLoaded: false, avatar: '' });
+    this.setData({ currentUserAvatar });
   },
 
   async handleCommentLike(event) {
@@ -159,20 +251,70 @@ Page({
     }
   },
 
+  async handlePostFavorite() {
+    const postDetail = this.data.postDetail;
+    if (!postDetail) return;
+    const previousFavorited = postDetail.isFavorited;
+    const previousFavoritesCount = postDetail.favoritesCount;
+    const nextPost = Object.assign({}, postDetail, {
+      isFavorited: !postDetail.isFavorited,
+      favoritesCount: postDetail.favoritesCount + (!postDetail.isFavorited ? 1 : -1),
+    });
+    this.setData({ postDetail: nextPost });
+    try {
+      await api.favoriteCommunityPost(postDetail.id, nextPost.isFavorited);
+    } catch (error) {
+      this.setData({
+        postDetail: Object.assign({}, postDetail, {
+          isFavorited: previousFavorited,
+          favoritesCount: previousFavoritesCount,
+        }),
+      });
+      wx.showToast({ title: '收藏失败，请稍后重试', icon: 'none' });
+    }
+  },
+
   handleReply(event) {
     const commentId = event.currentTarget.dataset.commentId;
     const comment = this.data.commentsList.find((item) => item.id === commentId) || null;
-    this.setData({ replyTarget: comment });
+    this.setData({
+      replyTarget: comment,
+      composerExpanded: true,
+      composerFocus: true,
+    });
   },
 
   clearReplyTarget() {
-    this.setData({ replyTarget: null, commentInput: '' });
+    this.setData({ replyTarget: null, commentInput: '', composerExpanded: false, composerFocus: false });
     this.refreshCommentSubmitState();
   },
 
   handleCommentInput(event) {
     this.setData({ commentInput: event.detail.value || '' });
     this.refreshCommentSubmitState();
+  },
+
+  openComposer() {
+    this.setData({ composerExpanded: true, composerFocus: true });
+  },
+
+  handleComposerFocus() {
+    this.setData({ composerExpanded: true, composerFocus: true });
+  },
+
+  handleComposerBlur() {
+    this.setData({ composerFocus: false });
+    if (String(this.data.commentInput || '').trim()) {
+      return;
+    }
+    setTimeout(() => {
+      if (!this.data.composerFocus && !String(this.data.commentInput || '').trim()) {
+        this.setData({
+          composerExpanded: false,
+          replyTarget: null,
+        });
+      }
+    }, 120);
   },
 
   async submitComment() {
@@ -194,6 +336,8 @@ Page({
         commentInput: '',
         isSubmitting: false,
         replyTarget: null,
+        composerExpanded: false,
+        composerFocus: false,
         postDetail: Object.assign({}, this.data.postDetail, {
           commentsCount: Number((this.data.postDetail && this.data.postDetail.commentsCount) || 0) + 1,
         }),
@@ -227,7 +371,27 @@ Page({
 
   retryLoad() {
     if (this.data.postId) {
-      this.loadPostDetail(this.data.postId);
+      this.loadPostDetail(this.data.postId, { silent: false });
     }
+  },
+
+  onShareAppMessage() {
+    const postDetail = this.data.postDetail;
+    if (!postDetail) {
+      return {
+        title: '医患社区',
+        path: '/pages/community/index',
+      };
+    }
+    api.shareCommunityPost(postDetail.id).catch(() => {});
+    this.setData({
+      postDetail: Object.assign({}, postDetail, {
+        sharesCount: Number(postDetail.sharesCount || 0) + 1,
+      }),
+    });
+    return {
+      title: postDetail.title || postDetail.content || '医患社区',
+      path: '/pages/community/detail/index?id=' + postDetail.id,
+    };
   },
 });

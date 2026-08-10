@@ -3,6 +3,7 @@ const api = require('../../../api/index');
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     room: null,
     products: [],
@@ -15,12 +16,15 @@ Page({
   async onShow() {
     const roomId = (this.options && this.options.id) || '';
     if (roomId) {
-      await this.loadDetail(roomId);
+      await this.loadDetail(roomId, { silent: this.data.hasLoaded });
     }
   },
 
-  async loadDetail(roomId) {
-    this.setData({ loading: true, loadError: '' });
+  async loadDetail(roomId, options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const response = await api.getLiveRoomDetail(roomId);
       const source = (response && response.data) || response || null;
@@ -62,12 +66,17 @@ Page({
           }));
       }
 
-      this.setData({ loading: false, room, products });
+      this.setData({ hasLoaded: true, loading: false, room, products });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载直播详情失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载直播详情失败',
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载直播详情失败', icon: 'none' });
     }
   },
 

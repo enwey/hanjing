@@ -20,7 +20,7 @@
 
     <view class="apt-info-row">
       <view class="apt-label">
-        <image class="apt-label-icon" src="/static/icons/profile_orange.svg" />
+        <image class="apt-label-icon" src="/static/icons/profile_gray.svg" />
         <text>就诊人</text>
       </view>
       <text class="apt-value">{{patientName}}</text>

@@ -8,22 +8,6 @@
       <text wx:else class="distribution-rule-card__desc">当前暂无分销开通说明</text>
     </view>
 
-    <view class="distribution-rule-card" wx:if="{{levels.length}}">
-      <text class="distribution-rule-card__title">推广员等级</text>
-      <view class="distribution-level-head">
-        <text class="distribution-level-col">等级</text>
-        <text class="distribution-level-col">直推单量</text>
-        <text class="distribution-level-col">一级</text>
-        <text class="distribution-level-col">二级</text>
-      </view>
-      <view wx:for="{{levels}}" wx:key="level" class="distribution-level-row">
-        <text class="distribution-level-col distribution-level-col--strong">{{item.label}}</text>
-        <text class="distribution-level-col">{{item.directOrderRequired}}单</text>
-        <text class="distribution-level-col">{{item.level1Rate}}%</text>
-        <text class="distribution-level-col">{{item.level2Rate}}%</text>
-      </view>
-    </view>
-
     <view class="distribution-rule-card" wx:if="{{commissionRules.length}}">
       <text class="distribution-rule-card__title">佣金规则</text>
       <view wx:for="{{commissionRules}}" wx:key="index" class="distribution-rule-item">

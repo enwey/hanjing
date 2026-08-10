@@ -34,7 +34,7 @@
               <text class="invite-poster__subhead">让每一晚都睡得安稳</text>
             </view>
             <view class="invite-poster__qr">
-              <image wx:if="{{inviteQrCode}}" class="invite-poster__qr-image" src="{{inviteQrCode}}" mode="aspectFill" />
+              <image wx:if="{{inviteQrCode}}" class="invite-poster__qr-image" src="{{inviteQrCode}}" mode="aspectFit" />
               <view wx:else class="invite-poster__code-box">
                 <text class="invite-poster__code-label">邀请码</text>
                 <text class="invite-poster__code-value">{{inviteCode}}</text>

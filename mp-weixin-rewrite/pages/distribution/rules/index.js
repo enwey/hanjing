@@ -3,36 +3,43 @@ const api = require('../../../api/index');
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     qualificationText: '',
-    levels: [],
     commissionRules: [],
     promotionWays: [],
     withdrawRules: [],
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const response = await api.getDistributionRules();
       const payload = (response && response.data) || response || {};
       this.setData({
+        hasLoaded: true,
         loading: false,
         qualificationText: payload.qualificationText || '',
-        levels: payload.levels || [],
         commissionRules: payload.commissionRules || [],
         promotionWays: payload.promotionWays || [],
         withdrawRules: payload.withdrawRules || [],
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载分销规则失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载分销规则失败',
+        });
+      } else {
+        this.setData({ loading: false });
+      }
       wx.showToast({ title: '加载分销规则失败', icon: 'none' });
     }
   },

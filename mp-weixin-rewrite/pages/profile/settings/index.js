@@ -21,40 +21,6 @@ Page({
           },
         ],
       },
-      {
-        key: 'service',
-        title: '服务与通知',
-        items: [
-          {
-            key: 'members',
-            icon: '/static/icons/community.svg',
-            label: '家庭成员',
-            desc: '管理关联就诊人及家庭成员资料',
-            url: '/pages/profile/family-members/index',
-          },
-          {
-            key: 'notifications',
-            icon: '/static/icons/bell.svg',
-            label: '消息通知',
-            desc: '查看订单、预约、社区互动与系统通知',
-            url: '/pages/profile/notifications/index',
-          },
-          {
-            key: 'service',
-            icon: '/static/icons/chat.svg',
-            label: '在线客服',
-            desc: '联系门诊客服并查看沟通记录',
-            url: '/pages/profile/online-service/index',
-          },
-          {
-            key: 'member-benefits',
-            icon: '/static/icons/fee.svg',
-            label: '会员权益',
-            desc: '查看会员等级、权益说明与积分兑换',
-            url: '/pages/profile/member-benefits/index',
-          },
-        ],
-      },
     ],
   },
 

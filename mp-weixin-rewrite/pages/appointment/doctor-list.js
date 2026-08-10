@@ -50,12 +50,20 @@ Page({
 
   onLoad(options) {
     this.options = options || {};
+    this.hasLoaded = false;
+    if (!wx.getStorageSync('access_token')) {
+      return;
+    }
+    this.loadPage();
   },
 
   async onShow() {
     const token = wx.getStorageSync('access_token');
     if (!token) {
       navigation.openPage('/pages/auth/login');
+      return;
+    }
+    if (!this.hasLoaded) {
       return;
     }
     await this.loadPage();
@@ -77,6 +85,7 @@ Page({
       storeName: currentStore ? currentStore.name || currentStore.storeName || '' : '',
       doctors,
     });
+    this.hasLoaded = true;
   },
 
   handleDoctorTap(event) {

@@ -19,6 +19,7 @@ const TYPE_MAP = {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     members: [],
     memberOptions: [],
     memberIndex: 0,
@@ -27,7 +28,7 @@ Page({
   },
 
   onShow() {
-    this.loadPage();
+    this.loadPage({ silent: this.data.hasLoaded });
   },
 
   getStoragePatientId() {
@@ -40,8 +41,11 @@ Page({
     }
   },
 
-  async loadPage() {
-    this.setData({ loading: true });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true });
+    }
     try {
       const memberRes = await api.getFamilyMembers();
       const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
@@ -53,23 +57,26 @@ Page({
       }
       const memberOptions = members.map((item) => `${item.name}（${MEMBER_LABEL_MAP[item.relation] || "成员"}）`);
       const memberIndex = Math.max(0, members.findIndex((item) => String(item.id) === String(selectedPatientId)));
-      const res = await api.getMaintenanceRecords(selectedPatientId ? { patientId: selectedPatientId } : {});
+      const res = await api.getDeviceMaintenance(selectedPatientId ? { patientId: selectedPatientId } : {});
       const records = ((res.data && res.data.list) || res.list || []).map((item) => {
         const meta = TYPE_MAP[item.type] || TYPE_MAP.clean;
         return {
           ...item,
+          costText: Number(item.cost || 0) > 0 ? `¥${Number(item.cost || 0).toFixed(2)}` : "",
           typeLabel: meta.label,
           typeColor: meta.color,
           typeBg: `${meta.color}18`,
         };
       });
-      this.setData({ members, memberOptions, memberIndex, selectedPatientId, records });
+      this.setData({ hasLoaded: true, members, memberOptions, memberIndex, selectedPatientId, records, loading: false });
     } catch (err) {
       console.error("加载维护记录失败", err);
       wx.showToast({ title: err.message || "加载维护记录失败", icon: "none" });
-      this.setData({ records: [] });
-    } finally {
-      this.setData({ loading: false });
+      if (!this.data.hasLoaded) {
+        this.setData({ records: [], loading: false });
+      } else {
+        this.setData({ loading: false });
+      }
     }
   },
 

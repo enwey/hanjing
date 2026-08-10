@@ -36,7 +36,10 @@
   <view class="distribution-section">
     <view class="distribution-section__header">
       <text class="distribution-section__title">近期推广订单</text>
-      <text class="distribution-section__more" data-url="/pages/distribution/orders/index" bindtap="openEntry">全部</text>
+      <view class="distribution-section__more" data-url="/pages/distribution/orders/index" bindtap="openEntry">
+        <text class="distribution-section__more-text">全部</text>
+        <view class="distribution-section__more-arrow"></view>
+      </view>
     </view>
     <view class="distribution-order-list">
       <view wx:for="{{recentOrders}}" wx:key="id" class="distribution-order-card">
@@ -53,14 +56,42 @@
           <text class="distribution-order-card__status distribution-order-card__status--{{item.statusClass}}">{{item.statusText}}</text>
         </view>
       </view>
-      <hj-empty wx:if="{{!recentOrders.length && !loading}}" title="暂无推广订单" />
+      <hj-empty wx:if="{{!recentOrders.length && !loading}}" title="暂无推广订单" icon="/static/icons/paper-plane.svg" />
     </view>
   </view>
 
   <view class="distribution-section">
-    <view class="distribution-rule-entry" data-url="/pages/distribution/rules/index" bindtap="openEntry">
-      <text class="distribution-rule-entry__text">分销规则与说明</text>
-      <text class="distribution-rule-entry__arrow">&gt;</text>
+    <view class="distribution-section__header">
+      <text class="distribution-section__title">分销规则与说明</text>
+    </view>
+    <view class="distribution-rule-card">
+      <text class="distribution-rule-card__title">开通条件</text>
+      <text wx:if="{{qualificationText}}" class="distribution-rule-card__desc">{{qualificationText}}</text>
+      <text wx:else class="distribution-rule-card__desc">当前暂无分销开通说明</text>
+    </view>
+
+    <view class="distribution-rule-card" wx:if="{{commissionRules.length}}">
+      <text class="distribution-rule-card__title">佣金规则</text>
+      <view wx:for="{{commissionRules}}" wx:key="index" class="distribution-rule-item">
+        <text class="distribution-rule-item__index">{{index + 1}}</text>
+        <text class="distribution-rule-item__text">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="distribution-rule-card" wx:if="{{promotionWays.length}}">
+      <text class="distribution-rule-card__title">推广方式</text>
+      <view wx:for="{{promotionWays}}" wx:key="index" class="distribution-rule-item">
+        <text class="distribution-rule-item__index">{{index + 1}}</text>
+        <text class="distribution-rule-item__text">{{item}}</text>
+      </view>
+    </view>
+
+    <view class="distribution-rule-card" wx:if="{{withdrawRules.length}}">
+      <text class="distribution-rule-card__title">提现规则</text>
+      <view wx:for="{{withdrawRules}}" wx:key="index" class="distribution-rule-item">
+        <text class="distribution-rule-item__index">{{index + 1}}</text>
+        <text class="distribution-rule-item__text">{{item}}</text>
+      </view>
     </view>
   </view>
 </view>

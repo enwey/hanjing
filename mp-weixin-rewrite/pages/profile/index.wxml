@@ -26,8 +26,12 @@
           data-url="{{item.url}}"
           bindtap="openEntry"
         >
-          <image class="menu-icon" src="{{item.icon}}" />
+          <image class="menu-icon {{item.key === 'distribution' ? 'menu-icon--distribution' : ''}}" src="{{item.icon}}" />
           <text class="menu-label">{{item.label}}</text>
+          <view
+            wx:if="{{(item.key === 'service' && serviceUnreadCount > 0) || (item.key === 'notifications' && notificationsUnreadCount > 0)}}"
+            class="menu-badge"
+          >{{item.key === 'service' ? (serviceUnreadCount > 99 ? '99+' : serviceUnreadCount) : (notificationsUnreadCount > 99 ? '99+' : notificationsUnreadCount)}}</view>
           <text class="menu-arrow">›</text>
         </view>
       </view>

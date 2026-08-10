@@ -3,6 +3,7 @@ const api = require('../../../api/index');
 Page({
   data: {
     loading: false,
+    hasLoaded: false,
     loadError: '',
     activeTab: 'all',
     rooms: [],
@@ -10,11 +11,14 @@ Page({
   },
 
   async onShow() {
-    await this.fetchRooms();
+    await this.fetchRooms({ silent: this.data.hasLoaded });
   },
 
-  async fetchRooms() {
-    this.setData({ loading: true, loadError: '' });
+  async fetchRooms(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const response = await api.getLiveRooms();
       const payload = (response && response.data) || response || {};
@@ -33,14 +37,19 @@ Page({
         displayRoomId: item.wechatRoomId || '',
         showViewerCount: item.status !== 'upcoming',
       }));
-      this.setData({ rooms, loading: false }, () => this.applyFilter());
+      this.setData({ hasLoaded: true, rooms, loading: false }, () => this.applyFilter());
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载直播失败',
-        rooms: [],
-        filteredRooms: [],
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载直播失败',
+          rooms: [],
+          filteredRooms: [],
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载直播失败', icon: 'none' });
     }
   },
 

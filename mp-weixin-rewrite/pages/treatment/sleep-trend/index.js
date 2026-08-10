@@ -5,6 +5,7 @@ const patientContextService = require('../../../services/patient-context-service
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     selectedRange: 'week',
     chartItems: [],
@@ -17,11 +18,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const context = await patientContextStore.refresh();
       const params = context.currentPatientId ? { patientId: context.currentPatientId, _t: Date.now() } : { _t: Date.now() };
@@ -36,16 +40,22 @@ Page({
       }));
       this.wearingSummary = (wearingSummaryResponse && wearingSummaryResponse.data) || wearingSummaryResponse || null;
       this.setData({
+        hasLoaded: true,
         currentPatientLabel: context.currentMember
           ? (context.currentMember.name || '') + '（' + patientContextService.getRelationLabel(context.currentMember.relation) + '）'
           : '',
       });
       this.refreshChart('week');
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载睡眠趋势失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载睡眠趋势失败',
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载睡眠趋势失败', icon: 'none' });
     }
   },
 
@@ -61,6 +71,9 @@ Page({
       comfortEmpty: record.comfort <= 0,
     }));
     const summary = this.wearingSummary || {};
+    const compliance = selectedRange === 'week'
+      ? Number(summary.weekCompliance != null ? summary.weekCompliance : 0)
+      : Number(summary.monthCompliance != null ? summary.monthCompliance : summary.compliance || 0);
 
     this.setData({
       loading: false,
@@ -68,7 +81,7 @@ Page({
       chartItems,
       wornDaysLabel: selectedRange === 'week' ? String(summary.weekWorn || '') : String(summary.wornDays || ''),
       avgDurationLabel: selectedRange === 'week' ? String(summary.weekAvg || '') : String(summary.avgDuration || ''),
-      complianceLabel: summary.compliance || '',
+      complianceLabel: String(compliance || ''),
       maxDurationLabel: maxDuration > 0 ? maxDuration.toFixed(1) + 'h' : '',
       hasRealData: chartItems.length > 0,
     });

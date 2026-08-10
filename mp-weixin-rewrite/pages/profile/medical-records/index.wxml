@@ -25,7 +25,7 @@
           <view class="record-type" style="{{'background:' + item.typeBg + ';color:' + item.typeColor}}">
             <text>{{item.typeLabel}}</text>
           </view>
-          <text class="record-date">{{item.visitDate}}</text>
+          <text class="record-date">{{item.visitDateText || item.visitDate}}</text>
         </view>
         <text class="record-patient">{{item.patientName}}</text>
         <text class="record-doctor">{{item.doctorName}} 医生 | {{item.hospital}}</text>

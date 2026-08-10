@@ -132,6 +132,7 @@ function analyzePcmOnClient(pcmData, durationSeconds) {
 
 Page({
   data: {
+    hasLoaded: false,
     isRecording: false,
     hasRecordingEnded: false,
     isSubmitting: false,
@@ -156,6 +157,9 @@ Page({
   },
 
   async onShow() {
+    if (this.data.hasLoaded) {
+      return;
+    }
     await this.loadFamilyMembers();
   },
 
@@ -247,6 +251,7 @@ Page({
       const memberIndex = initialIndex >= 0 ? initialIndex : (selfIndex >= 0 ? selfIndex : 0);
       const selectedMember = memberList[memberIndex] || null;
       this.setData({
+        hasLoaded: true,
         memberList,
         memberNames,
         memberIndex,

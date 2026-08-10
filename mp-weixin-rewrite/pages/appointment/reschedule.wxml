@@ -46,12 +46,13 @@
         <text class="empty-text">该日期暂无可改约时段</text>
       </view>
 
-      <view class="submit-area">
-        <hj-button
-          text="{{submitting ? '提交中...' : '确认改约'}}"
-          bind:tap="submitReschedule"
-        />
-      </view>
+      <view class="safe-bottom" />
     </block>
+  </view>
+
+  <view class="bottom-fixed-bar" wx:if="{{!loadError}}">
+    <button class="bar-primary-btn" bindtap="submitReschedule" loading="{{submitting}}">
+      {{submitting ? '提交中...' : '确认改约'}}
+    </button>
   </view>
 </view>

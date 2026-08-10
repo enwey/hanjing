@@ -67,6 +67,7 @@ function normalizeOrder(order) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     selectedStatus: 'all',
     orderTabs: ORDER_TABS,
     orders: [],
@@ -85,23 +86,30 @@ Page({
   },
 
   async onShow() {
-    await this.loadOrders();
+    await this.loadOrders({ silent: this.data.hasLoaded });
   },
 
-  async loadOrders() {
-    this.setData({ loading: true });
+  async loadOrders(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true });
+    }
     try {
       const response = await api.getOrders();
       const orders = unwrapList(response).map(normalizeOrder);
-      this.setData({ orders });
+      this.setData({ hasLoaded: true, orders });
       this.refreshVisibleOrders(this.data.selectedStatus, orders);
     } catch (error) {
       console.error(error);
-      this.setData({
-        loading: false,
-        orders: [],
-        visibleOrders: [],
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          orders: [],
+          visibleOrders: [],
+        });
+      } else {
+        this.setData({ loading: false });
+      }
       wx.showToast({ title: (error && error.message) || '加载订单失败', icon: 'none' });
     }
   },

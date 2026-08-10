@@ -34,6 +34,14 @@ function normalizeTimeSlot(timeSlot) {
   };
 }
 
+function resolveDefaultSelectedDate(scheduleDates, originalDate) {
+  const normalizedOriginalDate = String(originalDate || '').slice(0, 10);
+  if (normalizedOriginalDate && Array.isArray(scheduleDates) && scheduleDates.includes(normalizedOriginalDate)) {
+    return normalizedOriginalDate;
+  }
+  return Array.isArray(scheduleDates) && scheduleDates.length ? scheduleDates[0] : '';
+}
+
 Page({
   data: {
     appointmentId: '',
@@ -53,15 +61,25 @@ Page({
 
   onLoad(options) {
     this.options = options || {};
+    this.hasLoaded = false;
+    this.loadPage({ silent: false });
   },
 
   async onShow() {
-    await this.loadPage();
+    if (!this.hasLoaded) {
+      return;
+    }
+    await this.loadPage({ silent: true });
   },
 
-  async loadPage() {
+  async loadPage(options = {}) {
+    const silent = Boolean(options.silent);
     const appointmentId = String((this.options && this.options.id) || '');
-    this.setData({ loading: true, loadError: '', appointmentId });
+    this.setData({
+      loading: silent ? this.data.loading : true,
+      loadError: '',
+      appointmentId,
+    });
     try {
       const detailResponse = await api.getAppointmentDetail(appointmentId);
       const detail = unwrapObject(detailResponse);
@@ -73,8 +91,9 @@ Page({
 
       const scheduleDatesResponse = await api.getScheduleDates({ doctorId, storeId });
       const scheduleDates = unwrapList(scheduleDatesResponse);
-      const selectedDate = scheduleDates[0] || '';
+      const selectedDate = resolveDefaultSelectedDate(scheduleDates, this.originalDate);
       this.setData({
+        loading: silent ? this.data.loading : this.data.loading,
         appointmentId,
         doctorId,
         storeId,
@@ -82,28 +101,30 @@ Page({
         selectedDate,
       });
       if (selectedDate) {
-        await this.loadSchedulesForDate(selectedDate);
+        await this.loadSchedulesForDate(selectedDate, { silent });
       } else {
         this.setData({ loading: false });
       }
+      this.hasLoaded = true;
     } catch (error) {
       this.setData({
-        loading: false,
+        loading: silent ? this.data.loading : false,
         loadError: (error && error.message) || '加载改约信息失败',
       });
     }
   },
 
-  async loadSchedulesForDate(selectedDate) {
+  async loadSchedulesForDate(selectedDate, options = {}) {
+    const silent = Boolean(options.silent);
     this.setData({
-      loading: true,
+      loading: silent ? this.data.loading : true,
       loadError: '',
       selectedDate,
-      schedules: [],
-      timeSlots: [],
-      selectedScheduleId: '',
-      selectedTimeSlotId: '',
-      selectedTimeSlotLabel: '',
+      schedules: silent ? this.data.schedules : [],
+      timeSlots: silent ? this.data.timeSlots : [],
+      selectedScheduleId: silent ? this.data.selectedScheduleId : '',
+      selectedTimeSlotId: silent ? this.data.selectedTimeSlotId : '',
+      selectedTimeSlotLabel: silent ? this.data.selectedTimeSlotLabel : '',
     });
     try {
       const response = await api.getSchedules({
@@ -114,9 +135,11 @@ Page({
       });
       const schedules = unwrapList(response).map(normalizeSchedule);
       this.setData({ schedules });
-      const firstAvailable = schedules.find((item) => !item.disabled);
-      if (firstAvailable) {
-        await this.selectSchedule(firstAvailable.id);
+      const nextSelectedSchedule =
+        schedules.find((item) => item.id === this.data.selectedScheduleId && !item.disabled) ||
+        schedules.find((item) => !item.disabled);
+      if (nextSelectedSchedule) {
+        await this.selectSchedule(nextSelectedSchedule.id, { silent });
       } else {
         this.setData({ loading: false });
       }
@@ -131,23 +154,28 @@ Page({
   async selectDate(event) {
     const selectedDate = String((event && event.detail) || event.currentTarget.dataset.date || '');
     if (!selectedDate || selectedDate === this.data.selectedDate) return;
-    await this.loadSchedulesForDate(selectedDate);
+    await this.loadSchedulesForDate(selectedDate, { silent: false });
   },
 
-  async selectSchedule(scheduleId) {
+  async selectSchedule(scheduleId, options = {}) {
+    const silent = Boolean(options.silent);
     const selectedSchedule = this.data.schedules.find((item) => item.id === scheduleId);
     if (!selectedSchedule || selectedSchedule.disabled) return;
     this.setData({
       selectedScheduleId: scheduleId,
-      timeSlots: [],
-      selectedTimeSlotId: '',
-      selectedTimeSlotLabel: '',
+      timeSlots: silent ? this.data.timeSlots : [],
+      selectedTimeSlotId: silent ? this.data.selectedTimeSlotId : '',
+      selectedTimeSlotLabel: silent ? this.data.selectedTimeSlotLabel : '',
     });
     try {
       const response = await api.getTimeSlots(scheduleId);
+      const nextTimeSlots = unwrapList(response).map(normalizeTimeSlot);
+      const keepSelected = nextTimeSlots.find((item) => item.id === this.data.selectedTimeSlotId && item.selectable);
       this.setData({
         loading: false,
-        timeSlots: unwrapList(response).map(normalizeTimeSlot),
+        timeSlots: nextTimeSlots,
+        selectedTimeSlotId: keepSelected ? keepSelected.id : '',
+        selectedTimeSlotLabel: keepSelected ? keepSelected.label : '',
       });
     } catch (error) {
       this.setData({ loading: false });
@@ -156,13 +184,13 @@ Page({
   },
 
   async tapSchedule(event) {
-    await this.selectSchedule(String(event.currentTarget.dataset.scheduleId || ''));
+    await this.selectSchedule(String(event.currentTarget.dataset.scheduleId || ''), { silent: false });
   },
 
   selectTimeSlot(event) {
     const timeSlotId = String(event.currentTarget.dataset.timeSlotId || '');
     const timeSlot = this.data.timeSlots.find((item) => item.id === timeSlotId);
-    if (!timeSlot || !timeSlot.selectable) return;
+    if (!timeSlot || !timeSlot.selectable || this.data.submitting) return;
     if (
       this.data.selectedDate === this.originalDate &&
       String(timeSlot.label || '').replace(/\s+/g, '') === String(this.originalTime || '').replace(/\s+/g, '')

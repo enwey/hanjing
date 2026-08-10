@@ -17,7 +17,10 @@
 .distribution-section { background: #ffffff; margin: 0 24rpx 24rpx; border-radius: 16rpx; padding: 24rpx; }
 .distribution-section__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20rpx; }
 .distribution-section__title { font-size: 30rpx; font-weight: 600; color: #1f2937; }
-.distribution-section__more { font-size: 26rpx; color: #3b6bf5; }
+.distribution-section__more { display: flex; align-items: center; gap: 4rpx; color: #3b6bf5; }
+.distribution-section__more-text { display: block; font-size: 26rpx; line-height: 1.2; }
+.distribution-section__more-arrow { display: flex; align-items: center; justify-content: center; width: 20rpx; height: 20rpx; color: inherit; }
+.distribution-section__more-arrow::after { content: ''; width: 10rpx; height: 10rpx; border-top: 2rpx solid currentColor; border-right: 2rpx solid currentColor; transform: rotate(45deg); box-sizing: border-box; }
 .distribution-order-list { min-height: 20rpx; }
 .distribution-order-card { display: flex; align-items: center; padding: 0 0 20rpx; }
 .distribution-order-card + .distribution-order-card { padding-top: 20rpx; border-top: 1rpx solid #f3f4f6; }
@@ -33,6 +36,16 @@
 .distribution-order-card__status--pending { color: #b45309; background: rgba(245, 158, 11, 0.14); }
 .distribution-order-card__status--settled { color: #1a9d5c; background: rgba(26, 157, 92, 0.14); }
 .distribution-order-card__status--refunded { color: #6b7280; background: rgba(107, 114, 128, 0.14); }
-.distribution-rule-entry { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
-.distribution-rule-entry__text { font-size: 28rpx; color: #1f2937; }
-.distribution-rule-entry__arrow { color: #d1d5db; font-size: 28rpx; }
+.distribution-rule-card { background: #ffffff; border-radius: 16rpx; padding: 24rpx; }
+.distribution-rule-card + .distribution-rule-card { margin-top: 20rpx; }
+.distribution-rule-card__title { display: block; font-size: 30rpx; font-weight: 600; color: #1f2937; margin-bottom: 16rpx; }
+.distribution-rule-card__desc { display: block; font-size: 26rpx; line-height: 1.8; color: #4b5563; }
+.distribution-level-head, .distribution-level-row { display: flex; align-items: center; padding: 18rpx 0; }
+.distribution-level-head { border-bottom: 1rpx solid #f3f4f6; }
+.distribution-level-row { border-bottom: 1rpx solid #f9fafb; }
+.distribution-level-row:last-child { border-bottom: none; }
+.distribution-level-col { flex: 1; text-align: center; font-size: 24rpx; color: #4b5563; }
+.distribution-level-col--strong { font-weight: 600; color: #1f2937; }
+.distribution-rule-item { display: flex; align-items: flex-start; padding: 14rpx 0; }
+.distribution-rule-item__index { width: 40rpx; height: 40rpx; border-radius: 20rpx; background: #eef4ff; color: #3b6bf5; font-size: 22rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 16rpx; }
+.distribution-rule-item__text { flex: 1; font-size: 26rpx; line-height: 1.8; color: #4b5563; }

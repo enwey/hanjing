@@ -113,7 +113,9 @@ async function handleLogin({ validateResult }: any) {
     
     <div class="login-card">
       <div class="login-brand">
-        <span class="brand-logo"><AppIcon name="moon" /> </span>
+        <span class="brand-logo">
+          <img class="brand-logo-image" src="/brand-koala.png" alt="鼾静健康诊所" />
+        </span>
         <div class="brand-title">
           鼾静健康诊所
           <small>睡眠健康管理后台</small>
@@ -238,7 +240,19 @@ async function handleLogin({ validateResult }: any) {
   margin-bottom: 32px;
 }
 .brand-logo {
-  font-size: 32px;
+  width: 56px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.brand-logo-image {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: block;
+  object-fit: cover;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
 }
 .brand-title {
   display: flex;

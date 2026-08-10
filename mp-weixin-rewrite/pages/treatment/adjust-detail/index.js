@@ -12,6 +12,7 @@ function unwrapList(response) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     hasRealTreatmentRecord: false,
     recordDetail: null,
@@ -19,11 +20,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const context = await patientContextStore.refresh();
       const params = context.currentPatientId ? { patientId: context.currentPatientId, _t: Date.now() } : { _t: Date.now() };
@@ -41,6 +45,7 @@ Page({
         comfort: Number(item.comfort || 0),
       }));
       this.setData({
+        hasLoaded: true,
         loading: false,
         hasRealTreatmentRecord: Boolean(
           recordDetail &&
@@ -54,10 +59,15 @@ Page({
         adjustmentHistory,
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载设备调整失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载设备调整失败',
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载设备调整失败', icon: 'none' });
     }
   },
 

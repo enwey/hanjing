@@ -53,9 +53,14 @@ function buildScheduleSlots(schedule, intervalMinutes = 30) {
   const endMins = (endParts[0] || 0) * 60 + (endParts[1] || 0);
   if (endMins <= startMins) return [];
   const safeInterval = Number.isFinite(Number(intervalMinutes)) && Number(intervalMinutes) > 0 ? Number(intervalMinutes) : 30;
+  const lunchStartMins = 12 * 60;
+  const lunchEndMins = 14 * 60;
   const slots = [];
   for (let slotStart = startMins; slotStart < endMins; slotStart += safeInterval) {
     const slotEnd = Math.min(slotStart + safeInterval, endMins);
+    if (slotStart < lunchEndMins && slotEnd > lunchStartMins) {
+      continue;
+    }
     const startH = Math.floor(slotStart / 60);
     const startM = slotStart % 60;
     const endH = Math.floor(slotEnd / 60);
@@ -63,6 +68,26 @@ function buildScheduleSlots(schedule, intervalMinutes = 30) {
     slots.push(`${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}-${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
   }
   return slots;
+}
+
+function getSlotStatusPriority(status) {
+  if (status === 'available') return 3;
+  if (status === 'full') return 2;
+  if (status === 'disabled') return 1;
+  return 0;
+}
+
+function mergeAdminDaySlots(slots = []) {
+  const slotMap = new Map();
+  slots.forEach((slot) => {
+    const key = String(slot?.time || '').trim();
+    if (!key) return;
+    const existing = slotMap.get(key);
+    if (!existing || getSlotStatusPriority(slot.status) > getSlotStatusPriority(existing.status)) {
+      slotMap.set(key, slot);
+    }
+  });
+  return Array.from(slotMap.values()).sort((a, b) => a.time.localeCompare(b.time));
 }
 
 const formatDate = (dateVal) => {
@@ -1252,7 +1277,7 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
 
       const nextSchedule = await get(
         `SELECT * FROM doctor_schedules
-         WHERE doctor_id = ? AND store_id = ? AND date = ? AND period = ?`,
+         WHERE doctor_id = ? AND store_id = ? AND date = ? AND period = ? AND status = 'available'`,
         [nextDoctorId, nextStoreId, nextDate, nextPeriod]
       );
       if (!nextSchedule) {
@@ -1422,7 +1447,7 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
     
     const nextPeriod = period || 'morning';
     const schedule = await get(
-      `SELECT * FROM doctor_schedules WHERE doctor_id = ? AND store_id = ? AND date = ? AND period = ?`,
+      `SELECT * FROM doctor_schedules WHERE doctor_id = ? AND store_id = ? AND date = ? AND period = ? AND status = 'available'`,
       [doctor_id, store_id, date, nextPeriod]
     );
     if (!schedule) {
@@ -3334,7 +3359,7 @@ app.get('/api/admin/schedules', authenticateToken, async (req, res) => {
         WHERE status NOT IN ('cancelled', 'no_show')
         GROUP BY schedule_id
       ) b ON b.schedule_id = s.id
-      WHERE 1=1
+      WHERE s.status = 'available'
     `;
     const params = [];
     if (date) {
@@ -3373,6 +3398,65 @@ app.get('/api/admin/schedules', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/admin/day-slots', authenticateToken, async (req, res) => {
+  const { doctor_id, store_id, date } = req.query;
+  if (!doctor_id || !store_id || !date) {
+    return res.status(400).json({ code: 400, message: 'doctor_id、store_id和date不能为空' });
+  }
+  if (req.user.role === 'doctor' && req.user.doctor_id && Number(req.user.doctor_id) !== Number(doctor_id)) {
+    return res.status(403).json({ code: 403, message: '医生账号只能查看自己的时段' });
+  }
+  if (req.user.role !== 'super_admin' && req.user.store_id && Number(req.user.store_id) !== Number(store_id)) {
+    return res.status(403).json({ code: 403, message: '您无权查看其他门店时段' });
+  }
+
+  try {
+    const bookingInterval = await getBookingIntervalMinutes();
+    const rows = await query(
+      `SELECT * FROM doctor_schedules
+       WHERE doctor_id = ? AND store_id = ? AND date = ? AND status = 'available'
+       ORDER BY start_time ASC`,
+      [doctor_id, store_id, date]
+    );
+
+    const apptRes = await query(
+      `SELECT appointment_time, COUNT(*) as count
+       FROM appointments
+       WHERE doctor_id = ? AND store_id = ? AND appointment_date = ? AND status IN ('pending_payment', 'pending', 'confirmed', 'checked_in', 'arrived')
+       GROUP BY appointment_time`,
+      [doctor_id, store_id, date]
+    );
+    const bookedMap = {};
+    apptRes.forEach((item) => {
+      bookedMap[item.appointment_time] = Number(item.count || 0);
+    });
+
+    const mergedSlots = mergeAdminDaySlots(
+      rows.flatMap((row) => {
+        const peoplePerSlot = Number(row.people_per_slot || 1);
+        return buildScheduleSlots(row, bookingInterval).map((time) => {
+          const bookedCount = Number(bookedMap[time] || 0);
+          const remaining = Math.max(0, peoplePerSlot - bookedCount);
+          return {
+            time,
+            schedule_id: row.id,
+            period: row.period,
+            status: remaining > 0 ? 'available' : 'full',
+            booked: bookedCount,
+            total: peoplePerSlot,
+            label: remaining > 0 ? '可约' : '已满',
+          };
+        });
+      })
+    );
+
+    res.json({ code: 200, data: mergedSlots });
+  } catch (error) {
+    console.error('获取后台当日时段失败:', error);
+    res.status(500).json({ code: 500, message: '获取当日可预约时段失败' });
+  }
+});
+
 app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
   const { doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, is_rest } = req.body;
   if (!doctor_id || !date || !period) {
@@ -3395,20 +3479,13 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
 
     try {
     const existing = await get(
-      `SELECT id FROM doctor_schedules WHERE doctor_id = ? AND date = ? AND period = ?`,
+      `SELECT * FROM doctor_schedules WHERE doctor_id = ? AND date = ? AND period = ? AND status = 'available' ORDER BY id DESC LIMIT 1`,
       [doctor_id, date, period]
     );
 
     if (is_rest) {
       if (existing) {
-        const booked = await get(
-          `SELECT COUNT(*) as count FROM appointments WHERE schedule_id = ? AND status NOT IN ('cancelled', 'no_show')`,
-          [existing.id]
-        );
-        if (booked && booked.count > 0) {
-          return res.status(400).json({ code: 400, message: `${date} ${period === 'morning' ? '上午' : '下午'}已有预约，不能设置为休息` });
-        }
-        await run(`DELETE FROM doctor_schedules WHERE id = ?`, [existing.id]);
+        await run(`UPDATE doctor_schedules SET status = 'archived' WHERE id = ?`, [existing.id]);
       }
       await logAdminAction(req.user.id, 'create_schedule', 'doctor', doctor_id, { date, period, is_rest: true }, req.ip || null);
       return res.json({ code: 200, message: '设置休息成功' });
@@ -3423,19 +3500,23 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
         [existing.id]
       );
       const bookedCount = booked ? booked.count : 0;
-      const proposedTotal = (total_slots || 6) * (people_per_slot || 1);
-      if (bookedCount > proposedTotal) {
-        return res.status(400).json({ code: 400, message: `${date} ${period === 'morning' ? '上午' : '下午'}已有较多预约（已约 ${bookedCount} 人），新设置的总号源数（${proposedTotal} 人）不足` });
+      if (bookedCount > 0) {
+        await run(`UPDATE doctor_schedules SET status = 'archived' WHERE id = ?`, [existing.id]);
+        await run(
+          `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
+          [doctor_id, store_id, date, period, targetStartTime, targetEndTime, total_slots || 6, people_per_slot || 1]
+        );
+      } else {
+        await run(
+          `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ?, status = 'available' WHERE id = ?`,
+          [store_id, targetStartTime, targetEndTime, total_slots || 6, people_per_slot || 1, existing.id]
+        );
       }
-
-      await run(
-        `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ? WHERE id = ?`,
-        [store_id, targetStartTime, targetEndTime, total_slots || 6, people_per_slot || 1, existing.id]
-      );
     } else {
       await run(
-        `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
         [doctor_id, store_id, date, period, targetStartTime, targetEndTime, total_slots || 6, people_per_slot || 1]
       );
     }
@@ -3462,7 +3543,7 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
     await transaction(async (conn) => {
       // 1. Fetch all existing schedules for this doctor in this month in one query
       const [existingRows] = await conn.execute(
-        `SELECT * FROM doctor_schedules WHERE doctor_id = ? AND date LIKE ?`,
+        `SELECT * FROM doctor_schedules WHERE doctor_id = ? AND date LIKE ? AND status = 'available'`,
         [doctor_id, `${monthStr}%`]
       );
       
@@ -3488,9 +3569,9 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
         bookedMap[row.schedule_id] = row.count;
       });
 
-      const idsToDelete = [];
       const inserts = [];
       const updates = [];
+      const archiveIds = [];
 
       // 3. Process differences in memory
       for (const item of list) {
@@ -3504,11 +3585,7 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
 
         if (is_rest) {
           if (existing) {
-            const bookedCount = bookedMap[existing.id] || 0;
-            if (bookedCount > 0) {
-              throw new Error(`${date} ${period === 'morning' ? '上午' : '下午'}已有预约，不能设置为休息`);
-            }
-            idsToDelete.push(existing.id);
+            archiveIds.push(existing.id);
           }
         } else {
           if (!store_id) {
@@ -3544,22 +3621,31 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
 
             if (hasChanged) {
               const bookedCount = bookedMap[existing.id] || 0;
-              const proposedTotal = Number(targetTotalSlots) * Number(targetPeoplePerSlot);
-              if (bookedCount > proposedTotal) {
-                throw new Error(`${date} ${period === 'morning' ? '上午' : '下午'}已有较多预约（已约 ${bookedCount} 人），新设置的总号源数（${proposedTotal} 人）不足`);
+              if (bookedCount > 0) {
+                archiveIds.push(existing.id);
+                inserts.push([
+                  doctor_id,
+                  store_id,
+                  date,
+                  period,
+                  targetStartTime,
+                  targetEndTime,
+                  targetTotalSlots,
+                  targetPeoplePerSlot,
+                  'available'
+                ]);
+              } else {
+                updates.push({
+                  id: existing.id,
+                  store_id,
+                  start_time: targetStartTime,
+                  end_time: targetEndTime,
+                  total_slots: targetTotalSlots,
+                  people_per_slot: targetPeoplePerSlot
+                });
               }
-
-              updates.push({
-                id: existing.id,
-                store_id,
-                start_time: targetStartTime,
-                end_time: targetEndTime,
-                total_slots: targetTotalSlots,
-                people_per_slot: targetPeoplePerSlot
-              });
             }
           } else {
-            // Collect new schedules to insert
             inserts.push([
               doctor_id,
               store_id,
@@ -3568,26 +3654,27 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
               targetStartTime,
               targetEndTime,
               targetTotalSlots,
-              targetPeoplePerSlot
+              targetPeoplePerSlot,
+              'available'
             ]);
           }
         }
       }
 
-      // 4. Perform database operations in batches
-      if (idsToDelete.length > 0) {
-        const placeholders = idsToDelete.map(() => '?').join(',');
+      if (archiveIds.length > 0) {
+        const uniqueArchiveIds = Array.from(new Set(archiveIds));
+        const placeholders = uniqueArchiveIds.map(() => '?').join(',');
         await conn.execute(
-          `DELETE FROM doctor_schedules WHERE id IN (${placeholders})`,
-          idsToDelete
+          `UPDATE doctor_schedules SET status = 'archived' WHERE id IN (${placeholders})`,
+          uniqueArchiveIds
         );
       }
 
       if (inserts.length > 0) {
-        const placeholders = inserts.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(',');
+        const placeholders = inserts.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(',');
         const flatValues = inserts.reduce((acc, val) => acc.concat(val), []);
         await conn.execute(
-          `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot)
+          `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, status)
            VALUES ${placeholders}`,
           flatValues
         );
@@ -3595,7 +3682,7 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
 
       for (const val of updates) {
         await conn.execute(
-          `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ? WHERE id = ?`,
+          `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ?, status = 'available' WHERE id = ?`,
           [val.store_id, val.start_time, val.end_time, val.total_slots, val.people_per_slot, val.id]
         );
       }
@@ -3629,7 +3716,7 @@ app.post('/api/admin/schedules/copy-last-month', authenticateToken, async (req, 
   try {
     const copied = await transaction(async (conn) => {
       const [sourceRows] = await conn.execute(
-        `SELECT * FROM doctor_schedules WHERE doctor_id = ? AND date LIKE ? ORDER BY date ASC`,
+        `SELECT * FROM doctor_schedules WHERE doctor_id = ? AND date LIKE ? AND status = 'available' ORDER BY date ASC`,
         [doctor_id, `${previousPrefix}%`]
       );
       if (sourceRows.length === 0) {
@@ -3640,7 +3727,7 @@ app.post('/api/admin/schedules/copy-last-month', authenticateToken, async (req, 
         `SELECT s.id, s.date, s.period, COUNT(a.id) as booked_count
          FROM doctor_schedules s
          LEFT JOIN appointments a ON a.schedule_id = s.id AND a.status NOT IN ('cancelled', 'no_show')
-         WHERE s.doctor_id = ? AND s.date LIKE ?
+         WHERE s.doctor_id = ? AND s.date LIKE ? AND s.status = 'available'
          GROUP BY s.id`,
         [doctor_id, `${targetPrefix}%`]
       );
@@ -3666,21 +3753,26 @@ app.post('/api/admin/schedules/copy-last-month', authenticateToken, async (req, 
         }
 
         const existing = existingMap[`${targetDate}_${row.period}`];
-        if (existing && Number(existing.booked_count || 0) > 0) {
-          continue;
-        }
-
         if (existing) {
-          await conn.execute(
-            `UPDATE doctor_schedules
-             SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ?
-             WHERE id = ?`,
-            [row.store_id, row.start_time, row.end_time, row.total_slots, row.people_per_slot, existing.id]
-          );
+          if (Number(existing.booked_count || 0) > 0) {
+            await conn.execute(`UPDATE doctor_schedules SET status = 'archived' WHERE id = ?`, [existing.id]);
+            await conn.execute(
+              `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
+              [doctor_id, row.store_id, targetDate, row.period, row.start_time, row.end_time, row.total_slots, row.people_per_slot]
+            );
+          } else {
+            await conn.execute(
+              `UPDATE doctor_schedules
+               SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ?, status = 'available'
+               WHERE id = ?`,
+              [row.store_id, row.start_time, row.end_time, row.total_slots, row.people_per_slot, existing.id]
+            );
+          }
         } else {
           await conn.execute(
-            `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
             [doctor_id, row.store_id, targetDate, row.period, row.start_time, row.end_time, row.total_slots, row.people_per_slot]
           );
         }
@@ -4828,7 +4920,8 @@ app.get('/api/admin/products', authenticateToken, async (req, res) => {
   try {
     const list = await query(
       `SELECT p.id, p.name, p.category, pc.name AS category_name, p.image_url, p.price, p.description, p.stock, p.sales_count,
-              p.is_distribution, p.commission_rate, p.status, p.created_at, p.original_price, p.gallery_urls
+              p.is_distribution, p.commission_rate, p.commission_rate_level1, p.commission_rate_level2,
+              p.status, p.created_at, p.original_price, p.gallery_urls
        FROM products p
        LEFT JOIN product_categories pc ON pc.code = p.category
        ORDER BY p.id DESC`
@@ -4927,7 +5020,10 @@ app.delete('/api/admin/product-categories/:id', authenticateToken, async (req, r
 });
 
 app.post('/api/admin/products', authenticateToken, async (req, res) => {
-  const { name, description, price, commission_rate, status, category, image_url, stock, is_distribution, original_price, gallery_urls } = req.body;
+  const {
+    name, description, price, commission_rate, commission_rate_level1, commission_rate_level2,
+    status, category, image_url, stock, is_distribution, original_price, gallery_urls
+  } = req.body;
   if (!name || !price) {
     return res.status(400).json({ code: 400, message: '商品名称和价格为必填项' });
   }
@@ -4943,9 +5039,11 @@ app.post('/api/admin/products', authenticateToken, async (req, res) => {
     if (gallery_urls !== undefined && gallery_urls !== null) {
       galleryUrlsVal = typeof gallery_urls === 'string' ? gallery_urls : JSON.stringify(gallery_urls);
     }
+    const level1Rate = Number(commission_rate_level1 !== undefined ? commission_rate_level1 : commission_rate || 0);
+    const level2Rate = Number(commission_rate_level2 || 0);
     const result = await run(
-      `INSERT INTO products (name, category, image_url, price, description, stock, is_distribution, commission_rate, status, original_price, gallery_urls)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO products (name, category, image_url, price, description, stock, is_distribution, commission_rate, commission_rate_level1, commission_rate_level2, status, original_price, gallery_urls)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
         normalizedCategory,
@@ -4954,7 +5052,9 @@ app.post('/api/admin/products', authenticateToken, async (req, res) => {
         description || '',
         Number(stock || 0),
         is_distribution ? 1 : 0,
-        Number(commission_rate || 0),
+        level1Rate,
+        level1Rate,
+        level2Rate,
         status === 'on' ? 'on' : 'off',
         original_price ? Number(original_price) : null,
         galleryUrlsVal
@@ -5011,7 +5111,8 @@ app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
     await run(
       `UPDATE products
        SET name = ?, category = ?, image_url = ?, price = ?, description = ?, stock = ?,
-           is_distribution = ?, commission_rate = ?, status = ?, original_price = ?, gallery_urls = ?
+           is_distribution = ?, commission_rate = ?, commission_rate_level1 = ?, commission_rate_level2 = ?,
+           status = ?, original_price = ?, gallery_urls = ?
        WHERE id = ?`,
       [
         req.body.name ?? product.name,
@@ -5021,7 +5122,15 @@ app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
         req.body.description ?? product.description,
         req.body.stock !== undefined ? Number(req.body.stock) : product.stock,
         req.body.is_distribution !== undefined ? (req.body.is_distribution ? 1 : 0) : product.is_distribution,
-        req.body.commission_rate !== undefined ? Number(req.body.commission_rate) : product.commission_rate,
+        req.body.commission_rate_level1 !== undefined
+          ? Number(req.body.commission_rate_level1)
+          : (req.body.commission_rate !== undefined ? Number(req.body.commission_rate) : product.commission_rate),
+        req.body.commission_rate_level1 !== undefined
+          ? Number(req.body.commission_rate_level1)
+          : (req.body.commission_rate !== undefined ? Number(req.body.commission_rate) : Number(product.commission_rate_level1 || product.commission_rate || 0)),
+        req.body.commission_rate_level2 !== undefined
+          ? Number(req.body.commission_rate_level2)
+          : Number(product.commission_rate_level2 || 0),
         req.body.status ?? product.status,
         req.body.original_price !== undefined ? (req.body.original_price ? Number(req.body.original_price) : null) : product.original_price,
         galleryUrlsVal,
@@ -5042,7 +5151,7 @@ app.get('/api/admin/distribution/products', authenticateToken, async (req, res) 
   try {
     const list = await query(
       `SELECT id, name, category, image_url, price, description, stock, sales_count,
-              is_distribution, commission_rate, status, created_at
+              is_distribution, commission_rate, commission_rate_level1, commission_rate_level2, status, created_at
        FROM products
        WHERE is_distribution = 1 AND status = 'on'
        ORDER BY id DESC`
@@ -6798,6 +6907,22 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
             throw err;
           }
           strVal = String(days);
+        } else if (key === 'min_withdraw') {
+          const minWithdraw = Number(val);
+          if (!Number.isFinite(minWithdraw) || minWithdraw < 0 || minWithdraw > 1000000) {
+            const err = new Error('最低提现金额需为0-1000000之间的数字');
+            err.statusCode = 400;
+            throw err;
+          }
+          strVal = String(minWithdraw);
+        } else if (key === 'withdraw_fee_rate') {
+          const feeRate = Number(val);
+          if (!Number.isFinite(feeRate) || feeRate < 0 || feeRate > 100) {
+            const err = new Error('提现手续费率需为0-100之间的数字');
+            err.statusCode = 400;
+            throw err;
+          }
+          strVal = String(feeRate);
         } else if (key === 'booking_interval') {
           const minutes = Number(val);
           if (!Number.isInteger(minutes) || minutes <= 0 || minutes > 240) {

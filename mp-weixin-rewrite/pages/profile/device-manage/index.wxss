@@ -112,6 +112,8 @@
   font-weight: 600;
   background: #fef3c7;
   color: #b45309;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .device-status.active {

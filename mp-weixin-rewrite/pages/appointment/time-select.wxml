@@ -33,34 +33,21 @@
           <text class="state-title">正在加载当天排班...</text>
         </view>
 
-        <block wx:elif="{{schedules.length > 0}}">
-          <view wx:for="{{schedules}}" wx:key="id" class="schedule-group">
-            <view
-              class="schedule-header {{item.status === 'full' ? 'schedule-header--full' : ''}}"
-              data-schedule-id="{{item.id}}"
-              bindtap="handleScheduleTap"
-            >
-              <text class="schedule-period">{{item.periodLabel}}</text>
-              <text class="schedule-time">{{item.startTime}}-{{item.endTime}}</text>
-              <text class="schedule-avail">{{item.slotsLabel}}</text>
-            </view>
-
-            <view wx:if="{{selectedScheduleId === item.id}}">
-              <view wx:if="{{item.loadingSlots}}" class="slot-loading">正在加载时段...</view>
-              <view wx:elif="{{item.timeSlots.length > 0}}" class="slot-grid">
-                <view
-                  wx:for="{{item.timeSlots}}"
-                  wx:for-item="slot"
-                  wx:key="id"
-                  class="slot {{slot.isAvailable ? 'slot--available' : ''}} {{slot.status === 'booked' ? 'slot--booked' : ''}} {{slot.status === 'disabled' ? 'slot--disabled' : ''}}"
-                  data-schedule-id="{{item.id}}"
-                  data-time-slot-id="{{slot.id}}"
-                  bindtap="handleTimeSlotTap"
-                >
-                  <text class="slot-time">{{slot.label}}</text>
-                </view>
+        <block wx:elif="{{timeSlotSections.length > 0}}">
+          <view wx:for="{{timeSlotSections}}" wx:for-item="section" wx:key="key" class="slot-section">
+            <view class="slot-section__header">{{section.title}}</view>
+            <view class="slot-grid">
+              <view
+                wx:for="{{section.slots}}"
+                wx:for-item="slot"
+                wx:key="id"
+                class="slot {{slot.isAvailable ? 'slot--available' : ''}} {{slot.status === 'booked' ? 'slot--booked' : ''}} {{slot.status === 'disabled' ? 'slot--disabled' : ''}}"
+                data-schedule-id="{{slot.scheduleId}}"
+                data-time-slot-id="{{slot.id}}"
+                bindtap="handleTimeSlotTap"
+              >
+                <text class="slot-time">{{slot.label}}</text>
               </view>
-              <view wx:else class="slot-loading">该排班暂无可约时段</view>
             </view>
           </view>
         </block>

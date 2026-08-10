@@ -16,6 +16,14 @@ function likeCommunityPost(postId, isLiked) {
   return request({ url: '/community/posts/' + postId + '/like', method: 'POST', data: { isLiked }, failMessage: '帖子点赞失败' });
 }
 
+function favoriteCommunityPost(postId, isFavorited) {
+  return request({ url: '/community/posts/' + postId + '/favorite', method: 'POST', data: { isFavorited }, failMessage: '帖子收藏失败' });
+}
+
+function shareCommunityPost(postId) {
+  return request({ url: '/community/posts/' + postId + '/share', method: 'POST', data: {}, failMessage: '记录分享失败' });
+}
+
 function likeCommunityComment(commentId, isLiked) {
   return request({ url: '/community/comments/' + commentId + '/like', method: 'POST', data: { isLiked }, failMessage: '评论点赞失败' });
 }
@@ -33,6 +41,8 @@ module.exports = {
   getCommunityPostDetail,
   createCommunityPost,
   likeCommunityPost,
+  favoriteCommunityPost,
+  shareCommunityPost,
   likeCommunityComment,
   commentCommunityPost,
   reportCommunityPost

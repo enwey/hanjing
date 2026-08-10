@@ -28,6 +28,7 @@ function normalizeProduct(product) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     products: [],
     summary: {
@@ -38,11 +39,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const response = await api.getDistributionProducts();
       const products = unwrapList(response).map(normalizeProduct);
@@ -52,6 +56,7 @@ Page({
         : '';
       const highestCommission = products.reduce((maxValue, item) => Math.max(maxValue, Number(item.commission || 0)), 0);
       this.setData({
+        hasLoaded: true,
         loading: false,
         products,
         summary: {
@@ -61,10 +66,15 @@ Page({
         },
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载推广商品失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载推广商品失败',
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载推广商品失败', icon: 'none' });
     }
   },
 
