@@ -1,5 +1,11 @@
 const api = require('../../../../api/index');
 
+function normalizeGenderValue(value) {
+  const gender = String(value === null || value === undefined ? '' : value).trim().toLowerCase();
+  if (gender === '2' || gender === '女' || gender === 'female' || gender === 'f') return '2';
+  return '1';
+}
+
 Page({
   data: {
     name: '',
@@ -40,9 +46,9 @@ Page({
       this.setData({
         name: data.name || '',
         relation: data.relation || 'spouse',
-        gender: String(data.gender || '1'),
+        gender: normalizeGenderValue(data.gender),
         age: data.age === null || data.age === undefined ? '' : String(data.age),
-        phone: data.phone || '',
+        phone: data.phone === null || data.phone === undefined ? '' : String(data.phone),
         idCard: data.idCard || data.id_card || '',
         cardNo: data.cardNo || data.card_no || '',
         isSelf,

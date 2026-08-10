@@ -1,46 +1,61 @@
 <view class="container distribution-orders-page">
   <hj-navbar title="推广订单" showBack="{{true}}" />
 
-  <scroll-view scroll-x class="distribution-order-tabs" enhanced="{{true}}" show-scrollbar="{{false}}">
-    <text
-      wx:for="{{statusTabs}}"
-      wx:key="key"
-      class="distribution-order-tab {{selectedStatus === item.key ? 'distribution-order-tab--active' : ''}}"
-      data-status-key="{{item.key}}"
-      bindtap="handleTabTap"
-    >{{item.label}}</text>
-  </scroll-view>
+  <view class="page-content">
+    <view class="order-tabs" style="top: {{navbarHeight}}px;">
+      <view
+        wx:for="{{statusTabs}}"
+        wx:key="key"
+        class="order-tab {{selectedStatus === item.key ? 'order-tab--active' : ''}}"
+        data-status-key="{{item.key}}"
+        bindtap="handleTabTap"
+      >
+        <text class="order-tab__text">{{item.label}}</text>
+      </view>
+    </view>
 
-  <view class="page-section state-card" wx:if="{{loading}}">
-    <text class="state-title">正在加载推广订单...</text>
-  </view>
+    <view class="state-card" wx:if="{{loading}}">
+      <text class="state-text">加载中...</text>
+    </view>
 
-  <view class="page-section state-card" wx:elif="{{loadError}}">
-    <text class="state-title">加载失败</text>
-    <text class="page-description">{{loadError}}</text>
-  </view>
+    <view class="state-card" wx:elif="{{loadError}}">
+      <text class="state-text">{{loadError}}</text>
+    </view>
 
-  <view class="page-section state-card" wx:elif="{{!visibleOrders.length}}">
-    <text class="state-title">暂无推广订单</text>
-  </view>
+    <view class="state-card" wx:elif="{{!visibleOrders.length}}">
+      <hj-empty title="暂无推广订单" icon="/static/icons/paper-plane.svg" />
+    </view>
 
-  <view class="page-section distribution-order-list-wrap" wx:else>
-    <view class="distribution-order-list">
-      <view wx:for="{{visibleOrders}}" wx:key="id" class="distribution-order-item">
-        <view class="distribution-order-item__cover">
+    <view wx:else class="distribution-order-list">
+      <view wx:for="{{visibleOrders}}" wx:key="id" class="distribution-order-card">
+        <view class="distribution-order-card__header">
+          <text class="distribution-order-card__number">{{item.orderNo || ('推广订单 #' + item.id)}}</text>
+          <text class="distribution-order-card__status distribution-order-card__status--{{item.status}}">{{item.statusLabel}}</text>
+        </view>
+
+        <view class="distribution-order-item">
           <image wx:if="{{item.productImage}}" src="{{item.productImage}}" mode="aspectFill" class="distribution-order-item__cover-image" />
           <view wx:else class="distribution-order-item__placeholder">
             <image src="/static/icons/distribution.svg" mode="aspectFit" class="distribution-order-item__placeholder-icon" />
           </view>
+          <view class="distribution-order-item__body">
+            <text class="distribution-order-item__title">{{item.productName}}</text>
+            <text class="distribution-order-item__meta">购买人 {{item.buyerName}}</text>
+            <text class="distribution-order-item__meta">下单时间 {{item.dateLabel}}</text>
+          </view>
+          <view class="distribution-order-item__aside">
+            <text class="distribution-order-item__label">订单金额</text>
+            <text class="distribution-order-item__price">{{item.orderAmountLabel}}</text>
+          </view>
         </view>
-        <view class="distribution-order-item__body">
-          <text class="distribution-order-item__title">{{item.productName}}</text>
-          <text class="distribution-order-item__meta">{{item.buyerName}} | {{item.dateLabel}}</text>
-          <text class="distribution-order-item__meta">{{item.orderAmountLabel}}</text>
-          <text class="distribution-order-item__commission">{{item.commissionAmountLabel}}</text>
+
+        <view class="distribution-order-card__footer">
+          <text class="distribution-order-card__count">预计佣金</text>
+          <text class="distribution-order-card__amount">{{item.commissionAmountLabel}}</text>
         </view>
-        <text class="distribution-order-item__status distribution-order-item__status--{{item.status}}">{{item.statusLabel}}</text>
       </view>
+
+      <view class="safe-bottom"></view>
     </view>
   </view>
 </view>

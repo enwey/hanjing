@@ -6,6 +6,17 @@ const CATEGORY_COLORS = {
   service: '#fff1d6',
 };
 
+const MEMBER_DISCOUNT_RATE_MAP = {
+  normal: 1,
+  silver: 0.95,
+  gold: 0.9,
+  diamond: 0.85,
+};
+
+function getMemberDiscountRate(level) {
+  return MEMBER_DISCOUNT_RATE_MAP[String(level || 'normal')] || 1;
+}
+
 function parseMarkdownToHtml(markdown) {
   if (!markdown) return '';
   let html = String(markdown);
@@ -91,9 +102,22 @@ function normalizeCategory(rawCategory) {
   return category || 'service';
 }
 
+function applyMemberPricing(product, memberLevel) {
+  const basePrice = Number(product.price || 0);
+  const configuredOriginalPrice = Number(product.originalPrice || 0);
+  const effectivePrice = Math.round(basePrice * getMemberDiscountRate(memberLevel));
+  const effectiveOriginalPrice = Math.max(configuredOriginalPrice, basePrice);
+  return Object.assign({}, product, {
+    price: effectivePrice,
+    originalPrice: effectiveOriginalPrice,
+    basePrice,
+  });
+}
+
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     product: null,
     galleryImages: [],
@@ -111,6 +135,7 @@ Page({
     contactName: '',
     phone: '',
     detailAddress: '',
+    memberLevel: 'normal',
   },
 
   onLoad(options) {
@@ -120,17 +145,36 @@ Page({
       wx.navigateBack();
       return;
     }
-    this.loadProduct(productId);
+    this.productId = String(productId);
+    this.hasLoaded = false;
+    this.loadProduct(this.productId, { silent: false });
   },
 
-  async loadProduct(productId) {
-    this.setData({ loading: true, loadError: '' });
+  onShow() {
+    if (!this.productId || !this.data.hasLoaded) {
+      return;
+    }
+    this.loadProduct(this.productId, { silent: true });
+  },
+
+  async loadProduct(productId, options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
-      const response = await api.getProductDetail(productId);
+      const hasToken = !!wx.getStorageSync('access_token');
+      const [response, memberInfoResponse] = await Promise.all([
+        api.getProductDetail(productId),
+        hasToken ? api.getMemberInfo().catch(() => null) : Promise.resolve(null),
+      ]);
       const rawProduct = (response && response.data) || response || null;
       if (!rawProduct) {
         throw new Error('商品不存在');
       }
+      const memberLevel = memberInfoResponse && memberInfoResponse.code === 0 && memberInfoResponse.data
+        ? (memberInfoResponse.data.currentLevel || memberInfoResponse.data.memberLevel || 'normal')
+        : 'normal';
       const galleryImages = Array.isArray(rawProduct.galleryUrls)
         ? rawProduct.galleryUrls.filter(Boolean)
         : [];
@@ -139,7 +183,7 @@ Page({
         : (rawProduct.imageUrl ? [rawProduct.imageUrl] : []);
       const category = normalizeCategory(rawProduct.category || rawProduct.categoryName);
       this.imageLoadFailedMap = {};
-      const product = {
+      const product = applyMemberPricing({
         id: String(rawProduct.id || ''),
         name: rawProduct.name || '',
         category,
@@ -150,9 +194,11 @@ Page({
         originalPrice: Number(rawProduct.originalPrice || 0),
         salesCount: Number(rawProduct.salesCount || 0),
         descriptionHtml: parseMarkdownToHtml(rawProduct.description || ''),
-      };
+      }, memberLevel);
       this.setData({
+        hasLoaded: true,
         loading: false,
+        memberLevel,
         product,
         galleryImages: resolvedImages,
         galleryBackground: product.categoryColor,
@@ -166,13 +212,18 @@ Page({
       }, () => this.refreshCheckoutView());
     } catch (error) {
       console.error(error);
+      if (!this.data.hasLoaded) {
+        wx.showToast({ title: (error && error.message) || '获取商品详情失败', icon: 'none' });
+        this.setData({
+          loading: false,
+          product: null,
+          galleryImages: [],
+          loadError: (error && error.message) || '获取商品详情失败',
+        });
+        return;
+      }
+      this.setData({ loading: false });
       wx.showToast({ title: (error && error.message) || '获取商品详情失败', icon: 'none' });
-      this.setData({
-        loading: false,
-        product: null,
-        galleryImages: [],
-        loadError: (error && error.message) || '获取商品详情失败',
-      });
     }
   },
 

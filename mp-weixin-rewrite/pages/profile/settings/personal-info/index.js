@@ -3,6 +3,7 @@ const api = require('../../../../api/index');
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     profile: {},
     editing: false,
     nickname: '',
@@ -21,15 +22,19 @@ Page({
   },
 
   onShow() {
-    this.loadProfile();
+    this.loadProfile({ silent: this.data.hasLoaded });
   },
 
-  async loadProfile() {
-    this.setData({ loading: true });
+  async loadProfile(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true });
+    }
     try {
       const response = await api.getUserProfile();
       const profile = (response && response.data) || response || {};
       this.applyProfileData({
+        hasLoaded: true,
         loading: false,
         profile,
         editing: false,

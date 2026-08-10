@@ -2,8 +2,8 @@ const api = require('../../../api/index');
 
 const STATUS_LABEL_MAP = {
   all: '全部',
+  pending: '待结算',
   settled: '已结算',
-  pending: '冻结中',
   refunded: '已撤销',
 };
 
@@ -24,29 +24,33 @@ function unwrapList(response) {
 function normalizeDistributionOrder(order) {
   const orderAmount = Number(order.orderAmount || 0);
   const commissionAmount = Number(order.commission || 0);
+  const status = order.status || '';
   return {
     id: String(order.id || ''),
+    orderNo: order.orderNo || '',
     productImage: order.productImage || '',
     productName: order.productName || '',
     buyerName: order.buyerName || '',
     dateLabel: String(order.createdAt || '').slice(0, 10),
     orderAmount,
     commissionAmount,
-    orderAmountLabel: '订单 ' + '¥' + (orderAmount / 100).toFixed(2),
-    commissionAmountLabel: '佣金 +' + (commissionAmount / 100).toFixed(2),
-    status: order.status || '',
-    statusLabel: STATUS_LABEL_MAP[order.status] || order.status || '',
+    orderAmountLabel: '¥' + (orderAmount / 100).toFixed(2),
+    commissionAmountLabel: '¥' + (commissionAmount / 100).toFixed(2),
+    status,
+    statusLabel: STATUS_LABEL_MAP[status] || status || '',
   };
 }
 
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     selectedStatus: 'all',
     statusTabs: Object.keys(STATUS_LABEL_MAP).map((key) => ({ key, label: STATUS_LABEL_MAP[key] })),
     orders: [],
     visibleOrders: [],
+    navbarHeight: 88,
     summary: {
       orderCount: '0',
       orderAmountLabel: '',
@@ -54,24 +58,42 @@ Page({
     },
   },
 
-  async onShow() {
-    await this.loadPage();
+  onLoad() {
+    try {
+      const windowInfo = wx.getWindowInfo();
+      const statusBarHeight = windowInfo.statusBarHeight || 44;
+      this.setData({ navbarHeight: statusBarHeight + 44 });
+    } catch (error) {
+      console.error(error);
+    }
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async onShow() {
+    await this.loadPage({ silent: this.data.hasLoaded });
+  },
+
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const response = await api.getDistributionOrders();
       const orders = unwrapList(response).map(normalizeDistributionOrder);
-      this.setData({ loading: false, orders });
+      this.setData({ hasLoaded: true, loading: false, orders });
       this.refreshVisibleOrders(this.data.selectedStatus, orders);
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载推广订单失败',
-        orders: [],
-        visibleOrders: [],
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载推广订单失败',
+          orders: [],
+          visibleOrders: [],
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载推广订单失败', icon: 'none' });
     }
   },
 

@@ -92,17 +92,23 @@
   color: #6b7280;
   text-align: right;
 }
-.btn-logout.data-v-ecc58349 {
-  margin-top: 28px;
-  background: #fee2e2;
-  border-radius: 14px;
-  padding: 14px;
-  text-align: center;
+.modal-tip.data-v-ecc58349 {
+  border-radius: 12px;
+  background: #f9fafb;
+  padding: 24rpx;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #4b5563;
 }
-.btn-logout text.data-v-ecc58349 {
-  color: #dc2626;
-  font-size: 16px;
-  font-weight: 600;
+.form-field.data-v-ecc58349 {
+  border-radius: 12px;
+  background: #f9fafb;
+  padding: 0 20rpx;
+}
+.form-input.data-v-ecc58349 {
+  height: 88rpx;
+  font-size: 28rpx;
+  color: #1f2937;
 }
 .safe-bottom.data-v-ecc58349 {
   height: calc(env(safe-area-inset-bottom, 34px) + 20px);

@@ -1,27 +1,39 @@
 const api = require('../../../../api/index');
-const sessionStore = require('../../../../stores/session-store');
 
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     info: null,
+    isDevTools: false,
     showPhoneModal: false,
     showRealnameModal: false,
-    inputPhone: '',
-    inputCode: '',
     inputRealName: '',
     inputIdCard: '',
   },
 
-  onShow() {
-    this.fetchInfo();
+  onLoad() {
+    try {
+      const sysInfo = wx.getSystemInfoSync();
+      this.setData({ isDevTools: sysInfo.platform === 'devtools' });
+    } catch (error) {
+      console.error(error);
+    }
   },
 
-  async fetchInfo() {
-    this.setData({ loading: true });
+  onShow() {
+    this.fetchInfo({ silent: this.data.hasLoaded });
+  },
+
+  async fetchInfo(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true });
+    }
     try {
       const response = await api.getAccountSecurity();
       this.setData({
+        hasLoaded: true,
         loading: false,
         info: (response && response.data) || response || null,
       });
@@ -29,14 +41,6 @@ Page({
       this.setData({ loading: false });
       wx.showToast({ title: '加载失败，请重试', icon: 'none' });
     }
-  },
-
-  handlePhoneInput(event) {
-    this.setData({ inputPhone: event.detail.value || '' });
-  },
-
-  handleCodeInput(event) {
-    this.setData({ inputCode: event.detail.value || '' });
   },
 
   handleRealNameInput(event) {
@@ -50,8 +54,6 @@ Page({
   openPhoneModal() {
     this.setData({
       showPhoneModal: true,
-      inputPhone: '',
-      inputCode: '',
     });
   },
 
@@ -71,52 +73,61 @@ Page({
     this.setData({ showRealnameModal: false });
   },
 
-  async onGetCode() {
-    const phone = String(this.data.inputPhone || '').trim();
-    if (!/^1\d{10}$/.test(phone)) {
-      wx.showToast({ title: '请输入11位手机号', icon: 'none' });
+  async onChangePhoneByWechat(event) {
+    const detail = event && event.detail ? event.detail : {};
+    if (!detail.code) {
+      wx.showToast({ title: '授权已取消', icon: 'none' });
       return;
     }
     try {
-      wx.showLoading({ title: '发送中...' });
-      const response = await api.sendPhoneCode(phone);
+      wx.showLoading({ title: '换绑中...' });
+      const response = await api.changePhone('', '', detail.code);
       if (response && response.code === 0) {
-        wx.showToast({ title: '验证码已发送', icon: 'success' });
-        if (response.data && response.data.code) {
-          this.setData({ inputCode: response.data.code });
-        }
-      } else {
-        wx.showToast({ title: (response && response.message) || '发送失败', icon: 'none' });
+        wx.showToast({ title: '手机换绑成功', icon: 'success' });
+        this.setData({ showPhoneModal: false });
+        await this.fetchInfo();
+        return;
       }
+      wx.showToast({ title: (response && response.message) || '修改失败', icon: 'none' });
     } catch (error) {
-      wx.showToast({ title: '发送失败，请重试', icon: 'none' });
+      wx.showToast({ title: (error && error.message) || '换绑失败，请重试', icon: 'none' });
     } finally {
       wx.hideLoading();
     }
   },
 
-  async onSubmitPhone() {
-    const phone = String(this.data.inputPhone || '').trim();
-    const code = String(this.data.inputCode || '').trim();
-    if (!phone || !code) {
-      wx.showToast({ title: '请输入手机和验证码', icon: 'none' });
-      return;
-    }
-    try {
-      wx.showLoading({ title: '提交中...' });
-      const response = await api.changePhone(phone, code);
-      if (response && response.code === 0) {
-        wx.showToast({ title: '手机换绑成功', icon: 'success' });
-        this.setData({ showPhoneModal: false });
-        await this.fetchInfo();
-      } else {
-        wx.showToast({ title: (response && response.message) || '修改失败', icon: 'none' });
-      }
-    } catch (error) {
-      wx.showToast({ title: '操作失败，请重试', icon: 'none' });
-    } finally {
-      wx.hideLoading();
-    }
+  onDeveloperChangePhone() {
+    wx.showModal({
+      title: '模拟微信手机号换绑',
+      content: '',
+      editable: true,
+      placeholderText: '请输入测试手机号（11位数字）',
+      success: async (result) => {
+        if (!result.confirm) {
+          return;
+        }
+        const phone = result.content ? result.content.trim() : '';
+        if (!/^\d{11}$/.test(phone)) {
+          wx.showToast({ title: '请输入11位数字手机号', icon: 'none' });
+          return;
+        }
+        try {
+          wx.showLoading({ title: '换绑中...' });
+          const response = await api.changePhone('', '', phone);
+          if (response && response.code === 0) {
+            wx.showToast({ title: '手机换绑成功', icon: 'success' });
+            this.setData({ showPhoneModal: false });
+            await this.fetchInfo();
+            return;
+          }
+          wx.showToast({ title: (response && response.message) || '修改失败', icon: 'none' });
+        } catch (error) {
+          wx.showToast({ title: (error && error.message) || '换绑失败，请重试', icon: 'none' });
+        } finally {
+          wx.hideLoading();
+        }
+      },
+    });
   },
 
   async onSubmitRealname() {
@@ -145,22 +156,5 @@ Page({
     } finally {
       wx.hideLoading();
     }
-  },
-
-  onLogout() {
-    wx.showModal({
-      title: '提示',
-      content: '确定要退出登录吗？',
-      success: (result) => {
-        if (!result.confirm) {
-          return;
-        }
-        sessionStore.logout();
-        wx.showToast({ title: '已退出登录', icon: 'success' });
-        setTimeout(() => {
-          wx.switchTab({ url: '/pages/profile/index' });
-        }, 1000);
-      },
-    });
   },
 });

@@ -13,6 +13,7 @@ const MEMBER_LABEL_MAP = {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     members: [],
     memberOptions: [],
     memberIndex: 0,
@@ -21,7 +22,7 @@ Page({
   },
 
   onShow() {
-    this.loadPage();
+    this.loadPage({ silent: this.data.hasLoaded });
   },
 
   getStoragePatientId() {
@@ -34,8 +35,11 @@ Page({
     }
   },
 
-  async loadPage() {
-    this.setData({ loading: true });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true });
+    }
     try {
       const memberRes = await api.getFamilyMembers();
       const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
@@ -53,13 +57,15 @@ Page({
         progressWidth: `${Math.max(0, Math.min(100, Number(item.wearDuration || 0) / 8 * 100))}%`,
         progressColor: Number(item.wearDuration || 0) >= 6 ? "#1A9D5C" : Number(item.wearDuration || 0) >= 4 ? "#F59E0B" : "#EF4444",
       }));
-      this.setData({ members, memberOptions, memberIndex, selectedPatientId, records });
+      this.setData({ hasLoaded: true, members, memberOptions, memberIndex, selectedPatientId, records, loading: false });
     } catch (err) {
       console.error("加载佩戴数据失败", err);
       wx.showToast({ title: err.message || "加载佩戴数据失败", icon: "none" });
-      this.setData({ records: [] });
-    } finally {
-      this.setData({ loading: false });
+      if (!this.data.hasLoaded) {
+        this.setData({ records: [], loading: false });
+      } else {
+        this.setData({ loading: false });
+      }
     }
   },
 

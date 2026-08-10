@@ -1,6 +1,5 @@
 const api = require('../../../api/index');
 const navigation = require('../../../common/utils/navigation');
-const subscribe = require('../../../common/utils/subscribe');
 
 const ORDER_STATUS_LABEL_MAP = {
   pending: '冻结中',
@@ -59,41 +58,60 @@ function normalizeDistributionOrder(order) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     totalCommissionLabel: '¥0.00',
     availableCommissionLabel: '¥0.00',
     teamCountLabel: '0',
     actionEntries: ACTION_ENTRIES,
     recentOrders: [],
+    qualificationText: '',
+    commissionRules: [],
+    promotionWays: [],
+    withdrawRules: [],
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
-      const [distributorInfoResponse, distributionOrdersResponse] = await Promise.all([
+      const [distributorInfoResponse, distributionOrdersResponse, distributionRulesResponse] = await Promise.all([
         api.getDistributorInfo(),
         api.getDistributionOrders(),
+        api.getDistributionRules(),
       ]);
       const distributorInfo = unwrapObject(distributorInfoResponse);
       const orderList = unwrapList(distributionOrdersResponse).slice(0, 5).map(normalizeDistributionOrder);
+      const rulesPayload = unwrapObject(distributionRulesResponse);
 
       this.setData({
+        hasLoaded: true,
         loading: false,
         totalCommissionLabel: formatAmountYuan(distributorInfo.totalCommission || 0),
         availableCommissionLabel: formatAmountYuan(distributorInfo.availableCommission || 0),
         teamCountLabel: String(distributorInfo.teamCount || 0),
         recentOrders: orderList,
+        qualificationText: rulesPayload.qualificationText || '',
+        commissionRules: rulesPayload.commissionRules || [],
+        promotionWays: rulesPayload.promotionWays || [],
+        withdrawRules: rulesPayload.withdrawRules || [],
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载分销数据失败',
-        recentOrders: [],
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载分销数据失败',
+          recentOrders: [],
+        });
+      } else {
+        this.setData({ loading: false });
+      }
       wx.showToast({ title: '加载分销数据失败', icon: 'none' });
     }
   },
@@ -103,7 +121,6 @@ Page({
     if (!url) {
       return;
     }
-    await subscribe.requestSubscribe({ scene: 'distribution' });
     navigation.openPage(url);
   },
 });

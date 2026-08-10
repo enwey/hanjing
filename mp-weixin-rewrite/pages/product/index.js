@@ -6,6 +6,13 @@ const CATEGORY_COLORS = {
   service: '#fff1d6',
 };
 
+const MEMBER_DISCOUNT_RATE_MAP = {
+  normal: 1,
+  silver: 0.95,
+  gold: 0.9,
+  diamond: 0.85,
+};
+
 const DEFAULT_CATEGORY_TABS = [
   { key: 'all', label: '全部' },
   { key: 'device', label: '医疗器械' },
@@ -33,6 +40,10 @@ function unwrapList(response) {
 
 function formatPriceYuan(priceInCents) {
   return '¥' + (Number(priceInCents || 0) / 100).toFixed(2);
+}
+
+function getMemberDiscountRate(level) {
+  return MEMBER_DISCOUNT_RATE_MAP[String(level || 'normal')] || 1;
 }
 
 function getPrimaryImage(product) {
@@ -71,6 +82,18 @@ function normalizeProduct(product) {
   };
 }
 
+function applyMemberPricing(product, memberLevel) {
+  const basePrice = Number(product.price || 0);
+  const configuredOriginalPrice = Number(product.originalPrice || 0);
+  const effectivePrice = Math.round(basePrice * getMemberDiscountRate(memberLevel));
+  const effectiveOriginalPrice = Math.max(configuredOriginalPrice, basePrice);
+  return Object.assign({}, product, {
+    price: effectivePrice,
+    originalPrice: effectiveOriginalPrice,
+    basePrice,
+  });
+}
+
 Page({
   data: {
     loading: true,
@@ -82,6 +105,7 @@ Page({
     leftColumnProducts: [],
     rightColumnProducts: [],
     navbarHeight: 88,
+    memberLevel: 'normal',
   },
 
   async onShow() {
@@ -105,6 +129,7 @@ Page({
       this.setData({ loading: true });
     }
     try {
+      const hasToken = !!wx.getStorageSync('access_token');
       let categoryList = [];
       try {
         const categoryResponse = await api.getProductCategories();
@@ -119,8 +144,14 @@ Page({
           throw categoryError;
         }
       }
-      const productResponse = await api.getProducts();
-      const products = unwrapList(productResponse).map(normalizeProduct);
+      const [productResponse, memberInfoResponse] = await Promise.all([
+        api.getProducts(),
+        hasToken ? api.getMemberInfo().catch(() => null) : Promise.resolve(null),
+      ]);
+      const memberLevel = memberInfoResponse && memberInfoResponse.code === 0 && memberInfoResponse.data
+        ? (memberInfoResponse.data.currentLevel || memberInfoResponse.data.memberLevel || 'normal')
+        : 'normal';
+      const products = unwrapList(productResponse).map((item) => applyMemberPricing(normalizeProduct(item), memberLevel));
       this.imageLoadFailedMap = {};
       const nextCategories = [{ key: 'all', label: '全部' }].concat(categoryList.length ? categoryList : DEFAULT_CATEGORY_TABS.slice(1));
       const selectedCategoryExists = nextCategories.some((item) => item.key === this.data.selectedCategory);
@@ -128,6 +159,7 @@ Page({
         products,
         hasLoaded: true,
         categories: nextCategories,
+        memberLevel,
         selectedCategory: selectedCategoryExists ? this.data.selectedCategory : 'all',
       });
       this.refreshVisibleProducts(selectedCategoryExists ? this.data.selectedCategory : 'all', products);

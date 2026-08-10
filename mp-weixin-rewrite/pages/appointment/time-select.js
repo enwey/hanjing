@@ -19,41 +19,59 @@ function readString(value) {
   return value === null || value === undefined ? '' : String(value);
 }
 
-function periodLabelMap(period) {
-  return {
-    morning: '上午',
-    afternoon: '下午',
-    full_day: '全天',
-  }[period] || period || '时段';
-}
-
-function normalizeSchedule(schedule) {
-  const totalSlots = Number(schedule.totalSlots || 0);
-  const bookedSlots = Number(schedule.bookedSlots || 0);
-  return {
-    ...schedule,
-    id: readString(schedule.id),
-    date: schedule.date || '',
-    period: schedule.period || '',
-    periodLabel: periodLabelMap(schedule.period),
-    startTime: schedule.startTime || '',
-    endTime: schedule.endTime || '',
-    status: schedule.status || '',
-    slotsLabel: schedule.status === 'full' ? '已约满' : '余' + Math.max(totalSlots - bookedSlots, 0) + '位',
-    timeSlots: Array.isArray(schedule.timeSlots) ? schedule.timeSlots.map(normalizeTimeSlot) : [],
-    loadingSlots: false,
-    slotsLoaded: false,
-  };
-}
-
 function normalizeTimeSlot(timeSlot) {
   return {
     ...timeSlot,
     id: readString(timeSlot.id),
+    scheduleId: readString(timeSlot.scheduleId),
     label: timeSlot.label || '',
     status: timeSlot.status || 'disabled',
     isAvailable: timeSlot.status === 'available',
   };
+}
+
+function getTimeSlotMinutes(label) {
+  const startText = readString(label).split('-')[0].trim();
+  const [hour, minute] = startText.split(':').map(Number);
+  if (!Number.isFinite(hour)) {
+    return -1;
+  }
+  return hour * 60 + (Number.isFinite(minute) ? minute : 0);
+}
+
+function buildTimeSlotSections(timeSlots) {
+  const morning = [];
+  const afternoon = [];
+
+  (Array.isArray(timeSlots) ? timeSlots : []).forEach((slot) => {
+    const minutes = getTimeSlotMinutes(slot.label);
+    if (minutes >= 0 && minutes < 12 * 60) {
+      morning.push(slot);
+      return;
+    }
+    if (minutes >= 14 * 60) {
+      afternoon.push(slot);
+    }
+  });
+
+  const sections = [];
+  if (morning.length) {
+    sections.push({ key: 'morning', title: '上午', slots: morning });
+  }
+  if (afternoon.length) {
+    sections.push({ key: 'afternoon', title: '下午', slots: afternoon });
+  }
+  return sections;
+}
+
+function findTimeSlotById(timeSlotSections, timeSlotId) {
+  for (const section of Array.isArray(timeSlotSections) ? timeSlotSections : []) {
+    const slot = (section.slots || []).find((item) => item.id === timeSlotId);
+    if (slot) {
+      return slot;
+    }
+  }
+  return null;
 }
 
 function resolveDefaultDate(scheduleDates) {
@@ -86,36 +104,40 @@ function resolveDefaultDate(scheduleDates) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadingSchedules: false,
-    loadingSlots: false,
     loadError: '',
     doctorId: '',
     storeId: '',
     doctorName: '',
     scheduleDates: [],
     selectedDate: '',
-    schedules: [],
-    selectedScheduleId: '',
-    timeSlots: [],
+    timeSlotSections: [],
   },
 
   onLoad(options) {
     this.options = options || {};
-    this.loadPage();
+    this.loadPage({ silent: false });
   },
 
-  async loadPage() {
+  onShow() {
+    if (!this.data.hasLoaded) {
+      return;
+    }
+    this.loadPage({ silent: true });
+  },
+
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
     const doctorId = readString((this.options && (this.options.doctorId || this.options.doctorid)) || '');
     const storeId = readString((this.options && (this.options.storeId || this.options.storeid)) || '');
 
     this.setData({
-      loading: true,
-      loadError: '',
+      loading: silent ? this.data.loading : true,
+      loadError: silent ? this.data.loadError : '',
       doctorId,
       storeId,
-      schedules: [],
-      selectedScheduleId: '',
-      timeSlots: [],
+      timeSlotSections: silent ? this.data.timeSlotSections : [],
     });
 
     if (!doctorId || !storeId) {
@@ -135,9 +157,12 @@ Page({
       const scheduleDates = unwrapList(scheduleDatesResponse);
       const doctors = unwrapList(doctorsResponse);
       const doctor = doctors.find((item) => readString(item.id) === doctorId) || null;
-      const selectedDate = resolveDefaultDate(scheduleDates);
+      const selectedDate = scheduleDates.includes(this.data.selectedDate)
+        ? this.data.selectedDate
+        : resolveDefaultDate(scheduleDates);
 
       this.setData({
+        hasLoaded: true,
         loading: false,
         doctorName: doctor ? doctor.name || '' : '',
         scheduleDates,
@@ -145,105 +170,53 @@ Page({
       });
 
       if (selectedDate) {
-        await this.loadSchedulesForDate(selectedDate);
+        await this.loadSchedulesForDate(selectedDate, { silent });
       }
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载可约时段失败，请稍后重试',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载可约时段失败，请稍后重试',
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载可约时段失败，请稍后重试', icon: 'none' });
     }
   },
 
-  async loadSchedulesForDate(selectedDate) {
+  async loadSchedulesForDate(selectedDate, options = {}) {
+    const silent = !!options.silent;
     this.setData({
       loadingSchedules: true,
-      loadError: '',
+      loadError: silent ? this.data.loadError : '',
       selectedDate,
-      schedules: [],
-      selectedScheduleId: '',
-      timeSlots: [],
+      timeSlotSections: silent ? this.data.timeSlotSections : [],
     });
 
     try {
-      const schedulesResponse = await api.getSchedules({
+      const daySlotsResponse = await api.getDaySlots({
         doctorId: this.data.doctorId,
         storeId: this.data.storeId,
-        startDate: selectedDate,
-        endDate: selectedDate,
+        date: selectedDate,
       });
-      const schedules = unwrapList(schedulesResponse).map(normalizeSchedule);
+      const timeSlots = unwrapList(daySlotsResponse).map(normalizeTimeSlot);
+      const timeSlotSections = buildTimeSlotSections(timeSlots);
       this.setData({
         loadingSchedules: false,
-        schedules,
-      });
-
-      const firstBookable = schedules.find((schedule) => schedule.status !== 'full');
-      if (firstBookable) {
-        await this.loadTimeSlots(firstBookable.id);
-      }
-    } catch (error) {
-      this.setData({
-        loadingSchedules: false,
-        loadError: (error && error.message) || '加载当天排班失败，请稍后重试',
-      });
-    }
-  },
-
-  async loadTimeSlots(scheduleId) {
-    const selectedSchedule = this.data.schedules.find((schedule) => schedule.id === scheduleId);
-    if (!selectedSchedule || selectedSchedule.status === 'full') {
-      return;
-    }
-    const schedulesLoading = this.data.schedules.map((schedule) => {
-      if (schedule.id !== scheduleId) {
-        return schedule;
-      }
-      return {
-        ...schedule,
-        loadingSlots: true,
-        timeSlots: [],
-      };
-    });
-    this.setData({
-      selectedScheduleId: scheduleId,
-      loadingSlots: true,
-      schedules: schedulesLoading,
-      timeSlots: [],
-    });
-    try {
-      const timeSlotsResponse = await api.getTimeSlots(scheduleId);
-      const timeSlots = unwrapList(timeSlotsResponse).map(normalizeTimeSlot);
-      const schedules = this.data.schedules.map((schedule) => {
-        if (schedule.id !== scheduleId) {
-          return schedule;
-        }
-        return {
-          ...schedule,
-          loadingSlots: false,
-          slotsLoaded: true,
-          timeSlots,
-        };
-      });
-      this.setData({
-        loadingSlots: false,
-        schedules,
-        timeSlots: this.data.selectedScheduleId === scheduleId ? timeSlots : this.data.timeSlots,
+        loadError: '',
+        timeSlotSections,
       });
     } catch (error) {
-      const schedules = this.data.schedules.map((schedule) => {
-        if (schedule.id !== scheduleId) {
-          return schedule;
-        }
-        return {
-          ...schedule,
-          loadingSlots: false,
-          slotsLoaded: true,
-          timeSlots: [],
-        };
-      });
-      this.setData({ loadingSlots: false, schedules });
-      wx.showToast({ title: (error && error.message) || '加载时段失败', icon: 'none' });
+      if (!silent) {
+        this.setData({
+          loadingSchedules: false,
+          loadError: (error && error.message) || '加载当天排班失败，请稍后重试',
+        });
+        return;
+      }
+      this.setData({ loadingSchedules: false });
+      wx.showToast({ title: (error && error.message) || '加载当天排班失败，请稍后重试', icon: 'none' });
     }
   },
 
@@ -255,26 +228,14 @@ Page({
     await this.loadSchedulesForDate(selectedDate);
   },
 
-  async handleScheduleTap(event) {
-    const scheduleId = readString(event.currentTarget.dataset.scheduleId);
-    if (!scheduleId) {
-      return;
-    }
-    await this.loadTimeSlots(scheduleId);
-  },
-
   retryLoad() {
-    this.loadPage();
+    this.loadPage({ silent: false });
   },
 
   handleTimeSlotTap(event) {
-    const scheduleId = readString(event.currentTarget.dataset.scheduleId || this.data.selectedScheduleId);
     const timeSlotId = readString(event.currentTarget.dataset.timeSlotId);
-    const selectedSchedule = this.data.schedules.find((schedule) => schedule.id === scheduleId);
-    const selectedTimeSlot = selectedSchedule
-      ? (selectedSchedule.timeSlots || []).find((timeSlot) => timeSlot.id === timeSlotId)
-      : null;
-    if (!selectedSchedule || !selectedTimeSlot || !selectedTimeSlot.isAvailable) {
+    const selectedTimeSlot = findTimeSlotById(this.data.timeSlotSections, timeSlotId);
+    if (!selectedTimeSlot || !selectedTimeSlot.isAvailable) {
       return;
     }
 
@@ -283,8 +244,8 @@ Page({
       storeId: this.data.storeId,
       doctorName: this.data.doctorName,
       appointmentDate: this.data.selectedDate,
-      scheduleId: selectedSchedule.id,
-      schedule: selectedSchedule,
+      scheduleId: selectedTimeSlot.scheduleId,
+      schedule: { id: selectedTimeSlot.scheduleId },
       timeSlot: selectedTimeSlot,
     });
 

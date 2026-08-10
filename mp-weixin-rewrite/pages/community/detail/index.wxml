@@ -16,7 +16,8 @@
     <view class="post-card">
       <view class="post-header">
         <view class="post-avatar">
-          <image wx:if="{{postDetail.avatar}}" class="post-avatar__image" src="{{postDetail.avatar}}" mode="aspectFill"></image>
+          <text class="post-avatar__text" style="background: {{postDetail.avatarBg}}">{{postDetail.avatarText}}</text>
+          <image wx:if="{{postDetail.avatar}}" class="post-avatar__image {{postDetail.avatarLoaded ? 'post-avatar__image--loaded' : ''}}" src="{{postDetail.avatar}}" mode="aspectFill" bindload="handlePostAvatarLoad" binderror="handlePostAvatarError"></image>
         </view>
         <view class="post-author">
           <view class="post-author__row">
@@ -49,6 +50,14 @@
           <image class="post-action__icon" src="/static/icons/chat.svg" mode="aspectFit"></image>
           <text class="post-action__count">{{postDetail.commentsCount}}</text>
         </view>
+        <view class="post-action" bindtap="handlePostFavorite">
+          <image class="post-action__icon {{postDetail.isFavorited ? 'post-action__icon--liked' : 'post-action__icon--muted'}}" src="/static/icons/star-filled.svg" mode="aspectFit"></image>
+          <text class="post-action__count">{{postDetail.favoritesCount}}</text>
+        </view>
+        <button class="post-action post-action--share" open-type="share">
+          <image class="post-action__icon" src="/static/icons/paper-plane.svg" mode="aspectFit"></image>
+          <text class="post-action__count">{{postDetail.sharesCount}}</text>
+        </button>
       </view>
     </view>
 
@@ -62,7 +71,8 @@
         <view wx:for="{{commentsList}}" wx:key="id" class="comment-item">
           <view class="comment-item__header">
             <view class="comment-item__avatar">
-              <image wx:if="{{item.avatar}}" class="comment-item__avatar-image" src="{{item.avatar}}" mode="aspectFill"></image>
+              <text class="comment-item__avatar-text" style="background: {{item.avatarBg}}">{{item.avatarText}}</text>
+              <image wx:if="{{item.avatar}}" class="comment-item__avatar-image {{item.avatarLoaded ? 'comment-item__avatar-image--loaded' : ''}}" src="{{item.avatar}}" mode="aspectFill" data-comment-id="{{item.id}}" bindload="handleCommentAvatarLoad" binderror="handleCommentAvatarError"></image>
             </view>
             <view class="comment-item__info">
               <text class="comment-item__author">{{item.author}}</text>
@@ -91,13 +101,50 @@
   </view>
 
   <view wx:if="{{postDetail}}" class="comment-bar">
-    <view wx:if="{{replyTarget}}" class="reply-target">
-      <text class="reply-target__text">正在回复 {{replyTarget.author}}</text>
-      <text class="reply-target__clear" bindtap="clearReplyTarget">取消</text>
-    </view>
-    <view class="comment-bar__row">
-      <input class="comment-bar__input" placeholder="{{replyTarget ? '回复 ' + replyTarget.author : '写评论...'}}" confirm-type="send" bindconfirm="submitComment" value="{{commentInput}}" bindinput="handleCommentInput" />
-      <view class="comment-bar__send {{!canSubmitComment ? 'comment-bar__send--disabled' : ''}}" bindtap="submitComment">{{isSubmitting ? '发送中' : '发送'}}</view>
+    <view class="comment-bar__row {{composerExpanded ? 'comment-bar__row--expanded' : ''}}">
+      <view class="comment-bar__avatar">
+        <text class="comment-bar__avatar-text" style="background: {{currentUserAvatar.avatarBg}}">{{currentUserAvatar.avatarText}}</text>
+        <image wx:if="{{currentUserAvatar.avatar}}" class="comment-bar__avatar-image {{currentUserAvatar.avatarLoaded ? 'comment-bar__avatar-image--loaded' : ''}}" src="{{currentUserAvatar.avatar}}" mode="aspectFill" bindload="handleCurrentUserAvatarLoad" binderror="handleCurrentUserAvatarError"></image>
+      </view>
+      <view class="comment-bar__field {{composerExpanded ? 'comment-bar__field--expanded' : ''}}" bindtap="openComposer">
+        <input
+          wx:if="{{!composerExpanded}}"
+          class="comment-bar__input-inline"
+          placeholder="{{replyTarget ? '回复 @' + replyTarget.author : '理性发言，友善互动'}}"
+          confirm-type="send"
+          focus="{{composerFocus}}"
+          value="{{commentInput}}"
+          bindfocus="handleComposerFocus"
+          bindblur="handleComposerBlur"
+          bindinput="handleCommentInput"
+          bindconfirm="submitComment"
+        />
+        <textarea
+          wx:else
+          class="comment-bar__textarea comment-bar__textarea--expanded"
+          placeholder="{{replyTarget ? '回复 @' + replyTarget.author : '理性发言，友善互动'}}"
+          maxlength="500"
+          auto-height="{{true}}"
+          fixed="{{true}}"
+          cursor-spacing="16"
+          show-confirm-bar="{{false}}"
+          hold-keyboard="{{true}}"
+          focus="{{composerFocus}}"
+          value="{{commentInput}}"
+          bindfocus="handleComposerFocus"
+          bindblur="handleComposerBlur"
+          bindinput="handleCommentInput"
+          bindconfirm="submitComment"
+        />
+        <view wx:if="{{composerExpanded}}" class="comment-bar__tools">
+          <view class="comment-bar__tool">☺</view>
+          <view class="comment-bar__send {{!canSubmitComment ? 'comment-bar__send--disabled' : ''}}" bindtap="submitComment">{{isSubmitting ? '发布中' : '发布'}}</view>
+        </view>
+        <block wx:else>
+          <view wx:if="{{canSubmitComment || isSubmitting}}" class="comment-bar__send {{!canSubmitComment ? 'comment-bar__send--disabled' : ''}}" bindtap="submitComment">{{isSubmitting ? '发送中' : '发送'}}</view>
+          <view wx:else class="comment-bar__emoji">🙂</view>
+        </block>
+      </view>
     </view>
   </view>
 </view>

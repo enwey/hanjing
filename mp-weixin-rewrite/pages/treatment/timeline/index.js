@@ -6,7 +6,6 @@ const TIMELINE_TYPE_LABEL_MAP = {
   adjust: '调整',
   followup: '随访',
   advice: '医嘱',
-  milestone: '节点',
 };
 
 function unwrapList(response) {
@@ -31,6 +30,7 @@ function unwrapObject(response) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     hasRealTreatmentRecord: false,
     deviceModel: '',
@@ -40,11 +40,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const context = await patientContextStore.refresh();
       const params = context.currentPatientId ? { patientId: context.currentPatientId, _t: Date.now() } : { _t: Date.now() };
@@ -55,7 +58,7 @@ Page({
       const timelineItems = unwrapList(timelineResponse).map((item, index, list) => ({
         id: String(item.id || index),
         dateLabel: String(item.date || '').slice(5),
-        typeLabel: TIMELINE_TYPE_LABEL_MAP[item.type] || item.type || '节点',
+        typeLabel: TIMELINE_TYPE_LABEL_MAP[item.type] || '',
         color: item.color || '#3b6bf5',
         title: item.title || '',
         description: item.description || '',
@@ -65,6 +68,7 @@ Page({
       const treatmentRecord = unwrapObject(treatmentRecordResponse);
 
       this.setData({
+        hasLoaded: true,
         loading: false,
         hasRealTreatmentRecord: Boolean(treatmentRecord && treatmentRecord.isRealTreatmentRecord),
         deviceModel: treatmentRecord ? treatmentRecord.deviceModel || '' : '',
@@ -73,11 +77,16 @@ Page({
         timelineItems,
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载治疗时间线失败',
-        timelineItems: [],
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载治疗时间线失败',
+          timelineItems: [],
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载治疗时间线失败', icon: 'none' });
     }
   },
 

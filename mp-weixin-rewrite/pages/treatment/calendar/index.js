@@ -12,6 +12,7 @@ function buildMonthDateText(date) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     monthText: '',
     weekLabels: ['一', '二', '三', '四', '五', '六', '日'],
@@ -39,11 +40,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const context = await patientContextStore.refresh();
       const params = context.currentPatientId ? { patientId: context.currentPatientId, _t: Date.now() } : { _t: Date.now() };
@@ -66,6 +70,7 @@ Page({
       this.wearingRecords = recordList;
 
       this.setData({
+        hasLoaded: true,
         loading: false,
         monthText: buildMonthText(this.currentMonth),
         dayCells: this.buildDayCells(recordMap),
@@ -78,11 +83,16 @@ Page({
         },
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载打卡日历失败',
-        hasMonthRecords: false,
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载打卡日历失败',
+          hasMonthRecords: false,
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载打卡日历失败', icon: 'none' });
     }
   },
 

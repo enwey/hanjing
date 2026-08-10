@@ -24,11 +24,16 @@ function getTimeSlots(scheduleId) {
   return request({ url: '/schedules/' + scheduleId + '/slots', method: 'GET', failMessage: '加载可预约时段失败' });
 }
 
+function getDaySlots(query) {
+  return request({ url: '/day-slots', method: 'GET', data: query, failMessage: '加载当日可预约时段失败' });
+}
+
 module.exports = {
   getHomeStats,
   getStores,
   getDoctors,
   getSchedules,
   getScheduleDates,
-  getTimeSlots
+  getTimeSlots,
+  getDaySlots
 };

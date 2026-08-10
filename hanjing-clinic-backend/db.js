@@ -1011,10 +1011,25 @@ export const initDB = async () => {
       sales_count INT DEFAULT 0,
       is_distribution TINYINT DEFAULT 0,
       commission_rate DECIMAL(4, 2) DEFAULT 0.0,
+      commission_rate_level1 DECIMAL(4, 2) DEFAULT 0.0,
+      commission_rate_level2 DECIMAL(4, 2) DEFAULT 0.0,
       status VARCHAR(30) DEFAULT 'off',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  try {
+    await query(`ALTER TABLE products ADD COLUMN commission_rate_level1 DECIMAL(4, 2) DEFAULT 0.0 AFTER commission_rate`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE products ADD COLUMN commission_rate_level2 DECIMAL(4, 2) DEFAULT 0.0 AFTER commission_rate_level1`);
+  } catch (err) {}
+  try {
+    await query(`
+      UPDATE products
+      SET commission_rate_level1 = COALESCE(NULLIF(commission_rate_level1, 0), commission_rate, 0)
+      WHERE COALESCE(commission_rate_level1, 0) = 0
+    `);
+  } catch (err) {}
 
   await query(`
     CREATE TABLE IF NOT EXISTS product_categories (
@@ -1135,6 +1150,8 @@ export const initDB = async () => {
       quantity INT DEFAULT 1,
       is_distribution_snapshot TINYINT DEFAULT 0,
       commission_rate_snapshot DECIMAL(4, 2) DEFAULT 0.0,
+      commission_rate_level1_snapshot DECIMAL(4, 2) DEFAULT 0.0,
+      commission_rate_level2_snapshot DECIMAL(4, 2) DEFAULT 0.0,
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
@@ -1148,14 +1165,30 @@ export const initDB = async () => {
     await query(`ALTER TABLE order_items ADD COLUMN commission_rate_snapshot DECIMAL(4, 2) DEFAULT 0.0`);
     addedOrderItemDistributionSnapshot = true;
   } catch (err) {}
+  try {
+    await query(`ALTER TABLE order_items ADD COLUMN commission_rate_level1_snapshot DECIMAL(4, 2) DEFAULT 0.0`);
+    addedOrderItemDistributionSnapshot = true;
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE order_items ADD COLUMN commission_rate_level2_snapshot DECIMAL(4, 2) DEFAULT 0.0`);
+    addedOrderItemDistributionSnapshot = true;
+  } catch (err) {}
   if (addedOrderItemDistributionSnapshot) {
     await query(`
       UPDATE order_items oi
       JOIN products p ON p.id = oi.product_id
       SET oi.is_distribution_snapshot = COALESCE(p.is_distribution, 0),
-          oi.commission_rate_snapshot = COALESCE(p.commission_rate, 0)
+          oi.commission_rate_snapshot = COALESCE(p.commission_rate_level1, p.commission_rate, 0),
+          oi.commission_rate_level1_snapshot = COALESCE(p.commission_rate_level1, p.commission_rate, 0),
+          oi.commission_rate_level2_snapshot = COALESCE(p.commission_rate_level2, 0)
       WHERE COALESCE(oi.is_distribution_snapshot, 0) = 0
         AND COALESCE(oi.commission_rate_snapshot, 0) = 0
+    `);
+    await query(`
+      UPDATE order_items
+      SET commission_rate_level1_snapshot = commission_rate_snapshot
+      WHERE COALESCE(commission_rate_level1_snapshot, 0) = 0
+        AND COALESCE(commission_rate_snapshot, 0) > 0
     `);
   }
 
@@ -1421,6 +1454,21 @@ export const initDB = async () => {
   } catch (err) {
     // Ignore data migration failure here
   }
+  try {
+    await query(`ALTER TABLE community_posts ADD COLUMN views_count INT DEFAULT 0 AFTER comments_count;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE community_posts ADD COLUMN favorites_count INT DEFAULT 0 AFTER views_count;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE community_posts ADD COLUMN shares_count INT DEFAULT 0 AFTER favorites_count;`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
 
   // 29. post_comments
   await query(`
@@ -1445,6 +1493,31 @@ export const initDB = async () => {
       user_id BIGINT UNSIGNED NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE KEY uniq_post_like (post_id, user_id),
+      FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS community_post_favorites (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      post_id BIGINT UNSIGNED NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_post_favorite (post_id, user_id),
+      FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS community_post_views (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      post_id BIGINT UNSIGNED NOT NULL,
+      user_id BIGINT UNSIGNED NOT NULL,
+      view_date DATE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_post_view_daily (post_id, user_id, view_date),
       FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );

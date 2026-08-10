@@ -70,6 +70,7 @@ function normalizeAssessmentRecord(record) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     isLoggedIn: false,
     records: [],
@@ -82,16 +83,17 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
     const isLoggedIn = sessionStore.isLoggedIn();
     this.setData({
-      loading: isLoggedIn,
+      loading: silent ? false : isLoggedIn,
       isLoggedIn,
-      loadError: '',
-      records: [],
+      loadError: silent ? this.data.loadError : '',
+      records: silent ? this.data.records : [],
     });
 
     this.checkPendingCount();
@@ -107,14 +109,20 @@ Page({
       const assessmentsResponse = await api.getAssessments(this.data.selectedMemberId ? { patientId: this.data.selectedMemberId } : {});
       const records = unwrapList(assessmentsResponse).map(normalizeAssessmentRecord);
       this.setData({
+        hasLoaded: true,
         loading: false,
         records,
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载评估记录失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载评估记录失败',
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载评估记录失败', icon: 'none' });
     }
   },
 

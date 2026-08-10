@@ -84,6 +84,7 @@ function normalizeStore(store, location) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     patientCountLabel: '10,000+',
     satisfactionRateLabel: '98%',
@@ -92,12 +93,19 @@ Page({
     stores: [],
   },
 
-  async onShow() {
-    await this.loadPage();
+  onLoad() {
+    this.hasLoaded = false;
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async onShow() {
+    await this.loadPage({ silent: this.data.hasLoaded });
+  },
+
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
 
     try {
       const location = await this.tryGetLocation();
@@ -130,6 +138,7 @@ Page({
         storesResult.status === 'rejected';
 
       this.setData({
+        hasLoaded: true,
         loading: false,
         loadError: allFailed ? '加载首页失败' : '',
         patientCountLabel: totalPatients > 0 ? formatIntegerWithCommas(totalPatients) + '+' : '10,000+',
@@ -139,10 +148,14 @@ Page({
         stores,
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载首页失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载首页失败',
+        });
+        return;
+      }
+      wx.showToast({ title: (error && error.message) || '加载首页失败', icon: 'none' });
     }
   },
 

@@ -85,6 +85,29 @@ function buildScheduleRows(schedules) {
   return rows.slice(0, 4);
 }
 
+async function loadSchedulesByStoreIds(doctorId, storeIds) {
+  const normalizedStoreIds = Array.isArray(storeIds)
+    ? storeIds.map((item) => readString(item)).filter(Boolean)
+    : [];
+
+  if (!doctorId || !normalizedStoreIds.length) {
+    return [];
+  }
+
+  const responses = await Promise.all(
+    normalizedStoreIds.map((currentStoreId) =>
+      api.getSchedules({
+        doctorId,
+        storeId: currentStoreId,
+        startDate: getDateText(0),
+        endDate: getDateText(7),
+      }).catch(() => [])
+    )
+  );
+
+  return responses.reduce((result, response) => result.concat(unwrapList(response)), []);
+}
+
 Page({
   data: {
     doctorLoaded: false,
@@ -108,6 +131,11 @@ Page({
 
   onLoad(options) {
     this.options = options || {};
+    this.hasLoaded = false;
+    if (!wx.getStorageSync('access_token')) {
+      return;
+    }
+    this.loadPage();
   },
 
   async onShow() {
@@ -116,27 +144,31 @@ Page({
       navigation.openPage('/pages/auth/login');
       return;
     }
+    if (!this.hasLoaded) {
+      return;
+    }
     await this.loadPage();
   },
 
   async loadPage() {
-    const doctorId = readString((this.options && this.options.id) || '');
-    const storeId = readString((this.options && this.options.storeId) || '');
-
-    const [doctorsResponse, schedulesResponse] = await Promise.all([
-      api.getDoctors(doctorId ? { id: doctorId } : undefined),
-      doctorId
-        ? api.getSchedules({
-            doctorId,
-            storeId: storeId || undefined,
-            startDate: getDateText(0),
-            endDate: getDateText(7),
-          })
-        : Promise.resolve([]),
-    ]);
-
+    const doctorId = readString((this.options && this.options.id) || this.data.doctorId || '');
+    const storeId = readString((this.options && this.options.storeId) || this.data.storeId || '');
+    const doctorsResponse = await api.getDoctors(doctorId ? { id: doctorId } : undefined);
     const doctor = unwrapList(doctorsResponse).find((item) => readString(item.id) === doctorId) || null;
-    const schedules = unwrapList(schedulesResponse);
+    const schedules = doctorId
+      ? (
+          storeId
+            ? unwrapList(
+                await api.getSchedules({
+                  doctorId,
+                  storeId,
+                  startDate: getDateText(0),
+                  endDate: getDateText(7),
+                }).catch(() => [])
+              )
+            : await loadSchedulesByStoreIds(doctorId, doctor && doctor.storeIds)
+        )
+      : [];
     const expertiseTags = Array.isArray(doctor && doctor.expertise)
       ? doctor.expertise
       : String((doctor && (doctor.expertise || doctor.specialty)) || '')
@@ -169,6 +201,7 @@ Page({
       scheduleRows: buildScheduleRows(schedules),
       hasFutureSchedules: schedules.some((item) => item.status === 'available'),
     });
+    this.hasLoaded = true;
   },
 
   handleAvatarLoad() {

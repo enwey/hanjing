@@ -31,7 +31,7 @@
         <view class="trend-bars data-v-72813ef9">
           <view wx:for="{{report.trend}}" wx:key="date" class="trend-bar data-v-72813ef9" style="height: {{item.scoreHeight}}; background: {{item.scoreColor}}"></view>
         </view>
-        <view class="trend-labels data-v-72813ef9"><text wx:for="{{report.trend}}" wx:key="date" class="trend-label data-v-72813ef9">{{item.date}}</text></view>
+        <view class="trend-labels data-v-72813ef9"><text wx:for="{{report.trend}}" wx:key="date" class="trend-label data-v-72813ef9">{{item.showLabel ? item.date : ''}}</text></view>
       </view>
       <text class="section-title data-v-72813ef9">报告建议</text>
       <view wx:for="{{insights}}" wx:key="id" class="peer-card data-v-72813ef9">

@@ -49,6 +49,7 @@ function formatPriceYuan(value) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     memberInfo: null,
     errorMessage: '',
     levelCardBg: '',
@@ -64,14 +65,15 @@ Page({
   },
 
   onShow() {
-    this.loadPage();
+    this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
     this.setData({
-      loading: true,
-      memberInfo: null,
-      errorMessage: '',
+      loading: silent ? false : true,
+      memberInfo: silent ? this.data.memberInfo : null,
+      errorMessage: silent ? this.data.errorMessage : '',
     });
 
     try {
@@ -102,6 +104,9 @@ Page({
         .filter((item, index) => index <= currentLevelIndex)
         .forEach((level) => {
           (Array.isArray(level.benefits) ? level.benefits : []).forEach((benefit) => {
+            if (benefit.icon === 'channel') {
+              return;
+            }
             const meta = BENEFIT_META[benefit.icon];
             if (!meta || !benefit.title || !benefit.desc) {
               return;
@@ -143,6 +148,7 @@ Page({
       }));
 
       this.setData({
+        hasLoaded: true,
         loading: false,
         memberInfo,
         levelCardBg: currentTheme.bg,
@@ -157,11 +163,16 @@ Page({
         levelRows,
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        memberInfo: null,
-        errorMessage: (error && error.message) || '会员信息暂不可用',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          memberInfo: null,
+          errorMessage: (error && error.message) || '会员信息暂不可用',
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '会员信息暂不可用', icon: 'none' });
     }
   },
 });

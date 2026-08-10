@@ -131,6 +131,7 @@ Page({
   data: {
     loading: true,
     hasLoaded: false,
+    pageStyle: 'overflow: visible;',
     loadError: '',
     entries: TREATMENT_ENTRIES,
     memberNames: [],
@@ -188,6 +189,18 @@ Page({
     this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onHide() {
+    if (this.data.checkinVisible || this.data.pageStyle !== 'overflow: visible;') {
+      this.setData({ checkinVisible: false, pageStyle: 'overflow: visible;' });
+    }
+  },
+
+  onUnload() {
+    if (this.data.checkinVisible || this.data.pageStyle !== 'overflow: visible;') {
+      this.setData({ checkinVisible: false, pageStyle: 'overflow: visible;' });
+    }
+  },
+
   queryParams() {
     const params = { _t: Date.now() };
     if (this.selectedPatientId) {
@@ -236,6 +249,7 @@ Page({
       const timeline = unwrapList(timelineRes);
       const hasTreatmentRecord = !!treatmentRecord;
       const hasRealTreatmentRecord = !!(treatmentRecord && treatmentRecord.isRealTreatmentRecord);
+      const heroCompliance = Number(summary.weekCompliance != null ? summary.weekCompliance : summary.compliance || 0);
 
       this.members = members;
       this.wearingRecords = wearingRecords;
@@ -257,8 +271,8 @@ Page({
         heroSubText: hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无诊疗记录',
         treatmentDeviceLabel: (treatmentRecord && treatmentRecord.deviceModel) || '暂无治疗记录',
         treatmentDoctorLabel: hasTreatmentRecord ? `主治：${(treatmentRecord && treatmentRecord.doctorName) || '--'} 医生` : '完成初诊适配后将在此展示',
-        heroProgressText: hasTreatmentRecord ? `依从率 ${summary.compliance || 0}%` : '依从率 --',
-        progressWidth: `${summary.compliance || 0}%`,
+        heroProgressText: hasTreatmentRecord ? `依从率 ${heroCompliance}%` : '依从率 --',
+        progressWidth: `${heroCompliance}%`,
         treatmentStartLabel: hasTreatmentRecord ? `初配日期：${((treatmentRecord && treatmentRecord.createdAt) || '--').split('T')[0]}` : '初配日期：--',
         k: String(summary.weekWorn || 0),
         l: String(Number(summary.weekAvg || 0)),
@@ -339,6 +353,7 @@ Page({
   openCheckinModal() {
     const todayRecord = (this.wearingRecords || []).find((item) => item.date === getTodayText());
     this.setData({
+      pageStyle: 'overflow: hidden; height: 100vh;',
       checkinVisible: true,
       checkinDateLabel: getTodayDateLabel(),
       selectedWearDuration: todayRecord && todayRecord.wearDuration > 0 ? todayRecord.wearDuration : 7,
@@ -351,7 +366,7 @@ Page({
   },
 
   closeCheckinModal() {
-    this.setData({ checkinVisible: false });
+    this.setData({ checkinVisible: false, pageStyle: 'overflow: visible;' });
   },
 
   scrollSelectedDurationToCenter(selectedDuration) {
@@ -420,9 +435,11 @@ Page({
         note: item.note || '',
       }));
       const summary = unwrapObject(summaryRes) || {};
+      const heroCompliance = Number(summary.weekCompliance != null ? summary.weekCompliance : summary.compliance || 0);
 
       this.setData({
         checkinVisible: false,
+        pageStyle: 'overflow: visible;',
         isSubmittingCheckin: false,
         recentDays: buildRecentDays(this.wearingRecords),
         k: String(summary.weekWorn || 0),
@@ -436,8 +453,8 @@ Page({
           { key: 'streak', label: '连续天数', value: `${summary.streak || 0}天` },
         ],
         heroSubText: this.data.hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无诊疗记录',
-        heroProgressText: this.data.hasTreatmentRecord ? `依从率 ${summary.compliance || 0}%` : '依从率 --',
-        progressWidth: `${summary.compliance || 0}%`,
+        heroProgressText: this.data.hasTreatmentRecord ? `依从率 ${heroCompliance}%` : '依从率 --',
+        progressWidth: `${heroCompliance}%`,
       });
       wx.showToast({ title: '打卡成功', icon: 'success' });
     } catch (error) {

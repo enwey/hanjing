@@ -115,8 +115,8 @@ function mapProduct(row: any): Product {
     stock: Number(row.stock || 0),
     sales: Number(row.sales_count || 0),
     isDistribution: Number(row.is_distribution || 0) === 1,
-    commission1: Number(row.commission_rate || 0),
-    commission2: 0,
+    commission1: Number(row.commission_rate_level1 || row.commission_rate || 0),
+    commission2: Number(row.commission_rate_level2 || 0),
     status: row.status || 'off'
   }
 }

@@ -19,12 +19,13 @@ function drawRoundedRect(context, x, y, width, height, radius) {
 }
 
 Page({
-  data: { inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: '邀请好友体验鼾静健康诊所', qrUnavailableNotice: '', isSavingPoster: false },
-  async onShow() { await this.loadInviteInfo(); },
-  async loadInviteInfo() {
+  data: { inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: '邀请好友体验鼾静健康诊所', qrUnavailableNotice: '', isSavingPoster: false, hasLoaded: false },
+  async onShow() { await this.loadInviteInfo({ silent: this.data.hasLoaded }); },
+  async loadInviteInfo(options = {}) {
     try {
       const inviteInfo = await inviteService.loadInviteShareInfo();
       this.setData({
+        hasLoaded: true,
         inviteCode: inviteInfo.inviteCode,
         inviteQrCode: inviteInfo.inviteQrCode,
         sharePath: inviteInfo.sharePath,

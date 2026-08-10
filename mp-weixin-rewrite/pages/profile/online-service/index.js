@@ -1,15 +1,41 @@
 const { request, apiBaseUrl } = require('../../../api/request');
 const api = require('../../../api/index');
 
+function resolveServiceIdentity(level) {
+  const memberLevel = String(level || '');
+  if (memberLevel === 'diamond') {
+    return {
+      title: '专属客服',
+      subtitle: '已为您接入钻石会员 1v1 健康顾问服务',
+    };
+  }
+  if (memberLevel === 'gold') {
+    return {
+      title: '专属客服',
+      subtitle: '已为您接入黄金会员 1v1 健康顾问服务',
+    };
+  }
+  return {
+    title: '在线客服',
+    subtitle: '如需预约、改约或咨询治疗问题，可直接留言',
+  };
+}
+
 Page({
   data: {
+    hasLoaded: false,
     messages: [],
     inputText: '',
     scrollIntoView: '',
+    serviceTitle: '在线客服',
+    serviceSubtitle: '如需预约、改约或咨询治疗问题，可直接留言',
   },
 
   onShow() {
-    this.fetchHistory();
+    this.loadServiceIdentity();
+    if (!this.data.hasLoaded) {
+      this.fetchHistory();
+    }
     this.connectSocket();
   },
 
@@ -21,6 +47,20 @@ Page({
   onUnload() {
     this.disconnectSocket();
     this.stopPolling();
+  },
+
+  async loadServiceIdentity() {
+    try {
+      const memberInfoResponse = await api.getMemberInfo().catch(() => null);
+      const memberInfo = memberInfoResponse && memberInfoResponse.code === 0
+        ? memberInfoResponse.data
+        : (memberInfoResponse && memberInfoResponse.data) || memberInfoResponse || {};
+      const identity = resolveServiceIdentity(memberInfo.currentLevel || memberInfo.memberLevel || memberInfo.level || '');
+      this.setData({
+        serviceTitle: identity.title,
+        serviceSubtitle: identity.subtitle,
+      });
+    } catch (error) {}
   },
 
   setMessages(messages) {
@@ -64,6 +104,7 @@ Page({
     try {
       const res = await request({ url: '/im/messages' });
       if (res && res.code === 0 && Array.isArray(res.data)) {
+        this.setData({ hasLoaded: true });
         this.setMessages(res.data.map((item) => ({
           id: String(item.id),
           from: item.sender === 'doctor' ? 'assistant' : 'user',

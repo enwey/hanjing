@@ -68,7 +68,16 @@ Page({
       wx.navigateBack();
       return;
     }
-    this.loadOrder(orderId);
+    this.orderId = String(orderId);
+    this.hasLoaded = false;
+    this.loadOrder(this.orderId, { silent: false });
+  },
+
+  onShow() {
+    if (!this.hasLoaded || !this.orderId) {
+      return;
+    }
+    this.loadOrder(this.orderId, { silent: true });
   },
 
   formatPriceYuan(value) {
@@ -109,8 +118,9 @@ Page({
     };
   },
 
-  async loadOrder(orderId) {
-    this.setData({ loading: true });
+  async loadOrder(orderId, options = {}) {
+    const silent = Boolean(options.silent);
+    this.setData({ loading: silent ? this.data.loading : true });
     try {
       const detailResponse = await api.getOrderDetail(orderId);
       const rawOrder = (detailResponse && detailResponse.data) || detailResponse || null;
@@ -130,13 +140,14 @@ Page({
         }
       }
       this.setData({ loading: false, order, logisticsList });
+      this.hasLoaded = true;
     } catch (error) {
       console.error(error);
       wx.showToast({ title: (error && error.message) || '订单详情加载失败', icon: 'none' });
       this.setData({
-        loading: false,
-        order: null,
-        logisticsList: [],
+        loading: silent ? this.data.loading : false,
+        order: silent ? this.data.order : null,
+        logisticsList: silent ? this.data.logisticsList : [],
       });
     }
   },

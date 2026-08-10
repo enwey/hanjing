@@ -537,7 +537,9 @@ onUnmounted(() => {
       >
         <template #logo>
           <div class="sidebar-logo">
-            <div class="sidebar-logo-icon"><AppIcon name="moon" :size="18" /></div>
+            <div class="sidebar-logo-icon">
+              <img class="sidebar-logo-icon__image" src="/brand-koala.png" alt="鼾静健康诊所" />
+            </div>
             <div class="sidebar-logo-text" :class="{ 'logo-hidden': isMenuCollapsed }">
               鼾静健康
               <small>管理后台 v1.0</small>
@@ -1251,6 +1253,13 @@ onUnmounted(() => {
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; color: #fff;
   flex-shrink: 0;
+}
+.sidebar-logo-icon__image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 8px;
 }
 .sidebar-logo-text {
   color: #fff; font-size: 16px; font-weight: 700; line-height: 1.2;

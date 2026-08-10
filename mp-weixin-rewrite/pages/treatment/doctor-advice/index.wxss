@@ -66,9 +66,6 @@
   padding: 18px;
   margin-bottom: 12px;
 }
-.card--highlight.data-v-3fe7702c {
-  border-left: 4px solid #3b6bf5;
-}
 .card--followup.data-v-3fe7702c {
   background: linear-gradient(135deg, #fffbeb, #fff3d6);
 }

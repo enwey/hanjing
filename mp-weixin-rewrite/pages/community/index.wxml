@@ -20,7 +20,8 @@
         </view>
         <view class="post-header">
           <view class="post-avatar">
-            <image wx:if="{{item.avatar}}" class="post-avatar__image" src="{{item.avatar}}" mode="aspectFill"></image>
+            <text class="post-avatar__text" style="background: {{item.avatarBg}}">{{item.avatarText}}</text>
+            <image wx:if="{{item.avatar}}" class="post-avatar__image {{item.avatarLoaded ? 'post-avatar__image--loaded' : ''}}" src="{{item.avatar}}" mode="aspectFill" data-post-id="{{item.id}}" bindload="handleAvatarLoad" binderror="handleAvatarError"></image>
           </view>
           <view class="post-author">
             <view class="post-author__row">

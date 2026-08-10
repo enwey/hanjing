@@ -26,6 +26,7 @@ function normalizeSleepReport(response) {
     ? source.trend.map((item) => ({
         date: item.date || '',
         score: Number(item.score || 0),
+        comfort: Number(item.comfort || 0),
       }))
     : [];
   const report = Object.assign(createEmptyReport(), source, {
@@ -97,6 +98,8 @@ function buildReportViewModel(report, selectedRange, currentPatientLabel) {
     return null;
   }
   const scoreMeta = getScoreMeta(Number(report.score || 0));
+  const trendSource = Array.isArray(report.trend) ? report.trend : [];
+  const monthLabelInterval = 5;
   return Object.assign({}, report, {
     scoreCardBg: scoreMeta.cardBg,
     scoreBarColor: scoreMeta.barColor,
@@ -107,10 +110,15 @@ function buildReportViewModel(report, selectedRange, currentPatientLabel) {
     complianceWidth: Math.max(0, Math.min(100, Math.round(Number(report.compliance || 0)))) + '%',
     avgComfortWidth: clampPercent(report.avgComfort, 5),
     streakWidth: clampPercent(report.streak, 30),
-    trend: Array.isArray(report.trend)
-      ? report.trend.map((item) => ({
+    trend: trendSource.length
+      ? trendSource.map((item, index) => ({
           date: item.date,
           score: item.score,
+          comfort: item.comfort,
+          showLabel: selectedRange === 'week'
+            || index === 0
+            || index === trendSource.length - 1
+            || index % monthLabelInterval === 0,
           scoreHeight: Math.max(8, Math.min(100, Math.round(Number(item.score || 0)))) + '%',
           scoreColor: buildTrendColor(Number(item.score || 0)),
         }))
@@ -121,6 +129,7 @@ function buildReportViewModel(report, selectedRange, currentPatientLabel) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     selectedRange: 'week',
     report: null,
@@ -129,11 +138,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadReportData();
+    await this.loadReportData({ silent: this.data.hasLoaded });
   },
 
-  async loadReportData() {
-    this.setData({ loading: true, loadError: '' });
+  async loadReportData(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const context = await patientContextStore.refresh();
       const params = context.currentPatientId ? { patientId: context.currentPatientId, range: this.data.selectedRange, _t: Date.now() } : { range: this.data.selectedRange, _t: Date.now() };
@@ -144,18 +156,27 @@ Page({
         : '';
       const report = buildReportViewModel(baseReport, this.data.selectedRange, currentPatientLabel);
       this.setData({
+        hasLoaded: true,
         loading: false,
         report,
         insights: this.buildInsights(report),
         currentPatientLabel,
       });
     } catch (error) {
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载睡眠报告失败',
+          report: null,
+          insights: [],
+        });
+        return;
+      }
       this.setData({
         loading: false,
-        loadError: (error && error.message) || '加载睡眠报告失败',
-        report: null,
-        insights: [],
+        loadError: '',
       });
+      wx.showToast({ title: (error && error.message) || '加载睡眠报告失败', icon: 'none' });
     }
   },
 

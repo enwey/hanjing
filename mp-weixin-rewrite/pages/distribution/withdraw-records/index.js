@@ -22,6 +22,7 @@ function unwrapList(response) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     records: [],
     summary: {
@@ -32,11 +33,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const response = await api.getWithdrawRecords();
       const records = unwrapList(response).map((record) => {
@@ -60,6 +64,7 @@ Page({
       const completedCount = records.filter((record) => ['completed', 'transferred', 'success'].includes(record.status)).length;
       const processingCount = records.filter((record) => ['pending', 'processing', 'approved'].includes(record.status)).length;
       this.setData({
+        hasLoaded: true,
         loading: false,
         records,
         summary: {
@@ -69,10 +74,15 @@ Page({
         },
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载提现记录失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载提现记录失败',
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载提现记录失败', icon: 'none' });
     }
   },
 });

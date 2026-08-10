@@ -45,16 +45,22 @@ Page({
 
   onLoad(options) {
     this.options = options || {};
+    this.hasLoaded = false;
+    this.loadPage({ silent: false });
   },
 
   async onShow() {
-    await this.loadPage();
+    if (!this.hasLoaded) {
+      return;
+    }
+    await this.loadPage({ silent: true });
   },
 
-  async loadPage() {
+  async loadPage(options = {}) {
+    const silent = Boolean(options.silent);
     const appointmentId = String((this.options && this.options.id) || '');
     this.setData({
-      loading: true,
+      loading: silent ? this.data.loading : true,
       loadError: '',
       appointmentId,
     });
@@ -78,13 +84,14 @@ Page({
       const stores = unwrapList(storesResponse);
       const store = detailSource.store || stores.find((item) => String(item.id) === String(appointment.storeId || appointment.store_id)) || {};
       const bookingSettings = unwrapObject(bookingSettingsResponse);
+      const nextStoreCoverUrl = getStoreCoverUrl(store || appointment);
 
       this.setData({
         loading: false,
         appointment,
         appointmentNo: appointment.appointmentNo || appointment.appointment_no || '',
-        storeCoverUrl: getStoreCoverUrl(store || appointment),
-        storeCoverLoaded: false,
+        storeCoverUrl: nextStoreCoverUrl,
+        storeCoverLoaded: silent && nextStoreCoverUrl === this.data.storeCoverUrl ? this.data.storeCoverLoaded : false,
         storeName: appointment.storeName || appointment.store_name || store.name || store.storeName || '',
         doctorName: appointment.doctorName || appointment.doctor_name || '',
         appointmentDate: appointment.appointmentDate || appointment.appointment_date || '',
@@ -96,9 +103,10 @@ Page({
         depositAmountLabel: toYuanLabel(appointment.depositAmount || appointment.deposit_amount || 0),
         cancelLimitText: bookingSettings.cancelLimit || bookingSettings.cancelLimitText || '就诊前 2 小时',
       });
+      this.hasLoaded = true;
     } catch (error) {
       this.setData({
-        loading: false,
+        loading: silent ? this.data.loading : false,
         loadError: (error && error.message) || '加载预约结果失败',
       });
     }

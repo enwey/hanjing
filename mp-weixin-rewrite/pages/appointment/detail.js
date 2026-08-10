@@ -143,13 +143,19 @@ Page({
 
   onLoad(options) {
     this.options = options || {};
+    this.hasLoadedOnce = false;
+    this.loadPage({ silent: false });
   },
 
   async onShow() {
-    await this.loadPage();
+    if (!this.hasLoadedOnce) {
+      return;
+    }
+    await this.loadPage({ silent: true });
   },
 
-  async loadPage() {
+  async loadPage(options) {
+    const silent = Boolean(options && options.silent);
     const appointmentId = String((this.options && this.options.id) || this.data.appointmentId || '');
     if (!appointmentId) {
       this.setData({
@@ -190,6 +196,11 @@ Page({
             .map((item) => item.trim())
             .filter(Boolean);
 
+      const nextDoctorAvatarUrl = normalizeAvatarUrl(
+        doctor.avatarUrl || doctor.avatar || doctor.avatar_url || appointment.doctorAvatar || appointment.doctor_avatar
+      );
+      const nextStoreCoverUrl = getStoreCoverUrl(store || appointment);
+
       this.setData({
         appointmentLoaded: true,
         loadError: '',
@@ -200,8 +211,8 @@ Page({
         statusLabel: APPOINTMENT_STATUS_MAP[appointment.status] || '预约详情',
         appointmentNo: appointment.appointmentNo || '',
         doctorAvatar: doctor.name ? doctor.name.slice(0, 1) : '医',
-        doctorAvatarUrl: normalizeAvatarUrl(doctor.avatarUrl || doctor.avatar || doctor.avatar_url || appointment.doctorAvatar || appointment.doctor_avatar),
-        doctorAvatarLoaded: false,
+        doctorAvatarUrl: nextDoctorAvatarUrl,
+        doctorAvatarLoaded: silent && nextDoctorAvatarUrl === this.data.doctorAvatarUrl ? this.data.doctorAvatarLoaded : false,
         doctorName: doctor.name || '',
         doctorTitle: doctor.title || '',
         doctorDept,
@@ -211,8 +222,8 @@ Page({
         patientName: appointment.patientName || '--',
         storeName: store.name || '',
         storeAddress: store.address || '',
-        storeCoverUrl: getStoreCoverUrl(store || appointment),
-        storeCoverLoaded: false,
+        storeCoverUrl: nextStoreCoverUrl,
+        storeCoverLoaded: silent && nextStoreCoverUrl === this.data.storeCoverUrl ? this.data.storeCoverLoaded : false,
         appointmentTypeLabel: APPOINTMENT_TYPE_MAP[String(appointment.type || '').trim()] || '门诊预约',
         symptomDesc: appointment.symptomDesc || '',
         cancelReason: appointment.cancelReason || '',
@@ -242,9 +253,10 @@ Page({
         medicalRecord: detail.medicalRecord || null,
         treatmentRecord: detail.treatmentRecord || null,
       });
+      this.hasLoadedOnce = true;
     } catch (error) {
       this.setData({
-        appointmentLoaded: false,
+        appointmentLoaded: silent ? this.data.appointmentLoaded : false,
         loadError: (error && error.message) || '加载预约详情失败',
       });
     }

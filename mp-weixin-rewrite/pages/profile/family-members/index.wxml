@@ -20,7 +20,7 @@
             <text class="member-name data-v-30acdad2">{{item.name}}</text>
             <text class="member-relation data-v-30acdad2">{{item.relationLabel}}</text>
           </view>
-          <text class="member-detail data-v-30acdad2">{{item.genderLabel}} | {{item.ageLabel}}岁 | {{item.phone}}</text>
+          <text class="member-detail data-v-30acdad2">{{item.genderLabel}} | {{item.ageLabel ? item.ageLabel + '岁' : '未填写'}} | {{item.phone || '未填写'}}</text>
           <view wx:if="{{item.idCard}}" class="member-visit data-v-30acdad2" style="margin-top: 6rpx; color: #6b7280; font-size: 22rpx;">身份证: {{item.idCard}}</view>
           <view wx:if="{{item.cardNo}}" class="member-visit data-v-30acdad2" style="margin-top: 4rpx; color: #6b7280; font-size: 22rpx;">就诊卡: {{item.cardNo}}</view>
           <text wx:if="{{item.hasSnore}}" class="member-tag data-v-30acdad2">有打鼾</text>

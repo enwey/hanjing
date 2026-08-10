@@ -1,6 +1,5 @@
 const api = require('../../api/index');
 const appointmentDraftStore = require('../../stores/appointment-draft-store');
-const { getStoreCoverUrl } = require('../../common/utils/image-url');
 const subscribe = require('../../common/utils/subscribe');
 
 const RELATION_LABEL_MAP = {
@@ -62,11 +61,10 @@ async function syncPaidAppointment(appointmentId) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     draft: null,
     storeName: '',
-    storeCoverUrl: '',
-    storeCoverLoaded: false,
     doctorName: '',
     consultFeeAmount: 0,
     consultFeeLabel: '¥0.00',
@@ -86,10 +84,10 @@ Page({
   },
 
   onShow() {
-    this.loadPage();
+    this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
+  async loadPage(options = {}) {
     const draft = appointmentDraftStore.getDraft();
     if (!draft || !draft.doctorId || !draft.storeId || !draft.scheduleId || !draft.timeSlot) {
       this.setData({
@@ -135,12 +133,11 @@ Page({
           : '确认预约';
 
       this.setData({
+        hasLoaded: true,
         loading: false,
         loadError: '',
         draft,
         storeName: store ? store.name || store.storeName || '' : '',
-        storeCoverUrl: getStoreCoverUrl(store),
-        storeCoverLoaded: false,
         doctorName: doctor ? doctor.name || draft.doctorName || '' : draft.doctorName || '',
         consultFeeAmount,
         consultFeeLabel: '¥' + (consultFeeAmount / 100).toFixed(2),
@@ -157,10 +154,15 @@ Page({
         selectedMemberName: memberOptions[memberIndex] || '本人',
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载预约确认信息失败',
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载预约确认信息失败',
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载预约确认信息失败', icon: 'none' });
     }
   },
 
@@ -194,16 +196,6 @@ Page({
       memberIndex: nextIndex,
       selectedMemberName: this.data.memberOptions[nextIndex] || '本人',
     });
-  },
-
-  handleStoreCoverLoad() {
-    if (this.data.storeCoverUrl) {
-      this.setData({ storeCoverLoaded: true });
-    }
-  },
-
-  handleStoreCoverError() {
-    this.setData({ storeCoverLoaded: false });
   },
 
   handleSymptomInput(event) {

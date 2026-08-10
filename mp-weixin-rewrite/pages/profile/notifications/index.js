@@ -43,20 +43,25 @@ function unwrapNotifications(response) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     notifications: [],
     unreadCount: 0,
   },
 
   onShow() {
-    this.fetchNotifications();
+    this.fetchNotifications({ silent: this.data.hasLoaded });
   },
 
-  async fetchNotifications() {
-    this.setData({ loading: true });
+  async fetchNotifications(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true });
+    }
     try {
       const response = await api.getNotifications();
       const { list, unread } = unwrapNotifications(response);
       this.setData({
+        hasLoaded: true,
         loading: false,
         notifications: list,
         unreadCount: unread,

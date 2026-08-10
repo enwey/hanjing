@@ -392,63 +392,19 @@ function handleRemovePatient() {
   visitType.value = '初诊'
 }
 
-const timeSlots = ref<Array<{ time: string; status: string; label: string; period: string; booked?: number; total?: number }>>([])
-
-function buildSlots(start: string, end: string, intervalMinutes = 30) {
-  const result: string[] = []
-  const [startHour, startMinute] = start.slice(0, 5).split(':').map(Number)
-  const [endHour, endMinute] = end.slice(0, 5).split(':').map(Number)
-  const safeInterval = Number.isFinite(intervalMinutes) && intervalMinutes > 0 ? intervalMinutes : 30
-  const cursor = new Date(2026, 0, 1, startHour, startMinute)
-  const endDate = new Date(2026, 0, 1, endHour, endMinute)
-  while (cursor < endDate) {
-    const startStr = `${String(cursor.getHours()).padStart(2, '0')}:${String(cursor.getMinutes()).padStart(2, '0')}`
-    cursor.setMinutes(cursor.getMinutes() + safeInterval)
-    if (cursor > endDate) {
-      const endStr = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
-      result.push(`${startStr}-${endStr}`)
-      break
-    }
-    const endStr = `${String(cursor.getHours()).padStart(2, '0')}:${String(cursor.getMinutes()).padStart(2, '0')}`
-    result.push(`${startStr}-${endStr}`)
-  }
-  return result
-}
+const timeSlots = ref<Array<{ time: string; status: string; label: string; period: string; booked?: number; total?: number; schedule_id?: number }>>([])
 
 async function fetchTimeSlots() {
   if (!selectedDoctor.value || !selectedDate.value) return
   try {
-    const res: any = await request.get('/api/admin/schedules', {
-      params: { doctor_id: selectedDoctor.value, date: selectedDate.value }
+    const res: any = await request.get('/api/admin/day-slots', {
+      params: {
+        doctor_id: selectedDoctor.value,
+        store_id: selectedStore.value,
+        date: selectedDate.value
+      }
     })
-    const rows = (res.data || []).filter((row: any) => String(row.store_id) === String(selectedStore.value))
-    
-    // 获取当天的所有预约以便精准计算每个分时段的占用情况
-    const apptRes: any = await request.get('/api/admin/appointments', {
-      params: { date: selectedDate.value }
-    })
-    const allAppts = apptRes.data || []
-    const activeAppointmentStatuses = new Set(['pending_payment', 'pending', 'confirmed', 'checked_in', 'arrived'])
-    const doctorAppts = allAppts.filter((appt: any) => 
-      String(appt.doctor_id) === String(selectedDoctor.value) &&
-      activeAppointmentStatuses.has(String(appt.status || '').trim())
-    )
-
-    timeSlots.value = rows.flatMap((row: any) => {
-      const peoplePerSlot = Number(row.people_per_slot || 1)
-      return buildSlots(row.start_time || '09:00:00', row.end_time || '12:00:00', bookingInterval.value).map(time => {
-        const bookedCount = doctorAppts.filter((appt: any) => appt.appointment_time === time).length
-        const remaining = Math.max(0, peoplePerSlot - bookedCount)
-        return {
-          time,
-          period: row.period,
-          status: remaining > 0 ? 'available' : 'full',
-          booked: bookedCount,
-          total: peoplePerSlot,
-          label: remaining > 0 ? '可约' : '已满'
-        }
-      })
-    })
+    timeSlots.value = res.data || []
     const firstAvailable = timeSlots.value.find(slot => slot.status === 'available')
     selectedSlot.value = firstAvailable?.time || (timeSlots.value[0]?.time || '')
   } catch (error) {
@@ -1010,7 +966,7 @@ async function submitCheckout() {
             @click="selectSlot(slot)"
           >
             <div class="slot-time">{{ slot.time }}</div>
-            <div class="slot-status-label" style="font-size: 11px; margin-top: 2px;">
+            <div class="slot-status-label">
               {{ selectedSlot === slot.time ? '已选' : slot.status === 'full' ? '约满' : '可约' }} 
               <span style="opacity: 0.8; margin-left: 2px;">{{ slot.booked }}/{{ slot.total }}</span>
             </div>
@@ -1293,12 +1249,18 @@ async function submitCheckout() {
   gap: 8px;
 }
 .slot-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
   padding: 10px;
   text-align: center;
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
   transition: all 150ms;
+  box-sizing: border-box;
 }
 .slot-item.full {
   background: #F9FAFB;
@@ -1323,6 +1285,17 @@ async function submitCheckout() {
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(59, 107, 245, 0.3);
   transition: none !important;
+}
+
+.slot-time {
+  line-height: 1.3;
+}
+
+.slot-status-label {
+  min-height: 16px;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .tag {

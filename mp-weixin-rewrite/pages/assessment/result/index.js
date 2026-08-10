@@ -95,11 +95,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ isLoading: true });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ isLoading: true });
+    }
     try {
       const assessmentId = (this.options && this.options.id) || '';
       const questionsResponse = await api.getESSQuestions();

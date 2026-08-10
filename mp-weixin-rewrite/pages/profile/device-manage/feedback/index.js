@@ -13,6 +13,7 @@ const MEMBER_LABEL_MAP = {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     members: [],
     memberOptions: [],
     memberIndex: 0,
@@ -20,13 +21,13 @@ Page({
     records: [],
     ratingOptions: [1, 2, 3, 4, 5],
     showComposer: false,
-    rating: 0,
+    rating: 5,
     content: "",
     submitting: false,
   },
 
   onShow() {
-    this.loadPage();
+    this.loadPage({ silent: this.data.hasLoaded });
   },
 
   getStoragePatientId() {
@@ -39,8 +40,11 @@ Page({
     }
   },
 
-  async loadPage() {
-    this.setData({ loading: true });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true });
+    }
     try {
       const memberRes = await api.getFamilyMembers();
       const members = (memberRes.data && memberRes.data.list) || memberRes.list || [];
@@ -54,13 +58,15 @@ Page({
       const memberIndex = Math.max(0, members.findIndex((item) => String(item.id) === String(selectedPatientId)));
       const res = await api.getDeviceFeedback(selectedPatientId ? { patientId: selectedPatientId } : {});
       const records = (res.data && res.data.list) || res.list || [];
-      this.setData({ members, memberOptions, memberIndex, selectedPatientId, records });
+      this.setData({ hasLoaded: true, members, memberOptions, memberIndex, selectedPatientId, records, loading: false });
     } catch (err) {
       console.error("加载使用反馈失败", err);
       wx.showToast({ title: err.message || "加载使用反馈失败", icon: "none" });
-      this.setData({ records: [] });
-    } finally {
-      this.setData({ loading: false });
+      if (!this.data.hasLoaded) {
+        this.setData({ records: [], loading: false });
+      } else {
+        this.setData({ loading: false });
+      }
     }
   },
 
@@ -73,7 +79,7 @@ Page({
   },
 
   openComposer() {
-    this.setData({ showComposer: true, rating: 0, content: "" });
+    this.setData({ showComposer: true, rating: 5, content: "" });
   },
 
   closeComposer() {
@@ -108,7 +114,7 @@ Page({
         content: this.data.content.trim(),
       });
       wx.showToast({ title: "提交成功", icon: "success" });
-      this.setData({ showComposer: false, rating: 0, content: "" });
+      this.setData({ showComposer: false, rating: 5, content: "" });
       await this.loadPage();
     } catch (err) {
       console.error("提交反馈失败", err);

@@ -52,6 +52,10 @@ function getNotifications() {
   return request({ url: '/user/notifications', method: 'GET', failMessage: '加载通知消息失败' });
 }
 
+function getImUnreadCount() {
+  return request({ url: '/im/unread-count', method: 'GET', failMessage: '加载客服未读消息失败' });
+}
+
 function markNotificationRead(notificationId) {
   return request({ url: '/user/notifications/' + notificationId + '/read', method: 'POST', failMessage: '标记消息已读失败' });
 }
@@ -68,8 +72,8 @@ function sendPhoneCode(phone) {
   return request({ url: '/user/send-code', method: 'POST', data: { phone }, failMessage: '发送验证码失败' });
 }
 
-function changePhone(phone, code) {
-  return request({ url: '/user/change-phone', method: 'POST', data: { phone, code }, failMessage: '更换手机号失败' });
+function changePhone(phone, code, phoneCode) {
+  return request({ url: '/user/change-phone', method: 'POST', data: { phone, code, phoneCode }, failMessage: '更换手机号失败' });
 }
 
 function verifyRealName(realName, idCard) {
@@ -102,6 +106,7 @@ module.exports = {
   getMemberInfo,
   getMemberLevels,
   getNotifications,
+  getImUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
   getAccountSecurity,

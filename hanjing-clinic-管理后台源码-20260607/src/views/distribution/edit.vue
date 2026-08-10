@@ -171,6 +171,8 @@ function toPayload(prod: Partial<Product>) {
     stock: Number(prod.stock || 0),
     is_distribution: prod.isDistribution ? 1 : 0,
     commission_rate: Number(prod.commission1 || 0),
+    commission_rate_level1: Number(prod.commission1 || 0),
+    commission_rate_level2: Number(prod.commission2 || 0),
     status: prod.status || 'off',
     gallery_urls: JSON.stringify(prod.galleryUrls || [])
   }
@@ -232,8 +234,8 @@ onMounted(async () => {
           galleryUrls: gUrls,
           stock: Number(row.stock || 0),
           isDistribution: !!row.is_distribution,
-          commission1: Number(row.commission_rate || 0),
-          commission2: 0,
+          commission1: Number(row.commission_rate_level1 || row.commission_rate || 0),
+          commission2: Number(row.commission_rate_level2 || 0),
           status: row.status || 'off'
         }
       }

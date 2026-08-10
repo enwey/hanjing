@@ -56,6 +56,7 @@ function normalizeCommission(commission) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     selectedTab: 'all',
     tabList: TAB_LIST,
@@ -72,11 +73,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const [statsResponse, commissionsResponse] = await Promise.all([
         api.getDistributionCommissionStats(),
@@ -85,6 +89,7 @@ Page({
       const stats = unwrapObject(statsResponse);
       const commissions = unwrapList(commissionsResponse).map(normalizeCommission);
       this.setData({
+        hasLoaded: true,
         loading: false,
         totalCommissionLabel: formatAmountYuan(stats.totalCommission || 0),
         frozenCommissionLabel: formatAmountYuan(stats.frozenCommission || 0),
@@ -93,12 +98,17 @@ Page({
       });
       this.refreshVisibleCommissions(this.data.selectedTab, commissions);
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载佣金明细失败',
-        commissions: [],
-        visibleCommissions: [],
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载佣金明细失败',
+          commissions: [],
+          visibleCommissions: [],
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载佣金明细失败', icon: 'none' });
     }
   },
 

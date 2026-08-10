@@ -15,10 +15,6 @@
       </view>
     </picker>
 
-    <view class="page-action">
-      <button class="page-action__btn" bindtap="openComposer">提交反馈</button>
-    </view>
-
     <view wx:if="{{loading}}" class="state-wrap">
       <text class="state-text">加载中...</text>
     </view>
@@ -40,6 +36,12 @@
         <text class="state-text">当前就诊人暂无使用反馈</text>
       </view>
     </block>
+
+    <view class="safe-bottom"></view>
+  </view>
+
+  <view class="bottom-fixed-bar">
+    <button class="bar-primary-btn" bindtap="openComposer">提交反馈</button>
   </view>
 
   <view wx:if="{{showComposer}}" class="composer-mask" bindtap="closeComposer">

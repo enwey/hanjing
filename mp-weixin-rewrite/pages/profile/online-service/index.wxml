@@ -1,5 +1,8 @@
 <view class="page data-v-72504f8b">
-  <hj-navbar title="在线客服" showBack="{{true}}" />
+  <hj-navbar title="{{serviceTitle}}" showBack="{{true}}" />
+  <view class="service-banner">
+    <text class="service-banner__text">{{serviceSubtitle}}</text>
+  </view>
   <scroll-view class="chat-area data-v-72504f8b" scroll-y scroll-into-view="{{scrollIntoView}}" enhanced="{{true}}" show-scrollbar="{{false}}">
     <view class="chat-list data-v-72504f8b">
       <view wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}" class="chat-msg data-v-72504f8b {{item.rowClass}}">

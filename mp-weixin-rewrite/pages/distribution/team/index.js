@@ -23,6 +23,7 @@ function unwrapList(response) {
 Page({
   data: {
     loading: true,
+    hasLoaded: false,
     loadError: '',
     teamCount: 0,
     level2Count: 0,
@@ -31,11 +32,14 @@ Page({
   },
 
   async onShow() {
-    await this.loadPage();
+    await this.loadPage({ silent: this.data.hasLoaded });
   },
 
-  async loadPage() {
-    this.setData({ loading: true, loadError: '' });
+  async loadPage(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) {
+      this.setData({ loading: true, loadError: '' });
+    }
     try {
       const [membersResponse, infoResponse] = await Promise.all([
         api.getTeamMembers(),
@@ -58,6 +62,7 @@ Page({
       const totalSalesAmount = members.reduce((sum, item) => sum + Number(item.totalSalesAmount || 0), 0);
 
       this.setData({
+        hasLoaded: true,
         loading: false,
         teamCount: Number(info.teamCount || 0),
         level2Count: Number(info.teamLevel2Count || 0),
@@ -65,11 +70,16 @@ Page({
         members,
       });
     } catch (error) {
-      this.setData({
-        loading: false,
-        loadError: (error && error.message) || '加载团队成员失败',
-        members: [],
-      });
+      if (!this.data.hasLoaded) {
+        this.setData({
+          loading: false,
+          loadError: (error && error.message) || '加载团队成员失败',
+          members: [],
+        });
+        return;
+      }
+      this.setData({ loading: false });
+      wx.showToast({ title: (error && error.message) || '加载团队成员失败', icon: 'none' });
     }
   },
 });

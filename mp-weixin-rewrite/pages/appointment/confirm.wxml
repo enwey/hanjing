@@ -5,16 +5,6 @@
     <view class="info-card" wx:if="{{draft}}">
       <text class="info-title">预约信息确认</text>
 
-      <view wx:if="{{storeCoverUrl}}" class="store-cover">
-        <image
-          class="store-cover-image {{storeCoverLoaded ? 'store-cover-image--loaded' : ''}}"
-          src="{{storeCoverUrl}}"
-          mode="aspectFill"
-          bindload="handleStoreCoverLoad"
-          binderror="handleStoreCoverError"
-        />
-      </view>
-
       <view class="info-row">
         <image class="row-icon" src="/static/icons/store.svg" />
         <text class="info-label">门店</text>
@@ -41,13 +31,13 @@
 
       <picker wx:if="{{memberOptions.length > 1}}" bindchange="handleMemberChange" value="{{memberIndex}}" range="{{memberOptions}}">
         <view class="info-row" style="position: relative;">
-          <image class="row-icon" src="/static/icons/profile_orange.svg" />
+          <image class="row-icon" src="/static/icons/profile_gray.svg" />
           <text class="info-label">就诊人</text>
           <text class="info-value" style="padding-right: 30rpx; color: #3B6BF5;">{{selectedMemberName}} ›</text>
         </view>
       </picker>
       <view wx:else class="info-row">
-        <image class="row-icon" src="/static/icons/profile_orange.svg" />
+        <image class="row-icon" src="/static/icons/profile_gray.svg" />
         <text class="info-label">就诊人</text>
         <text class="info-value">{{selectedMemberName}}</text>
       </view>

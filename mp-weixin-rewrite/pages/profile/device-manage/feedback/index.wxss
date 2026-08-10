@@ -69,11 +69,6 @@
   flex-shrink: 0;
 }
 
-.page-action {
-  margin-bottom: 14px;
-}
-
-.page-action__btn,
 .composer-btn {
   height: 44px;
   border-radius: 9999px;
@@ -84,7 +79,6 @@
   justify-content: center;
 }
 
-.page-action__btn,
 .composer-btn--primary {
   background: linear-gradient(135deg, #3b6bf5 0%, #5a85f5 50%, #8eafff 100%);
   color: #fff;
@@ -152,6 +146,38 @@
   color: #4b5563;
 }
 
+.bottom-fixed-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  height: 140rpx;
+  padding: 0 40rpx env(safe-area-inset-bottom, 0);
+  background: #ffffff;
+  border-top: 1rpx solid rgba(0, 0, 0, 0.08);
+  box-sizing: content-box;
+}
+
+.bar-primary-btn {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  border: none;
+  border-radius: 9999rpx;
+  background: linear-gradient(135deg, #3b6bf5 0%, #5a85f5 50%, #8eafff 100%);
+  box-shadow: 0 8rpx 28rpx rgba(59, 107, 245, 0.25);
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.bar-primary-btn::after {
+  border: none;
+}
+
 .composer-mask {
   position: fixed;
   inset: 0;
@@ -215,4 +241,8 @@
 .composer-btn--ghost {
   background: #f3f4f6;
   color: #4b5563;
+}
+
+.safe-bottom {
+  height: calc(env(safe-area-inset-bottom, 34px) + 140rpx);
 }
