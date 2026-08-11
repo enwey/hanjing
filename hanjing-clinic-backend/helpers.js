@@ -299,7 +299,28 @@ export const verifyPassword = (password, storedHash) => {
 };
 
 // PII Encryption / Decryption helpers using AES-256-CBC with deterministic IV
-const PII_SECRET = (process.env.PII_ENCRYPTION_KEY || 'hanjing_clinic_pii_secret_key_32').padEnd(32, '0').slice(0, 32);
+const DEFAULT_PII_SECRET = 'hanjing_clinic_pii_secret_key_32';
+
+function normalizePiiSecret(secret) {
+  return String(secret || '').padEnd(32, '0').slice(0, 32);
+}
+
+function buildPiiSecrets() {
+  const primarySecret = normalizePiiSecret(process.env.PII_ENCRYPTION_KEY || DEFAULT_PII_SECRET);
+  const fallbackSecrets = String(process.env.PII_ENCRYPTION_KEY_FALLBACKS || '')
+    .split(',')
+    .map((item) => normalizePiiSecret(item.trim()))
+    .filter(Boolean);
+
+  return Array.from(new Set([
+    primarySecret,
+    ...fallbackSecrets,
+    normalizePiiSecret(DEFAULT_PII_SECRET),
+  ]));
+}
+
+const PII_SECRETS = buildPiiSecrets();
+const PII_SECRET = PII_SECRETS[0];
 const DETERMINISTIC_IV = Buffer.from(PII_SECRET.slice(0, 16));
 
 export function encryptPII(text) {
@@ -320,10 +341,18 @@ export function decryptPII(text) {
   try {
     if (!text.startsWith('det:')) return text;
     const encryptedText = Buffer.from(text.slice(4), 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(PII_SECRET), DETERMINISTIC_IV);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
+    for (const secret of PII_SECRETS) {
+      try {
+        const iv = Buffer.from(secret.slice(0, 16));
+        const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(secret), iv);
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString();
+      } catch (error) {
+        // Try next configured secret for backward compatibility.
+      }
+    }
+    return text;
   } catch (err) {
     // Fail-safe: fallback to plaintext
     return text;
