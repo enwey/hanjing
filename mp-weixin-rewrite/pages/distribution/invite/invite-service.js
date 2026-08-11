@@ -2,7 +2,7 @@ const distributionApi = require('../../../api/index');
 
 async function loadInviteShareInfo() {
   const results = await Promise.all([
-    distributionApi.getDistributionInviteInfo(),
+    distributionApi.getDistributionInviteInfo({ refreshQr: 1 }),
     distributionApi.getDistributorInfo(),
   ]);
   const inviteData = results[0].data || results[0] || {};

@@ -8,8 +8,8 @@ function openDistribution() {
   return request({ url: '/distribution/open', method: 'POST', failMessage: '开通分销失败' });
 }
 
-function getDistributionInviteInfo() {
-  return request({ url: '/distribution/invite-info', method: 'GET', failMessage: '加载邀请信息失败' });
+function getDistributionInviteInfo(query) {
+  return request({ url: '/distribution/invite-info', method: 'GET', data: query, failMessage: '加载邀请信息失败' });
 }
 
 function bindDistribution(inviteCode) {

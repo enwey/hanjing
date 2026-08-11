@@ -1311,7 +1311,8 @@ async function ensureDistributionInviteQrUrl(distributor, req) {
   if (!distributor?.id || !distributor.invite_code) {
     return { url: '', reason: '缺少分销邀请码' };
   }
-  if (distributor.invite_qr_url && distributor.invite_qr_url !== DISTRIBUTION_QRCODE_PLACEHOLDER) {
+  const forceRefresh = String(req?.query?.refreshQr || '') === '1';
+  if (!forceRefresh && distributor.invite_qr_url && distributor.invite_qr_url !== DISTRIBUTION_QRCODE_PLACEHOLDER) {
     return { url: toAbsoluteAssetUrl(req, distributor.invite_qr_url), reason: '' };
   }
 
