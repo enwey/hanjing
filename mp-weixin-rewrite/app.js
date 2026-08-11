@@ -1,4 +1,111 @@
 const distributionApi = require('./api/index');
+const sessionStore = require('./stores/session-store');
+
+const originalPage = Page;
+
+Page = function registerTrackedPage(pageOptions) {
+  const config = pageOptions || {};
+  const originalOnShow = config.onShow;
+  const originalOnHide = config.onHide;
+  const originalOnUnload = config.onUnload;
+
+  config.onShow = function trackedOnShow(...args) {
+    const app = getApp();
+    if (app && app.globalData) {
+      app.globalData.currentRoute = this.route || '';
+    }
+    if (typeof originalOnShow === 'function') {
+      return originalOnShow.apply(this, args);
+    }
+    return undefined;
+  };
+
+  config.onHide = function trackedOnHide(...args) {
+    const app = getApp();
+    if (app && app.globalData && this.route) {
+      app.globalData.lastRoute = this.route;
+    }
+    if (typeof originalOnHide === 'function') {
+      return originalOnHide.apply(this, args);
+    }
+    return undefined;
+  };
+
+  config.onUnload = function trackedOnUnload(...args) {
+    const app = getApp();
+    if (app && app.globalData && this.route) {
+      app.globalData.lastRoute = this.route;
+    }
+    if (typeof originalOnUnload === 'function') {
+      return originalOnUnload.apply(this, args);
+    }
+    return undefined;
+  };
+
+  return originalPage(config);
+};
+
+const PUBLIC_ROUTES = [
+  'pages/auth/login',
+  'pages/auth/agreement/index',
+  'pages/auth/privacy/index',
+];
+
+const TAB_ROUTES = [
+  '/pages/index/index',
+  '/pages/appointment/index',
+  '/pages/treatment/index',
+  '/pages/product/index',
+  '/pages/profile/index',
+];
+
+function normalizeRoute(route) {
+  return String(route || '').replace(/^\//, '').split('?')[0];
+}
+
+function isPublicRoute(route) {
+  return PUBLIC_ROUTES.includes(normalizeRoute(route));
+}
+
+function buildPageUrl(route) {
+  const normalized = normalizeRoute(route);
+  return normalized ? `/${normalized}` : '/pages/index/index';
+}
+
+function buildLoginRedirectUrl(route) {
+  const app = getApp();
+  const backRoute = app && app.globalData ? app.globalData.lastRoute : '';
+  const redirect = `redirect=${encodeURIComponent(buildPageUrl(route))}`;
+  const back = backRoute && !isPublicRoute(backRoute)
+    ? `&back=${encodeURIComponent(buildPageUrl(backRoute))}`
+    : '';
+  return `/pages/auth/login?${redirect}${back}`;
+}
+
+function enforceLoginGuard() {
+  if (sessionStore.isLoggedIn()) {
+    return;
+  }
+  const pages = getCurrentPages();
+  const currentPage = pages[pages.length - 1];
+  const currentRoute = currentPage && currentPage.route ? currentPage.route : 'pages/index/index';
+  if (isPublicRoute(currentRoute)) {
+    return;
+  }
+  const loginUrl = buildLoginRedirectUrl(currentRoute);
+  if (getApp().__redirectingToLogin) {
+    return;
+  }
+  getApp().__redirectingToLogin = true;
+  wx.reLaunch({
+    url: loginUrl,
+    complete() {
+      setTimeout(() => {
+        getApp().__redirectingToLogin = false;
+      }, 300);
+    },
+  });
+}
 
 function clearLegacyObfuscatedAccessToken() {
   const token = wx.getStorageSync('access_token');
@@ -43,7 +150,8 @@ async function tryBindPendingInvite() {
 }
 
 App({
-  globalData: { appName: "鼾静健康诊所" },
+  globalData: { appName: "鼾静健康诊所", currentRoute: '', lastRoute: '' },
+  __redirectingToLogin: false,
   onLaunch(options) {
     clearLegacyObfuscatedAccessToken();
     const inviteCode = parseInviteCodeFromLaunchOptions(options);
@@ -88,11 +196,17 @@ App({
         });
       });
     }
+    setTimeout(() => {
+      enforceLoginGuard();
+    }, 0);
   },
   onShow(options) {
     clearLegacyObfuscatedAccessToken();
     const inviteCode = parseInviteCodeFromLaunchOptions(options);
     if (inviteCode) wx.setStorageSync("pending_invite_code", inviteCode);
     tryBindPendingInvite();
+    setTimeout(() => {
+      enforceLoginGuard();
+    }, 0);
   },
 });

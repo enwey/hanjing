@@ -13,7 +13,7 @@
         bindtap="goMemberDetail"
       >
         <view class="member-avatar data-v-30acdad2">
-          <text class="data-v-30acdad2">{{item.avatarText}}</text>
+          <image class="member-avatar-placeholder data-v-30acdad2" src="/static/images/brand-koala.png" mode="aspectFill" />
         </view>
         <view class="member-info data-v-30acdad2">
           <view class="member-name-row data-v-30acdad2">

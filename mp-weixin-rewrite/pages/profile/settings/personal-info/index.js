@@ -2,6 +2,16 @@ const api = require('../../../../api/index');
 const sessionStore = require('../../../../stores/session-store');
 const { normalizeImageUrl } = require('../../../../common/utils/image-url');
 
+function isPlaceholderNickname(nickname) {
+  const text = String(nickname || '').trim();
+  return !text || text === '微信用户' || text.indexOf('微信用户_') === 0;
+}
+
+function resolveDisplayNickname(nickname) {
+  const text = String(nickname || '').trim();
+  return isPlaceholderNickname(text) ? '尊敬的微信用户' : text;
+}
+
 function getFileExt(path) {
   const match = String(path || '').match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
   const ext = match && match[1] ? match[1].toLowerCase() : 'jpg';
@@ -12,15 +22,19 @@ Page({
   data: {
     loading: true,
     hasLoaded: false,
+    profileSetupMode: false,
     profile: {},
     editing: false,
     nickname: '',
+    nicknameCursor: -1,
     gender: 1,
     birthday: '',
     idCard: '',
+    idCardCursor: -1,
     maxBirthday: '2026-07-23',
     avatarText: '?',
     avatarUrl: '',
+    pendingAvatarPath: '',
     displayIdCard: '未认证',
     displayCardNo: '未生成',
     displayGender: '男',
@@ -29,6 +43,15 @@ Page({
     maleChipClass: 'chip data-v-acab1652 active',
     femaleChipClass: 'chip data-v-acab1652',
     avatarUploading: false,
+  },
+
+  onLoad(options = {}) {
+    const profileSetupMode = String(options.fromLogin || '') === '1';
+    const autoEdit = String(options.autoEdit || '') === '1';
+    this.setData({
+      profileSetupMode,
+      editing: autoEdit,
+    });
   },
 
   onShow() {
@@ -48,11 +71,13 @@ Page({
         hasLoaded: true,
         loading: false,
         profile,
-        editing: false,
-        nickname: profile.nickname || '',
+        editing: this.data.editing || this.data.profileSetupMode,
+        nickname: resolveDisplayNickname(profile.nickname),
+        nicknameCursor: String(resolveDisplayNickname(profile.nickname) || '').length,
         gender: Number(profile.gender || 1),
         birthday: profile.birthday || '',
         idCard: profile.idCard || profile.id_card || '',
+        idCardCursor: String(profile.idCard || profile.id_card || '').length,
       });
     } catch (error) {
       this.setData({ loading: false });
@@ -69,18 +94,34 @@ Page({
     this.applyProfileData({
       editing: false,
       gender: Number(profile.gender || 1),
-      nickname: profile.nickname || '',
+      nickname: resolveDisplayNickname(profile.nickname),
+      nicknameCursor: String(resolveDisplayNickname(profile.nickname) || '').length,
       idCard: profile.idCard || profile.id_card || '',
+      idCardCursor: String(profile.idCard || profile.id_card || '').length,
       birthday: profile.birthday || '',
+      pendingAvatarPath: '',
+      avatarUrl: normalizeImageUrl(profile.avatar || profile.avatarUrl || profile.avatar_url),
     });
   },
 
   handleNicknameInput(event) {
-    this.applyProfileData({ nickname: event.detail.value || '' });
+    const value = event.detail.value || '';
+    this.applyProfileData({ nickname: value, nicknameCursor: value.length });
   },
 
   handleIdCardInput(event) {
-    this.applyProfileData({ idCard: event.detail.value || '' });
+    const value = event.detail.value || '';
+    this.applyProfileData({ idCard: value, idCardCursor: value.length });
+  },
+
+  handleNicknameFocus() {
+    const nickname = String(this.data.nickname || '');
+    this.setData({ nicknameCursor: nickname.length });
+  },
+
+  handleIdCardFocus() {
+    const idCard = String(this.data.idCard || '');
+    this.setData({ idCardCursor: idCard.length });
   },
 
   selectMale() {
@@ -101,42 +142,17 @@ Page({
       wx.showToast({ title: '未选择头像', icon: 'none' });
       return;
     }
-    this.setData({ avatarUploading: true });
-    wx.showLoading({ title: '更新头像中...' });
-    try {
-      const fileBuffer = await new Promise((resolve, reject) => {
-        wx.getFileSystemManager().readFile({
-          filePath: avatarPath,
-          success: (result) => resolve(result.data),
-          fail: reject,
-        });
-      });
-      const uploadResponse = await api.uploadFile(fileBuffer, getFileExt(avatarPath));
-      const uploadData = (uploadResponse && uploadResponse.data) || uploadResponse || {};
-      if (!uploadData.url) {
-        throw new Error('头像上传失败');
-      }
-      const profileResponse = await api.updateUserProfile({ avatar: uploadData.url });
-      const profile = (profileResponse && profileResponse.data) || profileResponse || {};
-      sessionStore.state.profile = profile;
-      this.applyProfileData({
-        profile,
-        avatarUrl: normalizeImageUrl(profile.avatar || uploadData.url),
-      });
-      wx.hideLoading();
-      wx.showToast({ title: '头像已更新', icon: 'success' });
-    } catch (error) {
-      wx.hideLoading();
-      wx.showToast({ title: (error && error.message) || '头像更新失败', icon: 'none' });
-    } finally {
-      this.setData({ avatarUploading: false });
-    }
+    this.applyProfileData({
+      pendingAvatarPath: avatarPath,
+      avatarUrl: avatarPath,
+    });
+    wx.showToast({ title: '头像已选择', icon: 'success' });
   },
 
   applyProfileData(updates) {
     const nextData = Object.assign({}, this.data, updates);
     const profile = nextData.profile || {};
-    const nickname = String(nextData.nickname || profile.nickname || '').trim();
+    const nickname = String(nextData.nickname || resolveDisplayNickname(profile.nickname) || '').trim();
     const birthday = nextData.birthday || '';
     const gender = Number(nextData.gender || 1);
     const avatarUrl = normalizeImageUrl(nextData.avatarUrl || profile.avatar || profile.avatarUrl || profile.avatar_url);
@@ -159,6 +175,7 @@ Page({
   async saveProfile() {
     const nickname = String(this.data.nickname || '').trim();
     const idCard = String(this.data.idCard || '').trim();
+    const pendingAvatarPath = String(this.data.pendingAvatarPath || '').trim();
     if (!nickname) {
       wx.showToast({ title: '请输入昵称', icon: 'none' });
       return;
@@ -168,18 +185,35 @@ Page({
       return;
     }
     try {
+      this.setData({ avatarUploading: Boolean(pendingAvatarPath) });
+      if (pendingAvatarPath) {
+        wx.showLoading({ title: '保存资料中...' });
+      }
+      let avatar = (this.data.profile && this.data.profile.avatar) || '';
+      if (pendingAvatarPath) {
+        const uploadResponse = await api.uploadLocalFile(pendingAvatarPath, getFileExt(pendingAvatarPath));
+        const uploadData = (uploadResponse && uploadResponse.data) || uploadResponse || {};
+        if (!uploadData.url) {
+          throw new Error('上传文件失败');
+        }
+        avatar = uploadData.url;
+      }
       const response = await api.updateUserProfile({
         nickname,
         gender: this.data.gender,
         birthday: this.data.birthday,
         idCard,
-        avatar: (this.data.profile && this.data.profile.avatar) || '',
+        avatar,
       });
       const profile = (response && response.data) || response || {};
       sessionStore.state.profile = profile;
+      wx.hideLoading();
       wx.showToast({ title: '保存成功', icon: 'success' });
+      this.setData({ profileSetupMode: false, editing: false, pendingAvatarPath: '', avatarUploading: false });
       await this.loadProfile();
     } catch (error) {
+      wx.hideLoading();
+      this.setData({ avatarUploading: false });
       wx.showToast({ title: (error && error.message) || '保存失败', icon: 'none' });
     }
   },

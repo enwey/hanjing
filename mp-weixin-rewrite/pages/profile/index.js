@@ -30,6 +30,16 @@ const MENU_GROUPS = [
   },
 ];
 
+function getAvatarColor(name) {
+  const colors = ['#3B6BF5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+  const text = String(name || '');
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = text.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
 function normalizeLevelLabel(level) {
   if (!level) {
     return '普通会员';
@@ -48,6 +58,22 @@ function normalizeLevelLabel(level) {
 
 function isPremiumServiceLevel(level) {
   return level === 'gold' || level === 'diamond';
+}
+
+function isPlaceholderNickname(nickname) {
+  const text = String(nickname || '').trim();
+  return !text || text === '微信用户' || text.indexOf('微信用户_') === 0;
+}
+
+function resolveDisplayNickname(profile) {
+  const nickname = String((profile && (profile.nickname || profile.name)) || '').trim();
+  return isPlaceholderNickname(nickname) ? '尊敬的微信用户' : nickname;
+}
+
+function needsProfileCompletion(profile) {
+  const avatar = String(profile && (profile.avatar || profile.avatarUrl || profile.avatar_url) || '').trim();
+  const nickname = String(profile && (profile.nickname || profile.name) || '').trim();
+  return isPlaceholderNickname(nickname) || !avatar || avatar === '/static/demo/avatar.jpg';
 }
 
 function resolveMemberLevelLabel(profile, memberInfo, memberLevels) {
@@ -89,9 +115,11 @@ Page({
   data: {
     isLoggedIn: false,
     hasLoaded: false,
+    showProfileSetupCard: false,
     nickname: '点击登录',
     avatarText: '👤',
     avatarUrl: '',
+    avatarBg: '#3b6bf5',
     memberLevelLabel: '未登录',
     notificationsUnreadCount: 0,
     serviceUnreadCount: 0,
@@ -111,6 +139,7 @@ Page({
         nickname: isLoggedIn ? '加载中...' : '点击登录',
         avatarText: '👤',
         avatarUrl: '',
+        avatarBg: '#3b6bf5',
         memberLevelLabel: isLoggedIn ? '会员信息加载中' : '未登录',
       });
     } else {
@@ -120,9 +149,11 @@ Page({
     if (!isLoggedIn) {
       this.setData({
         hasLoaded: true,
+        showProfileSetupCard: false,
         nickname: '点击登录',
         avatarText: '👤',
         avatarUrl: '',
+        avatarBg: '#3b6bf5',
         memberLevelLabel: '未登录',
         notificationsUnreadCount: 0,
         serviceUnreadCount: 0,
@@ -138,7 +169,7 @@ Page({
         api.getNotifications().catch(() => null),
         api.getImUnreadCount().catch(() => null),
       ]);
-      const nickname = (profile && (profile.nickname || profile.name)) || '已登录用户';
+      const nickname = resolveDisplayNickname(profile);
       const memberInfo =
         memberInfoResponse && memberInfoResponse.code === 0
           ? memberInfoResponse.data
@@ -169,9 +200,11 @@ Page({
 
       this.setData({
         hasLoaded: true,
+        showProfileSetupCard: needsProfileCompletion(profile),
         nickname,
         avatarText: nickname.slice(0, 1),
         avatarUrl: normalizeImageUrl(profile && (profile.avatar || profile.avatarUrl || profile.avatar_url)),
+        avatarBg: getAvatarColor(nickname),
         memberLevelLabel: resolveMemberLevelLabel(profile, memberInfo, memberLevels),
         notificationsUnreadCount,
         serviceUnreadCount,
@@ -180,9 +213,11 @@ Page({
     } catch (error) {
       if (!this.data.hasLoaded) {
         this.setData({
-          nickname: '已登录用户',
-          avatarText: '已',
+          showProfileSetupCard: false,
+          nickname: '尊敬的微信用户',
+          avatarText: '尊',
           avatarUrl: '',
+          avatarBg: getAvatarColor('尊敬的微信用户'),
           memberLevelLabel: '会员信息加载失败',
           notificationsUnreadCount: 0,
           serviceUnreadCount: 0,
@@ -197,6 +232,14 @@ Page({
       return;
     }
     navigation.openPage('/pages/profile/settings/personal-info/index');
+  },
+
+  handleCompleteProfile() {
+    if (!this.data.isLoggedIn) {
+      navigation.openPage('/pages/auth/login');
+      return;
+    }
+    navigation.openPage('/pages/profile/settings/personal-info/index?fromLogin=1&autoEdit=1');
   },
 
   openEntry(event) {

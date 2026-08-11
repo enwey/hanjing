@@ -76,7 +76,9 @@
 .form-row.data-v-acab1652 {
   display: flex;
   align-items: center;
+  min-height: 72px;
   padding: 16px;
+  box-sizing: border-box;
 }
 .form-row.data-v-acab1652:not(:last-child) {
   border-bottom: 1px solid #f3f4f6;
@@ -84,7 +86,7 @@
 .form-label.data-v-acab1652 {
   font-size: 14px;
   color: #6b7280;
-  width: 70px;
+  width: 98px;
   flex-shrink: 0;
 }
 .form-value.data-v-acab1652 {
@@ -100,10 +102,53 @@
   flex: 1;
   font-size: 15px;
   color: #1f2937;
-  text-align: right;
+  box-sizing: border-box;
+}
+.form-value-input--checkout.data-v-acab1652 {
+  width: 100%;
+  margin-left: 0;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
   background: #f9fafb;
-  border-radius: 6px;
-  padding: 6px 10px;
+  border: 1px solid rgba(59, 107, 245, 0.08);
+  font-size: 15px;
+  line-height: 40px;
+  color: #1f2937;
+  text-align: right;
+  vertical-align: middle;
+}
+.form-value-input__placeholder.data-v-acab1652 {
+  color: #9ca3af;
+}
+.form-value-input--picker.data-v-acab1652 {
+  display: block;
+}
+.picker-content.data-v-acab1652 {
+  width: 100%;
+  height: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  white-space: nowrap;
+}
+.picker-text.data-v-acab1652 {
+  flex: 0 1 auto;
+  min-height: 40px;
+  line-height: 40px;
+  text-align: right;
+  color: #1f2937;
+  white-space: nowrap;
+}
+.picker-icon.data-v-acab1652 {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: block;
+  opacity: 0.65;
 }
 .avatar.data-v-acab1652 {
   width: 48px;
@@ -115,16 +160,22 @@
   justify-content: center;
   margin-left: auto;
   overflow: hidden;
+  position: relative;
 }
-.avatar text.data-v-acab1652 {
-  color: #fff;
-  font-size: 20px;
-  font-weight: 700;
+
+.avatar-placeholder.data-v-acab1652 {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: absolute;
+  inset: 0;
 }
 .avatar-image.data-v-acab1652 {
   width: 100%;
   height: 100%;
   display: block;
+  position: absolute;
+  inset: 0;
 }
 .avatar-picker.data-v-acab1652 {
   margin-left: auto;

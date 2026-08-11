@@ -1,5 +1,5 @@
 <view class="page-container">
-  <hj-navbar title="微信授权登录" showBack="{{true}}" />
+  <hj-navbar title="微信授权登录" />
   <view class="page-content login-page">
     <view class="brand-section">
       <view class="logo-container">
@@ -34,10 +34,6 @@
         bindgetphonenumber="onGetPhoneNumber"
       >
         微信手机号一键登录
-      </button>
-
-      <button class="cancel-btn" bindtap="onCancel">
-        暂不登录
       </button>
     </view>
 

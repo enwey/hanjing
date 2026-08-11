@@ -4,7 +4,7 @@
   <view class="page-content" wx:if="{{doctorLoaded}}">
     <view class="doctor-detail-hero">
       <view class="doc-avatar">
-        <text class="doc-avatar-text">{{avatarText}}</text>
+        <image class="doc-avatar-placeholder" src="/static/images/brand-koala.png" mode="aspectFill" />
         <image
           wx:if="{{avatarUrl}}"
           class="doc-avatar-image {{avatarLoaded ? 'doc-avatar-image--loaded' : ''}}"

@@ -33,7 +33,9 @@
     <view class="page-section team-list-wrap" wx:else>
       <view class="member-list">
         <view wx:for="{{members}}" wx:key="id" class="member-card">
-          <view class="member-card__avatar">{{item.avatarText}}</view>
+          <view class="member-card__avatar">
+            <image class="member-card__avatar-placeholder" src="/static/images/brand-koala.png" mode="aspectFill"></image>
+          </view>
           <view class="member-card__body">
             <view class="member-card__name-row">
               <text class="member-card__name">{{item.nickname}}</text>

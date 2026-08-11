@@ -1,6 +1,8 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { query, get, run, transaction, autoUpdateExpiredAppointments } from '../db.js';
 import { generateUniquePatientNo } from '../patientNo.js';
 import {
@@ -1674,7 +1676,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
         await run(`UPDATE users SET openid = ? WHERE id = ?`, [openid, existingUserByPhone.id]);
         user = await get(`SELECT * FROM users WHERE id = ?`, [existingUserByPhone.id]);
       } else {
-        const nickname = `微信用户_${code.slice(-4)}`;
+        const nickname = '尊敬的微信用户';
         const result = await run(
           `INSERT INTO users (openid, nickname, phone, member_level, points, total_spent) VALUES (?, ?, ?, 'normal', 0, 0)`,
           [openid, nickname, encryptedPhone]
@@ -5573,19 +5575,57 @@ app.get('/api/v1/user/medical-records', authenticateWxToken, async (req, res) =>
   }
 });
 
+function extractMultipartFileBuffer(bodyBuffer, contentType) {
+  const contentTypeText = String(contentType || '');
+  const boundaryMatch = contentTypeText.match(/boundary=([^;]+)/i);
+  if (!boundaryMatch || !boundaryMatch[1] || !Buffer.isBuffer(bodyBuffer)) {
+    return null;
+  }
+
+  const boundary = `--${boundaryMatch[1]}`;
+  const rawText = bodyBuffer.toString('latin1');
+  const firstBoundaryIndex = rawText.indexOf(boundary);
+  if (firstBoundaryIndex < 0) {
+    return null;
+  }
+
+  const headerStart = rawText.indexOf('\r\n', firstBoundaryIndex);
+  const dataStartMarker = '\r\n\r\n';
+  const dataStart = rawText.indexOf(dataStartMarker, headerStart);
+  if (dataStart < 0) {
+    return null;
+  }
+
+  const fileStart = dataStart + dataStartMarker.length;
+  const fileEnd = rawText.indexOf(`\r\n${boundary}`, fileStart);
+  if (fileEnd < 0) {
+    return null;
+  }
+
+  return Buffer.from(rawText.slice(fileStart, fileEnd), 'latin1');
+}
+
 // 20.1 Upload File (POST)
-app.post('/api/v1/user/upload', authenticateWxToken, express.raw({ type: 'application/octet-stream', limit: '10mb' }), async (req, res) => {
+app.post('/api/v1/user/upload', authenticateWxToken, express.raw({ type: () => true, limit: '10mb' }), async (req, res) => {
   try {
     const rawExt = (req.query.ext || 'jpg').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     const whitelist = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'mp3', 'm4a', 'wav', 'aac', 'pcm', 'mp4'];
     const ext = whitelist.includes(rawExt) ? rawExt : 'jpg';
+    const contentType = String(req.headers['content-type'] || '');
+    const fileBuffer = contentType.toLowerCase().includes('multipart/form-data')
+      ? extractMultipartFileBuffer(req.body, contentType)
+      : (Buffer.isBuffer(req.body) ? req.body : null);
+
+    if (!fileBuffer || !fileBuffer.length) {
+      return res.status(400).json({ code: 400, message: '上传文件内容为空' });
+    }
 
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
     const uploadDir = './uploads/medical-attachments';
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-    fs.writeFileSync(`${uploadDir}/${filename}`, req.body);
+    fs.writeFileSync(`${uploadDir}/${filename}`, fileBuffer);
     const fileUrl = `/uploads/medical-attachments/${filename}`;
     res.json({
       code: 0,
