@@ -1,16 +1,49 @@
-const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
+
+const TAB_ROUTES = [
+  '/pages/index/index',
+  '/pages/appointment/index',
+  '/pages/treatment/index',
+  '/pages/product/index',
+  '/pages/profile/index',
+];
+
+function readRedirectUrl(options) {
+  const target = options && options.redirect ? decodeURIComponent(options.redirect) : '';
+  return String(target || '').trim();
+}
+
+function readBackUrl(options) {
+  const target = options && options.back ? decodeURIComponent(options.back) : '';
+  return String(target || '').trim();
+}
+
+function resolveAfterLogin(redirectUrl) {
+  if (!redirectUrl || !redirectUrl.startsWith('/pages/')) {
+    return { type: 'tab', url: '/pages/profile/index' };
+  }
+  if (TAB_ROUTES.includes(redirectUrl.split('?')[0])) {
+    return { type: 'tab', url: redirectUrl.split('?')[0] };
+  }
+  return { type: 'relaunch', url: redirectUrl };
+}
 
 Page({
   data: {
     agreed: false,
     isDevTools: false,
+    redirectUrl: '',
+    backUrl: '',
   },
 
-  onLoad() {
+  onLoad(options = {}) {
     try {
       const sysInfo = wx.getSystemInfoSync();
-      this.setData({ isDevTools: sysInfo.platform === 'devtools' });
+      this.setData({
+        isDevTools: sysInfo.platform === 'devtools',
+        redirectUrl: readRedirectUrl(options),
+        backUrl: readBackUrl(options),
+      });
     } catch (error) {
       console.error(error);
     }
@@ -29,9 +62,14 @@ Page({
     wx.navigateTo({ url: '/pages/auth/privacy/index' });
   },
 
-  onCancel() {
-    if (getCurrentPages().length > 1) {
-      wx.navigateBack();
+  handleBack() {
+    const backUrl = String(this.data.backUrl || '').trim();
+    if (backUrl) {
+      if (TAB_ROUTES.includes(backUrl.split('?')[0])) {
+        wx.switchTab({ url: backUrl.split('?')[0] });
+        return;
+      }
+      wx.reLaunch({ url: backUrl });
       return;
     }
     wx.switchTab({ url: '/pages/index/index' });
@@ -41,6 +79,15 @@ Page({
     if (!this.data.agreed) {
       wx.showToast({ title: '请先同意用户协议与隐私政策', icon: 'none' });
     }
+  },
+
+  navigateAfterLogin() {
+    const target = resolveAfterLogin(this.data.redirectUrl);
+    if (target.type === 'tab') {
+      wx.switchTab({ url: target.url });
+      return;
+    }
+    wx.reLaunch({ url: target.url });
   },
 
   async onGetPhoneNumber(event) {
@@ -61,11 +108,7 @@ Page({
       wx.hideLoading();
       wx.showToast({ title: '登录成功', icon: 'success' });
       setTimeout(() => {
-        if (getCurrentPages().length > 1) {
-          wx.navigateBack();
-        } else {
-          wx.switchTab({ url: '/pages/profile/index' });
-        }
+        this.navigateAfterLogin();
       }, 1200);
     } catch (error) {
       wx.hideLoading();
@@ -102,11 +145,7 @@ Page({
           wx.hideLoading();
           wx.showToast({ title: '登录成功', icon: 'success' });
           setTimeout(() => {
-            if (getCurrentPages().length > 1) {
-              wx.navigateBack();
-            } else {
-              wx.switchTab({ url: '/pages/profile/index' });
-            }
+            this.navigateAfterLogin();
           }, 1200);
         } catch (error) {
           wx.hideLoading();

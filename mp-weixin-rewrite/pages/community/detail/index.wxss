@@ -8,7 +8,7 @@
 .post-card { padding: 26rpx 24rpx 24rpx; border-radius: 28rpx; background: #ffffff; box-shadow: 0 12rpx 28rpx rgba(15,23,42,0.05); }
 .post-header { display: flex; align-items: flex-start; gap: 18rpx; margin-bottom: 18rpx; }
 .post-avatar { width: 80rpx; height: 80rpx; border-radius: 9999rpx; overflow: hidden; background: #e5e7eb; flex-shrink: 0; position: relative; }
-.post-avatar__text { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 28rpx; font-weight: 700; }
+.post-avatar__placeholder { width: 100%; height: 100%; display: block; position: absolute; inset: 0; }
 .post-avatar__image { width: 100%; height: 100%; position: absolute; inset: 0; opacity: 0; }
 .post-avatar__image--loaded { opacity: 1; }
 .post-author { flex: 1; min-width: 0; }
@@ -51,7 +51,7 @@
 .comment-item { padding: 22rpx; border-radius: 24rpx; background: #ffffff; box-shadow: 0 8rpx 20rpx rgba(15,23,42,0.04); }
 .comment-item__header { display: flex; align-items: center; gap: 14rpx; margin-bottom: 12rpx; }
 .comment-item__avatar { width: 64rpx; height: 64rpx; border-radius: 9999rpx; overflow: hidden; background: #e5e7eb; position: relative; }
-.comment-item__avatar-text { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 22rpx; font-weight: 700; }
+.comment-item__avatar-placeholder { width: 100%; height: 100%; display: block; position: absolute; inset: 0; }
 .comment-item__avatar-image { width: 100%; height: 100%; position: absolute; inset: 0; opacity: 0; }
 .comment-item__avatar-image--loaded { opacity: 1; }
 .comment-item__info { flex: 1; }
@@ -73,7 +73,7 @@
 .comment-bar__row { display: flex; align-items: center; gap: 14rpx; }
 .comment-bar__row--expanded { align-items: flex-start; }
 .comment-bar__avatar { width: 58rpx; height: 58rpx; border-radius: 9999rpx; background: #eef2ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; position: relative; }
-.comment-bar__avatar-text { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 22rpx; font-weight: 700; }
+.comment-bar__avatar-placeholder { width: 100%; height: 100%; display: block; position: absolute; inset: 0; }
 .comment-bar__avatar-image { width: 100%; height: 100%; position: absolute; inset: 0; opacity: 0; }
 .comment-bar__avatar-image--loaded { opacity: 1; }
 .comment-bar__field { flex: 1; height: 76rpx; padding: 0 10rpx 0 22rpx; border-radius: 9999rpx; background: #f5f7fb; display: flex; align-items: center; gap: 12rpx; box-sizing: border-box; }

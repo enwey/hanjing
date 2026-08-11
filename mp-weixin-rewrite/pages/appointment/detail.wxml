@@ -44,7 +44,7 @@
 
     <view class="card-premium doctor-card">
       <view class="doc-avatar-large">
-        <text class="doc-avatar-text-large">{{doctorAvatar}}</text>
+        <image class="doc-avatar-placeholder-large" src="/static/images/brand-koala.png" mode="aspectFill" />
         <image
           wx:if="{{doctorAvatarUrl}}"
           class="doc-avatar-image-large {{doctorAvatarLoaded ? 'doc-avatar-image-large--loaded' : ''}}"

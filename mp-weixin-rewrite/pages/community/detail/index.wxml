@@ -16,7 +16,7 @@
     <view class="post-card">
       <view class="post-header">
         <view class="post-avatar">
-          <text class="post-avatar__text" style="background: {{postDetail.avatarBg}}">{{postDetail.avatarText}}</text>
+          <image class="post-avatar__placeholder" src="/static/images/brand-koala.png" mode="aspectFill"></image>
           <image wx:if="{{postDetail.avatar}}" class="post-avatar__image {{postDetail.avatarLoaded ? 'post-avatar__image--loaded' : ''}}" src="{{postDetail.avatar}}" mode="aspectFill" bindload="handlePostAvatarLoad" binderror="handlePostAvatarError"></image>
         </view>
         <view class="post-author">
@@ -71,7 +71,7 @@
         <view wx:for="{{commentsList}}" wx:key="id" class="comment-item">
           <view class="comment-item__header">
             <view class="comment-item__avatar">
-              <text class="comment-item__avatar-text" style="background: {{item.avatarBg}}">{{item.avatarText}}</text>
+              <image class="comment-item__avatar-placeholder" src="/static/images/brand-koala.png" mode="aspectFill"></image>
               <image wx:if="{{item.avatar}}" class="comment-item__avatar-image {{item.avatarLoaded ? 'comment-item__avatar-image--loaded' : ''}}" src="{{item.avatar}}" mode="aspectFill" data-comment-id="{{item.id}}" bindload="handleCommentAvatarLoad" binderror="handleCommentAvatarError"></image>
             </view>
             <view class="comment-item__info">
@@ -103,7 +103,7 @@
   <view wx:if="{{postDetail}}" class="comment-bar">
     <view class="comment-bar__row {{composerExpanded ? 'comment-bar__row--expanded' : ''}}">
       <view class="comment-bar__avatar">
-        <text class="comment-bar__avatar-text" style="background: {{currentUserAvatar.avatarBg}}">{{currentUserAvatar.avatarText}}</text>
+        <image class="comment-bar__avatar-placeholder" src="/static/images/brand-koala.png" mode="aspectFill"></image>
         <image wx:if="{{currentUserAvatar.avatar}}" class="comment-bar__avatar-image {{currentUserAvatar.avatarLoaded ? 'comment-bar__avatar-image--loaded' : ''}}" src="{{currentUserAvatar.avatar}}" mode="aspectFill" bindload="handleCurrentUserAvatarLoad" binderror="handleCurrentUserAvatarError"></image>
       </view>
       <view class="comment-bar__field {{composerExpanded ? 'comment-bar__field--expanded' : ''}}" bindtap="openComposer">

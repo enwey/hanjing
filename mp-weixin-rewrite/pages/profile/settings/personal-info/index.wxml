@@ -14,18 +14,18 @@
             loading="{{avatarUploading}}"
           >
             <view class="avatar data-v-acab1652">
+              <image class="avatar-placeholder data-v-acab1652" src="/static/images/brand-koala.png" mode="aspectFill" />
               <image wx:if="{{avatarUrl}}" class="avatar-image data-v-acab1652" src="{{avatarUrl}}" mode="aspectFill" />
-              <text wx:else class="data-v-acab1652">{{avatarText}}</text>
             </view>
           </button>
           <view wx:else class="avatar data-v-acab1652">
+            <image class="avatar-placeholder data-v-acab1652" src="/static/images/brand-koala.png" mode="aspectFill" />
             <image wx:if="{{avatarUrl}}" class="avatar-image data-v-acab1652" src="{{avatarUrl}}" mode="aspectFill" />
-            <text wx:else class="data-v-acab1652">{{avatarText}}</text>
           </view>
         </view>
         <view class="form-row data-v-acab1652">
           <text class="form-label data-v-acab1652">昵称</text>
-          <input wx:if="{{editing}}" class="form-value-input data-v-acab1652" value="{{nickname}}" bindinput="handleNicknameInput" />
+          <input wx:if="{{editing}}" class="form-value-input form-value-input--checkout data-v-acab1652" type="nickname" placeholder="请输入昵称" placeholder-class="form-value-input__placeholder data-v-acab1652" value="{{nickname}}" cursor="{{nicknameCursor}}" bindfocus="handleNicknameFocus" bindinput="handleNicknameInput" />
           <text wx:else class="form-value data-v-acab1652">{{profile.nickname}}</text>
         </view>
         <view class="form-row data-v-acab1652">
@@ -34,11 +34,11 @@
         </view>
         <view class="form-row data-v-acab1652">
           <text class="form-label data-v-acab1652">身份证号</text>
-          <input wx:if="{{editing}}" class="form-value-input data-v-acab1652" placeholder="请输入18位身份证号" maxlength="18" value="{{idCard}}" bindinput="handleIdCardInput" />
+          <input wx:if="{{editing}}" class="form-value-input form-value-input--checkout data-v-acab1652" placeholder="请输入18位身份证号" placeholder-class="form-value-input__placeholder data-v-acab1652" maxlength="18" value="{{idCard}}" cursor="{{idCardCursor}}" bindfocus="handleIdCardFocus" bindinput="handleIdCardInput" />
           <text wx:else class="form-value disabled data-v-acab1652">{{displayIdCard}}</text>
         </view>
         <view class="form-row data-v-acab1652">
-          <text class="form-label data-v-acab1652">病历号（就诊卡号）</text>
+          <text class="form-label data-v-acab1652">病历号</text>
           <text class="form-value disabled data-v-acab1652">{{displayCardNo}}</text>
         </view>
         <view class="form-row data-v-acab1652">
@@ -51,8 +51,11 @@
         </view>
         <view class="form-row data-v-acab1652">
           <text class="form-label data-v-acab1652">生日</text>
-          <picker wx:if="{{editing}}" class="form-value-input data-v-acab1652" mode="date" value="{{birthday}}" start="1900-01-01" end="{{maxBirthday}}" bindchange="handleBirthdayChange">
-            <view class="picker-text data-v-acab1652" style="min-height: 20px; line-height: 20px;">{{birthdayPickerText}}</view>
+          <picker wx:if="{{editing}}" class="form-value-input form-value-input--checkout form-value-input--picker data-v-acab1652" mode="date" value="{{birthday}}" start="1900-01-01" end="{{maxBirthday}}" bindchange="handleBirthdayChange">
+            <view class="picker-content data-v-acab1652">
+              <text class="picker-text data-v-acab1652">{{birthdayPickerText}}</text>
+              <image class="picker-icon data-v-acab1652" src="/static/icons/calendar.svg" mode="aspectFit" />
+            </view>
           </picker>
           <text wx:else class="form-value data-v-acab1652">{{birthdayDisplayText}}</text>
         </view>

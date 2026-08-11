@@ -1,4 +1,4 @@
-const { request } = require('../request');
+const { request, apiBaseUrl } = require('../request');
 
 function getUserProfile() {
   return request({ url: '/user/profile', method: 'GET', failMessage: '加载个人资料失败' });
@@ -34,6 +34,34 @@ function getMedicalRecords(query) {
 
 function uploadFile(buffer, ext) {
   return request({ url: '/user/upload?ext=' + (ext || 'jpg'), method: 'POST', data: buffer, header: { 'content-type': 'application/octet-stream' }, failMessage: '上传文件失败' });
+}
+
+function uploadLocalFile(filePath, ext) {
+  const accessToken = String(wx.getStorageSync('access_token') || '').trim();
+  return new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: apiBaseUrl + '/user/upload?ext=' + encodeURIComponent(ext || 'jpg'),
+      filePath,
+      name: 'file',
+      header: accessToken ? { Authorization: 'Bearer ' + accessToken } : {},
+      success(result) {
+        let payload = result.data;
+        if (typeof payload === 'string') {
+          try {
+            payload = JSON.parse(payload);
+          } catch (error) {}
+        }
+        if (result.statusCode >= 200 && result.statusCode < 300) {
+          resolve(payload);
+          return;
+        }
+        reject(new Error((payload && payload.message) || '上传文件失败'));
+      },
+      fail(error) {
+        reject(new Error((error && error.errMsg) || '上传文件失败'));
+      },
+    });
+  });
 }
 
 function addMedicalAttachment(recordId, url) {
@@ -102,6 +130,7 @@ module.exports = {
   deleteFamilyMember,
   getMedicalRecords,
   uploadFile,
+  uploadLocalFile,
   addMedicalAttachment,
   getMemberInfo,
   getMemberLevels,

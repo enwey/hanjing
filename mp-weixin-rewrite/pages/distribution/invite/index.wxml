@@ -83,7 +83,7 @@
 
   <view class="invite-actions">
     <view class="invite-actions__button invite-actions__button--secondary" bindtap="handleSavePoster">
-      <image class="invite-actions__icon" src="/static/icons/poster-save.svg" mode="aspectFit" />
+      <image class="invite-actions__icon" src="/static/icons/poster-save-share-style.svg" mode="aspectFit" />
       <text class="invite-actions__text">保存海报</text>
     </view>
     <button class="invite-actions__button invite-actions__button--primary" open-type="share">

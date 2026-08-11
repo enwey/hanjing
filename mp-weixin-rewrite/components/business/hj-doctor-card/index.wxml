@@ -1,6 +1,6 @@
 <view class="doctor-card" bindtap="handleTap">
   <view class="doctor-avatar">
-    <text class="doctor-avatar-text">{{avatarText}}</text>
+    <image class="doctor-avatar-placeholder" src="/static/images/brand-koala.png" mode="aspectFill" />
     <image
       wx:if="{{avatarUrl}}"
       class="doctor-avatar-image {{avatarLoaded ? 'doctor-avatar-image--loaded' : ''}}"

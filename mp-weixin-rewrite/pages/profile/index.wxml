@@ -4,15 +4,8 @@
   <view class="page-content">
     <view class="user-card" bindtap="handleProfileTap">
       <view class="user-avatar">
-        <block wx:if="{{avatarUrl}}">
-          <image class="user-avatar-image" src="{{avatarUrl}}" mode="aspectFill" />
-        </block>
-        <block wx:elif="{{avatarText === '👤'}}">
-          <image class="user-avatar-ecg" src="/static/icons/avatar-ecg.svg" />
-        </block>
-        <block wx:else>
-          <text class="user-avatar-text">{{avatarText}}</text>
-        </block>
+        <image class="user-avatar-placeholder" src="/static/images/brand-koala.png" mode="aspectFill" />
+        <image wx:if="{{avatarUrl}}" class="user-avatar-image" src="{{avatarUrl}}" mode="aspectFill" />
       </view>
       <view class="user-info">
         <text class="user-name">{{nickname}}</text>
@@ -21,6 +14,14 @@
         </view>
       </view>
       <text class="user-arrow">›</text>
+    </view>
+
+    <view wx:if="{{showProfileSetupCard}}" class="profile-setup-card">
+      <view class="profile-setup-card__body">
+        <text class="profile-setup-card__title">完善资料</text>
+        <text class="profile-setup-card__desc">完善资料，有助于客服和门诊更好地服务你。</text>
+      </view>
+      <view class="profile-setup-card__action" bindtap="handleCompleteProfile">去完善</view>
     </view>
 
     <view wx:for="{{menuGroups}}" wx:key="title" class="menu-group">
