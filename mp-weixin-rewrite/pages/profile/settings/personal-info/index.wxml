@@ -30,7 +30,7 @@
         </view>
         <view class="form-row data-v-acab1652">
           <text class="form-label data-v-acab1652">手机号</text>
-          <text class="form-value disabled data-v-acab1652">{{profile.phone}}</text>
+          <text class="form-value disabled data-v-acab1652">{{profile.phone || '未绑定'}}</text>
         </view>
         <view class="form-row data-v-acab1652">
           <text class="form-label data-v-acab1652">身份证号</text>

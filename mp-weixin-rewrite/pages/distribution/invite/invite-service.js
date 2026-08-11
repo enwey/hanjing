@@ -11,6 +11,7 @@ async function loadInviteShareInfo() {
   return {
     inviteCode,
     inviteQrCode: inviteData.inviteQrCode || distributorData.inviteQrCode || '',
+    inviteQrReason: inviteData.inviteQrReason || distributorData.inviteQrReason || '',
     sharePath: inviteData.sharePath || (inviteCode ? '/pages/index/index?inviteCode=' + inviteCode : '/pages/index/index'),
     shareTitle: inviteData.shareTitle || '邀请好友体验鼾静健康诊所',
   };

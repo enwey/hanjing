@@ -86,13 +86,18 @@ Page({
   async loadInviteInfo(options = {}) {
     try {
       const inviteInfo = await inviteService.loadInviteShareInfo();
+      const qrNotice = inviteInfo.inviteQrCode
+        ? ''
+        : inviteInfo.inviteQrReason
+          ? `当前环境未生成小程序码：${inviteInfo.inviteQrReason}。将使用邀请码海报进行分享。`
+          : '当前环境未生成小程序码，将使用邀请码海报进行分享。';
       this.setData({
         hasLoaded: true,
         inviteCode: inviteInfo.inviteCode,
         inviteQrCode: inviteInfo.inviteQrCode,
         sharePath: inviteInfo.sharePath,
         shareTitle: inviteInfo.shareTitle,
-        qrUnavailableNotice: inviteInfo.inviteQrCode ? '' : '当前环境未生成小程序码，将使用邀请码海报进行分享。',
+        qrUnavailableNotice: qrNotice,
       });
     } catch (error) {
       wx.showToast({ title: '加载邀请信息失败', icon: 'none' });

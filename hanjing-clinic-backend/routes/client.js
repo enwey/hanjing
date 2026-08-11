@@ -1306,9 +1306,11 @@ async function ensureDistributor(userId, conn = null) {
 }
 
 async function ensureDistributionInviteQrUrl(distributor, req) {
-  if (!distributor?.id || !distributor.invite_code) return '';
+  if (!distributor?.id || !distributor.invite_code) {
+    return { url: '', reason: '缺少分销邀请码' };
+  }
   if (distributor.invite_qr_url && distributor.invite_qr_url !== DISTRIBUTION_QRCODE_PLACEHOLDER) {
-    return toAbsoluteAssetUrl(req, distributor.invite_qr_url);
+    return { url: toAbsoluteAssetUrl(req, distributor.invite_qr_url), reason: '' };
   }
 
   try {
@@ -1336,7 +1338,7 @@ async function ensureDistributionInviteQrUrl(distributor, req) {
         message = data.errmsg || message;
       } catch (error) {}
       console.warn('[Distribution] generate invite qr skipped:', message);
-      return '';
+      return { url: '', reason: message };
     }
 
     const buffer = Buffer.from(await response.arrayBuffer());
@@ -1347,10 +1349,11 @@ async function ensureDistributionInviteQrUrl(distributor, req) {
     fs.writeFileSync(absoluteFilePath, buffer);
     const assetPath = `/uploads/distribution/qrcodes/${fileName}`;
     await run(`UPDATE distributors SET invite_qr_url = ? WHERE id = ?`, [assetPath, distributor.id]);
-    return toAbsoluteAssetUrl(req, assetPath);
+    return { url: toAbsoluteAssetUrl(req, assetPath), reason: '' };
   } catch (error) {
-    console.warn('[Distribution] generate invite qr skipped:', error.message || error);
-    return '';
+    const message = error?.message || '生成邀请二维码失败';
+    console.warn('[Distribution] generate invite qr skipped:', message);
+    return { url: '', reason: message };
   }
 }
 
@@ -1471,7 +1474,9 @@ async function getDistributionSummary(userId, req = null) {
     throw new Error('生成分销身份失败');
   }
 
-  const inviteQrCode = await ensureDistributionInviteQrUrl(distributor, req);
+  const inviteQrResult = await ensureDistributionInviteQrUrl(distributor, req);
+  const inviteQrCode = inviteQrResult.url || '';
+  const inviteQrReason = inviteQrResult.reason || '';
 
   const [lv1, lv2, orderStats, pendingStats] = await Promise.all([
     get(`SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 1`, [userId]),
@@ -1513,6 +1518,7 @@ async function getDistributionSummary(userId, req = null) {
     levelLabel: getDistributorLevelRule(distributor.level).label,
     inviteCode: distributor.invite_code,
     inviteQrCode,
+    inviteQrReason,
     settleDays: featureConfig.settleDays,
     minWithdrawAmount: featureConfig.minWithdrawAmount,
     withdrawFeeRates: featureConfig.withdrawFeeRates
@@ -7037,6 +7043,7 @@ app.get('/api/v1/distribution/invite-info', authenticateWxToken, async (req, res
         isDistributor: summary.isDistributor,
         inviteCode: summary.inviteCode,
         inviteQrCode: summary.inviteQrCode,
+        inviteQrReason: summary.inviteQrReason || '',
         sharePath: `/pages/index/index?inviteCode=${summary.inviteCode}`,
         shareTitle: '邀请你体验鼾静健康诊所，扫码下单可享专业睡眠健康服务'
       }
