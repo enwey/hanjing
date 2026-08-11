@@ -17,7 +17,8 @@ import {
   logAdminAction,
   hashPassword,
   verifyPassword,
-  formatShanghaiDate
+  formatShanghaiDate,
+  decryptPII
 } from '../helpers.js';
 import { sendWechatSubscribeMessage } from '../wechatSubscribe.js';
 import {
@@ -35,6 +36,12 @@ const app = express.Router();
 const PAID_ORDER_STATUSES = ['paid', 'shipping', 'shipped', 'processing', 'completed'];
 const PAID_ORDER_STATUSES_SQL = PAID_ORDER_STATUSES.map(status => `'${status}'`).join(', ');
 const APPOINTMENT_TYPES = new Set(['first', 'followup', 'adjust']);
+
+const isExportRequest = (req) => req.query.is_export === '1' || req.query.is_export === 1;
+const formatAdminPhone = (phone, showFull = false) => {
+  const decrypted = decryptPII(phone);
+  return showFull ? decrypted : maskPhone(decrypted);
+};
 
 const normalizeAppointmentType = (type) => {
   const value = String(type || 'first').trim();
@@ -1136,7 +1143,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
       const list = await query(dataSql, listParams);
       const maskedList = list.map(item => ({
         ...item,
-        patient_phone: (req.query.is_export === '1' || req.query.is_export === 1) ? item.patient_phone : maskPhone(item.patient_phone)
+        patient_phone: formatAdminPhone(item.patient_phone, isExportRequest(req))
       }));
 
       res.json({
@@ -1161,7 +1168,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
       const list = await query(dataSql, listParams);
       const maskedList = list.map(item => ({
         ...item,
-        patient_phone: (req.query.is_export === '1' || req.query.is_export === 1) ? item.patient_phone : maskPhone(item.patient_phone)
+        patient_phone: formatAdminPhone(item.patient_phone, isExportRequest(req))
       }));
       res.json({ code: 200, data: maskedList });
     }
@@ -1205,7 +1212,7 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约记录不存在' });
     }
-    appt.patient_phone = maskPhone(appt.patient_phone);
+    appt.patient_phone = formatAdminPhone(appt.patient_phone);
     const preExam = await get('SELECT * FROM appointment_pre_exams WHERE appointment_id = ?', [appt.id]);
     appt.pre_exam = preExam || null;
     const latestPreExam = await get(
@@ -1676,8 +1683,8 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
         return {
           ...item,
           patient_no: item.patient_no,
-          phone: (req.query.is_export === '1' || req.query.is_export === 1) ? item.phone : maskPhone(item.phone),
-          user_phone: (req.query.is_export === '1' || req.query.is_export === 1) ? item.user_phone : maskPhone(item.user_phone),
+          phone: formatAdminPhone(item.phone, isExportRequest(req)),
+          user_phone: formatAdminPhone(item.user_phone, isExportRequest(req)),
           total_spent: spentByPatient[item.id] || 0,
           last_visit: item.last_visit instanceof Date ? item.last_visit.toISOString().slice(0, 10) : item.last_visit,
           resolved_source: item.patient_source || item.latest_source || (item.openid && item.openid.startsWith('manual_') ? 'walk_in' : 'mini_app'),
@@ -2127,8 +2134,8 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
       [id]
     );
 
-    patient.phone = maskPhone(patient.phone);
-    patient.user_phone = maskPhone(patient.user_phone);
+    patient.phone = formatAdminPhone(patient.phone);
+    patient.user_phone = formatAdminPhone(patient.user_phone);
 
     // Fetch family members with their latest ESS and Snore results
     const familyMembers = await query(
@@ -2151,7 +2158,7 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
         relation: member.relation,
         gender: member.gender,
         age: member.age,
-        phone: maskPhone(member.phone),
+        phone: formatAdminPhone(member.phone),
         ess: ess || null,
         snore: snore || null
       });
@@ -2200,7 +2207,7 @@ app.get('/api/admin/patients/:id/phone', authenticateToken, async (req, res) => 
       { name: patient.name, reason: '管理员在后台查看了解密后的手机号' }
     );
 
-    res.json({ code: 200, data: { phone: patient.phone } });
+    res.json({ code: 200, data: { phone: formatAdminPhone(patient.phone, true) } });
   } catch (error) {
     res.status(500).json({ code: 500, message: '解密患者手机号失败' });
   }
@@ -6495,7 +6502,7 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
             await conn.execute(
               `INSERT INTO distribution_orders (order_id, distributor_id, buyer_name, order_amount, commission_amount, commission_level, status)
                VALUES (?, ?, ?, ?, ?, 1, 'pending')`,
-              [insertedId, promoter.id, `${patient.name} (${maskPhone(patient.phone || '')})`, calculatedPayAmount, commission]
+              [insertedId, promoter.id, `${patient.name} (${formatAdminPhone(patient.phone || '')})`, calculatedPayAmount, commission]
             );
             await conn.execute(
               `UPDATE distributors SET total_commission = total_commission + ? WHERE id = ?`,
@@ -6517,7 +6524,7 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
             await conn.execute(
               `INSERT INTO distribution_orders (order_id, distributor_id, buyer_name, order_amount, commission_amount, commission_level, status)
                VALUES (?, ?, ?, ?, ?, 2, 'pending')`,
-              [insertedId, promoterL2.id, `${patient.name} (${maskPhone(patient.phone || '')})`, calculatedPayAmount, commissionL2]
+              [insertedId, promoterL2.id, `${patient.name} (${formatAdminPhone(patient.phone || '')})`, calculatedPayAmount, commissionL2]
             );
             await conn.execute(
               `UPDATE distributors SET total_commission = total_commission + ? WHERE id = ?`,
