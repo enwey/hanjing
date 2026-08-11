@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "reset:business": "node reset-business-data.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

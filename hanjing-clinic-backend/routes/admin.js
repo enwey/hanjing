@@ -18,7 +18,8 @@ import {
   hashPassword,
   verifyPassword,
   formatShanghaiDate,
-  decryptPII
+  decryptPII,
+  encryptPII
 } from '../helpers.js';
 import { sendWechatSubscribeMessage } from '../wechatSubscribe.js';
 import {
@@ -1848,7 +1849,9 @@ app.post('/api/admin/patients', authenticateToken, async (req, res) => {
   }
 
   try {
-    const existing = await get(`SELECT id FROM users WHERE phone = ?`, [phone.trim()]);
+    const cleanPhone = String(phone || '').trim();
+    const encryptedPhone = encryptPII(cleanPhone);
+    const existing = await get(`SELECT id FROM users WHERE phone = ?`, [encryptedPhone]);
     if (existing) {
       return res.status(400).json({ code: 400, message: '登记失败：该手机号已在系统中建档登记，请勿重复创建。' });
     }
@@ -1880,12 +1883,12 @@ app.post('/api/admin/patients', authenticateToken, async (req, res) => {
       });
       const [userResult] = await conn.execute(
         `INSERT INTO users (openid, nickname, phone, gender, member_level) VALUES (?, ?, ?, ?, ?)`,
-        [openid, name, phone, genderVal, memberLevel]
+        [openid, name, encryptedPhone, genderVal, memberLevel]
       );
 
       const [patientResult] = await conn.execute(
         `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, card_no, source, has_snore) VALUES (?, ?, ?, 'self', ?, ?, ?, ?, ?, 0)`,
-        [patientNo, userResult.insertId, name, genderVal, age || null, phone, patientNo, patientSource]
+        [patientNo, userResult.insertId, name, genderVal, age || null, encryptedPhone, patientNo, patientSource]
       );
       await conn.execute(`UPDATE users SET self_patient_id = ? WHERE id = ?`, [patientResult.insertId, userResult.insertId]);
       await conn.execute(
@@ -1899,7 +1902,7 @@ app.post('/api/admin/patients', authenticateToken, async (req, res) => {
         id: patientResult.insertId,
         patient_no: patientNo,
         name,
-        phone,
+        phone: cleanPhone,
         gender,
         age,
         level,
@@ -1948,10 +1951,11 @@ app.put('/api/admin/patients/:id', authenticateToken, async (req, res) => {
     }
 
     const cleanPhone = phone ? String(phone).trim() : null;
-    if (cleanPhone) {
+    const encryptedPhone = cleanPhone ? encryptPII(cleanPhone) : null;
+    if (encryptedPhone) {
       const existing = await get(
         `SELECT id FROM users WHERE phone = ? AND id != ? LIMIT 1`,
-        [cleanPhone, patient.user_id]
+        [encryptedPhone, patient.user_id]
       );
       if (existing) {
         return res.status(400).json({ code: 400, message: '该手机号已被其他患者使用' });
@@ -1979,7 +1983,7 @@ app.put('/api/admin/patients/:id', authenticateToken, async (req, res) => {
           String(name).trim(),
           genderVal,
           age !== undefined && age !== null && age !== '' ? Number(age) : null,
-          cleanPhone,
+          encryptedPhone,
           mapPatientSource(source),
           medical_history || null,
           allergy_history || null,
@@ -1988,7 +1992,7 @@ app.put('/api/admin/patients/:id', authenticateToken, async (req, res) => {
       );
       await conn.execute(
         `UPDATE users SET nickname = ?, phone = ?, gender = ?, member_level = ? WHERE id = ?`,
-        [String(name).trim(), cleanPhone, genderVal, memberLevel, patient.user_id]
+        [String(name).trim(), encryptedPhone, genderVal, memberLevel, patient.user_id]
       );
     });
 

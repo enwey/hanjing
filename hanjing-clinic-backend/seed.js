@@ -1,11 +1,14 @@
 import { run, query } from './db.js';
 import crypto from 'crypto';
 import { generateUniquePatientNo } from './patientNo.js';
+import { encryptPII } from './helpers.js';
 
 const nextPatientNo = () => generateUniquePatientNo(async (candidate) => {
   const rows = await query(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
   return rows.length > 0;
 });
+
+const encryptPhone = (phone) => encryptPII(String(phone || '').trim());
 
 export const seedData = async () => {
   const adminCount = await query('SELECT count(*) as count FROM admin_users');
@@ -178,32 +181,32 @@ export const seedData = async () => {
   // 6. Users & Patients
   const user1 = await run(
     `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ['openid_user_1', '微信用户-张华', '13800138001', '/static/demo/avatar.jpg', 'gold', 1500, 298000]
+    ['openid_user_1', '微信用户-张华', encryptPhone('13800138001'), '/static/demo/avatar.jpg', 'gold', 1500, 298000]
   );
   const user2 = await run(
     `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ['openid_user_2', '微信用户-李明', '13900139002', null, 'normal', 0, 0]
+    ['openid_user_2', '微信用户-李明', encryptPhone('13900139002'), null, 'normal', 0, 0]
   );
   const user3 = await run(
     `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ['openid_user_3', '微信用户-王芳', '13700137003', null, 'silver', 490, 4900]
+    ['openid_user_3', '微信用户-王芳', encryptPhone('13700137003'), null, 'silver', 490, 4900]
   );
 
   const patient1 = await run(
     `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [await nextPatientNo(), user1.id, '张华', 'self', 1, 45, '13800138001', 1]
+    [await nextPatientNo(), user1.id, '张华', 'self', 1, 45, encryptPhone('13800138001'), 1]
   );
   const patient2 = await run(
     `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [await nextPatientNo(), user1.id, '张小华', 'child', 1, 10, '13800138001', 0]
+    [await nextPatientNo(), user1.id, '张小华', 'child', 1, 10, encryptPhone('13800138001'), 0]
   );
   const patient3 = await run(
     `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [await nextPatientNo(), user2.id, '李明', 'self', 1, 38, '13900139002', 1]
+    [await nextPatientNo(), user2.id, '李明', 'self', 1, 38, encryptPhone('13900139002'), 1]
   );
   const patient4 = await run(
     `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [await nextPatientNo(), user3.id, '王芳', 'self', 2, 52, '13700137003', 1]
+    [await nextPatientNo(), user3.id, '王芳', 'self', 2, 52, encryptPhone('13700137003'), 1]
   );
 
   // 7. Doctor Schedules (May 29, 2026 matches default filter)
@@ -947,12 +950,12 @@ const injectNewDistributionSeeds = async () => {
     // 4. Create new user 4 recommended by User2
     const user4 = await run(
       `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ['openid_user_4', '微信用户-赵达', '13600136004', null, 'normal', 0, 0]
+      ['openid_user_4', '微信用户-赵达', encryptPhone('13600136004'), null, 'normal', 0, 0]
     );
 
     const patient5 = await run(
       `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, has_snore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [await nextPatientNo(), user4.id, '赵达', 'self', 1, 35, '13600136004', 1]
+      [await nextPatientNo(), user4.id, '赵达', 'self', 1, 35, encryptPhone('13600136004'), 1]
     );
 
     // 5. Relationship: User2 (李明) recommended User4 (赵达)
