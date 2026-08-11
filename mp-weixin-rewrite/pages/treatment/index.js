@@ -181,17 +181,6 @@ Page({
   },
 
   onShow() {
-    const token = wx.getStorageSync('access_token');
-    if (!token) {
-      const app = getApp();
-      const lastRoute = app && app.globalData && app.globalData.lastRoute
-        ? `/${app.globalData.lastRoute}`
-        : '/pages/index/index';
-      wx.navigateTo({
-        url: `/pages/auth/login?redirect=${encodeURIComponent('/pages/treatment/index')}&back=${encodeURIComponent(lastRoute)}`,
-      });
-      return;
-    }
     this.loadPage({ silent: this.data.hasLoaded });
   },
 

@@ -17,7 +17,8 @@ import {
   logAdminAction,
   hashPassword,
   verifyPassword,
-  formatShanghaiDate
+  formatShanghaiDate,
+  decryptPII
 } from '../helpers.js';
 import { sendWechatSubscribeMessage } from '../wechatSubscribe.js';
 import {
@@ -35,6 +36,15 @@ const app = express.Router();
 const PAID_ORDER_STATUSES = ['paid', 'shipping', 'shipped', 'processing', 'completed'];
 const PAID_ORDER_STATUSES_SQL = PAID_ORDER_STATUSES.map(status => `'${status}'`).join(', ');
 const APPOINTMENT_TYPES = new Set(['first', 'followup', 'adjust']);
+
+function decodeStoredPhone(phone) {
+  return decryptPII(phone) || '';
+}
+
+function formatStoredPhone(phone, shouldExport = false) {
+  const decoded = decodeStoredPhone(phone);
+  return shouldExport ? decoded : maskPhone(decoded);
+}
 
 const normalizeAppointmentType = (type) => {
   const value = String(type || 'first').trim();
@@ -1676,8 +1686,8 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
         return {
           ...item,
           patient_no: item.patient_no,
-          phone: (req.query.is_export === '1' || req.query.is_export === 1) ? item.phone : maskPhone(item.phone),
-          user_phone: (req.query.is_export === '1' || req.query.is_export === 1) ? item.user_phone : maskPhone(item.user_phone),
+          phone: formatStoredPhone(item.phone, req.query.is_export === '1' || req.query.is_export === 1),
+          user_phone: formatStoredPhone(item.user_phone, req.query.is_export === '1' || req.query.is_export === 1),
           total_spent: spentByPatient[item.id] || 0,
           last_visit: item.last_visit instanceof Date ? item.last_visit.toISOString().slice(0, 10) : item.last_visit,
           resolved_source: item.patient_source || item.latest_source || (item.openid && item.openid.startsWith('manual_') ? 'walk_in' : 'mini_app'),
@@ -2127,8 +2137,8 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
       [id]
     );
 
-    patient.phone = maskPhone(patient.phone);
-    patient.user_phone = maskPhone(patient.user_phone);
+    patient.phone = formatStoredPhone(patient.phone, false);
+    patient.user_phone = formatStoredPhone(patient.user_phone, false);
 
     // Fetch family members with their latest ESS and Snore results
     const familyMembers = await query(
@@ -2151,7 +2161,7 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
         relation: member.relation,
         gender: member.gender,
         age: member.age,
-        phone: maskPhone(member.phone),
+        phone: formatStoredPhone(member.phone, false),
         ess: ess || null,
         snore: snore || null
       });
@@ -2200,7 +2210,7 @@ app.get('/api/admin/patients/:id/phone', authenticateToken, async (req, res) => 
       { name: patient.name, reason: '管理员在后台查看了解密后的手机号' }
     );
 
-    res.json({ code: 200, data: { phone: patient.phone } });
+    res.json({ code: 200, data: { phone: decodeStoredPhone(patient.phone) } });
   } catch (error) {
     res.status(500).json({ code: 500, message: '解密患者手机号失败' });
   }
@@ -4711,7 +4721,13 @@ app.get('/api/admin/distribution/promoters', authenticateToken, async (req, res)
        JOIN users u ON d.user_id = u.id
        ORDER BY d.created_at DESC`
     );
-    res.json({ code: 200, data: list });
+    res.json({
+      code: 200,
+      data: list.map((item) => ({
+        ...item,
+        user_phone: formatStoredPhone(item.user_phone, false),
+      }))
+    });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取推广员列表失败' });
   }
@@ -4753,7 +4769,7 @@ app.get('/api/admin/distribution/promoters/:id', authenticateToken, async (req, 
         avatar_url: promoter.avatar_url,
         level: promoter.level,
         code: promoter.invite_code,
-        phone: promoter.user_phone,
+        phone: formatStoredPhone(promoter.user_phone, false),
         regDate: promoter.created_at,
         status: promoter.status,
         parentName: parent?.nickname || '无（自主加入）',
@@ -4825,7 +4841,7 @@ app.get('/api/admin/distribution/promoters/:id/team', authenticateToken, async (
         level1: l1.map(item => ({
           userId: item.user_id,
           name: item.name,
-          phone: item.phone,
+          phone: formatStoredPhone(item.phone, false),
           level: item.level || 'customer',
           distributorId: item.distributor_id,
           joinDate: item.created_at
@@ -4833,7 +4849,7 @@ app.get('/api/admin/distribution/promoters/:id/team', authenticateToken, async (
         level2: l2.map(item => ({
           userId: item.user_id,
           name: item.name,
-          phone: item.phone,
+          phone: formatStoredPhone(item.phone, false),
           level: item.level || 'customer',
           distributorId: item.distributor_id,
           joinDate: item.created_at

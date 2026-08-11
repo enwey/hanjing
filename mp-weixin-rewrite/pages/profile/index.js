@@ -62,12 +62,12 @@ function isPremiumServiceLevel(level) {
 
 function isPlaceholderNickname(nickname) {
   const text = String(nickname || '').trim();
-  return !text || text === '微信用户' || text.indexOf('微信用户_') === 0;
+  return !text || text === '微信用户' || text.indexOf('微信用户') === 0;
 }
 
 function resolveDisplayNickname(profile) {
   const nickname = String((profile && (profile.nickname || profile.name)) || '').trim();
-  return isPlaceholderNickname(nickname) ? '尊敬的微信用户' : nickname;
+  return nickname || '微信用户';
 }
 
 function needsProfileCompletion(profile) {
@@ -214,10 +214,10 @@ Page({
       if (!this.data.hasLoaded) {
         this.setData({
           showProfileSetupCard: false,
-          nickname: '尊敬的微信用户',
-          avatarText: '尊',
+          nickname: '微信用户',
+          avatarText: '微',
           avatarUrl: '',
-          avatarBg: getAvatarColor('尊敬的微信用户'),
+          avatarBg: getAvatarColor('微信用户'),
           memberLevelLabel: '会员信息加载失败',
           notificationsUnreadCount: 0,
           serviceUnreadCount: 0,

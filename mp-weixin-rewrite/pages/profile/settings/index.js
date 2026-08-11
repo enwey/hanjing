@@ -1,3 +1,5 @@
+const sessionStore = require('../../../stores/session-store');
+
 Page({
   data: {
     sections: [
@@ -36,12 +38,12 @@ Page({
       content: '确定要退出当前账号吗？',
       success: (res) => {
         if (!res.confirm) return;
-        wx.removeStorageSync('access_token');
+        sessionStore.logout();
         wx.removeStorageSync('selected_treatment_patient_id');
         wx.removeStorageSync('selected_medical_record_patient_id');
         wx.showToast({ title: '已退出登录', icon: 'success' });
         setTimeout(() => {
-          wx.reLaunch({ url: '/pages/profile/index' });
+          wx.reLaunch({ url: '/pages/auth/login' });
         }, 300);
       },
     });

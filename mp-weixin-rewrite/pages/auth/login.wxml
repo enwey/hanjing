@@ -1,5 +1,5 @@
 <view class="page-container">
-  <hj-navbar title="微信授权登录" />
+  <hj-navbar title="微信授权登录" hideBack="{{true}}" />
   <view class="page-content login-page">
     <view class="brand-section">
       <view class="logo-container">

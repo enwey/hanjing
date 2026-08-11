@@ -1677,7 +1677,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
         await run(`UPDATE users SET openid = ? WHERE id = ?`, [openid, existingUserByPhone.id]);
         user = await get(`SELECT * FROM users WHERE id = ?`, [existingUserByPhone.id]);
       } else {
-        const nickname = '尊敬的微信用户';
+        const nickname = phone ? `微信用户${String(phone).slice(-4)}` : '微信用户';
         const result = await run(
           `INSERT INTO users (openid, nickname, phone, member_level, points, total_spent) VALUES (?, ?, ?, 'normal', 0, 0)`,
           [openid, nickname, encryptedPhone]

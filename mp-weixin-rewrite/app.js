@@ -2,17 +2,60 @@ const distributionApi = require('./api/index');
 const sessionStore = require('./stores/session-store');
 
 const originalPage = Page;
+const nativeNavigateTo = wx.navigateTo;
+const nativeRedirectTo = wx.redirectTo;
+const nativeReLaunch = wx.reLaunch;
+const nativeSwitchTab = wx.switchTab;
+
+function stringifyQueryValue(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  return String(value);
+}
+
+function buildQueryString(options) {
+  const query = options && typeof options === 'object' ? options : {};
+  const keys = Object.keys(query).filter((key) => key && query[key] !== undefined);
+  if (!keys.length) {
+    return '';
+  }
+  return keys
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(stringifyQueryValue(query[key]))}`)
+    .join('&');
+}
+
+function joinRouteAndQuery(route, queryString) {
+  const pageUrl = buildPageUrl(route);
+  return queryString ? `${pageUrl}?${queryString}` : pageUrl;
+}
 
 Page = function registerTrackedPage(pageOptions) {
   const config = pageOptions || {};
+  const originalOnLoad = config.onLoad;
   const originalOnShow = config.onShow;
   const originalOnHide = config.onHide;
   const originalOnUnload = config.onUnload;
+
+  config.onLoad = function trackedOnLoad(options = {}, ...args) {
+    const app = getApp();
+    const queryString = buildQueryString(options);
+    this.__routeQueryString = queryString;
+    if (app && app.globalData) {
+      app.globalData.currentRoute = this.route || '';
+      app.globalData.currentUrl = joinRouteAndQuery(this.route || '', queryString);
+    }
+    if (typeof originalOnLoad === 'function') {
+      return originalOnLoad.call(this, options, ...args);
+    }
+    return undefined;
+  };
 
   config.onShow = function trackedOnShow(...args) {
     const app = getApp();
     if (app && app.globalData) {
       app.globalData.currentRoute = this.route || '';
+      app.globalData.currentUrl = joinRouteAndQuery(this.route || '', this.__routeQueryString || buildQueryString(this.options || {}));
     }
     if (typeof originalOnShow === 'function') {
       return originalOnShow.apply(this, args);
@@ -24,6 +67,7 @@ Page = function registerTrackedPage(pageOptions) {
     const app = getApp();
     if (app && app.globalData && this.route) {
       app.globalData.lastRoute = this.route;
+      app.globalData.lastUrl = joinRouteAndQuery(this.route, this.__routeQueryString || buildQueryString(this.options || {}));
     }
     if (typeof originalOnHide === 'function') {
       return originalOnHide.apply(this, args);
@@ -35,6 +79,7 @@ Page = function registerTrackedPage(pageOptions) {
     const app = getApp();
     if (app && app.globalData && this.route) {
       app.globalData.lastRoute = this.route;
+      app.globalData.lastUrl = joinRouteAndQuery(this.route, this.__routeQueryString || buildQueryString(this.options || {}));
     }
     if (typeof originalOnUnload === 'function') {
       return originalOnUnload.apply(this, args);
@@ -72,14 +117,37 @@ function buildPageUrl(route) {
   return normalized ? `/${normalized}` : '/pages/index/index';
 }
 
-function buildLoginRedirectUrl(route) {
+function getPageUrl(page) {
+  if (!page || !page.route) {
+    return '/pages/index/index';
+  }
+  const queryString = buildQueryString(page.options || {});
+  return joinRouteAndQuery(page.route, queryString);
+}
+
+function buildLoginRedirectUrl(targetUrl) {
   const app = getApp();
-  const backRoute = app && app.globalData ? app.globalData.lastRoute : '';
-  const redirect = `redirect=${encodeURIComponent(buildPageUrl(route))}`;
-  const back = backRoute && !isPublicRoute(backRoute)
-    ? `&back=${encodeURIComponent(buildPageUrl(backRoute))}`
+  const normalizedTarget = String(targetUrl || '').trim() || '/pages/index/index';
+  const backUrl = app && app.globalData ? app.globalData.lastUrl || buildPageUrl(app.globalData.lastRoute) : '';
+  const redirect = `redirect=${encodeURIComponent(normalizedTarget)}`;
+  const back = backUrl && !isPublicRoute(backUrl)
+    ? `&back=${encodeURIComponent(backUrl)}`
     : '';
   return `/pages/auth/login?${redirect}${back}`;
+}
+
+function navigateToLogin(loginUrl) {
+  nativeReLaunch({
+    url: loginUrl,
+    complete() {
+      setTimeout(() => {
+        const app = getApp();
+        if (app) {
+          app.__redirectingToLogin = false;
+        }
+      }, 300);
+    },
+  });
 }
 
 function enforceLoginGuard() {
@@ -88,23 +156,51 @@ function enforceLoginGuard() {
   }
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1];
-  const currentRoute = currentPage && currentPage.route ? currentPage.route : 'pages/index/index';
-  if (isPublicRoute(currentRoute)) {
+  const currentUrl = getPageUrl(currentPage);
+  if (isPublicRoute(currentUrl)) {
     return;
   }
-  const loginUrl = buildLoginRedirectUrl(currentRoute);
-  if (getApp().__redirectingToLogin) {
+  const app = getApp();
+  const loginUrl = buildLoginRedirectUrl(currentUrl);
+  if (app.__redirectingToLogin) {
     return;
   }
-  getApp().__redirectingToLogin = true;
-  wx.reLaunch({
-    url: loginUrl,
-    complete() {
-      setTimeout(() => {
-        getApp().__redirectingToLogin = false;
-      }, 300);
-    },
-  });
+  app.__redirectingToLogin = true;
+  navigateToLogin(loginUrl);
+}
+
+function patchNavigationApis() {
+  if (wx.__loginGuardPatched) {
+    return;
+  }
+
+  function guardNavigation(methodName, nativeMethod) {
+    wx[methodName] = function wrappedNavigation(options = {}) {
+      const request = options || {};
+      const url = String(request.url || '').trim();
+      if (!url || sessionStore.isLoggedIn() || isPublicRoute(url)) {
+        return nativeMethod.call(wx, request);
+      }
+
+      const app = getApp();
+      if (app && app.__redirectingToLogin) {
+        return nativeMethod.call(wx, request);
+      }
+
+      if (app) {
+        app.__redirectingToLogin = true;
+      }
+
+      const loginUrl = buildLoginRedirectUrl(url);
+      return navigateToLogin(loginUrl);
+    };
+  }
+
+  guardNavigation('navigateTo', nativeNavigateTo);
+  guardNavigation('redirectTo', nativeRedirectTo);
+  guardNavigation('reLaunch', nativeReLaunch);
+  guardNavigation('switchTab', nativeSwitchTab);
+  wx.__loginGuardPatched = true;
 }
 
 function clearLegacyObfuscatedAccessToken() {
@@ -113,6 +209,8 @@ function clearLegacyObfuscatedAccessToken() {
     wx.removeStorageSync('access_token');
   }
 }
+
+patchNavigationApis();
 
 function parseInviteCodeFromLaunchOptions(options) {
   if (!options || !options.query) return "";
@@ -150,7 +248,7 @@ async function tryBindPendingInvite() {
 }
 
 App({
-  globalData: { appName: "鼾静健康诊所", currentRoute: '', lastRoute: '' },
+  globalData: { appName: "鼾静健康诊所", currentRoute: '', currentUrl: '', lastRoute: '', lastUrl: '' },
   __redirectingToLogin: false,
   onLaunch(options) {
     clearLegacyObfuscatedAccessToken();
