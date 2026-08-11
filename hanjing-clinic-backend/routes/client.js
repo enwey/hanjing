@@ -1653,9 +1653,9 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
   try {
     let phone = null;
     let encryptedPhone = null;
-    if (phoneCode && /^\d{11}$/.test(phoneCode)) {
-      phone = phoneCode;
-      encryptedPhone = encryptPII(phoneCode);
+    if (phoneCode) {
+      phone = await getWechatMiniPhoneNumber(phoneCode);
+      encryptedPhone = encryptPII(phone);
     }
 
     const session = await exchangeWechatMiniCode(code);
