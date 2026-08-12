@@ -19,6 +19,7 @@
         hover-class="auth-btn-custom-hover"
         open-type="getPhoneNumber"
         bindgetphonenumber="onGetPhoneNumber"
+        binderror="onLoginOpenTypeError"
       >
         立即预约
       </button>
@@ -70,6 +71,7 @@
           style="margin-top: 16px;"
           open-type="getPhoneNumber"
           bindgetphonenumber="onGetPhoneNumber"
+          binderror="onLoginOpenTypeError"
         >
           去预约
         </button>

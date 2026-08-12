@@ -149,6 +149,22 @@ Page({
     }
   },
 
+  onLoginOpenTypeError(event) {
+    const detail = event && event.detail ? event.detail : {};
+    const traceId = this.data.loginTraceId || miniLog.createTraceId();
+    if (!this.data.loginTraceId) {
+      this.setData({ loginTraceId: traceId });
+    }
+    reportLoginEvent('error', 'login_open_type_error', detail.errMsg || 'getPhoneNumber open-type error', {
+      source: 'auth_login',
+      traceId,
+      agreed: Boolean(this.data.agreed),
+      errMsg: detail.errMsg || '',
+      errno: detail.errno,
+    });
+    wx.showToast({ title: TOAST.loginFailed, icon: 'none' });
+  },
+
   navigateAfterLogin() {
     const target = resolveAfterLogin(this.data.redirectUrl);
     if (target.type === 'tab') {

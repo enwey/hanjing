@@ -51,6 +51,7 @@ const eventOptions = [
   { label: '点击登录按钮', value: 'login_button_tap' },
   { label: '未勾选协议', value: 'login_agreement_missing' },
   { label: '手机号授权回调', value: 'login_phone_callback' },
+  { label: '手机号按钮能力失败', value: 'login_open_type_error' },
   { label: '开始登录流程', value: 'session_login_start' },
   { label: 'wx.login 成功', value: 'wx_login_success' },
   { label: 'wx.login 失败', value: 'wx_login_failed' },

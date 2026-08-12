@@ -290,6 +290,23 @@ Page({
     });
   },
 
+  onLoginOpenTypeError(event) {
+    const detail = event && event.detail ? event.detail : {};
+    const traceId = miniLog.createTraceId();
+    miniLog.report({
+      level: 'error',
+      event: 'login_open_type_error',
+      message: detail.errMsg || 'appointment getPhoneNumber open-type error',
+      traceId,
+      extra: {
+        source: 'appointment_index',
+        errMsg: detail.errMsg || '',
+        errno: detail.errno,
+      },
+    });
+    wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+  },
+
   async onGetPhoneNumber(event) {
     const detail = event.detail || {};
     const traceId = miniLog.createTraceId();

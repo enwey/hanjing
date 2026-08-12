@@ -32,6 +32,7 @@
         open-type="getPhoneNumber"
         bindtap="onLoginTap"
         bindgetphonenumber="onGetPhoneNumber"
+        binderror="onLoginOpenTypeError"
       >
         {{copy.loginButton}}
       </button>
