@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { query, get, run, transaction, autoUpdateExpiredAppointments } from '../db.js';
+import { query, get, run, rawQuery, transaction, autoUpdateExpiredAppointments } from '../db.js';
 import { generateUniquePatientNo } from '../patientNo.js';
 import {
   JWT_SECRET,
@@ -47,6 +47,79 @@ const normalizeAppointmentType = (type) => {
   const value = String(type || 'first').trim();
   return APPOINTMENT_TYPES.has(value) ? value : null;
 };
+
+function ensureSuperAdmin(req, res) {
+  if (req.user?.role !== 'super_admin') {
+    res.status(403).json({ code: 403, message: '只有超级管理员可以使用数据库工具' });
+    return false;
+  }
+  return true;
+}
+
+function normalizeSqlStatement(sql) {
+  const normalized = String(sql || '').trim();
+  if (!normalized) {
+    const error = new Error('SQL 语句不能为空');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const withoutTrailingSemicolon = normalized.replace(/;\s*$/, '').trim();
+  if (!withoutTrailingSemicolon) {
+    const error = new Error('SQL 语句不能为空');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (withoutTrailingSemicolon.includes(';')) {
+    const error = new Error('一次只允许执行一条 SQL 语句');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return withoutTrailingSemicolon;
+}
+
+function resolveSqlOperation(sql) {
+  const match = String(sql || '').trim().match(/^([a-zA-Z]+)/);
+  return match ? match[1].toUpperCase() : '';
+}
+
+function ensureReadonlySql(operation) {
+  const allowedOperations = new Set(['SELECT', 'SHOW', 'DESC', 'DESCRIBE', 'EXPLAIN']);
+  if (!allowedOperations.has(operation)) {
+    const error = new Error('只支持查询类 SQL，不允许执行写入或结构变更语句');
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
+function formatSqlExecutionResult(result, operation) {
+  if (Array.isArray(result)) {
+    const rows = result.slice(0, 500);
+    const columns = rows.length
+      ? Object.keys(rows.reduce((acc, row) => Object.assign(acc, row || {}), {}))
+      : [];
+    return {
+      mode: 'rows',
+      operation,
+      columns,
+      rows,
+      rowCount: result.length,
+      truncated: result.length > rows.length
+    };
+  }
+
+  return {
+    mode: 'result',
+    operation,
+    affectedRows: Number(result?.affectedRows || 0),
+    insertId: result?.insertId ?? null,
+    changedRows: Number(result?.changedRows || 0),
+    warningStatus: Number(result?.warningStatus || 0),
+    info: result?.info || ''
+  };
+}
 
 async function getBookingIntervalMinutes() {
   const row = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_interval'`);
@@ -7026,6 +7099,111 @@ app.get('/api/admin/settings', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Get Settings Error:', error);
     res.status(500).json({ code: 500, message: '获取设置失败' });
+  }
+});
+
+app.get('/api/admin/database/schema', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
+  try {
+    const [tableRows, columnRows] = await Promise.all([
+      query(
+        `SELECT
+            TABLE_NAME AS table_name,
+            TABLE_COMMENT AS table_comment,
+            ENGINE AS engine,
+            TABLE_ROWS AS table_rows,
+            CREATE_TIME AS create_time,
+            UPDATE_TIME AS update_time
+         FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+         ORDER BY TABLE_NAME ASC`
+      ),
+      query(
+        `SELECT
+            TABLE_NAME AS table_name,
+            COLUMN_NAME AS column_name,
+            COLUMN_TYPE AS column_type,
+            DATA_TYPE AS data_type,
+            IS_NULLABLE AS is_nullable,
+            COLUMN_DEFAULT AS column_default,
+            COLUMN_KEY AS column_key,
+            EXTRA AS extra,
+            COLUMN_COMMENT AS column_comment,
+            ORDINAL_POSITION AS ordinal_position
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+         ORDER BY TABLE_NAME ASC, ORDINAL_POSITION ASC`
+      )
+    ]);
+
+    const columnsByTable = columnRows.reduce((map, row) => {
+      if (!map[row.table_name]) map[row.table_name] = [];
+      map[row.table_name].push({
+        name: row.column_name,
+        type: row.column_type,
+        dataType: row.data_type,
+        nullable: row.is_nullable === 'YES',
+        defaultValue: row.column_default,
+        key: row.column_key || '',
+        extra: row.extra || '',
+        comment: row.column_comment || '',
+        ordinalPosition: Number(row.ordinal_position || 0)
+      });
+      return map;
+    }, {});
+
+    const tables = tableRows.map((row) => ({
+      name: row.table_name,
+      comment: row.table_comment || '',
+      engine: row.engine || '',
+      rowCount: Number(row.table_rows || 0),
+      createTime: row.create_time,
+      updateTime: row.update_time,
+      columns: columnsByTable[row.table_name] || []
+    }));
+
+    res.json({
+      code: 200,
+      data: {
+        database: process.env.DB_NAME || '',
+        tableCount: tables.length,
+        tables
+      }
+    });
+  } catch (error) {
+    console.error('Fetch database schema error:', error);
+    res.status(500).json({ code: 500, message: '获取数据库结构失败' });
+  }
+});
+
+app.post('/api/admin/database/query', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
+  let sql = '';
+  let operation = '';
+  try {
+    sql = normalizeSqlStatement(req.body?.sql);
+    operation = resolveSqlOperation(sql);
+    ensureReadonlySql(operation);
+    const { rows } = await rawQuery(sql);
+    const result = formatSqlExecutionResult(rows, operation);
+    await logAdminAction(req.user.id, 'execute_sql', 'system', null, { operation, sql }, req.ip || null);
+    res.json({
+      code: 200,
+      data: result
+    });
+  } catch (error) {
+    console.error('Execute sql error:', error);
+    await logAdminAction(
+      req.user.id,
+      'execute_sql',
+      'system',
+      null,
+      { operation, sql },
+      req.ip || null,
+      'fail',
+      error.message || 'SQL 执行失败'
+    );
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || 'SQL 执行失败' });
   }
 });
 

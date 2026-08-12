@@ -87,7 +87,8 @@ const menuGroups = computed(() => [
       { path: '/settings', label: '系统设置', icon: '⚙️', permission: 'system:view' },
       { path: '/permission', label: '权限管理', icon: '🔐', permission: 'system:edit' },
       { path: '/log', label: '操作日志', icon: '📋', permission: 'audit_log:view' },
-      { path: '/mini-program-log', label: '小程序日志', icon: '📱', permission: 'audit_log:view' }
+      { path: '/mini-program-log', label: '小程序日志', icon: '📱', permission: 'audit_log:view' },
+      { path: '/database-tools', label: '数据库工具', icon: '🗄️', permission: 'system:edit', superAdminOnly: true }
     ]
   }
 ])
@@ -121,6 +122,9 @@ const filteredMenuGroups = computed(() => {
   
   return menuGroups.value.map(group => {
     const items = group.items.filter(item => {
+      if ((item as any).superAdminOnly && userRole !== 'super_admin') {
+        return false;
+      }
       if (permissions.length > 0) {
         return hasPermission(item.permission);
       }

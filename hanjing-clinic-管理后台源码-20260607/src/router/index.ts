@@ -239,6 +239,12 @@ const router = createRouter({
           meta: { title: '小程序日志' }
         },
         {
+          path: 'database-tools',
+          name: 'database-tools',
+          component: () => import('@/views/settings/database-tools.vue'),
+          meta: { title: '数据库工具', parentPath: '/settings' }
+        },
+        {
           path: 'store/report/:id',
           name: 'store-report-id',
           component: () => import('@/views/store/report.vue'),

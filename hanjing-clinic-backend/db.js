@@ -33,6 +33,12 @@ export const query = async (sql, params = []) => {
   return rows;
 };
 
+export const rawQuery = async (sql) => {
+  if (!pool) await initPool();
+  const [rows, fields] = await pool.query(sql);
+  return { rows, fields };
+};
+
 export const get = async (sql, params = []) => {
   if (!pool) await initPool();
   const [rows] = await pool.execute(sql, params);
