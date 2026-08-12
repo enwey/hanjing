@@ -30,6 +30,7 @@ import {
   createNativePayment,
   createWechatRefund,
   getMissingWechatPayConfig,
+  inspectWechatPayConfig,
   queryMicroPayOrderByOutTradeNo,
   queryOrderByOutTradeNo
 } from '../wechatPay.js';
@@ -7213,6 +7214,17 @@ app.get('/api/admin/settings', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Get Settings Error:', error);
     res.status(500).json({ code: 500, message: '获取设置失败' });
+  }
+});
+
+app.get('/api/admin/settings/wechat-pay-check', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
+  try {
+    const data = await inspectWechatPayConfig();
+    res.json({ code: 200, data });
+  } catch (error) {
+    console.error('Inspect WeChat pay config error:', error);
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '获取微信支付配置失败' });
   }
 });
 

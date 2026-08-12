@@ -18,6 +18,13 @@ async function getSetting(key) {
   return row?.key_value ? String(row.key_value) : '';
 }
 
+function maskValue(value, start = 6, end = 4) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (text.length <= start + end) return text;
+  return `${text.slice(0, start)}***${text.slice(-end)}`;
+}
+
 async function readPayConfig() {
   const [
     appIdSetting,
@@ -55,6 +62,111 @@ async function readPayConfig() {
     appointmentNotifyUrl: process.env.WECHAT_APPOINTMENT_PAY_NOTIFY_URL || appointmentNotifyUrlSetting || '',
     refundNotifyUrl: process.env.WECHAT_PAY_REFUND_NOTIFY_URL || refundNotifyUrlSetting || '',
     platformCert: normalizePrivateKey(process.env.WECHAT_PAY_PLATFORM_CERT || process.env.WECHAT_PAY_PLATFORM_CERT_PATH || platformCertSetting || '')
+  };
+}
+
+export async function inspectWechatPayConfig() {
+  const [
+    appIdSetting,
+    mchIdSetting,
+    serialNoSetting,
+    privateKeySetting,
+    apiV3KeySetting,
+    apiV2KeySetting,
+    notifyUrlSetting,
+    appointmentNotifyUrlSetting,
+    refundNotifyUrlSetting,
+    platformCertSetting
+  ] = await Promise.all([
+    getSetting('wechat_pay_app_id'),
+    getSetting('wechat_pay_mch_id'),
+    getSetting('wechat_pay_serial_no'),
+    getSetting('wechat_pay_private_key'),
+    getSetting('wechat_pay_api_v3_key'),
+    getSetting('wechat_pay_api_v2_key'),
+    getSetting('wechat_pay_notify_url'),
+    getSetting('wechat_pay_appointment_notify_url'),
+    getSetting('wechat_pay_refund_notify_url'),
+    getSetting('wechat_pay_platform_cert')
+  ]);
+
+  const config = await readPayConfig();
+  const appIdSource = process.env.WECHAT_APP_ID
+    ? 'WECHAT_APP_ID'
+    : process.env.WX_APPID
+      ? 'WX_APPID'
+      : process.env.WX_MINI_APP_ID
+        ? 'WX_MINI_APP_ID'
+        : appIdSetting
+          ? 'system_settings.wechat_pay_app_id'
+          : '';
+
+  return {
+    effective: {
+      appId: config.appId,
+      mchId: config.mchId,
+      serialNo: config.serialNo,
+      notifyUrl: config.notifyUrl,
+      appointmentNotifyUrl: config.appointmentNotifyUrl,
+      refundNotifyUrl: config.refundNotifyUrl,
+      hasPrivateKey: Boolean(config.privateKey),
+      hasApiV3Key: Boolean(config.apiV3Key),
+      hasApiV2Key: Boolean(config.apiV2Key),
+      hasPlatformCert: Boolean(config.platformCert)
+    },
+    masked: {
+      appId: maskValue(config.appId, 6, 4),
+      mchId: maskValue(config.mchId, 4, 4),
+      serialNo: maskValue(config.serialNo, 6, 6),
+      privateKey: config.privateKey ? `${maskValue(config.privateKey.replace(/\s+/g, ''), 16, 16)} (${config.privateKey.includes('BEGIN') ? 'pem' : 'text'})` : '',
+      apiV3Key: maskValue(config.apiV3Key, 4, 4),
+      apiV2Key: maskValue(config.apiV2Key, 4, 4),
+      platformCert: config.platformCert ? `${maskValue(config.platformCert.replace(/\s+/g, ''), 16, 16)} (${config.platformCert.includes('BEGIN') ? 'pem' : 'text'})` : ''
+    },
+    source: {
+      appId: appIdSource,
+      mchId: process.env.WECHAT_PAY_MCH_ID ? 'WECHAT_PAY_MCH_ID' : (mchIdSetting ? 'system_settings.wechat_pay_mch_id' : ''),
+      serialNo: process.env.WECHAT_PAY_SERIAL_NO ? 'WECHAT_PAY_SERIAL_NO' : (serialNoSetting ? 'system_settings.wechat_pay_serial_no' : ''),
+      privateKey: process.env.WECHAT_PAY_PRIVATE_KEY
+        ? 'WECHAT_PAY_PRIVATE_KEY'
+        : process.env.WECHAT_PAY_PRIVATE_KEY_PATH
+          ? 'WECHAT_PAY_PRIVATE_KEY_PATH'
+          : (privateKeySetting ? 'system_settings.wechat_pay_private_key' : ''),
+      apiV3Key: process.env.WECHAT_PAY_API_V3_KEY ? 'WECHAT_PAY_API_V3_KEY' : (apiV3KeySetting ? 'system_settings.wechat_pay_api_v3_key' : ''),
+      apiV2Key: process.env.WECHAT_PAY_API_V2_KEY ? 'WECHAT_PAY_API_V2_KEY' : (apiV2KeySetting ? 'system_settings.wechat_pay_api_v2_key' : ''),
+      notifyUrl: process.env.WECHAT_PAY_NOTIFY_URL ? 'WECHAT_PAY_NOTIFY_URL' : (notifyUrlSetting ? 'system_settings.wechat_pay_notify_url' : ''),
+      appointmentNotifyUrl: process.env.WECHAT_APPOINTMENT_PAY_NOTIFY_URL ? 'WECHAT_APPOINTMENT_PAY_NOTIFY_URL' : (appointmentNotifyUrlSetting ? 'system_settings.wechat_pay_appointment_notify_url' : ''),
+      refundNotifyUrl: process.env.WECHAT_PAY_REFUND_NOTIFY_URL ? 'WECHAT_PAY_REFUND_NOTIFY_URL' : (refundNotifyUrlSetting ? 'system_settings.wechat_pay_refund_notify_url' : ''),
+      platformCert: process.env.WECHAT_PAY_PLATFORM_CERT
+        ? 'WECHAT_PAY_PLATFORM_CERT'
+        : process.env.WECHAT_PAY_PLATFORM_CERT_PATH
+          ? 'WECHAT_PAY_PLATFORM_CERT_PATH'
+          : (platformCertSetting ? 'system_settings.wechat_pay_platform_cert' : '')
+    },
+    rawPresence: {
+      env: {
+        WECHAT_APP_ID: Boolean(process.env.WECHAT_APP_ID),
+        WX_APPID: Boolean(process.env.WX_APPID),
+        WX_MINI_APP_ID: Boolean(process.env.WX_MINI_APP_ID),
+        WECHAT_PAY_MCH_ID: Boolean(process.env.WECHAT_PAY_MCH_ID),
+        WECHAT_PAY_SERIAL_NO: Boolean(process.env.WECHAT_PAY_SERIAL_NO),
+        WECHAT_PAY_PRIVATE_KEY: Boolean(process.env.WECHAT_PAY_PRIVATE_KEY),
+        WECHAT_PAY_PRIVATE_KEY_PATH: Boolean(process.env.WECHAT_PAY_PRIVATE_KEY_PATH),
+      },
+      settings: {
+        wechat_pay_app_id: Boolean(appIdSetting),
+        wechat_pay_mch_id: Boolean(mchIdSetting),
+        wechat_pay_serial_no: Boolean(serialNoSetting),
+        wechat_pay_private_key: Boolean(privateKeySetting),
+        wechat_pay_api_v3_key: Boolean(apiV3KeySetting),
+        wechat_pay_api_v2_key: Boolean(apiV2KeySetting),
+        wechat_pay_notify_url: Boolean(notifyUrlSetting),
+        wechat_pay_appointment_notify_url: Boolean(appointmentNotifyUrlSetting),
+        wechat_pay_refund_notify_url: Boolean(refundNotifyUrlSetting),
+        wechat_pay_platform_cert: Boolean(platformCertSetting)
+      }
+    },
+    missing: await getMissingWechatPayConfig(),
   };
 }
 
