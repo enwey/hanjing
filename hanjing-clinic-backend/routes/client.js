@@ -727,6 +727,10 @@ async function mergeUserAccountIntoExistingUser(sourceUserId, targetUserId, { op
       throw err;
     }
 
+    if (openid && sourceUser.openid === openid) {
+      await conn.execute(`UPDATE users SET openid = NULL WHERE id = ?`, [sourceUserId]);
+    }
+
     const sourceSelf = await getSelfPatientForUserWithConn(conn, sourceUserId);
     const targetSelf = await getSelfPatientForUserWithConn(conn, targetUserId);
 
