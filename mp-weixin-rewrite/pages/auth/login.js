@@ -56,22 +56,25 @@ function resolveAfterLogin(redirectUrl) {
   return { type: 'relaunch', url: redirectUrl };
 }
 
-function reportLoginEvent(level, event, message, extra) {
+function reportLoginEvent(level, event, message, context = {}) {
   miniLog.report({
     level,
     event,
     message,
-    extra,
+    traceId: context.traceId || '',
+    extra: context.extra || context,
   });
 }
 
-function reportLoginFailure(error) {
+function reportLoginFailure(error, context = {}) {
   miniLog.report({
     level: 'error',
     event: 'login_failed',
     message: error && error.message,
     statusCode: error && error.statusCode,
+    traceId: context.traceId || '',
     extra: {
+      source: context.source || '',
       response: error && error.data,
     },
   });
@@ -83,6 +86,7 @@ Page({
     isDevTools: false,
     redirectUrl: '',
     backUrl: '',
+    loginTraceId: '',
     copy: COPY,
   },
 
@@ -129,11 +133,18 @@ Page({
   },
 
   onLoginTap() {
+    const traceId = miniLog.createTraceId();
+    this.setData({ loginTraceId: traceId });
     reportLoginEvent('info', 'login_button_tap', 'login button tapped', {
+      source: 'auth_login',
+      traceId,
       agreed: Boolean(this.data.agreed),
     });
     if (!this.data.agreed) {
-      reportLoginEvent('warn', 'login_agreement_missing', 'user tapped login before agreement');
+      reportLoginEvent('warn', 'login_agreement_missing', 'user tapped login before agreement', {
+        source: 'auth_login',
+        traceId,
+      });
       wx.showToast({ title: TOAST.needAgreement, icon: 'none' });
     }
   },
@@ -149,25 +160,37 @@ Page({
 
   async onGetPhoneNumber(event) {
     const detail = event && event.detail ? event.detail : {};
+    const traceId = this.data.loginTraceId || miniLog.createTraceId();
+    if (!this.data.loginTraceId) {
+      this.setData({ loginTraceId: traceId });
+    }
     reportLoginEvent('info', 'login_phone_callback', detail.errMsg || 'getPhoneNumber callback', {
+      source: 'auth_login',
+      traceId,
       agreed: Boolean(this.data.agreed),
       hasPhoneCode: Boolean(detail.code),
     });
     if (!this.data.agreed) {
-      reportLoginEvent('warn', 'login_agreement_missing', 'phone callback received before agreement');
+      reportLoginEvent('warn', 'login_agreement_missing', 'phone callback received before agreement', {
+        source: 'auth_login',
+        traceId,
+      });
       wx.showToast({ title: TOAST.needAgreement, icon: 'none' });
       return;
     }
     if (!detail.code) {
-      reportLoginEvent('warn', 'login_phone_auth_cancelled', detail.errMsg || 'phone authorization cancelled');
+      reportLoginEvent('warn', 'login_phone_auth_cancelled', detail.errMsg || 'phone authorization cancelled', {
+        source: 'auth_login',
+        traceId,
+      });
       wx.showToast({ title: TOAST.authCancelled, icon: 'none' });
       return;
     }
 
     wx.showLoading({ title: TOAST.loggingIn });
     try {
-      await sessionStore.login(detail.code);
-      await sessionStore.fetchProfile();
+      await sessionStore.login(detail.code, { source: 'auth_login', traceId });
+      await sessionStore.fetchProfile({ source: 'auth_login', traceId });
       wx.hideLoading();
       wx.showToast({ title: TOAST.loginSuccess, icon: 'success' });
       setTimeout(() => {
@@ -175,7 +198,7 @@ Page({
       }, 1200);
     } catch (error) {
       wx.hideLoading();
-      reportLoginFailure(error);
+      reportLoginFailure(error, { source: 'auth_login', traceId });
       wx.showToast({ title: TOAST.loginFailed, icon: 'none' });
       console.error(error);
     }
@@ -203,9 +226,10 @@ Page({
         }
 
         wx.showLoading({ title: TOAST.loggingIn });
+        const traceId = miniLog.createTraceId();
         try {
-          await sessionStore.login(phone);
-          await sessionStore.fetchProfile();
+          await sessionStore.login(phone, { source: 'auth_login_devtools', traceId });
+          await sessionStore.fetchProfile({ source: 'auth_login_devtools', traceId });
           wx.hideLoading();
           wx.showToast({ title: TOAST.loginSuccess, icon: 'success' });
           setTimeout(() => {
@@ -213,7 +237,7 @@ Page({
           }, 1200);
         } catch (error) {
           wx.hideLoading();
-          reportLoginFailure(error);
+          reportLoginFailure(error, { source: 'auth_login_devtools', traceId });
           wx.showToast({ title: TOAST.loginFailed, icon: 'none' });
           console.error(error);
         }

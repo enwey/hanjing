@@ -1,7 +1,12 @@
 const { request, apiBaseUrl } = require('../request');
 
-function getUserProfile() {
-  return request({ url: '/user/profile', method: 'GET', failMessage: '加载个人资料失败' });
+function getUserProfile(options = {}) {
+  return request({
+    url: '/user/profile',
+    method: 'GET',
+    failMessage: '加载个人资料失败',
+    traceId: options.traceId,
+  });
 }
 
 function updateUserProfile(data) {

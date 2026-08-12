@@ -292,10 +292,12 @@ Page({
 
   async onGetPhoneNumber(event) {
     const detail = event.detail || {};
+    const traceId = miniLog.createTraceId();
     miniLog.report({
       level: 'info',
       event: 'login_phone_callback',
       message: detail.errMsg || 'appointment getPhoneNumber callback',
+      traceId,
       extra: {
         source: 'appointment_index',
         hasPhoneCode: Boolean(detail.code),
@@ -306,6 +308,7 @@ Page({
         level: 'warn',
         event: 'login_phone_auth_cancelled',
         message: detail.errMsg || 'appointment phone authorization cancelled',
+        traceId,
         extra: {
           source: 'appointment_index',
         },
@@ -316,7 +319,7 @@ Page({
 
     wx.showLoading({ title: '安全登录中...' });
     try {
-      await sessionStore.login(detail.code);
+      await sessionStore.login(detail.code, { source: 'appointment_index', traceId });
       wx.hideLoading();
       wx.showToast({ title: '登录成功', icon: 'success' });
       this.startAppointment();
@@ -327,6 +330,7 @@ Page({
         event: 'login_failed',
         message: error && error.message,
         statusCode: error && error.statusCode,
+        traceId,
         extra: {
           source: 'appointment_index',
           response: error && error.data,

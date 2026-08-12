@@ -1,7 +1,13 @@
 const { request } = require('../request');
 
-function wxLogin(code, phoneCode) {
-  return request({ url: '/auth/wx-login', method: 'POST', data: { code, phoneCode }, failMessage: '登录失败' });
+function wxLogin(code, phoneCode, options = {}) {
+  return request({
+    url: '/auth/wx-login',
+    method: 'POST',
+    data: { code, phoneCode },
+    failMessage: '登录失败',
+    traceId: options.traceId,
+  });
 }
 
 function sendPhoneCode(phone) {

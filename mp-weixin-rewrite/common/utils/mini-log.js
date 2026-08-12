@@ -1,10 +1,36 @@
 const { apiBaseUrl, envVersion } = require('../config/env');
 
 const MAX_QUEUE_SIZE = 20;
+const MAX_FAILED_LOGS = 20;
 let systemInfo = null;
 let networkType = '';
 let isSending = false;
 const queue = [];
+
+function readFailedLogs() {
+  try {
+    return wx.getStorageSync('mini_program_log_failures') || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function rememberFailedLog(payload, error) {
+  try {
+    const failures = readFailedLogs();
+    failures.push({
+      time: Date.now(),
+      event: payload && payload.event,
+      traceId: payload && payload.traceId,
+      apiUrl: payload && payload.apiUrl,
+      error: normalizeMessage(error),
+    });
+    wx.setStorageSync('mini_program_log_failures', failures.slice(-MAX_FAILED_LOGS));
+  } catch (storageError) {}
+  try {
+    console.warn('[mini-log] report failed', payload && payload.event, error);
+  } catch (consoleError) {}
+}
 
 function readSystemInfo() {
   if (systemInfo) return systemInfo;
@@ -107,6 +133,17 @@ function flush() {
     data: payload,
     header,
     timeout: 5000,
+    success(response) {
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        rememberFailedLog(payload, {
+          statusCode: response.statusCode,
+          data: response.data,
+        });
+      }
+    },
+    fail(error) {
+      rememberFailedLog(payload, error);
+    },
     complete() {
       isSending = false;
       if (queue.length) {
@@ -152,4 +189,5 @@ module.exports = {
   init,
   report,
   createTraceId,
+  readFailedLogs,
 };

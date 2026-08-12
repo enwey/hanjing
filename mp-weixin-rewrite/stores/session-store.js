@@ -110,17 +110,67 @@ const sessionStore = {
     this.state.currentPatientId = patientId || '';
     if (patientId) { wx.setStorageSync("current_patient_id", patientId); } else { wx.removeStorageSync("current_patient_id"); }
   },
-  async fetchProfile() {
-    const response = await api.getUserProfile();
-    this.state.profile = response.data || response;
-    return this.state.profile;
+  async fetchProfile(options = {}) {
+    const traceId = options.traceId || '';
+    const shouldReport = Boolean(traceId || options.source);
+    if (shouldReport) {
+      miniLog.report({
+        level: 'info',
+        event: 'profile_request',
+        message: 'request user profile',
+        apiUrl: '/user/profile',
+        method: 'GET',
+        traceId,
+        extra: {
+          source: options.source || '',
+        },
+      });
+    }
+    try {
+      const response = await api.getUserProfile({ traceId });
+      this.state.profile = response.data || response;
+      if (shouldReport) {
+        miniLog.report({
+          level: 'info',
+          event: 'profile_success',
+          message: 'user profile loaded',
+          traceId,
+          extra: {
+            source: options.source || '',
+            hasProfile: Boolean(this.state.profile),
+            userId: this.state.profile && this.state.profile.id,
+            hasPhone: Boolean(this.state.profile && this.state.profile.phone),
+          },
+        });
+      }
+      return this.state.profile;
+    } catch (error) {
+      if (shouldReport) {
+        miniLog.report({
+          level: 'error',
+          event: 'profile_failed',
+          message: error && error.message,
+          statusCode: error && error.statusCode,
+          traceId,
+          extra: {
+            source: options.source || '',
+            response: error && error.data,
+          },
+        });
+      }
+      throw error;
+    }
   },
-  async login(phoneCode) {
+  async login(phoneCode, options = {}) {
+    const traceId = options.traceId || miniLog.createTraceId();
+    const source = options.source || 'unknown';
     miniLog.report({
       level: 'info',
       event: 'session_login_start',
       message: 'session login started',
+      traceId,
       extra: {
+        source,
         hasPhoneCode: Boolean(phoneCode),
       },
     });
@@ -132,6 +182,10 @@ const sessionStore = {
             level: 'error',
             event: 'wx_login_failed',
             message: error && error.errMsg,
+            traceId,
+            extra: {
+              source,
+            },
           });
           reject(error);
         },
@@ -141,31 +195,62 @@ const sessionStore = {
       level: 'info',
       event: 'wx_login_success',
       message: 'wx.login success',
+      traceId,
       extra: {
+        source,
         hasCode: Boolean(loginResponse && loginResponse.code),
         hasPhoneCode: Boolean(phoneCode),
       },
     });
+    if (!loginResponse || !loginResponse.code) {
+      miniLog.report({
+        level: 'warn',
+        event: 'wx_login_missing_code',
+        message: 'wx.login success without code',
+        traceId,
+        extra: {
+          source,
+          hasPhoneCode: Boolean(phoneCode),
+        },
+      });
+    }
     miniLog.report({
       level: 'info',
       event: 'login_api_request',
       message: 'request wx-login api',
       apiUrl: '/auth/wx-login',
       method: 'POST',
+      traceId,
       extra: {
+        source,
         hasCode: Boolean(loginResponse && loginResponse.code),
         hasPhoneCode: Boolean(phoneCode),
       },
     });
-    const response = await api.wxLogin(loginResponse.code, phoneCode);
+    const response = await api.wxLogin(loginResponse.code, phoneCode, { traceId });
     const payload = response.data || response;
+    miniLog.report({
+      level: 'info',
+      event: 'login_api_success',
+      message: 'wx-login api success',
+      apiUrl: '/auth/wx-login',
+      method: 'POST',
+      traceId,
+      extra: {
+        source,
+        hasAccessToken: Boolean(payload.access_token),
+        hasUser: Boolean(payload.user),
+      },
+    });
     this.setAccessToken(payload.access_token || '');
     this.state.profile = payload.user || null;
     miniLog.report({
       level: 'info',
       event: 'login_success',
       message: 'login success',
+      traceId,
       extra: {
+        source,
         hasAccessToken: Boolean(payload.access_token),
         hasUser: Boolean(payload.user),
         userId: payload.user && payload.user.id,
