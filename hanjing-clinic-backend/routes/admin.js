@@ -6892,7 +6892,7 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
 
 function sendAdminPayError(res, error, fallbackMessage) {
   const rawStatus = error.statusCode || 500;
-  const status = rawStatus === 403 ? 400 : rawStatus;
+  const status = rawStatus === 401 || rawStatus === 403 ? 400 : rawStatus;
   res.status(status).json({
     code: status,
     message: error.message || fallbackMessage,
