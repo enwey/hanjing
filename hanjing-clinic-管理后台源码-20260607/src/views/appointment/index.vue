@@ -12,6 +12,7 @@ import {
   type BillingItem,
   type CheckoutProduct
 } from '@/utils/checkoutProducts'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 const router = useRouter()
 const route = useRoute()
@@ -173,7 +174,7 @@ const fetchAppointments = async () => {
       type: formatAppointmentType(item.type),
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
       status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' || item.status === 'called' ? 'waiting' : item.status === 'pending' ? 'pending' : item.status === 'pending_payment' ? 'pending_payment' : item.status === 'no_show' ? 'no_show' : 'cancelled',
-      createdAt: item.created_at ? new Date(item.created_at).toLocaleString('zh-CN', { hour12: false }) : '',
+      createdAt: item.created_at ? formatShanghaiDateTime(item.created_at) : '',
       consult_fee: item.consult_fee || 0,
       deposit_amount: item.deposit_amount || 0
     }))

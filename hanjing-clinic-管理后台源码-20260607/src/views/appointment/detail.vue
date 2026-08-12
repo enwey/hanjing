@@ -229,15 +229,7 @@ const fetchAppointmentDetail = async () => {
         patient_id: appt.patient_id,
         no: appt.appointment_no,
         status: appt.status,
-        createTime: appt.created_at ? (() => {
-          const d = new Date(appt.created_at);
-          const y = d.getFullYear();
-          const m = String(d.getMonth() + 1).padStart(2, '0');
-          const date = String(d.getDate()).padStart(2, '0');
-          const h = String(d.getHours()).padStart(2, '0');
-          const min = String(d.getMinutes()).padStart(2, '0');
-          return `${y}-${m}-${date} ${h}:${min}`;
-        })() : '',
+        createTime: appt.created_at ? formatShanghaiDateTime(appt.created_at, false) : '',
         patient: appt.patient_name,
         patientNo: appt.patient_no || '未生成',
         phone: appt.patient_phone,

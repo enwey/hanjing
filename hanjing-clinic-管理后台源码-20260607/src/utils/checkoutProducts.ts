@@ -71,6 +71,28 @@ function formatPayMethod(method: string) {
   return methodMap[method] || method
 }
 
+const formatShanghaiDateTime = (value: string | number | Date) => {
+  const text = String(value || '').trim()
+  const matched = text.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/)
+  if (matched) {
+    return `${matched[1]} ${matched[2] || '00'}:${matched[3] || '00'}:${matched[4] || '00'}`
+  }
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return text
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(date)
+  const read = (type: string) => parts.find((part) => part.type === type)?.value || ''
+  return `${read('year')}-${read('month')}-${read('day')} ${read('hour')}:${read('minute')}:${read('second')}`
+}
+
 export function createCheckoutReceiptResult(receipt: any): CheckoutReceiptResult {
   if (!receipt || !receipt.orderNo || !receipt.patientName || !receipt.payAt || !Array.isArray(receipt.items)) {
     throw new Error('订单凭证数据不完整')
@@ -84,7 +106,7 @@ export function createCheckoutReceiptResult(receipt: any): CheckoutReceiptResult
     discount: formatAmount(receipt.discountAmount),
     payable: formatAmount(receipt.payAmount),
     payMethodText: formatPayMethod(receipt.payMethod),
-    time: new Date(receipt.payAt).toLocaleString(),
+    time: formatShanghaiDateTime(receipt.payAt),
     items: receipt.items.map((item: any) => ({
       product_id: String(item.productId),
       product_name: item.productName,

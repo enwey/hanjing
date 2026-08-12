@@ -55,7 +55,7 @@ const fetchDetail = async () => {
         level: d.level,
         code: d.code,
         phone: d.phone,
-        regDate: d.regDate ? new Date(d.regDate).toLocaleDateString() : '',
+        regDate: d.regDate ? formatShanghaiDateOnly(d.regDate) : '',
         status: d.status,
         parentName: d.parentName,
         firstLevelDownline: d.firstLevelDownline,
@@ -258,7 +258,7 @@ onMounted(() => {
                     <span style="color: #9CA3AF;" v-else>普通客户</span>
                   </td>
                   <td>一级下线</td>
-                  <td>{{ item.joinDate ? new Date(item.joinDate).toLocaleDateString() : '—' }}</td>
+                  <td>{{ item.joinDate ? formatShanghaiDateOnly(item.joinDate) : '—' }}</td>
                 </tr>
                 <tr v-for="(item, idx) in teamData.level2" :key="'l2-'+idx">
                   <td style="font-weight: 600;">{{ item.name }}</td>
@@ -271,7 +271,7 @@ onMounted(() => {
                     <span style="color: #9CA3AF;" v-else>普通客户</span>
                   </td>
                   <td>二级下线</td>
-                  <td>{{ item.joinDate ? new Date(item.joinDate).toLocaleDateString() : '—' }}</td>
+                  <td>{{ item.joinDate ? formatShanghaiDateOnly(item.joinDate) : '—' }}</td>
                 </tr>
                 <tr v-if="teamData.level1.length === 0 && teamData.level2.length === 0">
                   <td colspan="5" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无团队下级关系数据</td>
