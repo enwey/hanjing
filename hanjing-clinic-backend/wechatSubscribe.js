@@ -1,9 +1,5 @@
 import { get, query, run } from './db.js';
-
-const TOKEN_CACHE = {
-  value: '',
-  expiresAt: 0
-};
+import { getWechatMiniAccessToken } from './wechatMiniToken.js';
 
 const EVENT_TEMPLATE_KEYS = {
   appointment_created: ['wechat_template_appointment_created', 'appointment_subscribe_template_ids'],
@@ -137,31 +133,6 @@ function buildTemplateData(event, payload = {}) {
     thing1: thing(payload.title || '服务通知'),
     thing2: thing(payload.remark || payload.content || '')
   };
-}
-
-async function getWechatMiniAccessToken() {
-  const now = Date.now();
-  if (TOKEN_CACHE.value && TOKEN_CACHE.expiresAt > now + 60_000) {
-    return TOKEN_CACHE.value;
-  }
-
-  const appId = process.env.WX_MINI_APP_ID;
-  const appSecret = process.env.WX_MINI_APP_SECRET;
-  if (!appId || !appSecret) {
-    return '';
-  }
-
-  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(appSecret)}`;
-  const response = await fetch(url);
-  const data = await response.json();
-  if (!response.ok || data.errcode) {
-    console.warn('[Wechat Subscribe] Failed to get access token:', data.errmsg || response.status);
-    return '';
-  }
-
-  TOKEN_CACHE.value = data.access_token;
-  TOKEN_CACHE.expiresAt = now + Math.max((Number(data.expires_in) || 7200) - 120, 60) * 1000;
-  return TOKEN_CACHE.value;
 }
 
 async function isEventEnabled(event) {

@@ -31,6 +31,7 @@ import {
   queryOrderByOutTradeNo,
   verifyWechatPayCallback
 } from '../wechatPay.js';
+import { getWechatMiniAccessToken, isWechatAccessTokenInvalid } from '../wechatMiniToken.js';
 
 const app = express.Router();
 const APPOINTMENT_TYPES = new Set(['first', 'followup', 'adjust']);
@@ -119,11 +120,6 @@ async function writeMiniProgramLog(req, payload) {
     ]
   );
 }
-
-const WECHAT_TOKEN_CACHE = {
-  value: '',
-  expiresAt: 0
-};
 
 function allowDevMockWxLogin() {
   const nodeEnv = String(process.env.NODE_ENV || '').trim().toLowerCase();
@@ -262,34 +258,6 @@ function toAbsoluteAssetUrl(req, assetPath) {
   return `${origin}${value.startsWith('/') ? value : `/${value}`}`;
 }
 
-async function getWechatMiniAccessToken() {
-  const now = Date.now();
-  if (WECHAT_TOKEN_CACHE.value && WECHAT_TOKEN_CACHE.expiresAt > now + 60_000) {
-    return WECHAT_TOKEN_CACHE.value;
-  }
-
-  const appId = process.env.WX_MINI_APP_ID;
-  const appSecret = process.env.WX_MINI_APP_SECRET;
-  if (!appId || !appSecret) {
-    const error = new Error('未配置微信小程序 AppID / AppSecret');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(appSecret)}`;
-  const response = await fetch(url);
-  const data = await response.json();
-  if (!response.ok || data.errcode) {
-    const error = new Error(data.errmsg || '获取微信 access_token 失败');
-    error.statusCode = 502;
-    throw error;
-  }
-
-  WECHAT_TOKEN_CACHE.value = data.access_token;
-  WECHAT_TOKEN_CACHE.expiresAt = now + Math.max((Number(data.expires_in) || 7200) - 120, 60) * 1000;
-  return WECHAT_TOKEN_CACHE.value;
-}
-
 async function exchangeWechatMiniCode(code) {
   const appId = process.env.WX_MINI_APP_ID;
   const appSecret = process.env.WX_MINI_APP_SECRET;
@@ -341,16 +309,25 @@ async function getWechatMiniPhoneNumber(code) {
     throw error;
   }
 
-  const accessToken = await getWechatMiniAccessToken();
-  const response = await fetch(
-    `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${encodeURIComponent(accessToken)}`,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ code: phoneCode })
-    }
-  );
-  const data = await response.json();
+  const requestPhoneNumber = async (forceRefresh = false) => {
+    const accessToken = await getWechatMiniAccessToken({ forceRefresh });
+    const response = await fetch(
+      `https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=${encodeURIComponent(accessToken)}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code: phoneCode })
+      }
+    );
+    const data = await response.json().catch(() => ({}));
+    return { response, data };
+  };
+
+  let { response, data } = await requestPhoneNumber(false);
+  if ((!response.ok || data?.errcode) && isWechatAccessTokenInvalid(data)) {
+    ({ response, data } = await requestPhoneNumber(true));
+  }
+
   const phone = String(
     data?.phone_info?.purePhoneNumber ||
     data?.phone_info?.phoneNumber ||

@@ -22,6 +22,7 @@ import {
   decryptPII
 } from '../helpers.js';
 import { sendWechatSubscribeMessage } from '../wechatSubscribe.js';
+import { getWechatMiniAccessToken } from '../wechatMiniToken.js';
 import {
   allowDevMockWechatPay,
   closeOrderByOutTradeNo,
@@ -409,45 +410,12 @@ const getRolePermissions = async (roleId) => {
   return perms.map(p => p.permission_resource);
 };
 
-const WECHAT_TOKEN_CACHE = {
-  value: '',
-  expiresAt: 0
-};
-
 function mapWechatLiveStatus(status) {
   const code = Number(status);
   if (code === 101) return 'live';
   if (code === 102) return 'upcoming';
   if ([103, 104, 105, 106, 107].includes(code)) return 'replay';
   return 'upcoming';
-}
-
-async function getWechatMiniAccessToken() {
-  const now = Date.now();
-  if (WECHAT_TOKEN_CACHE.value && WECHAT_TOKEN_CACHE.expiresAt > now + 60_000) {
-    return WECHAT_TOKEN_CACHE.value;
-  }
-
-  const appId = process.env.WX_MINI_APP_ID;
-  const appSecret = process.env.WX_MINI_APP_SECRET;
-  if (!appId || !appSecret) {
-    const err = new Error('未配置微信小程序 AppID / AppSecret');
-    err.statusCode = 400;
-    throw err;
-  }
-
-  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(appSecret)}`;
-  const response = await fetch(url);
-  const data = await response.json();
-  if (!response.ok || data.errcode) {
-    const err = new Error(data.errmsg || '获取微信 access_token 失败');
-    err.statusCode = 502;
-    throw err;
-  }
-
-  WECHAT_TOKEN_CACHE.value = data.access_token;
-  WECHAT_TOKEN_CACHE.expiresAt = now + Math.max((Number(data.expires_in) || 7200) - 120, 60) * 1000;
-  return WECHAT_TOKEN_CACHE.value;
 }
 
 async function fetchWechatLiveRoom(roomId) {
