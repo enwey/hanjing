@@ -20,18 +20,21 @@ interface MiniProgramLog {
   sdk_version: string
   network_type: string
   ip_address: string
-  nickname: string
-  extra: string
+  extra: any
 }
 
 const logs = ref<MiniProgramLog[]>([])
 const total = ref(0)
+const unfilteredTotal = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(30)
 const keyword = ref('')
 const level = ref('')
 const event = ref('')
 const traceId = ref('')
+const diagnostics = ref<any>({})
+const loadError = ref('')
+const loading = ref(false)
 
 const levelOptions = [
   { label: '全部等级', value: '' },
@@ -43,6 +46,8 @@ const levelOptions = [
 
 const eventOptions = [
   { label: '全部事件', value: '' },
+  { label: '服务端登录失败', value: 'login_server_failed' },
+  { label: '缺少登录 code', value: 'login_missing_code' },
   { label: '登录失败', value: 'login_failed' },
   { label: '登录接口失败', value: 'login_api_failed' },
   { label: '登录网络失败', value: 'login_network_failed' },
@@ -66,16 +71,55 @@ function levelTheme(value: string) {
   return 'primary'
 }
 
-function parseExtra(value: string) {
+function parseExtra(value: any) {
   if (!value) return '-'
-  try {
-    return JSON.stringify(JSON.parse(value), null, 2)
-  } catch (error) {
-    return value
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2)
+    } catch (error) {
+      return value
+    }
   }
+  return JSON.stringify(value, null, 2)
+}
+
+function hasActiveFilter() {
+  return Boolean(keyword.value || level.value || event.value || traceId.value)
+}
+
+function emptyTitle() {
+  if (loadError.value) return '日志加载失败'
+  if (hasActiveFilter() && unfilteredTotal.value > 0) return '当前筛选没有匹配日志'
+  return '还没有收到小程序日志'
+}
+
+function emptyReasons() {
+  if (loadError.value) {
+    return [
+      loadError.value,
+      diagnostics.value?.tableReady === false ? '生产数据库可能还没有 mini_program_logs 表。' : '',
+      diagnostics.value?.errorCode ? `错误码：${diagnostics.value.errorCode}` : '',
+      '请确认生产后端已部署最新 master，并且服务已重启。',
+    ].filter(Boolean)
+  }
+  if (hasActiveFilter() && unfilteredTotal.value > 0) {
+    return [
+      `当前共有 ${unfilteredTotal.value} 条小程序日志，但没有符合筛选条件的记录。`,
+      '请清空等级、事件、Trace ID 或关键字后重新查看。',
+    ]
+  }
+  return [
+    '生产后端可能还没有收到小程序日志上报。',
+    '请确认后端已部署最新 master，并且服务已重启执行 initDB。',
+    '请确认生产数据库存在 mini_program_logs 表。',
+    '如果登录失败仍无日志，请检查请求是否在 Nginx/网关层被拦截，是否进入 Node 后端。',
+    '请确认后台查看的是小程序实际连接的同一套数据库。',
+  ]
 }
 
 async function fetchLogs() {
+  loading.value = true
+  loadError.value = ''
   try {
     const res: any = await request.get('/api/admin/mini-program-logs', {
       params: {
@@ -89,8 +133,17 @@ async function fetchLogs() {
     })
     logs.value = res.data?.list || []
     total.value = Number(res.data?.total || 0)
+    unfilteredTotal.value = Number(res.data?.unfilteredTotal || 0)
+    diagnostics.value = res.data?.diagnostics || {}
   } catch (error) {
-    MessagePlugin.error('加载小程序日志失败')
+    logs.value = []
+    total.value = 0
+    const err: any = error
+    loadError.value = err?.response?.data?.message || err?.message || '加载小程序日志失败'
+    diagnostics.value = err?.response?.data?.data?.diagnostics || {}
+    MessagePlugin.error(loadError.value)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -111,7 +164,7 @@ onMounted(fetchLogs)
         <div class="page-title">小程序日志</div>
         <div class="page-title-sub">记录小程序登录、接口请求、页面异常等排查信息。</div>
       </div>
-      <t-button theme="primary" @click="fetchLogs">刷新</t-button>
+      <t-button theme="primary" :loading="loading" @click="fetchLogs">刷新</t-button>
     </div>
 
     <div class="panel">
@@ -122,11 +175,19 @@ onMounted(fetchLogs)
           <t-select v-model="event" :options="eventOptions" class="filter-select event-select" />
           <t-input v-model="traceId" placeholder="Trace ID" clearable class="filter-trace" />
         </div>
-        <div class="total-text">共 {{ total }} 条</div>
+        <div class="total-text">
+          当前 {{ total }} 条<span v-if="unfilteredTotal !== total"> / 全部 {{ unfilteredTotal }} 条</span>
+        </div>
+      </div>
+
+      <div v-if="diagnostics?.serverTime" class="diagnostic-bar">
+        后端时间：{{ formatTime(diagnostics.serverTime) }}
+        <span v-if="diagnostics.tableReady === true"> · 日志表正常</span>
+        <span v-if="diagnostics.tableReady === false"> · 日志表不存在</span>
       </div>
 
       <div class="panel-body table-wrap">
-        <table class="data-table">
+        <table v-if="logs.length > 0" class="data-table">
           <thead>
             <tr>
               <th>时间</th>
@@ -165,11 +226,15 @@ onMounted(fetchLogs)
                 </t-popup>
               </td>
             </tr>
-            <tr v-if="logs.length === 0">
-              <td colspan="8" class="empty-cell">暂无小程序日志</td>
-            </tr>
           </tbody>
         </table>
+
+        <div v-else class="empty-state">
+          <div class="empty-title">{{ emptyTitle() }}</div>
+          <ul>
+            <li v-for="item in emptyReasons()" :key="item">{{ item }}</li>
+          </ul>
+        </div>
       </div>
 
       <div class="pagination-footer">
@@ -217,6 +282,13 @@ onMounted(fetchLogs)
   font-size: 12px;
 }
 
+.diagnostic-bar {
+  padding: 10px 16px;
+  border-top: 1px solid #eef2f7;
+  color: #64748b;
+  font-size: 13px;
+}
+
 .table-wrap {
   padding: 0;
   overflow-x: auto;
@@ -246,9 +318,21 @@ onMounted(fetchLogs)
   font-size: 12px;
 }
 
-.empty-cell {
-  padding: 40px 0;
-  color: #9ca3af;
-  text-align: center;
+.empty-state {
+  padding: 48px;
+  color: #475569;
+}
+
+.empty-title {
+  margin-bottom: 12px;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.empty-state ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.9;
 }
 </style>

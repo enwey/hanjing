@@ -6287,6 +6287,9 @@ app.get('/api/admin/mini-program-logs', authenticateToken, async (req, res) => {
        ${whereClause}`,
       params
     );
+    const allCountResult = conditions.length
+      ? await get(`SELECT COUNT(*) AS total FROM mini_program_logs`)
+      : countResult;
     const list = await query(
       `SELECT l.*, u.nickname
        FROM mini_program_logs l
@@ -6302,12 +6305,31 @@ app.get('/api/admin/mini-program-logs', authenticateToken, async (req, res) => {
       data: {
         list,
         total: Number(countResult?.total || 0),
+        unfilteredTotal: Number(allCountResult?.total || 0),
+        diagnostics: {
+          tableReady: true,
+          hasFilter: conditions.length > 0,
+          serverTime: new Date().toISOString()
+        },
         page,
         limit
       }
     });
   } catch (error) {
     console.error('Fetch mini program logs error:', error);
+    if (error && error.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(500).json({
+        code: 500,
+        message: '小程序日志表 mini_program_logs 不存在，请确认生产后端已部署最新代码并重启，或手动执行建表 SQL。',
+        data: {
+          diagnostics: {
+            tableReady: false,
+            errorCode: error.code,
+            serverTime: new Date().toISOString()
+          }
+        }
+      });
+    }
     res.status(500).json({ code: 500, message: '获取小程序日志失败' });
   }
 });
