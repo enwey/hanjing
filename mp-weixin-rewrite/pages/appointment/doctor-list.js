@@ -1,5 +1,6 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
+const { normalizeImageUrl } = require('../../common/utils/image-url');
 
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -25,7 +26,9 @@ function normalizeDoctor(doctor) {
     ...doctor,
     id: readString(doctor.id),
     name,
-    avatarUrl: doctor.avatarUrl || doctor.avatar || doctor.avatar_url || '',
+    avatarUrl: normalizeImageUrl(
+      doctor.avatarUrl || doctor.avatar || doctor.avatar_url || doctor.doctorAvatar || doctor.doctor_avatar
+    ),
     title: doctor.title || doctor.jobTitle || '',
     specialty: doctor.specialty || doctor.specialities || doctor.expertiseText || doctor.expertise || '',
     experience: Number(doctor.experience || doctor.yearsOfExperience || 0),

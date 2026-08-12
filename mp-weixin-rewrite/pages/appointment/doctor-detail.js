@@ -1,6 +1,6 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
-const { apiBaseUrl } = require('../../api/request');
+const { normalizeImageUrl } = require('../../common/utils/image-url');
 
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -18,18 +18,6 @@ function unwrapList(response) {
 
 function readString(value) {
   return value === null || value === undefined ? '' : String(value);
-}
-
-function getApiOrigin() {
-  return String(apiBaseUrl || '').replace(/\/api\/v1\/?$/, '');
-}
-
-function normalizeAvatarUrl(value) {
-  const url = readString(value).trim();
-  if (!url) return '';
-  if (/^(https?:|wxfile:|cloud:|data:)/i.test(url)) return url;
-  if (url.indexOf('/uploads/') === 0) return getApiOrigin() + url;
-  return url;
 }
 
 function getDateText(offsetDays) {
@@ -190,7 +178,7 @@ Page({
       doctorTitle: doctor ? doctor.title || '' : '',
       specialty: doctor ? doctor.specialty || '' : '',
       avatarText: doctor && doctor.name ? doctor.name.slice(0, 1) : '',
-      avatarUrl: normalizeAvatarUrl(doctor && (doctor.avatarUrl || doctor.avatar || doctor.avatar_url)),
+      avatarUrl: normalizeImageUrl(doctor && (doctor.avatarUrl || doctor.avatar || doctor.avatar_url || doctor.doctorAvatar || doctor.doctor_avatar)),
       avatarLoaded: false,
       heroTags,
       experienceNumber: String((doctor && doctor.experience) || 0),

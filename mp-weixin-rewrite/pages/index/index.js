@@ -1,4 +1,5 @@
 const api = require('../../api/index');
+const { normalizeImageUrl } = require('../../common/utils/image-url');
 
 function formatIntegerWithCommas(value) {
   const text = String(Math.max(0, parseInt(value, 10) || 0));
@@ -48,7 +49,9 @@ function normalizeDoctor(doctor) {
     id: doctor.id,
     name: doctor.name || '',
     avatarText: (doctor.name || '').slice(0, 1) || '?',
-    avatarUrl: doctor.avatarUrl || doctor.avatar || doctor.avatar_url || '',
+    avatarUrl: normalizeImageUrl(
+      doctor.avatarUrl || doctor.avatar || doctor.avatar_url || doctor.doctorAvatar || doctor.doctor_avatar
+    ),
     title: doctor.title || doctor.jobTitle || '',
     specialty: doctor.specialty || doctor.specialities || doctor.expertise || '',
     experience: Number(doctor.experienceYears || doctor.experience || 0),

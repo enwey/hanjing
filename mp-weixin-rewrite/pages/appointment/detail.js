@@ -1,8 +1,7 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const subscribe = require('../../common/utils/subscribe');
-const { apiBaseUrl } = require('../../api/request');
-const { getStoreCoverUrl } = require('../../common/utils/image-url');
+const { getStoreCoverUrl, normalizeImageUrl } = require('../../common/utils/image-url');
 
 const APPOINTMENT_STATUS_MAP = {
   pending_payment: '待支付',
@@ -25,18 +24,6 @@ const APPOINTMENT_TYPE_MAP = {
 function unwrapObject(response) {
   const payload = response && response.data ? response.data : response || {};
   return payload.data || payload;
-}
-
-function getApiOrigin() {
-  return String(apiBaseUrl || '').replace(/\/api\/v1\/?$/, '');
-}
-
-function normalizeAvatarUrl(value) {
-  const url = value === null || value === undefined ? '' : String(value).trim();
-  if (!url) return '';
-  if (/^(https?:|wxfile:|cloud:|data:)/i.test(url)) return url;
-  if (url.indexOf('/uploads/') === 0) return getApiOrigin() + url;
-  return url;
 }
 
 function parseAppointmentTimestamp(dateText, timeText) {
@@ -196,7 +183,7 @@ Page({
             .map((item) => item.trim())
             .filter(Boolean);
 
-      const nextDoctorAvatarUrl = normalizeAvatarUrl(
+      const nextDoctorAvatarUrl = normalizeImageUrl(
         doctor.avatarUrl || doctor.avatar || doctor.avatar_url || appointment.doctorAvatar || appointment.doctor_avatar
       );
       const nextStoreCoverUrl = getStoreCoverUrl(store || appointment);
