@@ -1975,54 +1975,92 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
     return res.status(400).json({ code: 400, message: '身份证格式不正确' });
   }
   try {
-    await run(
-      `UPDATE users
-       SET nickname = COALESCE(?, nickname),
-           phone = COALESCE(?, phone),
-           birthday = COALESCE(?, birthday),
-           avatar_url = COALESCE(?, avatar_url)
-       WHERE id = ?`,
-      [nicknameClean, phoneEnc, birthdayClean, avatarClean, req.user.id]
-    );
-    let selfPatient = await getSelfPatientForUser(req.user.id);
-    if (!selfPatient) {
-      const currentUser = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
-      selfPatient = await createDefaultSelfPatientForUser(currentUser);
-    }
-    if (selfPatient) {
-      if (idCardEnc && selfPatient.id_card !== idCardEnc) {
-        const occupiedPatient = await get(
+    await transaction(async (conn) => {
+      await conn.execute(
+        `UPDATE users
+         SET nickname = COALESCE(?, nickname),
+             phone = COALESCE(?, phone),
+             birthday = COALESCE(?, birthday),
+             avatar_url = COALESCE(?, avatar_url)
+         WHERE id = ?`,
+        [nicknameClean, phoneEnc, birthdayClean, avatarClean, req.user.id]
+      );
+
+      let selfPatient = await getSelfPatientForUserWithConn(conn, req.user.id);
+      if (!selfPatient) {
+        const [[currentUser]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [req.user.id]);
+        if (currentUser) {
+          selfPatient = await createDefaultSelfPatientForUser(currentUser);
+        }
+      }
+
+      if (!selfPatient) {
+        return;
+      }
+
+      const scopedPatientRows = await (async () => {
+        if (selfPatient.id_card) {
+          const [rows] = await conn.execute(
+            `SELECT * FROM patients
+             WHERE id_card = ?
+             ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, id ASC`,
+            [selfPatient.id_card, selfPatient.id]
+          );
+          return rows;
+        }
+        if (selfPatient.phone) {
+          const [rows] = await conn.execute(
+            `SELECT * FROM patients
+             WHERE phone = ?
+               AND (id_card IS NULL OR id_card = '')
+             ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, id ASC`,
+            [selfPatient.phone, selfPatient.id]
+          );
+          return rows;
+        }
+        return [selfPatient];
+      })();
+
+      const scopedPatients = Array.isArray(scopedPatientRows) && scopedPatientRows.length
+        ? scopedPatientRows
+        : [selfPatient];
+      const scopedPatientIds = Array.from(new Set(scopedPatients.map((item) => Number(item.id)).filter(Boolean)));
+
+      if (idCardEnc) {
+        const placeholders = scopedPatientIds.map(() => '?').join(',');
+        const [occupiedRows] = await conn.execute(
           `SELECT p.id
            FROM patients p
            LEFT JOIN users u ON u.self_patient_id = p.id
            WHERE p.id_card = ?
-             AND p.id != ?
+             AND p.id NOT IN (${placeholders})
              AND (
                u.id IS NOT NULL
                OR (p.user_id IS NOT NULL AND p.relation = 'self')
              )
            ORDER BY p.id ASC
            LIMIT 1`,
-          [idCardEnc, selfPatient.id]
+          [idCardEnc, ...scopedPatientIds]
         );
-        if (occupiedPatient) {
-          return res.status(400).json({
-            code: 400,
-            message: '该身份证号已绑定到其他登录用户，本页面不能直接修改，请通过关联管理处理'
-          });
+        if (occupiedRows && occupiedRows.length) {
+          const error = new Error('该身份证号已绑定到其他登录用户，本页面不能直接修改，请通过关联管理处理');
+          error.statusCode = 400;
+          throw error;
         }
       }
-      await run(
+
+      const placeholders = scopedPatientIds.map(() => '?').join(',');
+      await conn.execute(
         `UPDATE patients
          SET name = COALESCE(?, name),
              gender = COALESCE(?, gender),
              age = COALESCE(?, age),
              phone = COALESCE(?, phone),
              id_card = COALESCE(?, id_card)
-         WHERE id = ?`,
-        [nicknameClean, genderClean, ageClean, phoneEnc, idCardEnc, selfPatient.id]
+         WHERE id IN (${placeholders})`,
+        [nicknameClean, genderClean, ageClean, phoneEnc, idCardEnc, ...scopedPatientIds]
       );
-    }
+    });
 
     const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
     const patient = await getSelfPatientForUser(req.user.id);
@@ -2044,7 +2082,7 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Update profile error:', error);
-    res.status(500).json({ code: 500, message: '更新资料失败' });
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '更新资料失败' });
   }
 });
 
