@@ -68,7 +68,9 @@ export async function getMissingWechatPayConfig(mode = 'v3') {
 }
 
 export function allowDevMockWechatPay() {
-  return process.env.ENABLE_MOCK_WECHAT_PAY !== 'false';
+  const nodeEnv = String(process.env.NODE_ENV || '').trim().toLowerCase();
+  const isDevEnv = ['development', 'dev', 'local', 'test'].includes(nodeEnv);
+  return isDevEnv && String(process.env.ENABLE_MOCK_WECHAT_PAY || '').trim().toLowerCase() === 'true';
 }
 
 async function getWechatPayConfig() {

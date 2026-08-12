@@ -2,7 +2,7 @@ const inviteService = require('./invite-service');
 
 const POSTER_CANVAS_ID = 'distributionInvitePoster';
 const POSTER_WIDTH = 900;
-const POSTER_HEIGHT = 1220;
+const POSTER_HEIGHT = 1360;
 const POSTER_EXPORT_SCALE = 2;
 
 function drawRoundedRect(context, x, y, width, height, radius) {
@@ -133,7 +133,8 @@ Page({
   },
   async drawInvitePoster() {
     const { canvas, context } = await this.getPosterCanvasContext();
-    const qrImagePath = await this.resolvePosterQrImage();
+    const qrImageSource = await this.resolvePosterQrImage();
+    const qrImage = await this.loadPosterImage(canvas, qrImageSource);
     const inviteCode = this.data.inviteCode || '';
     const pageGradient = context.createLinearGradient(0, 0, POSTER_WIDTH, POSTER_HEIGHT);
     pageGradient.addColorStop(0, '#0a1529');
@@ -228,26 +229,27 @@ Page({
     const processX = contentX;
     const processY = currentY;
     const processWidth = posterWidth - 84;
+    const processHeight = 88;
     context.setFillStyle('rgba(255, 255, 255, 0.03)');
-    drawRoundedRect(context, processX, processY, processWidth, 72, 18);
+    drawRoundedRect(context, processX, processY, processWidth, processHeight, 18);
     context.fill();
     const stepCenters = [processX + 116, processX + processWidth / 2, processX + processWidth - 116];
     const stepTitles = ['分享此海报', '好友扫码下单', '绑定关系得佣金'];
     stepCenters.forEach((centerX, index) => {
       context.setFillStyle('rgba(255, 255, 255, 0.1)');
       context.beginPath();
-      context.arc(centerX - 46, processY + 36, 14, 0, Math.PI * 2);
+      context.arc(centerX - 46, processY + processHeight / 2, 14, 0, Math.PI * 2);
       context.fill();
-      fillCenteredText(context, String(index + 1), centerX - 46, processY + 41, 12, '#ffffff');
+      fillCenteredText(context, String(index + 1), centerX - 46, processY + processHeight / 2 + 5, 12, '#ffffff');
       context.setFillStyle('#94a3b8');
-      fillCenteredText(context, stepTitles[index], centerX + 18, processY + 41, 18, '#94a3b8');
+      fillCenteredText(context, stepTitles[index], centerX + 18, processY + processHeight / 2 + 5, 18, '#94a3b8');
     });
-    currentY += 98;
+    currentY += processHeight + 28;
 
     const targetX = contentX;
     const targetY = currentY;
     const targetWidth = posterWidth - 84;
-    const targetHeight = 146;
+    const targetHeight = 172;
     context.setFillStyle('rgba(255, 255, 255, 0.05)');
     drawRoundedRect(context, targetX, targetY, targetWidth, targetHeight, 24);
     context.fill();
@@ -263,56 +265,56 @@ Page({
     let badgeX = targetX + 24;
     badges.forEach((badge) => {
       context.setFillStyle(badge.bg);
-      drawRoundedRect(context, badgeX, targetY + 48, badge.width, 34, 10);
+      drawRoundedRect(context, badgeX, targetY + 54, badge.width, 34, 10);
       context.fill();
-      fillCenteredText(context, badge.text, badgeX + badge.width / 2, targetY + 71, 16, badge.color);
+      fillCenteredText(context, badge.text, badgeX + badge.width / 2, targetY + 77, 16, badge.color);
       badgeX += badge.width + 12;
     });
     context.setFillStyle('rgba(255, 255, 255, 0.1)');
-    context.fillRect(targetX + 24, targetY + 102, targetWidth - 48, 1);
+    context.fillRect(targetX + 24, targetY + 116, targetWidth - 48, 1);
     context.setFillStyle('#10b981');
     context.beginPath();
-    context.arc(targetX + 30, targetY + 122, 6, 0, Math.PI * 2);
+    context.arc(targetX + 30, targetY + 140, 6, 0, Math.PI * 2);
     context.fill();
     context.setFillStyle('#cbd5e1');
     context.setFontSize(18);
-    context.fillText('推荐体验：专业睡眠评估、定制化治疗方案与健康服务', targetX + 46, targetY + 128);
+    context.fillText('推荐体验：专业睡眠评估、定制化治疗方案与健康服务', targetX + 46, targetY + 146);
 
     const actionCardX = contentX;
-    const actionCardY = posterY + posterHeight - 232;
+    const actionCardY = targetY + targetHeight + 44;
     const actionCardWidth = posterWidth - 84;
-    const actionCardHeight = 154;
+    const actionCardHeight = 238;
     context.setFillStyle('#ffffff');
     drawRoundedRect(context, actionCardX, actionCardY, actionCardWidth, actionCardHeight, 28);
     context.fill();
 
     context.setFillStyle('#0f172a');
     context.setFontSize(28);
-    context.fillText('扫码立即体验', actionCardX + 28, actionCardY + 40);
+    context.fillText('扫码立即体验', actionCardX + 32, actionCardY + 42);
     currentY = fillWrappedText(
       context,
       '进入小程序即可开启睡眠测试及专家预约服务。',
-      actionCardX + 28,
-      actionCardY + 76,
+      actionCardX + 32,
+      actionCardY + 82,
       360,
-      28,
+      30,
       '#64748b',
-      18
+      19
     );
 
     context.setFillStyle('#f1f5f9');
-    drawRoundedRect(context, actionCardX + 28, actionCardY + 96, 248, 44, 12);
+    drawRoundedRect(context, actionCardX + 32, actionCardY + 124, 304, 70, 16);
     context.fill();
     context.setFillStyle('#94a3b8');
-    context.setFontSize(12);
-    context.fillText('专属邀请码', actionCardX + 44, actionCardY + 112);
+    context.setFontSize(14);
+    context.fillText('专属邀请码', actionCardX + 52, actionCardY + 149);
     context.setFillStyle('#1e3a8a');
-    context.setFontSize(24);
-    context.fillText(inviteCode, actionCardX + 44, actionCardY + 132);
+    context.setFontSize(32);
+    context.fillText(inviteCode, actionCardX + 52, actionCardY + 181);
 
-    const qrWrapX = actionCardX + actionCardWidth - 140;
-    const qrWrapY = actionCardY + 18;
-    const qrBoxSize = 96;
+    const qrBoxSize = 138;
+    const qrWrapX = actionCardX + actionCardWidth - qrBoxSize - 28;
+    const qrWrapY = actionCardY + 24;
     context.setFillStyle('#ffffff');
     drawRoundedRect(context, qrWrapX, qrWrapY, qrBoxSize, qrBoxSize, 14);
     context.fill();
@@ -321,8 +323,8 @@ Page({
     // subtle border via top strip and corners
     context.fillRect(qrWrapX, qrWrapY, qrBoxSize, 1);
 
-    if (qrImagePath) {
-      context.drawImage(qrImagePath, qrWrapX + 8, qrWrapY + 8, qrBoxSize - 16, qrBoxSize - 16);
+    if (qrImage) {
+      context.drawImage(qrImage, qrWrapX + 10, qrWrapY + 10, qrBoxSize - 20, qrBoxSize - 20);
     } else {
       context.setFillStyle('#f8fafc');
       drawRoundedRect(context, qrWrapX + 6, qrWrapY + 6, qrBoxSize - 12, qrBoxSize - 12, 10);
@@ -346,9 +348,9 @@ Page({
       context.fill();
       fillCenteredText(context, '月', qrWrapX + 48, qrWrapY + 53, 13, '#ffffff');
     }
-    fillCenteredText(context, '微信扫码/长按', qrWrapX + 48, qrWrapY + 118, 12, '#94a3b8');
+    fillCenteredText(context, '微信扫码/长按识别', qrWrapX + qrBoxSize / 2, qrWrapY + qrBoxSize + 26, 14, '#94a3b8');
 
-    fillCenteredText(context, '保存海报至相册，分享给好友或朋友圈即可推广', posterX + posterWidth / 2, posterY + posterHeight - 26, 14, 'rgba(255, 255, 255, 0.42)');
+    fillCenteredText(context, '保存海报至相册，分享给好友或朋友圈即可推广', posterX + posterWidth / 2, actionCardY + actionCardHeight + 42, 14, 'rgba(255, 255, 255, 0.42)');
     context.restore();
 
     return new Promise((resolve, reject) => {
@@ -403,13 +405,54 @@ Page({
     if (!this.data.inviteQrCode) {
       return '';
     }
-    return new Promise((resolve) => {
+    const source = String(this.data.inviteQrCode || '').trim();
+    if (!source) {
+      return '';
+    }
+    const getLocalImage = (src) => new Promise((resolve) => {
       wx.getImageInfo({
-        src: this.data.inviteQrCode,
-        success: (result) => resolve(result.path || result.tempFilePath || ''),
+        src,
+        success: (result) => resolve(result.path || result.tempFilePath || src || ''),
         fail: () => resolve(''),
       });
     });
+
+    if (!/^https?:\/\//i.test(source)) {
+      return getLocalImage(source);
+    }
+
+    const downloadedPath = await new Promise((resolve) => {
+      wx.downloadFile({
+        url: source,
+        success: (result) => {
+          if (result.statusCode >= 200 && result.statusCode < 300) {
+            resolve(result.tempFilePath || '');
+            return;
+          }
+          resolve('');
+        },
+        fail: () => resolve(''),
+      });
+    });
+
+    return downloadedPath || await getLocalImage(source);
+  },
+  async loadPosterImage(canvas, src) {
+    const source = String(src || '').trim();
+    if (!source) {
+      return null;
+    }
+
+    if (canvas && typeof canvas.createImage === 'function') {
+      const image = canvas.createImage();
+      return new Promise((resolve) => {
+        image.onload = () => resolve(image);
+        image.onerror = () => resolve(null);
+        image.src = source;
+      });
+    }
+
+    return source;
   },
   async ensureAlbumPermission() {
     const settings = await new Promise((resolve, reject) => {

@@ -214,6 +214,22 @@ const formatDate = (dateVal) => {
   return String(dateVal).slice(0, 10);
 };
 
+const calculateAgeFromBirthday = (birthday) => {
+  const birthdayText = formatDate(birthday);
+  if (!birthdayText) return null;
+  const birthdayDate = new Date(`${birthdayText}T00:00:00+08:00`);
+  if (Number.isNaN(birthdayDate.getTime())) return null;
+
+  const today = getShanghaiNow();
+  let age = today.getFullYear() - birthdayDate.getFullYear();
+  const monthDiff = today.getMonth() - birthdayDate.getMonth();
+  const dayDiff = today.getDate() - birthdayDate.getDate();
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    age -= 1;
+  }
+  return age >= 0 ? age : null;
+};
+
 const formatDateTimeInShanghai = (dateVal) => {
   if (!dateVal) return '';
   const date = dateVal instanceof Date ? dateVal : new Date(dateVal);
@@ -1155,7 +1171,9 @@ function getMissingWechatPayConfig() {
 }
 
 function allowDevMockWechatPay() {
-  return process.env.ENABLE_MOCK_WECHAT_PAY !== 'false';
+  const nodeEnv = String(process.env.NODE_ENV || '').trim().toLowerCase();
+  const isDevEnv = ['development', 'dev', 'local', 'test'].includes(nodeEnv);
+  return isDevEnv && String(process.env.ENABLE_MOCK_WECHAT_PAY || '').trim().toLowerCase() === 'true';
 }
 
 function signWechatPayMessage(message, privateKey) {
@@ -1791,7 +1809,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
         await run(`UPDATE users SET openid = ? WHERE id = ?`, [openid, existingUserByPhone.id]);
         user = await get(`SELECT * FROM users WHERE id = ?`, [existingUserByPhone.id]);
       } else {
-        const nickname = '尊敬的微信用户';
+        const nickname = phone ? `微信用户${String(phone).slice(-4)}` : '微信用户';
         const result = await run(
           `INSERT INTO users (openid, nickname, phone, member_level, points, total_spent) VALUES (?, ?, ?, 'normal', 0, 0)`,
           [openid, nickname, encryptedPhone]
@@ -1853,7 +1871,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
         user: {
           id: user.id.toString(),
           nickname: user.nickname,
-          avatar: user.avatar_url || '/static/demo/avatar.jpg',
+          avatar: user.avatar_url || '',
           phone: decryptPII(user.phone) || '',
           memberLevel: user.member_level,
           isDistributor: !!(await get(
@@ -1924,13 +1942,13 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
       data: {
         id: patient ? patient.id.toString() : user.id.toString(),
         nickname: user.nickname,
-        avatar: user.avatar_url || '/static/demo/avatar.jpg',
-        gender: patient ? patient.gender : 1,
-        age: patient ? patient.age : 30,
+        avatar: user.avatar_url || '',
+        gender: patient ? patient.gender : null,
+        age: patient && patient.age !== null && patient.age !== undefined ? patient.age : calculateAgeFromBirthday(user.birthday),
         phone: decryptPII(user.phone) || (patient ? decryptPII(patient.phone) : ''),
         idCard: patient ? (decryptPII(patient.id_card) || '') : '',
         cardNo: patient ? getPatientRecordNo(patient) : '',
-        birthday: user.birthday ? formatDate(user.birthday) : '1995-01-01',
+        birthday: user.birthday ? formatDate(user.birthday) : null,
         memberLevel: user.member_level || 'normal',
         isDistributor: !!distributor && distributor.status === 'active' && Number(distributor.direct_count || 0) > 0,
         distributorLevel: distributor?.level || ''
@@ -1951,7 +1969,7 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
   const idCardEnc = idCardClean ? encryptPII(idCardClean) : null;
   const birthdayClean = birthday === '' || !birthday ? null : birthday;
   const genderClean = gender !== undefined ? gender : null;
-  const ageClean = age !== undefined ? age : null;
+  const ageClean = age !== undefined ? age : calculateAgeFromBirthday(birthdayClean);
   const avatarClean = avatar || avatarUrl ? escapeHtml(String(avatar || avatarUrl).trim()) : null;
   if (idCard && !/^\d{17}[\dXx]$/.test(String(idCard))) {
     return res.status(400).json({ code: 400, message: '身份证格式不正确' });
@@ -2014,9 +2032,9 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
       data: {
         id: patient ? patient.id.toString() : user.id.toString(),
         nickname: user.nickname,
-        avatar: user.avatar_url || '/static/demo/avatar.jpg',
-        gender: patient ? patient.gender : 1,
-        age: patient ? patient.age : 30,
+        avatar: user.avatar_url || '',
+        gender: patient ? patient.gender : null,
+        age: patient && patient.age !== null && patient.age !== undefined ? patient.age : calculateAgeFromBirthday(user.birthday),
         phone: decryptPII(user.phone),
         idCard: patient ? (decryptPII(patient.id_card) || '') : '',
         cardNo: patient ? getPatientRecordNo(patient) : '',
@@ -2520,19 +2538,28 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
   if (client_side_analysis) {
     try {
       const { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel } = analysis_result || {};
+      if (
+        avgDecibel === undefined ||
+        peakDecibel === undefined ||
+        snoreRate === undefined ||
+        apneaEvents === undefined ||
+        !riskLevel
+      ) {
+        return res.status(400).json({ code: 400, message: '离线分析结果不完整' });
+      }
       const result = await run(
         `INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           req.user.id,
           dbPatientId,
-          '/static/demo/snore-demo.mp4',
+          '',
           durationSeconds,
-          avgDecibel || 40,
-          peakDecibel || 60,
-          snoreRate || 10,
-          apneaEvents || 0,
-          riskLevel || 'normal'
+          Number(avgDecibel),
+          Number(peakDecibel),
+          Number(snoreRate),
+          Number(apneaEvents),
+          String(riskLevel)
         ]
       );
 
@@ -2550,17 +2577,17 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
           userId: req.user.id.toString(),
           patientId: dbPatientId ? dbPatientId.toString() : 'pat-self',
           type: 'ai_snore',
-          snoreRecordUrl: '/static/demo/snore-demo.mp4',
+          snoreRecordUrl: '',
           snoreAnalysis: {
             duration: durationSeconds,
-            avgDecibel: avgDecibel || 40,
-            peakDecibel: peakDecibel || 60,
-            snoreRate: snoreRate || 10,
-            apneaEvents: apneaEvents || 0,
-            riskLevel: riskLevel || 'normal',
+            avgDecibel: Number(avgDecibel),
+            peakDecibel: Number(peakDecibel),
+            snoreRate: Number(snoreRate),
+            apneaEvents: Number(apneaEvents),
+            riskLevel: String(riskLevel),
             advice
           },
-          riskLevel: riskLevel || 'normal',
+          riskLevel: String(riskLevel),
           createdAt: new Date().toISOString()
         }
       });

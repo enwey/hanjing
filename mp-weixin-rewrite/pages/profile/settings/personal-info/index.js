@@ -4,12 +4,12 @@ const { normalizeImageUrl } = require('../../../../common/utils/image-url');
 
 function isPlaceholderNickname(nickname) {
   const text = String(nickname || '').trim();
-  return !text || text === '微信用户' || text.indexOf('微信用户_') === 0;
+  return !text || text === '微信用户' || text === '尊敬的微信用户' || text.indexOf('微信用户_') === 0;
 }
 
 function resolveDisplayNickname(nickname) {
   const text = String(nickname || '').trim();
-  return isPlaceholderNickname(text) ? '尊敬的微信用户' : text;
+  return text || '微信用户';
 }
 
 function getFileExt(path) {

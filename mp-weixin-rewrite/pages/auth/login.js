@@ -25,6 +25,17 @@ const TOAST = {
   loginFailed: '\u767b\u5f55\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5',
 };
 
+function buildLoginErrorMessage(error, fallback) {
+  const message = String((error && error.message) || fallback || TOAST.loginFailed).trim();
+  if (!message) {
+    return TOAST.loginFailed;
+  }
+  if (message.length <= 120) {
+    return message;
+  }
+  return `${message.slice(0, 117)}...`;
+}
+
 const TAB_ROUTES = [
   '/pages/index/index',
   '/pages/appointment/index',
@@ -198,7 +209,11 @@ Page({
       errMsg: detail.errMsg || '',
       errno: detail.errno,
     });
-    wx.showToast({ title: TOAST.loginFailed, icon: 'none' });
+    wx.showModal({
+      title: '登录失败',
+      content: buildLoginErrorMessage({ message: detail.errMsg || TOAST.loginFailed }),
+      showCancel: false,
+    });
   },
 
   navigateAfterLogin() {
@@ -277,7 +292,11 @@ Page({
       wx.hideLoading();
       reportLoginFailure(error, { source: 'auth_login', traceId });
       await reportLoginFailureNow(error, { source: 'auth_login', traceId });
-      wx.showToast({ title: TOAST.loginFailed, icon: 'none' });
+      wx.showModal({
+        title: '登录失败',
+        content: buildLoginErrorMessage(error, TOAST.loginFailed),
+        showCancel: false,
+      });
       console.error(error);
     }
   },
