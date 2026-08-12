@@ -77,7 +77,20 @@ Page({
   },
 
   onLoginTap() {
+    miniLog.report({
+      level: 'info',
+      event: 'login_button_tap',
+      message: 'login button tapped',
+      extra: {
+        agreed: Boolean(this.data.agreed),
+      },
+    });
     if (!this.data.agreed) {
+      miniLog.report({
+        level: 'warn',
+        event: 'login_agreement_missing',
+        message: 'user tapped login before agreement',
+      });
       wx.showToast({ title: '请先同意用户协议与隐私政策', icon: 'none' });
     }
   },
@@ -92,11 +105,20 @@ Page({
   },
 
   async onGetPhoneNumber(event) {
+    const detail = event && event.detail ? event.detail : {};
+    miniLog.report({
+      level: 'info',
+      event: 'login_phone_callback',
+      message: detail.errMsg || 'getPhoneNumber callback',
+      extra: {
+        agreed: Boolean(this.data.agreed),
+        hasPhoneCode: Boolean(detail.code),
+      },
+    });
     if (!this.data.agreed) {
       wx.showToast({ title: '请先同意用户协议与隐私政策', icon: 'none' });
       return;
     }
-    const detail = event && event.detail ? event.detail : {};
     if (!detail.code) {
       miniLog.report({
         level: 'warn',

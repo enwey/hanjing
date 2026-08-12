@@ -1,4 +1,5 @@
 const api = require('../api/index');
+const miniLog = require('../common/utils/mini-log');
 
 function decodeBase64Url(input) {
   if (!input) {
@@ -115,7 +116,28 @@ const sessionStore = {
     return this.state.profile;
   },
   async login(phoneCode) {
-    const loginResponse = await new Promise((resolve, reject) => { wx.login({ success: resolve, fail: reject }); });
+    const loginResponse = await new Promise((resolve, reject) => {
+      wx.login({
+        success: resolve,
+        fail(error) {
+          miniLog.report({
+            level: 'error',
+            event: 'wx_login_failed',
+            message: error && error.errMsg,
+          });
+          reject(error);
+        },
+      });
+    });
+    miniLog.report({
+      level: 'info',
+      event: 'wx_login_success',
+      message: 'wx.login success',
+      extra: {
+        hasCode: Boolean(loginResponse && loginResponse.code),
+        hasPhoneCode: Boolean(phoneCode),
+      },
+    });
     const response = await api.wxLogin(loginResponse.code, phoneCode);
     const payload = response.data || response;
     this.setAccessToken(payload.access_token || '');
