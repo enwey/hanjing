@@ -1,5 +1,6 @@
 "use strict";
 const api = require("../../../api/index.js");
+const { formatChinaDateTime } = require("../../../common/utils/date-time.js");
 
 const MEMBER_LABEL_MAP = {
   self: "本人",
@@ -18,7 +19,7 @@ const RECORD_TYPE_MAP = {
 
 function formatDateTimeText(value) {
   if (!value) return "";
-  return String(value).replace("T", " ").slice(0, 16);
+  return formatChinaDateTime(value, false);
 }
 
 Page({

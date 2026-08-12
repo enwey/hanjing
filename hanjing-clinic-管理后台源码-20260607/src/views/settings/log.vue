@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 interface LogEntry {
   id: string;
@@ -144,7 +145,7 @@ const moduleLabels: Record<string, string> = {
 
 function formatTime(value: string) {
   if (!value) return '—'
-  return value.replace('T', ' ').slice(0, 19)
+  return formatShanghaiDateTime(value)
 }
 
 async function fetchLogs() {

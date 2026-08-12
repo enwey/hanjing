@@ -9,6 +9,21 @@ dotenv.config({ path: join(__dirname, '.env') });
 
 let pool;
 
+const formatShanghaiDateTime = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(date);
+  const read = (type) => parts.find((part) => part.type === type)?.value || '';
+  return `${read('year')}-${read('month')}-${read('day')} ${read('hour')}:${read('minute')}:${read('second')}`;
+};
+
 export const initPool = async () => {
   pool = mysql.createPool({
     host: process.env.DB_HOST || '127.0.0.1',
@@ -144,7 +159,7 @@ export const autoSettleDistributionCommissions = async () => {
           payload: {
             amount: `¥${(data.total / 100).toFixed(2)}`,
             status: '已到账',
-            time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            time: formatShanghaiDateTime(),
             remark: `${data.ids.length}笔推广佣金已转为可提现余额`
           }
         });
@@ -194,7 +209,7 @@ export const autoProcessRefunds = async () => {
             orderNo: order.order_no,
             amount: `¥${(order.pay_amount / 100).toFixed(2)}`,
             status: '退款成功',
-            time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            time: formatShanghaiDateTime(),
             remark: '退款已原路退回'
           }
         });

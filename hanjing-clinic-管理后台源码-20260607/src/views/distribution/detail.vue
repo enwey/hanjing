@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { navigateToParent } from '@/utils/routeNavigation'
 import request from '@/utils/request'
+import { formatShanghaiDateOnly, formatShanghaiDateTime } from '@/utils/dateTime'
 
 const route = useRoute()
 const router = useRouter()
@@ -297,7 +298,7 @@ onMounted(() => {
             <tbody>
               <tr v-for="(comm, idx) in commissionsList" :key="idx">
                 <td style="font-family: monospace;">{{ comm.order_no }}</td>
-                <td>{{ new Date(comm.created_at).toLocaleDateString() }}</td>
+                <td>{{ formatShanghaiDateOnly(comm.created_at) }}</td>
                 <td>{{ comm.product_names || '推广商品' }}</td>
                 <td style="font-weight: 700; color: var(--primary-500);">¥{{ (comm.order_amount / 100).toFixed(2) }}</td>
                 <td>
@@ -330,7 +331,7 @@ onMounted(() => {
             </thead>
             <tbody>
               <tr v-for="(comm, idx) in commissionsList" :key="idx">
-                <td style="font-size: 12px; color: #6B7280;">{{ new Date(comm.created_at).toLocaleString() }}</td>
+                <td style="font-size: 12px; color: #6B7280;">{{ formatShanghaiDateTime(comm.created_at) }}</td>
                 <td>
                   <span class="tag tag-green" v-if="comm.commission_level === 1">一级推广佣金</span>
                   <span class="tag tag-blue" v-else-if="comm.commission_level === 2">二级推广佣金</span>

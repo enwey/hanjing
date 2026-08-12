@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const { formatChinaDateTime } = require('../../../common/utils/date-time');
 
 function getCategoryClass(name) {
   if (['阻鼾器配戴', '睡眠科普', '科普问答', '专家'].includes(name)) return 'tag-theme--blue';
@@ -11,10 +12,7 @@ function getCategoryClass(name) {
 
 function formatDateTime(value) {
   if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const pad = (num) => String(num).padStart(2, '0');
-  return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+  return formatChinaDateTime(value, false);
 }
 
 function splitTags(tags) {

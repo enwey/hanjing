@@ -44,6 +44,19 @@ const getLocalTodayStr = () => {
   return `${year}-${month}-${day}`
 }
 
+const normalizeDateOnly = (value: any) => {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (match) return match[1]
+  const parsed = new Date(text)
+  if (Number.isNaN(parsed.getTime())) return ''
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  const day = String(parsed.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const selectedDate = ref(getLocalTodayStr())
 const selectedSlot = ref('09:00-09:30')
 const visitType = ref('初诊')
@@ -223,15 +236,12 @@ onMounted(async () => {
         }
         selectedStore.value = String(appt.store_id || stores.value.find(s => s.name === appt.store_name)?.id || '')
         selectedDoctor.value = String(appt.doctor_id || doctors.value.find(d => d.name === appt.doctor_name)?.id || '')
-        selectedDate.value = appt.appointment_date ? (() => {
-          const d = new Date(appt.appointment_date);
-          const year = d.getFullYear();
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const day = String(d.getDate()).padStart(2, '0');
-          currentYear.value = year;
-          currentMonth.value = d.getMonth();
-          return `${year}-${month}-${day}`;
-        })() : ''
+        selectedDate.value = normalizeDateOnly(appt.appointment_date)
+        if (selectedDate.value) {
+          const [year, month] = selectedDate.value.split('-').map(Number)
+          currentYear.value = year
+          currentMonth.value = month - 1
+        }
         selectedSlot.value = appt.appointment_time
         remarks.value = appt.symptom_desc || ''
       }

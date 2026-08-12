@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime, getShanghaiTodayString } from '@/utils/dateTime'
 
 const router = useRouter()
 const searchKeyword = ref(localStorage.getItem('order_list_search_keyword') || '')
@@ -48,12 +49,12 @@ function formatCommission(commissions: any[]) {
 
 function formatDateTime(value: string) {
   if (!value) return ''
-  return value.replace('T', ' ').slice(5, 16)
+  return formatShanghaiDateTime(value, false).slice(5, 16)
 }
 
 function formatFullDateTime(value: string) {
   if (!value) return '—'
-  return value.replace('T', ' ').slice(0, 19).replace('.000Z', '')
+  return formatShanghaiDateTime(value)
 }
 
 function getStatusLabel(status: string, type: string) {
@@ -273,7 +274,7 @@ function handleExport() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `订单导出数据-${new Date().toISOString().slice(0, 10)}.csv`
+  link.download = `订单导出数据-${getShanghaiTodayString()}.csv`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)

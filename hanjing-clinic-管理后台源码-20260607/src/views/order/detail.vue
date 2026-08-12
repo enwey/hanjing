@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import { navigateToParent } from '@/utils/routeNavigation'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 const route = useRoute()
 const router = useRouter()
@@ -75,7 +76,7 @@ function formatFen(amount: number) {
 
 function formatDateTime(value: string) {
   if (!value) return ''
-  return value.replace('T', ' ').slice(0, 16)
+  return formatShanghaiDateTime(value, false)
 }
 
 function maskPhone(phone: string) {
@@ -440,7 +441,7 @@ function handlePrintInvoice() {
   const taxId = order.value.invoice_info?.tax_id || ''
   const invoiceCode = order.value.invoice_info?.invoice_code || ''
   const invoiceNo = order.value.invoice_info?.invoice_no || ''
-  const createdAt = order.value.invoice_info?.created_at ? new Date(order.value.invoice_info.created_at).toLocaleString() : ''
+  const createdAt = order.value.invoice_info?.created_at ? formatShanghaiDateTime(order.value.invoice_info.created_at) : ''
   const totalAmount = order.value.invoice_info ? (order.value.invoice_info.amount / 100).toFixed(2) : '0.00'
 
   const taxIdHtml = taxId ? `<div>纳税人识别号：${taxId}</div>` : ''
@@ -992,7 +993,7 @@ async function handleNotifyOrder() {
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px; color: #666; font-size: 11px;">
           <span>发票代码：{{ order.invoice_info?.invoice_code }}</span>
           <span>发票号码：{{ order.invoice_info?.invoice_no }}</span>
-          <span>开票日期：{{ order.invoice_info?.created_at ? new Date(order.invoice_info.created_at).toLocaleString() : '' }}</span>
+          <span>开票日期：{{ order.invoice_info?.created_at ? formatShanghaiDateTime(order.invoice_info.created_at) : '' }}</span>
         </div>
 
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; border: 1px solid #B91C1C;">

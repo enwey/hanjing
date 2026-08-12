@@ -36,6 +36,7 @@ const selectedTableName = ref('')
 const tableKeyword = ref('')
 const sqlText = ref('SHOW TABLES')
 const sqlResult = ref<any>(null)
+const tableIndexExpanded = ref(true)
 
 const filteredTables = computed(() => {
   const keyword = String(tableKeyword.value || '').trim().toLowerCase()
@@ -45,6 +46,8 @@ const filteredTables = computed(() => {
   })
 })
 
+const tableNames = computed(() => tables.value.map((item) => item.name))
+
 const selectedTable = computed(() => {
   const current = tables.value.find((item) => item.name === selectedTableName.value)
   return current || filteredTables.value[0] || null
@@ -52,7 +55,28 @@ const selectedTable = computed(() => {
 
 function formatDateTime(value: string) {
   if (!value) return '—'
-  return String(value).replace('T', ' ').slice(0, 19)
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return String(value).replace('T', ' ').slice(0, 19)
+  }
+  return date.toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+  })
+}
+
+function looksLikeDateTime(value: any) {
+  const text = String(value || '').trim()
+  if (!text) return false
+  return /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(text) || /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(text)
+}
+
+function formatSqlCell(column: string, value: any) {
+  if (value === null || value === undefined) return 'NULL'
+  if (looksLikeDateTime(value)) {
+    return formatDateTime(String(value))
+  }
+  return value
 }
 
 function ensureSuperAdminAccess() {
@@ -131,11 +155,12 @@ onMounted(async () => {
     <div class="database-layout">
       <div class="panel sidebar-panel">
         <div class="panel-header">
-          <div class="panel-title">表结构</div>
-          <div class="panel-subtitle">共 {{ tables.length }} 张表</div>
+        <div class="panel-title">表结构</div>
+          <div class="panel-subtitle">共 {{ tables.length }} 张表，不搜索时默认显示全部</div>
         </div>
         <div class="panel-body sidebar-body">
           <t-input v-model="tableKeyword" clearable placeholder="搜索表名 / 说明" />
+          <div class="sidebar-tip">当前已加载全部表，支持直接滚动选择，也可以搜索定位。</div>
           <div class="table-list">
             <button
               v-for="table in filteredTables"
@@ -152,6 +177,29 @@ onMounted(async () => {
       </div>
 
       <div class="content-column">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">全部表索引</div>
+              <div class="panel-subtitle">点击表名可直接跳到对应结构，不需要先知道表名再搜索。</div>
+            </div>
+            <button class="btn btn-outline btn-xs" @click="tableIndexExpanded = !tableIndexExpanded">
+              {{ tableIndexExpanded ? '收起' : '展开' }}
+            </button>
+          </div>
+          <div v-if="tableIndexExpanded" class="panel-body table-index-body">
+            <button
+              v-for="name in tableNames"
+              :key="name"
+              class="table-chip"
+              :class="{ active: selectedTableName === name }"
+              @click="selectedTableName = name"
+            >
+              {{ name }}
+            </button>
+          </div>
+        </div>
+
         <div class="panel">
           <div class="panel-header">
             <div>
@@ -233,7 +281,7 @@ onMounted(async () => {
                   <tbody>
                     <tr v-for="(row, index) in sqlResult.rows" :key="index">
                       <td v-for="column in sqlResult.columns" :key="column" class="mono-cell">
-                        {{ row[column] ?? 'NULL' }}
+                        {{ formatSqlCell(column, row[column]) }}
                       </td>
                     </tr>
                   </tbody>
@@ -290,6 +338,12 @@ onMounted(async () => {
   overflow-y: auto;
 }
 
+.sidebar-tip {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
 .table-list-item {
   width: 100%;
   border: 1px solid #e5e7eb;
@@ -325,6 +379,32 @@ onMounted(async () => {
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+}
+
+.table-index-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px;
+}
+
+.table-chip {
+  border: 1px solid #dbe4f0;
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.table-chip:hover,
+.table-chip.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .table-meta {

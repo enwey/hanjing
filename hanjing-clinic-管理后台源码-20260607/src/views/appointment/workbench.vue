@@ -815,7 +815,7 @@ const apptPatientCreateVisible = ref(false)
 function openCreateApptDialog() {
   apptSearchQuery.value = ''
   apptSelectedPatient.value = null
-  apptDate.value = new Date().toISOString().split('T')[0]
+  apptDate.value = getTodayDateString()
   apptSlot.value = '09:00 - 09:30'
   apptVisitType.value = '复诊'
   apptRemarks.value = ''

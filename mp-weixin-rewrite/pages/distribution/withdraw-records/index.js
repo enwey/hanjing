@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const { formatChinaDate } = require('../../../common/utils/date-time');
 
 const STATUS_LABEL_MAP = {
   pending: '待审核',
@@ -57,7 +58,7 @@ Page({
           accountLabel,
           status: record.status || 'pending',
           statusLabel: STATUS_LABEL_MAP[record.status] || '处理中',
-          createdDate: String(record.createdAt || '').split('T')[0],
+          createdDate: formatChinaDate(record.createdAt || ''),
         };
       });
       const totalAmount = records.reduce((sum, record) => sum + Number(record.amountValue || 0), 0);

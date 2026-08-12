@@ -18,6 +18,7 @@ import {
   decryptPII,
   getShanghaiNow,
   formatShanghaiDate,
+  formatShanghaiDateTime,
   addShanghaiDays
 } from '../helpers.js';
 import { getAllSubscribeTemplateIds, getSubscribeTemplateMap, sendWechatSubscribeMessage } from '../wechatSubscribe.js';
@@ -1567,7 +1568,7 @@ async function settleEligibleDistributionCommissions(userId) {
       payload: {
         amount: `¥${(total / 100).toFixed(2)}`,
         status: '已到账',
-        time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        time: formatShanghaiDateTime(),
         remark: `${ids.length}笔推广佣金已转为可提现余额`
       }
     });
@@ -5349,7 +5350,7 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
                 orderNo: appt.appointment_no,
                 amount: `¥${(refundAmount / 100).toFixed(2)}`,
                 status: '退款成功',
-                time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+                time: formatShanghaiDateTime(),
                 remark: '退款已原路退回'
               }
             });
@@ -5388,7 +5389,7 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
             orderNo: appt.appointment_no,
             amount: `¥${(refundAmount / 100).toFixed(2)}`,
             status: '退款中',
-            time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            time: formatShanghaiDateTime(),
             remark: '退款申请已提交'
           }
         });
@@ -7152,7 +7153,7 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
           orderNo: order.order_no,
           amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
           status: '退款中',
-          time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          time: formatShanghaiDateTime(),
           remark: reason || '退款申请已提交'
         }
       });
@@ -7656,7 +7657,7 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
             payload: {
               amount: `¥${(actualAmount / 100).toFixed(2)}`,
               status: '已到账',
-              time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+              time: formatShanghaiDateTime(),
               remark: '微信提现已到账'
             }
           });

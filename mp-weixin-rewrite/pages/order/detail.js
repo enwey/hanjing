@@ -1,5 +1,6 @@
 const api = require('../../api/index');
 const subscribe = require('../../common/utils/subscribe');
+const { formatChinaDateTime } = require('../../common/utils/date-time');
 
 const ORDER_STATUS_STEPS = {
   pending: [{ label: '待付款', done: true }, { label: '待取货', done: false }, { label: '已发货', done: false }, { label: '已完成', done: false }],
@@ -104,8 +105,8 @@ Page({
       payAmountLabel: this.formatPriceYuan(order.payAmount || 0),
       hasDiscount: Number(order.discountAmount || 0) > 0,
       orderNo: order.orderNo || '',
-      createdAtText: order.createdAt ? String(order.createdAt).slice(0, 16).replace('T', ' ') : '',
-      payAtText: order.payAt ? String(order.payAt).slice(0, 16).replace('T', ' ') : '',
+      createdAtText: order.createdAt ? formatChinaDateTime(order.createdAt, false) : '',
+      payAtText: order.payAt ? formatChinaDateTime(order.payAt, false) : '',
       payMethod: order.payMethod || '',
       shippingAddress,
       deliveryMethodText: shippingAddress.deliveryMethod === 'pickup' ? '到店自提' : '快递邮寄',

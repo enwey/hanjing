@@ -13,6 +13,20 @@ const loading = ref(true)
 const submitting = ref(false)
 const savingOnly = ref(false)
 
+const getShanghaiDateString = (date = new Date()) => {
+  const shanghaiDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }))
+  const year = shanghaiDate.getFullYear()
+  const month = String(shanghaiDate.getMonth() + 1).padStart(2, '0')
+  const day = String(shanghaiDate.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const addDaysInShanghai = (days: number) => {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return getShanghaiDateString(date)
+}
+
 // Data states
 const appt = ref<any>({})
 const essReport = ref<any>(null)
@@ -31,8 +45,8 @@ const syncTreatment = ref(true)
 const deviceProductId = ref('')
 const deviceProducts = ref<any[]>([])
 const initialAdvancement = ref(4.0)
-const startDate = ref(new Date().toISOString().split('T')[0])
-const nextAdjustDate = ref(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+const startDate = ref(getShanghaiDateString())
+const nextAdjustDate = ref(addDaysInShanghai(14))
 
 // Device Adjustments States (for existing active treatment adjustment)
 const activeTreatment = ref<any>(null)
@@ -198,7 +212,7 @@ const buildConsultationPayload = (includeTreatment = true) => {
     medical_record: {
       doctor_id: appt.value.doctor_id,
       store_id: appt.value.store_id,
-      visit_date: new Date().toISOString().split('T')[0],
+      visit_date: getShanghaiDateString(),
       diagnosis: diagnosis.value,
       prescription: prescription.value,
       doctor_advice: doctorAdvice.value,
@@ -214,7 +228,7 @@ const buildConsultationPayload = (includeTreatment = true) => {
     payload.treatment = { treatment_id: activeTreatment.value.id }
     payload.adjustment = {
       create: true,
-      adjust_date: new Date().toISOString().split('T')[0],
+      adjust_date: getShanghaiDateString(),
       operator_id: appt.value.doctor_id,
       adjusted_advancement: adjustedAdvancement.value,
       patient_feedback: patientFeedback.value,

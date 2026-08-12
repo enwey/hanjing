@@ -14,6 +14,22 @@ export const formatShanghaiDate = (date = getShanghaiNow()) => {
   return `${year}-${month}-${day}`;
 };
 
+export const formatShanghaiDateTime = (date = new Date(), includeSeconds = true) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(date);
+  const read = (type) => parts.find((part) => part.type === type)?.value || '';
+  const base = `${read('year')}-${read('month')}-${read('day')} ${read('hour')}:${read('minute')}`;
+  return includeSeconds ? `${base}:${read('second')}` : base;
+};
+
 export const addShanghaiDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 
 export const getShanghaiHourMinute = (date = new Date()) => {

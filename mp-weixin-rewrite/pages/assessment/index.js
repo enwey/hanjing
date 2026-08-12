@@ -1,6 +1,7 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const sessionStore = require('../../stores/session-store');
+const { formatChinaDateTime } = require('../../common/utils/date-time');
 
 const ESS_LEVEL_LABEL_MAP = {
   normal: '正常',
@@ -59,7 +60,7 @@ function normalizeAssessmentRecord(record) {
     typeLabel: isEss ? 'ESS 嗜睡量表' : 'AI 鼾声分析',
     levelLabel: isEss ? (ESS_LEVEL_LABEL_MAP[level] || '正常') : (SNORE_LEVEL_LABEL_MAP[level] || '正常'),
     levelColor: getRiskColor(level),
-    dateLabel: String(record.createdAt || '').replace('T', ' ').slice(0, 16),
+    dateLabel: formatChinaDateTime(record.createdAt || '', false),
     summary: isEss
       ? '总分 ' + Number(record.essScore || 0) + ' 分'
       : '录音 ' + Number(snoreAnalysis.duration || 0) + ' 秒，鼾声占比 ' + Number(snoreAnalysis.snoreRate || 0) + '%',

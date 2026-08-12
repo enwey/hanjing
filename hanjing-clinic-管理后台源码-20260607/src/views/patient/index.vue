@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { getShanghaiTodayString } from '@/utils/dateTime'
 import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
 
 const router = useRouter()
@@ -545,7 +546,7 @@ async function handleExport() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `患者导出数据-${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `患者导出数据-${getShanghaiTodayString()}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

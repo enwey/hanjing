@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const { formatChinaDateTime } = require('../../../common/utils/date-time');
 
 Page({
   data: {
@@ -82,9 +83,7 @@ Page({
 
   formatDate(value) {
     if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0') + ' ' + String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+    return formatChinaDateTime(value, false);
   },
 
   formatViewerCount(value) {

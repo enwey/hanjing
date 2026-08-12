@@ -75,7 +75,14 @@ const eventOptions = [
 
 function formatTime(value: string) {
   if (!value) return '-'
-  return value.replace('T', ' ').slice(0, 19)
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return String(value).replace('T', ' ').slice(0, 19)
+  }
+  return date.toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+  })
 }
 
 function levelTheme(value: string) {

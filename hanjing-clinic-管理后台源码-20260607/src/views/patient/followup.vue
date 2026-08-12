@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import { navigateToParent } from '@/utils/routeNavigation'
+import { getShanghaiTodayString } from '@/utils/dateTime'
 
 const route = useRoute()
 const router = useRouter()
@@ -89,7 +90,7 @@ async function handleExecute(task: Task) {
 }
 
 async function handleReschedule(task: Task) {
-  const current = task.dueDate || new Date().toISOString().slice(0, 10)
+  const current = task.dueDate || getShanghaiTodayString()
   const nextDate = window.prompt('请输入新的计划执行日期（YYYY-MM-DD）', current)
   if (!nextDate) return
   try {

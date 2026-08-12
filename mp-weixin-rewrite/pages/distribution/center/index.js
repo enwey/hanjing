@@ -1,5 +1,6 @@
 const api = require('../../../api/index');
 const navigation = require('../../../common/utils/navigation');
+const { formatChinaDate } = require('../../../common/utils/date-time');
 
 const ORDER_STATUS_LABEL_MAP = {
   pending: '冻结中',
@@ -40,7 +41,7 @@ function formatAmountYuan(amountInCents) {
 function normalizeDistributionOrder(order) {
   const createdAt = String(order.createdAt || '');
   const buyerName = order.buyerName || '';
-  const dateLabel = createdAt ? createdAt.slice(0, 10) : '';
+  const dateLabel = formatChinaDate(createdAt);
   const image = order.productImage || '';
   return {
     id: String(order.id || ''),

@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import request from '@/utils/request'
+import { formatShanghaiDateOnly } from '@/utils/dateTime'
 
 const router = useRouter()
 const filterTime = ref(localStorage.getItem('dashboard_filter_time') || 'month')
@@ -63,10 +64,7 @@ const updateChart = (xData: string[], yData: number[]) => {
 const normalizeDate = (rawDate: any) => {
   if (!rawDate) return '';
   if (typeof rawDate === 'string') {
-    if (rawDate.includes('T')) {
-      return rawDate.split('T')[0];
-    }
-    return rawDate.substring(0, 10);
+    return formatShanghaiDateOnly(rawDate);
   }
   try {
     const d = new Date(rawDate);

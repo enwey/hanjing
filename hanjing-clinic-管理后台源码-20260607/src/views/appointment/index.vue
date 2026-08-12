@@ -92,6 +92,19 @@ const formatAppointmentType = (type?: string) => {
   return appointmentTypeMap[key] || '门诊预约'
 }
 
+const formatDateOnly = (value: any) => {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  const matched = text.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (matched) return matched[1]
+  const date = new Date(text)
+  if (Number.isNaN(date.getTime())) return text
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const fetchStores = async () => {
   try {
     const res: any = await request.get('/api/admin/stores')
@@ -155,13 +168,7 @@ const fetchAppointments = async () => {
       avatarColor: item.patient_gender === 1 ? '#3B6BF5' : '#EC4899',
       store: item.store_name,
       doctor: item.doctor_name,
-      date: item.appointment_date ? (() => {
-        const d = new Date(item.appointment_date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      })() : '',
+      date: formatDateOnly(item.appointment_date),
       time: item.appointment_time,
       type: formatAppointmentType(item.type),
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',

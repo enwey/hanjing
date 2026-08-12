@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const { formatChinaDate } = require('../../../common/utils/date-time');
 
 const STATUS_LABEL_MAP = {
   settled: '已结算',
@@ -44,7 +45,7 @@ function normalizeCommission(commission) {
     productImage: commission.productImage || '',
     productName: commission.productName || '',
     buyerName: commission.buyerName || '',
-    dateLabel: createdAt ? createdAt.split('T')[0] : '',
+    dateLabel: formatChinaDate(createdAt),
     commissionLevelLabel: Number(commission.commissionLevel || 1) === 2 ? '二级佣金' : '一级佣金',
     commissionAmount: amount,
     commissionAmountLabel: '+' + (amount / 100).toFixed(2),

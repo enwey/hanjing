@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime, getShanghaiTodayString } from '@/utils/dateTime'
 
 const router = useRouter()
 
@@ -30,7 +31,7 @@ function handleExport() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `分销动态业绩报表-${new Date().toISOString().slice(0, 10)}.csv`
+  link.download = `分销动态业绩报表-${getShanghaiTodayString()}.csv`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -68,7 +69,7 @@ function levelLabel(level: string) {
 
 function formatTime(value: string) {
   if (!value) return '—'
-  return value.replace('T', ' ').slice(5, 16)
+  return formatShanghaiDateTime(value, false).slice(5, 16)
 }
 
 async function fetchDistribution() {

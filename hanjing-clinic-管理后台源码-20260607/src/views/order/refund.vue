@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 interface RefundRequest {
   id: string;
@@ -55,7 +56,7 @@ function showDetail(row: RefundRequest) {
 
 function formatTime(value: string) {
   if (!value) return '—'
-  return value.replace('T', ' ').slice(0, 16)
+  return formatShanghaiDateTime(value, false)
 }
 
 function mapRefund(row: any): RefundRequest {

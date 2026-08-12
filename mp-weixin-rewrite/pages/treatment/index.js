@@ -1,5 +1,6 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
+const { formatChinaDate } = require('../../common/utils/date-time');
 
 const RELATION_LABEL_MAP = {
   self: '本人',
@@ -272,14 +273,14 @@ Page({
         heroBadgeText: hasTreatmentRecord ? '治疗中' : '未开始',
         heroDeviceText: (treatmentRecord && treatmentRecord.deviceModel) || '暂无治疗记录',
         heroDoctorText: hasTreatmentRecord ? `主治：${(treatmentRecord && treatmentRecord.doctorName) || '--'} 医生` : '完成初诊适配后将在此展示',
-        heroStartText: hasTreatmentRecord ? `初配日期：${((treatmentRecord && treatmentRecord.createdAt) || '--').split('T')[0]}` : '初配日期：--',
+        heroStartText: hasTreatmentRecord ? `初配日期：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '初配日期：--',
         treatmentStatusLabel: hasTreatmentRecord ? '治疗中' : '未开始',
         heroSubText: hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无诊疗记录',
         treatmentDeviceLabel: (treatmentRecord && treatmentRecord.deviceModel) || '暂无治疗记录',
         treatmentDoctorLabel: hasTreatmentRecord ? `主治：${(treatmentRecord && treatmentRecord.doctorName) || '--'} 医生` : '完成初诊适配后将在此展示',
         heroProgressText: hasTreatmentRecord ? `依从率 ${heroCompliance}%` : '依从率 --',
         progressWidth: `${heroCompliance}%`,
-        treatmentStartLabel: hasTreatmentRecord ? `初配日期：${((treatmentRecord && treatmentRecord.createdAt) || '--').split('T')[0]}` : '初配日期：--',
+        treatmentStartLabel: hasTreatmentRecord ? `初配日期：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '初配日期：--',
         k: String(summary.weekWorn || 0),
         l: String(Number(summary.weekAvg || 0)),
         m: String(Number(summary.avgComfort || 0)),

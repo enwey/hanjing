@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 const router = useRouter()
 
@@ -75,7 +76,7 @@ const paginatedPosts = computed(() => {
 
 function formatTime(value: string) {
   if (!value) return '—'
-  return value.replace('T', ' ').slice(0, 16)
+  return formatShanghaiDateTime(value, false)
 }
 
 function parseCategory(tags: any) {

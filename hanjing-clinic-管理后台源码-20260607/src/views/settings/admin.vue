@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 const route = useRoute()
 
@@ -101,7 +102,7 @@ function roleTagByName(name: string) {
 
 function formatTime(value: string) {
   if (!value) return '—'
-  return value.replace('T', ' ').slice(0, 16)
+  return formatShanghaiDateTime(value, false)
 }
 
 function mapAdmin(row: any): AdminAccount {

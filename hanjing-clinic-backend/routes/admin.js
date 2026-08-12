@@ -18,6 +18,7 @@ import {
   hashPassword,
   verifyPassword,
   formatShanghaiDate,
+  formatShanghaiDateTime,
   decryptPII
 } from '../helpers.js';
 import { sendWechatSubscribeMessage } from '../wechatSubscribe.js';
@@ -46,6 +47,16 @@ const formatAdminPhone = (phone, showFull = false) => {
 const normalizeAppointmentType = (type) => {
   const value = String(type || 'first').trim();
   return APPOINTMENT_TYPES.has(value) ? value : null;
+};
+
+const formatDateOnly = (value) => {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const matched = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (matched) return matched[1];
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return text;
+  return formatShanghaiDate(date);
 };
 
 function ensureSuperAdmin(req, res) {
@@ -119,6 +130,141 @@ function formatSqlExecutionResult(result, operation) {
     warningStatus: Number(result?.warningStatus || 0),
     info: result?.info || ''
   };
+}
+
+const TABLE_COMMENT_FALLBACKS = {
+  users: '小程序用户主表，保存登录账号、昵称、手机号、会员等级等信息',
+  patients: '患者档案表，保存患者基础资料、病历号、性别、年龄、身份证等信息',
+  user_patient_links: '用户与患者关系表，标记本人、配偶、父母、子女等关联关系',
+  admin_users: '后台管理员账号表，保存后台登录账号、角色、门店归属等信息',
+  roles: '后台角色表，定义超级管理员、门店管理员、医生等角色',
+  permissions: '角色权限资源表，定义每个角色可访问的功能点',
+  stores: '门店表，保存门店名称、地址、营业时间、状态等信息',
+  store_features: '门店特色标签表，例如停车、监测、热门等标签',
+  store_hours: '门店营业时间表，支持按时段维护营业时间',
+  doctors: '医生档案表，保存医生姓名、头衔、简介、专业方向等信息',
+  doctor_store_mapping: '医生与门店关联表，表示医生在哪些门店坐诊',
+  schedules: '排班表，保存医生某日某门店的出诊排班',
+  appointments: '预约表，保存用户/患者预约挂号记录',
+  medical_records: '病历表，保存诊断、处方、主诉等就诊记录',
+  appointment_evaluations: '预约评价表，保存用户对医生或就诊体验的评分',
+  treatment_records: '治疗记录表，保存设备适配、治疗状态、调整计划等信息',
+  patient_devices: '患者设备表，保存患者绑定的阻鼾器或治疗设备信息',
+  device_adjustments: '设备调整记录表，保存参数调整历史',
+  wearing_logs: '佩戴日志表，保存患者每日佩戴、舒适度、AHI 等数据',
+  device_feedback: '设备反馈表，保存患者提交的设备使用反馈',
+  device_maintenance: '设备维护表，保存维护保养记录',
+  ess_assessments: 'ESS 量表评估表，保存嗜睡量表评分与风险等级',
+  snore_assessments: '鼾声评估表，保存鼾声分析结果与风险等级',
+  products: '商品表，保存商城和分销商品信息',
+  product_categories: '商品分类表，保存商城商品分类',
+  orders: '订单表，保存商城订单、支付、发货、退款等信息',
+  order_items: '订单明细表，保存订单中的商品项',
+  coupons: '优惠券模板表，保存优惠券规则',
+  user_coupons: '用户优惠券表，保存用户领取和使用状态',
+  distributors: '分销员表，保存分销资格、邀请码、佣金等信息',
+  distribution_relationships: '分销上下级关系表，保存邀请绑定关系',
+  distribution_orders: '分销订单佣金表，保存订单佣金拆分与结算状态',
+  withdraw_records: '提现记录表，保存佣金提现申请和审核状态',
+  community_posts: '患者社区帖子表，保存发帖内容',
+  community_comments: '患者社区评论表，保存帖子评论和回复',
+  content_banners: '轮播图内容表，保存首页轮播图配置',
+  content_articles: '科普文章表，保存文章内容',
+  content_categories: '文章分类表，保存文章分类配置',
+  live_rooms: '直播间表，保存直播活动与房间信息',
+  user_notifications: '用户通知表，保存小程序站内通知消息',
+  im_messages: '客服 IM 消息表，保存用户与客服聊天记录',
+  mini_program_logs: '小程序日志表，保存小程序端上报的调试与错误日志',
+  audit_logs: '后台审计日志表，保存管理员关键操作记录',
+  system_settings: '系统设置表，保存预约、分销、支付、模板消息等配置项',
+  points_logs: '积分流水表，保存用户积分变动记录',
+  wechat_subscribe_logs: '微信订阅消息日志表，保存发送记录与结果'
+};
+
+const COLUMN_COMMENT_FALLBACKS = {
+  id: '主键 ID',
+  user_id: '关联用户 ID',
+  patient_id: '关联患者 ID',
+  doctor_id: '关联医生 ID',
+  store_id: '关联门店 ID',
+  order_id: '关联订单 ID',
+  schedule_id: '关联排班 ID',
+  appointment_id: '关联预约 ID',
+  role_id: '关联角色 ID',
+  product_id: '关联商品 ID',
+  category_id: '关联分类 ID',
+  coupon_id: '关联优惠券 ID',
+  name: '名称',
+  nickname: '昵称',
+  username: '登录账号',
+  phone: '手机号，可能为加密存储',
+  openid: '微信小程序用户唯一标识',
+  avatar_url: '头像图片地址',
+  gender: '性别，通常 1=男，2=女，0=未知',
+  age: '年龄',
+  birthday: '生日',
+  id_card: '身份证号，可能为加密存储',
+  patient_no: '患者病历号',
+  card_no: '就诊卡号或展示病历号',
+  relation: '与主账号关系，如 self、spouse、parent、child',
+  status: '状态字段',
+  created_at: '创建时间',
+  updated_at: '更新时间',
+  deleted_at: '删除时间',
+  title: '标题',
+  content: '内容',
+  description: '描述信息',
+  remark: '备注',
+  note: '备注说明',
+  code: '编码或业务编号',
+  price: '价格，通常单位为分或元',
+  pay_amount: '实际支付金额',
+  total_amount: '总金额',
+  quantity: '数量',
+  amount: '金额',
+  score: '评分或得分',
+  total_score: '总分',
+  risk_level: '风险等级',
+  source: '来源渠道',
+  source_type: '来源类型',
+  start_time: '开始时间',
+  end_time: '结束时间',
+  appointment_date: '预约日期',
+  appointment_time: '预约时间',
+  visit_date: '就诊日期',
+  due_date: '到期日期',
+  start_date: '开始日期',
+  end_date: '结束日期',
+  pay_at: '支付时间',
+  completed_at: '完成时间',
+  open_time: '营业开始时间',
+  close_time: '营业结束时间',
+  image_url: '图片地址',
+  cover_url: '封面图片地址',
+  file_url: '文件地址',
+  url: '链接地址',
+  api_url: '接口地址',
+  message: '消息内容',
+  event: '事件名称',
+  level: '日志等级',
+  key_name: '配置键名',
+  key_value: '配置值',
+  action: '操作动作',
+  target_type: '操作对象类型',
+  target_id: '操作对象 ID',
+  ip_address: '来源 IP 地址'
+};
+
+function inferTableComment(tableName, tableComment) {
+  const current = String(tableComment || '').trim();
+  if (current) return current;
+  return TABLE_COMMENT_FALLBACKS[tableName] || '暂无表说明';
+}
+
+function inferColumnComment(columnName, columnComment) {
+  const current = String(columnComment || '').trim();
+  if (current) return current;
+  return COLUMN_COMMENT_FALLBACKS[columnName] || '暂无字段说明';
 }
 
 async function getBookingIntervalMinutes() {
@@ -338,8 +484,8 @@ async function fetchWechatLiveRoom(roomId) {
     title: rawRoom.name || rawRoom.title || '',
     coverUrl: rawRoom.cover_img || rawRoom.coverUrl || '',
     anchorName: rawRoom.anchor_name || rawRoom.anchorName || '',
-    startTime: rawRoom.start_time ? new Date(Number(rawRoom.start_time) * 1000).toISOString().slice(0, 19).replace('T', ' ') : '',
-    endTime: rawRoom.end_time ? new Date(Number(rawRoom.end_time) * 1000).toISOString().slice(0, 19).replace('T', ' ') : null,
+    startTime: rawRoom.start_time ? formatShanghaiDateTime(new Date(Number(rawRoom.start_time) * 1000)) : '',
+    endTime: rawRoom.end_time ? formatShanghaiDateTime(new Date(Number(rawRoom.end_time) * 1000)) : null,
     status: mapWechatLiveStatus(rawRoom.live_status)
   };
 }
@@ -1683,7 +1829,7 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
         if (!map[row.patient_id]) map[row.patient_id] = [];
         if (map[row.patient_id].length < 5) {
           map[row.patient_id].push({
-            date: row.visit_date instanceof Date ? row.visit_date.toISOString().slice(0, 10) : String(row.visit_date || ''),
+            date: formatDateOnly(row.visit_date),
             doctor: row.doctor_name || '',
             type: '诊疗',
             diagnosis: row.diagnosis || '',
@@ -1759,7 +1905,7 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
           phone: formatAdminPhone(item.phone, isExportRequest(req)),
           user_phone: formatAdminPhone(item.user_phone, isExportRequest(req)),
           total_spent: spentByPatient[item.id] || 0,
-          last_visit: item.last_visit instanceof Date ? item.last_visit.toISOString().slice(0, 10) : item.last_visit,
+          last_visit: formatDateOnly(item.last_visit),
           resolved_source: item.patient_source || item.latest_source || (item.openid && item.openid.startsWith('manual_') ? 'walk_in' : 'mini_app'),
           status: item.last_visit ? 'active' : 'inactive',
           tags,
@@ -2506,7 +2652,7 @@ const getConsultationAppointment = async (id, user, medicalRecord, actionText) =
 };
 
 const saveAppointmentMedicalRecord = async (conn, appt, medicalRecord) => {
-  const visitDate = medicalRecord.visit_date || new Date().toISOString().split('T')[0];
+  const visitDate = medicalRecord.visit_date || formatShanghaiDate();
   const doctorId = medicalRecord.doctor_id || appt.doctor_id;
   const storeId = medicalRecord.store_id || appt.store_id;
   const [existingRows] = await conn.execute(
@@ -4406,7 +4552,7 @@ app.get('/api/admin/orders/:id/tracking', authenticateToken, async (req, res) =>
 
     // Generate realistic logistics events
     const orderTime = new Date(order.created_at);
-    const formatDateStr = (dateVal) => dateVal.toISOString().replace('T', ' ').slice(0, 19).replace('.000Z', '');
+    const formatDateStr = (dateVal) => formatShanghaiDateTime(dateVal);
     
     const steps = [
       {
@@ -4753,7 +4899,7 @@ app.put('/api/admin/orders/:id/refund', authenticateToken, async (req, res) => {
           orderNo: order.order_no,
           amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
           status: approve ? '退款成功' : '退款失败',
-          time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          time: formatShanghaiDateTime(),
           remark: approve ? '退款审核已通过' : '退款申请未通过'
         }
       });
@@ -5349,7 +5495,7 @@ app.put('/api/admin/distribution/withdraws/:id/status', authenticateToken, async
         payload: {
           amount: `¥${((approve ? record.actual_amount : record.amount) / 100).toFixed(2)}`,
           status: approve ? '已通过' : '已驳回',
-          time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          time: formatShanghaiDateTime(),
           remark: remark || (approve ? '请关注到账情况' : '金额已退回余额')
         }
       });
@@ -5362,7 +5508,7 @@ app.put('/api/admin/distribution/withdraws/:id/status', authenticateToken, async
           payload: {
             amount: `¥${(Number(record.actual_amount || record.amount || 0) / 100).toFixed(2)}`,
             status: '已到账',
-            time: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            time: formatShanghaiDateTime(),
             remark: remark || '提现已到账'
           }
         });
@@ -5608,7 +5754,7 @@ app.post('/api/admin/content/live-rooms', authenticateToken, async (req, res) =>
     let nextWechatRoomId = wechat_room_id ? String(wechat_room_id) : '';
     let nextCoverMediaId = wechat_cover_media_id || '';
     let nextShareMediaId = wechat_share_media_id || '';
-    const nextEndTime = end_time || new Date(new Date(start_time).getTime() + 2 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    const nextEndTime = end_time || formatShanghaiDateTime(new Date(new Date(start_time).getTime() + 2 * 60 * 60 * 1000));
 
     if (!nextWechatRoomId) {
       const createdRoom = await createWechatLiveRoom({
@@ -7154,12 +7300,15 @@ app.get('/api/admin/database/schema', authenticateToken, async (req, res) => {
 
     const tables = tableRows.map((row) => ({
       name: row.table_name,
-      comment: row.table_comment || '',
+      comment: inferTableComment(row.table_name, row.table_comment),
       engine: row.engine || '',
       rowCount: Number(row.table_rows || 0),
       createTime: row.create_time,
       updateTime: row.update_time,
-      columns: columnsByTable[row.table_name] || []
+      columns: (columnsByTable[row.table_name] || []).map((column) => ({
+        ...column,
+        comment: inferColumnComment(column.name, column.comment)
+      }))
     }));
 
     res.json({

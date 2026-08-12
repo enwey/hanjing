@@ -37,6 +37,19 @@ const formatAppointmentType = (type?: string) => {
   return appointmentTypeMap[key] || '门诊预约'
 }
 
+const formatDateOnly = (value: any) => {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  const matched = text.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (matched) return matched[1]
+  const date = new Date(text)
+  if (Number.isNaN(date.getTime())) return text
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const appointment = ref<any>({
   id: appointmentId.value,
   patient_id: null,
@@ -235,13 +248,7 @@ const fetchAppointmentDetail = async () => {
         doctor: appt.doctor_name,
         dept: appt.doctor_specialty || '',
         store: appt.store_name,
-        dateTime: appt.appointment_date ? (() => {
-          const d = new Date(appt.appointment_date);
-          const y = d.getFullYear();
-          const m = String(d.getMonth() + 1).padStart(2, '0');
-          const date = String(d.getDate()).padStart(2, '0');
-          return `${y}-${m}-${date} ${appt.appointment_time}`;
-        })() : appt.appointment_time,
+        dateTime: appt.appointment_date ? `${formatDateOnly(appt.appointment_date)} ${appt.appointment_time}` : appt.appointment_time,
         type: formatAppointmentType(appt.type),
         fee: appt.consult_fee !== null && appt.consult_fee !== undefined ? (appt.consult_fee / 100).toFixed(2) : '0.00',
         feeStatus: appt.status === 'pending_payment' ? 'unpaid' : 'paid',

@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime, getShanghaiTodayString } from '@/utils/dateTime'
 
 /* ---- 提现记录 数据结构 ---- */
 interface WithdrawApply {
@@ -263,7 +264,7 @@ function handleExport() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `提现记录报表-${new Date().toISOString().slice(0, 10)}.csv`
+  link.download = `提现记录报表-${getShanghaiTodayString()}.csv`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -280,7 +281,8 @@ function getAvatarBg(level: string) {
 
 function formatTime(timeStr: string) {
   try {
-    const parts = timeStr.split(' ')
+    const shanghaiText = formatShanghaiDateTime(timeStr)
+    const parts = shanghaiText.split(' ')
     const dateParts = parts[0].split('-')
     const month = parseInt(dateParts[1])
     const day = parseInt(dateParts[2])

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 interface Category {
   id: string
@@ -176,7 +177,7 @@ onMounted(fetchCategories)
               <td><code>{{ row.code }}</code></td>
               <td style="font-weight: 600; color: #1F2937;">{{ row.name }}</td>
               <td>{{ row.sortOrder }}</td>
-              <td>{{ row.createdAt ? new Date(row.createdAt).toLocaleString() : '—' }}</td>
+              <td>{{ row.createdAt ? formatShanghaiDateTime(row.createdAt) : '—' }}</td>
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;">
                   <button class="btn btn-xs btn-outline" @click="handleEdit(row)">编辑</button>

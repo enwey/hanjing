@@ -24,6 +24,14 @@ const relationMap: Record<string, string> = {
   other: '其他'
 }
 
+function getShanghaiTodayString() {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }))
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function getMemberRelationLabel(member: any) {
   if (String(member.id) === String(patientId.value)) {
     return '本人'
@@ -165,6 +173,9 @@ const appointmentStatusMap: Record<string, { title: string; color: string }> = {
 
 function formatDate(value: string) {
   if (!value) return ''
+  const text = String(value).trim()
+  const matched = text.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (matched) return matched[1]
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return String(value).substring(0, 10)
   const year = d.getFullYear()
@@ -614,7 +625,7 @@ async function handleCompleteFollowup(task: any) {
 }
 
 async function handleRescheduleFollowup(task: any) {
-  const nextDate = window.prompt('请输入新的计划执行日期（YYYY-MM-DD）', task.time || new Date().toISOString().slice(0, 10))
+  const nextDate = window.prompt('请输入新的计划执行日期（YYYY-MM-DD）', task.time || getShanghaiTodayString())
   if (!nextDate) return
   reschedulingFollowupId.value = task.id
   try {

@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const { formatChinaDateTime } = require('../../../common/utils/date-time');
 
 const TYPE_LABELS = {
   appointment: 'A',
@@ -33,7 +34,7 @@ function unwrapNotifications(response) {
       iconColor: TYPE_COLORS[item.type] || '#6B7280',
       title: item.title || '',
       content: item.content || '',
-      timeText: String(item.createdAt || item.created_at || '').slice(0, 16).replace('T', ' '),
+      timeText: formatChinaDateTime(item.createdAt || item.created_at || '', false),
       isRead: Boolean(item.isRead || item.is_read),
     })),
     unread,

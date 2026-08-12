@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const { formatChinaDate } = require('../../../common/utils/date-time');
 
 const LEVEL_LABEL_MAP = {
   gold: '金牌',
@@ -54,7 +55,7 @@ Page({
         levelLabel: LEVEL_LABEL_MAP[member.level] || '成员',
         levelClass: member.level || 'member',
         totalSalesLabel: formatWanAmountLabel(member.totalSales || 0),
-        joinedAtText: String(member.joinedAt || '').replace('T', ' ').slice(0, 10),
+        joinedAtText: formatChinaDate(member.joinedAt || ''),
         statusLabel: member.statusText || '',
         statusClass: member.statusClass || '',
       }));

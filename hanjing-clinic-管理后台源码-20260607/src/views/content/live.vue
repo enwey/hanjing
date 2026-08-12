@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import ImageUploadField from '@/components/ImageUploadField.vue'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 type LiveStatus = 'upcoming' | 'live' | 'replay'
 
@@ -197,8 +198,7 @@ function getStatusClass(status: LiveStatus) {
 
 function formatTime(value: string) {
   if (!value) return '--'
-  const normalized = value.replace('T', ' ')
-  return normalized.length >= 16 ? normalized.slice(0, 16) : normalized
+  return formatShanghaiDateTime(value, false)
 }
 
 function getProductNames(productIds: number[]) {

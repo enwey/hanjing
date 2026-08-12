@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const { formatChinaDate } = require('../../../common/utils/date-time');
 
 const STATUS_LABEL_MAP = {
   all: '全部',
@@ -31,7 +32,7 @@ function normalizeDistributionOrder(order) {
     productImage: order.productImage || '',
     productName: order.productName || '',
     buyerName: order.buyerName || '',
-    dateLabel: String(order.createdAt || '').slice(0, 10),
+    dateLabel: formatChinaDate(order.createdAt || ''),
     orderAmount,
     commissionAmount,
     orderAmountLabel: '¥' + (orderAmount / 100).toFixed(2),
