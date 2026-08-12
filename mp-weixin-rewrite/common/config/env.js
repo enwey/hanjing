@@ -1,20 +1,19 @@
 const accountInfo = (wx.getAccountInfoSync && wx.getAccountInfoSync()) || {};
 const miniProgram = accountInfo.miniProgram || {};
 const envVersion = miniProgram.envVersion || 'develop';
-const cloudApiBaseUrl = 'https://m.hanjinghealth.com/api/v1';
-const trialApiBaseUrl = 'https://test-api.hanjing.com/v1';
-const releaseApiBaseUrl = 'https://api.hanjing.com/v1';
+const localApiBaseUrl = 'http://192.168.2.41:5005/api/v1';
+const productionApiBaseUrl = 'https://m.hanjinghealth.com/api/v1';
 
 const apiBaseUrlMap = {
-  develop: cloudApiBaseUrl,
-  trial: trialApiBaseUrl,
-  release: releaseApiBaseUrl,
+  develop: localApiBaseUrl,
+  trial: productionApiBaseUrl,
+  release: productionApiBaseUrl,
 };
 
-const apiBaseUrl = apiBaseUrlMap[envVersion] || apiBaseUrlMap.release;
+const resolvedApiBaseUrl = apiBaseUrlMap[envVersion] || productionApiBaseUrl;
 
 module.exports = {
   envVersion,
-  apiBaseUrl,
-  apiBaseUrls: [apiBaseUrl],
+  apiBaseUrl: resolvedApiBaseUrl,
+  apiBaseUrls: [resolvedApiBaseUrl],
 };

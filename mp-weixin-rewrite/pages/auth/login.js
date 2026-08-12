@@ -1,4 +1,5 @@
 const sessionStore = require('../../stores/session-store');
+const miniLog = require('../../common/utils/mini-log');
 
 const TAB_ROUTES = [
   '/pages/index/index',
@@ -97,6 +98,11 @@ Page({
     }
     const detail = event && event.detail ? event.detail : {};
     if (!detail.code) {
+      miniLog.report({
+        level: 'warn',
+        event: 'login_phone_auth_cancelled',
+        message: detail.errMsg || 'phone authorization cancelled',
+      });
       wx.showToast({ title: '授权已取消', icon: 'none' });
       return;
     }
@@ -112,6 +118,15 @@ Page({
       }, 1200);
     } catch (error) {
       wx.hideLoading();
+      miniLog.report({
+        level: 'error',
+        event: 'login_failed',
+        message: error && error.message,
+        statusCode: error && error.statusCode,
+        extra: {
+          response: error && error.data,
+        },
+      });
       wx.showToast({ title: '登录失败，请重试', icon: 'none' });
       console.error(error);
     }

@@ -4931,9 +4931,10 @@ app.get('/api/admin/products', authenticateToken, async (req, res) => {
     const list = await query(
       `SELECT p.id, p.name, p.category, pc.name AS category_name, p.image_url, p.price, p.description, p.stock, p.sales_count,
               p.is_distribution, p.commission_rate, p.commission_rate_level1, p.commission_rate_level2,
-              p.status, p.created_at, p.original_price, p.gallery_urls
+              p.status, p.deleted_at, p.created_at, p.original_price, p.gallery_urls
        FROM products p
        LEFT JOIN product_categories pc ON pc.code = p.category
+       WHERE p.deleted_at IS NULL
        ORDER BY p.id DESC`
     );
     res.json({ code: 200, data: list });
@@ -5018,7 +5019,7 @@ app.delete('/api/admin/product-categories/:id', authenticateToken, async (req, r
     if (!category) {
       return res.status(404).json({ code: 404, message: '商品分类不存在' });
     }
-    const productUsage = await get('SELECT COUNT(*) AS count FROM products WHERE category = ?', [category.code]);
+    const productUsage = await get('SELECT COUNT(*) AS count FROM products WHERE category = ? AND deleted_at IS NULL', [category.code]);
     if (productUsage && Number(productUsage.count || 0) > 0) {
       return res.status(400).json({ code: 400, message: '该分类下仍有关联商品，无法删除' });
     }
@@ -5080,7 +5081,7 @@ app.post('/api/admin/products', authenticateToken, async (req, res) => {
 app.get('/api/admin/products/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const product = await get(`SELECT * FROM products WHERE id = ?`, [id]);
+    const product = await get(`SELECT * FROM products WHERE id = ? AND deleted_at IS NULL`, [id]);
     if (!product) {
       return res.status(404).json({ code: 404, message: '商品不存在' });
     }
@@ -5092,7 +5093,7 @@ app.get('/api/admin/products/:id', authenticateToken, async (req, res) => {
 
 app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const product = await get(`SELECT * FROM products WHERE id = ?`, [id]);
+  const product = await get(`SELECT * FROM products WHERE id = ? AND deleted_at IS NULL`, [id]);
   if (!product) {
     return res.status(404).json({ code: 404, message: '商品不存在' });
   }
@@ -5157,13 +5158,36 @@ app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
   }
 });
 
+app.delete('/api/admin/products/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const product = await get(`SELECT * FROM products WHERE id = ? AND deleted_at IS NULL`, [id]);
+    if (!product) {
+      return res.status(404).json({ code: 404, message: '商品不存在或已删除' });
+    }
+
+    await run(
+      `UPDATE products
+       SET deleted_at = CURRENT_TIMESTAMP,
+           status = 'off',
+           is_distribution = 0
+       WHERE id = ? AND deleted_at IS NULL`,
+      [id]
+    );
+    await logAdminAction(req.user.id, 'delete_product', 'product', id, { name: product.name });
+    res.json({ code: 200, message: '商品已删除' });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '删除商品失败' });
+  }
+});
+
 app.get('/api/admin/distribution/products', authenticateToken, async (req, res) => {
   try {
     const list = await query(
       `SELECT id, name, category, image_url, price, description, stock, sales_count,
               is_distribution, commission_rate, commission_rate_level1, commission_rate_level2, status, created_at
        FROM products
-       WHERE is_distribution = 1 AND status = 'on'
+       WHERE is_distribution = 1 AND status = 'on' AND deleted_at IS NULL
        ORDER BY id DESC`
     );
     res.json({ code: 200, data: list });
@@ -6216,6 +6240,78 @@ app.get('/api/admin/logs', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/admin/mini-program-logs', authenticateToken, async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 30, 1), 100);
+    const offset = (page - 1) * limit;
+    const { keyword, level, event, route, traceId, startDate, endDate } = req.query;
+    const conditions = [];
+    const params = [];
+
+    if (keyword && String(keyword).trim()) {
+      const kw = `%${String(keyword).trim()}%`;
+      conditions.push(`(l.message LIKE ? OR l.api_url LIKE ? OR l.extra LIKE ? OR l.ip_address LIKE ? OR u.nickname LIKE ?)`);
+      params.push(kw, kw, kw, kw, kw);
+    }
+    if (level && String(level).trim()) {
+      conditions.push(`l.level = ?`);
+      params.push(String(level).trim());
+    }
+    if (event && String(event).trim()) {
+      conditions.push(`l.event = ?`);
+      params.push(String(event).trim());
+    }
+    if (route && String(route).trim()) {
+      conditions.push(`l.route LIKE ?`);
+      params.push(`%${String(route).trim()}%`);
+    }
+    if (traceId && String(traceId).trim()) {
+      conditions.push(`l.trace_id = ?`);
+      params.push(String(traceId).trim());
+    }
+    if (startDate && String(startDate).trim()) {
+      conditions.push(`l.created_at >= ?`);
+      params.push(String(startDate).trim());
+    }
+    if (endDate && String(endDate).trim()) {
+      conditions.push(`l.created_at <= ?`);
+      params.push(String(endDate).trim());
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const countResult = await get(
+      `SELECT COUNT(*) AS total
+       FROM mini_program_logs l
+       LEFT JOIN users u ON l.user_id = u.id
+       ${whereClause}`,
+      params
+    );
+    const list = await query(
+      `SELECT l.*, u.nickname
+       FROM mini_program_logs l
+       LEFT JOIN users u ON l.user_id = u.id
+       ${whereClause}
+       ORDER BY l.created_at DESC
+       LIMIT ${limit} OFFSET ${offset}`,
+      params
+    );
+
+    res.json({
+      code: 200,
+      data: {
+        list,
+        total: Number(countResult?.total || 0),
+        page,
+        limit
+      }
+    });
+  } catch (error) {
+    console.error('Fetch mini program logs error:', error);
+    res.status(500).json({ code: 500, message: '获取小程序日志失败' });
+  }
+});
+
 // Pre-exam vitals routes
 app.post('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, res) => {
   const { id } = req.params;
@@ -6365,7 +6461,7 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '商品明细不完整' });
     }
     const placeholders = productIds.map(() => '?').join(',');
-    const products = await query(`SELECT * FROM products WHERE id IN (${placeholders})`, productIds);
+    const products = await query(`SELECT * FROM products WHERE id IN (${placeholders}) AND deleted_at IS NULL`, productIds);
     const productMap = {};
     products.forEach(product => {
       productMap[product.id] = product;

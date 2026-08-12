@@ -1,4 +1,5 @@
 const { apiBaseUrl, apiBaseUrls } = require('../common/config/env');
+const miniLog = require('../common/utils/mini-log');
 
 let isRefreshing = false;
 let requestQueue = [];
@@ -43,6 +44,8 @@ function getRequestBaseUrls() {
 function executeWxRequest(options, token) {
   const baseUrls = getRequestBaseUrls();
   const headers = Object.assign({ 'content-type': 'application/json' }, options.header || {});
+  const traceId = options.traceId || miniLog.createTraceId();
+  headers['X-Trace-Id'] = traceId;
   const safeToken = normalizeAccessToken(token);
   if (safeToken) {
     headers.Authorization = 'Bearer ' + safeToken;
@@ -68,13 +71,40 @@ function executeWxRequest(options, token) {
         timeout: options.timeout || 10000,
         success(response) {
           resolvedApiBaseUrl = currentBaseUrl;
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            miniLog.report({
+              level: response.statusCode >= 500 ? 'error' : 'warn',
+              event: options.url === '/auth/wx-login' ? 'login_api_failed' : 'api_response_failed',
+              message: (response.data && response.data.message) || options.failMessage || 'api response failed',
+              apiUrl: options.url,
+              method: options.method || 'GET',
+              statusCode: response.statusCode,
+              traceId,
+              extra: {
+                baseUrl: currentBaseUrl,
+                responseCode: response.data && response.data.code,
+              },
+            });
+          }
           resolve({
             response,
             baseUrl: currentBaseUrl,
+            traceId,
           });
         },
         fail(error) {
           const errMsg = (error && error.errMsg) || options.failMessage || '网络连接失败，请稍后重试';
+          miniLog.report({
+            level: 'error',
+            event: options.url === '/auth/wx-login' ? 'login_network_failed' : 'api_network_failed',
+            message: errMsg,
+            apiUrl: options.url,
+            method: options.method || 'GET',
+            traceId,
+            extra: {
+              baseUrl: currentBaseUrl,
+            },
+          });
           tryNext(errMsg);
         },
       });

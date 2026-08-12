@@ -41,6 +41,52 @@ const normalizeAppointmentType = (type) => {
   return APPOINTMENT_TYPES.has(value) ? value : null;
 };
 
+function clampText(value, maxLength) {
+  return String(value === null || value === undefined ? '' : value).trim().slice(0, maxLength);
+}
+
+function normalizeLogLevel(level) {
+  const value = clampText(level, 20).toLowerCase();
+  return ['debug', 'info', 'warn', 'error'].includes(value) ? value : 'info';
+}
+
+function parseBearerToken(req) {
+  const header = String(req.headers.authorization || '');
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : '';
+}
+
+function tryDecodeWxUser(req) {
+  const token = parseBearerToken(req);
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (error) {
+    return null;
+  }
+}
+
+function safeExtraPayload(extra) {
+  if (!extra || typeof extra !== 'object' || Array.isArray(extra)) {
+    return null;
+  }
+  const blockedKeys = new Set(['token', 'access_token', 'refresh_token', 'authorization', 'phone', 'phoneCode', 'code', 'password']);
+  const output = {};
+  Object.keys(extra).slice(0, 30).forEach((key) => {
+    const normalizedKey = String(key || '').trim();
+    if (!normalizedKey || blockedKeys.has(normalizedKey)) return;
+    const value = extra[key];
+    if (value === null || value === undefined) {
+      output[normalizedKey] = value;
+    } else if (typeof value === 'object') {
+      output[normalizedKey] = JSON.stringify(value).slice(0, 500);
+    } else {
+      output[normalizedKey] = String(value).slice(0, 500);
+    }
+  });
+  return Object.keys(output).length ? output : null;
+}
+
 const WECHAT_TOKEN_CACHE = {
   value: '',
   expiresAt: 0
@@ -1650,6 +1696,45 @@ async function closeExpiredPendingOrders(userId) {
 // ----------------------------------------
 // 11. WECHAT MINI PROGRAM API (v1)
 // ----------------------------------------
+
+app.post('/api/v1/logs/mini-program', async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const decodedUser = tryDecodeWxUser(req);
+    const extra = safeExtraPayload(payload.extra);
+    await run(
+      `INSERT INTO mini_program_logs (
+        user_id, openid, level, event, route, message, api_url, method, status_code,
+        trace_id, env_version, app_version, platform, device_model, sdk_version,
+        network_type, extra, ip_address
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        decodedUser?.id || null,
+        clampText(decodedUser?.openid || '', 64),
+        normalizeLogLevel(payload.level),
+        clampText(payload.event || 'client_event', 80),
+        clampText(payload.route, 160),
+        clampText(payload.message, 255),
+        clampText(payload.apiUrl, 255),
+        clampText(payload.method, 12).toUpperCase(),
+        payload.statusCode === null || payload.statusCode === undefined ? null : Number(payload.statusCode) || null,
+        clampText(payload.traceId, 64),
+        clampText(payload.envVersion, 30),
+        clampText(payload.appVersion, 50),
+        clampText(payload.platform, 50),
+        clampText(payload.deviceModel, 120),
+        clampText(payload.sdkVersion, 50),
+        clampText(payload.networkType, 30),
+        extra ? JSON.stringify(extra) : null,
+        clampText(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '', 45)
+      ]
+    );
+    res.json({ code: 0, message: 'success' });
+  } catch (error) {
+    console.error('mini-program log write failed:', error);
+    res.status(500).json({ code: 500, message: '日志上报失败' });
+  }
+});
 
 
 // 1. WeChat Login
@@ -5324,7 +5409,7 @@ app.get('/api/v1/products', async (req, res) => {
   const { category } = req.query;
   try {
     const params = [];
-    let sql = `SELECT * FROM products WHERE status = 'on'`;
+    let sql = `SELECT * FROM products WHERE status = 'on' AND deleted_at IS NULL`;
     const normalizedCategory = String(category || '').trim().toLowerCase() === 'product'
       ? 'accessory'
       : String(category || '').trim().toLowerCase();
@@ -5493,7 +5578,7 @@ app.post('/api/v1/user/coupons/redeem', authenticateWxToken, async (req, res) =>
 app.get('/api/v1/products/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const p = await get(`SELECT * FROM products WHERE id = ? AND status = 'on'`, [id]);
+    const p = await get(`SELECT * FROM products WHERE id = ? AND status = 'on' AND deleted_at IS NULL`, [id]);
     if (!p) {
       return res.status(404).json({ code: 404, message: '商品不存在' });
     }
@@ -6444,7 +6529,7 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
     const memberDiscountRate = getMemberDiscountRate(currentUser.member_level);
     const productIds = items.map(item => item.productId);
     const placeholders = productIds.map(() => '?').join(',');
-    const dbProducts = await query(`SELECT * FROM products WHERE id IN (${placeholders})`, productIds);
+    const dbProducts = await query(`SELECT * FROM products WHERE id IN (${placeholders}) AND deleted_at IS NULL`, productIds);
     const productMap = {};
     dbProducts.forEach(p => {
       productMap[p.id] = p;
@@ -7323,7 +7408,7 @@ app.get('/api/v1/distribution/orders', authenticateWxToken, async (req, res) => 
 app.get('/api/v1/distribution/products', async (req, res) => {
   try {
     const list = await query(
-      `SELECT * FROM products WHERE is_distribution = 1 AND status = 'on'`
+      `SELECT * FROM products WHERE is_distribution = 1 AND status = 'on' AND deleted_at IS NULL`
     );
     res.json({
       code: 0,

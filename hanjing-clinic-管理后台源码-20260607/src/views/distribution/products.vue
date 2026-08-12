@@ -68,10 +68,11 @@ const operationColumnWidth = computed(() => {
   let maxButtons = 1
   for (const row of paginatedProducts.value) {
     if (row.status === 'on' || row.status === 'off' || row.isDistribution) {
-      maxButtons = Math.max(maxButtons, 3)
+      maxButtons = Math.max(maxButtons, 4)
     }
   }
 
+  if (maxButtons === 4) return '320px'
   if (maxButtons === 3) return '240px'
   if (maxButtons === 2) return '160px'
   return '80px'
@@ -161,6 +162,24 @@ async function handleToggleDistribution(productId: string) {
     MessagePlugin.success(nextIsDistribution ? '已开启分销推广' : '已取消分销推广')
   } catch (error) {
     MessagePlugin.error('更新分销状态失败')
+  }
+}
+
+async function handleDelete(productId: string) {
+  const index = products.value.findIndex(product => product.id === productId)
+  if (index === -1) return
+
+  const product = products.value[index]
+  if (!window.confirm(`确定删除商品「${product.name}」吗？删除后商品管理、商城和开单选择中将不再显示，历史订单不受影响。`)) {
+    return
+  }
+
+  try {
+    await request.delete(`/api/admin/products/${productId}`)
+    products.value.splice(index, 1)
+    MessagePlugin.success('商品已删除')
+  } catch (error) {
+    MessagePlugin.error('删除商品失败')
   }
 }
 
@@ -298,6 +317,7 @@ onMounted(fetchProducts)
                   <button v-else class="btn btn-xs btn-success" @click="handleToggle(product.id)">上架</button>
                   <button v-if="product.isDistribution" class="btn btn-xs btn-warning" @click="handleToggleDistribution(product.id)">取消推广</button>
                   <button v-else class="btn btn-xs btn-outline" @click="handleToggleDistribution(product.id)">设为推广</button>
+                  <button class="btn btn-xs btn-danger" @click="handleDelete(product.id)">删除</button>
                 </div>
               </td>
             </tr>

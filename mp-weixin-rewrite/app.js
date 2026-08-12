@@ -1,5 +1,6 @@
 const distributionApi = require('./api/index');
 const sessionStore = require('./stores/session-store');
+const miniLog = require('./common/utils/mini-log');
 
 const originalPage = Page;
 
@@ -14,6 +15,9 @@ Page = function registerTrackedPage(pageOptions) {
     if (app && app.globalData) {
       app.globalData.currentRoute = this.route || '';
     }
+    setTimeout(() => {
+      enforceLoginGuard();
+    }, 0);
     if (typeof originalOnShow === 'function') {
       return originalOnShow.apply(this, args);
     }
@@ -153,6 +157,15 @@ App({
   globalData: { appName: "鼾静健康诊所", currentRoute: '', lastRoute: '' },
   __redirectingToLogin: false,
   onLaunch(options) {
+    miniLog.init();
+    miniLog.report({
+      level: 'info',
+      event: 'app_launch',
+      message: 'app launched',
+      extra: {
+        scene: options && options.scene,
+      },
+    });
     clearLegacyObfuscatedAccessToken();
     const inviteCode = parseInviteCodeFromLaunchOptions(options);
     if (inviteCode) wx.setStorageSync("pending_invite_code", inviteCode);
@@ -160,6 +173,11 @@ App({
     if (wx.onError) {
       wx.onError((error) => {
         console.error('[Global Error Catch]', error);
+        miniLog.report({
+          level: 'error',
+          event: 'js_error',
+          message: error,
+        });
         const realtimeLogManager = wx.getRealtimeLogManager ? wx.getRealtimeLogManager() : null;
         if (realtimeLogManager) {
           realtimeLogManager.error('[JS Error]', error);
@@ -201,6 +219,14 @@ App({
     }, 0);
   },
   onShow(options) {
+    miniLog.report({
+      level: 'info',
+      event: 'app_show',
+      message: 'app show',
+      extra: {
+        scene: options && options.scene,
+      },
+    });
     clearLegacyObfuscatedAccessToken();
     const inviteCode = parseInviteCodeFromLaunchOptions(options);
     if (inviteCode) wx.setStorageSync("pending_invite_code", inviteCode);

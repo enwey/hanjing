@@ -233,6 +233,12 @@ const router = createRouter({
           meta: { title: '操作日志' }
         },
         {
+          path: 'mini-program-log',
+          name: 'mini-program-log',
+          component: () => import('@/views/settings/mini-program-log.vue'),
+          meta: { title: '小程序日志' }
+        },
+        {
           path: 'store/report/:id',
           name: 'store-report-id',
           component: () => import('@/views/store/report.vue'),

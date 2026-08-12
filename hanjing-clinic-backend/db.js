@@ -1014,9 +1014,13 @@ export const initDB = async () => {
       commission_rate_level1 DECIMAL(4, 2) DEFAULT 0.0,
       commission_rate_level2 DECIMAL(4, 2) DEFAULT 0.0,
       status VARCHAR(30) DEFAULT 'off',
+      deleted_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  try {
+    await query(`ALTER TABLE products ADD COLUMN deleted_at TIMESTAMP NULL AFTER status`);
+  } catch (err) {}
   try {
     await query(`ALTER TABLE products ADD COLUMN commission_rate_level1 DECIMAL(4, 2) DEFAULT 0.0 AFTER commission_rate`);
   } catch (err) {}
@@ -1328,6 +1332,36 @@ export const initDB = async () => {
       sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_wechat_subscribe_user (user_id),
       INDEX idx_wechat_subscribe_event_business (event, business_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS mini_program_logs (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED DEFAULT NULL,
+      openid VARCHAR(64) DEFAULT '',
+      level VARCHAR(20) NOT NULL DEFAULT 'info',
+      event VARCHAR(80) NOT NULL,
+      route VARCHAR(160) DEFAULT '',
+      message VARCHAR(255) DEFAULT '',
+      api_url VARCHAR(255) DEFAULT '',
+      method VARCHAR(12) DEFAULT '',
+      status_code INT DEFAULT NULL,
+      trace_id VARCHAR(64) DEFAULT '',
+      env_version VARCHAR(30) DEFAULT '',
+      app_version VARCHAR(50) DEFAULT '',
+      platform VARCHAR(50) DEFAULT '',
+      device_model VARCHAR(120) DEFAULT '',
+      sdk_version VARCHAR(50) DEFAULT '',
+      network_type VARCHAR(30) DEFAULT '',
+      extra JSON DEFAULT NULL,
+      ip_address VARCHAR(45) DEFAULT '',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_mini_program_logs_created_at (created_at),
+      INDEX idx_mini_program_logs_event (event),
+      INDEX idx_mini_program_logs_level (level),
+      INDEX idx_mini_program_logs_trace_id (trace_id),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     );
   `);

@@ -43,6 +43,7 @@ Component({
   properties: {
     title: { type: String, value: '' },
     showBack: { type: Boolean, value: false },
+    hideBack: { type: Boolean, value: false },
     customBack: { type: Boolean, value: false },
     textColor: { type: String, value: '#1F2937' },
     bgColor: { type: String, value: '' },
@@ -71,7 +72,7 @@ Component({
   },
 
   observers: {
-    'title, showBack, sticky, fixed, backgroundColor, bgColor, transparent'() {
+    'title, showBack, hideBack, sticky, fixed, backgroundColor, bgColor, transparent'() {
       this.syncVisualState();
       this.syncRouteMeta(this.data.title, this.data.showBack, this.getStickyValue());
     },
@@ -122,7 +123,7 @@ Component({
       const currentPage = pages[pages.length - 1] || null;
       const route = currentPage ? currentPage.route : '';
       const isTabbarPage = TABBAR_PAGES.includes(route);
-      const shouldShowBack = showBack || (pages.length > 1 && !isTabbarPage);
+      const shouldShowBack = this.data.hideBack ? false : (showBack || (pages.length > 1 && !isTabbarPage));
       const navbarTitle = title || ROUTE_TITLES[route] || '';
 
       this.setData({

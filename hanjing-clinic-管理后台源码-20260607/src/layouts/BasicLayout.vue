@@ -86,7 +86,8 @@ const menuGroups = computed(() => [
     items: [
       { path: '/settings', label: '系统设置', icon: '⚙️', permission: 'system:view' },
       { path: '/permission', label: '权限管理', icon: '🔐', permission: 'system:edit' },
-      { path: '/log', label: '操作日志', icon: '📋', permission: 'audit_log:view' }
+      { path: '/log', label: '操作日志', icon: '📋', permission: 'audit_log:view' },
+      { path: '/mini-program-log', label: '小程序日志', icon: '📱', permission: 'audit_log:view' }
     ]
   }
 ])
