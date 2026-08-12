@@ -87,6 +87,38 @@ function safeExtraPayload(extra) {
   return Object.keys(output).length ? output : null;
 }
 
+async function writeMiniProgramLog(req, payload) {
+  const decodedUser = tryDecodeWxUser(req);
+  const extra = safeExtraPayload(payload.extra);
+  await run(
+    `INSERT INTO mini_program_logs (
+      user_id, openid, level, event, route, message, api_url, method, status_code,
+      trace_id, env_version, app_version, platform, device_model, sdk_version,
+      network_type, extra, ip_address
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      decodedUser?.id || null,
+      clampText(decodedUser?.openid || '', 64),
+      normalizeLogLevel(payload.level),
+      clampText(payload.event || 'server_event', 80),
+      clampText(payload.route, 160),
+      clampText(payload.message, 255),
+      clampText(payload.apiUrl || req.originalUrl || req.url, 255),
+      clampText(payload.method || req.method, 12).toUpperCase(),
+      payload.statusCode === null || payload.statusCode === undefined ? null : Number(payload.statusCode) || null,
+      clampText(payload.traceId || req.headers['x-trace-id'], 64),
+      clampText(payload.envVersion, 30),
+      clampText(payload.appVersion, 50),
+      clampText(payload.platform, 50),
+      clampText(payload.deviceModel, 120),
+      clampText(payload.sdkVersion, 50),
+      clampText(payload.networkType, 30),
+      extra ? JSON.stringify(extra) : null,
+      clampText(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '', 45)
+    ]
+  );
+}
+
 const WECHAT_TOKEN_CACHE = {
   value: '',
   expiresAt: 0
@@ -1699,36 +1731,7 @@ async function closeExpiredPendingOrders(userId) {
 
 app.post('/api/v1/logs/mini-program', async (req, res) => {
   try {
-    const payload = req.body || {};
-    const decodedUser = tryDecodeWxUser(req);
-    const extra = safeExtraPayload(payload.extra);
-    await run(
-      `INSERT INTO mini_program_logs (
-        user_id, openid, level, event, route, message, api_url, method, status_code,
-        trace_id, env_version, app_version, platform, device_model, sdk_version,
-        network_type, extra, ip_address
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        decodedUser?.id || null,
-        clampText(decodedUser?.openid || '', 64),
-        normalizeLogLevel(payload.level),
-        clampText(payload.event || 'client_event', 80),
-        clampText(payload.route, 160),
-        clampText(payload.message, 255),
-        clampText(payload.apiUrl, 255),
-        clampText(payload.method, 12).toUpperCase(),
-        payload.statusCode === null || payload.statusCode === undefined ? null : Number(payload.statusCode) || null,
-        clampText(payload.traceId, 64),
-        clampText(payload.envVersion, 30),
-        clampText(payload.appVersion, 50),
-        clampText(payload.platform, 50),
-        clampText(payload.deviceModel, 120),
-        clampText(payload.sdkVersion, 50),
-        clampText(payload.networkType, 30),
-        extra ? JSON.stringify(extra) : null,
-        clampText(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '', 45)
-      ]
-    );
+    await writeMiniProgramLog(req, req.body || {});
     res.json({ code: 0, message: 'success' });
   } catch (error) {
     console.error('mini-program log write failed:', error);
@@ -1741,6 +1744,19 @@ app.post('/api/v1/logs/mini-program', async (req, res) => {
 app.post('/api/v1/auth/wx-login', async (req, res) => {
   const { code, phoneCode } = req.body;
   if (!code) {
+    try {
+      await writeMiniProgramLog(req, {
+        level: 'warn',
+        event: 'login_missing_code',
+        message: 'wx-login request missing code',
+        statusCode: 400,
+        extra: {
+          hasPhoneCode: Boolean(phoneCode),
+        },
+      });
+    } catch (logError) {
+      console.error('write mini login_missing_code log failed:', logError);
+    }
     return res.status(400).json({ code: 400, message: 'code不能为空' });
   }
 
@@ -1847,6 +1863,22 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
     try {
       fs.appendFileSync('./login_errors.log', `[${new Date().toISOString()}] Error: ${error.message}\nStack: ${error.stack}\nBody: ${JSON.stringify(req.body)}\n\n`);
     } catch (e) {}
+    try {
+      await writeMiniProgramLog(req, {
+        level: 'error',
+        event: 'login_server_failed',
+        message: error.message || 'wx-login server failed',
+        statusCode: error.statusCode || 500,
+        extra: {
+          errorCode: error.code,
+          wechatError: error.data,
+          hasPhoneCode: Boolean(phoneCode),
+          hasCode: Boolean(code),
+        },
+      });
+    } catch (logError) {
+      console.error('write mini login_server_failed log failed:', logError);
+    }
     res.status(500).json({ code: 500, message: '登录失败' });
   }
 });
