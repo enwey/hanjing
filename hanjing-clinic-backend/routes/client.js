@@ -736,7 +736,8 @@ async function mergeUserAccountIntoExistingUser(sourceUserId, targetUserId, { op
     }
 
     if (openid && sourceUser.openid === openid) {
-      await conn.execute(`UPDATE users SET openid = NULL WHERE id = ?`, [sourceUserId]);
+      const releasedOpenid = `merged_${sourceUserId}_${Date.now()}`;
+      await conn.execute(`UPDATE users SET openid = ? WHERE id = ?`, [releasedOpenid, sourceUserId]);
     }
 
     const sourceSelf = await getSelfPatientForUserWithConn(conn, sourceUserId);
@@ -1892,7 +1893,13 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
     } catch (logError) {
       console.error('write mini login_server_failed log failed:', logError);
     }
-    res.status(statusCode).json({ code: statusCode, message: '登录失败' });
+    res.status(statusCode).json({
+      code: statusCode,
+      message: '\u767b\u5f55\u5931\u8d25',
+      errorCode: error.code || '',
+      detail: error.message || '',
+      wechatError: error.data || null
+    });
   }
 });
 
