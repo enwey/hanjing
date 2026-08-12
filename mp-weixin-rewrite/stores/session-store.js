@@ -161,6 +161,17 @@ const sessionStore = {
     const payload = response.data || response;
     this.setAccessToken(payload.access_token || '');
     this.state.profile = payload.user || null;
+    miniLog.report({
+      level: 'info',
+      event: 'login_success',
+      message: 'login success',
+      extra: {
+        hasAccessToken: Boolean(payload.access_token),
+        hasUser: Boolean(payload.user),
+        userId: payload.user && payload.user.id,
+        hasPhone: Boolean(payload.user && payload.user.phone),
+      },
+    });
     await bindPendingInviteCode();
     return payload;
   },
