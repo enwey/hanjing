@@ -12,7 +12,7 @@
     <view class="auth-section">
       <view class="auth-tip-card">
         <view class="tip-header">
-          <text class="tip-icon">🔒</text>
+          <text class="tip-icon">{{copy.lockIcon}}</text>
           <text class="tip-title">{{copy.tipTitle}}</text>
         </view>
         <text class="tip-content">{{copy.tipContent}}</text>

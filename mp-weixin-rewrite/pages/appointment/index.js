@@ -1,5 +1,6 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
+const miniLog = require('../../common/utils/mini-log');
 const sessionStore = require('../../stores/session-store');
 
 const ACTIVE_STATUSES = ['pending_payment', 'pending', 'confirmed', 'reminded', 'checked_in'];
@@ -291,7 +292,24 @@ Page({
 
   async onGetPhoneNumber(event) {
     const detail = event.detail || {};
+    miniLog.report({
+      level: 'info',
+      event: 'login_phone_callback',
+      message: detail.errMsg || 'appointment getPhoneNumber callback',
+      extra: {
+        source: 'appointment_index',
+        hasPhoneCode: Boolean(detail.code),
+      },
+    });
     if (!detail.code) {
+      miniLog.report({
+        level: 'warn',
+        event: 'login_phone_auth_cancelled',
+        message: detail.errMsg || 'appointment phone authorization cancelled',
+        extra: {
+          source: 'appointment_index',
+        },
+      });
       wx.showToast({ title: '授权已取消', icon: 'none' });
       return;
     }
@@ -304,6 +322,16 @@ Page({
       this.startAppointment();
     } catch (error) {
       wx.hideLoading();
+      miniLog.report({
+        level: 'error',
+        event: 'login_failed',
+        message: error && error.message,
+        statusCode: error && error.statusCode,
+        extra: {
+          source: 'appointment_index',
+          response: error && error.data,
+        },
+      });
       wx.showToast({ title: '登录失败，请重试', icon: 'none' });
       console.error(error);
     }

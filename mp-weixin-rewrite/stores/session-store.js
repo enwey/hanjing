@@ -116,6 +116,14 @@ const sessionStore = {
     return this.state.profile;
   },
   async login(phoneCode) {
+    miniLog.report({
+      level: 'info',
+      event: 'session_login_start',
+      message: 'session login started',
+      extra: {
+        hasPhoneCode: Boolean(phoneCode),
+      },
+    });
     const loginResponse = await new Promise((resolve, reject) => {
       wx.login({
         success: resolve,
@@ -133,6 +141,17 @@ const sessionStore = {
       level: 'info',
       event: 'wx_login_success',
       message: 'wx.login success',
+      extra: {
+        hasCode: Boolean(loginResponse && loginResponse.code),
+        hasPhoneCode: Boolean(phoneCode),
+      },
+    });
+    miniLog.report({
+      level: 'info',
+      event: 'login_api_request',
+      message: 'request wx-login api',
+      apiUrl: '/auth/wx-login',
+      method: 'POST',
       extra: {
         hasCode: Boolean(loginResponse && loginResponse.code),
         hasPhoneCode: Boolean(phoneCode),
