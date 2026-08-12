@@ -6896,7 +6896,8 @@ function sendAdminPayError(res, error, fallbackMessage) {
   res.status(status).json({
     code: status,
     message: error.message || fallbackMessage,
-    upstreamCode: rawStatus !== status ? rawStatus : undefined
+    upstreamCode: rawStatus !== status ? rawStatus : undefined,
+    detail: error?.data || null
   });
 }
 
