@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 interface MiniProgramLog {
   id: number
@@ -75,14 +76,7 @@ const eventOptions = [
 
 function formatTime(value: string) {
   if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return String(value).replace('T', ' ').slice(0, 19)
-  }
-  return date.toLocaleString('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    hour12: false,
-  })
+  return formatShanghaiDateTime(value)
 }
 
 function levelTheme(value: string) {

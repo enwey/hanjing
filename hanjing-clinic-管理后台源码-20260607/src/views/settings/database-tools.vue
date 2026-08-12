@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 interface TableColumn {
   name: string
@@ -55,14 +56,7 @@ const selectedTable = computed(() => {
 
 function formatDateTime(value: string) {
   if (!value) return '—'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return String(value).replace('T', ' ').slice(0, 19)
-  }
-  return date.toLocaleString('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    hour12: false,
-  })
+  return formatShanghaiDateTime(value)
 }
 
 function looksLikeDateTime(value: any) {

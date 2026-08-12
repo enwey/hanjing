@@ -1,6 +1,27 @@
 const pad = (value: number) => String(value).padStart(2, '0')
 
+const parseShanghaiLikeString = (value: string) => {
+  const text = String(value || '').trim()
+  if (!text) return null
+  const matched = text.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
+  )
+  if (!matched) return null
+  return {
+    year: matched[1],
+    month: matched[2],
+    day: matched[3],
+    hour: matched[4] || '00',
+    minute: matched[5] || '00',
+    second: matched[6] || '00',
+  }
+}
+
 const getShanghaiDate = (value: string | number | Date) => {
+  if (typeof value === 'string') {
+    const directParts = parseShanghaiLikeString(value)
+    if (directParts) return directParts
+  }
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return null
   const formatter = new Intl.DateTimeFormat('en-US', {
