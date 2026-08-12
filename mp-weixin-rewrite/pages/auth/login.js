@@ -1,5 +1,6 @@
 const sessionStore = require('../../stores/session-store');
 const miniLog = require('../../common/utils/mini-log');
+const LOGIN_DIAGNOSTIC_VERSION = 'login-diagnostics-20260812-1';
 
 const TAB_ROUTES = [
   '/pages/index/index',
@@ -44,6 +45,14 @@ Page({
         isDevTools: sysInfo.platform === 'devtools',
         redirectUrl: readRedirectUrl(options),
         backUrl: readBackUrl(options),
+      });
+      miniLog.report({
+        level: 'info',
+        event: 'login_page_loaded',
+        message: LOGIN_DIAGNOSTIC_VERSION,
+        extra: {
+          platform: sysInfo.platform,
+        },
       });
     } catch (error) {
       console.error(error);
