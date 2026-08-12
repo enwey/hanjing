@@ -20,10 +20,7 @@
 
       <button
         class="auth-btn"
-        open-type="getPhoneNumber"
-        bindtap="onLoginTap"
-        bindgetphonenumber="onGetPhoneNumber"
-        binderror="onLoginOpenTypeError"
+        bindtap="handleLogin"
       >
         {{copy.loginButton}}
       </button>

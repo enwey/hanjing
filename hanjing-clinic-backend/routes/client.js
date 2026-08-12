@@ -1853,7 +1853,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
           id: user.id.toString(),
           nickname: user.nickname,
           avatar: user.avatar_url || '/static/demo/avatar.jpg',
-          phone: decryptPII(user.phone) || '138****8888',
+          phone: decryptPII(user.phone) || '',
           memberLevel: user.member_level,
           isDistributor: !!(await get(
             `SELECT d.id
@@ -1920,7 +1920,7 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
         avatar: user.avatar_url || '/static/demo/avatar.jpg',
         gender: patient ? patient.gender : 1,
         age: patient ? patient.age : 30,
-        phone: decryptPII(user.phone) || (patient ? decryptPII(patient.phone) : '138****8888'),
+        phone: decryptPII(user.phone) || (patient ? decryptPII(patient.phone) : ''),
         idCard: patient ? (decryptPII(patient.id_card) || '') : '',
         cardNo: patient ? getPatientRecordNo(patient) : '',
         birthday: user.birthday ? formatDate(user.birthday) : '1995-01-01',

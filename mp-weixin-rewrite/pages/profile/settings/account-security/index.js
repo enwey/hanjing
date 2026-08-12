@@ -5,20 +5,10 @@ Page({
     loading: true,
     hasLoaded: false,
     info: null,
-    isDevTools: false,
     showPhoneModal: false,
     showRealnameModal: false,
     inputRealName: '',
     inputIdCard: '',
-  },
-
-  onLoad() {
-    try {
-      const sysInfo = wx.getSystemInfoSync();
-      this.setData({ isDevTools: sysInfo.platform === 'devtools' });
-    } catch (error) {
-      console.error(error);
-    }
   },
 
   onShow() {
@@ -96,39 +86,6 @@ Page({
     }
   },
 
-  onDeveloperChangePhone() {
-    wx.showModal({
-      title: '模拟微信手机号换绑',
-      content: '',
-      editable: true,
-      placeholderText: '请输入测试手机号（11位数字）',
-      success: async (result) => {
-        if (!result.confirm) {
-          return;
-        }
-        const phone = result.content ? result.content.trim() : '';
-        if (!/^\d{11}$/.test(phone)) {
-          wx.showToast({ title: '请输入11位数字手机号', icon: 'none' });
-          return;
-        }
-        try {
-          wx.showLoading({ title: '换绑中...' });
-          const response = await api.changePhone('', '', phone);
-          if (response && response.code === 0) {
-            wx.showToast({ title: '手机换绑成功', icon: 'success' });
-            this.setData({ showPhoneModal: false });
-            await this.fetchInfo();
-            return;
-          }
-          wx.showToast({ title: (response && response.message) || '修改失败', icon: 'none' });
-        } catch (error) {
-          wx.showToast({ title: (error && error.message) || '换绑失败，请重试', icon: 'none' });
-        } finally {
-          wx.hideLoading();
-        }
-      },
-    });
-  },
 
   async onSubmitRealname() {
     const realName = String(this.data.inputRealName || '').trim();

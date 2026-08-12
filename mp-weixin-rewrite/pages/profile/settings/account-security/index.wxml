@@ -28,12 +28,6 @@
         <view class="modal-actions data-v-ecc58349" style="display:flex; gap:20rpx;">
           <button bindtap="closePhoneModal" style="flex:1; background:#f3f4f6; color:#4b5563; font-size:28rpx; border:none; border-radius:8rpx; height:80rpx; line-height:80rpx;">取消</button>
           <button
-            wx:if="{{isDevTools}}"
-            bindtap="onDeveloperChangePhone"
-            style="flex:1; background:#3B6BF5; color:#fff; font-size:28rpx; border:none; border-radius:8rpx; height:80rpx; line-height:80rpx;"
-          >微信手机号换绑</button>
-          <button
-            wx:else
             open-type="getPhoneNumber"
             bindgetphonenumber="onChangePhoneByWechat"
             style="flex:1; background:#3B6BF5; color:#fff; font-size:28rpx; border:none; border-radius:8rpx; height:80rpx; line-height:80rpx;"
