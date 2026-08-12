@@ -1,6 +1,5 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
-const miniLog = require('../../common/utils/mini-log');
 const sessionStore = require('../../stores/session-store');
 
 const ACTIVE_STATUSES = ['pending_payment', 'pending', 'confirmed', 'reminded', 'checked_in'];
@@ -185,6 +184,10 @@ Page({
     navigation.openPage('/pages/appointment/store-select');
   },
 
+  goToLoginForAppointment() {
+    navigation.openPage('/pages/appointment/store-select');
+  },
+
   openDetail(event) {
     const detail = event.detail || {};
     const appointmentId = readString(detail.id || (event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.appointmentId));
@@ -290,71 +293,4 @@ Page({
     });
   },
 
-  onLoginOpenTypeError(event) {
-    const detail = event && event.detail ? event.detail : {};
-    const traceId = miniLog.createTraceId();
-    miniLog.report({
-      level: 'error',
-      event: 'login_open_type_error',
-      message: detail.errMsg || 'appointment getPhoneNumber open-type error',
-      traceId,
-      extra: {
-        source: 'appointment_index',
-        errMsg: detail.errMsg || '',
-        errno: detail.errno,
-      },
-    });
-    wx.showToast({ title: '登录失败，请重试', icon: 'none' });
-  },
-
-  async onGetPhoneNumber(event) {
-    const detail = event.detail || {};
-    const traceId = miniLog.createTraceId();
-    miniLog.report({
-      level: 'info',
-      event: 'login_phone_callback',
-      message: detail.errMsg || 'appointment getPhoneNumber callback',
-      traceId,
-      extra: {
-        source: 'appointment_index',
-        hasPhoneCode: Boolean(detail.code),
-      },
-    });
-    if (!detail.code) {
-      miniLog.report({
-        level: 'warn',
-        event: 'login_phone_auth_cancelled',
-        message: detail.errMsg || 'appointment phone authorization cancelled',
-        traceId,
-        extra: {
-          source: 'appointment_index',
-        },
-      });
-      wx.showToast({ title: '授权已取消', icon: 'none' });
-      return;
-    }
-
-    wx.showLoading({ title: '安全登录中...' });
-    try {
-      await sessionStore.login(detail.code, { source: 'appointment_index', traceId });
-      wx.hideLoading();
-      wx.showToast({ title: '登录成功', icon: 'success' });
-      this.startAppointment();
-    } catch (error) {
-      wx.hideLoading();
-      miniLog.report({
-        level: 'error',
-        event: 'login_failed',
-        message: error && error.message,
-        statusCode: error && error.statusCode,
-        traceId,
-        extra: {
-          source: 'appointment_index',
-          response: error && error.data,
-        },
-      });
-      wx.showToast({ title: '登录失败，请重试', icon: 'none' });
-      console.error(error);
-    }
-  },
 });

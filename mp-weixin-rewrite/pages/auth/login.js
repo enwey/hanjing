@@ -23,9 +23,6 @@ const TOAST = {
   loggingIn: '\u5b89\u5168\u767b\u5f55\u4e2d...',
   loginSuccess: '\u767b\u5f55\u6210\u529f',
   loginFailed: '\u767b\u5f55\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5',
-  devLoginTitle: '\u6a21\u62df\u624b\u673a\u53f7\u767b\u5f55',
-  devLoginPlaceholder: '\u8bf7\u8f93\u5165\u6d4b\u8bd5\u767b\u5f55\u7684\u624b\u673a\u53f7\uff0811\u4f4d\u6570\u5b57\uff09',
-  invalidPhone: '\u8bf7\u8f93\u516511\u4f4d\u6570\u5b57\u624b\u673a\u53f7',
 };
 
 const TAB_ROUTES = [
@@ -83,7 +80,6 @@ function reportLoginFailure(error, context = {}) {
 Page({
   data: {
     agreed: false,
-    isDevTools: false,
     redirectUrl: '',
     backUrl: '',
     loginTraceId: '',
@@ -94,7 +90,6 @@ Page({
     try {
       const sysInfo = wx.getSystemInfoSync();
       this.setData({
-        isDevTools: sysInfo.platform === 'devtools',
         redirectUrl: readRedirectUrl(options),
         backUrl: readBackUrl(options),
       });
@@ -218,46 +213,5 @@ Page({
       wx.showToast({ title: TOAST.loginFailed, icon: 'none' });
       console.error(error);
     }
-  },
-
-  async onDeveloperLogin() {
-    if (!this.data.agreed) {
-      wx.showToast({ title: TOAST.needAgreement, icon: 'none' });
-      return;
-    }
-
-    wx.showModal({
-      title: TOAST.devLoginTitle,
-      content: '',
-      editable: true,
-      placeholderText: TOAST.devLoginPlaceholder,
-      success: async (result) => {
-        if (!result.confirm) {
-          return;
-        }
-        const phone = result.content ? result.content.trim() : '';
-        if (!/^\d{11}$/.test(phone)) {
-          wx.showToast({ title: TOAST.invalidPhone, icon: 'none' });
-          return;
-        }
-
-        wx.showLoading({ title: TOAST.loggingIn });
-        const traceId = miniLog.createTraceId();
-        try {
-          await sessionStore.login(phone, { source: 'auth_login_devtools', traceId });
-          await sessionStore.fetchProfile({ source: 'auth_login_devtools', traceId });
-          wx.hideLoading();
-          wx.showToast({ title: TOAST.loginSuccess, icon: 'success' });
-          setTimeout(() => {
-            this.navigateAfterLogin();
-          }, 1200);
-        } catch (error) {
-          wx.hideLoading();
-          reportLoginFailure(error, { source: 'auth_login_devtools', traceId });
-          wx.showToast({ title: TOAST.loginFailed, icon: 'none' });
-          console.error(error);
-        }
-      },
-    });
   },
 });

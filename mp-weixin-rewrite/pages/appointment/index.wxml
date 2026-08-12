@@ -17,9 +17,7 @@
         wx:else
         class="auth-btn-custom"
         hover-class="auth-btn-custom-hover"
-        open-type="getPhoneNumber"
-        bindgetphonenumber="onGetPhoneNumber"
-        binderror="onLoginOpenTypeError"
+        bindtap="goToLoginForAppointment"
       >
         立即预约
       </button>
@@ -69,9 +67,7 @@
           class="auth-btn-custom"
           hover-class="auth-btn-custom-hover"
           style="margin-top: 16px;"
-          open-type="getPhoneNumber"
-          bindgetphonenumber="onGetPhoneNumber"
-          binderror="onLoginOpenTypeError"
+          bindtap="goToLoginForAppointment"
         >
           去预约
         </button>

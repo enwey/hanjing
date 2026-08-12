@@ -125,7 +125,9 @@ const WECHAT_TOKEN_CACHE = {
 };
 
 function allowDevMockWxLogin() {
-  return String(process.env.ENABLE_MOCK_WX_LOGIN || '').trim().toLowerCase() === 'true';
+  const nodeEnv = String(process.env.NODE_ENV || '').trim().toLowerCase();
+  const isDevEnv = ['development', 'dev', 'local', 'test'].includes(nodeEnv);
+  return isDevEnv && String(process.env.ENABLE_MOCK_WX_LOGIN || '').trim().toLowerCase() === 'true';
 }
 
 const SENSITIVE_WORDS = ['广告', '疗效', '包治', '神药', '加微信', '兼职', '刷单'];
@@ -313,7 +315,13 @@ async function getWechatMiniPhoneNumber(code) {
     throw error;
   }
   if (/^1\d{10}$/.test(phoneCode)) {
-    return phoneCode;
+    if (allowDevMockWxLogin()) {
+      return phoneCode;
+    }
+    const error = new Error('Mock phone login is disabled');
+    error.statusCode = 400;
+    error.code = 'MOCK_PHONE_LOGIN_DISABLED';
+    throw error;
   }
 
   const accessToken = await getWechatMiniAccessToken();
@@ -1864,6 +1872,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
     });
   } catch (error) {
     console.error('wx-login error:', error);
+    const statusCode = Number(error.statusCode || 500);
     try {
       fs.appendFileSync('./login_errors.log', `[${new Date().toISOString()}] Error: ${error.message}\nStack: ${error.stack}\nBody: ${JSON.stringify(req.body)}\n\n`);
     } catch (e) {}
@@ -1872,7 +1881,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
         level: 'error',
         event: 'login_server_failed',
         message: error.message || 'wx-login server failed',
-        statusCode: error.statusCode || 500,
+        statusCode,
         extra: {
           errorCode: error.code,
           wechatError: error.data,
@@ -1883,7 +1892,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
     } catch (logError) {
       console.error('write mini login_server_failed log failed:', logError);
     }
-    res.status(500).json({ code: 500, message: '登录失败' });
+    res.status(statusCode).json({ code: statusCode, message: '登录失败' });
   }
 });
 
