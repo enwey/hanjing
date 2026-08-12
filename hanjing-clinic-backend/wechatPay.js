@@ -43,7 +43,7 @@ async function readPayConfig() {
     getSetting('wechat_pay_platform_cert')
   ]);
 
-  const appId = process.env.WECHAT_APP_ID || process.env.WX_APPID || process.env.WX_MINI_APP_ID || appIdSetting || '';
+  const appId = process.env.WX_MINI_APP_ID || appIdSetting || process.env.WECHAT_APP_ID || process.env.WX_APPID || '';
   return {
     appId,
     mchId: process.env.WECHAT_PAY_MCH_ID || mchIdSetting || '',
