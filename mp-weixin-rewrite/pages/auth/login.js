@@ -9,8 +9,8 @@ const COPY = {
   brandSlogan: '\u4e13\u6ce8\u7761\u7720\u547c\u5438\u5065\u5eb7 \u00b7 \u8ba9\u6bcf\u4e00\u4e2a\u591c\u665a\u5b89\u5b81\u65e0\u58f0',
   lockIcon: '\ud83d\udd12',
   tipTitle: '\u5b89\u5168\u6388\u6743\u63d0\u793a',
-  tipContent: '\u8bf7\u5148\u4f7f\u7528\u5fae\u4fe1\u5b8c\u6210\u767b\u5f55\u3002\u9884\u7ea6\u6302\u53f7\u3001\u75c5\u5386\u7ba1\u7406\u7b49\u9700\u8981\u5b9e\u540d\u8054\u7cfb\u7684\u529f\u80fd\uff0c\u5c06\u5728\u4f7f\u7528\u65f6\u5f15\u5bfc\u60a8\u7ed1\u5b9a\u624b\u673a\u53f7\u3002',
-  loginButton: '\u5fae\u4fe1\u6388\u6743\u767b\u5f55',
+  tipContent: '\u6839\u636e\u56fd\u5bb6\u7f51\u7edc\u5b89\u5168\u6cd5\u53ca\u5c31\u8bca\u771f\u5b9e\u6027\u8981\u6c42\uff0c\u9884\u7ea6\u6302\u53f7\u3001\u75c5\u5386\u7ba1\u7406\u3001\u7761\u7720\u76d1\u6d4b\u7b49\u529f\u80fd\u9700\u7ed1\u5b9a\u60a8\u7684\u624b\u673a\u53f7\u7801\u3002',
+  loginButton: '\u5fae\u4fe1\u624b\u673a\u53f7\u4e00\u952e\u767b\u5f55',
   protocolPrefix: '\u6211\u5df2\u9605\u8bfb\u5e76\u540c\u610f',
   userAgreement: '\u300a\u7528\u6237\u534f\u8bae\u300b',
   andText: '\u4e0e',
@@ -152,7 +152,7 @@ Page({
     wx.switchTab({ url: '/pages/index/index' });
   },
 
-  async handleLogin() {
+  onLoginTap() {
     const traceId = miniLog.createTraceId();
     this.setData({ loginTraceId: traceId });
     reportLoginEvent('info', 'login_button_tap', 'login button tapped', {
@@ -175,6 +175,87 @@ Page({
         traceId,
       });
       wx.showToast({ title: TOAST.needAgreement, icon: 'none' });
+    }
+  },
+
+  async onLoginOpenTypeError(event) {
+    const detail = event && event.detail ? event.detail : {};
+    const traceId = this.data.loginTraceId || miniLog.createTraceId();
+    if (!this.data.loginTraceId) {
+      this.setData({ loginTraceId: traceId });
+    }
+    reportLoginEvent('error', 'login_open_type_error', detail.errMsg || 'getPhoneNumber open-type error', {
+      source: 'auth_login',
+      traceId,
+      agreed: Boolean(this.data.agreed),
+      errMsg: detail.errMsg || '',
+      errno: detail.errno,
+    });
+    await reportLoginEventNow('error', 'login_open_type_error_sync', detail.errMsg || 'getPhoneNumber open-type error', {
+      source: 'auth_login',
+      traceId,
+      agreed: Boolean(this.data.agreed),
+      errMsg: detail.errMsg || '',
+      errno: detail.errno,
+    });
+    wx.showToast({ title: TOAST.loginFailed, icon: 'none' });
+  },
+
+  navigateAfterLogin() {
+    const target = resolveAfterLogin(this.data.redirectUrl);
+    if (target.type === 'tab') {
+      wx.switchTab({ url: target.url });
+      return;
+    }
+    wx.reLaunch({ url: target.url });
+  },
+
+  async onGetPhoneNumber(event) {
+    const detail = event && event.detail ? event.detail : {};
+    const traceId = this.data.loginTraceId || miniLog.createTraceId();
+    if (!this.data.loginTraceId) {
+      this.setData({ loginTraceId: traceId });
+    }
+    reportLoginEvent('info', 'login_phone_callback', detail.errMsg || 'getPhoneNumber callback', {
+      source: 'auth_login',
+      traceId,
+      agreed: Boolean(this.data.agreed),
+      hasPhoneCode: Boolean(detail.code),
+      errMsg: detail.errMsg || '',
+      errno: detail.errno,
+    });
+    await reportLoginEventNow('info', 'login_phone_callback_sync', detail.errMsg || 'getPhoneNumber callback', {
+      source: 'auth_login',
+      traceId,
+      agreed: Boolean(this.data.agreed),
+      hasPhoneCode: Boolean(detail.code),
+      errMsg: detail.errMsg || '',
+      errno: detail.errno,
+    });
+    if (!this.data.agreed) {
+      reportLoginEvent('warn', 'login_agreement_missing', 'phone callback received before agreement', {
+        source: 'auth_login',
+        traceId,
+      });
+      await reportLoginEventNow('warn', 'login_agreement_missing_sync', 'phone callback received before agreement', {
+        source: 'auth_login',
+        traceId,
+      });
+      wx.showToast({ title: TOAST.needAgreement, icon: 'none' });
+      return;
+    }
+    if (!detail.code) {
+      reportLoginEvent('warn', 'login_phone_auth_cancelled', detail.errMsg || 'phone authorization cancelled', {
+        source: 'auth_login',
+        traceId,
+      });
+      await reportLoginEventNow('warn', 'login_phone_auth_cancelled_sync', detail.errMsg || 'phone authorization cancelled', {
+        source: 'auth_login',
+        traceId,
+        errMsg: detail.errMsg || '',
+        errno: detail.errno,
+      });
+      wx.showToast({ title: TOAST.authCancelled, icon: 'none' });
       return;
     }
 
@@ -183,9 +264,9 @@ Page({
       await reportLoginEventNow('info', 'login_session_start_sync', 'start session login', {
         source: 'auth_login',
         traceId,
-        hasPhoneCode: false,
+        hasPhoneCode: true,
       });
-      await sessionStore.login('', { source: 'auth_login', traceId });
+      await sessionStore.login(detail.code, { source: 'auth_login', traceId });
       await sessionStore.fetchProfile({ source: 'auth_login', traceId });
       wx.hideLoading();
       wx.showToast({ title: TOAST.loginSuccess, icon: 'success' });
@@ -199,14 +280,5 @@ Page({
       wx.showToast({ title: TOAST.loginFailed, icon: 'none' });
       console.error(error);
     }
-  },
-
-  navigateAfterLogin() {
-    const target = resolveAfterLogin(this.data.redirectUrl);
-    if (target.type === 'tab') {
-      wx.switchTab({ url: target.url });
-      return;
-    }
-    wx.reLaunch({ url: target.url });
   },
 });

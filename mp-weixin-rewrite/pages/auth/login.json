@@ -3,6 +3,7 @@
   "navigationStyle": "custom",
   "usingComponents": {
     "hj-navbar": "../../components/base/hj-navbar",
-    "hj-button": "../../components/base/hj-button"
+    "hj-button": "../../components/base/hj-button",
+    "hj-privacy-popup": "../../components/business/hj-privacy-popup/index"
   }
 }

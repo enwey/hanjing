@@ -20,7 +20,10 @@
 
       <button
         class="auth-btn"
-        bindtap="handleLogin"
+        open-type="getPhoneNumber"
+        bindtap="onLoginTap"
+        bindgetphonenumber="onGetPhoneNumber"
+        binderror="onLoginOpenTypeError"
       >
         {{copy.loginButton}}
       </button>
@@ -38,4 +41,5 @@
       <text class="protocol-link" bindtap="viewPrivacy">{{copy.privacyPolicy}}</text>
     </view>
   </view>
+  <hj-privacy-popup id="privacyPopup" />
 </view>
