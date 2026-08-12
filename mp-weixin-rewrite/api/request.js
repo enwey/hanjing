@@ -85,6 +85,21 @@ function executeWxRequest(options, token) {
                 responseCode: response.data && response.data.code,
               },
             });
+            if (options.url === '/auth/wx-login') {
+              miniLog.reportNow({
+                level: response.statusCode >= 500 ? 'error' : 'warn',
+                event: 'login_api_failed_sync',
+                message: (response.data && response.data.message) || options.failMessage || 'api response failed',
+                apiUrl: options.url,
+                method: options.method || 'GET',
+                statusCode: response.statusCode,
+                traceId,
+                extra: {
+                  baseUrl: currentBaseUrl,
+                  responseCode: response.data && response.data.code,
+                },
+              });
+            }
           }
           resolve({
             response,
@@ -105,6 +120,19 @@ function executeWxRequest(options, token) {
               baseUrl: currentBaseUrl,
             },
           });
+          if (options.url === '/auth/wx-login') {
+            miniLog.reportNow({
+              level: 'error',
+              event: 'login_network_failed_sync',
+              message: errMsg,
+              apiUrl: options.url,
+              method: options.method || 'GET',
+              traceId,
+              extra: {
+                baseUrl: currentBaseUrl,
+              },
+            });
+          }
           tryNext(errMsg);
         },
       });

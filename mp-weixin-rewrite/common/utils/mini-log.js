@@ -153,6 +153,36 @@ function flush() {
   });
 }
 
+function sendPayloadNow(payload) {
+  return new Promise((resolve) => {
+    const token = getToken();
+    const header = { 'content-type': 'application/json' };
+    if (token) header.Authorization = `Bearer ${token}`;
+    wx.request({
+      url: `${apiBaseUrl}/logs/mini-program`,
+      method: 'POST',
+      data: payload,
+      header,
+      timeout: 8000,
+      success(response) {
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          rememberFailedLog(payload, {
+            statusCode: response.statusCode,
+            data: response.data,
+          });
+          resolve(false);
+          return;
+        }
+        resolve(true);
+      },
+      fail(error) {
+        rememberFailedLog(payload, error);
+        resolve(false);
+      },
+    });
+  });
+}
+
 function report(entry) {
   try {
     if (queue.length >= MAX_QUEUE_SIZE) {
@@ -161,6 +191,14 @@ function report(entry) {
     queue.push(buildPayload(entry || {}));
     flush();
   } catch (error) {}
+}
+
+function reportNow(entry) {
+  try {
+    return sendPayloadNow(buildPayload(entry || {}));
+  } catch (error) {
+    return Promise.resolve(false);
+  }
 }
 
 function init() {
@@ -188,6 +226,7 @@ function init() {
 module.exports = {
   init,
   report,
+  reportNow,
   createTraceId,
   readFailedLogs,
 };

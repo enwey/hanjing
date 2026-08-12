@@ -63,6 +63,16 @@ function reportLoginEvent(level, event, message, context = {}) {
   });
 }
 
+function reportLoginEventNow(level, event, message, context = {}) {
+  return miniLog.reportNow({
+    level,
+    event,
+    message,
+    traceId: context.traceId || '',
+    extra: context.extra || context,
+  });
+}
+
 function reportLoginFailure(error, context = {}) {
   miniLog.report({
     level: 'error',
@@ -73,6 +83,21 @@ function reportLoginFailure(error, context = {}) {
     extra: {
       source: context.source || '',
       response: error && error.data,
+    },
+  });
+}
+
+function reportLoginFailureNow(error, context = {}) {
+  return miniLog.reportNow({
+    level: 'error',
+    event: 'login_failed',
+    message: error && error.message,
+    statusCode: error && error.statusCode,
+    traceId: context.traceId || '',
+    extra: {
+      source: context.source || '',
+      response: error && error.data,
+      errMsg: error && error.errMsg,
     },
   });
 }
@@ -135,8 +160,17 @@ Page({
       traceId,
       agreed: Boolean(this.data.agreed),
     });
+    reportLoginEventNow('info', 'login_button_tap_sync', 'login button tapped', {
+      source: 'auth_login',
+      traceId,
+      agreed: Boolean(this.data.agreed),
+    });
     if (!this.data.agreed) {
       reportLoginEvent('warn', 'login_agreement_missing', 'user tapped login before agreement', {
+        source: 'auth_login',
+        traceId,
+      });
+      reportLoginEventNow('warn', 'login_agreement_missing_sync', 'user tapped login before agreement', {
         source: 'auth_login',
         traceId,
       });
@@ -144,13 +178,20 @@ Page({
     }
   },
 
-  onLoginOpenTypeError(event) {
+  async onLoginOpenTypeError(event) {
     const detail = event && event.detail ? event.detail : {};
     const traceId = this.data.loginTraceId || miniLog.createTraceId();
     if (!this.data.loginTraceId) {
       this.setData({ loginTraceId: traceId });
     }
     reportLoginEvent('error', 'login_open_type_error', detail.errMsg || 'getPhoneNumber open-type error', {
+      source: 'auth_login',
+      traceId,
+      agreed: Boolean(this.data.agreed),
+      errMsg: detail.errMsg || '',
+      errno: detail.errno,
+    });
+    await reportLoginEventNow('error', 'login_open_type_error_sync', detail.errMsg || 'getPhoneNumber open-type error', {
       source: 'auth_login',
       traceId,
       agreed: Boolean(this.data.agreed),
@@ -180,9 +221,23 @@ Page({
       traceId,
       agreed: Boolean(this.data.agreed),
       hasPhoneCode: Boolean(detail.code),
+      errMsg: detail.errMsg || '',
+      errno: detail.errno,
+    });
+    await reportLoginEventNow('info', 'login_phone_callback_sync', detail.errMsg || 'getPhoneNumber callback', {
+      source: 'auth_login',
+      traceId,
+      agreed: Boolean(this.data.agreed),
+      hasPhoneCode: Boolean(detail.code),
+      errMsg: detail.errMsg || '',
+      errno: detail.errno,
     });
     if (!this.data.agreed) {
       reportLoginEvent('warn', 'login_agreement_missing', 'phone callback received before agreement', {
+        source: 'auth_login',
+        traceId,
+      });
+      await reportLoginEventNow('warn', 'login_agreement_missing_sync', 'phone callback received before agreement', {
         source: 'auth_login',
         traceId,
       });
@@ -194,12 +249,23 @@ Page({
         source: 'auth_login',
         traceId,
       });
+      await reportLoginEventNow('warn', 'login_phone_auth_cancelled_sync', detail.errMsg || 'phone authorization cancelled', {
+        source: 'auth_login',
+        traceId,
+        errMsg: detail.errMsg || '',
+        errno: detail.errno,
+      });
       wx.showToast({ title: TOAST.authCancelled, icon: 'none' });
       return;
     }
 
     wx.showLoading({ title: TOAST.loggingIn });
     try {
+      await reportLoginEventNow('info', 'login_session_start_sync', 'start session login', {
+        source: 'auth_login',
+        traceId,
+        hasPhoneCode: true,
+      });
       await sessionStore.login(detail.code, { source: 'auth_login', traceId });
       await sessionStore.fetchProfile({ source: 'auth_login', traceId });
       wx.hideLoading();
@@ -210,6 +276,7 @@ Page({
     } catch (error) {
       wx.hideLoading();
       reportLoginFailure(error, { source: 'auth_login', traceId });
+      await reportLoginFailureNow(error, { source: 'auth_login', traceId });
       wx.showToast({ title: TOAST.loginFailed, icon: 'none' });
       console.error(error);
     }

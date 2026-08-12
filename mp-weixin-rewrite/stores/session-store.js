@@ -174,6 +174,16 @@ const sessionStore = {
         hasPhoneCode: Boolean(phoneCode),
       },
     });
+    await miniLog.reportNow({
+      level: 'info',
+      event: 'session_login_start_sync',
+      message: 'session login started',
+      traceId,
+      extra: {
+        source,
+        hasPhoneCode: Boolean(phoneCode),
+      },
+    });
     const loginResponse = await new Promise((resolve, reject) => {
       wx.login({
         success: resolve,
@@ -187,13 +197,35 @@ const sessionStore = {
               source,
             },
           });
-          reject(error);
+          miniLog.reportNow({
+            level: 'error',
+            event: 'wx_login_failed_sync',
+            message: error && error.errMsg,
+            traceId,
+            extra: {
+              source,
+            },
+          }).then(() => {
+            reject(error);
+          });
+          return;
         },
       });
     });
     miniLog.report({
       level: 'info',
       event: 'wx_login_success',
+      message: 'wx.login success',
+      traceId,
+      extra: {
+        source,
+        hasCode: Boolean(loginResponse && loginResponse.code),
+        hasPhoneCode: Boolean(phoneCode),
+      },
+    });
+    await miniLog.reportNow({
+      level: 'info',
+      event: 'wx_login_success_sync',
       message: 'wx.login success',
       traceId,
       extra: {
@@ -213,10 +245,33 @@ const sessionStore = {
           hasPhoneCode: Boolean(phoneCode),
         },
       });
+      await miniLog.reportNow({
+        level: 'warn',
+        event: 'wx_login_missing_code_sync',
+        message: 'wx.login success without code',
+        traceId,
+        extra: {
+          source,
+          hasPhoneCode: Boolean(phoneCode),
+        },
+      });
     }
     miniLog.report({
       level: 'info',
       event: 'login_api_request',
+      message: 'request wx-login api',
+      apiUrl: '/auth/wx-login',
+      method: 'POST',
+      traceId,
+      extra: {
+        source,
+        hasCode: Boolean(loginResponse && loginResponse.code),
+        hasPhoneCode: Boolean(phoneCode),
+      },
+    });
+    await miniLog.reportNow({
+      level: 'info',
+      event: 'login_api_request_sync',
       message: 'request wx-login api',
       apiUrl: '/auth/wx-login',
       method: 'POST',
