@@ -1,21 +1,21 @@
 <view class="page-container">
-  <hj-navbar title="微信授权登录" hideBack="{{true}}" />
+  <hj-navbar title="{{copy.navTitle}}" hideBack="{{true}}" />
   <view class="page-content login-page">
     <view class="brand-section">
       <view class="logo-container">
         <image class="logo-image" src="/static/images/brand-koala.png" mode="aspectFit" />
       </view>
-      <text class="brand-name">鼾静健康诊所</text>
-      <text class="brand-slogan">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</text>
+      <text class="brand-name">{{copy.brandName}}</text>
+      <text class="brand-slogan">{{copy.brandSlogan}}</text>
     </view>
 
     <view class="auth-section">
       <view class="auth-tip-card">
         <view class="tip-header">
           <text class="tip-icon">🔒</text>
-          <text class="tip-title">安全授权提示</text>
+          <text class="tip-title">{{copy.tipTitle}}</text>
         </view>
-        <text class="tip-content">根据国家网络安全法及就诊真实性要求，预约挂号、病历管理、睡眠监测等功能需绑定您的手机号码。</text>
+        <text class="tip-content">{{copy.tipContent}}</text>
       </view>
 
       <button
@@ -23,7 +23,7 @@
         class="auth-btn"
         bindtap="onDeveloperLogin"
       >
-        微信手机号一键登录
+        {{copy.loginButton}}
       </button>
 
       <button
@@ -33,7 +33,7 @@
         bindtap="onLoginTap"
         bindgetphonenumber="onGetPhoneNumber"
       >
-        微信手机号一键登录
+        {{copy.loginButton}}
       </button>
     </view>
 
@@ -41,12 +41,12 @@
       <checkbox-group bindchange="handleAgreementChange">
         <label class="protocol-label">
           <checkbox class="protocol-checkbox" value="agree" checked="{{agreed}}" color="#3b6bf5" />
-          <text class="protocol-text">我已阅读并同意 </text>
+          <text class="protocol-text">{{copy.protocolPrefix}}</text>
         </label>
       </checkbox-group>
-      <text class="protocol-link" bindtap="viewAgreement">《用户协议》</text>
-      <text class="protocol-text">与</text>
-      <text class="protocol-link" bindtap="viewPrivacy">《隐私政策》</text>
+      <text class="protocol-link" bindtap="viewAgreement">{{copy.userAgreement}}</text>
+      <text class="protocol-text">{{copy.andText}}</text>
+      <text class="protocol-link" bindtap="viewPrivacy">{{copy.privacyPolicy}}</text>
     </view>
   </view>
 </view>
