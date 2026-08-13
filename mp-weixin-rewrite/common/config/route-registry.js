@@ -80,14 +80,6 @@ const routeRegistry = [
     "title": "消息通知"
   },
   {
-    "path": "pages/live/list/index",
-    "title": "内容直播"
-  },
-  {
-    "path": "pages/live/playback/index",
-    "title": "直播详情"
-  },
-  {
     "path": "pages/community/index",
     "title": "睡眠社区"
   },

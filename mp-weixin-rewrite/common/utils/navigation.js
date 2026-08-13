@@ -10,8 +10,6 @@ const PUBLIC_PAGES = [
   '/pages/auth/privacy/index',
   '/pages/community/index',
   '/pages/community/detail/index',
-  '/pages/live/list/index',
-  '/pages/live/playback/index',
 ];
 
 function normalizeUrl(url) {

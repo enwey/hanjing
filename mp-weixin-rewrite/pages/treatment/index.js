@@ -11,11 +11,6 @@ const RELATION_LABEL_MAP = {
   other: '其他',
 };
 
-const TREATMENT_ENTRIES = [
-  { key: 'trend', title: '睡眠趋势', description: '睡眠与使用记录', icon: '/static/icons/trend.svg', iconClass: 'menu-icon--trend', url: '/pages/treatment/sleep-trend/index' },
-  { key: 'report', title: '睡眠报告', description: '趋势分析与内容参考', icon: '/static/icons/report.svg', iconClass: 'menu-icon--report', url: '/pages/treatment/sleep-report/index' },
-];
-
 function unwrapObject(response) {
   const payload = response && response.data ? response.data : response || {};
   return payload.data || payload;
@@ -113,24 +108,12 @@ function buildRecentDays(records) {
   return result;
 }
 
-function buildTimelinePreview(timeline) {
-  return timeline.slice(0, 2).map((item, index, list) => ({
-    id: item.id || String(index),
-    title: item.title || '',
-    description: item.description || '',
-    dateLabel: item.date || '',
-    dotColor: item.color || '#3b6bf5',
-    showLine: index < list.length - 1,
-  }));
-}
-
 Page({
   data: {
     loading: true,
     hasLoaded: false,
     pageStyle: 'overflow: visible;',
     loadError: '',
-    entries: TREATMENT_ENTRIES,
     memberNames: [],
     memberOptions: [],
     memberIndex: 0,
@@ -160,8 +143,6 @@ Page({
       { key: 'comfort', label: '舒适度', value: '0/5' },
       { key: 'streak', label: '连续天数', value: '0天' },
     ],
-    showTimelineLink: false,
-    timelinePreview: [],
     checkinVisible: false,
     checkinDateLabel: '',
     durationScrollLeft: 0,
@@ -215,8 +196,6 @@ Page({
           { key: 'comfort', label: '舒适度', value: '0/5' },
           { key: 'streak', label: '连续天数', value: '0天' },
         ],
-        showTimelineLink: false,
-        timelinePreview: [],
         checkinVisible: false,
         pageStyle: 'overflow: visible;',
       });
@@ -267,11 +246,10 @@ Page({
       }
 
       const params = this.queryParams();
-      const [recordRes, wearingRes, summaryRes, timelineRes] = await Promise.all([
+      const [recordRes, wearingRes, summaryRes] = await Promise.all([
         api.getTreatmentRecord(params),
         api.getWearingRecords(params),
         api.getWearingSummary(params),
-        api.getTimeline(params),
       ]);
 
       const treatmentRecord = unwrapObject(recordRes) || null;
@@ -282,7 +260,6 @@ Page({
         note: item.note || '',
       }));
       const summary = unwrapObject(summaryRes) || {};
-      const timeline = unwrapList(timelineRes);
       const hasTreatmentRecord = !!treatmentRecord;
       const hasRealTreatmentRecord = !!(treatmentRecord && treatmentRecord.isRealTreatmentRecord);
       const heroCompliance = Number(summary.weekCompliance != null ? summary.weekCompliance : summary.compliance || 0);
@@ -322,8 +299,6 @@ Page({
           { key: 'comfort', label: '舒适度', value: `${Number(summary.avgComfort || 0)}/5` },
           { key: 'streak', label: '连续天数', value: `${summary.streak || 0}天` },
         ],
-        showTimelineLink: hasRealTreatmentRecord,
-        timelinePreview: buildTimelinePreview(timeline),
       });
     } catch (error) {
       console.error('[Treatment loadPage] 加载失败', error);
@@ -350,14 +325,6 @@ Page({
     await this.loadPage();
   },
 
-  openEntry(event) {
-    const url = String(event.currentTarget.dataset.url || '');
-    if (!url) {
-      return;
-    }
-    navigation.openPage(url);
-  },
-
   goCalendar() {
     navigation.openPage('/pages/treatment/calendar/index');
   },
@@ -368,10 +335,6 @@ Page({
 
   goSleepReport() {
     navigation.openPage('/pages/treatment/sleep-report/index');
-  },
-
-  goCommunity() {
-    navigation.openPage('/pages/community/index');
   },
 
   openCheckinModal() {

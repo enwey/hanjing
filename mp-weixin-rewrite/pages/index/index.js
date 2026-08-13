@@ -174,10 +174,6 @@ Page({
     wx.switchTab({ url: '/pages/treatment/index' });
   },
 
-  goCommunity() {
-    wx.navigateTo({ url: '/pages/community/index' });
-  },
-
   goPublishPost() {
     wx.navigateTo({ url: '/pages/community/publish/index' });
   },

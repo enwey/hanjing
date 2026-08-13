@@ -7,8 +7,6 @@ const TABBAR_PAGES = [
 
 const ROUTE_TITLES = {
   'pages/profile/settings/index': '设置',
-  'pages/live/list/index': '内容直播',
-  'pages/live/playback/index': '直播详情',
 };
 
 function getStatusBarHeight() {

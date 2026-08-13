@@ -1,39 +1,11 @@
 const { request } = require('../request');
 
-function getTimeline(query) {
-  return request({ url: '/treatment/timeline', method: 'GET', data: query, failMessage: '加载服务时间线失败' });
-}
-
 function getTreatmentRecord(query) {
   return request({ url: '/treatment/record', method: 'GET', data: query, failMessage: '加载佩戴记录失败' });
 }
 
-function getTreatmentRecords(query) {
-  return request({ url: '/treatment/records', method: 'GET', data: query, failMessage: '加载佩戴记录列表失败' });
-}
-
-function getPatientDevice(query) {
-  return request({ url: '/treatment/device', method: 'GET', data: query, failMessage: '加载阻鼾器信息失败' });
-}
-
 function getSleepReport(query) {
   return request({ url: '/treatment/sleep-report', method: 'GET', data: query, failMessage: '加载睡眠报告失败' });
-}
-
-function getDeviceAdjustments(query) {
-  return request({ url: '/treatment/adjustments', method: 'GET', data: query, failMessage: '加载设备调整记录失败' });
-}
-
-function getDeviceMaintenance(query) {
-  return request({ url: '/treatment/device-maintenance', method: 'GET', data: query, failMessage: '加载设备维护记录失败' });
-}
-
-function getDeviceFeedback(query) {
-  return request({ url: '/treatment/device-feedback', method: 'GET', data: query, failMessage: '加载设备反馈失败' });
-}
-
-function submitDeviceFeedback(data) {
-  return request({ url: '/treatment/feedback', method: 'POST', data, failMessage: '提交设备反馈失败' });
 }
 
 function getWearingRecords(query) {
@@ -49,15 +21,8 @@ function submitWearingCheckin(data) {
 }
 
 module.exports = {
-  getTimeline,
   getTreatmentRecord,
-  getTreatmentRecords,
-  getPatientDevice,
   getSleepReport,
-  getDeviceAdjustments,
-  getDeviceMaintenance,
-  getDeviceFeedback,
-  submitDeviceFeedback,
   getWearingRecords,
   getWearingSummary,
   submitWearingCheckin
