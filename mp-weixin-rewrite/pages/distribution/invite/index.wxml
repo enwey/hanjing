@@ -26,7 +26,7 @@
       <view class="invite-poster-preview">
         <view class="invite-poster">
           <view class="invite-poster__wave"></view>
-          <text class="invite-poster__top">鼾静健康 · 睡眠评估与佩戴服务</text>
+          <text class="invite-poster__top">鼾静健康 · 睡眠评估与治疗</text>
           <view class="invite-poster__body">
             <view class="invite-poster__copy">
               <text class="invite-poster__kicker">AI SLEEP CARE</text>

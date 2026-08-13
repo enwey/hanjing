@@ -7,7 +7,7 @@ const MENU_GROUPS = [
   {
     title: '我的健康',
     items: [
-      { key: 'records', label: '健康档案', icon: '/static/icons/profile_orange.svg', url: '/pages/profile/medical-records/index' },
+      { key: 'records', label: '病历档案', icon: '/static/icons/profile_orange.svg', url: '/pages/profile/medical-records/index' },
       { key: 'device', label: '阻鼾器管理', icon: '/static/icons/treatment_green.svg', url: '/pages/profile/device-manage/index' },
       { key: 'family', label: '家庭成员', icon: '/static/icons/community.svg', url: '/pages/profile/family-members/index' },
     ],

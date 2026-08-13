@@ -13,7 +13,7 @@
 
     <view wx:elif="{{!scheduleDates.length}}" class="state-card">
       <text class="state-title">暂无可约日期</text>
-      <text class="state-desc">请返回重新选择其他顾问或门店</text>
+      <text class="state-desc">请返回重新选择其他医生或门店</text>
     </view>
 
     <block wx:else>
@@ -56,7 +56,7 @@
       </view>
 
       <view wx:else class="select-hint">
-        <text>请选择到店日期</text>
+        <text>请选择就诊日期</text>
       </view>
     </block>
   </view>

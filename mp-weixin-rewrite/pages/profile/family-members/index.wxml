@@ -22,13 +22,13 @@
           </view>
           <text class="member-detail data-v-30acdad2">{{item.genderLabel}} | {{item.ageLabel ? item.ageLabel + '岁' : '未填写'}} | {{item.phone || '未填写'}}</text>
           <view wx:if="{{item.idCard}}" class="member-visit data-v-30acdad2" style="margin-top: 6rpx; color: #6b7280; font-size: 22rpx;">身份证: {{item.idCard}}</view>
-          <view wx:if="{{item.cardNo}}" class="member-visit data-v-30acdad2" style="margin-top: 4rpx; color: #6b7280; font-size: 22rpx;">档案卡: {{item.cardNo}}</view>
+          <view wx:if="{{item.cardNo}}" class="member-visit data-v-30acdad2" style="margin-top: 4rpx; color: #6b7280; font-size: 22rpx;">就诊卡: {{item.cardNo}}</view>
           <text wx:if="{{item.hasSnore}}" class="member-tag data-v-30acdad2">有打鼾</text>
-          <text wx:if="{{item.lastVisit}}" class="member-visit data-v-30acdad2">上次服务: {{item.lastVisit}}</text>
+          <text wx:if="{{item.lastVisit}}" class="member-visit data-v-30acdad2">上次就诊: {{item.lastVisit}}</text>
         </view>
       </view>
       <view wx:if="{{!members.length}}" class="empty data-v-30acdad2">
-        <text class="data-v-30acdad2">暂无已关联服务对象</text>
+        <text class="data-v-30acdad2">暂无已关联就诊人</text>
       </view>
     </block>
     <view class="bottom-fixed-bar data-v-30acdad2">

@@ -1,15 +1,15 @@
 const { request } = require('../request');
 
 function getTimeline(query) {
-  return request({ url: '/treatment/timeline', method: 'GET', data: query, failMessage: '加载服务时间线失败' });
+  return request({ url: '/treatment/timeline', method: 'GET', data: query, failMessage: '加载治疗时间线失败' });
 }
 
 function getTreatmentRecord(query) {
-  return request({ url: '/treatment/record', method: 'GET', data: query, failMessage: '加载佩戴记录失败' });
+  return request({ url: '/treatment/record', method: 'GET', data: query, failMessage: '加载治疗记录失败' });
 }
 
 function getTreatmentRecords(query) {
-  return request({ url: '/treatment/records', method: 'GET', data: query, failMessage: '加载佩戴记录列表失败' });
+  return request({ url: '/treatment/records', method: 'GET', data: query, failMessage: '加载治疗记录列表失败' });
 }
 
 function getPatientDevice(query) {

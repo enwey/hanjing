@@ -88,7 +88,7 @@ async function tryBindPendingInvite() {
 }
 
 App({
-  globalData: { appName: "鼾静健康", currentRoute: '', lastRoute: '' },
+  globalData: { appName: "鼾静健康诊所", currentRoute: '', lastRoute: '' },
   onLaunch(options) {
     miniLog.init();
     miniLog.report({
@@ -131,7 +131,7 @@ App({
         }
         wx.showModal({
           title: '隐私保护指引提示',
-          content: '为了向您提供就近门店选择、到店预约，以及睡眠鼾声录制与评估服务，我们需要在必要时申请您的地理位置与麦克风录音权限。请阅读并同意《隐私保护指引》后继续使用。',
+          content: '为了向您提供就近门店选择、挂号预约，以及睡眠鼾声录制与评估服务，我们需要在必要时申请您的地理位置与麦克风录音权限。请阅读并同意《隐私保护指引》后继续使用。',
           cancelText: '拒绝',
           confirmText: '同意并授权',
           success(result) {

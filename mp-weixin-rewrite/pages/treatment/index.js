@@ -14,10 +14,10 @@ const RELATION_LABEL_MAP = {
 const TREATMENT_ENTRIES = [
   { key: 'trend', title: '睡眠趋势', description: '佩戴与睡眠数据', icon: '/static/icons/trend.svg', iconClass: 'menu-icon--trend', url: '/pages/treatment/sleep-trend/index' },
   { key: 'report', title: '睡眠报告', description: 'AI智能分析与建议', icon: '/static/icons/report.svg', iconClass: 'menu-icon--report', url: '/pages/treatment/sleep-report/index' },
-  { key: 'timeline', title: '服务时间线', description: '服务记录', icon: '/static/icons/timeline.svg', iconClass: 'menu-icon--timeline', url: '/pages/treatment/timeline/index' },
-  { key: 'advice', title: '健康建议', description: '佩戴指导方案', icon: '/static/icons/advice.svg', iconClass: 'menu-icon--advice', url: '/pages/treatment/doctor-advice/index' },
+  { key: 'timeline', title: '治疗时间线', description: '就诊全记录', icon: '/static/icons/timeline.svg', iconClass: 'menu-icon--timeline', url: '/pages/treatment/timeline/index' },
+  { key: 'advice', title: '医嘱建议', description: '医生指导方案', icon: '/static/icons/advice.svg', iconClass: 'menu-icon--advice', url: '/pages/treatment/doctor-advice/index' },
   { key: 'adjust', title: '设备调整', description: '参数与调整记录', icon: '/static/icons/adjust.svg', iconClass: 'menu-icon--adjust', url: '/pages/treatment/adjust-detail/index' },
-  { key: 'community', title: '睡眠社区', description: '交流经验与心得', icon: '/static/icons/community.svg', iconClass: 'menu-icon--community', url: '/pages/community/index' },
+  { key: 'community', title: '医患社区', description: '交流经验与心得', icon: '/static/icons/community.svg', iconClass: 'menu-icon--community', url: '/pages/community/index' },
 ];
 
 function unwrapObject(response) {
@@ -142,11 +142,11 @@ Page({
     hasTreatmentRecord: false,
     hasRealTreatmentRecord: false,
     heroBadgeText: '未开始',
-    heroDeviceText: '暂无佩戴记录',
+    heroDeviceText: '暂无治疗记录',
     heroDoctorText: '完成初诊适配后将在此展示',
     heroStartText: '初配日期：--',
     treatmentStatusLabel: '未开始',
-    treatmentDeviceLabel: '暂无佩戴记录',
+    treatmentDeviceLabel: '暂无治疗记录',
     treatmentDoctorLabel: '完成初诊适配后将在此展示',
     treatmentStartLabel: '初配日期：--',
     heroSubText: '暂无诊疗记录',
@@ -156,7 +156,7 @@ Page({
     l: '0',
     m: '0',
     n: '0',
-    emptyTreatmentNotice: '该服务对象暂无已绑定设备的佩戴记录，完成设备适配后将显示完整佩戴追踪内容并支持设备打卡。',
+    emptyTreatmentNotice: '该治疗人暂无已绑定设备的治疗记录，完成初诊适配后将显示完整治疗追踪内容并支持设备打卡。',
     recentDays: [],
     summaryCards: [
       { key: 'worn', label: '本周佩戴', value: '0/7' },
@@ -270,14 +270,14 @@ Page({
         showMemberPicker: members.length > 1,
         hasTreatmentRecord,
         hasRealTreatmentRecord,
-        heroBadgeText: hasTreatmentRecord ? '进行中' : '未开始',
-        heroDeviceText: (treatmentRecord && treatmentRecord.deviceModel) || '暂无佩戴记录',
-        heroDoctorText: hasTreatmentRecord ? `顾问：${(treatmentRecord && treatmentRecord.doctorName) || '--'}` : '完成设备适配后将在此展示',
+        heroBadgeText: hasTreatmentRecord ? '治疗中' : '未开始',
+        heroDeviceText: (treatmentRecord && treatmentRecord.deviceModel) || '暂无治疗记录',
+        heroDoctorText: hasTreatmentRecord ? `主治：${(treatmentRecord && treatmentRecord.doctorName) || '--'} 医生` : '完成初诊适配后将在此展示',
         heroStartText: hasTreatmentRecord ? `初配日期：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '初配日期：--',
-        treatmentStatusLabel: hasTreatmentRecord ? '进行中' : '未开始',
-        heroSubText: hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无服务记录',
-        treatmentDeviceLabel: (treatmentRecord && treatmentRecord.deviceModel) || '暂无佩戴记录',
-        treatmentDoctorLabel: hasTreatmentRecord ? `顾问：${(treatmentRecord && treatmentRecord.doctorName) || '--'}` : '完成设备适配后将在此展示',
+        treatmentStatusLabel: hasTreatmentRecord ? '治疗中' : '未开始',
+        heroSubText: hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无诊疗记录',
+        treatmentDeviceLabel: (treatmentRecord && treatmentRecord.deviceModel) || '暂无治疗记录',
+        treatmentDoctorLabel: hasTreatmentRecord ? `主治：${(treatmentRecord && treatmentRecord.doctorName) || '--'} 医生` : '完成初诊适配后将在此展示',
         heroProgressText: hasTreatmentRecord ? `依从率 ${heroCompliance}%` : '依从率 --',
         progressWidth: `${heroCompliance}%`,
         treatmentStartLabel: hasTreatmentRecord ? `初配日期：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '初配日期：--',
@@ -285,7 +285,7 @@ Page({
         l: String(Number(summary.weekAvg || 0)),
         m: String(Number(summary.avgComfort || 0)),
         n: String(summary.streak || 0),
-        emptyTreatmentNotice: '该服务对象暂无已绑定设备的佩戴记录，完成设备适配后将显示完整佩戴追踪内容并支持设备打卡。',
+        emptyTreatmentNotice: '该治疗人暂无已绑定设备的治疗记录，完成初诊适配后将显示完整治疗追踪内容并支持设备打卡。',
         recentDays: buildRecentDays(wearingRecords),
         summaryCards: [
           { key: 'worn', label: '本周佩戴', value: `${summary.weekWorn || 0}/7` },
@@ -301,7 +301,7 @@ Page({
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
-          loadError: (error && error.message) || '加载佩戴追踪页失败',
+          loadError: (error && error.message) || '加载治疗页失败',
         });
       } else {
         this.setData({ loading: false });

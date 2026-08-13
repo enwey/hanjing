@@ -4,7 +4,7 @@
   <view class="community-content">
     <view class="publish-entry" bindtap="goPublishPost">
       <image class="publish-entry__icon" src="/static/icons/compose.svg" mode="aspectFit"></image>
-      <text class="publish-entry__placeholder">分享你的佩戴经验...</text>
+      <text class="publish-entry__placeholder">分享你的治疗经验...</text>
       <view class="publish-entry__button">发帖</view>
     </view>
 

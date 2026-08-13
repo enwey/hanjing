@@ -83,7 +83,7 @@
   ],
   "window": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "鼾静健康",
+    "navigationBarTitleText": "鼾静健康诊所",
     "navigationBarBackgroundColor": "#FFFFFF",
     "backgroundColor": "#F9FAFB",
     "navigationStyle": "custom"
@@ -108,7 +108,7 @@
       },
       {
         "pagePath": "pages/treatment/index",
-        "text": "追踪",
+        "text": "治疗",
         "iconPath": "static/icons/tab-treatment.png",
         "selectedIconPath": "static/icons/tab-treatment-active.png"
       },

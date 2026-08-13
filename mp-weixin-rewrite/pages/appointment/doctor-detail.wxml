@@ -1,5 +1,5 @@
 <view class="page">
-  <hj-navbar title="顾问详情" showBack="{{true}}" />
+  <hj-navbar title="医生详情" showBack="{{true}}" />
 
   <view class="page-content" wx:if="{{doctorLoaded}}">
     <view class="doctor-detail-hero">
@@ -80,7 +80,7 @@
           <text class="status {{item.statusClass}}">{{item.statusLabel}}</text>
         </view>
         <view wx:if="{{!scheduleRows.length}}" class="schedule-empty">
-          <text>该顾问近期暂无排班计划</text>
+          <text>该医生近期暂无排班计划</text>
         </view>
       </view>
     </view>

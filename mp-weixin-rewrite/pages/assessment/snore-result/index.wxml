@@ -53,7 +53,7 @@
     </view>
 
     <view class="action-buttons">
-      <view class="btn-primary" bindtap="goAppointment">预约到店服务</view>
+      <view class="btn-primary" bindtap="goAppointment">立即预约门诊</view>
       <view class="btn-secondary" bindtap="goHome">返回睡眠评估</view>
       <view class="btn-outline" bindtap="restartRecording">重新测试</view>
     </view>

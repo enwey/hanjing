@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "选择顾问",
+  "navigationBarTitleText": "选择医生",
   "navigationStyle": "custom",
   "usingComponents": {
     "hj-navbar": "../../components/base/hj-navbar/index",

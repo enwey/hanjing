@@ -36,7 +36,7 @@
       <view class="store-card-meta">
         <view class="store-card-meta-item">
           <image class="store-card-icon" src="/static/icons/doctor.svg" />
-          <text>{{store.doctorCount}}位顾问</text>
+          <text>{{store.doctorCount}}位医生</text>
         </view>
         <view class="store-card-meta-item">
           <image class="store-card-icon" src="/static/icons/clock.svg" />

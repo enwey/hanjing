@@ -3,7 +3,7 @@
 
   <view class="page-content">
     <view class="section-header">
-      <text class="section-title">请选择服务门店</text>
+      <text class="section-title">请选择就诊门店</text>
       <text class="section-hint">共 {{stores.length}} 家门店</text>
     </view>
 

@@ -44,7 +44,7 @@
         <text class="advice-text data-v-1973d3c1" style="color: {{levelInfo.adviceTextColor}}">{{levelInfo.advice}}</text>
       </view>
       <view class="action-buttons data-v-1973d3c1">
-        <view class="btn-primary data-v-1973d3c1" bindtap="goAppointment">预约到店服务</view>
+        <view class="btn-primary data-v-1973d3c1" bindtap="goAppointment">立即预约门诊</view>
         <view class="btn-secondary data-v-1973d3c1" bindtap="goHome">返回睡眠评估</view>
         <view class="btn-outline data-v-1973d3c1" bindtap="restartAssessment">重新评估</view>
       </view>

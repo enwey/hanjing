@@ -36,13 +36,13 @@ Page({
       const adviceSections = [];
       if (hasRealTreatmentRecord) {
         if (recordDetail.diagnosis) {
-          adviceSections.push({ key: 'diagnosis', title: '评估结果', content: recordDetail.diagnosis, highlight: false });
+          adviceSections.push({ key: 'diagnosis', title: '诊断结果', content: recordDetail.diagnosis, highlight: false });
         }
         if (recordDetail.treatmentPlan) {
-          adviceSections.push({ key: 'plan', title: '服务方案', content: recordDetail.treatmentPlan, highlight: false });
+          adviceSections.push({ key: 'plan', title: '治疗方案', content: recordDetail.treatmentPlan, highlight: false });
         }
         if (recordDetail.doctorAdvice) {
-          adviceSections.push({ key: 'advice', title: '顾问建议', content: recordDetail.doctorAdvice, highlight: true });
+          adviceSections.push({ key: 'advice', title: '医生建议', content: recordDetail.doctorAdvice, highlight: true });
         }
       }
 

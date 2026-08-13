@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "健康档案",
+  "navigationBarTitleText": "病历档案",
   "usingComponents": {
     "hj-navbar": "../../../components/base/hj-navbar"
   }

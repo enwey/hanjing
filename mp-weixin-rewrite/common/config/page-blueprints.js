@@ -4,45 +4,45 @@ const pageBlueprints = {
     "description": "此页负责按城市和定位选择门店，并将门店上下文带入后续预约链路。",
     "bullets": [
       "门店列表需要支持真实距离、状态和营业信息",
-      "选择门店后进入顾问列表，并保留门店上下文",
+      "选择门店后进入医生列表，并保留门店上下文",
       "无定位权限时仍可手动完成选择"
     ],
     "entries": [
       {
-        "title": "进入顾问列表",
+        "title": "进入医生列表",
         "description": "以所选门店为上下文继续预约。",
         "url": "/pages/appointment/doctor-list"
       }
     ]
   },
   "pages/appointment/doctor-list": {
-    "title": "选择顾问",
-    "description": "此页负责根据门店展示顾问列表，并按真实排班进入顾问详情或时段选择。",
+    "title": "选择医生",
+    "description": "此页负责根据门店展示医生列表，并按真实排班进入医生详情或时段选择。",
     "bullets": [
-      "顾问信息必须来自真实排班与门店关联",
-      "筹建中门店或无排班顾问要显示真实空态",
-      "选中顾问后进入详情或直接选择时段"
+      "医生信息必须来自真实排班与门店关联",
+      "筹建中门店或无排班医生要显示真实空态",
+      "选中医生后进入详情或直接选择时段"
     ],
     "entries": [
       {
-        "title": "顾问详情",
-        "description": "查看顾问介绍、服务时间和预约入口。",
+        "title": "医生详情",
+        "description": "查看医生介绍、门诊时间和预约入口。",
         "url": "/pages/appointment/doctor-detail"
       }
     ]
   },
   "pages/appointment/doctor-detail": {
-    "title": "顾问详情",
-    "description": "此页展示顾问专业信息、所属门店、服务安排和预约入口。",
+    "title": "医生详情",
+    "description": "此页展示医生专业信息、所属门店、出诊安排和预约入口。",
     "bullets": [
       "详情数据应与门店和排班联动",
-      "预约按钮需要带上顾问和门店上下文",
+      "预约按钮需要带上医生和门店上下文",
       "返回链路应回到当前预约流程而不是首页"
     ],
     "entries": [
       {
         "title": "选择时段",
-        "description": "基于当前顾问进入可预约时段页。",
+        "description": "基于当前医生进入可预约时段页。",
         "url": "/pages/appointment/time-select"
       }
     ]
@@ -58,16 +58,16 @@ const pageBlueprints = {
     "entries": [
       {
         "title": "预约确认",
-        "description": "确认门店、顾问、时间和服务对象。",
+        "description": "确认门店、医生、时间和就诊人。",
         "url": "/pages/appointment/confirm"
       }
     ]
   },
   "pages/appointment/confirm": {
     "title": "预约确认",
-    "description": "此页负责确认门店、顾问、时段、服务对象和支付信息，并提交预约。",
+    "description": "此页负责确认门店、医生、时段、就诊人和支付信息，并提交预约。",
     "bullets": [
-      "确认页要带出当前服务对象真实身份",
+      "确认页要带出当前就诊人真实身份",
       "支付前的隐私、须知和前置问题都应在这里处理",
       "提交后进入预约成功或待支付状态"
     ],
@@ -114,7 +114,7 @@ const pageBlueprints = {
     "title": "改约",
     "description": "此页承接原预约详情，重新进入时段选择并提交改约。",
     "bullets": [
-      "保留原预约单号和已选顾问信息",
+      "保留原预约单号和已选医生信息",
       "改约后的时间占用要按真实规则重新校验",
       "成功后返回预约详情并刷新状态"
     ],
@@ -132,7 +132,7 @@ const pageBlueprints = {
     "bullets": [
       "需要区分已支付预约和待支付预约",
       "成功后要能回到预约详情",
-      "如果需要到店提醒，应在此页引导消息订阅"
+      "如果需要就诊提醒，应在此页引导消息订阅"
     ],
     "entries": [
       {
@@ -144,7 +144,7 @@ const pageBlueprints = {
   },
   "pages/assessment/questionnaire/index": {
     "title": "ESS嗜睡量表",
-    "description": "此页负责 ESS 问卷答题、题目切换、提交与当前服务对象上下文。",
+    "description": "此页负责 ESS 问卷答题、题目切换、提交与当前就诊人上下文。",
     "bullets": [
       "题目来源必须是后端真实题库",
       "重新评估时要直接进入答题，不显示结果空态",
@@ -201,26 +201,26 @@ const pageBlueprints = {
     "entries": []
   },
   "pages/treatment/timeline/index": {
-    "title": "服务时间线",
-    "description": "此页负责展示当前服务对象的服务记录、时间线节点和前往预约入口。",
+    "title": "治疗时间线",
+    "description": "此页负责展示当前治疗人的诊疗记录、时间线节点和前往预约入口。",
     "bullets": [
-      "如果没有真实佩戴记录要显示真实空态",
-      "有佩戴记录时应按当前服务对象过滤",
+      "如果没有真实治疗记录要显示真实空态",
+      "有治疗记录时应按当前治疗人过滤",
       "点击节点后进入对应详情"
     ],
     "entries": [
       {
         "title": "前往预约",
-        "description": "没有佩戴记录时进入预约流程。",
+        "description": "没有治疗记录时进入预约流程。",
         "url": "/pages/appointment/index"
       }
     ]
   },
   "pages/treatment/sleep-trend/index": {
     "title": "睡眠趋势",
-    "description": "此页负责展示当前服务对象的趋势图、完整日历入口和真实佩戴数据。",
+    "description": "此页负责展示当前治疗人的趋势图、完整日历入口和真实佩戴数据。",
     "bullets": [
-      "顶部要基于当前服务对象刷新",
+      "顶部要基于当前治疗人刷新",
       "不能使用兜底趋势数据",
       "完整日历入口应进入打卡日历页"
     ],
@@ -233,53 +233,53 @@ const pageBlueprints = {
     ]
   },
   "pages/treatment/doctor-advice/index": {
-    "title": "健康建议",
-    "description": "此页负责展示顾问对当前服务对象的健康建议。",
+    "title": "医嘱建议",
+    "description": "此页负责展示医生对当前治疗人的医嘱与建议。",
     "bullets": [
-      "没有真实佩戴记录时显示真实空态",
-      "有数据时必须按当前服务对象过滤",
-      "入口文案和按钮与佩戴页风格统一"
+      "没有真实治疗记录时显示真实空态",
+      "有数据时必须按当前治疗人过滤",
+      "入口文案和按钮与治疗页风格统一"
     ],
     "entries": [
       {
         "title": "前往预约",
-        "description": "没有佩戴记录时进入预约流程。",
+        "description": "没有治疗记录时进入预约流程。",
         "url": "/pages/appointment/index"
       }
     ]
   },
   "pages/treatment/adjust-detail/index": {
     "title": "设备调整",
-    "description": "此页负责展示设备调整记录、参数变化和关联顾问信息。",
+    "description": "此页负责展示设备调整记录、参数变化和关联医生信息。",
     "bullets": [
-      "没有真实佩戴记录时显示空态",
-      "有数据时按当前服务对象过滤",
+      "没有真实治疗记录时显示空态",
+      "有数据时按当前治疗人过滤",
       "参数变化需要来自真实调整记录"
     ],
     "entries": [
       {
         "title": "前往预约",
-        "description": "没有佩戴记录时进入预约流程。",
+        "description": "没有治疗记录时进入预约流程。",
         "url": "/pages/appointment/index"
       }
     ]
   },
   "pages/treatment/calendar/index": {
     "title": "打卡日历",
-    "description": "此页负责展示当前服务对象的完整佩戴日历和当月打卡数据。",
+    "description": "此页负责展示当前治疗人的完整佩戴日历和当月打卡数据。",
     "bullets": [
-      "只展示当前服务对象当前设备的数据",
+      "只展示当前治疗人当前设备的数据",
       "无记录时显示当月空态",
-      "底部不保留与需求无关的佩戴进度布局"
+      "底部不保留与需求无关的治疗进度布局"
     ],
     "entries": []
   },
   "pages/treatment/sleep-report/index": {
     "title": "睡眠报告",
-    "description": "此页负责展示当前服务对象的佩戴期睡眠报告与核心指标。",
+    "description": "此页负责展示当前治疗人的治疗期睡眠报告与核心指标。",
     "bullets": [
       "报告数据必须真实",
-      "与当前服务对象联动刷新",
+      "与当前治疗人联动刷新",
       "无真实记录时显示空态"
     ],
     "entries": []
@@ -305,33 +305,33 @@ const pageBlueprints = {
     "description": "此页负责展示订单状态、商品、支付、物流、售后和通知关联。",
     "bullets": [
       "详情数据必须来自真实订单",
-      "底部按钮风格与顾问详情统一",
+      "底部按钮风格与医生详情统一",
       "支付成功后应驱动订单状态与通知变化"
     ],
     "entries": []
   },
   "pages/profile/medical-records/index": {
-    "title": "健康档案",
-    "description": "此页负责按当前服务对象查看健康档案，并支持切换服务对象。",
+    "title": "病历档案",
+    "description": "此页负责按当前就诊人查看病历档案，并支持切换就诊人。",
     "bullets": [
-      "列表必须显示服务对象",
+      "列表必须显示就诊人",
       "不再保留报告图片上传附件入口",
-      "切换服务对象后要刷新对应档案"
+      "切换就诊人后要刷新对应档案"
     ],
     "entries": [
       {
         "title": "家庭成员",
-        "description": "维护成员并切换当前服务对象。",
+        "description": "维护成员并切换当前就诊人。",
         "url": "/pages/profile/family-members/index"
       }
     ]
   },
   "pages/profile/device-manage/index": {
     "title": "阻鼾器管理",
-    "description": "此页负责按当前服务对象查看阻鼾器、佩戴数据、维护和反馈入口。",
+    "description": "此页负责按当前就诊人查看阻鼾器、佩戴数据、维护和反馈入口。",
     "bullets": [
-      "切换当前服务对象后必须刷新设备数据",
-      "没有佩戴记录时隐藏不应显示的入口",
+      "切换当前就诊人后必须刷新设备数据",
+      "没有治疗记录时隐藏不应显示的入口",
       "设备相关数据只看当前绑定设备链路"
     ],
     "entries": [
@@ -354,10 +354,10 @@ const pageBlueprints = {
   },
   "pages/profile/device-manage/wearing-data/index": {
     "title": "佩戴数据",
-    "description": "此页负责展示当前服务对象与当前设备的佩戴数据。",
+    "description": "此页负责展示当前就诊人与当前设备的佩戴数据。",
     "bullets": [
       "只看当前设备链路的数据",
-      "切换当前服务对象后实时刷新",
+      "切换当前就诊人后实时刷新",
       "历史设备数据不混入当前设备统计"
     ],
     "entries": []
@@ -367,28 +367,28 @@ const pageBlueprints = {
     "description": "此页负责展示当前设备的维护、更换和售后处理记录。",
     "bullets": [
       "只看当前设备相关记录",
-      "与当前服务对象和当前设备联动",
+      "与当前就诊人和当前设备联动",
       "无记录时展示真实空态"
     ],
     "entries": []
   },
   "pages/profile/device-manage/feedback/index": {
     "title": "使用反馈",
-    "description": "此页负责收集当前服务对象对设备使用情况的反馈。",
+    "description": "此页负责收集当前就诊人对设备使用情况的反馈。",
     "bullets": [
       "反馈提交到真实接口",
-      "与当前设备和当前服务对象关联",
+      "与当前设备和当前就诊人关联",
       "提交后可回看历史反馈"
     ],
     "entries": []
   },
   "pages/profile/family-members/index": {
     "title": "家庭成员",
-    "description": "此页负责管理关联成员，并维护当前服务对象的上下文。",
+    "description": "此页负责管理关联成员，并维护当前就诊人的上下文。",
     "bullets": [
       "本人信息不能随意编辑成附属成员逻辑",
       "添加成员时按身份证/手机号规则自动识别关系",
-      "切换当前服务对象应驱动佩戴、健康档案和设备页刷新"
+      "切换当前就诊人应驱动治疗、病历和设备页刷新"
     ],
     "entries": [
       {
@@ -400,10 +400,10 @@ const pageBlueprints = {
   },
   "pages/profile/family-members/add-member/index": {
     "title": "添加成员",
-    "description": "此页负责新增家庭成员，并按规则处理身份证、手机号和档案号。",
+    "description": "此页负责新增家庭成员，并按规则处理身份证、手机号和就诊卡号。",
     "bullets": [
       "年龄不应有默认值",
-      "手机号、身份证号、档案号按规则识别同一人",
+      "手机号、身份证号、就诊卡号按规则识别同一人",
       "添加成员不应破坏已登录账号的人档案绑定"
     ],
     "entries": []
@@ -463,9 +463,9 @@ const pageBlueprints = {
     "title": "个人信息",
     "description": "此页负责展示和修改当前登录账号的个人资料。",
     "bullets": [
-      "支持修改身份证号，但不允许修改档案号",
+      "支持修改身份证号，但不允许修改就诊卡号",
       "修改资料后当前账号访问的人档案不应被替换",
-      "需要展示用户身份证号和档案号"
+      "需要展示用户身份证号和就诊卡号"
     ],
     "entries": []
   },

@@ -1,11 +1,11 @@
 const routeRegistry = [
   {
     "path": "pages/index/index",
-    "title": "鼾静健康"
+    "title": "鼾静健康诊所"
   },
   {
     "path": "pages/appointment/index",
-    "title": "到店预约"
+    "title": "预约挂号"
   },
   {
     "path": "pages/assessment/index",
@@ -13,7 +13,7 @@ const routeRegistry = [
   },
   {
     "path": "pages/treatment/index",
-    "title": "佩戴追踪"
+    "title": "治疗追踪"
   },
   {
     "path": "pages/product/index",
@@ -41,11 +41,11 @@ const routeRegistry = [
   },
   {
     "path": "pages/appointment/doctor-detail",
-    "title": "顾问详情"
+    "title": "医生详情"
   },
   {
     "path": "pages/appointment/doctor-list",
-    "title": "选择顾问"
+    "title": "选择医生"
   },
   {
     "path": "pages/appointment/time-select",
@@ -97,7 +97,7 @@ const routeRegistry = [
   },
   {
     "path": "pages/treatment/timeline/index",
-    "title": "服务时间线"
+    "title": "治疗时间线"
   },
   {
     "path": "pages/treatment/doctor-advice/index",
@@ -117,7 +117,7 @@ const routeRegistry = [
   },
   {
     "path": "pages/profile/medical-records/index",
-    "title": "健康档案"
+    "title": "病历档案"
   },
   {
     "path": "pages/profile/device-manage/index",

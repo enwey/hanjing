@@ -6,18 +6,18 @@
         <text class="card-title data-v-3fe7702c">{{item.title}}</text>
         <text class="card-text data-v-3fe7702c">{{item.content}}</text>
       </view>
-      <view wx:if="{{!adviceSections.length}}" class="empty-section data-v-3fe7702c"><text class="empty-section-text data-v-3fe7702c">顾问暂未同步本次服务建议，请在复查后回来查看。</text></view>
+      <view wx:if="{{!adviceSections.length}}" class="empty-section data-v-3fe7702c"><text class="empty-section-text data-v-3fe7702c">医生暂未同步本次诊疗的医嘱内容，请在复诊后回来查看。</text></view>
       <view wx:if="{{followupDate}}" class="card card--followup data-v-3fe7702c">
         <text class="card-title data-v-3fe7702c">下次随访</text>
         <text class="followup-date data-v-3fe7702c">{{followupDate}}</text>
-        <text class="followup-hint data-v-3fe7702c">请按时复查，顾问将评估佩戴效果并调整参数</text>
+        <text class="followup-hint data-v-3fe7702c">请按时复诊，医生将评估治疗效果并调整参数</text>
       </view>
-      <view class="btn-wrap data-v-3fe7702c"><button class="book-btn data-v-3fe7702c" bindtap="goAppointment">预约复查</button></view>
+      <view class="btn-wrap data-v-3fe7702c"><button class="book-btn data-v-3fe7702c" bindtap="goAppointment">预约复诊</button></view>
     </block>
     <view wx:elif="{{loading || loadError}}" class="empty-card data-v-3fe7702c"><text class="empty-desc data-v-3fe7702c">{{loading ? '正在加载医嘱建议...' : loadError}}</text></view>
     <view wx:else class="empty-card data-v-3fe7702c">
-      <text class="empty-title data-v-3fe7702c">暂无佩戴记录</text>
-      <text class="empty-desc data-v-3fe7702c">当前服务对象还没有完成服务建档或阻鼾器适配，暂时无法查看健康建议。完成到店服务后，顾问建议会同步展示在这里。</text>
+      <text class="empty-title data-v-3fe7702c">暂无治疗记录</text>
+      <text class="empty-desc data-v-3fe7702c">当前治疗人还没有完成门诊建档或阻鼾器适配，暂时无法查看医嘱建议。完成预约就诊后，医生建议会同步展示在这里。</text>
       <button class="book-btn data-v-3fe7702c" bindtap="goAppointment">前往预约</button>
     </view>
     <view class="safe-bottom data-v-3fe7702c"></view>

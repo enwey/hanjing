@@ -14,7 +14,7 @@
     />
 
     <view wx:else class="map-empty">
-      <text class="map-empty__text">当前门店暂未提供导航坐标，请先通过门店地址或联系电话确认到店路线。</text>
+      <text class="map-empty__text">当前门店暂未提供导航坐标，请先通过门店地址或联系电话与门诊确认到店路线。</text>
     </view>
 
     <view class="store-card">

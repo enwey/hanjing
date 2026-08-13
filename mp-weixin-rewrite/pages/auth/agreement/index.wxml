@@ -1,17 +1,17 @@
 <view class="agreement-page">
   <hj-navbar title="用户协议" showBack="{{true}}" />
   <scroll-view scroll-y class="agreement-content">
-    <view class="article-title">鼾静健康用户协议</view>
+    <view class="article-title">鼾静健康诊所用户协议</view>
     <view class="article-meta">更新日期：2026年06月11日</view>
 
     <view class="section">
       <view class="section-title">一、协议的范围与确认</view>
-      <text class="section-text">欢迎您使用鼾静健康微信小程序。本协议由您与鼾静健康共同订立。在您使用本小程序提供的各项服务之前，请务必仔细阅读本协议。当您勾选同意或开始使用本小程序服务时，即视为您已充分阅读、理解并接受本协议的全部内容。</text>
+      <text class="section-text">欢迎您使用鼾静健康诊所微信小程序。本协议由您与鼾静健康诊所共同订立。在您使用本小程序提供的各项服务之前，请务必仔细阅读本协议。当您勾选同意或开始使用本小程序服务时，即视为您已充分阅读、理解并接受本协议的全部内容。</text>
     </view>
 
     <view class="section">
-      <view class="section-title">二、服务内容与使用规则</view>
-      <text class="section-text">1. 本小程序为您提供到店预约、健康档案查看、设备佩戴追踪、睡眠健康报告筛查等健康管理辅助服务。2. 请您在预约和到店服务时提供真实、准确、合法的个人信息，包括但不限于姓名、身份证号、手机号码及家庭成员信息。3. 请您理解，本小程序提供的 AI 鼾声分析及各类健康问卷结果仅作为睡眠健康筛查和科普建议参考，不能替代线下专业机构意见。</text>
+      <view class="section-title">二、服务内容与就诊规则</view>
+      <text class="section-text">1. 本小程序为您提供在线预约挂号、就诊历史查看、设备使用追踪、睡眠健康报告筛查等健康与医疗辅助服务。2. 请您在挂号和就诊时提供真实、准确、合法的个人信息，包括但不限于姓名、身份证号、手机号码及家庭成员信息。3. 请您理解，本小程序提供的 AI 鼾声分析及各类健康问卷结果仅作为睡眠呼吸健康筛查和科普建议参考，不能代替执业医师的正式临床诊断与处方。</text>
     </view>
 
     <view class="section">

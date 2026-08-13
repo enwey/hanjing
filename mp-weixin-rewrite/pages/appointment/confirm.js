@@ -71,7 +71,7 @@ Page({
     showConsultFee: false,
     requireDeposit: false,
     depositAmountYuan: '¥0.00',
-    cancelLimitText: '到店前2小时',
+    cancelLimitText: '就诊前2小时',
     subscribeTemplateIds: [],
     assessmentLabel: '',
     buttonText: '确认预约',
@@ -144,7 +144,7 @@ Page({
         showConsultFee: consultFeeAmount > 0,
         requireDeposit,
         depositAmountYuan: '¥' + (depositAmount / 100).toFixed(2),
-        cancelLimitText: bookingSettings.cancelLimit || '到店前2小时',
+        cancelLimitText: bookingSettings.cancelLimit || '就诊前2小时',
         subscribeTemplateIds: bookingSettings.subscribeTemplateIds || [],
         assessmentLabel: pendingAssessment ? pendingAssessment.label || '' : '',
         buttonText,
@@ -175,8 +175,8 @@ Page({
 
     if (selectedMember.age !== null && selectedMember.age !== undefined && Number(selectedMember.age) < 18) {
       wx.showModal({
-        title: '儿童使用提示',
-        content: '定制式下颌前移防鼾器（牙套）仅适用于18岁以上发育成熟的成人。18岁以下儿童打鼾可能存在多种原因，建议优先前往线下专业机构评估。是否继续？',
+        title: '儿童就诊提示',
+        content: '本门诊定制式下颌前移防鼾器（牙套）仅适用于18岁以上发育成熟的成人。18岁以下儿童打鼾通常由扁桃体或腺样体肥大引起，建议优先预约小儿耳鼻喉科进行排查诊治。是否继续？',
         confirmText: '继续预约',
         cancelText: '取消',
         success: (result) => {
@@ -217,7 +217,7 @@ Page({
 
     const selectedMember = this.data.memberList[this.data.memberIndex];
     if (!selectedMember) {
-      wx.showToast({ title: '请先选择服务对象', icon: 'none' });
+      wx.showToast({ title: '请先选择就诊人', icon: 'none' });
       return;
     }
 
@@ -247,17 +247,17 @@ Page({
         const depositAmount = appointmentRequireDeposit ? Number(appointmentDepositAmount || 0) : 0;
         let feeDescription = '';
         if (appointmentRequireDeposit && this.data.consultFeeAmount > 0) {
-          feeDescription = '（含定金与服务费）';
+          feeDescription = '（含定金与挂号费）';
         } else if (appointmentRequireDeposit) {
           feeDescription = '（含预约定金）';
         } else if (this.data.consultFeeAmount > 0) {
-          feeDescription = '（含服务费）';
+          feeDescription = '（含挂号费）';
         }
         const totalPayYuan = ((depositAmount + this.data.consultFeeAmount) / 100).toFixed(2);
 
         wx.showModal({
           title: '确认支付',
-          content: '预约到店服务需要支付 ¥' + totalPayYuan + feeDescription + '，是否确认支付？',
+          content: '预约就诊需要支付 ¥' + totalPayYuan + feeDescription + '，是否确认支付？',
           confirmText: '确认支付',
           cancelText: '取消',
           success: async (result) => {

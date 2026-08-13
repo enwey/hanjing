@@ -42,7 +42,7 @@ Page({
         key: "wearing",
         icon: "/static/icons/trend.svg",
         label: "佩戴数据",
-        desc: "查看当前服务对象的佩戴记录",
+        desc: "查看当前就诊人的佩戴记录",
         url: "/pages/profile/device-manage/wearing-data/index",
       },
       {

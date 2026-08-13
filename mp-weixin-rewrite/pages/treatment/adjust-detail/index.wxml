@@ -12,13 +12,13 @@
         </view>
       </view>
       <text class="section-title data-v-64c0d952">调整历史</text>
-      <view wx:if="{{!adjustmentHistory.length}}" class="empty-history data-v-64c0d952">暂无顾问调整记录，后续调整会在这里同步展示</view>
+      <view wx:if="{{!adjustmentHistory.length}}" class="empty-history data-v-64c0d952">暂无医生调整记录，后续调整会在这里同步展示</view>
       <view class="history-list data-v-64c0d952">
         <view wx:for="{{adjustmentHistory}}" wx:key="id" class="history-item data-v-64c0d952">
           <view class="history-left data-v-64c0d952"><text class="history-date data-v-64c0d952">{{item.date}}</text><text class="history-val data-v-64c0d952">{{item.value}}</text></view>
           <view class="history-right data-v-64c0d952">
             <text class="history-note data-v-64c0d952">{{item.note}}</text>
-            <text wx:if="{{item.doctor}}" class="history-doctor data-v-64c0d952">{{item.doctor}} 顾问</text>
+            <text wx:if="{{item.doctor}}" class="history-doctor data-v-64c0d952">{{item.doctor}} 医生</text>
             <view wx:if="{{item.comfort > 0}}" class="history-comfort data-v-64c0d952"><text class="history-comfort-label data-v-64c0d952">佩戴感受：</text><text class="data-v-64c0d952">{{item.comfort}}/5</text></view>
             <view wx:else class="history-badge data-v-64c0d952">即将进行</view>
           </view>
@@ -26,8 +26,8 @@
       </view>
     </block>
     <view wx:else class="empty-card data-v-64c0d952">
-      <text class="empty-title data-v-64c0d952">暂无佩戴记录</text>
-      <text class="empty-desc data-v-64c0d952">当前服务对象还没有完成服务建档或阻鼾器适配，暂时无法查看设备调整信息。完成到店服务后，这里会同步展示顾问调整记录。</text>
+      <text class="empty-title data-v-64c0d952">暂无治疗记录</text>
+      <text class="empty-desc data-v-64c0d952">当前治疗人还没有完成门诊建档或阻鼾器适配，暂时无法查看设备调整信息。完成预约就诊后，这里会同步展示医生调整记录。</text>
       <button class="empty-btn data-v-64c0d952" bindtap="goAppointment">前往预约</button>
     </view>
     <view class="safe-bottom data-v-64c0d952"></view>

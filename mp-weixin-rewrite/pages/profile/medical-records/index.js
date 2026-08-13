@@ -13,7 +13,7 @@ const MEMBER_LABEL_MAP = {
 
 const RECORD_TYPE_MAP = {
   first: { label: "初诊", color: "#3B6BF5" },
-  followup: { label: "复查", color: "#1A9D5C" },
+  followup: { label: "复诊", color: "#1A9D5C" },
   adjust: { label: "调整", color: "#F59E0B" },
 };
 
@@ -94,8 +94,8 @@ Page({
         loading: false,
       });
     } catch (err) {
-      console.error("加载健康档案失败", err);
-      wx.showToast({ title: err.message || "加载健康档案失败", icon: "none" });
+      console.error("加载病历档案失败", err);
+      wx.showToast({ title: err.message || "加载病历档案失败", icon: "none" });
       if (!this.data.hasLoaded) {
         this.setData({ records: [], loading: false });
       } else {

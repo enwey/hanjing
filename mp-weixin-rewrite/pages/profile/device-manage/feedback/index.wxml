@@ -5,7 +5,7 @@
     <picker wx:if="{{memberOptions.length > 1}}" mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker">
       <view class="member-picker-content">
         <view class="member-info">
-          <text class="member-label">当前服务对象：</text>
+          <text class="member-label">当前就诊人：</text>
           <text class="member-value">{{memberOptions[memberIndex]}}</text>
         </view>
         <view class="member-action">
@@ -33,7 +33,7 @@
       </view>
 
       <view wx:if="{{!records.length}}" class="state-wrap">
-        <text class="state-text">当前服务对象暂无使用反馈</text>
+        <text class="state-text">当前就诊人暂无使用反馈</text>
       </view>
     </block>
 

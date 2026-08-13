@@ -9,7 +9,7 @@ function getStores(query) {
 }
 
 function getDoctors(query) {
-  return request({ url: '/doctors', method: 'GET', data: query, failMessage: '加载顾问失败' });
+  return request({ url: '/doctors', method: 'GET', data: query, failMessage: '加载医生失败' });
 }
 
 function getSchedules(query) {
