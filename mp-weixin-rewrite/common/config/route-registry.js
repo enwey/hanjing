@@ -25,7 +25,7 @@ const routeRegistry = [
   },
   {
     "path": "pages/auth/login",
-    "title": "微信授权登录"
+    "title": "手机号快捷登录"
   },
   {
     "path": "pages/auth/agreement/index",

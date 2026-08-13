@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "微信授权登录",
+  "navigationBarTitleText": "手机号快捷登录",
   "navigationStyle": "custom",
   "usingComponents": {
     "hj-navbar": "../../components/base/hj-navbar",

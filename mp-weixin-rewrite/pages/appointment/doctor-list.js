@@ -55,6 +55,7 @@ Page({
     this.options = options || {};
     this.hasLoaded = false;
     if (!wx.getStorageSync('access_token')) {
+      this.loadPage();
       return;
     }
     this.loadPage();
@@ -63,7 +64,6 @@ Page({
   async onShow() {
     const token = wx.getStorageSync('access_token');
     if (!token) {
-      navigation.openPage('/pages/auth/login');
       return;
     }
     if (!this.hasLoaded) {

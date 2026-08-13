@@ -89,6 +89,7 @@ Page({
     this.options = options || {};
     this.hasLoaded = false;
     if (!wx.getStorageSync('access_token')) {
+      wx.navigateTo({ url: '/pages/auth/login?redirect=' + encodeURIComponent('/pages/appointment/store-select') });
       return;
     }
     this.loadPage();
@@ -97,7 +98,6 @@ Page({
   onShow() {
     const token = wx.getStorageSync('access_token');
     if (!token) {
-      navigation.openPage('/pages/auth/login');
       return;
     }
     if (!this.hasLoaded) {

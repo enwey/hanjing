@@ -1,5 +1,4 @@
 const distributionApi = require('./api/index');
-const sessionStore = require('./stores/session-store');
 const miniLog = require('./common/utils/mini-log');
 
 const originalPage = Page;
@@ -15,9 +14,6 @@ Page = function registerTrackedPage(pageOptions) {
     if (app && app.globalData) {
       app.globalData.currentRoute = this.route || '';
     }
-    setTimeout(() => {
-      enforceLoginGuard();
-    }, 0);
     if (typeof originalOnShow === 'function') {
       return originalOnShow.apply(this, args);
     }
@@ -48,68 +44,6 @@ Page = function registerTrackedPage(pageOptions) {
 
   return originalPage(config);
 };
-
-const PUBLIC_ROUTES = [
-  'pages/auth/login',
-  'pages/auth/agreement/index',
-  'pages/auth/privacy/index',
-];
-
-const TAB_ROUTES = [
-  '/pages/index/index',
-  '/pages/appointment/index',
-  '/pages/treatment/index',
-  '/pages/product/index',
-  '/pages/profile/index',
-];
-
-function normalizeRoute(route) {
-  return String(route || '').replace(/^\//, '').split('?')[0];
-}
-
-function isPublicRoute(route) {
-  return PUBLIC_ROUTES.includes(normalizeRoute(route));
-}
-
-function buildPageUrl(route) {
-  const normalized = normalizeRoute(route);
-  return normalized ? `/${normalized}` : '/pages/index/index';
-}
-
-function buildLoginRedirectUrl(route) {
-  const app = getApp();
-  const backRoute = app && app.globalData ? app.globalData.lastRoute : '';
-  const redirect = `redirect=${encodeURIComponent(buildPageUrl(route))}`;
-  const back = backRoute && !isPublicRoute(backRoute)
-    ? `&back=${encodeURIComponent(buildPageUrl(backRoute))}`
-    : '';
-  return `/pages/auth/login?${redirect}${back}`;
-}
-
-function enforceLoginGuard() {
-  if (sessionStore.isLoggedIn()) {
-    return;
-  }
-  const pages = getCurrentPages();
-  const currentPage = pages[pages.length - 1];
-  const currentRoute = currentPage && currentPage.route ? currentPage.route : 'pages/index/index';
-  if (isPublicRoute(currentRoute)) {
-    return;
-  }
-  const loginUrl = buildLoginRedirectUrl(currentRoute);
-  if (getApp().__redirectingToLogin) {
-    return;
-  }
-  getApp().__redirectingToLogin = true;
-  wx.reLaunch({
-    url: loginUrl,
-    complete() {
-      setTimeout(() => {
-        getApp().__redirectingToLogin = false;
-      }, 300);
-    },
-  });
-}
 
 function clearLegacyObfuscatedAccessToken() {
   const token = wx.getStorageSync('access_token');
@@ -155,7 +89,6 @@ async function tryBindPendingInvite() {
 
 App({
   globalData: { appName: "鼾静健康诊所", currentRoute: '', lastRoute: '' },
-  __redirectingToLogin: false,
   onLaunch(options) {
     miniLog.init();
     miniLog.report({
@@ -214,9 +147,6 @@ App({
         });
       });
     }
-    setTimeout(() => {
-      enforceLoginGuard();
-    }, 0);
   },
   onShow(options) {
     miniLog.report({
@@ -231,8 +161,5 @@ App({
     const inviteCode = parseInviteCodeFromLaunchOptions(options);
     if (inviteCode) wx.setStorageSync("pending_invite_code", inviteCode);
     tryBindPendingInvite();
-    setTimeout(() => {
-      enforceLoginGuard();
-    }, 0);
   },
 });

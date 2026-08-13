@@ -111,10 +111,8 @@ Page({
     }
 
     try {
-      const location = await this.tryGetLocation();
-      const directoryQuery = location
-        ? { latitude: location.latitude, longitude: location.longitude }
-        : undefined;
+      const location = null;
+      const directoryQuery = undefined;
       const [statsResult, doctorsResult, storesResult] = await Promise.allSettled([
         api.getHomeStats(),
         api.getDoctors(directoryQuery),

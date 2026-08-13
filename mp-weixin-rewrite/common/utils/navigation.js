@@ -1,9 +1,23 @@
 const sessionStore = require('../../stores/session-store');
 
 const PUBLIC_PAGES = [
+  '/pages/index/index',
+  '/pages/appointment/index',
+  '/pages/assessment/index',
+  '/pages/treatment/index',
+  '/pages/product/index',
+  '/pages/profile/index',
   '/pages/auth/login',
   '/pages/auth/agreement/index',
   '/pages/auth/privacy/index',
+  '/pages/appointment/doctor-list',
+  '/pages/appointment/doctor-detail',
+  '/pages/appointment/map',
+  '/pages/product/detail',
+  '/pages/community/index',
+  '/pages/community/detail/index',
+  '/pages/live/list/index',
+  '/pages/live/playback/index',
 ];
 
 function normalizeUrl(url) {
@@ -35,10 +49,6 @@ function openPage(url) {
 }
 
 function switchTab(url) {
-  if (!canVisitWithoutLogin(url) && !sessionStore.isLoggedIn()) {
-    wx.reLaunch({ url: buildLoginUrl(url) });
-    return;
-  }
   wx.switchTab({ url });
 }
 
