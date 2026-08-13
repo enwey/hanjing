@@ -12,12 +12,8 @@ const RELATION_LABEL_MAP = {
 };
 
 const TREATMENT_ENTRIES = [
-  { key: 'trend', title: '睡眠趋势', description: '佩戴与睡眠数据', icon: '/static/icons/trend.svg', iconClass: 'menu-icon--trend', url: '/pages/treatment/sleep-trend/index' },
-  { key: 'report', title: '睡眠报告', description: 'AI智能分析与建议', icon: '/static/icons/report.svg', iconClass: 'menu-icon--report', url: '/pages/treatment/sleep-report/index' },
-  { key: 'timeline', title: '服务时间线', description: '服务记录', icon: '/static/icons/timeline.svg', iconClass: 'menu-icon--timeline', url: '/pages/treatment/timeline/index' },
-  { key: 'advice', title: '健康建议', description: '佩戴指导方案', icon: '/static/icons/advice.svg', iconClass: 'menu-icon--advice', url: '/pages/treatment/doctor-advice/index' },
-  { key: 'adjust', title: '设备调整', description: '参数与调整记录', icon: '/static/icons/adjust.svg', iconClass: 'menu-icon--adjust', url: '/pages/treatment/adjust-detail/index' },
-  { key: 'community', title: '睡眠社区', description: '交流经验与心得', icon: '/static/icons/community.svg', iconClass: 'menu-icon--community', url: '/pages/community/index' },
+  { key: 'trend', title: '睡眠趋势', description: '睡眠与使用记录', icon: '/static/icons/trend.svg', iconClass: 'menu-icon--trend', url: '/pages/treatment/sleep-trend/index' },
+  { key: 'report', title: '睡眠报告', description: '趋势分析与内容参考', icon: '/static/icons/report.svg', iconClass: 'menu-icon--report', url: '/pages/treatment/sleep-report/index' },
 ];
 
 function unwrapObject(response) {
@@ -109,7 +105,7 @@ function buildRecentDays(records) {
       weekLabel: ['日', '一', '二', '三', '四', '五', '六'][currentDate.getDay()],
       dayLabel: String(currentDate.getDate()),
       isToday: index === 0,
-      wearDurationLabel: record ? `${record.wearDuration}h` : '未佩戴',
+      wearDurationLabel: record ? `${record.wearDuration}h` : '未记录',
       barColor,
     });
   }
@@ -142,24 +138,24 @@ Page({
     hasTreatmentRecord: false,
     hasRealTreatmentRecord: false,
     heroBadgeText: '未开始',
-    heroDeviceText: '暂无佩戴记录',
-    heroDoctorText: '完成初诊适配后将在此展示',
-    heroStartText: '初配日期：--',
+    heroDeviceText: '打卡记录使用时长及感受',
+    heroDoctorText: '完成记录后将在此展示摘要',
+    heroStartText: '开始记录时间：--',
     treatmentStatusLabel: '未开始',
-    treatmentDeviceLabel: '暂无佩戴记录',
-    treatmentDoctorLabel: '完成初诊适配后将在此展示',
-    treatmentStartLabel: '初配日期：--',
-    heroSubText: '暂无诊疗记录',
+    treatmentDeviceLabel: '暂无记录',
+    treatmentDoctorLabel: '完成记录后将在此展示摘要',
+    treatmentStartLabel: '开始记录时间：--',
+    heroSubText: '暂无记录',
     heroProgressText: '依从率 --',
     progressWidth: '0%',
     k: '0',
     l: '0',
     m: '0',
     n: '0',
-    emptyTreatmentNotice: '该服务对象暂无已绑定设备的佩戴记录，完成设备适配后将显示完整佩戴追踪内容并支持设备打卡。',
+    emptyTreatmentNotice: '当前成员暂无睡眠打卡，完成打卡后将显示趋势、报告和每日打卡内容。',
     recentDays: [],
     summaryCards: [
-      { key: 'worn', label: '本周佩戴', value: '0/7' },
+      { key: 'worn', label: '本周打卡', value: '0/7' },
       { key: 'avg', label: '平均时长', value: '0h' },
       { key: 'comfort', label: '舒适度', value: '0/5' },
       { key: 'streak', label: '连续天数', value: '0天' },
@@ -197,12 +193,12 @@ Page({
         hasTreatmentRecord: false,
         hasRealTreatmentRecord: false,
         heroBadgeText: '未登录',
-        heroDeviceText: '登录后查看佩戴与睡眠数据',
-        heroDoctorText: '登录后可查看顾问服务信息',
+        heroDeviceText: '打卡记录使用时长及感受',
+        heroDoctorText: '登录后可查看个人记录摘要',
         heroStartText: '服务开始时间：--',
         treatmentStatusLabel: '未登录',
-        treatmentDeviceLabel: '登录后查看佩戴信息',
-        treatmentDoctorLabel: '登录后查看顾问信息',
+        treatmentDeviceLabel: '登录后查看记录信息',
+        treatmentDoctorLabel: '登录后查看个人记录摘要',
         treatmentStartLabel: '服务开始时间：--',
         heroSubText: '可先浏览页面内容',
         heroProgressText: '依从率 --',
@@ -211,10 +207,10 @@ Page({
         l: '0',
         m: '0',
         n: '0',
-        emptyTreatmentNotice: '当前可先浏览佩戴追踪页面说明。登录后即可查看个人佩戴记录、睡眠报告、健康建议与设备调整信息。',
+        emptyTreatmentNotice: '当前可先浏览睡眠打卡页面说明。登录后即可查看个人打卡、睡眠趋势与报告内容。',
         recentDays: [],
         summaryCards: [
-          { key: 'worn', label: '本周佩戴', value: '0/7' },
+          { key: 'worn', label: '本周打卡', value: '0/7' },
           { key: 'avg', label: '平均时长', value: '0h' },
           { key: 'comfort', label: '舒适度', value: '0/5' },
           { key: 'streak', label: '连续天数', value: '0天' },
@@ -304,24 +300,24 @@ Page({
         hasTreatmentRecord,
         hasRealTreatmentRecord,
         heroBadgeText: hasTreatmentRecord ? '进行中' : '未开始',
-        heroDeviceText: (treatmentRecord && treatmentRecord.deviceModel) || '暂无佩戴记录',
-        heroDoctorText: hasTreatmentRecord ? `顾问：${(treatmentRecord && treatmentRecord.doctorName) || '--'}` : '完成设备适配后将在此展示',
-        heroStartText: hasTreatmentRecord ? `初配日期：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '初配日期：--',
+        heroDeviceText: '打卡记录使用时长及感受',
+        heroDoctorText: hasTreatmentRecord ? `最近更新：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '完成记录后将在此展示',
+        heroStartText: hasTreatmentRecord ? `开始记录：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '开始记录：--',
         treatmentStatusLabel: hasTreatmentRecord ? '进行中' : '未开始',
-        heroSubText: hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无服务记录',
-        treatmentDeviceLabel: (treatmentRecord && treatmentRecord.deviceModel) || '暂无佩戴记录',
-        treatmentDoctorLabel: hasTreatmentRecord ? `顾问：${(treatmentRecord && treatmentRecord.doctorName) || '--'}` : '完成设备适配后将在此展示',
+        heroSubText: hasTreatmentRecord ? `已记录 ${summary.streak || 0} 天` : '暂无记录',
+        treatmentDeviceLabel: (treatmentRecord && treatmentRecord.deviceModel) || '暂无睡眠记录',
+        treatmentDoctorLabel: hasTreatmentRecord ? `最近更新：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '完成记录后将在此展示',
         heroProgressText: hasTreatmentRecord ? `依从率 ${heroCompliance}%` : '依从率 --',
         progressWidth: `${heroCompliance}%`,
-        treatmentStartLabel: hasTreatmentRecord ? `初配日期：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '初配日期：--',
+        treatmentStartLabel: hasTreatmentRecord ? `开始记录：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '开始记录：--',
         k: String(summary.weekWorn || 0),
         l: String(Number(summary.weekAvg || 0)),
         m: String(Number(summary.avgComfort || 0)),
         n: String(summary.streak || 0),
-        emptyTreatmentNotice: '该服务对象暂无已绑定设备的佩戴记录，完成设备适配后将显示完整佩戴追踪内容并支持设备打卡。',
+        emptyTreatmentNotice: '当前成员暂无睡眠打卡，完成打卡后将显示趋势、报告和打卡内容。',
         recentDays: buildRecentDays(wearingRecords),
         summaryCards: [
-          { key: 'worn', label: '本周佩戴', value: `${summary.weekWorn || 0}/7` },
+          { key: 'worn', label: '本周打卡', value: `${summary.weekWorn || 0}/7` },
           { key: 'avg', label: '平均时长', value: `${Number(summary.weekAvg || 0)}h` },
           { key: 'comfort', label: '舒适度', value: `${Number(summary.avgComfort || 0)}/5` },
           { key: 'streak', label: '连续天数', value: `${summary.streak || 0}天` },
@@ -334,7 +330,7 @@ Page({
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
-          loadError: (error && error.message) || '加载佩戴追踪页失败',
+          loadError: (error && error.message) || '加载睡眠记录失败',
         });
       } else {
         this.setData({ loading: false });
@@ -372,18 +368,6 @@ Page({
 
   goSleepReport() {
     navigation.openPage('/pages/treatment/sleep-report/index');
-  },
-
-  goTimeline() {
-    navigation.openPage('/pages/treatment/timeline/index');
-  },
-
-  goDoctorAdvice() {
-    navigation.openPage('/pages/treatment/doctor-advice/index');
-  },
-
-  goAdjustDetail() {
-    navigation.openPage('/pages/treatment/adjust-detail/index');
   },
 
   goCommunity() {
@@ -491,12 +475,12 @@ Page({
         m: String(Number(summary.avgComfort || 0)),
         n: String(summary.streak || 0),
         summaryCards: [
-          { key: 'worn', label: '本周佩戴', value: `${summary.weekWorn || 0}/7` },
+          { key: 'worn', label: '本周打卡', value: `${summary.weekWorn || 0}/7` },
           { key: 'avg', label: '平均时长', value: `${Number(summary.weekAvg || 0)}h` },
           { key: 'comfort', label: '舒适度', value: `${Number(summary.avgComfort || 0)}/5` },
           { key: 'streak', label: '连续天数', value: `${summary.streak || 0}天` },
         ],
-        heroSubText: this.data.hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无诊疗记录',
+        heroSubText: this.data.hasTreatmentRecord ? `已记录 ${summary.streak || 0} 天` : '暂无记录',
         heroProgressText: this.data.hasTreatmentRecord ? `依从率 ${heroCompliance}%` : '依从率 --',
         progressWidth: `${heroCompliance}%`,
       });

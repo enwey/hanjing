@@ -7,28 +7,28 @@ function getSnoreRiskInfo(riskLevel) {
   else if (riskLevel === 'severe' || riskLevel === 'high') key = 'high';
   const levels = {
     low: {
-      title: '低风险',
+      title: '低关注',
       color: '#1A9D5C',
       bgColor: '#D3F5E3',
-      desc: '您的鼾声测试结果良好，未检测到明显的睡眠呼吸暂停风险。',
-      advice: '建议保持健康生活习惯，定期关注睡眠质量。如家人反馈仍有明显鼾声，可 3 个月后复测。',
+      desc: '本次鼾声表现相对平稳，可继续关注近期睡眠状态。',
+      advice: '建议保持规律作息，定期关注睡眠质量。如家人仍反馈鼾声明显，可在后续再次测试。',
       tips: ['保持规律作息', '避免睡前饮酒', '侧卧睡眠', '控制体重'],
     },
     medium: {
-      title: '中风险',
+      title: '中度关注',
       color: '#F59E0B',
       bgColor: '#FFFBEB',
-      desc: '检测到中度鼾声和少量呼吸暂停事件，建议引起关注并及时进行健康评估。',
-      advice: '建议预约鼾静健康到店服务，结合睡眠监测结果进一步了解夜间睡眠状况。',
-      tips: ['预约到店服务', '监测睡眠姿势', '减少酒精和安眠药', '记录夜间醒来次数'],
+      desc: '本次鼾声表现有一定波动，建议继续观察近期夜间睡眠情况。',
+      advice: '建议继续观察夜间睡眠状况，并结合后续记录了解是否存在持续波动。',
+      tips: ['监测睡眠姿势', '减少酒精和安眠药', '记录夜间醒来次数', '保持规律作息'],
     },
     high: {
-      title: '高风险',
+      title: '重点关注',
       color: '#EF4444',
       bgColor: '#FEF2F2',
-      desc: '检测到重度鼾声和较多呼吸暂停事件，建议尽快关注睡眠呼吸健康风险。',
-      advice: '建议尽快预约鼾静健康到店服务，结合睡眠监测与健康评估结果制定后续管理计划。',
-      tips: ['预约到店服务', '避免长途驾驶', '告知家属观察', '记录日间嗜睡情况'],
+      desc: '本次鼾声表现波动较明显，建议重点关注近期夜间与白天状态变化。',
+      advice: '建议尽快减少影响睡眠的因素，并持续记录夜间与白天状态，方便后续对比变化。',
+      tips: ['避免长途驾驶', '告知家属观察', '记录日间嗜睡情况', '减少睡前饮酒'],
     },
   };
   return levels[key] || levels.low;
@@ -76,7 +76,7 @@ Page({
         { iconPath: '/static/icons/microphone.svg', value: analysis.avgDecibel + ' dB', label: '平均分贝' },
         { iconPath: '/static/icons/trend.svg', value: analysis.peakDecibel + ' dB', label: '峰值分贝' },
         { iconPath: '/static/icons/moon.svg', value: analysis.snoreRate + '%', label: '鼾声占比' },
-        { iconPath: '/static/icons/warning.svg', value: analysis.apneaEvents + ' 次', label: '呼吸暂停' },
+        { iconPath: '/static/icons/warning.svg', value: analysis.apneaEvents + ' 次', label: '停顿次数' },
       ] : [];
       const riskScore = analysis ? Math.min(100, Math.round((analysis.avgDecibel / 80) * 30 + (analysis.snoreRate / 100) * 30 + (analysis.apneaEvents / 20) * 40)) : 0;
       this.setData({ hasLoaded: true, isLoading: false, reportDetail, riskInfo, statCards, riskScore });
@@ -90,15 +90,8 @@ Page({
     wx.navigateBack({ delta: 1 });
   },
 
-  goAppointment() {
-    if (this.data.reportDetail && this.data.reportDetail.id && this.data.reportDetail.id !== 'local') {
-      wx.setStorageSync('pending_appointment_assessment', {
-        type: 'snore',
-        id: this.data.reportDetail.id,
-        label: 'AI鼾声分析',
-      });
-    }
-    wx.navigateTo({ url: '/pages/appointment/store-select' });
+  goSleepRecord() {
+    wx.switchTab({ url: '/pages/treatment/index' });
   },
 
   goHome() {

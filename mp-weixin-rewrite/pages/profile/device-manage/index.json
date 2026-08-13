@@ -1,6 +1,0 @@
-{
-  "navigationBarTitleText": "阻鼾器管理",
-  "usingComponents": {
-    "hj-navbar": "../../../components/base/hj-navbar"
-  }
-}

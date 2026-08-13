@@ -1,39 +1,15 @@
 const api = require('../../api/index');
-const { normalizeImageUrl } = require('../../common/utils/image-url');
+const { formatChinaDateTime } = require('../../common/utils/date-time');
+
+const TAB_LIST = [
+  { key: 'hot', label: '热门' },
+  { key: 'latest', label: '最新' },
+  { key: 'expert', label: '精选' },
+];
 
 function formatIntegerWithCommas(value) {
   const text = String(Math.max(0, parseInt(value, 10) || 0));
   return text.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
-function calculateDistanceInKilometers(fromLatitude, fromLongitude, toLatitude, toLongitude) {
-  if (![fromLatitude, fromLongitude, toLatitude, toLongitude].every((value) => Number.isFinite(value))) {
-    return null;
-  }
-
-  const earthRadius = 6371;
-  const latDistance = ((toLatitude - fromLatitude) * Math.PI) / 180;
-  const lonDistance = ((toLongitude - fromLongitude) * Math.PI) / 180;
-  const sinLat = Math.sin(latDistance / 2);
-  const sinLon = Math.sin(lonDistance / 2);
-  const haversine =
-    sinLat * sinLat +
-    Math.cos((fromLatitude * Math.PI) / 180) *
-      Math.cos((toLatitude * Math.PI) / 180) *
-      sinLon *
-      sinLon;
-
-  return earthRadius * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
-}
-
-function formatDistance(distanceInKilometers) {
-  if (!Number.isFinite(distanceInKilometers)) {
-    return '';
-  }
-  if (distanceInKilometers < 1) {
-    return '距您' + Math.round(distanceInKilometers * 1000) + 'm';
-  }
-  return '距您' + distanceInKilometers.toFixed(1) + 'km';
 }
 
 function unwrapList(response) {
@@ -44,44 +20,81 @@ function unwrapList(response) {
   return [];
 }
 
-function normalizeDoctor(doctor) {
+function splitTags(tags) {
+  const values = Array.isArray(tags) ? tags.filter(Boolean) : [];
+  return { category: values[0] || '', labels: values.slice(1) };
+}
+
+function mapCategory(name) {
+  if (name === '阻鼾器配戴') return '使用记录';
+  if (name === '睡眠科普') return '睡眠知识';
+  if (name === '科普问答') return '交流问答';
+  if (name === '专家') return '精选内容';
+  if (name === 'OSAHS改善') return '睡眠变化';
+  if (name === 'AHI改善') return '夜间变化';
+  return name || '';
+}
+
+function normalizePost(item) {
+  const tags = splitTags(item.tags);
   return {
-    id: doctor.id,
-    name: doctor.name || '',
-    avatarText: (doctor.name || '').slice(0, 1) || '?',
-    avatarUrl: normalizeImageUrl(
-      doctor.avatarUrl || doctor.avatar || doctor.avatar_url || doctor.doctorAvatar || doctor.doctor_avatar
-    ),
-    title: doctor.title || doctor.jobTitle || '',
-    specialty: doctor.specialty || doctor.specialities || doctor.expertise || '',
-    experience: Number(doctor.experienceYears || doctor.experience || 0),
-    expertise: Array.isArray(doctor.expertise) ? doctor.expertise.slice(0, 5) : [],
-    rating: Number(doctor.rating || 0).toFixed(1),
-    reviewCount: Number(doctor.reviewCount || 0),
-    consultCount: Number(doctor.consultCount || 0),
+    id: String(item.id || ''),
+    isTop: Boolean(item.isTop),
+    avatar: item.avatar || '',
+    avatarLoaded: false,
+    author: item.author || '',
+    role: item.role || 'patient',
+    roleLabel: item.role === 'doctor' || item.role === 'expert' ? '内容作者' : (item.roleLabel || '鼾友'),
+    roleClass: 'role--' + (item.role || 'patient'),
+    title: item.title || '',
+    content: item.content || '',
+    category: mapCategory(tags.category),
+    categoryClass: getCategoryClass(tags.category),
+    labels: tags.labels,
+    likes: Number(item.likes || 0),
+    comments: Number(item.comments || item.commentsCount || 0),
+    views: Number(item.views || item.viewsCount || 0),
+    favorites: Number(item.favorites || item.favoritesCount || 0),
+    shares: Number(item.shares || item.sharesCount || 0),
+    isLiked: Boolean(item.isLiked),
+    likeIcon: Boolean(item.isLiked) ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg',
+    likeClass: Boolean(item.isLiked) ? 'liked' : '',
+    createdAt: item.createdAt || '',
+    displayTime: formatChinaDateTime(item.createdAt || '', false),
   };
 }
 
-function normalizeStore(store, location) {
-  const latitude = Number(store.latitude);
-  const longitude = Number(store.longitude);
-  const distanceInKilometers = location
-    ? calculateDistanceInKilometers(location.latitude, location.longitude, latitude, longitude)
-    : null;
-  return {
-    id: store.id,
-    name: store.name || store.storeName || '',
-    coverUrl: store.coverUrl || store.cover_url || store.imageUrl || store.image_url || '',
-    imageUrls: store.imageUrls || store.image_urls || [],
-    address: store.address || store.location || '',
-    businessHours: store.businessHours || store.openingHours || '',
-    doctorCount: Number(store.doctorCount || 0),
-    tags: Array.isArray(store.tags) ? store.tags.slice(0, 3) : [],
-    isOpen: Boolean(store.isOpen),
-    status: store.status || 'open',
-    distanceInKilometers,
-    distanceText: formatDistance(distanceInKilometers),
-  };
+function getCategoryClass(name) {
+  if (['阻鼾器配戴', '睡眠科普', '科普问答', '专家'].includes(name)) return 'tag-theme--blue';
+  if (['打鼾改善', '经验分享', '经验交流'].includes(name)) return 'tag-theme--green';
+  if (['OSAHS改善', 'AHI改善'].includes(name)) return 'tag-theme--orange';
+  if (['适应期', '设备保养'].includes(name)) return 'tag-theme--amber';
+  if (['情感支持'].includes(name)) return 'tag-theme--pink';
+  return 'tag-theme--violet';
+}
+
+function isExpertPost(post) {
+  return post.role === 'doctor' || post.role === 'expert' || post.category === '精选内容';
+}
+
+function getPostAgeHours(createdAt) {
+  if (!createdAt) return 24 * 365;
+  const timestamp = new Date(createdAt).getTime();
+  if (Number.isNaN(timestamp)) return 24 * 365;
+  return Math.max(1, (Date.now() - timestamp) / (1000 * 60 * 60));
+}
+
+function getHotScore(post) {
+  const likes = Number(post.likes || 0);
+  const comments = Number(post.comments || 0);
+  const views = Number(post.views || 0);
+  const favorites = Number(post.favorites || 0);
+  const shares = Number(post.shares || 0);
+  const ageHours = getPostAgeHours(post.createdAt);
+  const interactionScore = likes * 1 + comments * 4 + favorites * 5 + shares * 6 + Math.log1p(views) * 2;
+  const qualityBoost = comments > 0 ? 8 : favorites > 0 || shares > 0 ? 4 : likes > 0 ? 2 : 0;
+  const freshnessPenalty = Math.pow(ageHours + 2, 0.45);
+  return (interactionScore + qualityBoost) / freshnessPenalty;
 }
 
 Page({
@@ -91,9 +104,13 @@ Page({
     loadError: '',
     patientCountLabel: '10,000+',
     satisfactionRateLabel: '98%',
-    storeCountLabel: '3',
-    recommendedDoctors: [],
-    stores: [],
+    posts: [],
+    visiblePosts: [],
+    activeTab: 'hot',
+    tabs: TAB_LIST.map((tab) => Object.assign({}, tab, {
+      active: tab.key === 'hot',
+      activeClass: tab.key === 'hot' ? 'community-tab--active' : '',
+    })),
   },
 
   onLoad() {
@@ -111,32 +128,18 @@ Page({
     }
 
     try {
-      const location = null;
-      const directoryQuery = undefined;
-      const [statsResult, doctorsResult, storesResult] = await Promise.allSettled([
+      const [statsResult, postsResult] = await Promise.allSettled([
         api.getHomeStats(),
-        api.getDoctors(directoryQuery),
-        api.getStores(directoryQuery),
+        api.getCommunityPosts(),
       ]);
 
       const statsSource = statsResult.status === 'fulfilled'
         ? ((statsResult.value && statsResult.value.data) || statsResult.value || {})
         : {};
-      const recommendedDoctors = statsResult.status === 'rejected' && doctorsResult.status === 'rejected'
-        ? []
-        : unwrapList(doctorsResult.status === 'fulfilled' ? doctorsResult.value : null)
-            .map(normalizeDoctor)
-            .slice(0, 3);
-      const stores = unwrapList(storesResult.status === 'fulfilled' ? storesResult.value : null)
-        .map((store) => normalizeStore(store, location));
-
+      const posts = postsResult.status === 'fulfilled' ? unwrapList(postsResult.value).map(normalizePost) : [];
       const totalPatients = Number(statsSource.totalPatients || 0);
       const satisfactionRate = Number(statsSource.satisfactionRate || 0);
-      const storeCount = Number(statsSource.storeCount || 0);
-      const allFailed =
-        statsResult.status === 'rejected' &&
-        doctorsResult.status === 'rejected' &&
-        storesResult.status === 'rejected';
+      const allFailed = statsResult.status === 'rejected' && postsResult.status === 'rejected';
 
       this.setData({
         hasLoaded: true,
@@ -144,10 +147,9 @@ Page({
         loadError: allFailed ? '加载首页失败' : '',
         patientCountLabel: totalPatients > 0 ? formatIntegerWithCommas(totalPatients) + '+' : '10,000+',
         satisfactionRateLabel: satisfactionRate > 0 ? String(satisfactionRate) + '%' : '98%',
-        storeCountLabel: storeCount > 0 ? String(storeCount) : '3',
-        recommendedDoctors,
-        stores,
+        posts,
       });
+      this.refreshVisiblePosts(this.data.activeTab, posts);
     } catch (error) {
       if (!this.data.hasLoaded) {
         this.setData({
@@ -160,66 +162,113 @@ Page({
     }
   },
 
-  tryGetLocation() {
-    return new Promise((resolve) => {
-      wx.getLocation({
-        type: 'wgs84',
-        success(result) {
-          resolve({ latitude: result.latitude, longitude: result.longitude });
-        },
-        fail() {
-          resolve(null);
-        },
-      });
-    });
+  goEssAssessment() {
+    wx.navigateTo({ url: '/pages/assessment/questionnaire/index' });
   },
 
-  goStoreSelect() {
-    wx.navigateTo({ url: '/pages/appointment/store-select' });
-  },
-
-  navigateToApptTab() {
-    wx.switchTab({ url: '/pages/appointment/index' });
-  },
-
-  goAssessment() {
-    wx.navigateTo({ url: '/pages/assessment/index' });
+  goSnoreAssessment() {
+    wx.navigateTo({ url: '/pages/assessment/recording/index' });
   },
 
   goTreatmentTab() {
     wx.switchTab({ url: '/pages/treatment/index' });
   },
 
-  goMedicalRecords() {
-    const token = wx.getStorageSync('access_token');
-    if (!token) {
-      wx.navigateTo({ url: '/pages/auth/login' });
-      return;
-    }
-    wx.navigateTo({ url: '/pages/profile/medical-records/index' });
+  goCommunity() {
+    wx.navigateTo({ url: '/pages/community/index' });
   },
 
-  goDoctorList() {
-    wx.navigateTo({ url: '/pages/appointment/doctor-list' });
+  goPublishPost() {
+    wx.navigateTo({ url: '/pages/community/publish/index' });
   },
 
-  handleDoctorClick(event) {
-    const doctor = event.detail || {};
-    if (!doctor.id) return;
-    wx.navigateTo({ url: '/pages/appointment/doctor-detail?id=' + doctor.id });
+  openFeaturedPost(event) {
+    const postId = String(event.currentTarget.dataset.postId || '');
+    if (!postId) return;
+    wx.navigateTo({ url: '/pages/community/detail/index?id=' + postId });
   },
 
-  handleStoreClick(event) {
-    const store = event.detail || {};
-    if (!store.id) return;
-    if (store.status === 'prepare') {
-      wx.showToast({
-        title: '该门店正在筹建中，暂未开放预约，敬请期待！',
-        icon: 'none',
-        duration: 2000,
+  refreshVisiblePosts(activeTab, posts) {
+    const sourcePosts = posts || this.data.posts;
+    let visiblePosts = sourcePosts.slice();
+    if (activeTab === 'expert') {
+      visiblePosts = visiblePosts.filter((post) => isExpertPost(post));
+      visiblePosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (activeTab === 'latest') {
+      visiblePosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else {
+      visiblePosts.sort((a, b) => {
+        const hotDiff = getHotScore(b) - getHotScore(a);
+        if (hotDiff !== 0) return hotDiff;
+        const commentDiff = Number(b.comments || 0) - Number(a.comments || 0);
+        if (commentDiff !== 0) return commentDiff;
+        const likeDiff = Number(b.likes || 0) - Number(a.likes || 0);
+        if (likeDiff !== 0) return likeDiff;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-      return;
     }
-    wx.navigateTo({ url: '/pages/appointment/doctor-list?storeId=' + store.id });
+    visiblePosts = visiblePosts.filter((post) => post.isTop).concat(visiblePosts.filter((post) => !post.isTop));
+    this.setData({
+      activeTab,
+      tabs: TAB_LIST.map((tab) => Object.assign({}, tab, {
+        active: tab.key === activeTab,
+        activeClass: tab.key === activeTab ? 'community-tab--active' : '',
+      })),
+      visiblePosts,
+    });
+  },
+
+  handleTabTap(event) {
+    const tabKey = event.currentTarget.dataset.tabKey || 'hot';
+    this.refreshVisiblePosts(tabKey);
+  },
+
+  handleAvatarLoad(event) {
+    const postId = String(event.currentTarget.dataset.postId || '');
+    if (!postId) return;
+    const posts = this.data.posts.map((post) => (
+      post.id === postId ? Object.assign({}, post, { avatarLoaded: true }) : post
+    ));
+    this.setData({ posts });
+    this.refreshVisiblePosts(this.data.activeTab, posts);
+  },
+
+  handleAvatarError(event) {
+    const postId = String(event.currentTarget.dataset.postId || '');
+    if (!postId) return;
+    const posts = this.data.posts.map((post) => (
+      post.id === postId ? Object.assign({}, post, { avatarLoaded: false, avatar: '' }) : post
+    ));
+    this.setData({ posts });
+    this.refreshVisiblePosts(this.data.activeTab, posts);
+  },
+
+  async handleLikeTap(event) {
+    const postId = String(event.currentTarget.dataset.postId || '');
+    const index = this.data.posts.findIndex((post) => post.id === postId);
+    if (index < 0) return;
+    const posts = this.data.posts.slice();
+    const target = Object.assign({}, posts[index]);
+    const previousLiked = target.isLiked;
+    const previousLikes = target.likes;
+    target.isLiked = !target.isLiked;
+    target.likes += target.isLiked ? 1 : -1;
+    target.likeIcon = target.isLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg';
+    target.likeClass = target.isLiked ? 'liked' : '';
+    posts[index] = target;
+    this.setData({ posts });
+    this.refreshVisiblePosts(this.data.activeTab, posts);
+    try {
+      await api.likeCommunityPost(postId, target.isLiked);
+    } catch (error) {
+      target.isLiked = previousLiked;
+      target.likes = previousLikes;
+      target.likeIcon = previousLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg';
+      target.likeClass = previousLiked ? 'liked' : '';
+      posts[index] = target;
+      this.setData({ posts });
+      this.refreshVisiblePosts(this.data.activeTab, posts);
+      wx.showToast({ title: '点赞失败，请稍后重试', icon: 'none' });
+    }
   },
 });

@@ -33,10 +33,6 @@ function deleteFamilyMember(memberId) {
   return request({ url: '/user/family-members/' + memberId, method: 'DELETE', failMessage: '删除家庭成员失败' });
 }
 
-function getMedicalRecords(query) {
-  return request({ url: '/user/medical-records', method: 'GET', data: query, failMessage: '加载健康档案失败' });
-}
-
 function uploadFile(buffer, ext) {
   return request({ url: '/user/upload?ext=' + (ext || 'jpg'), method: 'POST', data: buffer, header: { 'content-type': 'application/octet-stream' }, failMessage: '上传文件失败' });
 }
@@ -67,10 +63,6 @@ function uploadLocalFile(filePath, ext) {
       },
     });
   });
-}
-
-function addMedicalAttachment(recordId, url) {
-  return request({ url: '/user/medical-records/' + recordId + '/attachments', method: 'POST', data: { url }, failMessage: '添加健康档案附件失败' });
 }
 
 function getMemberInfo() {
@@ -133,10 +125,8 @@ module.exports = {
   addFamilyMember,
   updateFamilyMember,
   deleteFamilyMember,
-  getMedicalRecords,
   uploadFile,
   uploadLocalFile,
-  addMedicalAttachment,
   getMemberInfo,
   getMemberLevels,
   getNotifications,

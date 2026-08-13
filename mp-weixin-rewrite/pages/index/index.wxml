@@ -4,36 +4,32 @@
     <view class="hero-navbar-spacer"></view>
     <view class="hero-content">
       <text class="hero-title">鼾静健康</text>
-      <text class="hero-subtitle">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</text>
+      <text class="hero-subtitle">睡眠自测、记录整理与交流分享</text>
       <view class="hero-stats">
-        <view class="hero-stat">
-          <text class="hero-stat-num">{{patientCountLabel}}</text>
-          <text class="hero-stat-label">累计用户</text>
-        </view>
-        <view class="hero-stat">
-          <text class="hero-stat-num">{{satisfactionRateLabel}}</text>
-          <text class="hero-stat-label">满意率</text>
-        </view>
-        <view class="hero-stat">
-          <text class="hero-stat-num">{{storeCountLabel}}</text>
-          <text class="hero-stat-label">家门店</text>
-        </view>
+      <view class="hero-stat">
+        <text class="hero-stat-num">{{patientCountLabel}}</text>
+        <text class="hero-stat-label">累计用户</text>
+      </view>
+      <view class="hero-stat">
+        <text class="hero-stat-num">{{satisfactionRateLabel}}</text>
+        <text class="hero-stat-label">满意率</text>
       </view>
     </view>
   </view>
+</view>
 
   <view class="section quick-actions">
-    <view class="quick-action" bindtap="goAssessment">
+    <view class="quick-action" bindtap="goEssAssessment">
       <image class="quick-action-icon quick-action-icon--assessment" src="/static/icons/assessment_purple.svg" />
-      <text class="quick-action-text">睡眠评估</text>
+      <text class="quick-action-text">嗜睡量表</text>
+    </view>
+    <view class="quick-action" bindtap="goSnoreAssessment">
+      <image class="quick-action-icon quick-action-icon--assessment" src="/static/icons/microphone.svg" />
+      <text class="quick-action-text">鼾声分析</text>
     </view>
     <view class="quick-action" bindtap="goTreatmentTab">
       <image class="quick-action-icon quick-action-icon--treatment" src="/static/icons/treatment_green.svg" />
-      <text class="quick-action-text">佩戴追踪</text>
-    </view>
-    <view class="quick-action" bindtap="goMedicalRecords">
-      <image class="quick-action-icon quick-action-icon--profile" src="/static/icons/profile_orange.svg" />
-      <text class="quick-action-text">我的档案</text>
+      <text class="quick-action-text">打卡追踪</text>
     </view>
   </view>
 
@@ -42,33 +38,58 @@
   </view>
 
   <view class="section">
-    <view class="section-header">
-      <text class="section-title">推荐顾问</text>
-      <view class="section-more" bindtap="goDoctorList">
-        <text class="section-more-text">全部</text>
-        <view class="section-more-arrow"></view>
+    <view class="community-tabs">
+      <view wx:for="{{tabs}}" wx:key="key" class="community-tab {{item.activeClass}}" data-tab-key="{{item.key}}" bindtap="handleTabTap">{{item.label}}</view>
+    </view>
+    <view wx:if="{{visiblePosts.length}}" class="post-list">
+      <view wx:for="{{visiblePosts}}" wx:key="id" class="post-card" data-post-id="{{item.id}}" bindtap="openFeaturedPost">
+        <view wx:if="{{item.isTop}}" class="post-top">
+          <image class="post-top__icon" src="/static/icons/pin.svg" mode="aspectFit"></image>
+          <text class="post-top__text">置顶</text>
+        </view>
+        <view class="post-header">
+          <view class="post-avatar">
+            <image class="post-avatar__placeholder" src="/static/images/brand-koala.png" mode="aspectFill"></image>
+            <image wx:if="{{item.avatar}}" class="post-avatar__image {{item.avatarLoaded ? 'post-avatar__image--loaded' : ''}}" src="{{item.avatar}}" mode="aspectFill" data-post-id="{{item.id}}" bindload="handleAvatarLoad" binderror="handleAvatarError"></image>
+          </view>
+          <view class="post-author">
+            <view class="post-author__row">
+              <text class="post-author__name">{{item.author}}</text>
+              <text class="post-author__role {{item.roleClass}}">{{item.roleLabel}}</text>
+            </view>
+            <text class="post-author__time">{{item.displayTime}}</text>
+          </view>
+        </view>
+        <text wx:if="{{item.title}}" class="post-title">{{item.title}}</text>
+        <text class="post-content">{{item.content}}</text>
+        <view class="post-tags">
+          <text wx:if="{{item.category}}" class="post-category {{item.categoryClass}}">{{item.category}}</text>
+          <text wx:for="{{item.labels}}" wx:key="*this" class="post-tag">{{item}}</text>
+        </view>
+        <view class="post-actions">
+          <view class="post-action" catchtap="handleLikeTap" data-post-id="{{item.id}}">
+            <image class="post-action__icon {{item.likeClass}}" src="{{item.likeIcon}}" mode="aspectFit"></image>
+            <text class="post-action__count">{{item.likes}}</text>
+          </view>
+          <view class="post-action" catchtap="openFeaturedPost" data-post-id="{{item.id}}">
+            <image class="post-action__icon" src="/static/icons/chat.svg" mode="aspectFit"></image>
+            <text class="post-action__count">{{item.comments}}</text>
+          </view>
+          <view class="post-action">
+            <image class="post-action__icon" src="/static/icons/paper-plane.svg" mode="aspectFit"></image>
+            <text class="post-action__count">分享</text>
+          </view>
+        </view>
       </view>
     </view>
-    <hj-doctor-card
-      wx:for="{{recommendedDoctors}}"
-      wx:key="id"
-      doctor="{{item}}"
-      bind:click="handleDoctorClick"
-    />
-  </view>
-
-  <view class="section">
-    <view class="section-header">
-      <text class="section-title">我们的门店</text>
+    <view wx:else class="state-card">
+      <text class="state-text">暂无社区内容</text>
     </view>
-    <hj-store-card
-      wx:for="{{stores}}"
-      wx:key="id"
-      store="{{item}}"
-      bind:click="handleStoreClick"
-    />
   </view>
 
   <view class="safe-bottom" />
+  <view class="publish-fab" bindtap="goPublishPost">
+    <image class="publish-fab__icon" src="/static/icons/compose-white.svg" mode="aspectFit"></image>
+  </view>
   <hj-privacy-popup id="privacyPopup" />
 </view>

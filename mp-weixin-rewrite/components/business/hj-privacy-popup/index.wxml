@@ -2,7 +2,7 @@
   <view class="privacy-container">
     <view class="privacy-title">用户隐私保护指引</view>
     <view class="privacy-content">
-      感谢您选择鼾静健康！为了提供更好的服务，我们需要收集您的手机号、地理位置以查找就近门店，并在鼾声分析时使用您的麦克风录音权限。我们会严格保护您的个人敏感健康数据。在您使用前，请阅读并同意
+      感谢您选择鼾静健康！为了向您提供手机号登录、睡眠鼾声录制与分析等功能，我们需要在必要时使用您的手机号与麦克风录音权限。我们会严格保护您的个人信息。在您使用前，请阅读并同意
       <text class="privacy-link" bindtap="openPrivacyContract">《鼾静健康小程序隐私保护指引》</text>。
     </view>
     <view class="privacy-actions">

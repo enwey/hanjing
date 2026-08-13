@@ -49,8 +49,8 @@ function formatPriceYuan(value) {
 function normalizeBenefitContent(level, benefit) {
   if (level === 'normal' && benefit && benefit.icon === 'appointment') {
     return Object.assign({}, benefit, {
-      title: '免费测量',
-      desc: '到店免费测量身体情况',
+      title: '内容权益',
+      desc: '解锁更多睡眠内容与会员服务',
     });
   }
   return benefit;

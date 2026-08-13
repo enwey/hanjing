@@ -2,16 +2,12 @@ const sessionStore = require('../../stores/session-store');
 
 const PUBLIC_PAGES = [
   '/pages/index/index',
-  '/pages/appointment/index',
   '/pages/assessment/index',
   '/pages/treatment/index',
   '/pages/profile/index',
   '/pages/auth/login',
   '/pages/auth/agreement/index',
   '/pages/auth/privacy/index',
-  '/pages/appointment/doctor-list',
-  '/pages/appointment/doctor-detail',
-  '/pages/appointment/map',
   '/pages/community/index',
   '/pages/community/detail/index',
   '/pages/live/list/index',

@@ -1,5 +1,5 @@
 <view class="page data-v-b8fa8280">
-  <hj-navbar title="直播中心" showBack="{{true}}" />
+  <hj-navbar title="内容直播" showBack="{{true}}" />
   <view class="tabs data-v-b8fa8280">
     <view class="tab data-v-b8fa8280 {{activeTab === 'all' ? 'active' : ''}}" data-tab="all" bindtap="switchTab">全部</view>
     <view class="tab data-v-b8fa8280 {{activeTab === 'live' ? 'active' : ''}}" data-tab="live" bindtap="switchTab">直播中</view>

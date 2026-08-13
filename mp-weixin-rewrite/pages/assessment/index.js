@@ -5,17 +5,17 @@ const { formatChinaDateTime } = require('../../common/utils/date-time');
 
 const ESS_LEVEL_LABEL_MAP = {
   normal: '正常',
-  mild: '轻度嗜睡',
-  moderate: '中度嗜睡',
-  severe: '重度嗜睡',
+  mild: '轻度关注',
+  moderate: '中度关注',
+  severe: '重点关注',
 };
 
 const SNORE_LEVEL_LABEL_MAP = {
   normal: '正常',
-  low: '低风险',
-  mild: '轻度风险',
-  moderate: '中度风险',
-  severe: '高度风险',
+  low: '低关注',
+  mild: '轻度关注',
+  moderate: '中度关注',
+  severe: '重点关注',
 };
 
 const RELATION_LABEL_MAP = {
@@ -57,7 +57,7 @@ function normalizeAssessmentRecord(record) {
   return {
     id: String(record.id || ''),
     type,
-    typeLabel: isEss ? 'ESS 嗜睡量表' : 'AI 鼾声分析',
+    typeLabel: isEss ? 'ESS 睡眠自测' : '鼾声分析',
     levelLabel: isEss ? (ESS_LEVEL_LABEL_MAP[level] || '正常') : (SNORE_LEVEL_LABEL_MAP[level] || '正常'),
     levelColor: getRiskColor(level),
     dateLabel: formatChinaDateTime(record.createdAt || '', false),

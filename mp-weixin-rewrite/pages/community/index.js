@@ -4,7 +4,7 @@ const { formatChinaDateTime } = require('../../common/utils/date-time');
 const TAB_LIST = [
   { key: 'hot', label: '热门' },
   { key: 'latest', label: '最新' },
-  { key: 'expert', label: '专家' },
+  { key: 'expert', label: '精选' },
 ];
 
 function unwrapList(response) {
@@ -26,6 +26,22 @@ function getCategoryClass(name) {
   if (['适应期', '设备保养'].includes(name)) return 'tag-theme--amber';
   if (['情感支持'].includes(name)) return 'tag-theme--pink';
   return 'tag-theme--violet';
+}
+
+function getDisplayCategory(name) {
+  if (name === '阻鼾器配戴') return '使用记录';
+  if (name === '睡眠科普') return '睡眠知识';
+  if (name === '科普问答') return '交流问答';
+  if (name === '专家') return '精选内容';
+  if (name === 'OSAHS改善') return '睡眠变化';
+  if (name === 'AHI改善') return '夜间变化';
+  return name || '';
+}
+
+function getRoleLabel(role, roleLabel) {
+  if (role === 'doctor' || role === 'expert') return '内容作者';
+  if (roleLabel === '睡眠顾问' || roleLabel === '睡眠专家') return '内容作者';
+  return roleLabel || '鼾友';
 }
 
 function splitTags(tags) {
@@ -82,13 +98,13 @@ function normalizePost(post) {
     avatarBg: getAvatarColor(author || '友'),
     author,
     role,
-    roleLabel: post.roleLabel || (role === 'doctor' ? '睡眠顾问' : role === 'expert' ? '睡眠专家' : '鼾友'),
+    roleLabel: getRoleLabel(role, post.roleLabel),
     roleClass: 'role--' + role,
     createdAt: post.createdAt || '',
     displayTime: formatPublishTime(post.createdAt),
     title: post.title || '',
     content: post.content || '',
-    category: tags.category,
+    category: getDisplayCategory(tags.category),
     categoryClass: getCategoryClass(tags.category),
     labels: tags.labels,
     likes: Number(post.likes || 0),

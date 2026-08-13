@@ -4,16 +4,12 @@ const routeRegistry = [
     "title": "鼾静健康"
   },
   {
-    "path": "pages/appointment/index",
-    "title": "到店预约"
-  },
-  {
     "path": "pages/assessment/index",
     "title": "睡眠评估"
   },
   {
     "path": "pages/treatment/index",
-    "title": "佩戴追踪"
+    "title": "打卡"
   },
   {
     "path": "pages/profile/index",
@@ -21,7 +17,7 @@ const routeRegistry = [
   },
   {
     "path": "pages/auth/login",
-    "title": "手机号快捷登录"
+    "title": "登录"
   },
   {
     "path": "pages/auth/agreement/index",
@@ -30,42 +26,6 @@ const routeRegistry = [
   {
     "path": "pages/auth/privacy/index",
     "title": "隐私政策"
-  },
-  {
-    "path": "pages/appointment/store-select",
-    "title": "选择门店"
-  },
-  {
-    "path": "pages/appointment/doctor-detail",
-    "title": "顾问详情"
-  },
-  {
-    "path": "pages/appointment/doctor-list",
-    "title": "选择顾问"
-  },
-  {
-    "path": "pages/appointment/time-select",
-    "title": "选择时段"
-  },
-  {
-    "path": "pages/appointment/confirm",
-    "title": "预约确认"
-  },
-  {
-    "path": "pages/appointment/success",
-    "title": "预约成功"
-  },
-  {
-    "path": "pages/appointment/detail",
-    "title": "预约详情"
-  },
-  {
-    "path": "pages/appointment/map",
-    "title": "门店地图"
-  },
-  {
-    "path": "pages/appointment/reschedule",
-    "title": "改约"
   },
   {
     "path": "pages/assessment/questionnaire/index",
@@ -92,40 +52,8 @@ const routeRegistry = [
     "title": "睡眠趋势"
   },
   {
-    "path": "pages/treatment/timeline/index",
-    "title": "服务时间线"
-  },
-  {
-    "path": "pages/treatment/doctor-advice/index",
-    "title": "医嘱建议"
-  },
-  {
-    "path": "pages/treatment/adjust-detail/index",
-    "title": "设备调整"
-  },
-  {
     "path": "pages/treatment/sleep-report/index",
     "title": "睡眠报告"
-  },
-  {
-    "path": "pages/profile/medical-records/index",
-    "title": "健康档案"
-  },
-  {
-    "path": "pages/profile/device-manage/index",
-    "title": "阻鼾器管理"
-  },
-  {
-    "path": "pages/profile/device-manage/wearing-data/index",
-    "title": "佩戴数据"
-  },
-  {
-    "path": "pages/profile/device-manage/maintenance/index",
-    "title": "维护记录"
-  },
-  {
-    "path": "pages/profile/device-manage/feedback/index",
-    "title": "使用反馈"
   },
   {
     "path": "pages/profile/family-members/index",
@@ -134,10 +62,6 @@ const routeRegistry = [
   {
     "path": "pages/profile/family-members/add-member/index",
     "title": "添加成员"
-  },
-  {
-    "path": "pages/profile/member-benefits/index",
-    "title": "会员权益"
   },
   {
     "path": "pages/profile/settings/index",
@@ -156,12 +80,8 @@ const routeRegistry = [
     "title": "消息通知"
   },
   {
-    "path": "pages/profile/online-service/index",
-    "title": "在线客服"
-  },
-  {
     "path": "pages/live/list/index",
-    "title": "直播中心"
+    "title": "内容直播"
   },
   {
     "path": "pages/live/playback/index",
@@ -169,7 +89,7 @@ const routeRegistry = [
   },
   {
     "path": "pages/community/index",
-    "title": "医患社区"
+    "title": "睡眠社区"
   },
   {
     "path": "pages/community/detail/index",

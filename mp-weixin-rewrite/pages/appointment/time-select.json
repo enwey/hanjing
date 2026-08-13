@@ -1,8 +1,0 @@
-{
-  "navigationBarTitleText": "选择时段",
-  "navigationStyle": "custom",
-  "usingComponents": {
-    "hj-navbar": "../../components/base/hj-navbar/index",
-    "hj-schedule-calendar": "../../components/business/hj-schedule-calendar/index"
-  }
-}

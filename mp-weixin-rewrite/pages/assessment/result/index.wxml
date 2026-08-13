@@ -7,12 +7,12 @@
     <view wx:elif="{{hasLoaded && !resultDetail}}" class="empty-state data-v-1973d3c1">
       <view class="empty-icon-img data-v-1973d3c1" style="-webkit-mask-image: url(/static/icons/report.svg); mask-image: url(/static/icons/report.svg); background-color: #94a3b8;"></view>
       <text class="empty-title data-v-1973d3c1">暂无评估结果</text>
-      <text class="empty-desc data-v-1973d3c1">请先完成 ESS 嗜睡量表评估</text>
+      <text class="empty-desc data-v-1973d3c1">请先完成 ESS 睡眠自测</text>
       <view class="btn-retake data-v-1973d3c1" bindtap="restartAssessment">开始评估</view>
     </view>
     <block wx:else>
       <view class="score-card data-v-1973d3c1" style="background: {{levelInfo.color}}">
-        <text class="score-label data-v-1973d3c1">ESS 评分</text>
+        <text class="score-label data-v-1973d3c1">ESS 自测分数</text>
         <text class="score-value data-v-1973d3c1">{{score}}</text>
         <text class="score-unit data-v-1973d3c1">/ 24 分</text>
         <text class="score-level data-v-1973d3c1">{{levelInfo.level}}</text>
@@ -20,7 +20,7 @@
       <view class="result-card data-v-1973d3c1">
         <view class="result-title-container data-v-1973d3c1">
           <view class="title-icon data-v-1973d3c1" style="-webkit-mask-image: url(/static/icons/trend.svg); mask-image: url(/static/icons/trend.svg); background-color: #3b6bf5;"></view>
-          <text class="result-title data-v-1973d3c1">评分解读</text>
+          <text class="result-title data-v-1973d3c1">结果解读</text>
         </view>
         <text class="result-desc data-v-1973d3c1">{{levelInfo.desc}}</text>
       </view>
@@ -39,12 +39,11 @@
       <view class="advice-card data-v-1973d3c1" style="background: {{levelInfo.adviceBg}}; border-color: {{levelInfo.adviceBorder}}">
         <view class="advice-header-container data-v-1973d3c1">
           <view class="advice-icon-img data-v-1973d3c1" style="-webkit-mask-image: url({{levelInfo.adviceIcon}}); mask-image: url({{levelInfo.adviceIcon}}); background-color: {{levelInfo.adviceTitleColor}};"></view>
-          <text class="advice-title data-v-1973d3c1" style="color: {{levelInfo.adviceTitleColor}}">专业建议</text>
+          <text class="advice-title data-v-1973d3c1" style="color: {{levelInfo.adviceTitleColor}}">结果建议</text>
         </view>
         <text class="advice-text data-v-1973d3c1" style="color: {{levelInfo.adviceTextColor}}">{{levelInfo.advice}}</text>
       </view>
       <view class="action-buttons data-v-1973d3c1">
-        <view class="btn-primary data-v-1973d3c1" bindtap="goAppointment">预约到店服务</view>
         <view class="btn-secondary data-v-1973d3c1" bindtap="goHome">返回睡眠评估</view>
         <view class="btn-outline data-v-1973d3c1" bindtap="restartAssessment">重新评估</view>
       </view>

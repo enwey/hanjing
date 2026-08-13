@@ -1,45 +1,25 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/appointment/index",
     "pages/assessment/index",
     "pages/treatment/index",
     "pages/profile/index",
     "pages/auth/login",
     "pages/auth/agreement/index",
     "pages/auth/privacy/index",
-    "pages/appointment/store-select",
-    "pages/appointment/doctor-detail",
-    "pages/appointment/doctor-list",
-    "pages/appointment/time-select",
-    "pages/appointment/confirm",
-    "pages/appointment/success",
-    "pages/appointment/detail",
-    "pages/appointment/map",
-    "pages/appointment/reschedule",
     "pages/assessment/questionnaire/index",
     "pages/assessment/result/index",
     "pages/assessment/recording/index",
     "pages/assessment/snore-result/index",
     "pages/treatment/calendar/index",
     "pages/treatment/sleep-trend/index",
-    "pages/treatment/timeline/index",
-    "pages/treatment/doctor-advice/index",
-    "pages/treatment/adjust-detail/index",
     "pages/treatment/sleep-report/index",
-    "pages/profile/medical-records/index",
-    "pages/profile/device-manage/index",
-    "pages/profile/device-manage/wearing-data/index",
-    "pages/profile/device-manage/maintenance/index",
-    "pages/profile/device-manage/feedback/index",
     "pages/profile/family-members/index",
     "pages/profile/family-members/add-member/index",
-    "pages/profile/member-benefits/index",
     "pages/profile/settings/index",
     "pages/profile/settings/personal-info/index",
     "pages/profile/settings/account-security/index",
-    "pages/profile/notifications/index",
-    "pages/profile/online-service/index"
+    "pages/profile/notifications/index"
   ],
   "subpackages": [
     {
@@ -78,14 +58,14 @@
         "selectedIconPath": "static/icons/tab-home-active.png"
       },
       {
-        "pagePath": "pages/appointment/index",
-        "text": "到店",
+        "pagePath": "pages/assessment/index",
+        "text": "评估",
         "iconPath": "static/icons/tab-appointment.png",
         "selectedIconPath": "static/icons/tab-appointment-active.png"
       },
       {
         "pagePath": "pages/treatment/index",
-        "text": "追踪",
+        "text": "打卡",
         "iconPath": "static/icons/tab-treatment.png",
         "selectedIconPath": "static/icons/tab-treatment-active.png"
       },
@@ -97,15 +77,6 @@
       }
     ]
   },
-  "permission": {
-    "scope.userLocation": {
-      "desc": "用于查找离您最近的门店"
-    }
-  },
-  "requiredPrivateInfos": [
-    "getLocation",
-    "chooseAddress"
-  ],
   "navigateToMiniProgramAppIdList": [
     "wxdb9a5899edef2670",
     "wx92f72a912e753443"

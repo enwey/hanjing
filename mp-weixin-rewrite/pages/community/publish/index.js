@@ -1,28 +1,28 @@
 const api = require('../../../api/index');
 
 const CATEGORY_OPTIONS = [
-  '睡眠科普',
-  '健康知识',
-  '设备介绍',
-  '患者故事',
-  '阻鼾器配戴',
-  '科普问答',
+  '睡眠知识',
+  '经验分享',
+  '夜间记录',
+  '使用记录',
+  '交流问答',
+  '生活习惯',
 ];
 
 const TAG_OPTIONS = [
-  '适应期',
-  '经验分享',
-  'AHI改善',
-  '设备保养',
-  '情感支持',
+  '睡前习惯',
+  '作息调整',
+  '侧卧体验',
+  '夜间变化',
   '经验交流',
+  '日常记录',
 ];
 
 Page({
   data: {
     title: '',
     content: '',
-    selectedCategory: '睡眠科普',
+    selectedCategory: '睡眠知识',
     selectedTags: [],
     selectedTagMap: {},
     isSubmitting: false,
@@ -43,7 +43,7 @@ Page({
   },
 
   chooseCategory(event) {
-    this.setData({ selectedCategory: event.currentTarget.dataset.category || '睡眠科普' });
+    this.setData({ selectedCategory: event.currentTarget.dataset.category || '睡眠知识' });
   },
 
   handleTitleInput(event) {

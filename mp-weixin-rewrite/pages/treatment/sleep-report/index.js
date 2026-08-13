@@ -105,7 +105,7 @@ function buildReportViewModel(report, selectedRange, currentPatientLabel) {
     scoreBarColor: scoreMeta.barColor,
     scoreLevel: scoreMeta.level,
     rangeLabel: selectedRange === 'week' ? '过去7天' : '过去30天',
-    patientLabel: currentPatientLabel || '当前服务对象',
+    patientLabel: currentPatientLabel || '当前成员',
     weekAvgWidth: clampPercent(report.weekAvg, 8),
     complianceWidth: Math.max(0, Math.min(100, Math.round(Number(report.compliance || 0)))) + '%',
     avgComfortWidth: clampPercent(report.avgComfort, 5),
@@ -185,23 +185,23 @@ Page({
       return [];
     }
     if (!report.hasData) {
-      return [{ id: 'empty', type: 'info', text: '暂无真实佩戴记录。完成每日佩戴打卡后，这里会生成睡眠健康报告。' }];
+      return [{ id: 'empty', type: 'info', text: '暂无真实记录。完成每日打卡后，这里会生成睡眠记录报告。' }];
     }
     const insights = [];
     if (Number(report.compliance || 0) >= 85) {
-      insights.push({ id: 'compliance-good', type: 'good', title: '表现良好', text: '佩戴依从率较高，当前佩戴执行情况良好。' });
+      insights.push({ id: 'compliance-good', type: 'good', title: '表现良好', text: '记录连续性较好，当前使用节奏比较稳定。' });
     } else if (Number(report.compliance || 0) < 60) {
-      insights.push({ id: 'compliance-warn', type: 'warn', title: '需要关注', text: '佩戴依从率偏低，建议固定佩戴时间，提高连续使用天数。' });
+      insights.push({ id: 'compliance-warn', type: 'warn', title: '需要关注', text: '近期记录连续性偏低，建议固定使用时间，保持连续记录。' });
     }
     if (Number(report.weekAvg || 0) >= 7) {
-      insights.push({ id: 'duration-good', type: 'good', title: '表现良好', text: '平均佩戴时长已达到理想区间，可继续保持。' });
+      insights.push({ id: 'duration-good', type: 'good', title: '表现良好', text: '平均使用时长处于较稳定区间，可继续保持。' });
     } else if (Number(report.weekAvg || 0) < 5) {
-      insights.push({ id: 'duration-warn', type: 'warn', title: '需要关注', text: '平均佩戴时长偏低，建议逐步延长到每晚 6 到 8 小时。' });
+      insights.push({ id: 'duration-warn', type: 'warn', title: '需要关注', text: '平均使用时长偏低，建议结合自身情况逐步延长。' });
     }
     if (Number(report.avgComfort || 0) < 3) {
-      insights.push({ id: 'comfort-warn', type: 'warn', title: '需要关注', text: '舒适度偏低，建议联系顾问评估当前设备参数。' });
+      insights.push({ id: 'comfort-warn', type: 'warn', title: '需要关注', text: '舒适度偏低，建议调整使用方式并持续观察体验变化。' });
     }
-    insights.push({ id: 'tip', type: 'info', title: '建议提醒', text: '建议每周至少佩戴 6 晚，并持续观察趋势变化。' });
+    insights.push({ id: 'tip', type: 'info', title: '建议提醒', text: '建议持续记录并定期回看趋势变化。' });
     return insights;
   },
 
@@ -213,6 +213,6 @@ Page({
   },
 
   goAppointment() {
-    wx.switchTab({ url: '/pages/appointment/index' });
+    wx.switchTab({ url: '/pages/assessment/index' });
   },
 });

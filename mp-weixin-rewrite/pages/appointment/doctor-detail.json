@@ -1,7 +1,0 @@
-{
-  "navigationBarTitleText": "顾问详情",
-  "navigationStyle": "custom",
-  "usingComponents": {
-    "hj-navbar": "../../components/base/hj-navbar/index"
-  }
-}

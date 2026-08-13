@@ -10,6 +10,22 @@ function getCategoryClass(name) {
   return 'tag-theme--violet';
 }
 
+function getDisplayCategory(name) {
+  if (name === '阻鼾器配戴') return '使用记录';
+  if (name === '睡眠科普') return '睡眠知识';
+  if (name === '科普问答') return '交流问答';
+  if (name === '专家') return '精选内容';
+  if (name === 'OSAHS改善') return '睡眠变化';
+  if (name === 'AHI改善') return '夜间变化';
+  return name || '';
+}
+
+function getRoleLabel(role, roleLabel) {
+  if (role === 'doctor' || role === 'expert') return '内容作者';
+  if (roleLabel === '睡眠顾问' || roleLabel === '睡眠专家') return '内容作者';
+  return roleLabel || '鼾友';
+}
+
 function formatDateTime(value) {
   if (!value) return '';
   return formatChinaDateTime(value, false);
@@ -61,12 +77,12 @@ function normalizePostDetail(detail) {
     avatarText: (author || '友').slice(0, 1),
     avatarBg: getAvatarColor(author || '友'),
     role,
-    roleLabel: detail.roleLabel || (role === 'doctor' ? '睡眠顾问' : role === 'expert' ? '睡眠专家' : '鼾友'),
+    roleLabel: getRoleLabel(role, detail.roleLabel),
     roleClass: 'role--' + role,
     title: detail.title || '',
     content: detail.content || '',
     coverUrl: detail.coverUrl || '',
-    category: tags.category,
+    category: getDisplayCategory(tags.category),
     categoryClass: getCategoryClass(tags.category),
     labels: tags.labels,
     likes: Number(detail.likes || 0),
@@ -377,7 +393,7 @@ Page({
     const postDetail = this.data.postDetail;
     if (!postDetail) {
       return {
-        title: '医患社区',
+        title: '睡眠社区',
         path: '/pages/community/index',
       };
     }
@@ -388,7 +404,7 @@ Page({
       }),
     });
     return {
-      title: postDetail.title || postDetail.content || '医患社区',
+      title: postDetail.title || postDetail.content || '睡眠社区',
       path: '/pages/community/detail/index?id=' + postDetail.id,
     };
   },

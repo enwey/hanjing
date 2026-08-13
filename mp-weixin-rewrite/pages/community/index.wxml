@@ -1,10 +1,10 @@
 <view class="container community-page">
-  <hj-navbar title="医患社区" showBack="{{true}}" />
+  <hj-navbar title="睡眠社区" showBack="{{true}}" />
 
   <view class="community-content">
     <view class="publish-entry" bindtap="goPublishPost">
       <image class="publish-entry__icon" src="/static/icons/compose.svg" mode="aspectFit"></image>
-      <text class="publish-entry__placeholder">分享你的佩戴经验...</text>
+      <text class="publish-entry__placeholder">分享你的睡眠记录或心得...</text>
       <view class="publish-entry__button">发帖</view>
     </view>
 
@@ -56,9 +56,5 @@
         <text>暂无帖子，来发第一帖吧！</text>
       </view>
     </view>
-  </view>
-
-  <view class="publish-fab" bindtap="goPublishPost">
-    <image class="publish-fab__icon" src="/static/icons/compose-white.svg" mode="aspectFit"></image>
   </view>
 </view>

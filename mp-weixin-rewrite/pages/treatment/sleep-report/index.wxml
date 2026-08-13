@@ -5,7 +5,7 @@
       <view class="period-btn data-v-72813ef9 {{selectedRange === 'week' ? 'active' : ''}}" data-range="week" bindtap="selectDateRange">过去7天</view>
       <view class="period-btn data-v-72813ef9 {{selectedRange === 'month' ? 'active' : ''}}" data-range="month" bindtap="selectDateRange">过去30天</view>
     </view>
-    <view wx:if="{{loading}}" class="empty-card data-v-72813ef9"><text class="empty-desc data-v-72813ef9">正在生成睡眠健康报告...</text></view>
+    <view wx:if="{{loading}}" class="empty-card data-v-72813ef9"><text class="empty-desc data-v-72813ef9">正在生成睡眠记录报告...</text></view>
     <view wx:elif="{{loadError}}" class="empty-card data-v-72813ef9"><text class="empty-desc data-v-72813ef9">{{loadError}}</text></view>
     <block wx:elif="{{report && report.hasData}}">
       <view class="score-card data-v-72813ef9" style="background: {{report.scoreCardBg}}">
@@ -33,15 +33,15 @@
         </view>
         <view class="trend-labels data-v-72813ef9"><text wx:for="{{report.trend}}" wx:key="date" class="trend-label data-v-72813ef9">{{item.showLabel ? item.date : ''}}</text></view>
       </view>
-      <text class="section-title data-v-72813ef9">报告建议</text>
+      <text class="section-title data-v-72813ef9">记录建议</text>
       <view wx:for="{{insights}}" wx:key="id" class="peer-card data-v-72813ef9">
         <view class="peer-header data-v-72813ef9"><text class="peer-title data-v-72813ef9">{{item.title}}</text></view>
         <view class="peer-row data-v-72813ef9"><text class="peer-label data-v-72813ef9">{{item.text}}</text></view>
       </view>
     </block>
     <view wx:else class="empty-card data-v-72813ef9">
-      <text class="empty-title data-v-72813ef9">暂无睡眠报告</text>
-      <text class="empty-desc data-v-72813ef9">当前还没有可展示的睡眠报告数据。</text>
+      <text class="empty-title data-v-72813ef9">暂无睡眠记录报告</text>
+      <text class="empty-desc data-v-72813ef9">当前还没有可展示的睡眠记录数据。</text>
     </view>
     <view class="safe-bottom data-v-72813ef9"></view>
   </view>

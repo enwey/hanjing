@@ -1,6 +1,0 @@
-{
-  "navigationBarTitleText": "维护记录",
-  "usingComponents": {
-    "hj-navbar": "../../../../components/base/hj-navbar"
-  }
-}

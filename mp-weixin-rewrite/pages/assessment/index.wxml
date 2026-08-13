@@ -23,13 +23,13 @@
     <view class="hero-card data-v-35dabd14">
       <image class="hero-emoji data-v-35dabd14" src="/static/icons/assessment_purple.svg" />
       <text class="hero-title data-v-35dabd14">了解您的睡眠质量</text>
-      <text class="hero-desc data-v-35dabd14">通过专业的ESS嗜睡量表和AI鼾声分析，全面评估您的睡眠呼吸健康状况</text>
+      <text class="hero-desc data-v-35dabd14">通过睡眠自测问卷和鼾声分析，帮助您了解近期睡眠状态变化</text>
     </view>
     <view class="eval-card data-v-35dabd14" bindtap="startEssAssessment">
       <image class="eval-icon data-v-35dabd14" src="/static/icons/assessment.svg" />
       <view class="eval-info data-v-35dabd14">
         <text class="eval-title data-v-35dabd14">ESS嗜睡量表</text>
-        <text class="eval-desc data-v-35dabd14">8道情境题 · 约3分钟 · 国际通用标准</text>
+        <text class="eval-desc data-v-35dabd14">8道情境题 · 约3分钟 · 常见睡眠自测问卷</text>
       </view>
       <text class="eval-arrow data-v-35dabd14">›</text>
     </view>
@@ -40,7 +40,7 @@
           <text class="eval-title data-v-35dabd14">AI鼾声分析</text>
           <view class="new-tag data-v-35dabd14">新增上线</view>
         </view>
-        <text class="eval-desc data-v-35dabd14">录制鼾声 · AI分析 · 风险评级</text>
+        <text class="eval-desc data-v-35dabd14">录制鼾声 · AI分析 · 结果分级</text>
       </view>
       <text class="eval-arrow data-v-35dabd14">›</text>
     </view>

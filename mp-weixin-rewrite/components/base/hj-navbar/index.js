@@ -1,14 +1,13 @@
 const TABBAR_PAGES = [
   'pages/index/index',
-  'pages/appointment/index',
+  'pages/assessment/index',
   'pages/treatment/index',
   'pages/profile/index',
 ];
 
 const ROUTE_TITLES = {
-  'pages/profile/device-manage/index': '阻鼾器管理',
   'pages/profile/settings/index': '设置',
-  'pages/live/list/index': '直播中心',
+  'pages/live/list/index': '内容直播',
   'pages/live/playback/index': '直播详情',
 };
 

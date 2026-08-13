@@ -75,7 +75,7 @@ Page({
   getActionText(status) {
     if (status === 'live') return '进入微信直播间';
     if (status === 'replay') return '进入微信直播间看回放';
-    return '进入微信直播间预约';
+    return '进入微信直播间';
   },
 
   openWechatLiveRoom() {

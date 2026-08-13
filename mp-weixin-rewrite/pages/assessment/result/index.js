@@ -3,10 +3,10 @@ const api = require('../../../api/index');
 function getEssLevelInfo(score) {
   if (score <= 5) {
     return {
-      level: '正常（低嗜睡倾向）',
+      level: '状态平稳',
       color: 'linear-gradient(135deg, #10B981, #059669)',
-      desc: '您的日间嗜睡程度在正常范围内，白天精神状态良好。',
-      advice: '保持现有作息规律，定期关注睡眠质量变化。如仍存在打鼾问题，建议进行睡眠评估。',
+      desc: '从本次结果看，您近期白天状态相对平稳。',
+      advice: '保持现有作息规律，定期关注睡眠质量变化。如仍有困倦或打鼾感受，可过段时间再次自测。',
       adviceBg: '#f0fdf4',
       adviceBorder: '#bbf7d0',
       adviceTitleColor: '#166534',
@@ -18,7 +18,7 @@ function getEssLevelInfo(score) {
     return {
       level: '正常偏高',
       color: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
-      desc: '您的日间嗜睡程度略高于正常范围，可能存在轻度睡眠质量下降。',
+      desc: '从本次结果看，您近期白天状态略有波动。',
       advice: '注意保持规律作息，避免熬夜。建议使用 APP 内的 AI 鼾声分析功能，了解夜间睡眠状况。',
       adviceBg: '#eff6ff',
       adviceBorder: '#bfdbfe',
@@ -29,10 +29,10 @@ function getEssLevelInfo(score) {
   }
   if (score <= 12) {
     return {
-      level: '轻度嗜睡',
+      level: '轻度关注',
       color: 'linear-gradient(135deg, #F59E0B, #D97706)',
-      desc: '您存在轻度日间过度嗜睡，可能影响日常工作和生活质量。',
-      advice: '建议预约睡眠健康服务，进行进一步健康评估。及早关注有助于改善睡眠质量。',
+      desc: '从本次结果看，近期作息或休息质量可能对日间状态产生了一定影响。',
+      advice: '建议继续关注近期作息与睡眠状态，可结合鼾声分析与后续记录持续观察变化。',
       adviceBg: '#fffbeb',
       adviceBorder: '#fde68a',
       adviceTitleColor: '#92400e',
@@ -42,10 +42,10 @@ function getEssLevelInfo(score) {
   }
   if (score <= 15) {
     return {
-      level: '中度嗜睡',
+      level: '中度关注',
       color: 'linear-gradient(135deg, #F97316, #C2410C)',
-      desc: '您存在中度日间嗜睡，日常活动受到明显影响，需引起重视。',
-      advice: '建议尽快预约到店服务，结合睡眠监测结果进一步评估睡眠风险。',
+      desc: '从本次结果看，近期睡眠状态对日间精力影响较明显，建议持续观察。',
+      advice: '建议优先调整作息、减少熬夜，并持续记录睡眠表现，方便后续对比变化。',
       adviceBg: '#fff7ed',
       adviceBorder: '#ffedd5',
       adviceTitleColor: '#9a3412',
@@ -54,10 +54,10 @@ function getEssLevelInfo(score) {
     };
   }
   return {
-    level: '重度嗜睡',
+    level: '重点关注',
     color: 'linear-gradient(135deg, #EF4444, #B91C1C)',
-    desc: '您存在重度日间嗜睡，可能对健康和安全造成严重影响。',
-    advice: '建议尽快预约鼾静健康服务中心进行睡眠健康评估。建议避免长途驾驶，并关注睡眠监测结果。',
+    desc: '从本次结果看，近期白天困倦感较明显，建议重点关注作息与休息情况。',
+    advice: '建议重点关注白天精神状态与夜间睡眠表现，避免疲劳驾驶，并持续记录相关变化。',
     adviceBg: '#fef2f2',
     adviceBorder: '#fee2e2',
     adviceTitleColor: '#991b1b',
@@ -153,17 +153,8 @@ Page({
     this.handleBack();
   },
 
-  goAppointment() {
-    const result = this.data.resultDetail;
-    const score = Number((result && result.essScore) || 0);
-    if (result && result.id) {
-      wx.setStorageSync('pending_appointment_assessment', {
-        type: 'ess',
-        id: result.id,
-        label: 'ESS嗜睡量表 ' + score + '分',
-      });
-    }
-    wx.navigateTo({ url: '/pages/appointment/store-select' });
+  goSleepRecord() {
+    wx.switchTab({ url: '/pages/treatment/index' });
   },
 
   restartAssessment() {

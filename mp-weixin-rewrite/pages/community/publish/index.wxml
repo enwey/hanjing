@@ -11,12 +11,12 @@
 
     <view class="publish-field">
       <text class="publish-field__label">标题</text>
-      <input class="publish-field__input" placeholder="简洁描述你的问题或分享" maxlength="40" value="{{title}}" bindinput="handleTitleInput" />
+      <input class="publish-field__input" placeholder="简洁描述你的记录或分享" maxlength="40" value="{{title}}" bindinput="handleTitleInput" />
     </view>
 
     <view class="publish-field">
       <text class="publish-field__label">内容</text>
-      <textarea class="publish-field__textarea" placeholder="详细描述你的情况、问题或分享经验..." maxlength="1000" value="{{content}}" bindinput="handleContentInput"></textarea>
+      <textarea class="publish-field__textarea" placeholder="详细记录你的睡眠体验、作息变化或分享心得..." maxlength="1000" value="{{content}}" bindinput="handleContentInput"></textarea>
       <text class="publish-field__count">{{content.length}}/1000</text>
     </view>
 

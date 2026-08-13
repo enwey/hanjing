@@ -5,16 +5,9 @@ const { normalizeImageUrl } = require('../../common/utils/image-url');
 
 const MENU_GROUPS = [
   {
-    title: '我的健康',
+    title: '我的信息',
     items: [
-      { key: 'device', label: '阻鼾器管理', icon: '/static/icons/treatment_green.svg', url: '/pages/profile/device-manage/index' },
       { key: 'family', label: '家庭成员', icon: '/static/icons/community.svg', url: '/pages/profile/family-members/index' },
-    ],
-  },
-  {
-    title: '我的服务',
-    items: [
-      { key: 'benefits', label: '会员权益', icon: '/static/icons/fee.svg', url: '/pages/profile/member-benefits/index' },
     ],
   },
   {
@@ -38,22 +31,9 @@ function getAvatarColor(name) {
 
 function normalizeLevelLabel(level) {
   if (!level) {
-    return '普通会员';
+    return '已登录用户';
   }
-  if (level === 'gold') {
-    return '黄金会员';
-  }
-  if (level === 'diamond') {
-    return '钻石会员';
-  }
-  if (level === 'silver') {
-    return '白银会员';
-  }
-  return String(level);
-}
-
-function isPremiumServiceLevel(level) {
-  return level === 'gold' || level === 'diamond';
+  return '已登录用户';
 }
 
 function isPlaceholderNickname(nickname) {
@@ -139,7 +119,7 @@ Page({
         avatarText: '👤',
         avatarUrl: '',
         avatarBg: '#3b6bf5',
-        memberLevelLabel: isLoggedIn ? '会员信息加载中' : '未登录',
+        memberLevelLabel: isLoggedIn ? '账号信息加载中' : '未登录',
       });
     } else {
       this.setData({ isLoggedIn });
@@ -186,16 +166,6 @@ Page({
       const servicePayload =
         serviceUnreadResponse && serviceUnreadResponse.data ? serviceUnreadResponse.data : serviceUnreadResponse || {};
       const serviceUnreadCount = Number(servicePayload.unread || 0);
-      const currentLevel = memberInfo && (memberInfo.currentLevel || memberInfo.memberLevel || memberInfo.level || '');
-      const menuGroups = MENU_GROUPS.map((group) => ({
-        ...group,
-        items: group.items.map((item) => {
-          if (item.key !== 'service') return item;
-          return Object.assign({}, item, {
-            label: isPremiumServiceLevel(currentLevel) ? '专属客服' : '在线客服',
-          });
-        }),
-      }));
 
       this.setData({
         hasLoaded: true,
@@ -207,7 +177,7 @@ Page({
         memberLevelLabel: resolveMemberLevelLabel(profile, memberInfo, memberLevels),
         notificationsUnreadCount,
         serviceUnreadCount,
-        menuGroups,
+        menuGroups: MENU_GROUPS,
       });
     } catch (error) {
       if (!this.data.hasLoaded) {
@@ -217,7 +187,7 @@ Page({
           avatarText: '微',
           avatarUrl: '',
           avatarBg: getAvatarColor('微信用户'),
-          memberLevelLabel: '会员信息加载失败',
+          memberLevelLabel: '账号信息加载失败',
           notificationsUnreadCount: 0,
           serviceUnreadCount: 0,
         });
@@ -246,7 +216,7 @@ Page({
     if (!url) {
       return;
     }
-    if (!this.data.isLoggedIn && url !== '/pages/profile/online-service/index') {
+    if (!this.data.isLoggedIn) {
       navigation.openPage('/pages/auth/login');
       return;
     }
