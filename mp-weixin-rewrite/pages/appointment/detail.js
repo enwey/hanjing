@@ -8,7 +8,7 @@ const APPOINTMENT_STATUS_MAP = {
   pending: '已预约',
   confirmed: '候诊中',
   reminded: '候诊中',
-  checked_in: '就诊中',
+  checked_in: '服务中',
   completed: '已完成',
   arrived: '已到店',
   cancelled: '已取消',
@@ -17,7 +17,7 @@ const APPOINTMENT_STATUS_MAP = {
 
 const APPOINTMENT_TYPE_MAP = {
   first: '初诊',
-  followup: '复诊',
+  followup: '复查',
   adjust: '调整',
 };
 
@@ -114,7 +114,7 @@ Page({
     showLimitNotice: false,
     showRescheduleCancelFooter: false,
     showRebookFooter: false,
-    cancelLimitText: '就诊前2小时',
+    cancelLimitText: '到店前2小时',
     latitude: '',
     longitude: '',
     assessmentInfo: null,
@@ -162,7 +162,7 @@ Page({
       const store = detail.store || {};
       const doctor = detail.doctor || {};
       const bookingSettings = unwrapObject(bookingSettingsResponse) || {};
-      const cancelLimitText = bookingSettings.cancelLimit || '就诊前2小时';
+      const cancelLimitText = bookingSettings.cancelLimit || '到店前2小时';
       const cancelLimitHours = Number(bookingSettings.cancelLimitHours || bookingSettings.cancel_limit_hours || 2);
       const appointmentTimestamp = parseAppointmentTimestamp(appointment.appointmentDate, appointment.appointmentTime);
       const isFinishedStatus = ['arrived', 'cancelled', 'no_show', 'completed'].includes(appointment.status);
@@ -211,7 +211,7 @@ Page({
         storeAddress: store.address || '',
         storeCoverUrl: nextStoreCoverUrl,
         storeCoverLoaded: silent && nextStoreCoverUrl === this.data.storeCoverUrl ? this.data.storeCoverLoaded : false,
-        appointmentTypeLabel: APPOINTMENT_TYPE_MAP[String(appointment.type || '').trim()] || '门诊预约',
+        appointmentTypeLabel: APPOINTMENT_TYPE_MAP[String(appointment.type || '').trim()] || '到店预约',
         symptomDesc: appointment.symptomDesc || '',
         cancelReason: appointment.cancelReason || '',
         requireDeposit: Boolean(appointment.requireDeposit),

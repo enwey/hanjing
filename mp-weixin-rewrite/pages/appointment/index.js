@@ -84,7 +84,7 @@ Page({
     loadError: '',
     isLoggedIn: false,
     currentTab: 'upcoming',
-    bookingNotice: '选择门店、医生和时段，轻松完成预约',
+    bookingNotice: '选择门店、顾问和时段，轻松完成到店预约',
     cancelLimitHours: 2,
     upcomingAppointments: [],
     historyAppointments: [],
@@ -134,7 +134,7 @@ Page({
     const cancelLimitHours = Number(bookingSettings.cancelLimitHours || bookingSettings.cancel_limit_hours || 2);
 
     this.setData({
-      bookingNotice: bookingSettings.notice || bookingSettings.bookingNotice || '选择门店、医生和时段，轻松完成预约',
+      bookingNotice: bookingSettings.notice || bookingSettings.bookingNotice || '选择门店、顾问和时段，轻松完成到店预约',
       cancelLimitHours: cancelLimitHours > 0 ? cancelLimitHours : 2,
     });
 
@@ -269,7 +269,7 @@ Page({
       const hoursGap = (appointmentTimestamp - Date.now()) / (60 * 60 * 1000);
       if (hoursGap < this.data.cancelLimitHours) {
         wx.showToast({
-          title: '距离预约时间已不足' + this.data.cancelLimitHours + '小时，不支持修改就诊时间',
+          title: '距离预约时间已不足' + this.data.cancelLimitHours + '小时，不支持修改到店时间',
           icon: 'none',
         });
         return;

@@ -21,7 +21,7 @@
     <view class="apt-info-row">
       <view class="apt-label">
         <image class="apt-label-icon" src="/static/icons/profile_gray.svg" />
-        <text>就诊人</text>
+        <text>服务对象</text>
       </view>
       <text class="apt-value">{{patientName}}</text>
     </view>
@@ -29,7 +29,7 @@
     <view class="apt-info-row">
       <view class="apt-label">
         <image class="apt-label-icon" src="/static/icons/doctor.svg" />
-        <text>医生</text>
+        <text>顾问</text>
       </view>
       <text class="apt-value">{{resolvedDoctorName}}</text>
     </view>

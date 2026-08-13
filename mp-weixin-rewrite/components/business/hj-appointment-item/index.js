@@ -2,7 +2,7 @@ const STATUS_MAP = {
   pending_payment: { label: '待支付', tagType: 'warning' },
   pending: { label: '待确认', tagType: 'success' },
   confirmed: { label: '已确认', tagType: 'primary' },
-  reminded: { label: '待就诊', tagType: 'primary' },
+  reminded: { label: '待到店', tagType: 'primary' },
   checked_in: { label: '已签到', tagType: 'success' },
   completed: { label: '已完成', tagType: 'default' },
   cancelled: { label: '已取消', tagType: 'default' },
@@ -12,7 +12,7 @@ const STATUS_MAP = {
 
 const TYPE_MAP = {
   first: '初诊',
-  followup: '复诊',
+  followup: '复查',
   adjust: '调整',
 };
 
@@ -69,7 +69,7 @@ Component({
         patientName: record.patientName || record.patient_name || '--',
         appointmentDate: record.appointmentDate || record.appointment_date || '',
         appointmentTime: record.appointmentTime || record.appointment_time || '',
-        typeLabel: TYPE_MAP[String(record.type || '').trim()] || '门诊预约',
+        typeLabel: TYPE_MAP[String(record.type || '').trim()] || '到店预约',
         symptomDesc: record.symptomDesc || record.symptom_desc || '',
         statusLabel: statusInfo.label,
         statusTagType: statusInfo.tagType,

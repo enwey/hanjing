@@ -34,7 +34,7 @@ function deleteFamilyMember(memberId) {
 }
 
 function getMedicalRecords(query) {
-  return request({ url: '/user/medical-records', method: 'GET', data: query, failMessage: '加载病历档案失败' });
+  return request({ url: '/user/medical-records', method: 'GET', data: query, failMessage: '加载健康档案失败' });
 }
 
 function uploadFile(buffer, ext) {
@@ -70,7 +70,7 @@ function uploadLocalFile(filePath, ext) {
 }
 
 function addMedicalAttachment(recordId, url) {
-  return request({ url: '/user/medical-records/' + recordId + '/attachments', method: 'POST', data: { url }, failMessage: '添加病历附件失败' });
+  return request({ url: '/user/medical-records/' + recordId + '/attachments', method: 'POST', data: { url }, failMessage: '添加健康档案附件失败' });
 }
 
 function getMemberInfo() {

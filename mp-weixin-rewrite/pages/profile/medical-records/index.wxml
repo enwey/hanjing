@@ -1,11 +1,11 @@
 <view class="page">
-  <hj-navbar title="病历档案" show-back></hj-navbar>
+  <hj-navbar title="健康档案" show-back></hj-navbar>
 
   <view class="page-content">
     <picker wx:if="{{memberOptions.length > 1}}" mode="selector" range="{{memberOptions}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker">
       <view class="member-picker-content">
         <view class="member-info">
-          <text class="member-label">当前就诊人：</text>
+          <text class="member-label">当前服务对象：</text>
           <text class="member-value">{{memberOptions[memberIndex]}}</text>
         </view>
         <view class="member-action">
@@ -28,15 +28,15 @@
           <text class="record-date">{{item.visitDateText || item.visitDate}}</text>
         </view>
         <text class="record-patient">{{item.patientName}}</text>
-        <text class="record-doctor">{{item.doctorName}} 医生 | {{item.hospital}}</text>
+        <text class="record-doctor">{{item.doctorName}} 顾问 | {{item.hospital}}</text>
 
         <view class="record-section">
-          <text class="record-label">诊断</text>
+          <text class="record-label">评估</text>
           <text class="record-value">{{item.diagnosis}}</text>
         </view>
 
         <view wx:if="{{item.prescription}}" class="record-section">
-          <text class="record-label">处方/方案</text>
+          <text class="record-label">服务方案</text>
           <text class="record-value">{{item.prescription}}</text>
         </view>
 
@@ -46,7 +46,7 @@
       </view>
 
       <view wx:if="{{!records.length}}" class="empty-state">
-        <text class="empty-text">当前就诊人暂无病历档案</text>
+        <text class="empty-text">当前服务对象暂无健康档案</text>
       </view>
     </block>
 

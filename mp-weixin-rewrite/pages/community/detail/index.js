@@ -3,7 +3,7 @@ const { formatChinaDateTime } = require('../../../common/utils/date-time');
 
 function getCategoryClass(name) {
   if (['阻鼾器配戴', '睡眠科普', '科普问答', '专家'].includes(name)) return 'tag-theme--blue';
-  if (['打鼾治疗', '治疗分享', '经验交流'].includes(name)) return 'tag-theme--green';
+  if (['打鼾改善', '经验分享', '经验交流'].includes(name)) return 'tag-theme--green';
   if (['OSAHS改善', 'AHI改善'].includes(name)) return 'tag-theme--orange';
   if (['适应期', '设备保养'].includes(name)) return 'tag-theme--amber';
   if (['情感支持'].includes(name)) return 'tag-theme--pink';
@@ -61,7 +61,7 @@ function normalizePostDetail(detail) {
     avatarText: (author || '友').slice(0, 1),
     avatarBg: getAvatarColor(author || '友'),
     role,
-    roleLabel: detail.roleLabel || (role === 'doctor' ? '专家医生' : role === 'expert' ? '睡眠专家' : '鼾友'),
+    roleLabel: detail.roleLabel || (role === 'doctor' ? '睡眠顾问' : role === 'expert' ? '睡眠专家' : '鼾友'),
     roleClass: 'role--' + role,
     title: detail.title || '',
     content: detail.content || '',

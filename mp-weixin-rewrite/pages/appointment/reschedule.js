@@ -216,7 +216,7 @@ Page({
       this.data.selectedDate === this.originalDate &&
       String(this.data.selectedTimeSlotLabel).replace(/\s+/g, '') === String(this.originalTime).replace(/\s+/g, '')
     ) {
-      wx.showToast({ title: '不能选择相同的就诊时段', icon: 'none' });
+      wx.showToast({ title: '不能选择相同的到店时段', icon: 'none' });
       return;
     }
     this.setData({ submitting: true });

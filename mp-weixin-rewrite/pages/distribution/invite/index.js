@@ -81,7 +81,7 @@ function createPosterContextAdapter(context) {
 }
 
 Page({
-  data: { inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: '邀请好友体验鼾静健康诊所', qrUnavailableNotice: '', isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
+  data: { inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: '邀请好友体验鼾静健康', qrUnavailableNotice: '', isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
   async onShow() { await this.loadInviteInfo({ silent: this.data.hasLoaded }); },
   async loadInviteInfo(options = {}) {
     try {
@@ -278,7 +278,7 @@ Page({
     context.fill();
     context.setFillStyle('#cbd5e1');
     context.setFontSize(18);
-    context.fillText('推荐体验：专业睡眠评估、定制化治疗方案与健康服务', targetX + 46, targetY + 146);
+    context.fillText('推荐体验：睡眠评估、定制化佩戴方案与健康服务', targetX + 46, targetY + 146);
 
     const actionCardX = contentX;
     const actionCardY = targetY + targetHeight + 44;
@@ -526,7 +526,7 @@ Page({
   },
   onShareAppMessage() {
     return {
-      title: this.data.shareTitle || '邀请好友体验鼾静健康诊所',
+      title: this.data.shareTitle || '邀请好友体验鼾静健康',
       path: this.data.sharePath || '/pages/index/index',
       imageUrl: '/static/images/distribution-invite-share-cover.png',
     };

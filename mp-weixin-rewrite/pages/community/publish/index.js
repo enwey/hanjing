@@ -2,7 +2,7 @@ const api = require('../../../api/index');
 
 const CATEGORY_OPTIONS = [
   '睡眠科普',
-  '治疗知识',
+  '健康知识',
   '设备介绍',
   '患者故事',
   '阻鼾器配戴',
@@ -11,7 +11,7 @@ const CATEGORY_OPTIONS = [
 
 const TAG_OPTIONS = [
   '适应期',
-  '治疗分享',
+  '经验分享',
   'AHI改善',
   '设备保养',
   '情感支持',

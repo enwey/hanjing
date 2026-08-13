@@ -15,7 +15,7 @@ const MEMBER_DISCOUNT_RATE_MAP = {
 
 const DEFAULT_CATEGORY_TABS = [
   { key: 'all', label: '全部' },
-  { key: 'device', label: '医疗器械' },
+  { key: 'device', label: '健康用品' },
   { key: 'accessory', label: '配件耗材' },
   { key: 'service', label: '服务套餐' },
 ];

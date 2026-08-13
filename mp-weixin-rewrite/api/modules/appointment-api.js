@@ -29,7 +29,7 @@ function confirmAppointmentPayment(appointmentId) {
 }
 
 function submitAppointmentEvaluation(appointmentId, data) {
-  return request({ url: '/appointments/' + appointmentId + '/evaluation', method: 'POST', data, failMessage: '提交就诊评价失败' });
+  return request({ url: '/appointments/' + appointmentId + '/evaluation', method: 'POST', data, failMessage: '提交服务评价失败' });
 }
 
 function getBookingSettings() {

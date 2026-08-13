@@ -40,7 +40,7 @@ Page({
     consultFeeLabel: '¥0.00',
     requireDeposit: false,
     depositAmountLabel: '¥0.00',
-    cancelLimitText: '就诊前 2 小时',
+    cancelLimitText: '到店前 2 小时',
   },
 
   onLoad(options) {
@@ -101,7 +101,7 @@ Page({
         consultFeeLabel: toYuanLabel(appointment.consultFee || appointment.consult_fee || 0),
         requireDeposit: Boolean(appointment.requireDeposit || appointment.require_deposit),
         depositAmountLabel: toYuanLabel(appointment.depositAmount || appointment.deposit_amount || 0),
-        cancelLimitText: bookingSettings.cancelLimit || bookingSettings.cancelLimitText || '就诊前 2 小时',
+        cancelLimitText: bookingSettings.cancelLimit || bookingSettings.cancelLimitText || '到店前 2 小时',
       });
       this.hasLoaded = true;
     } catch (error) {

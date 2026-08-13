@@ -17,7 +17,7 @@ function resolveServiceIdentity(level) {
   }
   return {
     title: '在线客服',
-    subtitle: '如需预约、改约或咨询治疗问题，可直接留言',
+    subtitle: '如需预约、改约或咨询佩戴问题，可直接留言',
   };
 }
 
@@ -28,7 +28,7 @@ Page({
     inputText: '',
     scrollIntoView: '',
     serviceTitle: '在线客服',
-    serviceSubtitle: '如需预约、改约或咨询治疗问题，可直接留言',
+    serviceSubtitle: '如需预约、改约或咨询佩戴问题，可直接留言',
   },
 
   onShow() {

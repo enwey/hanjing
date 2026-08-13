@@ -80,13 +80,13 @@ Page({
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
-          loadError: (error && error.message) || '加载治疗时间线失败',
+          loadError: (error && error.message) || '加载服务时间线失败',
           timelineItems: [],
         });
         return;
       }
       this.setData({ loading: false });
-      wx.showToast({ title: (error && error.message) || '加载治疗时间线失败', icon: 'none' });
+      wx.showToast({ title: (error && error.message) || '加载服务时间线失败', icon: 'none' });
     }
   },
 

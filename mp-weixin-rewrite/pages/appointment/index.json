@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "预约挂号",
+  "navigationBarTitleText": "到店预约",
   "navigationStyle": "custom",
   "enablePullDownRefresh": true,
   "usingComponents": {

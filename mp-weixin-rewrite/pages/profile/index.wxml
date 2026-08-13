@@ -19,7 +19,7 @@
     <view wx:if="{{showProfileSetupCard}}" class="profile-setup-card">
       <view class="profile-setup-card__body">
         <text class="profile-setup-card__title">完善资料</text>
-        <text class="profile-setup-card__desc">完善资料，有助于客服和门诊更好地服务你。</text>
+        <text class="profile-setup-card__desc">完善资料，有助于客服和门店更好地服务你。</text>
       </view>
       <view class="profile-setup-card__action" bindtap="handleCompleteProfile">去完善</view>
     </view>

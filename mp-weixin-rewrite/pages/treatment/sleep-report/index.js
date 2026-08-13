@@ -105,7 +105,7 @@ function buildReportViewModel(report, selectedRange, currentPatientLabel) {
     scoreBarColor: scoreMeta.barColor,
     scoreLevel: scoreMeta.level,
     rangeLabel: selectedRange === 'week' ? '过去7天' : '过去30天',
-    patientLabel: currentPatientLabel || '当前治疗人',
+    patientLabel: currentPatientLabel || '当前服务对象',
     weekAvgWidth: clampPercent(report.weekAvg, 8),
     complianceWidth: Math.max(0, Math.min(100, Math.round(Number(report.compliance || 0)))) + '%',
     avgComfortWidth: clampPercent(report.avgComfort, 5),
@@ -189,7 +189,7 @@ Page({
     }
     const insights = [];
     if (Number(report.compliance || 0) >= 85) {
-      insights.push({ id: 'compliance-good', type: 'good', title: '表现良好', text: '佩戴依从率较高，当前治疗执行情况良好。' });
+      insights.push({ id: 'compliance-good', type: 'good', title: '表现良好', text: '佩戴依从率较高，当前佩戴执行情况良好。' });
     } else if (Number(report.compliance || 0) < 60) {
       insights.push({ id: 'compliance-warn', type: 'warn', title: '需要关注', text: '佩戴依从率偏低，建议固定佩戴时间，提高连续使用天数。' });
     }
@@ -199,7 +199,7 @@ Page({
       insights.push({ id: 'duration-warn', type: 'warn', title: '需要关注', text: '平均佩戴时长偏低，建议逐步延长到每晚 6 到 8 小时。' });
     }
     if (Number(report.avgComfort || 0) < 3) {
-      insights.push({ id: 'comfort-warn', type: 'warn', title: '需要关注', text: '舒适度偏低，建议预约医生评估当前设备参数。' });
+      insights.push({ id: 'comfort-warn', type: 'warn', title: '需要关注', text: '舒适度偏低，建议预约顾问评估当前设备参数。' });
     }
     insights.push({ id: 'tip', type: 'info', title: '建议提醒', text: '建议每周至少佩戴 6 晚，并持续观察趋势变化。' });
     return insights;

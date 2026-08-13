@@ -1,5 +1,5 @@
 <view class="page">
-  <hj-navbar title="预约挂号" />
+  <hj-navbar title="到店预约" />
 
   <view class="page-content">
     <view class="booking-banner">

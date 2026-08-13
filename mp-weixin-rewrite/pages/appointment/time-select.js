@@ -143,7 +143,7 @@ Page({
     if (!doctorId || !storeId) {
       this.setData({
         loading: false,
-        loadError: '缺少医生或门店信息，请重新选择预约门店和医生',
+        loadError: '缺少顾问或门店信息，请重新选择预约门店和顾问',
       });
       return;
     }
