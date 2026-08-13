@@ -68,30 +68,5 @@
       </view>
     </view>
 
-    <view class="doc-section doc-section--schedule">
-      <view class="doc-section-title">
-        <image class="doc-section-icon" src="/static/icons/calendar.svg" />
-        近期排班
-      </view>
-      <view class="doc-schedule">
-        <view wx:for="{{scheduleRows}}" wx:key="id" class="schedule-row">
-          <text class="date">{{item.dateLabel}}</text>
-          <text class="period">{{item.periodLabel}}</text>
-          <text class="status {{item.statusClass}}">{{item.statusLabel}}</text>
-        </view>
-        <view wx:if="{{!scheduleRows.length}}" class="schedule-empty">
-          <text>该顾问近期暂无排班计划</text>
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <view class="bottom-fixed-bar" wx:if="{{doctorLoaded}}">
-    <button
-      class="bar-primary-btn {{!hasFutureSchedules ? 'bar-primary-btn--disabled' : ''}}"
-      bindtap="openBooking"
-    >
-      {{hasFutureSchedules ? '立即预约' : '暂不接诊'}}
-    </button>
   </view>
 </view>

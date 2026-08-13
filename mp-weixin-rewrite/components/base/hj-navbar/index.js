@@ -2,22 +2,12 @@ const TABBAR_PAGES = [
   'pages/index/index',
   'pages/appointment/index',
   'pages/treatment/index',
-  'pages/product/index',
   'pages/profile/index',
 ];
 
 const ROUTE_TITLES = {
   'pages/profile/device-manage/index': '阻鼾器管理',
   'pages/profile/settings/index': '设置',
-  'pages/distribution/center/index': '分销中心',
-  'pages/distribution/commission/index': '佣金明细',
-  'pages/distribution/orders/index': '推广订单',
-  'pages/distribution/invite/index': '邀请好友',
-  'pages/distribution/products/index': '推广商品',
-  'pages/distribution/rules/index': '分销规则',
-  'pages/distribution/team/index': '团队成员',
-  'pages/distribution/withdraw-records/index': '提现记录',
-  'pages/distribution/withdraw/index': '提现申请',
   'pages/live/list/index': '直播中心',
   'pages/live/playback/index': '直播详情',
 };

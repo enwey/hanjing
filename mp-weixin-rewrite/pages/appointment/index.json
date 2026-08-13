@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "到店预约",
+  "navigationBarTitleText": "到店记录",
   "navigationStyle": "custom",
   "enablePullDownRefresh": true,
   "usingComponents": {

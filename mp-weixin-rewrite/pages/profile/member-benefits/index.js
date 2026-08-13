@@ -46,6 +46,16 @@ function formatPriceYuan(value) {
   return '¥' + (Number(value || 0) / 100).toFixed(0);
 }
 
+function normalizeBenefitContent(level, benefit) {
+  if (level === 'normal' && benefit && benefit.icon === 'appointment') {
+    return Object.assign({}, benefit, {
+      title: '免费测量',
+      desc: '到店免费测量身体情况',
+    });
+  }
+  return benefit;
+}
+
 Page({
   data: {
     loading: true,
@@ -104,19 +114,20 @@ Page({
         .filter((item, index) => index <= currentLevelIndex)
         .forEach((level) => {
           (Array.isArray(level.benefits) ? level.benefits : []).forEach((benefit) => {
+            const normalizedBenefit = normalizeBenefitContent(level.level, benefit);
             if (benefit.icon === 'channel') {
               return;
             }
-            const meta = BENEFIT_META[benefit.icon];
-            if (!meta || !benefit.title || !benefit.desc) {
+            const meta = BENEFIT_META[normalizedBenefit.icon];
+            if (!meta || !normalizedBenefit.title || !normalizedBenefit.desc) {
               return;
             }
-            mergedBenefits.set(benefit.icon, {
-              key: benefit.icon,
+            mergedBenefits.set(normalizedBenefit.icon, {
+              key: normalizedBenefit.icon,
               icon: meta.icon,
               iconBg: meta.iconBg,
-              title: benefit.title,
-              desc: benefit.desc,
+              title: normalizedBenefit.title,
+              desc: normalizedBenefit.desc,
             });
           });
         });

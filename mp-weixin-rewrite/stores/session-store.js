@@ -72,24 +72,6 @@ function readStoredAccessToken() {
   return token;
 }
 
-async function bindPendingInviteCode() {
-  const pendingInviteCode = wx.getStorageSync('pending_invite_code');
-  if (!pendingInviteCode) {
-    return;
-  }
-  try {
-    const response = await api.bindDistribution(pendingInviteCode);
-    const status = (response && response.data && response.data.status) || response.status || 'bound';
-    if (status === 'bound' || status === 'already_bound' || status === 'ignored_self') {
-      wx.removeStorageSync('pending_invite_code');
-    }
-  } catch (error) {
-    if (error && (error.message === '无效的邀请码' || error.message === '邀请码不能为空')) {
-      wx.removeStorageSync('pending_invite_code');
-    }
-  }
-}
-
 const sessionStore = {
   state: {
     accessToken: readStoredAccessToken(),
@@ -312,7 +294,6 @@ const sessionStore = {
         hasPhone: Boolean(payload.user && payload.user.phone),
       },
     });
-    await bindPendingInviteCode();
     return payload;
   },
   logout() {

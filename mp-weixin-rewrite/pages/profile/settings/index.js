@@ -41,7 +41,7 @@ Page({
         wx.removeStorageSync('selected_medical_record_patient_id');
         wx.showToast({ title: '已退出登录', icon: 'success' });
         setTimeout(() => {
-          wx.reLaunch({ url: '/pages/auth/login?redirect=' + encodeURIComponent('/pages/profile/index') });
+          wx.switchTab({ url: '/pages/profile/index' });
         }, 300);
       },
     });

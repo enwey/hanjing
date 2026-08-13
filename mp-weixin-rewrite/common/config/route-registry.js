@@ -16,10 +16,6 @@ const routeRegistry = [
     "title": "佩戴追踪"
   },
   {
-    "path": "pages/product/index",
-    "title": "健康商城"
-  },
-  {
     "path": "pages/profile/index",
     "title": "我的"
   },
@@ -112,10 +108,6 @@ const routeRegistry = [
     "title": "睡眠报告"
   },
   {
-    "path": "pages/product/detail",
-    "title": "商品详情"
-  },
-  {
     "path": "pages/profile/medical-records/index",
     "title": "健康档案"
   },
@@ -166,50 +158,6 @@ const routeRegistry = [
   {
     "path": "pages/profile/online-service/index",
     "title": "在线客服"
-  },
-  {
-    "path": "pages/order/index",
-    "title": "我的订单"
-  },
-  {
-    "path": "pages/order/detail",
-    "title": "订单详情"
-  },
-  {
-    "path": "pages/distribution/center/index",
-    "title": "分销中心"
-  },
-  {
-    "path": "pages/distribution/commission/index",
-    "title": "佣金明细"
-  },
-  {
-    "path": "pages/distribution/orders/index",
-    "title": "推广订单"
-  },
-  {
-    "path": "pages/distribution/withdraw/index",
-    "title": "提现申请"
-  },
-  {
-    "path": "pages/distribution/withdraw-records/index",
-    "title": "提现记录"
-  },
-  {
-    "path": "pages/distribution/team/index",
-    "title": "团队成员"
-  },
-  {
-    "path": "pages/distribution/invite/index",
-    "title": "邀请好友"
-  },
-  {
-    "path": "pages/distribution/products/index",
-    "title": "推广商品"
-  },
-  {
-    "path": "pages/distribution/rules/index",
-    "title": "分销规则"
   },
   {
     "path": "pages/live/list/index",

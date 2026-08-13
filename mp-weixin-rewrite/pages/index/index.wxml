@@ -19,18 +19,10 @@
           <text class="hero-stat-label">家门店</text>
         </view>
       </view>
-      <button class="hero-btn" bindtap="goStoreSelect">
-        <text class="hero-btn-text">预约到店服务</text>
-        <image class="hero-btn-arrow" src="/static/icons/arrow-right-blue.svg" mode="aspectFit" />
-      </button>
     </view>
   </view>
 
   <view class="section quick-actions">
-    <view class="quick-action" bindtap="navigateToApptTab">
-      <image class="quick-action-icon quick-action-icon--appointment" src="/static/icons/appointment_blue.svg" />
-      <text class="quick-action-text">到店预约</text>
-    </view>
     <view class="quick-action" bindtap="goAssessment">
       <image class="quick-action-icon quick-action-icon--assessment" src="/static/icons/assessment_purple.svg" />
       <text class="quick-action-text">睡眠评估</text>

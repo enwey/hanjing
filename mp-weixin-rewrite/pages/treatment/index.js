@@ -184,12 +184,45 @@ Page({
   onShow() {
     const token = wx.getStorageSync('access_token');
     if (!token) {
-      const app = getApp();
-      const lastRoute = app && app.globalData && app.globalData.lastRoute
-        ? `/${app.globalData.lastRoute}`
-        : '/pages/index/index';
-      wx.navigateTo({
-        url: `/pages/auth/login?redirect=${encodeURIComponent('/pages/treatment/index')}&back=${encodeURIComponent(lastRoute)}`,
+      this.wearingRecords = [];
+      this.members = [];
+      this.setData({
+        loading: false,
+        hasLoaded: true,
+        loadError: '',
+        memberNames: [],
+        memberOptions: [],
+        memberIndex: 0,
+        showMemberPicker: false,
+        hasTreatmentRecord: false,
+        hasRealTreatmentRecord: false,
+        heroBadgeText: '未登录',
+        heroDeviceText: '登录后查看佩戴与睡眠数据',
+        heroDoctorText: '登录后可查看顾问服务信息',
+        heroStartText: '服务开始时间：--',
+        treatmentStatusLabel: '未登录',
+        treatmentDeviceLabel: '登录后查看佩戴信息',
+        treatmentDoctorLabel: '登录后查看顾问信息',
+        treatmentStartLabel: '服务开始时间：--',
+        heroSubText: '可先浏览页面内容',
+        heroProgressText: '依从率 --',
+        progressWidth: '0%',
+        k: '0',
+        l: '0',
+        m: '0',
+        n: '0',
+        emptyTreatmentNotice: '当前可先浏览佩戴追踪页面说明。登录后即可查看个人佩戴记录、睡眠报告、健康建议与设备调整信息。',
+        recentDays: [],
+        summaryCards: [
+          { key: 'worn', label: '本周佩戴', value: '0/7' },
+          { key: 'avg', label: '平均时长', value: '0h' },
+          { key: 'comfort', label: '舒适度', value: '0/5' },
+          { key: 'streak', label: '连续天数', value: '0天' },
+        ],
+        showTimelineLink: false,
+        timelinePreview: [],
+        checkinVisible: false,
+        pageStyle: 'overflow: visible;',
       });
       return;
     }
@@ -358,6 +391,10 @@ Page({
   },
 
   openCheckinModal() {
+    if (!wx.getStorageSync('access_token')) {
+      navigation.openPage('/pages/auth/login');
+      return;
+    }
     const todayRecord = (this.wearingRecords || []).find((item) => item.date === getTodayText());
     this.setData({
       pageStyle: 'overflow: hidden; height: 100vh;',

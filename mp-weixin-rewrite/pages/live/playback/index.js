@@ -7,7 +7,6 @@ Page({
     hasLoaded: false,
     loadError: '',
     room: null,
-    products: [],
   },
 
   onLoad(options) {
@@ -30,7 +29,7 @@ Page({
       const response = await api.getLiveRoomDetail(roomId);
       const source = (response && response.data) || response || null;
       if (!source) {
-        this.setData({ loading: false, room: null, products: [] });
+        this.setData({ loading: false, room: null });
         return;
       }
       const room = {
@@ -48,26 +47,8 @@ Page({
         displayRoomId: source.wechatRoomId || '',
         wechatRoomId: source.wechatRoomId || '',
         replayUrl: source.replayUrl || '',
-        productIds: Array.isArray(source.productIds) ? source.productIds : [],
       };
-
-      let products = [];
-      if (room.productIds.length) {
-        const productsResponse = await api.getProducts();
-        const payload = (productsResponse && productsResponse.data) || productsResponse || {};
-        const allProducts = payload.list || payload.items || payload || [];
-        const productIdSet = room.productIds.map((item) => String(item));
-        products = allProducts
-          .filter((item) => productIdSet.includes(String(item.id)))
-          .map((item) => ({
-            id: String(item.id || ''),
-            name: item.name || '',
-            image: item.image || item.imageUrl || item.cover || '',
-            displayPrice: '¥' + (Number(item.price || 0) / 100).toFixed(2),
-          }));
-      }
-
-      this.setData({ hasLoaded: true, loading: false, room, products });
+      this.setData({ hasLoaded: true, loading: false, room });
     } catch (error) {
       if (!this.data.hasLoaded) {
         this.setData({
@@ -119,11 +100,5 @@ Page({
         wx.showToast({ title: '打开微信直播间失败', icon: 'none' });
       },
     });
-  },
-
-  openProductDetail(event) {
-    const productId = event.currentTarget.dataset.id;
-    if (!productId) return;
-    wx.navigateTo({ url: '/pages/product/detail?id=' + productId });
   },
 });

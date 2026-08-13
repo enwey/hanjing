@@ -199,7 +199,7 @@ Page({
       insights.push({ id: 'duration-warn', type: 'warn', title: '需要关注', text: '平均佩戴时长偏低，建议逐步延长到每晚 6 到 8 小时。' });
     }
     if (Number(report.avgComfort || 0) < 3) {
-      insights.push({ id: 'comfort-warn', type: 'warn', title: '需要关注', text: '舒适度偏低，建议预约顾问评估当前设备参数。' });
+      insights.push({ id: 'comfort-warn', type: 'warn', title: '需要关注', text: '舒适度偏低，建议联系顾问评估当前设备参数。' });
     }
     insights.push({ id: 'tip', type: 'info', title: '建议提醒', text: '建议每周至少佩戴 6 晚，并持续观察趋势变化。' });
     return insights;

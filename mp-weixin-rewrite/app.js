@@ -1,4 +1,3 @@
-const distributionApi = require('./api/index');
 const miniLog = require('./common/utils/mini-log');
 
 const originalPage = Page;
@@ -52,41 +51,6 @@ function clearLegacyObfuscatedAccessToken() {
   }
 }
 
-function parseInviteCodeFromLaunchOptions(options) {
-  if (!options || !options.query) return "";
-  const query = options.query;
-  let inviteCode = query.inviteCode || query.invite_code || '';
-  if (query.scene) {
-    const sceneText = decodeURIComponent(query.scene);
-    if (sceneText.indexOf("=") > -1) {
-      sceneText.split("&").forEach((entry) => {
-        const parts = entry.split("=");
-        const key = parts[0];
-        const value = parts.slice(1).join("=");
-        if (key === "inviteCode" || key === "invite_code" || key === "code") inviteCode = value;
-      });
-    } else { inviteCode = sceneText; }
-  }
-  return String(inviteCode || "").trim();
-}
-
-async function tryBindPendingInvite() {
-  const inviteCode = wx.getStorageSync("pending_invite_code");
-  const token = wx.getStorageSync("access_token");
-  if (!inviteCode || !token) return;
-  try {
-    const response = await distributionApi.bindDistribution(inviteCode);
-    const status = (response && response.data && response.data.status) || response.status || "bound";
-    if (status === "bound" || status === "already_bound" || status === "ignored_self") {
-      wx.removeStorageSync("pending_invite_code");
-    }
-  } catch (error) {
-    if (error && (error.message === "无效的邀请码" || error.message === "邀请码不能为空")) {
-      wx.removeStorageSync("pending_invite_code");
-    }
-  }
-}
-
 App({
   globalData: { appName: "鼾静健康", currentRoute: '', lastRoute: '' },
   onLaunch(options) {
@@ -100,9 +64,6 @@ App({
       },
     });
     clearLegacyObfuscatedAccessToken();
-    const inviteCode = parseInviteCodeFromLaunchOptions(options);
-    if (inviteCode) wx.setStorageSync("pending_invite_code", inviteCode);
-    tryBindPendingInvite();
     if (wx.onError) {
       wx.onError((error) => {
         console.error('[Global Error Catch]', error);
@@ -158,8 +119,5 @@ App({
       },
     });
     clearLegacyObfuscatedAccessToken();
-    const inviteCode = parseInviteCodeFromLaunchOptions(options);
-    if (inviteCode) wx.setStorageSync("pending_invite_code", inviteCode);
-    tryBindPendingInvite();
   },
 });

@@ -21,16 +21,4 @@
     <text class="info-desc data-v-e4fc628d">{{room.displayDescription}}</text>
     <button class="enter-btn data-v-e4fc628d" bindtap="openWechatLiveRoom">{{room.actionText}}</button>
   </view>
-  <view wx:if="{{products.length}}" class="section data-v-e4fc628d">
-    <text class="section-title data-v-e4fc628d">直播好物</text>
-    <view class="product-list data-v-e4fc628d">
-      <view wx:for="{{products}}" wx:key="id" class="product-item data-v-e4fc628d" data-id="{{item.id}}" bindtap="openProductDetail">
-        <image class="p-img data-v-e4fc628d" src="{{item.image || item.imageUrl}}" mode="aspectFill" />
-        <view class="p-info data-v-e4fc628d">
-          <text class="p-name data-v-e4fc628d">{{item.name}}</text>
-          <text class="p-price data-v-e4fc628d">{{item.displayPrice}}</text>
-        </view>
-      </view>
-    </view>
-  </view>
 </view>

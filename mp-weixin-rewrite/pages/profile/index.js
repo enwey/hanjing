@@ -7,7 +7,6 @@ const MENU_GROUPS = [
   {
     title: '我的健康',
     items: [
-      { key: 'records', label: '健康档案', icon: '/static/icons/profile_orange.svg', url: '/pages/profile/medical-records/index' },
       { key: 'device', label: '阻鼾器管理', icon: '/static/icons/treatment_green.svg', url: '/pages/profile/device-manage/index' },
       { key: 'family', label: '家庭成员', icon: '/static/icons/community.svg', url: '/pages/profile/family-members/index' },
     ],
@@ -16,14 +15,11 @@ const MENU_GROUPS = [
     title: '我的服务',
     items: [
       { key: 'benefits', label: '会员权益', icon: '/static/icons/fee.svg', url: '/pages/profile/member-benefits/index' },
-      { key: 'orders', label: '我的订单', icon: '/static/icons/report.svg', url: '/pages/order/index' },
-      { key: 'distribution', label: '分销中心', icon: '/static/icons/distribution.svg', url: '/pages/distribution/center/index' },
     ],
   },
   {
     title: '其他',
     items: [
-      { key: 'service', label: '在线客服', icon: '/static/icons/chat.svg', url: '/pages/profile/online-service/index' },
       { key: 'notifications', label: '消息通知', icon: '/static/icons/bell.svg', url: '/pages/profile/notifications/index' },
       { key: 'settings', label: '设置', icon: '/static/icons/settings-gear.svg', url: '/pages/profile/settings/index' },
     ],

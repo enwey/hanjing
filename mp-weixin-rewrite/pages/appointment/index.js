@@ -163,12 +163,12 @@ Page({
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
-          loadError: (error && error.message) || '加载预约失败',
+          loadError: (error && error.message) || '加载到店记录失败',
         });
       } else {
         this.setData({ loading: false });
       }
-      console.error('加载预约失败', error);
+      console.error('加载到店记录失败', error);
     }
   },
 

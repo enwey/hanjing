@@ -1,10 +1,7 @@
 <view class="page-container">
-  <hj-navbar title="{{copy.navTitle}}" hideBack="{{true}}" />
+  <hj-navbar title="{{copy.navTitle}}" />
   <view class="page-content login-page">
     <view class="brand-section">
-      <view class="logo-container">
-        <image class="logo-image" src="/static/images/brand-koala.png" mode="aspectFit" />
-      </view>
       <text class="brand-name">{{copy.brandName}}</text>
       <text class="brand-slogan">{{copy.brandSlogan}}</text>
     </view>
@@ -19,11 +16,19 @@
       </view>
 
       <button
+        wx:if="{{agreed}}"
         class="auth-btn"
         open-type="getPhoneNumber"
         bindtap="onLoginTap"
         bindgetphonenumber="onGetPhoneNumber"
         binderror="onLoginOpenTypeError"
+      >
+        {{copy.loginButton}}
+      </button>
+      <button
+        wx:else
+        class="auth-btn"
+        bindtap="onLoginTap"
       >
         {{copy.loginButton}}
       </button>
