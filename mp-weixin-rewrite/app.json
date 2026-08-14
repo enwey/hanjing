@@ -7,6 +7,7 @@
     "pages/auth/login",
     "pages/auth/agreement/index",
     "pages/auth/privacy/index",
+    "pages/article/detail/index",
     "pages/assessment/questionnaire/index",
     "pages/assessment/result/index",
     "pages/assessment/recording/index",
@@ -20,16 +21,6 @@
     "pages/profile/settings/personal-info/index",
     "pages/profile/settings/account-security/index",
     "pages/profile/notifications/index"
-  ],
-  "subpackages": [
-    {
-      "root": "pages/community",
-      "pages": [
-        "index",
-        "detail/index",
-        "publish/index"
-      ]
-    }
   ],
   "window": {
     "navigationBarTextStyle": "black",

@@ -4,7 +4,7 @@
     <view class="hero-navbar-spacer"></view>
     <view class="hero-content">
       <text class="hero-title">鼾静健康</text>
-      <text class="hero-subtitle">睡眠自测、记录整理与交流分享</text>
+      <text class="hero-subtitle">睡眠自测、打卡追踪与健康知识</text>
       <view class="hero-stats">
       <view class="hero-stat">
         <text class="hero-stat-num">{{patientCountLabel}}</text>
@@ -38,58 +38,35 @@
   </view>
 
   <view class="section">
-    <view class="community-tabs">
-      <view wx:for="{{tabs}}" wx:key="key" class="community-tab {{item.activeClass}}" data-tab-key="{{item.key}}" bindtap="handleTabTap">{{item.label}}</view>
+    <view class="section-header">
+      <text class="section-title">睡眠文章</text>
     </view>
-    <view wx:if="{{visiblePosts.length}}" class="post-list">
-      <view wx:for="{{visiblePosts}}" wx:key="id" class="post-card" data-post-id="{{item.id}}" bindtap="openFeaturedPost">
-        <view wx:if="{{item.isTop}}" class="post-top">
-          <image class="post-top__icon" src="/static/icons/pin.svg" mode="aspectFit"></image>
-          <text class="post-top__text">置顶</text>
-        </view>
-        <view class="post-header">
-          <view class="post-avatar">
-            <image class="post-avatar__placeholder" src="/static/images/brand-koala.png" mode="aspectFill"></image>
-            <image wx:if="{{item.avatar}}" class="post-avatar__image {{item.avatarLoaded ? 'post-avatar__image--loaded' : ''}}" src="{{item.avatar}}" mode="aspectFill" data-post-id="{{item.id}}" bindload="handleAvatarLoad" binderror="handleAvatarError"></image>
-          </view>
-          <view class="post-author">
-            <view class="post-author__row">
-              <text class="post-author__name">{{item.author}}</text>
-              <text class="post-author__role {{item.roleClass}}">{{item.roleLabel}}</text>
+    <view class="article-list">
+      <view wx:for="{{articleCards}}" wx:key="id" class="article-card" data-article-id="{{item.id}}" bindtap="openArticleDetail">
+        <view class="article-body">
+          <view class="article-meta-row">
+            <view class="article-icon article-icon--{{item.theme}}">
+              <image class="article-icon__image" src="{{item.icon}}" mode="aspectFit"></image>
             </view>
-            <text class="post-author__time">{{item.displayTime}}</text>
+            <text class="article-category">{{item.category}}</text>
+            <text class="article-dot">·</text>
+            <text class="article-source">{{item.source}}</text>
+            <block wx:if="{{item.timeText}}">
+              <text class="article-dot">·</text>
+              <text class="article-time">{{item.timeText}}</text>
+            </block>
+          </view>
+          <text class="article-title">{{item.title}}</text>
+          <text class="article-desc">{{item.summary}}</text>
+          <view class="article-tags">
+            <text wx:for="{{item.tags}}" wx:key="*this" class="article-tag">{{item}}</text>
           </view>
         </view>
-        <text wx:if="{{item.title}}" class="post-title">{{item.title}}</text>
-        <text class="post-content">{{item.content}}</text>
-        <view class="post-tags">
-          <text wx:if="{{item.category}}" class="post-category {{item.categoryClass}}">{{item.category}}</text>
-          <text wx:for="{{item.labels}}" wx:key="*this" class="post-tag">{{item}}</text>
-        </view>
-        <view class="post-actions">
-          <view class="post-action" catchtap="handleLikeTap" data-post-id="{{item.id}}">
-            <image class="post-action__icon {{item.likeClass}}" src="{{item.likeIcon}}" mode="aspectFit"></image>
-            <text class="post-action__count">{{item.likes}}</text>
-          </view>
-          <view class="post-action" catchtap="openFeaturedPost" data-post-id="{{item.id}}">
-            <image class="post-action__icon" src="/static/icons/chat.svg" mode="aspectFit"></image>
-            <text class="post-action__count">{{item.comments}}</text>
-          </view>
-          <view class="post-action">
-            <image class="post-action__icon" src="/static/icons/paper-plane.svg" mode="aspectFit"></image>
-            <text class="post-action__count">分享</text>
-          </view>
-        </view>
+        <view class="article-more-arrow"></view>
       </view>
-    </view>
-    <view wx:else class="state-card">
-      <text class="state-text">暂无社区内容</text>
     </view>
   </view>
 
   <view class="safe-bottom" />
-  <view class="publish-fab" bindtap="goPublishPost">
-    <image class="publish-fab__icon" src="/static/icons/compose-white.svg" mode="aspectFit"></image>
-  </view>
   <hj-privacy-popup id="privacyPopup" />
 </view>

@@ -2699,6 +2699,7 @@ app.get('/api/v1/community/posts', async (req, res) => {
       role: p.user_role,
       roleLabel: p.user_role === 'doctor' ? '专家医生' : p.user_role === 'expert' ? '睡眠专家' : '鼾友',
       title: p.title,
+      summary: p.summary || '',
       content: p.content,
       coverUrl: p.cover_url || '',
       tags: (() => {
@@ -2828,6 +2829,7 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
         role: post.user_role,
         roleLabel: post.user_role === 'doctor' ? '专家医生' : post.user_role === 'expert' ? '睡眠专家' : '鼾友',
         title: post.title,
+        summary: post.summary || '',
         content: post.content,
         coverUrl: post.cover_url || '',
         tags: (() => {

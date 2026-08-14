@@ -7,7 +7,7 @@ const MENU_GROUPS = [
   {
     title: '我的信息',
     items: [
-      { key: 'family', label: '家庭成员', icon: '/static/icons/community.svg', url: '/pages/profile/family-members/index' },
+      { key: 'family', label: '家庭成员', icon: '/static/icons/profile_gray.svg', url: '/pages/profile/family-members/index' },
     ],
   },
   {

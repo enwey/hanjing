@@ -28,6 +28,10 @@ const routeRegistry = [
     "title": "隐私政策"
   },
   {
+    "path": "pages/article/detail/index",
+    "title": "文章详情"
+  },
+  {
     "path": "pages/assessment/questionnaire/index",
     "title": "ESS嗜睡量表"
   },
@@ -78,18 +82,6 @@ const routeRegistry = [
   {
     "path": "pages/profile/notifications/index",
     "title": "消息通知"
-  },
-  {
-    "path": "pages/community/index",
-    "title": "睡眠社区"
-  },
-  {
-    "path": "pages/community/detail/index",
-    "title": "帖子详情"
-  },
-  {
-    "path": "pages/community/publish/index",
-    "title": "发帖"
   }
 ];
 

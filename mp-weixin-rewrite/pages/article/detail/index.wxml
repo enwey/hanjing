@@ -1,0 +1,34 @@
+<view class="page">
+  <hj-navbar title="文章详情" showBack="{{true}}" />
+
+  <view wx:if="{{loading}}" class="state-card">
+    <text class="state-title">正在加载文章...</text>
+  </view>
+
+  <view wx:elif="{{loadError}}" class="state-card">
+    <text class="state-title">加载失败</text>
+    <text class="state-desc">{{loadError}}</text>
+  </view>
+
+  <view wx:elif="{{article}}" class="article-detail">
+    <view class="article-meta-row">
+      <text class="article-category">{{article.category}}</text>
+      <text class="article-dot">·</text>
+      <text class="article-source">{{article.source}}</text>
+      <block wx:if="{{article.timeText}}">
+        <text class="article-dot">·</text>
+        <text class="article-time">{{article.timeText}}</text>
+      </block>
+    </view>
+
+    <text class="article-title">{{article.title}}</text>
+
+    <view wx:if="{{article.tags.length}}" class="article-tags">
+      <text wx:for="{{article.tags}}" wx:key="*this" class="article-tag">{{item}}</text>
+    </view>
+
+    <text class="article-content">{{article.content}}</text>
+  </view>
+
+  <view class="safe-bottom"></view>
+</view>

@@ -369,10 +369,6 @@
   background: #fef2f2;
   color: #ef4444;
 }
-.menu-icon--community.data-v-8badcb8c {
-  background: #ecfdf5;
-  color: #10b981;
-}
 .menu-title.data-v-8badcb8c {
   font-size: 15px;
   font-weight: 600;

@@ -5,7 +5,6 @@ const TYPE_LABELS = {
   appointment: 'A',
   treatment: 'T',
   order: 'O',
-  community: '社',
   system: 'S',
   promo: 'P',
 };
@@ -14,7 +13,6 @@ const TYPE_COLORS = {
   appointment: '#3B6BF5',
   treatment: '#1A9D5C',
   order: '#F59E0B',
-  community: '#3B6BF5',
   system: '#6B7280',
   promo: '#EF4444',
 };
