@@ -1,4 +1,5 @@
 .community-page { min-height: 100vh; background: #f3f4f6; display: flex; flex-direction: column; }
+.community-scroll { flex: 1; min-height: 0; }
 .community-content { flex: 1; padding: 20rpx 24rpx calc(120rpx + env(safe-area-inset-bottom, 34rpx)); }
 .publish-entry { display: flex; align-items: center; gap: 16rpx; background: #ffffff; border-radius: 24rpx; padding: 20rpx 24rpx; margin: 20rpx 0; }
 .publish-entry__icon { width: 32rpx; height: 32rpx; flex-shrink: 0; }

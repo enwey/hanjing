@@ -59,6 +59,10 @@
   display: flex;
   flex-direction: column;
 }
+.page-scroll.data-v-8badcb8c {
+  flex: 1;
+  min-height: 0;
+}
 .page-content.data-v-8badcb8c {
   flex: 1;
   padding: 16px 16px 0;
@@ -672,6 +676,7 @@
 }
 .safe-bottom.data-v-8badcb8c {
   height: calc(env(safe-area-inset-bottom, 34px) + 20px);
+  background: #f3f4f6;
 }
 .treatment-timeline.data-v-8badcb8c {
   background: #fff;

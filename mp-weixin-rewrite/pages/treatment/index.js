@@ -134,7 +134,7 @@ Page({
     isLoggedIn: false,
     loading: true,
     hasLoaded: false,
-    pageStyle: 'overflow: visible;',
+    pageStyle: 'overflow: visible; background-color: #f3f4f6;',
     loadError: '',
     entries: TREATMENT_ENTRIES,
     memberNames: [],
@@ -190,7 +190,7 @@ Page({
         loading: false,
         hasLoaded: false,
         checkinVisible: false,
-        pageStyle: 'overflow: visible;',
+        pageStyle: 'overflow: visible; background-color: #f3f4f6;',
       });
       return;
     }
@@ -200,13 +200,13 @@ Page({
 
   onHide() {
     if (this.data.checkinVisible || this.data.pageStyle !== 'overflow: visible;') {
-      this.setData({ checkinVisible: false, pageStyle: 'overflow: visible;' });
+      this.setData({ checkinVisible: false, pageStyle: 'overflow: visible; background-color: #f3f4f6;' });
     }
   },
 
   onUnload() {
-    if (this.data.checkinVisible || this.data.pageStyle !== 'overflow: visible;') {
-      this.setData({ checkinVisible: false, pageStyle: 'overflow: visible;' });
+    if (this.data.checkinVisible || this.data.pageStyle !== 'overflow: visible; background-color: #f3f4f6;') {
+      this.setData({ checkinVisible: false, pageStyle: 'overflow: visible; background-color: #f3f4f6;' });
     }
   },
 

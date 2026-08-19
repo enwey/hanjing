@@ -68,6 +68,25 @@ function getHotScore(post) {
   return (interactionScore + qualityBoost) / freshnessPenalty;
 }
 
+function cleanPreviewText(value) {
+  return String(value || '')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+}
+
+function buildPostPreview(post) {
+  const summary = cleanPreviewText(post.summary || post.description);
+  if (summary) return summary;
+  const rawContent = String(post.content || '').replace(/\r\n/g, '\n');
+  const paragraphList = rawContent
+    .split(/\n+/)
+    .map((item) => cleanPreviewText(item).replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const firstParagraph = paragraphList[0] || '';
+  if (firstParagraph.length <= 144) return firstParagraph;
+  return firstParagraph.slice(0, 144) + '...';
+}
+
 function normalizePost(post) {
   const tags = splitTags(post.tags);
   const role = post.role || 'patient';
@@ -87,7 +106,8 @@ function normalizePost(post) {
     createdAt: post.createdAt || '',
     displayTime: formatPublishTime(post.createdAt),
     title: post.title || '',
-    content: post.content || '',
+    summary: post.summary || '',
+    content: buildPostPreview(post),
     category: tags.category,
     categoryClass: getCategoryClass(tags.category),
     labels: tags.labels,

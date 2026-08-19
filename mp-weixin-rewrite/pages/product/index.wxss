@@ -21,49 +21,36 @@
 
 .category-tabs {
   display: flex;
-  height: 96rpx;
-  box-sizing: border-box;
   background: #ffffff;
   border-radius: 20rpx;
-  white-space: nowrap;
+  padding: 8rpx;
 }
 
 .category-tabs-placeholder {
-  height: 136rpx;
+  height: 104rpx;
 }
 
 .category-tab {
-  position: relative;
   flex: 1;
-  display: inline-flex;
-  flex-direction: column;
+  display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  padding: 16rpx 0;
+  border-radius: 16rpx;
 }
 
 .category-tab__text {
-  font-size: 30rpx;
-  line-height: 1;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.55);
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+.category-tab--active {
+  background: #3b6bf5;
 }
 
 .category-tab--active .category-tab__text {
-  color: #3b6bf5;
+  color: #ffffff;
   font-weight: 600;
-}
-
-.category-tab--active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 56rpx;
-  height: 6rpx;
-  border-radius: 6rpx;
-  background: #3b6bf5;
-  transform: translateX(-50%);
 }
 
 .waterfall-container {

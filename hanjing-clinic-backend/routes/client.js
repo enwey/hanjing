@@ -2808,6 +2808,7 @@ app.get('/api/v1/community/posts', async (req, res) => {
       role: p.user_role,
       roleLabel: p.user_role === 'doctor' ? '专家医生' : p.user_role === 'expert' ? '睡眠专家' : '鼾友',
       title: p.title,
+      summary: p.summary || '',
       content: p.content,
       coverUrl: p.cover_url || '',
       tags: (() => {
@@ -2999,6 +3000,19 @@ app.post('/api/v1/community/posts/:id/report', authenticateWxToken, async (req, 
 });
 
 // POST /api/v1/community/posts
+function buildCommunityPostSummary(content) {
+  const normalizedContent = String(content || '').replace(/\r\n/g, '\n').trim();
+  if (!normalizedContent) return '';
+
+  const paragraphList = normalizedContent
+    .split(/\n+/)
+    .map(item => item.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const firstParagraph = paragraphList[0] || '';
+  if (firstParagraph.length <= 144) return firstParagraph;
+  return firstParagraph.slice(0, 144) + '...';
+}
+
 app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
   const { title, content, tags } = req.body;
   if (!title || !content) {
@@ -3008,6 +3022,7 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
   const titleClean = escapeHtml(title);
   const contentClean = escapeHtml(content);
   const tagsClean = Array.isArray(tags) ? tags.map(t => typeof t === 'string' ? escapeHtml(t) : t) : [];
+  const summaryClean = buildCommunityPostSummary(contentClean);
 
   try {
     if (checkSensitiveWords(title) || checkSensitiveWords(content)) {
@@ -3022,9 +3037,9 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
     const status = 'approved';
 
     const result = await run(
-      `INSERT INTO community_posts (user_id, user_role, title, content, tags, likes_count, comments_count, is_top, status)
-       VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?)`,
-      [req.user.id, role, titleClean, contentClean, JSON.stringify(tagsClean), status]
+      `INSERT INTO community_posts (user_id, user_role, title, summary, content, tags, likes_count, comments_count, is_top, status)
+       VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, ?)`,
+      [req.user.id, role, titleClean, summaryClean, contentClean, JSON.stringify(tagsClean), status]
     );
 
     res.json({
@@ -3037,6 +3052,7 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
         role,
         roleLabel: role === 'doctor' ? '专家医生' : '鼾友',
         title: titleClean,
+        summary: summaryClean,
         content: contentClean,
         tags: tagsClean,
         likes: 0,

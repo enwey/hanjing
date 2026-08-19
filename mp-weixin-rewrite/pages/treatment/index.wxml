@@ -1,101 +1,103 @@
 <page-meta page-style="{{pageStyle}}"></page-meta>
 <view class="page data-v-8badcb8c">
   <hj-navbar title="治疗追踪" />
-  <view wx:if="{{!loading}}" class="page-content data-v-8badcb8c">
-    <block wx:if="{{!isLoggedIn}}">
-      <view class="guest-empty-wrap data-v-8badcb8c">
-      <view class="guest-empty-state data-v-8badcb8c">
-        <view class="guest-empty-icon-wrap data-v-8badcb8c">
-          <image class="guest-empty-icon data-v-8badcb8c" src="/static/icons/lock.svg" mode="aspectFit" />
-        </view>
-        <text class="guest-empty-title data-v-8badcb8c">请先登录</text>
-        <text class="guest-empty-desc data-v-8badcb8c">登录后可查看打卡记录、睡眠趋势和医生建议。</text>
-        <view class="guest-empty-action data-v-8badcb8c" bindtap="goLogin">去登录</view>
-      </view>
-      </view>
-    </block>
-
-    <block wx:else>
-    <picker wx:if="{{showMemberPicker}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="handleMemberChange" class="member-picker data-v-8badcb8c">
-      <view class="member-picker-content data-v-8badcb8c">
-        <view class="member-info data-v-8badcb8c">
-          <text class="member-label data-v-8badcb8c">当前治疗人：</text>
-          <text class="member-value data-v-8badcb8c">{{memberNames[memberIndex]}}</text>
-        </view>
-        <view class="member-action data-v-8badcb8c"><text class="member-action-text data-v-8badcb8c">切换</text><image class="member-action-arrow data-v-8badcb8c" src="/static/icons/chevron-right.svg" mode="aspectFit" /></view>
-      </view>
-    </picker>
-    <view class="hero-card data-v-8badcb8c">
-      <view class="hero-top data-v-8badcb8c">
-        <view class="hero-badge data-v-8badcb8c">{{heroBadgeText}}</view>
-        <text class="hero-sub data-v-8badcb8c">{{heroSubText}}</text>
-      </view>
-      <text class="hero-device data-v-8badcb8c">{{heroDeviceText}}</text>
-      <text class="hero-doctor data-v-8badcb8c">{{heroDoctorText}}</text>
-      <view class="hero-progress-wrap data-v-8badcb8c">
-        <view class="hero-progress-bar data-v-8badcb8c"><view class="hero-progress-fill data-v-8badcb8c" style="width: {{progressWidth}}"></view></view>
-        <text class="hero-progress-num data-v-8badcb8c">{{heroProgressText}}</text>
-      </view>
-      <text class="hero-start data-v-8badcb8c">{{heroStartText}}</text>
-    </view>
-    <view wx:if="{{!hasTreatmentRecord}}" class="treatment-empty-card data-v-8badcb8c">
-      <text class="treatment-empty-text data-v-8badcb8c">{{emptyTreatmentNotice}}</text>
-    </view>
-    <view class="section-header data-v-8badcb8c">
-      <text class="section-title data-v-8badcb8c">打卡日历</text>
-      <view class="section-link data-v-8badcb8c" bindtap="goCalendar"><text class="data-v-8badcb8c">完整日历</text><view class="more-arrow data-v-8badcb8c"></view></view>
-    </view>
-    <view class="calendar-strip data-v-8badcb8c">
-      <view wx:for="{{recentDays}}" wx:key="id" class="cal-day data-v-8badcb8c {{item.isToday ? 'cal-day--today' : ''}}">
-        <text class="cal-dow data-v-8badcb8c">{{item.weekLabel}}</text>
-        <view class="cal-bar data-v-8badcb8c" style="background: {{item.barColor}}" title="{{item.wearDurationLabel}}"></view>
-        <text class="cal-num data-v-8badcb8c">{{item.dayLabel}}</text>
-      </view>
-    </view>
-    <view class="calendar-legend data-v-8badcb8c">
-      <text class="legend-item legend-item--5 data-v-8badcb8c"><view class="legend-dot data-v-8badcb8c" style="background: #15803d" />极佳(5)</text>
-      <text class="legend-item legend-item--4 data-v-8badcb8c"><view class="legend-dot data-v-8badcb8c" style="background: #4ade80" />舒适(4)</text>
-      <text class="legend-item legend-item--3 data-v-8badcb8c"><view class="legend-dot data-v-8badcb8c" style="background: #06b6d4" />一般(3)</text>
-      <text class="legend-item legend-item--2 data-v-8badcb8c"><view class="legend-dot data-v-8badcb8c" style="background: #eab308" />较差(2)</text>
-      <text class="legend-item legend-item--1 data-v-8badcb8c"><view class="legend-dot data-v-8badcb8c" style="background: #ef4444" />难受(1)</text>
-    </view>
-    <view class="stats-row data-v-8badcb8c">
-      <view class="stat-card data-v-8badcb8c"><text class="stat-value data-v-8badcb8c">{{k}}/7</text><text class="stat-label data-v-8badcb8c">本周佩戴</text></view>
-      <view class="stat-card data-v-8badcb8c"><text class="stat-value data-v-8badcb8c">{{l}}h</text><text class="stat-label data-v-8badcb8c">平均时长</text></view>
-      <view class="stat-card data-v-8badcb8c"><text class="stat-value data-v-8badcb8c">{{m}}/5</text><text class="stat-label data-v-8badcb8c">舒适度</text></view>
-      <view class="stat-card data-v-8badcb8c"><text class="stat-value data-v-8badcb8c">{{n}}天</text><text class="stat-label data-v-8badcb8c">连续天数</text></view>
-    </view>
-    <view class="checkin-btn-wrap data-v-8badcb8c"><view class="checkin-btn data-v-8badcb8c" bindtap="openCheckinModal"><text class="checkin-btn-text data-v-8badcb8c">今日打卡</text><text class="checkin-btn-hint data-v-8badcb8c">记录佩戴时长和感受</text></view></view>
-    <view class="section-header data-v-8badcb8c" style="margin-top: 20px"><text class="section-title data-v-8badcb8c">更多功能</text></view>
-    <view class="menu-grid data-v-8badcb8c">
-      <view class="menu-item data-v-8badcb8c" bindtap="goSleepTrend"><image class="menu-icon menu-icon--trend data-v-8badcb8c" src="/static/icons/trend.svg" /><text class="menu-title data-v-8badcb8c">睡眠趋势</text><text class="menu-desc data-v-8badcb8c">佩戴与睡眠数据</text></view>
-      <view class="menu-item data-v-8badcb8c" bindtap="goSleepReport"><image class="menu-icon menu-icon--report data-v-8badcb8c" src="/static/icons/report.svg" /><text class="menu-title data-v-8badcb8c">睡眠报告</text><text class="menu-desc data-v-8badcb8c">AI智能分析与建议</text></view>
-      <view class="menu-item data-v-8badcb8c" bindtap="goTimeline"><image class="menu-icon menu-icon--timeline data-v-8badcb8c" src="/static/icons/timeline.svg" /><text class="menu-title data-v-8badcb8c">治疗时间线</text><text class="menu-desc data-v-8badcb8c">就诊全记录</text></view>
-      <view class="menu-item data-v-8badcb8c" bindtap="goDoctorAdvice"><image class="menu-icon menu-icon--advice data-v-8badcb8c" src="/static/icons/advice.svg" /><text class="menu-title data-v-8badcb8c">医嘱建议</text><text class="menu-desc data-v-8badcb8c">医生指导方案</text></view>
-      <view class="menu-item data-v-8badcb8c" bindtap="goAdjustDetail"><image class="menu-icon menu-icon--adjust data-v-8badcb8c" src="/static/icons/adjust.svg" /><text class="menu-title data-v-8badcb8c">设备调整</text><text class="menu-desc data-v-8badcb8c">参数与调整记录</text></view>
-      <view class="menu-item data-v-8badcb8c" bindtap="goCommunity"><image class="menu-icon menu-icon--community data-v-8badcb8c" src="/static/icons/community.svg" /><text class="menu-title data-v-8badcb8c">医患社区</text><text class="menu-desc data-v-8badcb8c">交流经验与心得</text></view>
-    </view>
-    <view class="section-header data-v-8badcb8c" style="margin-top: 20px">
-      <text class="section-title data-v-8badcb8c">治疗动态</text>
-      <view wx:if="{{showTimelineLink}}" class="section-link data-v-8badcb8c" bindtap="goTimeline"><text class="data-v-8badcb8c">全部</text><view class="more-arrow data-v-8badcb8c"></view></view>
-    </view>
-    <view class="timeline-preview data-v-8badcb8c">
-      <block wx:if="{{timelinePreview.length}}">
-        <view wx:for="{{timelinePreview}}" wx:key="id" class="tl-item data-v-8badcb8c {{!item.showLine ? 'tl-item--last' : ''}}">
-          <view class="tl-dot data-v-8badcb8c" style="background: {{item.dotColor}}"></view>
-          <view wx:if="{{item.showLine}}" class="tl-line data-v-8badcb8c"></view>
-          <view class="tl-content data-v-8badcb8c">
-            <text class="tl-date data-v-8badcb8c">{{item.dateLabel}}</text>
-            <text class="tl-title data-v-8badcb8c">{{item.title}}</text>
-            <text class="tl-desc data-v-8badcb8c">{{item.description}}</text>
+  <scroll-view wx:if="{{!loading}}" class="page-scroll data-v-8badcb8c" scroll-y enhanced show-scrollbar="false">
+    <view class="page-content data-v-8badcb8c">
+      <block wx:if="{{!isLoggedIn}}">
+        <view class="guest-empty-wrap data-v-8badcb8c">
+        <view class="guest-empty-state data-v-8badcb8c">
+          <view class="guest-empty-icon-wrap data-v-8badcb8c">
+            <image class="guest-empty-icon data-v-8badcb8c" src="/static/icons/lock.svg" mode="aspectFit" />
           </view>
+          <text class="guest-empty-title data-v-8badcb8c">请先登录</text>
+          <text class="guest-empty-desc data-v-8badcb8c">登录后可查看打卡记录、睡眠趋势和医生建议。</text>
+          <view class="guest-empty-action data-v-8badcb8c" bindtap="goLogin">去登录</view>
+        </view>
         </view>
       </block>
-      <view wx:else class="section-empty data-v-8badcb8c"><text class="section-empty-text data-v-8badcb8c">暂无治疗动态记录</text></view>
+
+      <block wx:else>
+      <picker wx:if="{{showMemberPicker}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="handleMemberChange" class="member-picker data-v-8badcb8c">
+        <view class="member-picker-content data-v-8badcb8c">
+          <view class="member-info data-v-8badcb8c">
+            <text class="member-label data-v-8badcb8c">当前治疗人：</text>
+            <text class="member-value data-v-8badcb8c">{{memberNames[memberIndex]}}</text>
+          </view>
+          <view class="member-action data-v-8badcb8c"><text class="member-action-text data-v-8badcb8c">切换</text><image class="member-action-arrow data-v-8badcb8c" src="/static/icons/chevron-right.svg" mode="aspectFit" /></view>
+        </view>
+      </picker>
+      <view class="hero-card data-v-8badcb8c">
+        <view class="hero-top data-v-8badcb8c">
+          <view class="hero-badge data-v-8badcb8c">{{heroBadgeText}}</view>
+          <text class="hero-sub data-v-8badcb8c">{{heroSubText}}</text>
+        </view>
+        <text class="hero-device data-v-8badcb8c">{{heroDeviceText}}</text>
+        <text class="hero-doctor data-v-8badcb8c">{{heroDoctorText}}</text>
+        <view class="hero-progress-wrap data-v-8badcb8c">
+          <view class="hero-progress-bar data-v-8badcb8c"><view class="hero-progress-fill data-v-8badcb8c" style="width: {{progressWidth}}"></view></view>
+          <text class="hero-progress-num data-v-8badcb8c">{{heroProgressText}}</text>
+        </view>
+        <text class="hero-start data-v-8badcb8c">{{heroStartText}}</text>
+      </view>
+      <view wx:if="{{!hasTreatmentRecord}}" class="treatment-empty-card data-v-8badcb8c">
+        <text class="treatment-empty-text data-v-8badcb8c">{{emptyTreatmentNotice}}</text>
+      </view>
+      <view class="section-header data-v-8badcb8c">
+        <text class="section-title data-v-8badcb8c">打卡日历</text>
+        <view class="section-link data-v-8badcb8c" bindtap="goCalendar"><text class="data-v-8badcb8c">完整日历</text><view class="more-arrow data-v-8badcb8c"></view></view>
+      </view>
+      <view class="calendar-strip data-v-8badcb8c">
+        <view wx:for="{{recentDays}}" wx:key="id" class="cal-day data-v-8badcb8c {{item.isToday ? 'cal-day--today' : ''}}">
+          <text class="cal-dow data-v-8badcb8c">{{item.weekLabel}}</text>
+          <view class="cal-bar data-v-8badcb8c" style="background: {{item.barColor}}" title="{{item.wearDurationLabel}}"></view>
+          <text class="cal-num data-v-8badcb8c">{{item.dayLabel}}</text>
+        </view>
+      </view>
+      <view class="calendar-legend data-v-8badcb8c">
+        <text class="legend-item legend-item--5 data-v-8badcb8c"><view class="legend-dot data-v-8badcb8c" style="background: #15803d" />极佳(5)</text>
+        <text class="legend-item legend-item--4 data-v-8badcb8c"><view class="legend-dot data-v-8badcb8c" style="background: #4ade80" />舒适(4)</text>
+        <text class="legend-item legend-item--3 data-v-8badcb8c"><view class="legend-dot data-v-8badcb8c" style="background: #06b6d4" />一般(3)</text>
+        <text class="legend-item legend-item--2 data-v-8badcb8c"><view class="legend-dot data-v-8badcb8c" style="background: #eab308" />较差(2)</text>
+        <text class="legend-item legend-item--1 data-v-8badcb8c"><view class="legend-dot data-v-8badcb8c" style="background: #ef4444" />难受(1)</text>
+      </view>
+      <view class="stats-row data-v-8badcb8c">
+        <view class="stat-card data-v-8badcb8c"><text class="stat-value data-v-8badcb8c">{{k}}/7</text><text class="stat-label data-v-8badcb8c">本周佩戴</text></view>
+        <view class="stat-card data-v-8badcb8c"><text class="stat-value data-v-8badcb8c">{{l}}h</text><text class="stat-label data-v-8badcb8c">平均时长</text></view>
+        <view class="stat-card data-v-8badcb8c"><text class="stat-value data-v-8badcb8c">{{m}}/5</text><text class="stat-label data-v-8badcb8c">舒适度</text></view>
+        <view class="stat-card data-v-8badcb8c"><text class="stat-value data-v-8badcb8c">{{n}}天</text><text class="stat-label data-v-8badcb8c">连续天数</text></view>
+      </view>
+      <view class="checkin-btn-wrap data-v-8badcb8c"><view class="checkin-btn data-v-8badcb8c" bindtap="openCheckinModal"><text class="checkin-btn-text data-v-8badcb8c">今日打卡</text><text class="checkin-btn-hint data-v-8badcb8c">记录佩戴时长和感受</text></view></view>
+      <view class="section-header data-v-8badcb8c" style="margin-top: 20px"><text class="section-title data-v-8badcb8c">更多功能</text></view>
+      <view class="menu-grid data-v-8badcb8c">
+        <view class="menu-item data-v-8badcb8c" bindtap="goSleepTrend"><image class="menu-icon menu-icon--trend data-v-8badcb8c" src="/static/icons/trend.svg" /><text class="menu-title data-v-8badcb8c">睡眠趋势</text><text class="menu-desc data-v-8badcb8c">佩戴与睡眠数据</text></view>
+        <view class="menu-item data-v-8badcb8c" bindtap="goSleepReport"><image class="menu-icon menu-icon--report data-v-8badcb8c" src="/static/icons/report.svg" /><text class="menu-title data-v-8badcb8c">睡眠报告</text><text class="menu-desc data-v-8badcb8c">AI智能分析与建议</text></view>
+        <view class="menu-item data-v-8badcb8c" bindtap="goTimeline"><image class="menu-icon menu-icon--timeline data-v-8badcb8c" src="/static/icons/timeline.svg" /><text class="menu-title data-v-8badcb8c">治疗时间线</text><text class="menu-desc data-v-8badcb8c">就诊全记录</text></view>
+        <view class="menu-item data-v-8badcb8c" bindtap="goDoctorAdvice"><image class="menu-icon menu-icon--advice data-v-8badcb8c" src="/static/icons/advice.svg" /><text class="menu-title data-v-8badcb8c">医嘱建议</text><text class="menu-desc data-v-8badcb8c">医生指导方案</text></view>
+        <view class="menu-item data-v-8badcb8c" bindtap="goAdjustDetail"><image class="menu-icon menu-icon--adjust data-v-8badcb8c" src="/static/icons/adjust.svg" /><text class="menu-title data-v-8badcb8c">设备调整</text><text class="menu-desc data-v-8badcb8c">参数与调整记录</text></view>
+        <view class="menu-item data-v-8badcb8c" bindtap="goCommunity"><image class="menu-icon menu-icon--community data-v-8badcb8c" src="/static/icons/community.svg" /><text class="menu-title data-v-8badcb8c">医患社区</text><text class="menu-desc data-v-8badcb8c">交流经验与心得</text></view>
+      </view>
+      <view class="section-header data-v-8badcb8c" style="margin-top: 20px">
+        <text class="section-title data-v-8badcb8c">治疗动态</text>
+        <view wx:if="{{showTimelineLink}}" class="section-link data-v-8badcb8c" bindtap="goTimeline"><text class="data-v-8badcb8c">全部</text><view class="more-arrow data-v-8badcb8c"></view></view>
+      </view>
+      <view class="timeline-preview data-v-8badcb8c">
+        <block wx:if="{{timelinePreview.length}}">
+          <view wx:for="{{timelinePreview}}" wx:key="id" class="tl-item data-v-8badcb8c {{!item.showLine ? 'tl-item--last' : ''}}">
+            <view class="tl-dot data-v-8badcb8c" style="background: {{item.dotColor}}"></view>
+            <view wx:if="{{item.showLine}}" class="tl-line data-v-8badcb8c"></view>
+            <view class="tl-content data-v-8badcb8c">
+              <text class="tl-date data-v-8badcb8c">{{item.dateLabel}}</text>
+              <text class="tl-title data-v-8badcb8c">{{item.title}}</text>
+              <text class="tl-desc data-v-8badcb8c">{{item.description}}</text>
+            </view>
+          </view>
+        </block>
+        <view wx:else class="section-empty data-v-8badcb8c"><text class="section-empty-text data-v-8badcb8c">暂无治疗动态记录</text></view>
+      </view>
+      <view class="safe-bottom data-v-8badcb8c"></view>
+      </block>
     </view>
-    <view class="safe-bottom data-v-8badcb8c"></view>
-    </block>
-  </view>
+  </scroll-view>
   <view wx:if="{{checkinVisible}}" class="checkin-overlay data-v-8badcb8c" bindtap="closeCheckinModal" catchtouchmove="noop">
     <view class="checkin-panel data-v-8badcb8c" catchtap="noop" catchtouchmove="noop">
       <scroll-view class="checkin-scroll data-v-8badcb8c" scroll-y="true" enhanced="true" show-scrollbar="false">
