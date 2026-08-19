@@ -6,50 +6,94 @@
       <view class="info-group data-v-ecc58349">
         <view class="info-row data-v-ecc58349" bindtap="openPhoneModal">
           <text class="info-label data-v-ecc58349">绑定手机</text>
-          <text class="info-val data-v-ecc58349" style="color: #3B6BF5;">{{info.phone}} ✎</text>
+          <view class="info-action data-v-ecc58349">
+            <text class="info-val data-v-ecc58349" style="color: #3B6BF5;">{{info.phone}}</text>
+            <image class="info-arrow data-v-ecc58349" src="/static/icons/chevron-right.svg" mode="aspectFit"></image>
+          </view>
         </view>
         <view class="info-row data-v-ecc58349">
           <text class="info-label data-v-ecc58349">登录密码</text>
-          <text class="info-val data-v-ecc58349">{{info.hasPassword ? '已设置' : '未设置'}}</text>
+          <view class="info-action data-v-ecc58349" bindtap="openPasswordModal">
+            <text class="info-val data-v-ecc58349" style="color: #3B6BF5;">{{info.hasPassword ? '已设置，点击修改' : '未设置，点击设置'}}</text>
+            <image class="info-arrow data-v-ecc58349" src="/static/icons/chevron-right.svg" mode="aspectFit"></image>
+          </view>
         </view>
         <view class="info-row data-v-ecc58349" bindtap="openRealnameModal">
           <text class="info-label data-v-ecc58349">实名认证</text>
-          <text class="info-val success data-v-ecc58349" style="color: #3B6BF5;">{{info.realNameVerified ? ('已认证（' + info.realName + '）') : '点击去认证'}} ✎</text>
+          <view class="info-action data-v-ecc58349">
+            <text class="info-val success data-v-ecc58349" style="color: #3B6BF5;">{{info.realNameVerified ? ('已认证（' + info.realName + '）') : '点击去认证'}}</text>
+            <image class="info-arrow data-v-ecc58349" src="/static/icons/chevron-right.svg" mode="aspectFit"></image>
+          </view>
         </view>
       </view>
     </block>
 
-    <view wx:if="{{showPhoneModal}}" class="modal-overlay data-v-ecc58349" bindtap="closePhoneModal" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:999; display:flex; align-items:center; justify-content:center;">
-      <view class="modal-card data-v-ecc58349" catchtap="noop" style="background:#fff; border-radius:16rpx; padding:40rpx; width:80%; box-sizing:border-box;">
-        <view class="modal-header data-v-ecc58349" style="font-size:32rpx; font-weight:bold; text-align:center; margin-bottom:30rpx; color:#1f2937;">更换绑定手机</view>
-        <view class="modal-body data-v-ecc58349" style="display:flex; flex-direction:column; gap:24rpx; margin-bottom:40rpx;">
+    <view wx:if="{{showPhoneModal}}" class="modal-overlay modal-overlay--sheet data-v-ecc58349" bindtap="closePhoneModal">
+      <view class="modal-card modal-card--sheet data-v-ecc58349" catchtap="noop">
+        <view class="modal-header modal-header--sheet data-v-ecc58349">
+          <text class="sheet-header-title data-v-ecc58349">更换绑定手机</text>
+          <text class="sheet-header-desc data-v-ecc58349">请使用微信手机号授权完成换绑，换绑后登录与通知将同步使用新手机号。</text>
+        </view>
+        <view class="modal-body modal-body--sheet data-v-ecc58349">
           <view class="modal-tip data-v-ecc58349">请通过手机号快捷验证完成重新绑定。</view>
         </view>
-        <view class="modal-actions data-v-ecc58349" style="display:flex; gap:20rpx;">
-          <button bindtap="closePhoneModal" style="flex:1; background:#f3f4f6; color:#4b5563; font-size:28rpx; border:none; border-radius:8rpx; height:80rpx; line-height:80rpx;">取消</button>
+        <view class="modal-actions modal-actions--sheet data-v-ecc58349">
+          <button class="modal-btn modal-btn--ghost data-v-ecc58349" bindtap="closePhoneModal">取消</button>
           <button
+            class="modal-btn modal-btn--primary data-v-ecc58349"
             open-type="getPhoneNumber"
             bindgetphonenumber="onChangePhoneByWechat"
-            style="flex:1; background:#3B6BF5; color:#fff; font-size:28rpx; border:none; border-radius:8rpx; height:80rpx; line-height:80rpx;"
           >手机号快捷换绑</button>
         </view>
       </view>
     </view>
 
-    <view wx:if="{{showRealnameModal}}" class="modal-overlay data-v-ecc58349" bindtap="closeRealnameModal" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:999; display:flex; align-items:center; justify-content:center;">
-      <view class="modal-card data-v-ecc58349" catchtap="noop" style="background:#fff; border-radius:16rpx; padding:40rpx; width:80%; box-sizing:border-box;">
-        <view class="modal-header data-v-ecc58349" style="font-size:32rpx; font-weight:bold; text-align:center; margin-bottom:30rpx; color:#1f2937;">实名认证</view>
-        <view class="modal-body data-v-ecc58349" style="display:flex; flex-direction:column; gap:24rpx; margin-bottom:40rpx;">
-          <view class="form-field data-v-ecc58349">
-            <input class="form-input data-v-ecc58349" placeholder="请输入真实姓名" value="{{inputRealName}}" bindinput="handleRealNameInput" />
+    <view wx:if="{{showRealnameModal}}" class="modal-overlay modal-overlay--sheet data-v-ecc58349" bindtap="closeRealnameModal">
+      <view class="modal-card modal-card--sheet data-v-ecc58349" catchtap="noop">
+        <view class="modal-header modal-header--sheet data-v-ecc58349">
+          <text class="sheet-header-title data-v-ecc58349">实名认证</text>
+          <text class="sheet-header-desc data-v-ecc58349">请填写真实姓名和身份证号，用于完善身份信息与就诊核验。</text>
+        </view>
+        <view class="modal-body modal-body--sheet data-v-ecc58349">
+          <view class="password-input-group data-v-ecc58349">
+            <text class="password-input-label data-v-ecc58349">真实姓名</text>
+            <input class="password-input data-v-ecc58349" placeholder="请输入真实姓名" value="{{inputRealName}}" bindinput="handleRealNameInput" />
           </view>
-          <view class="form-field data-v-ecc58349">
-            <input class="form-input data-v-ecc58349" placeholder="请输入18位身份证号" maxlength="18" value="{{inputIdCard}}" bindinput="handleIdCardInput" />
+          <view class="password-input-group data-v-ecc58349">
+            <text class="password-input-label data-v-ecc58349">身份证号</text>
+            <input class="password-input data-v-ecc58349" placeholder="请输入18位身份证号" maxlength="18" value="{{inputIdCard}}" bindinput="handleIdCardInput" />
           </view>
         </view>
-        <view class="modal-actions data-v-ecc58349" style="display:flex; gap:20rpx;">
-          <button bindtap="closeRealnameModal" style="flex:1; background:#f3f4f6; color:#4b5563; font-size:28rpx; border:none; border-radius:8rpx; height:80rpx; line-height:80rpx;">取消</button>
-          <button bindtap="onSubmitRealname" style="flex:1; background:#3B6BF5; color:#fff; font-size:28rpx; border:none; border-radius:8rpx; height:80rpx; line-height:80rpx;">立即认证</button>
+        <view class="modal-actions modal-actions--sheet data-v-ecc58349">
+          <button class="modal-btn modal-btn--ghost data-v-ecc58349" bindtap="closeRealnameModal">取消</button>
+          <button class="modal-btn modal-btn--primary data-v-ecc58349" bindtap="onSubmitRealname">立即认证</button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{showPasswordModal}}" class="modal-overlay modal-overlay--password data-v-ecc58349" bindtap="closePasswordModal">
+      <view class="modal-card modal-card--password data-v-ecc58349" catchtap="noop">
+        <view class="modal-header modal-header--password data-v-ecc58349">
+          <text class="password-header-title data-v-ecc58349">{{info.hasPassword ? '修改登录密码' : '设置登录密码'}}</text>
+          <text class="password-header-desc data-v-ecc58349">用于后续通过绑定手机号登录推广后台</text>
+        </view>
+        <view class="modal-body modal-body--password data-v-ecc58349">
+          <view wx:if="{{info.hasPassword}}" class="password-input-group data-v-ecc58349">
+            <text class="password-input-label data-v-ecc58349">当前密码</text>
+            <input class="password-input data-v-ecc58349" password placeholder="请输入当前密码" value="{{inputOldPassword}}" bindinput="handleOldPasswordInput" />
+          </view>
+          <view class="password-input-group data-v-ecc58349">
+            <text class="password-input-label data-v-ecc58349">新密码</text>
+            <input class="password-input data-v-ecc58349" password placeholder="请输入6-20位新密码（含字母和数字）" value="{{inputNewPassword}}" bindinput="handleNewPasswordInput" />
+          </view>
+          <view class="password-input-group data-v-ecc58349">
+            <text class="password-input-label data-v-ecc58349">确认新密码</text>
+            <input class="password-input data-v-ecc58349" password placeholder="请再次输入新密码" value="{{inputConfirmPassword}}" bindinput="handleConfirmPasswordInput" />
+          </view>
+        </view>
+        <view class="modal-actions modal-actions--password data-v-ecc58349">
+          <button class="modal-btn modal-btn--ghost data-v-ecc58349" bindtap="closePasswordModal">取消</button>
+          <button class="modal-btn modal-btn--primary data-v-ecc58349" bindtap="onSubmitPassword">{{info.hasPassword ? '确认修改' : '确认设置'}}</button>
         </view>
       </view>
     </view>

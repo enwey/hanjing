@@ -1,4 +1,5 @@
 const api = require('../../api/index');
+const sessionStore = require('../../stores/session-store');
 
 const CATEGORY_COLORS = {
   device: '#d9e6ff',
@@ -19,6 +20,21 @@ const DEFAULT_CATEGORY_TABS = [
   { key: 'accessory', label: '配件耗材' },
   { key: 'service', label: '服务套餐' },
 ];
+
+function getNavbarHeight() {
+  try {
+    const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    const statusBarHeight = windowInfo.statusBarHeight || 20;
+    const capsule = wx.getMenuButtonBoundingClientRect ? wx.getMenuButtonBoundingClientRect() : null;
+    if (capsule && capsule.top && capsule.height) {
+      const gap = capsule.top - statusBarHeight;
+      return statusBarHeight + gap * 2 + capsule.height;
+    }
+    return statusBarHeight + 44;
+  } catch (error) {
+    return 64;
+  }
+}
 
 function isNotFoundError(error) {
   return !!(error && (error.statusCode === 404 || (error.data && error.data.code === 404)));
@@ -114,13 +130,7 @@ Page({
 
   onLoad() {
     this.imageLoadFailedMap = {};
-    try {
-      const windowInfo = wx.getWindowInfo();
-      const statusBarHeight = windowInfo.statusBarHeight || 44;
-      this.setData({ navbarHeight: statusBarHeight + 44 });
-    } catch (error) {
-      console.error(error);
-    }
+    this.setData({ navbarHeight: getNavbarHeight() });
   },
 
   async loadProducts(options = {}) {
@@ -129,7 +139,7 @@ Page({
       this.setData({ loading: true });
     }
     try {
-      const hasToken = !!wx.getStorageSync('access_token');
+      const hasToken = sessionStore.isLoggedIn();
       let categoryList = [];
       try {
         const categoryResponse = await api.getProductCategories();

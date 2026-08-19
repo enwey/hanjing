@@ -1,5 +1,5 @@
 <view class="page-container">
-  <hj-navbar title="{{copy.navTitle}}" hideBack="{{true}}" />
+  <hj-navbar title="{{copy.navTitle}}" showBack="{{true}}" customBack="{{true}}" bind:back="handleBack" />
   <view class="page-content login-page">
     <view class="brand-section">
       <view class="logo-container">
@@ -18,7 +18,17 @@
         <text class="tip-content">{{copy.tipContent}}</text>
       </view>
 
+      <view wx:if="{{showEnvSwitcher}}" class="env-switcher-card" bindtap="handleApiEnvSwitch">
+        <view class="env-switcher-header">
+          <text class="env-switcher-title">{{copy.envSwitcherTitle}}</text>
+          <text class="env-switcher-action">点击切换</text>
+        </view>
+        <text class="env-switcher-current">{{currentApiEnvLabel}}</text>
+        <text class="env-switcher-url">{{currentApiBaseUrl}}</text>
+      </view>
+
       <button
+        wx:if="{{agreed}}"
         class="auth-btn"
         open-type="getPhoneNumber"
         bindtap="onLoginTap"
@@ -27,6 +37,16 @@
       >
         {{copy.loginButton}}
       </button>
+      <button
+        wx:else
+        class="auth-btn"
+        bindtap="onAgreementRequiredTap"
+      >
+        {{copy.loginButton}}
+      </button>
+      <view class="password-entry" bindtap="openPasswordLoginModal">
+        {{copy.passwordLoginEntry}}
+      </view>
     </view>
 
     <view class="protocol-section">
@@ -39,6 +59,34 @@
       <text class="protocol-link" bindtap="viewAgreement">{{copy.userAgreement}}</text>
       <text class="protocol-text">{{copy.andText}}</text>
       <text class="protocol-link" bindtap="viewPrivacy">{{copy.privacyPolicy}}</text>
+    </view>
+  </view>
+  <view wx:if="{{showPasswordLoginModal}}" class="password-modal-mask" catchtap="closePasswordLoginModal">
+    <view class="password-modal-card" catchtap="noop">
+      <view class="password-modal-header">
+        <text class="password-modal-title">{{copy.passwordLoginTitle}}</text>
+        <text class="password-modal-cancel" bindtap="closePasswordLoginModal">{{copy.passwordLoginCancel}}</text>
+      </view>
+      <input
+        class="password-login-input"
+        type="number"
+        maxlength="11"
+        placeholder="{{copy.phonePlaceholder}}"
+        value="{{phone}}"
+        bindinput="handlePhoneInput"
+      />
+      <input
+        class="password-login-input"
+        password="{{true}}"
+        maxlength="20"
+        placeholder="{{copy.passwordPlaceholder}}"
+        value="{{password}}"
+        bindinput="handlePasswordInput"
+      />
+      <text class="password-login-hint">{{copy.passwordLoginHint}}</text>
+      <button class="auth-btn password-modal-btn" bindtap="onPasswordLoginTap">
+        {{copy.passwordLoginButton}}
+      </button>
     </view>
   </view>
   <hj-privacy-popup id="privacyPopup" />

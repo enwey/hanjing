@@ -1,7 +1,7 @@
-const { apiBaseUrl } = require('../../api/request');
+const requestModule = require('../../api/request');
 
 function getApiOrigin() {
-  return String(apiBaseUrl || '').replace(/\/api\/v1\/?$/, '');
+  return String(requestModule.apiBaseUrl || '').replace(/\/api\/v1\/?$/, '');
 }
 
 function normalizeImageUrl(value) {

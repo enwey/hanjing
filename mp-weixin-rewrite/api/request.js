@@ -1,9 +1,9 @@
-const { apiBaseUrl, apiBaseUrls } = require('../common/config/env');
+const envConfig = require('../common/config/env');
 const miniLog = require('../common/utils/mini-log');
 
 let isRefreshing = false;
 let requestQueue = [];
-let resolvedApiBaseUrl = apiBaseUrl;
+let resolvedApiBaseUrl = envConfig.getApiBaseUrl();
 
 function createRequestError(message, statusCode, data) {
   const error = new Error(message || '请求失败，请稍后重试');
@@ -28,7 +28,8 @@ function normalizeAccessToken(token) {
 }
 
 function getRequestBaseUrls() {
-  const candidates = Array.isArray(apiBaseUrls) && apiBaseUrls.length ? apiBaseUrls : [apiBaseUrl];
+  const baseUrls = envConfig.getApiBaseUrls();
+  const candidates = Array.isArray(baseUrls) && baseUrls.length ? baseUrls : [envConfig.getApiBaseUrl()];
   if (!resolvedApiBaseUrl) {
     return candidates;
   }
@@ -142,13 +143,32 @@ function executeWxRequest(options, token) {
   });
 }
 
+function getSessionStore() {
+  try {
+    return require('../stores/session-store');
+  } catch (error) {
+    return null;
+  }
+}
+
 function syncSessionStoreAccessToken(accessToken) {
   try {
-    const sessionStore = require('../stores/session-store');
+    const sessionStore = getSessionStore();
     if (sessionStore && sessionStore.state) {
       sessionStore.state.accessToken = accessToken || '';
     }
   } catch (error) {}
+}
+
+function getCurrentAuthMode() {
+  try {
+    const sessionStore = getSessionStore();
+    return sessionStore && typeof sessionStore.getAuthMode === 'function'
+      ? sessionStore.getAuthMode()
+      : '';
+  } catch (error) {
+    return '';
+  }
 }
 
 function extractRefreshPayload(responseData) {
@@ -192,6 +212,10 @@ function refreshAccessToken() {
           }
           wx.setStorageSync('access_token', payload.access_token);
           syncSessionStoreAccessToken(payload.access_token);
+          const sessionStore = getSessionStore();
+          if (sessionStore && typeof sessionStore.setAuthMode === 'function') {
+            sessionStore.setAuthMode('wechat');
+          }
           resolve(payload.access_token);
         }).catch((error) => {
           reject(createRequestError((error && error.message) || '登录授权失败'));
@@ -238,7 +262,25 @@ function request(options) {
           return;
         }
 
-        if (response.statusCode === 401 && options.url !== '/auth/wx-login') {
+        if (response.statusCode === 401 && options.url !== '/auth/wx-login' && options.url !== '/auth/password-login') {
+          const authMode = getCurrentAuthMode();
+          const sessionStore = getSessionStore();
+
+          if (authMode !== 'wechat') {
+            if (sessionStore && typeof sessionStore.clearLoginState === 'function') {
+              sessionStore.clearLoginState();
+            } else {
+              wx.removeStorageSync('access_token');
+              syncSessionStoreAccessToken('');
+            }
+            reject(createRequestError(
+              (response.data && response.data.message) || options.failMessage || '登录已失效，请重新登录',
+              response.statusCode,
+              response.data,
+            ));
+            return;
+          }
+
           wx.removeStorageSync('access_token');
           syncSessionStoreAccessToken('');
 
@@ -280,7 +322,9 @@ function request(options) {
 }
 
 module.exports = {
-  apiBaseUrl,
+  get apiBaseUrl() {
+    return resolvedApiBaseUrl || envConfig.getApiBaseUrl();
+  },
   request,
   createRequestError,
 };

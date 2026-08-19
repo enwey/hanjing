@@ -19,7 +19,9 @@ import {
   getShanghaiNow,
   formatShanghaiDate,
   formatShanghaiDateTime,
-  addShanghaiDays
+  addShanghaiDays,
+  hashPassword,
+  verifyPassword
 } from '../helpers.js';
 import { getAllSubscribeTemplateIds, getSubscribeTemplateMap, sendWechatSubscribeMessage } from '../wechatSubscribe.js';
 import {
@@ -1473,6 +1475,40 @@ async function getDistributionSummary(userId, req = null) {
   };
 }
 
+async function buildMiniProgramLoginPayload(user) {
+  const distributor = await get(
+    `SELECT d.id
+     FROM distributors d
+     WHERE d.user_id = ?
+       AND d.status = 'active'
+       AND EXISTS (
+         SELECT 1 FROM distribution_relationships r
+         WHERE r.parent_user_id = d.user_id AND r.level = 1
+       )`,
+    [user.id]
+  );
+
+  const token = jwt.sign(
+    { id: user.id, openid: user.openid || '' },
+    JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+
+  return {
+    access_token: token,
+    refresh_token: `refresh_${crypto.randomBytes(8).toString('hex')}`,
+    user: {
+      id: user.id.toString(),
+      nickname: user.nickname,
+      avatar: user.avatar_url || '',
+      phone: decryptPII(user.phone) || '',
+      memberLevel: user.member_level,
+      isDistributor: Boolean(distributor)
+    },
+    expires_in: 2592000
+  };
+}
+
 async function createPendingDistributionCommission(conn, order, userId) {
   const relationships = await query(
     `SELECT parent_user_id, level FROM distribution_relationships WHERE child_user_id = ? ORDER BY level ASC`,
@@ -1692,38 +1728,12 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
 
     user = await get(`SELECT * FROM users WHERE id = ?`, [user.id]);
 
-    const token = jwt.sign(
-      { id: user.id, openid: user.openid },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const payload = await buildMiniProgramLoginPayload(user);
 
     res.json({
       code: 0,
       message: 'success',
-      data: {
-        access_token: token,
-        refresh_token: `refresh_${crypto.randomBytes(8).toString('hex')}`,
-        user: {
-          id: user.id.toString(),
-          nickname: user.nickname,
-          avatar: user.avatar_url || '',
-          phone: decryptPII(user.phone) || '',
-          memberLevel: user.member_level,
-          isDistributor: !!(await get(
-            `SELECT d.id
-             FROM distributors d
-             WHERE d.user_id = ?
-               AND d.status = 'active'
-               AND EXISTS (
-                 SELECT 1 FROM distribution_relationships r
-                 WHERE r.parent_user_id = d.user_id AND r.level = 1
-               )`,
-            [user.id]
-          ))
-        },
-        expires_in: 2592000
-      }
+      data: payload
     });
   } catch (error) {
     console.error('wx-login error:', error);
@@ -1754,6 +1764,56 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
       detail: error.message || '',
       wechatError: error.data || null
     });
+  }
+});
+
+app.post('/api/v1/auth/password-login', async (req, res) => {
+  const phone = String(req.body.phone || '').trim();
+  const password = String(req.body.password || '');
+
+  if (!/^1\d{10}$/.test(phone)) {
+    return res.status(400).json({ code: 400, message: '请输入正确的11位手机号码' });
+  }
+
+  if (!password) {
+    return res.status(400).json({ code: 400, message: '请输入登录密码' });
+  }
+
+  try {
+    const encryptedPhone = encryptPII(phone);
+    const user = await get(
+      `SELECT *
+       FROM users
+       WHERE phone = ? OR phone = ?
+       ORDER BY CASE WHEN password_hash IS NULL OR password_hash = '' THEN 1 ELSE 0 END ASC,
+                updated_at DESC,
+                id DESC
+       LIMIT 1`,
+      [encryptedPhone, phone]
+    );
+
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '该手机号暂未注册，请先使用手机号快捷登录' });
+    }
+
+    if (!user.password_hash) {
+      return res.status(400).json({ code: 400, message: '该账号暂未设置登录密码，请先在账号安全中设置密码' });
+    }
+
+    if (!verifyPassword(password, user.password_hash)) {
+      return res.status(400).json({ code: 400, message: '手机号或密码不正确' });
+    }
+
+    const payload = await buildMiniProgramLoginPayload(user);
+
+    res.json({
+      code: 0,
+      message: 'success',
+      data: payload
+    });
+  } catch (error) {
+    console.error('password-login error:', error);
+    res.status(500).json({ code: 500, message: '密码登录失败' });
   }
 });
 
@@ -1959,7 +2019,7 @@ app.get('/api/v1/user/account-security', authenticateWxToken, async (req, res) =
       message: 'success',
       data: {
         phone: phoneMasked,
-        hasPassword: false,
+        hasPassword: Boolean(user.password_hash),
         lastLogin: user.updated_at || user.created_at || new Date().toISOString(),
         loginDevice: '微信小程序 (WeChat Miniprogram)',
         realNameVerified: realNameVerified,
@@ -1969,6 +2029,55 @@ app.get('/api/v1/user/account-security', authenticateWxToken, async (req, res) =
   } catch (error) {
     console.error('Get account security error:', error);
     res.status(500).json({ code: 500, message: '获取账号安全信息失败' });
+  }
+});
+
+app.put('/api/v1/user/password', authenticateWxToken, async (req, res) => {
+  try {
+    const oldPassword = String(req.body.oldPassword || '').trim();
+    const newPassword = String(req.body.newPassword || '').trim();
+    const confirmPassword = String(req.body.confirmPassword || '').trim();
+
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ code: 400, message: '请填写完整的新密码信息' });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ code: 400, message: '两次输入的新密码不一致' });
+    }
+    if (newPassword.length < 6 || newPassword.length > 20) {
+      return res.status(400).json({ code: 400, message: '密码长度需为6到20位' });
+    }
+    if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d~!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{6,20}$/.test(newPassword)) {
+      return res.status(400).json({ code: 400, message: '密码需包含字母和数字' });
+    }
+
+    const user = await get(`SELECT id, password_hash FROM users WHERE id = ?`, [req.user.id]);
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '用户未找到' });
+    }
+
+    if (user.password_hash) {
+      if (!oldPassword) {
+        return res.status(400).json({ code: 400, message: '请输入当前密码' });
+      }
+      if (!verifyPassword(oldPassword, user.password_hash)) {
+        return res.status(400).json({ code: 400, message: '当前密码不正确' });
+      }
+    }
+
+    const nextHash = hashPassword(newPassword);
+    await run(`UPDATE users SET password_hash = ? WHERE id = ?`, [nextHash, req.user.id]);
+
+    res.json({
+      code: 0,
+      message: '密码设置成功',
+      data: {
+        hasPassword: true
+      }
+    });
+  } catch (error) {
+    console.error('Set user password error:', error);
+    res.status(500).json({ code: 500, message: '设置密码失败' });
   }
 });
 

@@ -1,5 +1,6 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
+const sessionStore = require('../../stores/session-store');
 
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -88,16 +89,15 @@ Page({
   onLoad(options) {
     this.options = options || {};
     this.hasLoaded = false;
-    if (!wx.getStorageSync('access_token')) {
-      wx.navigateTo({ url: '/pages/auth/login?redirect=' + encodeURIComponent('/pages/appointment/store-select') });
+    if (!sessionStore.isLoggedIn()) {
+      navigation.openLogin('/pages/appointment/store-select');
       return;
     }
     this.loadPage();
   },
 
   onShow() {
-    const token = wx.getStorageSync('access_token');
-    if (!token) {
+    if (!sessionStore.isLoggedIn()) {
       return;
     }
     if (!this.hasLoaded) {

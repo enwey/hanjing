@@ -1,4 +1,6 @@
 const api = require('../../api/index');
+const sessionStore = require('../../stores/session-store');
+const navigation = require('../../common/utils/navigation');
 
 const CATEGORY_COLORS = {
   device: '#d9e6ff',
@@ -163,7 +165,7 @@ Page({
       this.setData({ loading: true, loadError: '' });
     }
     try {
-      const hasToken = !!wx.getStorageSync('access_token');
+      const hasToken = sessionStore.isLoggedIn();
       const [response, memberInfoResponse] = await Promise.all([
         api.getProductDetail(productId),
         hasToken ? api.getMemberInfo().catch(() => null) : Promise.resolve(null),
@@ -271,18 +273,16 @@ Page({
   },
 
   async openCheckout() {
-    const token = wx.getStorageSync('access_token');
-    if (!token) {
-      wx.navigateTo({ url: '/pages/auth/login' });
+    if (!sessionStore.isLoggedIn()) {
+      navigation.openLogin('/pages/product/detail?id=' + encodeURIComponent(String(this.productId || '')));
       return;
     }
     this.setData({ showCheckout: true });
   },
 
   async handlePrimaryPay() {
-    const token = wx.getStorageSync('access_token');
-    if (!token) {
-      wx.navigateTo({ url: '/pages/auth/login' });
+    if (!sessionStore.isLoggedIn()) {
+      navigation.openLogin('/pages/product/detail?id=' + encodeURIComponent(String(this.productId || '')));
       return;
     }
     if (this.validateAddress(true)) {

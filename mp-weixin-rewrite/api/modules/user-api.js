@@ -1,4 +1,5 @@
-const { request, apiBaseUrl } = require('../request');
+const requestModule = require('../request');
+const { request } = requestModule;
 
 function getUserProfile(options = {}) {
   return request({
@@ -42,10 +43,11 @@ function uploadFile(buffer, ext) {
 }
 
 function uploadLocalFile(filePath, ext) {
-  const accessToken = String(wx.getStorageSync('access_token') || '').trim();
+  const sessionStore = require('../../stores/session-store');
+  const accessToken = String(sessionStore.getAccessToken() || '').trim();
   return new Promise((resolve, reject) => {
     wx.uploadFile({
-      url: apiBaseUrl + '/user/upload?ext=' + encodeURIComponent(ext || 'jpg'),
+      url: requestModule.apiBaseUrl + '/user/upload?ext=' + encodeURIComponent(ext || 'jpg'),
       filePath,
       name: 'file',
       header: accessToken ? { Authorization: 'Bearer ' + accessToken } : {},
@@ -113,6 +115,15 @@ function verifyRealName(realName, idCard) {
   return request({ url: '/user/verify-realname', method: 'POST', data: { realName, idCard }, failMessage: '实名认证失败' });
 }
 
+function updateUserPassword(oldPassword, newPassword, confirmPassword) {
+  return request({
+    url: '/user/password',
+    method: 'PUT',
+    data: { oldPassword, newPassword, confirmPassword },
+    failMessage: '设置密码失败'
+  });
+}
+
 function redeemCoupon(couponId) {
   return request({ url: '/user/coupons/redeem', method: 'POST', data: { couponId }, failMessage: '兑换优惠券失败' });
 }
@@ -147,6 +158,7 @@ module.exports = {
   sendPhoneCode,
   changePhone,
   verifyRealName,
+  updateUserPassword,
   redeemCoupon,
   getAvailableCoupons,
   getUserCoupons

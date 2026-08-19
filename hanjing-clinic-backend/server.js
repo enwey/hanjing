@@ -5,6 +5,7 @@ import { initDB } from './db.js';
 import { seedData } from './seed.js';
 import adminRouter from './routes/admin.js';
 import clientRouter from './routes/client.js';
+import promoterRouter from './routes/promoter.js';
 import { sendSystemAlert } from './alert-notifier.js';
 import { processRevisitReminders, processVisitReminders } from './wechatSubscribe.js';
 
@@ -71,6 +72,7 @@ import { initWebSocket } from './im-socket.js';
 // Register routers
 app.use(adminRouter);
 app.use(clientRouter);
+app.use(promoterRouter);
 
 // 404 Handler for unmatched routes
 app.use((req, res, next) => {

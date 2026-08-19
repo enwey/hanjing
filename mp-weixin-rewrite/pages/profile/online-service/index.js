@@ -1,5 +1,7 @@
-const { request, apiBaseUrl } = require('../../../api/request');
+const requestModule = require('../../../api/request');
+const { request } = requestModule;
 const api = require('../../../api/index');
+const sessionStore = require('../../../stores/session-store');
 
 function resolveServiceIdentity(level) {
   const memberLevel = String(level || '');
@@ -68,7 +70,7 @@ Page({
       const rawText = String(item.text || '');
       let displayUrl = rawText.startsWith('[image]') ? rawText.slice(7) : rawText;
       if (displayUrl && !displayUrl.startsWith('http') && displayUrl.startsWith('/uploads')) {
-        displayUrl = apiBaseUrl + displayUrl;
+        displayUrl = requestModule.apiBaseUrl + displayUrl;
       }
       return {
         id: String(item.id || ''),
@@ -119,9 +121,9 @@ Page({
   },
 
   connectSocket() {
-    const token = wx.getStorageSync('access_token');
+    const token = sessionStore.getAccessToken();
     if (!token) return;
-    const wsUrl = apiBaseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/im/ws?token=' + encodeURIComponent(token);
+    const wsUrl = requestModule.apiBaseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/im/ws?token=' + encodeURIComponent(token);
     this.socketTask = wx.connectSocket({ url: wsUrl, complete() {} });
     this.isSocketConnected = false;
 

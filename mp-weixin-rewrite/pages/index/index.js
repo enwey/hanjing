@@ -1,5 +1,7 @@
 const api = require('../../api/index');
 const { normalizeImageUrl } = require('../../common/utils/image-url');
+const sessionStore = require('../../stores/session-store');
+const navigation = require('../../common/utils/navigation');
 
 function formatIntegerWithCommas(value) {
   const text = String(Math.max(0, parseInt(value, 10) || 0));
@@ -179,7 +181,7 @@ Page({
   },
 
   navigateToApptTab() {
-    wx.switchTab({ url: '/pages/appointment/index' });
+    wx.navigateTo({ url: '/pages/appointment/booking/index' });
   },
 
   goAssessment() {
@@ -191,9 +193,8 @@ Page({
   },
 
   goMedicalRecords() {
-    const token = wx.getStorageSync('access_token');
-    if (!token) {
-      wx.navigateTo({ url: '/pages/auth/login' });
+    if (!sessionStore.isLoggedIn()) {
+      navigation.openLogin('/pages/profile/medical-records/index');
       return;
     }
     wx.navigateTo({ url: '/pages/profile/medical-records/index' });

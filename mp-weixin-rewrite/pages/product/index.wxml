@@ -1,20 +1,26 @@
 <view class="page product-page">
   <hj-navbar title="健康商城" />
-
-  <view class="page-content">
-    <view class="category-tabs" style="top: {{navbarHeight}}px;">
-    <view
-      wx:for="{{categories}}"
-      wx:key="key"
-      class="category-tab {{selectedCategory === item.key ? 'category-tab--active' : ''}}"
-      data-category-key="{{item.key}}"
-      bindtap="handleCategoryTap"
-    >
-      <text class="category-tab__text">{{item.label}}</text>
+  <view class="category-tabs-fixed" style="top: {{navbarHeight}}px;">
+    <view class="category-tabs">
+      <view
+        wx:for="{{categories}}"
+        wx:key="key"
+        class="category-tab {{selectedCategory === item.key ? 'category-tab--active' : ''}}"
+        data-category-key="{{item.key}}"
+        bindtap="handleCategoryTap"
+      >
+        <text class="category-tab__text">{{item.label}}</text>
+      </view>
     </view>
   </view>
 
-    <view class="state-card" wx:if="{{loading}}">
+  <view class="page-content">
+    <view class="category-tabs-placeholder"></view>
+
+    <view
+      wx:if="{{loading}}"
+      class="state-card"
+    >
       <text class="state-text">加载中...</text>
     </view>
 

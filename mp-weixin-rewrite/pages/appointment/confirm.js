@@ -292,7 +292,7 @@ Page({
                     icon: 'none',
                   });
                 setTimeout(() => {
-                  wx.reLaunch({ url: '/pages/appointment/index?tab=mine' });
+                  wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
                 }, 1000);
               } finally {
                 this.setData({ isSubmitting: false });
@@ -305,7 +305,7 @@ Page({
               }
               wx.showToast({ title: '已取消预约', icon: 'none' });
               setTimeout(() => {
-                wx.reLaunch({ url: '/pages/appointment/index?tab=mine' });
+                wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
               }, 1000);
               this.setData({ isSubmitting: false });
             }

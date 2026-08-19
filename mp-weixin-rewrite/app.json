@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/appointment/index",
+    "pages/appointment/booking/index",
     "pages/assessment/index",
     "pages/treatment/index",
     "pages/product/index",
@@ -102,7 +103,7 @@
       },
       {
         "pagePath": "pages/appointment/index",
-        "text": "预约",
+        "text": "社区",
         "iconPath": "static/icons/tab-appointment.png",
         "selectedIconPath": "static/icons/tab-appointment-active.png"
       },

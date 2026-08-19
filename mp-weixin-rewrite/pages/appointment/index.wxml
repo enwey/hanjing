@@ -1,94 +1,61 @@
-<view class="page">
-  <hj-navbar title="预约挂号" />
-
-  <view class="page-content">
-    <view class="booking-banner">
-      <view class="booking-banner-text">
-        <text class="booking-banner-title">在线预约</text>
-        <text class="booking-banner-desc">{{bookingNotice}}</text>
-      </view>
-      <hj-button
-        wx:if="{{isLoggedIn}}"
-        text="立即预约"
-        type="primary"
-        bind:tap="startAppointment"
-      />
-      <button
-        wx:else
-        class="auth-btn-custom"
-        hover-class="auth-btn-custom-hover"
-        bindtap="goToLoginForAppointment"
-      >
-        立即预约
-      </button>
-    </view>
-
-    <view class="tabs">
-      <view class="tab {{currentTab === 'upcoming' ? 'tab--active' : ''}}" bindtap="switchToUpcoming">
-        <text>进行中</text>
-      </view>
-      <view class="tab {{currentTab === 'history' ? 'tab--active' : ''}}" bindtap="switchToHistory">
-        <text>历史记录</text>
-      </view>
-    </view>
-
-    <view wx:if="{{loading}}" class="state-card">
-      <text class="state-text">正在加载预约记录...</text>
-    </view>
-
-    <view wx:elif="{{loadError}}" class="state-card">
-      <text class="state-text">{{loadError}}</text>
-    </view>
-
-    <view wx:elif="{{currentTab === 'upcoming'}}" class="apt-list">
-      <block wx:if="{{upcomingAppointments.length > 0}}">
-        <hj-appointment-item
-          wx:for="{{upcomingAppointments}}"
-          wx:key="id"
-          appointment="{{item}}"
-          storeName="{{item.storeName}}"
-          doctorName="{{item.doctorName}}"
-          cancelLimitHours="{{cancelLimitHours}}"
-          bind:click="openDetail"
-          bind:cancel="cancelAppointment"
-          bind:reschedule="handlePrimaryAction"
-        />
-      </block>
-      <hj-empty wx:else text="暂无进行中的预约" icon="/static/icons/calendar.svg">
-        <hj-button
-          wx:if="{{isLoggedIn}}"
-          text="去预约"
-          type="primary"
-          bind:tap="startAppointment"
-          style="margin-top: 16px;"
-        />
-        <button
-          wx:else
-          class="auth-btn-custom"
-          hover-class="auth-btn-custom-hover"
-          style="margin-top: 16px;"
-          bindtap="goToLoginForAppointment"
-        >
-          去预约
-        </button>
-      </hj-empty>
-    </view>
-
-    <view wx:if="{{!loading && !loadError && currentTab === 'history'}}" class="apt-list">
-      <block wx:if="{{historyAppointments.length > 0}}">
-        <hj-appointment-item
-          wx:for="{{historyAppointments}}"
-          wx:key="id"
-          appointment="{{item}}"
-          storeName="{{item.storeName}}"
-          doctorName="{{item.doctorName}}"
-          cancelLimitHours="{{cancelLimitHours}}"
-          bind:click="openDetail"
-        />
-      </block>
-      <hj-empty wx:else text="暂无历史预约" icon="/static/icons/clock.svg" />
+<view class="container community-page">
+  <hj-navbar title="患者社区" />
+  <view class="community-tabs-fixed" style="top: {{navbarHeight}}px;">
+    <view class="community-tabs">
+      <view wx:for="{{tabs}}" wx:key="key" class="community-tab {{item.activeClass}}" data-tab-key="{{item.key}}" bindtap="handleTabTap">{{item.label}}</view>
     </view>
   </view>
 
-  <view class="safe-bottom" />
+  <view class="community-content">
+    <view class="community-tabs-placeholder"></view>
+
+    <view class="post-list">
+      <view wx:for="{{visiblePosts}}" wx:key="id" class="post-card" data-post-id="{{item.id}}" bindtap="openPostDetail">
+        <view wx:if="{{item.isTop}}" class="post-top">
+          <image class="post-top__icon" src="/static/icons/pin.svg" mode="aspectFit"></image>
+          <text class="post-top__text">置顶</text>
+        </view>
+        <view class="post-header">
+          <view class="post-avatar">
+            <image class="post-avatar__placeholder" src="/static/images/brand-koala.png" mode="aspectFill"></image>
+            <image wx:if="{{item.avatar}}" class="post-avatar__image {{item.avatarLoaded ? 'post-avatar__image--loaded' : ''}}" src="{{item.avatar}}" mode="aspectFill" data-post-id="{{item.id}}" bindload="handleAvatarLoad" binderror="handleAvatarError"></image>
+          </view>
+          <view class="post-author">
+            <view class="post-author__row">
+              <text class="post-author__name">{{item.author}}</text>
+              <text class="post-author__role {{item.roleClass}}">{{item.roleLabel}}</text>
+            </view>
+            <text class="post-author__time">{{item.displayTime}}</text>
+          </view>
+        </view>
+        <text wx:if="{{item.title}}" class="post-title">{{item.title}}</text>
+        <text class="post-content">{{item.content}}</text>
+        <view class="post-tags">
+          <text wx:if="{{item.category}}" class="post-category {{item.categoryClass}}">{{item.category}}</text>
+          <text wx:for="{{item.labels}}" wx:key="*this" class="post-tag">{{item}}</text>
+        </view>
+        <view class="post-actions">
+          <view class="post-action" catchtap="handleLikeTap" data-post-id="{{item.id}}">
+            <image class="post-action__icon {{item.likeClass}}" src="{{item.likeIcon}}" mode="aspectFit"></image>
+            <text class="post-action__count">{{item.likes}}</text>
+          </view>
+          <view class="post-action" catchtap="openPostDetail" data-post-id="{{item.id}}">
+            <image class="post-action__icon" src="/static/icons/chat.svg" mode="aspectFit"></image>
+            <text class="post-action__count">{{item.comments}}</text>
+          </view>
+          <view class="post-action">
+            <image class="post-action__icon" src="/static/icons/paper-plane.svg" mode="aspectFit"></image>
+            <text class="post-action__count">分享</text>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{!visiblePosts.length && !loading}}" class="empty-tip">
+        <text>暂无帖子，来发第一帖吧！</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="publish-fab" bindtap="goPublishPost">
+    <image class="publish-fab__icon" src="/static/icons/compose-white.svg" mode="aspectFit"></image>
+  </view>
 </view>

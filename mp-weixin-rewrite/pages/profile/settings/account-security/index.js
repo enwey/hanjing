@@ -7,8 +7,12 @@ Page({
     info: null,
     showPhoneModal: false,
     showRealnameModal: false,
+    showPasswordModal: false,
     inputRealName: '',
     inputIdCard: '',
+    inputOldPassword: '',
+    inputNewPassword: '',
+    inputConfirmPassword: '',
   },
 
   onShow() {
@@ -59,8 +63,33 @@ Page({
     });
   },
 
+  openPasswordModal() {
+    this.setData({
+      showPasswordModal: true,
+      inputOldPassword: '',
+      inputNewPassword: '',
+      inputConfirmPassword: '',
+    });
+  },
+
   closeRealnameModal() {
     this.setData({ showRealnameModal: false });
+  },
+
+  closePasswordModal() {
+    this.setData({ showPasswordModal: false });
+  },
+
+  handleOldPasswordInput(event) {
+    this.setData({ inputOldPassword: event.detail.value || '' });
+  },
+
+  handleNewPasswordInput(event) {
+    this.setData({ inputNewPassword: event.detail.value || '' });
+  },
+
+  handleConfirmPasswordInput(event) {
+    this.setData({ inputConfirmPassword: event.detail.value || '' });
   },
 
   async onChangePhoneByWechat(event) {
@@ -110,6 +139,57 @@ Page({
       }
     } catch (error) {
       wx.showToast({ title: '操作失败，请重试', icon: 'none' });
+    } finally {
+      wx.hideLoading();
+    }
+  },
+
+  async onSubmitPassword() {
+    const hasPassword = Boolean(this.data.info && this.data.info.hasPassword);
+    const oldPassword = String(this.data.inputOldPassword || '').trim();
+    const newPassword = String(this.data.inputNewPassword || '').trim();
+    const confirmPassword = String(this.data.inputConfirmPassword || '').trim();
+
+    if (hasPassword && !oldPassword) {
+      wx.showToast({ title: '请输入当前密码', icon: 'none' });
+      return;
+    }
+    if (!newPassword || !confirmPassword) {
+      wx.showToast({ title: '请填写完整密码信息', icon: 'none' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      wx.showToast({ title: '两次输入密码不一致', icon: 'none' });
+      return;
+    }
+    if (newPassword.length < 6 || newPassword.length > 20) {
+      wx.showToast({ title: '密码长度需为6到20位', icon: 'none' });
+      return;
+    }
+    if (!/^(?=.*[A-Za-z])(?=.*\d).{6,20}$/.test(newPassword)) {
+      wx.showToast({ title: '密码需包含字母和数字', icon: 'none' });
+      return;
+    }
+
+    try {
+      wx.showLoading({ title: hasPassword ? '修改中...' : '设置中...' });
+      const response = await api.updateUserPassword(oldPassword, newPassword, confirmPassword);
+      if (response && response.code === 0) {
+        this.setData({ showPasswordModal: false });
+        await this.fetchInfo({ silent: true });
+        wx.showModal({
+          title: hasPassword ? '密码修改成功' : '密码设置成功',
+          content: hasPassword
+            ? '新密码已生效，后续可使用绑定手机号和新密码登录推广后台。'
+            : '登录密码已设置完成，后续可使用绑定手机号和该密码登录推广后台。',
+          showCancel: false,
+          confirmText: '我知道了',
+        });
+        return;
+      }
+      wx.showToast({ title: (response && response.message) || '设置失败', icon: 'none' });
+    } catch (error) {
+      wx.showToast({ title: (error && error.message) || '设置失败，请重试', icon: 'none' });
     } finally {
       wx.hideLoading();
     }

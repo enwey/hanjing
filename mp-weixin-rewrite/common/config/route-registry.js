@@ -5,6 +5,10 @@ const routeRegistry = [
   },
   {
     "path": "pages/appointment/index",
+    "title": "患者社区"
+  },
+  {
+    "path": "pages/appointment/booking/index",
     "title": "预约挂号"
   },
   {

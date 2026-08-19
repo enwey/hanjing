@@ -1,5 +1,6 @@
 const api = require('../api/index');
 const miniLog = require('../common/utils/mini-log');
+const AUTH_MODE_STORAGE_KEY = 'auth_mode';
 
 function decodeBase64Url(input) {
   if (!input) {
@@ -72,6 +73,14 @@ function readStoredAccessToken() {
   return token;
 }
 
+function readStoredAuthMode() {
+  try {
+    return String(wx.getStorageSync(AUTH_MODE_STORAGE_KEY) || '').trim();
+  } catch (error) {
+    return '';
+  }
+}
+
 async function bindPendingInviteCode() {
   const pendingInviteCode = wx.getStorageSync('pending_invite_code');
   if (!pendingInviteCode) {
@@ -93,6 +102,7 @@ async function bindPendingInviteCode() {
 const sessionStore = {
   state: {
     accessToken: readStoredAccessToken(),
+    authMode: readStoredAuthMode(),
     profile: null,
     currentPatientId: wx.getStorageSync('current_patient_id') || '',
   },
@@ -102,9 +112,33 @@ const sessionStore = {
     this.state.accessToken = token;
     return Boolean(token);
   },
+  getAccessToken() {
+    const token = readStoredAccessToken();
+    this.state.accessToken = token;
+    return token;
+  },
+  getAuthMode() {
+    const authMode = readStoredAuthMode();
+    this.state.authMode = authMode;
+    return authMode;
+  },
+  setAuthMode(authMode) {
+    const nextMode = authMode ? String(authMode).trim() : '';
+    this.state.authMode = nextMode;
+    if (nextMode) {
+      wx.setStorageSync(AUTH_MODE_STORAGE_KEY, nextMode);
+    } else {
+      wx.removeStorageSync(AUTH_MODE_STORAGE_KEY);
+    }
+  },
   setAccessToken(accessToken) {
     this.state.accessToken = accessToken || '';
     if (accessToken) { wx.setStorageSync("access_token", accessToken); } else { wx.removeStorageSync("access_token"); }
+  },
+  clearLoginState() {
+    this.setAccessToken('');
+    this.setAuthMode('');
+    this.state.profile = null;
   },
   setCurrentPatientId(patientId) {
     this.state.currentPatientId = patientId || '';
@@ -298,6 +332,7 @@ const sessionStore = {
       },
     });
     this.setAccessToken(payload.access_token || '');
+    this.setAuthMode('wechat');
     this.state.profile = payload.user || null;
     miniLog.report({
       level: 'info',
@@ -315,9 +350,92 @@ const sessionStore = {
     await bindPendingInviteCode();
     return payload;
   },
+  async passwordLogin(phone, password, options = {}) {
+    const traceId = options.traceId || miniLog.createTraceId();
+    const source = options.source || 'password_login';
+    const authApi = require('../api/modules/auth-api');
+    miniLog.report({
+      level: 'info',
+      event: 'session_password_login_start',
+      message: 'session password login started',
+      traceId,
+      extra: {
+        source,
+        phone: String(phone || '').slice(0, 3),
+      },
+    });
+    await miniLog.reportNow({
+      level: 'info',
+      event: 'session_password_login_start_sync',
+      message: 'session password login started',
+      traceId,
+      extra: {
+        source,
+        phone: String(phone || '').slice(0, 3),
+      },
+    });
+    miniLog.report({
+      level: 'info',
+      event: 'login_api_request',
+      message: 'request password-login api',
+      apiUrl: '/auth/password-login',
+      method: 'POST',
+      traceId,
+      extra: {
+        source,
+        hasPhone: Boolean(phone),
+        hasPassword: Boolean(password),
+      },
+    });
+    await miniLog.reportNow({
+      level: 'info',
+      event: 'login_api_request_sync',
+      message: 'request password-login api',
+      apiUrl: '/auth/password-login',
+      method: 'POST',
+      traceId,
+      extra: {
+        source,
+        hasPhone: Boolean(phone),
+        hasPassword: Boolean(password),
+      },
+    });
+    const response = await authApi.passwordLogin(phone, password, { traceId });
+    const payload = response.data || response;
+    miniLog.report({
+      level: 'info',
+      event: 'login_api_success',
+      message: 'password-login api success',
+      apiUrl: '/auth/password-login',
+      method: 'POST',
+      traceId,
+      extra: {
+        source,
+        hasAccessToken: Boolean(payload.access_token),
+        hasUser: Boolean(payload.user),
+      },
+    });
+    this.setAccessToken(payload.access_token || '');
+    this.setAuthMode('password');
+    this.state.profile = payload.user || null;
+    miniLog.report({
+      level: 'info',
+      event: 'login_success',
+      message: 'password login success',
+      traceId,
+      extra: {
+        source,
+        hasAccessToken: Boolean(payload.access_token),
+        hasUser: Boolean(payload.user),
+        userId: payload.user && payload.user.id,
+        hasPhone: Boolean(payload.user && payload.user.phone),
+      },
+    });
+    await bindPendingInviteCode();
+    return payload;
+  },
   logout() {
-    this.setAccessToken('');
-    this.state.profile = null;
+    this.clearLoginState();
     this.setCurrentPatientId('');
   },
 };

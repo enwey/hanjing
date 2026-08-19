@@ -67,6 +67,6 @@ Page({
   },
 
   goAppointment() {
-    wx.switchTab({ url: '/pages/appointment/index' });
+    wx.navigateTo({ url: '/pages/appointment/booking/index' });
   },
 });

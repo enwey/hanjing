@@ -251,6 +251,7 @@ export const initDB = async () => {
       openid VARCHAR(64) UNIQUE NOT NULL,
       unionid VARCHAR(64) UNIQUE,
       phone VARCHAR(20) UNIQUE,
+      password_hash VARCHAR(255) DEFAULT NULL,
       nickname VARCHAR(100) NOT NULL,
       avatar_url VARCHAR(255),
       gender TINYINT DEFAULT 0,
@@ -292,6 +293,9 @@ export const initDB = async () => {
   } catch (err) {}
   try {
     await query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(100) UNIQUE DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) DEFAULT NULL AFTER phone;`);
   } catch (err) {}
   try {
     await query(`ALTER TABLE users ADD COLUMN self_patient_id BIGINT UNSIGNED DEFAULT NULL;`);

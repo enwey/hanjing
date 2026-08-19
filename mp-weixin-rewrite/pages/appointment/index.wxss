@@ -1,111 +1,48 @@
-.page {
-  min-height: 100vh;
-  background: #f9fafb;
-  display: flex;
-  flex-direction: column;
-}
-
-.page-content {
-  flex: 1;
-  padding: 32rpx 32rpx 0;
-}
-
-.booking-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 32rpx;
-  padding: 40rpx;
-  border-radius: 32rpx;
-  background: linear-gradient(135deg, #eef4ff, #d9e6ff);
-}
-
-.booking-banner-text {
-  flex: 1;
-  margin-right: 32rpx;
-}
-
-.booking-banner-title {
-  display: block;
-  margin-bottom: 8rpx;
-  font-size: 34rpx;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.booking-banner-desc {
-  font-size: 26rpx;
-  color: #6b7280;
-  line-height: 1.5;
-}
-
-.tabs {
-  display: flex;
-  margin-bottom: 32rpx;
-  padding: 8rpx;
-  border-radius: 24rpx;
-  background: #ffffff;
-}
-
-.tab {
-  flex: 1;
-  padding: 20rpx 0;
-  border-radius: 20rpx;
-  text-align: center;
-  font-size: 28rpx;
-  font-weight: 500;
-  color: #6b7280;
-}
-
-.tab--active {
-  background: #eef4ff;
-  color: #3b6bf5;
-  font-weight: 600;
-}
-
-.apt-list {
-  padding-bottom: 32rpx;
-}
-
-.state-card {
-  margin-bottom: 32rpx;
-  padding: 48rpx 32rpx;
-  border-radius: 24rpx;
-  background: #ffffff;
-  text-align: center;
-}
-
-.state-text {
-  font-size: 28rpx;
-  color: #6b7280;
-}
-
-.safe-bottom {
-  height: env(safe-area-inset-bottom, 34px);
-}
-
-.auth-btn-custom {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 176rpx;
-  height: 88rpx;
-  margin: 0;
-  padding: 0 48rpx;
-  border: none;
-  border-radius: 24rpx;
-  background: linear-gradient(135deg, #3b6bf5, #5a85f5);
-  box-shadow: 0 8rpx 28rpx rgba(59, 107, 245, 0.25);
-  color: #ffffff;
-  font-size: 30rpx;
-  font-weight: 600;
-  line-height: normal;
-}
-
-.auth-btn-custom::after {
-  border: none;
-}
-
-.auth-btn-custom-hover {
-  background: linear-gradient(135deg, #2a52d4, #3b6bf5) !important;
-}
+.community-page { min-height: 100vh; background: #f3f4f6; display: flex; flex-direction: column; }
+.community-content { flex: 1; padding: 20rpx 24rpx calc(120rpx + env(safe-area-inset-bottom, 34rpx)); }
+.publish-entry { display: flex; align-items: center; gap: 16rpx; background: #ffffff; border-radius: 24rpx; padding: 20rpx 24rpx; margin: 20rpx 0; }
+.publish-entry__icon { width: 32rpx; height: 32rpx; flex-shrink: 0; }
+.publish-entry__placeholder { flex: 1; font-size: 26rpx; color: #9ca3af; }
+.publish-entry__button { background: #3b6bf5; color: #ffffff; font-size: 24rpx; font-weight: 600; padding: 10rpx 24rpx; border-radius: 16rpx; }
+.community-tabs-fixed { position: fixed; left: 24rpx; right: 24rpx; z-index: 20; background: transparent; padding: 20rpx 0; }
+.community-tabs { display: flex; background: #ffffff; border-radius: 20rpx; padding: 8rpx; }
+.community-tab { flex: 1; text-align: center; padding: 16rpx 0; border-radius: 16rpx; font-size: 26rpx; color: #6b7280; }
+.community-tab--active { background: #3b6bf5; color: #ffffff; font-weight: 600; }
+.community-tabs-placeholder { height: 104rpx; }
+.post-list { display: flex; flex-direction: column; gap: 18rpx; }
+.post-card { background: #ffffff; border-radius: 28rpx; padding: 24rpx; position: relative; }
+.post-top { display: inline-flex; align-items: center; gap: 6rpx; background: #fff9e6; padding: 4rpx 12rpx; border-radius: 8rpx; margin-bottom: 12rpx; }
+.post-top__icon { width: 20rpx; height: 20rpx; flex-shrink: 0; }
+.post-top__text { font-size: 22rpx; color: #f5a623; font-weight: 600; }
+.post-header { display: flex; align-items: center; gap: 16rpx; margin-bottom: 16rpx; }
+.post-avatar { width: 80rpx; height: 80rpx; border-radius: 9999rpx; background: #e5e7eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; position: relative; }
+.post-avatar__placeholder { width: 100%; height: 100%; display: block; position: absolute; inset: 0; }
+.post-avatar__image { width: 100%; height: 100%; position: absolute; inset: 0; opacity: 0; }
+.post-avatar__image--loaded { opacity: 1; }
+.post-author { flex: 1; min-width: 0; }
+.post-author__row { display: flex; align-items: center; gap: 10rpx; }
+.post-author__name { font-size: 28rpx; font-weight: 600; color: #1f2937; }
+.post-author__role { font-size: 20rpx; padding: 2rpx 12rpx; border-radius: 8rpx; }
+.post-author__role.role--doctor { background: #eef4ff; color: #3b6bf5; }
+.post-author__role.role--expert { background: #f5f3ff; color: #8b5cf6; }
+.post-author__role.role--patient { background: #f0fdf4; color: #1a9d5c; }
+.post-author__time { font-size: 22rpx; color: #9ca3af; display: block; margin-top: 4rpx; }
+.post-title { font-size: 32rpx; font-weight: 600; color: #1f2937; display: block; margin-bottom: 8rpx; line-height: 1.5; }
+.post-content { font-size: 26rpx; color: #4b5563; line-height: 1.75; display: block; margin-bottom: 12rpx; }
+.post-tags { display: flex; gap: 10rpx; flex-wrap: wrap; margin-bottom: 14rpx; }
+.post-category, .post-tag { font-size: 20rpx; padding: 4rpx 14rpx; border-radius: 8rpx; }
+.post-tag { color: #3b6bf5; background: #eef4ff; }
+.tag-theme--blue { color: #2a52d4; background: #e8f0ff; }
+.tag-theme--green { color: #138a52; background: #e8f8ef; }
+.tag-theme--orange { color: #d97706; background: #fff3df; }
+.tag-theme--amber { color: #b7791f; background: #fff8db; }
+.tag-theme--pink { color: #c2417a; background: #ffe8f1; }
+.tag-theme--violet { color: #6d4fd6; background: #f0ebff; }
+.post-actions { display: flex; gap: 28rpx; padding-top: 14rpx; border-top: 1rpx solid #f3f4f6; }
+.post-action { display: flex; align-items: center; gap: 8rpx; }
+.post-action__icon { width: 30rpx; height: 30rpx; flex-shrink: 0; }
+.post-action__icon.liked { transform: scale(1.04); }
+.post-action__count { font-size: 22rpx; color: #9ca3af; }
+.empty-tip { text-align: center; padding: 40rpx 0; color: #9ca3af; font-size: 24rpx; }
+.publish-fab { position: fixed; right: 32rpx; bottom: calc(32rpx + env(safe-area-inset-bottom, 0)); z-index: 20; width: 104rpx; height: 104rpx; border-radius: 9999rpx; background: linear-gradient(135deg, #3b6bf5, #5a85f5); display: flex; align-items: center; justify-content: center; box-shadow: 0 12rpx 28rpx rgba(59, 107, 245, 0.35); }
+.publish-fab__icon { width: 42rpx; height: 42rpx; }

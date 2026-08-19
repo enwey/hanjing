@@ -1,6 +1,7 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const { normalizeImageUrl } = require('../../common/utils/image-url');
+const sessionStore = require('../../stores/session-store');
 
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -54,16 +55,11 @@ Page({
   onLoad(options) {
     this.options = options || {};
     this.hasLoaded = false;
-    if (!wx.getStorageSync('access_token')) {
-      this.loadPage();
-      return;
-    }
     this.loadPage();
   },
 
   async onShow() {
-    const token = wx.getStorageSync('access_token');
-    if (!token) {
+    if (!sessionStore.isLoggedIn()) {
       return;
     }
     if (!this.hasLoaded) {

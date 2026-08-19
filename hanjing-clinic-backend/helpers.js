@@ -83,6 +83,23 @@ export const authenticateToken = (req, res, next) => {
   });
 };
 
+export const authenticatePromoterToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ code: 401, message: '未登录或无推广端访问权限' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err || !user || user.scope !== 'promoter' || !user.promoter_id || !user.user_id) {
+      return res.status(403).json({ code: 403, message: '登录已失效或无推广端权限，请重新登录' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
 // Helper to verify if a patient is accessible to the current user (store-restricted)
 export const verifyPatientAccess = async (patientId, user) => {
   if (user.role === 'doctor' && !user.doctor_id) {

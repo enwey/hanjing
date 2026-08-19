@@ -231,7 +231,7 @@ Page({
 
   handleProfileTap() {
     if (!this.data.isLoggedIn) {
-      navigation.openPage('/pages/auth/login');
+      navigation.openLogin('/pages/profile/index');
       return;
     }
     navigation.openPage('/pages/profile/settings/personal-info/index');
@@ -239,7 +239,7 @@ Page({
 
   handleCompleteProfile() {
     if (!this.data.isLoggedIn) {
-      navigation.openPage('/pages/auth/login');
+      navigation.openLogin('/pages/profile/index');
       return;
     }
     navigation.openPage('/pages/profile/settings/personal-info/index?fromLogin=1&autoEdit=1');
@@ -251,7 +251,7 @@ Page({
       return;
     }
     if (!this.data.isLoggedIn && url !== '/pages/profile/online-service/index') {
-      navigation.openPage('/pages/auth/login');
+      navigation.openLogin(url || '/pages/profile/index');
       return;
     }
     navigation.openPage(url);

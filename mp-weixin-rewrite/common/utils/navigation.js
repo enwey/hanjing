@@ -3,6 +3,7 @@ const sessionStore = require('../../stores/session-store');
 const PUBLIC_PAGES = [
   '/pages/index/index',
   '/pages/appointment/index',
+  '/pages/appointment/booking/index',
   '/pages/assessment/index',
   '/pages/treatment/index',
   '/pages/product/index',
@@ -35,6 +36,22 @@ function buildLoginUrl(targetUrl) {
   return '/pages/auth/login?redirect=' + encoded + back;
 }
 
+function openLogin(redirectUrl = '', backUrl = '') {
+  let url = buildLoginUrl(redirectUrl);
+  if (backUrl) {
+    url = '/pages/auth/login?redirect=' + encodeURIComponent(String(redirectUrl || '')) + '&back=' + encodeURIComponent(String(backUrl || ''));
+  }
+  wx.navigateTo({ url });
+}
+
+function relaunchLogin(redirectUrl = '', backUrl = '') {
+  let url = buildLoginUrl(redirectUrl);
+  if (backUrl) {
+    url = '/pages/auth/login?redirect=' + encodeURIComponent(String(redirectUrl || '')) + '&back=' + encodeURIComponent(String(backUrl || ''));
+  }
+  wx.reLaunch({ url });
+}
+
 function canVisitWithoutLogin(url) {
   const pagePath = normalizeUrl(url);
   return PUBLIC_PAGES.includes(pagePath);
@@ -42,7 +59,7 @@ function canVisitWithoutLogin(url) {
 
 function openPage(url) {
   if (!canVisitWithoutLogin(url) && !sessionStore.isLoggedIn()) {
-    wx.navigateTo({ url: buildLoginUrl(url) });
+    openLogin(url);
     return;
   }
   wx.navigateTo({ url });
@@ -58,4 +75,4 @@ function goBackOrHome(fallbackUrl) {
   if (fallbackUrl) { wx.reLaunch({ url: fallbackUrl }); }
 }
 
-module.exports = { openPage, switchTab, goBackOrHome };
+module.exports = { openPage, openLogin, relaunchLogin, switchTab, goBackOrHome };

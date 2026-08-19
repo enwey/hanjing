@@ -1,6 +1,7 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const { formatChinaDate } = require('../../common/utils/date-time');
+const sessionStore = require('../../stores/session-store');
 
 const RELATION_LABEL_MAP = {
   self: '本人',
@@ -130,6 +131,7 @@ function buildTimelinePreview(timeline) {
 
 Page({
   data: {
+    isLoggedIn: false,
     loading: true,
     hasLoaded: false,
     pageStyle: 'overflow: visible;',
@@ -182,17 +184,17 @@ Page({
   },
 
   onShow() {
-    const token = wx.getStorageSync('access_token');
-    if (!token) {
-      const app = getApp();
-      const lastRoute = app && app.globalData && app.globalData.lastRoute
-        ? `/${app.globalData.lastRoute}`
-        : '/pages/index/index';
-      wx.navigateTo({
-        url: `/pages/auth/login?redirect=${encodeURIComponent('/pages/treatment/index')}&back=${encodeURIComponent(lastRoute)}`,
+    if (!sessionStore.isLoggedIn()) {
+      this.setData({
+        isLoggedIn: false,
+        loading: false,
+        hasLoaded: false,
+        checkinVisible: false,
+        pageStyle: 'overflow: visible;',
       });
       return;
     }
+    this.setData({ isLoggedIn: true });
     this.loadPage({ silent: this.data.hasLoaded });
   },
 
@@ -355,6 +357,14 @@ Page({
 
   goCommunity() {
     navigation.openPage('/pages/community/index');
+  },
+
+  goLogin() {
+    const app = getApp();
+    const lastRoute = app && app.globalData && app.globalData.lastRoute
+      ? `/${app.globalData.lastRoute}`
+      : '/pages/index/index';
+    navigation.openLogin('/pages/treatment/index', lastRoute);
   },
 
   openCheckinModal() {

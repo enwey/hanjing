@@ -10,6 +10,16 @@ function wxLogin(code, phoneCode, options = {}) {
   });
 }
 
+function passwordLogin(phone, password, options = {}) {
+  return request({
+    url: '/auth/password-login',
+    method: 'POST',
+    data: { phone, password },
+    failMessage: '登录失败',
+    traceId: options.traceId,
+  });
+}
+
 function sendPhoneCode(phone) {
   return request({ url: '/user/send-code', method: 'POST', data: { phone }, failMessage: '发送验证码失败' });
 }
@@ -24,6 +34,7 @@ function verifyRealName(realName, idCard) {
 
 module.exports = {
   wxLogin,
+  passwordLogin,
   sendPhoneCode,
   changePhone,
   verifyRealName

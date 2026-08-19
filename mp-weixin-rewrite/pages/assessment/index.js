@@ -188,7 +188,7 @@ Page({
 
   startEssAssessment() {
     if (!this.data.isLoggedIn) {
-      navigation.openPage('/pages/auth/login');
+      navigation.openLogin('/pages/assessment/index');
       return;
     }
     const query = this.data.selectedMemberId ? '?patientId=' + this.data.selectedMemberId : '';
@@ -197,7 +197,7 @@ Page({
 
   startSnoreAssessment() {
     if (!this.data.isLoggedIn) {
-      navigation.openPage('/pages/auth/login');
+      navigation.openLogin('/pages/assessment/index');
       return;
     }
     const query = this.data.selectedMemberId ? '?patientId=' + this.data.selectedMemberId : '';
@@ -218,6 +218,6 @@ Page({
   },
 
   goLogin() {
-    navigation.openPage('/pages/auth/login');
+    navigation.openLogin('/pages/assessment/index');
   },
 });

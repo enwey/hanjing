@@ -1,6 +1,7 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const { normalizeImageUrl } = require('../../common/utils/image-url');
+const sessionStore = require('../../stores/session-store');
 
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -120,16 +121,15 @@ Page({
   onLoad(options) {
     this.options = options || {};
     this.hasLoaded = false;
-    if (!wx.getStorageSync('access_token')) {
+    if (!sessionStore.isLoggedIn()) {
       return;
     }
     this.loadPage();
   },
 
   async onShow() {
-    const token = wx.getStorageSync('access_token');
-    if (!token) {
-      navigation.openPage('/pages/auth/login');
+    if (!sessionStore.isLoggedIn()) {
+      navigation.openLogin('/pages/appointment/doctor-detail?id=' + encodeURIComponent(String(this.data.doctorId || (this.options && this.options.id) || '')));
       return;
     }
     if (!this.hasLoaded) {

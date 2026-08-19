@@ -212,7 +212,7 @@ const pageBlueprints = {
       {
         "title": "前往预约",
         "description": "没有治疗记录时进入预约流程。",
-        "url": "/pages/appointment/index"
+        "url": "/pages/appointment/booking/index"
       }
     ]
   },
@@ -244,7 +244,7 @@ const pageBlueprints = {
       {
         "title": "前往预约",
         "description": "没有治疗记录时进入预约流程。",
-        "url": "/pages/appointment/index"
+        "url": "/pages/appointment/booking/index"
       }
     ]
   },
@@ -260,7 +260,7 @@ const pageBlueprints = {
       {
         "title": "前往预约",
         "description": "没有治疗记录时进入预约流程。",
-        "url": "/pages/appointment/index"
+        "url": "/pages/appointment/booking/index"
       }
     ]
   },

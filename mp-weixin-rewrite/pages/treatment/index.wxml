@@ -2,6 +2,20 @@
 <view class="page data-v-8badcb8c">
   <hj-navbar title="治疗追踪" />
   <view wx:if="{{!loading}}" class="page-content data-v-8badcb8c">
+    <block wx:if="{{!isLoggedIn}}">
+      <view class="guest-empty-wrap data-v-8badcb8c">
+      <view class="guest-empty-state data-v-8badcb8c">
+        <view class="guest-empty-icon-wrap data-v-8badcb8c">
+          <image class="guest-empty-icon data-v-8badcb8c" src="/static/icons/lock.svg" mode="aspectFit" />
+        </view>
+        <text class="guest-empty-title data-v-8badcb8c">请先登录</text>
+        <text class="guest-empty-desc data-v-8badcb8c">登录后可查看打卡记录、睡眠趋势和医生建议。</text>
+        <view class="guest-empty-action data-v-8badcb8c" bindtap="goLogin">去登录</view>
+      </view>
+      </view>
+    </block>
+
+    <block wx:else>
     <picker wx:if="{{showMemberPicker}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="handleMemberChange" class="member-picker data-v-8badcb8c">
       <view class="member-picker-content data-v-8badcb8c">
         <view class="member-info data-v-8badcb8c">
@@ -80,6 +94,7 @@
       <view wx:else class="section-empty data-v-8badcb8c"><text class="section-empty-text data-v-8badcb8c">暂无治疗动态记录</text></view>
     </view>
     <view class="safe-bottom data-v-8badcb8c"></view>
+    </block>
   </view>
   <view wx:if="{{checkinVisible}}" class="checkin-overlay data-v-8badcb8c" bindtap="closeCheckinModal" catchtouchmove="noop">
     <view class="checkin-panel data-v-8badcb8c" catchtap="noop" catchtouchmove="noop">
