@@ -143,13 +143,13 @@ onMounted(loadData)
   justify-content: space-between;
   gap: 16px;
   background: linear-gradient(135deg, #0f172a, #1d4ed8);
-  border-radius: 20px;
-  padding: 24px 26px;
+  border-radius: 12px;
+  padding: 20px;
   color: #fff;
 }
 
 .hero-title {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
 }
 
@@ -172,7 +172,7 @@ onMounted(loadData)
 }
 
 .hero-income strong {
-  font-size: 30px;
+  font-size: 26px;
 }
 
 .stat-grid {
@@ -183,10 +183,10 @@ onMounted(loadData)
 
 .stat-card {
   background: #fff;
-  border-radius: 18px;
-  padding: 22px;
-  border: 1px solid #eef2f7;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .stat-card-label {
@@ -195,7 +195,7 @@ onMounted(loadData)
 }
 
 .stat-card-value {
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 700;
   color: #111827;
   margin-top: 12px;
@@ -216,8 +216,8 @@ onMounted(loadData)
 
 .summary-item {
   background: #f8fafc;
-  border-radius: 16px;
-  padding: 18px;
+  border-radius: 8px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -235,20 +235,21 @@ onMounted(loadData)
 
 .panel {
   background: #fff;
-  border-radius: 18px;
-  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .panel-header {
-  padding: 18px 20px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .panel-title {
   font-size: 16px;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 600;
+  color: #1f2937;
 }
 
 .empty-cell {

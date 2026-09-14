@@ -7,6 +7,7 @@ import {
   decryptPII,
   encryptPII,
   formatShanghaiDateTime,
+  hashPassword,
   verifyPassword
 } from '../helpers.js';
 
@@ -25,6 +26,33 @@ function getDistributorLevelRule(level) {
     diamond: { label: '钻石' }
   };
   return rules[level] || { label: '普通' };
+}
+
+function maskPhone(phone) {
+  const value = String(phone || '').trim();
+  if (!value) return '';
+  if (value.length < 7) return value;
+  return `${value.slice(0, 3)}****${value.slice(-4)}`;
+}
+
+function getPromoterPatientProgressStage(item) {
+  const treatmentStatus = String(item.treatment_status || '').toLowerCase();
+  const appointmentStatus = String(item.latest_appointment_status || '').toLowerCase();
+  const completedVisits = Number(item.completed_visit_count || 0);
+  const orderCount = Number(item.order_count || 0);
+  const appointmentCount = Number(item.appointment_count || 0);
+
+  if (treatmentStatus === 'active') return { code: 'treating', label: '治疗中' };
+  if (treatmentStatus === 'completed' || treatmentStatus === 'finished') return { code: 'completed', label: '治疗完成' };
+  if (treatmentStatus === 'paused') return { code: 'paused', label: '暂停治疗' };
+  if (completedVisits > 0 || ['completed', 'arrived', 'settled', 'checked_in'].includes(appointmentStatus)) {
+    return { code: 'visited', label: '已到诊' };
+  }
+  if (appointmentCount > 0 || ['pending', 'confirmed', 'pending_payment'].includes(appointmentStatus)) {
+    return { code: 'appointed', label: '已预约' };
+  }
+  if (orderCount > 0) return { code: 'purchased', label: '已购买' };
+  return { code: 'registered', label: '已登记' };
 }
 
 async function getDistributionSettleDays() {
@@ -331,6 +359,44 @@ app.put('/api/promoter/profile', authenticatePromoterToken, async (req, res) => 
   res.json({ code: 200, message: '资料保存成功' });
 });
 
+app.put('/api/promoter/password', authenticatePromoterToken, async (req, res) => {
+  try {
+    const oldPassword = String(req.body.oldPassword || '').trim();
+    const newPassword = String(req.body.newPassword || '').trim();
+    const confirmPassword = String(req.body.confirmPassword || '').trim();
+
+    if (!oldPassword) {
+      return res.status(400).json({ code: 400, message: '请输入原始密码' });
+    }
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ code: 400, message: '请输入新密码并确认' });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ code: 400, message: '两次输入的新密码不一致' });
+    }
+    if (newPassword.length < 6 || newPassword.length > 20) {
+      return res.status(400).json({ code: 400, message: '新密码长度需为 6-20 位' });
+    }
+    if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d~!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{6,20}$/.test(newPassword)) {
+      return res.status(400).json({ code: 400, message: '新密码需包含字母和数字' });
+    }
+
+    const user = await get(`SELECT id, password_hash FROM users WHERE id = ?`, [req.user.user_id]);
+    if (!user) {
+      return res.status(404).json({ code: 404, message: '推广员账号不存在' });
+    }
+    if (!user.password_hash || !verifyPassword(oldPassword, user.password_hash)) {
+      return res.status(400).json({ code: 400, message: '原始密码不正确' });
+    }
+
+    await run(`UPDATE users SET password_hash = ? WHERE id = ?`, [hashPassword(newPassword), req.user.user_id]);
+    res.json({ code: 200, message: '修改密码成功，请重新登录' });
+  } catch (error) {
+    console.error('Promoter change password error:', error);
+    res.status(500).json({ code: 500, message: '修改密码失败' });
+  }
+});
+
 app.get('/api/promoter/dashboard', authenticatePromoterToken, async (req, res) => {
   const context = await getPromoterContext(req.user.user_id);
   if (!context) {
@@ -372,10 +438,16 @@ app.get('/api/promoter/team', authenticatePromoterToken, async (req, res) => {
   }
 
   const relationships = await query(
-    `SELECT r.level as relation_level, r.child_user_id, u.nickname, u.avatar_url, u.phone, u.created_at as joined_at, d.level, d.id as distributor_id
+    `SELECT r.level as relation_level, r.child_user_id, u.nickname, u.avatar_url, u.phone, u.created_at as joined_at, d.level, d.id as distributor_id,
+            direct_rel.parent_user_id as upper_user_id,
+            COALESCE(upper_d.nickname, upper_u.nickname) as upper_name,
+            upper_u.phone as upper_phone
      FROM distribution_relationships r
      JOIN users u ON r.child_user_id = u.id
      LEFT JOIN distributors d ON u.id = d.user_id
+     LEFT JOIN distribution_relationships direct_rel ON direct_rel.child_user_id = r.child_user_id AND direct_rel.level = 1
+     LEFT JOIN users upper_u ON direct_rel.parent_user_id = upper_u.id
+     LEFT JOIN distributors upper_d ON upper_u.id = upper_d.user_id
      WHERE r.parent_user_id = ?
      ORDER BY r.level ASC, r.created_at DESC`,
     [parentUserId]
@@ -439,6 +511,9 @@ app.get('/api/promoter/team', authenticatePromoterToken, async (req, res) => {
       level: rel.level || 'member',
       levelLabel: rel.level ? getDistributorLevelRule(rel.level).label : '普通用户',
       relationLevel: Number(rel.relation_level || 1),
+      upperUserId: rel.upper_user_id ? String(rel.upper_user_id) : '',
+      upperName: rel.upper_name || '无',
+      upperPhone: decryptPII(rel.upper_phone) || '',
       orderCount: stats.count,
       totalSales: stats.sales,
       joinedAt: rel.joined_at,
@@ -470,6 +545,229 @@ app.get('/api/promoter/commissions', authenticatePromoterToken, async (req, res)
     [context.promoter_id]
   );
   res.json({ code: 200, data: list });
+});
+
+app.get('/api/promoter/patients', authenticatePromoterToken, async (req, res) => {
+  const context = await getPromoterContext(req.user.user_id);
+  if (!context) {
+    return res.status(404).json({ code: 404, message: '推广员账号不存在' });
+  }
+
+  const list = await query(
+    `SELECT p.id, p.patient_no, p.name, p.phone, p.gender, p.age, p.source, p.created_at,
+            u.member_level,
+            promoted.relation_level,
+            (SELECT COUNT(*) FROM appointments a WHERE a.patient_id = p.id AND a.status NOT IN ('cancelled', 'no_show')) as appointment_count,
+            (SELECT COUNT(*) FROM appointments a WHERE a.patient_id = p.id AND a.status IN ('completed', 'arrived', 'settled', 'checked_in')) as completed_visit_count,
+            (SELECT MAX(a.appointment_date) FROM appointments a WHERE a.patient_id = p.id AND a.status NOT IN ('cancelled', 'no_show')) as last_visit,
+            (SELECT a.appointment_date FROM appointments a WHERE a.patient_id = p.id ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC LIMIT 1) as latest_appointment_date,
+            (SELECT a.appointment_time FROM appointments a WHERE a.patient_id = p.id ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC LIMIT 1) as latest_appointment_time,
+            (SELECT a.status FROM appointments a WHERE a.patient_id = p.id ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC LIMIT 1) as latest_appointment_status,
+            (SELECT a.store_name FROM appointments a WHERE a.patient_id = p.id ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC LIMIT 1) as latest_store_name,
+            (SELECT a.doctor_name FROM appointments a WHERE a.patient_id = p.id ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC LIMIT 1) as latest_doctor_name,
+            (SELECT COUNT(*) FROM patients fp WHERE fp.user_id = p.user_id) as family_count,
+            (SELECT tr.status FROM treatment_records tr WHERE tr.patient_id = p.id ORDER BY FIELD(tr.status, 'active', 'paused', 'completed'), tr.start_date DESC, tr.id DESC LIMIT 1) as treatment_status,
+            (SELECT tr.start_date FROM treatment_records tr WHERE tr.patient_id = p.id ORDER BY FIELD(tr.status, 'active', 'paused', 'completed'), tr.start_date DESC, tr.id DESC LIMIT 1) as treatment_start_date,
+            (SELECT tr.next_adjust_date FROM treatment_records tr WHERE tr.patient_id = p.id ORDER BY FIELD(tr.status, 'active', 'paused', 'completed'), tr.start_date DESC, tr.id DESC LIMIT 1) as next_adjust_date,
+            (SELECT tr.device_product_name FROM treatment_records tr WHERE tr.patient_id = p.id ORDER BY FIELD(tr.status, 'active', 'paused', 'completed'), tr.start_date DESC, tr.id DESC LIMIT 1) as device_name,
+            (SELECT COUNT(*) FROM orders o WHERE o.user_id = p.user_id AND o.status NOT IN ('cancelled', 'refunded')) as order_count,
+            (SELECT COALESCE(SUM(o.pay_amount), 0) FROM orders o WHERE o.user_id = p.user_id AND o.status NOT IN ('cancelled', 'refunded')) as paid_amount
+     FROM (
+       SELECT user_id, MIN(relation_level) as relation_level
+       FROM (
+         SELECT r.child_user_id as user_id, r.level as relation_level
+         FROM distribution_relationships r
+         WHERE r.parent_user_id = ?
+         UNION ALL
+         SELECT o.user_id as user_id, do.commission_level as relation_level
+         FROM distribution_orders do
+         JOIN orders o ON do.order_id = o.id
+         WHERE do.distributor_id = ?
+       ) promoted_users
+       WHERE user_id IS NOT NULL
+       GROUP BY user_id
+     ) promoted
+     JOIN patients p ON p.user_id = promoted.user_id
+     JOIN users u ON u.id = p.user_id
+     ORDER BY p.created_at DESC, p.id DESC`,
+    [req.user.user_id, context.promoter_id]
+  );
+
+  const rows = list.map((item) => {
+    const progress = getPromoterPatientProgressStage(item);
+    return {
+      id: String(item.id),
+      patientNo: item.patient_no || '未生成',
+      name: item.name || '患者',
+      phoneMasked: maskPhone(decryptPII(item.phone) || item.phone || ''),
+      gender: Number(item.gender) === 1 ? '男' : Number(item.gender) === 2 ? '女' : '未知',
+      age: item.age ?? null,
+      ageText: item.age === null || item.age === undefined ? '未知' : `${item.age}岁`,
+      memberLevel: item.member_level || 'normal',
+      memberLevelLabel: ({ normal: '普通', silver: 'VIP', gold: 'VIP', diamond: 'SVIP' })[item.member_level] || '普通',
+      familyCount: Math.max(0, Number(item.family_count || 0) - 1),
+      relationLevel: Number(item.relation_level || 1),
+      source: item.source || 'distribution',
+      progressCode: progress.code,
+      progressLabel: progress.label,
+      appointmentCount: Number(item.appointment_count || 0),
+      completedVisitCount: Number(item.completed_visit_count || 0),
+      lastVisit: item.last_visit || '',
+      latestAppointmentDate: item.latest_appointment_date || '',
+      latestAppointmentTime: item.latest_appointment_time || '',
+      latestAppointmentStatus: item.latest_appointment_status || '',
+      latestStoreName: item.latest_store_name || '',
+      latestDoctorName: item.latest_doctor_name || '',
+      treatmentStatus: item.treatment_status || '',
+      treatmentStartDate: item.treatment_start_date || '',
+      nextAdjustDate: item.next_adjust_date || '',
+      deviceName: item.device_name || '',
+      orderCount: Number(item.order_count || 0),
+      paidAmount: Number(item.paid_amount || 0),
+      createdAt: item.created_at
+    };
+  });
+
+  res.json({ code: 200, data: { list: rows, total: rows.length } });
+});
+
+app.get('/api/promoter/patients/:id', authenticatePromoterToken, async (req, res) => {
+  const { id } = req.params;
+  const context = await getPromoterContext(req.user.user_id);
+  if (!context) {
+    return res.status(404).json({ code: 404, message: '推广员账号不存在' });
+  }
+
+  const patient = await get(
+    `SELECT p.id, p.patient_no, p.user_id, p.name, p.phone, p.gender, p.age, p.relation, p.source, p.created_at,
+            u.member_level,
+            promoted.relation_level
+     FROM (
+       SELECT user_id, MIN(relation_level) as relation_level
+       FROM (
+         SELECT r.child_user_id as user_id, r.level as relation_level
+         FROM distribution_relationships r
+         WHERE r.parent_user_id = ?
+         UNION ALL
+         SELECT o.user_id as user_id, do.commission_level as relation_level
+         FROM distribution_orders do
+         JOIN orders o ON do.order_id = o.id
+         WHERE do.distributor_id = ?
+       ) promoted_users
+       WHERE user_id IS NOT NULL
+       GROUP BY user_id
+     ) promoted
+     JOIN patients p ON p.user_id = promoted.user_id
+     JOIN users u ON u.id = p.user_id
+     WHERE p.id = ?`,
+    [req.user.user_id, context.promoter_id, id]
+  );
+
+  if (!patient) {
+    return res.status(404).json({ code: 404, message: '患者不存在或不属于当前推广范围' });
+  }
+
+  const [appointments, orders, familyMembers, treatment, timelines, totalSpentRow] = await Promise.all([
+    query(
+      `SELECT a.id, a.appointment_no, a.appointment_date, a.appointment_time, a.type, a.status,
+              a.source, a.doctor_name, a.doctor_title, a.store_name, a.created_at
+       FROM appointments a
+       WHERE a.patient_id = ?
+       ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC`,
+      [id]
+    ),
+    query(
+      `SELECT o.id, o.order_no, o.type, o.pay_amount, o.status, o.pay_at, o.created_at,
+              GROUP_CONCAT(oi.product_name SEPARATOR '、') as product_names
+       FROM orders o
+       LEFT JOIN order_items oi ON oi.order_id = o.id
+       WHERE o.user_id = ? AND o.status NOT IN ('cancelled', 'refunded')
+       GROUP BY o.id
+       ORDER BY o.created_at DESC`,
+      [patient.user_id]
+    ),
+    query(
+      `SELECT id, name, relation, gender, age, phone
+       FROM patients
+       WHERE user_id = ?
+       ORDER BY relation = 'self' DESC, id ASC`,
+      [patient.user_id]
+    ),
+    get(
+      `SELECT tr.id, tr.device_product_name, tr.device_model, tr.initial_advancement, tr.current_advancement,
+              tr.start_date, tr.next_adjust_date, tr.status, tr.created_at, d.name as doctor_name
+       FROM treatment_records tr
+       LEFT JOIN doctors d ON tr.doctor_id = d.id
+       WHERE tr.patient_id = ?
+       ORDER BY FIELD(tr.status, 'active', 'paused', 'completed'), tr.start_date DESC, tr.id DESC
+       LIMIT 1`,
+      [id]
+    ),
+    query(
+      `SELECT id, event_date, event_title, event_type, doctor_name, color, icon
+       FROM treatment_timelines
+       WHERE patient_id = ?
+       ORDER BY event_date DESC, id DESC
+       LIMIT 20`,
+      [id]
+    ),
+    get(
+      `SELECT COALESCE(SUM(pay_amount), 0) as total_spent
+       FROM orders
+       WHERE user_id = ? AND status IN ('paid', 'processing', 'shipping', 'shipped', 'delivered', 'completed')`,
+      [patient.user_id]
+    )
+  ]);
+
+  const appointmentCount = appointments.filter((item) => !['cancelled', 'no_show'].includes(String(item.status))).length;
+  const completedVisitCount = appointments.filter((item) => ['completed', 'arrived', 'settled', 'checked_in'].includes(String(item.status))).length;
+  const progress = getPromoterPatientProgressStage({
+    treatment_status: treatment?.status || '',
+    latest_appointment_status: appointments[0]?.status || '',
+    completed_visit_count: completedVisitCount,
+    order_count: orders.length,
+    appointment_count: appointmentCount
+  });
+
+  res.json({
+    code: 200,
+    data: {
+      id: String(patient.id),
+      patientNo: patient.patient_no || '未生成',
+      name: patient.name || '患者',
+      phoneMasked: maskPhone(decryptPII(patient.phone) || patient.phone || ''),
+      gender: Number(patient.gender) === 1 ? '男' : Number(patient.gender) === 2 ? '女' : '未知',
+      age: patient.age ?? null,
+      ageText: patient.age === null || patient.age === undefined ? '未知' : `${patient.age}岁`,
+      relation: patient.relation || 'self',
+      memberLevel: patient.member_level || 'normal',
+      memberLevelLabel: ({ normal: '普通', silver: 'VIP', gold: 'VIP', diamond: 'SVIP' })[patient.member_level] || '普通',
+      relationLevel: Number(patient.relation_level || 1),
+      source: patient.source || 'distribution',
+      progressCode: progress.code,
+      progressLabel: progress.label,
+      appointmentCount,
+      completedVisitCount,
+      totalSpent: Number(totalSpentRow?.total_spent || 0),
+      createdAt: patient.created_at,
+      treatment: treatment || null,
+      appointments,
+      orders: orders.map((item) => ({
+        ...item,
+        pay_amount: Number(item.pay_amount || 0),
+        product_names: item.product_names || ''
+      })),
+      familyMembers: familyMembers.map((item) => ({
+        id: String(item.id),
+        name: item.name || '家庭成员',
+        relation: item.relation || '',
+        gender: Number(item.gender) === 1 ? '男' : Number(item.gender) === 2 ? '女' : '未知',
+        age: item.age ?? null,
+        phoneMasked: maskPhone(decryptPII(item.phone) || item.phone || '')
+      })),
+      timelines
+    }
+  });
 });
 
 app.get('/api/promoter/withdraws', authenticatePromoterToken, async (req, res) => {

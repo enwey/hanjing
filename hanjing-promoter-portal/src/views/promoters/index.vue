@@ -15,7 +15,7 @@ const filteredRows = computed(() => {
     const levelMatch = level.value === '全部层级'
       || (level.value === '一级团队' && item.relationLevel === 1)
       || (level.value === '二级团队' && item.relationLevel === 2)
-    const keywordMatch = !keyword.value || [item.nickname, item.phone].some((field) =>
+    const keywordMatch = !keyword.value || [item.nickname, item.phone, item.upperName, item.upperPhone].some((field) =>
       String(field || '').includes(keyword.value)
     )
     return levelMatch && keywordMatch
@@ -40,11 +40,15 @@ onMounted(loadData)
 
 <template>
   <div class="page-container">
-    <section class="panel">
-      <div class="panel-title-row">
-        <div class="panel-title">我的团队</div>
-        <div class="panel-sub">查看当前推广员名下的一二级团队成员与转化情况</div>
+    <div class="page-title-row">
+      <div>
+        <div class="page-title">我的团队</div>
+        <div class="page-title-sub">查看当前推广员名下的一二级团队成员与转化情况</div>
       </div>
+      <div class="page-count">共 {{ filteredRows.length }} 人</div>
+    </div>
+
+    <section class="panel">
       <div class="filter-bar">
         <div class="filter-tabs">
           <button
@@ -63,6 +67,7 @@ onMounted(loadData)
           <thead>
             <tr>
               <th>成员</th>
+              <th>上级</th>
               <th>团队层级</th>
               <th>当前身份</th>
               <th>转化状态</th>
@@ -79,6 +84,12 @@ onMounted(loadData)
                   <span style="font-size:12px;color:#94a3b8;">{{ item.phone || '未绑定手机号' }}</span>
                 </div>
               </td>
+              <td>
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  <strong style="color:#111827;">{{ item.upperName || '无' }}</strong>
+                  <span style="font-size:12px;color:#94a3b8;">{{ item.upperPhone || '未绑定手机号' }}</span>
+                </div>
+              </td>
               <td>{{ item.relationLevel === 1 ? '一级团队' : '二级团队' }}</td>
               <td>{{ item.levelLabel }}</td>
               <td>{{ item.statusText }}</td>
@@ -87,7 +98,7 @@ onMounted(loadData)
               <td>{{ formatShanghaiDateOnly(item.joinedAt) || '—' }}</td>
             </tr>
             <tr v-if="filteredRows.length === 0">
-              <td colspan="7" class="empty-cell">暂无符合条件的团队成员</td>
+              <td colspan="8" class="empty-cell">暂无符合条件的团队成员</td>
             </tr>
           </tbody>
         </table>
@@ -99,25 +110,15 @@ onMounted(loadData)
 <style scoped>
 .panel {
   background: #fff;
-  border-radius: 18px;
-  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-.panel-title-row {
-  padding: 20px 20px 0;
-}
-
-.panel-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.panel-sub {
-  margin-top: 6px;
+.page-count {
   font-size: 13px;
-  color: #94a3b8;
+  color: #9ca3af;
 }
 
 .filter-bar {
@@ -125,8 +126,8 @@ onMounted(loadData)
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding: 18px 20px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .filter-tabs {
@@ -135,28 +136,30 @@ onMounted(loadData)
 }
 
 .filter-tab {
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid #e2e8f0;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #dbe3ef;
   background: #fff;
   color: #64748b;
   cursor: pointer;
+  font-size: 13px;
 }
 
 .filter-tab.active {
   background: #eef4ff;
   color: #2a52d4;
-  border-color: #dbeafe;
+  border-color: #3b6bf5;
 }
 
 .filter-input {
   width: 260px;
   height: 36px;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  border: 1px solid #dbe3ef;
   padding: 0 12px;
   outline: none;
+  font-size: 13px;
 }
 
 .empty-cell {

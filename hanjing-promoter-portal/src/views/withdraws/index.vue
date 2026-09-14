@@ -6,7 +6,13 @@ import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 const status = ref('全部')
 const rows = ref<any[]>([])
-const statusOptions = ['全部', 'pending', 'approved', 'rejected']
+const statusOptions = [
+  { label: '全部状态', value: '全部' },
+  { label: '待审核', value: 'pending' },
+  { label: '已通过', value: 'approved' },
+  { label: '已拒绝', value: 'rejected' },
+  { label: '已打款', value: 'paid' }
+]
 
 const filteredRows = computed(() => {
   return rows.value.filter((item) => status.value === '全部' || item.status === status.value)
@@ -14,6 +20,10 @@ const filteredRows = computed(() => {
 
 function yuan(value: number) {
   return (Number(value || 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
+}
+
+function statusLabel(value: string) {
+  return statusOptions.find((item) => item.value === value)?.label || value || '待审核'
 }
 
 async function loadData() {
@@ -29,80 +39,76 @@ onMounted(loadData)
 </script>
 
 <template>
-  <section class="panel">
-    <div class="panel-title-row">
-      <div class="panel-title">我的提现</div>
-      <div class="panel-sub">展示当前推广员本人历史提现记录与处理状态</div>
-    </div>
-    <div class="filter-bar">
-      <div class="filter-tabs">
-        <button
-          v-for="item in statusOptions"
-          :key="item"
-          :class="['filter-tab', status === item ? 'active' : '']"
-          @click="status = item"
-        >
-          {{ item === '全部' ? '全部状态' : item }}
-        </button>
+  <div class="page-container">
+    <div class="page-title-row">
+      <div>
+        <div class="page-title">我的提现</div>
+        <div class="page-title-sub">展示当前推广员本人历史提现记录与处理状态</div>
       </div>
+      <div class="page-count">共 {{ filteredRows.length }} 条</div>
     </div>
-    <div class="panel-body" style="padding: 0;">
-      <table class="data-table" v-resizable>
-        <thead>
-          <tr>
-            <th>申请时间</th>
-            <th>提现金额</th>
-            <th>手续费</th>
-            <th>到账金额</th>
-            <th>提现方式</th>
-            <th>状态</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in filteredRows" :key="item.id">
-            <td>{{ formatShanghaiDateTime(item.createdAt, false) }}</td>
-            <td>¥{{ yuan(item.amount) }}</td>
-            <td>¥{{ yuan(item.fee) }}</td>
-            <td style="font-weight:700;color:#1a9d5c;">¥{{ yuan(item.actualAmount) }}</td>
-            <td>{{ item.accountInfo?.method === 'bank' ? '银行卡' : '微信零钱' }}</td>
-            <td>{{ item.status }}</td>
-          </tr>
-          <tr v-if="filteredRows.length === 0">
-            <td colspan="6" class="empty-cell">暂无提现记录</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+
+    <section class="panel">
+      <div class="filter-bar">
+        <div class="filter-tabs">
+          <button
+            v-for="item in statusOptions"
+            :key="item.value"
+            :class="['filter-tab', status === item.value ? 'active' : '']"
+            @click="status = item.value"
+          >
+            {{ item.label }}
+          </button>
+        </div>
+      </div>
+      <div class="panel-body" style="padding: 0;">
+        <table class="data-table" v-resizable>
+          <thead>
+            <tr>
+              <th>申请时间</th>
+              <th>提现金额</th>
+              <th>手续费</th>
+              <th>到账金额</th>
+              <th>提现方式</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in filteredRows" :key="item.id">
+              <td>{{ formatShanghaiDateTime(item.createdAt, false) }}</td>
+              <td>¥{{ yuan(item.amount) }}</td>
+              <td>¥{{ yuan(item.fee) }}</td>
+              <td style="font-weight:700;color:#1a9d5c;">¥{{ yuan(item.actualAmount) }}</td>
+              <td>{{ item.accountInfo?.method === 'bank' ? '银行卡' : '微信零钱' }}</td>
+              <td>{{ statusLabel(item.status) }}</td>
+            </tr>
+            <tr v-if="filteredRows.length === 0">
+              <td colspan="6" class="empty-cell">暂无提现记录</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
 </template>
 
 <style scoped>
 .panel {
   background: #fff;
-  border-radius: 18px;
-  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-.panel-title-row {
-  padding: 20px 20px 0;
-}
-
-.panel-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.panel-sub {
-  margin-top: 6px;
+.page-count {
   font-size: 13px;
-  color: #94a3b8;
+  color: #9ca3af;
 }
 
 .filter-bar {
-  padding: 18px 20px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .filter-tabs {
@@ -111,19 +117,20 @@ onMounted(loadData)
 }
 
 .filter-tab {
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid #e2e8f0;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #dbe3ef;
   background: #fff;
   color: #64748b;
   cursor: pointer;
+  font-size: 13px;
 }
 
 .filter-tab.active {
   background: #eef4ff;
   color: #2a52d4;
-  border-color: #dbeafe;
+  border-color: #3b6bf5;
 }
 
 .empty-cell {

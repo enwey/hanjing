@@ -41,33 +41,46 @@ async function handleLogin({ validateResult }: any) {
 
     <div class="login-card">
       <div class="login-brand">
-        <img class="brand-logo-image" src="/brand-koala.png" alt="鼾静推广端" />
+        <span class="brand-logo">
+          <img class="brand-logo-image" src="/brand-koala.png" alt="鼾静推广端" />
+        </span>
         <div class="brand-title">
           鼾静推广端
-          <small>PC 端推广数据工作台</small>
+          <small>推广数据工作台</small>
         </div>
       </div>
 
-      <div class="login-heading">
-        <strong>欢迎回来</strong>
-        <span>请输入推广员绑定手机号和登录密码，登录后可查看您的团队成员、推广佣金、提现记录和推广商品。</span>
-      </div>
+      <div class="login-heading">推广员登录</div>
 
       <t-form :data="loginForm" :rules="rules" label-width="0" @submit="handleLogin">
         <t-form-item name="phone">
-          <t-input v-model="loginForm.phone" placeholder="请输入绑定的手机号" size="large" />
+          <t-input v-model="loginForm.phone" placeholder="请输入绑定的手机号" size="large">
+            <template #prefix-icon>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748B;">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </template>
+          </t-input>
         </t-form-item>
         <t-form-item name="password" style="margin-top: 16px;">
-          <t-input v-model="loginForm.password" type="password" placeholder="请输入登录密码" size="large" />
+          <t-input v-model="loginForm.password" type="password" placeholder="请输入登录密码" size="large">
+            <template #prefix-icon>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748B;">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </template>
+          </t-input>
         </t-form-item>
 
-        <t-form-item style="margin-top: 28px;">
-          <t-button theme="primary" type="submit" block size="large">登录推广端</t-button>
+        <t-form-item style="margin-top: 32px;">
+          <t-button theme="primary" type="submit" block size="large">立即登录</t-button>
         </t-form-item>
       </t-form>
 
-      <div class="login-helper">
-        如未设置登录密码，请先前往小程序「我的-设置-账号安全」完成设置。
+      <div class="login-footer">
+        © 2026 鼾静健康诊所 · 推广数据工作台
       </div>
     </div>
   </div>
@@ -76,104 +89,117 @@ async function handleLogin({ validateResult }: any) {
 <style scoped>
 .login-wrapper {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0f172a;
+  background: #0F172A;
+  z-index: 1;
   overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
 }
 
 .login-background {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
 }
 
 .glow-orb {
   position: absolute;
-  border-radius: 999px;
+  border-radius: 50%;
   filter: blur(120px);
-  opacity: 0.22;
+  opacity: 0.25;
 }
 
 .color-1 {
-  width: 520px;
-  height: 520px;
-  top: -80px;
-  left: -80px;
-  background: #3b6bf5;
+  width: 500px;
+  height: 500px;
+  top: -100px;
+  left: -100px;
+  background: #3B6BF5;
 }
 
 .color-2 {
-  width: 640px;
-  height: 640px;
-  right: -160px;
-  bottom: -180px;
-  background: #1a9d5c;
+  width: 600px;
+  height: 600px;
+  right: -150px;
+  bottom: -150px;
+  background: #1A9D5C;
 }
 
 .login-card {
   position: relative;
-  z-index: 1;
-  width: 430px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(12px);
-  padding: 36px;
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
+  z-index: 2;
+  width: 400px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 }
 
 .login-brand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.brand-logo {
+  width: 56px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .brand-logo-image {
-  width: 58px;
-  height: 58px;
+  width: 56px;
+  height: 56px;
   border-radius: 16px;
+  display: block;
   object-fit: cover;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
 }
 
 .brand-title {
   display: flex;
   flex-direction: column;
-  font-size: 24px;
+  line-height: 1.2;
+  font-size: 18px;
   font-weight: 700;
-  color: #0f172a;
+  color: #1E293B;
 }
 
 .brand-title small {
-  font-size: 13px;
-  font-weight: 500;
-  color: #64748b;
-  margin-top: 3px;
+  font-size: 11px;
+  color: #64748B;
+  font-weight: 400;
+  margin-top: 2px;
 }
 
 .login-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 28px 0 22px;
+  margin-bottom: 24px;
+  color: #1E293B;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-align: center;
 }
 
-.login-heading strong {
-  font-size: 20px;
-  color: #111827;
+.login-footer {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #E2E8F0;
+  color: #94A3B8;
+  text-align: center;
+  font-size: 11px;
 }
-
-.login-heading span {
-  font-size: 13px;
-  color: #94a3b8;
-  line-height: 1.6;
-}
-
-.login-helper {
-  margin-top: 10px;
-  font-size: 12px;
-  line-height: 1.7;
-  color: #64748b;
-}
-
 </style>

@@ -29,6 +29,18 @@ const router = createRouter({
           meta: { title: '我的团队' }
         },
         {
+          path: 'patients',
+          name: 'patients',
+          component: () => import('@/views/patients/index.vue'),
+          meta: { title: '我的患者' }
+        },
+        {
+          path: 'patients/:id',
+          name: 'patientDetail',
+          component: () => import('@/views/patients/detail.vue'),
+          meta: { title: '患者详情' }
+        },
+        {
           path: 'commissions',
           name: 'commissions',
           component: () => import('@/views/commissions/index.vue'),
@@ -39,18 +51,6 @@ const router = createRouter({
           name: 'withdraws',
           component: () => import('@/views/withdraws/index.vue'),
           meta: { title: '我的提现' }
-        },
-        {
-          path: 'products',
-          name: 'products',
-          component: () => import('@/views/products/index.vue'),
-          meta: { title: '推广商品' }
-        },
-        {
-          path: 'profile',
-          name: 'profile',
-          component: () => import('@/views/profile/index.vue'),
-          meta: { title: '个人中心' }
         }
       ]
     }
@@ -58,7 +58,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  document.title = `${to.meta.title || '推广人员后台'} - 鼾静推广端`
+  document.title = '鼾静健康诊所推广后台'
   if (to.meta.public) {
     next()
     return

@@ -96,21 +96,22 @@ onMounted(loadProfile)
 <style scoped>
 .profile-card {
   background: #fff;
-  border-radius: 18px;
-  border: 1px solid #eef2f7;
-  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .profile-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
 }
 
 .profile-sub {
   font-size: 13px;
-  color: #94a3b8;
-  margin-top: 6px;
+  color: #9ca3af;
+  margin-top: 4px;
 }
 
 .profile-empty {
@@ -121,8 +122,8 @@ onMounted(loadProfile)
 .profile-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 24px;
+  gap: 16px;
+  margin-top: 20px;
 }
 
 .profile-field {
@@ -138,10 +139,11 @@ onMounted(loadProfile)
 
 .profile-field input {
   height: 42px;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #dbe3ef;
   padding: 0 14px;
   outline: none;
+  font-size: 13px;
 }
 
 .profile-field.is-readonly input {
@@ -150,6 +152,6 @@ onMounted(loadProfile)
 }
 
 .profile-actions {
-  margin-top: 28px;
+  margin-top: 24px;
 }
 </style>
