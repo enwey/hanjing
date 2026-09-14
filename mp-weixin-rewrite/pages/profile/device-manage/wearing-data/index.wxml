@@ -28,7 +28,8 @@
         <view class="record-progress">
           <view class="record-progress__bar" style="{{'width:' + item.progressWidth + ';background:' + item.progressColor}}"></view>
         </view>
-        <text class="record-comfort">舒适度：{{item.comfort || 3}} / 5</text>
+        <text class="record-comfort">痛感评分：{{item.painScore}} / 10</text>
+        <text wx:if="{{item.painLocationsText}}" class="record-comfort">疼痛部位：{{item.painLocationsText}}</text>
         <text wx:if="{{item.note}}" class="record-note">{{item.note}}</text>
       </view>
 

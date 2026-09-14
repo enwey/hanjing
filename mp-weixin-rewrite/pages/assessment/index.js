@@ -15,7 +15,7 @@ const SNORE_LEVEL_LABEL_MAP = {
   low: '低风险',
   mild: '轻度风险',
   moderate: '中度风险',
-  severe: '高度风险',
+  severe: '重度风险',
 };
 
 const RELATION_LABEL_MAP = {

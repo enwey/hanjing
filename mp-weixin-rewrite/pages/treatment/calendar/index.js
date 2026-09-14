@@ -9,6 +9,97 @@ function buildMonthDateText(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
 }
 
+const PAIN_LOCATION_OPTIONS = [
+  { key: 'left-molar', label: '上/下颌左大牙齿内侧、外侧' },
+  { key: 'right-molar', label: '上/下颌右大牙齿内侧、外侧' },
+  { key: 'upper-front', label: '上颌门牙齿内侧、外侧' },
+  { key: 'lower-front', label: '下颌门牙齿内侧、外侧' },
+  { key: 'upper-left-joint', label: '上颌左关节痛' },
+  { key: 'lower-right-joint', label: '下颌右关节痛' },
+  { key: 'bite-surface', label: '咬合面痛' },
+  { key: 'fracture', label: '上/下断裂' },
+];
+
+function mapComfortToPainScore(comfort) {
+  const value = Number(comfort || 0);
+  if (value >= 5) {
+    return 0;
+  }
+  if (value === 4) {
+    return 2;
+  }
+  if (value === 3) {
+    return 4;
+  }
+  if (value === 2) {
+    return 6;
+  }
+  if (value === 1) {
+    return 8;
+  }
+  return 0;
+}
+
+function mapPainScoreToComfort(score) {
+  const value = Number(score || 0);
+  if (value <= 0) return 5;
+  if (value <= 2) return 4;
+  if (value <= 4) return 3;
+  if (value <= 7) return 2;
+  return 1;
+}
+
+function parsePainScoreFromNote(note) {
+  const matched = String(note || '').match(/VAS评分：(\d+)分/);
+  if (!matched) {
+    return null;
+  }
+  const value = Number(matched[1]);
+  return Number.isFinite(value) ? Math.max(0, Math.min(10, value)) : null;
+}
+
+function resolvePainScore(record) {
+  if (!record) {
+    return 0;
+  }
+  if (record.painScore !== undefined && record.painScore !== null && record.painScore !== '') {
+    return Number(record.painScore);
+  }
+  const parsed = parsePainScoreFromNote(record.note);
+  if (parsed !== null) {
+    return parsed;
+  }
+  return mapComfortToPainScore(record.comfort);
+}
+
+function calcAveragePainScore(records) {
+  const validRecords = (records || []).filter((record) => record && Number(record.wearDuration || 0) > 0);
+  if (!validRecords.length) {
+    return '0';
+  }
+  const total = validRecords.reduce((sum, record) => sum + resolvePainScore(record), 0);
+  const average = total / validRecords.length;
+  return Number.isInteger(average) ? String(average) : average.toFixed(1);
+}
+
+function buildPainLocationOptions(selectedKeys) {
+  const selectedMap = {};
+  (selectedKeys || []).forEach((key) => {
+    selectedMap[key] = true;
+  });
+  return PAIN_LOCATION_OPTIONS.map((item) => ({
+    ...item,
+    selected: !!selectedMap[item.key],
+  }));
+}
+
+function resolvePainLocationKeys(record) {
+  const locations = record && Array.isArray(record.painLocations) ? record.painLocations : [];
+  return PAIN_LOCATION_OPTIONS
+    .filter((option) => locations.indexOf(option.label) >= 0 || locations.indexOf(option.key) >= 0)
+    .map((option) => option.key);
+}
+
 Page({
   data: {
     loading: true,
@@ -27,9 +118,13 @@ Page({
     checkinVisible: false,
     selectedWearDuration: 7,
     selectedComfort: 4,
+    selectedPainScore: 2,
+    painLocationOptions: buildPainLocationOptions([]),
+    selectedPainLocationKeys: [],
+    selectedPainLocationLabels: [],
     checkinNote: '',
     durationOptions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    comfortOptions: [1, 2, 3, 4, 5],
+    painScoreOptions: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     isSubmittingCheckin: false,
     durationScrollLeft: 0,
     checkinDateText: '',
@@ -59,6 +154,9 @@ Page({
         date: record.date,
         wearDuration: Number(record.wearDuration || 0),
         comfort: Number(record.comfort || 0),
+        painScore: record.painScore === undefined || record.painScore === null ? null : Number(record.painScore),
+        painLocations: Array.isArray(record.painLocations) ? record.painLocations : [],
+        note: record.note || '',
       }));
       const recordMap = {};
       recordList.forEach((record) => {
@@ -78,7 +176,7 @@ Page({
         monthStats: {
           worn: String(summary.weekWorn || summary.wornDays || 0),
           avgHours: String(summary.weekAvg || summary.avgDuration || 0),
-          avgComfort: String(summary.avgComfort || 0),
+          avgComfort: calcAveragePainScore(recordList),
           streak: String(summary.streak || 0),
         },
       });
@@ -114,12 +212,12 @@ Page({
       const dateText = buildMonthDateText(this.currentMonth) + '-' + String(day).padStart(2, '0');
       const record = recordMap[dateText] || null;
       const wearDuration = record ? record.wearDuration : 0;
-      const comfort = record ? record.comfort : 0;
+      const painScore = resolvePainScore(record);
       cells.push({
         id: dateText,
         day: String(day),
         wearDurationLabel: wearDuration > 0 ? wearDuration + 'h' : '',
-        dayClass: this.getDayClass(dateText, wearDuration, comfort, today),
+        dayClass: this.getDayClass(dateText, wearDuration, painScore, today),
       });
     }
 
@@ -129,15 +227,14 @@ Page({
     return cells;
   },
 
-  getDayClass(dateText, wearDuration, comfort, today) {
+  getDayClass(dateText, wearDuration, painScore, today) {
     if (!wearDuration) {
       return dateText === today ? 'calendar-day--today' : '';
     }
-    if (comfort >= 5) return 'calendar-day--comfort5';
-    if (comfort === 4) return 'calendar-day--comfort4';
-    if (comfort === 3) return 'calendar-day--comfort3';
-    if (comfort === 2) return 'calendar-day--comfort2';
-    return 'calendar-day--comfort1';
+    if (painScore <= 0) return 'calendar-day--pain0';
+    if (painScore <= 3) return 'calendar-day--pain-mild';
+    if (painScore <= 6) return 'calendar-day--pain-moderate';
+    return 'calendar-day--pain-severe';
   },
 
   async goPrevMonth() {
@@ -154,10 +251,19 @@ Page({
     const todayText = this.getTodayText();
     const todayRecord = (this.wearingRecords || []).find((record) => record.date === todayText);
     const selectedWearDuration = todayRecord && todayRecord.wearDuration ? Number(todayRecord.wearDuration) : 7;
+    const selectedPainScore = todayRecord ? resolvePainScore(todayRecord) : 2;
+    const selectedPainLocationKeys = resolvePainLocationKeys(todayRecord);
+    const selectedPainLocationLabels = PAIN_LOCATION_OPTIONS
+      .filter((option) => selectedPainLocationKeys.indexOf(option.key) >= 0)
+      .map((option) => option.label);
     this.setData({
       checkinVisible: true,
       selectedWearDuration,
-      selectedComfort: todayRecord && todayRecord.comfort ? Number(todayRecord.comfort) : 4,
+      selectedPainScore,
+      selectedComfort: todayRecord && todayRecord.comfort ? Number(todayRecord.comfort) : mapPainScoreToComfort(selectedPainScore),
+      painLocationOptions: buildPainLocationOptions(selectedPainLocationKeys),
+      selectedPainLocationKeys,
+      selectedPainLocationLabels,
       checkinNote: todayRecord ? todayRecord.note || '' : '',
       checkinDateText: this.getCheckinDateText(),
     });
@@ -183,6 +289,35 @@ Page({
     this.setData({ selectedComfort: value });
   },
 
+  handlePainScoreTap(event) {
+    const value = Number(event.currentTarget.dataset.value || 0);
+    this.setData({
+      selectedPainScore: value,
+      selectedComfort: mapPainScoreToComfort(value),
+    });
+  },
+
+  handlePainLocationTap(event) {
+    const key = String(event.currentTarget.dataset.key || '');
+    const option = PAIN_LOCATION_OPTIONS.find((item) => item.key === key);
+    if (!option) return;
+    const keys = this.data.selectedPainLocationKeys.slice();
+    const labels = this.data.selectedPainLocationLabels.slice();
+    const index = keys.indexOf(key);
+    if (index >= 0) {
+      keys.splice(index, 1);
+      labels.splice(index, 1);
+    } else {
+      keys.push(key);
+      labels.push(option.label);
+    }
+    this.setData({
+      selectedPainLocationKeys: keys,
+      selectedPainLocationLabels: labels,
+      painLocationOptions: buildPainLocationOptions(keys),
+    });
+  },
+
   handleNoteInput(event) {
     this.setData({ checkinNote: event.detail.value || '' });
   },
@@ -198,6 +333,8 @@ Page({
         date: this.getTodayText(),
         wearDuration: this.data.selectedWearDuration,
         comfort: this.data.selectedComfort,
+        painScore: this.data.selectedPainScore,
+        painLocations: this.data.selectedPainLocationLabels,
         note: this.data.checkinNote || undefined,
       });
       wx.showToast({ title: '打卡成功', icon: 'success' });

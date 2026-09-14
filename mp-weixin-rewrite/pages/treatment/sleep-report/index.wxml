@@ -23,7 +23,7 @@
       <view class="metrics-grid data-v-72813ef9">
         <view class="metric-card data-v-72813ef9"><text class="metric-val data-v-72813ef9">{{report.weekAvg}}h</text><text class="metric-label data-v-72813ef9">平均时长</text><view class="metric-bar data-v-72813ef9"><view class="metric-fill green data-v-72813ef9" style="width: {{report.weekAvgWidth}}"></view></view></view>
         <view class="metric-card data-v-72813ef9"><text class="metric-val data-v-72813ef9">{{report.compliance}}%</text><text class="metric-label data-v-72813ef9">依从率</text><view class="metric-bar data-v-72813ef9"><view class="metric-fill blue data-v-72813ef9" style="width: {{report.complianceWidth}}"></view></view></view>
-        <view class="metric-card data-v-72813ef9"><text class="metric-val data-v-72813ef9">{{report.avgComfort}}</text><text class="metric-label data-v-72813ef9">舒适度</text><view class="metric-bar data-v-72813ef9"><view class="metric-fill orange data-v-72813ef9" style="width: {{report.avgComfortWidth}}"></view></view></view>
+        <view class="metric-card data-v-72813ef9"><text class="metric-val data-v-72813ef9">{{report.avgPainScore}}</text><text class="metric-label data-v-72813ef9">平均痛感</text><view class="metric-bar data-v-72813ef9"><view class="metric-fill orange data-v-72813ef9" style="width: {{report.avgComfortWidth}}"></view></view></view>
         <view class="metric-card data-v-72813ef9"><text class="metric-val data-v-72813ef9">{{report.streak}}</text><text class="metric-label data-v-72813ef9">连续天数</text><view class="metric-bar data-v-72813ef9"><view class="metric-fill blue data-v-72813ef9" style="width: {{report.streakWidth}}"></view></view></view>
       </view>
       <text class="section-title data-v-72813ef9">趋势分布</text>

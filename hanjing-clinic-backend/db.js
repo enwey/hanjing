@@ -849,6 +849,8 @@ export const initDB = async () => {
       date DATE NOT NULL,
       wear_duration DECIMAL(4, 2) DEFAULT 0.0,
       comfort TINYINT DEFAULT 3,
+      pain_score TINYINT DEFAULT NULL,
+      pain_locations JSON DEFAULT NULL,
       ahi_index DECIMAL(5, 2) DEFAULT NULL,
       note TEXT,
       source VARCHAR(30) DEFAULT NULL,
@@ -894,6 +896,16 @@ export const initDB = async () => {
   }
   try {
     await query(`ALTER TABLE wearing_logs ADD COLUMN ahi_index DECIMAL(5, 2) DEFAULT NULL AFTER comfort`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE wearing_logs ADD COLUMN pain_score TINYINT DEFAULT NULL AFTER comfort`);
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+  try {
+    await query(`ALTER TABLE wearing_logs ADD COLUMN pain_locations JSON DEFAULT NULL AFTER pain_score`);
   } catch (err) {
     // Ignore error if column already exists
   }

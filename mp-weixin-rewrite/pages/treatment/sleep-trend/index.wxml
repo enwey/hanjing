@@ -23,7 +23,7 @@
         <text class="chart-hint data-v-eb41b617" bindtap="openCalendar">查看完整日历</text>
       </view>
       <view class="chart-card data-v-eb41b617">
-        <text class="chart-title data-v-eb41b617">舒适度记录</text>
+        <text class="chart-title data-v-eb41b617">痛感记录</text>
         <view class="comfort-grid data-v-eb41b617">
           <view wx:for="{{chartItems}}" wx:key="dateLabel" class="comfort-cell data-v-eb41b617 {{item.comfortEmpty ? 'comfort-cell--empty' : ''}}">
             <view class="comfort-dots data-v-eb41b617">

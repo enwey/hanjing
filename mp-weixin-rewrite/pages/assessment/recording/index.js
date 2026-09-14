@@ -50,84 +50,195 @@ function toPcmInt16Array(arrayBuffer) {
   return new Int16Array(validByteLength === arrayBuffer.byteLength ? arrayBuffer : arrayBuffer.slice(0, validByteLength));
 }
 
-function analyzePcmOnClient(pcmData, durationSeconds) {
-  const lowCut = 80;
-  const highCut = 800;
-  const sampleRate = 8000;
-  const rcLow = 1 / (2 * Math.PI * lowCut);
-  const rcHigh = 1 / (2 * Math.PI * highCut);
-  const dt = 1 / sampleRate;
-  const alphaLow = dt / (rcLow + dt);
-  const alphaHigh = rcHigh / (rcHigh + dt);
-  let lastLowVal = 0;
-  let lastHighVal = 0;
-  const frameSamples = 16000;
-  const totalSamples = pcmData.length;
-  const frameDuration = 2;
-  let totalDurationSeconds = 0;
-  let averageDecibelSum = 0;
-  let decibelSamplesCount = 0;
-  let peakDecibel = 30;
-  let tempSnoreEventStreak = 0;
-  let lastSnoreTime = 0;
-  let snoreCount = 0;
-  let snoreDurationSeconds = 0;
-  let silenceSeconds = 0;
-  let inApneaState = false;
-  let apneaEventsCount = 0;
-  for (let offset = 0; offset < totalSamples; offset += frameSamples) {
-    const end = Math.min(totalSamples, offset + frameSamples);
-    const size = end - offset;
-    if (size < 4000) continue;
-    let sumAbsolute = 0;
-    for (let index = offset; index < end; index += 1) {
-      const rawSample = pcmData[index] / 32768;
-      lastLowVal += alphaLow * (rawSample - lastLowVal);
-      const filteredSample = alphaHigh * (lastLowVal - lastHighVal);
-      lastHighVal = lastLowVal;
-      sumAbsolute += Math.abs(filteredSample);
-    }
-    const avgEnergy = sumAbsolute / size;
-    const frameDecibel = Math.min(95, Math.max(30, Math.round(30 + avgEnergy * 85)));
-    totalDurationSeconds += frameDuration;
-    averageDecibelSum += frameDecibel;
-    decibelSamplesCount += 1;
-    peakDecibel = Math.max(peakDecibel, frameDecibel);
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
 
-    if (frameDecibel >= 42) {
-      const timeSinceLastSnore = totalDurationSeconds - lastSnoreTime;
-      if (timeSinceLastSnore >= 2 && timeSinceLastSnore <= 6) {
-        tempSnoreEventStreak += 1;
-        if (tempSnoreEventStreak >= 3) {
-          snoreCount += 1;
-          snoreDurationSeconds += frameDuration;
-        }
-      } else if (timeSinceLastSnore > 6) {
-        tempSnoreEventStreak = 1;
-      }
-      lastSnoreTime = totalDurationSeconds;
-    }
+function calculateFrameDecibel(rms) {
+  const normalized = clampNumber(rms / 32768, 0, 1);
+  return Math.round(clampNumber(30 + Math.log10(1 + normalized * 9) * 50, 30, 95));
+}
 
-    if (frameDecibel < 35) {
-      silenceSeconds += frameDuration;
-      if (silenceSeconds >= 10 && !inApneaState) inApneaState = true;
-    } else {
-      if (inApneaState && frameDecibel >= 60) apneaEventsCount += 1;
-      inApneaState = false;
-      silenceSeconds = 0;
+function calculateRiskScore(avgDecibel, peakDecibel, snoreRate, apneaEvents, durationSeconds) {
+  const apneaHourly = apneaEvents / Math.max(durationSeconds / 3600, 0.1);
+  const avgScore = clampNumber((avgDecibel - 38) * 1.4, 0, 26);
+  const peakScore = clampNumber((peakDecibel - 55) * 0.8, 0, 18);
+  const rateScore = clampNumber(snoreRate * 0.4, 0, 38);
+  const apneaScore = clampNumber(apneaHourly * 1.4, 0, 18);
+  return Math.round(clampNumber(avgScore + peakScore + rateScore + apneaScore, 0, 100));
+}
+
+function calculateStdDev(values, average) {
+  if (!values.length) return 0;
+  const variance = values.reduce((sum, value) => sum + Math.pow(value - average, 2), 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function calculateGoertzelPower(pcmData, start, end, sampleRate, frequency) {
+  const step = 2;
+  const sampleCount = Math.max(1, Math.floor((end - start) / step));
+  const omega = (2 * Math.PI * frequency) / sampleRate;
+  const coefficient = 2 * Math.cos(omega);
+  let previous = 0;
+  let previous2 = 0;
+
+  for (let index = start; index < end; index += step) {
+    const normalizedSample = pcmData[index] / 32768;
+    const current = normalizedSample + coefficient * previous - previous2;
+    previous2 = previous;
+    previous = current;
+  }
+
+  return Math.max(0, previous2 * previous2 + previous * previous - coefficient * previous * previous2) / sampleCount;
+}
+
+function calculateBandProfile(pcmData, start, end, sampleRate) {
+  const snoreFrequencies = [80, 100, 125, 160, 200, 250, 315, 400, 500, 630];
+  const noiseFrequencies = [750, 900, 1000, 1200, 1400, 1600, 1800, 2200, 2600, 3000];
+  let snoreBandEnergy = 0;
+  let noiseBandEnergy = 0;
+  let dominantFrequency = 0;
+  let dominantEnergy = 0;
+
+  for (let index = 0; index < snoreFrequencies.length; index += 1) {
+    const frequency = snoreFrequencies[index];
+    const energy = calculateGoertzelPower(pcmData, start, end, sampleRate, frequency);
+    snoreBandEnergy += energy;
+    if (energy > dominantEnergy) {
+      dominantEnergy = energy;
+      dominantFrequency = frequency;
     }
   }
-  const snoreRate = Math.min(95, Math.max(0, Math.round((snoreDurationSeconds / Math.max(1, totalDurationSeconds)) * 100)));
-  const avgDecibel = decibelSamplesCount > 0 ? Math.round(averageDecibelSum / decibelSamplesCount) : 35;
+
+  for (let index = 0; index < noiseFrequencies.length; index += 1) {
+    noiseBandEnergy += calculateGoertzelPower(pcmData, start, end, sampleRate, noiseFrequencies[index]);
+  }
+
+  const bandRatio = snoreBandEnergy / Math.max(snoreBandEnergy + noiseBandEnergy, 0.000001);
+  return { bandRatio, dominantFrequency };
+}
+
+function calculateSnoreToneScore(zeroCrossingRate) {
+  if (zeroCrossingRate >= 70 && zeroCrossingRate <= 520) return 1;
+  if (zeroCrossingRate >= 40 && zeroCrossingRate <= 760) return 0.65;
+  return 0.2;
+}
+
+function calculateSnoreSpectralScore(bandRatio, dominantFrequency) {
+  let bandScore = 0.15;
+  if (bandRatio >= 0.72) bandScore = 1;
+  else if (bandRatio >= 0.55) bandScore = 0.75;
+  else if (bandRatio >= 0.4) bandScore = 0.45;
+
+  const dominantScore = dominantFrequency >= 70 && dominantFrequency <= 630 ? 1 : 0.35;
+  return clampNumber(bandScore * 0.75 + dominantScore * 0.25, 0.1, 1);
+}
+
+function getRiskLevelByScore(score) {
+  if (score < 30) return 'normal';
+  if (score < 50) return 'mild';
+  if (score < 70) return 'moderate';
+  return 'severe';
+}
+
+function analyzePcmOnClient(pcmData, durationSeconds) {
+  const sampleRate = 8000;
+  const frameDuration = 1;
+  const frameSamples = sampleRate * frameDuration;
+  const frameFeatures = [];
+  let peakDecibel = 30;
+  let totalDurationSeconds = 0;
+
+  for (let offset = 0; offset < pcmData.length; offset += frameSamples) {
+    const end = Math.min(pcmData.length, offset + frameSamples);
+    const size = end - offset;
+    if (size < sampleRate * 0.25) continue;
+
+    let squareSum = 0;
+    let zeroCrossings = 0;
+    let previousSample = pcmData[offset];
+    for (let index = offset; index < end; index += 1) {
+      const sample = pcmData[index];
+      squareSum += sample * sample;
+      if ((sample >= 0 && previousSample < 0) || (sample < 0 && previousSample >= 0)) {
+        zeroCrossings += 1;
+      }
+      previousSample = sample;
+    }
+
+    const rms = Math.sqrt(squareSum / size);
+    const frameDecibel = calculateFrameDecibel(rms);
+    const frameSeconds = size / sampleRate;
+    const zeroCrossingRate = zeroCrossings / Math.max(frameSeconds, 0.01);
+    const bandProfile = calculateBandProfile(pcmData, offset, end, sampleRate);
+    const toneScore = calculateSnoreToneScore(zeroCrossingRate);
+    const spectralScore = calculateSnoreSpectralScore(bandProfile.bandRatio, bandProfile.dominantFrequency);
+    frameFeatures.push({
+      decibel: frameDecibel,
+      snoreScore: toneScore * 0.35 + spectralScore * 0.65,
+    });
+    peakDecibel = Math.max(peakDecibel, frameDecibel);
+    totalDurationSeconds += frameSeconds;
+  }
+
+  if (!frameFeatures.length) {
+    return { avgDecibel: 30, peakDecibel: 30, snoreRate: 0, apneaEvents: 0, riskLevel: 'normal', riskScore: 0 };
+  }
+
+  const frameDecibels = frameFeatures.map(item => item.decibel);
+  const sortedDecibels = frameDecibels.slice().sort((a, b) => a - b);
+  const quietIndex = Math.floor(sortedDecibels.length * 0.3);
+  const noiseFloor = sortedDecibels[quietIndex] || sortedDecibels[0] || 30;
+  const snoreThreshold = clampNumber(noiseFloor + 8, 42, 62);
+  const quietThreshold = clampNumber(noiseFloor + 3, 34, 48);
+  let decibelTotal = 0;
+  let snoreFrames = 0;
+  let loudSnoreFrames = 0;
+  let quietFrames = 0;
+  let inApneaState = false;
+  let apneaEventsCount = 0;
+  let snoreConfidenceTotal = 0;
+  let currentSnoreRun = 0;
+  let longestSnoreRun = 0;
+
+  for (let index = 0; index < frameFeatures.length; index += 1) {
+    const frame = frameFeatures[index];
+    const frameDecibel = frame.decibel;
+    decibelTotal += frameDecibel;
+
+    if (frameDecibel >= snoreThreshold) {
+      snoreFrames += 1;
+      if (frameDecibel >= snoreThreshold + 8) loudSnoreFrames += 1;
+      const loudnessScore = clampNumber((frameDecibel - snoreThreshold) / 12, 0.45, 1);
+      snoreConfidenceTotal += loudnessScore * frame.snoreScore;
+      currentSnoreRun += 1;
+      longestSnoreRun = Math.max(longestSnoreRun, currentSnoreRun);
+    } else {
+      currentSnoreRun = 0;
+    }
+
+    if (frameDecibel <= quietThreshold) {
+      quietFrames += 1;
+      if (quietFrames >= 10 && !inApneaState) inApneaState = true;
+    } else {
+      if (inApneaState && frameDecibel >= snoreThreshold + 6) apneaEventsCount += 1;
+      inApneaState = false;
+      quietFrames = 0;
+    }
+  }
+
+  const avgDecibel = Math.round(decibelTotal / frameDecibels.length);
+  const decibelStdDev = calculateStdDev(frameDecibels, avgDecibel);
+  const activeRatio = snoreFrames / frameDecibels.length;
+  const longestRunRatio = longestSnoreRun / frameDecibels.length;
+  const stableNoisePenalty = activeRatio >= 0.75 && longestRunRatio >= 0.75 && decibelStdDev < 4 ? 0.45 : 1;
+  const sustainedSnoreFrames = Math.max(0, snoreConfidenceTotal - Math.floor(loudSnoreFrames * 0.08));
+  const snoreRate = Math.round(clampNumber((sustainedSnoreFrames / frameDecibels.length) * 100 * stableNoisePenalty, 0, 95));
   const apneaEvents = apneaEventsCount;
-  const hours = Math.max(0.1, durationSeconds / 3600);
-  const ahi = apneaEvents / hours;
-  let riskLevel = 'normal';
-  if (ahi < 5) riskLevel = 'normal';
-  else if (ahi < 15) riskLevel = 'mild';
-  else if (ahi < 30) riskLevel = 'moderate';
-  else riskLevel = 'severe';
-  return { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel };
+  const rawRiskScore = calculateRiskScore(avgDecibel, peakDecibel, snoreRate, apneaEvents, Math.max(durationSeconds, totalDurationSeconds));
+  const riskScore = Math.round(rawRiskScore * stableNoisePenalty);
+  const riskLevel = getRiskLevelByScore(riskScore);
+  return { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel, riskScore };
 }
 
 Page({

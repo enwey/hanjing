@@ -89,16 +89,22 @@
 .calendar-day--today.data-v-c9f86960 .calendar-day-num.data-v-c9f86960 {
   color: #3b6bf5;
 }
+.calendar-day--pain0.data-v-c9f86960,
 .calendar-day--comfort5.data-v-c9f86960 {
   background: rgba(22, 163, 74, 0.08);
 }
+.calendar-day--pain0.data-v-c9f86960 .calendar-day-num.data-v-c9f86960,
+.calendar-day--pain0.data-v-c9f86960 .calendar-day-duration.data-v-c9f86960,
 .calendar-day--comfort5.data-v-c9f86960 .calendar-day-num.data-v-c9f86960,
 .calendar-day--comfort5.data-v-c9f86960 .calendar-day-duration.data-v-c9f86960 {
   color: #16a34a;
 }
+.calendar-day--pain-mild.data-v-c9f86960,
 .calendar-day--comfort4.data-v-c9f86960 {
   background: rgba(34, 197, 94, 0.08);
 }
+.calendar-day--pain-mild.data-v-c9f86960 .calendar-day-num.data-v-c9f86960,
+.calendar-day--pain-mild.data-v-c9f86960 .calendar-day-duration.data-v-c9f86960,
 .calendar-day--comfort4.data-v-c9f86960 .calendar-day-num.data-v-c9f86960,
 .calendar-day--comfort4.data-v-c9f86960 .calendar-day-duration.data-v-c9f86960 {
   color: #15803d;
@@ -110,16 +116,22 @@
 .calendar-day--comfort3.data-v-c9f86960 .calendar-day-duration.data-v-c9f86960 {
   color: #3b6bf5;
 }
+.calendar-day--pain-moderate.data-v-c9f86960,
 .calendar-day--comfort2.data-v-c9f86960 {
   background: rgba(245, 158, 11, 0.08);
 }
+.calendar-day--pain-moderate.data-v-c9f86960 .calendar-day-num.data-v-c9f86960,
+.calendar-day--pain-moderate.data-v-c9f86960 .calendar-day-duration.data-v-c9f86960,
 .calendar-day--comfort2.data-v-c9f86960 .calendar-day-num.data-v-c9f86960,
 .calendar-day--comfort2.data-v-c9f86960 .calendar-day-duration.data-v-c9f86960 {
   color: #d97706;
 }
+.calendar-day--pain-severe.data-v-c9f86960,
 .calendar-day--comfort1.data-v-c9f86960 {
   background: rgba(239, 68, 68, 0.08);
 }
+.calendar-day--pain-severe.data-v-c9f86960 .calendar-day-num.data-v-c9f86960,
+.calendar-day--pain-severe.data-v-c9f86960 .calendar-day-duration.data-v-c9f86960,
 .calendar-day--comfort1.data-v-c9f86960 .calendar-day-num.data-v-c9f86960,
 .calendar-day--comfort1.data-v-c9f86960 .calendar-day-duration.data-v-c9f86960 {
   color: #dc2626;
@@ -156,18 +168,22 @@
   font-weight: 500;
   color: #9ca3af;
 }
+.legend-item--pain0.data-v-c9f86960,
 .legend-item--5.data-v-c9f86960 {
   color: #16a34a !important;
 }
+.legend-item--pain-mild.data-v-c9f86960,
 .legend-item--4.data-v-c9f86960 {
   color: #15803d !important;
 }
 .legend-item--3.data-v-c9f86960 {
   color: #3b6bf5 !important;
 }
+.legend-item--pain-moderate.data-v-c9f86960,
 .legend-item--2.data-v-c9f86960 {
   color: #d97706 !important;
 }
+.legend-item--pain-severe.data-v-c9f86960,
 .legend-item--1.data-v-c9f86960 {
   color: #dc2626 !important;
 }
@@ -176,18 +192,22 @@
   height: 6px;
   border-radius: 50%;
 }
+.legend-dot--pain0.data-v-c9f86960,
 .legend-dot--5.data-v-c9f86960 {
   background: #16a34a;
 }
+.legend-dot--pain-mild.data-v-c9f86960,
 .legend-dot--4.data-v-c9f86960 {
   background: #15803d;
 }
 .legend-dot--3.data-v-c9f86960 {
   background: #3b6bf5;
 }
+.legend-dot--pain-moderate.data-v-c9f86960,
 .legend-dot--2.data-v-c9f86960 {
   background: #d97706;
 }
+.legend-dot--pain-severe.data-v-c9f86960,
 .legend-dot--1.data-v-c9f86960 {
   background: #dc2626;
 }
@@ -371,6 +391,48 @@
   background: #eafaf1 !important;
   color: #15803d !important;
   border: 1.5px solid #15803d !important;
+}
+.pain-location-grid.data-v-c9f86960 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pain-location-item.data-v-c9f86960 {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  box-sizing: border-box;
+}
+.pain-location-item--active.data-v-c9f86960 {
+  border-color: #3b6bf5;
+  background: #eef4ff;
+}
+.pain-location-check.data-v-c9f86960 {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border-radius: 5px;
+  border: 1.5px solid #cbd5e1;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.pain-location-item--active.data-v-c9f86960 .pain-location-check.data-v-c9f86960 {
+  border-color: #3b6bf5;
+  background: #3b6bf5;
+  box-shadow: inset 0 0 0 4px #eef4ff;
+}
+.pain-location-text.data-v-c9f86960 {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #374151;
+}
+.pain-location-item--active.data-v-c9f86960 .pain-location-text.data-v-c9f86960 {
+  color: #1d4ed8;
+  font-weight: 600;
 }
 .checkin-textarea.data-v-c9f86960 {
   width: 100%;

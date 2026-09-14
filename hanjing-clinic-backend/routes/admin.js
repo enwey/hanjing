@@ -153,7 +153,7 @@ const TABLE_COMMENT_FALLBACKS = {
   treatment_records: '治疗记录表，保存设备适配、治疗状态、调整计划等信息',
   patient_devices: '患者设备表，保存患者绑定的阻鼾器或治疗设备信息',
   device_adjustments: '设备调整记录表，保存参数调整历史',
-  wearing_logs: '佩戴日志表，保存患者每日佩戴、舒适度、AHI 等数据',
+  wearing_logs: '佩戴日志表，保存患者每日佩戴、VAS痛感、疼痛部位、AHI 等数据',
   device_feedback: '设备反馈表，保存患者提交的设备使用反馈',
   device_maintenance: '设备维护表，保存维护保养记录',
   ess_assessments: 'ESS 量表评估表，保存嗜睡量表评分与风险等级',
@@ -2211,6 +2211,16 @@ app.get('/api/admin/patients/:id/sleep-diagnostics', authenticateToken, async (r
       `SELECT COUNT(wl.id) as total_days,
               COALESCE(AVG(wl.wear_duration), 0) as avg_duration,
               COALESCE(AVG(wl.comfort), 0) as avg_comfort,
+              COALESCE(AVG(COALESCE(wl.pain_score,
+                CASE
+                  WHEN wl.comfort >= 5 THEN 0
+                  WHEN wl.comfort = 4 THEN 2
+                  WHEN wl.comfort = 3 THEN 4
+                  WHEN wl.comfort = 2 THEN 6
+                  WHEN wl.comfort = 1 THEN 8
+                  ELSE 0
+                END
+              )), 0) as avg_pain_score,
               COALESCE(AVG(wl.ahi_index), 0) as avg_ahi
        FROM patient_devices pd
        LEFT JOIN wearing_logs wl ON wl.patient_device_id = pd.id AND wl.source = 'mini_program_checkin'

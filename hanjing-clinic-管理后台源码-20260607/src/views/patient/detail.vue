@@ -1014,6 +1014,12 @@ async function handleSaveCrm() {
               </div>
               <div class="mini-stat">
                 <div>
+                  <div class="mini-stat-value">{{ Number(sleepDiagnostics?.wearing?.avg_pain_score || 0).toFixed(1) }}/10</div>
+                  <div class="mini-stat-label">平均痛感</div>
+                </div>
+              </div>
+              <div class="mini-stat">
+                <div>
                   <div class="mini-stat-value">{{ sleepDiagnostics?.wearing?.total_days || 0 }}天</div>
                   <div class="mini-stat-label">真实佩戴记录</div>
                 </div>

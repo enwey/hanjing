@@ -560,6 +560,17 @@
   margin-bottom: 8px;
   margin-top: 16px;
 }
+.checkin-label-row.data-v-8badcb8c {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+.checkin-label-row.data-v-8badcb8c .checkin-label.data-v-8badcb8c {
+  margin: 0;
+}
 .duration-scroll.data-v-8badcb8c {
   width: 100%;
   white-space: nowrap;
@@ -630,6 +641,175 @@
   background: #eafaf1 !important;
   color: #15803d !important;
   border: 1.5px solid #15803d !important;
+}
+.pain-score-badge.data-v-8badcb8c {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.pain-score-badge--none.data-v-8badcb8c,
+.pain-score-badge--mild.data-v-8badcb8c {
+  background: #ecfdf5;
+  color: #15803d;
+}
+.pain-score-badge--moderate.data-v-8badcb8c {
+  background: #fffbeb;
+  color: #d97706;
+}
+.pain-score-badge--severe.data-v-8badcb8c {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.pain-score-panel.data-v-8badcb8c {
+  padding: 12px 12px 10px;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+.pain-score-head.data-v-8badcb8c {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+.pain-score-value.data-v-8badcb8c {
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 800;
+  color: #111827;
+}
+.pain-score-unit.data-v-8badcb8c {
+  margin-left: 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+.pain-score-slider-wrap.data-v-8badcb8c {
+  position: relative;
+  height: 46px;
+  margin-top: 4px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+.pain-score-track-zone.data-v-8badcb8c {
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  top: 50%;
+  height: 26px;
+  transform: translateY(-50%);
+}
+.pain-score-gradient-track.data-v-8badcb8c {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 12px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, #16a34a 0%, #22c55e 28%, #f59e0b 58%, #ef4444 100%);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+.pain-score-ticks.data-v-8badcb8c {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.pain-score-tick.data-v-8badcb8c {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+.pain-score-tick.data-v-8badcb8c:first-child,
+.pain-score-tick.data-v-8badcb8c:last-child {
+  opacity: 0;
+}
+.pain-score-tick--active.data-v-8badcb8c {
+  width: 6px;
+  height: 6px;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(59, 107, 245, 0.35);
+}
+.pain-score-thumb.data-v-8badcb8c {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid #3b6bf5;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.22);
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+}
+.pain-score-scale.data-v-8badcb8c {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -2px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+.pain-score-hint.data-v-8badcb8c {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b7280;
+  text-align: center;
+}
+.pain-location-grid.data-v-8badcb8c {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pain-location-item.data-v-8badcb8c {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  box-sizing: border-box;
+}
+.pain-location-item--active.data-v-8badcb8c {
+  border-color: #3b6bf5;
+  background: #eef4ff;
+}
+.pain-location-check.data-v-8badcb8c {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border-radius: 5px;
+  border: 1.5px solid #cbd5e1;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.pain-location-item--active.data-v-8badcb8c .pain-location-check.data-v-8badcb8c {
+  border-color: #3b6bf5;
+  background: #3b6bf5;
+  box-shadow: inset 0 0 0 4px #eef4ff;
+}
+.pain-location-text.data-v-8badcb8c {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #374151;
+}
+.pain-location-item--active.data-v-8badcb8c .pain-location-text.data-v-8badcb8c {
+  color: #1d4ed8;
+  font-weight: 600;
 }
 .checkin-textarea.data-v-8badcb8c {
   width: 100%;

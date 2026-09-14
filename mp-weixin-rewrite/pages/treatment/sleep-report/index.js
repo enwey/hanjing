@@ -8,6 +8,7 @@ function createEmptyReport() {
     compliance: 0,
     weekAvg: 0,
     avgComfort: 0,
+    avgPainScore: 0,
     streak: 0,
     score: 0,
     betterThan: 0,
@@ -27,12 +28,14 @@ function normalizeSleepReport(response) {
         date: item.date || '',
         score: Number(item.score || 0),
         comfort: Number(item.comfort || 0),
+        painScore: Number(item.painScore || 0),
       }))
     : [];
   const report = Object.assign(createEmptyReport(), source, {
     compliance: Number(source.compliance || 0),
     weekAvg: Number(source.weekAvg || 0),
     avgComfort: Number(source.avgComfort || 0),
+    avgPainScore: Number(source.avgPainScore || 0),
     streak: Number(source.streak || 0),
     score: Number(source.score || 0),
     betterThan: Number(source.betterThan || 0),
@@ -45,7 +48,7 @@ function normalizeSleepReport(response) {
       trend.length ||
       report.compliance > 0 ||
       report.weekAvg > 0 ||
-      report.avgComfort > 0 ||
+      report.avgPainScore > 0 ||
       report.streak > 0 ||
       report.score > 0,
     );
@@ -108,13 +111,14 @@ function buildReportViewModel(report, selectedRange, currentPatientLabel) {
     patientLabel: currentPatientLabel || '当前治疗人',
     weekAvgWidth: clampPercent(report.weekAvg, 8),
     complianceWidth: Math.max(0, Math.min(100, Math.round(Number(report.compliance || 0)))) + '%',
-    avgComfortWidth: clampPercent(report.avgComfort, 5),
+    avgComfortWidth: clampPercent(report.avgPainScore, 10),
     streakWidth: clampPercent(report.streak, 30),
     trend: trendSource.length
       ? trendSource.map((item, index) => ({
           date: item.date,
           score: item.score,
           comfort: item.comfort,
+          painScore: item.painScore,
           showLabel: selectedRange === 'week'
             || index === 0
             || index === trendSource.length - 1
@@ -198,8 +202,8 @@ Page({
     } else if (Number(report.weekAvg || 0) < 5) {
       insights.push({ id: 'duration-warn', type: 'warn', title: '需要关注', text: '平均佩戴时长偏低，建议逐步延长到每晚 6 到 8 小时。' });
     }
-    if (Number(report.avgComfort || 0) < 3) {
-      insights.push({ id: 'comfort-warn', type: 'warn', title: '需要关注', text: '舒适度偏低，建议预约医生评估当前设备参数。' });
+    if (Number(report.avgPainScore || 0) >= 4) {
+      insights.push({ id: 'comfort-warn', type: 'warn', title: '需要关注', text: '平均痛感偏高，建议预约医生评估当前设备参数。' });
     }
     insights.push({ id: 'tip', type: 'info', title: '建议提醒', text: '建议每周至少佩戴 6 晚，并持续观察趋势变化。' });
     return insights;

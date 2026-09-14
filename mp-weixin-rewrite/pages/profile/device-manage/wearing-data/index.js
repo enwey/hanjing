@@ -10,6 +10,23 @@ const MEMBER_LABEL_MAP = {
   other: "其他",
 };
 
+function mapComfortToPainScore(comfort) {
+  const value = Number(comfort || 0);
+  if (value >= 5) return 0;
+  if (value === 4) return 2;
+  if (value === 3) return 4;
+  if (value === 2) return 6;
+  if (value === 1) return 8;
+  return 0;
+}
+
+function resolvePainScore(record) {
+  if (record && record.painScore !== undefined && record.painScore !== null && record.painScore !== "") {
+    return Number(record.painScore);
+  }
+  return mapComfortToPainScore(record && record.comfort);
+}
+
 Page({
   data: {
     loading: true,
@@ -54,6 +71,8 @@ Page({
       const res = await api.getWearingRecords(selectedPatientId ? { patientId: selectedPatientId } : {});
       const records = (res.data || res || []).map((item) => ({
         ...item,
+        painScore: resolvePainScore(item),
+        painLocationsText: Array.isArray(item.painLocations) && item.painLocations.length ? item.painLocations.join("、") : "",
         progressWidth: `${Math.max(0, Math.min(100, Number(item.wearDuration || 0) / 8 * 100))}%`,
         progressColor: Number(item.wearDuration || 0) >= 6 ? "#1A9D5C" : Number(item.wearDuration || 0) >= 4 ? "#F59E0B" : "#EF4444",
       }));

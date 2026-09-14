@@ -5954,7 +5954,7 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
     const logs = wearResult?.logs || [];
 
     let totalDuration = 0;
-    let totalComfort = 0;
+    let totalPainScore = 0;
     let totalAhi = 0;
     let ahiCount = 0;
     let wearCount = 0;
@@ -5973,9 +5973,11 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
         const ahiPenalty = log.ahi_index !== null && log.ahi_index !== undefined
           ? Math.max(0, 100 - Number(log.ahi_index || 0) * 4)
           : 100;
-        dayScore = Math.min(100, Math.round((Number(log.wear_duration || 0) / 8) * 100 * 0.45 + (Number(log.comfort || 0) / 5) * 100 * 0.25 + ahiPenalty * 0.3));
+        const painScore = resolveLogPainScore(log);
+        const painComfortScore = Math.max(0, 100 - painScore * 10);
+        dayScore = Math.min(100, Math.round((Number(log.wear_duration || 0) / 8) * 100 * 0.45 + painComfortScore * 0.25 + ahiPenalty * 0.3));
         totalDuration += Number(log.wear_duration || 0);
-        totalComfort += Number(log.comfort || 0);
+        totalPainScore += painScore;
         if (log.ahi_index !== null && log.ahi_index !== undefined) {
           totalAhi += Number(log.ahi_index || 0);
           ahiCount++;
@@ -5987,13 +5989,15 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
       trend.push({
         date: `${u.getMonth() + 1}/${u.getDate()}`,
         score: dayScore,
-        comfort: log ? Number(log.comfort || 0) : 0
+        comfort: log ? Number(log.comfort || 0) : 0,
+        painScore: log ? resolveLogPainScore(log) : 0
       });
     }
 
     const compliance = Math.round((wearCount / limitDays) * 100);
     const weekAvg = wearCount > 0 ? Number((totalDuration / wearCount).toFixed(1)) : 0;
-    const avgComfort = wearCount > 0 ? Number((totalComfort / wearCount).toFixed(1)) : 0;
+    const avgPainScore = wearCount > 0 ? Number((totalPainScore / wearCount).toFixed(1)) : 0;
+    const avgComfort = wearCount > 0 ? Number(Math.max(1, 5 - avgPainScore * 0.4).toFixed(1)) : 0;
     const avgAhi = ahiCount > 0 ? Number((totalAhi / ahiCount).toFixed(1)) : null;
 
     let streak = 0;
@@ -6009,7 +6013,7 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
       }
     }
     const score = wearCount > 0
-      ? Math.min(100, Math.round(0.35 * compliance + (weekAvg / 8) * 100 * 0.35 + (avgComfort / 5) * 100 * 0.2 + (avgAhi === null ? 100 : Math.max(0, 100 - avgAhi * 4)) * 0.1))
+      ? Math.min(100, Math.round(0.35 * compliance + (weekAvg / 8) * 100 * 0.35 + Math.max(0, 100 - avgPainScore * 10) * 0.2 + (avgAhi === null ? 100 : Math.max(0, 100 - avgAhi * 4)) * 0.1))
       : 0;
     const betterThan = wearCount > 0 ? Math.min(95, Math.max(5, Math.round(score * 0.82))) : 0;
     const assessmentPlaceholders = buildSqlPlaceholders(scope.patientIds);
@@ -6048,6 +6052,7 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
         compliance,
         weekAvg,
         avgComfort,
+        avgPainScore,
         streak,
         score,
         betterThan,
@@ -6170,6 +6175,75 @@ app.get('/api/v1/treatment/device', authenticateWxToken, async (req, res) => {
   return sendTreatmentRecord(req, res);
 });
 
+function mapComfortToPainScore(comfort) {
+  const value = Number(comfort || 0);
+  if (value >= 5) return 0;
+  if (value === 4) return 2;
+  if (value === 3) return 4;
+  if (value === 2) return 6;
+  if (value === 1) return 8;
+  return 0;
+}
+
+function mapPainScoreToComfort(score) {
+  const value = Number(score || 0);
+  if (value <= 0) return 5;
+  if (value <= 2) return 4;
+  if (value <= 4) return 3;
+  if (value <= 7) return 2;
+  return 1;
+}
+
+function normalizePainScore(value, fallbackComfort = 3) {
+  if (value === undefined || value === null || value === '') {
+    return mapComfortToPainScore(fallbackComfort);
+  }
+  const numberValue = Number(value);
+  if (!Number.isInteger(numberValue) || numberValue < 0 || numberValue > 10) {
+    const err = new Error('疼痛评分必须在0至10之间');
+    err.statusCode = 400;
+    throw err;
+  }
+  return numberValue;
+}
+
+function parsePainLocations(value) {
+  if (value === undefined || value === null || value === '') {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20);
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20);
+      }
+    } catch (error) {}
+    return value.split(/[、,，]/).map((item) => item.trim()).filter(Boolean).slice(0, 20);
+  }
+  return [];
+}
+
+function parseJsonArray(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function resolveLogPainScore(log) {
+  if (log && log.pain_score !== undefined && log.pain_score !== null) {
+    return Number(log.pain_score);
+  }
+  return mapComfortToPainScore(log && log.comfort);
+}
+
 // 21.1 WeChat Client Wearing Records (GET)
 app.get('/api/v1/treatment/wearing-records', authenticateWxToken, async (req, res) => {
   try {
@@ -6197,6 +6271,8 @@ app.get('/api/v1/treatment/wearing-records', authenticateWxToken, async (req, re
         date: formatTime(log.date),
         wearDuration: Number(log.wear_duration),
         comfort: log.comfort || 3,
+        painScore: resolveLogPainScore(log),
+        painLocations: parseJsonArray(log.pain_locations),
         note: log.note || '',
         createdAt: log.created_at
       }))
@@ -6219,6 +6295,7 @@ app.get('/api/v1/treatment/wearing-summary', authenticateWxToken, async (req, re
       weekCompliance: 0,
       avgDuration: 0,
       avgComfort: 0,
+      avgPainScore: 0,
       streak: 0,
       weekWorn: 0,
       weekAvg: 0
@@ -6263,6 +6340,9 @@ app.get('/api/v1/treatment/wearing-summary', authenticateWxToken, async (req, re
     const avgComfort = worn30Logs.length > 0
       ? Math.round((worn30Logs.reduce((acc, log) => acc + Number(log.comfort || 3), 0) / worn30Logs.length) * 10) / 10
       : 0;
+    const avgPainScore = worn30Logs.length > 0
+      ? Math.round((worn30Logs.reduce((acc, log) => acc + resolveLogPainScore(log), 0) / worn30Logs.length) * 10) / 10
+      : 0;
 
     let streak = 0;
     for (let i = 0; i < 30; i += 1) {
@@ -6295,6 +6375,7 @@ app.get('/api/v1/treatment/wearing-summary', authenticateWxToken, async (req, re
         weekCompliance,
         avgDuration,
         avgComfort,
+        avgPainScore,
         streak,
         weekWorn,
         weekAvg
@@ -6354,13 +6435,20 @@ app.get('/api/v1/treatment/timeline', authenticateWxToken, async (req, res) => {
 
 // 21.4 WeChat Client Wearing Check-in (POST)
 app.post('/api/v1/treatment/wearing', authenticateWxToken, async (req, res) => {
-  const { date, wearDuration, comfort, note, ahiIndex } = req.body;
+  const { date, wearDuration, comfort, painScore, painLocations, note, ahiIndex } = req.body;
   const explicitPatientId = req.body?.patientId || req.body?.memberId;
   if (!date || wearDuration === undefined) {
     return res.status(400).json({ code: 400, message: '打卡日期和时长不能为空' });
   }
   const durationVal = Number(wearDuration);
-  const comfortVal = comfort === undefined || comfort === null ? 3 : Number(comfort);
+  let painScoreVal;
+  try {
+    painScoreVal = normalizePainScore(painScore, comfort === undefined || comfort === null ? 3 : comfort);
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ code: error.statusCode || 400, message: error.message || '疼痛评分无效' });
+  }
+  const comfortVal = comfort === undefined || comfort === null ? mapPainScoreToComfort(painScoreVal) : Number(comfort);
+  const painLocationsVal = parsePainLocations(painLocations);
   if (!Number.isFinite(durationVal) || durationVal < 0 || durationVal > 24) {
     return res.status(400).json({ code: 400, message: '佩戴时长必须在0至24小时之间' });
   }
@@ -6396,17 +6484,19 @@ app.post('/api/v1/treatment/wearing', authenticateWxToken, async (req, res) => {
              treatment_id = ?,
              wear_duration = ?,
              comfort = ?,
+             pain_score = ?,
+             pain_locations = ?,
              ahi_index = ?,
              note = ?,
              source = 'mini_program_checkin'
          WHERE id = ?`,
-        [patientDeviceId, treatmentId, durationVal, comfortVal, ahiIndex ?? null, note || null, existingLog.id]
+        [patientDeviceId, treatmentId, durationVal, comfortVal, painScoreVal, JSON.stringify(painLocationsVal), ahiIndex ?? null, note || null, existingLog.id]
       );
     } else {
       await run(
-        `INSERT INTO wearing_logs (patient_id, patient_device_id, treatment_id, date, wear_duration, comfort, ahi_index, note, source)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'mini_program_checkin')`,
-        [patient.id, patientDeviceId, treatmentId, date, durationVal, comfortVal, ahiIndex ?? null, note || null]
+        `INSERT INTO wearing_logs (patient_id, patient_device_id, treatment_id, date, wear_duration, comfort, pain_score, pain_locations, ahi_index, note, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'mini_program_checkin')`,
+        [patient.id, patientDeviceId, treatmentId, date, durationVal, comfortVal, painScoreVal, JSON.stringify(painLocationsVal), ahiIndex ?? null, note || null]
       );
     }
 

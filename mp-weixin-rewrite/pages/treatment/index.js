@@ -21,6 +21,17 @@ const TREATMENT_ENTRIES = [
   { key: 'community', title: '医患社区', description: '交流经验与心得', icon: '/static/icons/community.svg', iconClass: 'menu-icon--community', url: '/pages/community/index' },
 ];
 
+const PAIN_LOCATION_OPTIONS = [
+  { key: 'left-molar', label: '上/下颌左大牙齿内侧、外侧' },
+  { key: 'right-molar', label: '上/下颌右大牙齿内侧、外侧' },
+  { key: 'upper-front', label: '上颌门牙齿内侧、外侧' },
+  { key: 'lower-front', label: '下颌门牙齿内侧、外侧' },
+  { key: 'upper-left-joint', label: '上颌左关节痛' },
+  { key: 'lower-right-joint', label: '下颌右关节痛' },
+  { key: 'bite-surface', label: '咬合面痛' },
+  { key: 'fracture', label: '上/下断裂' },
+];
+
 function unwrapObject(response) {
   const payload = response && response.data ? response.data : response || {};
   return payload.data || payload;
@@ -86,23 +97,11 @@ function buildRecentDays(records) {
       '-' +
       String(currentDate.getDate()).padStart(2, '0');
     const record = recordMap[dateText] || null;
-    const comfort = Number(record && record.comfort ? record.comfort : 0);
+    const painScore = resolvePainScore(record);
 
     let barColor = '#F3F4F6';
     if (record && Number(record.wearDuration || 0) > 0) {
-      if (comfort === 1) {
-        barColor = '#EF4444';
-      } else if (comfort === 2) {
-        barColor = '#EAB308';
-      } else if (comfort === 3) {
-        barColor = '#06B6D4';
-      } else if (comfort === 4) {
-        barColor = '#4ADE80';
-      } else if (comfort === 5) {
-        barColor = '#15803D';
-      } else {
-        barColor = '#06B6D4';
-      }
+      barColor = getPainScoreColor(painScore);
     }
 
     result.push({
@@ -118,6 +117,53 @@ function buildRecentDays(records) {
   return result;
 }
 
+function parsePainScoreFromNote(note) {
+  const matched = String(note || '').match(/VAS评分：(\d+)分/);
+  if (!matched) {
+    return null;
+  }
+  const value = Number(matched[1]);
+  return Number.isFinite(value) ? Math.max(0, Math.min(10, value)) : null;
+}
+
+function resolvePainScore(record) {
+  if (!record) {
+    return 0;
+  }
+  if (record.painScore !== undefined && record.painScore !== null && record.painScore !== '') {
+    return Number(record.painScore);
+  }
+  const parsed = parsePainScoreFromNote(record.note);
+  if (parsed !== null) {
+    return parsed;
+  }
+  return mapComfortToPainScore(record.comfort);
+}
+
+function getPainScoreColor(score) {
+  const value = Number(score || 0);
+  if (value <= 0) {
+    return '#15803D';
+  }
+  if (value <= 3) {
+    return '#4ADE80';
+  }
+  if (value <= 6) {
+    return '#EAB308';
+  }
+  return '#EF4444';
+}
+
+function calcAveragePainScore(records) {
+  const validRecords = (records || []).filter((record) => record && Number(record.wearDuration || 0) > 0);
+  if (!validRecords.length) {
+    return '0';
+  }
+  const total = validRecords.reduce((sum, record) => sum + resolvePainScore(record), 0);
+  const average = total / validRecords.length;
+  return Number.isInteger(average) ? String(average) : average.toFixed(1);
+}
+
 function buildTimelinePreview(timeline) {
   return timeline.slice(0, 2).map((item, index, list) => ({
     id: item.id || String(index),
@@ -127,6 +173,121 @@ function buildTimelinePreview(timeline) {
     dotColor: item.color || '#3b6bf5',
     showLine: index < list.length - 1,
   }));
+}
+
+function getPainScoreLevel(score) {
+  const value = Number(score || 0);
+  if (value <= 0) {
+    return { label: '无痛', hint: '0 分表示无疼痛感', className: 'none' };
+  }
+  if (value <= 3) {
+    return { label: '轻度疼痛', hint: '1-3 分为轻度疼痛', className: 'mild' };
+  }
+  if (value <= 6) {
+    return { label: '中度疼痛', hint: '4-6 分为中度疼痛', className: 'moderate' };
+  }
+  return { label: '重度疼痛', hint: '7-10 分为重度疼痛', className: 'severe' };
+}
+
+function mapComfortToPainScore(comfort) {
+  const value = Number(comfort || 0);
+  if (value >= 5) {
+    return 0;
+  }
+  if (value === 4) {
+    return 2;
+  }
+  if (value === 3) {
+    return 4;
+  }
+  if (value === 2) {
+    return 6;
+  }
+  if (value === 1) {
+    return 8;
+  }
+  return 0;
+}
+
+function mapPainScoreToComfort(score) {
+  const value = Number(score || 0);
+  if (value <= 0) {
+    return 5;
+  }
+  if (value <= 2) {
+    return 4;
+  }
+  if (value <= 4) {
+    return 3;
+  }
+  if (value <= 7) {
+    return 2;
+  }
+  return 1;
+}
+
+function buildPainScoreData(score) {
+  const value = Math.max(0, Math.min(10, Number(score || 0)));
+  const painLevel = getPainScoreLevel(value);
+  return {
+    selectedPainScore: value,
+    selectedComfort: mapPainScoreToComfort(value),
+    painScoreLabel: painLevel.label,
+    painScoreHint: painLevel.hint,
+    painScoreClass: painLevel.className,
+    painScorePercent: `${value * 10}%`,
+  };
+}
+
+function buildPainLocationOptions(selectedKeys) {
+  const selectedMap = {};
+  (selectedKeys || []).forEach((key) => {
+    selectedMap[key] = true;
+  });
+  return PAIN_LOCATION_OPTIONS.map((item) => ({
+    ...item,
+    selected: !!selectedMap[item.key],
+  }));
+}
+
+function parsePainLocationKeysFromNote(note) {
+  const matched = String(note || '').match(/疼痛部位：([^\n]+)/);
+  if (!matched) {
+    return [];
+  }
+  const labels = matched[1].split('、').map((item) => item.trim()).filter(Boolean);
+  return PAIN_LOCATION_OPTIONS.filter((option) => labels.indexOf(option.label) >= 0).map((option) => option.key);
+}
+
+function resolvePainLocationKeys(record) {
+  const locations = record && Array.isArray(record.painLocations) ? record.painLocations : [];
+  if (locations.length) {
+    return PAIN_LOCATION_OPTIONS
+      .filter((option) => locations.indexOf(option.label) >= 0 || locations.indexOf(option.key) >= 0)
+      .map((option) => option.key);
+  }
+  return parsePainLocationKeysFromNote(record && record.note);
+}
+
+function parseRemarkFromNote(note) {
+  const text = String(note || '');
+  const matched = text.match(/备注：([\s\S]*)$/);
+  if (matched) {
+    return matched[1].trim();
+  }
+  return text.indexOf('VAS评分：') >= 0 ? '' : text;
+}
+
+function buildCheckinNote(score, labels, remark) {
+  const level = getPainScoreLevel(score);
+  const lines = [`VAS评分：${score}分（${level.label}）`];
+  if (labels.length) {
+    lines.push(`疼痛部位：${labels.join('、')}`);
+  }
+  if (remark) {
+    lines.push(`备注：${remark}`);
+  }
+  return lines.join('\n');
 }
 
 Page({
@@ -163,7 +324,7 @@ Page({
     summaryCards: [
       { key: 'worn', label: '本周佩戴', value: '0/7' },
       { key: 'avg', label: '平均时长', value: '0h' },
-      { key: 'comfort', label: '舒适度', value: '0/5' },
+      { key: 'comfort', label: '平均痛感', value: '0/10' },
       { key: 'streak', label: '连续天数', value: '0天' },
     ],
     showTimelineLink: false,
@@ -173,9 +334,17 @@ Page({
     durationScrollLeft: 0,
     selectedWearDuration: 7,
     selectedComfort: 4,
+    selectedPainScore: 2,
+    painScorePercent: '20%',
+    painScoreLabel: '轻度疼痛',
+    painScoreHint: '1-3 分为轻度疼痛',
+    painScoreClass: 'mild',
+    painLocationOptions: buildPainLocationOptions([]),
+    selectedPainLocationKeys: [],
+    selectedPainLocationLabels: [],
     checkinNote: '',
     durationOptions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    comfortOptions: [1, 2, 3, 4, 5],
+    painScoreTicks: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     isSubmittingCheckin: false,
   },
 
@@ -252,6 +421,8 @@ Page({
         date: item.date || '',
         wearDuration: Number(item.wearDuration || 0),
         comfort: Number(item.comfort || 0),
+        painScore: item.painScore === undefined || item.painScore === null ? null : Number(item.painScore),
+        painLocations: Array.isArray(item.painLocations) ? item.painLocations : [],
         note: item.note || '',
       }));
       const summary = unwrapObject(summaryRes) || {};
@@ -285,14 +456,14 @@ Page({
         treatmentStartLabel: hasTreatmentRecord ? `初配日期：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '初配日期：--',
         k: String(summary.weekWorn || 0),
         l: String(Number(summary.weekAvg || 0)),
-        m: String(Number(summary.avgComfort || 0)),
+        m: calcAveragePainScore(wearingRecords),
         n: String(summary.streak || 0),
         emptyTreatmentNotice: '该治疗人暂无已绑定设备的治疗记录，完成初诊适配后将显示完整治疗追踪内容并支持设备打卡。',
         recentDays: buildRecentDays(wearingRecords),
         summaryCards: [
           { key: 'worn', label: '本周佩戴', value: `${summary.weekWorn || 0}/7` },
           { key: 'avg', label: '平均时长', value: `${Number(summary.weekAvg || 0)}h` },
-          { key: 'comfort', label: '舒适度', value: `${Number(summary.avgComfort || 0)}/5` },
+          { key: 'comfort', label: '平均痛感', value: `${calcAveragePainScore(wearingRecords)}/10` },
           { key: 'streak', label: '连续天数', value: `${summary.streak || 0}天` },
         ],
         showTimelineLink: hasRealTreatmentRecord,
@@ -369,13 +540,21 @@ Page({
 
   openCheckinModal() {
     const todayRecord = (this.wearingRecords || []).find((item) => item.date === getTodayText());
+    const painScore = todayRecord ? resolvePainScore(todayRecord) : mapComfortToPainScore(4);
+    const selectedPainLocationKeys = resolvePainLocationKeys(todayRecord);
+    const selectedPainLocationLabels = PAIN_LOCATION_OPTIONS
+      .filter((option) => selectedPainLocationKeys.indexOf(option.key) >= 0)
+      .map((option) => option.label);
     this.setData({
       pageStyle: 'overflow: hidden; height: 100vh;',
       checkinVisible: true,
       checkinDateLabel: getTodayDateLabel(),
       selectedWearDuration: todayRecord && todayRecord.wearDuration > 0 ? todayRecord.wearDuration : 7,
-      selectedComfort: todayRecord && todayRecord.comfort ? todayRecord.comfort : 4,
-      checkinNote: (todayRecord && todayRecord.note) || '',
+      ...buildPainScoreData(painScore),
+      selectedPainLocationKeys,
+      selectedPainLocationLabels,
+      painLocationOptions: buildPainLocationOptions(selectedPainLocationKeys),
+      checkinNote: parseRemarkFromNote(todayRecord && todayRecord.note),
     });
     setTimeout(() => {
       this.scrollSelectedDurationToCenter(this.data.selectedWearDuration);
@@ -422,6 +601,78 @@ Page({
     this.setData({ selectedComfort: value });
   },
 
+  updatePainScore(value) {
+    this.setData(buildPainScoreData(value));
+  },
+
+  measurePainSlider(callback) {
+    wx.createSelectorQuery()
+      .in(this)
+      .select('.pain-score-slider-wrap')
+      .boundingClientRect((rect) => {
+        if (rect && rect.width) {
+          this.painSliderRect = rect;
+          callback(rect);
+        }
+      })
+      .exec();
+  },
+
+  updatePainScoreByPageX(pageX, rect) {
+    const sliderRect = rect || this.painSliderRect;
+    if (!sliderRect || !sliderRect.width) {
+      this.measurePainSlider((nextRect) => this.updatePainScoreByPageX(pageX, nextRect));
+      return;
+    }
+    const edgeOffset = 13;
+    const trackLeft = sliderRect.left + edgeOffset;
+    const trackWidth = Math.max(1, sliderRect.width - edgeOffset * 2);
+    const rawValue = ((pageX - trackLeft) / trackWidth) * 10;
+    const nextValue = Math.max(0, Math.min(10, Math.round(rawValue)));
+    this.updatePainScore(nextValue);
+  },
+
+  handlePainSliderTouchStart(event) {
+    const touch = event.touches && event.touches[0];
+    if (!touch) {
+      return;
+    }
+    this.measurePainSlider((rect) => {
+      this.updatePainScoreByPageX(touch.pageX, rect);
+    });
+  },
+
+  handlePainSliderTouchMove(event) {
+    const touch = event.touches && event.touches[0];
+    if (!touch) {
+      return;
+    }
+    this.updatePainScoreByPageX(touch.pageX);
+  },
+
+  handlePainLocationTap(event) {
+    const key = String(event.currentTarget.dataset.key || '');
+    const option = PAIN_LOCATION_OPTIONS.find((item) => item.key === key);
+    if (!option) {
+      return;
+    }
+    const keys = this.data.selectedPainLocationKeys.slice();
+    const labels = this.data.selectedPainLocationLabels.slice();
+    const index = keys.indexOf(key);
+    if (index >= 0) {
+      keys.splice(index, 1);
+      labels.splice(index, 1);
+    } else {
+      keys.push(key);
+      labels.push(option.label);
+    }
+    this.setData({
+      selectedPainLocationKeys: keys,
+      selectedPainLocationLabels: labels,
+      painLocationOptions: buildPainLocationOptions(keys),
+    });
+  },
+
   handleNoteInput(event) {
     this.setData({ checkinNote: event.detail.value || '' });
   },
@@ -437,7 +688,9 @@ Page({
         date: getTodayText(),
         wearDuration: this.data.selectedWearDuration,
         comfort: this.data.selectedComfort,
-        note: this.data.checkinNote || undefined,
+        painScore: this.data.selectedPainScore,
+        painLocations: this.data.selectedPainLocationLabels,
+        note: String(this.data.checkinNote || '').trim() || undefined,
       });
 
       const [wearingRes, summaryRes] = await Promise.all([
@@ -449,6 +702,8 @@ Page({
         date: item.date || '',
         wearDuration: Number(item.wearDuration || 0),
         comfort: Number(item.comfort || 0),
+        painScore: item.painScore === undefined || item.painScore === null ? null : Number(item.painScore),
+        painLocations: Array.isArray(item.painLocations) ? item.painLocations : [],
         note: item.note || '',
       }));
       const summary = unwrapObject(summaryRes) || {};
@@ -461,12 +716,12 @@ Page({
         recentDays: buildRecentDays(this.wearingRecords),
         k: String(summary.weekWorn || 0),
         l: String(Number(summary.weekAvg || 0)),
-        m: String(Number(summary.avgComfort || 0)),
+        m: calcAveragePainScore(this.wearingRecords),
         n: String(summary.streak || 0),
         summaryCards: [
           { key: 'worn', label: '本周佩戴', value: `${summary.weekWorn || 0}/7` },
           { key: 'avg', label: '平均时长', value: `${Number(summary.weekAvg || 0)}h` },
-          { key: 'comfort', label: '舒适度', value: `${Number(summary.avgComfort || 0)}/5` },
+          { key: 'comfort', label: '平均痛感', value: `${calcAveragePainScore(this.wearingRecords)}/10` },
           { key: 'streak', label: '连续天数', value: `${summary.streak || 0}天` },
         ],
         heroSubText: this.data.hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无诊疗记录',

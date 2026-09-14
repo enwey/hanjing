@@ -2,6 +2,23 @@ const api = require('../../../api/index');
 const patientContextStore = require('../../../stores/patient-context-store');
 const patientContextService = require('../../../services/patient-context-service');
 
+function mapComfortToPainScore(comfort) {
+  const value = Number(comfort || 0);
+  if (value >= 5) return 0;
+  if (value === 4) return 2;
+  if (value === 3) return 4;
+  if (value === 2) return 6;
+  if (value === 1) return 8;
+  return 0;
+}
+
+function resolvePainScore(record) {
+  if (record && record.painScore !== undefined && record.painScore !== null && record.painScore !== '') {
+    return Number(record.painScore);
+  }
+  return mapComfortToPainScore(record && record.comfort);
+}
+
 Page({
   data: {
     loading: true,
@@ -37,6 +54,7 @@ Page({
         dateLabel: String(record.date || '').slice(5),
         duration: Number(record.wearDuration || 0),
         comfort: Number(record.comfort || 0),
+        painScore: resolvePainScore(record),
       }));
       this.wearingSummary = (wearingSummaryResponse && wearingSummaryResponse.data) || wearingSummaryResponse || null;
       this.setData({
@@ -67,8 +85,8 @@ Page({
       durationLabel: record.duration > 0 ? String(record.duration) : '',
       barHeight: record.duration > 0 ? Math.max((record.duration / Math.max(1, maxDuration)) * 120, 6) + 'px' : '6px',
       barColor: record.duration >= 7 ? '#22c55e' : record.duration >= 5 ? '#eab308' : record.duration > 0 ? '#ef4444' : '#e5e7eb',
-      comfortDots: [1, 2, 3, 4, 5].map((dot) => ({ active: record.comfort > 0 && dot <= record.comfort })),
-      comfortEmpty: record.comfort <= 0,
+      comfortDots: [0, 1, 2, 3].map((dot) => ({ active: record.duration > 0 && dot <= Math.ceil(record.painScore / 3) })),
+      comfortEmpty: record.duration <= 0,
     }));
     const summary = this.wearingSummary || {};
     const compliance = selectedRange === 'week'
