@@ -63,6 +63,8 @@ const doctors = ref<any[]>([])
 const loading = ref(false)
 
 interface Appointment {
+  consult_fee: number;
+  deposit_amount: number;
   id: string;
   patientId: string;
   no: string;
@@ -279,7 +281,7 @@ async function handleExport() {
     }
 
     const res: any = await request.get('/api/admin/appointments', { params })
-    const rawList = Array.isArray(res.data) ? res.data : (res.data?.list || [])
+    const rawList: Record<string, string>[] = Array.isArray(res.data) ? res.data : (res.data?.list || [])
 
     if (rawList.length === 0) {
       MessagePlugin.warning('当前无匹配的预约记录可供导出')
@@ -845,7 +847,7 @@ async function submitCheckout() {
       const receipt = res.data.receipt
       if (payMethod.value === 'wechat_native') {
         const payInfo = await createNativePay(res.data.order_id)
-        if (payInfo.paid || payInfo.mockPayment) {
+        if (payInfo.paid) {
           await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信扫码支付', payAt: new Date().toISOString() }))
         } else {
           nativePayInfo.value = payInfo
@@ -1150,7 +1152,7 @@ async function submitCheckout() {
         <div style="display: flex; gap: 16px; margin-bottom: 16px;">
           <div class="form-group" style="flex: 1;">
             <label class="form-label">卡券折扣金额 (元)</label>
-            <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="val => `¥${(val / 100).toFixed(2)}`" style="width: 100%;" />
+            <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="(val: string | number) => `¥${(Number(val) / 100).toFixed(2)}`" style="width: 100%;" />
           </div>
           <div class="form-group" style="flex: 1;">
             <label class="form-label">配送/交付方式</label>

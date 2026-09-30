@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import fs from 'fs';
+import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { get } from './db.js';
 
 const WECHAT_PAY_HOST = 'https://api.mch.weixin.qq.com';
@@ -174,20 +175,18 @@ export async function getMissingWechatPayConfig(mode = 'v3') {
   const config = await readPayConfig();
   const requiredKeys = mode === 'micropay'
     ? ['appId', 'mchId', 'apiV2Key']
-    : ['appId', 'mchId', 'serialNo', 'privateKey', 'apiV3Key', 'notifyUrl'];
+    : ['appId', 'mchId', 'serialNo', 'privateKey', 'apiV3Key', 'notifyUrl', 'platformCert'];
   return requiredKeys
     .filter((key) => !config[key]);
 }
 
 export function allowDevMockWechatPay() {
-  const nodeEnv = String(process.env.NODE_ENV || '').trim().toLowerCase();
-  const isDevEnv = ['development', 'dev', 'local', 'test'].includes(nodeEnv);
-  return isDevEnv && String(process.env.ENABLE_MOCK_WECHAT_PAY || '').trim().toLowerCase() === 'true';
+  return false;
 }
 
 async function getWechatPayConfig() {
   const config = await readPayConfig();
-  const missing = ['appId', 'mchId', 'serialNo', 'privateKey', 'apiV3Key', 'notifyUrl']
+  const missing = ['appId', 'mchId', 'serialNo', 'privateKey', 'apiV3Key', 'notifyUrl', 'platformCert']
     .filter((key) => !config[key]);
   if (missing.length) {
     const err = new Error(`微信支付配置未完成：${missing.join(', ')}`);
@@ -236,15 +235,14 @@ function escapeXml(value) {
     .replace(/'/g, '&apos;');
 }
 
-function buildWechatV2Sign(params, key) {
+function buildWechatV2Sign(params, key, algorithm = 'HMAC-SHA256') {
   const source = Object.keys(params)
     .filter((name) => name !== 'sign' && params[name] !== undefined && params[name] !== null && params[name] !== '')
     .sort()
     .map((name) => `${name}=${params[name]}`)
     .join('&');
-  return crypto
-    .createHmac('sha256', key)
-    .update(`${source}&key=${key}`, 'utf8')
+  const hash = algorithm === 'MD5' ? crypto.createHash('md5') : crypto.createHmac('sha256', key);
+  return hash.update(`${source}&key=${key}`, 'utf8')
     .digest('hex')
     .toUpperCase();
 }
@@ -256,26 +254,32 @@ function buildWechatXml(params) {
   return `<xml>${body}</xml>`;
 }
 
-function decodeWechatXmlValue(value) {
-  return String(value || '')
-    .replace(/^<!\[CDATA\[|\]\]>$/g, '')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&amp;/g, '&');
-}
-
-function parseWechatXml(xml) {
-  const result = {};
-  const pattern = /<([a-zA-Z0-9_]+)>([\s\S]*?)<\/\1>/g;
-  let match;
-  while ((match = pattern.exec(xml))) {
-    if (match[1] !== 'xml') {
-      result[match[1]] = decodeWechatXmlValue(match[2]);
-    }
+export function parseWechatXml(xml) {
+  if (/<!DOCTYPE/i.test(xml) || XMLValidator.validate(xml) !== true) throw Object.assign(new Error('微信支付应答 XML 无效'), { statusCode: 502 });
+  const result = new XMLParser({ parseTagValue: false, trimValues: false }).parse(xml).xml;
+  if (!result || typeof result !== 'object' || Object.values(result).some(value => typeof value !== 'string')) {
+    throw Object.assign(new Error('微信支付应答结构无效'), { statusCode: 502 });
   }
   return result;
+}
+
+export function validateWechatV2Response(result, config, urlPath) {
+  const algorithm = result.sign_type || 'HMAC-SHA256';
+  const signature = String(result.sign || '');
+  if (!['MD5', 'HMAC-SHA256'].includes(algorithm) || !/^[A-Fa-f0-9]+$/.test(signature)) {
+    throw Object.assign(new Error('微信付款码应答缺少有效签名'), { statusCode: 502 });
+  }
+  const expected = buildWechatV2Sign(result, config.apiV2Key, algorithm);
+  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature.toUpperCase()), Buffer.from(expected)) ||
+      result.appid !== config.appId || result.mch_id !== config.mchId) {
+    throw Object.assign(new Error('微信付款码应答验签或商户核验失败'), { statusCode: 502 });
+  }
+  // Successful communication/query is not evidence of a successful payment.
+  return {
+    ...result,
+    trade_state: result.trade_state || (urlPath === '/pay/micropay' && result.result_code === 'SUCCESS' && result.transaction_id ? 'SUCCESS' : ''),
+    amount: { total: Number(result.total_fee), currency: result.fee_type || 'CNY' }
+  };
 }
 
 async function requestWechatPayV2Xml(urlPath, params) {
@@ -290,6 +294,7 @@ async function requestWechatPayV2Xml(urlPath, params) {
   payload.sign = buildWechatV2Sign(payload, config.apiV2Key);
 
   const response = await fetch(`${WECHAT_PAY_HOST}${urlPath}`, {
+    signal: AbortSignal.timeout(10000),
     method: 'POST',
     headers: {
       Accept: 'application/xml',
@@ -298,13 +303,14 @@ async function requestWechatPayV2Xml(urlPath, params) {
     body: buildWechatXml(payload)
   });
   const xml = await response.text();
-  const result = parseWechatXml(xml);
+  let result = parseWechatXml(xml);
   if (!response.ok || result.return_code !== 'SUCCESS') {
     const err = new Error(result.return_msg || '微信付款码支付接口请求失败');
     err.statusCode = response.status || 502;
     err.data = result;
     throw err;
   }
+  result = validateWechatV2Response(result, config, urlPath);
   if (result.result_code !== 'SUCCESS') {
     if (result.err_code === 'USERPAYING' || result.err_code === 'SYSTEMERROR') {
       return {
@@ -320,7 +326,7 @@ async function requestWechatPayV2Xml(urlPath, params) {
   }
   return {
     ...result,
-    trade_state: 'SUCCESS',
+    trade_state: result.trade_state,
     transaction_id: result.transaction_id,
     out_trade_no: result.out_trade_no || params.out_trade_no
   };
@@ -331,6 +337,7 @@ async function requestWechatPay(method, urlPath, data) {
   const body = data ? JSON.stringify(data) : '';
   const auth = buildWechatPayAuthorization(method, urlPath, body, config);
   const response = await fetch(`${WECHAT_PAY_HOST}${urlPath}`, {
+    signal: AbortSignal.timeout(10000),
     method,
     headers: {
       Authorization: auth.authorization,
@@ -339,12 +346,17 @@ async function requestWechatPay(method, urlPath, data) {
     },
     body: method === 'GET' ? undefined : body
   });
-  const result = await response.json().catch(() => ({}));
+  const responseBody = await response.text();
+  let result;
+  try { result = JSON.parse(responseBody); } catch { result = {}; }
   if (!response.ok) {
     const err = new Error(result.message || '微信支付接口请求失败');
     err.statusCode = response.status || 502;
     err.data = result;
     throw err;
+  }
+  if (!await verifyWechatPayCallback({ get: name => response.headers.get(name) }, responseBody)) {
+    throw Object.assign(new Error('微信支付应答验签失败，结果未确认'), { statusCode: 502 });
   }
   return result;
 }
@@ -495,6 +507,11 @@ export async function createWechatRefund({ outTradeNo, transactionId, outRefundN
   return requestWechatPay('POST', '/v3/refund/domestic/refunds', payload);
 }
 
+export async function queryWechatRefund(outRefundNo) {
+  if (!outRefundNo) throw new Error('缺少商户退款单号');
+  return requestWechatPay('GET', `/v3/refund/domestic/refunds/${encodeURIComponent(outRefundNo)}`);
+}
+
 export async function decryptWechatPayResource(resource) {
   const config = await getWechatPayConfig();
   const decipher = crypto.createDecipheriv(
@@ -513,7 +530,7 @@ export async function decryptWechatPayResource(resource) {
 export async function verifyWechatPayCallback(req, rawBody) {
   const config = await readPayConfig();
   if (!config.platformCert) {
-    return true;
+    return false;
   }
   const timestamp = req.get('Wechatpay-Timestamp') || '';
   const nonce = req.get('Wechatpay-Nonce') || '';
@@ -521,6 +538,7 @@ export async function verifyWechatPayCallback(req, rawBody) {
   if (!timestamp || !nonce || !signature) {
     return false;
   }
+  if (!Number.isFinite(Number(timestamp)) || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
   const message = `${timestamp}\n${nonce}\n${rawBody}\n`;
   return crypto.verify(
     'RSA-SHA256',

@@ -80,9 +80,7 @@ function getPaymentErrorMessage(error, canceledText) {
 
 async function syncPaidOrder(orderId) {
   if (!orderId) return;
-  try {
-    await api.confirmOrderPayment(orderId);
-  } catch (error) {}
+  await api.confirmOrderPayment(orderId);
 }
 
 function normalizeAddressText(result) {
@@ -502,16 +500,10 @@ Page({
       const payResponse = await api.payOrder(orderId);
       const payParams = (payResponse && payResponse.data) || payResponse || {};
       wx.hideLoading();
-      if (payParams.mockPayment) {
-        wx.showLoading({ title: '开发环境模拟支付...' });
-        await api.confirmOrderPayment(orderId);
-        wx.hideLoading();
-      } else {
-        await requestWxPay(payParams);
-        wx.showLoading({ title: '同步订单状态...' });
-        await syncPaidOrder(orderId);
-        wx.hideLoading();
-      }
+      await requestWxPay(payParams);
+      wx.showLoading({ title: '同步订单状态...' });
+      await syncPaidOrder(orderId);
+      wx.hideLoading();
       wx.showToast({ title: '支付已提交', icon: 'success' });
       this.setData({ showCheckout: false });
       setTimeout(() => {

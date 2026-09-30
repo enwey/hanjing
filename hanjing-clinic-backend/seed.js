@@ -644,9 +644,9 @@ export const seedData = async () => {
       'gold',
       'ZHANG888',
       '/static/demo/qrcode.png',
-      35760, // 357.60元
-      12000, // 120.00元
-      23760, // 237.60元
+      490, // 与演示佣金明细保持一致：4.90元
+      490,
+      0,
       'active'
     ]
   );
@@ -670,33 +670,6 @@ export const seedData = async () => {
       1,
       'settled',
       '2026-06-02 14:35:00'
-    ]
-  );
-
-  // 17. Withdraw Records
-  await run(
-    `INSERT INTO withdraw_records (user_id, amount, fee, actual_amount, status, account_info, completed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      user1.id,
-      23760,
-      0,
-      23760,
-      'success',
-      '微信零钱 (绑定的微信钱包)',
-      '2026-05-20 18:00:00'
-    ]
-  );
-  await run(
-    `INSERT INTO withdraw_records (user_id, amount, fee, actual_amount, status, account_info)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [
-      user1.id,
-      12000,
-      0,
-      12000,
-      'pending',
-      '微信零钱 (绑定的微信钱包)'
     ]
   );
 

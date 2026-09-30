@@ -226,7 +226,7 @@ async function fetchProducts() {
     const res: any = await request.get('/api/admin/distribution/products')
     products.value = (res.data || [])
       .map(mapProduct)
-      .filter((item) => item.id && item.status === 'on')
+      .filter((item: ProductOption) => item.id && item.status === 'on')
   } catch (error) {
     MessagePlugin.error('加载关联商品失败')
   }

@@ -20,23 +20,33 @@ const overview = ref({
   availableCommission: 0,
   totalCommission: 0,
   withdrawnAmount: 0,
-  frozenCommission: 0
+  frozenCommission: 0,
+  pendingWithdrawAmount: 0,
+  reconciliationRequired: false
 })
 
 const commissions = ref<any[]>([])
+const loading = ref(true)
+const loadError = ref(false)
 
 function yuan(value: number) {
   return (Number(value || 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
 }
 
 async function loadData() {
+  loading.value = true
+  loadError.value = false
   try {
     const res: any = await request.get('/api/promoter/dashboard')
-    promoter.value = res.data.promoter || promoter.value
-    overview.value = res.data.summary || overview.value
+    if (!res.data?.promoter || !res.data?.summary) throw new Error('Incomplete dashboard response')
+    promoter.value = res.data.promoter
+    overview.value = res.data.summary
     commissions.value = res.data.recentCommissions || []
   } catch (_error) {
+    loadError.value = true
     MessagePlugin.error('加载推广概览失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -45,6 +55,10 @@ onMounted(loadData)
 
 <template>
   <div class="page-container">
+    <t-loading v-if="loading" text="加载中" />
+    <t-alert v-else-if="loadError" theme="error" message="推广数据加载失败，当前无法确认余额，请稍后重试。" />
+    <template v-else>
+    <t-alert v-if="overview.reconciliationRequired" theme="warning" message="佣金账务待核对，提现暂不可用，请联系运营人员。" />
     <div class="hero-card">
       <div>
         <div class="hero-title">{{ promoter.nickname || '推广员' }}</div>
@@ -99,6 +113,10 @@ onMounted(loadData)
             <span>累计提现</span>
             <strong>¥{{ yuan(overview.withdrawnAmount) }}</strong>
           </div>
+          <div class="summary-item">
+            <span>提现处理中</span>
+            <strong>¥{{ yuan(overview.pendingWithdrawAmount) }}</strong>
+          </div>
         </div>
       </section>
 
@@ -133,6 +151,7 @@ onMounted(loadData)
         </div>
       </section>
     </div>
+    </template>
   </div>
 </template>
 

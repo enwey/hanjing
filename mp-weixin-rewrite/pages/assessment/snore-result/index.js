@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const sessionStore = require('../../../stores/session-store');
 
 function getSnoreRiskInfo(riskLevel) {
   let key = riskLevel;
@@ -40,7 +41,7 @@ function getSnoreRiskInfo(riskLevel) {
       tips: ['立即预约门诊', '避免长途驾驶', '告知家属观察', '记录日间嗜睡情况'],
     },
   };
-  return levels[key] || levels.low;
+  return levels[key] || null;
 }
 
 function clampNumber(value, min, max) {
@@ -75,6 +76,7 @@ function calculateRiskScore(analysis) {
 Page({
   data: {
     isLoading: true,
+    loadError: '',
     hasLoaded: false,
     reportDetail: null,
     riskInfo: null,
@@ -99,17 +101,20 @@ Page({
       const assessmentId = (this.options && this.options.id) || '';
       let reportDetail = null;
       if (assessmentId === 'local') {
+        const profile = await sessionStore.fetchProfile();
         reportDetail = wx.getStorageSync('last_local_snore_result');
-      } else if (assessmentId) {
-        try {
-          const response = await api.getAssessmentDetail(assessmentId);
-          reportDetail = (response && response.data) || response || null;
-        } catch (error) {
-          reportDetail = wx.getStorageSync('last_local_snore_result');
+        if (!reportDetail || !profile || !profile.id || !reportDetail.ownerUserId
+          || String(reportDetail.ownerUserId) !== String(profile.id)
+          || !this.options.patientId || String(reportDetail.patientId) !== String(this.options.patientId)) {
+          throw new Error('本地报告与当前账号或就诊人不匹配，请重新录制');
         }
+      } else if (assessmentId) {
+        const response = await api.getAssessmentDetail(assessmentId);
+        reportDetail = (response && response.data) || response || null;
       }
       const analysis = reportDetail && reportDetail.snoreAnalysis;
       const riskInfo = analysis ? getSnoreRiskInfo(analysis.riskLevel) : null;
+      if (!analysis || !riskInfo) throw new Error('报告数据不完整，请重新加载');
       const statCards = analysis ? [
         { iconPath: '/static/icons/microphone.svg', value: analysis.avgDecibel + ' dB', label: '平均分贝' },
         { iconPath: '/static/icons/trend.svg', value: analysis.peakDecibel + ' dB', label: '峰值分贝' },
@@ -117,10 +122,11 @@ Page({
         { iconPath: '/static/icons/warning.svg', value: analysis.apneaEvents + ' 次', label: '呼吸暂停' },
       ] : [];
       const riskScore = calculateRiskScore(analysis);
-      this.setData({ hasLoaded: true, isLoading: false, reportDetail, riskInfo, statCards, riskScore });
+      this.setData({ hasLoaded: true, isLoading: false, loadError: '', reportDetail, riskInfo, statCards, riskScore });
     } catch (error) {
       console.error('[SnoreResult] 加载失败', error);
-      this.setData({ isLoading: false });
+      this.setData({ isLoading: false, reportDetail: null, riskInfo: null, statCards: [], riskScore: 0,
+        loadError: (error && error.message) || '加载报告失败' });
     }
   },
 

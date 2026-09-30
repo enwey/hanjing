@@ -29,7 +29,8 @@ async function fetchAppointmentBadgeCount() {
   }
 }
 
-const menuGroups = computed(() => [
+interface MenuItem { path: string; label: string; icon: string; permission: string; badge?: string; badgeColor?: string; superAdminOnly?: boolean }
+const menuGroups = computed<Array<{ title: string; items: MenuItem[] }>>(() => [
   {
     title: '概览',
     items: [
@@ -287,7 +288,10 @@ async function handleSavePassword() {
 // ==========================================
 const isSearchVisible = ref(false)
 const searchKeyword = ref('')
-const searchResults = ref({ patients: [], appointments: [], orders: [] })
+interface SearchPatient { id: number; name: string; phone: string; gender: number; age: number; member_level: string }
+interface SearchAppointment { id: number; appointment_no: string; patient_name: string; appointment_date: string; status: string }
+interface SearchOrder { id: number; order_no: string; pay_amount: number; status: string }
+const searchResults = ref<{ patients: SearchPatient[]; appointments: SearchAppointment[]; orders: SearchOrder[] }>({ patients: [], appointments: [], orders: [] })
 const isSearching = ref(false)
 const activeSearchTab = ref('all')
 
@@ -438,33 +442,24 @@ async function fetchChatMessages() {
 }
 
 async function sendChatMessage() {
-  if (!selectedUserId.value || !chatInputText.value.trim()) return
+  if (!selectedUserId.value || !chatInputText.value.trim() || isSendingMsg.value) return
   const text = chatInputText.value.trim()
-  chatInputText.value = ''
+  const patientId = selectedUserId.value
   isSendingMsg.value = true
   
-  // 先把自己的消息推上去
-  chatMessages.value.push({
-    sender: 'doctor',
-    text: text,
-    time: '刚刚'
-  })
-  scrollToBottom()
 
   try {
     const res = await request.post('/api/admin/im/send', {
-      patient_id: selectedUserId.value,
+      patient_id: patientId,
       text: text
     })
     if (res && res.code === 200) {
-      // 成功后，等待几秒轮询或者检查回复
-      setTimeout(async () => {
-        await fetchChatMessages()
-        await fetchChatUsers() // 刷新左侧会话列表
-      }, 1500)
+      if (selectedUserId.value === patientId && chatInputText.value.trim() === text) chatInputText.value = ''
+      await fetchChatMessages()
+      await fetchChatUsers()
     }
   } catch (error) {
-    console.error('Send message error:', error)
+    MessagePlugin.error('消息发送失败，请重试')
   } finally {
     isSendingMsg.value = false
   }
@@ -1032,7 +1027,7 @@ onUnmounted(() => {
                   <line x1="12" y1="16" x2="12" y2="12"></line>
                   <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
-                提示：支持自动模拟患者智能回复
+                消息记录
               </span>
               <t-button theme="primary" size="medium" :loading="isSendingMsg" @click="sendChatMessage" class="chat-send-btn">
                 <span>发送消息</span>

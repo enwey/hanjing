@@ -9,7 +9,8 @@ const ORDER_STATUS_STEPS = {
   shipped: [{ label: '待付款', done: true }, { label: '待取货', done: true }, { label: '已发货', done: true }, { label: '已完成', done: false }],
   completed: [{ label: '待付款', done: true }, { label: '待取货', done: true }, { label: '已发货', done: true }, { label: '已完成', done: true }],
   cancelled: [{ label: '已取消', done: true }],
-  refunding: [{ label: '退款审核中', done: true }],
+  refund_pending: [{ label: '退款待审核', done: true }],
+  refunding: [{ label: '退款处理中', done: true }],
   refunded: [{ label: '已退款', done: true }],
 };
 
@@ -20,7 +21,8 @@ const STATUS_LABEL_MAP = {
   shipped: '已发货',
   completed: '已完成',
   cancelled: '已取消',
-  refunding: '退款审核中',
+  refund_pending: '退款待审核',
+  refunding: '退款处理中',
   refunded: '已退款',
   confirmed: '已确认',
 };
@@ -51,9 +53,7 @@ function getPaymentErrorMessage(error, canceledText) {
 
 async function syncPaidOrder(orderId) {
   if (!orderId) return;
-  try {
-    await api.confirmOrderPayment(orderId);
-  } catch (error) {}
+  await api.confirmOrderPayment(orderId);
 }
 
 Page({
@@ -61,6 +61,7 @@ Page({
     loading: true,
     order: null,
     logisticsList: [],
+    logisticsMessage: '',
   },
 
   onLoad(options) {
@@ -90,9 +91,9 @@ Page({
     const shippingAddress = order.shippingAddress || {};
     return {
       id: String(order.id || ''),
-      status: order.status || 'pending',
+      status: order.status || '',
       statusLabel: STATUS_LABEL_MAP[order.status] || (order.status || ''),
-      steps: ORDER_STATUS_STEPS[order.status] || ORDER_STATUS_STEPS.pending,
+      steps: ORDER_STATUS_STEPS[order.status] || [],
       items: items.map((item) => ({
         productId: String(item.productId || item.id || ''),
         productName: item.productName || item.name || '',
@@ -127,10 +128,12 @@ Page({
       const rawOrder = (detailResponse && detailResponse.data) || detailResponse || null;
       const order = this.normalizeOrder(rawOrder || {});
       let logisticsList = [];
+      let logisticsMessage = '';
       if (order.status === 'shipped' || order.status === 'completed') {
         try {
           const logisticsResponse = await api.getOrderLogistics(orderId);
           const logisticsPayload = (logisticsResponse && logisticsResponse.data) || logisticsResponse || {};
+          logisticsMessage = logisticsPayload.message || '暂无物流轨迹';
           logisticsList = (logisticsPayload.steps || []).map((step, index) => ({
             time: step.time || '',
             desc: step.desc || step.status || '',
@@ -138,9 +141,10 @@ Page({
           }));
         } catch (error) {
           logisticsList = [];
+          logisticsMessage = '物流信息加载失败，请稍后重试';
         }
       }
-      this.setData({ loading: false, order, logisticsList });
+      this.setData({ loading: false, order, logisticsList, logisticsMessage });
       this.hasLoaded = true;
     } catch (error) {
       console.error(error);
@@ -180,16 +184,10 @@ Page({
       const payResponse = await api.payOrder(order.id);
       const payParams = (payResponse && payResponse.data) || payResponse || {};
       wx.hideLoading();
-      if (payParams.mockPayment) {
-        wx.showLoading({ title: '开发环境模拟支付...' });
-        await api.confirmOrderPayment(order.id);
-        wx.hideLoading();
-      } else {
-        await requestWxPay(payParams);
-        wx.showLoading({ title: '同步订单状态...' });
-        await syncPaidOrder(order.id);
-        wx.hideLoading();
-      }
+      await requestWxPay(payParams);
+      wx.showLoading({ title: '同步订单状态...' });
+      await syncPaidOrder(order.id);
+      wx.hideLoading();
       wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });
       await this.loadOrder(order.id);
     } catch (error) {

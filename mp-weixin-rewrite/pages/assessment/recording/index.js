@@ -308,9 +308,8 @@ Page({
         const scale = Math.min(1, Math.max(0, (avgAbs - 80) / 1800));
         const nextLevels = [];
         for (let index = 0; index < 16; index += 1) {
-          const noise = 0.85 + Math.random() * 0.3;
           const factor = [0.15, 0.25, 0.4, 0.6, 0.8, 0.95, 1, 1, 1, 1, 0.95, 0.8, 0.6, 0.4, 0.25, 0.15][index];
-          nextLevels.push(Math.min(38, Math.max(6, 6 + Math.floor(32 * scale * factor * noise))));
+          nextLevels.push(Math.min(38, Math.max(6, 6 + Math.floor(32 * scale * factor))));
         }
         this.setData({ audioLevels: nextLevels });
       } catch (error) {
@@ -455,10 +454,6 @@ Page({
           this.setData({ recordingDurationSeconds: this.data.recordingDurationSeconds + 1 });
           this.updateDurationText();
         }, 1000);
-        this.simulationTimer = setInterval(() => {
-          const nextLevels = new Array(16).fill(0).map(() => Math.min(38, Math.max(6, 6 + Math.floor(Math.random() * 28))));
-          this.setData({ audioLevels: nextLevels });
-        }, 180);
         recorderManager.start({
           duration: 600000,
           sampleRate: 8000,
@@ -536,17 +531,23 @@ Page({
       return;
     }
     try {
+      const sessionStore = require('../../../stores/session-store');
+      const profile = await sessionStore.fetchProfile();
+      if (!profile || !profile.id || !this.data.selectedMemberId) throw new Error('请先确认账号及就诊人');
       const fileBuffer = wx.getFileSystemManager().readFileSync(this.data.tempFilePath);
+      if (!fileBuffer || fileBuffer.byteLength < 8000 * 2 * 5) throw new Error('有效录音不足5秒，请重新录制');
       const analysisResult = analyzePcmOnClient(toPcmInt16Array(fileBuffer), this.data.recordingDurationSeconds);
       const localReport = {
         id: 'local',
+        ownerUserId: String(profile.id),
         patientId: this.data.selectedMemberId,
         type: 'ai_snore',
-        snoreAnalysis: Object.assign({ duration: this.data.recordingDurationSeconds, qualityScore: 85 }, analysisResult),
+        snoreAnalysis: Object.assign({ duration: this.data.recordingDurationSeconds }, analysisResult),
         createdAt: new Date().toISOString(),
       };
       safeSetStorage('last_local_snore_result', localReport);
       const submitPayload = {
+        ownerUserId: String(profile.id),
         duration: this.data.recordingDurationSeconds,
         client_side_analysis: true,
         analysis_result: analysisResult,
@@ -556,10 +557,12 @@ Page({
       try {
         const submitResponse = await api.submitSnoreRecording(submitPayload);
         const createdRecord = (submitResponse && submitResponse.data) || submitResponse || {};
-        wx.redirectTo({ url: '/pages/assessment/snore-result/index?id=' + (createdRecord.id || 'local') });
+        if (!createdRecord.id) throw new Error('报告保存结果未确认');
+        wx.redirectTo({ url: '/pages/assessment/snore-result/index?id=' + createdRecord.id });
       } catch (error) {
+        if (error && error.statusCode >= 400 && error.statusCode < 500) throw error;
         this.enqueuePendingSnoreRecording(submitPayload);
-        wx.redirectTo({ url: '/pages/assessment/snore-result/index?id=local' });
+        wx.redirectTo({ url: '/pages/assessment/snore-result/index?id=local&patientId=' + encodeURIComponent(this.data.selectedMemberId) });
       }
     } catch (error) {
       wx.showToast({ title: (error && error.message) || '分析失败，请重试', icon: 'none' });

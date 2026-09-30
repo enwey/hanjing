@@ -2,8 +2,9 @@ module.exports = {
   apps: [{
     name: 'hanjing-clinic-backend',
     script: 'server.js',
-    instances: 'max',          // Use all available CPU cores
-    exec_mode: 'cluster',       // Run in cluster mode for high availability
+    instances: 1,              // Jobs, WebSocket sessions and rate limits are process-local.
+    exec_mode: 'fork',          // Scale only after adding shared state and a job lease.
+    kill_timeout: 16000,
     watch: false,               // Disable watch in production to avoid random restarts
     max_memory_restart: '1G',   // Auto-restart if memory exceeds 1GB to prevent leaks
     env_production: {

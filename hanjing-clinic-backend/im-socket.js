@@ -1,15 +1,13 @@
 import { WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
 import { run } from './db.js';
-import { getPrimaryPatientForUser } from './helpers.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'hanjing_clinic_secret_key_2026';
+import { getPrimaryPatientForUser, JWT_SECRET } from './helpers.js';
 
 // Global map to store connected clients by patient_id
 const activeClients = new Map();
 
 export function initWebSocket(server) {
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 
   server.on('upgrade', (request, socket, head) => {
     try {
@@ -23,7 +21,7 @@ export function initWebSocket(server) {
         }
 
         jwt.verify(token, JWT_SECRET, (err, decoded) => {
-          if (err || !decoded) {
+          if (err || !decoded?.openid || !decoded.id || decoded.scope === 'asset') {
             socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
             socket.destroy();
             return;
@@ -92,33 +90,6 @@ export function initWebSocket(server) {
             time: timeStr
           }));
 
-          // Trigger simulated assistant auto-reply after 1.5 seconds to close loop
-          setTimeout(async () => {
-            try {
-              let assistantReply = `您好！这里是鼾静健康诊所客服助手。我们已收到您的消息："${data.text}"。专业医生及健康顾问稍后会为您解答，请耐心等待。`;
-              if (data.text.startsWith('[image]') || data.text.startsWith('/uploads/') || data.text.startsWith('http')) {
-                assistantReply = `您好！这里是鼾静健康诊所客服助手。我们已收到您发送的图片附件。专业医生及健康顾问稍后会为您进行解答，请您耐心等待。`;
-              }
-              const autoMsgResult = await run(
-                `INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read) 
-                 VALUES (?, 'doctor', '智能助理', ?, 0)`,
-                [ws.patientId, assistantReply]
-              );
-
-              // Check if client is still connected, and send message
-              if (activeClients.get(ws.patientId) === ws) {
-                ws.send(JSON.stringify({
-                  type: 'message',
-                  id: autoMsgResult.id ? String(autoMsgResult.id) : String(Date.now() + 1),
-                  from: 'assistant',
-                  text: assistantReply,
-                  time: new Date().toTimeString().slice(0, 5)
-                }));
-              }
-            } catch (err) {
-              console.error('WebSocket auto reply error:', err);
-            }
-          }, 1500);
         }
       } catch (err) {
         console.error('WebSocket message parsing error:', err);
@@ -136,4 +107,5 @@ export function initWebSocket(server) {
       console.error(`[WebSocket] Connection error for ${ws.patientName}:`, err);
     });
   });
+  return wss;
 }

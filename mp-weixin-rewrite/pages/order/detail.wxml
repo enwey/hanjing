@@ -63,6 +63,9 @@
         <view wx:if="{{order.shippingAddress.refund_reason}}" class="info-row"><text class="info-row__label">退款原因</text><text class="info-row__value">{{order.shippingAddress.refund_reason}}</text></view>
       </view>
 
+      <view wx:if="{{!logisticsList.length && logisticsMessage}}" class="section-card">
+        <text>{{logisticsMessage}}</text>
+      </view>
       <view wx:if="{{logisticsList.length}}" class="section-card section-card--logistics">
         <text class="section-title">物流轨迹详情</text>
         <view class="logistics-list">

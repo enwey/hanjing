@@ -107,7 +107,7 @@ onMounted(loadData)
           </div>
         </div>
         <div class="profile-stats">
-          <div><span>就诊次数</span><strong>{{ patient.appointmentCount || 0 }}</strong></div>
+          <div><span>预约次数</span><strong>{{ patient.appointmentCount || 0 }}</strong></div>
           <div><span>已到诊</span><strong>{{ patient.completedVisitCount || 0 }}</strong></div>
           <div><span>消费总额</span><strong>¥{{ yuan(patient.totalSpent) }}</strong></div>
         </div>

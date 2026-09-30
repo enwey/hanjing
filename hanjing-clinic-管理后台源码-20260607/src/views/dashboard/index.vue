@@ -12,13 +12,18 @@ const activeTrendType = ref<'appointment' | 'revenue'>((localStorage.getItem('da
 
 // KPI cards ref
 const kpiCards = ref([
-  { label: '今日预约', value: '0', trend: '↑ 实时', trendType: 'up', icon: 'calendar', color: 'blue' },
-  { label: '今日营收', value: '¥0', trend: '↑ 实时', trendType: 'up', icon: 'dollar-sign', color: 'green' },
-  { label: '今日新增患者', value: '0', trend: '↑ 实时', trendType: 'up', icon: 'users', color: 'gold' },
-  { label: '今日到诊率', value: '0%', trend: '↑ 实时', trendType: 'up', icon: 'activity', color: 'red' }
+  { label: '今日预约', value: '--', trend: '尚未加载', trendType: 'neutral', icon: 'calendar', color: 'blue' },
+  { label: '今日净收款', value: '--', trend: '尚未加载', trendType: 'neutral', icon: 'dollar-sign', color: 'green' },
+  { label: '今日新增患者', value: '--', trend: '尚未加载', trendType: 'neutral', icon: 'users', color: 'gold' },
+  { label: '今日到诊率', value: '--', trend: '尚未加载', trendType: 'neutral', icon: 'activity', color: 'red' }
 ])
 
-const updateTimeStr = ref('2026-06-09 18:00')
+const updateTimeStr = ref('尚未加载')
+const statsError = ref('')
+const chartError = ref('')
+const listsError = ref('')
+let statsRequest = 0
+let chartRequest = 0
 
 const depts = ref<any[]>([])
 
@@ -40,14 +45,14 @@ const updateChart = (xData: string[], yData: number[]) => {
         formatter: isAppt ? '{b}: {c}个预约' : '{b}: ¥{c}'
       },
       yAxis: {
-        name: isAppt ? '预约数 (个)' : '营收 (元)'
+        name: isAppt ? '预约数 (个)' : '净收款 (元)'
       },
       xAxis: {
         data: xData
       },
       series: [
         {
-          name: isAppt ? '预约数' : '营业额 (元)',
+          name: isAppt ? '预约数' : '净收款 (元)',
           data: yData,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -79,23 +84,29 @@ const normalizeDate = (rawDate: any) => {
 
 // Fetch Stats from Real API (KPIs, departments, etc.)
 const fetchDashboardStats = async () => {
+  const requestId = ++statsRequest
+  statsError.value = ''
+  updateTimeStr.value = '加载中'
+  depts.value = []
+  kpiCards.value = kpiCards.value.map(kpi => ({ ...kpi, value: '--', trend: '加载中', trendType: 'neutral' }))
   try {
     const res: any = await request.get(`/api/admin/dashboard/stats?range=${filterTime.value}`)
+    if (requestId !== statsRequest) return
     const { totalRevenue, totalAppointments, totalPatients, visitRate, trends, departments, periodLabel } = res.data
 
     kpiCards.value = [
       { 
         label: periodLabel + '预约', 
         value: totalAppointments.toString(), 
-        trend: (trends?.appointments?.trendType === 'up' ? '↑ ' : '↓ ') + (trends?.appointments?.trend || '0%'), 
+        trend: (trends?.appointments?.trendType === 'up' ? '↑ ' : trends?.appointments?.trendType === 'down' ? '↓ ' : '') + (trends?.appointments?.trend || '0%'),
         trendType: trends?.appointments?.trendType || 'up', 
         icon: 'calendar', 
         color: 'blue' 
       },
       { 
-        label: periodLabel + '营收', 
+        label: periodLabel + '净收款',
         value: '¥' + (totalRevenue / 100).toFixed(2), 
-        trend: (trends?.revenue?.trendType === 'up' ? '↑ ' : '↓ ') + (trends?.revenue?.trend || '0%'), 
+        trend: (trends?.revenue?.trendType === 'up' ? '↑ ' : trends?.revenue?.trendType === 'down' ? '↓ ' : '') + (trends?.revenue?.trend || '0%'),
         trendType: trends?.revenue?.trendType || 'up', 
         icon: 'dollar-sign', 
         color: 'green' 
@@ -103,7 +114,7 @@ const fetchDashboardStats = async () => {
       { 
         label: periodLabel + '新增患者', 
         value: totalPatients.toString(), 
-        trend: (trends?.patients?.trendType === 'up' ? '↑ ' : '↓ ') + (trends?.patients?.trend || '0%'), 
+        trend: (trends?.patients?.trendType === 'up' ? '↑ ' : trends?.patients?.trendType === 'down' ? '↓ ' : '') + (trends?.patients?.trend || '0%'),
         trendType: trends?.patients?.trendType || 'up', 
         icon: 'users', 
         color: 'gold' 
@@ -111,28 +122,33 @@ const fetchDashboardStats = async () => {
       { 
         label: periodLabel + '到诊率', 
         value: visitRate, 
-        trend: (trends?.visitRate?.trendType === 'up' ? '↑ ' : '↓ ') + (trends?.visitRate?.trend || '0%'), 
+        trend: (trends?.visitRate?.trendType === 'up' ? '↑ ' : trends?.visitRate?.trendType === 'down' ? '↓ ' : '') + (trends?.visitRate?.trend || '0%'),
         trendType: trends?.visitRate?.trendType || 'up', 
         icon: 'activity', 
         color: 'red' 
       }
     ]
 
-    if (departments && departments.length > 0) {
-      depts.value = departments
-    }
+    depts.value = departments || []
 
     const now = new Date()
     updateTimeStr.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   } catch (error) {
-    console.error('Failed to fetch dashboard stats:', error)
+    if (requestId !== statsRequest) return
+    statsError.value = '统计加载失败，请重新选择统计范围后重试'
+    updateTimeStr.value = '加载失败'
+    kpiCards.value = kpiCards.value.map(kpi => ({ ...kpi, value: '--', trend: '暂无有效数据', trendType: 'neutral' }))
   }
 }
 
 // Fetch Trend Chart Data specifically based on chartFilterTime
 const fetchTrendChartData = async () => {
+  const requestId = ++chartRequest
+  chartError.value = ''
+  updateChart([], [])
   try {
     const res: any = await request.get(`/api/admin/dashboard/stats?range=${chartFilterTime.value}`)
+    if (requestId !== chartRequest) return
     const { appointmentTrends, revenueTrends } = res.data
 
     const isAppt = activeTrendType.value === 'appointment'
@@ -143,8 +159,8 @@ const fetchTrendChartData = async () => {
     let yData: number[] = []
 
     if (chartFilterTime.value === 'today') {
-      // Standard business hours: 08:00 to 20:00
-      const standardHours = ['08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20']
+      // Include receipts outside clinic opening hours.
+      const standardHours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
       const hourMap = new Map<string, number>()
       standardHours.forEach(h => hourMap.set(h, 0))
 
@@ -243,7 +259,9 @@ const fetchTrendChartData = async () => {
 
     updateChart(xData, yData)
   } catch (error) {
-    console.error('Failed to fetch trend chart data:', error)
+    if (requestId !== chartRequest) return
+    chartError.value = '趋势数据加载失败'
+    updateChart([], [])
   }
 }
 
@@ -257,7 +275,7 @@ const fetchDataLists = async () => {
       avatarColor: a.patient_gender === 1 ? '#5A85F5' : '#EC4899',
       doctor: a.doctor_name,
       time: a.appointment_time,
-      status: a.status === 'arrived' ? '已完成' : a.status === 'completed' ? '待结算' : a.status === 'checked_in' ? '就诊中' : a.status === 'confirmed' ? '候诊中' : a.status === 'pending' ? '已预约' : '已取消',
+      status: a.status === 'arrived' ? '已到诊' : a.status === 'completed' ? '待结算' : a.status === 'checked_in' ? '就诊中' : a.status === 'confirmed' ? '候诊中' : a.status === 'pending' ? '已预约' : '已取消',
       statusTheme: a.status === 'arrived' ? 'green' : a.status === 'completed' ? 'danger' : a.status === 'checked_in' ? 'orange' : a.status === 'confirmed' ? 'blue' : a.status === 'pending' ? 'green' : 'gray'
     }))
 
@@ -270,12 +288,14 @@ const fetchDataLists = async () => {
         orderNo: '#' + o.order_no.substring(o.order_no.length - 8),
         product: productDesc,
         amount: '¥' + (o.pay_amount / 100).toFixed(2),
-        status: o.status === 'completed' ? '已完成' : o.status === 'paid' ? '已支付' : o.status === 'pending' ? '待付款' : '退款中',
+        status: o.status === 'completed' ? '已完成' : o.status === 'paid' ? '已支付' : o.status === 'pending' ? '待付款' : ({ shipping: '待发货', shipped: '已发货', processing: '处理中', cancelled: '已取消', refund_pending: '退款待审核', refunding: '退款处理中', refunded: '已退款' } as Record<string, string>)[o.status] || '未知状态',
         statusTheme: o.status === 'completed' ? 'green' : o.status === 'paid' ? 'blue' : o.status === 'pending' ? 'gold' : 'red'
       }
     })
   } catch (error) {
-    console.error('Failed to fetch dashboard lists:', error)
+    todayAppointments.value = []
+    latestOrders.value = []
+    listsError.value = '预约或订单列表加载失败'
   }
 }
 
@@ -354,7 +374,7 @@ onMounted(() => {
     <div class="page-title-row">
       <div>
         <div class="page-title">数据看板</div>
-        <div class="page-title-sub">数据更新时间：{{ updateTimeStr }} · 实时数据</div>
+        <div class="page-title-sub">数据更新时间：{{ updateTimeStr }}</div>
       </div>
       <div style="display: flex; gap: 8px;">
         <button :class="['btn', filterTime === 'today' ? 'btn-primary' : 'btn-outline']" @click="filterTime = 'today'">
@@ -371,6 +391,7 @@ onMounted(() => {
       </div>
     </div>
 
+    <div v-if="statsError || chartError || listsError" role="alert">{{ [statsError, chartError, listsError].filter(Boolean).join('；') }}</div>
     <!-- KPI Cards -->
     <div class="stat-grid">
       <div v-for="kpi in kpiCards" :key="kpi.label" :class="['stat-card', 'stat-card-' + kpi.color]">
@@ -420,7 +441,7 @@ onMounted(() => {
               :style="{ cursor: 'pointer', fontWeight: activeTrendType === 'revenue' ? '700' : '500', color: activeTrendType === 'revenue' ? '#3B6BF5' : '#4B5563', borderBottom: activeTrendType === 'revenue' ? '2px solid #3B6BF5' : '2px solid transparent', paddingBottom: '4px', transition: 'all 150ms' }"
               @click="activeTrendType = 'revenue'"
             >
-              营收趋势
+              净收款趋势
             </span>
           </div>
           <div class="panel-actions">

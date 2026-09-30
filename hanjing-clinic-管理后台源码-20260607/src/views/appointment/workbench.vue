@@ -46,6 +46,8 @@ const formatAppointmentType = (type?: string) => {
 }
 
 interface QueueItem {
+  medicalHistory?: string;
+  allergyHistory?: string;
   id: string;
   patientId: string;
   no: string;
@@ -757,7 +759,7 @@ async function submitCheckout() {
       const receipt = res.data.receipt
       if (payMethod.value === 'wechat_native') {
         const payInfo = await createNativePay(res.data.order_id)
-        if (payInfo.paid || payInfo.mockPayment) {
+        if (payInfo.paid) {
           await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信扫码支付', payAt: new Date().toISOString() }))
         } else {
           nativePayInfo.value = payInfo
@@ -770,7 +772,7 @@ async function submitCheckout() {
           return
         }
         const payInfo = await submitMicropay(res.data.order_id, micropayAuthCode.value.trim())
-        if (payInfo.tradeState === 'SUCCESS' || payInfo.paid || payInfo.mockPayment) {
+        if (payInfo.tradeState === 'SUCCESS' || payInfo.paid) {
           await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信付款码支付', payAt: new Date().toISOString() }))
         } else {
           startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信付款码支付' }))
@@ -910,7 +912,7 @@ async function submitCreateAppt() {
         <div class="page-title-sub">独立诊室呼叫、体征查阅、病历处方录入与费用结算</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-outline" @click="fetchAppointments" :disabled="loading">
+        <button class="btn btn-outline" @click="fetchAppointments()" :disabled="loading">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="23 4 23 10 17 10"></polyline>
             <polyline points="1 20 1 14 7 14"></polyline>
@@ -1356,7 +1358,7 @@ async function submitCreateAppt() {
       <div class="dialog-body-form" style="padding: 10px 0;">
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">患者姓名</label>
-          <input type="text" class="form-control" :value="selectedQueueItem?.patientName || selectedQueueItem?.patient" disabled style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
+          <input type="text" class="form-control" :value="selectedQueueItem?.patientName" disabled style="background-color: #F3F4F6; width: 100%; height: 36px; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;">
         </div>
         <div class="form-group" style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
           <label class="form-label" style="font-weight: 600; font-size: 13px; color: #374151;">身高 (cm) <span class="required" style="color: #EF4444;">*</span></label>
@@ -1451,7 +1453,7 @@ async function submitCreateAppt() {
           <div style="display: flex; gap: 16px; margin-bottom: 16px;">
             <div class="form-group" style="flex: 1;">
               <label class="form-label">卡券折扣金额 (元)</label>
-              <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="val => `¥${(val / 100).toFixed(2)}`" style="width: 100%;" />
+              <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="(val: string | number) => `¥${(Number(val) / 100).toFixed(2)}`" style="width: 100%;" />
             </div>
             <div class="form-group" style="flex: 1;">
               <label class="form-label">配送/交付方式</label>

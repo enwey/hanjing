@@ -6,6 +6,7 @@ const STATUS_LABEL_MAP = {
   processing: '处理中',
   approved: '已通过',
   completed: '已到账',
+  paid: '已打款',
   transferred: '已到账',
   success: '已到账',
   rejected: '已驳回',
@@ -54,15 +55,17 @@ Page({
         return {
           id: String(record.id || ''),
           amountValue: Number(record.amount || 0),
+          actualAmountValue: Number(record.actualAmount ?? (Number(record.amount) - Number(record.fee || 0))),
           amountLabel: '¥' + (Number(record.amount || 0) / 100).toFixed(2),
           accountLabel,
           status: record.status || 'pending',
-          statusLabel: STATUS_LABEL_MAP[record.status] || '处理中',
+          statusLabel: STATUS_LABEL_MAP[record.status] || '状态待确认',
           createdDate: formatChinaDate(record.createdAt || ''),
         };
       });
-      const totalAmount = records.reduce((sum, record) => sum + Number(record.amountValue || 0), 0);
-      const completedCount = records.filter((record) => ['completed', 'transferred', 'success'].includes(record.status)).length;
+      const completed = records.filter((record) => ['paid', 'completed', 'transferred', 'success'].includes(record.status));
+      const totalAmount = completed.reduce((sum, record) => sum + record.actualAmountValue, 0);
+      const completedCount = completed.length;
       const processingCount = records.filter((record) => ['pending', 'processing', 'approved'].includes(record.status)).length;
       this.setData({
         hasLoaded: true,

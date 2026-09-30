@@ -2,8 +2,10 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import fs from 'fs';
 import { query, get, run } from './db.js';
+import { JWT_SECRET, PII_SECRET } from './security-config.js';
+import { requiredAdminPermissions, hasAdminPermission } from './admin-permissions.js';
 
-export const JWT_SECRET = process.env.JWT_SECRET || 'hanjing_clinic_secret_key_2026';
+export { JWT_SECRET };
 
 export const getShanghaiNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
 
@@ -74,12 +76,30 @@ export const authenticateToken = (req, res, next) => {
     return res.status(401).json({ code: 401, message: '未登录或没有权限访问' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err || !user || !user.role) {
+  jwt.verify(token, JWT_SECRET, async (err, user) => {
+    if (err || !user || user.scope === 'asset' || !user.role || !user.id) {
       return res.status(403).json({ code: 403, message: '登录已过期或无管理员权限，请重新登录' });
     }
-    req.user = user;
-    next();
+    try {
+      const admin = await get(
+        `SELECT u.id, u.username, u.name, u.store_id, u.doctor_id, u.role_id, r.code AS role
+         FROM admin_users u JOIN roles r ON r.id = u.role_id
+         WHERE u.id = ? AND u.status = 'online' AND r.status = 'active'`,
+        [user.id]
+      );
+      if (!admin) return res.status(403).json({ code: 403, message: '管理员账号或角色已停用，请重新登录' });
+      admin.permissions = (await query('SELECT permission_resource FROM permissions WHERE role_id = ?', [admin.role_id])).map(p => p.permission_resource);
+      if (!hasAdminPermission(admin, requiredAdminPermissions(req.method, req.route?.path))) {
+        return res.status(403).json({ code: 403, message: '没有此操作的权限' });
+      }
+      if (admin.role !== 'super_admin' && !admin.store_id && /^\/api\/admin\/(patients|appointments|orders|pay|im|assessments|dashboard|global-search|notifications|reports)(\/|$)/.test(req.route?.path || '')) {
+        return res.status(403).json({ code: 403, message: '请先由管理员配置所属门店' });
+      }
+      req.user = admin;
+      next();
+    } catch (error) {
+      return res.status(503).json({ code: 503, message: '暂时无法验证管理员权限' });
+    }
   });
 };
 
@@ -91,17 +111,24 @@ export const authenticatePromoterToken = (req, res, next) => {
     return res.status(401).json({ code: 401, message: '未登录或无推广端访问权限' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, JWT_SECRET, async (err, user) => {
     if (err || !user || user.scope !== 'promoter' || !user.promoter_id || !user.user_id) {
       return res.status(403).json({ code: 403, message: '登录已失效或无推广端权限，请重新登录' });
     }
-    req.user = user;
-    next();
+    try {
+      const promoter = await get("SELECT id FROM distributors WHERE id = ? AND user_id = ? AND status = 'active'", [user.promoter_id, user.user_id]);
+      if (!promoter) return res.status(403).json({ code: 403, message: '推广员账号不存在或已停用' });
+      req.user = user;
+      next();
+    } catch (error) {
+      return res.status(503).json({ code: 503, message: '暂时无法验证推广员权限' });
+    }
   });
 };
 
 // Helper to verify if a patient is accessible to the current user (store-restricted)
 export const verifyPatientAccess = async (patientId, user) => {
+  if (user.role !== 'super_admin' && !user.store_id) return false;
   if (user.role === 'doctor' && !user.doctor_id) {
     return false;
   }
@@ -146,7 +173,7 @@ export const getPrimaryPatientForUser = async (userId) => {
     `SELECT p.*
      FROM users u
      JOIN patients p ON p.id = u.self_patient_id
-     WHERE u.id = ?
+     WHERE u.id = ? AND p.user_id = u.id
      LIMIT 1`,
     [userId]
   );
@@ -166,7 +193,7 @@ export const getPrimaryPatientForUser = async (userId) => {
     `SELECT p.*
      FROM user_patient_links upl
      JOIN patients p ON p.id = upl.patient_id
-     WHERE upl.user_id = ?
+     WHERE upl.user_id = ? AND p.user_id = upl.user_id
      ORDER BY CASE WHEN upl.relation = 'self' THEN 0 ELSE 1 END, upl.created_at ASC, upl.id ASC
      LIMIT 1`,
     [userId]
@@ -180,7 +207,7 @@ export const getScopedPatientIdsForUser = async (userId) => {
   }
 
   if (primaryPatient.id_card) {
-    const rows = await query(`SELECT id FROM patients WHERE id_card = ?`, [primaryPatient.id_card]);
+    const rows = await query(`SELECT id FROM patients WHERE id_card = ? AND user_id = ?`, [primaryPatient.id_card, userId]);
     return rows.map((row) => Number(row.id));
   }
 
@@ -188,9 +215,9 @@ export const getScopedPatientIdsForUser = async (userId) => {
     const rows = await query(
       `SELECT id
        FROM patients
-       WHERE phone = ?
+       WHERE phone = ? AND user_id = ?
          AND (id_card IS NULL OR id_card = '')`,
-      [primaryPatient.phone]
+      [primaryPatient.phone, userId]
     );
     return rows.map((row) => Number(row.id));
   }
@@ -200,6 +227,7 @@ export const getScopedPatientIdsForUser = async (userId) => {
 
 // Helper to verify if a user's patients are accessible to the current user
 export const verifyUserAccess = async (userId, user) => {
+  if (user.role !== 'super_admin' && !user.store_id) return false;
   const scopedPatientIds = await getScopedPatientIdsForUser(userId);
   if (!scopedPatientIds.length) {
     return false;
@@ -301,7 +329,7 @@ export const authenticateWxToken = (req, res, next) => {
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err || !user || !user.openid) {
+    if (err || !user || user.scope === 'asset' || !user.openid || !user.id) {
       return res.status(401).json({ code: 401, message: '未授权或登录过期' });
     }
     req.user = user;
@@ -332,7 +360,6 @@ export const verifyPassword = (password, storedHash) => {
 };
 
 // PII Encryption / Decryption helpers using AES-256-CBC with deterministic IV
-const PII_SECRET = (process.env.PII_ENCRYPTION_KEY || 'hanjing_clinic_pii_secret_key_32').padEnd(32, '0').slice(0, 32);
 const DETERMINISTIC_IV = Buffer.from(PII_SECRET.slice(0, 16));
 
 export function encryptPII(text) {
@@ -343,8 +370,7 @@ export function encryptPII(text) {
     encrypted = Buffer.concat([encrypted, cipher.final()]);
     return 'det:' + encrypted.toString('hex');
   } catch (err) {
-    console.error('encryptPII error:', err);
-    return text;
+    throw new Error('Personal information encryption failed', { cause: err });
   }
 }
 

@@ -13,9 +13,11 @@ interface RefundRequest {
   avatarColor: string;
   product: string;
   amount: number;
+  commissionTotal: number | null;
   reason: string;
   applyTime: string;
-  status: string; // pending, approved, rejected
+  status: string; // pending, processing, approved, rejected
+  payMethod: string;
 }
 
 const refunds = ref<RefundRequest[]>([])
@@ -69,9 +71,11 @@ function mapRefund(row: any): RefundRequest {
     avatarColor: '#10B981',
     product: row.product,
     amount: Number(row.amount || 0) / 100,
+    commissionTotal: row.commissionTotal == null ? null : Number(row.commissionTotal) / 100,
     reason: row.reason || '用户申请退款',
     applyTime: formatTime(row.applyTime),
-    status: row.status
+    status: row.status,
+    payMethod: row.payMethod === 'wechat' ? '微信支付' : row.payMethod || '未记录'
   }
 }
 
@@ -81,18 +85,31 @@ async function fetchRefunds() {
     refunds.value = (res.data || []).map(mapRefund)
     selectedRefund.value = refunds.value[0] || null
   } catch (error) {
+    refunds.value = []
+    selectedRefund.value = null
     MessagePlugin.error('加载退款列表失败')
   }
 }
 
 async function handleApprove(row: RefundRequest) {
   try {
-    await request.put(`/api/admin/orders/${row.id}/refund`, { approve: true })
-    row.status = 'approved'
-    MessagePlugin.success(`已同意退款单 ${row.refundNo}`)
-    if (selectedRefund.value?.id === row.id) selectedRefund.value = null
+    const res: any = await request.put(`/api/admin/orders/${row.id}/refund`, { approve: true })
+    MessagePlugin.success(res.message)
   } catch (error) {
-    MessagePlugin.error('退款审批通过失败')
+    // The response interceptor displays the provider's error or uncertain result.
+  } finally {
+    await fetchRefunds()
+  }
+}
+
+async function handleSync(row: RefundRequest) {
+  try {
+    const res: any = await request.post(`/api/admin/orders/${row.id}/refund-sync`)
+    MessagePlugin.info(res.message)
+  } catch (error) {
+    // The response interceptor displays the failed query; retain no assumed success.
+  } finally {
+    await fetchRefunds()
   }
 }
 
@@ -112,7 +129,8 @@ onMounted(fetchRefunds)
 const operationColumnWidth = computed(() => {
   if (paginatedRefunds.value.length === 0) return '80px'
   const hasPending = paginatedRefunds.value.some(r => r.status === 'pending')
-  return hasPending ? '220px' : '80px'
+  const hasProcessing = paginatedRefunds.value.some(r => r.status === 'processing')
+  return hasPending ? '220px' : hasProcessing ? '140px' : '100px'
 })
 
 watch(operationColumnWidth, () => {
@@ -153,7 +171,7 @@ watch(operationColumnWidth, () => {
             :class="{ active: activeTab === 'approved' }" 
             @click="activeTab = 'approved'"
           >
-            已通过
+            已退款
           </div>
           <div 
             class="filter-tab" 
@@ -162,6 +180,7 @@ watch(operationColumnWidth, () => {
           >
             已拒绝
           </div>
+          <div class="filter-tab" :class="{ active: activeTab === 'processing' }" @click="activeTab = 'processing'">退款处理中</div>
           <div 
             class="filter-tab" 
             :class="{ active: activeTab === 'all' }" 
@@ -217,7 +236,8 @@ watch(operationColumnWidth, () => {
                   <button class="btn btn-xs btn-outline" @click="showDetail(row)">详情</button>
                 </div>
                 <div style="display: flex; justify-content: flex-end;" v-else>
-                  <span class="status-tag green" v-if="row.status === 'approved'">退款通过</span>
+                  <span class="status-tag green" v-if="row.status === 'approved'">已确认退款</span>
+                  <button v-else-if="row.status === 'processing'" class="btn btn-xs btn-outline" @click="handleSync(row)">查询退款结果</button>
                   <span class="status-tag red" v-else-if="row.status === 'rejected'">已拒绝</span>
                 </div>
               </td>
@@ -246,16 +266,16 @@ watch(operationColumnWidth, () => {
           <div style="font-size: 13px; color: #6B7280; line-height: 2;">
             <strong style="color: #374151;">退款原因：</strong>{{ selectedRefund.reason }}<br>
             <strong style="color: #374151;">退款类型：</strong>全额退款<br>
-            <strong style="color: #374151;">原支付方式：</strong>微信支付<br>
+            <strong style="color: #374151;">原支付方式：</strong>{{ selectedRefund.payMethod }}<br>
             <strong style="color: #374151;">退款路径：</strong>原路退回
           </div>
         </div>
         <div>
           <div style="font-size: 13px; color: #6B7280; line-height: 2;">
             <strong style="color: #374151;">佣金影响：</strong><br>
-            <span style="color: var(--error-500);">→ 一级佣金扣回：¥{{ (selectedRefund.amount * 0.15).toFixed(0) }} (15%)</span><br>
-            <span style="color: var(--error-500);">→ 二级佣金扣回：¥{{ (selectedRefund.amount * 0.05).toFixed(0) }} (5%)</span><br>
-            <strong style="color: #374151;">预计到账：</strong>1-3个工作日
+            <span>订单关联佣金：{{ selectedRefund.commissionTotal === null ? '未获取' : `¥${selectedRefund.commissionTotal.toFixed(2)}` }}</span><br>
+            <span>以退款成功后的实际佣金账目为准</span><br>
+            <strong style="color: #374151;">到账状态：</strong>{{ selectedRefund.status === 'approved' ? '支付渠道已确认退款' : '尚未确认到账' }}
           </div>
         </div>
       </div>

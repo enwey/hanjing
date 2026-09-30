@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import * as echarts from 'echarts'
@@ -22,68 +22,22 @@ const reportTitle = computed(() => doctorId.value ? `${doctorName.value || '医�
 const reportSubtitle = computed(() => `${selectedYear.value}年${selectedMonth.value}`)
 const monthOptions = Array.from({ length: 12 }, (_, index) => `${index + 1}月`)
 const doctorName = ref('')
-const appointments = ref<any[]>([])
-const doctors = ref<any[]>([])
-
-/* ---- Stats KPIs ---- */
-const scopedAppointments = computed(() => {
-  const year = selectedYear.value
-  return appointments.value.filter(item => {
-    const date = String(item.appointment_date || '').slice(0, 10)
-    const month = Number(date.slice(5, 7))
-    const sameMonth = date.startsWith(String(year)) && month === selectedMonthNumber.value
-    const sameDoctor = !doctorId.value || String(item.doctor_id) === String(doctorId.value)
-    const sameStore = doctorId.value || !storeId.value ? true : String(item.store_id) === String(storeId.value)
-    return sameMonth && sameDoctor && sameStore
-  })
-})
-
-const completedAppointments = computed(() => scopedAppointments.value.filter(item => ['completed', 'arrived', 'settled'].includes(item.status)))
-const reviewDoctors = computed(() => doctorId.value ? doctors.value.filter(d => String(d.id) === String(doctorId.value)) : doctors.value)
-
+const report = ref<any>(null)
+const reportLoaded = ref(false)
+const reportError = ref('')
+const monthReport = computed(() => report.value?.months?.[selectedMonthNumber.value - 1])
 const kpis = computed(() => {
-  const total = scopedAppointments.value.length
-  const completed = completedAppointments.value.length
-  const revenue = completedAppointments.value.reduce((sum, item) => sum + Number(item.consult_fee || 0), 0)
-  const avgRatingList = reviewDoctors.value.map(d => Number(d.rating || 0)).filter(Boolean)
-  const avgRating = avgRatingList.length
-    ? (avgRatingList.reduce((sum, val) => sum + val, 0) / avgRatingList.length).toFixed(1)
-    : '暂无'
+  const row = monthReport.value
   return [
-    { label: '本月预约', value: String(total), icon: 'calendar', color: 'var(--primary-100)', iconColor: 'var(--primary-500)' },
-    { label: '本月营收', value: `¥${(revenue / 100).toFixed(2)}`, icon: 'money', color: 'var(--success-100)', iconColor: 'var(--success-500)' },
-    { label: '到诊率', value: total > 0 ? `${Math.round((completed / total) * 100)}%` : '暂无', icon: 'team', color: '#FFF9E6', iconColor: '#F5A623' },
-    { label: '患者评分', value: avgRating, icon: 'smile', color: 'var(--error-100)', iconColor: 'var(--error-500)' }
+    { label: '本月预约', value: row ? String(row.appointments) : '--', icon: 'calendar', color: 'var(--primary-100)', iconColor: 'var(--primary-500)' },
+    { label: '本月净收款', value: row ? '¥' + (row.net / 100).toFixed(2) : '--', icon: 'money', color: 'var(--success-100)', iconColor: 'var(--success-500)' },
+    { label: '到诊率', value: row?.appointments ? Math.round(row.visits / row.appointments * 100) + '%' : '暂无', icon: 'team', color: '#FFF9E6', iconColor: '#F5A623' },
+    { label: '患者评分', value: row?.rating == null ? '暂无' : row.rating.toFixed(1), icon: 'smile', color: 'var(--error-100)', iconColor: 'var(--error-500)' }
   ]
 })
-
-/* ---- Doctor Rankings ---- */
-const doctorRankings = computed(() => {
-  const grouped = new Map<string, any>()
-  completedAppointments.value.forEach(item => {
-    const key = String(item.doctor_id)
-    const current = grouped.get(key) || {
-      doctorId: key,
-      name: item.doctor_name || '未知医生',
-      visits: 0,
-      revenueValue: 0,
-      rate: '暂无'
-    }
-    current.visits += 1
-    current.revenueValue += Number(item.consult_fee || 0)
-    grouped.set(key, current)
-  })
-  return Array.from(grouped.values())
-    .map(row => {
-      const doctor = doctors.value.find(d => String(d.id) === String(row.doctorId))
-      return {
-        ...row,
-        revenue: `¥${(row.revenueValue / 100).toFixed(2)}`,
-        rate: doctor?.positive_rate !== null && doctor?.positive_rate !== undefined ? `${doctor.positive_rate}%` : row.rate
-      }
-    })
-    .sort((a, b) => b.visits - a.visits)
-})
+const doctorRankings = computed(() => (monthReport.value?.doctors || []).map((row: any) => ({
+  ...row, revenue: '¥' + (row.net / 100).toFixed(2), rate: row.rate == null ? '暂无' : row.rate.toFixed(1) + '%'
+})))
 
 /* ---- Chart Reference ---- */
 const revenueTrendChartRef = ref<HTMLDivElement | null>(null)
@@ -92,26 +46,9 @@ let trendChart: echarts.ECharts | null = null
 function renderTrendChart() {
   if (!revenueTrendChartRef.value) return
   if (!trendChart) trendChart = echarts.init(revenueTrendChartRef.value)
-  const year = selectedYear.value
-  const monthlyRevenue = Array.from({ length: 12 }, (_, index) => {
-    const month = index + 1
-    const amount = appointments.value
-      .filter(item => {
-        const date = String(item.appointment_date || '').slice(0, 10)
-        const sameMonth = date.startsWith(String(year)) && Number(date.slice(5, 7)) === month
-        const sameDoctor = !doctorId.value || String(item.doctor_id) === String(doctorId.value)
-        const sameStore = doctorId.value || !storeId.value ? true : String(item.store_id) === String(storeId.value)
-        return sameMonth && sameDoctor && sameStore && ['completed', 'arrived', 'settled'].includes(item.status)
-      })
-      .reduce((sum, item) => sum + Number(item.consult_fee || 0), 0)
-    return Number((amount / 100).toFixed(2))
-  })
+  const monthlyRevenue = (report.value?.months || []).map((row: any) => Number((row.net / 100).toFixed(2)))
   trendChart.setOption({
-      title: {
-        text: '营收趋势',
-        left: 'left',
-        textStyle: { fontSize: 14, color: '#111827', fontWeight: 600 }
-      },
+      animation: false,
       tooltip: {
         trigger: 'axis',
         formatter: '{b}: ¥{c}'
@@ -131,13 +68,13 @@ function renderTrendChart() {
       },
       yAxis: {
         type: 'value',
-        name: '营收 (元)',
+        name: '净收款 (元)',
         axisLabel: { formatter: '¥{value}' },
         splitLine: { lineStyle: { color: '#F3F4F6' } }
       },
       series: [
         {
-          name: '月度营收',
+          name: '月度净收款',
           type: 'bar',
           data: monthlyRevenue,
           itemStyle: {
@@ -153,39 +90,52 @@ function renderTrendChart() {
     })
 }
 
+let reportRequest = 0
 async function fetchReportData() {
+  const requestId = ++reportRequest
+  reportLoaded.value = false
+  reportError.value = ''
+  report.value = null
+  renderTrendChart()
   try {
-    const requests: any[] = [
-      request.get(`/api/admin/appointments?year=${selectedYear.value}`),
-      request.get('/api/admin/doctors')
-    ]
-    if (storeId.value && !doctorId.value) {
-      requests.push(request.get(`/api/admin/stores/${storeId.value}`))
-    }
-    const [apptRes, doctorRes, storeRes]: any[] = await Promise.all(requests)
-    appointments.value = apptRes.data || []
-    doctors.value = doctorRes.data || []
-    if (storeRes?.data?.name) {
-      storeName.value = storeRes.data.name
-    }
-    if (doctorId.value) {
-      const doctor = doctors.value.find(d => String(d.id) === String(doctorId.value))
-      doctorName.value = doctor?.name || ''
-    }
+    const params = new URLSearchParams({ year: String(selectedYear.value) })
+    if (storeId.value && !doctorId.value) params.set('store_id', storeId.value)
+    if (doctorId.value) params.set('doctor_id', doctorId.value)
+    const [res, nameRes]: any[] = await Promise.all([
+      request.get('/api/admin/reports/store?' + params),
+      doctorId.value ? request.get('/api/admin/doctors/' + doctorId.value) : request.get('/api/admin/stores/' + storeId.value)
+    ])
+    if (requestId !== reportRequest) return
+    if (res.code !== 200 || !res.data) throw new Error('报表不可用')
+    report.value = res.data
+    if (doctorId.value) doctorName.value = nameRes.data?.name || ''
+    else storeName.value = nameRes.data?.name || '门店'
+    reportLoaded.value = true
     renderTrendChart()
-  } catch (error) {
-    MessagePlugin.error('加载报表数据失败')
+  } catch {
+    if (requestId !== reportRequest) return
+    reportError.value = '报表加载失败，当前未显示有效统计'
+    MessagePlugin.error(reportError.value)
   }
+}
+
+function resizeChart() {
+  trendChart?.resize()
 }
 
 onMounted(() => {
   fetchReportData()
-  window.addEventListener('resize', () => {
-    trendChart?.resize()
-  })
+  window.addEventListener('resize', resizeChart)
 })
 
-watch([selectedMonth, appointments], () => renderTrendChart())
+onUnmounted(() => {
+  reportRequest++
+  window.removeEventListener('resize', resizeChart)
+  trendChart?.dispose()
+  trendChart = null
+})
+
+watch([selectedMonth, report], () => renderTrendChart())
 watch(selectedYear, () => {
   fetchReportData()
 })
@@ -195,16 +145,17 @@ function handleBack() {
 }
 
 function handleExport() {
-  const rows = [
+  if (!reportLoaded.value) return
+  const rows: unknown[][] = [
     ['统计维度', reportTitle.value],
     ['统计月份', reportSubtitle.value],
     ['本月预约', kpis.value[0].value],
-    ['本月营收', kpis.value[1].value],
+    ['本月净收款', kpis.value[1].value],
     ['到诊率', kpis.value[2].value],
     ['患者评分', kpis.value[3].value],
     [],
-    ['医生', '接诊数', '总营收', '好评率'],
-    ...doctorRankings.value.map(row => [row.name, row.visits, row.revenue, row.rate])
+    ['医生', '接诊数', '净收款', '好评率'],
+    ...doctorRankings.value.map((row: { name: string; visits: number; revenue: string; rate: string }) => [row.name, row.visits, row.revenue, row.rate])
   ]
   const csv = rows.map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
   const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
@@ -229,7 +180,7 @@ function handleExport() {
         <div class="page-title-sub">{{ reportSubtitle }}</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" style="margin-right: 8px;" @click="handleExport"><AppIcon name="download" />  导出报表</button>
+        <button class="btn btn-outline" style="margin-right: 8px;" @click="handleExport" :disabled="!reportLoaded"><AppIcon name="download" />  导出报表</button>
         <select class="form-control" style="width: 100px; margin-right: 8px;" v-model="selectedYear">
           <option v-for="yr in yearOptions" :key="yr" :value="yr">{{ yr }}年</option>
         </select>
@@ -239,6 +190,10 @@ function handleExport() {
       </div>
     </div>
 
+    <div v-if="reportError" role="alert">{{ reportError }}</div>
+    <div v-if="monthReport" style="margin-bottom: 12px; color: #6B7280;">
+      实收 ¥{{ (monthReport.receipts / 100).toFixed(2) }} · 已确认退款 ¥{{ (monthReport.refunds / 100).toFixed(2) }}
+    </div>
     <!-- KPI mini-stats cards -->
     <div class="card-grid-4">
       <div class="mini-stat" v-for="(kpi, index) in kpis" :key="index">
@@ -256,7 +211,7 @@ function handleExport() {
     <div class="card-grid-2" style="margin-top: 16px;">
       <!-- Revenue Trend Chart -->
       <div class="panel" style="margin: 0;">
-        <div class="panel-header"><div class="panel-title">营收趋势</div></div>
+        <div class="panel-header"><div class="panel-title">净收款趋势</div></div>
         <div class="panel-body">
           <div ref="revenueTrendChartRef" style="width: 100%; height: 260px;"></div>
         </div>
@@ -270,7 +225,7 @@ function handleExport() {
             <tr>
               <th>医生</th>
               <th>接诊数 (人次)</th>
-              <th>总营收</th>
+              <th>净收款</th>
               <th>好评率</th>
             </tr>
           </thead>

@@ -5,15 +5,18 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
 const router = useRouter()
+const settingsLoaded = ref(false)
+const saving = ref(false)
+const secretConfigured = ref<Record<string, boolean>>({})
 
 // 1. 预约设置
-const bookingAdvanceDays = ref(7)
-const bookingHours = ref('08:30 - 18:00')
-const bookingInterval = ref(30)
-const bookingCancelLimit = ref('就诊前2小时')
-const allowSelfBooking = ref(true)
+const bookingAdvanceDays = ref<number | null>(null)
+const bookingHours = ref('')
+const bookingInterval = ref<number | null>(null)
+const bookingCancelLimit = ref('')
+const allowSelfBooking = ref(false)
 const requireDeposit = ref(false)
-const depositAmount = ref(50.00)
+const depositAmount = ref<number | null>(null)
 
 const cancelLimitOptions = [
   { label: '就诊前2小时', value: '就诊前2小时' },
@@ -22,19 +25,19 @@ const cancelLimitOptions = [
 ]
 
 // 2. 分销设置
-const commission1 = ref(15)
-const commission2 = ref(5)
-const distributionSettleDays = ref(14)
-const minWithdraw = ref(100)
-const withdrawFeeRate = ref(0.2)
-const enableDistribution = ref(true)
+const commission1 = ref<number | null>(null)
+const commission2 = ref<number | null>(null)
+const distributionSettleDays = ref<number | null>(null)
+const minWithdraw = ref<number | null>(null)
+const withdrawFeeRate = ref<number | null>(null)
+const enableDistribution = ref(false)
 const autoApproveWithdraw = ref(false)
 
 // 3. 通知设置
-const notifyNewBooking = ref(true)
-const notifyWithdrawApply = ref(true)
-const notifyVisitReminder = ref(true)
-const notifyRevisitReminder = ref(true)
+const notifyNewBooking = ref(false)
+const notifyWithdrawApply = ref(false)
+const notifyVisitReminder = ref(false)
+const notifyRevisitReminder = ref(false)
 const appointmentSubscribeTemplateIds = ref('')
 const wechatTemplateAppointmentCreated = ref('')
 const wechatTemplateAppointmentPaid = ref('')
@@ -59,38 +62,36 @@ const wechatPayRefundNotifyUrl = ref('')
 const wechatPayPlatformCert = ref('')
 
 // 4. 权限管理 (角色表格数据)
-const roles = ref([
-  { name: '超级管理员', membersCount: 1, scope: '全部权限', status: 'active' },
-  { name: '门店管理员', membersCount: 4, scope: '预约/患者/医生/门店', status: 'active' },
-  { name: '财务人员', membersCount: 2, scope: '订单/分销/提现', status: 'active' },
-  { name: '内容编辑', membersCount: 1, scope: '文章/轮播图', status: 'active' }
-])
+const roles = ref<any[]>([])
 
-onMounted(async () => {
+async function loadSettings() {
+  settingsLoaded.value = false
+  roles.value = []
   try {
     const res: any = await request.get('/api/admin/settings')
     if (res && res.code === 200 && res.data) {
       const data = res.data
-      bookingAdvanceDays.value = data.booking_advance_days ?? 7
-      bookingHours.value = data.booking_hours ?? '08:30 - 18:00'
-      bookingInterval.value = data.booking_interval ?? 30
-      bookingCancelLimit.value = data.booking_cancel_limit ?? '就诊前2小时'
-      allowSelfBooking.value = data.allow_self_booking ?? true
+      secretConfigured.value = res.configured || {}
+      bookingAdvanceDays.value = data.booking_advance_days ?? null
+      bookingHours.value = data.booking_hours ?? ''
+      bookingInterval.value = data.booking_interval ?? null
+      bookingCancelLimit.value = data.booking_cancel_limit ?? ''
+      allowSelfBooking.value = data.allow_self_booking ?? false
       requireDeposit.value = data.require_deposit ?? false
-      depositAmount.value = data.deposit_amount ? (data.deposit_amount / 100) : 50.00
+      depositAmount.value = data.deposit_amount == null ? null : (data.deposit_amount / 100)
 
-      commission1.value = data.commission1 ?? 15
-      commission2.value = data.commission2 ?? 5
-      distributionSettleDays.value = data.distribution_settle_days ?? 14
-      minWithdraw.value = data.min_withdraw ?? 100
-      withdrawFeeRate.value = data.withdraw_fee_rate ?? 0.2
-      enableDistribution.value = data.enable_distribution ?? true
-      autoApproveWithdraw.value = data.auto_approve_withdraw ?? false
+      commission1.value = data.commission1 ?? null
+      commission2.value = data.commission2 ?? null
+      distributionSettleDays.value = data.distribution_settle_days ?? null
+      minWithdraw.value = data.min_withdraw ?? null
+      withdrawFeeRate.value = data.withdraw_fee_rate ?? null
+      enableDistribution.value = data.enable_distribution ?? false
+      autoApproveWithdraw.value = false
 
-      notifyNewBooking.value = data.notify_new_booking ?? true
-      notifyWithdrawApply.value = data.notify_withdraw_apply ?? true
-      notifyVisitReminder.value = data.notify_visit_reminder ?? true
-      notifyRevisitReminder.value = data.notify_revisit_reminder ?? true
+      notifyNewBooking.value = data.notify_new_booking ?? false
+      notifyWithdrawApply.value = data.notify_withdraw_apply ?? false
+      notifyVisitReminder.value = data.notify_visit_reminder ?? false
+      notifyRevisitReminder.value = data.notify_revisit_reminder ?? false
       appointmentSubscribeTemplateIds.value = data.appointment_subscribe_template_ids ?? ''
       wechatTemplateAppointmentCreated.value = data.wechat_template_appointment_created ?? ''
       wechatTemplateAppointmentPaid.value = data.wechat_template_appointment_paid ?? ''
@@ -113,14 +114,24 @@ onMounted(async () => {
       wechatPayAppointmentNotifyUrl.value = data.wechat_pay_appointment_notify_url ?? ''
       wechatPayRefundNotifyUrl.value = data.wechat_pay_refund_notify_url ?? ''
       wechatPayPlatformCert.value = data.wechat_pay_platform_cert ?? ''
+      const roleRes: any = await request.get('/api/admin/roles')
+      roles.value = (roleRes.data || []).map((role: any) => ({ ...role, membersCount: Number(role.members_count), scope: (role.permissions || []).join('、') || '未配置' }))
+      settingsLoaded.value = true
     }
   } catch (err) {
     console.error('加载系统设置失败', err)
     MessagePlugin.error('加载系统设置失败')
   }
-})
+}
+onMounted(loadSettings)
 
 async function handleSaveAll() {
+  if (!settingsLoaded.value || saving.value) return
+  if (enableDistribution.value && [commission1.value, commission2.value, distributionSettleDays.value, minWithdraw.value, withdrawFeeRate.value].some(value => value === null)) {
+    MessagePlugin.warning('请先完整填写分销财务配置')
+    return
+  }
+  saving.value = true
   try {
     const payload = {
       booking_advance_days: bookingAdvanceDays.value,
@@ -129,7 +140,7 @@ async function handleSaveAll() {
       booking_cancel_limit: bookingCancelLimit.value,
       allow_self_booking: allowSelfBooking.value,
       require_deposit: requireDeposit.value,
-      deposit_amount: Math.round(depositAmount.value * 100),
+      deposit_amount: depositAmount.value == null ? null : Math.round(depositAmount.value * 100),
 
       commission1: commission1.value,
       commission2: commission2.value,
@@ -166,50 +177,24 @@ async function handleSaveAll() {
       wechat_pay_refund_notify_url: wechatPayRefundNotifyUrl.value,
       wechat_pay_platform_cert: wechatPayPlatformCert.value
     }
-    const res: any = await request.post('/api/admin/settings', payload)
+    const res: any = await request.post('/api/admin/settings', Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== null)))
     if (res && res.code === 200) {
       MessagePlugin.success('系统设置已成功保存')
+      await loadSettings()
     }
   } catch (err) {
     console.error('保存系统设置失败', err)
     MessagePlugin.error('保存系统设置失败')
+  } finally {
+    saving.value = false
   }
 }
 
 function handleReset() {
-  bookingAdvanceDays.value = 7
-  bookingHours.value = '08:30 - 18:00'
-  bookingInterval.value = 30
-  bookingCancelLimit.value = '就诊前2小时'
-  allowSelfBooking.value = true
-  requireDeposit.value = false
-  depositAmount.value = 50.00
-
-  commission1.value = 15
-  commission2.value = 5
-  distributionSettleDays.value = 14
-  minWithdraw.value = 100
-  withdrawFeeRate.value = 0.2
-  enableDistribution.value = true
-  autoApproveWithdraw.value = false
-
-  notifyNewBooking.value = true
-  notifyWithdrawApply.value = true
-  notifyVisitReminder.value = true
-  notifyRevisitReminder.value = true
-  appointmentSubscribeTemplateIds.value = ''
-
-  MessagePlugin.info('配置信息已重置为默认值')
+  loadSettings()
 }
-
-function editRole(roleName: string) {
-  if (roleName === '门店管理员') {
-    router.push('/permission/role-edit/2')
-  } else if (roleName === '财务人员') {
-    router.push('/permission/role-edit/3')
-  } else {
-    router.push('/permission/role-edit')
-  }
+function editRole(roleId: number) {
+  router.push('/permission/role-edit/' + roleId)
 }
 </script>
 
@@ -222,8 +207,8 @@ function editRole(roleName: string) {
         <div class="page-title-sub">配置系统参数与业务规则</div>
       </div>
       <div style="display: flex; gap: 10px; align-items: center;">
-        <button class="btn btn-outline" @click="handleReset" style="padding: 0 24px; height: 36px;">重置</button>
-        <button class="btn btn-primary" @click="handleSaveAll" style="padding: 0 32px; height: 36px;">保存设置</button>
+        <button class="btn btn-outline" @click="handleReset" :disabled="saving" style="padding: 0 24px; height: 36px;">重新加载</button>
+        <button class="btn btn-primary" @click="handleSaveAll" :disabled="!settingsLoaded || saving" style="padding: 0 32px; height: 36px;">保存设置</button>
       </div>
     </div>
 
@@ -278,7 +263,7 @@ function editRole(roleName: string) {
               <label class="form-label">定金金额（元）<span class="required">*</span></label>
               <div class="input-group">
                 <span class="input-prefix">¥</span>
-                <input type="number" class="form-control-inner" v-model.number="depositAmount" min="0.01" step="0.01">
+                <input type="number" class="form-control-inner" v-model.number="depositAmount" min="0" step="0.01">
               </div>
             </div>
           </div>
@@ -340,7 +325,7 @@ function editRole(roleName: string) {
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <label class="form-label" style="margin-bottom: 0;">自动审核提现</label>
                 <label class="switch">
-                  <input type="checkbox" v-model="autoApproveWithdraw">
+                  <input type="checkbox" v-model="autoApproveWithdraw" disabled title="尚未接入真实自动打款">
                   <span class="switch-slider"></span>
                 </label>
               </div>
@@ -436,7 +421,7 @@ function editRole(roleName: string) {
                 </td>
                 <td>
                   <div style="display: flex; gap: 4px; justify-content: flex-end;">
-                    <button class="btn btn-xs btn-outline" @click="editRole(role.name)">编辑</button>
+                    <button class="btn btn-xs btn-outline" @click="editRole(role.id)">编辑</button>
                   </div>
                 </td>
               </tr>

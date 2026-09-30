@@ -48,6 +48,7 @@ scratch/
 
 # Temporary directories
 .codex-tmp/
+/.local-mysql/
 
 # Log files
 *.log

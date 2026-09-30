@@ -38,11 +38,11 @@
       <view class="form-item">
         <text class="form-label">到账方式</text>
         <view class="method-row">
-          <view class="method-card {{withdrawMethod === 'wechat' ? 'method-card--active' : ''}}" data-method="wechat" bindtap="chooseMethod">
+          <view class="method-card">
             <view class="method-card__icon-wrap">
               <image src="/static/icons/chat.svg" mode="aspectFit" class="method-card__icon" />
             </view>
-            <text class="method-card__label">微信零钱</text>
+            <text class="method-card__label">微信零钱（未开通）</text>
           </view>
           <view class="method-card {{withdrawMethod === 'bank' ? 'method-card--active' : ''}}" data-method="bank" bindtap="chooseMethod">
             <view class="method-card__icon-wrap">
@@ -54,7 +54,7 @@
       </view>
 
       <view class="tip-box">
-        <text class="tip-box__text">最低提现金额 {{minWithdrawAmount}} 元，微信零钱手续费 0%，银行卡手续费 {{withdrawFeeRatePercentLabel}}%（最低 1 元）</text>
+        <text class="tip-box__text">最低提现金额 {{minWithdrawAmount}} 元，银行卡手续费 {{withdrawFeeRatePercentLabel}}%（最低 1 元）</text>
         <text class="tip-box__text">手续费：{{serviceFeeLabel}}</text>
         <text class="tip-box__text">预计到账：{{actualAmountLabel}}</text>
       </view>

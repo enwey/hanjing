@@ -60,6 +60,6 @@
   </view>
 
   <view wx:else class="loading-card">
-    <text class="loading-text">{{isLoading ? '正在加载报告...' : '暂无可展示的报告'}}</text>
+    <text class="loading-text">{{isLoading ? '正在加载报告...' : (loadError || '暂无可展示的报告')}}</text>
   </view>
 </view>

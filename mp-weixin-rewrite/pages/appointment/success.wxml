@@ -1,5 +1,5 @@
 <view class="page">
-  <hj-navbar title="预约成功" showBack="{{true}}" />
+  <hj-navbar title="预约结果" showBack="{{true}}" />
 
   <view wx:if="{{loading}}" class="page-content state-card">
     <text class="state-text">正在加载预约结果...</text>
@@ -7,6 +7,7 @@
 
   <view wx:elif="{{loadError}}" class="page-content state-card">
     <text class="state-text">{{loadError}}</text>
+    <button bindtap="openAppointmentDetail">查看预约详情</button>
   </view>
 
   <view wx:else class="page-content">

@@ -218,7 +218,7 @@ function handleEditDoctor(id: string) {
 }
 
 async function handleSave() {
-  if (!formData.value.name || !formData.value.specialty || formData.value.storeIds.length === 0 || formData.value.consultFee === undefined || formData.value.consultFee === null || formData.value.consultFee === '') {
+  if (!formData.value.name || !formData.value.specialty || formData.value.storeIds.length === 0 || formData.value.consultFee === undefined || formData.value.consultFee === null || !Number.isFinite(Number(formData.value.consultFee))) {
     MessagePlugin.warning('请填写所有必填信息')
     return
   }

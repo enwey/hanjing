@@ -820,7 +820,7 @@ async function submitCheckout() {
       const receipt = res.data.receipt
       if (payMethod.value === 'wechat_native') {
         const payInfo = await createNativePay(res.data.order_id)
-        if (payInfo.paid || payInfo.mockPayment) {
+        if (payInfo.paid) {
           await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信扫码支付', payAt: new Date().toISOString() }))
         } else {
           nativePayInfo.value = payInfo

@@ -183,7 +183,7 @@ onMounted(loadData)
                 <span :class="['level-pill', levelClass(item.memberLevelLabel)]">{{ item.memberLevelLabel || '普通' }}</span>
               </td>
               <td>{{ item.familyCount || 0 }} 人</td>
-              <td>{{ item.appointmentCount || 0 }} 次</td>
+              <td>{{ item.completedVisitCount || 0 }} 次</td>
               <td>{{ formatShanghaiDateOnly(item.lastVisit) || '暂无' }}</td>
               <td>¥{{ yuan(item.paidAmount) }}</td>
               <td><span class="source-pill">{{ sourceLabel(item.source) }}</span></td>

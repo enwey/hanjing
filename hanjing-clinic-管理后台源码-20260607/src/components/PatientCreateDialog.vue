@@ -93,7 +93,7 @@ function handleCancel() {
     confirm-btn="确认建档"
     cancel-btn="取消"
     :confirm-loading="loading"
-    @update:visible="val => emit('update:visible', val)"
+    @update:visible="(val: boolean) => emit('update:visible', val)"
     @confirm="handleConfirm"
     @cancel="handleCancel"
   >

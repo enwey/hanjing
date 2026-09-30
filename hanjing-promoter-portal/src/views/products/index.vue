@@ -39,7 +39,7 @@ onMounted(loadData)
           <span>库存 {{ item.stock || 0 }}</span>
         </div>
         <div class="product-commission">
-          一级佣金 {{ item.commission_rate || 0 }}% / 二级佣金 {{ item.commission_rate_level2 || 0 }}%
+          一级佣金 {{ item.commission_rate_level1 ?? item.commission_rate ?? 0 }}% / 二级佣金 {{ item.commission_rate_level2 || 0 }}%
         </div>
       </div>
     </article>

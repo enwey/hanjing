@@ -17,6 +17,9 @@ const ORDER_STATUS_META = {
   completed: { label: '已完成', color: '#1a9d5c' },
   cancelled: { label: '已取消', color: '#9ca3af' },
   confirmed: { label: '已确认', color: '#3b6bf5' },
+  refund_pending: { label: '退款待审核', color: '#f59e0b' },
+  refunding: { label: '退款处理中', color: '#f59e0b' },
+  refunded: { label: '已退款', color: '#9ca3af' },
 };
 
 function unwrapList(response) {
@@ -52,8 +55,8 @@ function normalizeOrder(order) {
   return {
     id: String(order.id || ''),
     orderNo: order.orderNo || order.order_no || '',
-    status: order.status || 'pending',
-    payAmount: Number(order.payAmount || order.totalAmount || 0),
+    status: order.status || '',
+    payAmount: Number(order.payAmount ?? order.totalAmount ?? 0),
     items: items.map((orderItem) => ({
       productId: String(orderItem.productId || orderItem.id || ''),
       productName: orderItem.productName || orderItem.name || '',

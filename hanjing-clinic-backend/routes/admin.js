@@ -1,5 +1,13 @@
+import { reviewRefund, syncRefund } from '../refunds.js';
+import { signPrivateUploadResponses, registerPrivateUpload, privateUploadPath, canReadPrivateUpload } from '../private-uploads.js';
+import { validateProduct } from '../product-validation.js';
+import { hasAdminPermission } from '../admin-permissions.js';
+import { cancelPendingProductOrder, finalizePaidProductOrder } from './client.js';
+import { readStoreReport } from '../operations-report.js';
 import express from 'express';
+import { createAsyncRouter } from '../async-router.js';
 import jwt from 'jsonwebtoken';
+import { publicWithdrawAccount, withdrawStatus } from '../distribution-ledger.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -24,7 +32,6 @@ import {
 import { sendWechatSubscribeMessage } from '../wechatSubscribe.js';
 import { getWechatMiniAccessToken } from '../wechatMiniToken.js';
 import {
-  allowDevMockWechatPay,
   closeOrderByOutTradeNo,
   createMicroPay,
   createNativePayment,
@@ -35,7 +42,16 @@ import {
   queryOrderByOutTradeNo
 } from '../wechatPay.js';
 
-const app = express.Router();
+const app = createAsyncRouter();
+app.use(signPrivateUploadResponses);
+
+app.get('/api/admin/reports/store', authenticateToken, async (req, res) => {
+  try {
+    res.json({ code: 200, data: await readStoreReport(req.user, req.query) });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '报表读取失败' });
+  }
+});
 const PAID_ORDER_STATUSES = ['paid', 'shipping', 'shipped', 'processing', 'completed'];
 const PAID_ORDER_STATUSES_SQL = PAID_ORDER_STATUSES.map(status => `'${status}'`).join(', ');
 const APPOINTMENT_TYPES = new Set(['first', 'followup', 'adjust']);
@@ -61,9 +77,11 @@ const formatDateOnly = (value) => {
   return formatShanghaiDate(date);
 };
 
+const isSecretSetting = key => /secret|password|private_key|api_v[23]_key|access_token|refresh_token/i.test(key);
+
 function ensureSuperAdmin(req, res) {
   if (req.user?.role !== 'super_admin') {
-    res.status(403).json({ code: 403, message: '只有超级管理员可以使用数据库工具' });
+    res.status(403).json({ code: 403, message: '只有超级管理员可以执行此操作' });
     return false;
   }
   return true;
@@ -335,39 +353,50 @@ function normalizePayMethod(method) {
   return ['wechat', 'wechat_native', 'wechat_micropay', 'cash', 'bank'].includes(value) ? value : 'wechat';
 }
 
-async function finalizeAdminPaidOrder(order, paymentPayload = null) {
-  if (!order || order.status !== 'pending') return order;
-  let address = {};
-  try {
-    address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
-  } catch (error) {}
-  const deliveryMethod = address.deliveryMethod === 'online' || order.type === 'online' ? 'online' : 'pickup';
-  const nextStatus = deliveryMethod === 'online' ? 'shipping' : 'paid';
-  const items = await query(
-    `SELECT oi.quantity, oi.product_id, p.category
-     FROM order_items oi
-     LEFT JOIN products p ON p.id = oi.product_id
-     WHERE oi.order_id = ?`,
-    [order.id]
-  );
-  await run(
-    `UPDATE orders
-     SET status = ?,
-         pay_at = CURRENT_TIMESTAMP,
-         wechat_transaction_id = COALESCE(?, wechat_transaction_id),
-         updated_at = CURRENT_TIMESTAMP
-     WHERE id = ? AND status = 'pending'`,
-    [nextStatus, paymentPayload?.transaction_id || null, order.id]
-  );
-  for (const item of items) {
-    if (item.category !== 'service') {
-      await run(
-        `UPDATE products SET sales_count = sales_count + ? WHERE id = ?`,
-        [item.quantity, item.product_id]
-      );
-    }
-  }
+export async function finalizeAdminPaidOrder(order, paymentPayload = null) {
+  await transaction(conn => finalizePaidProductOrder(conn, order, paymentPayload));
   return get(`SELECT * FROM orders WHERE id = ?`, [order.id]);
+}
+
+async function canAccessPaymentOrder(order, user) {
+  if (user.role === 'super_admin') return true;
+  if (!user.store_id) return false;
+  if (order.appointment_id) {
+    return !!await get('SELECT id FROM appointments WHERE id=? AND store_id=?', [order.appointment_id, user.store_id]);
+  }
+  try {
+    const address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address;
+    return !!address?.storeId && Number(address.storeId) === Number(user.store_id);
+  } catch { return false; }
+}
+
+function patientScope(user) {
+  if (user.role === 'super_admin') return { sql: '1=1', params: [] };
+  if (!user.store_id || (user.role === 'doctor' && !user.doctor_id)) return { sql: '1=0', params: [] };
+  const doctor = user.role === 'doctor' ? ' AND doctor_id=?' : '';
+  const args = user.role === 'doctor' ? [user.store_id, user.doctor_id] : [user.store_id];
+  return { sql: `(p.id IN (SELECT patient_id FROM appointments WHERE store_id=?${doctor})
+    OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id=?${doctor}))`, params: [...args, ...args] };
+}
+
+function orderScope(user) {
+  if (user.role === 'super_admin') return { sql: '1=1', params: [] };
+  if (!user.store_id) return { sql: '1=0', params: [] };
+  return { sql: `(o.appointment_id IN (SELECT id FROM appointments WHERE store_id=?)
+    OR (o.appointment_id IS NULL AND JSON_VALID(o.shipping_address)
+      AND JSON_UNQUOTE(JSON_EXTRACT(o.shipping_address,'$.storeId'))=?))`, params: [user.store_id, String(user.store_id)] };
+}
+
+async function requestAdminPayment(order, method, createPayment) {
+  // Persist intent before contacting the channel, even when its response is lost.
+  const marked = await run(`UPDATE orders SET wechat_prepay_id=COALESCE(wechat_prepay_id,'REQUESTING'),pay_method=?
+    WHERE id=? AND status='pending' AND (wechat_prepay_id IS NULL OR pay_method=?)`, [method, order.id, method]);
+  if (!marked.changes) throw Object.assign(new Error('订单状态或支付方式已变更，请刷新'), { statusCode: 409 });
+  return transaction(async conn => {
+    const [[current]] = await conn.execute('SELECT status FROM orders WHERE id=? FOR UPDATE', [order.id]);
+    if (current?.status !== 'pending') throw Object.assign(new Error('订单状态已变更，请刷新'), { statusCode: 409 });
+    return createPayment();
+  });
 }
 
 const buildTreatmentDeviceSnapshot = (product) => ({
@@ -669,102 +698,12 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-const smsCodes = new Map(); // phone -> { code, expires }
-
-app.post('/api/admin/send-code', async (req, res) => {
-  const { phone } = req.body;
-  if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
-    return res.status(400).json({ code: 400, message: '请输入有效的手机号' });
-  }
-
-  // Generate 6-digit code
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  smsCodes.set(phone, { code, expires: Date.now() + 5 * 60 * 1000 }); // 5 minutes validity
-
-  console.log(`[SMS Send] Verification code for ${phone} is: ${code}`);
-
-  res.json({
-    code: 200,
-    message: '验证码发送成功（测试环境已直接返回）',
-    data: { code }
-  });
-});
-
-app.post('/api/admin/sms-login', async (req, res) => {
-  const { phone, smsCode } = req.body;
-  if (!phone || !smsCode) {
-    return res.status(400).json({ code: 400, message: '手机号和验证码不能为空' });
-  }
-
-  // Verify verification code
-  const cached = smsCodes.get(phone);
-  if (!cached || cached.code !== smsCode || Date.now() > cached.expires) {
-    return res.status(400).json({ code: 400, message: '验证码错误或已过期' });
-  }
-
-  // Delete code on successful verification
-  smsCodes.delete(phone);
-
-  try {
-    const user = await get(
-      `SELECT u.*, r.name as role_name, r.code as role_code, r.status as role_status,
-              d.name as doctor_name
-       FROM admin_users u 
-       JOIN roles r ON u.role_id = r.id 
-       LEFT JOIN doctors d ON u.doctor_id = d.id
-       WHERE u.phone = ? LIMIT 1`,
-      [phone]
-    );
-
-    if (!user) {
-      return res.status(400).json({ code: 400, message: '该手机号未绑定管理员账号' });
-    }
-
-    if (user.status !== 'online') {
-      return res.status(403).json({ code: 403, message: '该账号已被禁用' });
-    }
-    if (user.role_status === 'inactive') {
-      return res.status(403).json({ code: 403, message: '该账号所属角色已禁用，请联系超级管理员' });
-    }
-
-    // Update last login
-    await run(`UPDATE admin_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?`, [user.id]);
-
-    // Write audit log
-    await logAdminAction(user.id, 'login', 'admin', user.id, { username: user.username, method: 'sms' });
-    const permissions = await getRolePermissions(user.role_id);
-
-    const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role_code, store_id: user.store_id, doctor_id: user.doctor_id || null },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      code: 200,
-      message: '登录成功',
-      data: {
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          name: user.name,
-          phone: user.phone,
-          role_name: user.role_name,
-          role_code: user.role_code,
-          store_id: user.store_id,
-          doctor_id: user.doctor_id,
-          doctor_name: user.doctor_name,
-          permissions
-        }
-      }
-    });
-  } catch (error) {
-    console.error('SMS Login Error:', error);
-    res.status(500).json({ code: 500, message: '系统内部错误' });
-  }
-});
-
+// SMS authentication stays disabled until a real delivery provider is configured.
+for (const path of ['/api/admin/send-code', '/api/admin/sms-login']) {
+  app.post(path, (req, res) => res.status(503).json({
+    code: 503, message: '短信登录尚未接入真实短信服务，请使用账号密码登录'
+  }));
+}
 
 app.get('/api/admin/me', authenticateToken, async (req, res) => {
   try {
@@ -831,9 +770,12 @@ app.put('/api/admin/change-password', authenticateToken, async (req, res) => {
 app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
   const range = req.query.range || 'month'; // 'today', 'week', 'month'
   
-  let dateFilterAppt = `appointment_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
-  let dateFilterOrder = `pay_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
-  let dateFilterPatient = `created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
+  if (!['today', 'week', 'month'].includes(range)) return res.status(400).json({ code: 400, message: '统计范围不正确' });
+  if (req.user.role !== 'super_admin' && !req.user.store_id) return res.status(403).json({ code: 403, message: '账号未配置门店数据范围' });
+
+  let dateFilterAppt = `appointment_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND appointment_date < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)`;
+  let dateFilterOrder = `pay_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND pay_at < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)`;
+  let dateFilterPatient = `created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND created_at < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)`;
   
   let prevDateFilterAppt = `appointment_date >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01') AND appointment_date < DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
   let prevDateFilterOrder = `pay_at >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01') AND pay_at < DATE_FORMAT(CURDATE(), '%Y-%m-01')`;
@@ -864,26 +806,26 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
   }
 
   try {
-    // 1. Revenue (Current & Previous)
-    let revSql = `SELECT SUM(pay_amount) as total FROM orders WHERE status IN (${PAID_ORDER_STATUSES_SQL}) AND ${dateFilterOrder}`;
-    let prevRevSql = `SELECT SUM(pay_amount) as total FROM orders WHERE status IN (${PAID_ORDER_STATUSES_SQL}) AND ${prevDateFilterOrder}`;
-    const revParams = [];
-    const prevRevParams = [];
-    if (req.user.role !== 'super_admin' && req.user.store_id) {
-      const storeFilter = ` AND user_id IN (
-        SELECT p.user_id FROM patients p
-        WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
-           OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
-      )`;
-      revSql += storeFilter;
-      prevRevSql += storeFilter;
-      revParams.push(req.user.store_id, req.user.store_id);
-      prevRevParams.push(req.user.store_id, req.user.store_id);
-    }
-    const revRow = await get(revSql, revParams);
-    const prevRevRow = await get(prevRevSql, prevRevParams);
-    const revenue = revRow.total || 0;
-    const prevRevenue = prevRevRow.total || 0;
+    const readCash = async (filter, group = false) => {
+      const scope = req.user.role !== 'super_admin'
+        ? ` AND (appointment_id IN (SELECT id FROM appointments WHERE store_id = ?)
+            OR (appointment_id IS NULL AND CAST(JSON_UNQUOTE(JSON_EXTRACT(shipping_address, '$.storeId')) AS UNSIGNED) = ?))`
+        : '';
+      const scopeParams = scope ? [req.user.store_id, req.user.store_id] : [];
+      const dateFormat = range === 'today' ? '%H:00' : '%Y-%m-%d';
+      const receiptDate = group ? `DATE_FORMAT(pay_at, '${dateFormat}')` : 'NULL';
+      const refundDate = group ? `DATE_FORMAT(refund_at, '${dateFormat}')` : 'NULL';
+      return query(`SELECT ${group ? 'date' : 'NULL AS date'}, COALESCE(SUM(amount), 0) AS total FROM (
+        SELECT ${receiptDate} AS date, pay_amount AS amount FROM orders WHERE pay_at IS NOT NULL AND ${filter}${scope}
+        UNION ALL
+        SELECT ${refundDate} AS date, -pay_amount AS amount FROM orders WHERE status = 'refunded' AND ${filter.replaceAll('pay_at', 'refund_at')}${scope}
+      ) cash ${group ? 'GROUP BY date ORDER BY date DESC' : ''}`,
+      [...scopeParams, ...scopeParams]);
+    };
+    const [revRow] = await readCash(dateFilterOrder);
+    const [prevRevRow] = await readCash(prevDateFilterOrder);
+    const revenue = Number(revRow.total);
+    const prevRevenue = Number(prevRevRow.total);
 
     // 2. Appointments count (Current & Previous)
     let apptSql = `SELECT COUNT(*) as count FROM appointments WHERE ${dateFilterAppt}`;
@@ -942,12 +884,13 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
     // Helper to calculate comparison trend percentage
     const calculateTrend = (curr, prev) => {
       if (prev === 0) {
-        if (curr === 0) return { trend: '0%', trendType: 'up' };
-        return { trend: '+100%', trendType: 'up' };
+        if (curr === 0) return { trend: '0%', trendType: 'neutral' };
+        return { trend: '无可比基数', trendType: 'neutral' };
       }
       const diff = curr - prev;
-      const pct = Math.round((diff / prev) * 100);
-      if (pct >= 0) {
+      const pct = Math.round((diff / Math.abs(prev)) * 100);
+      if (pct === 0) return { trend: '0%', trendType: 'neutral' };
+      if (pct > 0) {
         return { trend: `+${pct}%`, trendType: 'up' };
       } else {
         return { trend: `${pct}%`, trendType: 'down' };
@@ -961,8 +904,8 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
     // Visit rate comparison (difference in percentage points)
     const rateDiff = visitRate - prevVisitRate;
     const rateTrendInfo = {
-      trend: rateDiff >= 0 ? `+${rateDiff}%` : `${rateDiff}%`,
-      trendType: rateDiff >= 0 ? 'up' : 'down'
+      trend: rateDiff > 0 ? `+${rateDiff}个百分点` : `${rateDiff}个百分点`,
+      trendType: rateDiff === 0 ? 'neutral' : rateDiff > 0 ? 'up' : 'down'
     };
 
     // 5. Department distribution based on appointment counts
@@ -970,10 +913,11 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
       SELECT d.specialty as name, COUNT(*) as count 
       FROM appointments a
       JOIN doctors d ON a.doctor_id = d.id
+      WHERE ${dateFilterAppt.replaceAll('appointment_date', 'a.appointment_date')}
     `;
     const deptParams = [];
     if (req.user.role !== 'super_admin' && req.user.store_id) {
-      deptSql += ` WHERE a.store_id = ?`;
+      deptSql += ` AND a.store_id = ?`;
       deptParams.push(req.user.store_id);
     }
     deptSql += ` GROUP BY d.specialty`;
@@ -1053,73 +997,7 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
     }
     const appointmentTrends = await query(apptTrendSql, apptTrendParams);
 
-    // 7. Chart: Revenue grouped by date/time based on range
-    let revTrendSql = '';
-    const revTrendParams = [];
-    if (range === 'today') {
-      revTrendSql = `
-        SELECT DATE_FORMAT(pay_at, '%H:00') as date, SUM(pay_amount) as total 
-        FROM orders 
-        WHERE status IN (${PAID_ORDER_STATUSES_SQL}) AND DATE(pay_at) = CURDATE()
-      `;
-      if (req.user.role !== 'super_admin' && req.user.store_id) {
-        revTrendSql += `
-          AND user_id IN (
-            SELECT p.user_id FROM patients p
-            WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
-               OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
-          )
-        `;
-        revTrendParams.push(req.user.store_id, req.user.store_id);
-      }
-      revTrendSql += `
-        GROUP BY DATE_FORMAT(pay_at, '%H:00') 
-        ORDER BY date DESC
-      `;
-    } else if (range === 'week') {
-      revTrendSql = `
-        SELECT DATE_FORMAT(pay_at, '%Y-%m-%d') as date, SUM(pay_amount) as total 
-        FROM orders 
-        WHERE status IN (${PAID_ORDER_STATUSES_SQL}) AND YEARWEEK(pay_at, 1) = YEARWEEK(CURDATE(), 1)
-      `;
-      if (req.user.role !== 'super_admin' && req.user.store_id) {
-        revTrendSql += `
-          AND user_id IN (
-            SELECT p.user_id FROM patients p
-            WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
-               OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
-          )
-        `;
-        revTrendParams.push(req.user.store_id, req.user.store_id);
-      }
-      revTrendSql += `
-        GROUP BY DATE_FORMAT(pay_at, '%Y-%m-%d') 
-        ORDER BY date DESC
-      `;
-    } else { // month
-      revTrendSql = `
-        SELECT DATE_FORMAT(pay_at, '%Y-%m-%d') as date, SUM(pay_amount) as total 
-        FROM orders 
-        WHERE status IN (${PAID_ORDER_STATUSES_SQL}) 
-          AND pay_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') 
-          AND pay_at < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)
-      `;
-      if (req.user.role !== 'super_admin' && req.user.store_id) {
-        revTrendSql += `
-          AND user_id IN (
-            SELECT p.user_id FROM patients p
-            WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
-               OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
-          )
-        `;
-        revTrendParams.push(req.user.store_id, req.user.store_id);
-      }
-      revTrendSql += `
-        GROUP BY DATE_FORMAT(pay_at, '%Y-%m-%d') 
-        ORDER BY date DESC
-      `;
-    }
-    const revenueTrends = await query(revTrendSql, revTrendParams);
+    const revenueTrends = await readCash(dateFilterOrder, true);
 
     res.json({
       code: 200,
@@ -2514,12 +2392,18 @@ app.put('/api/admin/patients/:id/medical-records/:recordId/attachments', authent
       return res.status(404).json({ code: 404, message: '病历记录不存在' });
     }
 
+    for (const item of attachments) {
+      const path = privateUploadPath(item?.url);
+      if (!path || !await canReadPrivateUpload(path, req.user)) {
+        return res.status(403).json({ code: 403, message: '附件不存在或无权使用该附件' });
+      }
+    }
     const normalized = attachments
       .filter(item => item && item.url)
       .map(item => ({
         name: String(item.name || '病历附件').slice(0, 120),
-        url: String(item.url),
-        path: item.path ? String(item.path) : String(item.url),
+        url: privateUploadPath(item.url),
+        path: privateUploadPath(item.url),
         size: Number(item.size || 0),
         mimeType: item.mimeType ? String(item.mimeType) : '',
         uploaded_at: item.uploaded_at || new Date().toISOString()
@@ -4365,17 +4249,19 @@ app.get('/api/admin/orders', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/admin/orders/refunds', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
   try {
     const list = await query(
       `SELECT o.*, u.nickname as buyer_nickname, u.phone as buyer_phone,
-              GROUP_CONCAT(oi.product_name SEPARATOR '、') as product_names
+              GROUP_CONCAT(oi.product_name SEPARATOR '、') as product_names,
+              (SELECT COALESCE(SUM(d.commission_amount), 0) FROM distribution_orders d WHERE d.order_id = o.id) as refund_commission_total
        FROM orders o
        JOIN users u ON o.user_id = u.id
        LEFT JOIN order_items oi ON oi.order_id = o.id
        WHERE o.status IN ('refund_pending', 'refunding', 'refunded')
+          OR JSON_EXTRACT(o.shipping_address, '$.refund_rejected_at') IS NOT NULL
        GROUP BY o.id
-       ORDER BY o.updated_at DESC, o.created_at DESC
-       LIMIT 200`
+       ORDER BY o.updated_at DESC, o.created_at DESC`
     );
     res.json({
       code: 200,
@@ -4386,14 +4272,16 @@ app.get('/api/admin/orders/refunds', authenticateToken, async (req, res) => {
         } catch (error) {}
         return {
           id: order.id,
-          refundNo: `RF${String(order.order_no || order.id).replace(/\D/g, '').slice(-12)}`,
+          refundNo: order.wechat_refund_no || `申请-${order.id}`,
           orderNo: order.order_no,
           patient: addr.receiver || order.buyer_nickname || order.buyer_phone || '患者',
           product: order.product_names || '订单商品',
           amount: order.pay_amount,
+          commissionTotal: Number(order.refund_commission_total || 0),
           reason: addr.refund_reason || '用户申请退款',
-          applyTime: order.updated_at || order.created_at,
-          status: order.status === 'refunded' ? 'approved' : 'pending'
+          applyTime: addr.refund_applied_at || order.updated_at || order.created_at,
+          payMethod: order.pay_method,
+          status: order.status === 'refunded' ? 'approved' : order.wechat_refund_no ? 'processing' : ['refund_pending', 'refunding'].includes(order.status) ? 'pending' : 'rejected'
         };
       })
     });
@@ -4489,7 +4377,8 @@ app.post('/api/admin/orders/:id/ship', authenticateToken, async (req, res) => {
     addr.express_company = carrier;
     addr.tracking_number = trackingNo;
 
-    await run(`UPDATE orders SET status = 'shipped', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [JSON.stringify(addr), id]);
+    const shipped = await run(`UPDATE orders SET status = 'shipped', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'shipping'`, [JSON.stringify(addr), id]);
+    if (shipped.changes !== 1) return res.status(409).json({ code: 409, message: '订单状态已变更，请刷新后再操作' });
     await logAdminAction(req.user.id, 'ship_order', 'order', id, { carrier, trackingNo }, req.ip || null);
     res.json({ code: 200, message: '发货成功' });
   } catch (error) {
@@ -4529,105 +4418,18 @@ app.get('/api/admin/orders/:id/tracking', authenticateToken, async (req, res) =>
       return res.json({ code: 200, data: { carrier: '', trackingNo: '', steps: [] } });
     }
 
-    // Generate realistic logistics events
-    const orderTime = new Date(order.created_at);
-    const formatDateStr = (dateVal) => formatShanghaiDateTime(dateVal);
-    
-    const steps = [
-      {
-        time: formatDateStr(new Date(orderTime.getTime())),
-        desc: `【发货】您的订单已由商家发货，发货快递：${carrier}，运单号：${trackingNo}`
-      },
-      {
-        time: formatDateStr(new Date(orderTime.getTime() + 2 * 3600000)),
-        desc: `【揽收】快件已由 [深圳福田区营业点] 揽收，揽收员：张华 (13800138000)`
-      },
-      {
-        time: formatDateStr(new Date(orderTime.getTime() + 6 * 3600000)),
-        desc: `【在途】快件已到达 [深圳转运中心]`
-      },
-      {
-        time: formatDateStr(new Date(orderTime.getTime() + 12 * 3600000)),
-        desc: `【在途】快件已从 [深圳转运中心] 发出，正在发往目的地`
-      }
-    ];
-
-    if (order.status === 'completed') {
-      steps.push({
-        time: formatDateStr(new Date(orderTime.getTime() + 24 * 3600000)),
-        desc: `【派送】快件已到达目的地营业点，正在派送中。派送员：王五 (13912345678)`
-      });
-      steps.push({
-        time: formatDateStr(new Date(orderTime.getTime() + 26 * 3600000)),
-        desc: `【签收】快件已签收，签收人：本人。感谢您使用${carrier}，期待再次为您服务！`
-      });
-    }
-
-    // Sort by time descending
-    steps.reverse();
-
     res.json({
       code: 200,
-      data: {
-        carrier,
-        trackingNo,
-        steps
-      }
+      data: { carrier, trackingNo, steps: [], available: false, message: '尚未接入物流轨迹服务，请凭真实运单号向承运商查询' }
     });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取物流信息失败' });
   }
 });
 
-// POST issue e-invoice for order
-app.post('/api/admin/orders/:id/invoice', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const { title, tax_id } = req.body || {};
-  try {
-    let checkSql = `SELECT * FROM orders WHERE id = ?`;
-    const checkParams = [id];
-    if (req.user.role !== 'super_admin' && req.user.store_id) {
-      checkSql += `
-        AND user_id IN (
-          SELECT p.user_id FROM patients p
-          WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
-             OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
-        )
-      `;
-      checkParams.push(req.user.store_id, req.user.store_id);
-    }
-    const order = await get(checkSql, checkParams);
-    if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
-    if (!['paid', 'completed', 'shipped'].includes(order.status)) {
-      return res.status(400).json({ code: 400, message: '只有已支付或已完成的订单可以开具发票' });
-    }
-
-    const items = await query('SELECT * FROM order_items WHERE order_id = ?', [id]);
-    
-    // Generate invoice model
-    const invoiceInfo = {
-      invoice_no: `INV${Date.now()}${String(Math.floor(Math.random() * 100)).padStart(2, '0')}`,
-      invoice_code: `INC${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`,
-      taxpayer_id: '91440300MA5HNJNG99',
-      company_name: '鼾静健康诊所（深圳）有限公司',
-      title: title || '个人',
-      tax_id: tax_id || '',
-      amount: order.pay_amount,
-      items: items.map(item => ({
-        name: item.product_name,
-        price: item.price,
-        quantity: item.quantity,
-        total: item.price * item.quantity
-      })),
-      created_at: new Date().toISOString()
-    };
-
-    await run('UPDATE orders SET invoice_info = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [JSON.stringify(invoiceInfo), id]);
-    res.json({ code: 200, message: '发票开具成功', data: invoiceInfo });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ code: 500, message: '开具发票失败' });
-  }
+// Do not fabricate tax invoices without a registered invoicing provider.
+app.post('/api/admin/orders/:id/invoice', authenticateToken, (req, res) => {
+  res.status(503).json({ code: 503, message: '尚未接入真实开票服务，无法在线开具发票' });
 });
 
 // Notify patient for offline self-pickup order arrival
@@ -4721,7 +4523,8 @@ app.post('/api/admin/orders/:id/complete', authenticateToken, async (req, res) =
     }
 
     await transaction(async (conn) => {
-      await conn.execute(`UPDATE orders SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [id]);
+      const [completed] = await conn.execute(`UPDATE orders SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status IN ('paid','processing')`, [id]);
+      if (completed.affectedRows !== 1) throw Object.assign(new Error('订单状态已变更，请刷新后再操作'), { statusCode: 409 });
       await conn.execute(
         `INSERT INTO user_notifications (user_id, title, content, type)
          VALUES (?, '订单已完成', ?, 'order')`,
@@ -4739,166 +4542,34 @@ app.post('/api/admin/orders/:id/complete', authenticateToken, async (req, res) =
     await logAdminAction(req.user.id, 'complete_order', 'order', id, { orderNo: order.order_no });
     res.json({ code: 200, message: '订单交易成功完成' });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '操作失败' });
+    const status = error.statusCode || 500;
+    res.status(status).json({ code: status, message: status < 500 ? error.message : '操作失败' });
   }
 });
 
 
-app.put('/api/admin/orders/:id/refund', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const approve = req.body.approve !== undefined
-    ? Boolean(req.body.approve)
-    : req.body.status === 'approved';
-
+app.post('/api/admin/orders/:id/refund-sync', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
   try {
-    let checkSql = `SELECT * FROM orders WHERE id = ?`;
-    const checkParams = [id];
-    if (req.user.role !== 'super_admin' && req.user.store_id) {
-      checkSql += `
-        AND user_id IN (
-          SELECT p.user_id FROM patients p
-          WHERE p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
-             OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
-        )
-      `;
-      checkParams.push(req.user.store_id, req.user.store_id);
-    }
-    const order = await get(checkSql, checkParams);
-    if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
-    if (!['refund_pending', 'refunding', 'refunded'].includes(order.status)) {
-      return res.status(400).json({ code: 400, message: '当前订单不是退款审核状态' });
-    }
-    if (order.status === 'refunded') {
-      return res.status(400).json({ code: 400, message: '订单已退款，不能重复审批' });
-    }
-
-    let wechatRefundResult = null;
-    let outRefundNo = '';
-    if (approve && Number(order.pay_amount || 0) > 0) {
-      outRefundNo = `RF${String(order.order_no || id).replace(/\W/g, '').slice(0, 24)}${Date.now().toString().slice(-8)}`;
-      const missingPayConfig = await getMissingWechatPayConfig();
-      if (missingPayConfig.length > 0 && !allowDevMockWechatPay()) {
-        return res.status(503).json({ code: 503, message: `微信支付配置未完成：${missingPayConfig.join(', ')}` });
-      }
-      if (missingPayConfig.length === 0) {
-        wechatRefundResult = await createWechatRefund({
-          transactionId: order.wechat_transaction_id,
-          outTradeNo: order.order_no,
-          outRefundNo,
-          reason: '后台审核退款',
-          refundAmount: order.pay_amount,
-          totalAmount: order.pay_amount
-        });
-      }
-    }
-
-    await transaction(async (conn) => {
-      let addr = {};
-      try {
-        addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
-      } catch (error) {}
-      const restoreStatus = ['paid', 'shipping', 'shipped'].includes(addr.refund_from_status)
-        ? addr.refund_from_status
-        : (order.type === 'online' ? 'shipping' : 'paid');
-      delete addr.refund_from_status;
-      const refundCompleted = approve && (!wechatRefundResult || wechatRefundResult.status === 'SUCCESS');
-      const status = approve ? (refundCompleted ? 'refunded' : 'refunding') : restoreStatus;
-      await conn.execute(
-        `UPDATE orders
-         SET status = ?,
-             shipping_address = ?,
-             wechat_refund_id = COALESCE(?, wechat_refund_id),
-             wechat_refund_no = COALESCE(?, wechat_refund_no),
-             refund_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE refund_at END,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [
-          status,
-          JSON.stringify(addr),
-          wechatRefundResult?.refund_id || null,
-          wechatRefundResult?.out_refund_no || outRefundNo || null,
-          refundCompleted,
-          id
-        ]
-      );
-
-      if (approve) {
-        const items = await query('SELECT oi.*, p.category FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = ?', [id]);
-        for (const item of items) {
-          if (item.category !== 'service') {
-            await conn.execute(
-              `UPDATE products SET stock = stock + ?, sales_count = GREATEST(0, sales_count - ?) WHERE id = ?`,
-              [item.quantity, item.quantity, item.product_id]
-            );
-          }
-        }
-
-        const commissions = await query(
-          `SELECT distributor_id, commission_amount, status FROM distribution_orders WHERE order_id = ? AND status != 'refunded'`,
-          [id]
-        );
-        for (const commission of commissions) {
-          await conn.execute(
-            `UPDATE distribution_orders SET status = 'refunded' WHERE order_id = ? AND distributor_id = ?`,
-            [id, commission.distributor_id]
-          );
-          await conn.execute(
-            `UPDATE distributors
-             SET total_commission = GREATEST(0, total_commission - ?),
-                 available_commission = CASE WHEN ? = 'settled' THEN GREATEST(0, available_commission - ?) ELSE available_commission END
-             WHERE id = ?`,
-            [commission.commission_amount, commission.status, commission.commission_amount, commission.distributor_id]
-          );
-        }
-      }
-
-      await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content, type)
-         VALUES (?, ?, ?, 'order')`,
-        [
-          order.user_id,
-          approve ? '退款审核通过' : '退款申请未通过',
-          approve
-            ? `您的订单 ${order.order_no} 退款审核已通过，退款状态已更新。`
-            : `您的订单 ${order.order_no} 退款申请未通过，如有疑问请联系客服。`
-        ]
-      );
-    });
-    await logAdminAction(req.user.id, approve ? 'approve_refund' : 'reject_refund', 'order', id, { orderNo: order.order_no });
-    setImmediate(() => {
-      const refundDetailPage = order.appointment_id
-        ? `pages/appointment/detail/index?id=${order.appointment_id}`
-        : `pages/order/detail/index?id=${id}`;
-      sendWechatSubscribeMessage({
-        userId: order.user_id,
-        event: 'refund_result',
-        businessId: `order_refund_result_${approve ? 'approved' : 'rejected'}:${id}`,
-        page: refundDetailPage,
-        payload: {
-          orderNo: order.order_no,
-          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
-          status: approve ? '退款成功' : '退款失败',
-          time: formatShanghaiDateTime(),
-          remark: approve ? '退款审核已通过' : '退款申请未通过'
-        }
-      });
-      sendWechatSubscribeMessage({
-        userId: order.user_id,
-        event: 'order_status',
-        businessId: `order_refund_${approve ? 'approved' : 'rejected'}:${id}`,
-        page: refundDetailPage,
-        payload: {
-          orderNo: order.order_no,
-          status: approve ? '退款通过' : '退款驳回',
-          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
-          remark: approve ? '退款审核已通过' : '退款申请未通过'
-        }
-      });
-    });
-    res.json({ code: 200, message: approve ? '退款审批已通过，资金已原路退回' : '已拒绝退款申请' });
+    const result = await syncRefund(req.params.id, req.user.id);
+    await logAdminAction(req.user.id, 'sync_refund', 'order', req.params.id, { status: result.status });
+    res.json({ code: 200, message: result.message, data: result });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ code: 500, message: '审批操作失败' });
+    res.status(error.statusCode || 502).json({ code: error.statusCode || 502, message: error.message || '退款查询失败' });
+  }
+});
+
+app.put('/api/admin/orders/:id/refund', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
+  const { id } = req.params;
+  const approve = req.body.approve ?? (req.body.status === 'approved' ? true : req.body.status === 'rejected' ? false : undefined);
+  if (typeof approve !== 'boolean') return res.status(400).json({ code: 400, message: '审核结果必须为布尔值' });
+  try {
+    const result = await reviewRefund(id, approve, req.user.id);
+    await logAdminAction(req.user.id, approve ? 'approve_refund' : 'reject_refund', 'order', id, { status: result.status });
+    res.json({ code: 200, message: result.message, data: result });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '退款审核失败' });
   }
 });
 
@@ -5229,6 +4900,8 @@ app.delete('/api/admin/product-categories/:id', authenticateToken, async (req, r
 });
 
 app.post('/api/admin/products', authenticateToken, async (req, res) => {
+  const validation = validateProduct({ stock: 0, ...req.body });
+  if (validation) return res.status(400).json({ code: 400, message: validation });
   const {
     name, description, price, commission_rate, commission_rate_level1, commission_rate_level2,
     status, category, image_url, stock, is_distribution, original_price, gallery_urls
@@ -5295,6 +4968,9 @@ app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
   if (!product) {
     return res.status(404).json({ code: 404, message: '商品不存在' });
   }
+  const validation = validateProduct({ ...product, ...req.body,
+    commission_rate_level1: req.body.commission_rate_level1 ?? req.body.commission_rate ?? product.commission_rate_level1 });
+  if (validation) return res.status(400).json({ code: 400, message: validation });
   try {
     let nextCategory = product.category;
     if (req.body.category !== undefined) {
@@ -5336,7 +5012,7 @@ app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
           : (req.body.commission_rate !== undefined ? Number(req.body.commission_rate) : product.commission_rate),
         req.body.commission_rate_level1 !== undefined
           ? Number(req.body.commission_rate_level1)
-          : (req.body.commission_rate !== undefined ? Number(req.body.commission_rate) : Number(product.commission_rate_level1 || product.commission_rate || 0)),
+          : (req.body.commission_rate !== undefined ? Number(req.body.commission_rate) : Number(product.commission_rate_level1 ?? product.commission_rate ?? 0)),
         req.body.commission_rate_level2 !== undefined
           ? Number(req.body.commission_rate_level2)
           : Number(product.commission_rate_level2 || 0),
@@ -5407,7 +5083,9 @@ app.get('/api/admin/distribution/withdraws', authenticateToken, async (req, res)
       code: 200,
       data: list.map(item => ({
         ...item,
-        status: item.status === 'success' ? 'approved' : item.status === 'failed' ? 'rejected' : item.status
+        phone: decryptPII(item.phone),
+        account_info: JSON.stringify(publicWithdrawAccount(item.account_info)),
+        status: withdrawStatus(item.status)
       }))
     });
   } catch (error) {
@@ -5415,89 +5093,55 @@ app.get('/api/admin/distribution/withdraws', authenticateToken, async (req, res)
   }
 });
 
+function requireWithdrawalAdmin(req, res) {
+  if (req.user.role !== 'super_admin') {
+    res.status(403).json({ code: 403, message: '仅超级管理员可以审核和登记提现打款' });
+    return false;
+  }
+  return true;
+}
+
 app.put('/api/admin/distribution/withdraws/:id/status', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const approve = req.body.approve !== undefined
-    ? Boolean(req.body.approve)
-    : req.body.status === 'approved';
-  const remark = req.body.remark || '';
-
+  if (!requireWithdrawalAdmin(req, res)) return;
+  const approve = req.body.approve ?? (req.body.status === 'approved' ? true : req.body.status === 'rejected' ? false : null);
+  if (typeof approve !== 'boolean') return res.status(400).json({ code: 400, message: '审核状态无效' });
+  const remark = String(req.body.remark || '').trim().slice(0, 500);
+  if (!approve && !remark) return res.status(400).json({ code: 400, message: '请填写驳回原因' });
   try {
-    const record = await get(`SELECT * FROM withdraw_records WHERE id = ?`, [id]);
-    if (!record || record.status !== 'pending') {
-      return res.status(400).json({ code: 400, message: '记录未找到或已被处理' });
-    }
-
-    await transaction(async (conn) => {
-      const status = approve ? 'success' : 'failed';
-      await conn.execute(
-        `UPDATE withdraw_records SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [status, id]
-      );
-
-      if (approve) {
-        await conn.execute(
-          `UPDATE distributors
-           SET withdrawn_amount = withdrawn_amount + ?
-           WHERE user_id = ?`,
-          [record.actual_amount || record.amount, record.user_id]
-        );
-      } else {
-        await conn.execute(
-          `UPDATE distributors
-           SET available_commission = available_commission + ?
-           WHERE user_id = ?`,
-          [record.amount, record.user_id]
-        );
-      }
-
-      await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content)
-         VALUES (?, ?, ?)`,
-        [
-          record.user_id,
-          approve ? '提现审核通过' : '提现申请已驳回',
-          approve
-            ? `您的提现申请 ¥${(record.actual_amount / 100).toFixed(2)} 已审核通过，请关注到账情况。${remark ? '备注：' + remark : ''}`
-            : `您的提现申请 ¥${(record.amount / 100).toFixed(2)} 未通过审核，金额已退回可提现余额。${remark ? '原因：' + remark : ''}`
-        ]
-      );
-    });
-
-    await logAdminAction(req.user.id, approve ? 'approve_withdraw' : 'reject_withdraw', 'withdraw', id, { remark });
-    setImmediate(() => {
-      sendWechatSubscribeMessage({
-        userId: record.user_id,
-        event: 'withdraw_result',
-        businessId: `withdraw_${approve ? 'approved' : 'rejected'}:${id}`,
-        page: `pages/distribution/withdraw/index?id=${id}`,
-        payload: {
-          amount: `¥${((approve ? record.actual_amount : record.amount) / 100).toFixed(2)}`,
-          status: approve ? '已通过' : '已驳回',
-          time: formatShanghaiDateTime(),
-          remark: remark || (approve ? '请关注到账情况' : '金额已退回余额')
-        }
-      });
-      if (approve) {
-        sendWechatSubscribeMessage({
-          userId: record.user_id,
-          event: 'withdraw_paid',
-          businessId: `withdraw_paid:admin:${id}`,
-          page: `pages/distribution/withdraw/index?id=${id}`,
-          payload: {
-            amount: `¥${(Number(record.actual_amount || record.amount || 0) / 100).toFixed(2)}`,
-            status: '已到账',
-            time: formatShanghaiDateTime(),
-            remark: remark || '提现已到账'
-          }
-        });
-      }
-    });
-
-    res.json({ code: 200, message: approve ? '提现审批通过，打款中' : '已驳回提现申请' });
+    const { reviewWithdrawal } = await import('../distribution-ledger.js');
+    await reviewWithdrawal(req.params.id, approve, remark);
+    await logAdminAction(req.user.id, approve ? 'approve_withdraw' : 'reject_withdraw', 'withdraw', req.params.id, { remark });
+    res.json({ code: 200, message: approve ? '审核通过，等待实际打款' : '已驳回并退回余额' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ code: 500, message: '处理失败' });
+    const code = error.statusCode || 500;
+    res.status(code).json({ code, message: code === 500 ? '处理失败' : error.message });
+  }
+});
+
+app.get('/api/admin/distribution/withdraws/:id/account', authenticateToken, async (req, res) => {
+  if (!requireWithdrawalAdmin(req, res)) return;
+  try {
+    const row = await get("SELECT account_info FROM withdraw_records WHERE id = ? AND status = 'approved'", [req.params.id]);
+    if (!row) return res.status(404).json({ code: 404, message: '未找到待打款记录' });
+    const account = JSON.parse(row.account_info);
+    if (!account.accountNoEncrypted) return res.status(409).json({ code: 409, message: '历史记录未保存完整收款账号，请重新核实' });
+    await logAdminAction(req.user.id, 'view_withdraw_account', 'withdraw', req.params.id, {});
+    res.json({ code: 200, data: { bankName: account.bankName, accountName: account.accountName, accountNo: decryptPII(account.accountNoEncrypted) } });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取收款账号失败' });
+  }
+});
+
+app.put('/api/admin/distribution/withdraws/:id/paid', authenticateToken, async (req, res) => {
+  if (!requireWithdrawalAdmin(req, res)) return;
+  try {
+    const { confirmWithdrawalPaid } = await import('../distribution-ledger.js');
+    await confirmWithdrawalPaid(req.params.id, req.body.reference);
+    await logAdminAction(req.user.id, 'record_withdraw_payment', 'withdraw', req.params.id, { reference: req.body.reference });
+    res.json({ code: 200, message: '已登记实际银行转账' });
+  } catch (error) {
+    const code = error.code === 'ER_DUP_ENTRY' ? 409 : error.statusCode || 500;
+    res.status(code).json({ code, message: error.code === 'ER_DUP_ENTRY' ? '该转账流水号已使用' : code === 500 ? '登记失败' : error.message });
   }
 });
 
@@ -5592,6 +5236,7 @@ app.post('/api/admin/uploads/files', authenticateToken, async (req, res) => {
     fs.writeFileSync(storedPath, buffer);
 
     const urlPath = `/uploads/admin/files/${safeContext}/${storedName}`;
+    await registerPrivateUpload(urlPath, req.user);
     res.json({
       code: 200,
       message: '上传成功',
@@ -6174,6 +5819,7 @@ app.get('/api/admin/users', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/users', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
   const { username, name, phone, role_id, store_id, doctor_id, password, status } = req.body;
   if (!username || !role_id || !password) {
     return res.status(400).json({ code: 400, message: '用户名、角色和密码为必填项' });
@@ -6209,6 +5855,7 @@ app.post('/api/admin/users', authenticateToken, async (req, res) => {
 });
 
 app.put('/api/admin/users/:id', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
   const { id } = req.params;
   const { name, phone, role_id, store_id, doctor_id, status, password } = req.body;
 
@@ -6267,6 +5914,7 @@ app.get('/api/admin/roles', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/roles', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
   const { name, code, description, status, permissions = [], memberIds = [] } = req.body;
   if (!name) {
     return res.status(400).json({ code: 400, message: '角色名称为必填项' });
@@ -6303,6 +5951,7 @@ app.post('/api/admin/roles', authenticateToken, async (req, res) => {
 });
 
 app.put('/api/admin/roles/:id', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
   const { id } = req.params;
   const role = await get(`SELECT * FROM roles WHERE id = ?`, [id]);
   if (!role) {
@@ -6917,35 +6566,19 @@ app.post('/api/admin/pay/native', authenticateToken, async (req, res) => {
   try {
     const order = await get(`SELECT * FROM orders WHERE id = ?`, [orderId]);
     if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (!await canAccessPaymentOrder(order, req.user)) return res.status(404).json({ code: 404, message: '订单不存在或无权访问' });
     if (order.status !== 'pending') {
       return res.status(400).json({ code: 400, message: '订单不是待支付状态' });
     }
     const missingPayConfig = await getMissingWechatPayConfig();
     if (missingPayConfig.length > 0) {
-      if (!allowDevMockWechatPay()) {
-        return res.status(503).json({ code: 503, message: `微信支付配置未完成：${missingPayConfig.join(', ')}` });
-      }
-      const paidOrder = await finalizeAdminPaidOrder(order, { transaction_id: `MOCK${Date.now()}` });
-      return res.json({
-        code: 200,
-        message: '开发环境模拟Native支付',
-        data: {
-          orderId: order.id,
-          orderNo: order.order_no,
-          payAmount: order.pay_amount,
-          mockPayment: true,
-          paid: true,
-          order: paidOrder,
-          codeUrl: `mock://wechat-pay/native/${order.order_no}`,
-          qrCodeImageUrl: ''
-        }
-      });
+      return res.status(503).json({ code: 503, message: `微信支付配置未完成：${missingPayConfig.join(', ')}` });
     }
-    const result = await createNativePayment({
+    const result = await requestAdminPayment(order, 'wechat_native', () => createNativePayment({
       subject: order.order_no,
       amount: order.pay_amount,
       outTradeNo: order.order_no
-    });
+    }));
     res.json({
       code: 200,
       message: 'success',
@@ -6968,6 +6601,7 @@ app.post('/api/admin/pay/micropay', authenticateToken, async (req, res) => {
   try {
     const order = await get(`SELECT * FROM orders WHERE id = ?`, [orderId]);
     if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (!await canAccessPaymentOrder(order, req.user)) return res.status(404).json({ code: 404, message: '订单不存在或无权访问' });
     if (order.status !== 'pending') {
       return res.status(400).json({ code: 400, message: '订单不是待支付状态' });
     }
@@ -6977,20 +6611,16 @@ app.post('/api/admin/pay/micropay', authenticateToken, async (req, res) => {
     }
     const missingPayConfig = await getMissingWechatPayConfig('micropay');
     if (missingPayConfig.length > 0) {
-      if (!allowDevMockWechatPay()) {
-        return res.status(503).json({ code: 503, message: `微信支付配置未完成：${missingPayConfig.join(', ')}` });
-      }
-      const paidOrder = await finalizeAdminPaidOrder(order, { transaction_id: `MOCK${Date.now()}` });
-      return res.json({ code: 200, message: '开发环境模拟付款成功', data: { order: paidOrder, tradeState: 'SUCCESS', mockPayment: true } });
+      return res.status(503).json({ code: 503, message: `微信支付配置未完成：${missingPayConfig.join(', ')}` });
     }
-    const result = await createMicroPay({
+    const result = await requestAdminPayment(order, 'wechat_micropay', () => createMicroPay({
       subject: order.order_no,
       amount: order.pay_amount,
       outTradeNo: order.order_no,
       authCode: cleanAuthCode
-    });
+    }));
     const tradeState = result.trade_state || result.status || '';
-    if (tradeState === 'SUCCESS' || result.success_time || result.transaction_id) {
+    if (tradeState === 'SUCCESS') {
       const paidOrder = await finalizeAdminPaidOrder(order, result);
       return res.json({ code: 200, message: '付款成功', data: { order: paidOrder, tradeState: 'SUCCESS' } });
     }
@@ -7006,6 +6636,7 @@ app.get('/api/admin/pay/orders/:id/status', authenticateToken, async (req, res) 
   try {
     let order = await get(`SELECT * FROM orders WHERE id = ?`, [id]);
     if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (!await canAccessPaymentOrder(order, req.user)) return res.status(404).json({ code: 404, message: '订单不存在或无权访问' });
     if (order.status === 'pending' && ['wechat_native', 'wechat_micropay'].includes(order.pay_method)) {
       try {
         const payState = order.pay_method === 'wechat_micropay'
@@ -7016,6 +6647,7 @@ app.get('/api/admin/pay/orders/:id/status', authenticateToken, async (req, res) 
         }
       } catch (syncError) {
         console.warn('Sync wechat pay status failed:', syncError.message || syncError);
+        return res.status(502).json({ code: 502, message: '支付渠道状态暂未确认，请稍后重新查询' });
       }
     }
     res.json({
@@ -7040,33 +6672,16 @@ app.post('/api/admin/pay/orders/:id/cancel', authenticateToken, async (req, res)
   try {
     const order = await get(`SELECT * FROM orders WHERE id = ?`, [id]);
     if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
+    if (!await canAccessPaymentOrder(order, req.user)) return res.status(404).json({ code: 404, message: '订单不存在或无权访问' });
     if (order.status !== 'pending') {
       return res.status(400).json({ code: 400, message: '只能取消待支付订单' });
     }
-    if (['wechat_native', 'wechat_micropay'].includes(order.pay_method)) {
-      const missingPayConfig = await getMissingWechatPayConfig();
-      if (missingPayConfig.length === 0) {
-        try {
-          await closeOrderByOutTradeNo(order.order_no);
-        } catch (closeError) {
-          console.warn('Close wechat pay order failed:', closeError.message || closeError);
-        }
-      }
-    }
-    await transaction(async (conn) => {
-      await conn.execute(`UPDATE orders SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [id]);
-      const items = await query(`SELECT * FROM order_items WHERE order_id = ?`, [id]);
-      for (const item of items) {
-        await conn.execute(
-          `UPDATE products SET stock = stock + ? WHERE id = ?`,
-          [item.quantity, item.product_id]
-        );
-      }
-    });
+    const cancelled = await transaction(conn => cancelPendingProductOrder(conn, id, order.user_id));
+    if (!cancelled) return res.status(409).json({ code: 409, message: '订单支付状态已变更，请刷新' });
     res.json({ code: 200, message: '订单已取消' });
   } catch (error) {
     console.error('Cancel pay order failed:', error);
-    res.status(500).json({ code: 500, message: '取消支付订单失败' });
+    res.status(error.statusCode || 502).json({ code: error.statusCode || 502, message: '未能确认订单已取消，请刷新支付状态后重试' });
   }
 });
 
@@ -7077,26 +6692,29 @@ app.get('/api/admin/global-search', authenticateToken, async (req, res) => {
   }
   const kw = `%${q}%`;
   try {
-    const patients = await query(
+    const scope = patientScope(req.user);
+    const orderFilter = orderScope(req.user);
+    const patients = hasAdminPermission(req.user, ['patient:view']) ? await query(
       `SELECT p.id, p.name, p.phone, p.gender, p.age, u.member_level 
        FROM patients p
        LEFT JOIN users u ON p.user_id = u.id
-       WHERE p.name LIKE ? OR p.phone LIKE ? LIMIT 5`,
-      [kw, kw]
-    );
-    const appointments = await query(
+       WHERE (p.name LIKE ? OR p.phone LIKE ?) AND ${scope.sql} LIMIT 5`,
+      [kw, kw, ...scope.params]
+    ) : [];
+    const appointments = hasAdminPermission(req.user, ['appointment:view']) ? await query(
       `SELECT a.id, a.appointment_no, p.name as patient_name, a.appointment_date, a.status 
        FROM appointments a
        JOIN patients p ON a.patient_id = p.id
-       WHERE a.appointment_no LIKE ? OR p.name LIKE ? LIMIT 5`,
-      [kw, kw]
-    );
-    const orders = await query(
+       WHERE (a.appointment_no LIKE ? OR p.name LIKE ?) AND ${scope.sql}
+         AND (?='super_admin' OR a.store_id=?) LIMIT 5`,
+      [kw, kw, ...scope.params, req.user.role, req.user.store_id || 0]
+    ) : [];
+    const orders = hasAdminPermission(req.user, ['order:view']) ? await query(
       `SELECT o.id, o.order_no, o.pay_amount, o.status
        FROM orders o
-       WHERE o.order_no LIKE ? LIMIT 5`,
-      [kw]
-    );
+       WHERE o.order_no LIKE ? AND ${orderFilter.sql} LIMIT 5`,
+      [kw, ...orderFilter.params]
+    ) : [];
     res.json({
       code: 200,
       data: { patients, appointments, orders }
@@ -7110,9 +6728,12 @@ app.get('/api/admin/global-search', authenticateToken, async (req, res) => {
 // 顶部消息通知/待办统计 API
 app.get('/api/admin/notifications/stats', authenticateToken, async (req, res) => {
   try {
-    const pendingWithdraws = await get(`SELECT COUNT(*) as count FROM withdraw_records WHERE status = 'pending'`);
-    const pendingAppointments = await get(`SELECT COUNT(*) as count FROM appointments WHERE status = 'pending'`);
-    const pendingOrders = await get(`SELECT COUNT(*) as count FROM orders WHERE status IN ('paid', 'shipping', 'processing')`);
+    const pendingWithdraws = req.user.role === 'super_admin' ? await get(`SELECT COUNT(*) as count FROM withdraw_records WHERE status = 'pending'`) : null;
+    const pendingAppointments = hasAdminPermission(req.user, ['appointment:view'])
+      ? await get(`SELECT COUNT(*) as count FROM appointments WHERE status='pending' AND (?='super_admin' OR store_id=?)`, [req.user.role, req.user.store_id || 0]) : null;
+    const orderFilter = orderScope(req.user);
+    const pendingOrders = hasAdminPermission(req.user, ['order:view'])
+      ? await get(`SELECT COUNT(*) as count FROM orders o WHERE o.status IN ('paid','shipping','processing') AND ${orderFilter.sql}`, orderFilter.params) : null;
     res.json({
       code: 200,
       data: {
@@ -7130,30 +6751,16 @@ app.get('/api/admin/notifications/stats', authenticateToken, async (req, res) =>
 // 1) 获取最近聊天患者列表
 app.get('/api/admin/im/users', authenticateToken, async (req, res) => {
   try {
+    const scope = patientScope(req.user);
     const users = await query(`
       SELECT p.id, p.name, p.phone, 
              (SELECT text FROM im_messages WHERE patient_id = p.id ORDER BY created_at DESC LIMIT 1) as lastMsg,
              (SELECT DATE_FORMAT(created_at, '%H:%i') FROM im_messages WHERE patient_id = p.id ORDER BY created_at DESC LIMIT 1) as time,
              CASE WHEN (SELECT COUNT(*) FROM im_messages WHERE patient_id = p.id AND sender = 'patient' AND is_read = 0) > 0 THEN 1 ELSE 0 END as unread
       FROM patients p
-      WHERE EXISTS (SELECT 1 FROM im_messages WHERE patient_id = p.id)
+      WHERE EXISTS (SELECT 1 FROM im_messages WHERE patient_id = p.id) AND ${scope.sql}
       ORDER BY (SELECT created_at FROM im_messages WHERE patient_id = p.id ORDER BY created_at DESC LIMIT 1) DESC
-    `);
-    
-    // 如果没有用户，那就默认推荐前三个有数据的患者
-    if (users.length === 0) {
-      const defaultPatients = await query(`SELECT id, name, phone FROM patients LIMIT 3`);
-      const emptyUsers = defaultPatients.map(p => ({
-        id: p.id,
-        name: p.name,
-        phone: p.phone,
-        lastMsg: '您好，目前暂无聊天历史记录。',
-        time: '刚刚',
-        unread: 0
-      }));
-      return res.json({ code: 200, data: emptyUsers });
-    }
-    
+    `, scope.params);
     res.json({ code: 200, data: users });
   } catch (error) {
     console.error('Admin Get IM Users Error:', error);
@@ -7168,6 +6775,7 @@ app.get('/api/admin/im/messages', authenticateToken, async (req, res) => {
     return res.status(400).json({ code: 400, message: '患者ID不能为空' });
   }
   try {
+    if (!await verifyPatientAccess(patient_id, req.user)) return res.status(404).json({ code: 404, message: '会话不存在或无权访问' });
     const messages = await query(`
       SELECT id, sender, sender_name as senderName, text, is_read as isRead, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as time
       FROM im_messages
@@ -7193,6 +6801,7 @@ app.post('/api/admin/im/send', authenticateToken, async (req, res) => {
     return res.status(400).json({ code: 400, message: '患者ID或消息内容不能为空' });
   }
   try {
+    if (!await verifyPatientAccess(patient_id, req.user)) return res.status(404).json({ code: 404, message: '会话不存在或无权访问' });
     const adminUser = req.user;
     const senderName = adminUser ? adminUser.name || '客服助理' : '客服助理';
 
@@ -7210,18 +6819,24 @@ app.post('/api/admin/im/send', authenticateToken, async (req, res) => {
 
 // 获取系统设置 API
 app.get('/api/admin/settings', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
   try {
     const rows = await query('SELECT key_name, key_value FROM system_settings');
     const settings = {};
+    const configured = {};
     rows.forEach(row => {
+      if (isSecretSetting(row.key_name)) {
+        settings[row.key_name] = '';
+        configured[row.key_name] = Boolean(row.key_value);
+        return;
+      }
       let val = row.key_value;
       if (val === 'true') val = true;
       else if (val === 'false') val = false;
-      else if (/^\d+$/.test(val)) val = parseInt(val, 10);
-      else if (/^\d+\.\d+$/.test(val)) val = parseFloat(val);
+      else if (['booking_advance_days', 'booking_interval', 'deposit_amount', 'commission1', 'commission2', 'distribution_settle_days', 'min_withdraw', 'withdraw_fee_rate'].includes(row.key_name) && String(val).trim() !== '' && Number.isFinite(Number(val))) val = Number(val);
       settings[row.key_name] = val;
     });
-    res.json({ code: 200, data: settings });
+    res.json({ code: 200, data: settings, configured });
   } catch (error) {
     console.error('Get Settings Error:', error);
     res.status(500).json({ code: 500, message: '获取设置失败' });
@@ -7349,12 +6964,30 @@ app.post('/api/admin/database/query', authenticateToken, async (req, res) => {
 
 // 保存系统设置 API
 app.post('/api/admin/settings', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
   try {
     const updates = req.body;
+    if (!updates || Array.isArray(updates) || typeof updates !== 'object') {
+      return res.status(400).json({ code: 400, message: '设置格式不正确' });
+    }
     await transaction(async (conn) => {
       for (const [key, val] of Object.entries(updates)) {
+        if (isSecretSetting(key) && !String(val ?? '').trim()) continue;
+        if (val === null || val === undefined || typeof val === 'object') {
+          throw Object.assign(new Error('配置值不能为空或对象'), { statusCode: 400 });
+        }
+        if (key === 'auto_approve_withdraw' && val !== false && val !== 'false') {
+          throw Object.assign(new Error('自动提现尚未接入，必须人工审核和真实打款'), { statusCode: 400 });
+        }
+        if (['distribution_settle_days', 'min_withdraw', 'withdraw_fee_rate', 'commission1', 'commission2', 'deposit_amount', 'booking_interval'].includes(key) && (typeof val === 'boolean' || String(val).trim() === '')) {
+          throw Object.assign(new Error('财务及预约数值必须明确填写'), { statusCode: 400 });
+        }
         let strVal = String(val);
-        if (key === 'distribution_settle_days') {
+        if (['commission1', 'commission2'].includes(key)) {
+          if (!Number.isFinite(Number(val)) || Number(val) < 0 || Number(val) > 100) throw Object.assign(new Error('佣金比例必须在0-100之间'), { statusCode: 400 });
+        } else if (key === 'deposit_amount') {
+          if (!Number.isSafeInteger(Number(val)) || Number(val) < 0) throw Object.assign(new Error('保证金必须为非负整数分'), { statusCode: 400 });
+        } else if (key === 'distribution_settle_days') {
           const days = Number(val);
           if (!Number.isInteger(days) || days < 0 || days > 365) {
             const err = new Error('分销佣金结算天数需为0-365之间的整数');
@@ -7364,16 +6997,16 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
           strVal = String(days);
         } else if (key === 'min_withdraw') {
           const minWithdraw = Number(val);
-          if (!Number.isFinite(minWithdraw) || minWithdraw < 0 || minWithdraw > 1000000) {
-            const err = new Error('最低提现金额需为0-1000000之间的数字');
+          if (!Number.isFinite(minWithdraw) || minWithdraw <= 0 || minWithdraw > 1000000) {
+            const err = new Error('最低提现金额必须大于0且不超过1000000');
             err.statusCode = 400;
             throw err;
           }
           strVal = String(minWithdraw);
         } else if (key === 'withdraw_fee_rate') {
           const feeRate = Number(val);
-          if (!Number.isFinite(feeRate) || feeRate < 0 || feeRate > 100) {
-            const err = new Error('提现手续费率需为0-100之间的数字');
+          if (!Number.isFinite(feeRate) || feeRate < 0 || feeRate >= 100) {
+            const err = new Error('提现手续费率必须大于等于0且小于100');
             err.statusCode = 400;
             throw err;
           }

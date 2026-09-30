@@ -197,13 +197,13 @@ const doctorQueues = computed(() => {
     let current: QueueItem | null = null
     const waitingList: QueueItem[] = []
     
-    doctorAppts.forEach(appt => {
+    for (const appt of doctorAppts) {
       if (appt.status === 'checked_in') {
         current = appt
       } else if (appt.status === 'confirmed' || appt.status === 'called' || appt.status === 'pending' || appt.status === 'waiting') {
         waitingList.push(appt)
       }
-    })
+    }
 
     // Sort waitingList based on postponed list
     waitingList.sort((a, b) => {
@@ -623,7 +623,7 @@ async function submitCheckout() {
       const receipt = res.data.receipt
       if (payMethod.value === 'wechat_native') {
         const payInfo = await createNativePay(res.data.order_id)
-        if (payInfo.paid || payInfo.mockPayment) {
+        if (payInfo.paid) {
           await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信扫码支付', payAt: new Date().toISOString() }))
         } else {
           nativePayInfo.value = payInfo
@@ -832,7 +832,7 @@ const filteredTodayAppointments = computed(() => {
         <div class="page-title-sub">实时呼叫、就诊安排与队列顺延管理</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-outline" @click="fetchAppointments" :disabled="loading">
+        <button class="btn btn-outline" @click="fetchAppointments()" :disabled="loading">
           <AppIcon name="refresh" />  刷新队列
         </button>
         <button class="btn btn-primary" @click="router.push('/appointment/create')"><AppIcon name="plus" />  新建预约</button>
@@ -1111,7 +1111,7 @@ const filteredTodayAppointments = computed(() => {
         <div style="display: flex; gap: 16px; margin-bottom: 16px;">
           <div class="form-group" style="flex: 1;">
             <label class="form-label">卡券折扣金额 (元)</label>
-            <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="val => `¥${(val / 100).toFixed(2)}`" style="width: 100%;" />
+            <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="(val: string | number) => `¥${(Number(val) / 100).toFixed(2)}`" style="width: 100%;" />
           </div>
           <div class="form-group" style="flex: 1;">
             <label class="form-label">配送/交付方式</label>

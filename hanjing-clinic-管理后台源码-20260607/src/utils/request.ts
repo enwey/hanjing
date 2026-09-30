@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { MessagePlugin } from 'tdesign-vue-next'
 import router from '@/router'
 
@@ -49,4 +49,12 @@ service.interceptors.response.use(
   }
 )
 
-export default service
+export interface ApiResponse<T = any> { code: number; message?: string; data: T }
+type ApiClient = Omit<AxiosInstance, 'get' | 'post' | 'put' | 'delete' | 'patch'> & {
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>>;
+  post<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>>;
+  put<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>>;
+  patch<T = any>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>>;
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>>;
+}
+export default service as unknown as ApiClient

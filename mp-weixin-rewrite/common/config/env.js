@@ -12,6 +12,7 @@ const apiBaseUrlMap = {
 };
 
 function readApiEnvOverride() {
+  if (envVersion !== 'develop') return '';
   try {
     const value = String(wx.getStorageSync(API_ENV_OVERRIDE_KEY) || '').trim();
     return value && apiBaseUrlMap[value] ? value : '';
@@ -34,18 +35,11 @@ function getApiBaseUrl() {
 }
 
 function getApiBaseUrls() {
-  const current = getApiBaseUrl();
-  const candidates = [current];
-  Object.keys(apiBaseUrlMap).forEach((key) => {
-    const url = apiBaseUrlMap[key];
-    if (url && candidates.indexOf(url) === -1) {
-      candidates.push(url);
-    }
-  });
-  return candidates;
+  return [getApiBaseUrl()];
 }
 
 function setApiEnvOverride(value) {
+  if (envVersion !== 'develop') return;
   try {
     const nextValue = String(value || '').trim();
     if (!nextValue) {

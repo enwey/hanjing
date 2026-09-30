@@ -12,11 +12,15 @@ interface WithdrawApply {
   level: string;
   phone: string;
   amount: number;
+  fee: number;
+  actualAmount: number;
+  reviewedAt?: string;
+  completedAt?: string;
   method: 'wechat' | 'bank';
   account: string;
   bankName?: string;
   time: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'paid';
   reason?: string;
 }
 
@@ -33,19 +37,27 @@ async function fetchWithdraws() {
   try {
     const res: any = await request.get('/api/admin/distribution/withdraws')
     if (res && res.code === 200) {
-      records.value = res.data.map((item: any) => ({
+      records.value = res.data.map((item: any) => {
+        let account: any = {}
+        try { account = typeof item.account_info === 'string' ? JSON.parse(item.account_info) : (item.account_info || {}) } catch {}
+        return ({
         id: String(item.id),
         no: 'TX' + String(item.id).padStart(8, '0'),
         name: item.nickname || '推广员',
         level: item.level || '普通',
-        phone: item.phone || '138****0000',
-        amount: item.amount,
-        method: (item.account_info && item.account_info.includes('银行')) ? 'bank' : 'wechat',
-        account: item.account_info || '微信钱包',
+        phone: item.phone || '',
+        amount: Number(item.amount) / 100,
+        fee: Number(item.fee || 0) / 100,
+        actualAmount: Number(item.actual_amount) / 100,
+        reviewedAt: item.reviewed_at,
+        completedAt: item.completed_at,
+        method: account.method === 'bank' ? 'bank' : 'wechat',
+        bankName: account.bankName || '',
+        account: account.accountNo || account.label || '',
         time: item.created_at,
         status: item.status,
         reason: item.remark
-      }))
+      })})
     }
   } catch (err) {
     console.error('Fetch withdraws error:', err)
@@ -62,6 +74,33 @@ onMounted(() => {
 const pendingCount = computed(() => {
   return records.value.filter(r => r.status === 'pending').length
 })
+const todayApproved = computed(() => records.value.filter(r =>
+  ['approved', 'paid'].includes(r.status) && formatShanghaiDateTime(r.reviewedAt || '').startsWith(getShanghaiTodayString())).length)
+const todayPaid = computed(() => records.value.filter(r =>
+  r.status === 'paid' && formatShanghaiDateTime(r.completedAt || '').startsWith(getShanghaiTodayString()))
+  .reduce((total, r) => total + r.actualAmount, 0))
+const paidVisible = ref(false)
+const transferReference = ref('')
+const transferAccount = ref<any>(null)
+async function openPaid(record: WithdrawApply) {
+  try {
+    const result: any = await request.get(`/api/admin/distribution/withdraws/${record.id}/account`)
+    transferAccount.value = result.data
+    selectedRecord.value = record
+    transferReference.value = ''
+    paidVisible.value = true
+  } catch {}
+}
+async function confirmPaid() {
+  if (!selectedRecord.value || !transferReference.value.trim()) return
+  try {
+    await request.put(`/api/admin/distribution/withdraws/${selectedRecord.value.id}/paid`, { reference: transferReference.value.trim() })
+    paidVisible.value = false
+    transferAccount.value = null
+    MessagePlugin.success('已登记实际银行转账')
+    await fetchWithdraws()
+  } catch {}
+}
 
 /* ---- Filtering ---- */
 const filteredRecords = computed(() => {
@@ -74,6 +113,8 @@ const filteredRecords = computed(() => {
     list = list.filter(r => r.status === 'approved')
   } else if (activeTab.value === 'rejected') {
     list = list.filter(r => r.status === 'rejected')
+  } else if (activeTab.value === 'paid') {
+    list = list.filter(r => r.status === 'paid')
   }
 
   // 2. Keyword filter
@@ -155,10 +196,10 @@ async function confirmApprove() {
     try {
       await request.put(`/api/admin/distribution/withdraws/${selectedRecord.value.id}/status`, {
         status: 'approved',
-        remark: '审核通过，已代付打款'
+        remark: '审核通过，等待实际银行转账'
       })
       selectedRecord.value.status = 'approved'
-      MessagePlugin.success(`申请单 ${selectedRecord.value.no} 已审核通过，系统已发起转账`)
+      MessagePlugin.success(`申请单 ${selectedRecord.value.no} 已审核通过，等待实际打款`)
       approveVisible.value = false
       selectedRowKeys.value = selectedRowKeys.value.filter(k => k !== selectedRecord.value?.id)
       fetchWithdraws()
@@ -206,7 +247,7 @@ async function handleBatchApprove() {
       try {
         await request.put(`/api/admin/distribution/withdraws/${record.id}/status`, {
           status: 'approved',
-          remark: '批量审核通过，已代付打款'
+          remark: '批量审核通过，等待实际银行转账'
         })
         record.status = 'approved'
         approvedCount++
@@ -251,11 +292,11 @@ function handleExport() {
     escapeCsv(row.no),
     escapeCsv(row.name),
     escapeCsv(row.phone),
-    escapeCsv(`¥${(row.amount / 100).toFixed(2)}`),
+    escapeCsv(`¥${row.amount.toFixed(2)}`),
     escapeCsv(row.method === 'wechat' ? '微信支付' : '银行卡'),
     escapeCsv(row.account),
     escapeCsv(row.time),
-    escapeCsv(row.status === 'approved' ? '已通过' : row.status === 'rejected' ? '已驳回' : '待审核'),
+    escapeCsv(row.status === 'paid' ? '已打款' : row.status === 'approved' ? '待打款' : row.status === 'rejected' ? '已驳回' : '待审核'),
     escapeCsv(row.reason || '—')
   ])
 
@@ -354,7 +395,7 @@ watch(operationColumnWidth, () => {
           <div class="stat-card-icon green"><AppIcon name="check-circle" /> </div>
         </div>
         <div class="stat-card-value" style="color: #16A34A;">
-          12
+          {{ todayApproved }}
           <span style="font-size: 14px; font-weight: 500; color: #9CA3AF; margin-left: 2px;">笔</span>
         </div>
         <div class="stat-card-label">今日已通过</div>
@@ -365,7 +406,7 @@ watch(operationColumnWidth, () => {
           <div class="stat-card-icon gold"><AppIcon name="money" /> </div>
         </div>
         <div class="stat-card-value" style="color: #F5A623;">
-          8,450.00
+          {{ todayPaid.toFixed(2) }}
           <span style="font-size: 14px; font-weight: 500; color: #9CA3AF; margin-left: 2px;">元</span>
         </div>
         <div class="stat-card-label">今日发放金额</div>
@@ -389,8 +430,9 @@ watch(operationColumnWidth, () => {
             :class="{ active: activeTab === 'approved' }" 
             @click="activeTab = 'approved'"
           >
-            已通过
+            待打款
           </div>
+          <div class="filter-tab" :class="{ active: activeTab === 'paid' }" @click="activeTab = 'paid'">已打款</div>
           <div 
             class="filter-tab" 
             :class="{ active: activeTab === 'rejected' }" 
@@ -461,8 +503,8 @@ watch(operationColumnWidth, () => {
                 </div>
               </td>
               <td style="font-weight: 700;">¥{{ row.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
-              <td style="color: #9CA3AF;">¥{{ (row.amount * 0.002).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
-              <td style="font-weight: 700; color: #16A34A;">¥{{ (row.amount * 0.998).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
+              <td style="color: #9CA3AF;">¥{{ row.fee.toFixed(2) }}</td>
+              <td style="font-weight: 700; color: #16A34A;">¥{{ row.actualAmount.toFixed(2) }}</td>
               <td>
                 <div style="font-size: 12px;">
                   <div style="font-weight: 500; color: #374151;">{{ row.method === 'wechat' ? '微信零钱' : '银行卡' }}</div>
@@ -477,7 +519,10 @@ watch(operationColumnWidth, () => {
                     <button class="btn btn-xs btn-danger" @click="openReject(row)">拒绝</button>
                   </template>
                   <template v-else-if="row.status === 'approved'">
-                    <span class="status-tag green">已通过</span>
+                    <button class="btn btn-xs btn-outline" @click="openPaid(row)">登记打款</button>
+                  </template>
+                  <template v-else-if="row.status === 'paid'">
+                    <span class="status-tag green">已打款</span>
                   </template>
                   <template v-else-if="row.status === 'rejected'">
                     <t-tooltip :content="'驳回原因：' + (row.reason || '无')">
@@ -513,15 +558,24 @@ watch(operationColumnWidth, () => {
       @confirm="confirmApprove"
     >
       <div v-if="selectedRecord" style="padding: 8px 0;">
-        <p style="margin-bottom: 12px; font-size: 14px; color: #4B5563;">您正在同意该笔提现申请，系统将执行自动打款：</p>
+        <p style="margin-bottom: 12px; font-size: 14px; color: #4B5563;">审核通过后等待银行转账，实际打款完成后请登记转账流水号。</p>
         <t-descriptions bordered size="small" :column="1">
           <t-descriptions-item label="单号">{{ selectedRecord.no }}</t-descriptions-item>
           <t-descriptions-item label="推广员">{{ selectedRecord.name }} ({{ selectedRecord.level }})</t-descriptions-item>
           <t-descriptions-item label="提现金额"><strong>¥{{ selectedRecord.amount.toFixed(2) }}</strong></t-descriptions-item>
-          <t-descriptions-item label="手续费 (0.2%)"><span style="color: #9CA3AF;">¥{{ (selectedRecord.amount * 0.002).toFixed(2) }}</span></t-descriptions-item>
-          <t-descriptions-item label="实际到账"><strong style="color: #16A34A;">¥{{ (selectedRecord.amount * 0.998).toFixed(2) }}</strong></t-descriptions-item>
+          <t-descriptions-item label="手续费"><span style="color: #9CA3AF;">¥{{ selectedRecord.fee.toFixed(2) }}</span></t-descriptions-item>
+          <t-descriptions-item label="实际到账"><strong style="color: #16A34A;">¥{{ selectedRecord.actualAmount.toFixed(2) }}</strong></t-descriptions-item>
           <t-descriptions-item label="收款账号">{{ formatAccount(selectedRecord) }} ({{ selectedRecord.method === 'wechat' ? '微信' : '银行卡' }})</t-descriptions-item>
         </t-descriptions>
+      </div>
+    </t-dialog>
+
+    <t-dialog v-model:visible="paidVisible" header="登记实际银行转账" @confirm="confirmPaid" @close="transferAccount = null">
+      <div v-if="transferAccount && selectedRecord">
+        <p>{{ transferAccount.bankName }} · {{ transferAccount.accountName }}</p>
+        <p>{{ transferAccount.accountNo }}</p>
+        <p>实际转账金额 ¥{{ selectedRecord.actualAmount.toFixed(2) }}</p>
+        <t-input v-model="transferReference" placeholder="银行转账成功流水号" :maxlength="120" />
       </div>
     </t-dialog>
 

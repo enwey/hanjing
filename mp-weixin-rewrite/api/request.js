@@ -30,7 +30,7 @@ function normalizeAccessToken(token) {
 function getRequestBaseUrls() {
   const baseUrls = envConfig.getApiBaseUrls();
   const candidates = Array.isArray(baseUrls) && baseUrls.length ? baseUrls : [envConfig.getApiBaseUrl()];
-  if (!resolvedApiBaseUrl) {
+  if (!resolvedApiBaseUrl || candidates.indexOf(resolvedApiBaseUrl) === -1) {
     return candidates;
   }
   const ordered = [resolvedApiBaseUrl];

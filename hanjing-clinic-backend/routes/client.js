@@ -1,5 +1,10 @@
+import { MEMBER_LEVEL_RULES, syncUserMembership } from '../membership.js';
+import { authorizeUpload, signPrivateUploadResponses, registerPrivateUpload, privateUploadPath, canReadPrivateUpload } from '../private-uploads.js';
+import { applyRefund, completeRefund } from '../refunds.js';
 import express from 'express';
+import { createAsyncRouter } from '../async-router.js';
 import jwt from 'jsonwebtoken';
+import { businessError, publicWithdrawAccount, readCommissionLedger } from '../distribution-ledger.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -25,17 +30,18 @@ import {
 } from '../helpers.js';
 import { getAllSubscribeTemplateIds, getSubscribeTemplateMap, sendWechatSubscribeMessage } from '../wechatSubscribe.js';
 import {
-  allowDevMockWechatPay as serviceAllowDevMockWechatPay,
   buildPaymentParams as serviceBuildPaymentParams,
-  createWechatRefund,
   decryptWechatPayResource as serviceDecryptWechatPayResource,
-  getMissingWechatPayConfig as serviceGetMissingWechatPayConfig,
   queryOrderByOutTradeNo,
+  queryMicroPayOrderByOutTradeNo,
+  closeOrderByOutTradeNo,
+  getMissingWechatPayConfig,
   verifyWechatPayCallback
 } from '../wechatPay.js';
 import { getWechatMiniAccessToken, isWechatAccessTokenInvalid } from '../wechatMiniToken.js';
 
-const app = express.Router();
+const app = createAsyncRouter();
+app.use(signPrivateUploadResponses);
 const APPOINTMENT_TYPES = new Set(['first', 'followup', 'adjust']);
 const APPOINTMENT_SLOT_STATUSES = ['pending_payment', 'pending', 'confirmed', 'checked_in', 'arrived'];
 const APPOINTMENT_SLOT_STATUSES_SQL = APPOINTMENT_SLOT_STATUSES.map(status => `'${status}'`).join(', ');
@@ -124,67 +130,11 @@ async function writeMiniProgramLog(req, payload) {
 }
 
 function allowDevMockWxLogin() {
-  const nodeEnv = String(process.env.NODE_ENV || '').trim().toLowerCase();
-  const isDevEnv = ['development', 'dev', 'local', 'test'].includes(nodeEnv);
-  return isDevEnv && String(process.env.ENABLE_MOCK_WX_LOGIN || '').trim().toLowerCase() === 'true';
+  return false;
 }
 
 const SENSITIVE_WORDS = ['广告', '疗效', '包治', '神药', '加微信', '兼职', '刷单'];
 const PLACEHOLDER_TREATMENT_DEVICE_NAME = '待适配阻鼾器';
-const MEMBER_LEVEL_RULES = [
-  {
-    level: 'normal',
-    title: '普通会员',
-    color: '#9CA3AF',
-    bgColor: '#F3F4F6',
-    spentRequired: 0,
-    benefits: [
-      { icon: 'appointment', title: '在线预约', desc: '随时预约睡眠门诊' },
-      { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' }
-    ]
-  },
-  {
-    level: 'silver',
-    title: '白银会员',
-    color: '#6B7280',
-    bgColor: '#F3F4F6',
-    spentRequired: 100000,
-    benefits: [
-      { icon: 'appointment', title: '在线预约', desc: '优先时段选择' },
-      { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' },
-      { icon: 'discount', title: '购物9.5折', desc: '商城商品享95折优惠' }
-    ]
-  },
-  {
-    level: 'gold',
-    title: '黄金会员',
-    color: '#F5A623',
-    bgColor: '#FFF9E6',
-    spentRequired: 300000,
-    benefits: [
-      { icon: 'appointment', title: '在线预约', desc: 'VIP优先预约通道' },
-      { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' },
-      { icon: 'discount', title: '购物9折', desc: '商城商品享9折优惠' },
-      { icon: 'service', title: '专属客服', desc: '1v1健康顾问服务' },
-      { icon: 'channel', title: '分销权限', desc: '可申请成为推广员' }
-    ]
-  },
-  {
-    level: 'diamond',
-    title: '钻石会员',
-    color: '#3B6BF5',
-    bgColor: '#EEF4FF',
-    spentRequired: 1000000,
-    benefits: [
-      { icon: 'appointment', title: '在线预约', desc: '院长级专家优先约' },
-      { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' },
-      { icon: 'discount', title: '购物8.5折', desc: '商城商品享85折优惠' },
-      { icon: 'service', title: '专属客服', desc: '1v1健康顾问服务' },
-      { icon: 'channel', title: '分销权限', desc: '推广员+高佣金比例' },
-      { icon: 'free', title: '年度免费检查', desc: '每年1次免费睡眠监测' }
-    ]
-  }
-];
 
 const MEMBER_DISCOUNT_RATE_MAP = {
   normal: 1,
@@ -344,45 +294,6 @@ async function getWechatMiniPhoneNumber(code) {
   return phone;
 }
 
-function getMemberLevelBySpent(totalSpent) {
-  const spent = Number(totalSpent || 0);
-  let matched = MEMBER_LEVEL_RULES[0];
-  for (const rule of MEMBER_LEVEL_RULES) {
-    if (spent >= Number(rule.spentRequired || 0)) {
-      matched = rule;
-    }
-  }
-  return matched;
-}
-
-async function calculateUserTotalSpent(userId, conn = null) {
-  const sql = `SELECT COALESCE(SUM(pay_amount), 0) AS total_spent
-     FROM orders
-     WHERE user_id = ?
-       AND status IN ('paid', 'shipping', 'shipped', 'completed')`;
-  const row = conn
-    ? (await conn.execute(sql, [userId]))[0][0]
-    : await get(sql, [userId]);
-  return Number(row?.total_spent || 0);
-}
-
-async function syncUserMembership(userId, conn = null) {
-  const totalSpent = await calculateUserTotalSpent(userId, conn);
-  const matched = getMemberLevelBySpent(totalSpent);
-  const sql = `UPDATE users
-     SET total_spent = ?, member_level = ?
-     WHERE id = ?`;
-  if (conn) {
-    await conn.execute(sql, [totalSpent, matched.level, userId]);
-  } else {
-    await run(sql, [totalSpent, matched.level, userId]);
-  }
-  return {
-    id: userId,
-    member_level: matched.level,
-    total_spent: totalSpent,
-  };
-}
 
 async function syncUserMemberLevel(userId) {
   const user = await get(`SELECT id, member_level, total_spent, points FROM users WHERE id = ?`, [userId]);
@@ -406,7 +317,7 @@ async function getLinkedPatientsForUser(userId) {
     `SELECT p.*, upl.relation AS link_relation
      FROM user_patient_links upl
      JOIN patients p ON p.id = upl.patient_id
-     WHERE upl.user_id = ?
+     WHERE upl.user_id = ? AND p.user_id = upl.user_id
      ORDER BY CASE WHEN p.user_id = ? AND p.relation = 'self' THEN 0 ELSE 1 END, upl.created_at ASC, upl.id ASC`,
     [userId, userId]
   );
@@ -417,12 +328,13 @@ function isPlaceholderSelfName(name) {
   return !value || value === '本人' || value === '微信用户' || value.startsWith('微信用户_');
 }
 
-async function getIdentityMatchedPatient({ phoneEnc = null, idCardEnc = null }) {
+async function getIdentityMatchedPatient({ userId, phoneEnc = null, idCardEnc = null }) {
+  if (!userId) return null;
   if (idCardEnc) {
-    return get(`SELECT * FROM patients WHERE id_card = ? ORDER BY id ASC LIMIT 1`, [idCardEnc]);
+    return get(`SELECT * FROM patients WHERE id_card = ? AND user_id = ? ORDER BY id ASC LIMIT 1`, [idCardEnc, userId]);
   }
   if (phoneEnc) {
-    const phoneMatchedPatient = await get(`SELECT * FROM patients WHERE phone = ? ORDER BY id ASC LIMIT 1`, [phoneEnc]);
+    const phoneMatchedPatient = await get(`SELECT * FROM patients WHERE phone = ? AND user_id = ? ORDER BY id ASC LIMIT 1`, [phoneEnc, userId]);
     if (phoneMatchedPatient && !phoneMatchedPatient.id_card) {
       return phoneMatchedPatient;
     }
@@ -435,7 +347,7 @@ async function getSelfPatientForUser(userId) {
     `SELECT p.*
      FROM users u
      JOIN patients p ON p.id = u.self_patient_id
-     WHERE u.id = ?
+     WHERE u.id = ? AND p.user_id = u.id
      LIMIT 1`,
     [userId]
   );
@@ -448,7 +360,7 @@ async function getSelfPatientForUser(userId) {
     `SELECT p.*
      FROM user_patient_links upl
      JOIN patients p ON p.id = upl.patient_id
-     WHERE upl.user_id = ? AND upl.relation = 'self'
+     WHERE upl.user_id = ? AND upl.relation = 'self' AND p.user_id = upl.user_id
      ORDER BY upl.id ASC
      LIMIT 1`,
     [userId]
@@ -460,7 +372,7 @@ async function getSelfPatientForUserWithConn(conn, userId) {
     `SELECT p.*
      FROM users u
      JOIN patients p ON p.id = u.self_patient_id
-     WHERE u.id = ?
+     WHERE u.id = ? AND p.user_id = u.id
      LIMIT 1`,
     [userId]
   );
@@ -476,7 +388,7 @@ async function getSelfPatientForUserWithConn(conn, userId) {
     `SELECT p.*
      FROM user_patient_links upl
      JOIN patients p ON p.id = upl.patient_id
-     WHERE upl.user_id = ? AND upl.relation = 'self'
+     WHERE upl.user_id = ? AND upl.relation = 'self' AND p.user_id = upl.user_id
      ORDER BY upl.id ASC
      LIMIT 1`,
     [userId]
@@ -491,7 +403,7 @@ async function getDefaultPatientForUser(userId) {
     `SELECT p.*
      FROM user_patient_links upl
      JOIN patients p ON p.id = upl.patient_id
-     WHERE upl.user_id = ?
+     WHERE upl.user_id = ? AND p.user_id = upl.user_id
      ORDER BY upl.created_at ASC, upl.id ASC
      LIMIT 1`,
     [userId]
@@ -500,31 +412,8 @@ async function getDefaultPatientForUser(userId) {
 
 async function getLinkedPatientIdentityFilter(userId, tableAlias = 'p') {
   const linkedPatients = await getLinkedPatientsForUser(userId);
-  const values = {
-    phone: new Set(),
-    id_card: new Set(),
-    patient_no: new Set(),
-  };
-  for (const patient of linkedPatients) {
-    if (patient.phone) values.phone.add(patient.phone);
-    if (patient.id_card) values.id_card.add(patient.id_card);
-    const patientNo = getPatientRecordNo(patient);
-    if (patientNo) values.patient_no.add(patientNo);
-  }
-  const conditions = [];
-  const params = [];
-  for (const phone of values.phone) {
-    conditions.push(`${tableAlias}.phone = ?`);
-    params.push(phone);
-  }
-  for (const idCard of values.id_card) {
-    conditions.push(`${tableAlias}.id_card = ?`);
-    params.push(idCard);
-  }
-  for (const patientNo of values.patient_no) {
-    conditions.push(`${tableAlias}.patient_no = ?`);
-    params.push(patientNo);
-  }
+  const conditions = linkedPatients.map(() => `${tableAlias}.id = ?`);
+  const params = linkedPatients.map(patient => patient.id);
   return { conditions, params };
 }
 
@@ -548,17 +437,17 @@ async function getPatientDataScope(patient) {
     if (patient.id_card) {
       scopedPatients = await query(
         `SELECT * FROM patients
-         WHERE id_card = ?
+          WHERE id_card = ? AND user_id = ?
          ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, id ASC`,
-        [patient.id_card, patient.id]
+        [patient.id_card, patient.user_id, patient.id]
       );
     } else if (patient.phone) {
       scopedPatients = await query(
         `SELECT * FROM patients
-         WHERE phone = ?
+          WHERE phone = ? AND user_id = ?
            AND (id_card IS NULL OR id_card = '')
          ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, id ASC`,
-        [patient.phone, patient.id]
+        [patient.phone, patient.user_id, patient.id]
       );
     }
   }
@@ -597,10 +486,11 @@ async function getAccessiblePatientIdsForUser(userId) {
   return Array.from(patientIds);
 }
 
-async function getIdentityMatchedPatientWithConn(conn, { phoneEnc = null, idCardEnc = null, excludePatientId = null }) {
+async function getIdentityMatchedPatientWithConn(conn, { userId, phoneEnc = null, idCardEnc = null, excludePatientId = null }) {
+  if (!userId) return null;
   if (idCardEnc) {
-    const params = [idCardEnc];
-    let sql = `SELECT * FROM patients WHERE id_card = ?`;
+    const params = [idCardEnc, userId];
+    let sql = `SELECT * FROM patients WHERE id_card = ? AND user_id = ?`;
     if (excludePatientId) {
       sql += ` AND id != ?`;
       params.push(excludePatientId);
@@ -610,8 +500,8 @@ async function getIdentityMatchedPatientWithConn(conn, { phoneEnc = null, idCard
     return patient || null;
   }
   if (phoneEnc) {
-    const params = [phoneEnc];
-    let sql = `SELECT * FROM patients WHERE phone = ?`;
+    const params = [phoneEnc, userId];
+    let sql = `SELECT * FROM patients WHERE phone = ? AND user_id = ?`;
     if (excludePatientId) {
       sql += ` AND id != ?`;
       params.push(excludePatientId);
@@ -669,6 +559,8 @@ async function bindUserToSelfPatient(userId, patientId, { preferName = '', phone
       err.statusCode = 404;
       throw err;
     }
+
+    if (Number(patient.user_id) !== Number(userId)) throw businessError('不能认领其他账号的患者档案，请联系门店核验', 403);
 
     const [[user]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [userId]);
     if (!user) {
@@ -821,7 +713,7 @@ async function resolveUserPatient(req, patientIdSource = 'query') {
       `SELECT p.*
        FROM user_patient_links upl
        JOIN patients p ON p.id = upl.patient_id
-       WHERE upl.user_id = ? AND upl.patient_id = ?`,
+        WHERE upl.user_id = ? AND upl.patient_id = ? AND p.user_id = upl.user_id`,
       [req.user.id, rawPatientId]
     );
     if (!patient) {
@@ -1052,32 +944,33 @@ async function getAppointmentPayAmount(appt) {
   return apptDepositAmount + Number(appt.consult_fee || 0);
 }
 
-async function finalizePaidAppointment(conn, appt, userId, paymentPayload = null) {
+export async function finalizePaidAppointment(conn, appt, userId, paymentPayload = null) {
+  const [[current]] = await conn.execute('SELECT * FROM appointments WHERE id = ? FOR UPDATE', [appt.id]);
+  if (!current || Number(current.user_id) !== Number(userId)) throw businessError('预约不存在', 404);
+  appt = current;
   const totalPayAmount = await getAppointmentPayAmount(appt);
-  const depositProduct = await get(`SELECT id, name, image_url FROM products WHERE id = 8 LIMIT 1`);
-  const resolvedUserId = userId || appt.user_id;
-  await conn.execute(
+  if (!paymentPayload || paymentPayload.trade_state !== 'SUCCESS' || paymentPayload.out_trade_no !== appt.appointment_no
+    || paymentPayload.amount?.currency !== 'CNY' || Number(paymentPayload.amount?.total) !== totalPayAmount
+    || !paymentPayload.transaction_id) throw businessError('支付流水与预约不一致', 409);
+  if (appt.status !== 'pending_payment') {
+    const [[paid]] = await conn.execute('SELECT id FROM orders WHERE appointment_id = ? AND wechat_transaction_id = ? AND pay_at IS NOT NULL',
+      [appt.id, paymentPayload.transaction_id]);
+    if (paid) return false;
+    throw businessError('预约状态与支付结果不一致，请核对支付流水', 409);
+  }
+  const resolvedUserId = appt.user_id;
+  const [updated] = await conn.execute(
     `UPDATE appointments SET status = 'pending', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending_payment'`,
     [appt.id]
   );
-  const orderNo = `OD${new Date().getFullYear()}${Date.now().toString().slice(-8)}${Math.floor(100 + Math.random() * 900)}`;
-  const [result] = await conn.execute(
+  if (updated.affectedRows !== 1) throw businessError('预约状态已变更', 409);
+  const orderNo = `OD${Date.now()}${crypto.randomBytes(5).toString('hex')}`;
+  await conn.execute(
     `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, appointment_id, wechat_transaction_id, wechat_prepay_id)
      VALUES (?, ?, 'appointment_deposit', ?, 0, NULL, ?, 'wechat', CURRENT_TIMESTAMP, 'paid', ?, ?, ?)`,
     [orderNo, resolvedUserId, totalPayAmount, totalPayAmount, appt.id, paymentPayload?.transaction_id || null, paymentPayload?.prepay_id || null]
   );
-  const orderId = result.insertId;
-  await conn.execute(
-    `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity)
-     VALUES (?, ?, ?, ?, ?, 1)`,
-    [
-      orderId,
-      depositProduct?.id || 8,
-      depositProduct?.name || '就诊预约定金',
-      depositProduct?.image_url || '',
-      totalPayAmount
-    ]
-  );
+  // Appointment fees belong to the appointment, not a seeded product ID.
   await conn.execute(
     `INSERT INTO user_notifications (user_id, title, content, type)
      VALUES (?, '预约支付成功', ?, 'appointment')`,
@@ -1087,9 +980,13 @@ async function finalizePaidAppointment(conn, appt, userId, paymentPayload = null
     ]
   );
   await syncUserMembership(resolvedUserId, conn);
+  return true;
+}
+
+function notifyPaidAppointment(appt, totalPayAmount) {
   setImmediate(() => {
     sendWechatSubscribeMessage({
-      userId: resolvedUserId,
+      userId: appt.user_id,
       event: 'appointment_paid',
       businessId: `appointment_paid:${appt.id}`,
       page: `pages/appointment/detail/index?id=${appt.id}`,
@@ -1112,7 +1009,27 @@ async function notifyAppointmentUser(userId, title, content) {
   );
 }
 
-async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
+export async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
+  const [[current]] = await conn.execute('SELECT * FROM orders WHERE id = ? FOR UPDATE', [order.id]);
+  if (!current) throw businessError('订单不存在', 404);
+  if (!paymentPayload || paymentPayload.trade_state !== 'SUCCESS' || paymentPayload.out_trade_no !== current.order_no ||
+      paymentPayload.amount?.currency !== 'CNY' || Number(paymentPayload.amount?.total) !== Number(current.pay_amount) ||
+      !paymentPayload.transaction_id) throw businessError('支付流水与订单不一致', 409);
+  if (current.status === 'cancelled' && !current.pay_at) {
+    const address = typeof current.shipping_address === 'string' ? JSON.parse(current.shipping_address || '{}') : (current.shipping_address || {});
+    Object.assign(address, { refund_from_status: 'cancelled', refund_reason: '取消订单后收到支付成功通知',
+      refund_description: '库存已释放，禁止发货，请审核原路退款', refund_applied_at: new Date().toISOString() });
+    await conn.execute("UPDATE orders SET status='refund_pending', pay_method='wechat', pay_at=CURRENT_TIMESTAMP, wechat_transaction_id=?, shipping_address=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+      [paymentPayload.transaction_id, JSON.stringify(address), current.id]);
+    await conn.execute("INSERT INTO user_notifications(user_id,title,content,type) VALUES(?, '取消订单收到付款', ?, 'order')",
+      [current.user_id, `订单 ${current.order_no} 已收到付款，已转入退款审核，不会重复发货。`]);
+    return false;
+  }
+  if (current.status !== 'pending') {
+    if (current.pay_at && current.wechat_transaction_id === paymentPayload.transaction_id) return false;
+    throw businessError('订单状态与支付结果不一致，请核对支付流水', 409);
+  }
+  order = current;
   let address = {};
   try {
     address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {});
@@ -1129,7 +1046,7 @@ async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
     [order.id]
   );
 
-  await conn.execute(
+  const [paymentUpdate] = await conn.execute(
     `UPDATE orders
      SET status = ?,
          pay_at = CURRENT_TIMESTAMP,
@@ -1139,6 +1056,7 @@ async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
      WHERE id = ? AND status = 'pending'`,
     [nextStatus, paymentPayload?.transaction_id || null, paymentPayload?.prepay_id || null, order.id]
   );
+  if (paymentUpdate.affectedRows !== 1) throw businessError('订单支付状态已变更', 409);
 
   for (const item of items) {
     if (item.category !== 'service') {
@@ -1160,6 +1078,11 @@ async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
 
   await createPendingDistributionCommission(conn, order, order.user_id);
   await syncUserMembership(order.user_id, conn);
+  return true;
+}
+
+function notifyPaidProductOrder(order) {
+  const nextStatus = order.type === 'online' ? 'shipping' : 'paid';
   setImmediate(() => {
     sendWechatSubscribeMessage({
       userId: order.user_id,
@@ -1176,9 +1099,6 @@ async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
   });
 }
 
-const DEFAULT_DISTRIBUTION_SETTLE_DAYS = 14;
-const DISTRIBUTION_MIN_WITHDRAW_AMOUNT = 5000;
-const DISTRIBUTION_BANK_FEE_RATE = 0.01;
 const DISTRIBUTION_QRCODE_PLACEHOLDER = '/static/demo/qrcode.png';
 const DISTRIBUTOR_LEVEL_RULES = {
   silver: { level1Rate: 0.1, level2Rate: 0.03, label: '银牌' },
@@ -1190,41 +1110,7 @@ function getDistributorLevelRule(level) {
   return DISTRIBUTOR_LEVEL_RULES[level] || DISTRIBUTOR_LEVEL_RULES.silver;
 }
 
-async function getDistributionSettleDays() {
-  const row = await get(`SELECT key_value FROM system_settings WHERE key_name = 'distribution_settle_days'`);
-  const days = parseInt(row?.key_value, 10);
-  if (!Number.isInteger(days) || days < 0) {
-    return DEFAULT_DISTRIBUTION_SETTLE_DAYS;
-  }
-  return days;
-}
-
-async function getDistributionFeatureConfig() {
-  const [settleDays, enableDistributionRow, minWithdrawRow, withdrawFeeRateRow] = await Promise.all([
-    getDistributionSettleDays(),
-    get(`SELECT key_value FROM system_settings WHERE key_name = 'enable_distribution'`),
-    get(`SELECT key_value FROM system_settings WHERE key_name = 'min_withdraw'`),
-    get(`SELECT key_value FROM system_settings WHERE key_name = 'withdraw_fee_rate'`)
-  ]);
-  const minWithdrawYuan = Number(minWithdrawRow?.key_value);
-  const withdrawFeeRatePercent = Number(withdrawFeeRateRow?.key_value);
-  const minWithdrawAmount = Number.isFinite(minWithdrawYuan) && minWithdrawYuan >= 0
-    ? Math.round(minWithdrawYuan * 100)
-    : DISTRIBUTION_MIN_WITHDRAW_AMOUNT;
-  const bankWithdrawFeeRate = Number.isFinite(withdrawFeeRatePercent) && withdrawFeeRatePercent >= 0
-    ? withdrawFeeRatePercent / 100
-    : DISTRIBUTION_BANK_FEE_RATE;
-  return {
-    settleDays,
-    enableDistribution: String(enableDistributionRow?.key_value || 'true') !== 'false',
-    minWithdrawAmount,
-    withdrawFeeRates: {
-      wechat: 0,
-      bank: bankWithdrawFeeRate
-    },
-    eligibleLevels: ['gold', 'diamond']
-  };
-}
+const getDistributionFeatureConfig = async () => (await import('../distribution-ledger.js')).getDistributionFeatureConfig();
 
 function buildInviteCode(userId) {
   return `HJ${String(userId).padStart(4, '0')}${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -1317,13 +1203,7 @@ async function getDistributionWithdrawRecordList(userId) {
     amount: item.amount,
     fee: item.fee,
     actualAmount: item.actual_amount,
-    accountInfo: (() => {
-      try {
-        return typeof item.account_info === 'string' ? JSON.parse(item.account_info) : item.account_info;
-      } catch (error) {
-        return { label: item.account_info };
-      }
-    })(),
+    accountInfo: publicWithdrawAccount(item.account_info),
     status: item.status,
     createdAt: item.created_at,
     completedAt: item.completed_at
@@ -1352,66 +1232,8 @@ async function refreshDistributorLevel(distributorId, conn = null) {
 }
 
 async function settleEligibleDistributionCommissions(userId) {
-  const distributor = await get(`SELECT id FROM distributors WHERE user_id = ?`, [userId]);
-  if (!distributor) return 0;
-  const settleDays = await getDistributionSettleDays();
-
-  const pendingList = await query(
-    `SELECT do.id, do.commission_amount
-       FROM distribution_orders do
-       JOIN orders o ON o.id = do.order_id
-       WHERE do.distributor_id = ?
-         AND do.status = 'pending'
-         AND o.status = 'completed'
-         AND (do.lock_until <= CURRENT_TIMESTAMP OR (do.lock_until IS NULL AND o.updated_at <= DATE_SUB(NOW(), INTERVAL ${settleDays} DAY)))`,
-    [distributor.id]
-  );
-
-  if (!pendingList.length) return 0;
-
-  const total = pendingList.reduce((sum, item) => sum + Number(item.commission_amount || 0), 0);
-  const ids = pendingList.map(item => item.id);
-  const placeholders = ids.map(() => '?').join(',');
-
-  await transaction(async (conn) => {
-    await conn.execute(
-      `UPDATE distribution_orders
-       SET status = 'settled', settled_at = CURRENT_TIMESTAMP
-       WHERE id IN (${placeholders})`,
-      ids
-    );
-    await conn.execute(
-      `UPDATE distributors
-       SET available_commission = available_commission + ?
-       WHERE id = ?`,
-      [total, distributor.id]
-    );
-    await conn.execute(
-      `INSERT INTO user_notifications (user_id, title, content)
-       VALUES (?, '佣金已结算', ?)`,
-      [
-        userId,
-        `您有 ${(total / 100).toFixed(2)} 元推广佣金已转为可提现余额。`
-      ]
-    );
-  });
-
-  setImmediate(() => {
-    sendWechatSubscribeMessage({
-      userId,
-      event: 'commission_settled',
-      businessId: `commission_settled:manual:${ids.join('-')}`,
-      page: 'pages/distribution/center/index',
-      payload: {
-        amount: `¥${(total / 100).toFixed(2)}`,
-        status: '已到账',
-        time: formatShanghaiDateTime(),
-        remark: `${ids.length}笔推广佣金已转为可提现余额`
-      }
-    });
-  });
-
-  return total;
+  const { settleCommissions } = await import('../distribution-ledger.js');
+  return settleCommissions(userId);
 }
 
 async function getDistributionSummary(userId, req = null) {
@@ -1541,7 +1363,7 @@ async function createPendingDistributionCommission(conn, order, userId) {
   if (distributionItems.length === 0) return;
 
   const commissionL1 = distributionItems.reduce((sum, item) => {
-    const rate = Number(item.commission_rate_level1_snapshot || item.commission_rate_snapshot || 0);
+    const rate = Number(item.commission_rate_level1_snapshot ?? item.commission_rate_snapshot ?? 0);
     if (rate <= 0) return sum;
     return sum + Math.round(Number(item.price || 0) * Number(item.quantity || 0) * (rate / 100));
   }, 0);
@@ -1597,33 +1419,55 @@ async function createPendingDistributionCommission(conn, order, userId) {
   await refreshDistributorLevel(promoterL2.id, conn);
 }
 
+export async function cancelPendingProductOrder(conn, orderId, userId, expiredOnly = false, provider = null) {
+  const [[order]] = await conn.execute('SELECT * FROM orders WHERE id = ? AND user_id = ? FOR UPDATE', [orderId, userId]);
+  if (!order) throw businessError('订单不存在', 404);
+  if (order.status !== 'pending') {
+    if (expiredOnly) return false;
+    throw businessError('只能取消待支付订单，请刷新状态', 409);
+  }
+  if (order.wechat_prepay_id || ['wechat_native', 'wechat_micropay'].includes(order.pay_method)) {
+    provider ||= {
+      query: order.pay_method === 'wechat_micropay' ? queryMicroPayOrderByOutTradeNo : queryOrderByOutTradeNo,
+      close: order.pay_method === 'wechat_micropay'
+        ? async () => { throw businessError('付款码订单请先在商户平台确认撤销，再同步状态', 409); }
+        : closeOrderByOutTradeNo
+    };
+    const payment = await provider.query(order.order_no);
+    if (payment.trade_state === 'SUCCESS') {
+      await finalizePaidProductOrder(conn, order, payment);
+      return false;
+    }
+    if (payment.trade_state === 'NOTPAY') {
+      await provider.close(order.order_no);
+      const closed = await provider.query(order.order_no);
+      if (closed.trade_state !== 'CLOSED') throw businessError('支付渠道尚未确认关单，请稍后重试', 409);
+    } else if (!['CLOSED', 'REVOKED'].includes(payment.trade_state)) {
+      throw businessError('支付状态尚未确认，暂不能取消订单', 409);
+    }
+  }
+  const [result] = await conn.execute(`UPDATE orders SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+    WHERE id = ? AND status = 'pending' ${expiredOnly ? 'AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)' : ''}`, [orderId]);
+  if (result.affectedRows !== 1) return false;
+  const [items] = await conn.execute('SELECT * FROM order_items WHERE order_id = ? ORDER BY product_id', [orderId]);
+  for (const item of items) {
+    await conn.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+  }
+  if (order.coupon_id) await conn.execute("UPDATE user_coupons SET status = 'active', used_at = NULL WHERE id = ? AND user_id = ? AND status = 'used'", [order.coupon_id, userId]);
+  await conn.execute("INSERT INTO user_notifications (user_id, title, content, type) VALUES (?, '订单已取消', ?, 'order')",
+    [userId, `订单 ${order.order_no} 已取消，库存和优惠券已恢复。`]);
+  return true;
+}
+
 async function closeExpiredPendingOrders(userId) {
   const expiredOrders = await query(
     `SELECT * FROM orders
-     WHERE user_id = ? AND type = 'product' AND status = 'pending'
+     WHERE user_id = ? AND type IN ('product', 'online', 'offline') AND status = 'pending'
        AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`,
     [userId]
   );
   for (const order of expiredOrders) {
-    await transaction(async (conn) => {
-      await conn.execute(
-        `UPDATE orders SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending'`,
-        [order.id]
-      );
-      const items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
-      for (const item of items) {
-        await conn.execute(
-          `UPDATE products SET stock = stock + ?, sales_count = GREATEST(0, sales_count - ?) WHERE id = ?`,
-          [item.quantity, item.quantity, item.product_id]
-        );
-      }
-      if (order.coupon_id) {
-        await conn.execute(
-          `UPDATE user_coupons SET status = 'active', used_at = NULL WHERE id = ?`,
-          [order.coupon_id]
-        );
-      }
-    });
+    await transaction(conn => cancelPendingProductOrder(conn, order.id, userId, true));
   }
 }
 
@@ -1705,7 +1549,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
     }
 
     user = await get(`SELECT * FROM users WHERE id = ?`, [user.id]);
-    let selfPatient = encryptedPhone ? await getIdentityMatchedPatient({ phoneEnc: encryptedPhone }) : null;
+    let selfPatient = encryptedPhone ? await getIdentityMatchedPatient({ userId: user.id, phoneEnc: encryptedPhone }) : null;
     if (selfPatient) {
       await bindUserToSelfPatient(user.id, selfPatient.id, {
         preferName: user.nickname,
@@ -2002,9 +1846,8 @@ app.get('/api/v1/user/account-security', authenticateWxToken, async (req, res) =
     const realName = patient ? patient.name : '';
     const idCard = patient ? decryptPII(patient.id_card) : '';
     let realNameMasked = '未认证';
-    let realNameVerified = false;
+    const realNameVerified = false;
     if (idCard && realName && realName !== '微信用户' && !realName.startsWith('微信用户_')) {
-      realNameVerified = true;
       if (realName.length === 2) {
         realNameMasked = `${realName[0]}*`;
       } else if (realName.length > 2) {
@@ -2090,17 +1933,7 @@ app.post('/api/v1/user/send-code', authenticateWxToken, async (req, res) => {
   if (!phone || !/^1\d{10}$/.test(phone)) {
     return res.status(400).json({ code: 400, message: '请输入有效的11位手机号码' });
   }
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  global.smsCodes[phone] = {
-    code,
-    expires: Date.now() + 5 * 60 * 1000
-  };
-  console.log(`[SMS MOCK] Sent verification code ${code} to ${phone}`);
-  res.json({
-    code: 0,
-    message: '验证码发送成功',
-    data: { code } // Return for frontend convenient entry
-  });
+  res.status(503).json({ code: 503, message: '短信服务尚未接入，请使用微信手机号授权' });
 });
 
 // Change bound phone number
@@ -2127,7 +1960,7 @@ app.post('/api/v1/user/change-phone', authenticateWxToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '该手机号已被其他账号绑定' });
     }
     await run(`UPDATE users SET phone = ? WHERE id = ?`, [encryptedPhone, req.user.id]);
-    const matchedPatient = await getIdentityMatchedPatient({ phoneEnc: encryptedPhone });
+    const matchedPatient = await getIdentityMatchedPatient({ userId: req.user.id, phoneEnc: encryptedPhone });
     if (matchedPatient) {
       await bindUserToSelfPatient(req.user.id, matchedPatient.id, { phoneEnc: encryptedPhone });
     } else {
@@ -2148,52 +1981,7 @@ app.post('/api/v1/user/change-phone', authenticateWxToken, async (req, res) => {
 
 // Real-name verification
 app.post('/api/v1/user/verify-realname', authenticateWxToken, async (req, res) => {
-  const { realName, idCard } = req.body;
-  if (!realName || realName.trim().length < 2) {
-    return res.status(400).json({ code: 400, message: '请输入真实的姓名' });
-  }
-  if (!idCard || !/^\d{17}[\dXx]$/.test(idCard)) {
-    return res.status(400).json({ code: 400, message: '请输入有效的18位身份证号' });
-  }
-  try {
-    const cleanName = realName.trim();
-    const cleanIdCard = idCard.trim().toUpperCase();
-    const encryptedIdCard = encryptPII(cleanIdCard);
-    const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
-    const matchedPatient = await getIdentityMatchedPatient({
-      idCardEnc: encryptedIdCard
-    });
-    if (matchedPatient) {
-      await bindUserToSelfPatient(req.user.id, matchedPatient.id, {
-        preferName: cleanName,
-        phoneEnc: user?.phone || null,
-        idCardEnc: encryptedIdCard
-      });
-    } else {
-      let selfPatient = await getSelfPatientForUser(req.user.id);
-      if (!selfPatient) {
-        selfPatient = await createDefaultSelfPatientForUser({
-          ...user,
-          nickname: cleanName
-        });
-      }
-      await bindUserToSelfPatient(req.user.id, selfPatient.id, {
-        preferName: cleanName,
-        phoneEnc: user?.phone || null,
-        idCardEnc: encryptedIdCard
-      });
-    }
-
-    const latestUser = await get(`SELECT nickname FROM users WHERE id = ?`, [req.user.id]);
-    if (!latestUser.nickname || latestUser.nickname === '微信用户' || latestUser.nickname.startsWith('微信用户_')) {
-      await run(`UPDATE users SET nickname = ? WHERE id = ?`, [cleanName, req.user.id]);
-    }
-
-    res.json({ code: 0, message: '实名认证成功' });
-  } catch (error) {
-    console.error('Verify realname error:', error);
-    res.status(500).json({ code: 500, message: '实名认证失败，请稍后重试' });
-  }
+  res.status(503).json({ code: 503, message: '实名认证服务尚未接入，请联系门店核验；填写姓名和证件号不等于通过认证' });
 });
 
 // 3.2 WeChat Client Get Notifications (GET)
@@ -2265,29 +2053,7 @@ app.post('/api/v1/user/notifications/:id/read', authenticateWxToken, async (req,
 // --- Sleep & Snore Assessments ---
 
 // Static folder serving for uploaded snore audio files and medical attachments with hotlink and auth protection
-app.use('/uploads', (req, res, next) => {
-  const referer = req.headers['referer'] || '';
-  if (req.path.startsWith('/admin/images/')) {
-    return next();
-  }
-  // 1. Allow WeChat mini-program image rendering
-  if (referer.startsWith('https://servicewechat.com/')) {
-    return next();
-  }
-  // 2. Allow local admin development debugging
-  if (referer.includes('localhost') || referer.includes('127.0.0.1')) {
-    return next();
-  }
-  // 3. Fallback: Authenticate via query token or auth header for programmatic download
-  const token = req.query.token || (req.headers['authorization'] && req.headers['authorization'].split(' ')[1]);
-  if (token) {
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return next();
-    } catch (err) {}
-  }
-  res.status(403).send('Forbidden: Direct access to clinical attachments is restricted.');
-}, express.static('./uploads'));
+app.use('/uploads', authorizeUpload, express.static('./uploads', { dotfiles: 'deny', index: false }));
 
 // GET /api/v1/assessments
 app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
@@ -2501,34 +2267,32 @@ app.post('/api/v1/assessments/ess', authenticateWxToken, async (req, res) => {
 // POST /api/v1/assessments/snore
 app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
   const { duration, fileData, fileName, client_side_analysis, analysis_result, patientId } = req.body;
-  const durationSeconds = parseInt(duration, 10);
-  if (!durationSeconds || durationSeconds < 5) {
-    return res.status(400).json({ code: 400, message: '时长不能为空' });
+  const durationSeconds = Number(duration);
+  if (!Number.isInteger(durationSeconds) || durationSeconds < 5 || durationSeconds > 600) {
+    return res.status(400).json({ code: 400, message: '录音时长必须在5至600秒之间' });
   }
 
   let dbPatientId = null;
   try {
-    if (patientId && patientId !== 'pat-self') {
-      dbPatientId = Number(patientId);
-    } else {
-      const selfPatient = await getSelfPatientForUser(req.user.id);
-      if (selfPatient) dbPatientId = selfPatient.id;
-    }
+    const patient = await resolveUserPatient(req, 'body');
+    if (!patient) return res.status(400).json({ code: 400, message: '请先建立就诊人档案' });
+    dbPatientId = patient.id;
   } catch (e) {
-    console.error(e);
+    const status = e.statusCode || 500;
+    return res.status(status).json({ code: status, message: status === 404 ? e.message : '无法核验就诊人' });
   }
 
   if (client_side_analysis) {
     try {
       const { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel } = analysis_result || {};
       if (
-        avgDecibel === undefined ||
-        peakDecibel === undefined ||
-        snoreRate === undefined ||
-        apneaEvents === undefined ||
-        !riskLevel
+        ![avgDecibel, peakDecibel, snoreRate, apneaEvents].every(Number.isFinite) ||
+        avgDecibel < 0 || peakDecibel < avgDecibel || peakDecibel > 160 ||
+        snoreRate < 0 || snoreRate > 100 ||
+        !Number.isInteger(apneaEvents) || apneaEvents < 0 || apneaEvents > Math.floor(durationSeconds / 10) ||
+        !['normal', 'low', 'mild', 'moderate', 'severe', 'high'].includes(riskLevel)
       ) {
-        return res.status(400).json({ code: 400, message: '离线分析结果不完整' });
+        return res.status(400).json({ code: 400, message: '离线分析结果无效' });
       }
       const result = await run(
         `INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level)
@@ -2699,7 +2463,7 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
         data: {
           id: 'snore-' + item.id,
           userId: item.user_id.toString(),
-          patientId: 'pat-self',
+          patientId: String(item.patient_id),
           type: 'ai_snore',
           snoreRecordUrl: item.file_url,
           snoreAnalysis: {
@@ -2737,7 +2501,7 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
         data: {
           id: 'asmt-' + item.id,
           userId: item.user_id.toString(),
-          patientId: 'pat-self',
+          patientId: String(item.patient_id),
           type: 'ess',
           essAnswers: typeof item.answers === 'string' ? JSON.parse(item.answers) : (item.answers || []),
           essScore: score,
@@ -3450,13 +3214,13 @@ app.post('/api/v1/user/family-members', authenticateWxToken, async (req, res) =>
     let patient = null;
     if (idCardEnc) {
       patient = await get(
-        `SELECT * FROM patients WHERE id_card = ? ORDER BY id ASC LIMIT 1`,
-        [idCardEnc]
+        `SELECT * FROM patients WHERE id_card = ? AND user_id = ? ORDER BY id ASC LIMIT 1`,
+        [idCardEnc, req.user.id]
       );
     } else if (phoneEnc) {
       const phoneMatchedPatient = await get(
-        `SELECT * FROM patients WHERE phone = ? ORDER BY id ASC LIMIT 1`,
-        [phoneEnc]
+        `SELECT * FROM patients WHERE phone = ? AND user_id = ? ORDER BY id ASC LIMIT 1`,
+        [phoneEnc, req.user.id]
       );
       if (phoneMatchedPatient && !phoneMatchedPatient.id_card) {
         patient = phoneMatchedPatient;
@@ -3533,7 +3297,7 @@ app.get('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
       `SELECT p.*, upl.relation AS link_relation
        FROM user_patient_links upl
        JOIN patients p ON p.id = upl.patient_id
-       WHERE upl.user_id = ? AND upl.patient_id = ?`,
+        WHERE upl.user_id = ? AND upl.patient_id = ? AND p.user_id = upl.user_id`,
       [req.user.id, id]
     );
     if (!link) {
@@ -3595,7 +3359,7 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
       `SELECT p.*, upl.relation AS link_relation
        FROM user_patient_links upl
        JOIN patients p ON p.id = upl.patient_id
-       WHERE upl.user_id = ? AND upl.patient_id = ?`,
+       WHERE upl.user_id = ? AND upl.patient_id = ? AND p.user_id = upl.user_id`,
       [req.user.id, id]
     );
     if (!link) {
@@ -3618,6 +3382,7 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
 
       if (identityChanged) {
         const matchedPatient = await getIdentityMatchedPatientWithConn(conn, {
+          userId: req.user.id,
           phoneEnc,
           idCardEnc,
           excludePatientId: id
@@ -3743,7 +3508,7 @@ app.delete('/api/v1/user/family-members/:id', authenticateWxToken, async (req, r
       `SELECT p.*, upl.relation AS link_relation
        FROM user_patient_links upl
        JOIN patients p ON p.id = upl.patient_id
-       WHERE upl.user_id = ? AND upl.patient_id = ?`,
+       WHERE upl.user_id = ? AND upl.patient_id = ? AND p.user_id = upl.user_id`,
       [req.user.id, id]
     );
     if (!linkedPatient) {
@@ -4554,7 +4319,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       `SELECT p.id, p.age
        FROM user_patient_links upl
        JOIN patients p ON p.id = upl.patient_id
-       WHERE upl.user_id = ? AND upl.patient_id = ?`,
+       WHERE upl.user_id = ? AND upl.patient_id = ? AND p.user_id = upl.user_id`,
       [req.user.id, resolvedPatientId]
     );
     if (!patient) {
@@ -4730,11 +4495,8 @@ app.post('/api/v1/appointments/:id/pay', authenticateWxToken, async (req, res) =
   const { id } = req.params;
   try {
     const appt = await get(
-      `SELECT a.*, d.consult_fee
-       FROM appointments a
-       JOIN doctors d ON a.doctor_id = d.id
-       WHERE a.id = ?`,
-      [id]
+      `SELECT a.* FROM appointments a WHERE a.id = ? AND a.user_id = ?`,
+      [id, req.user.id]
     );
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
@@ -4743,24 +4505,7 @@ app.post('/api/v1/appointments/:id/pay', authenticateWxToken, async (req, res) =
       return res.status(400).json({ code: 400, message: '预约不需要支付或已支付' });
     }
 
-    const requireDepositRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'require_deposit'`);
-    const requireDeposit = requireDepositRow ? requireDepositRow.key_value === 'true' : false;
-    const depositAmountRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'deposit_amount'`);
-    const depositAmount = depositAmountRow ? parseInt(depositAmountRow.key_value, 10) : 5000;
-    const totalPayAmount = (appt.deposit_amount !== undefined && appt.deposit_amount !== null ? appt.deposit_amount : (requireDeposit ? depositAmount : 0)) + (appt.consult_fee || 0);
-    const missingPayConfig = await serviceGetMissingWechatPayConfig();
-    if (missingPayConfig.length > 0 && serviceAllowDevMockWechatPay()) {
-      return res.json({
-        code: 0,
-        message: '开发环境模拟支付',
-        data: {
-          appointmentId: id,
-          payAmount: totalPayAmount,
-          mockPayment: true,
-          missingConfig: missingPayConfig
-        }
-      });
-    }
+    const totalPayAmount = await getAppointmentPayAmount(appt);
     const payParams = await serviceBuildPaymentParams(
       appt.appointment_no,
       totalPayAmount,
@@ -4788,49 +4533,26 @@ app.post('/api/v1/appointments/:id/pay', authenticateWxToken, async (req, res) =
 app.post('/api/v1/appointments/:id/confirm-pay', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const canUseMockConfirm = serviceAllowDevMockWechatPay() && (await serviceGetMissingWechatPayConfig()).length > 0;
     const appt = await get(
-      `SELECT a.*, d.consult_fee
-       FROM appointments a
-       JOIN doctors d ON a.doctor_id = d.id
-       WHERE a.id = ?`,
-      [id]
+      `SELECT a.* FROM appointments a WHERE a.id = ? AND a.user_id = ?`,
+      [id, req.user.id]
     );
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
     }
     if (appt.status !== 'pending_payment') {
-      return res.json({ code: 0, message: '预约支付状态已同步' });
+      const paid = await get('SELECT id FROM orders WHERE appointment_id = ? AND user_id = ? AND pay_at IS NOT NULL', [id, req.user.id]);
+      if (paid) return res.json({ code: 0, message: '预约支付状态已同步' });
+      return res.status(409).json({ code: 409, message: '未找到该预约的已支付流水，请核对预约状态' });
     }
 
-    let paymentPayload = null;
-    if (!canUseMockConfirm) {
-      const payResult = await queryOrderByOutTradeNo(appt.appointment_no);
-      if (!payResult || payResult.trade_state !== 'SUCCESS') {
-        return res.status(409).json({
-          code: 409,
-          message: '微信支付结果尚未确认，请稍后刷新重试'
-        });
-      }
-      paymentPayload = payResult;
+    const paymentPayload = await queryOrderByOutTradeNo(appt.appointment_no);
+    if (!paymentPayload || paymentPayload.trade_state !== 'SUCCESS') {
+      return res.status(409).json({ code: 409, message: '微信支付结果尚未确认，请稍后刷新重试' });
     }
 
-    await transaction(async (conn) => {
-      const [apptRows] = await conn.execute(
-        `SELECT status FROM appointments WHERE id = ? FOR UPDATE`,
-        [id]
-      );
-      const curAppt = apptRows && apptRows[0];
-      if (!curAppt) {
-        const err = new Error('预约不存在');
-        err.statusCode = 404;
-        throw err;
-      }
-      if (curAppt.status !== 'pending_payment') {
-        return;
-      }
-      await finalizePaidAppointment(conn, appt, req.user.id, paymentPayload);
-    });
+    const processed = await transaction(conn => finalizePaidAppointment(conn, appt, req.user.id, paymentPayload));
+    if (processed) notifyPaidAppointment(appt, Number(paymentPayload.amount.total));
 
     res.json({ code: 0, message: '支付同步成功' });
   } catch (error) {
@@ -4859,12 +4581,8 @@ app.post('/api/v1/appointments/pay-callback', async (req, res) => {
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
     }
-    if (appt.status !== 'pending_payment') {
-      return res.json({ code: 'SUCCESS', message: 'already processed' });
-    }
-    await transaction(async (conn) => {
-      await finalizePaidAppointment(conn, appt, appt.user_id, payload);
-    });
+    const processed = await transaction(conn => finalizePaidAppointment(conn, appt, appt.user_id, payload));
+    if (processed) notifyPaidAppointment(appt, Number(payload.amount.total));
     res.json({ code: 'SUCCESS', message: 'success' });
   } catch (error) {
     console.error('Appointment pay callback error:', error);
@@ -5244,29 +4962,35 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
     }
 
     let refundAmount = 0;
-    let refundOrder = null;
+    let refundUserId = appt.user_id;
     await transaction(async (conn) => {
+      const [[lockedAppt]] = await conn.execute(sql + ' FOR UPDATE', params);
+      if (!lockedAppt || lockedAppt.status !== appt.status || String(lockedAppt.schedule_id) !== String(appt.schedule_id)) {
+        throw Object.assign(new Error('预约状态已变更，请刷新后重试'), { statusCode: 409 });
+      }
       await conn.execute(
         `UPDATE appointments SET status = 'cancelled', cancel_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
         [reasonClean, id]
       );
       await conn.execute(`UPDATE doctor_schedules SET booked_slots = GREATEST(0, booked_slots - 1) WHERE id = ?`, [appt.schedule_id]);
-      const paidOrder = await get(
-        `SELECT id, order_no, pay_amount, wechat_transaction_id FROM orders WHERE appointment_id = ? AND user_id = ? AND type = 'appointment_deposit' AND status = 'paid' ORDER BY id DESC LIMIT 1`,
-        [id, req.user.id]
+      const [[paidOrder]] = await conn.execute(
+        `SELECT id, user_id, order_no, pay_amount, shipping_address, wechat_transaction_id FROM orders WHERE appointment_id = ? AND type = 'appointment_deposit' AND status = 'paid' ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+        [id]
       );
       if (paidOrder) {
         refundAmount = Number(paidOrder.pay_amount || 0);
-        refundOrder = paidOrder;
+        refundUserId = paidOrder.user_id;
+        const address = typeof paidOrder.shipping_address === 'string' ? JSON.parse(paidOrder.shipping_address || '{}') : (paidOrder.shipping_address || {});
+        delete address.refund_rejected_at;
         await conn.execute(
-          `UPDATE orders SET status = 'refunding', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          [paidOrder.id]
+          `UPDATE orders SET status = 'refund_pending', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          [JSON.stringify({ ...address, refund_from_status: 'paid', refund_reason: reasonClean, refund_applied_at: formatShanghaiDateTime() }), paidOrder.id]
         );
-        await syncUserMembership(req.user.id, conn);
+        await syncUserMembership(paidOrder.user_id, conn);
         await conn.execute(
           `INSERT INTO user_notifications (user_id, title, content)
            VALUES (?, '预约退款申请已提交', ?)`,
-          [req.user.id, `预约 ${appt.appointment_no} 已取消，已支付金额 ¥${(paidOrder.pay_amount / 100).toFixed(2)} 将在支付成功3日后自动原路退回您的支付账户。`]
+          [paidOrder.user_id, `预约 ${appt.appointment_no} 已取消，已支付金额 ¥${(paidOrder.pay_amount / 100).toFixed(2)} 已申请退款，需等待审核及支付渠道确认。`]
         );
       } else {
         await conn.execute(
@@ -5277,49 +5001,7 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
       }
     });
 
-    if (refundOrder && refundAmount > 0) {
-      try {
-        const missingPayConfig = await serviceGetMissingWechatPayConfig();
-        if (missingPayConfig.length === 0) {
-          const outRefundNo = `RFAPT${String(refundOrder.id).padStart(8, '0')}${Date.now().toString().slice(-8)}`;
-          const refundResult = await createWechatRefund({
-            transactionId: refundOrder.wechat_transaction_id,
-            outTradeNo: appt.appointment_no,
-            outRefundNo,
-            reason: reasonClean || '预约取消退款',
-            refundAmount,
-            totalAmount: refundAmount
-          });
-          await run(
-            `UPDATE orders
-             SET status = 'refunded',
-                 wechat_refund_id = ?,
-                 wechat_refund_no = ?,
-                 refund_at = CURRENT_TIMESTAMP,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = ?`,
-            [refundResult.refund_id || null, refundResult.out_refund_no || outRefundNo, refundOrder.id]
-          );
-          setImmediate(() => {
-            sendWechatSubscribeMessage({
-              userId: req.user.id,
-              event: 'refund_result',
-              businessId: `appointment_refund_success:${id}`,
-              page: `pages/appointment/detail/index?id=${id}`,
-              payload: {
-                orderNo: appt.appointment_no,
-                amount: `¥${(refundAmount / 100).toFixed(2)}`,
-                status: '退款成功',
-                time: formatShanghaiDateTime(),
-                remark: '退款已原路退回'
-              }
-            });
-          });
-        }
-      } catch (refundError) {
-        console.error('Wechat appointment refund error:', refundError);
-      }
-    }
+    // Appointment deposits now follow the same reviewed, provider-confirmed refund flow.
 
     const updated = await get(`SELECT * FROM appointments WHERE id = ?`, [id]);
     setImmediate(() => {
@@ -5341,14 +5023,14 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
     if (refundAmount > 0) {
       setImmediate(() => {
         sendWechatSubscribeMessage({
-          userId: req.user.id,
+          userId: refundUserId,
           event: 'refund_result',
           businessId: `appointment_refund_apply:${id}`,
           page: `pages/appointment/detail/index?id=${id}`,
           payload: {
             orderNo: appt.appointment_no,
             amount: `¥${(refundAmount / 100).toFixed(2)}`,
-            status: '退款中',
+            status: '待审核',
             time: formatShanghaiDateTime(),
             remark: '退款申请已提交'
           }
@@ -5361,7 +5043,7 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
       data: updated
     });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '取消预约失败' });
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.statusCode ? error.message : '取消预约失败' });
   }
 });
 
@@ -5791,6 +5473,7 @@ app.post('/api/v1/user/upload', authenticateWxToken, express.raw({ type: () => t
     }
     fs.writeFileSync(`${uploadDir}/${filename}`, fileBuffer);
     const fileUrl = `/uploads/medical-attachments/${filename}`;
+    await registerPrivateUpload(fileUrl, req.user);
     res.json({
       code: 0,
       message: '上传成功',
@@ -5805,11 +5488,12 @@ app.post('/api/v1/user/upload', authenticateWxToken, express.raw({ type: () => t
 // 20.2 Add Medical Attachment (POST)
 app.post('/api/v1/user/medical-records/:id/attachments', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
-  const { url } = req.body;
+  const url = privateUploadPath(req.body.url);
   if (!url) {
     return res.status(400).json({ code: 400, message: '附件地址不能为空' });
   }
   try {
+    if (!await canReadPrivateUpload(url, req.user)) return res.status(403).json({ code: 403, message: '无权使用此附件' });
     const accessiblePatientIds = await getAccessiblePatientIdsForUser(req.user.id);
     if (!accessiblePatientIds.length) {
       return res.status(404).json({ code: 404, message: '该病历不存在或无权操作' });
@@ -6633,27 +6317,14 @@ app.get('/api/v1/orders/:id/logistics', authenticateWxToken, async (req, res) =>
       return res.json({
         code: 0,
         message: '暂无物流轨迹信息',
-        data: { list: [] }
+        data: { list: [], steps: [], available: false, message: '暂无物流轨迹信息' }
       });
     }
 
-    const company = order.express_company || '顺丰速运';
-    const tracking = order.tracking_number || 'SF16038472918';
-
-    // Generate realistic logistics events
-    const list = [
-      { time: '2026-07-02 10:00:00', status: '已签收', desc: `【深圳市】快件已签收，签收人：凭提取码签收。感谢您使用${company}，期待再次为您服务。` },
-      { time: '2026-07-02 08:30:00', status: '派送中', desc: `【深圳市】快递员正在为您派件，联系电话：13812345678。` },
-      { time: '2026-07-02 05:00:00', status: '运输中', desc: `【深圳市】快件已到达 深圳宝安分拨中心。` },
-      { time: '2026-07-01 22:30:00', status: '运输中', desc: `【广州市】快件已从 广州黄埔转运中心 发出，正运往 深圳宝安分拨中心。` },
-      { time: '2026-07-01 18:00:00', status: '已揽收', desc: `【广州市】快递员已揽收。` },
-      { time: '2026-07-01 17:00:00', status: '已揽收', desc: `商家已发货，运单号：${tracking}，已通知快递揽件。` }
-    ];
-
-    // If order status is shipped (not completed yet), remove the sign-off event
-    if (order.status === 'shipped') {
-      list.shift(); // Remove the "已签收" event
-    }
+    const shipping = typeof order.shipping_address === 'string'
+      ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
+    const company = shipping.express_company || order.express_company || '';
+    const tracking = shipping.tracking_number || order.tracking_number || '';
 
     res.json({
       code: 0,
@@ -6661,7 +6332,10 @@ app.get('/api/v1/orders/:id/logistics', authenticateWxToken, async (req, res) =>
       data: {
         company,
         trackingNumber: tracking,
-        list
+        list: [],
+        steps: [],
+        available: false,
+        message: '尚未接入物流轨迹服务，请凭运单号向承运方查询'
       }
     });
   } catch (error) {
@@ -6695,7 +6369,18 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
       return res.status(404).json({ code: 404, message: '用户不存在' });
     }
     const memberDiscountRate = getMemberDiscountRate(currentUser.member_level);
-    const productIds = items.map(item => item.productId);
+    const quantities = new Map();
+    for (const item of items) {
+      const productId = Number(item?.productId);
+      const quantity = Number(item?.quantity);
+      if (!Number.isSafeInteger(productId) || productId <= 0 || !Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 99) {
+        return res.status(400).json({ code: 400, message: '商品或数量不正确' });
+      }
+      quantities.set(productId, (quantities.get(productId) || 0) + quantity);
+      if (quantities.get(productId) > 99) return res.status(400).json({ code: 400, message: '同一商品最多购买99件' });
+    }
+    const normalizedItems = [...quantities].sort((a, b) => a[0] - b[0]).map(([productId, quantity]) => ({ productId, quantity }));
+    const productIds = normalizedItems.map(item => item.productId);
     const placeholders = productIds.map(() => '?').join(',');
     const dbProducts = await query(`SELECT * FROM products WHERE id IN (${placeholders}) AND deleted_at IS NULL`, productIds);
     const productMap = {};
@@ -6707,7 +6392,7 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
     let subtotalAfterMemberDiscount = 0;
     const validatedItems = [];
 
-    for (const item of items) {
+    for (const item of normalizedItems) {
       const quantity = parseInt(item.quantity, 10);
       if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 99) {
         return res.status(400).json({ code: 400, message: '商品数量不正确' });
@@ -6731,8 +6416,8 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
         quantity,
         price: memberPrice,
         isDistributionSnapshot: Number(dbProduct.is_distribution || 0) === 1 ? 1 : 0,
-        commissionRateSnapshot: Number(dbProduct.commission_rate_level1 || dbProduct.commission_rate || 0),
-        commissionRateLevel1Snapshot: Number(dbProduct.commission_rate_level1 || dbProduct.commission_rate || 0),
+        commissionRateSnapshot: Number(dbProduct.commission_rate_level1 ?? dbProduct.commission_rate ?? 0),
+        commissionRateLevel1Snapshot: Number(dbProduct.commission_rate_level1 ?? dbProduct.commission_rate ?? 0),
         commissionRateLevel2Snapshot: Number(dbProduct.commission_rate_level2 || 0)
       });
     }
@@ -6778,9 +6463,20 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
       storeBusinessHours: pickupStore ? `${String(pickupStore.open_time || '').slice(0, 5)}-${String(pickupStore.close_time || '').slice(0, 5)}` : ''
     };
 
-    const orderNo = `OD2026${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+    const orderNo = `OD${Date.now()}${crypto.randomBytes(5).toString('hex')}`;
 
     const newOrderId = await transaction(async (conn) => {
+      if (couponId) {
+        const [[coupon]] = await conn.execute(`SELECT uc.id, c.value, c.min_spend FROM user_coupons uc
+          JOIN coupons c ON c.id = uc.coupon_id WHERE uc.id = ? AND uc.user_id = ?
+          AND uc.status = 'active' AND c.status = 'active'
+          AND (c.valid_start IS NULL OR c.valid_start <= CURDATE())
+          AND (c.valid_end IS NULL OR c.valid_end >= CURDATE()) FOR UPDATE`, [couponId, req.user.id]);
+        if (!coupon || Number(coupon.min_spend || 0) > subtotalAfterMemberDiscount ||
+            Math.min(Number(coupon.value), subtotalAfterMemberDiscount) !== couponDiscountAmount) {
+          throw businessError('优惠券已被使用或发生变更，请重新下单', 409);
+        }
+      }
       // 1. Insert order
       const [orderResult] = await conn.execute(
         `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, shipping_address)
@@ -6808,17 +6504,18 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
           ]
         );
 
-        await conn.execute(
-          `UPDATE products SET stock = stock - ? WHERE id = ?`,
-          [item.quantity, item.product.id]
+        const [reserved] = await conn.execute(
+          `UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ? AND status = 'on' AND deleted_at IS NULL AND price = ?`,
+          [item.quantity, item.product.id, item.quantity, item.product.price]
         );
+        if (reserved.affectedRows !== 1) throw businessError(`商品 ${item.product.name} 库存或价格已变更，请刷新`, 409);
       }
 
       // 3. Consume coupon if used
       if (couponId) {
         await conn.execute(
-          `UPDATE user_coupons SET status = 'used', used_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          [couponId]
+          `UPDATE user_coupons SET status = 'used', used_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND status = 'active'`,
+          [couponId, req.user.id]
         );
       }
 
@@ -6836,7 +6533,7 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Create client order error:', error);
-    res.status(500).json({ code: 500, message: '订单创建失败' });
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.statusCode ? error.message : '订单创建失败' });
   }
 });
 
@@ -6852,22 +6549,17 @@ app.post('/api/v1/orders/:id/pay', authenticateWxToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '订单非待支付状态' });
     }
 
-    const missingPayConfig = await serviceGetMissingWechatPayConfig();
-    if (missingPayConfig.length > 0 && serviceAllowDevMockWechatPay()) {
-      return res.json({
-        code: 0,
-        message: '开发环境模拟支付',
-        data: {
-          orderId: order.id.toString(),
-          orderNo: order.order_no,
-          payAmount: order.pay_amount,
-          mockPayment: true,
-          missingConfig: missingPayConfig
-        }
-      });
+    if ((await getMissingWechatPayConfig()).length) {
+      return res.status(503).json({ code: 503, message: '支付服务尚未完成配置，请联系商家' });
     }
-
-    const payParams = await serviceBuildPaymentParams(order.order_no, order.pay_amount, order.order_no, req.user.openid);
+    // Persist intent even if the provider times out. Cancellation must reconcile it.
+    const marked = await run("UPDATE orders SET wechat_prepay_id=COALESCE(wechat_prepay_id,'REQUESTING') WHERE id=? AND status='pending'", [order.id]);
+    if (!marked.changes) throw businessError('订单状态已变更', 409);
+    const payParams = await transaction(async conn => {
+      const [[locked]] = await conn.execute('SELECT * FROM orders WHERE id=? FOR UPDATE', [order.id]);
+      if (locked.status !== 'pending') throw businessError('订单状态已变更', 409);
+      return serviceBuildPaymentParams(order.order_no, order.pay_amount, order.order_no, req.user.openid);
+    });
 
     res.json({
       code: 0,
@@ -6893,44 +6585,24 @@ app.post('/api/v1/orders/:id/confirm-pay', authenticateWxToken, async (req, res)
     if (!order) {
       return res.status(404).json({ code: 404, message: '订单不存在' });
     }
-    if (order.status !== 'pending') {
-      return res.json({ code: 0, message: '订单支付状态已同步' });
+    if (!['pending', 'cancelled'].includes(order.status)) {
+      if (order.pay_at) return res.json({ code: 0, message: '订单支付状态已同步' });
+      return res.status(409).json({ code: 409, message: '订单已关闭，不能确认支付，请核对支付流水' });
     }
 
-    const canUseMockConfirm = serviceAllowDevMockWechatPay() && (await serviceGetMissingWechatPayConfig()).length > 0;
-    let paymentPayload = null;
-    if (!canUseMockConfirm) {
-      const payResult = await queryOrderByOutTradeNo(order.order_no);
-      if (!payResult || payResult.trade_state !== 'SUCCESS') {
-        return res.status(409).json({
-          code: 409,
-          message: '微信支付结果尚未确认，请稍后刷新重试'
-        });
-      }
-      paymentPayload = payResult;
+    const paymentPayload = await queryOrderByOutTradeNo(order.order_no);
+    if (!paymentPayload || paymentPayload.trade_state !== 'SUCCESS') {
+      return res.status(409).json({ code: 409, message: '微信支付结果尚未确认，请稍后刷新重试' });
     }
 
-    await transaction(async (conn) => {
-      const [orderRows] = await conn.execute(
-        `SELECT status FROM orders WHERE id = ? FOR UPDATE`,
-        [id]
-      );
-      const currentOrder = orderRows && orderRows[0];
-      if (!currentOrder) {
-        const err = new Error('订单不存在');
-        err.statusCode = 404;
-        throw err;
-      }
-      if (currentOrder.status !== 'pending') {
-        return;
-      }
-      await finalizePaidProductOrder(conn, order, paymentPayload);
-    });
+    const processed = await transaction(conn => finalizePaidProductOrder(conn, order, paymentPayload));
+    if (processed) notifyPaidProductOrder(order);
 
     res.json({ code: 0, message: '支付同步成功' });
   } catch (error) {
     console.error('Confirm client order payment error:', error);
-    res.status(500).json({ code: 500, message: '同步支付状态失败' });
+    const status = error.statusCode || 500;
+    res.status(status).json({ code: status, message: status < 500 ? error.message : '同步支付状态失败' });
   }
 });
 
@@ -6953,12 +6625,8 @@ app.post('/api/v1/orders/pay-callback', express.raw({ type: 'application/json' }
     if (!order) {
       return res.status(404).json({ code: 'FAIL', message: '订单不存在' });
     }
-    if (order.status !== 'pending') {
-      return res.json({ code: 'SUCCESS', message: 'success' });
-    }
-    await transaction(async (conn) => {
-      await finalizePaidProductOrder(conn, order, payload);
-    });
+    const processed = await transaction(conn => finalizePaidProductOrder(conn, order, payload));
+    if (processed) notifyPaidProductOrder(order);
     res.json({ code: 'SUCCESS', message: 'success' });
   } catch (error) {
     console.error('Wechat order pay callback error:', error);
@@ -6982,17 +6650,7 @@ app.post('/api/v1/pay/refund-callback', async (req, res) => {
     if (!refundNo) {
       return res.json({ code: 'SUCCESS', message: 'ignored' });
     }
-    if (payload.refund_status === 'SUCCESS') {
-      await run(
-        `UPDATE orders
-         SET status = 'refunded',
-             wechat_refund_id = COALESCE(?, wechat_refund_id),
-             refund_at = CURRENT_TIMESTAMP,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE wechat_refund_no = ?`,
-        [payload.refund_id || null, refundNo]
-      );
-    }
+    if (payload.refund_status === 'SUCCESS') await completeRefund(payload);
     res.json({ code: 'SUCCESS', message: 'success' });
   } catch (error) {
     console.error('Wechat refund callback error:', error);
@@ -7012,36 +6670,8 @@ app.post('/api/v1/orders/:id/cancel', authenticateWxToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '只能取消待支付状态的订单' });
     }
 
-    await transaction(async (conn) => {
-      // 1. Update order status to cancelled
-      await conn.execute(
-        `UPDATE orders SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [id]
-      );
-
-      // 2. Return product stock
-      const items = await query('SELECT * FROM order_items WHERE order_id = ?', [id]);
-      for (const item of items) {
-        await conn.execute(
-          `UPDATE products SET stock = stock + ? WHERE id = ?`,
-          [item.quantity, item.product_id]
-        );
-      }
-
-      // 3. Return coupon if used
-      if (order.coupon_id) {
-        await conn.execute(
-          `UPDATE user_coupons SET status = 'active', used_at = NULL WHERE id = ?`,
-          [order.coupon_id]
-        );
-      }
-
-      await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content, type)
-         VALUES (?, '订单已取消', ?, 'order')`,
-        [req.user.id, `您的订单 ${order.order_no} 已取消，库存和优惠券已恢复。`]
-      );
-    });
+    const cancelled = await transaction(conn => cancelPendingProductOrder(conn, id, req.user.id));
+    if (!cancelled) return res.status(409).json({ code: 409, message: '订单已付款或状态已变更，请刷新后查看' });
 
     res.json({ code: 0, message: '订单取消成功' });
     setImmediate(() => {
@@ -7060,7 +6690,8 @@ app.post('/api/v1/orders/:id/cancel', authenticateWxToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Cancel client order error:', error);
-    res.status(500).json({ code: 500, message: '订单取消失败' });
+    const status = error.statusCode || 500;
+    res.status(status).json({ code: status, message: status < 500 ? error.message : '订单取消失败' });
   }
 });
 
@@ -7077,10 +6708,11 @@ app.post('/api/v1/orders/:id/confirm-receipt', authenticateWxToken, async (req, 
     }
 
     await transaction(async (conn) => {
-      await conn.execute(
-        `UPDATE orders SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [id]
+      const [completed] = await conn.execute(
+        `UPDATE orders SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ? AND status = 'shipped'`,
+        [id, req.user.id]
       );
+      if (completed.affectedRows !== 1) throw businessError('订单状态已变更，请刷新后重试', 409);
       await conn.execute(
         `INSERT INTO user_notifications (user_id, title, content, type)
          VALUES (?, '订单已完成', ?, 'order')`,
@@ -7113,7 +6745,8 @@ app.post('/api/v1/orders/:id/confirm-receipt', authenticateWxToken, async (req, 
     });
   } catch (error) {
     console.error('Confirm receipt error:', error);
-    res.status(500).json({ code: 500, message: '确认收货失败' });
+    const status = error.statusCode || 500;
+    res.status(status).json({ code: status, message: status < 500 ? error.message : '确认收货失败' });
   }
 });
 
@@ -7126,57 +6759,7 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
     return res.status(400).json({ code: 400, message: '请选择退款原因' });
   }
   try {
-    const order = await get('SELECT * FROM orders WHERE id = ? AND user_id = ?', [id, req.user.id]);
-    if (!order) {
-      return res.status(404).json({ code: 404, message: '订单不存在' });
-    }
-    if (!['paid', 'shipping', 'shipped'].includes(order.status)) {
-      return res.status(400).json({ code: 400, message: '当前状态不支持申请退款' });
-    }
-
-    await transaction(async (conn) => {
-      let address = {};
-      try {
-        address = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address || '{}') : (order.shipping_address || {});
-      } catch (error) {}
-      address.refund_from_status = order.status;
-      address.refund_reason = escapeHtml(reason);
-      address.refund_description = description ? escapeHtml(description).slice(0, 300) : '';
-      address.refund_applied_at = new Date().toISOString();
-      await conn.execute(
-        `UPDATE orders SET status = 'refunding', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [JSON.stringify(address), id]
-      );
-
-      const commissions = await query(
-        `SELECT distributor_id, commission_amount, status FROM distribution_orders WHERE order_id = ? AND status != 'refunded'`,
-        [id]
-      );
-      const distributorIds = new Set();
-      for (const commission of commissions) {
-        distributorIds.add(commission.distributor_id);
-        await conn.execute(
-          `UPDATE distribution_orders SET status = 'refunded' WHERE order_id = ? AND distributor_id = ?`,
-          [id, commission.distributor_id]
-        );
-        await conn.execute(
-          `UPDATE distributors
-           SET total_commission = GREATEST(0, total_commission - ?),
-               available_commission = CASE WHEN ? = 'settled' THEN GREATEST(0, available_commission - ?) ELSE available_commission END
-           WHERE id = ?`,
-          [commission.commission_amount, commission.status, commission.commission_amount, commission.distributor_id]
-        );
-      }
-      for (const distributorId of distributorIds) {
-        await refreshDistributorLevel(distributorId, conn);
-      }
-      await syncUserMembership(req.user.id, conn);
-      await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content, type)
-         VALUES (?, '退款申请已提交', ?, 'order')`,
-        [req.user.id, `订单 ${order.order_no} 的退款申请已提交，审核结果会通过通知中心告知您。`]
-      );
-    });
+    const order = await applyRefund(id, req.user.id, escapeHtml(reason).slice(0, 200), escapeHtml(description).slice(0, 300));
 
     res.json({ code: 0, message: '已提交退款申请' });
     setImmediate(() => {
@@ -7187,7 +6770,7 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
         page: `pages/order/detail/index?id=${id}`,
         payload: {
           orderNo: order.order_no,
-          status: '退款中',
+          status: '待审核',
           amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
           remark: reason || '退款申请已提交'
         }
@@ -7202,7 +6785,7 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
         payload: {
           orderNo: order.order_no,
           amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
-          status: '退款中',
+          status: '待审核',
           time: formatShanghaiDateTime(),
           remark: reason || '退款申请已提交'
         }
@@ -7210,7 +6793,7 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Apply refund error:', error);
-    res.status(500).json({ code: 500, message: '退款申请失败' });
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '退款申请失败' });
   }
 });
 
@@ -7588,10 +7171,10 @@ app.get('/api/v1/distribution/products', async (req, res) => {
           image: p.image_url,
           price: p.price,
           originalPrice: p.original_price,
-          commissionRate: p.commission_rate_level1 || p.commission_rate,
-          commissionRateLevel1: p.commission_rate_level1 || p.commission_rate,
+          commissionRate: p.commission_rate_level1 ?? p.commission_rate,
+          commissionRateLevel1: p.commission_rate_level1 ?? p.commission_rate,
           commissionRateLevel2: p.commission_rate_level2 || 0,
-          commission: Math.round(p.price * ((p.commission_rate_level1 || p.commission_rate || 0) / 100)),
+          commission: Math.round(p.price * ((p.commission_rate_level1 ?? p.commission_rate ?? 0) / 100)),
           sales: p.sales_count
         })),
         total: list.length
@@ -7602,7 +7185,8 @@ app.get('/api/v1/distribution/products', async (req, res) => {
   }
 });
 
-app.get('/api/v1/distribution/rules', async (req, res) => {
+app.get('/api/v1/distribution/rules', async (req, res, next) => {
+  try {
   const featureConfig = await getDistributionFeatureConfig();
   res.json({
     code: 0,
@@ -7628,34 +7212,37 @@ app.get('/api/v1/distribution/rules', async (req, res) => {
         '违规推广将冻结佣金并取消推广资格。'
       ],
       withdrawRules: [
-        `最低提现金额：¥${(featureConfig.minWithdrawAmount / 100).toFixed(0)}`,
-        '微信零钱：手续费 0%',
-        `银行卡：手续费 ${(featureConfig.withdrawFeeRates.bank * 100).toFixed(0)}%，最低 1 元`
+        `最低提现金额：¥${(featureConfig.minWithdrawAmount / 100).toFixed(2)}`,
+        '微信零钱：暂未开通',
+        `银行卡：手续费 ${Number((featureConfig.withdrawFeeRates.bank * 100).toFixed(4))}%，最低 1 元；审核通过后等待实际打款`
       ]
     }
   });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) => {
   const { amount, method = 'wechat', bankInfo } = req.body;
-  if (!amount || amount <= 0) {
+  const withdrawAmount = Number(amount);
+  if (!Number.isSafeInteger(withdrawAmount) || withdrawAmount <= 0) {
     return res.status(400).json({ code: 400, message: '提现金额无效' });
+  }
+  if (method === 'wechat') {
+    return res.status(503).json({ code: 503, message: '微信零钱转账尚未接入，请选择银行卡提现' });
   }
   try {
     const featureConfig = await getDistributionFeatureConfig();
-    await settleEligibleDistributionCommissions(req.user.id);
-    const dist = await get(`SELECT * FROM distributors WHERE user_id = ?`, [req.user.id]);
-    if (!dist) {
-      return res.status(400).json({ code: 400, message: '您不是推广员' });
+    if (!featureConfig.enableDistribution) {
+      return res.status(403).json({ code: 403, message: '分销功能已停用' });
     }
+    await settleEligibleDistributionCommissions(req.user.id);
     if (!['wechat', 'bank'].includes(method)) {
       return res.status(400).json({ code: 400, message: '提现方式不支持' });
     }
-    if (amount < featureConfig.minWithdrawAmount) {
-      return res.status(400).json({ code: 400, message: `最低提现金额为${(featureConfig.minWithdrawAmount / 100).toFixed(0)}元` });
-    }
-    if (dist.available_commission < amount) {
-      return res.status(400).json({ code: 400, message: '余额不足' });
+    if (withdrawAmount < featureConfig.minWithdrawAmount) {
+      return res.status(400).json({ code: 400, message: `最低提现金额为${(featureConfig.minWithdrawAmount / 100).toFixed(2)}元` });
     }
 
     if (method === 'bank') {
@@ -7665,66 +7252,73 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
       if (!bankName || !accountName || !accountNo) {
         return res.status(400).json({ code: 400, message: '请填写完整的银行卡信息' });
       }
+      if (!/^\d{8,34}$/.test(accountNo) || bankName.length > 100 || accountName.length > 100) {
+        return res.status(400).json({ code: 400, message: '银行卡信息格式无效' });
+      }
     }
 
     const bankFeeRate = Number(featureConfig.withdrawFeeRates?.bank || 0);
-    const fee = method === 'bank' ? Math.max(Math.round(amount * bankFeeRate), 100) : 0;
-    const actualAmount = amount - fee;
+    const fee = method === 'bank' ? Math.max(Math.round(withdrawAmount * bankFeeRate), 100) : 0;
+    const actualAmount = withdrawAmount - fee;
+    if (actualAmount <= 0) {
+      return res.status(400).json({ code: 400, message: '提现金额不足以支付手续费' });
+    }
     const accountInfo = method === 'bank'
       ? JSON.stringify({
           method,
-          bankName: bankInfo.bankName,
-          accountName: bankInfo.accountName,
-          accountNo: String(bankInfo.accountNo).replace(/^(\d{4})\d+(\d{4})$/, '$1********$2')
+          bankName: String(bankInfo.bankName).trim(),
+          accountName: String(bankInfo.accountName).trim(),
+          accountNoEncrypted: encryptPII(String(bankInfo.accountNo).trim()),
+          accountNo: '********' + String(bankInfo.accountNo).trim().slice(-4)
         })
       : JSON.stringify({ method, label: '微信零钱' });
 
-    const result = await run(
-      `INSERT INTO withdraw_records (user_id, amount, fee, actual_amount, status, account_info)
-       VALUES (?, ?, ?, ?, 'pending', ?)`,
-      [req.user.id, amount, fee, actualAmount, accountInfo]
-    );
+    const recordId = await transaction(async (conn) => {
+      const [distributors] = await conn.execute(
+        `SELECT id, available_commission, status FROM distributors WHERE user_id = ? FOR UPDATE`,
+        [req.user.id]
+      );
+      const dist = distributors[0];
+      if (!dist) {
+        const error = new Error('您不是推广员');
+        error.statusCode = 400;
+        throw error;
+      }
+      if (Number(dist.available_commission || 0) < withdrawAmount) {
+        const error = new Error('余额不足');
+        error.statusCode = 400;
+        throw error;
+      }
+      if (dist.status !== 'active') {
+        throw Object.assign(new Error('推广员账号未启用'), { statusCode: 403 });
+      }
+      const ledger = await readCommissionLedger(conn, dist.id, req.user.id);
+      if (ledger.available !== Number(dist.available_commission) || ledger.available < withdrawAmount) {
+        throw Object.assign(new Error('佣金账务不一致，请联系运营核对后再提现'), { statusCode: 409 });
+      }
 
-    const recordId = result.id;
+      const [result] = await conn.execute(
+        `INSERT INTO withdraw_records (user_id, amount, fee, actual_amount, status, account_info)
+         VALUES (?, ?, ?, ?, 'pending', ?)`,
+        [req.user.id, withdrawAmount, fee, actualAmount, accountInfo]
+      );
+      await conn.execute(
+        `UPDATE distributors SET available_commission = available_commission - ? WHERE id = ?`,
+        [withdrawAmount, dist.id]
+      );
+      return result.insertId;
+    });
 
-    await run(
-      `UPDATE distributors SET available_commission = available_commission - ? WHERE user_id = ?`,
-      [amount, req.user.id]
-    );
-
-    // Simulate asynchronous WeChat Merchant automated transfer to loose change
-    if (method === 'wechat') {
-      setTimeout(async () => {
-        try {
-          await run(`UPDATE withdraw_records SET status = 'completed', remark = '微信商家自动打款成功' WHERE id = ?`, [recordId]);
-          await run(`UPDATE distributors SET withdrawn_amount = withdrawn_amount + ? WHERE user_id = ?`, [amount, req.user.id]);
-          console.log(`[Mock Transfer] Asynchronously paid ¥${(amount / 100).toFixed(2)} to User ID ${req.user.id} loose change.`);
-          await sendWechatSubscribeMessage({
-            userId: req.user.id,
-            event: 'withdraw_paid',
-            businessId: `withdraw_paid:auto:${recordId}`,
-            page: `pages/distribution/withdraw/index?id=${recordId}`,
-            payload: {
-              amount: `¥${(actualAmount / 100).toFixed(2)}`,
-              status: '已到账',
-              time: formatShanghaiDateTime(),
-              remark: '微信提现已到账'
-            }
-          });
-        } catch (err) {
-          console.error('[Mock Transfer] Error during async payout:', err);
-        }
-      }, 3000);
-    }
 
     res.json({
       code: 0,
-      message: method === 'wechat' ? '微信提现处理中，资金将在数秒内打入您的零钱' : '申请提现成功，等待管理员审批',
-      data: { amount, fee, actualAmount, method }
+      message: '申请提现成功，等待管理员审批',
+      data: { amount: withdrawAmount, fee, actualAmount, method }
     });
   } catch (error) {
     console.error('Distribution withdraw error:', error);
-    res.status(500).json({ code: 500, message: '申请失败' });
+    const statusCode = Number(error.statusCode || 500);
+    res.status(statusCode).json({ code: statusCode, message: statusCode === 500 ? '申请失败' : error.message });
   }
 });
 
@@ -7765,13 +7359,8 @@ app.get('/api/v1/home/stats', async (req, res) => {
     const storeCountRow = await get(`SELECT COUNT(*) as count FROM stores WHERE status = 'open'`);
     // Calculate satisfaction rate dynamically from average rating in evaluations table
     const avgRatingRow = await get(`SELECT AVG(rating) as avg FROM appointment_evaluations`);
-    let satisfaction = 98;
-    if (avgRatingRow && avgRatingRow.avg !== null) {
-      satisfaction = Math.round((Number(avgRatingRow.avg) / 5) * 100);
-    } else {
-      const docAvgRow = await get(`SELECT AVG(rating) as avg FROM doctors WHERE status = 1`);
-      satisfaction = docAvgRow && docAvgRow.avg ? Math.round((Number(docAvgRow.avg) / 5) * 100) : 98;
-    }
+    const satisfaction = avgRatingRow?.avg == null
+      ? null : Math.round((Number(avgRatingRow.avg) / 5) * 100);
 
     res.json({
       code: 0,

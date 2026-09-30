@@ -287,16 +287,10 @@ Page({
       const payResponse = await api.payAppointmentDeposit(this.data.appointmentId);
       const payParams = unwrapObject(payResponse);
       wx.hideLoading();
-      if (payParams.mockPayment) {
-        wx.showLoading({ title: '开发环境模拟支付...' });
-        await api.confirmAppointmentPayment(this.data.appointmentId);
-        wx.hideLoading();
-      } else {
-        await requestWxPay(payParams);
-        wx.showLoading({ title: '同步预约状态...' });
-        await syncPaidAppointment(this.data.appointmentId);
-        wx.hideLoading();
-      }
+      await requestWxPay(payParams);
+      wx.showLoading({ title: '同步预约状态...' });
+      await syncPaidAppointment(this.data.appointmentId);
+      wx.hideLoading();
       wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });
       await this.loadPage();
     } catch (error) {

@@ -7,6 +7,8 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY . .
+RUN mkdir -p /app/uploads /app/logs && chown -R node:node /app
+USER node
 
 EXPOSE 5005
 

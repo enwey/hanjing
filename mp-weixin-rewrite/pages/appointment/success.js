@@ -80,6 +80,11 @@ Page({
       ]);
       const detailSource = unwrapObject(detailResponse);
       const appointment = detailSource.appointment || detailSource || {};
+      if (!['pending', 'confirmed', 'arrived', 'completed'].includes(appointment.status)) {
+        throw new Error(appointment.status === 'pending_payment'
+          ? '预约尚未确认付款，请到预约记录核对状态，勿重复付款'
+          : (appointment.status === 'cancelled' ? '该预约已取消' : '预约状态待确认，请查看预约记录'));
+      }
       const storesResponse = await api.getStores();
       const stores = unwrapList(storesResponse);
       const store = detailSource.store || stores.find((item) => String(item.id) === String(appointment.storeId || appointment.store_id)) || {};

@@ -139,6 +139,10 @@ const sessionStore = {
     this.setAccessToken('');
     this.setAuthMode('');
     this.state.profile = null;
+    this.setCurrentPatientId('');
+    wx.removeStorageSync('last_local_snore_result');
+    wx.removeStorageSync('pending_snore_uploads');
+    wx.removeStorageSync('pending_appointment_assessment');
   },
   setCurrentPatientId(patientId) {
     this.state.currentPatientId = patientId || '';

@@ -9,7 +9,7 @@ const rows = ref<any[]>([])
 const statusOptions = [
   { label: '全部状态', value: '全部' },
   { label: '待审核', value: 'pending' },
-  { label: '已通过', value: 'approved' },
+  { label: '待打款', value: 'approved' },
   { label: '已拒绝', value: 'rejected' },
   { label: '已打款', value: 'paid' }
 ]
@@ -68,7 +68,7 @@ onMounted(loadData)
               <th>申请时间</th>
               <th>提现金额</th>
               <th>手续费</th>
-              <th>到账金额</th>
+              <th>实付金额</th>
               <th>提现方式</th>
               <th>状态</th>
             </tr>
@@ -78,8 +78,8 @@ onMounted(loadData)
               <td>{{ formatShanghaiDateTime(item.createdAt, false) }}</td>
               <td>¥{{ yuan(item.amount) }}</td>
               <td>¥{{ yuan(item.fee) }}</td>
-              <td style="font-weight:700;color:#1a9d5c;">¥{{ yuan(item.actualAmount) }}</td>
-              <td>{{ item.accountInfo?.method === 'bank' ? '银行卡' : '微信零钱' }}</td>
+              <td style="font-weight:700;color:#1a9d5c;">{{ item.status === 'paid' ? `¥${yuan(item.actualAmount)}` : '未打款' }}</td>
+              <td>{{ item.accountInfo?.method === 'bank' ? '银行卡' : item.accountInfo?.method === 'wechat' ? '微信零钱' : '未记录' }}</td>
               <td>{{ statusLabel(item.status) }}</td>
             </tr>
             <tr v-if="filteredRows.length === 0">

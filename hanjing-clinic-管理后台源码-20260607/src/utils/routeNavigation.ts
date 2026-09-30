@@ -1,4 +1,5 @@
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router'
+type RouteSnapshot = Pick<RouteLocationNormalizedLoaded, 'fullPath' | 'path' | 'params' | 'query' | 'meta'> & { name?: string | symbol | null }
 
 const MENU_ROOTS = [
   '/dashboard',
@@ -104,7 +105,7 @@ export function navigateToParent(router: Router, route: RouteLocationNormalizedL
   router.push(target)
 }
 
-function buildBreadcrumbChain(router: Router, path: string, currentRoute: RouteLocationNormalizedLoaded) {
+function buildBreadcrumbChain(router: Router, path: string, currentRoute: RouteSnapshot) {
   const items: Array<{ label: string; path: string }> = []
   const visited = new Set<string>()
   let currentPath = path
@@ -132,9 +133,9 @@ function buildBreadcrumbChain(router: Router, path: string, currentRoute: RouteL
 
 function buildBreadcrumbsFromRouteSnapshot(
   router: Router,
-  routeSnapshot: RouteLocationNormalizedLoaded,
+  routeSnapshot: RouteSnapshot,
   visited: Set<string>
-) {
+): Array<{ label: string; path: string }> {
   const uniqueKey = routeSnapshot.fullPath || routeSnapshot.path
   if (!uniqueKey || visited.has(uniqueKey)) {
     return []

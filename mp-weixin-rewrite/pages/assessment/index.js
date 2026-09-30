@@ -182,7 +182,8 @@ Page({
       await this.loadPage();
     } catch (error) {
       wx.hideLoading();
-      wx.showToast({ title: '同步失败，请检查网络', icon: 'none' });
+      this.checkPendingCount();
+      wx.showToast({ title: (error && error.message) || '同步失败，请检查网络', icon: 'none' });
     }
   },
 

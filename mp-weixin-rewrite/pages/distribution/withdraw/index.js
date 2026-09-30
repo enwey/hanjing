@@ -20,13 +20,14 @@ Page({
     totalCommissionLabel: '¥0.00',
     withdrawnAmountLabel: '¥0.00',
     withdrawAmountInput: '',
-    withdrawMethod: 'wechat',
+    withdrawMethod: 'bank',
+    isSubmitting: false,
     bankName: '',
     bankAccountName: '',
     bankAccountNo: '',
-    minWithdrawAmount: 50,
-    withdrawFeeRate: 0.01,
-    withdrawFeeRatePercentLabel: '1',
+    minWithdrawAmount: null,
+    withdrawFeeRate: null,
+    withdrawFeeRatePercentLabel: '--',
     serviceFeeLabel: '¥0.00',
     actualAmountLabel: '¥0.00',
     isSubmitEnabled: false,
@@ -38,13 +39,20 @@ Page({
 
   async loadPage(options = {}) {
     const silent = !!options.silent;
+    this.setData({ isSubmitEnabled: false, loading: true, loadError: '' });
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
     }
     try {
       const response = await api.getDistributorInfo();
       const info = unwrapObject(response);
-      const withdrawFeeRate = Number((info.withdrawFeeRates && info.withdrawFeeRates.bank) || 0.01);
+      const rawRate = info.withdrawFeeRates && info.withdrawFeeRates.bank;
+      const withdrawFeeRate = Number(rawRate);
+      if (rawRate == null || !Number.isFinite(withdrawFeeRate) || withdrawFeeRate < 0 || withdrawFeeRate >= 1
+        || info.minWithdrawAmount == null || !Number.isSafeInteger(Number(info.minWithdrawAmount))
+        || Number(info.minWithdrawAmount) < 0 || !Number.isSafeInteger(Number(info.availableCommission))) {
+        throw new Error('提现配置不完整，暂时无法申请');
+      }
 
       this.setData({
         hasLoaded: true,
@@ -53,12 +61,13 @@ Page({
         availableCommissionLabel: formatYuan(info.availableCommission),
         totalCommissionLabel: formatYuan(info.totalCommission),
         withdrawnAmountLabel: formatYuan(info.withdrawnAmount),
-        minWithdrawAmount: Number(info.minWithdrawAmount || 5000) / 100,
+        minWithdrawAmount: Number(info.minWithdrawAmount) / 100,
         withdrawFeeRate,
         withdrawFeeRatePercentLabel: String(withdrawFeeRate * 100),
       });
       this.refreshAmountSummary();
     } catch (error) {
+      this.setData({ hasLoaded: false, isSubmitEnabled: false });
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
@@ -72,19 +81,22 @@ Page({
   },
 
   refreshAmountSummary() {
-    const withdrawAmount = parseFloat(this.data.withdrawAmountInput || '0') || 0;
+    const validInput = /^\d+(\.\d{1,2})?$/.test(this.data.withdrawAmountInput);
+    const withdrawAmount = validInput ? Number(this.data.withdrawAmountInput) : 0;
     const maxWithdrawAmount = Number(this.data.availableCommissionCents || 0) / 100;
     const needsBankInfo = this.data.withdrawMethod === 'bank';
     const serviceFee = withdrawAmount <= 0 || !needsBankInfo
       ? 0
-      : Math.max(withdrawAmount * Number(this.data.withdrawFeeRate || 0), 1);
+      : Math.max(Math.round(Math.round(withdrawAmount * 100) * Number(this.data.withdrawFeeRate)), 100) / 100;
     const actualAmount = Math.max(withdrawAmount - serviceFee, 0);
     const hasBankInfo = !needsBankInfo || (
       String(this.data.bankName || '').trim()
       && String(this.data.bankAccountName || '').trim()
       && String(this.data.bankAccountNo || '').trim()
     );
-    const isSubmitEnabled = withdrawAmount >= Number(this.data.minWithdrawAmount || 0)
+    const isSubmitEnabled = this.data.hasLoaded && !this.data.loading && !this.data.loadError
+      && !this.data.isSubmitting && needsBankInfo && validInput && actualAmount > 0
+      && withdrawAmount >= Number(this.data.minWithdrawAmount)
       && withdrawAmount <= maxWithdrawAmount
       && hasBankInfo;
 
@@ -100,6 +112,7 @@ Page({
   },
 
   chooseMethod(event) {
+    if (event.currentTarget.dataset.method !== 'bank') return;
     this.setData({ withdrawMethod: event.currentTarget.dataset.method }, () => this.refreshAmountSummary());
   },
 
@@ -109,10 +122,13 @@ Page({
   },
 
   async submitWithdraw() {
+    if (this.data.isSubmitting) return;
+    this.refreshAmountSummary();
     if (!this.data.isSubmitEnabled) {
       wx.showToast({ title: '请先完善提现信息', icon: 'none' });
       return;
     }
+    this.setData({ isSubmitting: true, isSubmitEnabled: false });
     try {
       await subscribe.requestSubscribe({ force: true, scene: 'withdraw' });
       await api.applyWithdraw(
@@ -136,6 +152,9 @@ Page({
       await this.loadPage();
     } catch (error) {
       wx.showToast({ title: (error && error.message) || '提现失败', icon: 'none' });
+    } finally {
+      this.setData({ isSubmitting: false });
+      this.refreshAmountSummary();
     }
   },
 

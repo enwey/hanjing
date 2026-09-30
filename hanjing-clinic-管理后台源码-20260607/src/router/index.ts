@@ -325,30 +325,4 @@ router.beforeEach(async (to, from, next) => {
   continueNavigation()
 })
 
-let isPrepending = false
-
-router.afterEach(async (to, from) => {
-  if (isPrepending) return
-  if (to.name === 'login') return
-  if (!from?.name || from.name === 'login') {
-    const { resolveBreadcrumbs } = await import('@/utils/routeNavigation')
-    const chain = resolveBreadcrumbs(router, to)
-    if (chain && chain.length > 1) {
-      isPrepending = true
-      try {
-        // Replace the initial landing history entry with the root of the chain
-        await router.replace(chain[0].path)
-        // Sequentially push each child route in the breadcrumb chain up to the target route
-        for (let i = 1; i < chain.length; i++) {
-          await router.push(chain[i].path)
-        }
-      } catch (err) {
-        console.error('History prepending failed:', err)
-      } finally {
-        isPrepending = false
-      }
-    }
-  }
-})
-
 export default router

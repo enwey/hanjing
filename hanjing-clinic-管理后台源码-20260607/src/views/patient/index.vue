@@ -428,7 +428,7 @@ async function handleExport() {
     const res: any = await request.get('/api/admin/patients', { params: { is_export: 1 } })
     const list = Array.isArray(res.data) ? res.data : res.data?.list || []
     
-    let filtered = list.map((item: any) => {
+    let filtered: Omit<Patient, 'ageText' | 'familyCount' | 'essText' | 'essAbnormal' | 'snoreText' | 'snoreAbnormal'>[] = list.map((item: any) => {
       const levelMap: Record<string, string> = {
         normal: '普通',
         silver: 'VIP',

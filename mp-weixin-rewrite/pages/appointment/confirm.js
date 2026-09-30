@@ -267,16 +267,10 @@ Page({
                 const payResponse = await api.payAppointmentDeposit(appointmentId);
                 const payParams = unwrapObject(payResponse);
                 wx.hideLoading();
-                if (payParams.mockPayment) {
-                  wx.showLoading({ title: '开发环境模拟支付...' });
-                  await api.confirmAppointmentPayment(appointmentId);
-                  wx.hideLoading();
-                } else {
-                  await requestWxPay(payParams);
-                  wx.showLoading({ title: '同步预约状态...' });
-                  await syncPaidAppointment(appointmentId);
-                  wx.hideLoading();
-                }
+                await requestWxPay(payParams);
+                wx.showLoading({ title: '同步预约状态...' });
+                await syncPaidAppointment(appointmentId);
+                wx.hideLoading();
                 wx.showToast({ title: '支付已提交', icon: 'success' });
                 appointmentDraftStore.clearDraft();
                 wx.removeStorageSync('pending_appointment_assessment');
@@ -300,10 +294,11 @@ Page({
             } else {
               try {
                 await api.cancelAppointment(appointmentId, '支付窗口取消');
+                wx.showToast({ title: '已取消预约', icon: 'none' });
               } catch (error) {
                 console.error('取消未支付预约失败', error);
+                wx.showToast({ title: '取消未成功，请在预约记录中确认', icon: 'none' });
               }
-              wx.showToast({ title: '已取消预约', icon: 'none' });
               setTimeout(() => {
                 wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
               }, 1000);

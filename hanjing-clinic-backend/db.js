@@ -9,6 +9,11 @@ dotenv.config({ path: join(__dirname, '.env') });
 
 let pool;
 
+export const closePool = async () => {
+  if (pool) await pool.end();
+  pool = null;
+};
+
 const formatShanghaiDateTime = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Shanghai',
@@ -33,7 +38,8 @@ export const initPool = async () => {
     database: process.env.DB_NAME || 'hanjing_clinic',
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0,
+    queueLimit: 100,
+    connectTimeout: 10000,
     timezone: '+08:00'
   });
 
@@ -99,127 +105,10 @@ export const autoUpdateExpiredAppointments = async () => {
 };
 
 export const autoSettleDistributionCommissions = async () => {
-  try {
-    const row = await get(`SELECT key_value FROM system_settings WHERE key_name = 'distribution_settle_days'`);
-    const days = parseInt(row?.key_value, 10);
-    const settleDays = Number.isInteger(days) && days >= 0 ? days : 7;
-    
-    const pendingList = await query(
-      `SELECT do.id, do.commission_amount, do.distributor_id, dist.user_id, o.order_no
-       FROM distribution_orders do
-       JOIN orders o ON o.id = do.order_id
-       JOIN distributors dist ON dist.id = do.distributor_id
-       WHERE do.status = 'pending'
-         AND o.status = 'completed'
-         AND (do.lock_until <= CURRENT_TIMESTAMP OR (do.lock_until IS NULL AND o.updated_at <= DATE_SUB(NOW(), INTERVAL ? DAY)))`,
-      [settleDays]
-    );
-
-    if (!pendingList.length) return;
-
-    const grouped = pendingList.reduce((map, item) => {
-      if (!map[item.distributor_id]) {
-        map[item.distributor_id] = { total: 0, ids: [], userId: item.user_id };
-      }
-      map[item.distributor_id].total += Number(item.commission_amount || 0);
-      map[item.distributor_id].ids.push(item.id);
-      return map;
-    }, {});
-
-    for (const [distributorId, data] of Object.entries(grouped)) {
-      const placeholders = data.ids.map(() => '?').join(',');
-      await transaction(async (conn) => {
-        await conn.execute(
-          `UPDATE distribution_orders
-           SET status = 'settled', settled_at = CURRENT_TIMESTAMP
-           WHERE id IN (${placeholders})`,
-          data.ids
-        );
-        await conn.execute(
-          `UPDATE distributors
-           SET available_commission = available_commission + ?
-           WHERE id = ?`,
-          [data.total, distributorId]
-        );
-        await conn.execute(
-          `INSERT INTO user_notifications (user_id, title, content)
-           VALUES (?, '佣金已到账', ?)`,
-          [data.userId, `您有 ${data.ids.length} 笔推广订单的佣金已结束账期锁，共计 ¥${(data.total / 100).toFixed(2)} 已到账可提现余额。`]
-        );
-      });
-    }
-    for (const [distributorId, data] of Object.entries(grouped)) {
-      setImmediate(async () => {
-        const { sendWechatSubscribeMessage } = await import('./wechatSubscribe.js');
-        await sendWechatSubscribeMessage({
-          userId: data.userId,
-          event: 'commission_settled',
-          businessId: `commission_settled:auto:${data.ids.join('-')}`,
-          page: 'pages/distribution/center/index',
-          payload: {
-            amount: `¥${(data.total / 100).toFixed(2)}`,
-            status: '已到账',
-            time: formatShanghaiDateTime(),
-            remark: `${data.ids.length}笔推广佣金已转为可提现余额`
-          }
-        });
-      });
-    }
-    console.log(`[Commission Settle] Auto-settled commissions for ${Object.keys(grouped).length} distributors.`);
-  } catch (error) {
-    console.error('[Commission Settle] Auto settlement failed:', error);
-  }
+  const { settleCommissions } = await import('./distribution-ledger.js');
+  return settleCommissions();
 };
 
-export const autoProcessRefunds = async () => {
-  try {
-    const pendingRefunds = await query(
-      `SELECT id, appointment_id, pay_amount, user_id, order_no FROM orders
-       WHERE status = 'refunding'
-         AND pay_at <= DATE_SUB(NOW(), INTERVAL 3 DAY)`
-    );
-
-    if (!pendingRefunds.length) return;
-
-    for (const order of pendingRefunds) {
-      await transaction(async (conn) => {
-        await conn.execute(
-          `UPDATE orders SET status = 'refunded', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          [order.id]
-        );
-        await conn.execute(
-          `INSERT INTO user_notifications (user_id, title, content)
-           VALUES (?, '退款成功提醒', ?)`,
-          [order.user_id, `您取消预约退回的 ¥${(order.pay_amount / 100).toFixed(2)} 已成功原路退回您的支付账户。`]
-        );
-      });
-    }
-    for (const order of pendingRefunds) {
-      setImmediate(async () => {
-        const { sendWechatSubscribeMessage } = await import('./wechatSubscribe.js');
-        const detailPage = order.appointment_id
-          ? `pages/appointment/detail/index?id=${order.appointment_id}`
-          : `pages/order/detail/index?id=${order.id}`;
-        await sendWechatSubscribeMessage({
-          userId: order.user_id,
-          event: 'refund_result',
-          businessId: `refund_success:auto:${order.id}`,
-          page: detailPage,
-          payload: {
-            orderNo: order.order_no,
-            amount: `¥${(order.pay_amount / 100).toFixed(2)}`,
-            status: '退款成功',
-            time: formatShanghaiDateTime(),
-            remark: '退款已原路退回'
-          }
-        });
-      });
-    }
-    console.log(`[Refund Processor] Auto-refunded ${pendingRefunds.length} orders.`);
-  } catch (err) {
-    console.error('[Refund Processor] Auto refund processing failed:', err);
-  }
-};
 
 // Initialize Tables
 export const initDB = async () => {
@@ -237,7 +126,11 @@ export const initDB = async () => {
   await connection.end();
 
   // 2. Initialize pool
-  await initPool();
+  if (!pool) await initPool();
+  await query(`CREATE TABLE IF NOT EXISTS private_uploads (
+    file_path VARCHAR(255) PRIMARY KEY, user_id BIGINT UNSIGNED NULL, admin_id BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_private_upload_user (user_id)
+  )`);
 
   console.log('Verifying/creating MySQL tables...');
 
@@ -526,40 +419,6 @@ export const initDB = async () => {
     // Ignore error if column already exists
   }
 
-  try {
-    await query(`ALTER TABLE appointments ADD COLUMN doctor_name VARCHAR(100) DEFAULT NULL;`);
-  } catch (err) {}
-  try {
-    await query(`ALTER TABLE appointments ADD COLUMN doctor_title VARCHAR(50) DEFAULT NULL;`);
-  } catch (err) {}
-  try {
-    await query(`ALTER TABLE appointments ADD COLUMN doctor_specialty VARCHAR(100) DEFAULT NULL;`);
-  } catch (err) {}
-  try {
-    await query(`ALTER TABLE appointments ADD COLUMN doctor_avatar VARCHAR(255) DEFAULT NULL;`);
-  } catch (err) {}
-  try {
-    await query(`ALTER TABLE appointments ADD COLUMN consult_fee INT DEFAULT 0;`);
-  } catch (err) {}
-  try {
-    await query(`ALTER TABLE appointments ADD COLUMN store_name VARCHAR(100) DEFAULT NULL;`);
-  } catch (err) {}
-
-  try {
-    await query(`
-      UPDATE appointments
-      SET
-        doctor_name = (SELECT name FROM doctors WHERE doctors.id = appointments.doctor_id),
-        doctor_title = (SELECT title FROM doctors WHERE doctors.id = appointments.doctor_id),
-        doctor_specialty = (SELECT specialty FROM doctors WHERE doctors.id = appointments.doctor_id),
-        doctor_avatar = (SELECT avatar_url FROM doctors WHERE doctors.id = appointments.doctor_id),
-        consult_fee = (SELECT consult_fee FROM doctors WHERE doctors.id = appointments.doctor_id),
-        store_name = (SELECT name FROM stores WHERE stores.id = appointments.store_id)
-      WHERE doctor_name IS NULL OR store_name IS NULL
-    `);
-  } catch (err) {
-    console.error('Failed to run appointments data migration:', err);
-  }
 
 
   // 6. doctor_store_mapping
@@ -669,6 +528,41 @@ export const initDB = async () => {
     await query(`ALTER TABLE appointments ADD COLUMN deposit_amount INT DEFAULT 0;`);
   } catch (err) {
     // ignore
+  }
+
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN doctor_name VARCHAR(100) DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN doctor_title VARCHAR(50) DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN doctor_specialty VARCHAR(100) DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN doctor_avatar VARCHAR(255) DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN consult_fee INT DEFAULT 0;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN store_name VARCHAR(100) DEFAULT NULL;`);
+  } catch (err) {}
+
+  try {
+    await query(`
+      UPDATE appointments
+      SET
+        doctor_name = (SELECT name FROM doctors WHERE doctors.id = appointments.doctor_id),
+        doctor_title = (SELECT title FROM doctors WHERE doctors.id = appointments.doctor_id),
+        doctor_specialty = (SELECT specialty FROM doctors WHERE doctors.id = appointments.doctor_id),
+        doctor_avatar = (SELECT avatar_url FROM doctors WHERE doctors.id = appointments.doctor_id),
+        consult_fee = (SELECT consult_fee FROM doctors WHERE doctors.id = appointments.doctor_id),
+        store_name = (SELECT name FROM stores WHERE stores.id = appointments.store_id)
+      WHERE doctor_name IS NULL OR store_name IS NULL
+    `);
+  } catch (err) {
+    console.error('Failed to run appointments data migration:', err);
   }
 
   // 11. medical_records
@@ -1060,16 +954,15 @@ export const initDB = async () => {
   } catch (err) {}
   try {
     await query(`ALTER TABLE products ADD COLUMN commission_rate_level1 DECIMAL(4, 2) DEFAULT 0.0 AFTER commission_rate`);
-  } catch (err) {}
-  try {
-    await query(`ALTER TABLE products ADD COLUMN commission_rate_level2 DECIMAL(4, 2) DEFAULT 0.0 AFTER commission_rate_level1`);
-  } catch (err) {}
-  try {
+    // Migrate only when introducing the column, never replace an intentional zero on restart.
     await query(`
       UPDATE products
       SET commission_rate_level1 = COALESCE(NULLIF(commission_rate_level1, 0), commission_rate, 0)
       WHERE COALESCE(commission_rate_level1, 0) = 0
     `);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE products ADD COLUMN commission_rate_level2 DECIMAL(4, 2) DEFAULT 0.0 AFTER commission_rate_level1`);
   } catch (err) {}
 
   await query(`
@@ -1325,6 +1218,22 @@ export const initDB = async () => {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+
+  const withdrawColumns = await query('SHOW COLUMNS FROM withdraw_records');
+  for (const [column, definition] of [
+    ['remark', 'TEXT NULL'],
+    ['reviewed_at', 'TIMESTAMP NULL'],
+    ['payout_reference', 'VARCHAR(120) NULL']
+  ]) {
+    if (!withdrawColumns.some(existing => existing.Field === column)) {
+      await query(`ALTER TABLE withdraw_records ADD COLUMN ${column} ${definition}`);
+    }
+  }
+  const payoutIndex = await query("SHOW INDEX FROM withdraw_records WHERE Key_name = 'uniq_withdraw_payout_reference'");
+  if (!payoutIndex.length) {
+    await query('CREATE UNIQUE INDEX uniq_withdraw_payout_reference ON withdraw_records (payout_reference)');
+  }
+  await query('ALTER TABLE withdraw_records MODIFY COLUMN account_info TEXT NOT NULL');
 
   // 25.1. points_logs
   await query(`
@@ -2027,225 +1936,10 @@ export const initDB = async () => {
     console.error('Failed to ensure expert article category:', e);
   }
 
-  // Seed sample records for new tables
+  // Business settings must be configured by an operator; startup never invents business records.
+
+  // Add empty integration settings without overwriting configured values.
   try {
-    const recordsCount = await query('SELECT count(*) as count FROM wearing_records');
-    if (recordsCount[0].count === 0) {
-      const usersList = await query('SELECT id FROM users LIMIT 5');
-      const today = new Date();
-
-      for (const u of usersList) {
-        // 1. Seed wearing records for the past 7 days
-        for (let i = 1; i <= 7; i++) {
-          const pastDate = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-          const dateStr = `${pastDate.getFullYear()}-${String(pastDate.getMonth() + 1).padStart(2, '0')}-${String(pastDate.getDate()).padStart(2, '0')}`;
-          const duration = Math.floor(400 + Math.random() * 120);
-          const comfort = Math.floor(4 + Math.random() * 2); // 4 or 5
-          const decibel = Math.floor(35 + Math.random() * 15);
-          const apnea = Math.floor(Math.random() * 3);
-
-          const s = [
-            "首次佩戴，有轻微异物感",
-            "逐渐适应，无不适",
-            "佩戴感良好，睡眠质量改善",
-            "",
-            "颞下颌关节略有酸胀",
-            "调整后舒适度提升"
-          ];
-          const note = s[i % s.length];
-
-          await query(`
-            INSERT INTO wearing_records (user_id, wearing_date, start_time, end_time, duration_mins, comfort_score, snore_decibel, apnea_events, note)
-            VALUES (?, ?, '22:30:00', '06:30:00', ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE duration_mins = VALUES(duration_mins)
-          `, [u.id, dateStr, duration, comfort, decibel, apnea, note || null]);
-        }
-
-        // 2. Seed treatment timelines
-        const dates = [
-          new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000),
-          new Date(today.getTime() - 20 * 24 * 60 * 60 * 1000),
-          new Date(today.getTime() - 15 * 24 * 60 * 60 * 1000)
-        ];
-        const timelineData = [
-          ['建立疗程档案', '针对中重度阻塞性睡眠呼吸暂停(OSAHS)及顽固打鼾设计，采用食品级高分子材质，下颌前移微调精度达0.5mm，智能监测传感器自动上传睡眠佩戴时长与质量数据。', 'visit', '王芳', '#1A9D5C', 'start'],
-          ['阻鼾器设计与制作', '定制式阻鼾器设计制作完成，型号：HJ-MAD-03。', 'milestone', '陈技师', '#3B6BF5', 'device'],
-          ['阻鼾器佩戴调试', '王医生为您完成了阻鼾器首次试戴和下颌前移量微调（初始前移：4.0mm）。', 'adjust', '王医生', '#F59E0B', 'adjust']
-        ];
-        for (let j = 0; j < dates.length; j++) {
-          const dateStr = `${dates[j].getFullYear()}-${String(dates[j].getMonth() + 1).padStart(2, '0')}-${String(dates[j].getDate()).padStart(2, '0')}`;
-          await query(`
-            INSERT INTO treatment_timelines (user_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `, [u.id, dateStr, timelineData[j][0], timelineData[j][1], timelineData[j][2], timelineData[j][3], timelineData[j][4], timelineData[j][5]]);
-        }
-
-        // 3. Seed device maintenance
-        const maintDate1 = new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000);
-        const maintDateStr1 = `${maintDate1.getFullYear()}-${String(maintDate1.getMonth() + 1).padStart(2, '0')}-${String(maintDate1.getDate()).padStart(2, '0')}`;
-        await query(`
-          INSERT INTO device_maintenance (user_id, service_date, service_type, service_store, service_operator, description, cost, status)
-          VALUES (?, ?, 'clean', '鼾静健康 · 龙岗总店', '陈技师', '首次使用后用专用清洁套装进行深度清洁', 0, 'completed')
-        `, [u.id, maintDateStr1]);
-
-        const maintDate2 = new Date(today.getTime() - 15 * 24 * 60 * 60 * 1000);
-        const maintDateStr2 = `${maintDate2.getFullYear()}-${String(maintDate2.getMonth() + 1).padStart(2, '0')}-${String(maintDate2.getDate()).padStart(2, '0')}`;
-        await query(`
-          INSERT INTO device_maintenance (user_id, service_date, service_type, service_store, service_operator, description, cost, status)
-          VALUES (?, ?, 'adjust', '鼾静健康 · 福田店', '王医生', '初次适配调整，设置前移量3mm', 0, 'completed')
-        `, [u.id, maintDateStr2]);
-
-        // 4. Seed device feedback
-        const feedDate = new Date(today.getTime() - 12 * 24 * 60 * 60 * 1000);
-        const feedDateStr = `${feedDate.getFullYear()}-${String(feedDate.getMonth() + 1).padStart(2, '0')}-${String(feedDate.getDate()).padStart(2, '0')}`;
-        await query(`
-          INSERT INTO device_feedback (user_id, feedback_type, feedback_desc, contact_phone, rating, status, reply_content, processed_at)
-          VALUES (?, ?, '佩戴后睡眠质量确实改善了，但刚戴上有轻微异物感，适应中。', '13800138001', 4, 'processed', '您好，轻微异物感是正常适应反应，通常1-2周后会逐渐减弱。如仍有不适请联系我们调整。', CURRENT_TIMESTAMP)
-        `, [u.id, '初戴微酸胀']);
-      }
-      console.log('Seeded sample wearing records, timelines, maintenance, and feedbacks.');
-    }
-  } catch (err) {
-    console.error('Failed to seed sample device data:', err);
-  }
-
-  // Ensure that all users with treatment records have seeded timeline and wearing records
-  try {
-    await query(`
-      DELETE tt
-      FROM treatment_timelines tt
-      JOIN treatment_records tr ON tr.id = tt.treatment_id
-      WHERE tr.medical_record_id IS NULL
-        AND COALESCE(NULLIF(tr.device_product_name, ''), tr.device_model) = '待适配阻鼾器'
-    `);
-  } catch (err) {
-    console.error('Failed to clear placeholder treatment timelines:', err);
-  }
-
-  try {
-    const treatmentRecordsList = await query(`
-      SELECT tr.id as treatment_id, tr.patient_id, p.user_id, tr.medical_record_id, tr.device_product_name, tr.device_model
-      FROM treatment_records tr
-      JOIN patients p ON tr.patient_id = p.id
-    `);
-    
-    const today = new Date();
-    
-    for (const tr of treatmentRecordsList) {
-      const treatmentDeviceName = String(tr.device_product_name || tr.device_model || '').trim();
-      const isPlaceholderTreatment = !tr.medical_record_id && treatmentDeviceName === '待适配阻鼾器';
-      if (isPlaceholderTreatment) {
-        continue;
-      }
-      const timelineCount = await query('SELECT COUNT(*) as count FROM treatment_timelines WHERE user_id = ? AND patient_id = ?', [tr.user_id, tr.patient_id]);
-      if (timelineCount[0].count === 0) {
-        const dates = [
-          new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000),
-          new Date(today.getTime() - 20 * 24 * 60 * 60 * 1000),
-          new Date(today.getTime() - 15 * 24 * 60 * 60 * 1000)
-        ];
-        const timelineData = [
-          ['建立疗程档案', '针对中重度阻塞性睡眠呼吸暂停(OSAHS)及顽固打鼾设计，采用食品级高分子材质，下颌前移微调精度达0.5mm，智能监测传感器自动上传睡眠佩戴时长与质量数据。', 'visit', '王芳', '#1A9D5C', 'start'],
-          ['阻鼾器设计与制作', '定制式阻鼾器设计制作完成，型号：HJ-MAD-03。', 'milestone', '陈技师', '#3B6BF5', 'device'],
-          ['阻鼾器佩戴调试', '王医生为您完成了阻鼾器首次试戴和下颌前移量微调（初始前移：4.0mm）。', 'adjust', '王医生', '#F59E0B', 'adjust']
-        ];
-        for (let j = 0; j < dates.length; j++) {
-          const dateStr = `${dates[j].getFullYear()}-${String(dates[j].getMonth() + 1).padStart(2, '0')}-${String(dates[j].getDate()).padStart(2, '0')}`;
-          await query(`
-            INSERT INTO treatment_timelines (user_id, patient_id, treatment_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `, [tr.user_id, tr.patient_id, tr.treatment_id, dateStr, timelineData[j][0], timelineData[j][1], timelineData[j][2], timelineData[j][3], timelineData[j][4], timelineData[j][5]]);
-        }
-      }
-      
-      const wearingCount = await query('SELECT COUNT(*) as count FROM wearing_records WHERE user_id = ?', [tr.user_id]);
-      if (wearingCount[0].count === 0) {
-        for (let i = 1; i <= 7; i++) {
-          const pastDate = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-          const dateStr = `${pastDate.getFullYear()}-${String(pastDate.getMonth() + 1).padStart(2, '0')}-${String(pastDate.getDate()).padStart(2, '0')}`;
-          const duration = Math.floor(400 + Math.random() * 120);
-          const comfort = Math.floor(4 + Math.random() * 2);
-          const decibel = Math.floor(35 + Math.random() * 15);
-          const apnea = Math.floor(Math.random() * 3);
-          const s = [
-            "首次佩戴，有轻微异物感",
-            "逐渐适应，无不适",
-            "佩戴感良好，睡眠质量改善",
-            "",
-            "颞下颌关节略有酸胀",
-            "调整后舒适度提升"
-          ];
-          const note = s[i % s.length];
-
-          await query(`
-            INSERT INTO wearing_records (user_id, wearing_date, start_time, end_time, duration_mins, comfort_score, snore_decibel, apnea_events, note)
-            VALUES (?, ?, '22:30:00', '06:30:00', ?, ?, ?, ?, ?)
-          `, [tr.user_id, dateStr, duration, comfort, decibel, apnea, note || null]);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Failed to auto-seed timelines for active treatment records:', err);
-  }
-
-  // Seed default system settings
-  try {
-    const settingsCount = await query('SELECT count(*) as count FROM system_settings');
-    if (settingsCount[0].count === 0) {
-      await query(`
-        INSERT INTO system_settings (key_name, key_value, description)
-        VALUES
-          ('booking_advance_days', '7', '预约提前天数'),
-          ('booking_hours', '08:30 - 18:00', '每日可约时段'),
-          ('booking_interval', '30', '时段间隔（分钟）'),
-          ('booking_cancel_limit', '就诊前2小时', '取消预约截止时间'),
-          ('allow_self_booking', 'true', '允许患者自助预约'),
-          ('require_deposit', 'false', '预约需支付定金'),
-          ('deposit_amount', '5000', '定金金额（分）'),
-          ('appointment_subscribe_template_ids', '', '预约订阅消息模板ID，多个用英文逗号分隔'),
-          ('commission1', '15', '一级佣金比例'),
-          ('commission2', '5', '二级佣金比例'),
-          ('distribution_settle_days', '14', '分销佣金结算天数'),
-          ('min_withdraw', '100', '最低提现金额'),
-          ('withdraw_fee_rate', '0.2', '提现手续费率'),
-          ('enable_distribution', 'true', '开启分销功能'),
-          ('auto_approve_withdraw', 'false', '自动审核提现'),
-          ('notify_new_booking', 'true', '开启新预约通知'),
-          ('notify_withdraw_apply', 'true', '开启提现申请通知'),
-          ('notify_visit_reminder', 'true', '开启就诊提醒通知'),
-          ('notify_revisit_reminder', 'true', '开启复诊提醒通知')
-      `);
-      console.log('Default system settings seeded.');
-    }
-    await query(`
-      INSERT IGNORE INTO system_settings (key_name, key_value, description)
-      VALUES ('distribution_settle_days', '14', '分销佣金结算天数')
-    `);
-  } catch (err) {
-    console.error('Failed to seed system settings:', err);
-  }
-
-  // Ensure default products 1-7 exist for cashier checkout flows
-  try {
-    await query(`
-      INSERT INTO products (id, name, category, image_url, price, original_price, description, stock, sales_count, status)
-      VALUES
-        (1, '定制式可调舌型阻鼾器 HJ-MAD-03', 'device', '/static/product/hj-mad-03.png', 298000, 368000, '针对中轻度阻塞性睡眠呼吸暂停(OSAHS)及顽固打鼾设计，采用食品级高分子材质，下颌前移微调精度达0.5mm，智能监测传感器自动上传睡眠佩戴时长与质量数据。', 120, 58, 'on'),
-        (2, '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', 'accessory', '/static/product/pillow.png', 4900, 6900, '专为阻鼾器高分子材料研发 of 温和除菌清洁片。能有效杀灭99.9%的口腔常见细菌，防止异味积聚，不损伤阻鼾器金属调节螺丝与树脂基托。', 800, 340, 'on'),
-        (3, '鼾静智能阻鼾舒眠记忆枕', 'accessory', '/static/product/pillow.png', 29900, 39900, '人体工学设计，智能控温与防鼾姿势引导，提升整晚睡眠舒适度与深睡比例。', 150, 85, 'on'),
-        (4, '诊所首诊挂号门诊费', 'service', '', 20000, 20000, '挂号门诊费，包含初次就诊及基础筛查服务。', 99999, 1200, 'on'),
-        (5, '诊所专家诊断评估费', 'service', '', 50000, 50000, '专家诊断评估费，包含专家一对一问诊及阻鼾器物理适配评估。', 99999, 650, 'on'),
-        (6, '专业睡眠呼吸多导初筛服务套餐', 'service', '', 19900, 29900, '包含一次线上睡眠嗜睡问卷评估、三晚鼾声监测报告、以及一次门诊专家面对面的物理阻鼾器适应性筛查与出诊挂号费用。', 9999, 125, 'on'),
-        (7, '快递运费', 'service', '', 1500, 1500, '顺丰快递或挂号邮寄服务费。', 99999, 500, 'on'),
-        (8, '就诊预约定金', 'service', '', 20000, 20000, '就诊预约定金。', 99999, 100, 'on')
-      ON DUPLICATE KEY UPDATE
-        name = VALUES(name),
-        category = VALUES(category),
-        price = VALUES(price),
-        original_price = VALUES(original_price),
-        status = VALUES(status)
-    `);
-    console.log('Ensured products 1-7 exist in database.');
     await query(`
       INSERT IGNORE INTO system_settings (key_name, key_value, description)
       VALUES
@@ -2272,67 +1966,9 @@ export const initDB = async () => {
         ('wechat_pay_platform_cert', '', '微信支付平台证书或证书文件路径')
     `);
   } catch (err) {
-    console.error('Failed to ensure default products exist:', err);
+    console.error('Failed to initialize empty integration settings:', err);
   }
 
-  try {
-    await query(`
-      UPDATE products
-      SET is_distribution = CASE id
-          WHEN 1 THEN 1
-          WHEN 2 THEN 1
-          WHEN 3 THEN 1
-          WHEN 6 THEN 1
-          ELSE is_distribution
-        END,
-        commission_rate = CASE id
-          WHEN 1 THEN 12.00
-          WHEN 2 THEN 10.00
-          WHEN 3 THEN 8.00
-          WHEN 6 THEN 6.00
-          ELSE commission_rate
-        END
-      WHERE id IN (1, 2, 3, 6)
-        AND status = 'on'
-    `);
-    console.log('Ensured default distribution products are enabled.');
-  } catch (err) {
-    console.error('Failed to ensure default distribution products:', err);
-  }
-
-  try {
-    await query(`
-      UPDATE products
-      SET image_url = '',
-          gallery_urls = NULL
-      WHERE image_url = '/static/product/screening.png'
-        AND category = 'service'
-    `);
-    console.log('Removed placeholder service product images.');
-  } catch (err) {
-    console.error('Failed to remove placeholder service product images:', err);
-  }
-
-  // Seed Coupons
-  try {
-    await query(`
-      INSERT INTO coupons (id, title, type, value, min_spend, status, valid_start, valid_end)
-      VALUES
-        (1, '打鼾初筛专属50元券', 'cash', 5000, 10000, 'active', '2026-01-01', '2028-12-31'),
-        (2, '阻鼾清洁泡腾片10元券', 'cash', 1000, 2000, 'active', '2026-01-01', '2028-12-31'),
-        (3, '门诊挂号立减30元券', 'cash', 3000, 5000, 'active', '2026-01-01', '2028-12-31'),
-        (4, '黄金会员专享100元券', 'cash', 10000, 20000, 'active', '2026-01-01', '2028-12-31')
-      ON DUPLICATE KEY UPDATE
-        title = VALUES(title),
-        type = VALUES(type),
-        value = VALUES(value),
-        min_spend = VALUES(min_spend),
-        status = VALUES(status)
-    `);
-    console.log('Ensured default coupons exist in database.');
-  } catch (err) {
-    console.error('Failed to ensure default coupons exist:', err);
-  }
 
   // Create High Performance Secondary Indexes
   try {

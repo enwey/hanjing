@@ -22,8 +22,14 @@ async function syncPendingSnoreRecordings() {
     return;
   }
 
+  const sessionStore = require('../../stores/session-store');
+  const profile = await sessionStore.fetchProfile();
+  if (!profile || !profile.id) return;
+  const token = sessionStore.getAccessToken();
   const remaining = [];
   for (const item of pending) {
+    if (sessionStore.getAccessToken() !== token) return;
+    if (!item.ownerUserId || String(item.ownerUserId) !== String(profile.id)) continue;
     try {
       await submitSnoreRecording(item);
     } catch (error) {
@@ -31,7 +37,9 @@ async function syncPendingSnoreRecordings() {
     }
   }
 
+  if (sessionStore.getAccessToken() !== token) throw new Error('账号已切换，请重新同步');
   wx.setStorageSync('pending_snore_uploads', remaining);
+  if (remaining.length) throw new Error('仍有' + remaining.length + '份报告未同步成功，请稍后重试');
 }
 
 function getSnoreAnalysis(assessmentId) {

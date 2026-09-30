@@ -1,105 +1,27 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
 const router = useRouter()
-const loginType = ref('password') // password, sms
-
-const loginForm = ref({
-  account: '',
-  password: '',
-  phone: '',
-  smsCode: ''
-})
-
-const countdown = ref(0)
-const isSending = ref(false)
-
-const rules = computed(() => {
-  if (loginType.value === 'password') {
-    return {
-      account: [{ required: true, message: '请输入管理员账号', type: 'error', trigger: 'submit' }],
-      password: [{ required: true, message: '请输入密码', type: 'error', trigger: 'submit' }]
-    }
-  } else {
-    return {
-      phone: [
-        { required: true, message: '请输入手机号', type: 'error', trigger: 'submit' },
-        { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', type: 'error', trigger: 'submit' }
-      ],
-      smsCode: [{ required: true, message: '请输入验证码', type: 'error', trigger: 'submit' }]
-    }
-  }
-})
-
-async function sendSms() {
-  if (!loginForm.value.phone) {
-    MessagePlugin.warning('请输入手机号')
-    return
-  }
-  if (!/^1[3-9]\d{9}$/.test(loginForm.value.phone)) {
-    MessagePlugin.warning('请输入正确的手机号格式')
-    return
-  }
-  try {
-    const res: any = await request.post('/api/admin/send-code', {
-      phone: loginForm.value.phone
-    })
-    isSending.value = true
-    countdown.value = 60
-
-    if (res.data && res.data.code) {
-      loginForm.value.smsCode = res.data.code
-      MessagePlugin.success(`验证码已发送并自动填入：${res.data.code}`)
-    } else {
-      MessagePlugin.success('验证码已发送，请注意查收')
-    }
-
-    const timer = setInterval(() => {
-      countdown.value--
-      if (countdown.value <= 0) {
-        clearInterval(timer)
-        isSending.value = false
-      }
-    }, 1000)
-  } catch (err) {
-    // 错误由 axios 响应拦截器统一处理
-  }
+const loginForm = ref({ account: '', password: '' })
+const rules = {
+  account: [{ required: true, message: '请输入管理员账号', type: 'error', trigger: 'submit' }],
+  password: [{ required: true, message: '请输入密码', type: 'error', trigger: 'submit' }]
 }
-
 async function handleLogin({ validateResult }: any) {
-  if (validateResult !== true) {
-    return
-  }
-  
-  if (loginType.value === 'password') {
-    try {
-      const res: any = await request.post('/api/admin/login', {
-        username: loginForm.value.account,
-        password: loginForm.value.password
-      })
-      localStorage.setItem('auth_token', res.data.token)
-      localStorage.setItem('user_info', JSON.stringify(res.data.user))
-      MessagePlugin.success('登录成功！欢迎访问鼾静健康诊所管理后台')
-      router.push('/dashboard')
-    } catch (err) {
-      // 错误由 axios 响应拦截器统一处理并展示
-    }
-  } else {
-    try {
-      const res: any = await request.post('/api/admin/sms-login', {
-        phone: loginForm.value.phone,
-        smsCode: loginForm.value.smsCode
-      })
-      localStorage.setItem('auth_token', res.data.token)
-      localStorage.setItem('user_info', JSON.stringify(res.data.user))
-      MessagePlugin.success('登录成功！欢迎访问鼾静健康诊所管理后台')
-      router.push('/dashboard')
-    } catch (err) {
-      // 错误由 axios 响应拦截器统一处理并展示
-    }
+  if (validateResult !== true) return
+  try {
+    const res: any = await request.post('/api/admin/login', {
+      username: loginForm.value.account, password: loginForm.value.password
+    })
+    localStorage.setItem('auth_token', res.data.token)
+    localStorage.setItem('user_info', JSON.stringify(res.data.user))
+    MessagePlugin.success('登录成功')
+    router.push('/dashboard')
+  } catch {
+    // The response interceptor displays authentication errors.
   }
 }
 </script>
@@ -126,7 +48,7 @@ async function handleLogin({ validateResult }: any) {
 
       <t-form :data="loginForm" :rules="rules" label-width="0" @submit="handleLogin">
         <!-- Password Login Form -->
-        <template v-if="loginType === 'password'">
+        <template v-if="true">
           <t-form-item name="account">
             <t-input v-model="loginForm.account" placeholder="请输入管理员账号" size="large">
               <template #prefix-icon>
@@ -147,30 +69,6 @@ async function handleLogin({ validateResult }: any) {
                 </svg>
               </template>
             </t-input>
-          </t-form-item>
-        </template>
-
-        <!-- SMS Login Form -->
-        <template v-else>
-          <t-form-item name="phone">
-            <t-input v-model="loginForm.phone" placeholder="请输入管理员手机号">
-              <template #prefix-icon>
-                <AppIcon name="mobile" :size="16" style="color: #64748B;" />
-              </template>
-            </t-input>
-          </t-form-item>
-
-          <t-form-item name="smsCode" style="margin-top: 16px;">
-            <div style="display: flex; gap: 8px; width: 100%;">
-              <t-input v-model="loginForm.smsCode" placeholder="验证码" style="flex: 1;">
-                <template #prefix-icon>
-                  <AppIcon name="shield" :size="16" style="color: #64748B;" />
-                </template>
-              </t-input>
-              <t-button variant="outline" :disabled="isSending" style="width: 120px;" @click="sendSms">
-                {{ isSending ? `${countdown}s` : '获取验证码' }}
-              </t-button>
-            </div>
           </t-form-item>
         </template>
 

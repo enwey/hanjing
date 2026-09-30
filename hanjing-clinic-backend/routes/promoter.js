@@ -1,5 +1,7 @@
 import express from 'express';
+import { createAsyncRouter } from '../async-router.js';
 import jwt from 'jsonwebtoken';
+import { publicWithdrawAccount, withdrawStatus, readCommissionLedger } from '../distribution-ledger.js';
 import { get, query, run, transaction } from '../db.js';
 import {
   JWT_SECRET,
@@ -11,13 +13,7 @@ import {
   verifyPassword
 } from '../helpers.js';
 
-const app = express.Router();
-const smsCodes = new Map(); // phone -> { code, expires }
-const DEFAULT_DISTRIBUTION_SETTLE_DAYS = 7;
-const DISTRIBUTION_MIN_WITHDRAW_AMOUNT = 10000;
-const DISTRIBUTION_BANK_FEE_RATE = 0.01;
-const nodeEnv = String(process.env.NODE_ENV || '').trim().toLowerCase();
-const shouldExposeSmsCode = nodeEnv !== 'production';
+const app = createAsyncRouter();
 
 function getDistributorLevelRule(level) {
   const rules = {
@@ -55,40 +51,7 @@ function getPromoterPatientProgressStage(item) {
   return { code: 'registered', label: '已登记' };
 }
 
-async function getDistributionSettleDays() {
-  const row = await get(`SELECT key_value FROM system_settings WHERE key_name = 'distribution_settle_days'`);
-  const days = parseInt(row?.key_value, 10);
-  if (!Number.isInteger(days) || days < 0) {
-    return DEFAULT_DISTRIBUTION_SETTLE_DAYS;
-  }
-  return days;
-}
-
-async function getDistributionFeatureConfig() {
-  const [settleDays, enableDistributionRow, minWithdrawRow, withdrawFeeRateRow] = await Promise.all([
-    getDistributionSettleDays(),
-    get(`SELECT key_value FROM system_settings WHERE key_name = 'enable_distribution'`),
-    get(`SELECT key_value FROM system_settings WHERE key_name = 'min_withdraw'`),
-    get(`SELECT key_value FROM system_settings WHERE key_name = 'withdraw_fee_rate'`)
-  ]);
-  const minWithdrawYuan = Number(minWithdrawRow?.key_value);
-  const withdrawFeeRatePercent = Number(withdrawFeeRateRow?.key_value);
-  const minWithdrawAmount = Number.isFinite(minWithdrawYuan) && minWithdrawYuan >= 0
-    ? Math.round(minWithdrawYuan * 100)
-    : DISTRIBUTION_MIN_WITHDRAW_AMOUNT;
-  const bankWithdrawFeeRate = Number.isFinite(withdrawFeeRatePercent) && withdrawFeeRatePercent >= 0
-    ? withdrawFeeRatePercent / 100
-    : DISTRIBUTION_BANK_FEE_RATE;
-  return {
-    settleDays,
-    enableDistribution: String(enableDistributionRow?.key_value || 'true') !== 'false',
-    minWithdrawAmount,
-    withdrawFeeRates: {
-      wechat: 0,
-      bank: bankWithdrawFeeRate
-    }
-  };
-}
+const getDistributionFeatureConfig = async () => (await import('../distribution-ledger.js')).getDistributionFeatureConfig();
 
 async function getDistributionWithdrawRecordList(userId) {
   const list = await query(
@@ -100,63 +63,16 @@ async function getDistributionWithdrawRecordList(userId) {
     amount: item.amount,
     fee: item.fee,
     actualAmount: item.actual_amount,
-    accountInfo: (() => {
-      try {
-        return typeof item.account_info === 'string' ? JSON.parse(item.account_info) : item.account_info;
-      } catch {
-        return { label: item.account_info };
-      }
-    })(),
-    status: item.status === 'success' || item.status === 'completed'
-      ? 'approved'
-      : item.status === 'failed'
-        ? 'rejected'
-        : item.status,
+    accountInfo: publicWithdrawAccount(item.account_info),
+    status: withdrawStatus(item.status),
     createdAt: item.created_at,
     completedAt: item.completed_at
   }));
 }
 
-async function settleEligibleDistributionCommissionsByPromoter(userId, promoterId) {
-  const settleDays = await getDistributionSettleDays();
-  const pendingList = await query(
-    `SELECT do.id, do.commission_amount
-       FROM distribution_orders do
-       JOIN orders o ON o.id = do.order_id
-       WHERE do.distributor_id = ?
-         AND do.status = 'pending'
-         AND o.status = 'completed'
-         AND (do.lock_until <= CURRENT_TIMESTAMP OR (do.lock_until IS NULL AND o.updated_at <= DATE_SUB(NOW(), INTERVAL ${settleDays} DAY)))`,
-    [promoterId]
-  );
-
-  if (!pendingList.length) return 0;
-
-  const total = pendingList.reduce((sum, item) => sum + Number(item.commission_amount || 0), 0);
-  const ids = pendingList.map((item) => item.id);
-  const placeholders = ids.map(() => '?').join(',');
-
-  await transaction(async (conn) => {
-    await conn.execute(
-      `UPDATE distribution_orders
-       SET status = 'settled', settled_at = CURRENT_TIMESTAMP
-       WHERE id IN (${placeholders})`,
-      ids
-    );
-    await conn.execute(
-      `UPDATE distributors
-       SET available_commission = available_commission + ?
-       WHERE id = ?`,
-      [total, promoterId]
-    );
-    await conn.execute(
-      `INSERT INTO user_notifications (user_id, title, content)
-       VALUES (?, '佣金已结算', ?)`,
-      [userId, `您有 ¥${(total / 100).toFixed(2)} 的推广佣金已转为可提现余额。`]
-    );
-  });
-
-  return total;
+async function settleEligibleDistributionCommissionsByPromoter(userId) {
+  const { settleCommissions } = await import('../distribution-ledger.js');
+  return settleCommissions(userId);
 }
 
 async function getPromoterByPhone(phone) {
@@ -190,7 +106,10 @@ async function getPromoterSummary(context) {
   const userId = context.user_id;
   const promoterId = context.promoter_id;
   await settleEligibleDistributionCommissionsByPromoter(userId, promoterId);
+  context = await getPromoterContext(userId);
   const featureConfig = await getDistributionFeatureConfig();
+
+  const ledger = await transaction((conn) => readCommissionLedger(conn, promoterId, userId));
 
   const [lv1, lv2, orderStats, pendingStats] = await Promise.all([
     get(`SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 1`, [userId]),
@@ -228,10 +147,14 @@ async function getPromoterSummary(context) {
       totalInvites: Number(lv1?.count || 0) + Number(lv2?.count || 0),
       totalOrders: Number(orderStats?.total_orders || 0),
       totalSales: Number(orderStats?.total_sales || 0),
-      availableCommission: Number(context.available_commission || 0),
-      totalCommission: Number(context.total_commission || 0),
-      withdrawnAmount: Number(context.withdrawn_amount || 0),
-      frozenCommission: Number(pendingStats?.frozen_commission || 0),
+      availableCommission: ledger.available,
+      totalCommission: ledger.total,
+      withdrawnAmount: ledger.withdrawn,
+      frozenCommission: ledger.frozen,
+      pendingWithdrawAmount: ledger.reserved,
+      reconciliationRequired: ledger.available !== Number(context.available_commission || 0)
+        || ledger.total !== Number(context.total_commission || 0)
+        || ledger.withdrawn !== Number(context.withdrawn_amount || 0),
       settleDays: featureConfig.settleDays,
       minWithdrawAmount: featureConfig.minWithdrawAmount,
       withdrawFeeRates: featureConfig.withdrawFeeRates
@@ -253,20 +176,7 @@ app.post('/api/promoter/send-code', async (req, res) => {
     return res.status(403).json({ code: 403, message: '该推广员账号已停用，请联系运营人员' });
   }
 
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  smsCodes.set(phone, { code, expires: Date.now() + 5 * 60 * 1000 });
-  console.log(`[Promoter SMS] Verification code for ${phone} is: ${code}`);
-
-  const payload = {
-    code: 200,
-    message: shouldExposeSmsCode ? '验证码发送成功（开发环境已直接返回）' : '验证码发送成功',
-    data: {}
-  };
-  if (shouldExposeSmsCode) {
-    payload.data.code = code;
-  }
-
-  res.json(payload);
+  res.status(503).json({ code: 503, message: '短信服务尚未接入，请使用账号密码登录' });
 });
 
 app.post('/api/promoter/login', async (req, res) => {
@@ -397,7 +307,8 @@ app.put('/api/promoter/password', authenticatePromoterToken, async (req, res) =>
   }
 });
 
-app.get('/api/promoter/dashboard', authenticatePromoterToken, async (req, res) => {
+app.get('/api/promoter/dashboard', authenticatePromoterToken, async (req, res, next) => {
+  try {
   const context = await getPromoterContext(req.user.user_id);
   if (!context) {
     return res.status(404).json({ code: 404, message: '推广员账号不存在' });
@@ -428,6 +339,9 @@ app.get('/api/promoter/dashboard', authenticatePromoterToken, async (req, res) =
       recentCommissions
     }
   });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get('/api/promoter/team', authenticatePromoterToken, async (req, res) => {
@@ -559,7 +473,7 @@ app.get('/api/promoter/patients', authenticatePromoterToken, async (req, res) =>
             promoted.relation_level,
             (SELECT COUNT(*) FROM appointments a WHERE a.patient_id = p.id AND a.status NOT IN ('cancelled', 'no_show')) as appointment_count,
             (SELECT COUNT(*) FROM appointments a WHERE a.patient_id = p.id AND a.status IN ('completed', 'arrived', 'settled', 'checked_in')) as completed_visit_count,
-            (SELECT MAX(a.appointment_date) FROM appointments a WHERE a.patient_id = p.id AND a.status NOT IN ('cancelled', 'no_show')) as last_visit,
+            (SELECT MAX(a.appointment_date) FROM appointments a WHERE a.patient_id = p.id AND a.status IN ('completed', 'arrived', 'settled', 'checked_in')) as last_visit,
             (SELECT a.appointment_date FROM appointments a WHERE a.patient_id = p.id ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC LIMIT 1) as latest_appointment_date,
             (SELECT a.appointment_time FROM appointments a WHERE a.patient_id = p.id ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC LIMIT 1) as latest_appointment_time,
             (SELECT a.status FROM appointments a WHERE a.patient_id = p.id ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC LIMIT 1) as latest_appointment_status,
@@ -570,8 +484,8 @@ app.get('/api/promoter/patients', authenticatePromoterToken, async (req, res) =>
             (SELECT tr.start_date FROM treatment_records tr WHERE tr.patient_id = p.id ORDER BY FIELD(tr.status, 'active', 'paused', 'completed'), tr.start_date DESC, tr.id DESC LIMIT 1) as treatment_start_date,
             (SELECT tr.next_adjust_date FROM treatment_records tr WHERE tr.patient_id = p.id ORDER BY FIELD(tr.status, 'active', 'paused', 'completed'), tr.start_date DESC, tr.id DESC LIMIT 1) as next_adjust_date,
             (SELECT tr.device_product_name FROM treatment_records tr WHERE tr.patient_id = p.id ORDER BY FIELD(tr.status, 'active', 'paused', 'completed'), tr.start_date DESC, tr.id DESC LIMIT 1) as device_name,
-            (SELECT COUNT(*) FROM orders o WHERE o.user_id = p.user_id AND o.status NOT IN ('cancelled', 'refunded')) as order_count,
-            (SELECT COALESCE(SUM(o.pay_amount), 0) FROM orders o WHERE o.user_id = p.user_id AND o.status NOT IN ('cancelled', 'refunded')) as paid_amount
+            (SELECT COUNT(*) FROM orders o WHERE o.user_id = p.user_id AND o.pay_at IS NOT NULL AND o.status IN ('paid','processing','shipping','shipped','delivered','completed')) as order_count,
+            (SELECT COALESCE(SUM(o.pay_amount), 0) FROM orders o WHERE o.user_id = p.user_id AND o.pay_at IS NOT NULL AND o.status IN ('paid','processing','shipping','shipped','delivered','completed')) as paid_amount
      FROM (
        SELECT user_id, MIN(relation_level) as relation_level
        FROM (
@@ -681,7 +595,7 @@ app.get('/api/promoter/patients/:id', authenticatePromoterToken, async (req, res
               GROUP_CONCAT(oi.product_name SEPARATOR '、') as product_names
        FROM orders o
        LEFT JOIN order_items oi ON oi.order_id = o.id
-       WHERE o.user_id = ? AND o.status NOT IN ('cancelled', 'refunded')
+       WHERE o.user_id = ? AND o.pay_at IS NOT NULL AND o.status IN ('paid','processing','shipping','shipped','delivered','completed')
        GROUP BY o.id
        ORDER BY o.created_at DESC`,
       [patient.user_id]
@@ -714,7 +628,7 @@ app.get('/api/promoter/patients/:id', authenticatePromoterToken, async (req, res
     get(
       `SELECT COALESCE(SUM(pay_amount), 0) as total_spent
        FROM orders
-       WHERE user_id = ? AND status IN ('paid', 'processing', 'shipping', 'shipped', 'delivered', 'completed')`,
+       WHERE user_id = ? AND pay_at IS NOT NULL AND status IN ('paid', 'processing', 'shipping', 'shipped', 'delivered', 'completed')`,
       [patient.user_id]
     )
   ]);
