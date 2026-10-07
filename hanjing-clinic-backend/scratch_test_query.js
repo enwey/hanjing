@@ -37,33 +37,6 @@ async function runTest() {
         console.log(`Successfully seeded default treatment timelines for user ${tr.user_id}, patient ${tr.patient_id}`);
       }
       
-      const wearingCount = await query('SELECT COUNT(*) as count FROM wearing_records WHERE user_id = ?', [tr.user_id]);
-      console.log(`User ${tr.user_id} has ${wearingCount[0].count} wearing records.`);
-      if (wearingCount[0].count === 0) {
-        for (let i = 1; i <= 7; i++) {
-          const pastDate = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-          const dateStr = `${pastDate.getFullYear()}-${String(pastDate.getMonth() + 1).padStart(2, '0')}-${String(pastDate.getDate()).padStart(2, '0')}`;
-          const duration = Math.floor(400 + Math.random() * 120);
-          const comfort = Math.floor(4 + Math.random() * 2); // 4 or 5
-          const decibel = Math.floor(35 + Math.random() * 15);
-          const apnea = Math.floor(Math.random() * 3);
-          const s = [
-            "首次佩戴，有轻微异物感",
-            "逐渐适应，无不适",
-            "佩戴感良好，睡眠质量改善",
-            "",
-            "颞下颌关节略有酸胀",
-            "调整后舒适度提升"
-          ];
-          const note = s[i % s.length];
-
-          await query(`
-            INSERT INTO wearing_records (user_id, wearing_date, start_time, end_time, duration_mins, comfort_score, snore_decibel, apnea_events, note)
-            VALUES (?, ?, '22:30:00', '06:30:00', ?, ?, ?, ?, ?)
-          `, [tr.user_id, dateStr, duration, comfort, decibel, apnea, note || null]);
-        }
-        console.log(`Successfully seeded default wearing records for user ${tr.user_id}`);
-      }
     }
   } catch (err) {
     console.error('Failed to query or seed:', err);

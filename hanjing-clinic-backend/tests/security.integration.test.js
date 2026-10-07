@@ -91,11 +91,11 @@ test('launch security and payment boundaries', async t => {
       }
     });
     await t.test('current store and resource permissions protect conversations', async () => {
-      assert.equal(await helpers.verifyPatientAccess(2, { role: 'receptionist', store_id: null }), false);
+      assert.equal(await helpers.verifyPatientAccess(2, { role: 'receptionist', store_ids: [] }), false);
       await control.query("INSERT INTO permissions(role_id,permission_resource) VALUES(1,'patient:view'),(1,'patient:edit')");
       await control.query("INSERT INTO im_messages(patient_id,sender,sender_name,text,is_read) VALUES(2,'patient','Fixture','Private fixture',0)");
       assert.equal((await api('/api/admin/im/messages?patient_id=2', undefined, staff)).status, 403);
-      await control.query('UPDATE admin_users SET store_id=99 WHERE id=1');
+      await control.query('DELETE FROM admin_user_stores WHERE admin_user_id=1');
       assert.equal((await api('/api/admin/im/messages?patient_id=2', undefined, staff)).status, 404);
       assert.equal((await api('/api/admin/im/send', { patient_id: 2, text: 'Tamper' }, staff)).status, 404);
       assert.equal((await api('/api/admin/im/messages?patient_id=2', undefined, superToken)).status, 200);

@@ -100,13 +100,15 @@ export const seedData = async () => {
   // 4. Admin Users
   const passwordHash = crypto.createHash('sha256').update('admin123').digest('hex');
   await run(
-    `INSERT INTO admin_users (username, password_hash, name, phone, role_id, store_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ['admin', passwordHash, '系统管理员', '13888888888', superAdminRoleId, null, 'online']
+    `INSERT INTO admin_users (username, password_hash, name, phone, role_id, status) VALUES (?, ?, ?, ?, ?, ?)`,
+    ['admin', passwordHash, '系统管理员', '13888888888', superAdminRoleId, 'online']
   );
   await run(
-    `INSERT INTO admin_users (username, password_hash, name, phone, role_id, store_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ['lg_mgr', passwordHash, '龙岗店长', '13999999999', storeMgrRoleId, store1.id, 'online']
+    `INSERT INTO admin_users (username, password_hash, name, phone, role_id, status) VALUES (?, ?, ?, ?, ?, ?)`,
+    ['lg_mgr', passwordHash, '龙岗店长', '13999999999', storeMgrRoleId, 'online']
   );
+  const [lgMgr] = await query(`SELECT id FROM admin_users WHERE username = 'lg_mgr'`);
+  await run(`INSERT INTO admin_user_stores (admin_user_id, store_id) VALUES (?, ?)`, [lgMgr.id, store1.id]);
 
   // 5. Doctors
   const doc1 = await run(
@@ -177,16 +179,16 @@ export const seedData = async () => {
 
   // 6. Users & Patients
   const user1 = await run(
-    `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ['openid_user_1', '微信用户-张华', '13800138001', '/static/demo/avatar.jpg', 'gold', 1500, 298000]
+    `INSERT INTO users (openid, nickname, phone, avatar_url, points) VALUES (?, ?, ?, ?, ?)`,
+    ['openid_user_1', '微信用户-张华', '13800138001', '/static/demo/avatar.jpg', 1500]
   );
   const user2 = await run(
-    `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ['openid_user_2', '微信用户-李明', '13900139002', null, 'normal', 0, 0]
+    `INSERT INTO users (openid, nickname, phone, avatar_url, points) VALUES (?, ?, ?, ?, ?)`,
+    ['openid_user_2', '微信用户-李明', '13900139002', null, 0]
   );
   const user3 = await run(
-    `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ['openid_user_3', '微信用户-王芳', '13700137003', null, 'silver', 490, 4900]
+    `INSERT INTO users (openid, nickname, phone, avatar_url, points) VALUES (?, ?, ?, ?, ?)`,
+    ['openid_user_3', '微信用户-王芳', '13700137003', null, 490]
   );
 
   const patient1 = await run(
@@ -228,6 +230,7 @@ export const seedData = async () => {
     );
     schedIds.push(s1.id, s2.id, s3.id, s4.id);
   }
+  const [doc1MorningScheduleId, doc1AfternoonScheduleId, doc2MorningScheduleId, doc3AfternoonScheduleId] = schedIds;
 
   // 8. Assessments (ESS and Snore)
   const ess1 = await run(
@@ -265,7 +268,7 @@ export const seedData = async () => {
       patient1.id,
       store1.id,
       doc1.id,
-      1, // First schedule created above
+      doc1MorningScheduleId,
       '2026-05-29',
       '09:00 - 09:30',
       'first',
@@ -285,7 +288,7 @@ export const seedData = async () => {
       patient3.id,
       store1.id,
       doc2.id,
-      3, // Third schedule
+      doc2MorningScheduleId,
       '2026-05-29',
       '10:30 - 11:00',
       'first',
@@ -303,7 +306,7 @@ export const seedData = async () => {
       patient1.id,
       store1.id,
       doc1.id,
-      2,
+      doc1AfternoonScheduleId,
       '2026-05-30',
       '14:30 - 15:00',
       'followup',
@@ -364,11 +367,11 @@ export const seedData = async () => {
 
   // 12. Follow Up Tasks
   const fut1 = await run(
-    `INSERT INTO follow_up_tasks (patient_id, doctor_id, title, description, due_date, status)
+    `INSERT INTO follow_up_tasks (patient_id, follower_id, title, description, due_date, status)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [
       patient1.id,
-      doc1.id,
+      lgMgr.id,
       '首周佩戴适应性随访',
       '致电确认患者收到阻鼾器后，配戴第一周的牙齿酸胀及口水分泌情况，排查是否有严重的颞下颌关节不适。',
       '2026-06-05',
@@ -376,11 +379,11 @@ export const seedData = async () => {
     ]
   );
   const fut2 = await run(
-    `INSERT INTO follow_up_tasks (patient_id, doctor_id, title, description, due_date, status)
+    `INSERT INTO follow_up_tasks (patient_id, follower_id, title, description, due_date, status)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [
       patient1.id,
-      doc1.id,
+      lgMgr.id,
       '复诊前佩戴习惯及数据核对随访',
       '打卡数据显示患者本周有两次未满5小时，电话回访原因，并指导在小程序内上传打卡记录。',
       '2026-06-15',
@@ -390,12 +393,11 @@ export const seedData = async () => {
 
   // Follow Up Records
   await run(
-    `INSERT INTO follow_up_records (task_id, patient_id, doctor_id, contact_type, summary)
-     VALUES (?, ?, ?, ?, ?)`,
+    `INSERT INTO follow_up_records (task_id, follower_id, contact_type, summary)
+     VALUES (?, ?, ?, ?)`,
     [
       fut1.id,
-      patient1.id,
-      doc1.id,
+      lgMgr.id,
       'phone',
       '电话沟通完毕，患者反馈收到产品后前两晚确实有牙胀、流口水，第三天起明显减轻，未出现颞下颌关节持续剧痛。指导了清晨放松活动，随访任务已完成。'
     ]
@@ -765,7 +767,7 @@ export const seedData = async () => {
         patient1.id,
         store1.id,
         doc1.id,
-        1,
+        doc1MorningScheduleId,
         '2026-05-28',
         '09:00 - 09:30',
         'first',
@@ -805,7 +807,7 @@ export const seedData = async () => {
         patient3.id,
         store1.id,
         doc2.id,
-        3,
+        doc2MorningScheduleId,
         '2026-05-28',
         '10:30 - 11:00',
         'first',
@@ -845,7 +847,7 @@ export const seedData = async () => {
         patient1.id,
         store3.id,
         doc3.id,
-        3,
+        doc3AfternoonScheduleId,
         '2026-05-28',
         '14:30 - 15:00',
         'first',
@@ -919,8 +921,8 @@ const injectNewDistributionSeeds = async () => {
 
     // 4. Create new user 4 recommended by User2
     const user4 = await run(
-      `INSERT INTO users (openid, nickname, phone, avatar_url, member_level, points, total_spent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ['openid_user_4', '微信用户-赵达', '13600136004', null, 'normal', 0, 0]
+      `INSERT INTO users (openid, nickname, phone, avatar_url, points) VALUES (?, ?, ?, ?, ?)`,
+      ['openid_user_4', '微信用户-赵达', '13600136004', null, 0]
     );
 
     const patient5 = await run(

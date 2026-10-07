@@ -174,7 +174,7 @@ const fetchPatients = async () => {
         snoreAbnormal: Boolean(item.snore_has_abnormal),
         snoreResult: item.snore_result,
         followerId: item.follower_id ? item.follower_id.toString() : '',
-        followerName: item.follower_name || '未分配',
+        followerName: item.follower_name || '暂无运营记录',
         crmStage: item.crm_stage || '未跟进'
       }
     })
@@ -244,7 +244,7 @@ const snoreNoiseOptions = [
 ]
 
 const followerOptions = computed(() => {
-  const opts = [{ label: '全部跟进人', value: '' }, { label: '未分配', value: 'unassigned' }]
+  const opts = [{ label: '全部最近运营人', value: '' }, { label: '暂无运营记录', value: 'unassigned' }]
   followers.value.forEach(f => {
     opts.push({ label: f.name, value: f.id.toString() })
   })
@@ -399,16 +399,18 @@ function openCrmDialog(row: Patient) {
 }
 
 async function handleSaveCrm() {
+  if (!crmForm.value.followerId) {
+    MessagePlugin.warning('请选择跟进人')
+    return
+  }
   if (!crmForm.value.content.trim()) {
     MessagePlugin.warning('请填写跟进内容描述')
     return
   }
   submittingCrm.value = true
   try {
-    await request.put(`/api/admin/patients/${crmForm.value.patientId}/follower`, {
-      follower_id: crmForm.value.followerId ? Number(crmForm.value.followerId) : null
-    })
     await request.post(`/api/admin/patients/${crmForm.value.patientId}/crm-records`, {
+      follower_id: crmForm.value.followerId ? Number(crmForm.value.followerId) : null,
       content: crmForm.value.content.trim(),
       stage: crmForm.value.stage
     })
@@ -450,7 +452,7 @@ async function handleExport() {
         status: item.status,
         tags: item.tags || [],
         followerId: item.follower_id ? item.follower_id.toString() : '',
-        followerName: item.follower_name || '未分配',
+        followerName: item.follower_name || '暂无运营记录',
         crmStage: item.crm_stage || '未跟进',
         essResult: item.ess_result,
         snoreResult: item.snore_result
@@ -516,7 +518,7 @@ async function handleExport() {
       '最近到诊',
       '到诊次数',
       '消费总额',
-      '跟进人',
+      '最近运营人',
       '跟进阶段'
     ]
 
@@ -576,8 +578,8 @@ async function handleExport() {
     <!-- Panel Wrapper -->
     <div class="panel">
       <!-- 筛选栏 -->
-      <div class="filter-bar">
-        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <div class="filter-bar patient-filter-bar">
+        <div class="patient-filter-controls">
           <t-input v-model="searchKeyword" placeholder="搜索姓名/编号/手机号" clearable style="width:190px" />
           <t-select v-model="filterGender" :options="genderOptions" style="width:105px" />
           <t-select v-model="filterLevel" :options="levelOptions" style="width:105px" />
@@ -585,10 +587,10 @@ async function handleExport() {
           <t-select v-model="filterEssLevel" :options="essLevelOptions" style="width:130px" />
           <t-select v-model="filterSnoreHasApnea" :options="snoreApneaOptions" style="width:130px" />
           <t-select v-model="filterSnoreNoise" :options="snoreNoiseOptions" style="width:130px" />
-          <t-select v-model="filterFollower" :options="followerOptions" placeholder="跟进人" style="width:120px" />
+          <t-select v-model="filterFollower" :options="followerOptions" placeholder="最近运营人" style="width:120px" />
           <t-select v-model="filterCrmStage" :options="crmStageOptions" style="width:130px" />
         </div>
-        <div style="font-size:13px;color:#9CA3AF;font-weight:400;">
+        <div class="patient-filter-summary">
           共 {{ filteredPatients.length }} 人
         </div>
       </div>
@@ -609,7 +611,7 @@ async function handleExport() {
               <th>最近就诊</th>
               <th>消费总额</th>
               <th>来源</th>
-              <th>跟进人</th>
+              <th>最近运营人</th>
               <th>跟进阶段</th>
               <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
             </tr>
@@ -703,7 +705,7 @@ async function handleExport() {
     >
       <div style="display: flex; flex-direction: column; gap: 16px; padding: 10px 0;">
         <div>
-          <div style="font-size: 13px; color: #6B7280; margin-bottom: 6px;">分配跟进人：</div>
+          <div style="font-size: 13px; color: #6B7280; margin-bottom: 6px;">本次运营人：</div>
           <t-select
             v-model="crmForm.followerId"
             placeholder="选择跟进人"
@@ -757,6 +759,32 @@ async function handleExport() {
 .assessment-danger {
   color: #EF4444;
   font-weight: 700;
+}
+
+.patient-filter-bar {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.patient-filter-controls {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.patient-filter-controls > * {
+  flex: 0 0 auto;
+}
+
+.patient-filter-summary {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: #9CA3AF;
+  font-weight: 400;
 }
 
 /* === 表单样式 === */

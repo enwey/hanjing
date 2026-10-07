@@ -1,4 +1,4 @@
-import { MEMBER_LEVEL_RULES, syncUserMembership } from '../membership.js';
+import { getCurrentUserMembership, getMemberLevelRules, syncUserMembership } from '../membership.js';
 import { authorizeUpload, signPrivateUploadResponses, registerPrivateUpload, privateUploadPath, canReadPrivateUpload } from '../private-uploads.js';
 import { applyRefund, completeRefund } from '../refunds.js';
 import express from 'express';
@@ -296,7 +296,7 @@ async function getWechatMiniPhoneNumber(code) {
 
 
 async function syncUserMemberLevel(userId) {
-  const user = await get(`SELECT id, member_level, total_spent, points FROM users WHERE id = ?`, [userId]);
+  const user = await get(`SELECT id, points FROM users WHERE id = ?`, [userId]);
   if (!user) return null;
   const syncedUser = await syncUserMembership(userId);
   return { ...user, ...syncedUser };
@@ -607,6 +607,74 @@ async function bindUserToSelfPatient(userId, patientId, { preferName = '', phone
       [patientId, phoneEnc, userId]
     );
   });
+}
+
+async function autoBindExactIdentityPatientWithConn(conn, userId, { phoneEnc, idCardEnc, preferName = '' } = {}) {
+  if (!phoneEnc || !idCardEnc) return null;
+
+  const [matchedPatients] = await conn.execute(
+    `SELECT p.*, owner.self_patient_id AS owner_self_patient_id
+     FROM patients p
+     LEFT JOIN users owner ON owner.id = p.user_id
+     WHERE p.phone = ?
+       AND p.id_card = ?
+       AND (p.user_id IS NULL OR p.user_id != ?)
+       AND (owner.self_patient_id IS NULL OR owner.self_patient_id != p.id)
+     ORDER BY p.id ASC
+     LIMIT 2
+     FOR UPDATE`,
+    [phoneEnc, idCardEnc, userId]
+  );
+  // 身份存在歧义时不自动合并，更不能暴露任何既有档案。
+  if (matchedPatients.length !== 1) return null;
+
+  const matchedPatient = matchedPatients[0];
+  const currentSelf = await getSelfPatientForUserWithConn(conn, userId);
+  if (currentSelf && Number(currentSelf.id) !== Number(matchedPatient.id)) {
+    const patientReferences = [
+      ['appointments', 'patient_id'],
+      ['medical_records', 'patient_id'],
+      ['treatment_records', 'patient_id'],
+      ['follow_up_tasks', 'patient_id'],
+      ['ess_assessments', 'patient_id'],
+      ['snore_assessments', 'patient_id'],
+      ['patient_devices', 'patient_id'],
+      ['wearing_logs', 'patient_id'],
+      ['patient_crm_records', 'patient_id'],
+      ['im_messages', 'patient_id'],
+      ['treatment_timelines', 'patient_id']
+    ];
+    for (const [table, column] of patientReferences) {
+      await conn.execute(`UPDATE \`${table}\` SET \`${column}\` = ? WHERE \`${column}\` = ?`, [matchedPatient.id, currentSelf.id]);
+    }
+    await conn.execute(`DELETE FROM user_patient_links WHERE user_id = ? AND patient_id = ?`, [userId, currentSelf.id]);
+  }
+
+  // 命中后患者成为新注册账户的本人档案；旧家庭账户不再保留可访问的关联，避免病历共享。
+  await conn.execute(`DELETE FROM user_patient_links WHERE patient_id = ?`, [matchedPatient.id]);
+  await conn.execute(
+    `UPDATE patients
+     SET user_id = ?, relation = 'self', name = CASE WHEN name IN ('', '本人', '微信用户') THEN ? ELSE name END
+     WHERE id = ?`,
+    [userId, preferName || '本人', matchedPatient.id]
+  );
+  await conn.execute(
+    `INSERT INTO user_patient_links (user_id, patient_id, relation)
+     VALUES (?, ?, 'self')`,
+    [userId, matchedPatient.id]
+  );
+  await conn.execute(`UPDATE users SET self_patient_id = ? WHERE id = ?`, [matchedPatient.id, userId]);
+
+  if (currentSelf && Number(currentSelf.id) !== Number(matchedPatient.id)) {
+    const [[remainingLinks]] = await conn.execute(
+      `SELECT COUNT(*) AS count FROM user_patient_links WHERE patient_id = ?`,
+      [currentSelf.id]
+    );
+    if (Number(remainingLinks?.count || 0) === 0) {
+      await conn.execute(`DELETE FROM patients WHERE id = ?`, [currentSelf.id]);
+    }
+  }
+  return matchedPatient;
 }
 
 async function mergeUserAccountIntoExistingUser(sourceUserId, targetUserId, { openid = null, phoneEnc = null } = {}) {
@@ -1239,8 +1307,8 @@ async function settleEligibleDistributionCommissions(userId) {
 async function getDistributionSummary(userId, req = null) {
   await settleEligibleDistributionCommissions(userId);
   const featureConfig = await getDistributionFeatureConfig();
-  const user = await get(`SELECT member_level FROM users WHERE id = ?`, [userId]);
-  const memberLevel = String(user?.member_level || 'normal');
+  const membership = await getCurrentUserMembership(userId);
+  const memberLevel = String(membership?.level || 'normal');
   const distributor = await ensureDistributor(userId);
   if (!distributor) {
     throw new Error('生成分销身份失败');
@@ -1298,6 +1366,7 @@ async function getDistributionSummary(userId, req = null) {
 }
 
 async function buildMiniProgramLoginPayload(user) {
+  const membership = await getCurrentUserMembership(user.id);
   const distributor = await get(
     `SELECT d.id
      FROM distributors d
@@ -1324,7 +1393,8 @@ async function buildMiniProgramLoginPayload(user) {
       nickname: user.nickname,
       avatar: user.avatar_url || '',
       phone: decryptPII(user.phone) || '',
-      memberLevel: user.member_level,
+      memberLevel: membership?.level || 'normal',
+      memberLevelTitle: membership?.title || '',
       isDistributor: Boolean(distributor)
     },
     expires_in: 2592000
@@ -1517,6 +1587,7 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
 
     const session = await exchangeWechatMiniCode(code);
     const openid = session.openid;
+    const unionid = String(session.unionid || '').trim() || null;
     let user = await get(`SELECT * FROM users WHERE openid = ?`, [openid]);
 
     if (!user) {
@@ -1527,8 +1598,8 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
       } else {
         const nickname = phone ? `微信用户${String(phone).slice(-4)}` : '微信用户';
         const result = await run(
-          `INSERT INTO users (openid, nickname, phone, member_level, points, total_spent) VALUES (?, ?, ?, 'normal', 0, 0)`,
-          [openid, nickname, encryptedPhone]
+          `INSERT INTO users (openid, unionid, nickname, phone, points) VALUES (?, ?, ?, ?, 0)`,
+          [openid, unionid, nickname, encryptedPhone]
         );
         user = await get(`SELECT * FROM users WHERE id = ?`, [result.id]);
       }
@@ -1544,11 +1615,21 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
       }
     }
 
-    if (encryptedPhone && !user.phone) {
-      await run(`UPDATE users SET phone = ? WHERE id = ?`, [encryptedPhone, user.id]);
+    if (unionid && user.unionid !== unionid) {
+      await run(`UPDATE users SET unionid = ? WHERE id = ?`, [unionid, user.id]);
+      user.unionid = unionid;
+    }
+
+    if (encryptedPhone) {
+      await run(
+        `UPDATE users SET phone = ?, phone_verified_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [encryptedPhone, user.id]
+      );
+      user.phone = encryptedPhone;
     }
 
     user = await get(`SELECT * FROM users WHERE id = ?`, [user.id]);
+    await syncUserMembership(user.id);
     let selfPatient = encryptedPhone ? await getIdentityMatchedPatient({ userId: user.id, phoneEnc: encryptedPhone }) : null;
     if (selfPatient) {
       await bindUserToSelfPatient(user.id, selfPatient.id, {
@@ -1668,6 +1749,8 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
     if (!user) {
       return res.status(404).json({ code: 404, message: '用户未找到' });
     }
+    await syncUserMembership(user.id);
+    const membership = await getCurrentUserMembership(user.id);
     const patient = await getSelfPatientForUser(req.user.id);
     const distributor = await get(
       `SELECT d.id, d.level, d.status,
@@ -1689,7 +1772,8 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
         idCard: patient ? (decryptPII(patient.id_card) || '') : '',
         cardNo: patient ? getPatientRecordNo(patient) : '',
         birthday: user.birthday ? formatDate(user.birthday) : null,
-        memberLevel: user.member_level || 'normal',
+        memberLevel: membership?.level || 'normal',
+        memberLevelTitle: membership?.title || '',
         isDistributor: !!distributor && distributor.status === 'active' && Number(distributor.direct_count || 0) > 0,
         distributorLevel: distributor?.level || ''
       }
@@ -1701,10 +1785,8 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
 
 // 3. User Profile (PUT)
 app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
-  const { nickname, phone, gender, age, birthday, idCard, avatar, avatarUrl } = req.body;
+  const { nickname, gender, age, birthday, idCard, avatar, avatarUrl } = req.body;
   const nicknameClean = nickname ? escapeHtml(nickname) : null;
-  const phoneClean = phone ? escapeHtml(phone) : null;
-  const phoneEnc = phoneClean ? encryptPII(phoneClean) : null;
   const idCardClean = idCard ? escapeHtml(idCard).toUpperCase() : null;
   const idCardEnc = idCardClean ? encryptPII(idCardClean) : null;
   const birthdayClean = birthday === '' || !birthday ? null : birthday;
@@ -1719,16 +1801,15 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
       await conn.execute(
         `UPDATE users
          SET nickname = COALESCE(?, nickname),
-             phone = COALESCE(?, phone),
              birthday = COALESCE(?, birthday),
              avatar_url = COALESCE(?, avatar_url)
          WHERE id = ?`,
-        [nicknameClean, phoneEnc, birthdayClean, avatarClean, req.user.id]
+        [nicknameClean, birthdayClean, avatarClean, req.user.id]
       );
 
+      const [[currentUser]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [req.user.id]);
       let selfPatient = await getSelfPatientForUserWithConn(conn, req.user.id);
       if (!selfPatient) {
-        const [[currentUser]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [req.user.id]);
         if (currentUser) {
           selfPatient = await createDefaultSelfPatientForUser(currentUser);
         }
@@ -1738,13 +1819,23 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
         return;
       }
 
+      const verifiedPhoneEnc = currentUser?.phone_verified_at ? currentUser.phone : null;
+      if (idCardEnc && verifiedPhoneEnc) {
+        const matchedPatient = await autoBindExactIdentityPatientWithConn(conn, req.user.id, {
+          phoneEnc: verifiedPhoneEnc,
+          idCardEnc,
+          preferName: nicknameClean || currentUser?.nickname || ''
+        });
+        if (matchedPatient) selfPatient = await getSelfPatientForUserWithConn(conn, req.user.id);
+      }
+
       const scopedPatientRows = await (async () => {
         if (selfPatient.id_card) {
           const [rows] = await conn.execute(
             `SELECT * FROM patients
-             WHERE id_card = ?
+             WHERE id_card = ? AND user_id = ?
              ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, id ASC`,
-            [selfPatient.id_card, selfPatient.id]
+            [selfPatient.id_card, req.user.id, selfPatient.id]
           );
           return rows;
         }
@@ -1752,9 +1843,10 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
           const [rows] = await conn.execute(
             `SELECT * FROM patients
              WHERE phone = ?
+               AND user_id = ?
                AND (id_card IS NULL OR id_card = '')
              ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END, id ASC`,
-            [selfPatient.phone, selfPatient.id]
+            [selfPatient.phone, req.user.id, selfPatient.id]
           );
           return rows;
         }
@@ -1792,13 +1884,13 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
       const placeholders = scopedPatientIds.map(() => '?').join(',');
       await conn.execute(
         `UPDATE patients
-         SET name = COALESCE(?, name),
-             gender = COALESCE(?, gender),
-             age = COALESCE(?, age),
-             phone = COALESCE(?, phone),
-             id_card = COALESCE(?, id_card)
+             SET name = COALESCE(?, name),
+                 gender = COALESCE(?, gender),
+                 age = COALESCE(?, age),
+                 phone = COALESCE(?, phone),
+                 id_card = COALESCE(?, id_card)
          WHERE id IN (${placeholders})`,
-        [nicknameClean, genderClean, ageClean, phoneEnc, idCardEnc, ...scopedPatientIds]
+        [nicknameClean, genderClean, ageClean, verifiedPhoneEnc, idCardEnc, ...scopedPatientIds]
       );
     });
 
@@ -1817,7 +1909,7 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
         idCard: patient ? (decryptPII(patient.id_card) || '') : '',
         cardNo: patient ? getPatientRecordNo(patient) : '',
         birthday: user.birthday ? formatDate(user.birthday) : null,
-        memberLevel: user.member_level || 'normal'
+        memberLevel: (await getCurrentUserMembership(user.id))?.level || 'normal'
       }
     });
   } catch (error) {
@@ -1830,6 +1922,7 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
 app.get('/api/v1/user/account-security', authenticateWxToken, async (req, res) => {
   try {
     const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
+    const membership = await syncUserMembership(req.user.id);
     if (!user) {
       return res.status(404).json({ code: 404, message: '用户未找到' });
     }
@@ -1959,7 +2052,7 @@ app.post('/api/v1/user/change-phone', authenticateWxToken, async (req, res) => {
     if (existing) {
       return res.status(400).json({ code: 400, message: '该手机号已被其他账号绑定' });
     }
-    await run(`UPDATE users SET phone = ? WHERE id = ?`, [encryptedPhone, req.user.id]);
+    await run(`UPDATE users SET phone = ?, phone_verified_at = CURRENT_TIMESTAMP WHERE id = ?`, [encryptedPhone, req.user.id]);
     const matchedPatient = await getIdentityMatchedPatient({ userId: req.user.id, phoneEnc: encryptedPhone });
     if (matchedPatient) {
       await bindUserToSelfPatient(req.user.id, matchedPatient.id, { phoneEnc: encryptedPhone });
@@ -3138,7 +3231,7 @@ app.get('/api/v1/user/member-levels', authenticateWxToken, async (req, res) => {
     res.json({
       code: 0,
       message: 'success',
-      data: MEMBER_LEVEL_RULES
+      data: await getMemberLevelRules()
     });
   } catch (error) {
     console.error('Get member levels error:', error);

@@ -247,7 +247,7 @@ const loadPatientDetails = async () => {
       allergy_history: p.allergy_history || '',
       lastVisit: latestVisit ? `${formatDate(latestVisit.appointment_date)} ${latestVisit.store_name || ''} ${latestVisit.doctor_name || ''}`.trim() : '',
       followerId: p.follower_id ? p.follower_id.toString() : '',
-      followerName: p.follower_name || '未分配',
+      followerName: p.follower_name || '暂无运营记录',
       crmStage: p.crm_stage || '未跟进'
     }
     fullPhoneLoaded.value = false
@@ -348,10 +348,10 @@ const fetchFollowups = async () => {
     followupRecords.value = records || []
     followups.value = tasks.map((t: any) => ({
       id: String(t.id),
-      doctorId: String(t.doctor_id || ''),
+      followerId: String(t.follower_id || ''),
       type: t.title,
       time: formatDate(t.due_date),
-      executor: t.doctor_name,
+      executor: t.follower_name,
       content: t.description || '',
       statusRaw: t.status,
       status: t.status === 'completed' ? '已完成' : t.status === 'cancelled' ? '已取消' : '待执行'
@@ -601,7 +601,7 @@ async function handleRevealPhone() {
 }
 
 async function handleCompleteFollowup(task: any) {
-  if (!task.doctorId) {
+  if (!task.followerId) {
     MessagePlugin.warning('该随访任务缺少执行人，无法完成')
     return
   }
@@ -609,7 +609,6 @@ async function handleCompleteFollowup(task: any) {
   try {
     await request.post(`/api/admin/patients/${patientId.value}/follow-ups/records`, {
       task_id: task.id,
-      doctor_id: Number(task.doctorId),
       contact_type: task.type,
       summary: task.content || '后台患者详情标记随访已完成'
     })
@@ -825,16 +824,18 @@ function openCrmDialog() {
 }
 
 async function handleSaveCrm() {
+  if (!crmForm.value.followerId) {
+    MessagePlugin.warning('请选择跟进人')
+    return
+  }
   if (!crmForm.value.content.trim()) {
     MessagePlugin.warning('请填写跟进内容描述')
     return
   }
   submittingCrm.value = true
   try {
-    await request.put(`/api/admin/patients/${patientId.value}/follower`, {
-      follower_id: crmForm.value.followerId ? Number(crmForm.value.followerId) : null
-    })
     await request.post(`/api/admin/patients/${patientId.value}/crm-records`, {
+      follower_id: crmForm.value.followerId ? Number(crmForm.value.followerId) : null,
       content: crmForm.value.content.trim(),
       stage: crmForm.value.stage
     })
@@ -1198,7 +1199,7 @@ async function handleSaveCrm() {
               <tr>
                 <th>随访类型</th>
                 <th>计划执行日期</th>
-                <th>随访执行人</th>
+                <th>随访跟进人</th>
                 <th>随访任务备注</th>
                 <th>任务状态</th>
                 <th>操作</th>
@@ -1232,7 +1233,7 @@ async function handleSaveCrm() {
             <div v-else style="display: flex; flex-direction: column; gap: 12px;">
               <div v-for="record in followupRecords" :key="record.id" style="border-bottom: 1px solid #F3F4F6; padding-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 4px;">
-                  <span>{{ record.contact_type }} · {{ record.doctor_name }}</span>
+                  <span>{{ record.contact_type }} · {{ record.follower_name }}</span>
                   <span>{{ formatDate(record.created_at) }}</span>
                 </div>
                 <div style="font-size: 13px; color: #374151; white-space: pre-wrap;">{{ record.summary }}</div>
@@ -1286,7 +1287,7 @@ async function handleSaveCrm() {
           <div style="font-size: 16px; font-weight: 600; color: #1F2937; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
             <span>跟进历史记录</span>
             <div style="display: flex; gap: 12px; align-items: center;">
-              <span style="font-size: 13px; font-weight: normal; color: #6B7280;">当前跟进人：
+              <span style="font-size: 13px; font-weight: normal; color: #6B7280;">最近运营人：
                 <strong style="color: #1F2937; margin-right: 8px;">{{ patient.followerName }}</strong>
               </span>
               <span style="font-size: 13px; font-weight: normal; color: #6B7280;">当前状态阶段：
@@ -1305,10 +1306,10 @@ async function handleSaveCrm() {
             <div v-for="record in crmRecords" :key="record.id" style="display: flex; gap: 16px; border-bottom: 1px solid #F3F4F6; padding-bottom: 12px;">
               <div style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 60px;">
                 <div style="width: 28px; height: 28px; border-radius: 50%; background: #EFF6FF; color: #3B6BF5; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;">
-                  {{ record.creator_name ? record.creator_name.substring(0, 1) : '管' }}
+                  {{ record.follower_name ? record.follower_name.substring(0, 1) : '管' }}
                 </div>
                 <div style="font-size: 11px; color: #6B7280; margin-top: 4px; text-align: center; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                  {{ record.creator_name }}
+                  {{ record.follower_name }}
                 </div>
               </div>
               <div style="flex-grow: 1; min-width: 0;">
@@ -1434,7 +1435,7 @@ async function handleSaveCrm() {
     >
       <div style="display: flex; flex-direction: column; gap: 16px; padding: 10px 0;">
         <div>
-          <div style="font-size: 13px; color: #6B7280; margin-bottom: 6px;">分配跟进人：</div>
+          <div style="font-size: 13px; color: #6B7280; margin-bottom: 6px;">本次运营人：</div>
           <t-select
             v-model="crmForm.followerId"
             placeholder="选择跟进人"

@@ -22,7 +22,7 @@ test('startup preserves operator data and never creates sample business records'
     await admin.query('USE ' + schema);
 
     const emptyTables = ['users', 'patients', 'doctors', 'stores', 'admin_users', 'products', 'coupons',
-      'orders', 'distribution_orders', 'withdraw_records', 'wearing_records', 'treatment_timelines',
+      'orders', 'distribution_orders', 'withdraw_records', 'treatment_timelines',
       'device_maintenance', 'device_feedback'];
     await t.test('fresh initialization creates schema but no sample transactions or accounts', async () => {
       for (const table of emptyTables) {
@@ -60,7 +60,7 @@ test('startup preserves operator data and never creates sample business records'
     });
     await t.test('existing users and treatment records never receive fabricated clinical data', async () => {
       assert.deepEqual((await admin.query('SELECT * FROM treatment_timelines ORDER BY id'))[0], timelineBefore);
-      for (const table of ['wearing_records','device_maintenance','device_feedback']) {
+      for (const table of ['device_maintenance','device_feedback']) {
         const [[row]] = await admin.query('SELECT COUNT(*) AS count FROM ' + table);
         assert.equal(row.count,0,table);
       }

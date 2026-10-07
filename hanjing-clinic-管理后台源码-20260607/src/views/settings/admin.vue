@@ -14,7 +14,8 @@ interface AdminAccount {
   phone?: string;
   password?: string;
   roleId?: string;
-  storeId?: string;
+  storeIds?: string[];
+  allStores?: boolean;
   doctorId?: string;
   doctorName?: string;
   avatarChar: string;
@@ -87,7 +88,8 @@ const formData = ref<Partial<AdminAccount>>({
   name: '',
   phone: '',
   roleId: '',
-  storeId: '',
+  storeIds: [],
+  allStores: false,
   doctorId: '',
   status: 'online'
 })
@@ -112,14 +114,15 @@ function mapAdmin(row: any): AdminAccount {
     name: row.name || '',
     phone: row.phone || '',
     roleId: row.role_id ? String(row.role_id) : '',
-    storeId: row.store_id ? String(row.store_id) : '',
+    storeIds: String(row.store_ids || '').split(',').filter(Boolean),
+    allStores: Number(row.all_stores) === 1,
     doctorId: row.doctor_id ? String(row.doctor_id) : '',
     doctorName: row.doctor_name || '',
     avatarChar: (row.name || row.username || '管').charAt(0),
     avatarColor: roleTagByName(row.role_name || '') === 'green' ? 'var(--success-500)' : 'var(--primary-500)',
     role: row.role_name || '未分配角色',
     roleTag: roleTagByName(row.role_name || ''),
-    store: row.store_name || '全部门店',
+    store: row.all_stores ? '全部门店' : (row.store_names || '未分配门店'),
     lastLogin: formatTime(row.last_login_at),
     status: row.status || 'offline'
   }
@@ -170,7 +173,8 @@ async function handleAdd() {
     name: doctor?.name || '',
     phone: '',
     roleId: queryDoctorId ? (doctorRole?.id || roles.value[0]?.id || '') : (queryStoreId ? (storeRole?.id || roles.value[0]?.id || '') : (roles.value[0]?.id || '')),
-    storeId: queryStoreId,
+    storeIds: queryStoreId ? [queryStoreId] : [],
+    allStores: false,
     doctorId: queryDoctorId,
     status: 'online'
   }
@@ -200,7 +204,8 @@ async function handleToggle(id: string) {
       name: account.name,
       phone: account.phone,
       role_id: account.roleId,
-      store_id: account.storeId || null,
+      store_ids: account.storeIds || [],
+      all_stores: Boolean(account.allStores),
       doctor_id: account.doctorId || null,
       status: nextStatus
     })
@@ -223,7 +228,8 @@ async function handleSave() {
       name: formData.value.name,
       phone: formData.value.phone || '',
       role_id: formData.value.roleId,
-      store_id: formData.value.storeId || null,
+      store_ids: formData.value.storeIds || [],
+      all_stores: Boolean(formData.value.allStores),
       doctor_id: formData.value.doctorId || null,
       status: formData.value.status || 'online'
     }
@@ -434,11 +440,18 @@ watch(operationColumnWidth, () => {
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">负责门店</label>
-          <select class="form-control" v-model="formData.storeId">
-            <option value="">全部门店</option>
-            <option v-for="store in stores" :key="store.id" :value="store.id">{{ store.name }}</option>
-          </select>
+          <label class="form-label">可访问门店</label>
+          <label class="store-checkbox store-checkbox-all">
+            <input v-model="formData.allStores" type="checkbox">
+            <span>全部门店（含后续新建门店）</span>
+          </label>
+          <div class="store-checkboxes">
+            <label v-for="store in stores" :key="store.id" class="store-checkbox">
+              <input v-model="formData.storeIds" type="checkbox" :value="store.id" :disabled="formData.allStores">
+              <span>{{ store.name }}</span>
+            </label>
+          </div>
+          <div style="font-size: 12px; color: #9CA3AF;">按所选门店分配数据访问范围；勾选全部门店后，未来新建门店也会自动纳入范围。</div>
         </div>
         <div class="form-group">
           <label class="form-label">绑定医生档案</label>
@@ -461,7 +474,24 @@ watch(operationColumnWidth, () => {
 </template>
 
 <style scoped>
-
+.store-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 10px 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+}
+.store-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.store-checkbox-all {
+  margin: 0 0 8px 2px;
+  font-weight: 600;
+}
 
 /* Breadcrumb */
 .breadcrumb {

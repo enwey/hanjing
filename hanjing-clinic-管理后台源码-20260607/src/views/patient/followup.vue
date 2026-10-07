@@ -13,7 +13,7 @@ const patientName = ref('张明华')
 
 interface Task {
   id: string;
-  doctorId: string;
+  followerId: string;
   type: string;
   typeTag: string; // blue, green, gold
   dueDate: string;
@@ -23,13 +23,13 @@ interface Task {
 }
 
 const tasks = ref<Task[]>([])
-const doctors = ref<any[]>([])
+const followers = ref<any[]>([])
 
 const showCreate = ref(false)
 const newTask = ref({
   type: '电话随访',
   dueDate: '',
-  doctorId: '',
+  followerId: '',
   content: ''
 })
 
@@ -42,11 +42,11 @@ function typeTag(type: string) {
 function mapTask(row: any): Task {
   return {
     id: String(row.id),
-    doctorId: String(row.doctor_id || ''),
+    followerId: String(row.follower_id || ''),
     type: row.title || '随访任务',
     typeTag: typeTag(row.title || ''),
     dueDate: String(row.due_date || '').slice(0, 10),
-    executor: row.doctor_name || '未分配',
+    executor: row.follower_name || '未分配',
     content: row.description || '',
     status: row.status === 'completed' ? 'green' : 'gold'
   }
@@ -54,15 +54,15 @@ function mapTask(row: any): Task {
 
 async function fetchData() {
   try {
-    const [patientRes, followRes, doctorRes]: any[] = await Promise.all([
+    const [patientRes, followRes, followerRes]: any[] = await Promise.all([
       request.get(`/api/admin/patients/${patientId.value}`),
       request.get(`/api/admin/patients/${patientId.value}/follow-ups`),
-      request.get('/api/admin/doctors')
+      request.get('/api/admin/admin-users')
     ])
     patientName.value = patientRes.data?.name || patientName.value
-    doctors.value = doctorRes.data || []
-    if (!newTask.value.doctorId && doctors.value.length > 0) {
-      newTask.value.doctorId = String(doctors.value[0].id)
+    followers.value = followerRes.data || []
+    if (!newTask.value.followerId && followers.value.length > 0) {
+      newTask.value.followerId = String(followers.value[0].id)
     }
     tasks.value = (followRes.data?.tasks || []).map(mapTask)
   } catch (error) {
@@ -78,7 +78,6 @@ async function handleExecute(task: Task) {
   try {
     await request.post(`/api/admin/patients/${patientId.value}/follow-ups/records`, {
       task_id: task.id,
-      doctor_id: task.doctorId || newTask.value.doctorId,
       contact_type: task.type,
       summary: task.content || '后台标记随访已完成'
     })
@@ -123,20 +122,20 @@ function handleView(task: Task) {
 }
 
 async function handleCreate() {
-  if (!newTask.value.dueDate || !newTask.value.content || !newTask.value.doctorId) {
-    MessagePlugin.warning('请填写计划日期、执行医生和随访内容')
+  if (!newTask.value.dueDate || !newTask.value.content || !newTask.value.followerId) {
+    MessagePlugin.warning('请填写计划日期、跟进人和随访内容')
     return
   }
 
   try {
     await request.post(`/api/admin/patients/${patientId.value}/follow-ups`, {
-      doctor_id: newTask.value.doctorId,
+      follower_id: newTask.value.followerId,
       title: newTask.value.type,
       description: newTask.value.content,
       due_date: newTask.value.dueDate
     })
     showCreate.value = false
-    newTask.value = { type: '电话随访', dueDate: '', doctorId: newTask.value.doctorId, content: '' }
+    newTask.value = { type: '电话随访', dueDate: '', followerId: newTask.value.followerId, content: '' }
     MessagePlugin.success('新建随访任务成功')
     fetchData()
   } catch (error) {
@@ -181,7 +180,7 @@ watch(operationColumnWidth, () => {
           <tr>
             <th>随访类型</th>
             <th>计划时间</th>
-            <th>执行人</th>
+            <th>跟进人</th>
             <th>内容</th>
             <th>状态</th>
             <th :style="{ width: operationColumnWidth, minWidth: operationColumnWidth, textAlign: 'right' }">操作</th>
@@ -241,9 +240,9 @@ watch(operationColumnWidth, () => {
           <input type="text" class="form-control" placeholder="如: 6/15" v-model="newTask.dueDate">
         </div>
         <div class="form-group">
-          <label class="form-label">执行人</label>
-          <select class="form-control" v-model="newTask.doctorId">
-            <option v-for="doctor in doctors" :key="doctor.id" :value="String(doctor.id)">{{ doctor.name }}</option>
+          <label class="form-label">跟进人</label>
+          <select class="form-control" v-model="newTask.followerId">
+            <option v-for="follower in followers" :key="follower.id" :value="String(follower.id)">{{ follower.name }}</option>
           </select>
         </div>
         <div class="form-group">

@@ -2,6 +2,9 @@ export function requiredAdminPermissions(method, route) {
   const path = String(route || '').replace(/^\/api\/admin\//, '');
   if (['me', 'profile', 'change-password'].includes(path)) return [];
   const read = method === 'GET' || method === 'HEAD';
+  // The fulfillment menu uses order:view; viewing assigned work must not
+  // require system administration privileges.
+  if (/^fulfillment\//.test(path)) return [read ? 'order:view' : 'order:edit'];
   let module;
   if (/^(patients\/[^/]+\/(medical-records|treatment|follow-ups|sleep-diagnostics)|assessments)/.test(path) || /consultation/.test(path)) module = 'medical_record';
   else if (/^(appointments|queue)/.test(path)) module = 'appointment';

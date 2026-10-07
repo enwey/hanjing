@@ -53,7 +53,9 @@ const menuGroups = computed<Array<{ title: string; items: MenuItem[] }>>(() => [
       { path: '/patient', label: '患者管理', icon: '🧑‍⚕️', permission: 'patient:view' },
       { path: '/doctor', label: '医生管理', icon: '👨‍⚕️', permission: 'schedule:view' },
       { path: '/store', label: '门店管理', icon: '🏥', permission: 'store:view' },
-      { path: '/order', label: '订单管理', icon: '📦', permission: 'order:view' }
+      { path: '/order', label: '订单管理', icon: '📦', permission: 'order:view' },
+      { path: '/fulfillment', label: '交付管理', icon: '🧰', permission: 'order:view' },
+      { path: '/after-sales', label: '售后工作台', icon: '🛠️', permission: 'order:view' }
     ]
   },
   {
@@ -726,11 +728,7 @@ onUnmounted(() => {
         </div>
       </t-header>
       <t-content class="app-content">
-        <router-view v-slot="{ Component }">
-          <transition name="fade-transform" mode="out-in">
-            <component :is="Component" :key="route.fullPath" />
-          </transition>
-        </router-view>
+        <router-view />
       </t-content>
     </t-layout>
 

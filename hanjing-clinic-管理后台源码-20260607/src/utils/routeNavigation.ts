@@ -10,6 +10,8 @@ const MENU_ROOTS = [
   '/doctor',
   '/store',
   '/order',
+  '/fulfillment',
+  '/after-sales',
   '/distribution',
   '/promoter',
   '/withdraw',

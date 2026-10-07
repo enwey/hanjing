@@ -12,6 +12,7 @@ import {
   type BillingItem,
   type CheckoutProduct
 } from '@/utils/checkoutProducts'
+import TechnicianSelect from '@/components/TechnicianSelect.vue'
 
 const route = useRoute()
 
@@ -32,6 +33,7 @@ const billingItems = ref<BillingItem[]>([])
 
 const discountAmount = ref<number>(0)
 const payMethod = ref<string>('wechat')
+const fulfillmentTechnicianId = ref<string>('')
 const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
 const nativePayInfo = ref<any>(null)
@@ -253,6 +255,7 @@ const submitCheckout = async () => {
       pay_amount: payableAmount.value,
       discount_amount: discountAmount.value,
       pay_method: payMethod.value,
+      technician_id: fulfillmentTechnicianId.value ? Number(fulfillmentTechnicianId.value) : undefined,
       type: orderType,
       status: orderStatus,
       shipping_address: shipAddr
@@ -295,6 +298,7 @@ const resetCheckout = () => {
   setDefaultBillingItem()
   discountAmount.value = 0
   payMethod.value = 'wechat'
+  fulfillmentTechnicianId.value = ''
   checkoutSuccess.value = false
   orderResult.value = null
   nativePayInfo.value = null
@@ -405,6 +409,7 @@ onUnmounted(() => stopPayPolling())
           <label class="form-label">顾客微信付款码</label>
           <t-input v-model="micropayAuthCode" placeholder="请用扫码枪扫描或输入顾客微信付款码" />
         </div>
+        <TechnicianSelect v-model="fulfillmentTechnicianId" />
 
         <div v-if="nativePayInfo" style="margin-top: 16px; text-align: center; padding: 16px; border: 1px solid #E5E7EB; border-radius: 10px; background: #FAFBFC;">
           <img v-if="nativePayInfo.qrCodeImageUrl" :src="nativePayInfo.qrCodeImageUrl" alt="微信支付二维码" style="width: 220px; height: 220px;">

@@ -7,6 +7,8 @@ import { requiredAdminPermissions, hasAdminPermission } from './admin-permission
 
 export { JWT_SECRET };
 
+const assignedStoreIds = (user) => [...new Set((user?.store_ids || []).map(Number).filter(Number.isInteger))];
+
 export const getShanghaiNow = () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
 
 export const formatShanghaiDate = (date = getShanghaiNow()) => {
@@ -82,7 +84,7 @@ export const authenticateToken = (req, res, next) => {
     }
     try {
       const admin = await get(
-        `SELECT u.id, u.username, u.name, u.store_id, u.doctor_id, u.role_id, r.code AS role
+        `SELECT u.id, u.username, u.name, u.all_stores, u.doctor_id, u.role_id, r.code AS role
          FROM admin_users u JOIN roles r ON r.id = u.role_id
          WHERE u.id = ? AND u.status = 'online' AND r.status = 'active'`,
         [user.id]
@@ -92,7 +94,14 @@ export const authenticateToken = (req, res, next) => {
       if (!hasAdminPermission(admin, requiredAdminPermissions(req.method, req.route?.path))) {
         return res.status(403).json({ code: 403, message: '没有此操作的权限' });
       }
-      if (admin.role !== 'super_admin' && !admin.store_id && /^\/api\/admin\/(patients|appointments|orders|pay|im|assessments|dashboard|global-search|notifications|reports)(\/|$)/.test(req.route?.path || '')) {
+      admin.all_stores = Number(admin.all_stores) === 1;
+      admin.store_ids = (await query(
+        admin.all_stores
+          ? 'SELECT id AS store_id FROM stores ORDER BY id'
+          : 'SELECT store_id FROM admin_user_stores WHERE admin_user_id = ? ORDER BY store_id',
+        admin.all_stores ? [] : [admin.id]
+      )).map(row => Number(row.store_id));
+      if (admin.role !== 'super_admin' && admin.store_ids.length === 0 && /^\/api\/admin\/(patients|appointments|orders|pay|im|assessments|dashboard|global-search|notifications|reports)(\/|$)/.test(req.route?.path || '')) {
         return res.status(403).json({ code: 403, message: '请先由管理员配置所属门店' });
       }
       req.user = admin;
@@ -126,42 +135,32 @@ export const authenticatePromoterToken = (req, res, next) => {
   });
 };
 
-// Helper to verify if a patient is accessible to the current user (store-restricted)
+// Doctors are scoped to their own clinical records; other staff are scoped to their store.
 export const verifyPatientAccess = async (patientId, user) => {
-  if (user.role !== 'super_admin' && !user.store_id) return false;
-  if (user.role === 'doctor' && !user.doctor_id) {
-    return false;
-  }
-  if (user.role === 'super_admin' || !user.store_id) {
-    if (user.role === 'doctor' && user.doctor_id) {
-      const doctorRecord = await get(
-        `SELECT 1 FROM patients p WHERE p.id = ? AND (
-          p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ?)
-          OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ?)
-        ) LIMIT 1`,
-        [patientId, user.doctor_id, user.doctor_id]
-      );
-      return !!doctorRecord;
-    }
-    return true; // Super admin or users not bound to a store have global access
-  }
-  if (user.role === 'doctor' && user.doctor_id) {
+  if (user.role === 'doctor') {
+    const storeIds = assignedStoreIds(user);
+    if (!user.doctor_id || !storeIds.length) return false;
+    const placeholders = storeIds.map(() => '?').join(',');
     const record = await get(
       `SELECT 1 FROM patients p WHERE p.id = ? AND (
-        p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ? AND store_id = ?)
-        OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ? AND store_id = ?)
+        p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ? AND store_id IN (${placeholders}))
+        OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ? AND store_id IN (${placeholders}))
       ) LIMIT 1`,
-      [patientId, user.doctor_id, user.store_id, user.doctor_id, user.store_id]
+      [patientId, user.doctor_id, ...storeIds, user.doctor_id, ...storeIds]
     );
     return !!record;
   }
+  if (user.role === 'super_admin') return true;
+  const storeIds = assignedStoreIds(user);
+  if (!storeIds.length) return false;
+  const placeholders = storeIds.map(() => '?').join(',');
   // Check if patient has any appointment or medical record at the user's store
   const record = await get(
     `SELECT 1 FROM patients p WHERE p.id = ? AND (
-      p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
-      OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
+      p.id IN (SELECT patient_id FROM appointments WHERE store_id IN (${placeholders}))
+      OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id IN (${placeholders}))
     ) LIMIT 1`,
-    [patientId, user.store_id, user.store_id]
+    [patientId, ...storeIds, ...storeIds]
   );
   return !!record;
 };
@@ -227,46 +226,36 @@ export const getScopedPatientIdsForUser = async (userId) => {
 
 // Helper to verify if a user's patients are accessible to the current user
 export const verifyUserAccess = async (userId, user) => {
-  if (user.role !== 'super_admin' && !user.store_id) return false;
   const scopedPatientIds = await getScopedPatientIdsForUser(userId);
   if (!scopedPatientIds.length) {
     return false;
   }
 
   const placeholders = scopedPatientIds.map(() => '?').join(',');
-  if (user.role === 'doctor' && !user.doctor_id) {
-    return false;
-  }
-  if (user.role === 'super_admin' || !user.store_id) {
-    if (user.role === 'doctor' && user.doctor_id) {
-      const doctorRecord = await get(
-        `SELECT 1 FROM patients p WHERE p.id IN (${placeholders}) AND (
-          p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ?)
-          OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ?)
-        ) LIMIT 1`,
-        [...scopedPatientIds, user.doctor_id, user.doctor_id]
-      );
-      return !!doctorRecord;
-    }
-    return true;
-  }
-  if (user.role === 'doctor' && user.doctor_id) {
+  if (user.role === 'doctor') {
+    const storeIds = assignedStoreIds(user);
+    if (!user.doctor_id || !storeIds.length) return false;
+    const storePlaceholders = storeIds.map(() => '?').join(',');
     const record = await get(
       `SELECT 1 FROM patients p WHERE p.id IN (${placeholders}) AND (
-        p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ? AND store_id = ?)
-        OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ? AND store_id = ?)
+        p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ? AND store_id IN (${storePlaceholders}))
+        OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ? AND store_id IN (${storePlaceholders}))
       ) LIMIT 1`,
-      [...scopedPatientIds, user.doctor_id, user.store_id, user.doctor_id, user.store_id]
+      [...scopedPatientIds, user.doctor_id, ...storeIds, user.doctor_id, ...storeIds]
     );
     return !!record;
   }
+  if (user.role === 'super_admin') return true;
+  const storeIds = assignedStoreIds(user);
+  if (!storeIds.length) return false;
+  const storePlaceholders = storeIds.map(() => '?').join(',');
   // Check if any patient belonging to this user has visited this store
   const record = await get(
     `SELECT 1 FROM patients p WHERE p.id IN (${placeholders}) AND (
-      p.id IN (SELECT patient_id FROM appointments WHERE store_id = ?)
-      OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id = ?)
+      p.id IN (SELECT patient_id FROM appointments WHERE store_id IN (${storePlaceholders}))
+      OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id IN (${storePlaceholders}))
     ) LIMIT 1`,
-    [...scopedPatientIds, user.store_id, user.store_id]
+    [...scopedPatientIds, ...storeIds, ...storeIds]
   );
   return !!record;
 };

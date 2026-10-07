@@ -13,6 +13,7 @@ import {
   type BillingItem,
   type CheckoutProduct
 } from '@/utils/checkoutProducts'
+import TechnicianSelect from '@/components/TechnicianSelect.vue'
 import { createNativePay, getAdminPayStatus, isPaidStatus, submitMicropay } from '@/utils/wechatCashier'
 
 const route = useRoute()
@@ -377,6 +378,7 @@ const fetchProducts = async () => {
 const billingItems = ref<BillingItem[]>([])
 const discountAmount = ref<number>(0)
 const payMethod = ref<string>('wechat')
+const fulfillmentTechnicianId = ref<string>('')
 
 const totalAmount = computed(() => {
   return billingItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
@@ -454,6 +456,7 @@ async function openCheckoutDialog() {
   }
   discountAmount.value = 0
   payMethod.value = 'wechat'
+  fulfillmentTechnicianId.value = ''
   checkoutSuccess.value = false
   orderResult.value = null
   nativePayInfo.value = null
@@ -609,6 +612,8 @@ async function submitCheckout() {
       pay_amount: payableAmount.value,
       discount_amount: discountAmount.value,
       pay_method: payMethod.value,
+      technician_id: fulfillmentTechnicianId.value ? Number(fulfillmentTechnicianId.value) : undefined,
+      appointment_id: Number(appointmentId.value),
       type: orderType,
       status: orderStatus,
       shipping_address: shipAddr
@@ -1223,6 +1228,7 @@ function handleViewProfile() {
             <div v-if="payMethod === 'wechat_micropay'" style="margin-top: 12px;">
               <input class="form-control" v-model="micropayAuthCode" placeholder="请扫描或输入患者微信付款码">
             </div>
+            <TechnicianSelect v-model="fulfillmentTechnicianId" />
             <div v-if="nativePayInfo" style="margin-top: 14px; text-align: center; padding: 14px; border: 1px solid #E5E7EB; border-radius: 8px;">
               <img v-if="nativePayInfo.qrCodeImageUrl" :src="nativePayInfo.qrCodeImageUrl" alt="微信支付二维码" style="width: 220px; height: 220px;">
               <div style="font-size: 13px; color: #374151; margin-top: 8px;">请患者使用微信扫码支付</div>

@@ -7,6 +7,8 @@ import request from '@/utils/request'
 const router = useRouter()
 const settingsLoaded = ref(false)
 const saving = ref(false)
+const resettingTestData = ref(false)
+const initializingDemoData = ref(false)
 const secretConfigured = ref<Record<string, boolean>>({})
 
 // 1. 预约设置
@@ -193,6 +195,58 @@ async function handleSaveAll() {
 function handleReset() {
   loadSettings()
 }
+
+async function handleClearTestData() {
+  if (resettingTestData.value) return
+  const confirmation = window.prompt('此操作会清空所有测试业务数据、其他后台账号和系统配置。当前登录的超级管理员将被保留。请输入“清理测试数据”确认：')
+  if (confirmation === null) return
+  if (confirmation !== '清理测试数据') {
+    MessagePlugin.warning('确认文字不正确，未执行清理')
+    return
+  }
+  if (!window.confirm('确认清理吗？此操作不可恢复。')) return
+
+  resettingTestData.value = true
+  try {
+    const res: any = await request.post('/api/admin/settings/reset-test-data', { confirmation })
+    if (res?.code === 200) {
+      MessagePlugin.success(res.message || '测试数据已清理')
+      await loadSettings()
+    }
+  } catch (err) {
+    console.error('清理测试数据失败', err)
+    MessagePlugin.error('清理测试数据失败')
+  } finally {
+    resettingTestData.value = false
+  }
+}
+
+async function handleInitializeDemoData() {
+  if (initializingDemoData.value) return
+  const confirmation = window.prompt('此操作会清空全部当前数据，并初始化完整演示数据。请输入“初始化演示数据”确认：')
+  if (confirmation === null) return
+  if (confirmation !== '初始化演示数据') {
+    MessagePlugin.warning('确认文字不正确，未执行初始化')
+    return
+  }
+  if (!window.confirm('确认初始化演示数据吗？当前账号也会被替换，之后需使用 admin / admin123 重新登录。')) return
+
+  initializingDemoData.value = true
+  try {
+    const res: any = await request.post('/api/admin/settings/initialize-demo-data', { confirmation })
+    if (res?.code === 200) {
+      MessagePlugin.success(res.message || '演示数据已初始化')
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user_info')
+      router.push('/login')
+    }
+  } catch (err) {
+    console.error('初始化演示数据失败', err)
+    MessagePlugin.error('初始化演示数据失败')
+  } finally {
+    initializingDemoData.value = false
+  }
+}
 function editRole(roleId: number) {
   router.push('/permission/role-edit/' + roleId)
 }
@@ -207,6 +261,8 @@ function editRole(roleId: number) {
         <div class="page-title-sub">配置系统参数与业务规则</div>
       </div>
       <div style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn btn-outline" @click="handleInitializeDemoData" :disabled="initializingDemoData" style="padding: 0 16px; height: 36px;">{{ initializingDemoData ? '正在初始化…' : '初始化演示数据' }}</button>
+        <button class="btn" @click="handleClearTestData" :disabled="resettingTestData" style="padding: 0 16px; height: 36px; background: #dc2626; border-color: #dc2626; color: #fff;">{{ resettingTestData ? '正在清理…' : '清理测试数据' }}</button>
         <button class="btn btn-outline" @click="handleReset" :disabled="saving" style="padding: 0 24px; height: 36px;">重新加载</button>
         <button class="btn btn-primary" @click="handleSaveAll" :disabled="!settingsLoaded || saving" style="padding: 0 32px; height: 36px;">保存设置</button>
       </div>

@@ -469,7 +469,7 @@ app.get('/api/promoter/patients', authenticatePromoterToken, async (req, res) =>
 
   const list = await query(
     `SELECT p.id, p.patient_no, p.name, p.phone, p.gender, p.age, p.source, p.created_at,
-            u.member_level,
+            COALESCE(ml.code, 'normal') AS member_level,
             promoted.relation_level,
             (SELECT COUNT(*) FROM appointments a WHERE a.patient_id = p.id AND a.status NOT IN ('cancelled', 'no_show')) as appointment_count,
             (SELECT COUNT(*) FROM appointments a WHERE a.patient_id = p.id AND a.status IN ('completed', 'arrived', 'settled', 'checked_in')) as completed_visit_count,
@@ -503,6 +503,8 @@ app.get('/api/promoter/patients', authenticatePromoterToken, async (req, res) =>
      ) promoted
      JOIN patients p ON p.user_id = promoted.user_id
      JOIN users u ON u.id = p.user_id
+     LEFT JOIN user_memberships um ON um.user_id = u.id
+     LEFT JOIN member_levels ml ON ml.id = um.level_id
      ORDER BY p.created_at DESC, p.id DESC`,
     [req.user.user_id, context.promoter_id]
   );
@@ -554,7 +556,7 @@ app.get('/api/promoter/patients/:id', authenticatePromoterToken, async (req, res
 
   const patient = await get(
     `SELECT p.id, p.patient_no, p.user_id, p.name, p.phone, p.gender, p.age, p.relation, p.source, p.created_at,
-            u.member_level,
+            COALESCE(ml.code, 'normal') AS member_level,
             promoted.relation_level
      FROM (
        SELECT user_id, MIN(relation_level) as relation_level
@@ -573,6 +575,8 @@ app.get('/api/promoter/patients/:id', authenticatePromoterToken, async (req, res
      ) promoted
      JOIN patients p ON p.user_id = promoted.user_id
      JOIN users u ON u.id = p.user_id
+     LEFT JOIN user_memberships um ON um.user_id = u.id
+     LEFT JOIN member_levels ml ON ml.id = um.level_id
      WHERE p.id = ?`,
     [req.user.user_id, context.promoter_id, id]
   );

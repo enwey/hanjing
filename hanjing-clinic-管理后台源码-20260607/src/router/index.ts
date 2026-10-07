@@ -107,6 +107,18 @@ const router = createRouter({
           meta: { title: '订单详情', parentPath: '/order' }
         },
         {
+          path: 'fulfillment',
+          name: 'fulfillment',
+          component: () => import('@/views/fulfillment/index.vue'),
+          meta: { title: '交付管理' }
+        },
+        {
+          path: 'after-sales',
+          name: 'after-sales',
+          component: () => import('@/views/after-sales/index.vue'),
+          meta: { title: '售后工作台' }
+        },
+        {
           path: 'distribution',
           name: 'distribution',
           component: () => import('@/views/distribution/index.vue'),

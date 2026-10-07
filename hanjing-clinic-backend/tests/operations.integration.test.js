@@ -39,12 +39,13 @@ test('operations uses verified records, current permissions and real workflow st
       return { status: response.status, body: await response.json() };
     };
     await admin.query("INSERT INTO roles(id,name,code,status) VALUES(1,'Admin','super_admin','active'),(2,'Staff','receptionist','active')");
-    await admin.query("INSERT INTO admin_users(id,username,password_hash,name,role_id,status,store_id) VALUES(1,'test-admin','unused','Admin',1,'online',NULL),(2,'test-staff','unused','Staff',2,'online',1)");
+    await admin.query("INSERT INTO admin_users(id,username,password_hash,name,role_id,status) VALUES(1,'test-admin','unused','Admin',1,'online'),(2,'test-staff','unused','Staff',2,'online')");
     const token = jwt.sign({ id: 1, role: 'super_admin' }, helpers.JWT_SECRET);
     const staff = jwt.sign({ id: 2, role: 'super_admin' }, helpers.JWT_SECRET);
     await admin.query("INSERT INTO users(id,openid,nickname) VALUES(1,'OPERATIONS-TEST','Fixture')");
     await admin.query("INSERT INTO patients(id,user_id,name,relation,patient_no) VALUES(1,1,'Fixture','self','TEST-P1')");
     await admin.query("INSERT INTO stores(id,name,code,address) VALUES(1,'Store A','A','Address A'),(2,'Store B','B','Address B')");
+    await admin.query("INSERT INTO admin_user_stores(admin_user_id,store_id) VALUES(2,1)");
     await admin.query("INSERT INTO doctors(id,name,title,specialty,rating,consult_fee) VALUES(1,'Doctor A','Doctor','Sleep',5,999900),(2,'Doctor B','Doctor','Sleep',5,999900)");
     await admin.query(`INSERT INTO appointments(id,appointment_no,user_id,patient_id,store_id,doctor_id,schedule_id,appointment_date,appointment_time,status,consult_fee)
       VALUES(1,'TEST-A1',1,1,1,1,1,'2026-09-01','10:00','completed',999900),

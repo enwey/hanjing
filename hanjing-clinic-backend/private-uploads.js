@@ -24,7 +24,7 @@ export async function canReadPrivateUpload(path, user) {
     if (!admin) return false;
     if (admin.role !== 'super_admin') {
       const allowed = await get("SELECT 1 FROM permissions WHERE role_id=? AND permission_resource IN ('medical_record:view','medical_record:edit') LIMIT 1", [admin.role_id]);
-      if (!allowed || !admin.store_id) return false;
+      if (!allowed) return false;
     }
   } else if (!user.openid || !await get('SELECT id FROM users WHERE id=? AND openid=?', [user.id, user.openid])) return false;
   const asset = await get('SELECT * FROM private_uploads WHERE file_path=?', [path]);

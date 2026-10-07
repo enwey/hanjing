@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { generateUniquePatientNo } from './patientNo.js';
+import { initDeliverySchema } from './delivery-schema.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
@@ -144,14 +145,13 @@ export const initDB = async () => {
       openid VARCHAR(64) UNIQUE NOT NULL,
       unionid VARCHAR(64) UNIQUE,
       phone VARCHAR(20) UNIQUE,
+      phone_verified_at TIMESTAMP NULL,
       password_hash VARCHAR(255) DEFAULT NULL,
       nickname VARCHAR(100) NOT NULL,
       avatar_url VARCHAR(255),
       gender TINYINT DEFAULT 0,
       birthday DATE,
-      member_level VARCHAR(30) DEFAULT 'normal',
       points INT DEFAULT 0,
-      total_spent INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
@@ -170,11 +170,9 @@ export const initDB = async () => {
       phone VARCHAR(100),
       source VARCHAR(30) DEFAULT 'mini_app',
       has_snore TINYINT DEFAULT 0,
-      follower_id BIGINT UNSIGNED DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-      FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE SET NULL
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     );
   `);
 
@@ -186,6 +184,9 @@ export const initDB = async () => {
   } catch (err) {}
   try {
     await query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(100) UNIQUE DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE users ADD COLUMN phone_verified_at TIMESTAMP NULL DEFAULT NULL AFTER phone;`);
   } catch (err) {}
   try {
     await query(`ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) DEFAULT NULL AFTER phone;`);
@@ -216,6 +217,67 @@ export const initDB = async () => {
     }
     await query(`ALTER TABLE patients ADD CONSTRAINT fk_patients_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;`);
   } catch (err) {}
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS member_levels (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      code VARCHAR(30) NOT NULL UNIQUE,
+      name VARCHAR(50) NOT NULL,
+      spent_required INT NOT NULL DEFAULT 0,
+      sort_order INT NOT NULL DEFAULT 0,
+      color VARCHAR(20) DEFAULT NULL,
+      bg_color VARCHAR(20) DEFAULT NULL,
+      benefits JSON NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'active',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+  `);
+  const memberLevelDefaults = [
+    ['normal', '普通会员', 0, 0, '#9CA3AF', '#F3F4F6', [{ icon: 'appointment', title: '在线预约', desc: '随时预约睡眠门诊' }, { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' }]],
+    ['silver', '白银会员', 100000, 10, '#6B7280', '#F3F4F6', [{ icon: 'appointment', title: '在线预约', desc: '优先时段选择' }, { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' }, { icon: 'discount', title: '购物9.5折', desc: '商城商品享95折优惠' }]],
+    ['gold', '黄金会员', 300000, 20, '#F5A623', '#FFF9E6', [{ icon: 'appointment', title: '在线预约', desc: 'VIP优先预约通道' }, { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' }, { icon: 'discount', title: '购物9折', desc: '商城商品享9折优惠' }, { icon: 'service', title: '专属客服', desc: '1v1健康顾问服务' }, { icon: 'channel', title: '分销权限', desc: '可申请成为推广员' }]],
+    ['diamond', '钻石会员', 1000000, 30, '#3B6BF5', '#EEF4FF', [{ icon: 'appointment', title: '在线预约', desc: '院长级专家优先约' }, { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' }, { icon: 'discount', title: '购物8.5折', desc: '商城商品享85折优惠' }, { icon: 'service', title: '专属客服', desc: '1v1健康顾问服务' }, { icon: 'channel', title: '分销权限', desc: '推广员+高佣金比例' }, { icon: 'free', title: '年度免费检查', desc: '每年1次免费睡眠监测' }]],
+  ];
+  for (const [code, name, spentRequired, sortOrder, color, bgColor, benefits] of memberLevelDefaults) {
+    await query(`INSERT IGNORE INTO member_levels (code, name, spent_required, sort_order, color, bg_color, benefits)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`, [code, name, spentRequired, sortOrder, color, bgColor, JSON.stringify(benefits)]);
+  }
+  await query(`
+    CREATE TABLE IF NOT EXISTS user_memberships (
+      user_id BIGINT UNSIGNED PRIMARY KEY,
+      level_id BIGINT UNSIGNED NOT NULL,
+      effective_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (level_id) REFERENCES member_levels(id) ON DELETE RESTRICT
+    );
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS user_membership_history (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      user_id BIGINT UNSIGNED NOT NULL,
+      from_level_id BIGINT UNSIGNED DEFAULT NULL,
+      to_level_id BIGINT UNSIGNED NOT NULL,
+      total_spent INT NOT NULL DEFAULT 0,
+      reason VARCHAR(50) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_membership_history_user_created (user_id, created_at),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (from_level_id) REFERENCES member_levels(id) ON DELETE SET NULL,
+      FOREIGN KEY (to_level_id) REFERENCES member_levels(id) ON DELETE RESTRICT
+    );
+  `);
+  await query(`
+    INSERT INTO user_memberships (user_id, level_id, effective_at)
+    SELECT u.id, fallback.id, CURRENT_TIMESTAMP
+    FROM users u
+    JOIN member_levels fallback ON fallback.code = 'normal' AND fallback.status = 'active'
+    LEFT JOIN user_memberships existing ON existing.user_id = u.id
+    WHERE existing.user_id IS NULL
+  `);
+  try { await query('ALTER TABLE users DROP COLUMN member_level'); } catch (err) {}
+  try { await query('ALTER TABLE users DROP COLUMN total_spent'); } catch (err) {}
 
   await query(`
     CREATE TABLE IF NOT EXISTS user_patient_links (
@@ -681,6 +743,12 @@ export const initDB = async () => {
     await query(`ALTER TABLE treatment_records ADD CONSTRAINT fk_treatment_records_patient_device FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL`);
   } catch (err) {}
   try {
+    await query(`ALTER TABLE treatment_records ADD CONSTRAINT fk_treatment_records_product FOREIGN KEY (device_product_id) REFERENCES products(id) ON DELETE SET NULL`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE patient_devices ADD CONSTRAINT fk_patient_devices_product FOREIGN KEY (device_product_id) REFERENCES products(id) ON DELETE SET NULL`);
+  } catch (err) {}
+  try {
     await query(`
       INSERT INTO patient_devices (
         patient_id, bind_treatment_record_id, bind_medical_record_id, bind_doctor_id, device_product_id,
@@ -880,52 +948,6 @@ export const initDB = async () => {
   } catch (err) {
     console.error('Failed to backfill device_adjustments.patient_device_id:', err);
   }
-
-  // 15. follow_up_tasks
-  await query(`
-    CREATE TABLE IF NOT EXISTS follow_up_tasks (
-      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-      patient_id BIGINT UNSIGNED NOT NULL,
-      doctor_id BIGINT UNSIGNED NOT NULL,
-      title VARCHAR(150) NOT NULL,
-      description TEXT,
-      due_date DATE NOT NULL,
-      status VARCHAR(30) DEFAULT 'pending',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
-      FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE
-    );
-  `);
-
-  // 16. follow_up_records
-  await query(`
-    CREATE TABLE IF NOT EXISTS follow_up_records (
-      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-      task_id BIGINT UNSIGNED NOT NULL,
-      patient_id BIGINT UNSIGNED NOT NULL,
-      doctor_id BIGINT UNSIGNED NOT NULL,
-      contact_type VARCHAR(30) NOT NULL,
-      summary TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (task_id) REFERENCES follow_up_tasks(id) ON DELETE CASCADE,
-      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
-      FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE
-    );
-  `);
-
-  // 16b. patient_crm_records
-  await query(`
-    CREATE TABLE IF NOT EXISTS patient_crm_records (
-      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-      patient_id BIGINT UNSIGNED NOT NULL,
-      admin_user_id BIGINT UNSIGNED NOT NULL,
-      content TEXT NOT NULL,
-      stage VARCHAR(50) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
-      FOREIGN KEY (admin_user_id) REFERENCES admin_users(id) ON DELETE CASCADE
-    );
-  `);
 
   // 17. products
   await query(`
@@ -1564,13 +1586,12 @@ export const initDB = async () => {
       name VARCHAR(100) NOT NULL,
       phone VARCHAR(30),
       role_id BIGINT UNSIGNED NOT NULL,
-      store_id BIGINT UNSIGNED,
+      all_stores TINYINT(1) NOT NULL DEFAULT 0,
       doctor_id BIGINT UNSIGNED,
       status VARCHAR(30) DEFAULT 'online',
       last_login_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
-      FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE SET NULL,
       FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE SET NULL
     );
   `);
@@ -1578,11 +1599,246 @@ export const initDB = async () => {
     await query(`ALTER TABLE admin_users ADD COLUMN doctor_id BIGINT UNSIGNED NULL`);
   } catch (e) {}
   try {
-    await query(`ALTER TABLE patients ADD COLUMN follower_id BIGINT UNSIGNED NULL DEFAULT NULL`);
+    await query(`ALTER TABLE admin_users ADD COLUMN all_stores TINYINT(1) NOT NULL DEFAULT 0`);
   } catch (e) {}
+  await query(`
+    CREATE TABLE IF NOT EXISTS admin_user_stores (
+      admin_user_id BIGINT UNSIGNED NOT NULL,
+      store_id BIGINT UNSIGNED NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (admin_user_id, store_id),
+      FOREIGN KEY (admin_user_id) REFERENCES admin_users(id) ON DELETE CASCADE,
+      FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
+    );
+  `);
   try {
-    await query(`ALTER TABLE patients ADD CONSTRAINT fk_patient_follower FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE SET NULL`);
+    const storeForeignKeys = await query(`SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'admin_users' AND COLUMN_NAME = 'store_id'
+        AND REFERENCED_TABLE_NAME IS NOT NULL`);
+    for (const foreignKey of storeForeignKeys) await query(`ALTER TABLE admin_users DROP FOREIGN KEY \`${foreignKey.CONSTRAINT_NAME}\``);
+    await query('ALTER TABLE admin_users DROP COLUMN store_id');
+  } catch (err) {}
+  // Follow-up data belongs to the assigned backend account, not to a doctor profile.
+  // Keep the patient only on the task: a follow-up record reaches its patient through task_id.
+  await query(`
+    CREATE TABLE IF NOT EXISTS follow_up_tasks (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      follower_id BIGINT UNSIGNED NOT NULL,
+      title VARCHAR(150) NOT NULL,
+      description TEXT,
+      due_date DATE NOT NULL,
+      status VARCHAR(30) DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+      FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE RESTRICT
+    );
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS follow_up_records (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      task_id BIGINT UNSIGNED NOT NULL,
+      follower_id BIGINT UNSIGNED NOT NULL,
+      contact_type VARCHAR(30) NOT NULL,
+      summary TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (task_id) REFERENCES follow_up_tasks(id) ON DELETE CASCADE,
+      FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE RESTRICT
+    );
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS patient_crm_records (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      follower_id BIGINT UNSIGNED NOT NULL,
+      content TEXT NOT NULL,
+      stage VARCHAR(50) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+      FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE RESTRICT
+    );
+  `);
+
+  const dropForeignKeysForColumn = async (tableName, columnName) => {
+    const foreignKeys = await query(`
+      SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+        AND REFERENCED_TABLE_NAME IS NOT NULL
+    `, [tableName, columnName]);
+    for (const foreignKey of foreignKeys) {
+      await query(`ALTER TABLE \`${tableName}\` DROP FOREIGN KEY \`${foreignKey.CONSTRAINT_NAME}\``);
+    }
+  };
+
+  // A patient is not owned by an operator. Every operator relationship is kept
+  // on its own CRM or follow-up record, so no stale "current follower" remains.
+  try { await dropForeignKeysForColumn('patients', 'follower_id'); } catch (e) {}
+  try { await query(`ALTER TABLE patients DROP COLUMN follower_id`); } catch (e) {}
+
+  // One-time conversion of the pre-release doctor-based model.
+  try { await query(`ALTER TABLE follow_up_tasks ADD COLUMN follower_id BIGINT UNSIGNED NULL AFTER patient_id`); } catch (e) {}
+  try {
+    await query(`
+      UPDATE follow_up_tasks t
+      LEFT JOIN admin_users doctor_account ON doctor_account.doctor_id = t.doctor_id
+      SET t.follower_id = COALESCE(
+        t.follower_id,
+        doctor_account.id,
+        (SELECT id FROM admin_users WHERE status = 'online' ORDER BY id ASC LIMIT 1)
+      )
+      WHERE t.follower_id IS NULL
+    `);
   } catch (e) {}
+  try { await dropForeignKeysForColumn('follow_up_tasks', 'doctor_id'); } catch (e) {}
+  try { await query(`ALTER TABLE follow_up_tasks DROP COLUMN doctor_id`); } catch (e) {}
+  try { await query(`ALTER TABLE follow_up_tasks MODIFY COLUMN follower_id BIGINT UNSIGNED NOT NULL`); } catch (e) {}
+  try { await query(`ALTER TABLE follow_up_tasks ADD CONSTRAINT fk_follow_up_task_follower FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE RESTRICT`); } catch (e) {}
+
+  try { await query(`ALTER TABLE follow_up_records ADD COLUMN follower_id BIGINT UNSIGNED NULL AFTER task_id`); } catch (e) {}
+  try {
+    await query(`
+      UPDATE follow_up_records r
+      JOIN follow_up_tasks t ON t.id = r.task_id
+      LEFT JOIN admin_users doctor_account ON doctor_account.doctor_id = r.doctor_id
+      SET r.follower_id = COALESCE(r.follower_id, doctor_account.id, t.follower_id)
+      WHERE r.follower_id IS NULL
+    `);
+  } catch (e) {}
+  try { await dropForeignKeysForColumn('follow_up_records', 'patient_id'); } catch (e) {}
+  try { await query(`ALTER TABLE follow_up_records DROP COLUMN patient_id`); } catch (e) {}
+  try { await dropForeignKeysForColumn('follow_up_records', 'doctor_id'); } catch (e) {}
+  try { await query(`ALTER TABLE follow_up_records DROP COLUMN doctor_id`); } catch (e) {}
+  try { await query(`ALTER TABLE follow_up_records MODIFY COLUMN follower_id BIGINT UNSIGNED NOT NULL`); } catch (e) {}
+  try { await query(`ALTER TABLE follow_up_records ADD CONSTRAINT fk_follow_up_record_follower FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE RESTRICT`); } catch (e) {}
+
+  try { await query(`ALTER TABLE patient_crm_records RENAME COLUMN admin_user_id TO follower_id`); } catch (e) {}
+  try { await dropForeignKeysForColumn('patient_crm_records', 'follower_id'); } catch (e) {}
+  try { await query(`ALTER TABLE patient_crm_records ADD CONSTRAINT fk_patient_crm_record_follower FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE RESTRICT`); } catch (e) {}
+
+  // Device fulfillment is a separate operational workflow. It deliberately
+  // records every hand-off instead of overloading order or patient fields.
+  await query(`
+    CREATE TABLE IF NOT EXISTS fulfillment_cases (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      order_id BIGINT UNSIGNED NOT NULL UNIQUE,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      store_id BIGINT UNSIGNED DEFAULT NULL,
+      technician_id BIGINT UNSIGNED DEFAULT NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'pending_assignment',
+      expected_fitting_date DATE DEFAULT NULL,
+      note TEXT DEFAULT NULL,
+      created_by BIGINT UNSIGNED NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE RESTRICT,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE RESTRICT,
+      FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE SET NULL,
+      FOREIGN KEY (technician_id) REFERENCES admin_users(id) ON DELETE SET NULL,
+      FOREIGN KEY (created_by) REFERENCES admin_users(id) ON DELETE RESTRICT
+    );
+  `);
+  const fulfillmentColumns = await query("SHOW COLUMNS FROM fulfillment_cases LIKE 'medical_record_id'");
+  if (!fulfillmentColumns.length) {
+    await query(`ALTER TABLE fulfillment_cases ADD COLUMN medical_record_id BIGINT UNSIGNED NULL,
+      ADD CONSTRAINT fk_fulfillment_medical_record FOREIGN KEY (medical_record_id) REFERENCES medical_records(id) ON DELETE SET NULL`);
+  }
+  const adjustmentRecordColumns = await query("SHOW COLUMNS FROM device_adjustments LIKE 'medical_record_id'");
+  if (!adjustmentRecordColumns.length) {
+    await query(`ALTER TABLE device_adjustments ADD COLUMN medical_record_id BIGINT UNSIGNED NULL,
+      ADD CONSTRAINT fk_adjustment_medical_record FOREIGN KEY (medical_record_id) REFERENCES medical_records(id) ON DELETE SET NULL`);
+  }
+  await query(`
+    CREATE TABLE IF NOT EXISTS fulfillment_molds (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      fulfillment_case_id BIGINT UNSIGNED NOT NULL,
+      technician_id BIGINT UNSIGNED NOT NULL,
+      mold_no VARCHAR(80) NOT NULL UNIQUE,
+      storage_location VARCHAR(150) NOT NULL,
+      taken_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      note TEXT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (fulfillment_case_id) REFERENCES fulfillment_cases(id) ON DELETE CASCADE,
+      FOREIGN KEY (technician_id) REFERENCES admin_users(id) ON DELETE RESTRICT
+    );
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS fulfillment_mold_shipments (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      fulfillment_case_id BIGINT UNSIGNED NOT NULL,
+      sender_id BIGINT UNSIGNED NOT NULL,
+      carrier VARCHAR(100) NOT NULL,
+      tracking_no VARCHAR(100) NOT NULL,
+      sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      note TEXT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (fulfillment_case_id) REFERENCES fulfillment_cases(id) ON DELETE CASCADE,
+      FOREIGN KEY (sender_id) REFERENCES admin_users(id) ON DELETE RESTRICT
+    );
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS fulfillment_device_receipts (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      fulfillment_case_id BIGINT UNSIGNED NOT NULL,
+      receiver_id BIGINT UNSIGNED NOT NULL,
+      device_serial_no VARCHAR(100) DEFAULT NULL,
+      storage_location VARCHAR(150) NOT NULL,
+      inspection_result VARCHAR(30) NOT NULL DEFAULT 'passed',
+      received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      note TEXT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (fulfillment_case_id) REFERENCES fulfillment_cases(id) ON DELETE CASCADE,
+      FOREIGN KEY (receiver_id) REFERENCES admin_users(id) ON DELETE RESTRICT
+    );
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS fulfillment_fittings (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      fulfillment_case_id BIGINT UNSIGNED NOT NULL,
+      technician_id BIGINT UNSIGNED NOT NULL,
+      patient_device_id BIGINT UNSIGNED DEFAULT NULL,
+      fitted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      result VARCHAR(30) NOT NULL DEFAULT 'completed',
+      note TEXT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (fulfillment_case_id) REFERENCES fulfillment_cases(id) ON DELETE CASCADE,
+      FOREIGN KEY (technician_id) REFERENCES admin_users(id) ON DELETE RESTRICT,
+      FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL
+    );
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS after_sales_tickets (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      fulfillment_case_id BIGINT UNSIGNED DEFAULT NULL,
+      patient_id BIGINT UNSIGNED NOT NULL,
+      patient_device_id BIGINT UNSIGNED DEFAULT NULL,
+      assigned_technician_id BIGINT UNSIGNED DEFAULT NULL,
+      created_by BIGINT UNSIGNED NOT NULL,
+      issue_type VARCHAR(100) NOT NULL,
+      description TEXT NOT NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'pending',
+      resolution TEXT DEFAULT NULL,
+      resolved_at TIMESTAMP NULL DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (fulfillment_case_id) REFERENCES fulfillment_cases(id) ON DELETE SET NULL,
+      FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE RESTRICT,
+      FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL,
+      FOREIGN KEY (assigned_technician_id) REFERENCES admin_users(id) ON DELETE SET NULL,
+      FOREIGN KEY (created_by) REFERENCES admin_users(id) ON DELETE RESTRICT
+    );
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS fulfillment_events (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      fulfillment_case_id BIGINT UNSIGNED NOT NULL,
+      actor_id BIGINT UNSIGNED NOT NULL,
+      event_type VARCHAR(50) NOT NULL,
+      detail JSON DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (fulfillment_case_id) REFERENCES fulfillment_cases(id) ON DELETE CASCADE,
+      FOREIGN KEY (actor_id) REFERENCES admin_users(id) ON DELETE RESTRICT
+    );
+  `);
   try {
     await query(`ALTER TABLE ess_assessments ADD COLUMN patient_id BIGINT UNSIGNED NULL DEFAULT NULL`);
   } catch (e) {}
@@ -1748,29 +2004,8 @@ export const initDB = async () => {
     );
   `);
 
-  // 38. wearing_records
-  await query(`
-    CREATE TABLE IF NOT EXISTS wearing_records (
-      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-      user_id BIGINT UNSIGNED NOT NULL,
-      wearing_date DATE NOT NULL,
-      start_time TIME,
-      end_time TIME,
-      duration_mins INT NOT NULL,
-      comfort_score INT DEFAULT 5,
-      snore_decibel INT DEFAULT 0,
-      apnea_events INT DEFAULT 0,
-      status VARCHAR(30) DEFAULT 'synced',
-      note VARCHAR(255) DEFAULT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      UNIQUE KEY idx_user_date (user_id, wearing_date)
-    );
-  `);
-
-  try {
-    await query(`ALTER TABLE wearing_records ADD COLUMN note VARCHAR(255) DEFAULT NULL`);
-  } catch (e) {}
+  // 38. 佩戴数据只保留患者设备维度的 wearing_logs；移除无法定位设备的旧账户维度表。
+  await query(`DROP TABLE IF EXISTS wearing_records`);
 
   // 39. treatment_timelines
   await query(`
@@ -1811,6 +2046,12 @@ export const initDB = async () => {
   try {
     await query(`ALTER TABLE treatment_timelines ADD COLUMN icon VARCHAR(50) DEFAULT NULL`);
   } catch (e) {}
+  try {
+    await query(`ALTER TABLE treatment_timelines ADD CONSTRAINT fk_treatment_timelines_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE`);
+  } catch (e) {}
+  try {
+    await query(`ALTER TABLE treatment_timelines ADD CONSTRAINT fk_treatment_timelines_treatment FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE CASCADE`);
+  } catch (e) {}
 
   // 40. device_maintenance
   await query(`
@@ -1841,6 +2082,9 @@ export const initDB = async () => {
   } catch (e) {}
   try {
     await query(`ALTER TABLE device_maintenance ADD CONSTRAINT fk_device_maintenance_patient_device FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL`);
+  } catch (e) {}
+  try {
+    await query(`ALTER TABLE device_maintenance ADD CONSTRAINT fk_device_maintenance_treatment FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE SET NULL`);
   } catch (e) {}
   try {
     await query(`ALTER TABLE device_maintenance ADD COLUMN description TEXT DEFAULT NULL`);
@@ -1886,6 +2130,9 @@ export const initDB = async () => {
   } catch (e) {}
   try {
     await query(`ALTER TABLE device_feedback ADD CONSTRAINT fk_device_feedback_patient_device FOREIGN KEY (patient_device_id) REFERENCES patient_devices(id) ON DELETE SET NULL`);
+  } catch (e) {}
+  try {
+    await query(`ALTER TABLE device_feedback ADD CONSTRAINT fk_device_feedback_treatment FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE SET NULL`);
   } catch (e) {}
   try {
     await query(`ALTER TABLE device_feedback ADD COLUMN rating INT DEFAULT 5`);
@@ -2024,6 +2271,7 @@ export const initDB = async () => {
   }
 
   // Re-enable Foreign Key checks
+  await initDeliverySchema(query);
   await query('SET FOREIGN_KEY_CHECKS = 1;');
 
   console.log('MySQL Database tables verified/created successfully.');

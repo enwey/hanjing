@@ -121,7 +121,7 @@ const l = () => "../../components/base/hj-navbar.js",
           e: e.o(onUserCardTap),
           f: e.t(
             (e.unref(n).profile
-              ? (e.unref(n).profile.memberLevel === "gold" ? "黄金会员" : "普通会员")
+              ? (e.unref(n).profile.memberLevelTitle || ({ normal: "普通会员", silver: "白银会员", gold: "黄金会员", diamond: "钻石会员" }[e.unref(n).profile.memberLevel] || "普通会员"))
               : "未登录"),
           ),
         };
