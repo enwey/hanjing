@@ -24,6 +24,7 @@ test('operations uses verified records, current permissions and real workflow st
     Object.assign(process.env, { DB_HOST: '127.0.0.1', DB_PORT: '3306', DB_NAME: schema,
       DB_USER: process.env.TEST_DB_USER || 'root', DB_PASSWORD: process.env.TEST_DB_PASSWORD || 'root' });
     db = await import('../db.js');
+    await admin.query("INSERT INTO member_levels(code,name,spent_required,sort_order,benefits) VALUES('normal','Test normal',0,0,JSON_ARRAY())");
     const helpers = await import('../helpers.js');
     const refunds = await import('../refunds.js');
     const report = await import('../operations-report.js');

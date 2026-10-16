@@ -40,6 +40,7 @@ const route = useRoute()
 const router = useRouter()
 
 const isEdit = ref(false)
+const loadedStock = ref<number | null>(null)
 const editorMode = ref<'edit' | 'preview'>('edit')
 const categoryOptions = ref<ProductCategoryOption[]>([])
 
@@ -190,7 +191,9 @@ async function handleSave() {
   
   try {
     if (isEdit.value && route.params.id) {
-      await request.put(`/api/admin/products/${route.params.id}`, toPayload(formData.value))
+      const { stock, ...fields } = toPayload(formData.value)
+      const payload = stock === loadedStock.value ? fields : { ...fields, stock, expected_stock: loadedStock.value }
+      await request.put(`/api/admin/products/${route.params.id}`, payload)
       MessagePlugin.success('保存商品配置成功')
     } else {
       await request.post('/api/admin/products', toPayload(formData.value))
@@ -215,6 +218,7 @@ onMounted(async () => {
       const res: any = await request.get(`/api/admin/products/${prodId}`)
       const row = res.data
       if (row) {
+        loadedStock.value = Number(row.stock || 0)
         let gUrls: string[] = []
         if (row.gallery_urls) {
           try {

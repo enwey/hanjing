@@ -86,7 +86,7 @@ const fetchDoctors = async () => {
         avatarChar: d.name.charAt(0),
         avatarBg: gradients[index % gradients.length],
         consults: d.consult_count || 0,
-        rating: Number(d.rating) || 5.0,
+        rating: Number(d.review_count) > 0 && d.rating !== null && d.rating !== undefined && Number.isFinite(Number(d.rating)) ? Number(d.rating) : null,
         reviewCount: d.review_count || 0,
         positiveRate: d.positive_rate !== null && d.positive_rate !== undefined ? `${d.positive_rate}%` : '暂无评价',
         isOnline: d.status === 1,
@@ -366,7 +366,7 @@ function handleNextWeek() {
               <div style="font-size: 10px; color: #9CA3AF;">累计接诊</div>
             </div>
             <div style="flex: 1;">
-              <div style="font-size: 18px; font-weight: 700; color: #10B981;">{{ dr.rating }}</div>
+              <div style="font-size: 18px; font-weight: 700; color: #10B981;">{{ dr.rating ?? '暂无评价' }}</div>
               <div style="font-size: 10px; color: #9CA3AF;">评分</div>
             </div>
             <div style="flex: 1;">

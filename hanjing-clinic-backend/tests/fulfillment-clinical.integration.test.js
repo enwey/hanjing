@@ -31,8 +31,8 @@ test('fulfillment clinical details stay linked to the billed consultation', asyn
     await admin.query("INSERT INTO treatment_records(id,patient_id,doctor_id,medical_record_id,device_model,device_product_name,initial_advancement,start_date) VALUES(1,1,1,1,'Device A','Original device',0,'2026-01-01'),(2,1,1,2,'Device B','Later device',5,'2026-02-01')");
     await admin.query("INSERT INTO patient_devices(id,patient_id,bind_treatment_record_id,bind_medical_record_id,device_model,initial_advancement,bound_at) VALUES(1,1,1,1,'Device A',0,'2026-01-01'),(2,1,2,2,'Device B',5,'2026-02-01')");
     await admin.query('UPDATE treatment_records SET patient_device_id=id');
-    await admin.query("INSERT INTO orders(id,order_no,user_id,total_amount,pay_amount,appointment_id) VALUES(1,'TEST-O1',1,100,100,1),(2,'TEST-O2',1,100,100,NULL)");
-    const originalCase = { patient_id: 1, order_id: 1, medical_record_id: 1, created_at: '2026-03-01 10:00:00' };
+    await admin.query("INSERT INTO orders(id,order_no,user_id,total_amount,pay_amount,appointment_id,status,pay_at,shipping_address) VALUES(1,'TEST-O1',1,100,100,1,'paid',NOW(),JSON_OBJECT('storeId',1)),(2,'TEST-O2',1,100,100,NULL,'paid',NOW(),JSON_OBJECT('storeId',1))");
+    const originalCase = { patient_id: 1, order_id: 1, store_id: 1, medical_record_id: 1, created_at: '2026-03-01 10:00:00' };
     await t.test('exact record supplies prescription, bound device, zero initial setting and complete screening', async () => {
       const data = await readFulfillmentClinical(originalCase);
       assert.equal(data.medical_record.prescription, 'Original prescription');

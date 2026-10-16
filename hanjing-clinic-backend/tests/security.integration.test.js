@@ -22,6 +22,7 @@ test('launch security and payment boundaries', async t => {
     await control.query('CREATE TABLE IF NOT EXISTS private_uploads(file_path VARCHAR(255) PRIMARY KEY,user_id BIGINT,admin_id BIGINT)');
     Object.assign(process.env, { DB_HOST: '127.0.0.1', DB_PORT: '3306', DB_USER: process.env.TEST_DB_USER || 'root', DB_PASSWORD: process.env.TEST_DB_PASSWORD || 'root', DB_NAME: schema });
     db = await import('../db.js');
+    await control.query("INSERT INTO member_levels(code,name,spent_required,sort_order,benefits) VALUES('normal','Test normal',0,0,JSON_ARRAY())");
     const helpers = await import('../helpers.js');
     const client = await import('../routes/client.js');
     const admin = await import('../routes/admin.js');
@@ -95,7 +96,8 @@ test('launch security and payment boundaries', async t => {
       await control.query("INSERT INTO permissions(role_id,permission_resource) VALUES(1,'patient:view'),(1,'patient:edit')");
       await control.query("INSERT INTO im_messages(patient_id,sender,sender_name,text,is_read) VALUES(2,'patient','Fixture','Private fixture',0)");
       assert.equal((await api('/api/admin/im/messages?patient_id=2', undefined, staff)).status, 403);
-      await control.query('DELETE FROM admin_user_stores WHERE admin_user_id=1');
+      await control.query("INSERT INTO stores(id,name,code,address) VALUES(99,'Allowed store','SEC-99','Test')");
+      await control.query('INSERT INTO admin_user_stores(admin_user_id,store_id) VALUES(1,99)');
       assert.equal((await api('/api/admin/im/messages?patient_id=2', undefined, staff)).status, 404);
       assert.equal((await api('/api/admin/im/send', { patient_id: 2, text: 'Tamper' }, staff)).status, 404);
       assert.equal((await api('/api/admin/im/messages?patient_id=2', undefined, superToken)).status, 200);

@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import { formatShanghaiDateTime } from '@/utils/dateTime'
+import { appointmentTimeline } from '@/utils/appointmentTimeline'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { createCheckoutLifecycle, settleCashierAppointment, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { navigateToParent } from '@/utils/routeNavigation'
 import {
   createBillingItem,
+  createCashierSession,
+  appointmentBillingItems,
   createCheckoutReceiptResult,
+  confirmedCashierReceipt,
   fetchCheckoutProducts,
   findCheckoutProduct,
   type BillingItem,
@@ -19,6 +25,12 @@ import { createNativePay, getAdminPayStatus, isPaidStatus, submitMicropay } from
 const route = useRoute()
 const router = useRouter()
 const appointmentId = ref(route.params.id as string || '1')
+const detailReady = ref(false)
+let detailRequestVersion = 0
+watch(() => route.fullPath, () => {
+  appointmentId.value = String(route.params.id || '')
+  fetchAppointmentDetail()
+})
 
 /* ---- Appointment Data ---- */
 const levelMap: Record<string, string> = {
@@ -79,111 +91,26 @@ const appointment = ref<any>({
 })
 
 const patientHistory = ref<any[]>([])
+const patientSummary = ref<{visit_count:number; receipts:number; refunds:number; net_receipts:number} | null>(null)
+const historyTotal = ref<number | null>(null)
+const historyError = ref(false)
 
-const fetchPatientHistory = async (patientId: number) => {
+const fetchPatientHistory = async (patientId: number, version: number) => {
   try {
     const res: any = await request.get('/api/admin/appointments', {
       params: { patient_id: patientId, page: 1, pageSize: 50 }
     })
-    if (res.code === 200 && res.data && res.data.list) {
+    if (version === detailRequestVersion && res.code === 200 && res.data && res.data.list) {
       patientHistory.value = res.data.list
+      historyTotal.value = Number.isSafeInteger(res.data.total) ? res.data.total : null
     }
   } catch (error) {
     console.error('获取患者历史预约失败:', error)
+    if (version === detailRequestVersion) historyError.value = true
   }
 }
 
-const totalSpent = computed(() => {
-  return patientHistory.value
-    .filter(item => item.status === 'arrived' || item.status === 'settled')
-    .reduce((sum, item) => sum + (item.consult_fee || 0), 0)
-})
-
-const timelineSteps = computed(() => {
-  const steps = []
-  const status = appointment.value.status
-
-  // 1. 创建预约 (始终完成)
-  steps.push({
-    dot: 'green',
-    time: appointment.value.createTime || '--',
-    content: `<strong>创建预约</strong> — 患者通过 ${appointment.value.source} 预约，选择 ${appointment.value.store} · ${appointment.value.doctor} · ${appointment.value.dateTime}`
-  })
-
-  // 2. 支付/确认挂号
-  if (status === 'pending_payment') {
-    steps.push({
-      dot: 'orange',
-      time: '待支付',
-      content: `<strong>等待支付</strong> — 就诊挂号金待支付`
-    })
-  } else {
-    steps.push({
-      dot: 'green',
-      time: appointment.value.createTime || '--',
-      content: `<strong>确认预约</strong> — 挂号预约已确认成功`
-    })
-  }
-
-  // 检查是否已取消或未诊
-  if (status === 'cancelled') {
-    steps.push({
-      dot: 'red',
-      time: '已取消',
-      content: `<strong>预约取消</strong> — 该预约单已被取消`
-    })
-    return steps
-  } else if (status === 'no_show') {
-    steps.push({
-      dot: 'orange',
-      time: '未到诊',
-      content: `<strong>未到诊</strong> — 预约时间已过，患者未到诊`
-    })
-    return steps
-  }
-
-  // 3. 到店签到
-  const hasCheckedIn = ['waiting', 'confirmed', 'checked_in', 'completed', 'arrived', 'settled'].includes(status)
-  steps.push({
-    dot: hasCheckedIn ? 'green' : 'gray',
-    time: hasCheckedIn ? (appointment.value.dateTime.split(' ').pop() || '--') : '待完成',
-    content: hasCheckedIn
-      ? `<strong>到店签到</strong> — 患者已确认签到到诊，进入候诊队列。${appointment.value.pre_exam ? '预检体征信息已录入。' : '体征录入已跳过。'}`
-      : `<strong>到店签到</strong> — 等待患者到店签到及录入预检体征`
-  })
-
-  // 4. 医生接诊
-  const hasConsulted = ['checked_in', 'completed', 'arrived', 'settled'].includes(status)
-  steps.push({
-    dot: hasConsulted ? 'green' : 'gray',
-    time: hasConsulted ? (appointment.value.dateTime.split(' ').pop() || '--') : '待完成',
-    content: hasConsulted
-      ? `<strong>医生接诊</strong> — 医生 ${appointment.value.doctor} 已接诊，开始诊疗`
-      : `<strong>医生接诊</strong> — 等待医生呼叫接诊`
-  })
-
-  // 5. 诊疗结束
-  const hasCompleted = ['completed', 'arrived', 'settled'].includes(status)
-  steps.push({
-    dot: hasCompleted ? 'green' : 'gray',
-    time: hasCompleted ? (appointment.value.dateTime.split(' ').pop() || '--') : '待完成',
-    content: hasCompleted
-      ? `<strong>诊疗结束</strong> — 诊疗已结束，等待前台收银结算`
-      : `<strong>诊疗结束</strong> — 等待就诊服务结束`
-  })
-
-  // 6. 收银结算
-  const hasSettled = ['arrived', 'settled'].includes(status)
-  steps.push({
-    dot: hasSettled ? 'green' : 'gray',
-    time: hasSettled ? (appointment.value.dateTime.split(' ').pop() || '--') : '待完成',
-    content: hasSettled
-      ? `<strong>结算完成</strong> — 门诊收银结算已完成，服务生命周期结束`
-      : `<strong>结算完成</strong> — 等待收银结算完成`
-  })
-
-  return steps
-})
+const timelineSteps = computed(() => appointmentTimeline(appointment.value))
 
 const getStatusText = (status: string) => {
   if (status === 'arrived' || status === 'settled') return '已完成'
@@ -219,12 +146,24 @@ const formatHistDate = (dateStr: string) => {
 }
 
 const fetchAppointmentDetail = async () => {
+  const version = ++detailRequestVersion
+  const targetId = appointmentId.value
+  detailReady.value = false
+  patientHistory.value = []
+  patientSummary.value = null
+  historyTotal.value = null
+  historyError.value = false
   try {
-    const res: any = await request.get(`/api/admin/appointments/${appointmentId.value}`)
+    const res: any = await request.get(`/api/admin/appointments/${targetId}`, {params:{include_patient_summary:1}})
+    if (version !== detailRequestVersion || targetId !== String(route.params.id)) return
     if (res.code === 200 && res.data) {
       const appt = res.data
+      if (String(appt.id) !== targetId) throw new Error('预约详情不匹配')
+      if (appt.patient_summary && ['visit_count','receipts','refunds','net_receipts'].every(key => Number.isSafeInteger(appt.patient_summary[key]))) {
+        patientSummary.value = appt.patient_summary
+      }
       if (appt.patient_id) {
-        fetchPatientHistory(appt.patient_id)
+        fetchPatientHistory(appt.patient_id, version)
       }
       appointment.value = {
         id: appt.id.toString(),
@@ -253,10 +192,11 @@ const fetchAppointmentDetail = async () => {
         latest_pre_exam: appt.latest_pre_exam,
         previous_pre_exam: appt.previous_pre_exam
       }
+      detailReady.value = true
     }
   } catch (error) {
     console.error('获取预约详情失败:', error)
-    MessagePlugin.error('获取预约详情失败')
+    if (version === detailRequestVersion) MessagePlugin.error('获取预约详情失败')
   }
 }
 
@@ -357,7 +297,8 @@ const orderResult = ref<any>(null)
 const nativePayInfo = ref<any>(null)
 const micropayAuthCode = ref('')
 const payWaiting = ref(false)
-let payPollTimer: number | undefined
+const cashierSession = createCashierSession(request)
+const checkoutFlow = createCheckoutLifecycle(() => `${route.fullPath}:${appointmentId.value}`)
 
 const deliveryType = ref<string>('offline_direct')
 const shippingReceiver = ref<string>('')
@@ -377,7 +318,7 @@ const fetchProducts = async () => {
 
 const billingItems = ref<BillingItem[]>([])
 const discountAmount = ref<number>(0)
-const payMethod = ref<string>('wechat')
+const payMethod = ref<string>('wechat_native')
 const fulfillmentTechnicianId = ref<string>('')
 
 const totalAmount = computed(() => {
@@ -431,38 +372,34 @@ watch(deliveryType, (newVal) => {
 })
 
 async function openCheckoutDialog() {
-  if (productOptions.value.length === 0) {
-    await fetchProducts()
-  }
-  const row = appointment.value
-  const consultProduct = findCheckoutProduct(productOptions.value)
-  if (!consultProduct) {
-    MessagePlugin.warning('暂无上架商品，无法开立收费账单')
+  if (!detailReady.value || String(appointment.value.id) !== appointmentId.value) {
+    MessagePlugin.warning('请等待当前预约详情加载完成后再收银')
     return
   }
-  if (row.status === 'pending_payment') {
-    const items: BillingItem[] = []
-    if (row.fee && parseFloat(row.fee) > 0) {
-      items.push(createBillingItem(consultProduct, {
-        name: `${row.doctor}医生挂号门诊费`,
-        price: Math.round(parseFloat(row.fee) * 100)
-      }))
-    }
-    billingItems.value = items.length > 0 ? items : [createBillingItem(consultProduct)]
-  } else {
-    billingItems.value = [
-      createBillingItem(consultProduct)
-    ]
+  const attempt = checkoutFlow.begin()
+  cashierSession.reset()
+  checkoutSuccess.value = false
+  checkoutLoading.value = true
+  if (productOptions.value.length === 0) await fetchProducts()
+  try {
+    if (!checkoutFlow.isCurrent(attempt)) return
+    const items = await appointmentBillingItems(request, productOptions.value, appointmentId.value)
+    if (!checkoutFlow.isCurrent(attempt)) return
+    billingItems.value = items
+  } catch (error: any) {
+    if (checkoutFlow.isCurrent(attempt)) MessagePlugin.error(error.message || '获取预约收费信息失败')
+    return
+  } finally {
+    if (checkoutFlow.isCurrent(attempt)) checkoutLoading.value = false
   }
   discountAmount.value = 0
-  payMethod.value = 'wechat'
+  payMethod.value = 'wechat_native'
   fulfillmentTechnicianId.value = ''
   checkoutSuccess.value = false
   orderResult.value = null
   nativePayInfo.value = null
   micropayAuthCode.value = ''
   payWaiting.value = false
-  stopPayPolling()
   
   deliveryType.value = 'offline_direct'
   shippingReceiver.value = ''
@@ -483,14 +420,27 @@ function closeCheckoutDialog() {
 }
 
 function stopPayPolling() {
-  if (payPollTimer) {
-    window.clearInterval(payPollTimer)
-    payPollTimer = undefined
-  }
+  checkoutFlow.invalidate()
 }
 
-async function markCheckoutPaid(receipt: any) {
+function leaveCheckout() {
+  detailRequestVersion++
+  detailReady.value = false
+  historyRequestVersion++
+  historyDialogVisible.value = false
+  paginatedHistory.value = []
   stopPayPolling()
+  checkoutLoading.value = false
+  checkoutVisible.value = false
+}
+onBeforeRouteLeave(leaveCheckout)
+onBeforeRouteUpdate(leaveCheckout)
+
+async function markCheckoutPaid(receipt: any, attempt: CheckoutAttempt | null, isActive = () => checkoutFlow.isCurrent(attempt)) {
+  if (!isActive() || String(receipt.orderId) !== attempt?.orderId) return
+  receipt = await confirmedCashierReceipt(request, receipt)
+  if (!isActive()) return
+  checkoutFlow.stopPolling()
   nativePayInfo.value = null
   payWaiting.value = false
   orderResult.value = createCheckoutReceiptResult(receipt)
@@ -498,47 +448,58 @@ async function markCheckoutPaid(receipt: any) {
   MessagePlugin.success('收款成功')
 }
 
-function startPayPolling(orderId: number | string, receipt: any) {
-  stopPayPolling()
+function startPayPolling(orderId: number | string, receipt: any, attempt: CheckoutAttempt | null) {
+  if (!checkoutFlow.isCurrent(attempt) || attempt.orderId !== String(orderId)) return
   payWaiting.value = true
-  payPollTimer = window.setInterval(async () => {
+  checkoutFlow.poll(attempt, async isActive => {
     try {
       const status = await getAdminPayStatus(orderId)
+      if (!isActive()) return
       if (isPaidStatus(status.status)) {
-        await markCheckoutPaid(Object.assign({}, receipt, { payAt: status.payAt || new Date().toISOString() }))
+        await markCheckoutPaid(Object.assign({}, receipt, { payAt: status.payAt }), attempt, isActive)
       }
     } catch (error) {
-      console.error('查询支付状态失败:', error)
+      if (isActive()) console.error('查询支付状态失败:', error)
     }
-  }, 2000)
+  })
 }
 
 onUnmounted(() => stopPayPolling())
 
 async function completeCheckoutSettlement() {
-  if (!appointment.value || !orderResult.value) return
+  if (!appointment.value || !orderResult.value || checkoutLoading.value) return
+  const attempt = checkoutFlow.capture()
+  const isActive = () => checkoutFlow.isCurrent(attempt) && String(orderResult.value?.orderId) === attempt?.orderId
+  if (!isActive()) return
+  const targetId = appointmentId.value
   checkoutLoading.value = true
   try {
-    const nextStatus = appointment.value.status === 'pending_payment' ? 'pending' : 'arrived'
-    await request.put(`/api/admin/appointments/${appointment.value.id}`, { status: nextStatus })
+    if (!await settleCashierAppointment(request, targetId, isActive)) return
     MessagePlugin.success('结算已完成')
+    checkoutLoading.value = false
+    stopPayPolling()
     checkoutVisible.value = false
     checkoutSuccess.value = false
     orderResult.value = null
     fetchAppointmentDetail()
   } catch (err) {
     console.error('完成结算失败:', err)
-    MessagePlugin.error('完成结算失败，请稍后重试')
+    if (isActive()) MessagePlugin.error('完成结算失败，请刷新预约状态后重试')
   } finally {
-    checkoutLoading.value = false
+    if (isActive()) checkoutLoading.value = false
   }
 }
 
 function handlePrintInvoice() {
-  MessagePlugin.success('已发送打印指令，正在打印交易凭证小票...')
+  window.print()
 }
 
 async function submitCheckout() {
+  if (checkoutLoading.value) return
+  if (!detailReady.value || String(appointment.value.id) !== appointmentId.value) return
+  const attempt = checkoutFlow.capture()
+  if (!checkoutFlow.isCurrent(attempt)) return
+  const authCode = micropayAuthCode.value.trim()
   if (!appointment.value) return
   if (billingItems.value.length === 0) {
     MessagePlugin.warning('结账明细不能为空')
@@ -574,9 +535,6 @@ async function submitCheckout() {
       shipAddr = {
         receiver: shippingReceiver.value,
         phone: shippingPhone.value,
-        province: '广东省',
-        city: '深圳市',
-        district: '快递邮寄',
         detail: shippingAddressStr.value,
         deliveryMethod: 'online'
       }
@@ -586,9 +544,6 @@ async function submitCheckout() {
       shipAddr = {
         receiver: shippingReceiver.value,
         phone: shippingPhone.value,
-        province: '广东省',
-        city: '深圳市',
-        district: '门店自提',
         detail: '缺货登记（待货通知自提）',
         deliveryMethod: 'pickup_pending'
       }
@@ -596,11 +551,8 @@ async function submitCheckout() {
       orderType = 'offline'
       orderStatus = 'paid'
       shipAddr = {
-        receiver: shippingReceiver.value || '到店客户',
-        phone: shippingPhone.value || '--',
-        province: '广东省',
-        city: '深圳市',
-        district: '到店自提',
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
         detail: '到店自提',
         deliveryMethod: 'pickup'
       }
@@ -612,45 +564,51 @@ async function submitCheckout() {
       pay_amount: payableAmount.value,
       discount_amount: discountAmount.value,
       pay_method: payMethod.value,
+      payment_confirmed: ['cash', 'bank'].includes(payMethod.value),
       technician_id: fulfillmentTechnicianId.value ? Number(fulfillmentTechnicianId.value) : undefined,
       appointment_id: Number(appointmentId.value),
       type: orderType,
       status: orderStatus,
       shipping_address: shipAddr
     }
-    const res: any = await request.post('/api/admin/orders', payload)
+    if (['cash', 'bank'].includes(payMethod.value) && !window.confirm('请确认已实际收到款项。此操作仅登记人工收款，不会发起微信支付。')) return
+    const res: any = await cashierSession.submit(payload)
+    if (!checkoutFlow.isCurrent(attempt)) return
     if (res.code === 200) {
+      if (!checkoutFlow.bindOrder(attempt, res.data.order_id)) return
       const receipt = res.data.receipt
-      if (payMethod.value === 'wechat_native') {
+      if (payload.pay_method === 'wechat_native') {
         const payInfo = await createNativePay(res.data.order_id)
+        if (!checkoutFlow.isCurrent(attempt)) return
         if (payInfo.paid) {
-          await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信扫码支付', payAt: new Date().toISOString() }))
+          await markCheckoutPaid(receipt, attempt)
         } else {
           nativePayInfo.value = payInfo
-          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信扫码支付' }))
+          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信扫码支付' }), attempt)
           MessagePlugin.info('请患者使用微信扫码完成支付')
         }
-      } else if (payMethod.value === 'wechat_micropay') {
+      } else if (payload.pay_method === 'wechat_micropay') {
         if (!micropayAuthCode.value.trim()) {
           MessagePlugin.warning('请先扫描或输入患者微信付款码')
           return
         }
-        const payInfo = await submitMicropay(res.data.order_id, micropayAuthCode.value.trim())
+        const payInfo = await submitMicropay(res.data.order_id, authCode)
+        if (!checkoutFlow.isCurrent(attempt)) return
         if (payInfo.tradeState === 'SUCCESS') {
-          await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信付款码支付', payAt: new Date().toISOString() }))
+          await markCheckoutPaid(receipt, attempt)
         } else {
-          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信付款码支付' }))
+          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信付款码支付' }), attempt)
           MessagePlugin.info('支付处理中，请等待患者确认')
         }
       } else {
-        await markCheckoutPaid(receipt)
+        await markCheckoutPaid(receipt, attempt)
       }
     }
   } catch (error) {
     console.error(error)
-    MessagePlugin.error('结算收费失败')
+    if (checkoutFlow.isCurrent(attempt)) MessagePlugin.error('结算收费失败')
   } finally {
-    checkoutLoading.value = false
+    if (checkoutFlow.isCurrent(attempt)) checkoutLoading.value = false
   }
 }
 
@@ -695,16 +653,37 @@ const completeTreatment = async () => {
 const historyDialogVisible = ref(false)
 const historyPage = ref(1)
 const historyPageSize = ref(10)
+const paginatedHistory = ref<any[]>([])
+const historyLoading = ref(false)
+const historyPageError = ref(false)
+let historyRequestVersion = 0
 
-const paginatedHistory = computed(() => {
-  const start = (historyPage.value - 1) * historyPageSize.value
-  const end = start + historyPageSize.value
-  return patientHistory.value.slice(start, end)
-})
+async function loadHistoryPage(pageInfo = {current:historyPage.value,pageSize:historyPageSize.value}) {
+  if (!detailReady.value || !appointment.value.patient_id) return
+  const version = ++historyRequestVersion
+  const detailVersion = detailRequestVersion
+  historyPage.value = pageInfo.current
+  historyPageSize.value = pageInfo.pageSize
+  paginatedHistory.value = []
+  historyLoading.value = true
+  historyPageError.value = false
+  try {
+    const res: any = await request.get('/api/admin/appointments', {params:{patient_id:appointment.value.patient_id,page:pageInfo.current,pageSize:pageInfo.pageSize}})
+    if (version !== historyRequestVersion || detailVersion !== detailRequestVersion) return
+    if (res.code !== 200 || !Array.isArray(res.data?.list) || !Number.isSafeInteger(res.data.total)) throw new Error('Invalid history response')
+    paginatedHistory.value = res.data.list
+    historyTotal.value = res.data.total
+  } catch (error) {
+    if (version === historyRequestVersion && detailVersion === detailRequestVersion) historyPageError.value = true
+  } finally {
+    if (version === historyRequestVersion) historyLoading.value = false
+  }
+}
 
 function openHistoryDialog() {
   historyPage.value = 1
   historyDialogVisible.value = true
+  loadHistoryPage()
 }
 
 onMounted(() => {
@@ -847,7 +826,8 @@ function handleViewProfile() {
               </div>
               <div style="font-size: 13px; color: #6B7280; line-height: 1.8;">
                 {{ appointment.gender }} · {{ appointment.age }}岁 · {{ appointment.phone }}<br>
-                病历号 {{ appointment.patientNo }} · 累计就诊 {{ patientHistory.length }}次 · 消费 ¥{{ (totalSpent / 100).toLocaleString() }}
+                病历号 {{ appointment.patientNo }} · 可见就诊 {{ patientSummary?.visit_count ?? '--' }}次 ·
+                <span title="当前权限范围内，明确归属此患者的订单实收减已确认退款；不含无法归属患者的账号订单">归属净收款 {{ patientSummary ? '¥' + (patientSummary.net_receipts / 100).toFixed(2) : '--' }}</span>
               </div>
             </div>
           </div>
@@ -1014,7 +994,7 @@ function handleViewProfile() {
           <div class="timeline-item" v-for="(step, idx) in timelineSteps" :key="idx">
             <div :class="['timeline-dot', step.dot]"></div>
             <div class="timeline-time">{{ step.time }}</div>
-            <div class="timeline-content" v-html="step.content"></div>
+            <div class="timeline-content"><strong>{{ step.title }}</strong> · {{ step.content }}</div>
           </div>
         </div>
       </div>
@@ -1023,7 +1003,7 @@ function handleViewProfile() {
     <!-- Patient History Table -->
     <div class="panel" style="margin-top: 16px;">
       <div class="panel-header">
-        <div class="panel-title"><AppIcon name="history" />  历史预约（{{ patientHistory.length }}次）</div>
+        <div class="panel-title"><AppIcon name="history" />  历史预约（{{ historyTotal ?? '--' }}条）</div>
         <button class="btn btn-sm btn-outline" @click="openHistoryDialog">查看全部</button>
       </div>
       <table class="data-table">
@@ -1048,7 +1028,8 @@ function handleViewProfile() {
               </span>
             </td>
           </tr>
-          <tr v-if="patientHistory.length === 0">
+          <tr v-if="historyError"><td colspan="5">历史预约加载失败</td></tr>
+          <tr v-else-if="patientHistory.length === 0">
             <td colspan="5" style="text-align: center; color: #9CA3AF; padding: 20px;">暂无历史预约记录</td>
           </tr>
         </tbody>
@@ -1088,7 +1069,7 @@ function handleViewProfile() {
             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>支付方式:</span> <span>{{ orderResult?.payMethodText }}</span></div>
             <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">================================</div>
             <div style="font-size: 11px; color: #9CA3AF; text-align: center; margin-top: 10px; line-height: 1.4;">
-              谢谢惠顾，定制式舌型阻鼾器会在1-3个工作日内根据您的三维口腔模型制作完成并包邮寄送。
+              谢谢惠顾，请妥善保管收款凭证。
             </div>
           </div>
           <div style="margin-top: 20px; display: flex; gap: 12px;">
@@ -1212,9 +1193,9 @@ function handleViewProfile() {
           <div style="margin-bottom: 24px;">
             <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: #374151;">支付方式</div>
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-              <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
-                <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
-                <AppIcon name="wechat" />  已收款登记
+              <label class="pay-method-label" :class="{ active: payMethod === 'cash' }">
+                <input v-model="payMethod" type="radio" value="cash" style="display: none;">
+                <AppIcon name="money" />  现金已收款
               </label>
               <label class="pay-method-label" :class="{ active: payMethod === 'wechat_native' }">
                 <input v-model="payMethod" type="radio" value="wechat_native" style="display: none;">
@@ -1328,6 +1309,8 @@ function handleViewProfile() {
                 </span>
               </td>
             </tr>
+            <tr v-if="historyLoading"><td colspan="5">加载中</td></tr>
+            <tr v-else-if="historyPageError"><td colspan="5">加载失败，请重新打开或切换页码重试</td></tr>
           </tbody>
         </table>
         
@@ -1336,7 +1319,8 @@ function handleViewProfile() {
           <t-pagination
             v-model:current="historyPage"
             v-model:pageSize="historyPageSize"
-            :total="patientHistory.length"
+            :total="historyTotal ?? 0"
+            @change="loadHistoryPage"
             :pageSizeOptions="[5, 10, 20]"
             size="small"
             style="border: none; padding: 0;"

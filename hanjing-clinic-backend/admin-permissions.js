@@ -5,6 +5,9 @@ export function requiredAdminPermissions(method, route) {
   // The fulfillment menu uses order:view; viewing assigned work must not
   // require system administration privileges.
   if (/^fulfillment\//.test(path)) return [read ? 'order:view' : 'order:edit'];
+  if (/^after-sales-tickets(?:\/|$)/.test(path)) return [read ? 'order:view' : 'order:edit'];
+  if (path === 'orders/cashier-stores') return ['order:view', 'order:edit'];
+  if (path === 'patients/registration-stores') return ['patient:add'];
   let module;
   if (/^(patients\/[^/]+\/(medical-records|treatment|follow-ups|sleep-diagnostics)|assessments)/.test(path) || /consultation/.test(path)) module = 'medical_record';
   else if (/^(appointments|queue)/.test(path)) module = 'appointment';

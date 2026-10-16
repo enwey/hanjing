@@ -1,10 +1,12 @@
 import { getCurrentUserMembership, getMemberLevelRules, syncUserMembership } from '../membership.js';
+import { createPaidFulfillment } from '../paid-fulfillment.js';
 import { authorizeUpload, signPrivateUploadResponses, registerPrivateUpload, privateUploadPath, canReadPrivateUpload } from '../private-uploads.js';
 import { applyRefund, completeRefund } from '../refunds.js';
 import express from 'express';
 import { createAsyncRouter } from '../async-router.js';
 import jwt from 'jsonwebtoken';
 import { businessError, publicWithdrawAccount, readCommissionLedger } from '../distribution-ledger.js';
+import { lockAppointmentChange, RESCHEDULABLE_STATUSES, assertAppointmentFeesPaid, orderCoversAppointmentFees, settlePaidAppointmentOrder } from '../appointment-workflow.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -1020,11 +1022,19 @@ export async function finalizePaidAppointment(conn, appt, userId, paymentPayload
   if (!paymentPayload || paymentPayload.trade_state !== 'SUCCESS' || paymentPayload.out_trade_no !== appt.appointment_no
     || paymentPayload.amount?.currency !== 'CNY' || Number(paymentPayload.amount?.total) !== totalPayAmount
     || !paymentPayload.transaction_id) throw businessError('支付流水与预约不一致', 409);
-  if (appt.status !== 'pending_payment') {
-    const [[paid]] = await conn.execute('SELECT id FROM orders WHERE appointment_id = ? AND wechat_transaction_id = ? AND pay_at IS NOT NULL',
-      [appt.id, paymentPayload.transaction_id]);
-    if (paid) return false;
-    throw businessError('预约状态与支付结果不一致，请核对支付流水', 409);
+  const [existingOrders] = await conn.execute('SELECT * FROM orders WHERE appointment_id = ? ORDER BY id', [appt.id]);
+  if (existingOrders.some(order => order.wechat_transaction_id === paymentPayload.transaction_id && order.pay_at)) return false;
+  const alreadyPaid = existingOrders.some(order => order.pay_at && !['cancelled', 'refunded'].includes(order.status) && orderCoversAppointmentFees(order, appt));
+  if (appt.status !== 'pending_payment' || alreadyPaid) {
+    // A verified late/duplicate payment must remain visible for a real refund, not revive the booking.
+    await conn.execute(`INSERT INTO orders
+      (order_no,user_id,type,total_amount,discount_amount,pay_amount,pay_method,pay_at,status,appointment_id,wechat_transaction_id,shipping_address)
+      VALUES(?,?,'appointment_deposit',?,0,?,'wechat',CURRENT_TIMESTAMP,'refund_pending',?,?,?)`,
+    [`OD${Date.now()}${crypto.randomBytes(5).toString('hex')}`, appt.user_id, totalPayAmount, totalPayAmount, appt.id,
+      paymentPayload.transaction_id, JSON.stringify({ refund_from_status: 'paid', refund_payment_conflict: true, refund_reason: '预约状态已变更或重复支付，需核对退款', refund_applied_at: new Date().toISOString() })]);
+    await conn.execute("INSERT INTO user_notifications(user_id,title,content,type) VALUES(?,'预约付款待核对',?,'appointment')",
+      [appt.user_id, `预约 ${appt.appointment_no} 收到付款，已转入退款审核，预约状态未改变。`]);
+    return false;
   }
   const resolvedUserId = appt.user_id;
   const [updated] = await conn.execute(
@@ -1078,6 +1088,10 @@ async function notifyAppointmentUser(userId, title, content) {
 }
 
 export async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
+  // Cashier creation/cancellation and payment callbacks serialize on the same appointment.
+  const [[reference]] = await conn.execute('SELECT appointment_id FROM orders WHERE id=?', [order.id]);
+  const [[appointment]] = reference?.appointment_id
+    ? await conn.execute('SELECT * FROM appointments WHERE id=? FOR UPDATE', [reference.appointment_id]) : [[]];
   const [[current]] = await conn.execute('SELECT * FROM orders WHERE id = ? FOR UPDATE', [order.id]);
   if (!current) throw businessError('订单不存在', 404);
   if (!paymentPayload || paymentPayload.trade_state !== 'SUCCESS' || paymentPayload.out_trade_no !== current.order_no ||
@@ -1085,7 +1099,7 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
       !paymentPayload.transaction_id) throw businessError('支付流水与订单不一致', 409);
   if (current.status === 'cancelled' && !current.pay_at) {
     const address = typeof current.shipping_address === 'string' ? JSON.parse(current.shipping_address || '{}') : (current.shipping_address || {});
-    Object.assign(address, { refund_from_status: 'cancelled', refund_reason: '取消订单后收到支付成功通知',
+    Object.assign(address, { refund_from_status: 'cancelled', refund_payment_conflict: true, refund_reason: '取消订单后收到支付成功通知',
       refund_description: '库存已释放，禁止发货，请审核原路退款', refund_applied_at: new Date().toISOString() });
     await conn.execute("UPDATE orders SET status='refund_pending', pay_method='wechat', pay_at=CURRENT_TIMESTAMP, wechat_transaction_id=?, shipping_address=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
       [paymentPayload.transaction_id, JSON.stringify(address), current.id]);
@@ -1105,7 +1119,7 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
   const deliveryMethod = address.deliveryMethod === 'pickup' || address.deliveryMethod === 'offline'
     ? 'pickup'
     : (order.type === 'online' ? 'online' : 'pickup');
-  const nextStatus = deliveryMethod === 'online' ? 'shipping' : 'paid';
+  const nextStatus = deliveryMethod === 'online' ? 'shipping' : address.deliveryMethod === 'pickup_pending' ? 'processing' : 'paid';
   const [items] = await conn.execute(
     `SELECT oi.quantity, oi.product_id, p.category
      FROM order_items oi
@@ -1113,6 +1127,24 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
      WHERE oi.order_id = ?`,
     [order.id]
   );
+
+  if (appointment && orderCoversAppointmentFees(order, appointment)) {
+    const [otherOrders] = await conn.execute('SELECT * FROM orders WHERE appointment_id=? AND id<>?', [appointment.id, order.id]);
+    const alreadyPaid = otherOrders.some(row => row.pay_at && !['cancelled', 'refunded'].includes(row.status) && orderCoversAppointmentFees(row, appointment));
+    if (appointment.status !== 'pending_payment' || alreadyPaid) {
+      // Release this pending bill's reservation once; refund settlement must not restock it again.
+      for (const item of items) {
+        if (item.category !== 'service') await conn.execute('UPDATE products SET stock=stock+? WHERE id=?', [item.quantity, item.product_id]);
+      }
+      Object.assign(address, { refund_from_status: 'cancelled', refund_payment_conflict: true,
+        refund_reason: '预约费用已支付或预约状态已变更，整笔收银单待原路退款', refund_applied_at: new Date().toISOString() });
+      await conn.execute("UPDATE orders SET status='refund_pending', pay_at=CURRENT_TIMESTAMP, wechat_transaction_id=?, shipping_address=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        [paymentPayload.transaction_id, JSON.stringify(address), order.id]);
+      await conn.execute("INSERT INTO user_notifications(user_id,title,content,type) VALUES(?,'付款待核对',?,'order')",
+        [order.user_id, `订单 ${order.order_no} 已收到付款，因预约付款冲突转入退款审核，不会重复发货。`]);
+      return false;
+    }
+  }
 
   const [paymentUpdate] = await conn.execute(
     `UPDATE orders
@@ -1125,6 +1157,7 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
     [nextStatus, paymentPayload?.transaction_id || null, paymentPayload?.prepay_id || null, order.id]
   );
   if (paymentUpdate.affectedRows !== 1) throw businessError('订单支付状态已变更', 409);
+  await settlePaidAppointmentOrder(conn, { ...order, status: nextStatus, pay_at: new Date() }, appointment);
 
   for (const item of items) {
     if (item.category !== 'service') {
@@ -1146,6 +1179,7 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
 
   await createPendingDistributionCommission(conn, order, order.user_id);
   await syncUserMembership(order.user_id, conn);
+  await createPaidFulfillment(conn, order);
   return true;
 }
 
@@ -1280,7 +1314,8 @@ async function getDistributionWithdrawRecordList(userId) {
 
 async function refreshDistributorLevel(distributorId, conn = null) {
   if (!distributorId) return 'silver';
-  const directOrders = await get(
+  const read = conn ? async (sql, params) => (await conn.execute(sql, params))[0][0] : get;
+  const directOrders = await read(
     `SELECT COUNT(DISTINCT order_id) as count
      FROM distribution_orders
      WHERE distributor_id = ? AND commission_level = 1 AND status != 'refunded'`,
@@ -1401,7 +1436,9 @@ async function buildMiniProgramLoginPayload(user) {
   };
 }
 
-async function createPendingDistributionCommission(conn, order, userId) {
+export async function createPendingDistributionCommission(conn, order, userId) {
+  const query = async (sql, params = []) => (await conn.execute(sql, params))[0];
+  const get = async (sql, params = []) => (await query(sql, params))[0] || null;
   const relationships = await query(
     `SELECT parent_user_id, level FROM distribution_relationships WHERE child_user_id = ? ORDER BY level ASC`,
     [userId]
@@ -1431,12 +1468,16 @@ async function createPendingDistributionCommission(conn, order, userId) {
   );
   const distributionItems = orderItems.filter(item => Number(item.is_distribution_snapshot || 0) === 1);
   if (distributionItems.length === 0) return;
+  // Allocate order-level discounts proportionally; unpaid amounts earn no commission.
+  const gross = orderItems.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
+  const paid = Math.max(0, Number(order.pay_amount || 0));
+  const paidFraction = gross > 0 ? Math.min(1, paid / gross) : 0;
 
-  const commissionL1 = distributionItems.reduce((sum, item) => {
+  const commissionL1 = Math.min(paid, Math.round(distributionItems.reduce((sum, item) => {
     const rate = Number(item.commission_rate_level1_snapshot ?? item.commission_rate_snapshot ?? 0);
     if (rate <= 0) return sum;
-    return sum + Math.round(Number(item.price || 0) * Number(item.quantity || 0) * (rate / 100));
-  }, 0);
+    return sum + Number(item.price || 0) * Number(item.quantity || 0) * (rate / 100);
+  }, 0) * paidFraction));
 
   const existingL1 = await get(
     `SELECT id FROM distribution_orders WHERE order_id = ? AND distributor_id = ? AND commission_level = 1`,
@@ -1464,11 +1505,11 @@ async function createPendingDistributionCommission(conn, order, userId) {
   );
   if (!promoterL2) return;
 
-  const commissionL2 = distributionItems.reduce((sum, item) => {
+  const commissionL2 = Math.min(Math.max(0, paid - commissionL1), Math.round(distributionItems.reduce((sum, item) => {
     const rate = Number(item.commission_rate_level2_snapshot || 0);
     if (rate <= 0) return sum;
-    return sum + Math.round(Number(item.price || 0) * Number(item.quantity || 0) * (rate / 100));
-  }, 0);
+    return sum + Number(item.price || 0) * Number(item.quantity || 0) * (rate / 100);
+  }, 0) * paidFraction));
   if (commissionL2 <= 0) return;
 
   const existingL2 = await get(
@@ -1490,6 +1531,8 @@ async function createPendingDistributionCommission(conn, order, userId) {
 }
 
 export async function cancelPendingProductOrder(conn, orderId, userId, expiredOnly = false, provider = null) {
+  const [[reference]] = await conn.execute('SELECT appointment_id FROM orders WHERE id=? AND user_id=?', [orderId, userId]);
+  if (reference?.appointment_id) await conn.execute('SELECT id FROM appointments WHERE id=? FOR UPDATE', [reference.appointment_id]);
   const [[order]] = await conn.execute('SELECT * FROM orders WHERE id = ? AND user_id = ? FOR UPDATE', [orderId, userId]);
   if (!order) throw businessError('订单不存在', 404);
   if (order.status !== 'pending') {
@@ -1519,7 +1562,7 @@ export async function cancelPendingProductOrder(conn, orderId, userId, expiredOn
   const [result] = await conn.execute(`UPDATE orders SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
     WHERE id = ? AND status = 'pending' ${expiredOnly ? 'AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)' : ''}`, [orderId]);
   if (result.affectedRows !== 1) return false;
-  const [items] = await conn.execute('SELECT * FROM order_items WHERE order_id = ? ORDER BY product_id', [orderId]);
+  const [items] = await conn.execute("SELECT oi.* FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=? AND p.category<>'service' ORDER BY oi.product_id", [orderId]);
   for (const item of items) {
     await conn.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
   }
@@ -4489,15 +4532,22 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
     const initialStatus = (requireDeposit || consultFee > 0) ? 'pending_payment' : 'pending';
 
     const result = await transaction(async (conn) => {
-      // Concurrency-safe slot capacity check using FOR UPDATE
+      // Lock the parent even when the slot has no appointments yet.
+      const [[lockedSchedule]] = await conn.execute(
+        `SELECT * FROM doctor_schedules WHERE id = ? AND doctor_id = ? AND store_id = ? AND date = ? AND status = 'available' FOR UPDATE`,
+        [schedule.id, resolvedDoctorId, resolvedStoreId, appointmentDate]
+      );
+      if (!lockedSchedule || !buildScheduleSlots(lockedSchedule, bookingInterval).some(slot => slot.label === appointmentTime)) {
+        throw businessError('排班已变更，请刷新后重新选择时段', 409);
+      }
       const [slotApptCountRows] = await conn.execute(
         `SELECT COUNT(*) as count
          FROM appointments
-         WHERE schedule_id = ? AND appointment_time = ? AND status IN (${APPOINTMENT_SLOT_STATUSES_SQL}) FOR UPDATE`,
+         WHERE schedule_id = ? AND appointment_time = ? AND status IN (${APPOINTMENT_SLOT_STATUSES_SQL})`,
         [schedule.id, appointmentTime]
       );
       const slotApptCount = slotApptCountRows && slotApptCountRows[0] ? slotApptCountRows[0].count : 0;
-      if (slotApptCount >= schedule.people_per_slot) {
+      if (slotApptCount >= lockedSchedule.people_per_slot) {
         const err = new Error('该时间段预约人数已满，请选择其他时间段');
         err.statusCode = 400;
         throw err;
@@ -4578,7 +4628,8 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Create appointment error:', error);
-    res.status(500).json({ code: 500, message: '预约创建失败' });
+    const status = error.statusCode || 500;
+    res.status(status).json({ code: status, message: status < 500 ? error.message : '预约创建失败' });
   }
 });
 
@@ -4587,16 +4638,14 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
 app.post('/api/v1/appointments/:id/pay', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const appt = await get(
-      `SELECT a.* FROM appointments a WHERE a.id = ? AND a.user_id = ?`,
-      [id, req.user.id]
-    );
-    if (!appt) {
-      return res.status(404).json({ code: 404, message: '预约不存在' });
-    }
-    if (appt.status !== 'pending_payment') {
-      return res.status(400).json({ code: 400, message: '预约不需要支付或已支付' });
-    }
+    const appt = await transaction(async conn => {
+      const [[row]] = await conn.execute('SELECT * FROM appointments WHERE id=? AND user_id=? FOR UPDATE', [id, req.user.id]);
+      if (!row) throw businessError('预约不存在', 404);
+      if (row.status !== 'pending_payment') throw businessError('预约不需要支付或已支付', 400);
+      const [orders] = await conn.execute("SELECT * FROM orders WHERE appointment_id=? AND status NOT IN ('cancelled','refunded')", [id]);
+      if (orders.some(order => orderCoversAppointmentFees(order, row))) throw businessError('该预约已有收银付款单，请先在门店处理原付款单，勿重复支付', 409);
+      return row;
+    });
 
     const totalPayAmount = await getAppointmentPayAmount(appt);
     const payParams = await serviceBuildPaymentParams(
@@ -4634,9 +4683,12 @@ app.post('/api/v1/appointments/:id/confirm-pay', authenticateWxToken, async (req
       return res.status(404).json({ code: 404, message: '预约不存在' });
     }
     if (appt.status !== 'pending_payment') {
-      const paid = await get('SELECT id FROM orders WHERE appointment_id = ? AND user_id = ? AND pay_at IS NOT NULL', [id, req.user.id]);
-      if (paid) return res.json({ code: 0, message: '预约支付状态已同步' });
-      return res.status(409).json({ code: 409, message: '未找到该预约的已支付流水，请核对预约状态' });
+      await transaction(async conn => {
+        const [[current]] = await conn.execute('SELECT * FROM appointments WHERE id=? FOR UPDATE', [id]);
+        if (['cancelled', 'refunding', 'refunded', 'no_show'].includes(current.status)) throw businessError('预约已结束，请核对付款及退款状态', 409);
+        await assertAppointmentFeesPaid(conn, current);
+      });
+      return res.json({ code: 0, message: '预约支付状态已同步' });
     }
 
     const paymentPayload = await queryOrderByOutTradeNo(appt.appointment_no);
@@ -5037,7 +5089,7 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
     }
-    if (appt.status === 'completed' || appt.status === 'arrived' || appt.status === 'cancelled' || appt.status === 'no_show') {
+    if (!RESCHEDULABLE_STATUSES.has(appt.status)) {
       return res.status(400).json({ code: 400, message: '该预约状态下不支持取消' });
     }
 
@@ -5057,10 +5109,14 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
     let refundAmount = 0;
     let refundUserId = appt.user_id;
     await transaction(async (conn) => {
-      const [[lockedAppt]] = await conn.execute(sql + ' FOR UPDATE', params);
+      const { current: lockedAppt } = await lockAppointmentChange(conn, appt);
       if (!lockedAppt || lockedAppt.status !== appt.status || String(lockedAppt.schedule_id) !== String(appt.schedule_id)) {
         throw Object.assign(new Error('预约状态已变更，请刷新后重试'), { statusCode: 409 });
       }
+      const [[cashierOrder]] = await conn.execute(
+        `SELECT id FROM orders WHERE appointment_id=? AND type != 'appointment_deposit'
+         AND status NOT IN ('cancelled','refunded') LIMIT 1`, [id]);
+      if (cashierOrder) throw businessError('预约存在门店收银订单，请联系门店处理订单后再取消', 409);
       await conn.execute(
         `UPDATE appointments SET status = 'cancelled', cancel_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
         [reasonClean, id]
@@ -5191,17 +5247,25 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
     if (getAppointmentStartTime(appointmentDate, appointmentTime).getTime() <= getShanghaiNow().getTime()) {
       return res.status(400).json({ code: 400, message: '不能改约到已过期的时段' });
     }
-    const slotCountRow = await get(
-      `SELECT COUNT(*) as count
-       FROM appointments
-       WHERE schedule_id = ? AND appointment_time = ? AND status IN (${APPOINTMENT_SLOT_STATUSES_SQL}) AND id != ?`,
-      [scheduleId, appointmentTime, id]
-    );
-    if ((slotCountRow?.count || 0) >= newSchedule.people_per_slot) {
-      return res.status(400).json({ code: 400, message: '目标预约时段已约满' });
-    }
-
     await transaction(async (conn) => {
+      const { current, schedules } = await lockAppointmentChange(conn, appt, scheduleId);
+      const lockedSchedule = schedules.get(Number(scheduleId));
+      if (!RESCHEDULABLE_STATUSES.has(current.status)) throw businessError('当前预约状态不支持改约', 409);
+      if (!current || current.status !== appt.status || Number(current.schedule_id) !== Number(appt.schedule_id)
+        || current.appointment_time !== appt.appointment_time || formatDate(current.appointment_date) !== formatDate(appt.appointment_date)) {
+        throw businessError('预约已变更，请刷新后重试', 409);
+      }
+      if (!lockedSchedule || lockedSchedule.status !== 'available' || formatDate(lockedSchedule.date) !== appointmentDate
+        || Number(lockedSchedule.doctor_id) !== Number(current.doctor_id) || Number(lockedSchedule.store_id) !== Number(current.store_id)
+        || !buildScheduleSlots(lockedSchedule, bookingInterval).some(slot => slot.label === appointmentTime)) {
+        throw businessError('目标排班已变更或不属于当前医生和门店', 400);
+      }
+      const [[slotCountRow]] = await conn.execute(
+        `SELECT COUNT(*) as count FROM appointments
+         WHERE schedule_id = ? AND appointment_time = ? AND status IN (${APPOINTMENT_SLOT_STATUSES_SQL}) AND id != ?`,
+        [scheduleId, appointmentTime, id]
+      );
+      if (slotCountRow.count >= lockedSchedule.people_per_slot) throw businessError('目标预约时段已约满', 400);
       if (Number(appt.schedule_id) !== Number(scheduleId)) {
         await conn.execute(`UPDATE doctor_schedules SET booked_slots = GREATEST(0, booked_slots - 1) WHERE id = ?`, [appt.schedule_id]);
         await conn.execute(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [scheduleId]);
@@ -5237,7 +5301,8 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
       data: updated
     });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '改约失败' });
+    const status = error.statusCode || 500;
+    res.status(status).json({ code: status, message: status < 500 ? error.message : '改约失败' });
   }
 });
 

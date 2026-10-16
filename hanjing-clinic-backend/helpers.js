@@ -4,6 +4,7 @@ import fs from 'fs';
 import { query, get, run } from './db.js';
 import { JWT_SECRET, PII_SECRET } from './security-config.js';
 import { requiredAdminPermissions, hasAdminPermission } from './admin-permissions.js';
+import { patientAccessScope } from './admin-scope.js';
 
 export { JWT_SECRET };
 
@@ -137,31 +138,9 @@ export const authenticatePromoterToken = (req, res, next) => {
 
 // Doctors are scoped to their own clinical records; other staff are scoped to their store.
 export const verifyPatientAccess = async (patientId, user) => {
-  if (user.role === 'doctor') {
-    const storeIds = assignedStoreIds(user);
-    if (!user.doctor_id || !storeIds.length) return false;
-    const placeholders = storeIds.map(() => '?').join(',');
-    const record = await get(
-      `SELECT 1 FROM patients p WHERE p.id = ? AND (
-        p.id IN (SELECT patient_id FROM appointments WHERE doctor_id = ? AND store_id IN (${placeholders}))
-        OR p.id IN (SELECT patient_id FROM medical_records WHERE doctor_id = ? AND store_id IN (${placeholders}))
-      ) LIMIT 1`,
-      [patientId, user.doctor_id, ...storeIds, user.doctor_id, ...storeIds]
-    );
-    return !!record;
-  }
   if (user.role === 'super_admin') return true;
-  const storeIds = assignedStoreIds(user);
-  if (!storeIds.length) return false;
-  const placeholders = storeIds.map(() => '?').join(',');
-  // Check if patient has any appointment or medical record at the user's store
-  const record = await get(
-    `SELECT 1 FROM patients p WHERE p.id = ? AND (
-      p.id IN (SELECT patient_id FROM appointments WHERE store_id IN (${placeholders}))
-      OR p.id IN (SELECT patient_id FROM medical_records WHERE store_id IN (${placeholders}))
-    ) LIMIT 1`,
-    [patientId, ...storeIds, ...storeIds]
-  );
+  const scope = patientAccessScope(user);
+  const record = await get(`SELECT 1 FROM patients p WHERE p.id = ? AND ${scope.sql} LIMIT 1`, [patientId, ...scope.params]);
   return !!record;
 };
 

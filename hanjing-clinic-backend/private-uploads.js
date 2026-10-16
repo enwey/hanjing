@@ -22,6 +22,10 @@ export async function canReadPrivateUpload(path, user) {
     admin = await get(`SELECT u.*,r.code AS role FROM admin_users u JOIN roles r ON r.id=u.role_id
       WHERE u.id=? AND u.status='online' AND r.status='active'`, [user.id]);
     if (!admin) return false;
+    admin.store_ids = (await query(Number(admin.all_stores) === 1
+      ? 'SELECT id AS store_id FROM stores'
+      : 'SELECT store_id FROM admin_user_stores WHERE admin_user_id=?',
+    Number(admin.all_stores) === 1 ? [] : [admin.id])).map(row => Number(row.store_id));
     if (admin.role !== 'super_admin') {
       const allowed = await get("SELECT 1 FROM permissions WHERE role_id=? AND permission_resource IN ('medical_record:view','medical_record:edit') LIMIT 1", [admin.role_id]);
       if (!allowed) return false;

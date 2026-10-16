@@ -15,6 +15,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:visible', 'success'])
+const stores = ref<Array<{ id: number; name: string }>>([])
+const registrationStoreId = ref<number | ''>('')
+const storesLoading = ref(false)
 
 const createForm = ref({
   name: '',
@@ -27,8 +30,10 @@ const createForm = ref({
   medicalHistoryInput: ''
 })
 
-watch(() => props.visible, (val) => {
+watch(() => props.visible, async (val) => {
   if (val) {
+    stores.value = []
+    registrationStoreId.value = ''
     createForm.value = {
       name: '',
       phone: '',
@@ -39,12 +44,27 @@ watch(() => props.visible, (val) => {
       tagsInput: '',
       medicalHistoryInput: ''
     }
+    storesLoading.value = true
+    try {
+      const res: any = await request.get('/api/admin/patients/registration-stores')
+      stores.value = res.data
+      if (stores.value.length === 1) registrationStoreId.value = stores.value[0].id
+    } catch {
+      MessagePlugin.error('无法获取建档门店，请关闭后重试')
+    } finally {
+      storesLoading.value = false
+    }
   }
-})
+}, { immediate: true })
 
 const loading = ref(false)
 
 async function handleConfirm() {
+  if (loading.value || storesLoading.value) return
+  if (!registrationStoreId.value) {
+    MessagePlugin.warning('请选择建档门店')
+    return
+  }
   if (!createForm.value.name.trim()) {
     MessagePlugin.warning('请填写患者姓名')
     return
@@ -61,6 +81,7 @@ async function handleConfirm() {
   loading.value = true
   try {
     const res: any = await request.post('/api/admin/patients', {
+      store_id: registrationStoreId.value,
       name: createForm.value.name.trim(),
       phone: createForm.value.phone.trim(),
       gender: createForm.value.gender,
@@ -98,6 +119,13 @@ function handleCancel() {
     @cancel="handleCancel"
   >
     <div class="dialog-body-form">
+      <div class="form-group">
+        <label class="form-label">建档门店<span class="required">*</span></label>
+        <select class="form-control" v-model="registrationStoreId" :disabled="storesLoading || loading">
+          <option value="" disabled>请选择门店</option>
+          <option v-for="store in stores" :key="store.id" :value="store.id">{{ store.name }}</option>
+        </select>
+      </div>
       <div class="form-group">
         <label class="form-label">姓名<span class="required">*</span></label>
         <input type="text" class="form-control" v-model="createForm.name" placeholder="请输入患者姓名">

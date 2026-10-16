@@ -6,7 +6,7 @@ export async function readStoreReport(user, filters) {
   if (!Number.isInteger(year) || year < 2000 || year > 2100) throw businessError('年份不正确');
   let storeId = filters.store_id ? Number(filters.store_id) : null;
   let doctorId = filters.doctor_id ? Number(filters.doctor_id) : null;
-  let allowedStoreIds = null;
+  let allowedStoreIds = storeId ? [storeId] : null;
   if ((storeId !== null && (!Number.isSafeInteger(storeId) || storeId <= 0)) ||
       (doctorId !== null && (!Number.isSafeInteger(doctorId) || doctorId <= 0))) throw businessError('门店或医生编号不正确');
   if (user.role !== 'super_admin') {

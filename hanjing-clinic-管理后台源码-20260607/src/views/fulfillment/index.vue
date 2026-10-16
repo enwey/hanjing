@@ -6,6 +6,9 @@ import ClinicalDetails from './ClinicalDetails.vue'
 import MoldDialog from './MoldDialog.vue'
 import FactoryBatches from './FactoryBatches.vue'
 const view = ref('cases'), moldDialog = ref<any>(null), batchPanel = ref<any>(null)
+const page = ref(1), pageSize = ref(50), total = ref(0), search = ref('')
+function changePage(info: any) { page.value=info.current; pageSize.value=info.pageSize; load() }
+function searchCases() { page.value=1; load() }
 async function refresh() { await load(); await batchPanel.value?.load() }
 async function openBatch(item:any) { view.value='batches'; await nextTick(); if(item.factory_batch_id)await batchPanel.value?.openDetail(item.factory_batch_id) }
 const loading=ref(false), cases=ref<any[]>([]), admins=ref<any[]>([]), events=ref<any[]>([]), eventsVisible=ref(false), detailVisible=ref(false), detail=ref<any>(null), actionVisible=ref(false), actionType=ref(''), activeCase=ref<any>(null)
@@ -15,7 +18,7 @@ const actionTitle=computed(()=>({assign:'分配技师',mold:'登记取模',shipm
 const staffName=(item:any)=>item.real_name||item.name||item.username
 const genderLabel=(value:any)=>({1:'男',2:'女',male:'男',female:'女',男:'男',女:'女'} as any)[value]||'未记录'
 const avatarColor=(name:string)=>['#5A85F5','#7C5CE0','#E6875A','#37A88D','#D96886'][String(name||'').charCodeAt(0)%5]
-async function load(){loading.value=true;try{const [a,b]:any[]=await Promise.all([request.get('/api/admin/fulfillment/cases'),request.get('/api/admin/fulfillment/technicians')]);if(a.code===200)cases.value=a.data||[];if(b.code===200)admins.value=b.data||[]}catch(e){console.error(e);MessagePlugin.error('加载履约数据失败')}finally{loading.value=false}}
+async function load(){loading.value=true;try{const [a,b]:any[]=await Promise.all([request.get('/api/admin/fulfillment/cases',{params:{page:page.value,pageSize:pageSize.value,search:search.value.trim()||undefined}}),request.get('/api/admin/fulfillment/technicians')]);if(a.code===200){cases.value=a.data||[];total.value=Number(a.pagination?.total||0)}if(b.code===200)admins.value=b.data||[]}catch(e){cases.value=[];total.value=0;console.error(e);MessagePlugin.error('加载履约数据失败')}finally{loading.value=false}}
 function openAction(type:string,item:any){activeCase.value=item;actionType.value=type;form.value={technician_id:item.technician_id||'',mold_no:'',storage_location:'',carrier:'',tracking_no:'',device_serial_no:'',note:''};actionVisible.value=true}
 async function saveAction(){if(!activeCase.value)return;const path:any={assign:'/assign',mold:'/mold',shipment:'/mold-shipment',receipt:'/device-receipt',fitting:'/fitting'};const payload={...form.value,technician_id:form.value.technician_id?Number(form.value.technician_id):undefined};try{const r:any=await request.post(`/api/admin/fulfillment/cases/${activeCase.value.id}${path[actionType.value]}`,payload);if(r.code!==200)throw new Error(r.message);MessagePlugin.success('操作已保存');actionVisible.value=false;await load()}catch(e:any){MessagePlugin.error(e.message||'操作失败')}}
 async function notify(item:any){try{const r:any=await request.post(`/api/admin/fulfillment/cases/${item.id}/notify-fitting`);if(r.code!==200)throw new Error(r.message);MessagePlugin.success('已通知患者试戴');await load()}catch(e:any){MessagePlugin.error(e.message||'通知失败')}}
@@ -39,7 +42,8 @@ onMounted(load)
     <FactoryBatches v-if="view==='batches'" ref="batchPanel" @changed="load" />
     <div v-else class="panel" :aria-busy="loading">
       <div class="filter-bar list-toolbar">
-        <h3>履约队列</h3><span class="list-count">{{ cases.length }} 条</span>
+        <h3>履约队列</h3><span class="list-count">{{ total }} 条</span>
+        <form class="header-actions" @submit.prevent="searchCases"><input v-model="search" aria-label="搜索履约单" placeholder="患者、档案号、订单号"><button class="btn btn-outline" type="submit">搜索</button></form>
       </div>
       <div class="panel-body">
         <table class="data-table" v-resizable>
@@ -106,6 +110,7 @@ onMounted(load)
           </tbody>
         </table>
       </div>
+      <t-pagination :current="page" :page-size="pageSize" :total="total" :page-size-options="[20,50,100]" @change="changePage" />
     </div>
   </div>
  <MoldDialog ref="moldDialog" @saved="load" />
@@ -117,6 +122,8 @@ onMounted(load)
 .page-container { min-width: 0; }
 .page-title-row { min-height: 50px; }
 .header-actions { display: flex; gap: 8px; align-items: center; }
+.header-actions input { width: 240px; max-width: 100%; min-width: 0; height: 36px; box-sizing: border-box; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 13px; }
+.panel > :deep(.t-pagination) { box-sizing: border-box; padding: 12px 20px; }
 .list-toolbar { min-height: 71px; box-sizing: border-box; flex-wrap: nowrap; }
 .list-toolbar h3 { margin: 0; font-size: 13px; font-weight: 600; color: #374151; }
 .list-count { font-size: 12px; color: #9CA3AF; white-space: nowrap; }

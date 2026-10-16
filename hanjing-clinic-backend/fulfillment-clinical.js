@@ -5,13 +5,14 @@ const defaultDB = { get, query };
 // exactly one record existed at creation; never silently choose today's latest.
 export async function resolveFulfillmentMedicalRecord(c, db = defaultDB) {
   const { get, query } = db;
+  if (!c.store_id) return null;
   if (c.medical_record_id) {
-    return get('SELECT * FROM medical_records WHERE id=? AND patient_id=?', [c.medical_record_id, c.patient_id]);
+    return get('SELECT * FROM medical_records WHERE id=? AND patient_id=? AND store_id=?', [c.medical_record_id, c.patient_id, c.store_id]);
   }
   const order = await get('SELECT appointment_id FROM orders WHERE id=?', [c.order_id]);
   const records = order?.appointment_id
-    ? await query('SELECT * FROM medical_records WHERE appointment_id=? AND patient_id=?', [order.appointment_id, c.patient_id])
-    : await query('SELECT * FROM medical_records WHERE patient_id=? AND created_at<=? ORDER BY id DESC LIMIT 2', [c.patient_id, c.created_at]);
+    ? await query('SELECT * FROM medical_records WHERE appointment_id=? AND patient_id=? AND store_id=?', [order.appointment_id, c.patient_id, c.store_id])
+    : await query('SELECT * FROM medical_records WHERE patient_id=? AND store_id=? AND created_at<=? ORDER BY id DESC LIMIT 2', [c.patient_id, c.store_id, c.created_at]);
   return records.length === 1 ? records[0] : null;
 }
 
@@ -19,9 +20,9 @@ export async function readFulfillmentClinical(c, db = defaultDB) {
   const { get, query } = db;
   const record = await resolveFulfillmentMedicalRecord(c, db);
   const appointment = record?.appointment_id
-    ? await get('SELECT * FROM appointments WHERE id=? AND patient_id=?', [record.appointment_id, c.patient_id]) : null;
+    ? await get('SELECT * FROM appointments WHERE id=? AND patient_id=? AND store_id=?', [record.appointment_id, c.patient_id, c.store_id]) : null;
   const medicalRecord = record ? await get(`SELECT m.*, d.name AS doctor_name, d.title AS doctor_title, s.name AS store_name
-    FROM medical_records m LEFT JOIN doctors d ON d.id=m.doctor_id LEFT JOIN stores s ON s.id=m.store_id WHERE m.id=?`, [record.id]) : null;
+    FROM medical_records m LEFT JOIN doctors d ON d.id=m.doctor_id LEFT JOIN stores s ON s.id=m.store_id WHERE m.id=? AND m.store_id=?`, [record.id, c.store_id]) : null;
   // Only the treatment explicitly bound to this record supplies device settings.
   const treatments = record ? await query(`SELECT * FROM treatment_records WHERE patient_id=? AND
     (medical_record_id=? OR id IN (SELECT treatment_id FROM device_adjustments WHERE medical_record_id=?)) ORDER BY id`,

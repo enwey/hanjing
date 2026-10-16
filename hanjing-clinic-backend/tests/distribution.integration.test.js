@@ -39,6 +39,7 @@ test('distribution uses actual records and atomic accounting', async (t) => {
     process.env.DB_USER = process.env.TEST_DB_USER || 'root';
     process.env.DB_PASSWORD = process.env.TEST_DB_PASSWORD || 'root';
     database = await import('../db.js');
+    await admin.query("INSERT INTO member_levels(code,name,spent_required,sort_order,benefits) VALUES('normal','Test normal',0,0,JSON_ARRAY())");
     const ledger = await import('../distribution-ledger.js');
     const helpers = await import('../helpers.js');
     const app = express();

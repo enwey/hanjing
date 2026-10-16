@@ -5,6 +5,7 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import { navigateToParent } from '@/utils/routeNavigation'
 import { formatShanghaiDateTime } from '@/utils/dateTime'
+import OrderPaymentActions from '@/components/OrderPaymentActions.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -130,7 +131,9 @@ const timelineItems = computed(() => {
   const address = order.value.shipping_address
   if (address.refund_applied_at) result.push({ time: formatDateTime(address.refund_applied_at), title: '申请退款', content: address.refund_reason || '未填写原因', theme: 'gold' })
   if (row.status === 'refunded') {
-    result.push({ time: row.refund_at ? formatDateTime(row.refund_at) : '未记录退款时间', title: '订单已标记退款', content: row.wechat_refund_id ? '支付渠道退款单号：' + row.wechat_refund_id : '缺少支付渠道退款流水，需人工核对历史记录。', theme: row.wechat_refund_id ? 'green' : 'gold' })
+    const offline = address.offline_refund
+    const proof = offline ? `线下${offline.method === 'cash' ? '现金' : '银行转账'}退款 ¥${formatFen(offline.amount)}；流水：${offline.reference || '未填写'}；凭证：${offline.evidence || '未填写'}；登记人 ID：${offline.actor_id}；登记时间：${formatDateTime(offline.registered_at)}` : ''
+    result.push({ time: row.refund_at ? formatDateTime(row.refund_at) : '未记录退款时间', title: '订单已标记退款', content: proof || (row.wechat_refund_id ? '支付渠道退款单号：' + row.wechat_refund_id : '缺少退款流水或凭证，需人工核对历史记录。'), theme: offline || row.wechat_refund_id ? 'green' : 'gold' })
   } else if (['refund_pending', 'refunding'].includes(row.status)) {
     result.push({ time: '当前状态', title: row.wechat_refund_no ? '退款处理中' : '退款待审核', content: row.wechat_refund_no ? '退款单号：' + row.wechat_refund_no + '，尚未确认退款成功。' : '等待管理员审核。', theme: 'gold' })
   } else {
@@ -269,7 +272,7 @@ const fetchOrderDetail = async () => {
         price: o.pay_amount / 100,
         totalAmount: Number(o.total_amount || o.pay_amount || 0),
         discountAmount: Number(o.discount_amount || 0),
-        payMethod: ({ wechat: '微信支付', cash: '现金', alipay: '支付宝', card: '银行卡' } as Record<string, string>)[o.pay_method] || o.pay_method || '未记录',
+        payMethod: ({ wechat: '微信支付', wechat_native: '微信扫码', wechat_micropay: '微信付款码', cash: '现金', bank: '银行转账', alipay: '支付宝', card: '银行卡' } as Record<string, string>)[o.pay_method] || o.pay_method || '未记录',
         productIcon: 'box',
         items,
         commissions: Array.isArray(o.commissions) ? o.commissions : [],
@@ -363,6 +366,7 @@ async function handleNotifyOrder() {
       <div>
         <div class="page-title">
           {{ order.no }}
+          <span class="status-tag gold" v-if="order.status === 'pending'">待付款</span>
           <span class="status-tag gold" v-if="order.status === 'shipping'">待发货</span>
           <span class="status-tag blue" v-else-if="order.status === 'paid'">待取货</span>
           <span class="status-tag blue" v-else-if="order.status === 'processing'">自提待到货</span>
@@ -373,7 +377,8 @@ async function handleNotifyOrder() {
         </div>
         <div class="page-title-sub">下单时间 {{ order.createTime }}</div>
       </div>
-      <div class="action-buttons" style="display: flex; gap: 8px; align-items: center;">
+      <div class="action-buttons" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <OrderPaymentActions v-if="order.raw" :key="order.raw.id" :order="order.raw" @changed="fetchOrderDetail" />
         <!-- Print Receipt Action -->
         <button class="btn btn-outline" v-if="['paid', 'completed', 'shipped'].includes(order.status)" @click="handlePrintReceipt"><AppIcon name="printer" />  打印小票</button>
 

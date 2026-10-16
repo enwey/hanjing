@@ -3,10 +3,14 @@ import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { createCheckoutLifecycle, settleCashierAppointment, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { createNativePay, getAdminPayStatus, isPaidStatus, submitMicropay } from '@/utils/wechatCashier'
 import {
   createBillingItem,
+  createCashierSession,
   createCheckoutReceiptResult,
+  confirmedCashierReceipt,
   fetchCheckoutProducts,
   findCheckoutProduct,
   type BillingItem,
@@ -22,6 +26,15 @@ interface PatientOption {
   phone: string;
 }
 
+const stores = ref<any[]>([])
+const selectedStoreId = ref('')
+async function fetchStores() {
+  try {
+    const res: any = await request.get('/api/admin/orders/cashier-stores')
+    stores.value = res.data || []
+    if (stores.value.length === 1) selectedStoreId.value = String(stores.value[0].id)
+  } catch { MessagePlugin.error('获取收款门店失败') }
+}
 const patients = ref<PatientOption[]>([])
 const selectedPatientId = ref<string>((route.query.patientId as string) || '')
 const loading = ref(false)
@@ -32,19 +45,33 @@ const productOptions = ref<CheckoutProduct[]>([])
 const billingItems = ref<BillingItem[]>([])
 
 const discountAmount = ref<number>(0)
-const payMethod = ref<string>('wechat')
+const payMethod = ref<string>('wechat_native')
 const fulfillmentTechnicianId = ref<string>('')
 const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
 const nativePayInfo = ref<any>(null)
 const micropayAuthCode = ref('')
 const payWaiting = ref(false)
-let payPollTimer: number | undefined
+const cashierSession = createCashierSession(request)
+const checkoutFlow = createCheckoutLifecycle(() => `${route.fullPath}:${selectedPatientId.value}:${selectedStoreId.value}`)
 
 const deliveryType = ref<string>('offline_direct') // offline_direct (现场提走), online (快递寄送), offline_pending (缺货自提预订)
 const shippingReceiver = ref<string>('')
 const shippingPhone = ref<string>('')
 const shippingAddressStr = ref<string>('')
+
+watch([selectedPatientId, selectedStoreId, () => route.fullPath], () => {
+  cashierSession.reset()
+  checkoutFlow.begin()
+  loading.value = false
+  checkoutSuccess.value = false
+  orderResult.value = null
+  nativePayInfo.value = null
+  micropayAuthCode.value = ''
+  payWaiting.value = false
+}, { flush: 'sync' })
+watch(() => route.query.patientId, value => { selectedPatientId.value = String(value || '') })
+checkoutFlow.begin()
 
 watch(selectedPatientId, (newVal) => {
   const p = patients.value.find(item => item.value === newVal)
@@ -78,7 +105,7 @@ watch(deliveryType, (newVal) => {
 const fetchPatients = async () => {
   try {
     const res: any = await request.get('/api/admin/patients')
-    patients.value = res.data.map((p: any) => ({
+    patients.value = (Array.isArray(res.data) ? res.data : res.data?.list || []).map((p: any) => ({
       label: `${p.name} (${p.phone})`,
       value: p.id.toString(),
       phone: p.phone
@@ -141,14 +168,22 @@ const payableAmount = computed(() => {
 })
 
 function stopPayPolling() {
-  if (payPollTimer) {
-    window.clearInterval(payPollTimer)
-    payPollTimer = undefined
-  }
+  checkoutFlow.invalidate()
 }
 
-async function markCheckoutPaid(receipt: any) {
+function leaveCheckout() {
   stopPayPolling()
+  loading.value = false
+  checkoutSuccess.value = false
+}
+onBeforeRouteLeave(leaveCheckout)
+onBeforeRouteUpdate(leaveCheckout)
+
+async function markCheckoutPaid(receipt: any, attempt: CheckoutAttempt | null, isActive = () => checkoutFlow.isCurrent(attempt)) {
+  if (!isActive() || String(receipt.orderId) !== attempt?.orderId) return
+  receipt = await confirmedCashierReceipt(request, receipt)
+  if (!isActive()) return
+  checkoutFlow.stopPolling()
   nativePayInfo.value = null
   payWaiting.value = false
   orderResult.value = createCheckoutReceiptResult(receipt)
@@ -156,22 +191,28 @@ async function markCheckoutPaid(receipt: any) {
   MessagePlugin.success('收款成功')
 }
 
-function startPayPolling(orderId: number | string, receipt: any) {
-  stopPayPolling()
+function startPayPolling(orderId: number | string, receipt: any, attempt: CheckoutAttempt | null) {
+  if (!checkoutFlow.isCurrent(attempt) || attempt.orderId !== String(orderId)) return
   payWaiting.value = true
-  payPollTimer = window.setInterval(async () => {
+  checkoutFlow.poll(attempt, async isActive => {
     try {
       const status = await getAdminPayStatus(orderId)
+      if (!isActive()) return
       if (isPaidStatus(status.status)) {
-        await markCheckoutPaid(Object.assign({}, receipt, { payAt: status.payAt || new Date().toISOString() }))
+        await markCheckoutPaid(Object.assign({}, receipt, { payAt: status.payAt }), attempt, isActive)
       }
     } catch (error) {
-      console.error('查询支付状态失败:', error)
+      if (isActive()) console.error('查询支付状态失败:', error)
     }
-  }, 2000)
+  })
 }
 
 const submitCheckout = async () => {
+  if (loading.value) return
+  const attempt = checkoutFlow.capture()
+  if (!checkoutFlow.isCurrent(attempt)) return
+  const authCode = micropayAuthCode.value.trim()
+  if (!selectedStoreId.value) { MessagePlugin.warning('请选择收款门店'); return }
   if (!selectedPatientId.value) {
     MessagePlugin.warning('请先选择结账患者')
     return
@@ -216,9 +257,6 @@ const submitCheckout = async () => {
       shipAddr = {
         receiver: shippingReceiver.value,
         phone: shippingPhone.value,
-        province: '广东省',
-        city: '深圳市',
-        district: '快递邮寄',
         detail: shippingAddressStr.value,
         deliveryMethod: 'online'
       }
@@ -228,9 +266,6 @@ const submitCheckout = async () => {
       shipAddr = {
         receiver: shippingReceiver.value,
         phone: shippingPhone.value,
-        province: '广东省',
-        city: '深圳市',
-        district: '门店自提',
         detail: '缺货登记（待货通知自提）',
         deliveryMethod: 'pickup_pending'
       }
@@ -239,11 +274,8 @@ const submitCheckout = async () => {
       orderType = 'offline'
       orderStatus = 'paid'
       shipAddr = {
-        receiver: shippingReceiver.value || '到店客户',
-        phone: shippingPhone.value || '--',
-        province: '广东省',
-        city: '深圳市',
-        district: '到店自提',
+        receiver: shippingReceiver.value,
+        phone: shippingPhone.value,
         detail: '到店自提',
         deliveryMethod: 'pickup'
       }
@@ -251,53 +283,61 @@ const submitCheckout = async () => {
 
     const payload = {
       patient_id: parseInt(selectedPatientId.value, 10),
+      store_id: Number(selectedStoreId.value),
       items: billingItems.value,
       pay_amount: payableAmount.value,
       discount_amount: discountAmount.value,
       pay_method: payMethod.value,
+      payment_confirmed: ['cash', 'bank'].includes(payMethod.value),
       technician_id: fulfillmentTechnicianId.value ? Number(fulfillmentTechnicianId.value) : undefined,
       type: orderType,
       status: orderStatus,
       shipping_address: shipAddr
     }
-    const res: any = await request.post('/api/admin/orders', payload)
+    if (['cash', 'bank'].includes(payMethod.value) && !window.confirm('请确认已实际收到款项。此操作仅登记人工收款，不会发起微信支付。')) return
+    const res: any = await cashierSession.submit(payload)
+    if (!checkoutFlow.isCurrent(attempt)) return
     if (res.code === 200) {
+      if (!checkoutFlow.bindOrder(attempt, res.data.order_id)) return
       const receipt = res.data.receipt
-      if (payMethod.value === 'wechat_native') {
+      if (payload.pay_method === 'wechat_native') {
         const payInfo = await createNativePay(res.data.order_id)
+        if (!checkoutFlow.isCurrent(attempt)) return
         if (payInfo.paid) {
-          await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信扫码支付', payAt: new Date().toISOString() }))
+          await markCheckoutPaid(receipt, attempt)
         } else {
           nativePayInfo.value = payInfo
-          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信扫码支付' }))
+          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信扫码支付' }), attempt)
           MessagePlugin.info('请顾客使用微信扫码完成支付')
         }
-      } else if (payMethod.value === 'wechat_micropay') {
-        const payInfo = await submitMicropay(res.data.order_id, micropayAuthCode.value.trim())
+      } else if (payload.pay_method === 'wechat_micropay') {
+        const payInfo = await submitMicropay(res.data.order_id, authCode)
+        if (!checkoutFlow.isCurrent(attempt)) return
         if (payInfo.tradeState === 'SUCCESS') {
-          await markCheckoutPaid(Object.assign({}, receipt, { payMethod: '微信付款码支付', payAt: new Date().toISOString() }))
+          await markCheckoutPaid(receipt, attempt)
         } else {
-          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信付款码支付' }))
+          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信付款码支付' }), attempt)
           MessagePlugin.info('支付处理中，请等待顾客确认')
         }
       } else {
-        await markCheckoutPaid(receipt)
+        await markCheckoutPaid(receipt, attempt)
       }
     }
   } catch (error) {
     console.error(error)
-    MessagePlugin.error('收银交易失败')
+    if (checkoutFlow.isCurrent(attempt)) MessagePlugin.error('收银交易失败')
   } finally {
-    loading.value = false
+    if (checkoutFlow.isCurrent(attempt)) loading.value = false
   }
 }
 
 const resetCheckout = () => {
+  cashierSession.reset()
   stopPayPolling()
   selectedPatientId.value = ''
   setDefaultBillingItem()
   discountAmount.value = 0
-  payMethod.value = 'wechat'
+  payMethod.value = 'wechat_native'
   fulfillmentTechnicianId.value = ''
   checkoutSuccess.value = false
   orderResult.value = null
@@ -308,9 +348,11 @@ const resetCheckout = () => {
   shippingReceiver.value = ''
   shippingPhone.value = ''
   shippingAddressStr.value = ''
+  checkoutFlow.begin()
 }
 
 onMounted(() => {
+  fetchStores()
   fetchPatients()
   fetchProducts()
 })
@@ -348,7 +390,7 @@ onUnmounted(() => stopPayPolling())
         <div class="invoice-row"><span>支付方式:</span> <span>{{ orderResult.payMethodText }}</span></div>
         <div class="invoice-divider">================================</div>
         <div class="invoice-footer">
-          谢谢惠顾，定制式舌型阻鼾器会在1-3个工作日内根据您的三维口腔模型制作完成并包邮寄送。
+          谢谢惠顾，请妥善保管收款凭证。
         </div>
       </div>
       <div style="margin-top: 24px; text-align: center;">
@@ -362,6 +404,10 @@ onUnmounted(() => stopPayPolling())
         <div class="card-title"><AppIcon name="money" />  收费信息登记</div>
         
         <!-- Select Patient -->
+        <div class="form-item">
+          <label class="form-label">收款门店</label>
+          <t-select v-model="selectedStoreId" placeholder="请选择收款门店" :options="stores.map(s => ({ label: s.name, value: String(s.id) }))" />
+        </div>
         <div class="form-item">
           <label class="form-label">选择患者</label>
           <t-select v-model="selectedPatientId" filterable placeholder="输入患者姓名或手机号搜索" :options="patients" />
@@ -398,7 +444,7 @@ onUnmounted(() => stopPayPolling())
           <div class="form-item" style="flex: 1;">
             <label class="form-label">支付方式</label>
             <t-select v-model="payMethod" :options="[
-              { label: '已收款登记', value: 'wechat' },
+              { label: '现金已收款', value: 'cash' },
               { label: '微信收款码', value: 'wechat_native' },
               { label: '扫顾客付款码', value: 'wechat_micropay' }
             ]" />

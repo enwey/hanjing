@@ -76,8 +76,11 @@ export const run = async (sql, params = []) => {
 export const transaction = async (callback) => {
   if (!pool) await initPool();
   const connection = await pool.getConnection();
-  await connection.beginTransaction();
   try {
+    // Row locks serialize writes; fresh statement snapshots keep membership
+    // totals current after waiting for another payment's user lock.
+    await connection.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+    await connection.beginTransaction();
     const result = await callback(connection);
     await connection.commit();
     return result;
@@ -268,16 +271,30 @@ export const initDB = async () => {
       FOREIGN KEY (to_level_id) REFERENCES member_levels(id) ON DELETE RESTRICT
     );
   `);
+  // Preserve legacy membership before switching readers to the new table.
+  const legacyMemberColumn = await query("SHOW COLUMNS FROM users LIKE 'member_level'");
+  const protectedMemberColumn = await query("SHOW COLUMNS FROM user_memberships LIKE 'protected_level_id'");
+  if (!protectedMemberColumn.length) {
+    await query('ALTER TABLE user_memberships ADD COLUMN protected_level_id BIGINT UNSIGNED DEFAULT NULL');
+    // Backfill once: explicit admin choices take precedence over legacy fields.
+    await query(`UPDATE user_memberships m SET protected_level_id =
+      (SELECT h.to_level_id FROM user_membership_history h WHERE h.user_id=m.user_id
+        AND h.reason IN ('admin_adjustment','admin_create_patient','admin_update_patient') ORDER BY h.id DESC LIMIT 1)`);
+    if (legacyMemberColumn.length) {
+      await query(`UPDATE user_memberships m JOIN users u ON u.id=m.user_id
+        JOIN member_levels l ON l.code=u.member_level
+        SET m.protected_level_id=l.id WHERE m.protected_level_id IS NULL`);
+    }
+  }
   await query(`
-    INSERT INTO user_memberships (user_id, level_id, effective_at)
-    SELECT u.id, fallback.id, CURRENT_TIMESTAMP
+    INSERT INTO user_memberships (user_id, level_id, protected_level_id, effective_at)
+    SELECT u.id, COALESCE(legacy.id, fallback.id), legacy.id, CURRENT_TIMESTAMP
     FROM users u
     JOIN member_levels fallback ON fallback.code = 'normal' AND fallback.status = 'active'
+    LEFT JOIN member_levels legacy ON legacy.code = ${legacyMemberColumn.length ? 'u.member_level' : 'NULL'}
     LEFT JOIN user_memberships existing ON existing.user_id = u.id
     WHERE existing.user_id IS NULL
   `);
-  try { await query('ALTER TABLE users DROP COLUMN member_level'); } catch (err) {}
-  try { await query('ALTER TABLE users DROP COLUMN total_spent'); } catch (err) {}
 
   await query(`
     CREATE TABLE IF NOT EXISTS user_patient_links (
@@ -1094,6 +1111,9 @@ export const initDB = async () => {
     await query(`ALTER TABLE orders ADD COLUMN invoice_info JSON NULL DEFAULT NULL`);
   } catch (err) {}
 
+  const cashierContextColumn = await query("SHOW COLUMNS FROM orders LIKE 'cashier_context'");
+  if (!cashierContextColumn.length) await query('ALTER TABLE orders ADD COLUMN cashier_context JSON NULL');
+
   // 20. order_items
   await query(`
     CREATE TABLE IF NOT EXISTS order_items (
@@ -1618,6 +1638,18 @@ export const initDB = async () => {
     for (const foreignKey of storeForeignKeys) await query(`ALTER TABLE admin_users DROP FOREIGN KEY \`${foreignKey.CONSTRAINT_NAME}\``);
     await query('ALTER TABLE admin_users DROP COLUMN store_id');
   } catch (err) {}
+  await query(`CREATE TABLE IF NOT EXISTS patient_store_registrations (
+    patient_id BIGINT UNSIGNED NOT NULL,
+    store_id BIGINT UNSIGNED NOT NULL,
+    doctor_id BIGINT UNSIGNED NULL,
+    created_by BIGINT UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (patient_id, store_id),
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    FOREIGN KEY (store_id) REFERENCES stores(id),
+    FOREIGN KEY (doctor_id) REFERENCES doctors(id),
+    FOREIGN KEY (created_by) REFERENCES admin_users(id)
+  )`);
   // Follow-up data belongs to the assigned backend account, not to a doctor profile.
   // Keep the patient only on the task: a follow-up record reaches its patient through task_id.
   await query(`

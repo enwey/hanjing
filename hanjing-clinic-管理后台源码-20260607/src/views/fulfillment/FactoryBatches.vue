@@ -5,19 +5,25 @@ import request from '@/utils/request'
 import { today, shanghaiTime, itemLabels, exportManifest, downloadMoldFile } from './delivery'
 const emit = defineEmits(['changed'])
 const batches = ref<any[]>([]), ready = ref<any[]>([]), selected = ref<number[]>([])
+const page=ref(1), total=ref(0), readyPage=ref(1), readyTotal=ref(0)
+function changePage(info:any){page.value=info.current;load()}
+function changeReadyPage(info:any){readyPage.value=info.current;loadReady()}
+function filterReady(){readyPage.value=1;selected.value=[];loadReady()}
+function selectPage(checked:boolean){const ids=ready.value.map(r=>r.id);selected.value=checked?[...new Set([...selected.value,...ids])]:selected.value.filter(id=>!ids.includes(id))}
 const date = ref(today()), factory = ref(''), createVisible = ref(false), detailVisible = ref(false), busy = ref(false), detail = ref<any>(null)
 const actionVisible = ref(false), action = ref(''), activeItem = ref<any>(null), form = ref<any>({})
 const actionName = computed(() => ({ship:'确认寄出',received:'登记工厂签收',producing:'登记制作 / 恢复制作',exception:'登记工厂异常',retake:'退回重新取模',receipt:'设备回店验收'} as any)[action.value])
 const batchLabel = (b:any) => b.status==='draft'?'待寄出':b.status==='cancelled'?'已取消':b.returned_count===b.item_count?'全部回货':b.returned_count+b.retake_count===b.item_count?'已结束（含重新取模）':'已寄出'
-async function load() { try { const r:any=await request.get('/api/admin/fulfillment/batches'); batches.value=r.data || [] } catch(e:any) { MessagePlugin.error(e.message || '加载批次失败') } }
-async function loadReady() { try { const r:any=await request.get('/api/admin/fulfillment/ready-molds',{params:{date:date.value || undefined}}); ready.value=r.data || []; selected.value=[] } catch(e:any) { MessagePlugin.error(e.message || '加载待送厂口模失败') } }
-async function openCreate() { factory.value='';date.value=today();await loadReady();createVisible.value=true }
+async function load() { try { const r:any=await request.get('/api/admin/fulfillment/batches',{params:{page:page.value,pageSize:50}}); batches.value=r.data || [];total.value=Number(r.pagination?.total||0) } catch(e:any) { batches.value=[];total.value=0;MessagePlugin.error(e.message || '加载批次失败') } }
+async function loadReady() { try { const r:any=await request.get('/api/admin/fulfillment/ready-molds',{params:{date:date.value || undefined,page:readyPage.value,pageSize:50}}); ready.value=r.data || [];readyTotal.value=Number(r.pagination?.total||0) } catch(e:any) { ready.value=[];readyTotal.value=0;MessagePlugin.error(e.message || '加载待送厂口模失败') } }
+async function openCreate() { factory.value='';date.value=today();readyPage.value=1;selected.value=[];await loadReady();createVisible.value=true }
 async function openDetail(id:number) { try { const r:any=await request.get(`/api/admin/fulfillment/batches/${id}`);detail.value=r.data;detailVisible.value=true } catch(e:any) { MessagePlugin.error(e.message || '加载批次详情失败') } }
 async function refresh() { await load(); if(detailVisible.value)await openDetail(detail.value.id);emit('changed') }
 async function create() {
   if(!factory.value.trim() || !selected.value.length)return MessagePlugin.warning('请填写工厂并勾选口模')
+  if(selected.value.length>100)return MessagePlugin.warning('每批最多选择100件口模')
   if(busy.value)return;busy.value=true
-  try { const r:any=await request.post('/api/admin/fulfillment/batches',{factory_name:factory.value,case_ids:selected.value});createVisible.value=false;await load();emit('changed');await openDetail(r.data.id);MessagePlugin.success('批次已创建，请核对实物后确认寄出') }
+  try { const r:any=await request.post('/api/admin/fulfillment/batches',{factory_name:factory.value,case_ids:selected.value});createVisible.value=false;page.value=1;await load();emit('changed');await openDetail(r.data.id);MessagePlugin.success('批次已创建，请核对实物后确认寄出') }
   catch(e:any){MessagePlugin.error(e.message || '创建失败')}finally{busy.value=false}
 }
 async function cancel() {
@@ -46,14 +52,16 @@ defineExpose({load,openDetail})
       <tr v-for="b in batches" :key="b.id"><td>{{ b.batch_no }}</td><td>{{ b.factory_name }}</td><td>{{ b.item_count }}</td><td>{{ b.returned_count }} / {{ b.item_count }}</td><td><t-tag size="small" variant="light">{{ batchLabel(b) }}</t-tag></td><td>{{ b.carrier || '未寄出' }}<small>{{ b.tracking_no }}</small></td><td style="text-align:right"><button class="btn btn-xs btn-outline" @click="openDetail(b.id)">批次详情</button></td></tr>
       <tr v-if="!batches.length"><td colspan="7" class="empty">暂无送厂批次</td></tr>
     </tbody></table></div>
+    <t-pagination :current="page" :page-size="50" :total="total" :show-page-size="false" @change="changePage" />
   </div>
   <t-dialog v-model:visible="createVisible" header="汇总待送厂口模" width="min(1000px, 94vw)" placement="center" :footer="false">
     <div class="batch-body">
-      <div class="filters"><label>取模日期<input v-model="date" type="date" @change="loadReady"></label><button class="btn btn-outline" @click="date='';loadReady()">全部待送厂（含往日）</button><label>制作工厂 *<input v-model="factory" maxlength="150" placeholder="填写工厂名称"></label></div>
-      <div class="panel-body"><table class="data-table"><thead><tr><th><input type="checkbox" :checked="!!ready.length && selected.length===ready.length" @change="selected=($event.target as HTMLInputElement).checked?ready.map(r=>r.id):[]"></th><th>患者 / 档案号</th><th>口模编号</th><th>取模日期</th><th>存放位置</th><th>制作要求</th></tr></thead><tbody>
+      <div class="filters"><label>取模日期<input v-model="date" type="date" @change="filterReady"></label><button class="btn btn-outline" @click="date='';filterReady()">全部待送厂（含往日）</button><label>制作工厂 *<input v-model="factory" maxlength="150" placeholder="填写工厂名称"></label></div>
+      <div class="panel-body"><table class="data-table"><thead><tr><th><input type="checkbox" :checked="!!ready.length && ready.every(r=>selected.includes(r.id))" @change="selectPage(($event.target as HTMLInputElement).checked)"></th><th>患者 / 档案号</th><th>口模编号</th><th>取模日期</th><th>存放位置</th><th>制作要求</th></tr></thead><tbody>
         <tr v-for="r in ready" :key="r.id"><td><input v-model="selected" type="checkbox" :value="r.id"></td><td>{{ r.patient_name }}<small>{{ r.patient_no }}</small></td><td>{{ r.mold_no }}</td><td>{{ r.details.taken_date }}</td><td>{{ r.details.storage_location }}</td><td><div class="text-cell">{{ r.details.requirements }}</div></td></tr>
         <tr v-if="!ready.length"><td colspan="6" class="empty">暂无符合日期的待送厂口模；需先确认完成取模资料。</td></tr>
       </tbody></table></div>
+      <t-pagination :current="readyPage" :page-size="50" :total="readyTotal" :show-page-size="false" @change="changeReadyPage" />
     </div>
     <div class="footer"><span>已选择 {{ selected.length }} 件</span><button class="btn btn-outline" @click="createVisible=false">关闭</button><button class="btn btn-primary" :disabled="busy" @click="create">生成待寄批次</button></div>
   </t-dialog>

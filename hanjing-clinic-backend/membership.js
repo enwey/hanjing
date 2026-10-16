@@ -1,4 +1,4 @@
-import { query, run } from './db.js';
+import { query, transaction } from './db.js';
 
 const DEFAULT_MEMBER_LEVEL_RULES = [
   { level: 'normal', title: '普通会员', color: '#9CA3AF', bgColor: '#F3F4F6', spentRequired: 0, benefits: [{ icon: 'appointment', title: '在线预约', desc: '随时预约睡眠门诊' }, { icon: 'assess', title: '免费初筛', desc: 'ESS量表 + AI鼾声分析' }] },
@@ -41,17 +41,24 @@ export async function getCurrentUserMembership(userId, conn = null) {
 async function calculateUserTotalSpent(userId, conn = null) {
   const rows = await execute(conn, `SELECT COALESCE(SUM(pay_amount), 0) AS total_spent
     FROM orders WHERE user_id = ? AND pay_at IS NOT NULL
-      AND status IN ('paid', 'shipping', 'shipped', 'processing', 'completed', 'refund_pending', 'refunding')`, [userId]);
+      AND status IN ('paid', 'shipping', 'shipped', 'processing', 'completed', 'refund_pending', 'refunding')
+      AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(shipping_address), shipping_address, '{}'), '$.refund_payment_conflict')), 'false') <> 'true'`, [userId]);
   return Number(rows[0]?.total_spent || 0);
 }
 
 export async function syncUserMembership(userId, conn = null, reason = 'order_sync') {
+  if (!conn) return transaction(tx => syncUserMembership(userId, tx, reason));
+  await execute(conn, 'SELECT id FROM users WHERE id=? FOR UPDATE', [userId]);
   const totalSpent = await calculateUserTotalSpent(userId, conn);
   const levels = await getMemberLevelRules(conn);
-  const matched = levels.filter((level) => totalSpent >= level.spentRequired).at(-1) || levels[0];
+  let matched = levels.filter((level) => totalSpent >= level.spentRequired).at(-1) || levels[0];
   if (!matched?.id) throw new Error('会员等级配置不存在');
 
-  const currentRows = await execute(conn, `SELECT level_id FROM user_memberships WHERE user_id = ? FOR UPDATE`, [userId]);
+  const currentRows = await execute(conn, `SELECT level_id, protected_level_id FROM user_memberships WHERE user_id = ? FOR UPDATE`, [userId]);
+  if (currentRows[0]?.protected_level_id) {
+    const [protectedLevel] = await execute(conn, 'SELECT * FROM member_levels WHERE id=?', [currentRows[0].protected_level_id]);
+    if (protectedLevel && Number(protectedLevel.spent_required) >= matched.spentRequired) matched = normalizeLevel(protectedLevel);
+  }
   const currentLevelId = Number(currentRows[0]?.level_id || 0);
   if (!currentLevelId) {
     await execute(conn, `INSERT INTO user_memberships (user_id, level_id, effective_at) VALUES (?, ?, CURRENT_TIMESTAMP)`, [userId, matched.id]);
@@ -66,13 +73,15 @@ export async function syncUserMembership(userId, conn = null, reason = 'order_sy
 }
 
 export async function setUserMembership(userId, levelCode, conn = null, reason = 'admin_adjustment') {
+  if (!conn) return transaction(tx => setUserMembership(userId, levelCode, tx, reason));
+  await execute(conn, 'SELECT id FROM users WHERE id=? FOR UPDATE', [userId]);
   const levels = await getMemberLevelRules(conn);
   const matched = levels.find((level) => level.level === levelCode);
   if (!matched?.id) throw new Error('指定的会员等级不存在');
   const currentRows = await execute(conn, `SELECT level_id FROM user_memberships WHERE user_id = ? FOR UPDATE`, [userId]);
   const currentLevelId = Number(currentRows[0]?.level_id || 0);
   if (!currentLevelId) {
-    await execute(conn, `INSERT INTO user_memberships (user_id, level_id, effective_at) VALUES (?, ?, CURRENT_TIMESTAMP)`, [userId, matched.id]);
+    await execute(conn, `INSERT INTO user_memberships (user_id, level_id, protected_level_id, effective_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)`, [userId, matched.id, matched.id]);
   } else if (currentLevelId !== matched.id) {
     await execute(conn, `UPDATE user_memberships SET level_id = ?, effective_at = CURRENT_TIMESTAMP,
       updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`, [matched.id, userId]);
@@ -80,5 +89,6 @@ export async function setUserMembership(userId, levelCode, conn = null, reason =
     await execute(conn, `INSERT INTO user_membership_history (user_id, from_level_id, to_level_id, total_spent, reason)
       VALUES (?, ?, ?, ?, ?)`, [userId, currentLevelId, matched.id, totalSpent, reason]);
   }
+  await execute(conn, 'UPDATE user_memberships SET protected_level_id=? WHERE user_id=?', [matched.id, userId]);
   return { id: userId, member_level: matched.level, member_level_id: matched.id };
 }

@@ -23,6 +23,7 @@ test('mini-program transactions and data integrity', async t => {
     Object.assign(process.env, { DB_HOST: '127.0.0.1', DB_PORT: '3306', DB_NAME: schema,
       DB_USER: process.env.TEST_DB_USER || 'root', DB_PASSWORD: process.env.TEST_DB_PASSWORD || 'root' });
     db = await import('../db.js');
+    await admin.query("INSERT INTO member_levels(code,name,spent_required,sort_order,benefits) VALUES('normal','Test normal',0,0,JSON_ARRAY())");
     const helpers = await import('../helpers.js');
     const client = await import('../routes/client.js');
     const app = express();

@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
+import { fulfillmentAccessScope, readPagination } from './admin-scope.js';
+import { lockFulfillmentCase as lockCase, FULFILLMENT_PAID_STATUSES } from './fulfillment-guard.js';
 import { get, query, transaction } from './db.js';
-import { authenticateToken, verifyPatientAccess } from './helpers.js';
+import { authenticateToken } from './helpers.js';
 import { readFulfillmentClinical } from './fulfillment-clinical.js';
 
 const decode = value => typeof value === 'string' ? JSON.parse(value) : value;
@@ -9,8 +11,9 @@ const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const editable = ['assigned', 'mold_taken'];
 const positiveId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
 async function accessCase(id, user) {
-  const c = await get('SELECT * FROM fulfillment_cases WHERE id=?', [id]);
-  if (!c || !await verifyPatientAccess(c.patient_id, user)) fail('交付单不存在或无权访问', 404);
+  const scope = fulfillmentAccessScope(user);
+  const c = await get(`SELECT c.*,o.status AS order_status FROM fulfillment_cases c JOIN orders o ON o.id=c.order_id WHERE c.id=? AND ${scope.sql}`, [id, ...scope.params]);
+  if (!c) fail('交付单不存在或无权访问', 404);
   return c;
 }
 async function accessBatch(id, user) {
@@ -18,17 +21,13 @@ async function accessBatch(id, user) {
     LEFT JOIN admin_users a ON a.id=b.sender_id WHERE b.id=?`, [id]);
   if (!b) fail('送厂批次不存在或无权访问', 404);
   const items = await query('SELECT * FROM fulfillment_factory_items WHERE batch_id=? ORDER BY fulfillment_case_id', [id]);
+  if (!items.length && user.role !== 'super_admin' && Number(b.created_by) !== Number(user.id)) fail('送厂批次不存在或无权访问', 404);
   for (const item of items) await accessCase(item.fulfillment_case_id, user);
   return { ...b, items };
 }
 async function event(conn, caseId, actor, type, detail) {
   await conn.execute('INSERT INTO fulfillment_events(fulfillment_case_id,actor_id,event_type,detail) VALUES(?,?,?,?)',
     [caseId, actor, type, JSON.stringify(detail)]);
-}
-async function lockCase(conn, id) {
-  const [[c]] = await conn.execute('SELECT * FROM fulfillment_cases WHERE id=? FOR UPDATE', [id]);
-  if (!c) fail('交付单不存在', 404);
-  return c;
 }
 function moldDetails(input, complete) {
   if (!input || typeof input !== 'object') fail('取模资料不能为空');
@@ -93,7 +92,7 @@ export function registerDeliveryWorkflow(app) {
     const mold = await get('SELECT * FROM fulfillment_molds WHERE fulfillment_case_id=? ORDER BY id DESC LIMIT 1',[c.id]);
     const files = await query('SELECT id,name FROM fulfillment_mold_files WHERE fulfillment_case_id=? ORDER BY id',[c.id]);
     const clinical = await readFulfillmentClinical(c);
-    ok(res,{profile:profile ? {...profile,details:decode(profile.details)} : null,mold,files,clinical,editable:editable.includes(c.status)});
+    ok(res,{profile:profile ? {...profile,details:decode(profile.details)} : null,mold,files,clinical,editable:editable.includes(c.status) && FULFILLMENT_PAID_STATUSES.includes(c.order_status)});
   });
   route('post','/cases/:id/mold',async (req,res) => {
     const c = await accessCase(req.params.id,req.user);
@@ -152,23 +151,37 @@ export function registerDeliveryWorkflow(app) {
     res.set({'Content-Type':'application/octet-stream','Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(file.name)}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}).send(file.content);
   });
   route('get','/ready-molds',async(req,res)=>{
-    const rows=await query(`SELECT c.id,c.patient_id,p.name AS patient_name,p.patient_no,m.mold_no,d.details,d.revision
-      FROM fulfillment_cases c JOIN patients p ON p.id=c.patient_id
-      JOIN fulfillment_mold_profiles d ON d.fulfillment_case_id=c.id AND d.status='completed'
-      JOIN fulfillment_molds m ON m.id=d.mold_id WHERE c.status='mold_taken' ORDER BY JSON_UNQUOTE(JSON_EXTRACT(d.details,'$.taken_date')),c.id`);
-    const result=[];
-    for(const r of rows) if(await verifyPatientAccess(r.patient_id,req.user)) {
-      const details=decode(r.details);
-      if(!req.query.date || details.taken_date===req.query.date)result.push({...r,details});
+    const scope=fulfillmentAccessScope(req.user), pagination=readPagination(req.query);
+    if(req.query.date) {
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(req.query.date))fail('取模日期不正确');
+      scope.sql+=" AND JSON_UNQUOTE(JSON_EXTRACT(d.details,'$.taken_date'))=?";
+      scope.params.push(req.query.date);
     }
-    ok(res,result);
+    const from=`FROM fulfillment_cases c JOIN patients p ON p.id=c.patient_id
+      JOIN fulfillment_mold_profiles d ON d.fulfillment_case_id=c.id AND d.status='completed'
+      JOIN fulfillment_molds m ON m.id=d.mold_id JOIN orders o ON o.id=c.order_id
+      WHERE c.status='mold_taken' AND o.status IN ('paid','processing','shipping','shipped','completed') AND ${scope.sql}`;
+    const count=await get('SELECT COUNT(*) AS total '+from,scope.params);
+    const rows=await query(`SELECT c.id,c.patient_id,p.name AS patient_name,p.patient_no,m.mold_no,d.details,d.revision
+      ${from} ORDER BY c.id LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}`,scope.params);
+    res.json({code:200,data:rows.map(r=>({...r,details:decode(r.details)})),pagination:{page:pagination.page,pageSize:pagination.pageSize,total:Number(count.total)}});
   });
   route('get','/batches',async(req,res)=>{
-    const result=[];
-    for(const b of await query('SELECT * FROM fulfillment_factory_batches ORDER BY id DESC')) {
-      try { const batch=await accessBatch(b.id,req.user);result.push({...b,item_count:batch.items.length,returned_count:batch.items.filter(x=>x.status==='returned').length,retake_count:batch.items.filter(x=>x.status==='retake').length}); }
-      catch(e){if(e.statusCode!==404)throw e;}
-    }ok(res,result);
+    const scope=fulfillmentAccessScope(req.user), pagination=readPagination(req.query);
+    // Check the whole batch in SQL, before pagination; never leak partial batches.
+    const emptyScope=req.user.role==='super_admin' ? '1=1' : 'b.created_by=? OR EXISTS (SELECT 1 FROM fulfillment_factory_items own_item WHERE own_item.batch_id=b.id)';
+    if(req.user.role!=='super_admin')scope.params.unshift(req.user.id);
+    const where=`(${emptyScope}) AND NOT EXISTS (SELECT 1 FROM fulfillment_factory_items i
+      JOIN fulfillment_cases c ON c.id=i.fulfillment_case_id JOIN patients p ON p.id=c.patient_id
+      WHERE i.batch_id=b.id AND NOT (${scope.sql}))`;
+    const count=await get('SELECT COUNT(*) AS total FROM fulfillment_factory_batches b WHERE '+where,scope.params);
+    const rows=await query(`SELECT b.*,
+      (SELECT COUNT(*) FROM fulfillment_factory_items i WHERE i.batch_id=b.id) AS item_count,
+      (SELECT COUNT(*) FROM fulfillment_factory_items i WHERE i.batch_id=b.id AND i.status='returned') AS returned_count,
+      (SELECT COUNT(*) FROM fulfillment_factory_items i WHERE i.batch_id=b.id AND i.status='retake') AS retake_count
+      FROM fulfillment_factory_batches b WHERE ${where} ORDER BY b.id DESC
+      LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}`,scope.params);
+    res.json({code:200,data:rows,pagination:{page:pagination.page,pageSize:pagination.pageSize,total:Number(count.total)}});
   });
   route('post','/batches',async(req,res)=>{
     if (!Array.isArray(req.body.case_ids)) fail('请选择待送厂口模');
@@ -209,7 +222,7 @@ export function registerDeliveryWorkflow(app) {
       const [[b]]=await conn.execute('SELECT * FROM fulfillment_factory_batches WHERE id=? FOR UPDATE',[batch.id]);
       if(b.status!=='draft')fail('只有未寄出的批次可以取消',409);
       for(const item of batch.items){
-        const c=await lockCase(conn,item.fulfillment_case_id);
+        const c=await lockCase(conn,item.fulfillment_case_id,{allowInactiveOrder:true});
         if(c.status!=='mold_batched')fail('交付单状态已变化',409);
         await conn.execute("UPDATE fulfillment_cases SET status='mold_taken' WHERE id=?",[c.id]);
         await conn.execute("UPDATE fulfillment_factory_items SET status='cancelled',active_mold_id=NULL WHERE id=?",[item.id]);
