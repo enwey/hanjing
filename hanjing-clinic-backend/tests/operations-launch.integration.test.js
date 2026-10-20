@@ -70,7 +70,7 @@ test('operations launch fixes preserve scope, payment, stock and fulfillment inv
       assert.deepEqual((await api('/orders/cashier-stores')).body.data.map(x=>Number(x.id)),[1]);
     });
     await t.test('unknown payments, unconfirmed receipts and invalid prices cannot create orders',async()=>{
-      for(const patch of [{pay_method:undefined},{pay_method:'wechat'},{pay_method:'unknown'},{payment_confirmed:false},{items:[{product_id:1,quantity:1,price:-100}]},{items:[{product_id:1,quantity:true,price:10000}]},{items:[bill.items[0],bill.items[0]]},{pay_amount:1},{shipping_address:'not-json'}]) {
+      for(const patch of [{pay_method:undefined},{pay_method:'wechat_invalid'},{pay_method:'unknown'},{payment_confirmed:false},{items:[{product_id:1,quantity:1,price:-100}]},{items:[{product_id:1,quantity:true,price:10000}]},{items:[bill.items[0],bill.items[0]]},{pay_amount:1},{shipping_address:'not-json'}]) {
         const r=await api('/orders',{...bill,...patch});assert.equal(r.status,400,JSON.stringify(r.body));
       }
       assert.equal((await db.get('SELECT COUNT(*) n FROM orders')).n,0);
@@ -114,6 +114,31 @@ test('operations launch fixes preserve scope, payment, stock and fulfillment inv
       assert.equal(standalone.status,200,JSON.stringify(standalone.body));
       assert.equal((await api('/orders/'+standalone.body.data.order_id)).status,200);
     });
+    await t.test('delivery exposes current order payment facts and blocks inactive payments', async () => {
+      const c = await db.get('SELECT id FROM fulfillment_cases WHERE order_id=?', [nativeId]);
+      const order = await db.get('SELECT * FROM orders WHERE id=?', [nativeId]);
+      const list = await api('/fulfillment/cases?search=' + encodeURIComponent(order.order_no));
+      assert.equal(list.status, 200);
+      assert.equal(list.body.data[0].order_status, 'processing');
+      assert.equal(Number(list.body.data[0].pay_amount), 10000);
+      assert.equal(list.body.data[0].pay_method, 'wechat_native');
+      assert.ok(list.body.data[0].pay_at);
+      try {
+        for (const status of ['processing', 'pending', 'refund_pending', 'refunding', 'refunded', 'cancelled']) {
+          await db.run('UPDATE orders SET status=? WHERE id=?', [status, nativeId]);
+          const result = await api('/fulfillment/cases/' + c.id + '/detail');
+          assert.equal(result.status, 200);
+          assert.equal(result.body.data.payment.order_status, status);
+          assert.equal(Number(result.body.data.payment.order_id), nativeId);
+          assert.equal(Number(result.body.data.payment.pay_amount), 10000);
+          assert.equal(result.body.data.payment.pay_method, 'wechat_native');
+          assert.ok(!Object.hasOwn(result.body.data.payment, 'cashier_context'));
+          if (status !== 'processing') {
+            assert.equal((await api('/fulfillment/cases/' + c.id + '/assign', { technician_id: 1002 }, root)).status, 409);
+          }
+        }
+      } finally { await db.run('UPDATE orders SET status=? WHERE id=?', [order.status, nativeId]); }
+    });
     await t.test('native and micropay orders are accepted for real-channel refund review',async()=>{
       for(const method of ['wechat_native','wechat_micropay']) {
         const r=await api('/orders',{...bill,pay_method:method,status:'processing'});
@@ -149,6 +174,50 @@ test('operations launch fixes preserve scope, payment, stock and fulfillment inv
       assert.equal((await api('/after-sales-tickets')).status,200);
       const c=await db.get('SELECT id FROM fulfillment_cases WHERE order_id=?',[nativeId]);
       assert.equal((await api('/after-sales-tickets',{fulfillment_case_id:c.id,issue_type:'Fixture',description:'Fixture'})).status,200);
+    });
+    await t.test('after-sales assignment, processing, resolution and closure preserve results', async () => {
+      const c = await db.get('SELECT id FROM fulfillment_cases WHERE order_id=?', [nativeId]);
+      const created = await api('/after-sales-tickets', { fulfillment_case_id: c.id, issue_type: 'Fit', description: 'Needs adjustment' });
+      assert.equal(created.status, 200);
+      const id = created.body.data.id;
+      const update = async (body) => {
+        const current = await db.get('SELECT * FROM after_sales_tickets WHERE id=?', [id]);
+        return api('/after-sales-tickets/' + id, { expected_status: current.status, expected_technician_id: current.assigned_technician_id, ...body }, staff, 'PUT');
+      };
+      assert.equal((await update({ status: 'processing' })).status, 409);
+      assert.equal((await update({ status: 'resolved', resolution: 'Skipped' })).status, 409);
+      assert.equal((await update({ status: 'assigned', assigned_technician_id: 999999 })).status, 400);
+      assert.equal((await update({ status: 'assigned', assigned_technician_id: 1002 })).status, 200);
+      assert.equal((await update({ status: 'assigned', assigned_technician_id: 1002 })).status, 400);
+      assert.equal((await update({ status: 'processing' })).status, 200);
+      assert.equal((await update({ status: 'resolved', resolution: '   ' })).status, 400);
+      assert.equal((await update({ status: 'assigned', assigned_technician_id: 1001 })).status, 200);
+      assert.equal((await db.get('SELECT status FROM after_sales_tickets WHERE id=?', [id])).status, 'assigned');
+      assert.equal((await update({ status: 'processing' })).status, 200);
+      assert.equal((await update({ status: 'resolved', resolution: 'Adjustment completed' })).status, 200);
+      const resolved = await db.get('SELECT * FROM after_sales_tickets WHERE id=?', [id]);
+      assert.ok(resolved.resolved_at);
+      assert.equal((await update({ status: 'closed', close_reason: 'Confirmed' })).status, 200);
+      const closed = await db.get('SELECT * FROM after_sales_tickets WHERE id=?', [id]);
+      assert.equal(new Date(closed.resolved_at).getTime(), new Date(resolved.resolved_at).getTime());
+      assert.ok(closed.resolution.startsWith('Adjustment completed'));
+      assert.ok(closed.resolution.includes('Confirmed'));
+      assert.equal((await update({ status: 'processing' })).status, 409);
+      assert.equal((await api('/after-sales-tickets')).body.data.find(row => Number(row.id) === Number(id)).resolution, closed.resolution);
+      assert.ok(Number((await db.get("SELECT COUNT(*) n FROM fulfillment_events WHERE fulfillment_case_id=? AND event_type='after_sales_updated'", [c.id])).n) >= 6);
+    });
+    await t.test('after-sales early closure requires a reason and concurrent edits cannot overwrite it', async () => {
+      const created = await api('/after-sales-tickets', { patient_id: 1, issue_type: 'Duplicate', description: 'Fixture' });
+      const id = created.body.data.id;
+      const base = { expected_status: 'pending', expected_technician_id: null, status: 'closed' };
+      assert.equal((await api('/after-sales-tickets/' + id, base, staff, 'PUT')).status, 400);
+      const results = await Promise.all(['Reason A', 'Reason B'].map(close_reason => api('/after-sales-tickets/' + id, { ...base, close_reason }, staff, 'PUT')));
+      assert.equal(results.filter(row => row.status === 200).length, 1);
+      assert.equal(results.filter(row => row.status === 409).length, 1);
+      const closed = await db.get('SELECT * FROM after_sales_tickets WHERE id=?', [id]);
+      assert.equal(closed.status, 'closed');
+      assert.equal(closed.resolved_at, null);
+      assert.ok(closed.resolution.includes('Reason'));
     });
     await t.test('pagination rejects unbounded pages and searches all scoped cases',async()=>{
       const first=await api('/fulfillment/cases?page=1&pageSize=1');

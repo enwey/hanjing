@@ -526,14 +526,14 @@ async function reassignPatientDataWithConn(conn, fromPatientId, toPatientId) {
   await conn.execute(`UPDATE snore_assessments SET patient_id = ? WHERE patient_id = ?`, [toPatientId, fromPatientId]);
 }
 
-async function createPatientCloneForLinkWithConn(conn, sourcePatient, { name, gender, age, phoneEnc, idCardEnc, cardNo }) {
+async function createPatientCloneForLinkWithConn(conn, sourcePatient, { name, gender, age, phoneEnc, idCardEnc, cardNo, avatarUrl, birthday, storeId, region, address }) {
   const patientNo = cardNo || await generateUniquePatientNo(async (candidate) => {
     const row = await get(`SELECT id FROM patients WHERE patient_no = ? LIMIT 1`, [candidate]);
     return Boolean(row);
   });
   const [created] = await conn.execute(
-    `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, id_card, card_no, source, has_snore, medical_history)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, id_card, card_no, avatar_url, birthday, store_id, region, address, source, has_snore, medical_history)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       patientNo,
       sourcePatient.user_id || null,
@@ -544,6 +544,11 @@ async function createPatientCloneForLinkWithConn(conn, sourcePatient, { name, ge
       phoneEnc,
       idCardEnc,
       patientNo,
+      avatarUrl,
+      birthday,
+      storeId,
+      region,
+      address,
       sourcePatient.source || 'mini_app',
       Number(sourcePatient.has_snore || 0),
       sourcePatient.medical_history || null
@@ -3283,29 +3288,54 @@ app.get('/api/v1/user/member-levels', authenticateWxToken, async (req, res) => {
 });
 
 // 5. Family Members (GET)
+function normalizeFamilyBirthday(birthday) {
+  if (typeof birthday !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(birthday)) return null;
+  const date = new Date(birthday + 'T00:00:00Z');
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== birthday
+    || birthday > formatDate(getShanghaiNow())) return null;
+  return birthday;
+}
+
+function formatFamilyMember(patient, relationOverride = '') {
+  const decIdCard = decryptPII(patient.id_card) || '';
+  const decPhone = decryptPII(patient.phone) || '';
+  let maskedIdCard = '';
+  if (decIdCard && decIdCard.length === 18) {
+    maskedIdCard = `${decIdCard.slice(0, 3)}***********${decIdCard.slice(-4)}`;
+  }
+  const birthday = formatDate(patient.birthday);
+  return {
+    id: patient.id.toString(),
+    name: patient.name,
+    relation: relationOverride || patient.link_relation || patient.relation || 'other',
+    gender: patient.gender,
+    age: birthday ? calculateAgeFromBirthday(birthday) : patient.age,
+    birthday,
+    phone: decPhone,
+    hasSnore: patient.has_snore === 1,
+    idCard: maskedIdCard,
+    cardNo: getPatientRecordNo(patient),
+    avatar: patient.avatar_url || '',
+    avatarUrl: patient.avatar_url || '',
+    storeId: patient.store_id ? String(patient.store_id) : '',
+    storeName: patient.store_name || '',
+    region: patient.region || '',
+    address: patient.address || ''
+  };
+}
+
 app.get('/api/v1/user/family-members', authenticateWxToken, async (req, res) => {
   try {
-    const list = await getLinkedPatientsForUser(req.user.id);
-    const formatted = list.map(p => {
-      const decIdCard = decryptPII(p.id_card) || '';
-      const decPhone = decryptPII(p.phone) || '';
-      // Masking idCard for security
-      let maskedIdCard = '';
-      if (decIdCard && decIdCard.length === 18) {
-        maskedIdCard = `${decIdCard.slice(0, 3)}***********${decIdCard.slice(-4)}`;
-      }
-      return {
-        id: p.id.toString(),
-        name: p.name,
-        relation: p.link_relation || p.relation || 'other',
-        gender: p.gender,
-        age: p.age,
-        phone: decPhone,
-        hasSnore: p.has_snore === 1,
-        idCard: maskedIdCard,
-        cardNo: getPatientRecordNo(p)
-      };
-    });
+    const list = await query(
+      `SELECT p.*, upl.relation AS link_relation, s.name AS store_name
+       FROM user_patient_links upl
+       JOIN patients p ON p.id = upl.patient_id
+       LEFT JOIN stores s ON s.id = p.store_id
+       WHERE upl.user_id = ? AND p.user_id = upl.user_id
+       ORDER BY FIELD(upl.relation, 'self', 'spouse', 'child', 'parent', 'sibling', 'other'), p.id ASC`,
+      [req.user.id]
+    );
+    const formatted = list.map(p => formatFamilyMember(p));
     res.json({
       code: 0,
       message: 'success',
@@ -3321,11 +3351,15 @@ app.get('/api/v1/user/family-members', authenticateWxToken, async (req, res) => 
 
 // 6. Family Members (POST)
 app.post('/api/v1/user/family-members', authenticateWxToken, async (req, res) => {
-  const { name, relation, gender, age, phone, idCard, cardNo } = req.body;
+  const { name, relation, gender, age, phone, idCard, cardNo, avatar, avatarUrl, birthday, storeId, region, address } = req.body;
   if (!name) {
     return res.status(400).json({ code: 400, message: '姓名不能为空' });
   }
-  const ageVal = age === undefined || age === null || age === '' ? null : parseInt(age, 10);
+  const birthdayVal = normalizeFamilyBirthday(birthday);
+  if (birthday && !birthdayVal) {
+    return res.status(400).json({ code: 400, message: '出生日期无效' });
+  }
+  const ageVal = birthdayVal ? calculateAgeFromBirthday(birthdayVal) : (age === undefined || age === null || age === '' ? null : parseInt(age, 10));
   if (ageVal !== null && (!Number.isInteger(ageVal) || ageVal < 1 || ageVal > 120)) {
     return res.status(400).json({ code: 400, message: '年龄必须在1至120之间' });
   }
@@ -3341,11 +3375,34 @@ app.post('/api/v1/user/family-members', authenticateWxToken, async (req, res) =>
   const phoneClean = phone ? escapeHtml(phone) : null;
   const idCardClean = idCard ? escapeHtml(idCard).toUpperCase() : null;
   const cardNoClean = cardNo ? escapeHtml(cardNo) : null;
+  let avatarClean = avatarUrl || avatar ? privateUploadPath(avatarUrl || avatar) : null;
+  let storeIdVal = storeId === undefined || storeId === null || storeId === '' ? null : Number(storeId);
+  let regionClean = region ? escapeHtml(region) : null;
+  let addressClean = address ? escapeHtml(address) : null;
+
+  if ((avatarUrl || avatar) && (!avatarClean || !/^\/uploads\/medical-attachments\/[a-zA-Z0-9_.-]+\.(jpg|jpeg|png|gif)$/i.test(avatarClean))) {
+    return res.status(400).json({ code: 400, message: '请重新上传有效头像' });
+  }
+  if ((region != null && typeof region !== 'string') || (address != null && typeof address !== 'string')
+    || (regionClean && regionClean.length > 120) || (addressClean && addressClean.length > 255)) {
+    return res.status(400).json({ code: 400, message: '地区或详细地址无效或过长' });
+  }
+
+  if (storeIdVal !== null && (!['string', 'number'].includes(typeof storeId) || !Number.isSafeInteger(storeIdVal) || storeIdVal <= 0)) {
+    return res.status(400).json({ code: 400, message: '所属诊所无效' });
+  }
 
   const phoneEnc = phoneClean ? encryptPII(phoneClean) : null;
   const idCardEnc = idCardClean ? encryptPII(idCardClean) : null;
 
   try {
+    if (avatarClean && !await canReadPrivateUpload(avatarClean, req.user)) {
+      return res.status(403).json({ code: 403, message: '无权使用该头像' });
+    }
+    if (storeIdVal) {
+      const store = await get(`SELECT id FROM stores WHERE id = ? AND status = 'open' LIMIT 1`, [storeIdVal]);
+      if (!store) return res.status(400).json({ code: 400, message: '所属诊所不存在' });
+    }
     const genderVal = gender === '男' || gender === 1 || gender === '1' ? 1 : gender === '女' || gender === 2 || gender === '2' ? 2 : 0;
     let patient = null;
     if (idCardEnc) {
@@ -3375,19 +3432,26 @@ app.post('/api/v1/user/family-members', authenticateWxToken, async (req, res) =>
         }
       }
       const result = await run(
-        `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, id_card, card_no, source, has_snore)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'mini_app', 0)`,
-        [patientNo, req.user.id, nameClean, relationClean, genderVal, ageVal, phoneEnc, idCardEnc, patientNo]
+        `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, id_card, card_no, avatar_url, birthday, store_id, region, address, source, has_snore)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'mini_app', 0)`,
+        [patientNo, req.user.id, nameClean, relationClean, genderVal, ageVal, phoneEnc, idCardEnc, patientNo, avatarClean, birthdayVal, storeIdVal, regionClean, addressClean]
       );
       patient = await get(`SELECT * FROM patients WHERE id = ?`, [result.id]);
     } else {
+      const linked = await get('SELECT id FROM user_patient_links WHERE user_id = ? AND patient_id = ?', [req.user.id, patient.id]);
+      if (linked) return res.status(400).json({ code: 400, message: '该就诊人已在当前关联列表中' });
       const nextPhone = patient.phone || phoneEnc || null;
       const nextIdCard = patient.id_card || idCardEnc || null;
       const nextCardNo = patient.card_no || patient.patient_no || null;
-      if (nextPhone !== patient.phone || nextIdCard !== patient.id_card || nextCardNo !== patient.card_no) {
+      const nextAvatar = patient.avatar_url || avatarClean || null;
+      const nextBirthday = patient.birthday || birthdayVal || null;
+      const nextStoreId = patient.store_id || storeIdVal || null;
+      const nextRegion = patient.region || regionClean || null;
+      const nextAddress = patient.address || addressClean || null;
+      if (nextPhone !== patient.phone || nextIdCard !== patient.id_card || nextCardNo !== patient.card_no || nextAvatar !== patient.avatar_url || nextBirthday !== patient.birthday || nextStoreId !== patient.store_id || nextRegion !== patient.region || nextAddress !== patient.address) {
         await run(
-          `UPDATE patients SET phone = ?, id_card = ?, card_no = ? WHERE id = ?`,
-          [nextPhone, nextIdCard, nextCardNo, patient.id]
+          `UPDATE patients SET phone = ?, id_card = ?, card_no = ?, avatar_url = ?, birthday = ?, store_id = ?, region = ?, address = ? WHERE id = ?`,
+          [nextPhone, nextIdCard, nextCardNo, nextAvatar, nextBirthday, nextStoreId, nextRegion, nextAddress, patient.id]
         );
         patient = await get(`SELECT * FROM patients WHERE id = ?`, [patient.id]);
       }
@@ -3404,20 +3468,17 @@ app.post('/api/v1/user/family-members', authenticateWxToken, async (req, res) =>
     await ensureUserPatientLink(req.user.id, patient.id, relationClean);
     const decPatientIdCard = decryptPII(patient.id_card) || idCardClean || '';
     const decPatientPhone = decryptPII(patient.phone) || phoneClean || '';
+    const responsePatient = await get(
+      `SELECT p.*, s.name AS store_name FROM patients p LEFT JOIN stores s ON s.id = p.store_id WHERE p.id = ?`,
+      [patient.id]
+    );
     res.json({
       code: 0,
       message: 'success',
-      data: {
-        id: patient.id.toString(),
-        name: patient.name,
-        relation: relationClean,
-        gender: patient.gender,
-        age: patient.age,
+      data: Object.assign(formatFamilyMember(responsePatient || patient, relationClean), {
         phone: decPatientPhone,
-        idCard: decPatientIdCard ? `${decPatientIdCard.slice(0, 3)}***********${decPatientIdCard.slice(-4)}` : '',
-        cardNo: getPatientRecordNo(patient),
-        hasSnore: patient.has_snore === 1
-      }
+        idCard: decPatientIdCard ? `${decPatientIdCard.slice(0, 3)}***********${decPatientIdCard.slice(-4)}` : ''
+      })
     });
   } catch (error) {
     console.error('Add family member error:', error);
@@ -3430,9 +3491,10 @@ app.get('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
   const { id } = req.params;
   try {
     const link = await get(
-      `SELECT p.*, upl.relation AS link_relation
+      `SELECT p.*, upl.relation AS link_relation, s.name AS store_name
        FROM user_patient_links upl
        JOIN patients p ON p.id = upl.patient_id
+       LEFT JOIN stores s ON s.id = p.store_id
         WHERE upl.user_id = ? AND upl.patient_id = ? AND p.user_id = upl.user_id`,
       [req.user.id, id]
     );
@@ -3442,17 +3504,10 @@ app.get('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
     res.json({
       code: 0,
       message: 'success',
-      data: {
-        id: link.id.toString(),
-        name: link.name,
-        relation: link.link_relation || link.relation || 'other',
-        gender: link.gender,
-        age: link.age,
+      data: Object.assign(formatFamilyMember(link), {
         phone: link.phone ? decryptPII(link.phone) : '',
-        idCard: link.id_card ? decryptPII(link.id_card) : '',
-        cardNo: getPatientRecordNo(link),
-        hasSnore: Boolean(link.has_snore)
-      }
+        idCard: link.id_card ? decryptPII(link.id_card) : ''
+      })
     });
   } catch (error) {
     console.error('Get family member error:', error);
@@ -3463,11 +3518,15 @@ app.get('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
 // 6.6 Update Family Member (PUT)
 app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
-  const { name, relation, gender, age, phone, idCard, cardNo } = req.body;
+  const { name, relation, gender, age, phone, idCard, cardNo, avatar, avatarUrl, birthday, storeId, region, address } = req.body;
   if (!name) {
     return res.status(400).json({ code: 400, message: '姓名不能为空' });
   }
-  const ageVal = age === undefined || age === null || age === '' ? null : parseInt(age, 10);
+  let birthdayVal = normalizeFamilyBirthday(birthday);
+  if (birthday && !birthdayVal) {
+    return res.status(400).json({ code: 400, message: '出生日期无效' });
+  }
+  let ageVal = birthdayVal ? calculateAgeFromBirthday(birthdayVal) : (age === undefined || age === null || age === '' ? null : parseInt(age, 10));
   if (ageVal !== null && (!Number.isInteger(ageVal) || ageVal < 1 || ageVal > 120)) {
     return res.status(400).json({ code: 400, message: '年龄必须在1至120之间' });
   }
@@ -3483,11 +3542,34 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
   const phoneClean = phone ? escapeHtml(phone) : null;
   const idCardClean = idCard ? escapeHtml(idCard).toUpperCase() : null;
   const cardNoClean = cardNo ? escapeHtml(cardNo) : null;
+  let avatarClean = avatarUrl || avatar ? privateUploadPath(avatarUrl || avatar) : null;
+  let storeIdVal = storeId === undefined || storeId === null || storeId === '' ? null : Number(storeId);
+  let regionClean = region ? escapeHtml(region) : null;
+  let addressClean = address ? escapeHtml(address) : null;
+
+  if ((avatarUrl || avatar) && (!avatarClean || !/^\/uploads\/medical-attachments\/[a-zA-Z0-9_.-]+\.(jpg|jpeg|png|gif)$/i.test(avatarClean))) {
+    return res.status(400).json({ code: 400, message: '请重新上传有效头像' });
+  }
+  if ((region != null && typeof region !== 'string') || (address != null && typeof address !== 'string')
+    || (regionClean && regionClean.length > 120) || (addressClean && addressClean.length > 255)) {
+    return res.status(400).json({ code: 400, message: '地区或详细地址无效或过长' });
+  }
+
+  if (storeIdVal !== null && (!['string', 'number'].includes(typeof storeId) || !Number.isSafeInteger(storeIdVal) || storeIdVal <= 0)) {
+    return res.status(400).json({ code: 400, message: '所属诊所无效' });
+  }
 
   const phoneEnc = phoneClean ? encryptPII(phoneClean) : null;
   const idCardEnc = idCardClean ? encryptPII(idCardClean) : null;
 
   try {
+    if (avatarClean && !await canReadPrivateUpload(avatarClean, req.user)) {
+      return res.status(403).json({ code: 403, message: '无权使用该头像' });
+    }
+    if (storeIdVal) {
+      const store = await get(`SELECT id FROM stores WHERE id = ? AND status = 'open' LIMIT 1`, [storeIdVal]);
+      if (!store) return res.status(400).json({ code: 400, message: '所属诊所不存在' });
+    }
     const genderVal = gender === '男' || gender === 1 || gender === '1' ? 1 : gender === '女' || gender === 2 || gender === '2' ? 2 : 0;
     let responsePatientId = String(id);
 
@@ -3504,6 +3586,14 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
     if (link.user_id === req.user.id && link.relation === 'self') {
       return res.status(400).json({ code: 400, message: '本人信息请前往个人信息页修改' });
     }
+    // Older clients omit these fields; do not erase their stored profile data.
+    if (avatarUrl === undefined && avatar === undefined) avatarClean = link.avatar_url || null;
+    if (birthday === undefined) birthdayVal = formatDate(link.birthday) || null;
+    if (storeId === undefined) storeIdVal = link.store_id || null;
+    if (region === undefined) regionClean = link.region || null;
+    if (address === undefined) addressClean = link.address || null;
+    if (birthdayVal) ageVal = calculateAgeFromBirthday(birthdayVal);
+    else if (age === undefined) ageVal = link.age;
     if (cardNoClean && cardNoClean !== getPatientRecordNo(link)) {
       const duplicatedPatientNo = await get(`SELECT id FROM patients WHERE patient_no = ? AND id != ? LIMIT 1`, [cardNoClean, id]);
       if (duplicatedPatientNo) {
@@ -3550,9 +3640,14 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
              SET patient_no = COALESCE(patient_no, ?),
                  card_no = COALESCE(card_no, ?),
                  phone = COALESCE(phone, ?),
-                 id_card = COALESCE(id_card, ?)
+                 id_card = COALESCE(id_card, ?),
+                 avatar_url = COALESCE(avatar_url, ?),
+                 birthday = COALESCE(birthday, ?),
+                 store_id = COALESCE(store_id, ?),
+                 region = COALESCE(region, ?),
+                 address = COALESCE(address, ?)
              WHERE id = ?`,
-            [nextMatchedPatientNo, nextMatchedPatientNo, phoneEnc, idCardEnc, matchedPatient.id]
+            [nextMatchedPatientNo, nextMatchedPatientNo, phoneEnc, idCardEnc, avatarClean, birthdayVal, storeIdVal, regionClean, addressClean, matchedPatient.id]
           );
           targetPatientId = Number(matchedPatient.id);
 
@@ -3574,7 +3669,12 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
               age: ageVal,
               phoneEnc,
               idCardEnc,
-              cardNo: cardNoClean
+              cardNo: cardNoClean,
+              avatarUrl: avatarClean,
+              birthday: birthdayVal,
+              storeId: storeIdVal,
+              region: regionClean,
+              address: addressClean
             });
             await conn.execute(
               `UPDATE user_patient_links
@@ -3585,11 +3685,12 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
             targetPatientId = Number(clonedPatient.id);
           } else {
             await conn.execute(
-              `UPDATE patients
-               SET patient_no = COALESCE(?, patient_no),
-                   name = ?, gender = ?, age = ?, phone = ?, id_card = ?, card_no = COALESCE(?, card_no, patient_no)
-               WHERE id = ?`,
-              [cardNoClean || null, nameClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean || null, id]
+          `UPDATE patients
+           SET patient_no = COALESCE(?, patient_no),
+               name = ?, gender = ?, age = ?, phone = ?, id_card = ?, card_no = COALESCE(?, card_no, patient_no),
+               avatar_url = ?, birthday = ?, store_id = ?, region = ?, address = ?
+           WHERE id = ?`,
+              [cardNoClean || null, nameClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean || null, avatarClean, birthdayVal, storeIdVal, regionClean, addressClean, id]
             );
           }
         }
@@ -3599,9 +3700,10 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
         await conn.execute(
           `UPDATE patients
            SET patient_no = COALESCE(?, patient_no),
-               name = ?, gender = ?, age = ?, phone = ?, id_card = ?, card_no = COALESCE(?, card_no, patient_no)
+               name = ?, gender = ?, age = ?, phone = ?, id_card = ?, card_no = COALESCE(?, card_no, patient_no),
+               avatar_url = ?, birthday = ?, store_id = ?, region = ?, address = ?
            WHERE id = ?`,
-          [cardNoClean || null, nameClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean || null, id]
+          [cardNoClean || null, nameClean, genderVal, ageVal, phoneEnc, idCardEnc, cardNoClean || null, avatarClean, birthdayVal, storeIdVal, regionClean, addressClean, id]
         );
       }
 
@@ -3614,21 +3716,15 @@ app.put('/api/v1/user/family-members/:id', authenticateWxToken, async (req, res)
       responsePatientId = String(targetPatientId);
     });
 
-    const responsePatient = await get(`SELECT * FROM patients WHERE id = ?`, [responsePatientId]);
+    const responsePatient = await get(`SELECT p.*, s.name AS store_name FROM patients p LEFT JOIN stores s ON s.id = p.store_id WHERE p.id = ?`, [responsePatientId]);
 
     res.json({
       code: 0,
       message: 'success',
-      data: {
-        id: responsePatientId,
-        name: nameClean,
-        relation: relationClean,
-        gender: genderVal,
-        age: ageVal,
+      data: Object.assign(formatFamilyMember(responsePatient, relationClean), {
         phone: phoneClean,
-        idCard: idCardClean ? `${idCardClean.slice(0, 3)}***********${idCardClean.slice(-4)}` : '',
-        cardNo: getPatientRecordNo(responsePatient)
-      }
+        idCard: idCardClean ? `${idCardClean.slice(0, 3)}***********${idCardClean.slice(-4)}` : ''
+      })
     });
   } catch (error) {
     console.error('Update family member error:', error);
@@ -6706,12 +6802,15 @@ app.post('/api/v1/orders/:id/pay', authenticateWxToken, async (req, res) => {
     if (order.status !== 'pending') {
       return res.status(400).json({ code: 400, message: '订单非待支付状态' });
     }
+    if (['wechat_native', 'wechat_micropay', 'cash', 'bank'].includes(order.pay_method)) {
+      return res.status(409).json({ code: 409, message: '该订单使用现场收款，请联系门店处理，勿重复支付' });
+    }
 
     if ((await getMissingWechatPayConfig()).length) {
       return res.status(503).json({ code: 503, message: '支付服务尚未完成配置，请联系商家' });
     }
     // Persist intent even if the provider times out. Cancellation must reconcile it.
-    const marked = await run("UPDATE orders SET wechat_prepay_id=COALESCE(wechat_prepay_id,'REQUESTING') WHERE id=? AND status='pending'", [order.id]);
+    const marked = await run("UPDATE orders SET wechat_prepay_id=COALESCE(wechat_prepay_id,'REQUESTING'),pay_method='wechat' WHERE id=? AND status='pending' AND (pay_method IS NULL OR pay_method='' OR pay_method='wechat')", [order.id]);
     if (!marked.changes) throw businessError('订单状态已变更', 409);
     const payParams = await transaction(async conn => {
       const [[locked]] = await conn.execute('SELECT * FROM orders WHERE id=? FOR UPDATE', [order.id]);

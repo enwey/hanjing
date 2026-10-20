@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function load(relative, dependencies = {}, wxOverrides = {}) {
+function load(relative, dependencies = {}, wxOverrides = {}, globals = {}) {
   const storage = new Map();
   const toasts = [];
   let page;
@@ -25,6 +25,7 @@ function load(relative, dependencies = {}, wxOverrides = {}) {
       ...wxOverrides,
     },
     Page(value) { page = value; },
+    ...globals,
   };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, relative), 'utf8'), context, { filename: relative });
@@ -34,6 +35,18 @@ function load(relative, dependencies = {}, wxOverrides = {}) {
   }
   return { page, storage, toasts, exports: context.module.exports };
 }
+
+test('store-channel orders cannot pay in mini-program and unpaid bills show their actual channel', () => {
+  const { page } = load('pages/order/detail.js');
+  for (const payMethod of ['wechat_native', 'wechat_micropay', 'cash', 'bank']) {
+    assert.equal(page.normalizeOrder({ status: 'pending', payMethod }).actionFlags.canPay, false);
+  }
+  const order = page.normalizeOrder({ status: 'pending', payMethod: 'wechat', shippingAddress: { deliveryMethod: 'pickup_pending' } });
+  assert.equal(order.actionFlags.canPay, true);
+  assert.equal(order.payMethodLabel, '小程序微信支付');
+  assert.equal(order.deliveryMethodText, '到店自取（待到货）');
+  assert.equal(page.normalizeOrder({ status: 'paid', payMethod: 'wechat' }).actionFlags.canPay, false);
+});
 
 test('zero bank rate is preserved, fee rounding is in cents, invalid precision is rejected', async () => {
   const { page } = load('pages/distribution/withdraw/index.js', {
@@ -197,8 +210,120 @@ test('home uses actual zeros and unknown placeholders', async () => {
   assert.equal(page.data.storeCountLabel, '--');
 });
 
+test('home preserves successful directory responses when statistics fail', async () => {
+  const { page } = load('pages/index/index.js', { '../../api/index': {
+    getHomeStats: async () => { throw new Error('Unavailable'); },
+    getDoctors: async () => ({ data: [{ id: 12, name: 'Doctor' }] }),
+    getStores: async () => ({ data: [{ id: 34, name: 'Store' }] }),
+  } });
+  await page.loadPage();
+  assert.equal(page.data.loading, false);
+  assert.equal(page.data.loadError, '');
+  assert.equal(page.data.patientCountLabel, '--');
+  assert.equal(page.data.recommendedDoctors[0].id, 12);
+  assert.equal(page.data.stores[0].id, 34);
+});
+
+test('home reports failure when all three requests fail', async () => {
+  const fail = async () => { throw new Error('Unavailable'); };
+  const { page } = load('pages/index/index.js', { '../../api/index': {
+    getHomeStats: fail, getDoctors: fail, getStores: fail,
+  } });
+  await page.loadPage();
+  assert.equal(page.data.loading, false);
+  assert.ok(page.data.loadError);
+  assert.equal(page.data.recommendedDoctors.length, 0);
+  assert.equal(page.data.stores.length, 0);
+});
+
+test('home does not require array-destructuring Babel helpers', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'pages/index/index.js'), 'utf8');
+  assert.doesNotMatch(source, /\b(?:const|let|var)\s*\[/);
+  assert.doesNotMatch(source, /@babel\/runtime/);
+});
+
 test('no mini-program page retains a mock payment branch or random recording wave', () => {
   const files = ['pages/product/detail.js', 'pages/order/detail.js', 'pages/appointment/confirm.js', 'pages/appointment/detail.js'];
   for (const file of files) assert.doesNotMatch(fs.readFileSync(path.join(__dirname, file), 'utf8'), /mockPayment/);
   assert.doesNotMatch(fs.readFileSync(path.join(__dirname, 'pages/assessment/recording/index.js'), 'utf8'), /Math\.random|qualityScore:\s*85/);
+});
+
+const memberPagePath = 'pages/profile/family-members/add-member/index.js';
+const memberPayload = { name: 'Test patient', relation: 'child', gender: '1', birthday: '2015-06-01',
+  phone: '13800138001', storeId: '1', region: 'Test region', address: 'Test address' };
+
+test('new patient form saves extended fields once and selects the result on return', async () => {
+  let release, submitted, calls = 0, selected, navigated = false;
+  const callbacks = [];
+  const gate = new Promise(resolve => { release = resolve; });
+  const { page, storage } = load(memberPagePath, { '../../../../api/index': {
+    addFamilyMember: async payload => { submitted = payload; calls++; await gate; return { data: { id: 37 } }; },
+  } }, { navigateBack() { navigated = true; } }, {
+    setTimeout(fn) { callbacks.push(fn); },
+    getCurrentPages: () => [{ selectCreatedPatient(id) { selected = id; } }, {}],
+  });
+  page.setData({ ...memberPayload, age: '11', returnToAppointment: true });
+  const first = page.submitAddMember();
+  await page.submitAddMember();
+  release();
+  await first;
+  assert.equal(calls, 1);
+  assert.equal(submitted.birthday, memberPayload.birthday);
+  assert.equal(submitted.address, memberPayload.address);
+  assert.equal(page.data.isSubmitting, true);
+  callbacks[0]();
+  assert.equal(selected, '37');
+  assert.equal(navigated, true);
+  assert.equal(storage.size, 0);
+});
+
+test('patient form rejects invalid dates, missing clinic and failed submissions can retry', async () => {
+  const { page } = load(memberPagePath, { '../../../../api/index': {
+    addFamilyMember: async () => { throw Error('Unavailable'); },
+  } });
+  for (const birthday of ['2025-02-29', '2015-02-30', '2999-01-01']) {
+    assert.ok(page.validatePayload({ ...memberPayload, birthday }));
+  }
+  assert.ok(page.validatePayload({ ...memberPayload, storeId: '' }));
+  page.setData({ ...memberPayload, age: '11' });
+  await page.submitAddMember();
+  assert.equal(page.data.isSubmitting, false);
+});
+
+test('failed avatar uploads preserve the saved avatar and block submitting while uploading', async () => {
+  let choose, release, calls = 0;
+  const gate = new Promise(resolve => { release = resolve; });
+  const { page } = load(memberPagePath, { '../../../../api/index': {
+    uploadLocalFile: async () => { await gate; throw Error('Upload failed'); },
+    addFamilyMember: async () => { calls++; },
+  } }, { chooseImage(options) { choose = options; } });
+  page.setData({ ...memberPayload, avatarUrl: '/uploads/old.jpg', avatarPreviewUrl: '/uploads/old.jpg' });
+  page.chooseAvatar();
+  const upload = choose.success({ tempFilePaths: ['wxfile://new.jpg'] });
+  await page.submitAddMember();
+  assert.equal(calls, 0);
+  release();
+  await upload;
+  assert.equal(page.data.avatarUrl, '/uploads/old.jpg');
+  assert.equal(page.data.avatarPreviewUrl, '/uploads/old.jpg');
+  assert.equal(page.data.isUploading, false);
+});
+
+test('appointment selects the new patient only within the same login session', async () => {
+  let token = 'session-one';
+  const { page } = load('pages/appointment/confirm.js', {
+    '../../stores/session-store': { getAccessToken: () => token },
+    '../../stores/appointment-draft-store': { getDraft: () => ({ doctorId: 1, storeId: 1, scheduleId: 1, timeSlot: { label: '09:00' } }) },
+    '../../api/index': {
+      getStores: async () => [], getDoctors: async () => [], getBookingSettings: async () => ({}),
+      getFamilyMembers: async () => [{ id: 1, relation: 'self', name: 'Self' }, { id: 37, relation: 'child', name: 'Child' }],
+    },
+  });
+  page.selectCreatedPatient('37');
+  await page.loadPage();
+  assert.equal(page.data.memberIndex, 1);
+  page.selectCreatedPatient('37');
+  token = 'session-two';
+  await page.loadPage();
+  assert.equal(page.data.memberIndex, 0);
 });

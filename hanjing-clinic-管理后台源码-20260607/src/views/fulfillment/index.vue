@@ -2,10 +2,13 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { useRouter } from 'vue-router'
+import { canAdvanceDelivery, paymentLabel, paymentTheme, paymentMoney } from '@/utils/fulfillmentPayment'
 import ClinicalDetails from './ClinicalDetails.vue'
 import MoldDialog from './MoldDialog.vue'
 import FactoryBatches from './FactoryBatches.vue'
 const view = ref('cases'), moldDialog = ref<any>(null), batchPanel = ref<any>(null)
+const router = useRouter()
 const page = ref(1), pageSize = ref(50), total = ref(0), search = ref('')
 function changePage(info: any) { page.value=info.current; pageSize.value=info.pageSize; load() }
 function searchCases() { page.value=1; load() }
@@ -52,6 +55,7 @@ onMounted(load)
               <th style="min-width: 90px;">履约单</th>
               <th style="min-width: 260px;">患者信息</th>
               <th style="min-width: 220px;">阻鼾器商品</th>
+              <th style="min-width: 170px;">订单收款</th>
               <th style="min-width: 280px;">治疗处方 / 方案</th>
               <th style="min-width: 320px;">绑定物理阻鼾器 / 初始下颌前移量</th>
               <th style="min-width: 110px;">技师</th>
@@ -73,6 +77,12 @@ onMounted(load)
                 </div>
               </td>
               <td><div class="clinical-cell">{{ item.device_product_names || item.devices?.map((d:any) => d.device_product_name || d.device_model).join('；') || '未记录阻鼾器商品' }}</div></td>
+              <td>
+                <t-tag :theme="paymentTheme(item)" size="small" variant="light">{{ paymentLabel(item) }}</t-tag>
+                <small>订单应付：{{ paymentMoney(item.pay_amount) }}</small>
+                <small v-if="!canAdvanceDelivery(item)" class="payment-warning">暂停交付，请核对关联订单</small>
+                <t-button variant="text" theme="primary" size="small" @click="router.push(`/order/detail/${item.order_id}`)">查看订单</t-button>
+              </td>
               <td><div class="clinical-cell prescription-cell">{{ item.prescription || '未关联处方' }}</div></td>
               <td>
                 <div class="clinical-cell">
@@ -95,18 +105,18 @@ onMounted(load)
               <td style="text-align: right;">
                 <div class="actions">
                   <button class="btn btn-xs btn-outline" @click="showDetail(item)">履约资料</button>
-                  <button v-if="item.status === 'pending_assignment'" class="btn btn-xs btn-primary" @click="openAction('assign', item)">分配</button>
-                  <button v-if="item.status === 'assigned'" class="btn btn-xs btn-primary" @click="moldDialog.open(item)">取模</button>
-                  <button v-else-if="item.status!=='pending_assignment'" class="btn btn-xs btn-outline" @click="moldDialog.open(item)">取模资料</button>
-                  <button v-if="['mold_taken','mold_batched','mold_shipped','factory_received','producing','factory_exception'].includes(item.status)" class="btn btn-xs btn-primary" @click="openBatch(item)">送厂批次</button>
-                  <button v-if="['factory_received','producing'].includes(item.status)" class="btn btn-xs btn-success" @click="openAction('receipt', item)">收货</button>
-                  <button v-if="item.status === 'device_received'" class="btn btn-xs btn-primary" @click="notify(item)">通知试戴</button>
-                  <button v-if="item.status === 'ready_for_fitting'" class="btn btn-xs btn-success" @click="openAction('fitting', item)">完成试戴</button>
+                  <button v-if="item.status === 'pending_assignment'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="openAction('assign', item)">分配</button>
+                  <button v-if="item.status === 'assigned'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="moldDialog.open(item)">取模</button>
+                  <button v-else-if="item.status!=='pending_assignment'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-outline" @click="moldDialog.open(item)">取模资料</button>
+                  <button v-if="['mold_taken','mold_batched','mold_shipped','factory_received','producing','factory_exception'].includes(item.status)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="openBatch(item)">送厂批次</button>
+                  <button v-if="['factory_received','producing'].includes(item.status)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-success" @click="openAction('receipt', item)">收货</button>
+                  <button v-if="item.status === 'device_received'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="notify(item)">通知试戴</button>
+                  <button v-if="item.status === 'ready_for_fitting'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-success" @click="openAction('fitting', item)">完成试戴</button>
                   <button class="btn btn-xs btn-outline" @click="showEvents(item)">记录</button>
                 </div>
               </td>
             </tr>
-            <tr v-if="!cases.length"><td colspan="9" class="empty">暂无履约单。</td></tr>
+            <tr v-if="!cases.length"><td colspan="10" class="empty">暂无履约单。</td></tr>
           </tbody>
         </table>
       </div>
@@ -120,6 +130,8 @@ onMounted(load)
 </template>
 <style scoped>
 .page-container { min-width: 0; }
+.payment-warning { color: #b45309; }
+.actions button:disabled { opacity: .45; cursor: not-allowed; }
 .page-title-row { min-height: 50px; }
 .header-actions { display: flex; gap: 8px; align-items: center; }
 .header-actions input { width: 240px; max-width: 100%; min-width: 0; height: 36px; box-sizing: border-box; padding: 8px 12px; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 13px; }

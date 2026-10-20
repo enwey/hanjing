@@ -1,5 +1,5 @@
 <view class="page data-v-30acdad2">
-  <hj-navbar title="家庭成员" showBack="{{true}}"></hj-navbar>
+  <hj-navbar title="就诊人管理" showBack="{{true}}"></hj-navbar>
   <view class="page-content data-v-30acdad2">
     <view wx:if="{{loading}}" class="loading-wrap data-v-30acdad2">
       <text class="data-v-30acdad2">加载中...</text>
@@ -13,7 +13,8 @@
         bindtap="goMemberDetail"
       >
         <view class="member-avatar data-v-30acdad2">
-          <image class="member-avatar-placeholder data-v-30acdad2" src="/static/images/brand-koala.png" mode="aspectFill" />
+          <image wx:if="{{item.avatarUrl}}" class="member-avatar-placeholder data-v-30acdad2" src="{{item.avatarUrl}}" mode="aspectFill" />
+          <image wx:else class="member-avatar-placeholder data-v-30acdad2" src="/static/images/brand-koala.png" mode="aspectFill" />
         </view>
         <view class="member-info data-v-30acdad2">
           <view class="member-name-row data-v-30acdad2">
@@ -32,7 +33,7 @@
       </view>
     </block>
     <view class="bottom-fixed-bar data-v-30acdad2">
-      <button class="bar-primary-btn data-v-30acdad2" bindtap="goAddMember">+ 添加家庭成员</button>
+      <button class="bar-primary-btn data-v-30acdad2" bindtap="goAddMember">+ 新增就诊人</button>
     </view>
     <view class="safe-bottom data-v-30acdad2"></view>
   </view>

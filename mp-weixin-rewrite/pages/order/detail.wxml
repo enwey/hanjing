@@ -41,7 +41,7 @@
           <text class="amount-row__value amount-row__value--discount">-{{order.discountAmountLabel}}</text>
         </view>
         <view class="amount-row amount-row--total">
-          <text class="amount-row__label">实付金额</text>
+          <text class="amount-row__label">{{order.payAtText ? '实付金额' : '应付金额'}}</text>
           <text class="amount-row__value amount-row__value--total">{{order.payAmountLabel}}</text>
         </view>
       </view>
@@ -51,13 +51,13 @@
         <view class="info-row"><text class="info-row__label">订单编号</text><text class="info-row__value">{{order.orderNo}}</text></view>
         <view class="info-row"><text class="info-row__label">下单时间</text><text class="info-row__value">{{order.createdAtText}}</text></view>
         <view wx:if="{{order.payAtText}}" class="info-row"><text class="info-row__label">支付时间</text><text class="info-row__value">{{order.payAtText}}</text></view>
-        <view wx:if="{{order.payMethod}}" class="info-row"><text class="info-row__label">支付方式</text><text class="info-row__value">微信支付</text></view>
+        <view wx:if="{{order.payMethod}}" class="info-row"><text class="info-row__label">支付方式</text><text class="info-row__value">{{order.payMethodLabel}}</text></view>
         <view wx:if="{{order.deliveryMethodText}}" class="info-row"><text class="info-row__label">配送方式</text><text class="info-row__value">{{order.deliveryMethodText}}</text></view>
         <view wx:if="{{order.shippingAddress.storeName}}" class="info-row"><text class="info-row__label">自提门店</text><text class="info-row__value">{{order.shippingAddress.storeName}}</text></view>
         <view wx:if="{{order.shippingAddress.storeBusinessHours}}" class="info-row"><text class="info-row__label">营业时间</text><text class="info-row__value">{{order.shippingAddress.storeBusinessHours}}</text></view>
         <view wx:if="{{order.shippingAddress.contactName || order.shippingAddress.receiver}}" class="info-row"><text class="info-row__label">收货人</text><text class="info-row__value">{{order.shippingAddress.contactName || order.shippingAddress.receiver}}</text></view>
         <view wx:if="{{order.shippingAddress.phone}}" class="info-row"><text class="info-row__label">联系电话</text><text class="info-row__value">{{order.shippingAddress.phone}}</text></view>
-        <view wx:if="{{order.shippingAddress.detailAddress}}" class="info-row"><text class="info-row__label">{{order.shippingAddress.storeName ? '自提地址' : '收货地址'}}</text><text class="info-row__value">{{order.shippingAddress.detailAddress}}</text></view>
+        <view wx:if="{{order.shippingAddress.detailAddress || order.shippingAddress.detail}}" class="info-row"><text class="info-row__label">{{order.shippingAddress.storeName ? '自提地址' : '收货地址'}}</text><text class="info-row__value">{{order.shippingAddress.detailAddress || order.shippingAddress.detail}}</text></view>
         <view wx:if="{{order.shippingAddress.express_company}}" class="info-row"><text class="info-row__label">快递公司</text><text class="info-row__value">{{order.shippingAddress.express_company}}</text></view>
         <view wx:if="{{order.shippingAddress.tracking_number}}" class="info-row"><text class="info-row__label">运单号</text><text class="info-row__value">{{order.shippingAddress.tracking_number}}</text></view>
         <view wx:if="{{order.shippingAddress.refund_reason}}" class="info-row"><text class="info-row__label">退款原因</text><text class="info-row__value">{{order.shippingAddress.refund_reason}}</text></view>

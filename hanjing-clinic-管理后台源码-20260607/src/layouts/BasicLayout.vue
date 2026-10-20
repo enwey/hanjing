@@ -88,6 +88,7 @@ const menuGroups = computed<Array<{ title: string; items: MenuItem[] }>>(() => [
     title: '系统',
     items: [
       { path: '/settings', label: '系统设置', icon: '⚙️', permission: 'system:view' },
+      { path: '/settings/wechat-notifications', label: '微信通知', icon: 'bell', permission: 'system:view', superAdminOnly: true },
       { path: '/permission', label: '权限管理', icon: '🔐', permission: 'system:edit' },
       { path: '/log', label: '操作日志', icon: '📋', permission: 'audit_log:view' },
       { path: '/mini-program-log', label: '小程序日志', icon: '📱', permission: 'audit_log:view' },

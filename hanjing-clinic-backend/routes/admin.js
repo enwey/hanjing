@@ -37,7 +37,8 @@ import {
   formatShanghaiDateTime,
   decryptPII
 } from '../helpers.js';
-import { sendWechatSubscribeMessage } from '../wechatSubscribe.js';
+import { sendWechatSubscribeMessage, getWechatNotificationSettings } from '../wechatSubscribe.js';
+import { notificationConfigKey, validateNotificationConfig, WECHAT_NOTIFICATION_EVENTS } from '../wechat-notification-config.js';
 import { getWechatMiniAccessToken } from '../wechatMiniToken.js';
 import {
   closeOrderByOutTradeNo,
@@ -396,7 +397,7 @@ const formatDate = (dateVal) => {
 
 function normalizePayMethod(method) {
   const value = String(method || '').trim();
-  return ['wechat_native', 'wechat_micropay', 'cash', 'bank'].includes(value) ? value : null;
+  return ['wechat', 'wechat_native', 'wechat_micropay', 'cash', 'bank'].includes(value) ? value : null;
 }
 
 export async function finalizeAdminPaidOrder(order, paymentPayload = null) {
@@ -422,9 +423,11 @@ const patientScope = patientAccessScope;
 const orderScope = orderAccessScope;
 
 async function requestAdminPayment(order, method, createPayment) {
+  if (order.pay_method === 'wechat') throw Object.assign(new Error('该订单由用户在小程序支付，请勿重复发起现场收款'), { statusCode: 409 });
   // Persist intent before contacting the channel, even when its response is lost.
   const marked = await run(`UPDATE orders SET wechat_prepay_id=COALESCE(wechat_prepay_id,'REQUESTING'),pay_method=?
-    WHERE id=? AND status='pending' AND (wechat_prepay_id IS NULL OR pay_method=?)`, [method, order.id, method]);
+    WHERE id=? AND status='pending' AND COALESCE(pay_method,'')<>'wechat'
+    AND (wechat_prepay_id IS NULL OR pay_method=?)`, [method, order.id, method]);
   if (!marked.changes) throw Object.assign(new Error('订单状态或支付方式已变更，请刷新'), { statusCode: 409 });
   return transaction(async conn => {
     const [[current]] = await conn.execute('SELECT status FROM orders WHERE id=? FOR UPDATE', [order.id]);
@@ -4435,6 +4438,7 @@ app.get('/api/admin/fulfillment/cases', authenticateToken, async (req, res) => {
       JOIN patients p ON p.id=c.patient_id JOIN orders o ON o.id=c.order_id WHERE ${scope.sql}`, scope.params);
     const cases = await query(
       `SELECT c.*, p.name AS patient_name, p.patient_no, p.phone AS patient_phone, p.gender AS patient_gender, o.order_no, o.pay_amount, o.status AS order_status,
+              o.pay_at, o.pay_method, o.refund_at,
               s.name AS store_name, tech.name AS technician_name,
               (SELECT mold_no FROM fulfillment_molds WHERE fulfillment_case_id = c.id ORDER BY id DESC LIMIT 1) AS mold_no,
               (SELECT tracking_no FROM fulfillment_mold_shipments WHERE fulfillment_case_id = c.id ORDER BY id DESC LIMIT 1) AS mold_tracking_no,
@@ -4486,17 +4490,18 @@ app.get('/api/admin/fulfillment/cases/:id/detail', authenticateToken, async (req
   if (!fulfillmentCase) return res.status(404).json({ code: 404, message: '履约单不存在或无权访问' });
   try {
     const historyScope = req.user.role === 'super_admin' ? { sql: '1=1', params: [] } : storeInScope(req.user, 'm.store_id');
-    const [patient, items, clinical, historyRecords, followUps] = await Promise.all([
+    const [patient, items, clinical, historyRecords, followUps, payment] = await Promise.all([
       get(`SELECT id, name, patient_no, gender, age, phone, medical_history, allergy_history FROM patients WHERE id = ?`, [fulfillmentCase.patient_id]),
       query(`SELECT product_id, product_name, product_image, price, quantity FROM order_items WHERE order_id = ? ORDER BY id ASC`, [fulfillmentCase.order_id]),
       readFulfillmentClinical(fulfillmentCase),
       query(`SELECT m.*,d.name AS doctor_name,s.name AS store_name FROM medical_records m
         LEFT JOIN doctors d ON d.id=m.doctor_id LEFT JOIN stores s ON s.id=m.store_id
         WHERE m.patient_id=? AND ${historyScope.sql} ORDER BY m.visit_date DESC,m.id DESC`, [fulfillmentCase.patient_id, ...historyScope.params]),
-      query(`SELECT title,description,due_date,status FROM follow_up_tasks WHERE patient_id=? ORDER BY due_date DESC,id DESC`, [fulfillmentCase.patient_id])
+      query(`SELECT title,description,due_date,status FROM follow_up_tasks WHERE patient_id=? ORDER BY due_date DESC,id DESC`, [fulfillmentCase.patient_id]),
+      get('SELECT id AS order_id,order_no,status AS order_status,pay_amount,pay_at,pay_method,refund_at FROM orders WHERE id=?', [fulfillmentCase.order_id])
     ]);
     if (patient) patient.phone = formatAdminPhone(patient.phone);
-    res.json({ code: 200, data: { fulfillment_case: fulfillmentCase, patient, items, ...clinical, history_records: historyRecords, follow_ups: followUps } });
+    res.json({ code: 200, data: { fulfillment_case: fulfillmentCase, patient, items, ...clinical, history_records: historyRecords, follow_ups: followUps, payment } });
   } catch (error) { res.status(500).json({ code: 500, message: '获取履约资料失败' }); }
 });
 
@@ -4629,12 +4634,65 @@ app.put('/api/admin/after-sales-tickets/:id', authenticateToken, async (req, res
   const ticket = await get(`SELECT t.* FROM after_sales_tickets t WHERE t.id = ?`, [req.params.id]);
   if (!ticket || !await verifyPatientAccess(ticket.patient_id, req.user)) return res.status(404).json({ code: 404, message: '售后工单不存在或无权访问' });
   if (ticket.fulfillment_case_id && !await getFulfillmentCaseForAccess(ticket.fulfillment_case_id, req.user)) return res.status(404).json({ code: 404, message: '售后工单不存在或无权访问' });
-  const { assigned_technician_id, status, resolution } = req.body;
-  if (assigned_technician_id && !await getActiveAdminAccount(assigned_technician_id)) return res.status(400).json({ code: 400, message: '技师账号不存在或已停用' });
-  const nextStatus = status || ticket.status;
-  await run(`UPDATE after_sales_tickets SET assigned_technician_id = ?, status = ?, resolution = ?, resolved_at = CASE WHEN ? IN ('resolved', 'closed') THEN CURRENT_TIMESTAMP ELSE resolved_at END WHERE id = ?`, [assigned_technician_id ?? ticket.assigned_technician_id, nextStatus, resolution ?? ticket.resolution, nextStatus, ticket.id]);
-  if (ticket.fulfillment_case_id) await addFulfillmentEvent(ticket.fulfillment_case_id, req.user.id, 'after_sales_updated', { ticket_id: ticket.id, status: nextStatus });
-  res.json({ code: 200, message: '售后工单已更新' });
+  try {
+    const { assigned_technician_id, status, resolution, close_reason, expected_status, expected_technician_id } = req.body;
+    const fail = (message, statusCode = 400) => { throw Object.assign(new Error(message), { statusCode }); };
+    const transitions = {
+      pending: ['assigned', 'closed'],
+      assigned: ['assigned', 'processing', 'closed'],
+      processing: ['assigned', 'resolved', 'closed'],
+      resolved: ['closed'],
+      closed: []
+    };
+    const result = await transaction(async conn => {
+      const [[current]] = await conn.execute('SELECT * FROM after_sales_tickets WHERE id=? FOR UPDATE', [ticket.id]);
+      if (!current) fail('售后工单不存在', 404);
+      if (current.status !== expected_status || expected_technician_id === undefined ||
+          Number(current.assigned_technician_id || 0) !== Number(expected_technician_id || 0)) {
+        fail('工单状态或负责人已变化，请刷新后重试', 409);
+      }
+      if (!transitions[current.status]?.includes(status)) fail('当前状态不允许此操作', 409);
+      let technicianId = current.assigned_technician_id;
+      let nextResolution = current.resolution;
+      if (status === 'assigned') {
+        technicianId = Number(assigned_technician_id);
+        if (!Number.isSafeInteger(technicianId) || technicianId <= 0) fail('请选择处理技师');
+        if (Number(current.assigned_technician_id) === technicianId) fail('请选择不同的处理技师');
+        const [[technician]] = await conn.execute("SELECT id FROM admin_users WHERE id=? AND status='online' FOR UPDATE", [technicianId]);
+        if (!technician) fail('技师账号不存在或已停用');
+      } else if (assigned_technician_id !== undefined && Number(assigned_technician_id) !== Number(technicianId)) {
+        fail('请通过转派操作变更负责人');
+      }
+      if (status === 'processing') {
+        const [[technician]] = await conn.execute("SELECT id FROM admin_users WHERE id=? AND status='online' FOR UPDATE", [technicianId || 0]);
+        if (!technician) fail('请先分配在用技师');
+      }
+      if (status === 'resolved') {
+        if (typeof resolution !== 'string' || !resolution.trim() || resolution.trim().length > 5000) fail('请填写处理结果，最多5000字');
+        nextResolution = resolution.trim();
+      }
+      if (status === 'closed') {
+        const reason = typeof close_reason === 'string' ? close_reason.trim() : '';
+        if (reason.length > 1000 || (current.status !== 'resolved' && !reason)) fail('提前关闭必须填写原因，最多1000字');
+        if (reason) nextResolution = [current.resolution, `关闭说明：${reason}`].filter(Boolean).join('\n');
+      }
+      await conn.execute(`UPDATE after_sales_tickets SET assigned_technician_id=?,status=?,resolution=?,
+        resolved_at=CASE WHEN ?='resolved' THEN CURRENT_TIMESTAMP ELSE resolved_at END WHERE id=?`,
+      [technicianId, status, nextResolution, status, ticket.id]);
+      if (current.fulfillment_case_id) {
+        await conn.execute('INSERT INTO fulfillment_events(fulfillment_case_id,actor_id,event_type,detail) VALUES(?,?,?,?)',
+          [current.fulfillment_case_id, req.user.id, 'after_sales_updated', JSON.stringify({
+            ticket_id: ticket.id, from_status: current.status, status,
+            from_technician_id: current.assigned_technician_id, assigned_technician_id: technicianId
+          })]);
+      }
+      return { status, assigned_technician_id: technicianId };
+    });
+    await logAdminAction(req.user.id, 'update_after_sales_ticket', 'after_sales_ticket', ticket.id, result);
+    res.json({ code: 200, message: '售后工单已更新', data: result });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.statusCode ? error.message : '更新售后工单失败' });
+  }
 });
 
 // ----------------------------------------
@@ -4945,7 +5003,7 @@ app.post('/api/admin/orders/:id/notify', authenticateToken, async (req, res) => 
       });
     });
 
-    res.json({ code: 200, message: '到货自提通知已成功推送给患者！' });
+    res.json({ code: 200, message: '到店状态及站内通知已登记，微信通知发送结果请查看发送记录' });
   } catch (error) {
     console.error(error);
     const status = error.statusCode || 500;
@@ -6800,13 +6858,17 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
   const fail = (message, statusCode = 400) => { throw Object.assign(new Error(message), { statusCode }); };
   try {
     const normalizedPayMethod = normalizePayMethod(pay_method);
-    if (!normalizedPayMethod) fail('请选择微信扫码、付款码、现金或银行转账');
-    const isDeferredWechatPay = ['wechat_native', 'wechat_micropay'].includes(normalizedPayMethod);
+    if (!normalizedPayMethod) fail('请选择小程序支付、微信扫码、付款码、现金或银行转账');
+    const isDeferredWechatPay = ['wechat', 'wechat_native', 'wechat_micropay'].includes(normalizedPayMethod);
     if (!isDeferredWechatPay && req.body.payment_confirmed !== true) fail('请确认已实际收到现金或银行转账');
     if (!patient_id || !Array.isArray(items) || !items.length || items.length > 100) fail('请选择患者及 1～100 项商品');
     if (!await verifyPatientAccess(patient_id, req.user)) fail('无权为该患者收银', 403);
     const patient = await get('SELECT user_id,name,phone FROM patients WHERE id=?', [patient_id]);
     if (!patient) fail('患者不存在', 404);
+    if (normalizedPayMethod === 'wechat' && (!patient.user_id ||
+        !await get('SELECT id FROM users WHERE id=?', [patient.user_id]))) {
+      fail('该患者尚未关联小程序账号，请先完成账号关联');
+    }
     const appointment = appointment_id
       ? await get('SELECT * FROM appointments WHERE id=? AND patient_id=?', [appointment_id, patient_id]) : null;
     if (appointment_id && !appointment) fail('预约与收费患者不一致');
@@ -7016,7 +7078,8 @@ app.get('/api/admin/pay/orders/:id/status', authenticateToken, async (req, res) 
     let order = await get(`SELECT * FROM orders WHERE id = ?`, [id]);
     if (!order) return res.status(404).json({ code: 404, message: '订单不存在' });
     if (!await canAccessPaymentOrder(order, req.user)) return res.status(404).json({ code: 404, message: '订单不存在或无权访问' });
-    if (order.status === 'pending' && ['wechat_native', 'wechat_micropay'].includes(order.pay_method)) {
+    if (order.status === 'pending' && (['wechat_native', 'wechat_micropay'].includes(order.pay_method) ||
+        (order.pay_method === 'wechat' && order.wechat_prepay_id))) {
       try {
         const payState = order.pay_method === 'wechat_micropay'
           ? await queryMicroPayOrderByOutTradeNo(order.order_no)
@@ -7201,6 +7264,45 @@ app.post('/api/admin/im/send', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/admin/settings/wechat-notifications', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
+  res.json({ code: 200, data: await getWechatNotificationSettings() });
+});
+
+app.put('/api/admin/settings/wechat-notifications/:event', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
+  try {
+    const config = validateNotificationConfig(req.params.event, req.body);
+    const key = notificationConfigKey(req.params.event);
+    const revision = crypto.randomUUID();
+    await transaction(async conn => {
+      // Lock a stable row to serialize concurrent first saves as well as edits.
+      await conn.execute("INSERT IGNORE INTO system_settings (key_name,key_value) VALUES ('wechat_notification_lock','')");
+      await conn.execute("SELECT key_name FROM system_settings WHERE key_name='wechat_notification_lock' FOR UPDATE");
+      const [rows] = await conn.execute('SELECT key_value FROM system_settings WHERE key_name=?', [key]);
+      const currentRevision = rows.length ? JSON.parse(rows[0].key_value).revision || '' : '';
+      if (req.body.revision !== currentRevision) throw Object.assign(new Error('配置已被其他人修改，请重新加载'), { statusCode: 409 });
+      await conn.execute('INSERT INTO system_settings (key_name,key_value) VALUES (?,?) ON DUPLICATE KEY UPDATE key_value=VALUES(key_value)', [key, JSON.stringify({ ...config, revision })]);
+    });
+    await logAdminAction(req.user.id, 'configure_wechat_notification', 'system', null, { event: req.params.event, enabled: config.enabled, templateId: config.templateId });
+    res.json({ code: 200, data: { ...config, revision }, message: '通知配置已保存' });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.statusCode ? error.message : '保存通知配置失败' });
+  }
+});
+
+app.get('/api/admin/settings/wechat-notifications/logs', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
+  const page = Math.max(1, Math.min(10000, Number.parseInt(req.query.page, 10) || 1));
+  const event = String(req.query.event || '');
+  if (event && !WECHAT_NOTIFICATION_EVENTS.some(item => item.event === event)) return res.status(400).json({ code: 400, message: '未知通知类型' });
+  const where = event ? 'WHERE event=?' : '';
+  const args = event ? [event] : [];
+  const count = await get(`SELECT COUNT(*) AS total FROM wechat_subscribe_logs ${where}`, args);
+  const rows = await query(`SELECT id,user_id,event,template_id,business_id,status,error_message,sent_at FROM wechat_subscribe_logs ${where} ORDER BY id DESC LIMIT 20 OFFSET ${(page - 1) * 20}`, args);
+  res.json({ code: 200, data: { list: rows, total: Number(count.total), page } });
+});
+
 // 获取系统设置 API
 app.get('/api/admin/settings', authenticateToken, async (req, res) => {
   if (!ensureSuperAdmin(req, res)) return;
@@ -7363,6 +7465,7 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
     }
     await transaction(async (conn) => {
       for (const [key, val] of Object.entries(updates)) {
+        if (key.startsWith('wechat_notification_')) throw Object.assign(new Error('请通过微信通知配置页面修改'), { statusCode: 400 });
         if (isSecretSetting(key) && !String(val ?? '').trim()) continue;
         if (val === null || val === undefined || typeof val === 'object') {
           throw Object.assign(new Error('配置值不能为空或对象'), { statusCode: 400 });

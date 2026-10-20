@@ -1,54 +1,95 @@
 <view class="page data-v-33d45858">
-  <hj-navbar title="{{isEdit ? '成员详情' : '添加家庭成员'}}" showBack="{{true}}" />
+  <hj-navbar title="{{isEdit ? '就诊人详情' : '新增就诊人'}}" showBack="{{true}}" />
   <view class="page-content data-v-33d45858">
-    <view class="form-group data-v-33d45858">
-      <text class="form-label data-v-33d45858">姓名</text>
-      <input class="form-input data-v-33d45858" placeholder="请输入姓名" value="{{name}}" bindinput="handleNameInput" disabled="{{isSelf}}" />
+    <view class="avatar-row data-v-33d45858" bindtap="chooseAvatar">
+      <view class="avatar-wrap data-v-33d45858">
+        <image wx:if="{{avatarPreviewUrl}}" class="avatar-img data-v-33d45858" src="{{avatarPreviewUrl}}" mode="aspectFill" />
+        <image wx:else class="avatar-img data-v-33d45858 avatar-placeholder" src="/static/icons/profile_gray.svg" mode="aspectFit" />
+      </view>
+      <view class="avatar-action data-v-33d45858">
+        <text class="avatar-action-text data-v-33d45858">上传头像</text>
+        <text class="row-arrow data-v-33d45858">›</text>
+      </view>
     </view>
-    <view class="form-group data-v-33d45858">
-      <text class="form-label data-v-33d45858">关系</text>
-      <view class="form-chips data-v-33d45858">
-        <view
-          wx:for="{{relationOptions}}"
-          wx:key="value"
-          class="chip data-v-33d45858 {{relation === item.value ? 'active' : ''}}"
-          data-value="{{item.value}}"
-          bindtap="selectRelation"
-        >
-          <text class="data-v-33d45858">{{item.label}}</text>
+
+    <view class="form-section data-v-33d45858">
+      <picker bindchange="handleStoreChange" value="{{storeIndex >= 0 ? storeIndex : 0}}" range="{{storeNames}}" disabled="{{isSelf || !storeNames.length}}">
+        <view class="form-row data-v-33d45858">
+          <text class="form-label required data-v-33d45858">所属诊所</text>
+          <text class="form-value data-v-33d45858 {{storeName ? '' : 'placeholder'}}">{{storeName || '请选择'}}</text>
+          <text class="row-arrow data-v-33d45858">›</text>
+        </view>
+      </picker>
+
+      <view class="form-row form-row--column data-v-33d45858">
+        <text class="form-label required data-v-33d45858">与本人关系</text>
+        <view class="form-chips data-v-33d45858">
+          <view wx:for="{{relationOptions}}" wx:key="value" class="chip data-v-33d45858 {{relation === item.value ? 'active' : ''}}" data-value="{{item.value}}" bindtap="selectRelation">
+            <text class="data-v-33d45858">{{item.label}}</text>
+          </view>
         </view>
       </view>
-    </view>
-    <view class="form-group data-v-33d45858">
-      <text class="form-label data-v-33d45858">性别</text>
-      <view class="form-chips data-v-33d45858">
-        <view class="chip data-v-33d45858 {{gender === '1' ? 'active' : ''}}" data-value="1" bindtap="selectGender"><text class="data-v-33d45858">男</text></view>
-        <view class="chip data-v-33d45858 {{gender === '2' ? 'active' : ''}}" data-value="2" bindtap="selectGender"><text class="data-v-33d45858">女</text></view>
+
+      <view class="form-row data-v-33d45858">
+        <text class="form-label required data-v-33d45858">手机号</text>
+        <input class="form-input data-v-33d45858" type="number" placeholder="请输入手机号" value="{{phone}}" bindinput="handlePhoneInput" disabled="{{isSelf}}" />
+      </view>
+
+      <view class="form-row data-v-33d45858">
+        <text class="form-label required data-v-33d45858">姓名</text>
+        <input class="form-input data-v-33d45858" placeholder="请输入姓名全称" value="{{name}}" bindinput="handleNameInput" disabled="{{isSelf}}" />
+      </view>
+
+      <view class="form-row form-row--column data-v-33d45858">
+        <text class="form-label required data-v-33d45858">性别</text>
+        <view class="form-chips data-v-33d45858">
+          <view wx:for="{{genderOptions}}" wx:key="value" class="chip data-v-33d45858 {{gender === item.value ? 'active' : ''}}" data-value="{{item.value}}" bindtap="selectGender">
+            <text class="data-v-33d45858">{{item.label}}</text>
+          </view>
+        </view>
+      </view>
+
+      <picker mode="date" end="{{todayDate}}" value="{{birthday}}" bindchange="handleBirthdayChange" disabled="{{isSelf}}">
+        <view class="form-row data-v-33d45858">
+          <text class="form-label required data-v-33d45858">出生日期</text>
+          <text class="form-value data-v-33d45858 {{birthday ? '' : 'placeholder'}}">{{birthday || '请选择'}}</text>
+          <text class="row-extra data-v-33d45858" wx:if="{{age}}">{{age}}岁</text>
+          <text class="row-arrow data-v-33d45858">›</text>
+        </view>
+      </picker>
+
+      <view class="form-row data-v-33d45858">
+        <text class="form-label data-v-33d45858">身份证</text>
+        <input class="form-input data-v-33d45858" placeholder="请输入身份证号" value="{{idCard}}" bindinput="handleIdCardInput" disabled="{{isSelf}}" />
+      </view>
+
+      <view class="form-row data-v-33d45858">
+        <text class="form-label data-v-33d45858">病历号</text>
+        <input class="form-input data-v-33d45858" placeholder="有既往病历可填写" value="{{cardNo}}" bindinput="handleCardNoInput" disabled="{{isSelf}}" />
       </view>
     </view>
-    <view class="form-group data-v-33d45858">
-      <text class="form-label data-v-33d45858">年龄</text>
-      <input class="form-input data-v-33d45858" type="number" placeholder="请输入年龄" value="{{age}}" bindinput="handleAgeInput" disabled="{{isSelf}}" />
+
+    <view class="form-section data-v-33d45858">
+      <picker mode="region" value="{{regionArray}}" bindchange="handleRegionChange" disabled="{{isSelf}}">
+        <view class="form-row data-v-33d45858">
+          <text class="form-label data-v-33d45858">地区</text>
+          <text class="form-value data-v-33d45858 {{region ? '' : 'placeholder'}}">{{region || '请选择'}}</text>
+          <text class="row-arrow data-v-33d45858">›</text>
+        </view>
+      </picker>
+      <view class="form-row form-row--textarea data-v-33d45858">
+        <text class="form-label data-v-33d45858">详细地址</text>
+        <textarea class="form-textarea data-v-33d45858" placeholder="请输入街道门牌信息" value="{{address}}" maxlength="120" bindinput="handleAddressInput" disabled="{{isSelf}}" />
+      </view>
     </view>
-    <view class="form-group data-v-33d45858">
-      <text class="form-label data-v-33d45858">手机号（选填）</text>
-      <input class="form-input data-v-33d45858" type="number" placeholder="用于匹配已存在档案，可单独填写" value="{{phone}}" bindinput="handlePhoneInput" disabled="{{isSelf}}" />
-    </view>
-    <view class="form-group data-v-33d45858">
-      <text class="form-label data-v-33d45858">身份证号（选填）</text>
-      <input class="form-input data-v-33d45858" placeholder="用于匹配已存在档案，可单独填写" value="{{idCard}}" bindinput="handleIdCardInput" disabled="{{isSelf}}" />
-    </view>
-    <view class="form-group data-v-33d45858">
-      <text class="form-label data-v-33d45858">病历号（就诊卡号）（选填）</text>
-      <input class="form-input data-v-33d45858" placeholder="用于匹配已存在档案，可单独填写" value="{{cardNo}}" bindinput="handleCardNoInput" disabled="{{isSelf}}" />
-    </view>
+
     <view class="bottom-fixed-bar data-v-33d45858" wx:if="{{!isSelf}}">
       <block wx:if="{{isEdit}}">
-        <button class="bar-primary-btn bar-save-btn data-v-33d45858" bindtap="submitAddMember">保存修改</button>
-        <button class="bar-danger-btn bar-delete-btn data-v-33d45858" bindtap="deleteMember">解除关联</button>
+        <button class="bar-primary-btn bar-save-btn data-v-33d45858" loading="{{isSubmitting}}" disabled="{{isSubmitting || isUploading}}" bindtap="submitAddMember">保存修改</button>
+        <button class="bar-danger-btn bar-delete-btn data-v-33d45858" disabled="{{isSubmitting || isUploading}}" bindtap="deleteMember">解除关联</button>
       </block>
       <block wx:else>
-        <button class="bar-primary-btn data-v-33d45858" bindtap="submitAddMember">确认关联</button>
+        <button class="bar-primary-btn data-v-33d45858" loading="{{isSubmitting}}" disabled="{{isSubmitting || isUploading}}" bindtap="submitAddMember">确认提交</button>
       </block>
     </view>
     <view class="safe-bottom data-v-33d45858" style="{{isSelf ? 'height: 40rpx;' : ''}}" />

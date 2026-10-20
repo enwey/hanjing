@@ -109,11 +109,12 @@ Page({
       createdAtText: order.createdAt ? formatChinaDateTime(order.createdAt, false) : '',
       payAtText: order.payAt ? formatChinaDateTime(order.payAt, false) : '',
       payMethod: order.payMethod || '',
+      payMethodLabel: ({ wechat: '小程序微信支付', wechat_native: '门店微信扫码', wechat_micropay: '门店付款码支付', cash: '现金', bank: '银行转账' })[order.payMethod] || order.payMethod || '',
       shippingAddress,
-      deliveryMethodText: shippingAddress.deliveryMethod === 'pickup' ? '到店自提' : '快递邮寄',
+      deliveryMethodText: shippingAddress.deliveryMethod === 'pickup_pending' ? '到店自取（待到货）' : ['pickup', 'offline'].includes(shippingAddress.deliveryMethod) ? '到店自提' : '快递邮寄',
       actionFlags: {
         canCancel: order.status === 'pending',
-        canPay: order.status === 'pending',
+        canPay: order.status === 'pending' && !['wechat_native', 'wechat_micropay', 'cash', 'bank'].includes(order.payMethod),
         canConfirmReceipt: order.status === 'shipped',
         canRefund: order.status === 'paid' || order.status === 'shipping',
       },
@@ -178,7 +179,8 @@ Page({
 
   async onPayOrder() {
     const order = this.data.order;
-    if (!order) return;
+    if (!order || !order.actionFlags.canPay || this.paymentInProgress) return;
+    this.paymentInProgress = true;
     wx.showLoading({ title: '发起支付...' });
     try {
       const payResponse = await api.payOrder(order.id);
@@ -196,6 +198,8 @@ Page({
         title: getPaymentErrorMessage(error, '支付未完成'),
         icon: 'none',
       });
+    } finally {
+      this.paymentInProgress = false;
     }
   },
 

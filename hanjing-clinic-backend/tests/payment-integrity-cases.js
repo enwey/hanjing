@@ -5,6 +5,29 @@ export async function runPaymentIntegrityTests({ t, db, control, api, wxApi, roo
   const { readStoreReport } = await import('../operations-report.js');
   await db.run('UPDATE products SET stock=100 WHERE id=1');
   const payment = (trade, amount, id) => ({trade_state:'SUCCESS',out_trade_no:trade,transaction_id:id,amount:{currency:'CNY',total:amount}});
+  await t.test('mini-program cashier fee bill activates appointment only after verified payment and only once', async () => {
+    const appointmentId = await createFeeAppointment();
+    const body = { ...feeBill(appointmentId, 'wechat'), payment_confirmed: false,
+      request_id: 'MINI-FEE-PAYMENT-20261020-0001' };
+    const created = await api('/orders', body);
+    assert.equal(created.status, 200, JSON.stringify(created));
+    const orderId = created.body.data.order_id;
+    assert.equal(created.body.data.receipt.payAt, null);
+    assert.equal((await db.get('SELECT status FROM appointments WHERE id=?', [appointmentId])).status, 'pending_payment');
+    assert.equal((await api('/orders', { ...body, discount_amount: 1, pay_amount: 6999 })).status, 409);
+    const order = await db.get('SELECT * FROM orders WHERE id=?', [orderId]);
+    const valid = payment(order.order_no, 7000, 'MINI-FEE-TX-1');
+    await assert.rejects(db.transaction(conn => clientRoutes.finalizePaidProductOrder(conn, order, payment(order.order_no, 1, 'INVALID'))));
+    assert.equal((await db.get('SELECT status FROM orders WHERE id=?', [orderId])).status, 'pending');
+    await db.transaction(conn => clientRoutes.finalizePaidProductOrder(conn, order, valid));
+    await db.transaction(conn => clientRoutes.finalizePaidProductOrder(conn, order, valid));
+    assert.equal((await db.get('SELECT status FROM appointments WHERE id=?', [appointmentId])).status, 'pending');
+    const state = await api(`/pay/orders/${orderId}/status`, undefined);
+    assert.equal(state.status, 200);
+    assert.ok(state.body.data.payAt);
+    assert.equal(state.body.data.payMethod, 'wechat');
+    assert.equal((await wxApi(`/orders/${orderId}/pay`)).status, 400);
+  });
   await t.test('F2 mini payment then cashier callback records duplicate money for refund without fulfillment', async () => {
     const id = await createFeeAppointment();
     const body = feeBill(id,'wechat_native');

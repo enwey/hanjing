@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { canAdvanceDelivery, paymentLabel, paymentTheme, paymentMethod, paymentMoney } from '@/utils/fulfillmentPayment'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
+const router = useRouter()
 const props = defineProps<{ data: any }>()
 const patient = computed(() => props.data.patient || {})
 const visit = computed(() => props.data.appointment || {})
@@ -19,6 +23,21 @@ function attachmentUrl(item: any) {
 
 <template>
   <div class="clinical-details">
+    <section class="card">
+      <h3>关联订单收款信息</h3>
+      <t-alert v-if="!canAdvanceDelivery(data.payment)" theme="warning" :message="`${paymentLabel(data.payment)}，当前不可继续推进交付。`" />
+      <dl class="fields">
+        <div><dt>订单编号</dt><dd>{{ data.payment?.order_no || '未记录' }}</dd></div>
+        <div><dt>付款状态</dt><dd><t-tag :theme="paymentTheme(data.payment)" size="small" variant="light">{{ paymentLabel(data.payment) }}</t-tag></dd></div>
+        <div><dt>订单应付金额</dt><dd>{{ paymentMoney(data.payment?.pay_amount) }}</dd></div>
+        <div><dt>原收款金额（退款前）</dt><dd>{{ data.payment?.pay_at ? paymentMoney(data.payment.pay_amount) : '未记录收款时间，请核对订单' }}</dd></div>
+        <div><dt>付款方式</dt><dd>{{ paymentMethod(data.payment?.pay_method) }}</dd></div>
+        <div><dt>付款时间</dt><dd>{{ data.payment?.pay_at ? formatShanghaiDateTime(data.payment.pay_at) : '未记录' }}</dd></div>
+        <div><dt>退款状态</dt><dd>{{ ['refund_pending', 'refunding', 'refunded'].includes(data.payment?.order_status) ? paymentLabel(data.payment) : '当前无进行中或已完成退款' }}</dd></div>
+        <div v-if="data.payment?.refund_at"><dt>退款完成时间</dt><dd>{{ formatShanghaiDateTime(data.payment.refund_at) }}</dd></div>
+      </dl>
+      <t-button v-if="data.payment?.order_id" variant="outline" @click="router.push(`/order/detail/${data.payment.order_id}`)">查看关联订单</t-button>
+    </section>
     <div v-if="!data.medical_record" class="missing">此履约单尚未明确关联看诊记录。下方历史病历供查阅，不作为本单治疗方案。</div>
     <div class="clinical-grid">
       <div>

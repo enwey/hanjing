@@ -1,12 +1,14 @@
 const api = require('../../api/index');
 const appointmentDraftStore = require('../../stores/appointment-draft-store');
 const subscribe = require('../../common/utils/subscribe');
+const sessionStore = require('../../stores/session-store');
 
 const RELATION_LABEL_MAP = {
   self: '本人',
   spouse: '配偶',
   child: '子女',
   parent: '父母',
+  sibling: '兄弟姐妹',
   other: '其他',
 };
 
@@ -122,7 +124,12 @@ Page({
         return (member.name || relationLabel) + ' (' + relationLabel + ')';
       });
       const selfIndex = Math.max(0, membersPayload.findIndex((member) => member.relation === 'self'));
-      const memberIndex = selfIndex >= 0 ? selfIndex : 0;
+      const pendingPatientId = this.pendingPatientToken === sessionStore.getAccessToken()
+        ? String(this.pendingPatientId || '') : '';
+      const pendingMemberIndex = pendingPatientId ? membersPayload.findIndex((member) => String(member.id || '') === pendingPatientId) : -1;
+      const memberIndex = pendingMemberIndex >= 0 ? pendingMemberIndex : (selfIndex >= 0 ? selfIndex : 0);
+      this.pendingPatientId = '';
+      this.pendingPatientToken = '';
       const totalAmountYuan = (
         consultFeeAmount / 100 + (requireDeposit ? depositAmount / 100 : 0)
       ).toFixed(2);
@@ -202,6 +209,23 @@ Page({
     this.setData({
       symptomDesc: event.detail.value || '',
     });
+  },
+
+  goAddMember() {
+    const draft = this.data.draft || {};
+    const query = [
+      'source=appointment',
+      draft.storeId ? 'storeId=' + encodeURIComponent(String(draft.storeId)) : '',
+      this.data.storeName ? 'storeName=' + encodeURIComponent(this.data.storeName) : '',
+    ].filter(Boolean).join('&');
+    wx.navigateTo({
+      url: '/pages/profile/family-members/add-member/index' + (query ? '?' + query : ''),
+    });
+  },
+
+  selectCreatedPatient(id) {
+    this.pendingPatientId = String(id);
+    this.pendingPatientToken = sessionStore.getAccessToken();
   },
 
   requestSubscribe(callback) {

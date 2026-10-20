@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const { normalizeImageUrl } = require('../../../common/utils/image-url');
 
 const RELATION_LABELS = {
   spouse: '配偶',
@@ -54,6 +55,7 @@ function normalizeMember(member) {
   const phone = member.phone === null || member.phone === undefined ? '' : String(member.phone);
   return {
     id: String(member.id || ''),
+    avatarUrl: normalizeImageUrl(member.avatarUrl || member.avatar || member.avatar_url || ''),
     avatarText: name.slice(0, 1) || '?',
     name,
     relationLabel: RELATION_LABELS[member.relation] || member.relation || '',

@@ -115,11 +115,15 @@ Page({
     try {
       const location = null;
       const directoryQuery = undefined;
-      const [statsResult, doctorsResult, storesResult] = await Promise.allSettled([
+      const results = await Promise.allSettled([
         api.getHomeStats(),
         api.getDoctors(directoryQuery),
         api.getStores(directoryQuery),
       ]);
+      // Avoid the array-destructuring runtime helper in the WeChat compiler.
+      const statsResult = results[0];
+      const doctorsResult = results[1];
+      const storesResult = results[2];
 
       const statsSource = statsResult.status === 'fulfilled'
         ? ((statsResult.value && statsResult.value.data) || statsResult.value || {})

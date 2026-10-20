@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 const loading=ref(false),tickets=ref<any[]>([]),cases=ref<any[]>([]),admins=ref<any[]>([]),visible=ref(false)
 const form=ref<any>({fulfillment_case_id:'',issue_type:'',description:'',assigned_technician_id:''})
 const caseSearch=ref(''),casePage=ref(1),caseTotal=ref(0)
@@ -14,7 +15,41 @@ const caseLabel=(x:any)=>`#${x.id} · ${x.patient_name||'患者'} · ${x.order_n
 async function load(){loading.value=true;try{const[a,c]:any[]=await Promise.all([request.get('/api/admin/after-sales-tickets'),request.get('/api/admin/fulfillment/technicians')]);if(a.code===200)tickets.value=a.data||[];if(c.code===200)admins.value=c.data||[]}catch(e){console.error(e);MessagePlugin.error('加载售后工单失败')}finally{loading.value=false}}
 function openCreate(){form.value={fulfillment_case_id:'',issue_type:'',description:'',assigned_technician_id:''};caseSearch.value='';casePage.value=1;loadCases();visible.value=true}
 async function create(){if(!form.value.fulfillment_case_id||!form.value.issue_type||!form.value.description)return MessagePlugin.warning('请填写履约单、问题类型和问题说明');try{const r:any=await request.post('/api/admin/after-sales-tickets',{...form.value,fulfillment_case_id:Number(form.value.fulfillment_case_id),assigned_technician_id:form.value.assigned_technician_id?Number(form.value.assigned_technician_id):undefined});if(r.code!==200)throw new Error(r.message);MessagePlugin.success('售后工单已创建');visible.value=false;await load()}catch(e:any){MessagePlugin.error(e.message||'创建售后工单失败')}}
-async function resolve(ticket:any){const resolution=window.prompt('请输入处理结果（可留空）');if(resolution===null)return;try{const r:any=await request.put(`/api/admin/after-sales-tickets/${ticket.id}`,{status:'resolved',resolution});if(r.code!==200)throw new Error(r.message);MessagePlugin.success('售后工单已解决');await load()}catch(e:any){MessagePlugin.error(e.message||'更新失败')}}
+const activeTicket = ref<any>(null)
+const action = ref('')
+const actionSaving = ref(false)
+const actionForm = ref({ technicianId: '', resolution: '', closeReason: '' })
+const actionTitle = computed(() => ({ assigned: activeTicket.value?.assigned_technician_id ? '转派工单' : '分配工单', processing: '开始处理', resolved: '解决工单', closed: '关闭工单' } as Record<string, string>)[action.value] || '')
+const technicianOptions = computed(() => admins.value.filter(item => Number(item.id) !== Number(activeTicket.value?.assigned_technician_id)).map(item => ({ value: String(item.id), label: staffName(item) })))
+function openAction(ticket: any, next: string) {
+  activeTicket.value = { ...ticket }
+  action.value = next
+  actionForm.value = { technicianId: '', resolution: '', closeReason: '' }
+}
+async function submitAction() {
+  if (!activeTicket.value || actionSaving.value) return
+  if (action.value === 'assigned' && !actionForm.value.technicianId) return MessagePlugin.warning('请选择处理技师')
+  if (action.value === 'resolved' && !actionForm.value.resolution.trim()) return MessagePlugin.warning('请填写处理结果')
+  if (action.value === 'closed' && activeTicket.value.status !== 'resolved' && !actionForm.value.closeReason.trim()) return MessagePlugin.warning('请填写提前关闭原因')
+  actionSaving.value = true
+  try {
+    const ticket = activeTicket.value
+    await request.put(`/api/admin/after-sales-tickets/${ticket.id}`, {
+      status: action.value, expected_status: ticket.status, expected_technician_id: ticket.assigned_technician_id || null,
+      ...(action.value === 'assigned' ? { assigned_technician_id: Number(actionForm.value.technicianId) } : {}),
+      ...(action.value === 'resolved' ? { resolution: actionForm.value.resolution.trim() } : {}),
+      ...(action.value === 'closed' ? { close_reason: actionForm.value.closeReason.trim() } : {})
+    })
+    activeTicket.value = null
+    MessagePlugin.success('售后工单已更新')
+    await load()
+  } catch (error: any) {
+    if (error.response?.status === 409) { activeTicket.value = null; await load() }
+  } finally { actionSaving.value = false }
+}
+function statusTheme(status: string): 'success' | 'primary' | 'warning' | 'default' {
+  return status === 'resolved' ? 'success' : status === 'closed' ? 'default' : status === 'processing' ? 'primary' : 'warning'
+}
 onMounted(load)
 </script>
 <template>
@@ -43,7 +78,9 @@ onMounted(load)
               <th style="min-width: 300px;">问题</th>
               <th style="min-width: 130px;">处理技师</th>
               <th style="min-width: 110px;">状态</th>
-              <th style="width: 110px; min-width: 110px; text-align: right;">操作</th>
+              <th style="min-width: 260px;">处理结果 / 关闭说明</th>
+              <th style="min-width: 160px;">最近更新</th>
+              <th style="width: 260px; min-width: 260px; text-align: right;">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -53,21 +90,56 @@ onMounted(load)
               <td>#{{ ticket.fulfillment_case_id || '—' }}</td>
               <td><div class="issue-cell"><b>{{ ticket.issue_type }}</b><small>{{ ticket.description }}</small></div></td>
               <td>{{ ticket.technician_name || '待分配' }}</td>
-              <td><t-tag :theme="ticket.status === 'resolved' ? 'success' : 'warning'" size="small" variant="light">{{ labels[ticket.status] || ticket.status }}</t-tag></td>
+              <td><t-tag :theme="statusTheme(ticket.status)" size="small" variant="light">{{ labels[ticket.status] || ticket.status }}</t-tag></td>
+              <td><div class="result-cell">{{ ticket.resolution || '未填写' }}</div><small v-if="ticket.resolved_at" class="result-time">解决于 {{ formatShanghaiDateTime(ticket.resolved_at) }}</small></td>
+              <td>{{ formatShanghaiDateTime(ticket.updated_at) }}</td>
               <td style="text-align: right;">
-                <div class="actions"><button v-if="!['resolved', 'closed'].includes(ticket.status)" class="btn btn-xs btn-success" @click="resolve(ticket)">解决</button></div>
+                <div class="actions">
+                  <button v-if="['pending','assigned','processing'].includes(ticket.status)" class="btn btn-xs btn-outline" @click="openAction(ticket, 'assigned')">{{ ticket.assigned_technician_id ? '转派' : '分配' }}</button>
+                  <button v-if="ticket.status === 'assigned'" class="btn btn-xs btn-primary" @click="openAction(ticket, 'processing')">开始处理</button>
+                  <button v-if="ticket.status === 'processing'" class="btn btn-xs btn-success" @click="openAction(ticket, 'resolved')">解决</button>
+                  <button v-if="['pending','assigned','processing','resolved'].includes(ticket.status)" class="btn btn-xs btn-outline" @click="openAction(ticket, 'closed')">关闭</button>
+                  <span v-if="ticket.status === 'closed'" class="result-time">已归档</span>
+                </div>
               </td>
             </tr>
-            <tr v-if="!tickets.length"><td colspan="7" class="empty">暂无售后工单。</td></tr>
+            <tr v-if="!tickets.length"><td colspan="9" class="empty">暂无售后工单。</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </div>
   <t-dialog v-model:visible="visible" header="新建售后工单" :on-confirm="create"><div class="form"><div class="full"><label>搜索履约单<input v-model="caseSearch" placeholder="患者、档案号、订单号" @keyup.enter="searchCases"></label><button class="btn btn-outline" @click="searchCases">搜索</button><t-pagination :current="casePage" :page-size="20" :total="caseTotal" :show-page-size="false" @change="changeCasePage" /></div><label>履约单<select v-model="form.fulfillment_case_id"><option value="">请选择</option><option v-for="item in cases" :key="item.id" :value="String(item.id)">{{caseLabel(item)}}</option></select></label><label>处理技师<select v-model="form.assigned_technician_id"><option value="">暂不分配</option><option v-for="item in admins" :key="item.id" :value="String(item.id)">{{staffName(item)}}</option></select></label><label>问题类型<input v-model="form.issue_type" placeholder="如：设备异常、佩戴不适"></label><label class="full">问题说明<textarea v-model="form.description" rows="4"/></label></div></t-dialog>
+  <t-dialog :visible="!!activeTicket" :header="actionTitle" width="min(560px, calc(100vw - 32px))" :close-on-overlay-click="false" @close="() => { if (!actionSaving) activeTicket = null }">
+    <form v-if="activeTicket" id="after-sales-action" @submit.prevent="submitAction">
+      <div class="ticket-summary">工单 #{{ activeTicket.id }} · {{ activeTicket.patient_name }} · {{ labels[activeTicket.status] }}</div>
+      <div class="action-form">
+        <template v-if="action === 'assigned'">
+          <label>处理技师</label><t-select v-model="actionForm.technicianId" :options="technicianOptions" placeholder="请选择处理技师" :disabled="actionSaving" />
+        </template>
+        <p v-if="action === 'processing'">确认由 {{ activeTicket.technician_name || '已分配技师' }} 开始处理此工单？</p>
+        <template v-if="action === 'resolved'">
+          <label>处理结果 <span class="required">*</span></label><t-textarea v-model="actionForm.resolution" :maxlength="5000" :autosize="{ minRows: 5, maxRows: 12 }" :disabled="actionSaving" placeholder="填写实际处理措施与结果" />
+        </template>
+        <template v-if="action === 'closed'">
+          <t-alert v-if="activeTicket.status !== 'resolved'" theme="warning" message="工单尚未解决，此操作将提前关闭工单。" />
+          <div v-if="activeTicket.resolution" class="result-cell">处理结果：{{ activeTicket.resolution }}</div>
+          <label>{{ activeTicket.status === 'resolved' ? '关闭说明（选填）' : '提前关闭原因（必填）' }}</label>
+          <t-textarea v-model="actionForm.closeReason" :maxlength="1000" :autosize="{ minRows: 3, maxRows: 8 }" :disabled="actionSaving" />
+        </template>
+      </div>
+    </form>
+    <template #footer><t-button variant="outline" :disabled="actionSaving" @click="activeTicket = null">取消</t-button><t-button type="submit" form="after-sales-action" :loading="actionSaving">{{ actionTitle }}</t-button></template>
+  </t-dialog>
 </template>
 <style scoped>
 .page-container { min-width: 0; }
+.result-cell { max-width: 400px; max-height: 180px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.result-time { display: block; font-size: 12px; color: #9CA3AF; margin-top: 6px; }
+.ticket-summary { margin-bottom: 20px; color: #6B7280; font-size: 13px; }
+.action-form { display: grid; gap: 12px; }
+.action-form label { font-size: 14px; color: #374151; }
+.required { color: #d54941; }
 .page-title-row { min-height: 50px; }
 .header-actions { display: flex; gap: 8px; align-items: center; }
 .list-toolbar { min-height: 71px; box-sizing: border-box; flex-wrap: nowrap; }

@@ -34,12 +34,14 @@
           <image class="row-icon" src="/static/icons/profile_gray.svg" />
           <text class="info-label">就诊人</text>
           <text class="info-value" style="padding-right: 30rpx; color: #3B6BF5;">{{selectedMemberName}} ›</text>
+          <text class="member-add-btn" catchtap="goAddMember">新增</text>
         </view>
       </picker>
       <view wx:else class="info-row">
         <image class="row-icon" src="/static/icons/profile_gray.svg" />
         <text class="info-label">就诊人</text>
-        <text class="info-value">{{selectedMemberName}}</text>
+        <text class="info-value">{{memberOptions.length ? selectedMemberName : '请新增就诊人'}}</text>
+        <text class="member-add-btn" bindtap="goAddMember">新增</text>
       </view>
 
       <view wx:if="{{requireDeposit}}" class="info-row">

@@ -6,7 +6,8 @@ import jwt from 'jsonwebtoken';
 
 test('launch security and payment boundaries', async t => {
   const schema = 'hanjing_test_security_' + Date.now();
-  const control = await mysql.createConnection({ host: '127.0.0.1', user: process.env.TEST_DB_USER || 'root', password: process.env.TEST_DB_PASSWORD || 'root' });
+  const port = Number(process.env.TEST_DB_PORT || 3306);
+  const control = await mysql.createConnection({ host: '127.0.0.1', port, user: process.env.TEST_DB_USER || 'root', password: process.env.TEST_DB_PASSWORD || 'root' });
   let db, server, locker;
   await control.query('CREATE DATABASE ' + schema);
   try {
@@ -20,8 +21,9 @@ test('launch security and payment boundaries', async t => {
     }
     await control.query('USE ' + schema);
     await control.query('CREATE TABLE IF NOT EXISTS private_uploads(file_path VARCHAR(255) PRIMARY KEY,user_id BIGINT,admin_id BIGINT)');
-    Object.assign(process.env, { DB_HOST: '127.0.0.1', DB_PORT: '3306', DB_USER: process.env.TEST_DB_USER || 'root', DB_PASSWORD: process.env.TEST_DB_PASSWORD || 'root', DB_NAME: schema });
+    Object.assign(process.env, { DB_HOST: '127.0.0.1', DB_PORT: String(port), DB_USER: process.env.TEST_DB_USER || 'root', DB_PASSWORD: process.env.TEST_DB_PASSWORD || 'root', DB_NAME: schema });
     db = await import('../db.js');
+    await (await import('../patient-profile-schema.js')).initPatientProfileSchema(db.query);
     await control.query("INSERT INTO member_levels(code,name,spent_required,sort_order,benefits) VALUES('normal','Test normal',0,0,JSON_ARRAY())");
     const helpers = await import('../helpers.js');
     const client = await import('../routes/client.js');
@@ -49,6 +51,54 @@ test('launch security and payment boundaries', async t => {
     await control.query("INSERT INTO admin_users(id,username,password_hash,name,role_id,status) VALUES(1,'security-staff','unused','Staff',1,'online'),(2,'security-super','unused','Super',2,'online')");
     await control.query("INSERT INTO product_categories(code,name) VALUES('accessory','Fixture')");
     await control.query("INSERT INTO products(id,name,category,image_url,price,stock,status) VALUES(1,'Fixture','accessory','',1000,5,'on')");
+
+    await t.test('wechat notification settings enforce permissions, revisions and actual send configuration', async () => {
+      const url = '/api/admin/settings/wechat-notifications';
+      assert.equal((await api(url, undefined, staff)).status, 403);
+      assert.equal((await api(url + '/logs', undefined, staff)).status, 403);
+      const catalog = await api(url, undefined, superToken);
+      assert.equal(catalog.status, 200);
+      assert.equal(catalog.body.data.length, 18);
+      const initial = catalog.body.data.find(row => row.event === 'order_status');
+      assert.equal(initial.templateId, '');
+      const config = { enabled: true, templateId: 'TEST_TEMPLATE_ID_123', mapping: { character_string8: 'character_string6', thing9: 'thing1' }, revision: '' };
+      assert.equal((await api(url + '/order_status', config, staff, 'PUT')).status, 403);
+      const saved = await api(url + '/order_status', config, superToken, 'PUT');
+      assert.equal(saved.status, 200);
+      assert.equal((await api(url + '/order_status', config, superToken, 'PUT')).status, 409);
+      assert.equal((await api(url + '/payment_due', config, superToken, 'PUT')).status, 400);
+      assert.equal((await api('/api/admin/settings', { wechat_notification_order_status: '{}' }, superToken)).status, 400);
+      const service = await import('../wechatSubscribe.js');
+      assert.equal((await service.getSubscribeTemplateMap()).order_status, config.templateId);
+      const originalFetch = globalThis.fetch;
+      const oldId = process.env.WX_MINI_APP_ID, oldSecret = process.env.WX_MINI_APP_SECRET;
+      let sent;
+      try {
+        process.env.WX_MINI_APP_ID = 'TEST_APP';
+        process.env.WX_MINI_APP_SECRET = 'TEST_SECRET';
+        globalThis.fetch = async (address, options) => {
+          if (String(address).endsWith('/stable_token')) return { ok: true, json: async () => ({ access_token: 'TEST_TOKEN', expires_in: 7200 }) };
+          assert.ok(String(address).startsWith('https://api.weixin.qq.com/cgi-bin/message/subscribe/send?'));
+          sent = JSON.parse(options.body);
+          return { ok: true, json: async () => ({ errcode: 0 }) };
+        };
+        assert.deepEqual(await service.sendWechatSubscribeMessage({ userId: 1, event: 'order_status', businessId: 'test-notification-config', payload: { orderNo: 'ORDER-1', productName: 'Service' } }), { sent: true });
+        assert.equal(sent.template_id, config.templateId);
+        assert.deepEqual(sent.data, { character_string8: { value: 'ORDER-1' }, thing9: { value: 'Service' } });
+      } finally {
+        globalThis.fetch = originalFetch;
+        if (oldId === undefined) delete process.env.WX_MINI_APP_ID; else process.env.WX_MINI_APP_ID = oldId;
+        if (oldSecret === undefined) delete process.env.WX_MINI_APP_SECRET; else process.env.WX_MINI_APP_SECRET = oldSecret;
+      }
+      const logs = await api(url + '/logs?event=order_status', undefined, superToken);
+      assert.equal(logs.body.data.total, 1);
+      assert.equal(logs.body.data.list[0].status, 'sent');
+      assert.equal(Object.hasOwn(logs.body.data.list[0], 'openid'), false);
+      assert.equal((await api(url + '/order_status', { ...saved.body.data, enabled: false }, superToken, 'PUT')).status, 200);
+      assert.equal((await service.getSubscribeTemplateMap()).order_status, undefined);
+      assert.deepEqual(await service.sendWechatSubscribeMessage({ userId: 1, event: 'order_status', businessId: 'disabled' }), { skipped: true, reason: 'disabled' });
+      await control.query("DELETE FROM system_settings WHERE key_name LIKE 'wechat_notification_%'");
+    });
 
     let familyId;
     await t.test('hand-entered phone creates an isolated family profile, never claims another report', async () => {
@@ -165,7 +215,7 @@ test('launch security and payment boundaries', async t => {
     });
     await t.test('concurrent refund cannot be overwritten by a stale shipping operation', async () => {
       await control.query("INSERT INTO orders(id,order_no,user_id,type,total_amount,pay_amount,status,shipping_address) VALUES(1,'SEC-SHIP',1,'online',1000,1000,'shipping','{}')");
-      locker = await mysql.createConnection({ host: '127.0.0.1', user: process.env.TEST_DB_USER || 'root', password: process.env.TEST_DB_PASSWORD || 'root', database: schema });
+      locker = await mysql.createConnection({ host: '127.0.0.1', port, user: process.env.TEST_DB_USER || 'root', password: process.env.TEST_DB_PASSWORD || 'root', database: schema });
       await locker.beginTransaction();
       await locker.query("UPDATE orders SET status='refund_pending',shipping_address=? WHERE id=1", [JSON.stringify({ refund_request: 'fixture' })]);
       const pending = api('/api/admin/orders/1/ship', { carrier: 'Fixture', trackingNo: 'SEC123456' }, superToken);
@@ -208,6 +258,42 @@ test('launch security and payment boundaries', async t => {
       const provider = { query: async () => ({ trade_state: closed ? 'CLOSED' : 'NOTPAY' }), close: async () => { closed = true; } };
       assert.equal(await db.transaction(conn => client.cancelPendingProductOrder(conn, 3, 1, false, provider)), true);
       assert.equal(closed, true);
+    });
+    await t.test('admin mini-program bill remains unpaid, is private and idempotent, and cancels cleanly', async () => {
+      const stock = Number((await db.get('SELECT stock FROM products WHERE id=1')).stock);
+      const body = { patient_id: 1, store_id: 99, items: [{ product_id: 1, quantity: 1 }],
+        pay_amount: 1000, pay_method: 'wechat', request_id: 'MINI-CASHIER-SECURITY-000001' };
+      const created = await api('/api/admin/orders', body, superToken);
+      assert.equal(created.status, 200, JSON.stringify(created.body));
+      const id = created.body.data.order_id;
+      assert.equal(created.body.data.receipt.status, 'pending');
+      assert.equal(created.body.data.receipt.payAt, null);
+      const duplicate = await api('/api/admin/orders', body, superToken);
+      assert.equal(duplicate.body.data.order_id, id);
+      assert.equal(Number((await db.get('SELECT stock FROM products WHERE id=1')).stock), stock - 1);
+      assert.equal((await api('/api/v1/orders/' + id)).status, 200);
+      const other = jwt.sign({ id: 2, openid: 'SEC-2' }, helpers.JWT_SECRET);
+      assert.equal((await api('/api/v1/orders/' + id, undefined, other)).status, 404);
+      assert.equal((await api('/api/v1/orders/' + id + '/pay', {}, other)).status, 404);
+      const state = await api('/api/admin/pay/orders/' + id + '/status', undefined, superToken);
+      assert.equal(state.status, 200);
+      assert.equal(state.body.data.status, 'pending');
+      assert.equal((await api('/api/v1/orders/' + id + '/cancel', {})).status, 200);
+      assert.equal(Number((await db.get('SELECT stock FROM products WHERE id=1')).stock), stock);
+      assert.equal((await api('/api/v1/orders/' + id + '/pay', {})).status, 400);
+    });
+    await t.test('mini-program billing rejects unlinked patients and changed idempotency payloads', async () => {
+      await control.query("INSERT INTO patients(id,name,patient_no) VALUES(99,'Unlinked','SEC-UNLINKED')");
+      const body = { patient_id: 99, store_id: 99, items: [{ product_id: 1, quantity: 1 }],
+        pay_amount: 1000, pay_method: 'wechat', request_id: 'MINI-CASHIER-SECURITY-000002' };
+      assert.equal((await api('/api/admin/orders', body, superToken)).status, 400);
+      assert.equal((await api('/api/admin/orders', { ...body, patient_id: 1, pay_amount: 900 }, superToken)).status, 400);
+    });
+    await t.test('mini-program cannot pay a pending store-channel bill', async () => {
+      await control.query("INSERT INTO orders(order_no,user_id,type,total_amount,pay_amount,status,pay_method) VALUES('SEC-NATIVE-PENDING',1,'offline',1000,1000,'pending','wechat_native')");
+      const row = await db.get("SELECT id FROM orders WHERE order_no='SEC-NATIVE-PENDING'");
+      assert.equal((await api('/api/v1/orders/' + row.id + '/pay', {})).status, 409);
+      assert.equal((await db.get('SELECT wechat_prepay_id FROM orders WHERE id=?', [row.id])).wechat_prepay_id, null);
     });
   } finally {
     if (locker) { await locker.rollback(); await locker.end(); }

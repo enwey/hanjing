@@ -209,6 +209,12 @@ const router = createRouter({
           meta: { title: '退款审核', parentPath: '/order' }
         },
         {
+          path: 'settings/wechat-notifications',
+          name: 'wechat-notifications',
+          component: () => import('@/views/settings/wechat-notifications.vue'),
+          meta: { title: '微信通知', parentPath: '/settings' }
+        },
+        {
           path: 'settings',
           name: 'settings',
           component: () => import('@/views/settings/index.vue'),

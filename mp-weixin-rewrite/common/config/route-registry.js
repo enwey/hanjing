@@ -141,11 +141,11 @@ const routeRegistry = [
   },
   {
     "path": "pages/profile/family-members/index",
-    "title": "家庭成员"
+    "title": "就诊人管理"
   },
   {
     "path": "pages/profile/family-members/add-member/index",
-    "title": "添加成员"
+    "title": "新增就诊人"
   },
   {
     "path": "pages/profile/member-benefits/index",

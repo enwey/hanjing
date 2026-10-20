@@ -1,5 +1,6 @@
 import { get, query, run } from './db.js';
 import { getWechatMiniAccessToken } from './wechatMiniToken.js';
+import { WECHAT_NOTIFICATION_EVENTS, notificationConfigKey, defaultNotificationMapping, normalizeNotificationPage } from './wechat-notification-config.js';
 
 const EVENT_TEMPLATE_KEYS = {
   appointment_created: ['wechat_template_appointment_created', 'appointment_subscribe_template_ids'],
@@ -13,19 +14,6 @@ const EVENT_TEMPLATE_KEYS = {
   withdraw_paid: ['wechat_template_withdraw_paid', 'wechat_template_withdraw_result'],
   commission_settled: ['wechat_template_commission_settled'],
   refund_result: ['wechat_template_refund_result', 'wechat_template_order_status']
-};
-
-const DEFAULT_TEMPLATE_IDS = {
-  wechat_template_appointment_created: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
-  wechat_template_appointment_paid: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
-  wechat_template_appointment_changed: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
-  wechat_template_appointment_status: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
-  wechat_template_visit_reminder: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
-  wechat_template_revisit_reminder: 'ZrwxAqI7I6jKWNnh8qaZtzJpJeJmPms-Pb-vaexjljc',
-  wechat_template_order_status: 'L2KhvQwmF894HvgrNJaYqft4ZXmI5JQVWzea92vp5Vw',
-  wechat_template_withdraw_result: 'OIlLpczSef8MJsw9vAslECSEEXKyrCjj_OQaaqcfZPM',
-  wechat_template_withdraw_paid: 'OIlLpczSef8MJsw9vAslECSEEXKyrCjj_OQaaqcfZPM',
-  wechat_template_refund_result: 'WQdjQRXxrBz9BMUA3DSohsAW8OzQZiZXR2kHLJ6KLeI'
 };
 
 const EVENT_SWITCH_KEYS = {
@@ -136,6 +124,10 @@ function buildTemplateData(event, payload = {}) {
 }
 
 async function isEventEnabled(event) {
+  const definition = WECHAT_NOTIFICATION_EVENTS.find(item => item.event === event);
+  if (!definition?.connected) return false;
+  const config = await getNotificationOverride(event);
+  if (config) return config.enabled === true;
   const switchKey = EVENT_SWITCH_KEYS[event];
   if (!switchKey) return true;
   const row = await get(`SELECT key_value FROM system_settings WHERE key_name = ?`, [switchKey]);
@@ -143,6 +135,8 @@ async function isEventEnabled(event) {
 }
 
 async function getTemplateId(event) {
+  const config = await getNotificationOverride(event);
+  if (config) return config.templateId || '';
   const keys = EVENT_TEMPLATE_KEYS[event] || [];
   for (const key of keys) {
     const templateId = await getTemplateIdByKey(key);
@@ -153,7 +147,28 @@ async function getTemplateId(event) {
 
 async function getTemplateIdByKey(key) {
   const setting = await get(`SELECT key_value FROM system_settings WHERE key_name = ?`, [key]);
-  return firstTemplateId(setting?.key_value || process.env[key.toUpperCase()] || DEFAULT_TEMPLATE_IDS[key]);
+  return firstTemplateId(setting?.key_value || process.env[key.toUpperCase()]);
+}
+
+async function getNotificationOverride(event) {
+  const row = await get('SELECT key_value FROM system_settings WHERE key_name = ?', [notificationConfigKey(event)]);
+  if (!row) return null;
+  try { return JSON.parse(row.key_value); }
+  catch { return { enabled: false, templateId: '' }; }
+}
+
+export async function getWechatNotificationSettings() {
+  return Promise.all(WECHAT_NOTIFICATION_EVENTS.map(async definition => {
+    const config = await getNotificationOverride(definition.event);
+    return {
+      ...definition,
+      enabled: await isEventEnabled(definition.event),
+      templateId: await getTemplateId(definition.event),
+      mapping: config?.mapping || defaultNotificationMapping(definition),
+      source: config ? '独立配置' : '原系统配置 / 环境变量',
+      revision: config?.revision || ''
+    };
+  }));
 }
 
 async function hasSent(event, businessId) {
@@ -174,43 +189,29 @@ async function logSend({ userId, openid, event, templateId, businessId, status, 
 }
 
 export async function getAllSubscribeTemplateIds() {
-  const ids = [];
-  for (const keys of Object.values(EVENT_TEMPLATE_KEYS)) {
-    for (const key of keys) {
-      const setting = await get(`SELECT key_value FROM system_settings WHERE key_name = ?`, [key]);
-      String(setting?.key_value || process.env[key.toUpperCase()] || DEFAULT_TEMPLATE_IDS[key] || '')
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean)
-        .forEach(id => {
-          if (!ids.includes(id)) ids.push(id);
-        });
-    }
-  }
-  return ids;
+  return [...new Set(Object.values(await getSubscribeTemplateMap()))];
 }
 
 export async function getSubscribeTemplateMap() {
   const map = {};
-  for (const [event, keys] of Object.entries(EVENT_TEMPLATE_KEYS)) {
-    for (const key of keys) {
-      const templateId = await getTemplateIdByKey(key);
-      if (templateId) {
-        map[event] = templateId;
-        break;
-      }
-    }
+  for (const { event } of WECHAT_NOTIFICATION_EVENTS) {
+    if (!await isEventEnabled(event)) continue;
+    const templateId = await getTemplateId(event);
+    if (templateId) map[event] = templateId;
   }
   return map;
 }
 
 export async function sendWechatSubscribeMessage({ userId, event, businessId = '', page = '', payload = {} }) {
+  let attempted = null;
   try {
     if (!userId || !event) return { skipped: true, reason: 'missing_user_or_event' };
     if (businessId && await hasSent(event, businessId)) {
       return { skipped: true, reason: 'already_sent' };
     }
-    if (!await isEventEnabled(event)) {
+    const config = await getNotificationOverride(event);
+    const connected = WECHAT_NOTIFICATION_EVENTS.some(item => item.event === event && item.connected);
+    if (!connected || !(config ? config.enabled === true : await isEventEnabled(event))) {
       return { skipped: true, reason: 'disabled' };
     }
 
@@ -219,25 +220,31 @@ export async function sendWechatSubscribeMessage({ userId, event, businessId = '
       return { skipped: true, reason: 'missing_openid' };
     }
 
-    const templateId = await getTemplateId(event);
+    const templateId = config ? config.templateId : await getTemplateId(event);
     if (!templateId) {
       return { skipped: true, reason: 'missing_template' };
     }
 
+    attempted = { userId, openid: user.openid, event, templateId, businessId };
     const accessToken = await getWechatMiniAccessToken();
     if (!accessToken) {
       await logSend({ userId, openid: user.openid, event, templateId, businessId, status: 'failed', errorMessage: 'missing_access_token' });
       return { skipped: true, reason: 'missing_access_token' };
     }
 
+    const defaultData = buildTemplateData(event, payload);
+    const data = config?.mapping
+      ? Object.fromEntries(Object.entries(config.mapping).map(([target, source]) => [target, defaultData[source]]))
+      : defaultData;
     const response = await fetch(`https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${encodeURIComponent(accessToken)}`, {
       method: 'POST',
+      signal: AbortSignal.timeout(10000),
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         touser: user.openid,
         template_id: templateId,
-        page: page || 'pages/profile/notifications/index',
-        data: buildTemplateData(event, payload),
+        page: normalizeNotificationPage(page),
+        data,
         miniprogram_state: process.env.WX_MINI_SUBSCRIBE_STATE || 'formal',
         lang: 'zh_CN'
       })
@@ -252,6 +259,10 @@ export async function sendWechatSubscribeMessage({ userId, event, businessId = '
     await logSend({ userId, openid: user.openid, event, templateId, businessId, status: 'sent' });
     return { sent: true };
   } catch (error) {
+    if (attempted) {
+      try { await logSend({ ...attempted, status: 'failed', errorMessage: String(error.message || 'send_failed').slice(0, 255) }); }
+      catch { /* Notification errors must not roll back completed business operations. */ }
+    }
     console.warn('[Wechat Subscribe] Send failed:', error.message || error);
     return { skipped: true, reason: error.message || 'send_failed' };
   }

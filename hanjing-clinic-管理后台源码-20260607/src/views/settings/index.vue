@@ -33,23 +33,7 @@ const withdrawFeeRate = ref<number | null>(null)
 const enableDistribution = ref(false)
 const autoApproveWithdraw = ref(false)
 
-// 3. 通知设置
-const notifyNewBooking = ref(false)
-const notifyWithdrawApply = ref(false)
-const notifyVisitReminder = ref(false)
-const notifyRevisitReminder = ref(false)
-const appointmentSubscribeTemplateIds = ref('')
-const wechatTemplateAppointmentCreated = ref('')
-const wechatTemplateAppointmentPaid = ref('')
-const wechatTemplateAppointmentChanged = ref('')
-const wechatTemplateAppointmentStatus = ref('')
-const wechatTemplateVisitReminder = ref('')
-const wechatTemplateRevisitReminder = ref('')
-const wechatTemplateOrderStatus = ref('')
-const wechatTemplateWithdrawResult = ref('')
-const wechatTemplateWithdrawPaid = ref('')
-const wechatTemplateCommissionSettled = ref('')
-const wechatTemplateRefundResult = ref('')
+// 3. 支付配置
 const wechatPayAppId = ref('')
 const wechatPayMchId = ref('')
 const wechatPaySerialNo = ref('')
@@ -88,22 +72,6 @@ async function loadSettings() {
       enableDistribution.value = data.enable_distribution ?? false
       autoApproveWithdraw.value = false
 
-      notifyNewBooking.value = data.notify_new_booking ?? false
-      notifyWithdrawApply.value = data.notify_withdraw_apply ?? false
-      notifyVisitReminder.value = data.notify_visit_reminder ?? false
-      notifyRevisitReminder.value = data.notify_revisit_reminder ?? false
-      appointmentSubscribeTemplateIds.value = data.appointment_subscribe_template_ids ?? ''
-      wechatTemplateAppointmentCreated.value = data.wechat_template_appointment_created ?? ''
-      wechatTemplateAppointmentPaid.value = data.wechat_template_appointment_paid ?? ''
-      wechatTemplateAppointmentChanged.value = data.wechat_template_appointment_changed ?? ''
-      wechatTemplateAppointmentStatus.value = data.wechat_template_appointment_status ?? ''
-      wechatTemplateVisitReminder.value = data.wechat_template_visit_reminder ?? ''
-      wechatTemplateRevisitReminder.value = data.wechat_template_revisit_reminder ?? ''
-      wechatTemplateOrderStatus.value = data.wechat_template_order_status ?? ''
-      wechatTemplateWithdrawResult.value = data.wechat_template_withdraw_result ?? ''
-      wechatTemplateWithdrawPaid.value = data.wechat_template_withdraw_paid ?? ''
-      wechatTemplateCommissionSettled.value = data.wechat_template_commission_settled ?? ''
-      wechatTemplateRefundResult.value = data.wechat_template_refund_result ?? ''
       wechatPayAppId.value = data.wechat_pay_app_id ?? ''
       wechatPayMchId.value = data.wechat_pay_mch_id ?? ''
       wechatPaySerialNo.value = data.wechat_pay_serial_no ?? ''
@@ -150,22 +118,6 @@ async function handleSaveAll() {
       enable_distribution: enableDistribution.value,
       auto_approve_withdraw: autoApproveWithdraw.value,
 
-      notify_new_booking: notifyNewBooking.value,
-      notify_withdraw_apply: notifyWithdrawApply.value,
-      notify_visit_reminder: notifyVisitReminder.value,
-      notify_revisit_reminder: notifyRevisitReminder.value,
-      appointment_subscribe_template_ids: appointmentSubscribeTemplateIds.value,
-      wechat_template_appointment_created: wechatTemplateAppointmentCreated.value,
-      wechat_template_appointment_paid: wechatTemplateAppointmentPaid.value,
-      wechat_template_appointment_changed: wechatTemplateAppointmentChanged.value,
-      wechat_template_appointment_status: wechatTemplateAppointmentStatus.value,
-      wechat_template_visit_reminder: wechatTemplateVisitReminder.value,
-      wechat_template_revisit_reminder: wechatTemplateRevisitReminder.value,
-      wechat_template_order_status: wechatTemplateOrderStatus.value,
-      wechat_template_withdraw_result: wechatTemplateWithdrawResult.value,
-      wechat_template_withdraw_paid: wechatTemplateWithdrawPaid.value,
-      wechat_template_commission_settled: wechatTemplateCommissionSettled.value,
-      wechat_template_refund_result: wechatTemplateRefundResult.value,
       wechat_pay_app_id: wechatPayAppId.value,
       wechat_pay_mch_id: wechatPayMchId.value,
       wechat_pay_serial_no: wechatPaySerialNo.value,
@@ -344,52 +296,7 @@ function editRole(roleId: number) {
           <div class="panel-title"><AppIcon name="bell" />  通知设置</div>
         </div>
         <div class="panel-body">
-          <div style="display: flex; flex-direction: column; gap: 16px;">
-            <!-- Notify Item 1 -->
-            <div class="notify-item">
-              <div>
-                <div style="font-size: 14px; font-weight: 600; color: #1F2937;">新预约通知</div>
-                <div style="font-size: 12px; color: #9CA3AF; margin-top: 2px;">患者预约时通知管理员和医生</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" v-model="notifyNewBooking">
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-            <!-- Notify Item 2 -->
-            <div class="notify-item">
-              <div>
-                <div style="font-size: 14px; font-weight: 600; color: #1F2937;">提现申请通知</div>
-                <div style="font-size: 12px; color: #9CA3AF; margin-top: 2px;">推广员申请提现时通知财务</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" v-model="notifyWithdrawApply">
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-            <!-- Notify Item 3 -->
-            <div class="notify-item">
-              <div>
-                <div style="font-size: 14px; font-weight: 600; color: #1F2937;">就诊提醒</div>
-                <div style="font-size: 12px; color: #9CA3AF; margin-top: 2px;">就诊前1小时提醒患者</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" v-model="notifyVisitReminder">
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-            <!-- Notify Item 4 -->
-            <div class="notify-item">
-              <div>
-                <div style="font-size: 14px; font-weight: 600; color: #1F2937;">复诊提醒</div>
-                <div style="font-size: 12px; color: #9CA3AF; margin-top: 2px;">到期未复诊患者自动提醒</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" v-model="notifyRevisitReminder">
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-          </div>
+          <t-button variant="outline" @click="router.push('/settings/wechat-notifications')"><AppIcon name="bell" /> 微信通知配置</t-button>
         </div>
       </div>
 

@@ -299,7 +299,7 @@ async function handleNotify(row: Order) {
   try {
     const res: any = await request.post(`/api/admin/orders/${row.id}/notify`)
     if (res.code === 200) {
-      MessagePlugin.success('已通过微信模板消息通知该患者到店自提')
+      MessagePlugin.success('到店状态及站内通知已登记，微信通知发送结果请查看发送记录')
       fetchOrders()
     }
   } catch (err) {

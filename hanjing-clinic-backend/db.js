@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { generateUniquePatientNo } from './patientNo.js';
 import { initDeliverySchema } from './delivery-schema.js';
+import { initPatientProfileSchema } from './patient-profile-schema.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
@@ -185,6 +186,7 @@ export const initDB = async () => {
   try {
     await query(`ALTER TABLE patients ADD COLUMN card_no VARCHAR(50) DEFAULT NULL;`);
   } catch (err) {}
+  await initPatientProfileSchema(query);
   try {
     await query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(100) UNIQUE DEFAULT NULL;`);
   } catch (err) {}

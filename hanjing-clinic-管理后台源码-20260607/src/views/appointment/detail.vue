@@ -295,6 +295,7 @@ const checkoutLoading = ref(false)
 const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
 const nativePayInfo = ref<any>(null)
+const miniPayOrderNo = ref('')
 const micropayAuthCode = ref('')
 const payWaiting = ref(false)
 const cashierSession = createCashierSession(request)
@@ -455,6 +456,12 @@ function startPayPolling(orderId: number | string, receipt: any, attempt: Checko
     try {
       const status = await getAdminPayStatus(orderId)
       if (!isActive()) return
+      if (['cancelled', 'refund_pending', 'refunding', 'refunded'].includes(status.status)) {
+        checkoutFlow.stopPolling()
+        payWaiting.value = false
+        MessagePlugin.warning('订单已关闭或进入退款，请核对原订单')
+        return
+      }
       if (isPaidStatus(status.status)) {
         await markCheckoutPaid(Object.assign({}, receipt, { payAt: status.payAt }), attempt, isActive)
       }
@@ -577,7 +584,11 @@ async function submitCheckout() {
     if (res.code === 200) {
       if (!checkoutFlow.bindOrder(attempt, res.data.order_id)) return
       const receipt = res.data.receipt
-      if (payload.pay_method === 'wechat_native') {
+      if (payload.pay_method === 'wechat') {
+        miniPayOrderNo.value = res.data.order_no
+        startPayPolling(res.data.order_id, receipt, attempt)
+        MessagePlugin.success('待支付订单已生成，请用户在小程序「我的订单」中支付')
+      } else if (payload.pay_method === 'wechat_native') {
         const payInfo = await createNativePay(res.data.order_id)
         if (!checkoutFlow.isCurrent(attempt)) return
         if (payInfo.paid) {
@@ -1193,6 +1204,10 @@ function handleViewProfile() {
           <div style="margin-bottom: 24px;">
             <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: #374151;">支付方式</div>
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
+                <input v-model="payMethod" type="radio" value="wechat">
+                小程序支付
+              </label>
               <label class="pay-method-label" :class="{ active: payMethod === 'cash' }">
                 <input v-model="payMethod" type="radio" value="cash" style="display: none;">
                 <AppIcon name="money" />  现金已收款
@@ -1209,6 +1224,7 @@ function handleViewProfile() {
             <div v-if="payMethod === 'wechat_micropay'" style="margin-top: 12px;">
               <input class="form-control" v-model="micropayAuthCode" placeholder="请扫描或输入患者微信付款码">
             </div>
+            <div v-if="payMethod === 'wechat' && miniPayOrderNo && payWaiting" style="margin: 12px 0; overflow-wrap: anywhere;">小程序待支付订单：{{ miniPayOrderNo }}</div>
             <TechnicianSelect v-model="fulfillmentTechnicianId" />
             <div v-if="nativePayInfo" style="margin-top: 14px; text-align: center; padding: 14px; border: 1px solid #E5E7EB; border-radius: 8px;">
               <img v-if="nativePayInfo.qrCodeImageUrl" :src="nativePayInfo.qrCodeImageUrl" alt="微信支付二维码" style="width: 220px; height: 220px;">
@@ -1220,7 +1236,7 @@ function handleViewProfile() {
 
           <div style="display: flex; justify-content: flex-end; gap: 10px;">
             <t-button theme="default" @click="closeCheckoutDialog">取消</t-button>
-            <t-button theme="primary" :loading="checkoutLoading" @click="submitCheckout">确认支付收款 · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
+            <t-button theme="primary" :loading="checkoutLoading" :disabled="payWaiting" @click="submitCheckout">{{ payMethod === 'wechat' ? '生成待支付订单' : '确认支付收款' }} · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
           </div>
         </div>
       </div>
