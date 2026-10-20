@@ -7,6 +7,7 @@ import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
+const brandLogoUrl = `${import.meta.env.BASE_URL}brand-koala.png`
 const collapsed = ref(false)
 const currentUser = ref(getPromoterUser())
 
@@ -183,7 +184,7 @@ async function handleSavePassword() {
     <aside :class="['portal-sidebar', collapsed ? 'is-collapsed' : '']">
       <div class="portal-brand">
         <div class="portal-brand-logo">
-          <img class="portal-brand-logo-image" src="/brand-koala.png" alt="鼾静推广端" />
+          <img class="portal-brand-logo-image" :src="brandLogoUrl" alt="鼾静推广端" />
         </div>
         <div class="portal-brand-text" :class="{ 'is-hidden': collapsed }">
           鼾静推广

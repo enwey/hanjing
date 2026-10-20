@@ -6,6 +6,7 @@ import request from '@/utils/request'
 import { setPromoterAuth } from '@/utils/auth'
 
 const router = useRouter()
+const brandLogoUrl = `${import.meta.env.BASE_URL}brand-koala.png`
 const loginForm = ref({
   phone: '',
   password: ''
@@ -42,7 +43,7 @@ async function handleLogin({ validateResult }: any) {
     <div class="login-card">
       <div class="login-brand">
         <span class="brand-logo">
-          <img class="brand-logo-image" src="/brand-koala.png" alt="鼾静推广端" />
+          <img class="brand-logo-image" :src="brandLogoUrl" alt="鼾静推广端" />
         </span>
         <div class="brand-title">
           鼾静推广端

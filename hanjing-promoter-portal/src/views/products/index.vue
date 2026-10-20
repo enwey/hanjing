@@ -4,6 +4,7 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
 const rows = ref<any[]>([])
+const brandLogoUrl = `${import.meta.env.BASE_URL}brand-koala.png`
 
 function yuan(value: number) {
   return (Number(value || 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
@@ -30,7 +31,7 @@ onMounted(loadData)
 
     <section class="product-grid">
     <article v-for="item in rows" :key="item.id" class="product-card">
-      <img class="product-image" :src="item.image_url || '/brand-koala.png'" :alt="item.name" />
+      <img class="product-image" :src="item.image_url || brandLogoUrl" :alt="item.name" />
       <div class="product-body">
         <div class="product-name">{{ item.name }}</div>
         <div class="product-desc">{{ item.description || '暂无商品描述' }}</div>
