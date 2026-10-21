@@ -1377,9 +1377,9 @@ async function getDistributionSummary(userId, req = null) {
 
   const directTeamCount = Number(lv1?.count || 0);
   const secondTeamCount = Number(lv2?.count || 0);
-  if (directTeamCount > 0 && distributor.status !== 'active') {
-    await run(`UPDATE distributors SET status = 'active' WHERE id = ?`, [distributor.id]);
-    distributor.status = 'active';
+  if (directTeamCount > 0 && distributor.status === 'pending') {
+    const activation = await run(`UPDATE distributors SET status = 'active' WHERE id = ? AND status = 'pending'`, [distributor.id]);
+    if (activation.changes) distributor.status = 'active';
   }
 
   return {
@@ -7056,63 +7056,80 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
 
 // 21.b1 WeChat Client Bind Distribution Relationship (POST)
 app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
-  const { inviteCode } = req.body;
+  const rawCode = req.body && req.body.inviteCode;
+  const inviteCode = typeof rawCode === 'string' ? rawCode.trim() : '';
   if (!inviteCode) {
     return res.status(400).json({ code: 400, message: '邀请码不能为空' });
   }
 
   try {
-    const promoter = await get(`SELECT user_id FROM distributors WHERE invite_code = ?`, [inviteCode]);
-    if (!promoter) {
-      return res.status(400).json({ code: 400, message: '无效的邀请码' });
-    }
+    const status = await transaction(async (conn) => {
+      const readOne = async (sql, args) => {
+        const [rows] = await conn.execute(sql, args);
+        return rows[0];
+      };
+      const rejectBinding = (message, reason) => {
+        throw Object.assign(new Error(message), { bindingReason: reason });
+      };
+      const promoter = await readOne(
+        'SELECT user_id, status FROM distributors WHERE invite_code = ? FOR UPDATE', [inviteCode]);
+      if (!promoter) rejectBinding('无效的邀请码', 'INVALID_INVITE');
+      if (!['active', 'pending'].includes(promoter.status)) {
+        rejectBinding('推广人已停用', 'PROMOTER_UNAVAILABLE');
+      }
+      const parentUserId = promoter.user_id;
+      const childUserId = req.user.id;
+      if (String(parentUserId) === String(childUserId)) return 'ignored_self';
 
-    const parentUserId = promoter.user_id;
-    const childUserId = req.user.id;
+      // Lock the child even when it has no relationship row yet.
+      await readOne('SELECT id FROM users WHERE id = ? FOR UPDATE', [childUserId]);
+      const existing = await readOne(
+        'SELECT id FROM distribution_relationships WHERE child_user_id = ? LIMIT 1', [childUserId]);
+      if (existing) return 'already_bound';
 
-    if (parentUserId === childUserId) {
-      return res.json({
-        code: 0,
-        message: '当前账号与邀请人相同，已忽略本次绑定',
-        data: { status: 'ignored_self' }
-      });
-    }
-
-    const existing = await get(`SELECT id FROM distribution_relationships WHERE child_user_id = ?`, [childUserId]);
-    if (existing) {
-      return res.json({
-        code: 0,
-        message: '当前账号已绑定过推荐关系，已忽略本次绑定',
-        data: { status: 'already_bound' }
-      });
-    }
-
-    await transaction(async (conn) => {
-      await conn.execute(
-        `INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)`,
-        [parentUserId, childUserId]
-      );
-
-      await conn.execute(
-        `UPDATE distributors SET status = 'active' WHERE user_id = ?`,
-        [parentUserId]
-      );
-
-      const grandParent = await get(
-        `SELECT parent_user_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1`,
-        [parentUserId]
-      );
-      if (grandParent) {
-        await conn.execute(
-          `INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 2)`,
-          [grandParent.parent_user_id, childUserId]
-        );
+      const visited = new Set([String(childUserId)]);
+      let ancestor = parentUserId;
+      let grandParent = null;
+      while (ancestor != null) {
+        if (visited.has(String(ancestor))) {
+          rejectBinding('不能绑定存在循环的推荐关系', 'INVITE_CYCLE');
+        }
+        visited.add(String(ancestor));
+        // All client bind operations lock each affected user's parent edge.
+        // A conflicting traversal may deadlock; MySQL rolls it back without writing a cycle.
+        await readOne('SELECT id FROM users WHERE id = ? FOR UPDATE', [ancestor]);
+        const relation = await readOne(
+          'SELECT parent_user_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1',
+          [ancestor]);
+        if (String(ancestor) === String(parentUserId)) grandParent = relation;
+        ancestor = relation ? relation.parent_user_id : null;
       }
 
+      await conn.execute(
+        'INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)',
+        [parentUserId, childUserId]);
+      if (promoter.status === 'pending') {
+        await conn.execute(
+          "UPDATE distributors SET status = 'active' WHERE user_id = ? AND status = 'pending'",
+          [parentUserId]);
+      }
+      if (grandParent) {
+        await conn.execute(
+          'INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 2)',
+          [grandParent.parent_user_id, childUserId]);
+      }
+      return 'bound';
     });
-
-    res.json({ code: 0, message: '推荐关系绑定成功', data: { status: 'bound' } });
+    const messages = {
+      bound: '推荐关系绑定成功',
+      ignored_self: '当前账号与邀请人相同，已忽略本次绑定',
+      already_bound: '当前账号已绑定过推荐关系，已忽略本次绑定'
+    };
+    res.json({ code: 0, message: messages[status], data: { status } });
   } catch (error) {
+    if (error && error.bindingReason) {
+      return res.status(400).json({ code: 400, message: error.message, reason: error.bindingReason });
+    }
     if (error && error.code === 'ER_DUP_ENTRY') {
       return res.json({
         code: 0,

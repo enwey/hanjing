@@ -73,6 +73,7 @@ Page({
   },
 
   async loadPage(options = {}) {
+    const requestId = this.pageRequestId = (this.pageRequestId || 0) + 1;
     const silent = Boolean(options.silent);
     const appointmentId = String((this.options && this.options.id) || '');
     this.setData({
@@ -82,6 +83,7 @@ Page({
     });
     try {
       const detailResponse = await api.getAppointmentDetail(appointmentId);
+      if (requestId !== this.pageRequestId) return;
       const detail = unwrapObject(detailResponse);
       const appointment = detail.appointment || {};
       const doctorId = String(appointment.doctorId || (this.options && this.options.doctorId) || '');
@@ -90,6 +92,7 @@ Page({
       this.originalTime = appointment.appointmentTime || '';
 
       const scheduleDatesResponse = await api.getScheduleDates({ doctorId, storeId });
+      if (requestId !== this.pageRequestId) return;
       const scheduleDates = unwrapList(scheduleDatesResponse);
       const selectedDate = resolveDefaultSelectedDate(scheduleDates, this.originalDate);
       this.setData({
@@ -107,6 +110,7 @@ Page({
       }
       this.hasLoaded = true;
     } catch (error) {
+      if (requestId !== this.pageRequestId) return;
       this.setData({
         loading: silent ? this.data.loading : false,
         loadError: (error && error.message) || '加载改约信息失败',
@@ -115,6 +119,8 @@ Page({
   },
 
   async loadSchedulesForDate(selectedDate, options = {}) {
+    const requestId = this.schedulesRequestId = (this.schedulesRequestId || 0) + 1;
+    this.slotsRequestId = (this.slotsRequestId || 0) + 1;
     const silent = Boolean(options.silent);
     this.setData({
       loading: silent ? this.data.loading : true,
@@ -133,6 +139,7 @@ Page({
         startDate: selectedDate,
         endDate: selectedDate,
       });
+      if (requestId !== this.schedulesRequestId) return;
       const schedules = unwrapList(response).map(normalizeSchedule);
       this.setData({ schedules });
       const nextSelectedSchedule =
@@ -144,6 +151,7 @@ Page({
         this.setData({ loading: false });
       }
     } catch (error) {
+      if (requestId !== this.schedulesRequestId) return;
       this.setData({
         loading: false,
         loadError: (error && error.message) || '加载排班失败',
@@ -154,6 +162,7 @@ Page({
   async selectDate(event) {
     const selectedDate = String((event && event.detail) || event.currentTarget.dataset.date || '');
     if (!selectedDate || selectedDate === this.data.selectedDate) return;
+    this.pageRequestId = (this.pageRequestId || 0) + 1;
     await this.loadSchedulesForDate(selectedDate, { silent: false });
   },
 
@@ -161,6 +170,7 @@ Page({
     const silent = Boolean(options.silent);
     const selectedSchedule = this.data.schedules.find((item) => item.id === scheduleId);
     if (!selectedSchedule || selectedSchedule.disabled) return;
+    const requestId = this.slotsRequestId = (this.slotsRequestId || 0) + 1;
     this.setData({
       selectedScheduleId: scheduleId,
       timeSlots: silent ? this.data.timeSlots : [],
@@ -169,6 +179,7 @@ Page({
     });
     try {
       const response = await api.getTimeSlots(scheduleId);
+      if (requestId !== this.slotsRequestId) return;
       const nextTimeSlots = unwrapList(response).map(normalizeTimeSlot);
       const keepSelected = nextTimeSlots.find((item) => item.id === this.data.selectedTimeSlotId && item.selectable);
       this.setData({
@@ -178,6 +189,7 @@ Page({
         selectedTimeSlotLabel: keepSelected ? keepSelected.label : '',
       });
     } catch (error) {
+      if (requestId !== this.slotsRequestId) return;
       this.setData({ loading: false });
       wx.showToast({ title: (error && error.message) || '加载时段失败', icon: 'none' });
     }

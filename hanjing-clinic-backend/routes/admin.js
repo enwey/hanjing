@@ -6822,32 +6822,68 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
     return res.status(400).json({ code: 400, message: '请选择推广人' });
   }
   try {
-    const patient = await get('SELECT user_id FROM patients WHERE id = ?', [id]);
-    if (!patient) {
-      return res.status(404).json({ code: 404, message: '患者不存在' });
-    }
-    const promoter = await get(
-      `SELECT user_id FROM distributors WHERE user_id = ? LIMIT 1`,
-      [promoter_user_id]
-    );
-    if (!promoter) {
-      return res.status(400).json({ code: 400, message: '推广人不存在或已停用' });
-    }
-    if (Number(promoter_user_id) === Number(patient.user_id)) {
-      return res.status(400).json({ code: 400, message: '患者不能绑定自己为推广人' });
-    }
-    const child_user_id = patient.user_id;
-    const existing = await get('SELECT id FROM distribution_relationships WHERE child_user_id = ?', [child_user_id]);
-    if (existing) {
-      await run('UPDATE distribution_relationships SET parent_user_id = ? WHERE child_user_id = ?', [promoter_user_id, child_user_id]);
-    } else {
-      await run('INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)', [promoter_user_id, child_user_id]);
-    }
-    await run(`UPDATE distributors SET status = 'active' WHERE user_id = ?`, [promoter_user_id]);
+    await transaction(async (conn) => {
+      const readOne = async (sql, args) => {
+        const [rows] = await conn.execute(sql, args);
+        return rows[0];
+      };
+      const rejectBinding = (message, statusCode = 400) => {
+        throw Object.assign(new Error(message), { bindingStatus: statusCode });
+      };
+      const patient = await readOne('SELECT user_id FROM patients WHERE id = ? FOR UPDATE', [id]);
+      if (!patient) rejectBinding('患者不存在', 404);
+      if (!patient.user_id) rejectBinding('患者尚未关联小程序账号');
+      const promoter = await readOne(
+        'SELECT user_id, status FROM distributors WHERE user_id = ? LIMIT 1 FOR UPDATE',
+        [promoter_user_id]);
+      if (!promoter || !['active', 'pending'].includes(promoter.status)) {
+        rejectBinding('推广人不存在或已停用');
+      }
+      const childUserId = patient.user_id;
+      const parentUserId = promoter.user_id;
+      if (String(parentUserId) === String(childUserId)) rejectBinding('患者不能绑定自己为推广人');
+
+      // Match the client bind protocol: lock the user whose parent edge changes,
+      // then every ancestor before reading that ancestor's parent edge.
+      await readOne('SELECT id FROM users WHERE id = ? FOR UPDATE', [childUserId]);
+      const visited = new Set([String(childUserId)]);
+      let ancestor = parentUserId;
+      let grandParent = null;
+      while (ancestor != null) {
+        if (visited.has(String(ancestor))) rejectBinding('不能绑定存在循环的推荐关系');
+        visited.add(String(ancestor));
+        await readOne('SELECT id FROM users WHERE id = ? FOR UPDATE', [ancestor]);
+        const relation = await readOne(
+          'SELECT parent_user_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1',
+          [ancestor]);
+        if (String(ancestor) === String(parentUserId)) grandParent = relation;
+        ancestor = relation ? relation.parent_user_id : null;
+      }
+
+      // An explicit rebind replaces this user's two-level snapshot only.
+      // Do not rewrite existing descendants or historical commission orders.
+      await conn.execute(
+        'DELETE FROM distribution_relationships WHERE child_user_id = ? AND level IN (1, 2)', [childUserId]);
+      await conn.execute(
+        'INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)',
+        [parentUserId, childUserId]);
+      if (grandParent) {
+        await conn.execute(
+          'INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 2)',
+          [grandParent.parent_user_id, childUserId]);
+      }
+      if (promoter.status === 'pending') {
+        await conn.execute(
+          "UPDATE distributors SET status = 'active' WHERE user_id = ? AND status = 'pending'", [parentUserId]);
+      }
+    });
     await logAdminAction(req.user.id, 'bind_patient_promoter', 'patient', id, { promoter_user_id });
     res.json({ code: 200, message: '绑定推广人成功' });
   } catch (error) {
     console.error('Bind promoter failed:', error);
+    if (error.bindingStatus) {
+      return res.status(error.bindingStatus).json({ code: error.bindingStatus, message: error.message });
+    }
     res.status(500).json({ code: 500, message: '操作失败' });
   }
 });

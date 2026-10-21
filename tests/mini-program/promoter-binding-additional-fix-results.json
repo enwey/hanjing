@@ -1,0 +1,52 @@
+{
+  "scope": "Actual admin route and mini-program functions, mocked SQL/wx/API; no real writes",
+  "total": 11,
+  "passed": 11,
+  "failed": 0,
+  "results": [
+    {
+      "name": "admin denies unauthorized patient access",
+      "status": "PASS"
+    },
+    {
+      "name": "admin first direct bind",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-04 admin must not reactivate inactive promoter",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-05 admin must reject descendant binding",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-06 admin rebind must not assign same parent to both levels",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-07 failed admin bind must not leave committed relationship",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-03 app and login completion must not submit same invite twice",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-06 rebind to root removes obsolete level two",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-07 failed rebind restores both old levels",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-03 rejected shared flight releases for retry",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-03 distinct account does not reuse old flight",
+      "status": "PASS"
+    }
+  ]
+}

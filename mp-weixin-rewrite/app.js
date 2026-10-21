@@ -57,7 +57,13 @@ function parseInviteCodeFromLaunchOptions(options) {
   const query = options.query;
   let inviteCode = query.inviteCode || query.invite_code || '';
   if (query.scene) {
-    const sceneText = decodeURIComponent(query.scene);
+    let sceneText;
+    try {
+      sceneText = decodeURIComponent(query.scene);
+    } catch (error) {
+      // Ignore malformed external scene data without interrupting app startup.
+      return String(inviteCode || '').trim();
+    }
     if (sceneText.indexOf("=") > -1) {
       sceneText.split("&").forEach((entry) => {
         const parts = entry.split("=");
@@ -70,21 +76,35 @@ function parseInviteCodeFromLaunchOptions(options) {
   return String(inviteCode || "").trim();
 }
 
+const pendingInviteFlights = new Map();
 async function tryBindPendingInvite() {
   const inviteCode = wx.getStorageSync("pending_invite_code");
   const token = wx.getStorageSync("access_token");
   if (!inviteCode || !token) return;
-  try {
-    const response = await distributionApi.bindDistribution(inviteCode);
-    const status = (response && response.data && response.data.status) || response.status || "bound";
-    if (status === "bound" || status === "already_bound" || status === "ignored_self") {
-      wx.removeStorageSync("pending_invite_code");
+  const flightKey = JSON.stringify([token, inviteCode]);
+  if (pendingInviteFlights.has(flightKey)) return pendingInviteFlights.get(flightKey);
+  const clearCurrentInvite = () => {
+    if (wx.getStorageSync('pending_invite_code') === inviteCode &&
+        wx.getStorageSync('access_token') === token) {
+      wx.removeStorageSync('pending_invite_code');
     }
-  } catch (error) {
-    if (error && (error.message === "无效的邀请码" || error.message === "邀请码不能为空")) {
-      wx.removeStorageSync("pending_invite_code");
+  };
+  const flight = (async () => {
+    try {
+      const response = await distributionApi.bindDistribution(inviteCode);
+      const status = response && ((response.data && response.data.status) || response.status);
+      if (status === "bound" || status === "already_bound" || status === "ignored_self") {
+        clearCurrentInvite();
+      }
+    } catch (error) {
+      if (error && (error.message === "无效的邀请码" || error.message === "邀请码不能为空" ||
+          (error.data && ['PROMOTER_UNAVAILABLE', 'INVITE_CYCLE'].includes(error.data.reason)))) {
+        clearCurrentInvite();
+      }
     }
-  }
+  })();
+  pendingInviteFlights.set(flightKey, flight);
+  try { await flight; } finally { pendingInviteFlights.delete(flightKey); }
 }
 
 App({

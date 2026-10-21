@@ -1,0 +1,80 @@
+{
+  "scope": "Actual page functions with mocked wx/API; no real appointments or payments",
+  "total": 16,
+  "passed": 8,
+  "failed": 8,
+  "results": [
+    {
+      "name": "confirm loads patient and doctor",
+      "status": "PASS"
+    },
+    {
+      "name": "confirm rejects missing patient",
+      "status": "PASS"
+    },
+    {
+      "name": "confirm deduplicates in-flight create",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-01 booking payment action calls exported API",
+      "status": "FAIL",
+      "actual": "payment request count=0 toast=api.payAppointment is not a function\n\n0 !== 1\n"
+    },
+    {
+      "name": "APT-02 late date response cannot overwrite current date slots",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\n'A' !== 'B'\n"
+    },
+    {
+      "name": "APT-03 selection survives confirm page refresh",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\n1 !== 2\n"
+    },
+    {
+      "name": "APT-04 created pending-payment order remains submission-locked",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\nfalse !== true\n"
+    },
+    {
+      "name": "APT-04 successful create cannot be resubmitted before navigation",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\n2 !== 1\n"
+    },
+    {
+      "name": "APT-05 backend rejection reason is visible",
+      "status": "FAIL",
+      "actual": "[\"预约失败，请重试\"]"
+    },
+    {
+      "name": "lunch exclusion matches backend slot generator",
+      "status": "PASS"
+    },
+    {
+      "name": "unavailable time slot cannot advance",
+      "status": "PASS"
+    },
+    {
+      "name": "available time slot records selected schedule",
+      "status": "PASS"
+    },
+    {
+      "name": "missing doctor/store rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "reschedule original slot rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-07 late reschedule response cannot replace current schedule slots",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\n'Aslot' !== 'Bslot'\n"
+    },
+    {
+      "name": "APT-06 late list response must not repopulate logged-out view",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\n1 !== 0\n"
+    }
+  ]
+}
