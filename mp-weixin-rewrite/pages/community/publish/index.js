@@ -26,6 +26,7 @@ Page({
     selectedTags: [],
     selectedTagMap: {},
     isSubmitting: false,
+    publishedPostId: '',
     canSubmit: false,
     categoryOptions: CATEGORY_OPTIONS,
     tagOptions: TAG_OPTIONS,
@@ -38,7 +39,7 @@ Page({
     });
     this.setData({
       selectedTagMap,
-      canSubmit: Boolean(String(this.data.title || '').trim() && String(this.data.content || '').trim() && !this.data.isSubmitting),
+      canSubmit: Boolean((this.data.publishedPostId || (String(this.data.title || '').trim() && String(this.data.content || '').trim())) && !this.data.isSubmitting),
     });
   },
 
@@ -77,6 +78,11 @@ Page({
   },
 
   async submitPublish() {
+    if (this.data.isSubmitting) return;
+    if (this.data.publishedPostId) {
+      this.openPublishedPost();
+      return;
+    }
     if (!String(this.data.title || '').trim() || !String(this.data.content || '').trim()) {
       wx.showToast({ title: '请填写标题和内容', icon: 'none' });
       return;
@@ -91,14 +97,29 @@ Page({
         tags: [this.data.selectedCategory].concat(this.data.selectedTags),
       });
       const createdPost = (response && response.data) || response || {};
+      this.setData({ publishedPostId: String(createdPost.id) });
       wx.showToast({ title: '发布成功', icon: 'success' });
       setTimeout(() => {
-        wx.redirectTo({ url: '/pages/community/detail/index?id=' + createdPost.id });
+        this.openPublishedPost();
       }, 400);
     } catch (error) {
       this.setData({ isSubmitting: false });
       this.refreshFormState();
       wx.showToast({ title: '发布失败，请重试', icon: 'none' });
+    }
+  },
+
+  openPublishedPost() {
+    this.setData({ isSubmitting: true });
+    const failed = () => {
+      this.setData({ isSubmitting: false });
+      this.refreshFormState();
+      wx.showToast({ title: '帖子已发布，点击重试打开', icon: 'none' });
+    };
+    try {
+      wx.redirectTo({ url: '/pages/community/detail/index?id=' + this.data.publishedPostId, fail: failed });
+    } catch (error) {
+      failed();
     }
   },
 });

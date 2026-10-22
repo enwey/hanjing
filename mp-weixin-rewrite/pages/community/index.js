@@ -16,7 +16,7 @@ function unwrapList(response) {
 }
 
 function isExpertPost(post) {
-  return post.category === '专家' || post.role === 'doctor' || post.role === 'expert';
+  return post.role === 'doctor' || post.role === 'expert';
 }
 
 function getCategoryClass(name) {
@@ -141,16 +141,19 @@ Page({
   },
 
   async loadPosts(options = {}) {
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
     }
     try {
       const response = await api.getCommunityPosts();
+      if (requestId !== this._loadRequestId) return;
       const posts = unwrapList(response).map(normalizePost);
-      this.setData({ hasLoaded: true, loading: false, posts });
+      this.setData({ hasLoaded: true, loading: false, loadError: '', posts });
       this.refreshVisiblePosts(this.data.activeTab, posts);
     } catch (error) {
+      if (requestId !== this._loadRequestId) return;
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
@@ -163,6 +166,14 @@ Page({
       this.setData({ loading: false });
       wx.showToast({ title: (error && error.message) || '加载社区帖子失败', icon: 'none' });
     }
+  },
+
+  retryLoad() {
+    return this.loadPosts();
+  },
+
+  onUnload() {
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
   },
 
   refreshVisiblePosts(activeTab, posts) {
@@ -222,8 +233,12 @@ Page({
 
   async handleLikeTap(event) {
     const postId = event.currentTarget.dataset.postId;
+    const requestId = this._loadRequestId;
+    this._pendingLikes = this._pendingLikes || new Set();
+    if (this._pendingLikes.has(postId)) return;
     const index = this.data.posts.findIndex((post) => post.id === postId);
     if (index < 0) return;
+    this._pendingLikes.add(postId);
     const posts = this.data.posts.slice();
     const target = Object.assign({}, posts[index]);
     const previousLiked = target.isLiked;
@@ -238,14 +253,19 @@ Page({
     try {
       await api.likeCommunityPost(postId, target.isLiked);
     } catch (error) {
+      if (requestId !== this._loadRequestId) return;
       target.isLiked = previousLiked;
       target.likes = previousLikes;
       target.likeIcon = previousLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg';
       target.likeClass = previousLiked ? 'liked' : '';
-      posts[index] = target;
-      this.setData({ posts });
-      this.refreshVisiblePosts(this.data.activeTab, posts);
+      const currentPosts = this.data.posts.map(post => post.id === postId ? Object.assign({}, post, {
+        isLiked: target.isLiked, likes: target.likes, likeIcon: target.likeIcon, likeClass: target.likeClass,
+      }) : post);
+      this.setData({ posts: currentPosts });
+      this.refreshVisiblePosts(this.data.activeTab, currentPosts);
       wx.showToast({ title: '点赞失败，请稍后重试', icon: 'none' });
+    } finally {
+      this._pendingLikes.delete(postId);
     }
   },
 

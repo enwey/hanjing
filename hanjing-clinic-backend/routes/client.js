@@ -2933,28 +2933,27 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
 // POST /api/v1/community/posts/:id/report
 app.post('/api/v1/community/posts/:id/report', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
-  const reason = escapeHtml(req.body.reason || '');
-  if (!reason) {
+  const rawReason = req.body.reason;
+  if (typeof rawReason !== 'string' || !rawReason.trim() || rawReason.length > 100) {
     return res.status(400).json({ code: 400, message: '请选择举报原因' });
   }
+  const reason = escapeHtml(rawReason.trim());
+  if (reason.length > 100) return res.status(400).json({ code: 400, message: '举报原因过长' });
 
   try {
-    const post = await get(`SELECT id FROM community_posts WHERE id = ?`, [postId]);
-    if (!post) {
-      return res.status(404).json({ code: 404, message: '帖子不存在' });
-    }
-    const existing = await get(
-      `SELECT id FROM community_reports WHERE post_id = ? AND user_id = ? AND status = 'pending'`,
-      [postId, req.user.id]
-    );
-    if (existing) {
-      return res.json({ code: 0, message: '您已提交过举报，平台会尽快处理' });
-    }
-    await run(
-      `INSERT INTO community_reports (post_id, user_id, reason, status) VALUES (?, ?, ?, 'pending')`,
-      [postId, req.user.id, reason]
-    );
-    res.json({ code: 0, message: '举报已提交' });
+    const outcome = await transaction(async conn => {
+      const [[post]] = await conn.execute('SELECT id FROM community_posts WHERE id = ? FOR UPDATE', [postId]);
+      if (!post) return 'missing';
+      const [[existing]] = await conn.execute(
+        "SELECT id FROM community_reports WHERE post_id = ? AND user_id = ? AND status = 'pending' FOR UPDATE",
+        [postId, req.user.id]
+      );
+      if (existing) return 'existing';
+      await conn.execute("INSERT INTO community_reports (post_id, user_id, reason, status) VALUES (?, ?, ?, 'pending')", [postId, req.user.id, reason]);
+      return 'created';
+    });
+    if (outcome === 'missing') return res.status(404).json({ code: 404, message: '帖子不存在' });
+    res.json({ code: 0, message: outcome === 'existing' ? '您已提交过举报，平台会尽快处理' : '举报已提交' });
   } catch (error) {
     console.error('reportCommunityPost error:', error);
     res.status(500).json({ code: 500, message: '提交举报失败' });
@@ -2977,12 +2976,16 @@ function buildCommunityPostSummary(content) {
 
 app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
   const { title, content, tags } = req.body;
-  if (!title || !content) {
-    return res.status(400).json({ code: 400, message: '标题和内容不能为空' });
+  if (typeof title !== 'string' || typeof content !== 'string' || !title.trim() || !content.trim() || title.length > 40 || content.length > 1000) {
+    return res.status(400).json({ code: 400, message: '标题和内容不能为空，标题最多40字，内容最多1000字' });
   }
 
-  const titleClean = escapeHtml(title);
-  const contentClean = escapeHtml(content);
+  if (tags !== undefined && (!Array.isArray(tags) || tags.length > 4 || tags.some(tag => typeof tag !== 'string' || !tag.trim() || tag.length > 30))) {
+    return res.status(400).json({ code: 400, message: '分类或标签无效' });
+  }
+
+  const titleClean = escapeHtml(title.trim());
+  const contentClean = escapeHtml(content.trim());
   const tagsClean = Array.isArray(tags) ? tags.map(t => typeof t === 'string' ? escapeHtml(t) : t) : [];
   const summaryClean = buildCommunityPostSummary(contentClean);
 
@@ -2991,9 +2994,14 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '您的内容中包含违规字眼（广告/疗效等），已被系统拦截' });
     }
     const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
+    if (!user) return res.status(401).json({ code: 401, message: '未授权或登录过期' });
     let role = 'patient';
     if (user.role === 'doctor' || user.role === 'admin') {
       role = 'doctor';
+    }
+
+    if (role === 'patient' && tags?.some(tag => tag.trim() === '专家')) {
+      return res.status(400).json({ code: 400, message: '普通用户不能使用专家分类' });
     }
 
     const status = 'approved';
@@ -3036,6 +3044,7 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
 app.post('/api/v1/community/posts/:id/like', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
   const { isLiked } = req.body;
+  if (typeof isLiked !== 'boolean') return res.status(400).json({ code: 400, message: '点赞状态无效' });
   try {
     const post = await get(`SELECT id, user_id, title FROM community_posts WHERE id = ? AND status = 'approved'`, [postId]);
     if (!post) {
@@ -3088,6 +3097,7 @@ app.post('/api/v1/community/posts/:id/like', authenticateWxToken, async (req, re
 app.post('/api/v1/community/posts/:id/favorite', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
   const { isFavorited } = req.body;
+  if (typeof isFavorited !== 'boolean') return res.status(400).json({ code: 400, message: '收藏状态无效' });
   try {
     const post = await get(`SELECT id FROM community_posts WHERE id = ? AND status = 'approved'`, [postId]);
     if (!post) {
@@ -3137,12 +3147,13 @@ app.post('/api/v1/community/posts/:id/share', authenticateWxToken, async (req, r
 app.post('/api/v1/community/comments/:id/like', authenticateWxToken, async (req, res) => {
   const commentId = req.params.id;
   const { isLiked } = req.body;
+  if (typeof isLiked !== 'boolean') return res.status(400).json({ code: 400, message: '点赞状态无效' });
   try {
     const comment = await get(
       `SELECT c.id, c.user_id, c.post_id, p.title
        FROM post_comments c
        LEFT JOIN community_posts p ON p.id = c.post_id
-       WHERE c.id = ? AND c.status = 'approved'`,
+       WHERE c.id = ? AND c.status = 'approved' AND p.status = 'approved'`,
       [commentId]
     );
     if (!comment) {
@@ -3195,11 +3206,11 @@ app.post('/api/v1/community/comments/:id/like', authenticateWxToken, async (req,
 app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
   const { content, parentId } = req.body;
-  if (!content) {
-    return res.status(400).json({ code: 400, message: '评论内容不能为空' });
+  if (typeof content !== 'string' || !content.trim() || content.length > 500) {
+    return res.status(400).json({ code: 400, message: '评论内容不能为空，最多500字' });
   }
 
-  const contentClean = escapeHtml(content);
+  const contentClean = escapeHtml(content.trim());
 
   try {
     if (checkSensitiveWords(content)) {

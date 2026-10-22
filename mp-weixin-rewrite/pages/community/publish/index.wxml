@@ -29,6 +29,6 @@
   </view>
 
   <view class="publish-submit-bar">
-    <view class="publish-submit-button {{!canSubmit ? 'publish-submit-button--disabled' : ''}}" bindtap="submitPublish">{{isSubmitting ? '发布中...' : '发布帖子'}}</view>
+    <view class="publish-submit-button {{!canSubmit ? 'publish-submit-button--disabled' : ''}}" bindtap="submitPublish">{{isSubmitting ? '发布中...' : (publishedPostId ? '查看已发布帖子' : '发布帖子')}}</view>
   </view>
 </view>
