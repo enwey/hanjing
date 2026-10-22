@@ -765,7 +765,7 @@ const loadFollowers = async () => {
 const loadPromoters = async () => {
   try {
     const res: any = await request.get('/api/admin/distribution/promoters')
-    promoters.value = (res.data || []).map((item: any) => ({
+    promoters.value = (res.data || []).filter((item:any) => item.source_type !== 'backend' && item.user_id && ['active','pending'].includes(item.status)).map((item: any) => ({
       label: `${item.nickname || item.user_phone || item.user_id} (${item.user_phone || '无手机号'})`,
       value: String(item.user_id)
     }))

@@ -84,6 +84,7 @@ const appointment = ref<any>({
   fee: '0.00',
   feeStatus: 'paid',
   source: '',
+  referralPromoter: '',
   symptom: '',
   pre_exam: null,
   latest_pre_exam: null,
@@ -186,6 +187,7 @@ const fetchAppointmentDetail = async () => {
         fee: appt.consult_fee !== null && appt.consult_fee !== undefined ? (appt.consult_fee / 100).toFixed(2) : '0.00',
         feeStatus: appt.status === 'pending_payment' ? 'unpaid' : 'paid',
         source: appt.source === 'mini_app' ? '小程序' : appt.source === 'telephone' ? '电话' : '到店',
+        referralPromoter: appt.referral_promoter_name || '',
         symptom: appt.symptom_desc || '',
         deposit: appt.deposit_amount !== null && appt.deposit_amount !== undefined ? (appt.deposit_amount / 100).toFixed(2) : '0.00',
         pre_exam: appt.pre_exam,
@@ -976,7 +978,7 @@ function handleViewProfile() {
           </div>
           <div class="info-item">
             <div class="info-label">预约来源</div>
-            <div class="info-value"><span class="tag tag-green">{{ appointment.source }}</span></div>
+            <div class="info-value"><span class="tag tag-green">{{ appointment.source }}</span><div v-if="appointment.referralPromoter">推荐人：{{ appointment.referralPromoter }}</div></div>
           </div>
           <div class="info-item">
             <div class="info-label">挂号费</div>

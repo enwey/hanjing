@@ -124,12 +124,12 @@ export const authenticatePromoterToken = (req, res, next) => {
   }
 
   jwt.verify(token, JWT_SECRET, async (err, user) => {
-    if (err || !user || user.scope !== 'promoter' || !user.promoter_id || !user.user_id) {
-      return res.status(403).json({ code: 403, message: '登录已失效或无推广端权限，请重新登录' });
+    if (err || !user || user.scope !== 'promoter' || !user.promoter_id || !Number.isInteger(user.token_version)) {
+      return res.status(401).json({ code: 401, message: '登录已失效或无推广端权限，请重新登录' });
     }
     try {
-      const promoter = await get("SELECT id FROM distributors WHERE id = ? AND user_id = ? AND status = 'active'", [user.promoter_id, user.user_id]);
-      if (!promoter) return res.status(403).json({ code: 403, message: '推广员账号不存在或已停用' });
+      const promoter = await get("SELECT d.id FROM distributors d JOIN promoter_accounts a ON a.distributor_id=d.id WHERE d.id=? AND d.source_type='backend' AND d.status='active' AND a.token_version=?", [user.promoter_id,user.token_version]);
+      if (!promoter) return res.status(401).json({ code: 401, message: '推广员账号不存在或已停用' });
       req.user = user;
       next();
     } catch (error) {

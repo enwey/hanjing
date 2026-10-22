@@ -9,7 +9,13 @@ function getAppointmentDetail(appointmentId) {
 }
 
 function createAppointment(data) {
-  return request({ url: '/appointments', method: 'POST', data, failMessage: '创建预约失败' });
+  const referral=require('../../common/utils/backend-referral');
+  const referralCode=referral.current();
+  return request({ url: '/appointments', method: 'POST', data:Object.assign({},data,{referralCode}), failMessage: '创建预约失败' })
+    .catch(error=>{
+      if(error.data&&error.data.referralInvalid)referral.clear(referralCode);
+      throw error;
+    });
 }
 
 function cancelAppointment(appointmentId, reason) {

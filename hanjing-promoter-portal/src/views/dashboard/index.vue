@@ -28,6 +28,18 @@ const overview = ref({
 const commissions = ref<any[]>([])
 const loading = ref(true)
 const loadError = ref(false)
+const qrVisible = ref(false)
+const qrImage = ref('')
+const qrLoading = ref(false)
+async function showQr() {
+  qrLoading.value = true
+  try {
+    const res:any = await request.get('/api/promoter/qr')
+    qrImage.value = res.data.image
+    qrVisible.value = true
+  } catch { MessagePlugin.error('小程序码获取失败，请联系运营检查微信配置') }
+  finally { qrLoading.value = false }
+}
 
 function yuan(value: number) {
   return (Number(value || 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
@@ -55,6 +67,10 @@ onMounted(loadData)
 
 <template>
   <div class="page-container">
+    <t-dialog v-model:visible="qrVisible" header="预约推广码" :footer="false">
+      <img :src="qrImage" alt="患者扫码预约" style="display:block;width:100%;max-width:300px;margin:auto" />
+      <a :href="qrImage" download="预约推广码.png">下载小程序码</a>
+    </t-dialog>
     <t-loading v-if="loading" text="加载中" />
     <t-alert v-else-if="loadError" theme="error" message="推广数据加载失败，当前无法确认余额，请稍后重试。" />
     <template v-else>
@@ -62,6 +78,7 @@ onMounted(loadData)
     <div class="hero-card">
       <div>
         <div class="hero-title">{{ promoter.nickname || '推广员' }}</div>
+        <t-button :loading="qrLoading" @click="showQr">我的预约推广码</t-button>
         <div class="hero-sub">
           {{ promoter.levelLabel || '推广员' }} · 邀请码 {{ promoter.inviteCode || '—' }} · {{ promoter.phone || '未绑定手机号' }}
         </div>

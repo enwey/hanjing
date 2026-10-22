@@ -1,4 +1,5 @@
 const distributionApi = require('./api/index');
+const { capture: captureBackendReferral } = require('./common/utils/backend-referral');
 const miniLog = require('./common/utils/mini-log');
 
 const originalPage = Page;
@@ -120,6 +121,7 @@ App({
       },
     });
     clearLegacyObfuscatedAccessToken();
+    captureBackendReferral(options);
     const inviteCode = parseInviteCodeFromLaunchOptions(options);
     if (inviteCode) wx.setStorageSync("pending_invite_code", inviteCode);
     tryBindPendingInvite();
@@ -178,6 +180,7 @@ App({
       },
     });
     clearLegacyObfuscatedAccessToken();
+    captureBackendReferral(options);
     const inviteCode = parseInviteCodeFromLaunchOptions(options);
     if (inviteCode) wx.setStorageSync("pending_invite_code", inviteCode);
     tryBindPendingInvite();

@@ -7,7 +7,7 @@ export async function syncDirectChildrenSecondLevel(conn, userId, parentUserId) 
   for (const child of children) {
     await conn.execute(
       `INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 2)
-       ON DUPLICATE KEY UPDATE parent_user_id = VALUES(parent_user_id)`,
+       ON DUPLICATE KEY UPDATE parent_user_id = VALUES(parent_user_id), parent_distributor_id = NULL`,
       [parentUserId, child.child_user_id]);
   }
 }

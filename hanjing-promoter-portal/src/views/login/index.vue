@@ -14,8 +14,8 @@ const loginForm = ref({
 
 const rules = {
   phone: [
-    { required: true, message: '请输入手机号', type: 'error', trigger: 'submit' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确手机号', type: 'error', trigger: 'submit' }
+    { required: true, message: '请输入推广员账号', type: 'error', trigger: 'submit' },
+    { pattern: /^[a-zA-Z0-9_@.\-]{4,64}$/, message: '请输入运营后台创建的推广员账号', type: 'error', trigger: 'submit' }
   ],
   password: [{ required: true, message: '请输入登录密码', type: 'error', trigger: 'submit' }]
 }
@@ -26,7 +26,7 @@ async function handleLogin({ validateResult }: any) {
   isSubmitting.value = true
   try {
     const res: any = await request.post('/api/promoter/login', {
-      phone: loginForm.value.phone,
+      account: loginForm.value.phone,
       password: loginForm.value.password
     })
     setPromoterAuth(res.data.token, res.data.user)
@@ -62,7 +62,7 @@ async function handleLogin({ validateResult }: any) {
 
       <t-form :data="loginForm" :rules="rules" label-width="0" @submit="handleLogin">
         <t-form-item name="phone">
-          <t-input v-model="loginForm.phone" placeholder="请输入绑定的手机号" size="large">
+          <t-input v-model="loginForm.phone" placeholder="请输入后台创建的推广员账号" size="large">
             <template #prefix-icon>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748B;">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>

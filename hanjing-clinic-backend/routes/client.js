@@ -12,6 +12,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { query, get, run, transaction, autoUpdateExpiredAppointments } from '../db.js';
+import { attachAppointmentReferral, snapshotReferralOrder, createReferralCommissions } from '../backend-referrals.js';
 import { generateUniquePatientNo } from '../patientNo.js';
 import {
   JWT_SECRET,
@@ -1443,105 +1444,7 @@ async function buildMiniProgramLoginPayload(user) {
 }
 
 export async function createPendingDistributionCommission(conn, order, userId) {
-  const query = async (sql, params = []) => (await conn.execute(sql, params))[0];
-  const get = async (sql, params = []) => (await query(sql, params))[0] || null;
-  const relationships = await query(
-    `SELECT parent_user_id, 1 AS level FROM distribution_relationships WHERE child_user_id = ? AND level = 1
-     UNION ALL
-     SELECT upper_edge.parent_user_id, 2 AS level
-     FROM distribution_relationships direct_edge
-     JOIN distribution_relationships upper_edge ON upper_edge.child_user_id = direct_edge.parent_user_id AND upper_edge.level = 1
-     WHERE direct_edge.child_user_id = ? AND direct_edge.level = 1`,
-    [userId, userId]
-  );
-  if (!relationships || relationships.length === 0) return;
-
-  const featureConfig = await getDistributionFeatureConfig(conn);
-  if (!featureConfig.enableDistribution) return;
-
-  const buyer = await get(`SELECT nickname, phone FROM users WHERE id = ?`, [userId]);
-  const buyerName = buyer
-    ? `${buyer.nickname || '微信用户'}${buyer.phone ? ` (${maskPhone(buyer.phone)})` : ''}`
-    : '微信用户';
-
-  // 1. 查找并结算一级推荐佣金
-  const relL1 = relationships.find(r => r.level === 1);
-  if (!relL1) return;
-
-  const promoterL1 = await get(
-    `SELECT id, level FROM distributors WHERE user_id = ? AND status = 'active'`,
-    [relL1.parent_user_id]
-  );
-  if (!promoterL1) return;
-
-  const orderItems = await query(
-    `SELECT price, quantity, commission_rate_snapshot, commission_rate_level1_snapshot, commission_rate_level2_snapshot, is_distribution_snapshot
-     FROM order_items
-     WHERE order_id = ?`,
-    [order.id]
-  );
-  const distributionItems = orderItems.filter(item => Number(item.is_distribution_snapshot || 0) === 1);
-  if (distributionItems.length === 0) return;
-  // Allocate order-level discounts proportionally; unpaid amounts earn no commission.
-  const gross = orderItems.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
-  const paid = Math.max(0, Number(order.pay_amount || 0));
-  const paidFraction = gross > 0 ? Math.min(1, paid / gross) : 0;
-
-  const commissionL1 = Math.min(paid, Math.round(distributionItems.reduce((sum, item) => {
-    const rate = Number(item.commission_rate_level1_snapshot ?? item.commission_rate_snapshot ?? 0);
-    if (rate <= 0) return sum;
-    return sum + Number(item.price || 0) * Number(item.quantity || 0) * (rate / 100);
-  }, 0) * paidFraction));
-
-  const existingL1 = await get(
-    `SELECT id FROM distribution_orders WHERE order_id = ? AND distributor_id = ? AND commission_level = 1`,
-    [order.id, promoterL1.id]
-  );
-  if (!existingL1 && commissionL1 > 0) {
-    await conn.execute(
-      `INSERT INTO distribution_orders (order_id, distributor_id, buyer_name, order_amount, commission_amount, commission_level, status)
-       VALUES (?, ?, ?, ?, ?, 1, 'pending')`,
-      [order.id, promoterL1.id, buyerName, order.pay_amount, commissionL1]
-    );
-    await conn.execute(
-      `UPDATE distributors SET total_commission = total_commission + ? WHERE id = ?`,
-      [commissionL1, promoterL1.id]
-    );
-    await refreshDistributorLevel(promoterL1.id, conn);
-  }
-
-  const relL2 = relationships.find(r => r.level === 2);
-  if (!relL2) return;
-
-  const promoterL2 = await get(
-    `SELECT id, level FROM distributors WHERE user_id = ? AND status = 'active'`,
-    [relL2.parent_user_id]
-  );
-  if (!promoterL2) return;
-
-  const commissionL2 = Math.min(Math.max(0, paid - commissionL1), Math.round(distributionItems.reduce((sum, item) => {
-    const rate = Number(item.commission_rate_level2_snapshot || 0);
-    if (rate <= 0) return sum;
-    return sum + Number(item.price || 0) * Number(item.quantity || 0) * (rate / 100);
-  }, 0) * paidFraction));
-  if (commissionL2 <= 0) return;
-
-  const existingL2 = await get(
-    `SELECT id FROM distribution_orders WHERE order_id = ? AND distributor_id = ? AND commission_level = 2`,
-    [order.id, promoterL2.id]
-  );
-  if (existingL2) return;
-
-  await conn.execute(
-    `INSERT INTO distribution_orders (order_id, distributor_id, buyer_name, order_amount, commission_amount, commission_level, status)
-     VALUES (?, ?, ?, ?, ?, 2, 'pending')`,
-    [order.id, promoterL2.id, buyerName, order.pay_amount, commissionL2]
-  );
-  await conn.execute(
-    `UPDATE distributors SET total_commission = total_commission + ? WHERE id = ?`,
-    [commissionL2, promoterL2.id]
-  );
-  await refreshDistributorLevel(promoterL2.id, conn);
+  return createReferralCommissions(conn, order, userId);
 }
 
 export async function cancelPendingProductOrder(conn, orderId, userId, expiredOnly = false, provider = null) {
@@ -4744,6 +4647,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
         ]
       );
       const newId = insertResult[0]?.insertId || insertResult.insertId;
+      await attachAppointmentReferral(conn, newId, req.body.referralCode);
       await conn.execute(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [schedule.id]);
       return { id: newId };
     });
@@ -4793,7 +4697,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
   } catch (error) {
     console.error('Create appointment error:', error);
     const status = error.statusCode || 500;
-    res.status(status).json({ code: status, message: status < 500 ? error.message : '预约创建失败' });
+    res.status(status).json({ code: status, message: status < 500 ? error.message : '预约创建失败', referralInvalid:error.referralInvalid===true });
   }
 });
 
@@ -6833,6 +6737,7 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
         if (reserved.affectedRows !== 1) throw businessError(`商品 ${item.product.name} 库存或价格已变更，请刷新`, 409);
       }
 
+      await snapshotReferralOrder(conn, insertedId);
       // 3. Consume coupon if used
       if (couponId) {
         await conn.execute(
@@ -7145,6 +7050,7 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
       if (!['active', 'pending'].includes(promoter.status)) {
         rejectBinding('推广人已停用', 'PROMOTER_UNAVAILABLE');
       }
+      if (!promoter.user_id) rejectBinding('后台推广码仅用于预约推荐，不能直接绑定', 'INVALID_INVITE');
       const parentUserId = promoter.user_id;
       const childUserId = req.user.id;
       if (String(parentUserId) === String(childUserId)) return 'ignored_self';
@@ -7167,7 +7073,7 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
         // A conflicting traversal may deadlock; MySQL rolls it back without writing a cycle.
         await readOne('SELECT id FROM users WHERE id = ? FOR UPDATE', [ancestor]);
         const relation = await readOne(
-          'SELECT parent_user_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1',
+          'SELECT parent_user_id, parent_distributor_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1',
           [ancestor]);
         if (String(ancestor) === String(parentUserId)) grandParent = relation;
         ancestor = relation ? relation.parent_user_id : null;
@@ -7183,8 +7089,8 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
       }
       if (grandParent) {
         await conn.execute(
-          'INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 2)',
-          [grandParent.parent_user_id, childUserId]);
+          'INSERT INTO distribution_relationships (parent_user_id, parent_distributor_id, child_user_id, level) VALUES (?, ?, ?, 2)',
+          [grandParent.parent_user_id, grandParent.parent_distributor_id || null, childUserId]);
       }
       await syncDirectChildrenSecondLevel(conn, childUserId, parentUserId);
       return 'bound';

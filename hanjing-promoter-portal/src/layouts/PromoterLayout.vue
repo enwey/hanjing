@@ -134,8 +134,8 @@ async function handleSavePassword() {
     MessagePlugin.warning('请输入新密码')
     return
   }
-  if (passwordForm.value.newPassword.length < 6) {
-    MessagePlugin.warning('新密码长度不能少于 6 位')
+  if (passwordForm.value.newPassword.length < 8 || passwordForm.value.newPassword.length > 64 || !/[A-Za-z]/.test(passwordForm.value.newPassword) || !/[0-9]/.test(passwordForm.value.newPassword)) {
+    MessagePlugin.warning('新密码需 8-64 位，且包含字母和数字')
     return
   }
   if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
@@ -336,7 +336,7 @@ async function handleSavePassword() {
         </div>
         <div class="dialog-field">
           <span>新密码</span>
-          <t-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码 (不少于6位)" clearable />
+          <t-input v-model="passwordForm.newPassword" type="password" placeholder="8-64位，包含字母和数字" clearable />
         </div>
         <div class="dialog-field">
           <span>确认新密码</span>

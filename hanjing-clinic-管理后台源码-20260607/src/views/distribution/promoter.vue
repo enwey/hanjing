@@ -3,10 +3,12 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import BackendPromoterActions from './BackendPromoterActions.vue'
 import { getShanghaiTodayString } from '@/utils/dateTime'
 
 const router = useRouter()
 const searchKeyword = ref('')
+const sourceFilter = ref('全部来源')
 const activeLevelTab = ref('全部')
 const detailVisible = ref(false)
 const selectedDistributor = ref<any>(null)
@@ -18,7 +20,7 @@ interface Distributor {
   id: string; name: string; phone: string; level: string;
   firstLevelDownline: number; secondLevelDownline: number;
   totalOrders: number; totalAmount: number; totalCommission: number; withdrawableCommission: number
-  joinDate: string; source: string; status: string
+  joinDate: string; source: string; status: string; loginName: string
   commissions: Commission[]
 }
 
@@ -31,6 +33,7 @@ const levelTabs = ['全部', '银牌', '金牌', '钻石']
 
 const filteredDistributors = computed(() => {
   let list = distributors.value
+  if(sourceFilter.value!=='全部来源')list=list.filter(d=>d.source===sourceFilter.value)
   
   // Tab level filter
   if (activeLevelTab.value !== '全部') {
@@ -159,7 +162,8 @@ async function fetchDistributors() {
       totalCommission: yuan(row.total_commission),
       withdrawableCommission: yuan(row.available_commission),
       joinDate: formatDate(row.created_at),
-      source: '推荐绑定',
+      source: row.source_type==='backend'?'后台创建':'小程序',
+      loginName: row.login_name || '',
       status: row.status || 'active',
       commissions: []
     }))
@@ -193,6 +197,7 @@ onMounted(fetchDistributors)
 
 const operationColumnWidth = computed(() => {
   if (paginatedDistributors.value.length === 0) return '80px'
+  if (paginatedDistributors.value.some(row => row.source === '后台创建')) return '400px'
   return '140px'
 })
 
@@ -212,6 +217,8 @@ watch(operationColumnWidth, () => {
         <div class="page-title-sub">管理分销推广渠道与推广人员</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
+        <select v-model="sourceFilter" class="form-control"><option>全部来源</option><option>后台创建</option><option>小程序</option></select>
+        <BackendPromoterActions @saved="fetchDistributors" />
         <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出报表</button>
       </div>
     </div>
@@ -266,6 +273,7 @@ watch(operationColumnWidth, () => {
                   <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
                     <div style="font-weight:600;color:#1F2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.name }}</div>
                     <div style="font-size:11px;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.phone }}</div>
+                    <div style="font-size:12px;color:#64748b;">{{ row.source }}<span v-if="row.loginName"> · {{ row.loginName }}</span></div>
                   </div>
                 </div>
               </td>
@@ -281,13 +289,14 @@ watch(operationColumnWidth, () => {
               <td style="font-weight:600;color:#22C55E;">¥{{ row.withdrawableCommission.toLocaleString() }}</td>
               <td>
                 <span :class="['status-tag', row.status === 'active' ? 'green' : 'gray']">
-                  {{ row.status === 'active' ? '活跃' : '低活跃' }}
+                  {{ row.status === 'active' ? '正常' : row.status === 'pending' ? '待激活' : '已停用' }}
                 </span>
               </td>
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;">
                   <button class="btn btn-xs btn-outline" @click="router.push('/promoter/detail/' + row.id)">详情</button>
                   <button class="btn btn-xs btn-outline" @click="openDetail(row)">明细</button>
+                  <BackendPromoterActions v-if="row.source==='后台创建'" :promoter-id="row.id" :status="row.status" @saved="fetchDistributors" />
                 </div>
               </td>
             </tr>

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { generateUniquePatientNo } from './patientNo.js';
 import { initDeliverySchema } from './delivery-schema.js';
+import { initBackendPromoterSchema } from './backend-promoter-schema.js';
 import { initPatientProfileSchema } from './patient-profile-schema.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -2323,6 +2324,7 @@ export const initDB = async () => {
 
   // Re-enable Foreign Key checks
   await initDeliverySchema(query);
+  await initBackendPromoterSchema(query);
   await query('SET FOREIGN_KEY_CHECKS = 1;');
 
   console.log('MySQL Database tables verified/created successfully.');

@@ -91,6 +91,7 @@ interface Appointment {
   time: string;
   type: string;
   source: string;
+  referralPromoter: string;
   status: string;
   createdAt: string;
 }
@@ -195,6 +196,7 @@ const fetchAppointments = async () => {
       time: item.appointment_time,
       type: formatAppointmentType(item.type),
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '到店',
+      referralPromoter: item.referral_promoter_name || '',
       status: item.status === 'arrived' || item.status === 'settled' ? 'arrived' : item.status === 'completed' ? 'completed' : item.status === 'checked_in' ? 'checked_in' : item.status === 'confirmed' || item.status === 'waiting' || item.status === 'called' ? 'waiting' : item.status === 'pending' ? 'pending' : item.status === 'pending_payment' ? 'pending_payment' : item.status === 'no_show' ? 'no_show' : 'cancelled',
       createdAt: item.created_at ? formatShanghaiDateTime(item.created_at) : '',
       consult_fee: item.consult_fee || 0,
@@ -1033,6 +1035,7 @@ async function submitCheckout() {
                 <t-tag size="small" variant="light" :theme="row.source === '小程序' ? 'success' : 'primary'">
                   {{ row.source }}
                 </t-tag>
+                <div v-if="row.referralPromoter">推荐人：{{ row.referralPromoter }}</div>
               </td>
               <td>
                 <t-tag

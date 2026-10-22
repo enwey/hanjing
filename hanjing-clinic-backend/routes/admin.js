@@ -8,6 +8,8 @@ import { registerDeliveryWorkflow } from '../delivery-workflow.js';
 import { signPrivateUploadResponses, registerPrivateUpload, privateUploadPath, canReadPrivateUpload } from '../private-uploads.js';
 import { validateProduct } from '../product-validation.js';
 import { hasAdminPermission } from '../admin-permissions.js';
+import { snapshotReferralOrder } from '../backend-referrals.js';
+import { registerBackendPromoterAdmin } from '../backend-promoter-admin.js';
 import { cancelPendingProductOrder, finalizePaidProductOrder, createPendingDistributionCommission } from './client.js';
 import { createPaidFulfillment } from '../paid-fulfillment.js';
 import { readStoreReport } from '../operations-report.js';
@@ -54,6 +56,7 @@ import {
 
 const app = createAsyncRouter();
 app.use(signPrivateUploadResponses);
+registerBackendPromoterAdmin(app);
 registerDeliveryWorkflow(app);
 
 app.get('/api/admin/reports/store', authenticateToken, async (req, res) => {
@@ -1305,7 +1308,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
 
       const offset = (page - 1) * pageSize;
       const dataSql = `
-        SELECT a.*, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
+        SELECT a.*, (SELECT nickname FROM distributors WHERE id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         WHERE 1=1 ${listWhere}
@@ -1330,7 +1333,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
       });
     } else {
       const dataSql = `
-        SELECT a.*, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
+        SELECT a.*, (SELECT nickname FROM distributors WHERE id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         WHERE 1=1 ${listWhere}
@@ -1358,7 +1361,7 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   try {
     await autoUpdateExpiredAppointments();
     let sql = `
-      SELECT a.*, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
+      SELECT a.*, (SELECT nickname FROM distributors WHERE id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
              p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history,
              COALESCE(ml.code, 'normal') AS member_level
       FROM appointments a
@@ -2290,9 +2293,9 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
               (
                 SELECT COALESCE(d.nickname, pu.nickname, pu.phone)
                 FROM distribution_relationships dr
-                JOIN users pu ON dr.parent_user_id = pu.id
-                LEFT JOIN distributors d ON d.user_id = pu.id
-                WHERE dr.child_user_id = p.user_id
+                LEFT JOIN users pu ON dr.parent_user_id = pu.id
+                LEFT JOIN distributors d ON d.user_id = pu.id OR d.id=dr.parent_distributor_id
+                WHERE dr.child_user_id = p.user_id AND dr.level=1
                 ORDER BY dr.created_at ASC
                 LIMIT 1
               ) as referrer_name
@@ -5149,16 +5152,16 @@ app.get('/api/admin/distribution/promoters/:id', authenticateToken, async (req, 
   const { id } = req.params;
   try {
     const promoter = await get(
-      `SELECT d.*, u.phone as user_phone, u.nickname as user_nickname, u.created_at as user_reg_date
+      `SELECT d.*, COALESCE(d.contact_phone,u.phone) as user_phone, u.nickname as user_nickname, u.created_at as user_reg_date
        FROM distributors d
-       JOIN users u ON d.user_id = u.id
+       LEFT JOIN users u ON d.user_id = u.id
        WHERE d.id = ?`,
       [id]
     );
     if (!promoter) return res.status(404).json({ code: 404, message: '推广员不存在' });
 
-    const l1Count = await get('SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 1', [promoter.user_id]);
-    const l2Count = await get('SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 2', [promoter.user_id]);
+    const l1Count = await get('SELECT COUNT(*) as count FROM distribution_relationships WHERE (parent_user_id = ? OR parent_distributor_id=?) AND level = 1', [promoter.user_id,promoter.id]);
+    const l2Count = await get('SELECT COUNT(*) as count FROM distribution_relationships WHERE (parent_user_id = ? OR parent_distributor_id=?) AND level = 2', [promoter.user_id,promoter.id]);
     const orderStats = await get(
       `SELECT COUNT(*) as count, COALESCE(SUM(order_amount), 0) as amount
        FROM distribution_orders
@@ -5168,7 +5171,7 @@ app.get('/api/admin/distribution/promoters/:id', authenticateToken, async (req, 
 
     const parent = await get(
       `SELECT d.nickname FROM distributors d
-       JOIN distribution_relationships dr ON d.user_id = dr.parent_user_id
+       JOIN distribution_relationships dr ON d.user_id = dr.parent_user_id OR d.id=dr.parent_distributor_id
        WHERE dr.child_user_id = ? AND dr.level = 1`,
       [promoter.user_id]
     );
@@ -5181,7 +5184,7 @@ app.get('/api/admin/distribution/promoters/:id', authenticateToken, async (req, 
         avatar_url: promoter.avatar_url,
         level: promoter.level,
         code: promoter.invite_code,
-        phone: promoter.user_phone,
+        phone: decryptPII(promoter.user_phone)||'',
         regDate: promoter.created_at,
         status: promoter.status,
         parentName: parent?.nickname || '无（自主加入）',
@@ -5234,8 +5237,8 @@ app.get('/api/admin/distribution/promoters/:id/team', authenticateToken, async (
        FROM distribution_relationships dr
        JOIN users u ON dr.child_user_id = u.id
        LEFT JOIN distributors d ON u.id = d.user_id
-       WHERE dr.parent_user_id = ? AND dr.level = 1`,
-      [promoter.user_id]
+       WHERE (dr.parent_user_id = ? OR dr.parent_distributor_id=?) AND dr.level = 1`,
+      [promoter.user_id,id]
     );
 
     const l2 = await query(
@@ -5243,8 +5246,8 @@ app.get('/api/admin/distribution/promoters/:id/team', authenticateToken, async (
        FROM distribution_relationships dr
        JOIN users u ON dr.child_user_id = u.id
        LEFT JOIN distributors d ON u.id = d.user_id
-       WHERE dr.parent_user_id = ? AND dr.level = 2`,
-      [promoter.user_id]
+       WHERE (dr.parent_user_id = ? OR dr.parent_distributor_id=?) AND dr.level = 2`,
+      [promoter.user_id,id]
     );
 
     res.json({
@@ -5277,8 +5280,12 @@ app.get('/api/admin/distribution/promoters/:id/team', authenticateToken, async (
 app.put('/api/admin/distribution/promoters/:id/status', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
+  if (!['active','disabled','inactive'].includes(status)) return res.status(400).json({code:400,message:'推广员状态无效'});
   try {
-    await run('UPDATE distributors SET status = ? WHERE id = ?', [status || 'active', id]);
+    await transaction(async conn => {
+      await conn.execute('UPDATE distributors SET status = ? WHERE id = ?', [status, id]);
+      await conn.execute('UPDATE promoter_accounts SET token_version=token_version+1 WHERE distributor_id=?', [id]);
+    });
     res.json({ code: 200, message: '状态修改成功' });
   } catch (error) {
     console.error(error);
@@ -5294,7 +5301,7 @@ app.get('/api/admin/distribution/overview', authenticateToken, async (req, res) 
          COUNT(*) as promoters_count,
          SUM(CASE WHEN status = 'active' AND EXISTS (
            SELECT 1 FROM distribution_relationships r
-           WHERE r.parent_user_id = distributors.user_id AND r.level = 1
+           WHERE (r.parent_user_id = distributors.user_id OR r.parent_distributor_id=distributors.id) AND r.level = 1
          ) THEN 1 ELSE 0 END) as active_promoters
        FROM distributors`
     );
@@ -5352,6 +5359,7 @@ app.get('/api/admin/products', authenticateToken, async (req, res) => {
     const list = await query(
       `SELECT p.id, p.name, p.category, pc.name AS category_name, p.image_url, p.price, p.description, p.stock, p.sales_count,
               p.is_distribution, p.commission_rate, p.commission_rate_level1, p.commission_rate_level2,
+              p.backend_referral_enabled, p.backend_rate_x, p.backend_rate_y,
               p.status, p.deleted_at, p.created_at, p.original_price, p.gallery_urls
        FROM products p
        LEFT JOIN product_categories pc ON pc.code = p.category
@@ -5476,8 +5484,8 @@ app.post('/api/admin/products', authenticateToken, async (req, res) => {
     const level1Rate = Number(commission_rate_level1 !== undefined ? commission_rate_level1 : commission_rate || 0);
     const level2Rate = Number(commission_rate_level2 || 0);
     const result = await run(
-      `INSERT INTO products (name, category, image_url, price, description, stock, is_distribution, commission_rate, commission_rate_level1, commission_rate_level2, status, original_price, gallery_urls)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO products (name, category, image_url, price, description, stock, is_distribution, commission_rate, commission_rate_level1, commission_rate_level2, status, original_price, gallery_urls,backend_referral_enabled,backend_rate_x,backend_rate_y)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
         normalizedCategory,
@@ -5491,7 +5499,8 @@ app.post('/api/admin/products', authenticateToken, async (req, res) => {
         level2Rate,
         status === 'on' ? 'on' : 'off',
         original_price ? Number(original_price) : null,
-        galleryUrlsVal
+        galleryUrlsVal,
+        req.body.backend_referral_enabled?1:0, Number(req.body.backend_rate_x||0), Number(req.body.backend_rate_y||0)
       ]
     );
     await logAdminAction(req.user.id, 'create_product', 'product', result.id, { name, is_distribution: !!is_distribution });
@@ -5523,6 +5532,7 @@ app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
       const validation = validateProduct({ ...product, ...req.body,
         commission_rate_level1: req.body.commission_rate_level1 ?? req.body.commission_rate ?? product.commission_rate_level1 });
       if (validation) throw businessError(validation, 400);
+      await conn.execute('UPDATE products SET backend_referral_enabled=?,backend_rate_x=?,backend_rate_y=? WHERE id=?',[req.body.backend_referral_enabled===undefined?product.backend_referral_enabled:(req.body.backend_referral_enabled?1:0),Number(req.body.backend_rate_x??product.backend_rate_x),Number(req.body.backend_rate_y??product.backend_rate_y),id]);
       if (req.body.stock !== undefined) {
         const expected = req.body.expected_stock;
         if (typeof expected !== 'number' || !Number.isSafeInteger(expected) || expected < 0) {
@@ -5633,10 +5643,10 @@ app.get('/api/admin/distribution/products', authenticateToken, async (req, res) 
 app.get('/api/admin/distribution/withdraws', authenticateToken, async (req, res) => {
   try {
     const list = await query(
-      `SELECT w.*, u.nickname, u.phone, d.nickname as promoter_name
+      `SELECT w.*, COALESCE(d.nickname,u.nickname) AS nickname, COALESCE(d.contact_phone,u.phone) AS phone, d.nickname as promoter_name
        FROM withdraw_records w
-       JOIN users u ON w.user_id = u.id
-       LEFT JOIN distributors d ON u.id = d.user_id
+       LEFT JOIN users u ON w.user_id = u.id
+       LEFT JOIN distributors d ON d.id=w.distributor_id OR (w.distributor_id IS NULL AND u.id = d.user_id)
        ORDER BY w.created_at DESC`
     );
     res.json({
@@ -5710,7 +5720,7 @@ app.get('/api/admin/distribution/leaderboard', authenticateToken, async (req, re
   try {
     const list = await query(
       `SELECT d.id, d.nickname, d.avatar_url, d.level, d.total_commission,
-             (SELECT COUNT(*) FROM distribution_relationships WHERE parent_user_id = d.user_id) as invites
+             (SELECT COUNT(*) FROM distribution_relationships WHERE parent_user_id = d.user_id OR parent_distributor_id=d.id) as invites
        FROM distributors d
        ORDER BY d.total_commission DESC
        LIMIT 10`
@@ -6891,7 +6901,7 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
         visited.add(String(ancestor));
         await readOne('SELECT id FROM users WHERE id = ? FOR UPDATE', [ancestor]);
         const relation = await readOne(
-          'SELECT parent_user_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1',
+          'SELECT parent_user_id,parent_distributor_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1',
           [ancestor]);
         if (String(ancestor) === String(parentUserId)) grandParent = relation;
         ancestor = relation ? relation.parent_user_id : null;
@@ -6906,8 +6916,8 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
         [parentUserId, childUserId]);
       if (grandParent) {
         await conn.execute(
-          'INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 2)',
-          [grandParent.parent_user_id, childUserId]);
+          'INSERT INTO distribution_relationships (parent_user_id,parent_distributor_id, child_user_id, level) VALUES (?, ?, ?, 2)',
+          [grandParent.parent_user_id,grandParent.parent_distributor_id||null, childUserId]);
       }
       if (promoter.status === 'pending') {
         await conn.execute(
@@ -7030,6 +7040,7 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
           if (changed.affectedRows !== 1) fail('商品库存不足，请刷新后重试', 409);
         }
       }
+      await snapshotReferralOrder(conn, created.insertId, appointment?.id);
       const [[order]] = await conn.execute('SELECT * FROM orders WHERE id=?', [created.insertId]);
       let fulfillmentCaseId = null;
       if (!isDeferredWechatPay) {

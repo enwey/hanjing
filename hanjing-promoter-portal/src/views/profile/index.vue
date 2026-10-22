@@ -9,6 +9,7 @@ const saving = ref(false)
 const form = ref({
   nickname: '',
   phone: '',
+  loginName: '',
   role_name: '',
   levelLabel: '',
   inviteCode: ''
@@ -21,6 +22,7 @@ async function loadProfile() {
     form.value = {
       nickname: res.data.nickname || '',
       phone: res.data.phone || '',
+      loginName: res.data.login_name || '',
       role_name: res.data.role_name || '',
       levelLabel: res.data.levelLabel || '',
       inviteCode: res.data.inviteCode || ''
@@ -56,7 +58,7 @@ onMounted(loadProfile)
     <div class="profile-header">
       <div>
         <div class="profile-title">账号资料</div>
-        <div class="profile-sub">维护当前推广员昵称，手机号作为登录账号展示，不在此处修改。</div>
+        <div class="profile-sub">维护当前推广员昵称，登录账号由运营后台独立创建，手机号仅作联系方式。</div>
       </div>
     </div>
 
@@ -66,6 +68,10 @@ onMounted(loadProfile)
       <label class="profile-field">
         <span>昵称</span>
         <input v-model="form.nickname" />
+      </label>
+      <label class="profile-field is-readonly">
+        <span>登录账号</span>
+        <input :value="form.loginName" readonly />
       </label>
       <label class="profile-field is-readonly">
         <span>手机号</span>
