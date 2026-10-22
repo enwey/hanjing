@@ -1,5 +1,6 @@
 import { getCurrentUserMembership, getMemberLevelRules, syncUserMembership } from '../membership.js';
 import { createPaidFulfillment } from '../paid-fulfillment.js';
+import { syncDirectChildrenSecondLevel } from '../distribution-relationships.js';
 import { authorizeUpload, signPrivateUploadResponses, registerPrivateUpload, privateUploadPath, canReadPrivateUpload } from '../private-uploads.js';
 import { applyRefund, completeRefund } from '../refunds.js';
 import express from 'express';
@@ -1445,10 +1446,18 @@ export async function createPendingDistributionCommission(conn, order, userId) {
   const query = async (sql, params = []) => (await conn.execute(sql, params))[0];
   const get = async (sql, params = []) => (await query(sql, params))[0] || null;
   const relationships = await query(
-    `SELECT parent_user_id, level FROM distribution_relationships WHERE child_user_id = ? ORDER BY level ASC`,
-    [userId]
+    `SELECT parent_user_id, 1 AS level FROM distribution_relationships WHERE child_user_id = ? AND level = 1
+     UNION ALL
+     SELECT upper_edge.parent_user_id, 2 AS level
+     FROM distribution_relationships direct_edge
+     JOIN distribution_relationships upper_edge ON upper_edge.child_user_id = direct_edge.parent_user_id AND upper_edge.level = 1
+     WHERE direct_edge.child_user_id = ? AND direct_edge.level = 1`,
+    [userId, userId]
   );
   if (!relationships || relationships.length === 0) return;
+
+  const featureConfig = await getDistributionFeatureConfig(conn);
+  if (!featureConfig.enableDistribution) return;
 
   const buyer = await get(`SELECT nickname, phone FROM users WHERE id = ?`, [userId]);
   const buyerName = buyer
@@ -2257,8 +2266,8 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
       let advice = '暂无建议';
       if (item.risk_level === 'normal' || item.risk_level === 'low') advice = '您的鼾声分析在正常范围内，睡眠呼吸暂停风险较低。';
       else if (item.risk_level === 'mild') advice = '您的鼾声分析显示有轻度风险，可能存在间歇性打鼾，建议侧卧睡眠并注意观察。';
-      else if (item.risk_level === 'moderate') advice = '您的鼾声分析显示中度风险，有明显的呼吸暂停征兆。建议预约线下门诊进行睡眠呼吸阻鼾器适配评估。';
-      else advice = '您的鼾声分析显示重度风险，Apnea事件频发。强烈建议尽早前往诊所进行多导睡眠监测（PSG）或佩戴舌型阻鼾器。';
+      else if (item.risk_level === 'moderate') advice = '本次录音分析提示中度风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
+      else advice = '本次录音分析提示较高风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
 
       return {
         id: 'snore-' + item.id,
@@ -2272,7 +2281,8 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
           peakDecibel: item.peak_decibel,
           snoreRate: item.snore_rate,
           apneaEvents: item.apnea_events,
-          riskLevel: item.risk_level
+          riskLevel: item.risk_level,
+          riskScore: item.risk_score == null ? null : item.risk_score
         },
         recommendation: advice,
         createdAt: formatDateTimeInShanghai(item.created_at)
@@ -2316,8 +2326,18 @@ app.get('/api/v1/assessments/ess-questions', authenticateWxToken, (req, res) => 
 // POST /api/v1/assessments/ess
 app.post('/api/v1/assessments/ess', authenticateWxToken, async (req, res) => {
   const { answers, patientId } = req.body;
-  if (!answers || !Array.isArray(answers)) {
-    return res.status(400).json({ code: 400, message: '答案不能为空且必须是数组' });
+  if (!Array.isArray(answers) || answers.length !== 8 ||
+      !answers.every(value => Number.isInteger(value) && value >= 0 && value <= 3)) {
+    return res.status(400).json({ code: 400, message: '请提交完整的8题答案，每题必须为0至3的整数' });
+  }
+
+  let verifiedPatient;
+  try {
+    verifiedPatient = await resolveUserPatient(req, 'body');
+    if (!verifiedPatient) return res.status(400).json({ code: 400, message: '请先建立就诊人档案' });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    return res.status(status).json({ code: status, message: status === 404 ? error.message : '无法核验就诊人' });
   }
 
   try {
@@ -2328,13 +2348,7 @@ app.post('/api/v1/assessments/ess', authenticateWxToken, async (req, res) => {
     else if (totalScore <= 15) riskLevel = 'moderate';
     else riskLevel = 'severe';
 
-    let dbPatientId = null;
-    if (patientId && patientId !== 'pat-self') {
-      dbPatientId = Number(patientId);
-    } else {
-      const selfPatient = await getSelfPatientForUser(req.user.id);
-      if (selfPatient) dbPatientId = selfPatient.id;
-    }
+    const dbPatientId = verifiedPatient.id;
 
     const normalizedAnswers = JSON.stringify(answers);
     const recentDuplicate = await get(
@@ -2425,7 +2439,12 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
 
   if (client_side_analysis) {
     try {
-      const { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel } = analysis_result || {};
+      const { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel, riskScore } = analysis_result || {};
+      const scoreRanges = { normal: [0, 29], low: [0, 29], mild: [30, 49], moderate: [50, 69], severe: [70, 100], high: [70, 100] };
+      const scoreRange = scoreRanges[riskLevel];
+      if (riskScore != null && (!Number.isInteger(riskScore) || !scoreRange || riskScore < scoreRange[0] || riskScore > scoreRange[1])) {
+        return res.status(400).json({ code: 400, message: '风险分数无效或与评级不一致' });
+      }
       if (
         ![avgDecibel, peakDecibel, snoreRate, apneaEvents].every(Number.isFinite) ||
         avgDecibel < 0 || peakDecibel < avgDecibel || peakDecibel > 160 ||
@@ -2435,9 +2454,29 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
       ) {
         return res.status(400).json({ code: 400, message: '离线分析结果无效' });
       }
-      const result = await run(
-        `INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      const localId = req.body.localId;
+      if (localId !== undefined && (typeof localId !== 'string' || !localId.trim() || localId.length > 128)) {
+        return res.status(400).json({ code: 400, message: '录音记录标识无效' });
+      }
+      // Legacy queues already carry a stable timestamp. New recordings send
+      // the same localId on their initial upload and every subsequent retry.
+      const identity = localId ? 'id:' + localId :
+        (Number.isSafeInteger(req.body.timestamp) && req.body.timestamp > 0 ? 'time:' + req.body.timestamp + ':patient:' + dbPatientId : null);
+      const clientKey = identity ? crypto.createHash('sha256').update(identity).digest('hex') : null;
+      const payloadHash = crypto.createHash('sha256').update(JSON.stringify([
+        dbPatientId, durationSeconds, avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel
+      ])).digest('hex');
+      const findExisting = () => get(
+        'SELECT id, client_payload_hash, risk_score FROM snore_assessments WHERE user_id = ? AND client_record_key = ?',
+        [req.user.id, clientKey]
+      );
+      let existing = clientKey ? await findExisting() : null;
+      let result;
+      if (!existing) {
+        try {
+          result = await run(
+        `INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level, client_record_key, client_payload_hash, risk_score)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           req.user.id,
           dbPatientId,
@@ -2447,9 +2486,25 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
           Number(peakDecibel),
           Number(snoreRate),
           Number(apneaEvents),
-          String(riskLevel)
+          String(riskLevel),
+          clientKey,
+          payloadHash,
+          riskScore == null ? null : riskScore
         ]
       );
+        } catch (error) {
+          if (!clientKey || error.code !== 'ER_DUP_ENTRY') throw error;
+          existing = await findExisting();
+          if (!existing) throw error;
+        }
+      }
+      if (existing) {
+        if (existing.client_payload_hash !== payloadHash ||
+            (riskScore != null && existing.risk_score != null && riskScore !== existing.risk_score)) {
+          return res.status(409).json({ code: 409, message: '录音记录标识已用于不同内容' });
+        }
+        result = { id: existing.id };
+      }
 
       let advice = '';
       if (riskLevel === 'normal' || riskLevel === 'low') advice = '本次录音筛查风险较低。结果仅供健康筛查参考，不能替代医生诊断。';
@@ -2473,6 +2528,7 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
             snoreRate: Number(snoreRate),
             apneaEvents: Number(apneaEvents),
             riskLevel: String(riskLevel),
+            riskScore: existing ? (existing.risk_score == null ? null : existing.risk_score) : (riskScore == null ? null : riskScore),
             advice
           },
           riskLevel: String(riskLevel),
@@ -2595,8 +2651,8 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
       let advice = '';
       if (item.risk_level === 'normal' || item.risk_level === 'low') advice = '您的鼾声分析在正常范围内，睡眠呼吸暂停风险较低。';
       else if (item.risk_level === 'mild') advice = '您的鼾声分析显示有轻度风险，可能存在间歇性打鼾，建议侧卧睡眠并注意观察。';
-      else if (item.risk_level === 'moderate') advice = '您的鼾声分析显示中度风险，有明显的呼吸暂停征兆。建议预约线下门诊进行睡眠呼吸阻鼾器适配评估。';
-      else advice = '您的鼾声分析显示重度风险，Apnea事件频发。强烈建议尽早前往诊所进行多导睡眠监测（PSG）或佩戴舌型阻鼾器。';
+      else if (item.risk_level === 'moderate') advice = '本次录音分析提示中度风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
+      else advice = '本次录音分析提示较高风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
 
       return res.json({
         code: 0,
@@ -2613,7 +2669,8 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
             peakDecibel: item.peak_decibel,
             snoreRate: item.snore_rate,
             apneaEvents: item.apnea_events,
-            riskLevel: item.risk_level
+            riskLevel: item.risk_level,
+            riskScore: item.risk_score == null ? null : item.risk_score
           },
           recommendation: advice,
           createdAt: formatDateTimeInShanghai(item.created_at)
@@ -7118,6 +7175,7 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
           'INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 2)',
           [grandParent.parent_user_id, childUserId]);
       }
+      await syncDirectChildrenSecondLevel(conn, childUserId, parentUserId);
       return 'bound';
     });
     const messages = {

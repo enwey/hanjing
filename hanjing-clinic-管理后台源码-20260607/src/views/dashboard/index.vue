@@ -1,14 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import request from '@/utils/request'
 import { formatShanghaiDateOnly } from '@/utils/dateTime'
 
 const router = useRouter()
-const filterTime = ref(localStorage.getItem('dashboard_filter_time') || 'month')
-const chartFilterTime = ref(localStorage.getItem('dashboard_chart_filter_time') || 'month')
-const activeTrendType = ref<'appointment' | 'revenue'>((localStorage.getItem('dashboard_active_trend_type') as any) || 'appointment')
+type DashboardRange = 'today' | 'week' | 'month'
+type TrendType = 'appointment' | 'revenue'
+const readDashboardRange = (key: string): DashboardRange => {
+  const value = localStorage.getItem(key)
+  if (value === 'today' || value === 'week' || value === 'month') return value
+  localStorage.setItem(key, 'month')
+  return 'month'
+}
+const readTrendType = (): TrendType => {
+  const value = localStorage.getItem('dashboard_active_trend_type')
+  if (value === 'appointment' || value === 'revenue') return value
+  localStorage.setItem('dashboard_active_trend_type', 'appointment')
+  return 'appointment'
+}
+const filterTime = ref<DashboardRange>(readDashboardRange('dashboard_filter_time'))
+const chartFilterTime = ref<DashboardRange>(readDashboardRange('dashboard_chart_filter_time'))
+const activeTrendType = ref<TrendType>(readTrendType())
 
 // KPI cards ref
 const kpiCards = ref([
@@ -21,7 +35,9 @@ const kpiCards = ref([
 const updateTimeStr = ref('尚未加载')
 const statsError = ref('')
 const chartError = ref('')
-const listsError = ref('')
+const appointmentListError = ref('')
+const orderListError = ref('')
+const listsError = computed(() => [appointmentListError.value, orderListError.value].filter(Boolean).join('；'))
 let statsRequest = 0
 let chartRequest = 0
 
@@ -267,11 +283,13 @@ const fetchTrendChartData = async () => {
 
 // Fetch Lists
 const fetchDataLists = async () => {
+  appointmentListError.value = ''
+  orderListError.value = ''
   try {
-    // 1. Fetch appointments
     const apptsRes: any = await request.get('/api/admin/appointments?tab=today')
     todayAppointments.value = apptsRes.data.slice(0, 5).map((a: any) => ({
-      patient: a.patient_name,
+      id: a.id,
+      patient: a.patient_name || '未知患者',
       avatarColor: a.patient_gender === 1 ? '#5A85F5' : '#EC4899',
       doctor: a.doctor_name,
       time: a.appointment_time,
@@ -279,13 +297,18 @@ const fetchDataLists = async () => {
       statusTheme: a.status === 'arrived' ? 'green' : a.status === 'completed' ? 'danger' : a.status === 'checked_in' ? 'orange' : a.status === 'confirmed' ? 'blue' : a.status === 'pending' ? 'green' : 'gray'
     }))
 
-    // 2. Fetch orders
+  } catch (error) {
+    todayAppointments.value = []
+    appointmentListError.value = '今日预约加载失败'
+  }
+
+  try {
     const ordersRes: any = await request.get('/api/admin/orders')
     latestOrders.value = ordersRes.data.slice(0, 5).map((o: any) => {
       const prodName = o.items && o.items[0] ? o.items[0].product_name : '订单商品'
       const productDesc = o.items && o.items.length > 1 ? `${prodName} 等${o.items.length}件` : prodName
       return {
-        orderNo: '#' + o.order_no.substring(o.order_no.length - 8),
+        orderNo: '#' + String(o.order_no || '未知订单').slice(-8),
         product: productDesc,
         amount: '¥' + (o.pay_amount / 100).toFixed(2),
         status: o.status === 'completed' ? '已完成' : o.status === 'paid' ? '已支付' : o.status === 'pending' ? '待付款' : ({ shipping: '待发货', shipped: '已发货', processing: '处理中', cancelled: '已取消', refund_pending: '退款待审核', refunding: '退款处理中', refunded: '已退款' } as Record<string, string>)[o.status] || '未知状态',
@@ -293,11 +316,12 @@ const fetchDataLists = async () => {
       }
     })
   } catch (error) {
-    todayAppointments.value = []
     latestOrders.value = []
-    listsError.value = '预约或订单列表加载失败'
+    orderListError.value = '最新订单加载失败'
   }
 }
+
+const handleChartResize = () => chart?.resize()
 
 watch(filterTime, (newVal) => {
   localStorage.setItem('dashboard_filter_time', newVal)
@@ -356,15 +380,19 @@ onMounted(() => {
       ]
     })
 
-    window.addEventListener('resize', () => {
-      chart?.resize()
-    })
+    window.addEventListener('resize', handleChartResize)
   }
 
   // Load real data
   fetchDashboardStats()
   fetchTrendChartData()
   fetchDataLists()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleChartResize)
+  chart?.dispose()
+  chart = null
 })
 </script>
 
@@ -376,7 +404,7 @@ onMounted(() => {
         <div class="page-title">数据看板</div>
         <div class="page-title-sub">数据更新时间：{{ updateTimeStr }}</div>
       </div>
-      <div style="display: flex; gap: 8px;">
+      <div class="page-filter-actions">
         <button :class="['btn', filterTime === 'today' ? 'btn-primary' : 'btn-outline']" @click="filterTime = 'today'">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -426,7 +454,7 @@ onMounted(() => {
     </div>
 
     <!-- Charts Area Grid -->
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px;">
+    <div class="dashboard-grid dashboard-grid-charts">
       <!-- Reservation Trend -->
       <div class="panel">
         <div class="panel-header">
@@ -485,13 +513,14 @@ onMounted(() => {
     </div>
 
     <!-- Bottom Tables Grid -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+    <div class="dashboard-grid dashboard-grid-tables">
       <!-- Today's Appointments -->
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">今日预约</div>
           <button class="btn btn-sm btn-outline" @click="router.push('/appointment')">查看全部</button>
         </div>
+        <div class="table-scroll">
         <table class="data-table">
           <thead>
             <tr>
@@ -502,7 +531,7 @@ onMounted(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="app in todayAppointments" :key="app.patient">
+            <tr v-for="app in todayAppointments" :key="app.id">
               <td>
                 <div class="name-cell">
                   <div class="avatar-sm" :style="{ background: app.avatarColor }">{{ app.patient.slice(0, 1) }}</div>
@@ -515,8 +544,12 @@ onMounted(() => {
                 <span :class="['status-tag', app.statusTheme]">{{ app.status }}</span>
               </td>
             </tr>
+            <tr v-if="!todayAppointments.length">
+              <td colspan="4" class="table-empty">{{ appointmentListError || '暂无今日预约' }}</td>
+            </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- Latest Orders -->
@@ -525,6 +558,7 @@ onMounted(() => {
           <div class="panel-title">最新订单</div>
           <button class="btn btn-sm btn-outline" @click="router.push('/order')">查看全部</button>
         </div>
+        <div class="table-scroll">
         <table class="data-table">
           <thead>
             <tr>
@@ -543,8 +577,12 @@ onMounted(() => {
                 <span :class="['status-tag', order.statusTheme]">{{ order.status }}</span>
               </td>
             </tr>
+            <tr v-if="!latestOrders.length">
+              <td colspan="4" class="table-empty">{{ orderListError || '暂无最新订单' }}</td>
+            </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   </div>
@@ -598,6 +636,21 @@ onMounted(() => {
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 24px;
+}
+.page-filter-actions {
+  display: flex;
+  gap: 8px;
+}
+.dashboard-grid {
+  display: grid;
+  gap: 20px;
+}
+.dashboard-grid-charts {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  margin-bottom: 24px;
+}
+.dashboard-grid-tables {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .stat-card {
   border-radius: 16px;
@@ -784,6 +837,19 @@ onMounted(() => {
   width: 100%;
   border-collapse: collapse;
 }
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.table-scroll .data-table {
+  min-width: 520px;
+}
+.data-table td.table-empty {
+  height: 96px;
+  text-align: center;
+  color: #9CA3AF;
+  background: #fff;
+}
 .data-table th {
   text-align: left;
   padding: 12px 16px;
@@ -843,4 +909,42 @@ onMounted(() => {
 .status-tag.gold { background: #FFF9E6; color: #D4930A; }
 .status-tag.gray { background: #F3F4F6; color: #6B7280; }
 .status-tag.red { background: #FEF2F2; color: #DC2626; }
+
+@media (max-width: 1100px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dashboard-grid-charts,
+  .dashboard-grid-tables {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .page-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .page-filter-actions {
+    width: 100%;
+  }
+  .page-filter-actions .btn {
+    flex: 1;
+    justify-content: center;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .stat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .stat-card {
+    padding: 20px;
+  }
+  .panel-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
 </style>

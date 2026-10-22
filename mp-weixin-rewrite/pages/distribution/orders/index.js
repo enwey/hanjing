@@ -73,17 +73,28 @@ Page({
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onHide() {
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+  },
+
+  onUnload() {
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+  },
+
   async loadPage(options = {}) {
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
     }
     try {
       const response = await api.getDistributionOrders();
+      if (requestId !== this._loadRequestId) return;
       const orders = unwrapList(response).map(normalizeDistributionOrder);
       this.setData({ hasLoaded: true, loading: false, orders });
       this.refreshVisibleOrders(this.data.selectedStatus, orders);
     } catch (error) {
+      if (requestId !== this._loadRequestId) return;
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,

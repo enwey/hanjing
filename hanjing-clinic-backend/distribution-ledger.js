@@ -4,9 +4,10 @@ export function businessError(message, statusCode = 400) {
   return Object.assign(new Error(message), { statusCode });
 }
 
-export async function getDistributionFeatureConfig() {
-  const rows = await query(`SELECT key_name, key_value FROM system_settings
-    WHERE key_name IN ('distribution_settle_days','enable_distribution','min_withdraw','withdraw_fee_rate')`);
+export async function getDistributionFeatureConfig(conn = null) {
+  const sql = `SELECT key_name, key_value FROM system_settings
+    WHERE key_name IN ('distribution_settle_days','enable_distribution','min_withdraw','withdraw_fee_rate')`;
+  const rows = conn ? (await conn.execute(sql))[0] : await query(sql);
   const values = Object.fromEntries(rows.map(row => [row.key_name, row.key_value]));
   if (Object.keys(values).length !== 4 || Object.values(values).some(value => String(value).trim() === '')) {
     throw businessError('请先配置结算天数、分销开关、最低提现金额和手续费率', 503);

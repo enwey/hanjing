@@ -1,0 +1,7 @@
+{
+  "chunk_id": "c45949",
+  "wall_time_seconds": 1.7097489000000001,
+  "exit_code": 0,
+  "original_token_count": 208,
+  "output": "{\n  \"total\": 6,\n  \"passed\": 6,\n  \"results\": [\n    {\n      \"url\": \"http://127.0.0.1:5005/health/ready\",\n      \"expected\": 200,\n      \"status\": \"PASS\",\n      \"http\": 200\n    },\n    {\n      \"url\": \"http://127.0.0.1:5005/api/v1/home/stats\",\n      \"expected\": 200,\n      \"status\": \"PASS\",\n      \"http\": 200\n    },\n    {\n      \"url\": \"http://127.0.0.1:3000/login\",\n      \"expected\": 200,\n      \"status\": \"PASS\",\n      \"http\": 200\n    },\n    {\n      \"url\": \"http://127.0.0.1:3002/login\",\n      \"expected\": 200,\n      \"status\": \"PASS\",\n      \"http\": 200\n    },\n    {\n      \"url\": \"http://127.0.0.1:5005/api/v1/assessments/ess\",\n      \"expected\": 401,\n      \"status\": \"PASS\",\n      \"http\": 401\n    },\n    {\n      \"url\": \"http://127.0.0.1:3002/api/promoter/login\",\n      \"expected\": 401,\n      \"status\": \"PASS\",\n      \"http\": 401\n    }\n  ]\n}\n"
+}

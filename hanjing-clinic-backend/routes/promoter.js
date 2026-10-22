@@ -3,6 +3,7 @@ import { createAsyncRouter } from '../async-router.js';
 import jwt from 'jsonwebtoken';
 import { publicWithdrawAccount, withdrawStatus, readCommissionLedger } from '../distribution-ledger.js';
 import { get, query, run, transaction } from '../db.js';
+import { createRateLimiter } from '../runtime-safety.js';
 import {
   JWT_SECRET,
   authenticatePromoterToken,
@@ -14,6 +15,9 @@ import {
 } from '../helpers.js';
 
 const app = createAsyncRouter();
+const promoterLoginRateLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 });
+const PROMOTER_LOGIN_ERROR = '手机号或密码错误';
+const PROMOTER_LOGIN_DUMMY_HASH = hashPassword('promoter-login-dummy-password');
 
 function getDistributorLevelRule(level) {
   const rules = {
@@ -179,25 +183,17 @@ app.post('/api/promoter/send-code', async (req, res) => {
   res.status(503).json({ code: 503, message: '短信服务尚未接入，请使用账号密码登录' });
 });
 
-app.post('/api/promoter/login', async (req, res) => {
+app.post('/api/promoter/login', promoterLoginRateLimiter, async (req, res) => {
   const phone = String(req.body.phone || '').trim();
-  const password = String(req.body.password || '').trim();
+  const password = String(req.body.password || '');
   if (!phone || !password) {
     return res.status(400).json({ code: 400, message: '手机号和密码不能为空' });
   }
 
   const promoter = await getPromoterByPhone(phone);
-  if (!promoter) {
-    return res.status(404).json({ code: 404, message: '该手机号未绑定推广员账号' });
-  }
-  if (promoter.promoter_status !== 'active') {
-    return res.status(403).json({ code: 403, message: '该推广员账号已停用，请联系运营人员' });
-  }
-  if (!promoter.password_hash) {
-    return res.status(400).json({ code: 400, message: '该账号尚未设置登录密码，请先在小程序账号安全中设置密码' });
-  }
-  if (!verifyPassword(password, promoter.password_hash)) {
-    return res.status(400).json({ code: 400, message: '手机号或密码错误' });
+  const passwordMatches = verifyPassword(password, promoter?.password_hash || PROMOTER_LOGIN_DUMMY_HASH);
+  if (!promoter || promoter.promoter_status !== 'active' || !promoter.password_hash || !passwordMatches) {
+    return res.status(401).json({ code: 401, message: PROMOTER_LOGIN_ERROR });
   }
 
   const token = jwt.sign(

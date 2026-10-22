@@ -9,6 +9,7 @@ function admin({rows=[],status='active',failUpdate=false,access=true,failStateme
   const start=src.indexOf("app.post('/api/admin/patients/:id/bind-promoter'");
   const end=src.indexOf('// Create billing order',start);assert(start>=0&&end>start);
   const execute=async(sql,args)=>{
+    if(sql.startsWith('SELECT child_user_id'))return [rows.filter(r=>r.parent===args[0]&&r.level===1).map(r=>({child_user_id:r.child}))];
     if(sql.startsWith('SELECT')) {
       let value;
       if(sql.includes('FROM patients'))value={user_id:2};
@@ -24,12 +25,13 @@ function admin({rows=[],status='active',failUpdate=false,access=true,failStateme
     if (failStatement && writes.length === failStatement) throw Error('injected statement failure');
     if(sql.startsWith('DELETE FROM distribution_relationships')) {
       for(let i=rows.length-1;i>=0;i--)if(rows[i].child===args[0]&&[1,2].includes(rows[i].level))rows.splice(i,1);
-    } else if(sql.startsWith('INSERT INTO distribution_relationships'))rows.push({id:rows.length+1,parent:args[0],child:args[1],level:sql.includes('?, ?, 1')?1:2});
+    } else if(sql.startsWith('INSERT INTO distribution_relationships')){const level=sql.includes('?, ?, 1')?1:2;const existing=rows.find(r=>r.child===args[1]&&r.level===level);if(existing&&sql.includes('ON DUPLICATE KEY'))existing.parent=args[0];else rows.push({id:rows.length+1,parent:args[0],child:args[1],level});}
     else if(sql.startsWith('UPDATE distributors')) {if(failUpdate)throw Error('injected storage error');if(promoter.status==='pending')promoter.status='active';}
     else throw Error('Unexpected SQL '+sql);
     return [{affectedRows:1}];
   };
   vm.runInNewContext(src.slice(start,end),{
+    syncDirectChildrenSecondLevel,
     app:{post:(p,a,h)=>handler=h},authenticateToken(){},verifyPatientAccess:async()=>access,
     transaction:async fn=>{
       const before=JSON.stringify(rows);const oldStatus=promoter.status;
@@ -53,6 +55,14 @@ function admin({rows=[],status='active',failUpdate=false,access=true,failStateme
   return {rows,promoter,writes,async call(){const res={http:200,status(n){this.http=n;return this},json(b){this.body=b;return this}};await handler({params:{id:20},body:{promoter_user_id:1},user:{id:9}},res);return res;}};
 }
 (async()=>{
+  await test('dynamic rebind updates direct child second level only',async()=>{
+    const rows=[{id:1,parent:4,child:2,level:1},{id:2,parent:2,child:3,level:1},{id:3,parent:4,child:3,level:2},{id:4,parent:3,child:5,level:1},{id:5,parent:2,child:5,level:2}];
+    const h=admin({rows});assert.equal((await h.call()).http,200);assert.equal(rows.find(r=>r.child===3&&r.level===2).parent,1);assert.equal(rows.find(r=>r.child===5&&r.level===2).parent,2);
+  });
+  await test('dynamic rebind child update failure rolls back parent and child',async()=>{
+    const rows=[{id:1,parent:4,child:2,level:1},{id:2,parent:2,child:3,level:1},{id:3,parent:4,child:3,level:2}];const before=JSON.stringify(rows);
+    const h=admin({rows,failStatement:3});assert.equal((await h.call()).http,500);assert.equal(JSON.stringify(rows),before);
+  });
   await test('admin denies unauthorized patient access',async()=>{const h=admin({access:false});assert.equal((await h.call()).http,403);assert.equal(h.writes.length,0);});
   await test('admin first direct bind',async()=>{const h=admin();assert.equal((await h.call()).http,200);assert.equal(h.rows[0].parent,1);});
   await test('BIND-04 admin must not reactivate inactive promoter',async()=>{const h=admin({status:'inactive'});assert.equal((await h.call()).http,400);assert.equal(h.promoter.status,'inactive');assert.equal(h.rows.length,0);assert.equal(h.writes.length,0);});

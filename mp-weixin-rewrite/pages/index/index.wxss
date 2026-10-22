@@ -218,3 +218,20 @@
 .safe-bottom {
   height: calc(env(safe-area-inset-bottom, 34px) + 40rpx);
 }
+
+.retry-btn {
+  margin: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 16px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: #eef4ff;
+  color: #1a3580;
+  font-size: 14px;
+  line-height: 28px;
+}
+
+.retry-btn::after {
+  border: none;
+}

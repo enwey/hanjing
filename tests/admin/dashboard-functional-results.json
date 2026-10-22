@@ -1,0 +1,8 @@
+{
+  "date": "2026-10-22",
+  "scope": "管理后台数据看板",
+  "runtime": {"frontend": "http://127.0.0.1:3000", "backend": "http://127.0.0.1:5005", "browser": "isolated headless Chrome", "viewports": ["1440x900", "375x812"]},
+  "api": {"login": 200, "today": 200, "week": 200, "month": 200, "invalidRange": 400, "unauthenticated": 401},
+  "ui": {"desktopDashboardLoaded": true, "chartCanvasCount": 1, "desktopHorizontalOverflow": false, "narrowKpiWidthsPx": [50, 50, 50, 50], "narrowPanelWidthsPx": [56, 28, 42, 42], "narrowTableWidthsPx": [228, 524], "corruptPersistedFilterRecovered": false, "corruptStatePrimaryButtonCount": 0},
+  "cleanup": {"remainingTemporaryAccounts": 0}
+}

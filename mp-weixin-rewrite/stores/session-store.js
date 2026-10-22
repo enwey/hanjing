@@ -128,6 +128,7 @@ const ACCOUNT_CACHE_KEYS = [
   'current_patient_id', 'rewrite_current_patient_id',
   'selected_treatment_patient_id', 'selected_medical_record_patient_id',
   'last_local_snore_result', 'pending_snore_uploads', 'pending_appointment_assessment',
+  'last_ess_assessment_result',
 ];
 const CACHE_ARCHIVE_KEY = 'account_cache_archive';
 const CACHE_OWNER_KEY = 'account_cache_owner';
@@ -184,6 +185,9 @@ const sessionStore = {
 
   getRevision() {
     return sessionRevision;
+  },
+  getLoginGeneration() {
+    return loginGeneration;
   },
   isLoggedIn() {
     const token = readStoredAccessToken();

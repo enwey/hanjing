@@ -68,6 +68,10 @@ function normalizeOrder(order) {
 }
 
 Page({
+  onUnload() {
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+  },
+
   data: {
     loading: true,
     hasLoaded: false,
@@ -93,19 +97,24 @@ Page({
   },
 
   async loadOrders(options = {}) {
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true });
     }
     try {
       const response = await api.getOrders();
+      if (requestId !== this._loadRequestId) return;
       const orders = unwrapList(response).map(normalizeOrder);
       this.setData({ hasLoaded: true, orders });
       this.refreshVisibleOrders(this.data.selectedStatus, orders);
     } catch (error) {
+      if (requestId !== this._loadRequestId) return;
       console.error(error);
-      if (!this.data.hasLoaded) {
+      const unauthorized = error && [401, 403].includes(Number(error.statusCode || (error.data && error.data.code)));
+      if (!this.data.hasLoaded || unauthorized) {
         this.setData({
+          hasLoaded: false,
           loading: false,
           orders: [],
           visibleOrders: [],
@@ -132,7 +141,7 @@ Page({
           ...order,
           statusLabel: statusMeta.label,
           statusColor: statusMeta.color,
-          itemCountLabel: '共 ' + order.items.length + ' 件商品',
+          itemCountLabel: '共 ' + order.items.reduce((sum, item) => sum + item.quantity, 0) + ' 件商品',
           payAmountLabel: formatPriceYuan(order.payAmount),
         };
       }),

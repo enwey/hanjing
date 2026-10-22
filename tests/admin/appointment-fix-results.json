@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-22",
+  "scope": "ADMIN-APPT-01～06 development verification",
+  "backendSyntax": "passed",
+  "productionBuild": "passed",
+  "api": {
+    "exactAppointmentNoSearch": {"status": 200, "total": 1, "returned": 1},
+    "invalidStatus": {"status": 400, "message": "预约状态筛选值不正确"},
+    "negativePage": {"status": 400, "message": "页码必须为正整数"},
+    "negativePageSize": {"status": 400, "message": "每页数量必须为1至200的整数"}
+  },
+  "browser": {
+    "corruptFiltersNormalized": {"tab": "all", "store": "全部门店", "doctor": "全部医生", "rows": 30},
+    "blockedRequest": {"active": "今日", "rows": 1, "visibleError": "预约列表加载失败，请稍后重试"},
+    "narrowTable": {"viewport": 375, "containerClientWidth": 270, "containerScrollWidth": 1164, "documentScrollWidth": 375}
+  },
+  "permissionMapping": {
+    "POST /appointments": "appointment:add",
+    "POST /appointments/123/pre-exam": "appointment:edit",
+    "POST /appointments/123/postpone": "appointment:edit",
+    "POST /appointments/123/save-consultation": "medical_record:edit",
+    "POST /appointments/123/complete-consultation": "medical_record:edit"
+  },
+  "cleanup": {"remainingTemporaryAccounts": 0},
+  "note": "开发自测不代替独立回归"
+}

@@ -1,4 +1,5 @@
 import { reviewRefund, syncRefund, registerOfflineRefund } from '../refunds.js';
+import { syncDirectChildrenSecondLevel } from '../distribution-relationships.js';
 import { lockAppointmentChange, RESCHEDULABLE_STATUSES, TERMINAL_STATUSES, assertAppointmentFeesPaid, validateAppointmentFeeItems, assertConsultationAllowed, settlePaidAppointmentOrder } from '../appointment-workflow.js';
 import { patientAccessScope, orderAccessScope, fulfillmentAccessScope, readPagination } from '../admin-scope.js';
 import { lockFulfillmentCase } from '../fulfillment-guard.js';
@@ -640,7 +641,22 @@ async function createWechatLiveRoom(payload) {
   };
 }
 
-const failedAttempts = new Map(); // username -> { count, lockUntil }
+const failedAttempts = new Map(); // source + username -> { count, lockUntil, updatedAt }
+const LOGIN_LOCK_MS = 15 * 60 * 1000;
+const MAX_LOGIN_ATTEMPT_KEYS = 10000;
+
+function cleanupLoginAttempts(now) {
+  for (const [key, attempt] of failedAttempts) {
+    if ((attempt.lockUntil && attempt.lockUntil <= now) || attempt.updatedAt + LOGIN_LOCK_MS <= now) {
+      failedAttempts.delete(key);
+    }
+  }
+}
+
+function loginAttemptKey(req, username) {
+  const source = req.ip || req.socket?.remoteAddress || 'unknown';
+  return `${source}:${String(username || '').trim().toLowerCase()}`;
+}
 
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body;
@@ -649,7 +665,12 @@ app.post('/api/admin/login', async (req, res) => {
   }
 
   const now = Date.now();
-  const attempt = failedAttempts.get(username) || { count: 0, lockUntil: 0 };
+  cleanupLoginAttempts(now);
+  const attemptKey = loginAttemptKey(req, username);
+  if (!failedAttempts.has(attemptKey) && failedAttempts.size >= MAX_LOGIN_ATTEMPT_KEYS) {
+    return res.status(429).json({ code: 429, message: '登录请求过于频繁，请稍后重试' });
+  }
+  const attempt = failedAttempts.get(attemptKey) || { count: 0, lockUntil: 0, updatedAt: now };
 
   if (attempt.lockUntil > now) {
     const remainingMinutes = Math.ceil((attempt.lockUntil - now) / 60000);
@@ -672,15 +693,16 @@ app.post('/api/admin/login', async (req, res) => {
 
     if (!user || !verifyPassword(password, user.password_hash)) {
       attempt.count += 1;
+      attempt.updatedAt = now;
       if (attempt.count >= 5) {
-        attempt.lockUntil = Date.now() + 15 * 60 * 1000; // Lock for 15 minutes
-        failedAttempts.set(username, attempt);
+        attempt.lockUntil = now + LOGIN_LOCK_MS;
+        failedAttempts.set(attemptKey, attempt);
         return res.status(429).json({
           code: 429,
           message: '密码错误次数过多，账号已临时锁定，请 15 分钟后再试'
         });
       }
-      failedAttempts.set(username, attempt);
+      failedAttempts.set(attemptKey, attempt);
       return res.status(400).json({
         code: 400,
         message: `用户名或密码不正确（连续输入错误 5 次将被锁定，还剩 ${5 - attempt.count} 次机会）`
@@ -695,7 +717,7 @@ app.post('/api/admin/login', async (req, res) => {
     }
 
     // Reset failed attempts
-    failedAttempts.delete(username);
+    failedAttempts.delete(attemptKey);
 
     // Update last login
     await run(`UPDATE admin_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?`, [user.id]);
@@ -714,7 +736,7 @@ app.post('/api/admin/login', async (req, res) => {
     const storeIds = assignedStores.map(store => Number(store.id));
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role_code, store_ids: storeIds, doctor_id: user.doctor_id || null },
+      { id: user.id, username: user.username, role: user.role_code, store_ids: storeIds, doctor_id: user.doctor_id || null, token_version: Number(user.token_version || 0) },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -782,6 +804,11 @@ app.get('/api/admin/me', authenticateToken, async (req, res) => {
   } catch (error) {
     res.status(500).json({ code: 500, message: '系统错误' });
   }
+});
+
+app.post('/api/admin/logout', authenticateToken, async (req, res) => {
+  await run('UPDATE admin_users SET token_version = token_version + 1 WHERE id = ?', [req.user.id]);
+  res.json({ code: 200, message: '已安全退出登录' });
 });
 
 app.put('/api/admin/profile', authenticateToken, async (req, res) => {
@@ -1098,6 +1125,16 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
   const { date, tab, search, patient_id } = req.query;
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const pageSize = req.query.pageSize ? parseInt(req.query.pageSize, 10) : 10;
+  if (req.query.page !== undefined && (!Number.isSafeInteger(page) || page < 1)) {
+    return res.status(400).json({ code: 400, message: '页码必须为正整数' });
+  }
+  if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 200) {
+    return res.status(400).json({ code: 400, message: '每页数量必须为1至200的整数' });
+  }
+  const allowedStatuses = new Set(['pending_payment', 'pending', 'waiting', 'checked_in', 'completed', 'arrived', 'no_show', 'cancelled']);
+  if (req.query.status && !allowedStatuses.has(req.query.status)) {
+    return res.status(400).json({ code: 400, message: '预约状态筛选值不正确' });
+  }
   if (req.user.role === 'doctor' && !req.user.doctor_id) {
     return res.status(403).json({ code: 403, message: '医生账号未绑定医生档案，无法访问预约数据' });
   }
@@ -1145,9 +1182,9 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
   }
 
   if (search) {
-    baseWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ?)`;
+    baseWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ? OR a.appointment_no LIKE ?)`;
     const searchParam = `%${search}%`;
-    baseParams.push(searchParam, searchParam, searchParam);
+    baseParams.push(searchParam, searchParam, searchParam, searchParam);
   }
 
   if (req.user.role === 'doctor' && req.user.doctor_id) {
@@ -1211,9 +1248,9 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
       if (req.query.store_name) { todayWhere += ` AND a.store_name = ?`; todayParams.push(req.query.store_name); }
       if (req.query.doctor_name) { todayWhere += ` AND a.doctor_name = ?`; todayParams.push(req.query.doctor_name); }
       if (search) {
-        todayWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ?)`;
+        todayWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ? OR a.appointment_no LIKE ?)`;
         const searchParam = `%${search}%`;
-        todayParams.push(searchParam, searchParam, searchParam);
+        todayParams.push(searchParam, searchParam, searchParam, searchParam);
       }
       if (req.user.role === 'doctor' && req.user.doctor_id) { todayWhere += ` AND a.doctor_id = ?`; todayParams.push(req.user.doctor_id); }
       if (req.user.role !== 'super_admin') {
@@ -6860,8 +6897,8 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
         ancestor = relation ? relation.parent_user_id : null;
       }
 
-      // An explicit rebind replaces this user's two-level snapshot only.
-      // Do not rewrite existing descendants or historical commission orders.
+      // Rebind this user and refresh direct children's second-level edges.
+      // Historical commission orders and deeper descendants remain unchanged.
       await conn.execute(
         'DELETE FROM distribution_relationships WHERE child_user_id = ? AND level IN (1, 2)', [childUserId]);
       await conn.execute(
@@ -6876,6 +6913,7 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
         await conn.execute(
           "UPDATE distributors SET status = 'active' WHERE user_id = ? AND status = 'pending'", [parentUserId]);
       }
+      await syncDirectChildrenSecondLevel(conn, childUserId, parentUserId);
     });
     await logAdminAction(req.user.id, 'bind_patient_promoter', 'patient', id, { promoter_user_id });
     res.json({ code: 200, message: '绑定推广人成功' });

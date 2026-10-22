@@ -80,17 +80,19 @@ export const authenticateToken = (req, res, next) => {
   }
 
   jwt.verify(token, JWT_SECRET, async (err, user) => {
-    if (err || !user || user.scope === 'asset' || !user.role || !user.id) {
-      return res.status(403).json({ code: 403, message: '登录已过期或无管理员权限，请重新登录' });
+    if (err || !user || user.scope === 'asset' || !user.role || !user.id || !Number.isInteger(user.token_version)) {
+      return res.status(401).json({ code: 401, message: '登录已过期或无管理员权限，请重新登录' });
     }
     try {
       const admin = await get(
-        `SELECT u.id, u.username, u.name, u.all_stores, u.doctor_id, u.role_id, r.code AS role
+        `SELECT u.id, u.username, u.name, u.all_stores, u.doctor_id, u.role_id, u.token_version, r.code AS role
          FROM admin_users u JOIN roles r ON r.id = u.role_id
          WHERE u.id = ? AND u.status = 'online' AND r.status = 'active'`,
         [user.id]
       );
-      if (!admin) return res.status(403).json({ code: 403, message: '管理员账号或角色已停用，请重新登录' });
+      if (!admin || Number(admin.token_version) !== user.token_version) {
+        return res.status(401).json({ code: 401, message: '登录已失效，请重新登录' });
+      }
       admin.permissions = (await query('SELECT permission_resource FROM permissions WHERE role_id = ?', [admin.role_id])).map(p => p.permission_resource);
       if (!hasAdminPermission(admin, requiredAdminPermissions(req.method, req.route?.path))) {
         return res.status(403).json({ code: 403, message: '没有此操作的权限' });

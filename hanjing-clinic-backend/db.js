@@ -566,6 +566,19 @@ export const initDB = async () => {
     );
   `);
 
+  // Nullable keys preserve legacy records. Unique ownership-scoped keys also
+  // serialize simultaneous retries across backend processes.
+  for (const sql of [
+    'ALTER TABLE snore_assessments ADD COLUMN risk_score INT DEFAULT NULL',
+    'ALTER TABLE snore_assessments ADD COLUMN client_record_key CHAR(64) DEFAULT NULL',
+    'ALTER TABLE snore_assessments ADD COLUMN client_payload_hash CHAR(64) DEFAULT NULL',
+    'ALTER TABLE snore_assessments ADD UNIQUE KEY uq_snore_client_record (user_id, client_record_key)'
+  ]) {
+    try { await query(sql); } catch (error) {
+      if (!['ER_DUP_FIELDNAME', 'ER_DUP_KEYNAME'].includes(error.code)) throw error;
+    }
+  }
+
   // 10. appointments
   await query(`
     CREATE TABLE IF NOT EXISTS appointments (
@@ -1611,6 +1624,7 @@ export const initDB = async () => {
       all_stores TINYINT(1) NOT NULL DEFAULT 0,
       doctor_id BIGINT UNSIGNED,
       status VARCHAR(30) DEFAULT 'online',
+      token_version INT NOT NULL DEFAULT 0,
       last_login_at TIMESTAMP NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
@@ -1622,6 +1636,9 @@ export const initDB = async () => {
   } catch (e) {}
   try {
     await query(`ALTER TABLE admin_users ADD COLUMN all_stores TINYINT(1) NOT NULL DEFAULT 0`);
+  } catch (e) {}
+  try {
+    await query(`ALTER TABLE admin_users ADD COLUMN token_version INT NOT NULL DEFAULT 0`);
   } catch (e) {}
   await query(`
     CREATE TABLE IF NOT EXISTS admin_user_stores (

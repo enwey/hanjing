@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-22",
+  "kind": "开发自测，非独立回归",
+  "runs": {
+    "mini-program/mall-order-regression-03": {
+      "chunk_id": "057a48",
+      "wall_time_seconds": 0.0182403,
+      "exit_code": 0,
+      "original_token_count": 417,
+      "output": "{\n  \"scope\": \"Actual pages/session store; mocked API/wx; page recreation and delayed callbacks; no real transaction\",\n  \"total\": 14,\n  \"passed\": 14,\n  \"failed\": 0,\n  \"results\": [\n    {\n      \"name\": \"MALL-10 explicit rejection permits retry 400\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 explicit rejection permits retry 401\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 explicit rejection permits retry 403\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 explicit rejection permits retry 404\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 explicit rejection permits retry 422\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 uncertain response blocks retry 408\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 uncertain response blocks retry 500\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 reopening same checkout after unknown commit must not create another order\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 storage failure prevents sending create\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 late success survives unload and reuses order on reopen\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 unresolved attempt is isolated by account\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-11 account change during native payment skips confirmation\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-11 logout during confirmation skips success and reload\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-11 unchanged account completes confirmation and reload\",\n      \"status\": \"PASS\"\n    }\n  ]\n}\n"
+    },
+    "mini-program/mall-order-regression-04": {
+      "chunk_id": "ea807b",
+      "wall_time_seconds": 0.0000045,
+      "exit_code": 0,
+      "original_token_count": 159,
+      "output": "{\n  \"scope\": \"Actual page/session source; shared simulated storage; delayed creation responses; no real transactions\",\n  \"total\": 4,\n  \"passed\": 4,\n  \"failed\": 0,\n  \"results\": [\n    {\n      \"name\": \"MALL-10 reopened page recovers after original late success\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 reopened page recovers after original explicit rejection\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"control cancelled persisted order permits new create\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"control completed order clears persisted record after lookup\",\n      \"status\": \"PASS\"\n    }\n  ]\n}\n"
+    },
+    "mini-program/mall-order-round-03": {
+      "chunk_id": "e0a4f1",
+      "wall_time_seconds": 0.8222114,
+      "exit_code": 0,
+      "original_token_count": 249,
+      "output": "{\n  \"scope\": \"Actual pages/session store; injected uncertain-create outcomes and session changes; no real order/payment\",\n  \"total\": 7,\n  \"passed\": 7,\n  \"failed\": 0,\n  \"results\": [\n    {\n      \"name\": \"MALL-10 committed create with lost response must not blindly create again\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-10 successful create response missing id must not blindly create again\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-11 order detail late payment after new-login\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-11 order detail late payment after logout\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"control product checkout rejects late pay parameters after account change\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"control order detail same-account refresh can continue payment\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"control order detail concurrent payment deduplicated\",\n      \"status\": \"PASS\"\n    }\n  ]\n}\n"
+    },
+    "mini-program/mall-order-round-02": {
+      "chunk_id": "686a6e",
+      "wall_time_seconds": 1.2886875,
+      "exit_code": 0,
+      "original_token_count": 388,
+      "output": "{\n  \"scope\": \"Actual pages and actual session revision logic, mocked API/wx only; no real orders/payments\",\n  \"total\": 13,\n  \"passed\": 13,\n  \"failed\": 0,\n  \"results\": [\n    {\n      \"name\": \"MALL-06 new login still blocks old checkout\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-08 stale product error leaves newer result unchanged\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-09 detail refresh 403\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-09 detail refresh 500\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-09 onShow retries after authorization failure\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-06 same-account refresh during create still proceeds to payment\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-06 same-account refresh after cancellation permits retry\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-07 late payment parameters after unload product/detail.js\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-07 late payment parameters after unload order/detail.js\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-08 product detail ignores older response\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"MALL-09 order detail clears private data on unauthorized silent refresh\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"control non-silent unauthorized detail clears order\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"control product initial loading failure clears product\",\n      \"status\": \"PASS\"\n    }\n  ]\n}\n"
+    },
+    "backend-api/promotion-order-commission-regression": {
+      "chunk_id": "32439d",
+      "wall_time_seconds": 1.0023174,
+      "exit_code": 0,
+      "original_token_count": 190,
+      "output": "{\n  \"scope\": \"Isolated source regression, mocked wx/API only\",\n  \"total\": 6,\n  \"passed\": 6,\n  \"failed\": 0,\n  \"results\": [\n    {\n      \"name\": \"POC-03 ignores response after onHide\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"POC-03 ignores response after onUnload\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"POC-03 stale failure does not change newer success or toast\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"POC-02 detail lookup failure never creates another order\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"POC-02 concurrent retry while querying detail remains locked\",\n      \"status\": \"PASS\"\n    },\n    {\n      \"name\": \"POC-02 changed session during detail lookup prevents payment\",\n      \"status\": \"PASS\"\n    }\n  ]\n}\n"
+    }
+  }
+}

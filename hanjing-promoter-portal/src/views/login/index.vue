@@ -6,6 +6,7 @@ import request from '@/utils/request'
 import { setPromoterAuth } from '@/utils/auth'
 
 const router = useRouter()
+const isSubmitting = ref(false)
 const loginForm = ref({
   phone: '',
   password: ''
@@ -20,15 +21,22 @@ const rules = {
 }
 
 async function handleLogin({ validateResult }: any) {
-  if (validateResult !== true) return
+  if (validateResult !== true || isSubmitting.value) return
 
-  const res: any = await request.post('/api/promoter/login', {
-    phone: loginForm.value.phone,
-    password: loginForm.value.password
-  })
-  setPromoterAuth(res.data.token, res.data.user)
-  MessagePlugin.success('登录成功')
-  router.push('/dashboard')
+  isSubmitting.value = true
+  try {
+    const res: any = await request.post('/api/promoter/login', {
+      phone: loginForm.value.phone,
+      password: loginForm.value.password
+    })
+    setPromoterAuth(res.data.token, res.data.user)
+    MessagePlugin.success('登录成功')
+    await router.push('/dashboard')
+  } catch {
+    // The shared request interceptor displays the server or network error.
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -75,7 +83,9 @@ async function handleLogin({ validateResult }: any) {
         </t-form-item>
 
         <t-form-item style="margin-top: 32px;">
-          <t-button theme="primary" type="submit" block size="large">立即登录</t-button>
+          <t-button theme="primary" type="submit" block size="large" :loading="isSubmitting" :disabled="isSubmitting">
+            {{ isSubmitting ? '登录中…' : '立即登录' }}
+          </t-button>
         </t-form-item>
       </t-form>
 
@@ -138,11 +148,19 @@ async function handleLogin({ validateResult }: any) {
   position: relative;
   z-index: 2;
   width: 400px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 40px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 28px 24px;
+  }
 }
 
 .login-brand {

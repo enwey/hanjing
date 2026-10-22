@@ -45,8 +45,12 @@
     </view>
   </view>
 
+  <view class="section" wx:if="{{loading}}">
+    <text class="state-text">正在加载首页…</text>
+  </view>
   <view class="section" wx:if="{{loadError}}">
     <text class="state-text">{{loadError}}</text>
+    <button class="retry-btn" bindtap="retryLoad" disabled="{{loading}}" loading="{{loading}}">重新加载</button>
   </view>
 
   <view class="section">
@@ -57,6 +61,7 @@
         <view class="section-more-arrow"></view>
       </view>
     </view>
+    <text class="state-text" wx:if="{{hasLoaded && !loading && !doctorsLoadFailed && !recommendedDoctors.length}}">暂无推荐医生</text>
     <hj-doctor-card
       wx:for="{{recommendedDoctors}}"
       wx:key="id"
@@ -69,6 +74,7 @@
     <view class="section-header">
       <text class="section-title">我们的门店</text>
     </view>
+    <text class="state-text" wx:if="{{hasLoaded && !loading && !storesLoadFailed && !stores.length}}">暂无门店信息</text>
     <hj-store-card
       wx:for="{{stores}}"
       wx:key="id"

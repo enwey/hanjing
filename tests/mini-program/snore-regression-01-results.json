@@ -1,0 +1,245 @@
+{
+  "date": "2026-10-22",
+  "role": "independent regression",
+  "scripts": [
+    {
+      "file": "snore-functional.cjs",
+      "exitCode": 0,
+      "result": {
+        "scope": "actual page and snore handler; mocked wx/API/session/ownership resolver/DB; synthetic PCM",
+        "total": 17,
+        "passed": 17,
+        "failed": 0,
+        "results": [
+          {
+            "name": "SNORE-01 early recorder stop resets recording state",
+            "status": "PASS"
+          },
+          {
+            "name": "SNORE-02 failed member load must prevent recording start",
+            "status": "PASS"
+          },
+          {
+            "name": "SNORE-03 result rejects missing measurements",
+            "status": "PASS"
+          },
+          {
+            "name": "SNORE-04 repeated upload of same local record does not create twice",
+            "status": "PASS"
+          },
+          {
+            "name": "pause then resume keeps duration and restores recording mode",
+            "status": "PASS"
+          },
+          {
+            "name": "short PCM file is rejected before submitting",
+            "status": "PASS"
+          },
+          {
+            "name": "normal client analysis sends metrics only, no audio",
+            "status": "PASS"
+          },
+          {
+            "name": "pending report submission coalesces duplicate calls",
+            "status": "PASS"
+          },
+          {
+            "name": "backend rejects duration 4",
+            "status": "PASS"
+          },
+          {
+            "name": "backend rejects duration 601",
+            "status": "PASS"
+          },
+          {
+            "name": "backend rejects duration 5.5",
+            "status": "PASS"
+          },
+          {
+            "name": "backend rejects unowned patient resolver failure",
+            "status": "PASS"
+          },
+          {
+            "name": "backend rejects malformed metrics {\"snoreRate\":101}",
+            "status": "PASS"
+          },
+          {
+            "name": "backend rejects malformed metrics {\"apneaEvents\":-1}",
+            "status": "PASS"
+          },
+          {
+            "name": "backend rejects malformed metrics {\"peakDecibel\":20}",
+            "status": "PASS"
+          },
+          {
+            "name": "backend rejects malformed metrics {\"riskLevel\":\"unknown\"}",
+            "status": "PASS"
+          },
+          {
+            "name": "backend accepts five-second valid report",
+            "status": "PASS"
+          }
+        ]
+      },
+      "error": ""
+    },
+    {
+      "file": "snore-fix-01-check.cjs",
+      "exitCode": 0,
+      "result": {
+        "scope": "developer isolation checks; unique constraint simulated, not real MySQL",
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "results": [
+          {
+            "name": "concurrent identical retries return same id with one insert",
+            "status": "PASS"
+          },
+          {
+            "name": "same key with changed contents returns conflict without another insert",
+            "status": "PASS"
+          },
+          {
+            "name": "different recordings with identical measurements remain distinct",
+            "status": "PASS"
+          },
+          {
+            "name": "legacy timestamp queue retries deduplicate",
+            "status": "PASS"
+          },
+          {
+            "name": "initial upload and queued retry keep same recording identity",
+            "status": "PASS"
+          }
+        ]
+      },
+      "error": ""
+    },
+    {
+      "file": "assessment-round-02.cjs",
+      "exitCode": 0,
+      "result": {
+        "scope": "actual page modules with mocked wx, API, session and synthetic PCM; no device or real data",
+        "total": 11,
+        "passed": 11,
+        "failed": 0,
+        "results": [
+          {
+            "name": "ASMT-12 snore response after logout must not render old private report",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-12 older snore success must not overwrite newer unauthorized response",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-13 failed stopped recording can start a fresh recording instead of resume",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-14 saved snore redirect failure exits analyzing state",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-15 offline storage failure does not navigate to nonexistent local report",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-16 repeated mic tap during authorization starts recorder only once",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-17 questionnaire/index reloads members when login generation changes",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-17 recording/index reloads members when login generation changes",
+            "status": "PASS"
+          },
+          {
+            "name": "snore 401 without older in-flight request clears report",
+            "status": "PASS"
+          },
+          {
+            "name": "normal synthetic recording saves server report and redirects by ID",
+            "status": "PASS"
+          },
+          {
+            "name": "offline synthetic recording persists local report and pending upload",
+            "status": "PASS"
+          }
+        ]
+      },
+      "error": ""
+    },
+    {
+      "file": "assessment-regression-03.cjs",
+      "exitCode": 0,
+      "result": {
+        "scope": "independent regression, actual modules with mocked wx/API/session",
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "results": [
+          {
+            "name": "ASMT-14 saved report navigation retry never repeats POST",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-14 synchronous navigation failure also recovers",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-15 remote success survives local cache quota failure",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-16 rejected authorization allows later retry",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-16 authorization response after unload cannot start recorder",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-17 late old-member response cannot overwrite new session: questionnaire/index",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-17 late old-member response cannot overwrite new session: recording/index",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-12 report response after unload cannot write page state",
+            "status": "PASS"
+          }
+        ]
+      },
+      "error": ""
+    }
+  ],
+  "http": [
+    {
+      "method": "GET",
+      "path": "/assessments",
+      "status": 401,
+      "expected": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/assessments/snore-analysis/snore-test",
+      "status": 401,
+      "expected": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/assessments/snore",
+      "status": 401,
+      "expected": 401,
+      "result": "PASS"
+    }
+  ]
+}

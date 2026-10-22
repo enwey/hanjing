@@ -111,6 +111,10 @@ function applyMemberPricing(product, memberLevel) {
 }
 
 Page({
+  onUnload() {
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+  },
+
   data: {
     loading: true,
     hasLoaded: false,
@@ -134,6 +138,7 @@ Page({
   },
 
   async loadProducts(options = {}) {
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true });
@@ -154,10 +159,12 @@ Page({
           throw categoryError;
         }
       }
+      if (requestId !== this._loadRequestId) return;
       const [productResponse, memberInfoResponse] = await Promise.all([
         api.getProducts(),
         hasToken ? api.getMemberInfo().catch(() => null) : Promise.resolve(null),
       ]);
+      if (requestId !== this._loadRequestId) return;
       const memberLevel = memberInfoResponse && memberInfoResponse.code === 0 && memberInfoResponse.data
         ? (memberInfoResponse.data.currentLevel || memberInfoResponse.data.memberLevel || 'normal')
         : 'normal';
@@ -174,6 +181,7 @@ Page({
       });
       this.refreshVisibleProducts(selectedCategoryExists ? this.data.selectedCategory : 'all', products);
     } catch (error) {
+      if (requestId !== this._loadRequestId) return;
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,

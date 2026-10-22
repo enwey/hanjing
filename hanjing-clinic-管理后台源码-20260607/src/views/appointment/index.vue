@@ -32,7 +32,10 @@ const getTodayDateString = () => {
   return `${y}-${m}-${d}`
 }
 
-const activeTab = ref(localStorage.getItem('appt_list_active_tab') || 'all')
+const allowedTabValues = new Set(['all', 'today', 'pending_payment', 'pending', 'waiting', 'checked_in', 'completed', 'arrived', 'no_show', 'cancelled'])
+const storedActiveTab = localStorage.getItem('appt_list_active_tab') || 'all'
+const activeTab = ref(allowedTabValues.has(storedActiveTab) ? storedActiveTab : 'all')
+if (activeTab.value !== storedActiveTab) localStorage.setItem('appt_list_active_tab', activeTab.value)
 const filterStore = ref(localStorage.getItem('appt_list_filter_store') || '全部门店')
 const filterDoctor = ref(localStorage.getItem('appt_list_filter_doctor') || '全部医生')
 
@@ -68,6 +71,9 @@ const totalAppointments = ref(0)
 const stores = ref<any[]>([])
 const doctors = ref<any[]>([])
 const loading = ref(false)
+const listError = ref('')
+const filtersReady = ref(false)
+let appointmentRequestId = 0
 
 interface Appointment {
   consult_fee: number;
@@ -119,8 +125,10 @@ const fetchStores = async () => {
   try {
     const res: any = await request.get('/api/admin/stores')
     stores.value = res.data || []
+    return true
   } catch (error) {
     console.error('Failed to load stores:', error)
+    return false
   }
 }
 
@@ -128,14 +136,18 @@ const fetchDoctors = async () => {
   try {
     const res: any = await request.get('/api/admin/doctors')
     doctors.value = res.data || []
+    return true
   } catch (error) {
     console.error('Failed to load doctors:', error)
+    return false
   }
 }
 
 const fetchAppointments = async () => {
+  const requestId = ++appointmentRequestId
   try {
     loading.value = true
+    listError.value = ''
     const params: any = {
       page: currentPage.value,
       pageSize: pageSize.value
@@ -161,6 +173,7 @@ const fetchAppointments = async () => {
     }
 
     const res: any = await request.get('/api/admin/appointments', { params })
+    if (requestId !== appointmentRequestId) return
     const rawList = res.data?.list || []
     totalAppointments.value = res.data?.total || 0
 
@@ -196,16 +209,26 @@ const fetchAppointments = async () => {
       }
     }
   } catch (error) {
+    if (requestId !== appointmentRequestId) return
     console.error('Failed to load appointments:', error)
+    appointments.value = []
+    totalAppointments.value = 0
+    listError.value = '预约列表加载失败，请稍后重试'
   } finally {
-    loading.value = false
+    if (requestId === appointmentRequestId) loading.value = false
   }
 }
 
-onMounted(() => {
-  fetchStores()
-  fetchDoctors()
+onMounted(async () => {
+  const [storesLoaded, doctorsLoaded] = await Promise.all([fetchStores(), fetchDoctors()])
+  if (storesLoaded && filterStore.value !== '全部门店' && !stores.value.some(store => store.name === filterStore.value)) {
+    filterStore.value = '全部门店'
+  }
+  if (doctorsLoaded && filterDoctor.value !== '全部医生' && !doctors.value.some(doctor => doctor.name === filterDoctor.value)) {
+    filterDoctor.value = '全部医生'
+  }
   fetchProducts()
+  filtersReady.value = true
   fetchAppointments()
 })
 
@@ -257,11 +280,13 @@ const counts = ref<Record<string, number>>({
 })
 
 watch([activeTab, filterStore, filterDoctor, filterDate, searchKeyword], () => {
+  if (!filtersReady.value) return
   currentPage.value = 1
   fetchAppointments()
 })
 
 watch([currentPage, pageSize], () => {
+  if (!filtersReady.value) return
   fetchAppointments()
 })
 
@@ -917,6 +942,7 @@ async function submitCheckout() {
 
     <!-- Panel Wrapper -->
     <div class="panel">
+      <div v-if="listError" class="list-error" role="alert">{{ listError }}</div>
       <!-- Filter panel with Status Tabs (Left) and Dropdowns (Right) -->
       <div class="filter-bar" style="flex-wrap: nowrap; overflow-x: auto; gap: 16px;">
         <!-- Left: Filter Tabs -->
@@ -961,6 +987,7 @@ async function submitCheckout() {
 
       <!-- 表格 -->
       <div class="panel-body" style="padding: 0;">
+        <div class="table-scroll">
         <table class="data-table" v-resizable>
           <thead>
             <tr>
@@ -1073,10 +1100,11 @@ async function submitCheckout() {
               </td>
             </tr>
             <tr v-if="paginatedAppointments.length === 0">
-              <td colspan="9" style="text-align: center; color: #9CA3AF; padding: 40px 0;">暂无匹配的预约记录数据</td>
+              <td colspan="9" style="text-align: center; color: #9CA3AF; padding: 40px 0;">{{ listError || '暂无匹配的预约记录数据' }}</td>
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- 分页 -->
@@ -1378,6 +1406,26 @@ async function submitCheckout() {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.list-error {
+  margin: 16px 20px 0;
+  padding: 10px 12px;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  background: #FEF2F2;
+  color: #B91C1C;
+  font-size: 13px;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.table-scroll .data-table {
+  min-width: 1160px;
 }
 
 .pay-method-label {

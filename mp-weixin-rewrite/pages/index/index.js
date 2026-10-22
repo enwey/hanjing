@@ -1,7 +1,6 @@
 const api = require('../../api/index');
 const { normalizeImageUrl } = require('../../common/utils/image-url');
 const sessionStore = require('../../stores/session-store');
-const navigation = require('../../common/utils/navigation');
 
 function formatIntegerWithCommas(value) {
   const text = String(Math.max(0, parseInt(value, 10) || 0));
@@ -91,6 +90,8 @@ Page({
     loading: true,
     hasLoaded: false,
     loadError: '',
+    doctorsLoadFailed: false,
+    storesLoadFailed: false,
     patientCountLabel: '--',
     satisfactionRateLabel: '--',
     storeCountLabel: '--',
@@ -103,10 +104,24 @@ Page({
   },
 
   async onShow() {
+    this._unloaded = false;
+    this._navigationPending = false;
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onUnload() {
+    this._unloaded = true;
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+  },
+
+  retryLoad() {
+    if (this._unloaded || this.data.loading) return;
+    return this.loadPage();
+  },
+
   async loadPage(options = {}) {
+    if (this._unloaded) return;
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
@@ -120,6 +135,7 @@ Page({
         api.getDoctors(directoryQuery),
         api.getStores(directoryQuery),
       ]);
+      if (this._unloaded || requestId !== this._loadRequestId) return;
       // Avoid the array-destructuring runtime helper in the WeChat compiler.
       const statsResult = results[0];
       const doctorsResult = results[1];
@@ -143,11 +159,17 @@ Page({
         statsResult.status === 'rejected' &&
         doctorsResult.status === 'rejected' &&
         storesResult.status === 'rejected';
+      const failedSections = [];
+      if (statsResult.status === 'rejected') failedSections.push('首页统计');
+      if (doctorsResult.status === 'rejected') failedSections.push('推荐医生');
+      if (storesResult.status === 'rejected') failedSections.push('门店');
 
       this.setData({
         hasLoaded: true,
         loading: false,
-        loadError: allFailed ? '加载首页失败' : '',
+        doctorsLoadFailed: doctorsResult.status === 'rejected',
+        storesLoadFailed: storesResult.status === 'rejected',
+        loadError: allFailed ? '加载首页失败' : (failedSections.length ? failedSections.join('、') + '加载失败，请稍后重试' : ''),
         patientCountLabel: statsSource.totalPatients != null && Number.isFinite(totalPatients) ? formatIntegerWithCommas(totalPatients) : '--',
         satisfactionRateLabel: statsSource.satisfactionRate != null && Number.isFinite(satisfactionRate) ? String(satisfactionRate) + '%' : '--',
         storeCountLabel: statsSource.storeCount != null && Number.isFinite(storeCount) ? String(storeCount) : '--',
@@ -155,14 +177,13 @@ Page({
         stores,
       });
     } catch (error) {
-      if (!this.data.hasLoaded) {
-        this.setData({
-          loading: false,
-          loadError: (error && error.message) || '加载首页失败',
-        });
-        return;
-      }
-      wx.showToast({ title: (error && error.message) || '加载首页失败', icon: 'none' });
+      if (this._unloaded || requestId !== this._loadRequestId) return;
+      this.setData({
+        loading: false,
+        loadError: (error && error.message) || '加载首页失败',
+        doctorsLoadFailed: true,
+        storesLoadFailed: true,
+      });
     }
   },
 
@@ -181,37 +202,37 @@ Page({
   },
 
   goStoreSelect() {
-    wx.navigateTo({ url: '/pages/appointment/store-select' });
+    this.navigateOnce('/pages/appointment/store-select');
   },
 
   navigateToApptTab() {
-    wx.navigateTo({ url: '/pages/appointment/booking/index' });
+    this.navigateOnce('/pages/appointment/booking/index');
   },
 
   goAssessment() {
-    wx.navigateTo({ url: '/pages/assessment/index' });
+    this.navigateOnce('/pages/assessment/index');
   },
 
   goTreatmentTab() {
-    wx.switchTab({ url: '/pages/treatment/index' });
+    this.navigateOnce('/pages/treatment/index', 'switchTab');
   },
 
   goMedicalRecords() {
     if (!sessionStore.isLoggedIn()) {
-      navigation.openLogin('/pages/profile/medical-records/index');
+      this.navigateOnce('/pages/auth/login?redirect=' + encodeURIComponent('/pages/profile/medical-records/index'));
       return;
     }
-    wx.navigateTo({ url: '/pages/profile/medical-records/index' });
+    this.navigateOnce('/pages/profile/medical-records/index');
   },
 
   goDoctorList() {
-    wx.navigateTo({ url: '/pages/appointment/doctor-list' });
+    this.navigateOnce('/pages/appointment/doctor-list');
   },
 
   handleDoctorClick(event) {
     const doctor = event.detail || {};
     if (!doctor.id) return;
-    wx.navigateTo({ url: '/pages/appointment/doctor-detail?id=' + doctor.id });
+    this.navigateOnce('/pages/appointment/doctor-detail?id=' + doctor.id);
   },
 
   handleStoreClick(event) {
@@ -225,6 +246,21 @@ Page({
       });
       return;
     }
-    wx.navigateTo({ url: '/pages/appointment/doctor-list?storeId=' + store.id });
+    this.navigateOnce('/pages/appointment/doctor-list?storeId=' + store.id);
+  },
+
+  navigateOnce(url, method = 'navigateTo') {
+    if (this._unloaded || this._navigationPending) return;
+    this._navigationPending = true;
+    const fail = () => {
+      this._navigationPending = false;
+      if (!this._unloaded) wx.showToast({ title: '页面打开失败，请重试', icon: 'none' });
+    };
+    try {
+      // Hold the lock until returning to this page; a failure permits retry.
+      wx[method]({ url, fail });
+    } catch (error) {
+      fail();
+    }
   },
 });

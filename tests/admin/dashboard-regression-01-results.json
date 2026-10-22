@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-22",
+  "scope": "DASH-01～05 independent regression",
+  "result": "passed_in_recorded_scope",
+  "api": {"login": 200, "today": 200, "week": 200, "month": 200, "invalidRange": 400, "unauthenticated": 401},
+  "DASH-01": {"status": "passed", "viewport": "375x812", "documentScrollWidth": 375, "kpiWidthsPx": [272, 272, 272, 272], "panelWidthsPx": [272, 272, 272, 272], "tableWidthsPx": [520, 524], "tableScrollMode": "local"},
+  "DASH-02": {"status": "passed", "errors": [], "activeButtons": ["本月", "月"], "normalizedStorage": {"filter": "month", "chart": "month", "type": "appointment"}},
+  "DASH-03": {"status": "passed", "observedEmptyStates": ["暂无今日预约"], "orderEmptyState": "source path confirmed; runtime database contained order data"},
+  "DASH-04": {"status": "passed", "fault": "browser blocked orders endpoint", "appointmentEmpty": true, "appointmentFailed": false, "orderFailed": true},
+  "DASH-05": {"status": "passed_with_limited_evidence", "dashboardRemounts": 2, "finalCanvasCount": 1, "sourceRemoveResizeListener": true, "sourceDisposeChart": true, "runtimeListenerCount": "unavailable"},
+  "cleanup": {"remainingTemporaryAccounts": 0}
+}

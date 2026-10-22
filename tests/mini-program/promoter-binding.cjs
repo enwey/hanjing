@@ -5,6 +5,9 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '../..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
+const relationContext = vm.createContext({});
+vm.runInContext(read('hanjing-clinic-backend/distribution-relationships.js').replace('export ', ''), relationContext);
+const syncDirectChildrenSecondLevel = relationContext.syncDirectChildrenSecondLevel;
 const tick = () => new Promise(r => setImmediate(r));
 const results = [];
 async function test(name, fn) {
@@ -34,6 +37,7 @@ function backend({promoters=[{user_id:1,code:'A',status:'active'}], rows=[], fai
   const transaction=async fn=>{
     const before=JSON.stringify(rows); const statuses=promoters.map(p=>p.status);
     try { return await fn({execute:async(sql,args)=>{
+      if (sql.startsWith('SELECT child_user_id')) return [rows.filter(r=>r.parent===args[0]&&r.level===1).map(r=>({child_user_id:r.child}))];
       if (sql.startsWith('SELECT')) {
         const row = await get(sql, args);
         return [row ? [row] : []];
@@ -42,6 +46,8 @@ function backend({promoters=[{user_id:1,code:'A',status:'active'}], rows=[], fai
       if(failure) throw Error('injected DB failure');
       if(sql.includes('INSERT')) {
         const level=sql.includes('?, ?, 1')?1:2;
+        const existing=rows.find(r=>r.child===args[1]&&r.level===level);
+        if(existing && sql.includes('ON DUPLICATE KEY')) {existing.parent=args[0];return [{affectedRows:1}];}
         if(rows.some(r=>r.child===args[1]&&r.level===level)) throw Object.assign(Error('duplicate'),{code:'ER_DUP_ENTRY'});
         rows.push({id:rows.length+1,parent:args[0],child:args[1],level});
       } else if(sql.includes('UPDATE')) {
@@ -55,7 +61,7 @@ function backend({promoters=[{user_id:1,code:'A',status:'active'}], rows=[], fai
   const start=src.indexOf("app.post('/api/v1/distribution/bind'");
   const end=src.indexOf('// 21b.',start);
   assert(start>=0&&end>start);
-  vm.runInNewContext(src.slice(start,end), {app:{post:(p,a,h)=>handler=h},authenticateWxToken(){},get,transaction,console:{error(){}}});
+  vm.runInNewContext(src.slice(start,end), {app:{post:(p,a,h)=>handler=h},authenticateWxToken(){},get,transaction,syncDirectChildrenSecondLevel,console:{error(){}}});
   return {rows,promoters,writes,async call(code,id=2){const res={http:200,status(n){this.http=n;return this;},json(body){this.body=body;return this;}};await handler({body:{inviteCode:code},user:{id}},res);return res;}};
 }
 (async()=>{
