@@ -30,6 +30,10 @@ interface TableSchema {
 const router = useRouter()
 const userInfo = ref<any>({})
 const loadingSchema = ref(false)
+const syncingDb = ref(false)
+const showSyncConfirm = ref(false)
+const showSyncResult = ref(false)
+const syncResultData = ref<any>(null)
 const runningSql = ref(false)
 const databaseName = ref('')
 const tables = ref<TableSchema[]>([])
@@ -127,6 +131,22 @@ function useTemplate(sql: string) {
   sqlText.value = sql
 }
 
+async function handleSyncDatabase() {
+  showSyncConfirm.value = false
+  syncingDb.value = true
+  try {
+    const res: any = await request.post('/api/admin/database/sync')
+    syncResultData.value = res.data || {}
+    showSyncResult.value = true
+    MessagePlugin.success('数据库表结构自检与初始化同步完成')
+    await fetchSchema()
+  } catch (error: any) {
+    MessagePlugin.error(error?.response?.data?.message || error?.message || '结构自检与同步失败')
+  } finally {
+    syncingDb.value = false
+  }
+}
+
 onMounted(async () => {
   if (!ensureSuperAdminAccess()) return
   await fetchSchema()
@@ -142,7 +162,10 @@ onMounted(async () => {
       </div>
       <div class="header-actions">
         <div class="db-tag">当前库：{{ databaseName || '—' }}</div>
-        <button class="btn btn-outline" :disabled="loadingSchema" @click="fetchSchema">刷新结构</button>
+        <button class="btn btn-outline" :disabled="loadingSchema || syncingDb" @click="fetchSchema">刷新结构</button>
+        <button class="btn btn-primary" :disabled="loadingSchema || syncingDb" @click="showSyncConfirm = true">
+          {{ syncingDb ? '同步自检中...' : '一键结构自检与同步' }}
+        </button>
       </div>
     </div>
 
@@ -288,6 +311,66 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+
+    <!-- 确认自检与初始化弹窗 -->
+    <t-dialog
+      v-model:visible="showSyncConfirm"
+      header="数据库结构自检与同步确认"
+      width="540px"
+      :confirm-btn="{ content: '开始自检与同步', theme: 'primary', loading: syncingDb }"
+      :cancel-btn="{ content: '取消' }"
+      @confirm="handleSyncDatabase"
+    >
+      <div class="sync-confirm-content">
+        <div class="sync-confirm-lead">即将对当前数据库执行幂等表结构自检与增量迁移同步。</div>
+        <div class="sync-confirm-list">
+          <div class="sync-confirm-item">
+            <span class="item-badge">安全性</span>
+            <span>仅执行安全的字段补齐与增量表初始化，绝对不会删除任何现有数据表或业务数据。</span>
+          </div>
+          <div class="sync-confirm-item">
+            <span class="item-badge">适用场景</span>
+            <span>生产环境代码更新后出现字段缺失、CRM跟进人/预约来源/筛查报告关联字段滞后引发的 500 报错自愈。</span>
+          </div>
+          <div class="sync-confirm-item">
+            <span class="item-badge">目标数据库</span>
+            <span class="mono">{{ databaseName || '当前连接库' }}</span>
+          </div>
+        </div>
+      </div>
+    </t-dialog>
+
+    <!-- 同步完成结果弹窗 -->
+    <t-dialog
+      v-model:visible="showSyncResult"
+      header="结构自检与初始化同步完成"
+      width="560px"
+      :confirm-btn="{ content: '确定', theme: 'primary' }"
+      :cancel-btn="null"
+      @confirm="showSyncResult = false"
+    >
+      <div class="sync-result-content" v-if="syncResultData">
+        <div class="sync-result-status">全部表结构与增量补丁检查完毕，系统已保持最新兼容状态。</div>
+        <div class="sync-result-grid">
+          <div class="sync-result-row">
+            <span class="row-label">目标数据库</span>
+            <span class="row-value mono">{{ syncResultData.database || databaseName || '—' }}</span>
+          </div>
+          <div class="sync-result-row">
+            <span class="row-label">数据表总数</span>
+            <span class="row-value">{{ syncResultData.tableCount ?? syncResultData.tables?.length ?? 0 }} 张</span>
+          </div>
+          <div class="sync-result-row">
+            <span class="row-label">自检时间</span>
+            <span class="row-value">{{ formatDateTime(syncResultData.syncedAt) }}</span>
+          </div>
+          <div class="sync-result-row">
+            <span class="row-label">修复覆盖项</span>
+            <span class="row-value">CRM跟进人字段、预约来源字段、筛查就诊人关联、履约病历关联及交付模型</span>
+          </div>
+        </div>
+      </div>
+    </t-dialog>
   </div>
 </template>
 
@@ -501,5 +584,86 @@ onMounted(async () => {
   .table-list {
     max-height: 280px;
   }
+}
+
+.sync-confirm-content,
+.sync-result-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.sync-confirm-lead {
+  font-weight: 600;
+  color: #111827;
+}
+
+.sync-confirm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.sync-confirm-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.item-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.sync-result-status {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.sync-result-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.sync-result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.row-label {
+  color: #64748b;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.row-value {
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: right;
 }
 </style>

@@ -99,7 +99,11 @@ Page({
     stores: [],
   },
 
-  onLoad() {
+  onLoad(options) {
+    try {
+      const backendReferral = require('../../common/utils/backend-referral');
+      if (backendReferral && backendReferral.capture) backendReferral.capture(options);
+    } catch (e) {}
     this.hasLoaded = false;
   },
 

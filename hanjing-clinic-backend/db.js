@@ -571,6 +571,7 @@ export const initDB = async () => {
   // serialize simultaneous retries across backend processes.
   for (const sql of [
     'ALTER TABLE snore_assessments ADD COLUMN risk_score INT DEFAULT NULL',
+    'ALTER TABLE snore_assessments ADD COLUMN analysis_version INT NOT NULL DEFAULT 1',
     'ALTER TABLE snore_assessments ADD COLUMN client_record_key CHAR(64) DEFAULT NULL',
     'ALTER TABLE snore_assessments ADD COLUMN client_payload_hash CHAR(64) DEFAULT NULL',
     'ALTER TABLE snore_assessments ADD UNIQUE KEY uq_snore_client_record (user_id, client_record_key)'
@@ -642,6 +643,9 @@ export const initDB = async () => {
   } catch (err) {}
   try {
     await query(`ALTER TABLE appointments ADD COLUMN store_name VARCHAR(100) DEFAULT NULL;`);
+  } catch (err) {}
+  try {
+    await query(`ALTER TABLE appointments ADD COLUMN source VARCHAR(30) DEFAULT 'mini_app';`);
   } catch (err) {}
 
   try {
@@ -1763,8 +1767,10 @@ export const initDB = async () => {
   try { await query(`ALTER TABLE follow_up_records MODIFY COLUMN follower_id BIGINT UNSIGNED NOT NULL`); } catch (e) {}
   try { await query(`ALTER TABLE follow_up_records ADD CONSTRAINT fk_follow_up_record_follower FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE RESTRICT`); } catch (e) {}
 
-  try { await query(`ALTER TABLE patient_crm_records RENAME COLUMN admin_user_id TO follower_id`); } catch (e) {}
+  try { await dropForeignKeysForColumn('patient_crm_records', 'admin_user_id'); } catch (e) {}
   try { await dropForeignKeysForColumn('patient_crm_records', 'follower_id'); } catch (e) {}
+  try { await query(`ALTER TABLE patient_crm_records CHANGE COLUMN admin_user_id follower_id BIGINT UNSIGNED NOT NULL`); } catch (e) {}
+  try { await query(`ALTER TABLE patient_crm_records RENAME COLUMN admin_user_id TO follower_id`); } catch (e) {}
   try { await query(`ALTER TABLE patient_crm_records ADD CONSTRAINT fk_patient_crm_record_follower FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE RESTRICT`); } catch (e) {}
 
   // Device fulfillment is a separate operational workflow. It deliberately
@@ -2328,4 +2334,25 @@ export const initDB = async () => {
   await query('SET FOREIGN_KEY_CHECKS = 1;');
 
   console.log('MySQL Database tables verified/created successfully.');
+};
+
+export const syncDatabaseSchema = async () => {
+  await initDB();
+  const tables = await query(
+    `SELECT TABLE_NAME AS name, TABLE_ROWS AS row_count, CREATE_TIME AS create_time, UPDATE_TIME AS update_time
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+     ORDER BY TABLE_NAME ASC`
+  );
+  return {
+    success: true,
+    database: process.env.DB_NAME || '',
+    tableCount: tables.length,
+    tables: tables.map((t) => ({
+      name: t.name,
+      rowCount: Number(t.row_count || 0),
+      updateTime: t.update_time || t.create_time
+    })),
+    syncedAt: new Date().toISOString()
+  };
 };

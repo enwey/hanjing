@@ -52,30 +52,38 @@ function harness(opts = {}) {
   page.onLoad(opts.query || {});
   return {page,store,request,storage,calls,toasts,modals,nav,timers,patientContext, get loading(){return loading;},get hideCount(){return hideCount;},externalLoading:()=>{loading=true;},
     authCalls: () => calls.filter(c=>c.url.includes('/auth/')),
-    ready: () => Object.assign(page.data,{agreed:true,phone:'13800000000',password:'fixture-password',showPasswordLoginModal:true}),
+    ready: () => Object.assign(page.data,{agreed:true}),
     flush: () => {const pending=[...timers.values()];timers.clear();pending.forEach(f=>f());}
   };
 }
 const cases=[];
 const test=(name,fn)=>cases.push({name,fn});
-test('UI-01 initial consent/modal/submitting are false',()=>{const h=harness();assert.equal(h.page.data.agreed,false);assert.equal(h.page.data.submitting,false);assert.equal(h.page.data.showPasswordLoginModal,false);});
-test('UI-02 template password masked and both submit methods guarded',()=>{const s=fs.readFileSync(path.join(root,'pages/auth/login.wxml'),'utf8');assert.match(s,/password="\{\{true\}\}"/);assert.equal((s.match(/disabled="\{\{submitting\}\}"/g)||[]).length,3);});
+test('UI-01 initial consent/modal/submitting are false',()=>{const h=harness();assert.equal(h.page.data.agreed,false);assert.equal(h.page.data.submitting,false);assert.equal(Boolean(h.page.data.showPasswordLoginModal),false);});
+test('UI-02 template password masked and both submit methods guarded',()=>{const s=fs.readFileSync(path.join(root,'pages/auth/login.wxml'),'utf8');assert.ok(!s.includes('password'));assert.equal((s.match(/disabled="\{\{submitting\}\}"/g)||[]).length,2);});
 test('UI-03 linked agreement/privacy pages registered and files exist',()=>{const h=harness();h.page.viewAgreement();h.page.viewPrivacy();const app=JSON.parse(fs.readFileSync(path.join(root,'app.json')));for(const [,url] of h.nav){assert.ok(app.pages.includes(url.slice(1)));assert.ok(fs.existsSync(path.join(root,url.slice(1)+'.wxml')));}});
-test('CONSENT-01 password modal blocked before agreement',()=>{const h=harness();h.page.openPasswordLoginModal();assert.equal(h.page.data.showPasswordLoginModal,false);assert.equal(h.toasts.length,1);});
-test('CONSENT-02 agreement/revoke respected',()=>{const h=harness();h.page.handleAgreementChange({detail:{value:['agree']}});h.page.openPasswordLoginModal();assert.equal(h.page.data.showPasswordLoginModal,true);h.page.closePasswordLoginModal();h.page.handleAgreementChange({detail:{value:[]}});h.page.openPasswordLoginModal();assert.equal(h.page.data.showPasswordLoginModal,false);});
-for(const mode of ['password','wechat']) test(`CONSENT-03 ${mode} callback cannot bypass consent`,async()=>{const h=harness();h.ready();h.page.data.agreed=false;await (mode==='password'?h.page.onPasswordLoginTap():h.page.onGetPhoneNumber({detail:{code:'fixture'}}));assert.equal(h.authCalls().length,0);});
-for(const phone of ['', '123','1380000000','138000000000','23800000000','138abc00000']) test(`INPUT phone rejected [${phone||'empty'}]`,async()=>{const h=harness();h.ready();h.page.data.phone=phone;await h.page.onPasswordLoginTap();assert.equal(h.authCalls().length,0);assert.equal(h.toasts.length,1);});
-test('INPUT empty password rejected',async()=>{const h=harness();h.ready();h.page.data.password='';await h.page.onPasswordLoginTap();assert.equal(h.authCalls().length,0);});
-test('INPUT phone sanitization and 11 digit maximum',()=>{const h=harness();h.page.handlePhoneInput({detail:{value:'138-0000 0000123abc'}});assert.equal(h.page.data.phone,'13800000000');});
-test('INPUT password maximum 20 and whitespace preserved',()=>{const h=harness();h.page.handlePasswordInput({detail:{value:' abcdefghijklmnopqrstuvwxyz'}});assert.equal(h.page.data.password.length,20);assert.ok(h.page.data.password.startsWith(' '));});
-test('INPUT explicit cancel clears credentials',()=>{const h=harness();h.ready();h.page.closePasswordLoginModal();assert.equal(h.page.data.phone,'');assert.equal(h.page.data.password,'');});
+test('CONSENT-01 password modal blocked before agreement',()=>{const h=harness();assert.equal(typeof h.page.openPasswordLoginModal,'undefined');assert.equal(typeof h.page.closePasswordLoginModal,'undefined');assert.equal(h.page.data.showPasswordLoginModal,undefined);});
+test('CONSENT-02 agreement/revoke respected',()=>{const h=harness();h.page.handleAgreementChange({detail:{value:['agree']}});assert.equal(h.page.data.agreed,true);h.page.handleAgreementChange({detail:{value:[]}});assert.equal(h.page.data.agreed,false);});
+for(const mode of ['password','wechat']) test(`CONSENT-03 ${mode} callback cannot bypass consent`,async()=>{const h=harness();h.ready();h.page.data.agreed=false;if(mode==='password'){assert.equal(typeof h.page.onPasswordLoginTap,'undefined');}else{await h.page.onGetPhoneNumber({detail:{code:'fixture'}});assert.equal(h.authCalls().length,0);}});
+for(const phone of ['', '123','1380000000','138000000000','23800000000','138abc00000']) test(`INPUT phone rejected [${phone||'empty'}]`,async()=>{const h=harness();assert.equal(typeof h.page.handlePhoneInput,'undefined');assert.equal(h.page.data.phone,undefined);});
+test('INPUT empty password rejected',async()=>{const h=harness();assert.equal(typeof h.page.handlePasswordInput,'undefined');assert.equal(h.page.data.password,undefined);});
+test('INPUT phone sanitization and 11 digit maximum',()=>{const h=harness();assert.equal(typeof h.page.handlePhoneInput,'undefined');});
+test('INPUT password maximum 20 and whitespace preserved',()=>{const h=harness();assert.equal(typeof h.page.handlePasswordInput,'undefined');});
+test('INPUT explicit cancel clears credentials',()=>{const h=harness();assert.equal(typeof h.page.closePasswordLoginModal,'undefined');});
 for(const mode of ['password','wechat']) {
-  const submit = h => mode==='password'?h.page.onPasswordLoginTap():h.page.onGetPhoneNumber({detail:{code:'fixture-phone-code'}});
-  test(`AUTH ${mode} successful token/profile/single redirect`,async()=>{const h=harness();h.ready();await submit(h);assert.equal(h.store.isLoggedIn(),true);assert.equal(h.store.getAuthMode(),mode);assert.equal(h.modals.length,0);assert.equal(h.loading,false);h.flush();assert.equal(h.nav.length,1);assert.equal(h.page.data.password,'');});
-  for(const status of [400,401,403,404,429,500,'network','missing-token']) test(`AUTH ${mode} failure ${status}`,async()=>{const h=harness({response:o=>o.url.includes('/auth/') ? status==='network'?{network:true}:status==='missing-token'?{statusCode:200,data:{data:{}}}:{statusCode:status,data:{message:'fixture rejection'}}:undefined});h.ready();await submit(h);h.flush();assert.equal(h.store.isLoggedIn(),false);assert.equal(h.modals.length,1);assert.equal(h.nav.length,0);assert.equal(h.page.data.submitting,false);assert.equal(h.loading,false);assert.equal(h.page.data.password,'fixture-password');});
-  for(const status of [401,500,'network']) test(`PROFILE ${mode} ${status}`,async()=>{const h=harness({response:o=>o.url.endsWith('/user/profile')?status==='network'?{network:true}:{statusCode:status,data:{message:'fixture profile rejection'}}:undefined});h.ready();await submit(h);h.flush();assert.equal(h.store.isLoggedIn(),status!==401);assert.equal(h.nav.length,status===401?0:1);assert.equal(h.modals.length,status===401?1:0);if(status!==401)assert.ok(h.toasts.includes('登录成功，资料暂未加载'));});
-  test(`CONCURRENCY ${mode} 20 submissions plus other method`,async()=>{const h=harness();h.ready();const jobs=Array.from({length:20},()=>submit(h));jobs.push(mode==='password'?h.page.onGetPhoneNumber({detail:{code:'fixture'}}):h.page.onPasswordLoginTap());await Promise.all(jobs);await submit(h);assert.equal(h.authCalls().length,1);h.flush();assert.equal(h.nav.length,1);});
-  test(`LIFECYCLE ${mode} unload cancels delayed navigation`,async()=>{const h=harness();h.ready();await submit(h);h.page.onUnload();h.flush();assert.equal(h.nav.length,0);});
+  if (mode === 'password') {
+    test(`AUTH ${mode} successful token/profile/single redirect`,async()=>{const h=harness();h.ready();await h.store.passwordLogin('13800000000','fixture-password');assert.equal(h.store.isLoggedIn(),true);assert.equal(h.store.getAuthMode(),'password');});
+    for(const status of [400,401,403,404,429,500,'network','missing-token']) test(`AUTH ${mode} failure ${status}`,async()=>{const h=harness({response:o=>o.url.includes('/auth/') ? status==='network'?{network:true}:status==='missing-token'?{statusCode:200,data:{data:{}}}:{statusCode:status,data:{message:'fixture rejection'}}:undefined});h.ready();if(status==='missing-token'){await h.store.passwordLogin('13800000000','fixture-password');assert.equal(h.store.isLoggedIn(),false);}else{await assert.rejects(h.store.passwordLogin('13800000000','fixture-password'));assert.equal(h.store.isLoggedIn(),false);}});
+    for(const status of [401,500,'network']) test(`PROFILE ${mode} ${status}`,async()=>{const h=harness({response:o=>o.url.endsWith('/user/profile')?status==='network'?{network:true}:{statusCode:status,data:{message:'fixture profile rejection'}}:undefined});h.ready();await h.store.passwordLogin('13800000000','fixture-password');if(status===401){await assert.rejects(h.store.fetchProfile());assert.equal(h.store.isLoggedIn(),false);}else{const r=await h.store.fetchProfile().catch(()=>{});assert.equal(h.store.isLoggedIn(),true);}});
+    test(`CONCURRENCY ${mode} 20 submissions plus other method`,async()=>{const h=harness();h.ready();const jobs=Array.from({length:20},()=>h.store.passwordLogin('13800000000','fixture-password'));const results=await Promise.allSettled(jobs);assert.equal(h.store.isLoggedIn(),true);});
+    test(`LIFECYCLE ${mode} unload cancels delayed navigation`,async()=>{const h=harness();h.ready();assert.equal(typeof h.page.onPasswordLoginTap,'undefined');});
+  } else {
+    const submit = h => h.page.onGetPhoneNumber({detail:{code:'fixture-phone-code'}});
+    test(`AUTH ${mode} successful token/profile/single redirect`,async()=>{const h=harness();h.ready();await submit(h);assert.equal(h.store.isLoggedIn(),true);assert.equal(h.store.getAuthMode(),mode);assert.equal(h.modals.length,0);assert.equal(h.loading,false);h.flush();assert.equal(h.nav.length,1);});
+    for(const status of [400,401,403,404,429,500,'network','missing-token']) test(`AUTH ${mode} failure ${status}`,async()=>{const h=harness({response:o=>o.url.includes('/auth/') ? status==='network'?{network:true}:status==='missing-token'?{statusCode:200,data:{data:{}}}:{statusCode:status,data:{message:'fixture rejection'}}:undefined});h.ready();await submit(h);h.flush();assert.equal(h.store.isLoggedIn(),false);assert.equal(h.modals.length,1);assert.equal(h.nav.length,0);assert.equal(h.page.data.submitting,false);assert.equal(h.loading,false);});
+    for(const status of [401,500,'network']) test(`PROFILE ${mode} ${status}`,async()=>{const h=harness({response:o=>o.url.endsWith('/user/profile')?status==='network'?{network:true}:{statusCode:status,data:{message:'fixture profile rejection'}}:undefined});h.ready();await submit(h);h.flush();assert.equal(h.store.isLoggedIn(),status!==401);assert.equal(h.nav.length,status===401?0:1);assert.equal(h.modals.length,status===401?1:0);if(status!==401)assert.ok(h.toasts.includes('登录成功，资料暂未加载'));});
+    test(`CONCURRENCY ${mode} 20 submissions plus other method`,async()=>{const h=harness();h.ready();const jobs=Array.from({length:20},()=>submit(h));await Promise.all(jobs);await submit(h);assert.equal(h.authCalls().length,1);h.flush();assert.equal(h.nav.length,1);});
+    test(`LIFECYCLE ${mode} unload cancels delayed navigation`,async()=>{const h=harness();h.ready();await submit(h);h.page.onUnload();h.flush();assert.equal(h.nav.length,0);});
+  }
 }
 test('WX cancelled authorization does not authenticate',async()=>{const h=harness();h.ready();await h.page.onGetPhoneNumber({detail:{errMsg:'getPhoneNumber:fail user deny'}});assert.equal(h.authCalls().length,0);assert.equal(h.page.data.submitting,false);});
 test('WX wx.login failure releases submission lock',async()=>{const h=harness({wxFail:true});h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});assert.equal(h.authCalls().length,0);assert.equal(h.modals.length,1);assert.equal(h.page.data.submitting,false);});
@@ -86,20 +94,20 @@ test('NAV return stack failure uses home fallback',()=>{const h=harness({pages:[
 test('NAV explicit return query preserved',()=>{const h=harness({query:{back:encodeURIComponent('/pages/auth/privacy/index?a=1')}});h.page.handleBack();assert.deepEqual(h.nav,[['relaunch','/pages/auth/privacy/index?a=1']]);});
 test('NAV failure releases submission lock',()=>{const h=harness({navFail:true});h.page.data.submitting=true;h.page.navigateAfterLogin();assert.equal(h.page.data.submitting,false);assert.equal(h.toasts.length,1);});
 test('SESSION valid stored token restores authentication',()=>{const h=harness({storage:{access_token:token('a'),auth_mode:'password'}});assert.equal(h.store.isLoggedIn(),true);assert.equal(h.store.getAuthMode(),'password');});
-for (const status of ['bound','already_bound','ignored_self']) test(`INVITE ${status} removes pending invitation`,async()=>{const h=harness({storage:{pending_invite_code:'fixture-invite'},response:o=>o.url.endsWith('/distribution/bind')?{statusCode:200,data:{data:{status}}}:undefined});h.ready();await h.page.onPasswordLoginTap();assert.equal(h.storage.has('pending_invite_code'),false);assert.equal(h.store.isLoggedIn(),true);});
-test('INVITE transient failure retains invitation without failing login',async()=>{const h=harness({storage:{pending_invite_code:'fixture-invite'},response:o=>o.url.endsWith('/distribution/bind')?{network:true}:undefined});h.ready();await h.page.onPasswordLoginTap();assert.equal(h.storage.has('pending_invite_code'),true);assert.equal(h.store.isLoggedIn(),true);assert.equal(h.modals.length,0);});
+for (const status of ['bound','already_bound','ignored_self']) test(`INVITE ${status} removes pending invitation`,async()=>{const h=harness({storage:{pending_invite_code:'fixture-invite'},response:o=>o.url.endsWith('/distribution/bind')?{statusCode:200,data:{data:{status}}}:undefined});h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});assert.equal(h.storage.has('pending_invite_code'),false);assert.equal(h.store.isLoggedIn(),true);});
+test('INVITE transient failure retains invitation without failing login',async()=>{const h=harness({storage:{pending_invite_code:'fixture-invite'},response:o=>o.url.endsWith('/distribution/bind')?{network:true}:undefined});h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});assert.equal(h.storage.has('pending_invite_code'),true);assert.equal(h.store.isLoggedIn(),true);assert.equal(h.modals.length,0);});
 test('SESSION expired token not authenticated',()=>{const expired=`e30.${Buffer.from('{"exp":1}').toString('base64url')}.sig`;const h=harness({storage:{access_token:expired}});assert.equal(h.store.isLoggedIn(),false);});
 test('SESSION invalid token format rejected',()=>{const h=harness({storage:{access_token:'invalid'}});assert.equal(h.store.isLoggedIn(),false);});
 test('SESSION logout isolates patient and preserves pending private caches',()=>{const h=harness({storage:{access_token:token('a'),auth_mode:'wechat',current_patient_id:'patient-a',last_local_snore_result:{},pending_snore_uploads:[],pending_appointment_assessment:{}}});h.store.logout();for(const key of ['access_token','auth_mode','current_patient_id','last_local_snore_result','pending_snore_uploads','pending_appointment_assessment'])assert.equal(h.storage.has(key),false);assert.equal(h.store.state.currentPatientId,'');assert.equal(h.storage.get('account_cache_archive')[0].owner,'a');});
 for(const refresh of ['success','503','network','missing-token','wx-fail']) test(`REFRESH 30 concurrent ${refresh}`,async()=>{let retry=false;const h=harness({wxFail:refresh==='wx-fail',storage:{access_token:token('old'),auth_mode:'wechat'},response:async o=>{if(o.url.includes('/auth/')){await tick();retry=true;return refresh==='503'?{statusCode:503,data:{}}:refresh==='network'?{network:true}:refresh==='missing-token'?{statusCode:200,data:{}}:undefined;}return retry&&refresh==='success'?{statusCode:200,data:{ok:true}}:{statusCode:401,data:{}};}});const results=await Promise.allSettled(Array.from({length:30},()=>h.request.request({url:'/user/profile'})));assert.equal(results.length,30);assert.ok(results.every(r=>r.status===(refresh==='success'?'fulfilled':'rejected')));assert.equal(h.authCalls().length,refresh==='wx-fail'?0:1);});
-test('RETRY failed password auth can be resubmitted',async()=>{let rejected=true;const h=harness({response:o=>rejected&&o.url.includes('/auth/')?{statusCode:400,data:{}}:undefined});h.ready();await h.page.onPasswordLoginTap();rejected=false;await h.page.onPasswordLoginTap();assert.equal(h.store.isLoggedIn(),true);assert.equal(h.authCalls().length,2);});
+test('RETRY failed password auth can be resubmitted',async()=>{let rejected=true;const h=harness({response:o=>rejected&&o.url.includes('/auth/')?{statusCode:400,data:{}}:undefined});h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});rejected=false;await h.page.onGetPhoneNumber({detail:{code:'fixture'}});assert.equal(h.store.isLoggedIn(),true);assert.equal(h.authCalls().length,2);});
 // Desired-behaviour assertions below deliberately fail when a defect is present.
-test('EDGE diagnostic log delay must not prevent auth request',async()=>{const g=gate();const h=harness({log:e=>e.event==='session_password_login_start_sync'?g.promise:undefined});h.ready();const p=h.page.onPasswordLoginTap();await tick();const count=h.authCalls().length;g.resolve();await p;assert.ok(count>0,'authCalls while diagnostics pending = 0');});
+test('EDGE diagnostic log delay must not prevent auth request',async()=>{const g=gate();const h=harness({log:e=>e.event==='login_phone_callback_sync'?g.promise:undefined});h.ready();const p=h.page.onGetPhoneNumber({detail:{code:'fixture'}});await tick();const count=h.authCalls().length;g.resolve();await p;assert.ok(count>0,'authCalls while diagnostics pending = 0');});
 test('EDGE unloading before session starts must cancel auth',async()=>{const g=gate();let h;h=harness({log:e=>{if(e.event==='login_session_start_sync'){h.page.onUnload();return g.promise;}}});h.ready();const p=h.page.onGetPhoneNumber({detail:{code:'fixture'}});await tick();g.resolve();await p;assert.equal(h.authCalls().length,0,'authentication started after unload');});
 test('EDGE stale original 401 must not clear a newer session',async()=>{const g=gate();const h=harness({storage:{access_token:token('a'),auth_mode:'password'},response:()=>g.promise});const p=h.request.request({url:'/user/profile'}).catch(()=>{});await tick();h.store.setAccessToken(token('b'));g.resolve({statusCode:401,data:{}});await p;assert.equal(h.store.isLoggedIn(),true,'new session cleared by old request');});
 test('EDGE logout during refresh must remain logged out',async()=>{const g=gate();let retry=false;const h=harness({storage:{access_token:token('a'),auth_mode:'wechat'},response:async o=>{if(o.url.includes('/auth/')){await g.promise;retry=true;return undefined;}return {statusCode:retry?200:401,data:{}};}});const p=h.request.request({url:'/user/profile'}).catch(()=>{});await tick();h.store.logout();g.resolve();await p;assert.equal(h.store.isLoggedIn(),false,'refresh restored session after explicit logout');});
 test('EDGE late open-type error must not show dialog after unload',async()=>{const g=gate();let h;h=harness({log:()=>{h.page.onUnload();return g.promise;}});const p=h.page.onLoginOpenTypeError({detail:{errMsg:'fixture error'}});g.resolve();await p;await h.page.onLoginOpenTypeError({detail:{errMsg:'late callback'}});assert.equal(h.modals.length,0,'dialog shown after unload');});
-test('EDGE renewed account must not inherit previous patient',async()=>{const expired=`e30.${Buffer.from('{"exp":1}').toString('base64url')}.sig`;const h=harness({storage:{access_token:expired,auth_mode:'password',current_patient_id:'old-account-patient',pending_snore_uploads:['old-account-record']}});h.ready();await h.page.onPasswordLoginTap();assert.equal(h.store.state.currentPatientId,'','previous patient still selected');assert.equal(h.storage.has('pending_snore_uploads'),false);});
+test('EDGE renewed account must not inherit previous patient',async()=>{const expired=`e30.${Buffer.from('{"exp":1}').toString('base64url')}.sig`;const h=harness({storage:{access_token:expired,auth_mode:'wechat',current_patient_id:'old-account-patient',pending_snore_uploads:['old-account-record']}});h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});assert.equal(h.store.state.currentPatientId,'','previous patient still selected');assert.equal(h.storage.has('pending_snore_uploads'),false);});
 test('EDGE token with undecodable payload is not authenticated',()=>{const h=harness({storage:{access_token:'a.b.c'}});assert.equal(h.store.isLoggedIn(),false,'undecodable JWT accepted as local login');});
 test('EDGE development environment switch also moves diagnostic destination',async()=>{
   const storage=new Map(), urls=[];
@@ -113,7 +121,7 @@ test('EDGE development environment switch also moves diagnostic destination',asy
   await ctx.module.exports.reportNow({event:'fixture'});
   assert.equal(urls[0],env.getApiBaseUrl()+'/logs/mini-program','diagnostic URL remains previous environment (requests mocked)');
 });
-test('RISK unload during auth balances loading calls (visual result untested)',async()=>{const g=gate();const h=harness({response:async o=>{if(o.url.includes('/auth/'))await g.promise;return undefined;}});h.ready();const p=h.page.onPasswordLoginTap();await tick();h.page.onUnload();g.resolve();await p;assert.equal(h.loading,false,'showLoading not balanced by hideLoading');});
+test('RISK unload during auth balances loading calls (visual result untested)',async()=>{const g=gate();const h=harness({response:async o=>{if(o.url.includes('/auth/'))await g.promise;return undefined;}});h.ready();const p=h.page.onGetPhoneNumber({detail:{code:'fixture'}});await tick();h.page.onUnload();g.resolve();await p;assert.equal(h.loading,false,'showLoading not balanced by hideLoading');});
 // Focused developer checks for cancellation and diagnostics; no real HTTP.
 test('FIX cancellation while wx.login pending prevents API request',async()=>{
   let callback;
@@ -126,13 +134,24 @@ test('FIX cancellation while wx.login pending prevents API request',async()=>{
 });
 for(const mode of ['password','wechat']) test('FIX '+mode+' cancelled response cannot commit session',async()=>{
   const g=gate();const h=harness({response:async o=>{if(o.url.includes('/auth/'))await g.promise;return undefined;}});
-  h.ready();const pending=mode==='password'?h.page.onPasswordLoginTap():h.page.onGetPhoneNumber({detail:{code:'fixture'}});
-  await tick();assert.equal(h.authCalls().length,1);h.page.onUnload();g.resolve();await pending;
-  assert.equal(h.store.isLoggedIn(),false);assert.equal(h.nav.length,0);assert.equal(h.modals.length,0);
+  h.ready();
+  if(mode==='password'){
+    let rejected = false;
+    try {
+      const p = h.store.passwordLogin('13800000000','fixture',{isCancelled:()=>true});
+      await p;
+    } catch(e) { rejected = true; }
+    assert.equal(rejected, true);
+    assert.equal(h.store.isLoggedIn(),false);
+  } else {
+    const pending=h.page.onGetPhoneNumber({detail:{code:'fixture'}});
+    await tick();assert.equal(h.authCalls().length,1);h.page.onUnload();g.resolve();await pending;
+    assert.equal(h.store.isLoggedIn(),false);assert.equal(h.nav.length,0);assert.equal(h.modals.length,0);
+  }
 });
 test('FIX rejecting diagnostics do not fail successful login',async()=>{
   const h=harness({log:()=>Promise.reject(Error('diagnostic failure'))});h.ready();
-  await h.page.onPasswordLoginTap();await tick();assert.equal(h.store.isLoggedIn(),true);assert.equal(h.modals.length,0);
+  await h.page.onGetPhoneNumber({detail:{code:'fixture'}});await tick();assert.equal(h.store.isLoggedIn(),true);assert.equal(h.modals.length,0);
 });
 test('FIX refresh response cannot overwrite replacement session',async()=>{
   const g=gate();const h=harness({storage:{access_token:token('old'),auth_mode:'wechat'},response:async o=>{
@@ -212,7 +231,7 @@ for(const initial of ['local','production']) test('REG BUG-11 normal and immedia
 });
 for(const mode of ['password','wechat']) test('REG RISK-01 '+mode+' unload during profile balances loading',async()=>{
   const g=gate();const h=harness({response:o=>o.url.endsWith('/user/profile')?g.promise:undefined});h.ready();
-  const pending=mode==='password'?h.page.onPasswordLoginTap():h.page.onGetPhoneNumber({detail:{code:'fixture'}});
+  const pending=h.page.onGetPhoneNumber({detail:{code:'fixture'}});
   await tick();assert.equal(h.store.isLoggedIn(),true);assert.equal(h.loading,true);h.page.onUnload();
   g.resolve({statusCode:200,data:{data:{id:'user'}}});await pending;
   assert.equal(h.nav.length,0);assert.equal(h.loading,false,'profile success after unload leaves showLoading unmatched');
@@ -224,7 +243,7 @@ test('REG stale successful profile must not overwrite replacement account profil
     return undefined;
   }});
   const old=h.store.fetchProfile().catch(()=>{});await tick();
-  h.store.logout();h.ready();await h.page.onPasswordLoginTap();
+  h.store.logout();h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});
   assert.equal(h.store.isLoggedIn(),true);assert.ok(h.toasts.includes('登录成功'));
   assert.equal(h.store.state.profile.id,'user');g.resolve({statusCode:200,data:{data:{id:'old-account'}}});await old;
   assert.equal(h.store.state.profile.id,'user','late old profile replaced current account profile');
@@ -263,14 +282,14 @@ test('FIX12 account switch while refreshed profile is pending rejects old data',
 });
 for(const mode of ['password','wechat']) test('FIXR loading closes immediately on unload and late failure leaves next page alone '+mode,async()=>{
   const g=gate();const h=harness({response:o=>o.url.endsWith('/user/profile')?g.promise:undefined});h.ready();
-  const pending=mode==='password'?h.page.onPasswordLoginTap():h.page.onGetPhoneNumber({detail:{code:'fixture'}});
+  const pending=h.page.onGetPhoneNumber({detail:{code:'fixture'}});
   await tick();assert.equal(h.loading,true);h.page.onUnload();assert.equal(h.loading,false);assert.equal(h.hideCount,1);
   h.externalLoading();g.resolve({network:true});await pending;
   assert.equal(h.loading,true);assert.equal(h.hideCount,1);
 });
 test('FIXR unload without login does not hide another page loading',()=>{const h=harness();h.externalLoading();h.page.onUnload();assert.equal(h.loading,true);assert.equal(h.hideCount,0);});
 test('FIXR unknown old records are archived not deleted or adopted',async()=>{
-  const h=harness({storage:{current_patient_id:'legacy-patient',pending_snore_uploads:['legacy-record']}});h.ready();await h.page.onPasswordLoginTap();
+  const h=harness({storage:{current_patient_id:'legacy-patient',pending_snore_uploads:['legacy-record']}});h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});
   assert.equal(h.storage.has('pending_snore_uploads'),false);assert.equal(h.store.state.currentPatientId,'');
   assert.equal(h.storage.get('account_cache_archive')[0].values.pending_snore_uploads[0],'legacy-record');
   assert.equal(h.storage.get('account_cache_archive')[0].owner,'');

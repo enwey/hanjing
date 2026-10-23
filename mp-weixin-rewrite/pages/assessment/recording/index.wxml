@@ -27,6 +27,19 @@
         <view wx:for="{{audioLevels}}" wx:key="index" class="wave-bar data-v-70350287 {{isRecording ? 'wave-bar--live' : ''}}" style="height: {{item}}px;"></view>
       </view>
       <text class="record-time data-v-70350287">{{durationText}}</text>
+      <view wx:if="{{isRecording || hasRecordingEnded}}" class="live-decibel-meter data-v-70350287">
+        <view class="meter-item data-v-70350287">
+          <text class="meter-label data-v-70350287">当前分贝</text>
+          <text class="meter-value data-v-70350287">{{currentDecibel}}</text>
+          <text class="meter-unit data-v-70350287">dB</text>
+        </view>
+        <view class="meter-divider data-v-70350287"></view>
+        <view class="meter-item data-v-70350287">
+          <text class="meter-label data-v-70350287">最高峰值</text>
+          <text class="meter-value meter-value--peak data-v-70350287">{{peakLiveDecibel}}</text>
+          <text class="meter-unit data-v-70350287">dB</text>
+        </view>
+      </view>
       <view class="mic-btn-wrapper data-v-70350287">
         <view class="ring-glow ring-glow-1 data-v-70350287"></view>
         <view class="ring-glow ring-glow-2 data-v-70350287"></view>

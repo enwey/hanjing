@@ -59,6 +59,21 @@ try {
     const p=payload('unused');delete p.localId;p.timestamp=1792600000000;
     assert.equal((await post(p)).id,(await post(p)).id);
   });
+  await check('v2 digital levels and version survive SQL, list and detail',async()=>{
+    const p=payload('digital-levels',20);
+    Object.assign(p.analysis_result,{analysisVersion:2,avgDecibel:-49,peakDecibel:-20,snoreRate:20});
+    const saved=await post(p);
+    const row=await db.get('SELECT * FROM snore_assessments WHERE id=?',[Number(saved.id.slice(6))]);
+    assert.equal(row.analysis_version,2); assert.equal(row.avg_decibel,-49); assert.equal(row.peak_decibel,-20);
+    const detail=await api('/snore-analysis/'+saved.id), list=await api('');
+    for(const a of [saved.snoreAnalysis,detail.body.data.snoreAnalysis,list.body.data.find(x=>x.id===saved.id).snoreAnalysis]) {
+      assert.equal(a.analysisVersion,2); assert.equal(a.avgDecibel,-49); assert.equal(a.riskScore,20);
+    }
+    assert.equal((await post(p)).id,saved.id);
+    for(const patch of [{avgDecibel:-90},{peakDecibel:1},{riskScore:21}]) {
+      assert.equal((await api('/snore',{...p,localId:'invalid-v2',analysis_result:{...p.analysis_result,...patch}})).status,400);
+    }
+  });
 } finally {
   if(server) await new Promise(resolve=>server.close(resolve));
   if(db) await db.closePool();

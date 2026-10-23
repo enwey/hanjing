@@ -6,9 +6,20 @@ const originalPage = Page;
 
 Page = function registerTrackedPage(pageOptions) {
   const config = pageOptions || {};
+  const originalOnLoad = config.onLoad;
   const originalOnShow = config.onShow;
   const originalOnHide = config.onHide;
   const originalOnUnload = config.onUnload;
+
+  config.onLoad = function trackedOnLoad(...args) {
+    try {
+      captureBackendReferral(args[0]);
+    } catch (e) {}
+    if (typeof originalOnLoad === 'function') {
+      return originalOnLoad.apply(this, args);
+    }
+    return undefined;
+  };
 
   config.onShow = function trackedOnShow(...args) {
     const app = getApp();
@@ -99,7 +110,7 @@ async function tryBindPendingInvite() {
       }
     } catch (error) {
       if (error && (error.message === "无效的邀请码" || error.message === "邀请码不能为空" ||
-          (error.data && ['PROMOTER_UNAVAILABLE', 'INVITE_CYCLE'].includes(error.data.reason)))) {
+          (error.data && ['PROMOTER_UNAVAILABLE', 'INVITE_CYCLE', 'INVALID_INVITE'].includes(error.data.reason)))) {
         clearCurrentInvite();
       }
     }

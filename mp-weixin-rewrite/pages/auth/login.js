@@ -12,13 +12,6 @@ const COPY = {
   tipTitle: '\u5b89\u5168\u63d0\u793a',
   tipContent: '\u4e3a\u4fdd\u62a4\u60a8\u7684\u4e2a\u4eba\u9690\u79c1\u53ca\u5c31\u8bca\u4fe1\u606f\uff0c\u8bf7\u5148\u5b8c\u6210\u767b\u5f55\u9a8c\u8bc1\u3002\u624b\u673a\u53f7\u7528\u4e8e\u8bc6\u522b\u60a8\u7684\u8d26\u53f7\u8eab\u4efd\uff0c\u786e\u4fdd\u60a8\u8bbf\u95ee\u4e0e\u672c\u4eba\u8d26\u53f7\u5173\u8054\u7684\u4fe1\u606f\u3002',
   loginButton: '\u624b\u673a\u53f7\u5feb\u6377\u767b\u5f55',
-  passwordLoginEntry: '\u4f7f\u7528\u624b\u673a\u53f7+\u5bc6\u7801\u767b\u5f55',
-  passwordLoginTitle: '\u5bc6\u7801\u767b\u5f55',
-  passwordLoginCancel: '\u53d6\u6d88',
-  phonePlaceholder: '\u8bf7\u8f93\u516511\u4f4d\u624b\u673a\u53f7',
-  passwordPlaceholder: '\u8bf7\u8f93\u5165\u767b\u5f55\u5bc6\u7801',
-  passwordLoginButton: '\u624b\u673a\u53f7\u5bc6\u7801\u767b\u5f55',
-  passwordLoginHint: '\u82e5\u5df2\u5728\u8d26\u53f7\u5b89\u5168\u4e2d\u8bbe\u7f6e\u767b\u5f55\u5bc6\u7801\uff0c\u53ef\u76f4\u63a5\u4f7f\u7528\u672c\u65b9\u5f0f\u767b\u5f55\u3002',
   protocolPrefix: '\u6211\u5df2\u9605\u8bfb\u5e76\u540c\u610f',
   userAgreement: '\u300a\u7528\u6237\u534f\u8bae\u300b',
   andText: '\u4e0e',
@@ -30,11 +23,8 @@ const TOAST = {
   needAgreement: '\u8bf7\u5148\u540c\u610f\u7528\u6237\u534f\u8bae\u4e0e\u9690\u79c1\u653f\u7b56',
   authCancelled: '\u6388\u6743\u5df2\u53d6\u6d88',
   loggingIn: '\u5b89\u5168\u767b\u5f55\u4e2d...',
-  passwordLoggingIn: '\u767b\u5f55\u4e2d...',
   loginSuccess: '\u767b\u5f55\u6210\u529f',
   loginFailed: '\u767b\u5f55\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5',
-  invalidPhone: '\u8bf7\u8f93\u5165\u6b63\u786e\u768411\u4f4d\u624b\u673a\u53f7',
-  invalidPassword: '\u8bf7\u8f93\u5165\u767b\u5f55\u5bc6\u7801',
 };
 
 function buildLoginErrorMessage(error, fallback) {
@@ -169,9 +159,6 @@ Page({
     showEnvSwitcher: false,
     currentApiEnvLabel: '',
     currentApiBaseUrl: '',
-    showPasswordLoginModal: false,
-    phone: '',
-    password: '',
   },
 
   onLoad(options = {}) {
@@ -308,33 +295,6 @@ Page({
     this.onLoginTap();
   },
 
-  openPasswordLoginModal() {
-    if (this.data.submitting || this._unloaded) return;
-    if (!this.data.agreed) {
-      wx.showToast({ title: TOAST.needAgreement, icon: 'none' });
-      return;
-    }
-    this.setData({ showPasswordLoginModal: true });
-  },
-
-  closePasswordLoginModal() {
-    this.setData({
-      showPasswordLoginModal: false,
-      phone: '',
-      password: '',
-    });
-  },
-
-  noop() {},
-
-  handlePhoneInput(event) {
-    this.setData({ phone: String(event.detail.value || '').replace(/\D/g, '').slice(0, 11) });
-  },
-
-  handlePasswordInput(event) {
-    this.setData({ password: String(event.detail.value || '').slice(0, 20) });
-  },
-
   async onLoginOpenTypeError(event) {
     if (this._unloaded || this.data.submitting) return;
     const detail = event && event.detail ? event.detail : {};
@@ -396,7 +356,6 @@ Page({
       throw new Error('登录状态已失效，请重新登录');
     }
     this.hideLoginLoading();
-    this.closePasswordLoginModal();
     wx.showToast({
       title: profileLoaded ? TOAST.loginSuccess : '登录成功，资料暂未加载',
       icon: profileLoaded ? 'success' : 'none',
@@ -476,51 +435,6 @@ Page({
       if (this._unloaded) return;
       reportLoginFailure(error, { source: 'auth_login', traceId });
       reportLoginFailureNow(error, { source: 'auth_login', traceId });
-      if (this._unloaded) return;
-      this.setData({ submitting: false });
-      wx.showModal({
-        title: '登录失败',
-        content: buildLoginErrorMessage(error, TOAST.loginFailed),
-        showCancel: false,
-      });
-      console.error(error);
-    }
-  },
-
-  async onPasswordLoginTap() {
-    if (this.data.submitting || this._unloaded) return;
-    const traceId = miniLog.createTraceId();
-    const phone = String(this.data.phone || '').trim();
-    const password = String(this.data.password || '');
-    this.setData({ loginTraceId: traceId });
-
-    if (!this.data.agreed) {
-      wx.showToast({ title: TOAST.needAgreement, icon: 'none' });
-      return;
-    }
-    if (!/^1\d{10}$/.test(phone)) {
-      wx.showToast({ title: TOAST.invalidPhone, icon: 'none' });
-      return;
-    }
-    if (!password) {
-      wx.showToast({ title: TOAST.invalidPassword, icon: 'none' });
-      return;
-    }
-
-    this.setData({ submitting: true });
-    this.showLoginLoading(TOAST.passwordLoggingIn);
-    try {
-      await sessionStore.passwordLogin(phone, password, {
-        source: 'auth_password_login',
-        traceId,
-        isCancelled: () => this._unloaded,
-      });
-      await this.completeLogin({ source: 'auth_password_login', traceId });
-    } catch (error) {
-      this.hideLoginLoading();
-      if (this._unloaded) return;
-      reportLoginFailure(error, { source: 'auth_password_login', traceId });
-      reportLoginFailureNow(error, { source: 'auth_password_login', traceId });
       if (this._unloaded) return;
       this.setData({ submitting: false });
       wx.showModal({

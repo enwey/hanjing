@@ -25,7 +25,7 @@ interface Distributor {
   id: string; name: string; avatar: string; avatarFailed: boolean; phone: string; level: string;
   firstLevelDownline: number; secondLevelDownline: number;
   totalOrders: number; totalAmount: number; totalCommission: number; withdrawableCommission: number
-  joinDate: string; source: string; status: string; loginName: string
+  joinDate: string; source: string; status: string; loginName: string; code?: string;
   commissions: Commission[]
 }
 
@@ -48,7 +48,7 @@ const filteredDistributors = computed(() => {
   // Keyword search
   if (searchKeyword.value) {
     const kw = searchKeyword.value.toLowerCase()
-    list = list.filter(d => d.name.includes(kw) || d.phone.includes(kw))
+    list = list.filter(d => d.name.includes(kw) || d.phone.includes(kw) || (d.code && d.code.toLowerCase().includes(kw)))
   }
 
   return list
@@ -171,6 +171,7 @@ async function fetchDistributors() {
       joinDate: formatDate(row.created_at),
       source: row.source_type==='backend'?'后台创建':'小程序',
       loginName: row.login_name || '',
+      code: row.invite_code || '',
       status: row.status || 'active',
       commissions: []
     }))
@@ -291,7 +292,10 @@ watch(operationColumnWidth, () => {
                   <div class="promoter-info">
                     <div class="promoter-name">{{ row.name }}</div>
                     <div class="promoter-phone">{{ row.phone || '未填写联系电话' }}</div>
-                    <div class="promoter-source">{{ row.source }}<span v-if="row.loginName"> · {{ row.loginName }}</span></div>
+                    <div class="promoter-source">
+                      {{ row.source }}<span v-if="row.loginName"> · {{ row.loginName }}</span>
+                      <span v-if="row.code" style="color: #6B7280; font-family: monospace; margin-left: 4px;">({{ row.code }})</span>
+                    </div>
                   </div>
                 </div>
               </td>

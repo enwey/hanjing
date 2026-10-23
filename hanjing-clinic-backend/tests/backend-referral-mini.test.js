@@ -16,4 +16,23 @@ test('mini referral captures cold/hot launch, latest valid code and expiry',()=>
   clear(b);assert.equal(current(),undefined);
   capture({query:{ref:b}});
   now+=7*24*60*60*1000;assert.equal(current(),undefined);
+
+  // Comprehensive formats:
+  const c='BP0f518191eccef4b8c94d82ae';
+  // 1. Raw scene direct code
+  capture({query:{scene:c}});assert.equal(current(),c);
+  // 2. Query code
+  clear();capture({query:{code:c}});assert.equal(current(),c);
+  // 3. Query inviteCode
+  clear();capture({query:{inviteCode:c}});assert.equal(current(),c);
+  // 4. Page onLoad options (no .query)
+  clear();capture({scene:'ref='+c});assert.equal(current(),c);
+  clear();capture({scene:c});assert.equal(current(),c);
+  clear();capture({ref:c});assert.equal(current(),c);
+  clear();capture({code:c});assert.equal(current(),c);
+  clear();capture({inviteCode:c});assert.equal(current(),c);
+  // 5. Double URL encoded
+  clear();capture({query:{scene:encodeURIComponent(encodeURIComponent('ref='+c))}});assert.equal(current(),c);
+  // 6. Case insensitive
+  clear();capture({ref:c.toUpperCase()});assert.equal(current(),c.toUpperCase());
 });

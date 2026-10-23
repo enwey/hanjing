@@ -25,7 +25,7 @@ await check('RESULT-01 local analysis and server-shaped report have identical ri
  assert.equal(response.status,200);assert.equal(server.writes[0].args[11],analysis.riskScore);
  const online=await show(response.payload.data.snoreAnalysis);
  const args=server.writes[0].args;
- const persisted=await savedDetail({id:1,user_id:args[0],patient_id:args[1],duration:args[3],avg_decibel:args[4],peak_decibel:args[5],snore_rate:args[6],apnea_events:args[7],risk_level:args[8],risk_score:args[11]});
+ const persisted=await savedDetail({id:1,user_id:args[0],patient_id:args[1],duration:args[3],avg_decibel:args[4],peak_decibel:args[5],snore_rate:args[6],apnea_events:args[7],risk_level:args[8],risk_score:args[11],analysis_version:args[12]});
  assert.equal((await show(persisted)).p.data.riskScore,analysis.riskScore);
  assert.equal(online.p.data.riskScore,local.p.data.riskScore,`same generated PCM: local=${local.p.data.riskScore}, server-shaped=${online.p.data.riskScore}, level=${analysis.riskLevel}`);
 });

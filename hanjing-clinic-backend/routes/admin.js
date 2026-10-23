@@ -21,7 +21,7 @@ import { publicWithdrawAccount, withdrawStatus, businessError } from '../distrib
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { query, get, run, rawQuery, transaction, autoUpdateExpiredAppointments } from '../db.js';
+import { query, get, run, rawQuery, transaction, autoUpdateExpiredAppointments, syncDatabaseSchema } from '../db.js';
 import { generateUniquePatientNo } from '../patientNo.js';
 import { setUserMembership, syncUserMembership } from '../membership.js';
 import {
@@ -1185,9 +1185,9 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
   }
 
   if (search) {
-    baseWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ? OR a.appointment_no LIKE ?)`;
+    baseWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ? OR a.appointment_no LIKE ? OR a.referral_code LIKE ? OR EXISTS (SELECT 1 FROM distributors d WHERE d.id = a.referral_promoter_id AND (d.nickname LIKE ? OR d.invite_code LIKE ?)))`;
     const searchParam = `%${search}%`;
-    baseParams.push(searchParam, searchParam, searchParam, searchParam);
+    baseParams.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
   }
 
   if (req.user.role === 'doctor' && req.user.doctor_id) {
@@ -1251,9 +1251,9 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
       if (req.query.store_name) { todayWhere += ` AND a.store_name = ?`; todayParams.push(req.query.store_name); }
       if (req.query.doctor_name) { todayWhere += ` AND a.doctor_name = ?`; todayParams.push(req.query.doctor_name); }
       if (search) {
-        todayWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ? OR a.appointment_no LIKE ?)`;
+        todayWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ? OR a.appointment_no LIKE ? OR a.referral_code LIKE ? OR EXISTS (SELECT 1 FROM distributors d WHERE d.id = a.referral_promoter_id AND (d.nickname LIKE ? OR d.invite_code LIKE ?)))`;
         const searchParam = `%${search}%`;
-        todayParams.push(searchParam, searchParam, searchParam, searchParam);
+        todayParams.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
       }
       if (req.user.role === 'doctor' && req.user.doctor_id) { todayWhere += ` AND a.doctor_id = ?`; todayParams.push(req.user.doctor_id); }
       if (req.user.role !== 'super_admin') {
@@ -1308,7 +1308,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
 
       const offset = (page - 1) * pageSize;
       const dataSql = `
-        SELECT a.*, (SELECT nickname FROM distributors WHERE id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
+        SELECT a.*, (SELECT COALESCE(NULLIF(d.nickname, ''), NULLIF(pa.login_name, ''), d.invite_code) FROM distributors d LEFT JOIN promoter_accounts pa ON pa.distributor_id=d.id WHERE d.id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         WHERE 1=1 ${listWhere}
@@ -1333,7 +1333,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
       });
     } else {
       const dataSql = `
-        SELECT a.*, (SELECT nickname FROM distributors WHERE id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
+        SELECT a.*, (SELECT COALESCE(NULLIF(d.nickname, ''), NULLIF(pa.login_name, ''), d.invite_code) FROM distributors d LEFT JOIN promoter_accounts pa ON pa.distributor_id=d.id WHERE d.id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         WHERE 1=1 ${listWhere}
@@ -1361,7 +1361,7 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   try {
     await autoUpdateExpiredAppointments();
     let sql = `
-      SELECT a.*, (SELECT nickname FROM distributors WHERE id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
+      SELECT a.*, (SELECT COALESCE(NULLIF(d.nickname, ''), NULLIF(pa.login_name, ''), d.invite_code) FROM distributors d LEFT JOIN promoter_accounts pa ON pa.distributor_id=d.id WHERE d.id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
              p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history,
              COALESCE(ml.code, 'normal') AS member_level
       FROM appointments a
@@ -1978,7 +1978,7 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
       res.json({ code: 200, data: maskedList });
     }
   } catch (error) {
-    console.error('Failed to query patients list:', error);
+    console.error('Failed to query patients list:', error?.code, error?.sqlMessage || error?.message, error);
     res.status(500).json({ code: 500, message: '获取患者列表失败' });
   }
 });
@@ -7557,6 +7557,42 @@ app.post('/api/admin/database/query', authenticateToken, async (req, res) => {
       error.message || 'SQL 执行失败'
     );
     res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || 'SQL 执行失败' });
+  }
+});
+
+app.post('/api/admin/database/sync', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
+  try {
+    const result = await syncDatabaseSchema();
+    await logAdminAction(
+      req.user.id,
+      'sync_database_schema',
+      'system',
+      null,
+      { tableCount: result.tableCount, database: result.database },
+      req.ip || null
+    );
+    res.json({
+      code: 200,
+      message: '数据库表结构自检与初始化同步完成',
+      data: result
+    });
+  } catch (error) {
+    console.error('Sync database schema error:', error);
+    await logAdminAction(
+      req.user.id,
+      'sync_database_schema',
+      'system',
+      null,
+      {},
+      req.ip || null,
+      'fail',
+      error.message || '结构同步失败'
+    );
+    res.status(500).json({
+      code: 500,
+      message: error.message || '数据库结构自检与同步失败'
+    });
   }
 });
 
