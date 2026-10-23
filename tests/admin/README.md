@@ -22,6 +22,10 @@
 
 - 2026-10-23 [推广员管理筛选布局修复](promoter-filter-layout-fix-01.md)：来源筛选移入列表筛选栏并统一为 TDesign 控件，实现完成、待独立回归。
 
+- 2026-10-22 ADMIN-ENV-01 已实现、待回归：[跨平台自动化脚本修复记录](env-browser-compat-fix-01.md)。移除硬编码 Windows 路径，增加动态系统 Chrome 检测与环境变量支持；macOS 下 3 个 CDP 脚本自检通过。
+
+- 2026-10-22 [跨平台浏览器自动化脚本测试](env-browser-compat.md)：新增 [ADMIN-ENV-01](env-browser-compat.md) 高风险待修复；`auth-browser-regression.mjs`、`appointment-functional.mjs`、`dashboard-functional.mjs` 硬编码 Windows 路径，macOS/Linux 执行 CDP 超时失败。
+
 - 2026-10-22 [预约管理 ADMIN-APPT-01～06 独立回归](appointment.md)：6项在真实接口、隔离Chrome与权限映射范围内回归通过；未修改真实预约，临时账号残留0。
 
 - 2026-10-22 ADMIN-APPT-01～06 已实现、待回归：[预约管理修复记录](appointment-fix-01.md)。接口边界、筛选恢复、错误状态、窄屏表格与权限映射已处理；构建和隔离Chrome开发自测通过。

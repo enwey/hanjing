@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,7 +7,23 @@ import WebSocket from '../../hanjing-clinic-backend/node_modules/ws/wrapper.mjs'
 import { get, run, closePool } from '../../hanjing-clinic-backend/db.js';
 import { hashPassword } from '../../hanjing-clinic-backend/helpers.js';
 
-const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+function resolveChromePath() {
+  if (process.env.CHROME_PATH && existsSync(process.env.CHROME_PATH)) return process.env.CHROME_PATH;
+  const candidates = [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium'
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+  return 'google-chrome';
+}
+
+const chromePath = resolveChromePath();
 const debugPort = 9246;
 const baseUrl = 'http://127.0.0.1:3000';
 const username = `appointment_test_${Date.now()}`;

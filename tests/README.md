@@ -24,6 +24,10 @@
 
 - 2026-10-23 [后台独立推广员实现与开发自测](backend-promoter-implementation-2026-10-23.md)：运营创建账号、预约码归因、独立登录、X/Y及层级佣金接入；实现完成、待独立回归。真实微信及视觉链路未验收。
 
+- 2026-10-22 ADMIN-ENV-01 已实现、待回归：[跨平台自动化脚本修复记录](admin/env-browser-compat-fix-01.md)。移除硬编码 Windows 路径，增加动态系统 Chrome 检测与环境变量支持；macOS 下 3 个 CDP 脚本自检通过。
+
+- 2026-10-22 [第 11 轮独立回归](2026-10-22-all-defects-regression-11.md)：重新执行 40 个测试套件，713 项断言全部通过；发现新缺陷 [ADMIN-ENV-01](admin/env-browser-compat.md)（管理后台 3 个 CDP 自动化脚本硬编码 Windows 路径，macOS/Linux 执行受阻）；ASMT-08/09 与 PROM-LOGIN-02 保持真实链路验证受阻。
+
 - 2026-10-22 [社区COMM-09～16独立回归](mini-program/community-regression-02.md)：8项限定范围回归通过；22项页面/数据库检查和6项本地HTTP符合预期，16次并发举报只产生1条pending。临时库已清理，无电脑控制，微信真实登录及真机未验收。
 
 - 2026-10-22 [社区第二轮修复](mini-program/community-fix-02.md)：COMM-09～16实现完成、待独立回归，22项既有定向开发自检通过；仅代码/命令行，无新增用例或电脑控制，真机未验收。
