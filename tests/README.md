@@ -1,5 +1,11 @@
 # 测试记录
 
+- 2026-10-24 [推广员重置密码后登录失败排查](promoter/password-reset-login-2026-10-24.md)：隔离MySQL实际处理器验证新密码成功、旧密码失效；用户实际失败尚未复现，待登录账号类型及环境确认，验证受阻，未修改业务密码。
+
+- 2026-10-24 [推广端患者管理查看详情功能](promoter/patient-detail-feature-01.md)：已补齐三个标签页、字段对接、只读病历及归属校验，去除指定模块和业务按钮；Vite与限定只读查询自测通过，完整类型构建受工具链阻碍，真机/视觉与真实推广关联链路未验收，状态待回归。
+
+- 2026-10-24 [运营后台诊疗录入页面持续加载修复](admin/appointment-emr-loading-fix-01.md)：修复诊疗录入页面（/appointment/emr/:id）因 activeTreatment.start_date 为 undefined 导致 substring 抛出未捕获 TypeError 进而阻塞 Vue 模板渲染持续停留在 Loading 态缺陷；前端封装安全 formatDate 防崩转换与参数校验，后端补齐治疗启动日期 start_date 别名映射及预约医生门店关联，CDP 真实 Chrome 测试与 Vite 构建通过，状态待回归。
+
 - 2026-10-23 [运营后台数据库结构自检与初始化同步功能](admin/database-sync-feature-01.md)：实现方案1「运营后台一键结构自检与初始化」；在 db.js 导出 syncDatabaseSchema 核心自愈与检查方法，新增 POST /api/admin/database/sync 超管专属接口及审计日志记录；在管理后台「系统设置 -> 数据库工具」中增加「一键结构自检与同步」操作、安全确认对话框与结果完成对话框；Vite 生产打包通过，集成测试全量通过，状态待回归。
 
 - 2026-10-23 [正式环境患者列表500根因剖析与诊断报告](admin/patient-list-production-diagnosis-2026-10-23.md)：剖析正式环境接口 GET /api/admin/patients 报 500（获取患者列表失败）原因；确认根因为 patient_crm_records 的 follower_id 字段重命名迁移语法不兼容/外键约束静默失败、appointments 表缺少 source 增量字段及评估表关联字段；已在 db.js 中增加双版本兼容自愈迁移与详细 SQL 错误日志，状态待回归。
@@ -16,7 +22,7 @@
 
 - 2026-10-23 [小程序登录页面手机号密码登录功能移除](mini-program/login-password-removal-01.md)：移除小程序登录页面的手机号密码登录入口、弹窗及相关处理逻辑，统一使用微信手机号快捷登录；保留快捷授权、协议弹窗、底层会话及非页面业务逻辑，综合单测 119 项全量通过，真机视觉验证受阻，状态待回归。
 
-- 2026-10-23 [运营后台叫号普通话修复](admin/appointment-call-mandarin-fix-01.md)：四个叫号入口统一显式选择普通话音色并排除粤语/港澳台音色；类型检查和生产构建通过，实际音频待人工回归，状态待回归。
+- 2026-10-24 [运营后台叫号普通话修复](admin/appointment-call-mandarin-fix-01.md)：修复系统语言代码下划线（zh_CN）、macOS默认粤语音色（Sinji）遗漏及Chromium冷启动异步列表返回空导致的粤语回退问题；引入音色评分体系、全平台方言黑名单及冷启动容错，CDP真实Chrome测试与Vite构建通过，状态待回归。
 
 - 2026-10-23 [预约详情收银规则一致性修复](admin/appointment-detail-checkout-consistency-fix-01.md)：详情页固定项目、三种支付方式、小程序待支付与扫码打印逻辑均与列表对齐；类型检查、构建及运行页检查通过，真实交易未执行、视觉验证受环境阻碍，状态待回归。
 

@@ -27,6 +27,11 @@ const addDaysInShanghai = (days: number) => {
   return getShanghaiDateString(date)
 }
 
+const formatDate = (val: any) => {
+  if (!val) return '—'
+  return String(val).substring(0, 10)
+}
+
 // Data states
 const appt = ref<any>({})
 const essReport = ref<any>(null)
@@ -101,6 +106,11 @@ const adviceTemplates = [
 
 // Fetch Appointment and Assessment data
 const fetchData = async () => {
+  if (!apptId || apptId === 'undefined' || apptId === 'null') {
+    MessagePlugin.error('缺少就诊预约编号')
+    loading.value = false
+    return
+  }
   loading.value = true
   try {
     const res: any = await request.get(`/api/admin/appointments/${apptId}`)
@@ -141,31 +151,35 @@ const fetchData = async () => {
       }
 
       // Fetch historical EMRs
-      try {
-        const historyRes: any = await request.get(`/api/admin/patients/${appt.value.patient_id}/medical-records`)
-        if (historyRes.code === 200) {
-          historyRecords.value = historyRes.data
+      if (appt.value.patient_id) {
+        try {
+          const historyRes: any = await request.get(`/api/admin/patients/${appt.value.patient_id}/medical-records`)
+          if (historyRes.code === 200) {
+            historyRecords.value = Array.isArray(historyRes.data) ? historyRes.data : []
+          }
+        } catch (e) {
+          console.error('获取历史病历失败', e)
         }
-      } catch (e) {
-        console.error('获取历史病历失败', e)
       }
 
       // Fetch active treatment profile
-      try {
-        const treatmentRes: any = await request.get(`/api/admin/patients/${appt.value.patient_id}/treatment`)
-        if (treatmentRes.code === 200 && treatmentRes.data) {
-          activeTreatment.value = treatmentRes.data
-          // Set default value for adjustments based on the active treatment
-          adjustedAdvancement.value = activeTreatment.value.current_advancement
+      if (appt.value.patient_id) {
+        try {
+          const treatmentRes: any = await request.get(`/api/admin/patients/${appt.value.patient_id}/treatment`)
+          if (treatmentRes.code === 200 && treatmentRes.data) {
+            activeTreatment.value = treatmentRes.data
+            // Set default value for adjustments based on the active treatment
+            adjustedAdvancement.value = Number(activeTreatment.value.current_advancement) || 4.0
+          }
+        } catch (e) {
+          console.error('获取治疗建档信息失败', e)
         }
-      } catch (e) {
-        console.error('获取治疗建档信息失败', e)
       }
 
       // Fetch on-sale device products for treatment profile binding.
       try {
         const productRes: any = await request.get('/api/admin/products')
-        if (productRes.code === 200) {
+        if (productRes.code === 200 && Array.isArray(productRes.data)) {
           deviceProducts.value = productRes.data.filter((item: any) => item.category === 'device' && item.status === 'on')
           if (!deviceProductId.value && deviceProducts.value.length) {
             deviceProductId.value = String(deviceProducts.value[0].id)
@@ -478,9 +492,9 @@ const handleSubmit = async () => {
           </div>
           <div class="panel-body" style="padding: 14px; font-size: 13px; color: #4B5563;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; background: #EFF6FF; padding: 10px; border-radius: 6px; border: 1px solid #BFDBFE;">
-              <div>设备型号: <strong>{{ activeTreatment.device_model }}</strong></div>
-              <div>当前前伸量: <strong style="color: var(--primary-600);">{{ activeTreatment.current_advancement }} mm</strong></div>
-              <div style="grid-column: span 2;">治疗启动: {{ activeTreatment.start_date.substring(0, 10) }}</div>
+              <div>设备型号: <strong>{{ activeTreatment.device_model || '—' }}</strong></div>
+              <div>当前前伸量: <strong style="color: var(--primary-600);">{{ activeTreatment.current_advancement ?? '—' }} mm</strong></div>
+              <div style="grid-column: span 2;">治疗启动: {{ formatDate(activeTreatment.start_date || activeTreatment.bound_at || activeTreatment.created_at) }}</div>
             </div>
             
             <!-- Average Wear Compliance -->
@@ -500,7 +514,7 @@ const handleSubmit = async () => {
               <div style="font-weight: 600; font-size: 12px; color: #374151; margin-bottom: 6px;"><AppIcon name="clipboard" />  历史微调记录 (近3次)：</div>
               <div style="display: flex; flex-direction: column; gap: 6px; max-height: 120px; overflow-y: auto;">
                 <div v-for="adj in activeTreatment.adjustments.slice(0, 3)" :key="adj.id" style="font-size: 11px; background: #F9FAFB; padding: 6px; border: 1px solid #E5E7EB; border-radius: 4px;">
-                  <span style="font-weight: 600; color: #1F2937;">{{ adj.adjust_date.substring(0, 10) }}</span> · 调至 <strong>{{ adj.adjusted_advancement }}mm</strong> (反馈: {{ adj.patient_feedback || '无' }})
+                  <span style="font-weight: 600; color: #1F2937;">{{ formatDate(adj.adjust_date) }}</span> · 调至 <strong>{{ adj.adjusted_advancement }}mm</strong> (反馈: {{ adj.patient_feedback || '无' }})
                 </div>
               </div>
             </div>
@@ -515,8 +529,8 @@ const handleSubmit = async () => {
           <div class="panel-body" style="padding: 12px; max-height: 240px; overflow-y: auto;">
             <div v-for="r in historyRecords" :key="r.id" class="history-item" style="padding: 10px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; margin-bottom: 8px; cursor: pointer;" @click="showHistoryDetail(r)">
               <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 4px;">
-                <span><AppIcon name="calendar" />  {{ r.visit_date }}</span>
-                <span><AppIcon name="doctor" />  {{ r.doctor_name }}</span>
+                <span><AppIcon name="calendar" />  {{ formatDate(r.visit_date) }}</span>
+                <span><AppIcon name="doctor" />  {{ r.doctor_name || '—' }}</span>
               </div>
               <div style="font-size: 13px; font-weight: 600; color: #1F2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                 诊断: {{ r.diagnosis }}
@@ -811,7 +825,7 @@ const handleSubmit = async () => {
     >
       <div v-if="selectedHistoryRecord" class="record-detail-modal" style="padding: 10px 0; font-size: 14px; color: #374151; line-height: 1.6;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #E5E7EB;">
-          <div><strong>就诊时间:</strong> {{ selectedHistoryRecord.visit_date }}</div>
+          <div><strong>就诊时间:</strong> {{ formatDate(selectedHistoryRecord.visit_date) }}</div>
           <div><strong>就诊门店:</strong> {{ selectedHistoryRecord.store_name }}</div>
           <div><strong>接诊医生:</strong> {{ selectedHistoryRecord.doctor_name }} ({{ selectedHistoryRecord.doctor_title || '主任医师' }})</div>
           <div><strong>就诊科室:</strong> 睡眠呼吸科</div>

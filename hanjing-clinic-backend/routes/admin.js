@@ -1361,11 +1361,17 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   try {
     await autoUpdateExpiredAppointments();
     let sql = `
-      SELECT a.*, (SELECT COALESCE(NULLIF(d.nickname, ''), NULLIF(pa.login_name, ''), d.invite_code) FROM distributors d LEFT JOIN promoter_accounts pa ON pa.distributor_id=d.id WHERE d.id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
+      SELECT a.*,
+             doc.name AS doctor_name,
+             st.name AS store_name,
+             (SELECT COALESCE(NULLIF(d.nickname, ''), NULLIF(pa.login_name, ''), d.invite_code) FROM distributors d LEFT JOIN promoter_accounts pa ON pa.distributor_id=d.id WHERE d.id=a.referral_promoter_id) AS referral_promoter_name,
+             p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
              p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history,
              COALESCE(ml.code, 'normal') AS member_level
       FROM appointments a
       JOIN patients p ON a.patient_id = p.id
+      LEFT JOIN doctors doc ON a.doctor_id = doc.id
+      LEFT JOIN stores st ON a.store_id = st.id
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN user_memberships um ON um.user_id = u.id
       LEFT JOIN member_levels ml ON ml.id = um.level_id
@@ -3063,6 +3069,7 @@ app.get('/api/admin/patients/:id/treatment', authenticateToken, async (req, res)
   try {
     const tr = await get(
       `SELECT pd.*,
+              COALESCE(pd.bound_at, pd.created_at) AS start_date,
               d.name as doctor_name
        FROM patient_devices pd
        LEFT JOIN doctors d ON pd.bind_doctor_id = d.id
