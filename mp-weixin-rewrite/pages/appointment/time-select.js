@@ -128,6 +128,8 @@ Page({
   },
 
   async loadPage(options = {}) {
+    const pageRequestId = this.pageRequestId = (this.pageRequestId || 0) + 1;
+    this.slotsRequestId = (this.slotsRequestId || 0) + 1;
     const silent = !!options.silent;
     const doctorId = readString((this.options && (this.options.doctorId || this.options.doctorid)) || '');
     const storeId = readString((this.options && (this.options.storeId || this.options.storeid)) || '');
@@ -153,6 +155,7 @@ Page({
         api.getScheduleDates({ doctorId, storeId }),
         api.getDoctors({ id: doctorId }),
       ]);
+      if (pageRequestId !== this.pageRequestId) return;
 
       const scheduleDates = unwrapList(scheduleDatesResponse);
       const doctors = unwrapList(doctorsResponse);
@@ -173,6 +176,7 @@ Page({
         await this.loadSchedulesForDate(selectedDate, { silent });
       }
     } catch (error) {
+      if (pageRequestId !== this.pageRequestId) return;
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
@@ -186,6 +190,7 @@ Page({
   },
 
   async loadSchedulesForDate(selectedDate, options = {}) {
+    const requestId = this.slotsRequestId = (this.slotsRequestId || 0) + 1;
     const silent = !!options.silent;
     this.setData({
       loadingSchedules: true,
@@ -200,6 +205,7 @@ Page({
         storeId: this.data.storeId,
         date: selectedDate,
       });
+      if (requestId !== this.slotsRequestId) return;
       const timeSlots = unwrapList(daySlotsResponse).map(normalizeTimeSlot);
       const timeSlotSections = buildTimeSlotSections(timeSlots);
       this.setData({
@@ -208,6 +214,7 @@ Page({
         timeSlotSections,
       });
     } catch (error) {
+      if (requestId !== this.slotsRequestId) return;
       if (!silent) {
         this.setData({
           loadingSchedules: false,
@@ -225,6 +232,7 @@ Page({
     if (!selectedDate || selectedDate === this.data.selectedDate) {
       return;
     }
+    this.pageRequestId = (this.pageRequestId || 0) + 1;
     await this.loadSchedulesForDate(selectedDate);
   },
 

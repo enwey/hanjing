@@ -113,8 +113,14 @@ function reportLoginEvent(level, event, message, context = {}) {
   });
 }
 
+function reportDiagnostic(entry) {
+  try {
+    Promise.resolve(miniLog.reportNow(entry)).catch(() => {});
+  } catch (error) {}
+}
+
 function reportLoginEventNow(level, event, message, context = {}) {
-  return miniLog.reportNow({
+  return reportDiagnostic({
     level,
     event,
     message,
@@ -138,7 +144,7 @@ function reportLoginFailure(error, context = {}) {
 }
 
 function reportLoginFailureNow(error, context = {}) {
-  return miniLog.reportNow({
+  return reportDiagnostic({
     level: 'error',
     event: 'login_failed',
     message: error && error.message,
@@ -155,6 +161,7 @@ function reportLoginFailureNow(error, context = {}) {
 Page({
   data: {
     agreed: false,
+    submitting: false,
     redirectUrl: '',
     backUrl: '',
     loginTraceId: '',
@@ -168,6 +175,7 @@ Page({
   },
 
   onLoad(options = {}) {
+    this._unloaded = false;
     try {
       const sysInfo = wx.getSystemInfoSync();
       this.setData({
@@ -182,6 +190,24 @@ Page({
     } catch (error) {
       console.error(error);
     }
+  },
+
+  onUnload() {
+    this._unloaded = true;
+    this.hideLoginLoading();
+    clearTimeout(this._loginRedirectTimer);
+  },
+
+  showLoginLoading(title) {
+    if (this._unloaded) return;
+    this._loginLoading = true;
+    wx.showLoading({ title });
+  },
+
+  hideLoginLoading() {
+    if (!this._loginLoading) return;
+    this._loginLoading = false;
+    wx.hideLoading();
   },
 
   handleAgreementChange(event) {
@@ -252,6 +278,7 @@ Page({
   },
 
   onLoginTap() {
+    if (this.data.submitting || this._unloaded) return;
     const traceId = miniLog.createTraceId();
     this.setData({ loginTraceId: traceId });
     reportLoginEvent('info', 'login_button_tap', 'login button tapped', {
@@ -282,6 +309,11 @@ Page({
   },
 
   openPasswordLoginModal() {
+    if (this.data.submitting || this._unloaded) return;
+    if (!this.data.agreed) {
+      wx.showToast({ title: TOAST.needAgreement, icon: 'none' });
+      return;
+    }
     this.setData({ showPasswordLoginModal: true });
   },
 
@@ -304,6 +336,7 @@ Page({
   },
 
   async onLoginOpenTypeError(event) {
+    if (this._unloaded || this.data.submitting) return;
     const detail = event && event.detail ? event.detail : {};
     const traceId = this.data.loginTraceId || miniLog.createTraceId();
     if (!this.data.loginTraceId) {
@@ -316,13 +349,14 @@ Page({
       errMsg: detail.errMsg || '',
       errno: detail.errno,
     });
-    await reportLoginEventNow('error', 'login_open_type_error_sync', detail.errMsg || 'getPhoneNumber open-type error', {
+    reportLoginEventNow('error', 'login_open_type_error_sync', detail.errMsg || 'getPhoneNumber open-type error', {
       source: 'auth_login',
       traceId,
       agreed: Boolean(this.data.agreed),
       errMsg: detail.errMsg || '',
       errno: detail.errno,
     });
+    if (this._unloaded) return;
     wx.showModal({
       title: '登录失败',
       content: buildLoginErrorMessage({ message: detail.errMsg || TOAST.loginFailed }),
@@ -331,16 +365,53 @@ Page({
   },
 
   navigateAfterLogin() {
+    if (this._unloaded) return;
     const target = resolveAfterLogin(this.data.redirectUrl);
+    const fail = () => {
+      if (this._unloaded) return;
+      this.setData({ submitting: false });
+      wx.showToast({ title: '页面跳转失败，请重试', icon: 'none' });
+    };
     if (target.type === 'tab') {
-      wx.switchTab({ url: target.url });
+      wx.switchTab({ url: target.url, fail });
       return;
     }
-    wx.reLaunch({ url: target.url });
+    wx.reLaunch({ url: target.url, fail });
+  },
+
+  async completeLogin(options) {
+    if (this._unloaded) return;
+    let profileLoaded = true;
+    try {
+      await sessionStore.fetchProfile(options);
+    } catch (error) {
+      profileLoaded = false;
+      // A rejected session must not be reported as a successful login.
+      if ((error && error.statusCode === 401) || !sessionStore.isLoggedIn()) {
+        throw error;
+      }
+    }
+    if (this._unloaded) return;
+    if (!sessionStore.isLoggedIn()) {
+      throw new Error('登录状态已失效，请重新登录');
+    }
+    this.hideLoginLoading();
+    this.closePasswordLoginModal();
+    wx.showToast({
+      title: profileLoaded ? TOAST.loginSuccess : '登录成功，资料暂未加载',
+      icon: profileLoaded ? 'success' : 'none',
+    });
+    this._loginRedirectTimer = setTimeout(() => {
+      this.navigateAfterLogin();
+    }, 1200);
   },
 
   async onGetPhoneNumber(event) {
+    if (this.data.submitting || this._unloaded) return;
     const detail = event && event.detail ? event.detail : {};
+    if (this.data.agreed && detail.code) {
+      this.setData({ submitting: true });
+    }
     const traceId = this.data.loginTraceId || miniLog.createTraceId();
     if (!this.data.loginTraceId) {
       this.setData({ loginTraceId: traceId });
@@ -353,7 +424,7 @@ Page({
       errMsg: detail.errMsg || '',
       errno: detail.errno,
     });
-    await reportLoginEventNow('info', 'login_phone_callback_sync', detail.errMsg || 'getPhoneNumber callback', {
+    reportLoginEventNow('info', 'login_phone_callback_sync', detail.errMsg || 'getPhoneNumber callback', {
       source: 'auth_login',
       traceId,
       agreed: Boolean(this.data.agreed),
@@ -361,12 +432,14 @@ Page({
       errMsg: detail.errMsg || '',
       errno: detail.errno,
     });
+    if (this._unloaded) return;
     if (!this.data.agreed) {
+      this.setData({ submitting: false });
       reportLoginEvent('warn', 'login_agreement_missing', 'phone callback received before agreement', {
         source: 'auth_login',
         traceId,
       });
-      await reportLoginEventNow('warn', 'login_agreement_missing_sync', 'phone callback received before agreement', {
+      reportLoginEventNow('warn', 'login_agreement_missing_sync', 'phone callback received before agreement', {
         source: 'auth_login',
         traceId,
       });
@@ -378,7 +451,7 @@ Page({
         source: 'auth_login',
         traceId,
       });
-      await reportLoginEventNow('warn', 'login_phone_auth_cancelled_sync', detail.errMsg || 'phone authorization cancelled', {
+      reportLoginEventNow('warn', 'login_phone_auth_cancelled_sync', detail.errMsg || 'phone authorization cancelled', {
         source: 'auth_login',
         traceId,
         errMsg: detail.errMsg || '',
@@ -388,25 +461,23 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: TOAST.loggingIn });
+    this.showLoginLoading(TOAST.loggingIn);
     try {
-      await reportLoginEventNow('info', 'login_session_start_sync', 'start session login', {
+      reportLoginEventNow('info', 'login_session_start_sync', 'start session login', {
         source: 'auth_login',
         traceId,
         hasPhoneCode: true,
       });
-      await sessionStore.login(detail.code, { source: 'auth_login', traceId });
-      await sessionStore.fetchProfile({ source: 'auth_login', traceId });
-      wx.hideLoading();
-      wx.showToast({ title: TOAST.loginSuccess, icon: 'success' });
-      this.closePasswordLoginModal();
-      setTimeout(() => {
-        this.navigateAfterLogin();
-      }, 1200);
+      if (this._unloaded) return;
+      await sessionStore.login(detail.code, { source: 'auth_login', traceId, isCancelled: () => this._unloaded });
+      await this.completeLogin({ source: 'auth_login', traceId });
     } catch (error) {
-      wx.hideLoading();
+      this.hideLoginLoading();
+      if (this._unloaded) return;
       reportLoginFailure(error, { source: 'auth_login', traceId });
-      await reportLoginFailureNow(error, { source: 'auth_login', traceId });
+      reportLoginFailureNow(error, { source: 'auth_login', traceId });
+      if (this._unloaded) return;
+      this.setData({ submitting: false });
       wx.showModal({
         title: '登录失败',
         content: buildLoginErrorMessage(error, TOAST.loginFailed),
@@ -417,6 +488,7 @@ Page({
   },
 
   async onPasswordLoginTap() {
+    if (this.data.submitting || this._unloaded) return;
     const traceId = miniLog.createTraceId();
     const phone = String(this.data.phone || '').trim();
     const password = String(this.data.password || '');
@@ -435,22 +507,22 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: TOAST.passwordLoggingIn });
+    this.setData({ submitting: true });
+    this.showLoginLoading(TOAST.passwordLoggingIn);
     try {
       await sessionStore.passwordLogin(phone, password, {
         source: 'auth_password_login',
         traceId,
+        isCancelled: () => this._unloaded,
       });
-      await sessionStore.fetchProfile({ source: 'auth_password_login', traceId });
-      wx.hideLoading();
-      wx.showToast({ title: TOAST.loginSuccess, icon: 'success' });
-      setTimeout(() => {
-        this.navigateAfterLogin();
-      }, 1200);
+      await this.completeLogin({ source: 'auth_password_login', traceId });
     } catch (error) {
-      wx.hideLoading();
+      this.hideLoginLoading();
+      if (this._unloaded) return;
       reportLoginFailure(error, { source: 'auth_password_login', traceId });
-      await reportLoginFailureNow(error, { source: 'auth_password_login', traceId });
+      reportLoginFailureNow(error, { source: 'auth_password_login', traceId });
+      if (this._unloaded) return;
+      this.setData({ submitting: false });
       wx.showModal({
         title: '登录失败',
         content: buildLoginErrorMessage(error, TOAST.loginFailed),

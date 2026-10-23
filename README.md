@@ -1,6 +1,6 @@
-# 鼾静健康诊所项目（Hanjing Health Clinic Project）
+# 兴康明诊所项目（Hanjing Health Clinic Project）
 
-该项目是为 **“鼾静健康诊所”**（专注于睡眠呼吸障碍/打鼾/OSAS的定制式可调舌型阻鼾器数字化诊所）开发的完整数字化系统。包含微信小程序端（C端）与管理后台（B端）。
+该项目是为 **“兴康明诊所”**（专注于睡眠呼吸障碍/打鼾/OSAS的定制式可调舌型阻鼾器数字化诊所）开发的完整数字化系统。包含微信小程序端（C端）与管理后台（B端）。
 
 ---
 
@@ -10,7 +10,7 @@
 graph TD
     Workspace["hanjing 工作区"]
     
-    Workspace --> UI["鼾静健康诊所_UI设计资料"]
+    Workspace --> UI["兴康明诊所_UI设计资料"]
     UI --> UI_HTML["01~05 页面 UI 设计稿 (HTML)"]
     UI --> UI_Doc["06_小程序开发文档.md"]
     
@@ -21,7 +21,7 @@ graph TD
     Workspace --> MP["mp-weixin"]
     MP --> MP_Build["编译后小程序代码 (wxml, wxss, js)"]
     
-    Workspace --> Logs["hanjing-clinic-聊天记录-20260607 / 鼾静健康诊所_聊天记录"]
+    Workspace --> Logs["hanjing-clinic-聊天记录-20260607 / 兴康明诊所_聊天记录"]
     Logs --> Log_MD["2026-06-04/05 开发日志与 MEMORY.md"]
     Logs --> Log_HTML["项目聊天记录.html"]
 ```

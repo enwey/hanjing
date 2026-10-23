@@ -36,7 +36,7 @@ const activeMenu = computed(() => {
 })
 
 const breadcrumbs = computed(() => [
-  { label: '鼾静推广端', path: '/dashboard' },
+  { label: '兴康明推广端', path: '/dashboard' },
   { label: activeMenu.value?.label || String(route.meta.title || '推广概览'), path: route.path }
 ])
 
@@ -135,8 +135,8 @@ async function handleSavePassword() {
     MessagePlugin.warning('请输入新密码')
     return
   }
-  if (passwordForm.value.newPassword.length < 6) {
-    MessagePlugin.warning('新密码长度不能少于 6 位')
+  if (passwordForm.value.newPassword.length < 8 || passwordForm.value.newPassword.length > 64 || !/[A-Za-z]/.test(passwordForm.value.newPassword) || !/[0-9]/.test(passwordForm.value.newPassword)) {
+    MessagePlugin.warning('新密码需 8-64 位，且包含字母和数字')
     return
   }
   if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
@@ -184,10 +184,10 @@ async function handleSavePassword() {
     <aside :class="['portal-sidebar', collapsed ? 'is-collapsed' : '']">
       <div class="portal-brand">
         <div class="portal-brand-logo">
-          <img class="portal-brand-logo-image" :src="brandLogoUrl" alt="鼾静推广端" />
+          <img class="portal-brand-logo-image" :src="brandLogoUrl" alt="兴康明推广端" />
         </div>
         <div class="portal-brand-text" :class="{ 'is-hidden': collapsed }">
-          鼾静推广
+          兴康明推广
           <small>推广端 v1.0</small>
         </div>
       </div>
@@ -337,7 +337,7 @@ async function handleSavePassword() {
         </div>
         <div class="dialog-field">
           <span>新密码</span>
-          <t-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码 (不少于6位)" clearable />
+          <t-input v-model="passwordForm.newPassword" type="password" placeholder="8-64位，包含字母和数字" clearable />
         </div>
         <div class="dialog-field">
           <span>确认新密码</span>

@@ -58,12 +58,17 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  document.title = '鼾静健康诊所推广后台'
+  document.title = '兴康明诊所推广后台'
+  const token = getPromoterToken()
+  if (to.name === 'login' && token) {
+    next('/dashboard')
+    return
+  }
   if (to.meta.public) {
     next()
     return
   }
-  if (!getPromoterToken()) {
+  if (!token) {
     next('/login')
     return
   }

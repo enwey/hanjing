@@ -106,7 +106,7 @@
           </div>
           <div class="summary-row data-v-baa6e4ef">
             <span class="summary-label data-v-baa6e4ef">就诊门店</span>
-            <span id="sum-store" class="summary-value data-v-baa6e4ef">鼾静健康·深圳旗舰中心</span>
+            <span id="sum-store" class="summary-value data-v-baa6e4ef">兴康明·深圳旗舰中心</span>
           </div>
           <div class="summary-row data-v-baa6e4ef">
             <span class="summary-label data-v-baa6e4ef">就诊医生</span>
@@ -152,9 +152,9 @@
     const symptom = params.get('symptom') || '';
 
     const storeNames = {
-      'store-001': '鼾静健康·深圳旗舰中心',
-      'store-002': '鼾静健康·南山分中心',
-      'store-003': '鼾静健康·宝安分中心'
+      'store-001': '兴康明·深圳旗舰中心',
+      'store-002': '兴康明·南山分中心',
+      'store-003': '兴康明·宝安分中心'
     };
     const doctorNames = {
       'doc-001': '李明辉 (主任医师)',
@@ -170,7 +170,7 @@
     })();
     document.getElementById('sum-no').textContent = appointmentNo;
 
-    document.getElementById('sum-store').textContent = storeNames[storeId] || '鼾静健康·深圳旗舰中心';
+    document.getElementById('sum-store').textContent = storeNames[storeId] || '兴康明·深圳旗舰中心';
     document.getElementById('sum-doctor').textContent = doctorNames[doctorId] || '李明辉 (主任医师)';
     document.getElementById('sum-time').textContent = `${date} ${timeSlot}`;
 

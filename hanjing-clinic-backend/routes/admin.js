@@ -1,4 +1,5 @@
 import { reviewRefund, syncRefund, registerOfflineRefund } from '../refunds.js';
+import { syncDirectChildrenSecondLevel } from '../distribution-relationships.js';
 import { lockAppointmentChange, RESCHEDULABLE_STATUSES, TERMINAL_STATUSES, assertAppointmentFeesPaid, validateAppointmentFeeItems, assertConsultationAllowed, settlePaidAppointmentOrder } from '../appointment-workflow.js';
 import { patientAccessScope, orderAccessScope, fulfillmentAccessScope, readPagination } from '../admin-scope.js';
 import { lockFulfillmentCase } from '../fulfillment-guard.js';
@@ -7,6 +8,8 @@ import { registerDeliveryWorkflow } from '../delivery-workflow.js';
 import { signPrivateUploadResponses, registerPrivateUpload, privateUploadPath, canReadPrivateUpload } from '../private-uploads.js';
 import { validateProduct } from '../product-validation.js';
 import { hasAdminPermission } from '../admin-permissions.js';
+import { snapshotReferralOrder } from '../backend-referrals.js';
+import { registerBackendPromoterAdmin } from '../backend-promoter-admin.js';
 import { cancelPendingProductOrder, finalizePaidProductOrder, createPendingDistributionCommission } from './client.js';
 import { createPaidFulfillment } from '../paid-fulfillment.js';
 import { readStoreReport } from '../operations-report.js';
@@ -53,6 +56,7 @@ import {
 
 const app = createAsyncRouter();
 app.use(signPrivateUploadResponses);
+registerBackendPromoterAdmin(app);
 registerDeliveryWorkflow(app);
 
 app.get('/api/admin/reports/store', authenticateToken, async (req, res) => {
@@ -640,7 +644,22 @@ async function createWechatLiveRoom(payload) {
   };
 }
 
-const failedAttempts = new Map(); // username -> { count, lockUntil }
+const failedAttempts = new Map(); // source + username -> { count, lockUntil, updatedAt }
+const LOGIN_LOCK_MS = 15 * 60 * 1000;
+const MAX_LOGIN_ATTEMPT_KEYS = 10000;
+
+function cleanupLoginAttempts(now) {
+  for (const [key, attempt] of failedAttempts) {
+    if ((attempt.lockUntil && attempt.lockUntil <= now) || attempt.updatedAt + LOGIN_LOCK_MS <= now) {
+      failedAttempts.delete(key);
+    }
+  }
+}
+
+function loginAttemptKey(req, username) {
+  const source = req.ip || req.socket?.remoteAddress || 'unknown';
+  return `${source}:${String(username || '').trim().toLowerCase()}`;
+}
 
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body;
@@ -649,7 +668,12 @@ app.post('/api/admin/login', async (req, res) => {
   }
 
   const now = Date.now();
-  const attempt = failedAttempts.get(username) || { count: 0, lockUntil: 0 };
+  cleanupLoginAttempts(now);
+  const attemptKey = loginAttemptKey(req, username);
+  if (!failedAttempts.has(attemptKey) && failedAttempts.size >= MAX_LOGIN_ATTEMPT_KEYS) {
+    return res.status(429).json({ code: 429, message: '登录请求过于频繁，请稍后重试' });
+  }
+  const attempt = failedAttempts.get(attemptKey) || { count: 0, lockUntil: 0, updatedAt: now };
 
   if (attempt.lockUntil > now) {
     const remainingMinutes = Math.ceil((attempt.lockUntil - now) / 60000);
@@ -672,15 +696,16 @@ app.post('/api/admin/login', async (req, res) => {
 
     if (!user || !verifyPassword(password, user.password_hash)) {
       attempt.count += 1;
+      attempt.updatedAt = now;
       if (attempt.count >= 5) {
-        attempt.lockUntil = Date.now() + 15 * 60 * 1000; // Lock for 15 minutes
-        failedAttempts.set(username, attempt);
+        attempt.lockUntil = now + LOGIN_LOCK_MS;
+        failedAttempts.set(attemptKey, attempt);
         return res.status(429).json({
           code: 429,
           message: '密码错误次数过多，账号已临时锁定，请 15 分钟后再试'
         });
       }
-      failedAttempts.set(username, attempt);
+      failedAttempts.set(attemptKey, attempt);
       return res.status(400).json({
         code: 400,
         message: `用户名或密码不正确（连续输入错误 5 次将被锁定，还剩 ${5 - attempt.count} 次机会）`
@@ -695,7 +720,7 @@ app.post('/api/admin/login', async (req, res) => {
     }
 
     // Reset failed attempts
-    failedAttempts.delete(username);
+    failedAttempts.delete(attemptKey);
 
     // Update last login
     await run(`UPDATE admin_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?`, [user.id]);
@@ -714,7 +739,7 @@ app.post('/api/admin/login', async (req, res) => {
     const storeIds = assignedStores.map(store => Number(store.id));
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role_code, store_ids: storeIds, doctor_id: user.doctor_id || null },
+      { id: user.id, username: user.username, role: user.role_code, store_ids: storeIds, doctor_id: user.doctor_id || null, token_version: Number(user.token_version || 0) },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -782,6 +807,11 @@ app.get('/api/admin/me', authenticateToken, async (req, res) => {
   } catch (error) {
     res.status(500).json({ code: 500, message: '系统错误' });
   }
+});
+
+app.post('/api/admin/logout', authenticateToken, async (req, res) => {
+  await run('UPDATE admin_users SET token_version = token_version + 1 WHERE id = ?', [req.user.id]);
+  res.json({ code: 200, message: '已安全退出登录' });
 });
 
 app.put('/api/admin/profile', authenticateToken, async (req, res) => {
@@ -1098,6 +1128,16 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
   const { date, tab, search, patient_id } = req.query;
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const pageSize = req.query.pageSize ? parseInt(req.query.pageSize, 10) : 10;
+  if (req.query.page !== undefined && (!Number.isSafeInteger(page) || page < 1)) {
+    return res.status(400).json({ code: 400, message: '页码必须为正整数' });
+  }
+  if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 200) {
+    return res.status(400).json({ code: 400, message: '每页数量必须为1至200的整数' });
+  }
+  const allowedStatuses = new Set(['pending_payment', 'pending', 'waiting', 'checked_in', 'completed', 'arrived', 'no_show', 'cancelled']);
+  if (req.query.status && !allowedStatuses.has(req.query.status)) {
+    return res.status(400).json({ code: 400, message: '预约状态筛选值不正确' });
+  }
   if (req.user.role === 'doctor' && !req.user.doctor_id) {
     return res.status(403).json({ code: 403, message: '医生账号未绑定医生档案，无法访问预约数据' });
   }
@@ -1145,9 +1185,9 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
   }
 
   if (search) {
-    baseWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ?)`;
+    baseWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ? OR a.appointment_no LIKE ?)`;
     const searchParam = `%${search}%`;
-    baseParams.push(searchParam, searchParam, searchParam);
+    baseParams.push(searchParam, searchParam, searchParam, searchParam);
   }
 
   if (req.user.role === 'doctor' && req.user.doctor_id) {
@@ -1211,9 +1251,9 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
       if (req.query.store_name) { todayWhere += ` AND a.store_name = ?`; todayParams.push(req.query.store_name); }
       if (req.query.doctor_name) { todayWhere += ` AND a.doctor_name = ?`; todayParams.push(req.query.doctor_name); }
       if (search) {
-        todayWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ?)`;
+        todayWhere += ` AND (p.name LIKE ? OR p.phone LIKE ? OR a.doctor_name LIKE ? OR a.appointment_no LIKE ?)`;
         const searchParam = `%${search}%`;
-        todayParams.push(searchParam, searchParam, searchParam);
+        todayParams.push(searchParam, searchParam, searchParam, searchParam);
       }
       if (req.user.role === 'doctor' && req.user.doctor_id) { todayWhere += ` AND a.doctor_id = ?`; todayParams.push(req.user.doctor_id); }
       if (req.user.role !== 'super_admin') {
@@ -1268,7 +1308,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
 
       const offset = (page - 1) * pageSize;
       const dataSql = `
-        SELECT a.*, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
+        SELECT a.*, (SELECT nickname FROM distributors WHERE id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         WHERE 1=1 ${listWhere}
@@ -1293,7 +1333,7 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
       });
     } else {
       const dataSql = `
-        SELECT a.*, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
+        SELECT a.*, (SELECT nickname FROM distributors WHERE id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
         WHERE 1=1 ${listWhere}
@@ -1321,7 +1361,7 @@ app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   try {
     await autoUpdateExpiredAppointments();
     let sql = `
-      SELECT a.*, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
+      SELECT a.*, (SELECT nickname FROM distributors WHERE id=a.referral_promoter_id) AS referral_promoter_name, p.patient_no, p.name as patient_name, p.phone as patient_phone, p.gender as patient_gender, p.age as patient_age, p.user_id as patient_user_id,
              p.medical_history as patient_medical_history, p.allergy_history as patient_allergy_history,
              COALESCE(ml.code, 'normal') AS member_level
       FROM appointments a
@@ -1573,10 +1613,13 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
-  const { patient_id, store_id, doctor_id, date, period, time, type, symptom_desc, consult_fee, deposit_amount } = req.body;
+  const { patient_id, store_id, doctor_id, date, period, time, type, symptom_desc, consult_fee, deposit_amount, defer_notification } = req.body;
   
   if (!patient_id || !store_id || !doctor_id || !date || !time) {
     return res.status(400).json({ code: 400, message: '必填参数缺失' });
+  }
+  if (defer_notification !== undefined && typeof defer_notification !== 'boolean') {
+    return res.status(400).json({ code: 400, message: '通知延迟参数无效' });
   }
   const appointmentType = normalizeAppointmentType(type);
   if (!appointmentType) {
@@ -1689,7 +1732,7 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
     });
 
     res.json({ code: 200, message: '新建预约成功', data: { appointment_no, id: result.id, status: initialStatus } });
-    setImmediate(() => {
+    if (!defer_notification) setImmediate(() => {
       sendWechatSubscribeMessage({
         userId: user_id,
         event: 'appointment_created',
@@ -2253,9 +2296,9 @@ app.get('/api/admin/patients/:id', authenticateToken, async (req, res) => {
               (
                 SELECT COALESCE(d.nickname, pu.nickname, pu.phone)
                 FROM distribution_relationships dr
-                JOIN users pu ON dr.parent_user_id = pu.id
-                LEFT JOIN distributors d ON d.user_id = pu.id
-                WHERE dr.child_user_id = p.user_id
+                LEFT JOIN users pu ON dr.parent_user_id = pu.id
+                LEFT JOIN distributors d ON d.user_id = pu.id OR d.id=dr.parent_distributor_id
+                WHERE dr.child_user_id = p.user_id AND dr.level=1
                 ORDER BY dr.created_at ASC
                 LIMIT 1
               ) as referrer_name
@@ -5112,16 +5155,16 @@ app.get('/api/admin/distribution/promoters/:id', authenticateToken, async (req, 
   const { id } = req.params;
   try {
     const promoter = await get(
-      `SELECT d.*, u.phone as user_phone, u.nickname as user_nickname, u.created_at as user_reg_date
+      `SELECT d.*, COALESCE(d.contact_phone,u.phone) as user_phone, u.nickname as user_nickname, u.created_at as user_reg_date
        FROM distributors d
-       JOIN users u ON d.user_id = u.id
+       LEFT JOIN users u ON d.user_id = u.id
        WHERE d.id = ?`,
       [id]
     );
     if (!promoter) return res.status(404).json({ code: 404, message: '推广员不存在' });
 
-    const l1Count = await get('SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 1', [promoter.user_id]);
-    const l2Count = await get('SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 2', [promoter.user_id]);
+    const l1Count = await get('SELECT COUNT(*) as count FROM distribution_relationships WHERE (parent_user_id = ? OR parent_distributor_id=?) AND level = 1', [promoter.user_id,promoter.id]);
+    const l2Count = await get('SELECT COUNT(*) as count FROM distribution_relationships WHERE (parent_user_id = ? OR parent_distributor_id=?) AND level = 2', [promoter.user_id,promoter.id]);
     const orderStats = await get(
       `SELECT COUNT(*) as count, COALESCE(SUM(order_amount), 0) as amount
        FROM distribution_orders
@@ -5131,7 +5174,7 @@ app.get('/api/admin/distribution/promoters/:id', authenticateToken, async (req, 
 
     const parent = await get(
       `SELECT d.nickname FROM distributors d
-       JOIN distribution_relationships dr ON d.user_id = dr.parent_user_id
+       JOIN distribution_relationships dr ON d.user_id = dr.parent_user_id OR d.id=dr.parent_distributor_id
        WHERE dr.child_user_id = ? AND dr.level = 1`,
       [promoter.user_id]
     );
@@ -5144,7 +5187,7 @@ app.get('/api/admin/distribution/promoters/:id', authenticateToken, async (req, 
         avatar_url: promoter.avatar_url,
         level: promoter.level,
         code: promoter.invite_code,
-        phone: promoter.user_phone,
+        phone: decryptPII(promoter.user_phone)||'',
         regDate: promoter.created_at,
         status: promoter.status,
         parentName: parent?.nickname || '无（自主加入）',
@@ -5197,8 +5240,8 @@ app.get('/api/admin/distribution/promoters/:id/team', authenticateToken, async (
        FROM distribution_relationships dr
        JOIN users u ON dr.child_user_id = u.id
        LEFT JOIN distributors d ON u.id = d.user_id
-       WHERE dr.parent_user_id = ? AND dr.level = 1`,
-      [promoter.user_id]
+       WHERE (dr.parent_user_id = ? OR dr.parent_distributor_id=?) AND dr.level = 1`,
+      [promoter.user_id,id]
     );
 
     const l2 = await query(
@@ -5206,8 +5249,8 @@ app.get('/api/admin/distribution/promoters/:id/team', authenticateToken, async (
        FROM distribution_relationships dr
        JOIN users u ON dr.child_user_id = u.id
        LEFT JOIN distributors d ON u.id = d.user_id
-       WHERE dr.parent_user_id = ? AND dr.level = 2`,
-      [promoter.user_id]
+       WHERE (dr.parent_user_id = ? OR dr.parent_distributor_id=?) AND dr.level = 2`,
+      [promoter.user_id,id]
     );
 
     res.json({
@@ -5240,8 +5283,12 @@ app.get('/api/admin/distribution/promoters/:id/team', authenticateToken, async (
 app.put('/api/admin/distribution/promoters/:id/status', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
+  if (!['active','disabled','inactive'].includes(status)) return res.status(400).json({code:400,message:'推广员状态无效'});
   try {
-    await run('UPDATE distributors SET status = ? WHERE id = ?', [status || 'active', id]);
+    await transaction(async conn => {
+      await conn.execute('UPDATE distributors SET status = ? WHERE id = ?', [status, id]);
+      await conn.execute('UPDATE promoter_accounts SET token_version=token_version+1 WHERE distributor_id=?', [id]);
+    });
     res.json({ code: 200, message: '状态修改成功' });
   } catch (error) {
     console.error(error);
@@ -5257,7 +5304,7 @@ app.get('/api/admin/distribution/overview', authenticateToken, async (req, res) 
          COUNT(*) as promoters_count,
          SUM(CASE WHEN status = 'active' AND EXISTS (
            SELECT 1 FROM distribution_relationships r
-           WHERE r.parent_user_id = distributors.user_id AND r.level = 1
+           WHERE (r.parent_user_id = distributors.user_id OR r.parent_distributor_id=distributors.id) AND r.level = 1
          ) THEN 1 ELSE 0 END) as active_promoters
        FROM distributors`
     );
@@ -5315,6 +5362,7 @@ app.get('/api/admin/products', authenticateToken, async (req, res) => {
     const list = await query(
       `SELECT p.id, p.name, p.category, pc.name AS category_name, p.image_url, p.price, p.description, p.stock, p.sales_count,
               p.is_distribution, p.commission_rate, p.commission_rate_level1, p.commission_rate_level2,
+              p.backend_referral_enabled, p.backend_rate_x, p.backend_rate_y,
               p.status, p.deleted_at, p.created_at, p.original_price, p.gallery_urls
        FROM products p
        LEFT JOIN product_categories pc ON pc.code = p.category
@@ -5439,8 +5487,8 @@ app.post('/api/admin/products', authenticateToken, async (req, res) => {
     const level1Rate = Number(commission_rate_level1 !== undefined ? commission_rate_level1 : commission_rate || 0);
     const level2Rate = Number(commission_rate_level2 || 0);
     const result = await run(
-      `INSERT INTO products (name, category, image_url, price, description, stock, is_distribution, commission_rate, commission_rate_level1, commission_rate_level2, status, original_price, gallery_urls)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO products (name, category, image_url, price, description, stock, is_distribution, commission_rate, commission_rate_level1, commission_rate_level2, status, original_price, gallery_urls,backend_referral_enabled,backend_rate_x,backend_rate_y)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
         normalizedCategory,
@@ -5454,7 +5502,8 @@ app.post('/api/admin/products', authenticateToken, async (req, res) => {
         level2Rate,
         status === 'on' ? 'on' : 'off',
         original_price ? Number(original_price) : null,
-        galleryUrlsVal
+        galleryUrlsVal,
+        req.body.backend_referral_enabled?1:0, Number(req.body.backend_rate_x||0), Number(req.body.backend_rate_y||0)
       ]
     );
     await logAdminAction(req.user.id, 'create_product', 'product', result.id, { name, is_distribution: !!is_distribution });
@@ -5486,6 +5535,7 @@ app.put('/api/admin/products/:id', authenticateToken, async (req, res) => {
       const validation = validateProduct({ ...product, ...req.body,
         commission_rate_level1: req.body.commission_rate_level1 ?? req.body.commission_rate ?? product.commission_rate_level1 });
       if (validation) throw businessError(validation, 400);
+      await conn.execute('UPDATE products SET backend_referral_enabled=?,backend_rate_x=?,backend_rate_y=? WHERE id=?',[req.body.backend_referral_enabled===undefined?product.backend_referral_enabled:(req.body.backend_referral_enabled?1:0),Number(req.body.backend_rate_x??product.backend_rate_x),Number(req.body.backend_rate_y??product.backend_rate_y),id]);
       if (req.body.stock !== undefined) {
         const expected = req.body.expected_stock;
         if (typeof expected !== 'number' || !Number.isSafeInteger(expected) || expected < 0) {
@@ -5596,10 +5646,10 @@ app.get('/api/admin/distribution/products', authenticateToken, async (req, res) 
 app.get('/api/admin/distribution/withdraws', authenticateToken, async (req, res) => {
   try {
     const list = await query(
-      `SELECT w.*, u.nickname, u.phone, d.nickname as promoter_name
+      `SELECT w.*, COALESCE(d.nickname,u.nickname) AS nickname, COALESCE(d.contact_phone,u.phone) AS phone, d.nickname as promoter_name
        FROM withdraw_records w
-       JOIN users u ON w.user_id = u.id
-       LEFT JOIN distributors d ON u.id = d.user_id
+       LEFT JOIN users u ON w.user_id = u.id
+       LEFT JOIN distributors d ON d.id=w.distributor_id OR (w.distributor_id IS NULL AND u.id = d.user_id)
        ORDER BY w.created_at DESC`
     );
     res.json({
@@ -5673,7 +5723,7 @@ app.get('/api/admin/distribution/leaderboard', authenticateToken, async (req, re
   try {
     const list = await query(
       `SELECT d.id, d.nickname, d.avatar_url, d.level, d.total_commission,
-             (SELECT COUNT(*) FROM distribution_relationships WHERE parent_user_id = d.user_id) as invites
+             (SELECT COUNT(*) FROM distribution_relationships WHERE parent_user_id = d.user_id OR parent_distributor_id=d.id) as invites
        FROM distributors d
        ORDER BY d.total_commission DESC
        LIMIT 10`
@@ -6822,32 +6872,69 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
     return res.status(400).json({ code: 400, message: '请选择推广人' });
   }
   try {
-    const patient = await get('SELECT user_id FROM patients WHERE id = ?', [id]);
-    if (!patient) {
-      return res.status(404).json({ code: 404, message: '患者不存在' });
-    }
-    const promoter = await get(
-      `SELECT user_id FROM distributors WHERE user_id = ? LIMIT 1`,
-      [promoter_user_id]
-    );
-    if (!promoter) {
-      return res.status(400).json({ code: 400, message: '推广人不存在或已停用' });
-    }
-    if (Number(promoter_user_id) === Number(patient.user_id)) {
-      return res.status(400).json({ code: 400, message: '患者不能绑定自己为推广人' });
-    }
-    const child_user_id = patient.user_id;
-    const existing = await get('SELECT id FROM distribution_relationships WHERE child_user_id = ?', [child_user_id]);
-    if (existing) {
-      await run('UPDATE distribution_relationships SET parent_user_id = ? WHERE child_user_id = ?', [promoter_user_id, child_user_id]);
-    } else {
-      await run('INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)', [promoter_user_id, child_user_id]);
-    }
-    await run(`UPDATE distributors SET status = 'active' WHERE user_id = ?`, [promoter_user_id]);
+    await transaction(async (conn) => {
+      const readOne = async (sql, args) => {
+        const [rows] = await conn.execute(sql, args);
+        return rows[0];
+      };
+      const rejectBinding = (message, statusCode = 400) => {
+        throw Object.assign(new Error(message), { bindingStatus: statusCode });
+      };
+      const patient = await readOne('SELECT user_id FROM patients WHERE id = ? FOR UPDATE', [id]);
+      if (!patient) rejectBinding('患者不存在', 404);
+      if (!patient.user_id) rejectBinding('患者尚未关联小程序账号');
+      const promoter = await readOne(
+        'SELECT user_id, status FROM distributors WHERE user_id = ? LIMIT 1 FOR UPDATE',
+        [promoter_user_id]);
+      if (!promoter || !['active', 'pending'].includes(promoter.status)) {
+        rejectBinding('推广人不存在或已停用');
+      }
+      const childUserId = patient.user_id;
+      const parentUserId = promoter.user_id;
+      if (String(parentUserId) === String(childUserId)) rejectBinding('患者不能绑定自己为推广人');
+
+      // Match the client bind protocol: lock the user whose parent edge changes,
+      // then every ancestor before reading that ancestor's parent edge.
+      await readOne('SELECT id FROM users WHERE id = ? FOR UPDATE', [childUserId]);
+      const visited = new Set([String(childUserId)]);
+      let ancestor = parentUserId;
+      let grandParent = null;
+      while (ancestor != null) {
+        if (visited.has(String(ancestor))) rejectBinding('不能绑定存在循环的推荐关系');
+        visited.add(String(ancestor));
+        await readOne('SELECT id FROM users WHERE id = ? FOR UPDATE', [ancestor]);
+        const relation = await readOne(
+          'SELECT parent_user_id,parent_distributor_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1',
+          [ancestor]);
+        if (String(ancestor) === String(parentUserId)) grandParent = relation;
+        ancestor = relation ? relation.parent_user_id : null;
+      }
+
+      // Rebind this user and refresh direct children's second-level edges.
+      // Historical commission orders and deeper descendants remain unchanged.
+      await conn.execute(
+        'DELETE FROM distribution_relationships WHERE child_user_id = ? AND level IN (1, 2)', [childUserId]);
+      await conn.execute(
+        'INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)',
+        [parentUserId, childUserId]);
+      if (grandParent) {
+        await conn.execute(
+          'INSERT INTO distribution_relationships (parent_user_id,parent_distributor_id, child_user_id, level) VALUES (?, ?, ?, 2)',
+          [grandParent.parent_user_id,grandParent.parent_distributor_id||null, childUserId]);
+      }
+      if (promoter.status === 'pending') {
+        await conn.execute(
+          "UPDATE distributors SET status = 'active' WHERE user_id = ? AND status = 'pending'", [parentUserId]);
+      }
+      await syncDirectChildrenSecondLevel(conn, childUserId, parentUserId);
+    });
     await logAdminAction(req.user.id, 'bind_patient_promoter', 'patient', id, { promoter_user_id });
     res.json({ code: 200, message: '绑定推广人成功' });
   } catch (error) {
     console.error('Bind promoter failed:', error);
+    if (error.bindingStatus) {
+      return res.status(error.bindingStatus).json({ code: error.bindingStatus, message: error.message });
+    }
     res.status(500).json({ code: 500, message: '操作失败' });
   }
 });
@@ -6956,6 +7043,7 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
           if (changed.affectedRows !== 1) fail('商品库存不足，请刷新后重试', 409);
         }
       }
+      await snapshotReferralOrder(conn, created.insertId, appointment?.id);
       const [[order]] = await conn.execute('SELECT * FROM orders WHERE id=?', [created.insertId]);
       let fulfillmentCaseId = null;
       if (!isDeferredWechatPay) {
@@ -6983,6 +7071,23 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
         payAt: order.pay_at, status: order.status, type: order.type, shippingAddress: order.shipping_address,
         items: savedItems.map(item => ({productId:item.product_id,productName:item.product_name,price:item.price,quantity:item.quantity})) }
     } });
+    if (normalizedPayMethod === 'wechat' && appointment?.id) {
+      setImmediate(() => {
+        sendWechatSubscribeMessage({
+          userId: patient.user_id,
+          event: 'payment_due',
+          businessId: `admin_appointment_payment_due:${order.id}`,
+          page: `pages/appointment/detail?id=${appointment.id}`,
+          payload: {
+            orderNo,
+            status: '待付款',
+            productName: savedItems.map(item => item.product_name).filter(Boolean).slice(0, 2).join('、') || '预约费用',
+            amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
+            remark: '请进入预约详情完成支付'
+          }
+        });
+      });
+    }
   } catch (error) {
     console.error('Cashier order:', error);
     const statusCode = error.statusCode || 500;

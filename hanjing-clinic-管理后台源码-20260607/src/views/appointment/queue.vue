@@ -19,6 +19,7 @@ import {
 } from '@/utils/checkoutProducts'
 import TechnicianSelect from '@/components/TechnicianSelect.vue'
 import { createNativePay, getAdminPayStatus, isPaidStatus, submitMicropay } from '@/utils/wechatCashier'
+import { speakMandarin } from '@/utils/speech'
 
 const router = useRouter()
 
@@ -241,12 +242,8 @@ const doctorQueues = computed(() => {
 
 // Call patient voice broadcast and update status to checked_in (就诊中)
 const callPatient = async (item: QueueItem, doctorName: string) => {
-  if ('speechSynthesis' in window) {
-    const text = `请患者 ${item.patientName}，到 ${doctorName} 医生诊室就诊。`
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'zh-CN'
-    utterance.rate = 0.9
-    window.speechSynthesis.speak(utterance)
+  const text = `请患者 ${item.patientName}，到 ${doctorName} 医生诊室就诊。`
+  if (speakMandarin(text)) {
     MessagePlugin.success(`呼叫广播成功: "${text}"`)
   } else {
     MessagePlugin.warning('浏览器不支持语音播报，已通过系统弹窗提示')
@@ -731,7 +728,7 @@ onUnmounted(() => {
 const createApptVisible = ref(false)
 const apptSearchQuery = ref('')
 const apptSelectedPatient = ref<any>(null)
-const apptStore = ref('鼾静健康·龙岗总店')
+const apptStore = ref('兴康明·龙岗总店')
 const apptDoctor = ref('古堪民 · 主任医师 · 睡眠呼吸科')
 const apptStoreId = ref('')
 const apptDoctorId = ref('')
@@ -1079,7 +1076,7 @@ const filteredTodayAppointments = computed(() => {
     >
       <div v-if="checkoutSuccess" style="display: flex; flex-direction: column; align-items: center; padding: 10px 0;">
         <div class="invoice-box" style="width: 100%; background: #FCFCFA; border: 1px solid #E5E7EB; border-radius: 8px; padding: 20px; font-family: monospace;">
-          <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #000;">鼾静健康诊所 · 收费凭证</div>
+          <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #000;">兴康明诊所 · 收费凭证</div>
           <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">================================</div>
           <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>交易单号:</span> <span>{{ orderResult?.orderNo }}</span></div>
           <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>结账客户:</span> <span>{{ orderResult?.patientName }}</span></div>

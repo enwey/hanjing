@@ -1,6 +1,22 @@
 const api = require('../api/index');
 const miniLog = require('../common/utils/mini-log');
 const AUTH_MODE_STORAGE_KEY = 'auth_mode';
+let sessionRevision = 0;
+// A token refresh keeps the login session; logout or a new login does not.
+let loginGeneration = 0;
+
+// Diagnostics are best-effort and must never delay authentication.
+function reportDiagnostic(entry) {
+  try {
+    Promise.resolve(miniLog.reportNow(entry)).catch(() => {});
+  } catch (error) {}
+}
+
+function assertLoginActive(options, revision) {
+  if (sessionRevision !== revision || (options.isCancelled && options.isCancelled())) {
+    throw new Error('登录操作已取消，请重新登录');
+  }
+}
 
 function decodeBase64Url(input) {
   if (!input) {
@@ -50,8 +66,9 @@ function normalizeAccessToken(token) {
 
 function isTokenExpired(token) {
   const payload = parseJwtPayload(token);
-  if (!payload || !payload.exp) {
-    return false;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload) ||
+      typeof payload.exp !== 'number' || !Number.isFinite(payload.exp) || payload.exp <= 0) {
+    return true;
   }
   const now = Math.floor(Date.now() / 1000);
   return now >= Number(payload.exp || 0);
@@ -83,20 +100,79 @@ function readStoredAuthMode() {
 
 async function bindPendingInviteCode() {
   const pendingInviteCode = wx.getStorageSync('pending_invite_code');
+  const token = wx.getStorageSync('access_token');
   if (!pendingInviteCode) {
     return;
   }
+  const clearCurrentInvite = () => {
+    if (wx.getStorageSync('pending_invite_code') === pendingInviteCode &&
+        wx.getStorageSync('access_token') === token) {
+      wx.removeStorageSync('pending_invite_code');
+    }
+  };
   try {
     const response = await api.bindDistribution(pendingInviteCode);
-    const status = (response && response.data && response.data.status) || response.status || 'bound';
+    const status = response && ((response.data && response.data.status) || response.status);
     if (status === 'bound' || status === 'already_bound' || status === 'ignored_self') {
-      wx.removeStorageSync('pending_invite_code');
+      clearCurrentInvite();
     }
   } catch (error) {
-    if (error && (error.message === '无效的邀请码' || error.message === '邀请码不能为空')) {
-      wx.removeStorageSync('pending_invite_code');
+    if (error && (error.message === '无效的邀请码' || error.message === '邀请码不能为空' ||
+        (error.data && ['PROMOTER_UNAVAILABLE', 'INVITE_CYCLE'].includes(error.data.reason)))) {
+      clearCurrentInvite();
     }
   }
+}
+
+const ACCOUNT_CACHE_KEYS = [
+  'current_patient_id', 'rewrite_current_patient_id',
+  'selected_treatment_patient_id', 'selected_medical_record_patient_id',
+  'last_local_snore_result', 'pending_snore_uploads', 'pending_appointment_assessment',
+  'last_ess_assessment_result',
+];
+const CACHE_ARCHIVE_KEY = 'account_cache_archive';
+const CACHE_OWNER_KEY = 'account_cache_owner';
+// Read the owner before an expired access token is removed on startup.
+const initialPayload = parseJwtPayload(wx.getStorageSync('access_token'));
+let cacheOwner = String(wx.getStorageSync(CACHE_OWNER_KEY) || (initialPayload && initialPayload.id) || '');
+if (cacheOwner) wx.setStorageSync(CACHE_OWNER_KEY, cacheOwner);
+
+function switchAccountCache(nextOwner) {
+  nextOwner = String(nextOwner || '');
+  if (nextOwner && nextOwner === cacheOwner) {
+    wx.setStorageSync(CACHE_OWNER_KEY, nextOwner);
+    return false;
+  }
+  const saved = wx.getStorageSync(CACHE_ARCHIVE_KEY);
+  const archive = Array.isArray(saved) ? saved.slice() : [];
+  const values = {};
+  ACCOUNT_CACHE_KEYS.forEach((key) => {
+    const value = wx.getStorageSync(key);
+    if (value !== undefined && value !== null && value !== '') values[key] = value;
+  });
+  if (Object.keys(values).length) archive.push({ owner: cacheOwner, values });
+  // Preserve pending records before removing them from the active account.
+  if (archive.length) wx.setStorageSync(CACHE_ARCHIVE_KEY, archive);
+  ACCOUNT_CACHE_KEYS.forEach((key) => wx.removeStorageSync(key));
+  let restoreIndex = -1;
+  if (nextOwner) {
+    for (let i = archive.length - 1; i >= 0; i -= 1) {
+      if (archive[i].owner === nextOwner) { restoreIndex = i; break; }
+    }
+  }
+  if (restoreIndex >= 0) {
+    const restored = archive[restoreIndex].values || {};
+    ACCOUNT_CACHE_KEYS.forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(restored, key)) wx.setStorageSync(key, restored[key]);
+    });
+    archive.splice(restoreIndex, 1);
+    if (archive.length) wx.setStorageSync(CACHE_ARCHIVE_KEY, archive);
+    else wx.removeStorageSync(CACHE_ARCHIVE_KEY);
+  }
+  cacheOwner = nextOwner;
+  if (nextOwner) wx.setStorageSync(CACHE_OWNER_KEY, nextOwner);
+  else wx.removeStorageSync(CACHE_OWNER_KEY);
+  return true;
 }
 
 const sessionStore = {
@@ -107,6 +183,12 @@ const sessionStore = {
     currentPatientId: wx.getStorageSync('current_patient_id') || '',
   },
 
+  getRevision() {
+    return sessionRevision;
+  },
+  getLoginGeneration() {
+    return loginGeneration;
+  },
   isLoggedIn() {
     const token = readStoredAccessToken();
     this.state.accessToken = token;
@@ -131,24 +213,48 @@ const sessionStore = {
       wx.removeStorageSync(AUTH_MODE_STORAGE_KEY);
     }
   },
-  setAccessToken(accessToken) {
+  setAccessToken(accessToken, options = {}) {
+    sessionRevision += 1;
+    if (!options.isRefresh) loginGeneration += 1;
     this.state.accessToken = accessToken || '';
     if (accessToken) { wx.setStorageSync("access_token", accessToken); } else { wx.removeStorageSync("access_token"); }
   },
   clearLoginState() {
+    // Authentication must be invalidated even if preserving account caches fails.
     this.setAccessToken('');
     this.setAuthMode('');
     this.state.profile = null;
+    try {
+      this.switchAccount('');
+    } catch (error) {
+      // Keep pending records and their existing owner in place. A different
+      // account must successfully archive them before its login can commit.
+      reportDiagnostic({
+        level: 'warn',
+        event: 'logout_cache_archive_deferred',
+        message: 'Session cleared; account cache archival deferred',
+      });
+    }
     this.setCurrentPatientId('');
-    wx.removeStorageSync('last_local_snore_result');
-    wx.removeStorageSync('pending_snore_uploads');
-    wx.removeStorageSync('pending_appointment_assessment');
+    wx.removeStorageSync('rewrite_current_patient_id');
+    wx.removeStorageSync('selected_treatment_patient_id');
+    wx.removeStorageSync('selected_medical_record_patient_id');
+    const patientContext = require('./patient-context-store');
+    if (patientContext && typeof patientContext.reset === 'function') patientContext.reset();
+  },
+  switchAccount(userId) {
+    if (!switchAccountCache(userId)) return;
+    this.state.currentPatientId = wx.getStorageSync('current_patient_id') || '';
+    this.state.profile = null;
+    const patientContext = require('./patient-context-store');
+    if (patientContext && typeof patientContext.reset === 'function') patientContext.reset();
   },
   setCurrentPatientId(patientId) {
     this.state.currentPatientId = patientId || '';
     if (patientId) { wx.setStorageSync("current_patient_id", patientId); } else { wx.removeStorageSync("current_patient_id"); }
   },
   async fetchProfile(options = {}) {
+    const generation = loginGeneration;
     const traceId = options.traceId || '';
     const shouldReport = Boolean(traceId || options.source);
     if (shouldReport) {
@@ -166,6 +272,11 @@ const sessionStore = {
     }
     try {
       const response = await api.getUserProfile({ traceId });
+      if (generation !== loginGeneration || !this.isLoggedIn()) {
+        const error = new Error('登录状态已变更，请重新加载资料');
+        error.code = 'SESSION_CHANGED';
+        throw error;
+      }
       this.state.profile = response.data || response;
       if (shouldReport) {
         miniLog.report({
@@ -200,6 +311,8 @@ const sessionStore = {
     }
   },
   async login(phoneCode, options = {}) {
+    const revision = sessionRevision;
+    assertLoginActive(options, revision);
     const traceId = options.traceId || miniLog.createTraceId();
     const source = options.source || 'unknown';
     miniLog.report({
@@ -212,7 +325,7 @@ const sessionStore = {
         hasPhoneCode: Boolean(phoneCode),
       },
     });
-    await miniLog.reportNow({
+    reportDiagnostic({
       level: 'info',
       event: 'session_login_start_sync',
       message: 'session login started',
@@ -222,6 +335,7 @@ const sessionStore = {
         hasPhoneCode: Boolean(phoneCode),
       },
     });
+    assertLoginActive(options, revision);
     const loginResponse = await new Promise((resolve, reject) => {
       wx.login({
         success: resolve,
@@ -235,7 +349,7 @@ const sessionStore = {
               source,
             },
           });
-          miniLog.reportNow({
+          reportDiagnostic({
             level: 'error',
             event: 'wx_login_failed_sync',
             message: error && error.errMsg,
@@ -243,9 +357,8 @@ const sessionStore = {
             extra: {
               source,
             },
-          }).then(() => {
-            reject(error);
           });
+          reject(error);
           return;
         },
       });
@@ -261,7 +374,7 @@ const sessionStore = {
         hasPhoneCode: Boolean(phoneCode),
       },
     });
-    await miniLog.reportNow({
+    reportDiagnostic({
       level: 'info',
       event: 'wx_login_success_sync',
       message: 'wx.login success',
@@ -283,7 +396,7 @@ const sessionStore = {
           hasPhoneCode: Boolean(phoneCode),
         },
       });
-      await miniLog.reportNow({
+      reportDiagnostic({
         level: 'warn',
         event: 'wx_login_missing_code_sync',
         message: 'wx.login success without code',
@@ -307,7 +420,7 @@ const sessionStore = {
         hasPhoneCode: Boolean(phoneCode),
       },
     });
-    await miniLog.reportNow({
+    reportDiagnostic({
       level: 'info',
       event: 'login_api_request_sync',
       message: 'request wx-login api',
@@ -320,7 +433,9 @@ const sessionStore = {
         hasPhoneCode: Boolean(phoneCode),
       },
     });
+    assertLoginActive(options, revision);
     const response = await api.wxLogin(loginResponse.code, phoneCode, { traceId });
+    assertLoginActive(options, revision);
     const payload = response.data || response;
     miniLog.report({
       level: 'info',
@@ -335,6 +450,10 @@ const sessionStore = {
         hasUser: Boolean(payload.user),
       },
     });
+    if (normalizeAccessToken(payload.access_token) && !isTokenExpired(payload.access_token)) {
+      const identity = parseJwtPayload(payload.access_token);
+      this.switchAccount((payload.user && payload.user.id) || (identity && identity.id));
+    }
     this.setAccessToken(payload.access_token || '');
     this.setAuthMode('wechat');
     this.state.profile = payload.user || null;
@@ -355,6 +474,8 @@ const sessionStore = {
     return payload;
   },
   async passwordLogin(phone, password, options = {}) {
+    const revision = sessionRevision;
+    assertLoginActive(options, revision);
     const traceId = options.traceId || miniLog.createTraceId();
     const source = options.source || 'password_login';
     const authApi = require('../api/modules/auth-api');
@@ -368,7 +489,7 @@ const sessionStore = {
         phone: String(phone || '').slice(0, 3),
       },
     });
-    await miniLog.reportNow({
+    reportDiagnostic({
       level: 'info',
       event: 'session_password_login_start_sync',
       message: 'session password login started',
@@ -391,7 +512,7 @@ const sessionStore = {
         hasPassword: Boolean(password),
       },
     });
-    await miniLog.reportNow({
+    reportDiagnostic({
       level: 'info',
       event: 'login_api_request_sync',
       message: 'request password-login api',
@@ -404,7 +525,9 @@ const sessionStore = {
         hasPassword: Boolean(password),
       },
     });
+    assertLoginActive(options, revision);
     const response = await authApi.passwordLogin(phone, password, { traceId });
+    assertLoginActive(options, revision);
     const payload = response.data || response;
     miniLog.report({
       level: 'info',
@@ -419,6 +542,10 @@ const sessionStore = {
         hasUser: Boolean(payload.user),
       },
     });
+    if (normalizeAccessToken(payload.access_token) && !isTokenExpired(payload.access_token)) {
+      const identity = parseJwtPayload(payload.access_token);
+      this.switchAccount((payload.user && payload.user.id) || (identity && identity.id));
+    }
     this.setAccessToken(payload.access_token || '');
     this.setAuthMode('password');
     this.state.profile = payload.user || null;

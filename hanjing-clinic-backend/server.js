@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { fileURLToPath } from 'node:url';
 import { initDB, get, closePool } from './db.js';
 import { createRateLimiter, createRotatingLog } from './runtime-safety.js';
 import adminRouter from './routes/admin.js';
@@ -60,6 +61,11 @@ app.use((req, res, next) => {
 import { initWebSocket } from './im-socket.js';
 
 // Register routers
+// Public bundled demo portraits only; do not expose arbitrary project files.
+app.get('/static/demo/:filename', (req, res, next) => {
+  if (!/^doctor-[1-4]\.jpg$/.test(req.params.filename)) return next();
+  res.sendFile(fileURLToPath(new URL('./static/demo/' + req.params.filename, import.meta.url)));
+});
 app.use(adminRouter);
 app.use(clientRouter);
 app.use(promoterRouter);

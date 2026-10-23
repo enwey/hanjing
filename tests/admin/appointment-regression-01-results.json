@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-22",
+  "scope": "ADMIN-APPT-01～06 independent regression",
+  "result": "passed_in_recorded_scope",
+  "ADMIN-APPT-01": {"status": "passed", "appointmentNo": "AP202606140001", "http": 200, "total": 1, "returned": 1},
+  "ADMIN-APPT-02": {"status": "passed", "negativePage": 400, "negativePageSize": 400},
+  "ADMIN-APPT-03": {"status": "passed", "normalized": {"tab": "all", "store": "全部门店", "doctor": "全部医生"}, "visibleRows": 30},
+  "ADMIN-APPT-04": {"status": "passed", "fault": "browser blocked appointments endpoint", "visibleAlert": "预约列表加载失败，请稍后重试", "businessRowsAfterFailure": 0},
+  "ADMIN-APPT-05": {"status": "passed", "viewport": 375, "documentScrollWidth": 375, "tableContainerClientWidth": 270, "tableContainerScrollWidth": 1164},
+  "ADMIN-APPT-06": {"status": "passed", "collectionCreate": "appointment:add", "preExam": "appointment:edit", "postpone": "appointment:edit", "saveConsultation": "medical_record:edit", "completeConsultation": "medical_record:edit"},
+  "baseline": {"listHttp": 200, "total": 34, "returned": 30, "unauthenticated": 401},
+  "cleanup": {"remainingTemporaryAccounts": 0}
+}

@@ -20,6 +20,9 @@ interface Product {
   isDistribution: boolean;
   commission1: number; // percent
   commission2: number; // percent
+  backendReferralEnabled: boolean;
+  backendRateX: number;
+  backendRateY: number;
   status: string; // 'on', 'off'
 }
 
@@ -56,6 +59,7 @@ const formData = ref<Partial<Product>>({
   isDistribution: false,
   commission1: 15,
   commission2: 5,
+  backendReferralEnabled: false, backendRateX: 0, backendRateY: 0,
   status: 'on'
 })
 
@@ -174,6 +178,8 @@ function toPayload(prod: Partial<Product>) {
     commission_rate: Number(prod.commission1 || 0),
     commission_rate_level1: Number(prod.commission1 || 0),
     commission_rate_level2: Number(prod.commission2 || 0),
+    backend_referral_enabled: prod.backendReferralEnabled ? 1 : 0,
+    backend_rate_x: Number(prod.backendRateX || 0), backend_rate_y: Number(prod.backendRateY || 0),
     status: prod.status || 'off',
     gallery_urls: JSON.stringify(prod.galleryUrls || [])
   }
@@ -240,6 +246,7 @@ onMounted(async () => {
           isDistribution: !!row.is_distribution,
           commission1: Number(row.commission_rate_level1 || row.commission_rate || 0),
           commission2: Number(row.commission_rate_level2 || 0),
+          backendReferralEnabled: !!row.backend_referral_enabled, backendRateX:Number(row.backend_rate_x||0), backendRateY:Number(row.backend_rate_y||0),
           status: row.status || 'off'
         }
       }
@@ -261,6 +268,7 @@ onMounted(async () => {
       isDistribution: false,
       commission1: 15,
       commission2: 5,
+      backendReferralEnabled: false, backendRateX: 0, backendRateY: 0,
       status: 'on'
     }
   }
@@ -428,6 +436,12 @@ onMounted(async () => {
               </label>
             </div>
             <div class="card-body">
+              <label class="checkbox-row"><input type="checkbox" v-model="formData.backendReferralEnabled" />后台推广推荐佣金</label>
+              <div v-if="formData.backendReferralEnabled">
+                <label class="form-label">无上级患者首次成单 X (%)</label><input type="number" class="form-control" v-model.number="formData.backendRateX" min="0" max="100" step="0.01" />
+                <label class="form-label">已有上级患者本次推荐 Y (%)</label><input type="number" class="form-control" v-model.number="formData.backendRateY" min="0" max="100" step="0.01" />
+                <div class="form-help">X成单后绑定；Y不改绑。Y与原两级佣金合计不能超过100%。</div>
+              </div>
               <div v-if="formData.isDistribution" style="display: flex; flex-direction: column; gap: 14px; animation: fadeIn 0.2s ease;">
                 <div class="form-group">
                   <label class="form-label">一级推广佣金比例 (%)</label>

@@ -5,13 +5,15 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
 const router = useRouter()
+const isSubmitting = ref(false)
 const loginForm = ref({ account: '', password: '' })
 const rules = {
   account: [{ required: true, message: '请输入管理员账号', type: 'error', trigger: 'submit' }],
   password: [{ required: true, message: '请输入密码', type: 'error', trigger: 'submit' }]
 }
 async function handleLogin({ validateResult }: any) {
-  if (validateResult !== true) return
+  if (validateResult !== true || isSubmitting.value) return
+  isSubmitting.value = true
   try {
     const res: any = await request.post('/api/admin/login', {
       username: loginForm.value.account, password: loginForm.value.password
@@ -22,6 +24,8 @@ async function handleLogin({ validateResult }: any) {
     router.push('/dashboard')
   } catch {
     // The response interceptor displays authentication errors.
+  } finally {
+    isSubmitting.value = false
   }
 }
 </script>
@@ -36,10 +40,10 @@ async function handleLogin({ validateResult }: any) {
     <div class="login-card">
       <div class="login-brand">
         <span class="brand-logo">
-          <img class="brand-logo-image" src="/brand-koala.png" alt="鼾静健康诊所" />
+          <img class="brand-logo-image" src="/brand-koala.png" alt="兴康明诊所" />
         </span>
         <div class="brand-title">
-          鼾静健康诊所
+          兴康明诊所
           <small>睡眠健康管理后台</small>
         </div>
       </div>
@@ -73,12 +77,14 @@ async function handleLogin({ validateResult }: any) {
         </template>
 
         <t-form-item style="margin-top: 32px;">
-          <t-button theme="primary" type="submit" block size="large">立即登录</t-button>
+          <t-button theme="primary" type="submit" block size="large" :loading="isSubmitting" :disabled="isSubmitting">
+            {{ isSubmitting ? '登录中…' : '立即登录' }}
+          </t-button>
         </t-form-item>
       </t-form>
       
       <div class="login-footer">
-        © 2026 鼾静健康诊所 · 睡眠呼吸障碍无创阻鼾方案
+        © 2026 兴康明诊所 · 睡眠呼吸障碍无创阻鼾方案
       </div>
     </div>
   </div>
@@ -125,11 +131,18 @@ async function handleLogin({ validateResult }: any) {
   position: relative;
   z-index: 2;
   width: 400px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 40px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+@media (max-width: 480px) {
+  .login-card {
+    padding: 28px 24px;
+  }
 }
 .login-brand {
   display: flex;

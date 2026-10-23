@@ -64,22 +64,22 @@ export const seedData = async () => {
   const store1 = await run(
     `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['鼾静健康 · 龙岗总店', 'SZ-LG', '深圳市龙岗区吉华路达成工业区3号', '深圳', '龙岗区', 22.7214, 114.2568, '0755-89622999', '08:30:00', '18:00:00', 'open', 1]
+    ['兴康明 · 龙岗总店', 'SZ-LG', '深圳市龙岗区吉华路达成工业区3号', '深圳', '龙岗区', 22.7214, 114.2568, '0755-89622999', '08:30:00', '18:00:00', 'open', 1]
   );
   const store2 = await run(
     `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['鼾静健康 · 南山分院', 'SZ-NS', '深圳市南山区科技园南区数字大厦2楼', '深圳', '南山区', 22.5401, 113.9345, '0755-86282888', '09:00:00', '17:30:00', 'open', 1]
+    ['兴康明 · 南山分院', 'SZ-NS', '深圳市南山区科技园南区数字大厦2楼', '深圳', '南山区', 22.5401, 113.9345, '0755-86282888', '09:00:00', '17:30:00', 'open', 1]
   );
   const store3 = await run(
     `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['鼾静健康 · 福田门诊部', 'SZ-FT', '深圳市福田区深南大道财富大厦A座3楼', '深圳', '福田区', 22.5367, 114.0556, '0755-83511188', '08:30:00', '20:00:00', 'open', 0]
+    ['兴康明 · 福田门诊部', 'SZ-FT', '深圳市福田区深南大道财富大厦A座3楼', '深圳', '福田区', 22.5367, 114.0556, '0755-83511188', '08:30:00', '20:00:00', 'open', 0]
   );
   const store4 = await run(
     `INSERT INTO stores (name, code, address, city, district, latitude, longitude, phone, open_time, close_time, status, has_parking) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ['鼾静健康 · 广州天河店', 'GZ-TH', '广州市天河区天河路385号太古汇2座', '广州', '天河区', 23.1342, 113.3352, '020-38688888', '09:00:00', '18:00:00', 'prepare', 1]
+    ['兴康明 · 广州天河店', 'GZ-TH', '广州市天河区天河路385号太古汇2座', '广州', '天河区', 23.1342, 113.3352, '020-38688888', '09:00:00', '18:00:00', 'prepare', 1]
   );
 
   // Store Features
@@ -432,7 +432,7 @@ export const seedData = async () => {
      ON DUPLICATE KEY UPDATE name = VALUES(name), image_url = VALUES(image_url), gallery_urls = VALUES(gallery_urls), price = VALUES(price), original_price = VALUES(original_price)`,
     [
       2,
-      '鼾静阻鼾器专用清洁泡腾片 (60片/盒)',
+      '兴康明阻鼾器专用清洁泡腾片 (60片/盒)',
       'accessory',
       '/static/product/pillow.png', // Reusing placeholder
       JSON.stringify(['/static/product/pillow.png', '/static/product/pillow-2.png']),
@@ -453,7 +453,7 @@ export const seedData = async () => {
      ON DUPLICATE KEY UPDATE name = VALUES(name), image_url = VALUES(image_url), gallery_urls = VALUES(gallery_urls), price = VALUES(price), original_price = VALUES(original_price)`,
     [
       3,
-      '鼾静智能阻鼾舒眠记忆枕',
+      '兴康明智能阻鼾舒眠记忆枕',
       'accessory',
       '/static/product/pillow.png',
       JSON.stringify(['/static/product/pillow.png']),
@@ -609,7 +609,7 @@ export const seedData = async () => {
   await run(
     `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [order1.id, prod1.id, 'HJ-MAD-03 鼾静智能下颌前移阻鼾器', '/static/product/hj-mad-03.png', 298000, 1]
+    [order1.id, prod1.id, 'HJ-MAD-03 兴康明智能下颌前移阻鼾器', '/static/product/hj-mad-03.png', 298000, 1]
   );
 
   const order2 = await run(
@@ -632,7 +632,7 @@ export const seedData = async () => {
   await run(
     `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [order2.id, prod2.id, '鼾静阻鼾器专用清洁泡腾片 (60片/盒)', '/static/product/pillow.png', 4900, 1]
+    [order2.id, prod2.id, '兴康明阻鼾器专用清洁泡腾片 (60片/盒)', '/static/product/pillow.png', 4900, 1]
   );
 
   // 16. Distributors & Distribution Orders
@@ -718,7 +718,7 @@ export const seedData = async () => {
       user1.id,
       'patient',
       '配戴 HJ-MAD-03 阻鼾器四周体验，打鼾明显好转！',
-      '以前睡觉打鼾震天响，经常憋醒。在鼾静诊所定制了HJ-MAD-03。刚配戴的前三天有些流口水，牙齿酸胀，不过按照古医生的建议清晨做做嘴部张合操，第四天就完全适应了。现在老婆说我基本上不打鼾了，白天精神也好了很多，整个人神清气爽！',
+      '以前睡觉打鼾震天响，经常憋醒。在兴康明诊所定制了HJ-MAD-03。刚配戴的前三天有些流口水，牙齿酸胀，不过按照古医生的建议清晨做做嘴部张合操，第四天就完全适应了。现在老婆说我基本上不打鼾了，白天精神也好了很多，整个人神清气爽！',
       JSON.stringify(['阻鼾器配戴', '打鼾治疗', 'OSAHS改善']),
       28,
       2,

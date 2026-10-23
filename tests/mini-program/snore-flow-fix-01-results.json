@@ -1,0 +1,255 @@
+{
+  "date": "2026-10-22",
+  "role": "developer self-check",
+  "total": 50,
+  "passed": 50,
+  "failed": 0,
+  "suites": [
+    {
+      "file": "snore-flow.cjs",
+      "exit_code": 0,
+      "scope": "full-flow source integration with mocked wx/session/SQL/network and synthetic audio; not device/real DB",
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "results": [
+        {
+          "name": "online recording -> POST -> stored fields -> detail -> appointment",
+          "status": "PASS"
+        },
+        {
+          "name": "offline -> owner local report -> reconnect sync -> queue drained once",
+          "status": "PASS"
+        },
+        {
+          "name": "4xx is not disguised as offline successful report",
+          "status": "PASS"
+        },
+        {
+          "name": "permission denied never starts recorder",
+          "status": "PASS"
+        },
+        {
+          "name": "initial family member carried into recording",
+          "status": "PASS"
+        },
+        {
+          "name": "FLOW-01 automatic stop blocks new recording until upload resolves",
+          "status": "PASS"
+        },
+        {
+          "name": "FLOW-02 retry recording preserves report patient",
+          "status": "PASS"
+        },
+        {
+          "name": "FLOW-03 local report appointment must not reuse previous report",
+          "status": "PASS"
+        },
+        {
+          "name": "FLOW-04 spectral peak for 200Hz is 200Hz",
+          "status": "PASS"
+        },
+        {
+          "name": "FLOW-05 sync does not remove record without saved report id",
+          "status": "PASS"
+        },
+        {
+          "name": "failed synchronization retains queued reports",
+          "status": "PASS"
+        },
+        {
+          "name": "another account queue is never submitted",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "file": "snore-flow-fix-01-check.cjs",
+      "exit_code": 0,
+      "scope": "targeted developer checks; mocked wx/SQL/session, synthetic audio",
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "results": [
+        {
+          "name": "spectral peak 100",
+          "status": "PASS"
+        },
+        {
+          "name": "spectral peak 315",
+          "status": "PASS"
+        },
+        {
+          "name": "spectral peak 500",
+          "status": "PASS"
+        },
+        {
+          "name": "3000Hz noise stays in noise band",
+          "status": "PASS"
+        },
+        {
+          "name": "storage error stops appointment navigation",
+          "status": "PASS"
+        },
+        {
+          "name": "failed auto submit releases analysis lock",
+          "status": "PASS"
+        },
+        {
+          "name": "unconfirmed id retains queue \"\"",
+          "status": "PASS"
+        },
+        {
+          "name": "unconfirmed id retains queue \"local\"",
+          "status": "PASS"
+        },
+        {
+          "name": "unconfirmed id retains queue 1",
+          "status": "PASS"
+        },
+        {
+          "name": "unconfirmed id retains queue \"snore-0\"",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "file": "snore-result-functional.cjs",
+      "exit_code": 0,
+      "scope": "actual analyzer, pages and POST handler; synthetic PCM, mocked SQL/session; not real database or device",
+      "total": 17,
+      "passed": 17,
+      "failed": 0,
+      "results": [
+        {
+          "name": "RESULT-01 local analysis and server-shaped report have identical risk score",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-02 zero apnea count must not claim detected apnea events",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 malformed explicit risk score must not become a valid zero",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-04 high alias has consistent list and detail severity",
+          "status": "PASS"
+        },
+        {
+          "name": "complete report renders four measurement cards",
+          "status": "PASS"
+        },
+        {
+          "name": "unknown risk rejects report",
+          "status": "PASS"
+        },
+        {
+          "name": "missing measurement rejects report",
+          "status": "PASS"
+        },
+        {
+          "name": "appointment handoff stores current report id",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score invalid",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score 70",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score NaN",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score Infinity",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score -1",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score 101",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score 70.5",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score 0",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-01 repeat preserves stored score and conflicting score returns409",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "file": "assessment-round-02.cjs",
+      "exit_code": 0,
+      "scope": "actual page modules with mocked wx, API, session and synthetic PCM; no device or real data",
+      "total": 11,
+      "passed": 11,
+      "failed": 0,
+      "results": [
+        {
+          "name": "ASMT-12 snore response after logout must not render old private report",
+          "status": "PASS"
+        },
+        {
+          "name": "ASMT-12 older snore success must not overwrite newer unauthorized response",
+          "status": "PASS"
+        },
+        {
+          "name": "ASMT-13 failed stopped recording can start a fresh recording instead of resume",
+          "status": "PASS"
+        },
+        {
+          "name": "ASMT-14 saved snore redirect failure exits analyzing state",
+          "status": "PASS"
+        },
+        {
+          "name": "ASMT-15 offline storage failure does not navigate to nonexistent local report",
+          "status": "PASS"
+        },
+        {
+          "name": "ASMT-16 repeated mic tap during authorization starts recorder only once",
+          "status": "PASS"
+        },
+        {
+          "name": "ASMT-17 questionnaire/index reloads members when login generation changes",
+          "status": "PASS"
+        },
+        {
+          "name": "ASMT-17 recording/index reloads members when login generation changes",
+          "status": "PASS"
+        },
+        {
+          "name": "snore 401 without older in-flight request clears report",
+          "status": "PASS"
+        },
+        {
+          "name": "normal synthetic recording saves server report and redirects by ID",
+          "status": "PASS"
+        },
+        {
+          "name": "offline synthetic recording persists local report and pending upload",
+          "status": "PASS"
+        }
+      ]
+    }
+  ],
+  "syntax": "3 modified JS files passed node --check",
+  "limits": [
+    "no real device/visual verification",
+    "no authenticated real DB roundtrip",
+    "not independent regression"
+  ]
+}

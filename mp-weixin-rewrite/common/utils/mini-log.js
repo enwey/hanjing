@@ -1,4 +1,4 @@
-const { apiBaseUrl, envVersion } = require('../config/env');
+const envConfig = require('../config/env');
 
 const MAX_QUEUE_SIZE = 20;
 const MAX_FAILED_LOGS = 20;
@@ -110,7 +110,7 @@ function buildPayload(entry) {
     method: entry.method || '',
     statusCode: entry.statusCode || null,
     traceId: entry.traceId || createTraceId(),
-    envVersion,
+    envVersion: envConfig.envVersion,
     appVersion: info.version || '',
     platform: info.platform || '',
     deviceModel: info.model || '',
@@ -128,7 +128,7 @@ function flush() {
   const header = { 'content-type': 'application/json' };
   if (token) header.Authorization = `Bearer ${token}`;
   wx.request({
-    url: `${apiBaseUrl}/logs/mini-program`,
+    url: `${envConfig.getApiBaseUrl()}/logs/mini-program`,
     method: 'POST',
     data: payload,
     header,
@@ -159,7 +159,7 @@ function sendPayloadNow(payload) {
     const header = { 'content-type': 'application/json' };
     if (token) header.Authorization = `Bearer ${token}`;
     wx.request({
-      url: `${apiBaseUrl}/logs/mini-program`,
+      url: `${envConfig.getApiBaseUrl()}/logs/mini-program`,
       method: 'POST',
       data: payload,
       header,

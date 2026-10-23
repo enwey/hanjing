@@ -111,15 +111,19 @@ Page({
   },
 
   async loadPage(options = {}) {
+    const requestId = this.listRequestId = (this.listRequestId || 0) + 1;
+    const token = sessionStore.getAccessToken();
+    const isCurrent = () => requestId === this.listRequestId && token === sessionStore.getAccessToken();
     const silent = !!options.silent;
     const isLoggedIn = sessionStore.isLoggedIn();
     const nextState = { isLoggedIn };
-    if (!silent) {
+    if (!silent || !isLoggedIn || this.listOwnerToken !== token) {
       nextState.loading = true;
       nextState.loadError = '';
       nextState.upcomingAppointments = [];
       nextState.historyAppointments = [];
     }
+    this.listOwnerToken = token;
     this.setData(nextState);
 
     const [storesResult, doctorsResult, settingsResult] = await Promise.allSettled([
@@ -127,6 +131,7 @@ Page({
       api.getDoctors(),
       api.getBookingSettings(),
     ]);
+    if (!isCurrent()) return;
 
     const stores = storesResult.status === 'fulfilled' ? unwrapList(storesResult.value) : [];
     const doctors = doctorsResult.status === 'fulfilled' ? unwrapList(doctorsResult.value) : [];
@@ -151,6 +156,7 @@ Page({
 
     try {
       const appointmentsResponse = await api.getAppointments();
+      if (!isCurrent() || !sessionStore.isLoggedIn()) return;
       const appointmentList = unwrapList(appointmentsResponse).map((appointment) => normalizeAppointment(appointment, stores, doctors));
       this.setData({
         loading: false,
@@ -160,6 +166,7 @@ Page({
         historyAppointments: appointmentList.filter((appointment) => !ACTIVE_STATUSES.includes(appointment.status)),
       });
     } catch (error) {
+      if (!isCurrent()) return;
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
@@ -243,7 +250,8 @@ Page({
     if (appointment.status === 'pending_payment') {
       wx.showLoading({ title: '拉起支付中...' });
       try {
-        const paymentResult = await api.payAppointment(appointment.id);
+        const paymentResponse = await api.payAppointmentDeposit(appointment.id);
+        const paymentResult = unwrapObject(paymentResponse);
         wx.hideLoading();
         await wx.requestPayment({
           ...paymentResult,

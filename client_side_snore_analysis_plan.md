@@ -1,4 +1,4 @@
-# 鼾静健康诊所微信小程序端 · 离线鼾声与睡眠呼吸暂停分析方案设计
+# 兴康明诊所微信小程序端 · 离线鼾声与睡眠呼吸暂停分析方案设计
 (WeChat Mini Program Client-Side Snore & Sleep Apnea Analysis Design Blueprint)
 
 ---

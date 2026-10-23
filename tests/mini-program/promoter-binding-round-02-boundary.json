@@ -1,0 +1,204 @@
+{
+  "scope": "Boundary regression; mocked wx/API/DB, no real device or database locks",
+  "total": 49,
+  "passed": 49,
+  "failed": 0,
+  "results": [
+    {
+      "name": "BIND-01 malformed %",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-01 malformed %E0%A4%A",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-01 malformed %FF",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app stale bound",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app stale already_bound",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app stale ignored_self",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app stale invalid",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app stale unavailable",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app stale cycle",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app changed account same code",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app ambiguous response undefined",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app ambiguous response null",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app ambiguous response {}",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app ambiguous response {\"code\":0,\"data\":{}}",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 app ambiguous response {\"data\":{\"status\":\"unexpected\"}}",
+      "status": "PASS"
+    },
+    {
+      "name": "app current terminal PROMOTER_UNAVAILABLE",
+      "status": "PASS"
+    },
+    {
+      "name": "app current terminal INVITE_CYCLE",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session stale bound",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session stale already_bound",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session stale ignored_self",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session stale invalid",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session stale unavailable",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session stale cycle",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session changed account same code",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session ambiguous response undefined",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session ambiguous response null",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session ambiguous response {}",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session ambiguous response {\"code\":0,\"data\":{}}",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-02 session ambiguous response {\"data\":{\"status\":\"unexpected\"}}",
+      "status": "PASS"
+    },
+    {
+      "name": "session current terminal PROMOTER_UNAVAILABLE",
+      "status": "PASS"
+    },
+    {
+      "name": "session current terminal INVITE_CYCLE",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-03 twenty onShow deduplicated then retry after network failure",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-04 rejects inactive",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-04 rejects disabled",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-04 rejects frozen",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-04 rejects rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-05 mixed id type self invite",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-05 rejects longer or pre-existing cycle [{\"id\":1,\"parent\":3,\"child\":1,\"level\":1},{\"id\":2,\"parent\":2,\"child\":3,\"level\":1}]",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-05 rejects longer or pre-existing cycle [{\"id\":1,\"parent\":3,\"child\":1,\"level\":1},{\"id\":2,\"parent\":1,\"child\":3,\"level\":1}]",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-05 rejects longer or pre-existing cycle [{\"id\":1,\"parent\":1,\"child\":1,\"level\":1}]",
+      "status": "PASS"
+    },
+    {
+      "name": "backend invalid type null",
+      "status": "PASS"
+    },
+    {
+      "name": "backend invalid type {}",
+      "status": "PASS"
+    },
+    {
+      "name": "backend invalid type []",
+      "status": "PASS"
+    },
+    {
+      "name": "backend invalid type 123",
+      "status": "PASS"
+    },
+    {
+      "name": "backend invalid type \"   \"",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-04 summary activation inactive",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-04 summary activation disabled",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-04 summary activation pending",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-04 summary activation active",
+      "status": "PASS"
+    }
+  ]
+}

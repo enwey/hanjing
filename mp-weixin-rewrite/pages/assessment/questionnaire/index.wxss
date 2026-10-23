@@ -317,3 +317,27 @@
 .safe-bottom.data-v-c4ff781e {
   height: calc(env(safe-area-inset-bottom, 34px) + 20px);
 }
+
+.load-state.data-v-c4ff781e {
+  padding: 24px 16px;
+  margin-top: 16px;
+  background: #fff;
+  border-radius: 16px;
+  text-align: center;
+}
+.load-message.data-v-c4ff781e {
+  display: block;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #475569;
+  overflow-wrap: break-word;
+}
+.retry-button.data-v-c4ff781e {
+  margin: 16px auto 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: #2a52d4;
+  color: #fff;
+  font-size: 14px;
+  border-radius: 12px;
+}

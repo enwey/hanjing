@@ -1,5 +1,6 @@
 import { getCurrentUserMembership, getMemberLevelRules, syncUserMembership } from '../membership.js';
 import { createPaidFulfillment } from '../paid-fulfillment.js';
+import { syncDirectChildrenSecondLevel } from '../distribution-relationships.js';
 import { authorizeUpload, signPrivateUploadResponses, registerPrivateUpload, privateUploadPath, canReadPrivateUpload } from '../private-uploads.js';
 import { applyRefund, completeRefund } from '../refunds.js';
 import express from 'express';
@@ -11,6 +12,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { query, get, run, transaction, autoUpdateExpiredAppointments } from '../db.js';
+import { attachAppointmentReferral, snapshotReferralOrder, createReferralCommissions } from '../backend-referrals.js';
 import { generateUniquePatientNo } from '../patientNo.js';
 import {
   JWT_SECRET,
@@ -1207,14 +1209,14 @@ function notifyPaidProductOrder(order) {
 }
 
 const DISTRIBUTION_QRCODE_PLACEHOLDER = '/static/demo/qrcode.png';
-const DISTRIBUTOR_LEVEL_RULES = {
-  silver: { level1Rate: 0.1, level2Rate: 0.03, label: '银牌' },
-  gold: { level1Rate: 0.15, level2Rate: 0.05, label: '金牌' },
-  diamond: { level1Rate: 0.2, level2Rate: 0.08, label: '钻石' }
+const DISTRIBUTOR_LEVEL_LABELS = {
+  silver: '银牌',
+  gold: '金牌',
+  diamond: '钻石'
 };
 
-function getDistributorLevelRule(level) {
-  return DISTRIBUTOR_LEVEL_RULES[level] || DISTRIBUTOR_LEVEL_RULES.silver;
+function getDistributorLevelLabel(level) {
+  return DISTRIBUTOR_LEVEL_LABELS[level] || DISTRIBUTOR_LEVEL_LABELS.silver;
 }
 
 const getDistributionFeatureConfig = async () => (await import('../distribution-ledger.js')).getDistributionFeatureConfig();
@@ -1377,9 +1379,9 @@ async function getDistributionSummary(userId, req = null) {
 
   const directTeamCount = Number(lv1?.count || 0);
   const secondTeamCount = Number(lv2?.count || 0);
-  if (directTeamCount > 0 && distributor.status !== 'active') {
-    await run(`UPDATE distributors SET status = 'active' WHERE id = ?`, [distributor.id]);
-    distributor.status = 'active';
+  if (directTeamCount > 0 && distributor.status === 'pending') {
+    const activation = await run(`UPDATE distributors SET status = 'active' WHERE id = ? AND status = 'pending'`, [distributor.id]);
+    if (activation.changes) distributor.status = 'active';
   }
 
   return {
@@ -1395,7 +1397,7 @@ async function getDistributionSummary(userId, req = null) {
     withdrawnAmount: Number(distributor.withdrawn_amount || 0),
     frozenCommission: Number(pendingStats?.frozen_commission || 0),
     level: distributor.level,
-    levelLabel: getDistributorLevelRule(distributor.level).label,
+    levelLabel: getDistributorLevelLabel(distributor.level),
     inviteCode: distributor.invite_code,
     inviteQrCode,
     inviteQrReason,
@@ -1442,97 +1444,7 @@ async function buildMiniProgramLoginPayload(user) {
 }
 
 export async function createPendingDistributionCommission(conn, order, userId) {
-  const query = async (sql, params = []) => (await conn.execute(sql, params))[0];
-  const get = async (sql, params = []) => (await query(sql, params))[0] || null;
-  const relationships = await query(
-    `SELECT parent_user_id, level FROM distribution_relationships WHERE child_user_id = ? ORDER BY level ASC`,
-    [userId]
-  );
-  if (!relationships || relationships.length === 0) return;
-
-  const buyer = await get(`SELECT nickname, phone FROM users WHERE id = ?`, [userId]);
-  const buyerName = buyer
-    ? `${buyer.nickname || '微信用户'}${buyer.phone ? ` (${maskPhone(buyer.phone)})` : ''}`
-    : '微信用户';
-
-  // 1. 查找并结算一级推荐佣金
-  const relL1 = relationships.find(r => r.level === 1);
-  if (!relL1) return;
-
-  const promoterL1 = await get(
-    `SELECT id, level FROM distributors WHERE user_id = ? AND status = 'active'`,
-    [relL1.parent_user_id]
-  );
-  if (!promoterL1) return;
-
-  const orderItems = await query(
-    `SELECT price, quantity, commission_rate_snapshot, commission_rate_level1_snapshot, commission_rate_level2_snapshot, is_distribution_snapshot
-     FROM order_items
-     WHERE order_id = ?`,
-    [order.id]
-  );
-  const distributionItems = orderItems.filter(item => Number(item.is_distribution_snapshot || 0) === 1);
-  if (distributionItems.length === 0) return;
-  // Allocate order-level discounts proportionally; unpaid amounts earn no commission.
-  const gross = orderItems.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
-  const paid = Math.max(0, Number(order.pay_amount || 0));
-  const paidFraction = gross > 0 ? Math.min(1, paid / gross) : 0;
-
-  const commissionL1 = Math.min(paid, Math.round(distributionItems.reduce((sum, item) => {
-    const rate = Number(item.commission_rate_level1_snapshot ?? item.commission_rate_snapshot ?? 0);
-    if (rate <= 0) return sum;
-    return sum + Number(item.price || 0) * Number(item.quantity || 0) * (rate / 100);
-  }, 0) * paidFraction));
-
-  const existingL1 = await get(
-    `SELECT id FROM distribution_orders WHERE order_id = ? AND distributor_id = ? AND commission_level = 1`,
-    [order.id, promoterL1.id]
-  );
-  if (!existingL1 && commissionL1 > 0) {
-    await conn.execute(
-      `INSERT INTO distribution_orders (order_id, distributor_id, buyer_name, order_amount, commission_amount, commission_level, status)
-       VALUES (?, ?, ?, ?, ?, 1, 'pending')`,
-      [order.id, promoterL1.id, buyerName, order.pay_amount, commissionL1]
-    );
-    await conn.execute(
-      `UPDATE distributors SET total_commission = total_commission + ? WHERE id = ?`,
-      [commissionL1, promoterL1.id]
-    );
-    await refreshDistributorLevel(promoterL1.id, conn);
-  }
-
-  const relL2 = relationships.find(r => r.level === 2);
-  if (!relL2) return;
-
-  const promoterL2 = await get(
-    `SELECT id, level FROM distributors WHERE user_id = ? AND status = 'active'`,
-    [relL2.parent_user_id]
-  );
-  if (!promoterL2) return;
-
-  const commissionL2 = Math.min(Math.max(0, paid - commissionL1), Math.round(distributionItems.reduce((sum, item) => {
-    const rate = Number(item.commission_rate_level2_snapshot || 0);
-    if (rate <= 0) return sum;
-    return sum + Number(item.price || 0) * Number(item.quantity || 0) * (rate / 100);
-  }, 0) * paidFraction));
-  if (commissionL2 <= 0) return;
-
-  const existingL2 = await get(
-    `SELECT id FROM distribution_orders WHERE order_id = ? AND distributor_id = ? AND commission_level = 2`,
-    [order.id, promoterL2.id]
-  );
-  if (existingL2) return;
-
-  await conn.execute(
-    `INSERT INTO distribution_orders (order_id, distributor_id, buyer_name, order_amount, commission_amount, commission_level, status)
-     VALUES (?, ?, ?, ?, ?, 2, 'pending')`,
-    [order.id, promoterL2.id, buyerName, order.pay_amount, commissionL2]
-  );
-  await conn.execute(
-    `UPDATE distributors SET total_commission = total_commission + ? WHERE id = ?`,
-    [commissionL2, promoterL2.id]
-  );
-  await refreshDistributorLevel(promoterL2.id, conn);
+  return createReferralCommissions(conn, order, userId);
 }
 
 export async function cancelPendingProductOrder(conn, orderId, userId, expiredOnly = false, provider = null) {
@@ -2257,8 +2169,8 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
       let advice = '暂无建议';
       if (item.risk_level === 'normal' || item.risk_level === 'low') advice = '您的鼾声分析在正常范围内，睡眠呼吸暂停风险较低。';
       else if (item.risk_level === 'mild') advice = '您的鼾声分析显示有轻度风险，可能存在间歇性打鼾，建议侧卧睡眠并注意观察。';
-      else if (item.risk_level === 'moderate') advice = '您的鼾声分析显示中度风险，有明显的呼吸暂停征兆。建议预约线下门诊进行睡眠呼吸阻鼾器适配评估。';
-      else advice = '您的鼾声分析显示重度风险，Apnea事件频发。强烈建议尽早前往诊所进行多导睡眠监测（PSG）或佩戴舌型阻鼾器。';
+      else if (item.risk_level === 'moderate') advice = '本次录音分析提示中度风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
+      else advice = '本次录音分析提示较高风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
 
       return {
         id: 'snore-' + item.id,
@@ -2272,7 +2184,8 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
           peakDecibel: item.peak_decibel,
           snoreRate: item.snore_rate,
           apneaEvents: item.apnea_events,
-          riskLevel: item.risk_level
+          riskLevel: item.risk_level,
+          riskScore: item.risk_score == null ? null : item.risk_score
         },
         recommendation: advice,
         createdAt: formatDateTimeInShanghai(item.created_at)
@@ -2316,8 +2229,18 @@ app.get('/api/v1/assessments/ess-questions', authenticateWxToken, (req, res) => 
 // POST /api/v1/assessments/ess
 app.post('/api/v1/assessments/ess', authenticateWxToken, async (req, res) => {
   const { answers, patientId } = req.body;
-  if (!answers || !Array.isArray(answers)) {
-    return res.status(400).json({ code: 400, message: '答案不能为空且必须是数组' });
+  if (!Array.isArray(answers) || answers.length !== 8 ||
+      !answers.every(value => Number.isInteger(value) && value >= 0 && value <= 3)) {
+    return res.status(400).json({ code: 400, message: '请提交完整的8题答案，每题必须为0至3的整数' });
+  }
+
+  let verifiedPatient;
+  try {
+    verifiedPatient = await resolveUserPatient(req, 'body');
+    if (!verifiedPatient) return res.status(400).json({ code: 400, message: '请先建立就诊人档案' });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    return res.status(status).json({ code: status, message: status === 404 ? error.message : '无法核验就诊人' });
   }
 
   try {
@@ -2328,13 +2251,7 @@ app.post('/api/v1/assessments/ess', authenticateWxToken, async (req, res) => {
     else if (totalScore <= 15) riskLevel = 'moderate';
     else riskLevel = 'severe';
 
-    let dbPatientId = null;
-    if (patientId && patientId !== 'pat-self') {
-      dbPatientId = Number(patientId);
-    } else {
-      const selfPatient = await getSelfPatientForUser(req.user.id);
-      if (selfPatient) dbPatientId = selfPatient.id;
-    }
+    const dbPatientId = verifiedPatient.id;
 
     const normalizedAnswers = JSON.stringify(answers);
     const recentDuplicate = await get(
@@ -2425,7 +2342,12 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
 
   if (client_side_analysis) {
     try {
-      const { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel } = analysis_result || {};
+      const { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel, riskScore } = analysis_result || {};
+      const scoreRanges = { normal: [0, 29], low: [0, 29], mild: [30, 49], moderate: [50, 69], severe: [70, 100], high: [70, 100] };
+      const scoreRange = scoreRanges[riskLevel];
+      if (riskScore != null && (!Number.isInteger(riskScore) || !scoreRange || riskScore < scoreRange[0] || riskScore > scoreRange[1])) {
+        return res.status(400).json({ code: 400, message: '风险分数无效或与评级不一致' });
+      }
       if (
         ![avgDecibel, peakDecibel, snoreRate, apneaEvents].every(Number.isFinite) ||
         avgDecibel < 0 || peakDecibel < avgDecibel || peakDecibel > 160 ||
@@ -2435,9 +2357,29 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
       ) {
         return res.status(400).json({ code: 400, message: '离线分析结果无效' });
       }
-      const result = await run(
-        `INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      const localId = req.body.localId;
+      if (localId !== undefined && (typeof localId !== 'string' || !localId.trim() || localId.length > 128)) {
+        return res.status(400).json({ code: 400, message: '录音记录标识无效' });
+      }
+      // Legacy queues already carry a stable timestamp. New recordings send
+      // the same localId on their initial upload and every subsequent retry.
+      const identity = localId ? 'id:' + localId :
+        (Number.isSafeInteger(req.body.timestamp) && req.body.timestamp > 0 ? 'time:' + req.body.timestamp + ':patient:' + dbPatientId : null);
+      const clientKey = identity ? crypto.createHash('sha256').update(identity).digest('hex') : null;
+      const payloadHash = crypto.createHash('sha256').update(JSON.stringify([
+        dbPatientId, durationSeconds, avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel
+      ])).digest('hex');
+      const findExisting = () => get(
+        'SELECT id, client_payload_hash, risk_score FROM snore_assessments WHERE user_id = ? AND client_record_key = ?',
+        [req.user.id, clientKey]
+      );
+      let existing = clientKey ? await findExisting() : null;
+      let result;
+      if (!existing) {
+        try {
+          result = await run(
+        `INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level, client_record_key, client_payload_hash, risk_score)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           req.user.id,
           dbPatientId,
@@ -2447,9 +2389,25 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
           Number(peakDecibel),
           Number(snoreRate),
           Number(apneaEvents),
-          String(riskLevel)
+          String(riskLevel),
+          clientKey,
+          payloadHash,
+          riskScore == null ? null : riskScore
         ]
       );
+        } catch (error) {
+          if (!clientKey || error.code !== 'ER_DUP_ENTRY') throw error;
+          existing = await findExisting();
+          if (!existing) throw error;
+        }
+      }
+      if (existing) {
+        if (existing.client_payload_hash !== payloadHash ||
+            (riskScore != null && existing.risk_score != null && riskScore !== existing.risk_score)) {
+          return res.status(409).json({ code: 409, message: '录音记录标识已用于不同内容' });
+        }
+        result = { id: existing.id };
+      }
 
       let advice = '';
       if (riskLevel === 'normal' || riskLevel === 'low') advice = '本次录音筛查风险较低。结果仅供健康筛查参考，不能替代医生诊断。';
@@ -2473,6 +2431,7 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
             snoreRate: Number(snoreRate),
             apneaEvents: Number(apneaEvents),
             riskLevel: String(riskLevel),
+            riskScore: existing ? (existing.risk_score == null ? null : existing.risk_score) : (riskScore == null ? null : riskScore),
             advice
           },
           riskLevel: String(riskLevel),
@@ -2595,8 +2554,8 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
       let advice = '';
       if (item.risk_level === 'normal' || item.risk_level === 'low') advice = '您的鼾声分析在正常范围内，睡眠呼吸暂停风险较低。';
       else if (item.risk_level === 'mild') advice = '您的鼾声分析显示有轻度风险，可能存在间歇性打鼾，建议侧卧睡眠并注意观察。';
-      else if (item.risk_level === 'moderate') advice = '您的鼾声分析显示中度风险，有明显的呼吸暂停征兆。建议预约线下门诊进行睡眠呼吸阻鼾器适配评估。';
-      else advice = '您的鼾声分析显示重度风险，Apnea事件频发。强烈建议尽早前往诊所进行多导睡眠监测（PSG）或佩戴舌型阻鼾器。';
+      else if (item.risk_level === 'moderate') advice = '本次录音分析提示中度风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
+      else advice = '本次录音分析提示较高风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
 
       return res.json({
         code: 0,
@@ -2613,7 +2572,8 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
             peakDecibel: item.peak_decibel,
             snoreRate: item.snore_rate,
             apneaEvents: item.apnea_events,
-            riskLevel: item.risk_level
+            riskLevel: item.risk_level,
+            riskScore: item.risk_score == null ? null : item.risk_score
           },
           recommendation: advice,
           createdAt: formatDateTimeInShanghai(item.created_at)
@@ -2876,28 +2836,27 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
 // POST /api/v1/community/posts/:id/report
 app.post('/api/v1/community/posts/:id/report', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
-  const reason = escapeHtml(req.body.reason || '');
-  if (!reason) {
+  const rawReason = req.body.reason;
+  if (typeof rawReason !== 'string' || !rawReason.trim() || rawReason.length > 100) {
     return res.status(400).json({ code: 400, message: '请选择举报原因' });
   }
+  const reason = escapeHtml(rawReason.trim());
+  if (reason.length > 100) return res.status(400).json({ code: 400, message: '举报原因过长' });
 
   try {
-    const post = await get(`SELECT id FROM community_posts WHERE id = ?`, [postId]);
-    if (!post) {
-      return res.status(404).json({ code: 404, message: '帖子不存在' });
-    }
-    const existing = await get(
-      `SELECT id FROM community_reports WHERE post_id = ? AND user_id = ? AND status = 'pending'`,
-      [postId, req.user.id]
-    );
-    if (existing) {
-      return res.json({ code: 0, message: '您已提交过举报，平台会尽快处理' });
-    }
-    await run(
-      `INSERT INTO community_reports (post_id, user_id, reason, status) VALUES (?, ?, ?, 'pending')`,
-      [postId, req.user.id, reason]
-    );
-    res.json({ code: 0, message: '举报已提交' });
+    const outcome = await transaction(async conn => {
+      const [[post]] = await conn.execute('SELECT id FROM community_posts WHERE id = ? FOR UPDATE', [postId]);
+      if (!post) return 'missing';
+      const [[existing]] = await conn.execute(
+        "SELECT id FROM community_reports WHERE post_id = ? AND user_id = ? AND status = 'pending' FOR UPDATE",
+        [postId, req.user.id]
+      );
+      if (existing) return 'existing';
+      await conn.execute("INSERT INTO community_reports (post_id, user_id, reason, status) VALUES (?, ?, ?, 'pending')", [postId, req.user.id, reason]);
+      return 'created';
+    });
+    if (outcome === 'missing') return res.status(404).json({ code: 404, message: '帖子不存在' });
+    res.json({ code: 0, message: outcome === 'existing' ? '您已提交过举报，平台会尽快处理' : '举报已提交' });
   } catch (error) {
     console.error('reportCommunityPost error:', error);
     res.status(500).json({ code: 500, message: '提交举报失败' });
@@ -2920,12 +2879,16 @@ function buildCommunityPostSummary(content) {
 
 app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
   const { title, content, tags } = req.body;
-  if (!title || !content) {
-    return res.status(400).json({ code: 400, message: '标题和内容不能为空' });
+  if (typeof title !== 'string' || typeof content !== 'string' || !title.trim() || !content.trim() || title.length > 40 || content.length > 1000) {
+    return res.status(400).json({ code: 400, message: '标题和内容不能为空，标题最多40字，内容最多1000字' });
   }
 
-  const titleClean = escapeHtml(title);
-  const contentClean = escapeHtml(content);
+  if (tags !== undefined && (!Array.isArray(tags) || tags.length > 4 || tags.some(tag => typeof tag !== 'string' || !tag.trim() || tag.length > 30))) {
+    return res.status(400).json({ code: 400, message: '分类或标签无效' });
+  }
+
+  const titleClean = escapeHtml(title.trim());
+  const contentClean = escapeHtml(content.trim());
   const tagsClean = Array.isArray(tags) ? tags.map(t => typeof t === 'string' ? escapeHtml(t) : t) : [];
   const summaryClean = buildCommunityPostSummary(contentClean);
 
@@ -2934,9 +2897,14 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
       return res.status(400).json({ code: 400, message: '您的内容中包含违规字眼（广告/疗效等），已被系统拦截' });
     }
     const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
+    if (!user) return res.status(401).json({ code: 401, message: '未授权或登录过期' });
     let role = 'patient';
     if (user.role === 'doctor' || user.role === 'admin') {
       role = 'doctor';
+    }
+
+    if (role === 'patient' && tags?.some(tag => tag.trim() === '专家')) {
+      return res.status(400).json({ code: 400, message: '普通用户不能使用专家分类' });
     }
 
     const status = 'approved';
@@ -2979,6 +2947,7 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
 app.post('/api/v1/community/posts/:id/like', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
   const { isLiked } = req.body;
+  if (typeof isLiked !== 'boolean') return res.status(400).json({ code: 400, message: '点赞状态无效' });
   try {
     const post = await get(`SELECT id, user_id, title FROM community_posts WHERE id = ? AND status = 'approved'`, [postId]);
     if (!post) {
@@ -3031,6 +3000,7 @@ app.post('/api/v1/community/posts/:id/like', authenticateWxToken, async (req, re
 app.post('/api/v1/community/posts/:id/favorite', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
   const { isFavorited } = req.body;
+  if (typeof isFavorited !== 'boolean') return res.status(400).json({ code: 400, message: '收藏状态无效' });
   try {
     const post = await get(`SELECT id FROM community_posts WHERE id = ? AND status = 'approved'`, [postId]);
     if (!post) {
@@ -3080,12 +3050,13 @@ app.post('/api/v1/community/posts/:id/share', authenticateWxToken, async (req, r
 app.post('/api/v1/community/comments/:id/like', authenticateWxToken, async (req, res) => {
   const commentId = req.params.id;
   const { isLiked } = req.body;
+  if (typeof isLiked !== 'boolean') return res.status(400).json({ code: 400, message: '点赞状态无效' });
   try {
     const comment = await get(
       `SELECT c.id, c.user_id, c.post_id, p.title
        FROM post_comments c
        LEFT JOIN community_posts p ON p.id = c.post_id
-       WHERE c.id = ? AND c.status = 'approved'`,
+       WHERE c.id = ? AND c.status = 'approved' AND p.status = 'approved'`,
       [commentId]
     );
     if (!comment) {
@@ -3138,11 +3109,11 @@ app.post('/api/v1/community/comments/:id/like', authenticateWxToken, async (req,
 app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
   const { content, parentId } = req.body;
-  if (!content) {
-    return res.status(400).json({ code: 400, message: '评论内容不能为空' });
+  if (typeof content !== 'string' || !content.trim() || content.length > 500) {
+    return res.status(400).json({ code: 400, message: '评论内容不能为空，最多500字' });
   }
 
-  const contentClean = escapeHtml(content);
+  const contentClean = escapeHtml(content.trim());
 
   try {
     if (checkSensitiveWords(content)) {
@@ -4676,6 +4647,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
         ]
       );
       const newId = insertResult[0]?.insertId || insertResult.insertId;
+      await attachAppointmentReferral(conn, newId, req.body.referralCode);
       await conn.execute(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [schedule.id]);
       return { id: newId };
     });
@@ -4725,7 +4697,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
   } catch (error) {
     console.error('Create appointment error:', error);
     const status = error.statusCode || 500;
-    res.status(status).json({ code: status, message: status < 500 ? error.message : '预约创建失败' });
+    res.status(status).json({ code: status, message: status < 500 ? error.message : '预约创建失败', referralInvalid:error.referralInvalid===true });
   }
 });
 
@@ -6765,6 +6737,7 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
         if (reserved.affectedRows !== 1) throw businessError(`商品 ${item.product.name} 库存或价格已变更，请刷新`, 409);
       }
 
+      await snapshotReferralOrder(conn, insertedId);
       // 3. Consume coupon if used
       if (couponId) {
         await conn.execute(
@@ -7056,63 +7029,82 @@ app.post('/api/v1/orders/:id/refund', authenticateWxToken, async (req, res) => {
 
 // 21.b1 WeChat Client Bind Distribution Relationship (POST)
 app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
-  const { inviteCode } = req.body;
+  const rawCode = req.body && req.body.inviteCode;
+  const inviteCode = typeof rawCode === 'string' ? rawCode.trim() : '';
   if (!inviteCode) {
     return res.status(400).json({ code: 400, message: '邀请码不能为空' });
   }
 
   try {
-    const promoter = await get(`SELECT user_id FROM distributors WHERE invite_code = ?`, [inviteCode]);
-    if (!promoter) {
-      return res.status(400).json({ code: 400, message: '无效的邀请码' });
-    }
+    const status = await transaction(async (conn) => {
+      const readOne = async (sql, args) => {
+        const [rows] = await conn.execute(sql, args);
+        return rows[0];
+      };
+      const rejectBinding = (message, reason) => {
+        throw Object.assign(new Error(message), { bindingReason: reason });
+      };
+      const promoter = await readOne(
+        'SELECT user_id, status FROM distributors WHERE invite_code = ? FOR UPDATE', [inviteCode]);
+      if (!promoter) rejectBinding('无效的邀请码', 'INVALID_INVITE');
+      if (!['active', 'pending'].includes(promoter.status)) {
+        rejectBinding('推广人已停用', 'PROMOTER_UNAVAILABLE');
+      }
+      if (!promoter.user_id) rejectBinding('后台推广码仅用于预约推荐，不能直接绑定', 'INVALID_INVITE');
+      const parentUserId = promoter.user_id;
+      const childUserId = req.user.id;
+      if (String(parentUserId) === String(childUserId)) return 'ignored_self';
 
-    const parentUserId = promoter.user_id;
-    const childUserId = req.user.id;
+      // Lock the child even when it has no relationship row yet.
+      await readOne('SELECT id FROM users WHERE id = ? FOR UPDATE', [childUserId]);
+      const existing = await readOne(
+        'SELECT id FROM distribution_relationships WHERE child_user_id = ? LIMIT 1', [childUserId]);
+      if (existing) return 'already_bound';
 
-    if (parentUserId === childUserId) {
-      return res.json({
-        code: 0,
-        message: '当前账号与邀请人相同，已忽略本次绑定',
-        data: { status: 'ignored_self' }
-      });
-    }
-
-    const existing = await get(`SELECT id FROM distribution_relationships WHERE child_user_id = ?`, [childUserId]);
-    if (existing) {
-      return res.json({
-        code: 0,
-        message: '当前账号已绑定过推荐关系，已忽略本次绑定',
-        data: { status: 'already_bound' }
-      });
-    }
-
-    await transaction(async (conn) => {
-      await conn.execute(
-        `INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)`,
-        [parentUserId, childUserId]
-      );
-
-      await conn.execute(
-        `UPDATE distributors SET status = 'active' WHERE user_id = ?`,
-        [parentUserId]
-      );
-
-      const grandParent = await get(
-        `SELECT parent_user_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1`,
-        [parentUserId]
-      );
-      if (grandParent) {
-        await conn.execute(
-          `INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 2)`,
-          [grandParent.parent_user_id, childUserId]
-        );
+      const visited = new Set([String(childUserId)]);
+      let ancestor = parentUserId;
+      let grandParent = null;
+      while (ancestor != null) {
+        if (visited.has(String(ancestor))) {
+          rejectBinding('不能绑定存在循环的推荐关系', 'INVITE_CYCLE');
+        }
+        visited.add(String(ancestor));
+        // All client bind operations lock each affected user's parent edge.
+        // A conflicting traversal may deadlock; MySQL rolls it back without writing a cycle.
+        await readOne('SELECT id FROM users WHERE id = ? FOR UPDATE', [ancestor]);
+        const relation = await readOne(
+          'SELECT parent_user_id, parent_distributor_id FROM distribution_relationships WHERE child_user_id = ? AND level = 1',
+          [ancestor]);
+        if (String(ancestor) === String(parentUserId)) grandParent = relation;
+        ancestor = relation ? relation.parent_user_id : null;
       }
 
+      await conn.execute(
+        'INSERT INTO distribution_relationships (parent_user_id, child_user_id, level) VALUES (?, ?, 1)',
+        [parentUserId, childUserId]);
+      if (promoter.status === 'pending') {
+        await conn.execute(
+          "UPDATE distributors SET status = 'active' WHERE user_id = ? AND status = 'pending'",
+          [parentUserId]);
+      }
+      if (grandParent) {
+        await conn.execute(
+          'INSERT INTO distribution_relationships (parent_user_id, parent_distributor_id, child_user_id, level) VALUES (?, ?, ?, 2)',
+          [grandParent.parent_user_id, grandParent.parent_distributor_id || null, childUserId]);
+      }
+      await syncDirectChildrenSecondLevel(conn, childUserId, parentUserId);
+      return 'bound';
     });
-
-    res.json({ code: 0, message: '推荐关系绑定成功', data: { status: 'bound' } });
+    const messages = {
+      bound: '推荐关系绑定成功',
+      ignored_self: '当前账号与邀请人相同，已忽略本次绑定',
+      already_bound: '当前账号已绑定过推荐关系，已忽略本次绑定'
+    };
+    res.json({ code: 0, message: messages[status], data: { status } });
   } catch (error) {
+    if (error && error.bindingReason) {
+      return res.status(400).json({ code: 400, message: error.message, reason: error.bindingReason });
+    }
     if (error && error.code === 'ER_DUP_ENTRY') {
       return res.json({
         code: 0,
@@ -7179,7 +7171,7 @@ app.get('/api/v1/distribution/invite-info', authenticateWxToken, async (req, res
         inviteQrCode: summary.inviteQrCode,
         inviteQrReason: summary.inviteQrReason || '',
         sharePath: `/pages/index/index?inviteCode=${summary.inviteCode}`,
-        shareTitle: '邀请你体验鼾静健康诊所，扫码下单可享专业睡眠健康服务'
+        shareTitle: '邀请你体验兴康明诊所，扫码下单可享专业睡眠健康服务'
       }
     });
   } catch (error) {

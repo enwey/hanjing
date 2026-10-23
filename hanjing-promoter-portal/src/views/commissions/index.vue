@@ -81,6 +81,7 @@ onMounted(loadData)
               <th>商品</th>
               <th>订单金额</th>
               <th>佣金金额</th>
+              <th>佣金类型</th>
               <th>状态</th>
             </tr>
           </thead>
@@ -92,10 +93,11 @@ onMounted(loadData)
               <td>{{ item.product_names || '—' }}</td>
               <td>¥{{ yuan(item.order_amount) }}</td>
               <td style="font-weight:700;color:#1a9d5c;">+¥{{ yuan(item.commission_amount) }}</td>
+              <td>{{ item.commission_kind === 'referral_new' ? '无上级推荐 X' : item.commission_kind === 'referral_existing' ? '有上级推荐 Y' : item.commission_level === 2 ? '二级分销' : '一级分销' }}</td>
               <td>{{ statusLabel(item.status || 'pending') }}</td>
             </tr>
             <tr v-if="filteredRows.length === 0">
-              <td colspan="7" class="empty-cell">暂无佣金明细</td>
+              <td colspan="8" class="empty-cell">暂无佣金明细</td>
             </tr>
           </tbody>
         </table>

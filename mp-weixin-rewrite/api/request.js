@@ -1,8 +1,7 @@
 const envConfig = require('../common/config/env');
 const miniLog = require('../common/utils/mini-log');
 
-let isRefreshing = false;
-let requestQueue = [];
+let refreshFlight = null;
 let resolvedApiBaseUrl = envConfig.getApiBaseUrl();
 
 function createRequestError(message, statusCode, data) {
@@ -181,10 +180,39 @@ function extractRefreshPayload(responseData) {
   return responseData.data || responseData;
 }
 
-function refreshAccessToken() {
+function getSessionSnapshot() {
+  const store = getSessionStore();
+  return {
+    token: normalizeAccessToken(wx.getStorageSync('access_token')),
+    revision: store && typeof store.getRevision === 'function' ? store.getRevision() : 0,
+  };
+}
+
+function isCurrentSession(snapshot) {
+  const current = getSessionSnapshot();
+  return current.token === snapshot.token && current.revision === snapshot.revision;
+}
+
+function clearCurrentSession(snapshot) {
+  if (!isCurrentSession(snapshot)) return;
+  const store = getSessionStore();
+  if (store && typeof store.clearLoginState === 'function') {
+    store.clearLoginState();
+  } else {
+    wx.removeStorageSync('access_token');
+    wx.removeStorageSync('auth_mode');
+    syncSessionStoreAccessToken('');
+  }
+}
+
+function refreshAccessToken(snapshot) {
   return new Promise((resolve, reject) => {
     wx.login({
       success(loginResult) {
+        if (!isCurrentSession(snapshot)) {
+          reject(createRequestError('登录状态已变更，请重新发起请求', 401));
+          return;
+        }
         if (!loginResult || !loginResult.code) {
           reject(createRequestError('登录授权失败'));
           return;
@@ -197,6 +225,10 @@ function refreshAccessToken() {
           timeout: 10000,
           failMessage: '登录授权失败',
         }).then(({ response }) => {
+          if (!isCurrentSession(snapshot)) {
+            reject(createRequestError('登录状态已变更，请重新发起请求', 401));
+            return;
+          }
           if (response.statusCode < 200 || response.statusCode >= 300) {
             reject(createRequestError(
               (response.data && response.data.message) || '登录授权失败',
@@ -210,13 +242,17 @@ function refreshAccessToken() {
             reject(createRequestError('登录授权失败'));
             return;
           }
-          wx.setStorageSync('access_token', payload.access_token);
-          syncSessionStoreAccessToken(payload.access_token);
           const sessionStore = getSessionStore();
+          if (sessionStore && typeof sessionStore.setAccessToken === 'function') {
+            sessionStore.setAccessToken(payload.access_token, { isRefresh: true });
+          } else {
+            wx.setStorageSync('access_token', payload.access_token);
+            syncSessionStoreAccessToken(payload.access_token);
+          }
           if (sessionStore && typeof sessionStore.setAuthMode === 'function') {
             sessionStore.setAuthMode('wechat');
           }
-          resolve(payload.access_token);
+          resolve({ token: payload.access_token, snapshot: getSessionSnapshot() });
         }).catch((error) => {
           reject(createRequestError((error && error.message) || '登录授权失败'));
         });
@@ -228,12 +264,20 @@ function refreshAccessToken() {
   });
 }
 
-function retryRequestWithToken(options, token, resolve, reject) {
+function retryRequestWithToken(options, refreshed, resolve, reject) {
+  const { token, snapshot } = refreshed;
+  if (!isCurrentSession(snapshot)) {
+    reject(createRequestError('登录状态已变更，请重新发起请求', 401));
+    return;
+  }
   executeWxRequest(options, token)
     .then(({ response }) => {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         resolve(response.data);
         return;
+      }
+      if (response.statusCode === 401) {
+        clearCurrentSession(snapshot);
       }
       reject(createRequestError(
         (response.data && response.data.message) || options.failMessage || '请求失败，请稍后重试',
@@ -254,6 +298,7 @@ function request(options) {
     syncSessionStoreAccessToken('');
   }
 
+  const snapshot = getSessionSnapshot();
   return new Promise((resolve, reject) => {
     executeWxRequest(options, token)
       .then(({ response }) => {
@@ -263,47 +308,41 @@ function request(options) {
         }
 
         if (response.statusCode === 401 && options.url !== '/auth/wx-login' && options.url !== '/auth/password-login') {
-          const authMode = getCurrentAuthMode();
-          const sessionStore = getSessionStore();
-
-          if (authMode !== 'wechat') {
-            if (sessionStore && typeof sessionStore.clearLoginState === 'function') {
-              sessionStore.clearLoginState();
-            } else {
-              wx.removeStorageSync('access_token');
-              syncSessionStoreAccessToken('');
-            }
+          // A response belongs to the session that issued the request, not a later login.
+          if (!isCurrentSession(snapshot)) {
+            reject(createRequestError('登录状态已变更，请重新发起请求', 401));
+            return;
+          }
+          if (getCurrentAuthMode() !== 'wechat') {
+            clearCurrentSession(snapshot);
             reject(createRequestError(
-              (response.data && response.data.message) || options.failMessage || '登录已失效，请重新登录',
+              (response.data && response.data.message) || '登录已失效，请重新登录',
               response.statusCode,
               response.data,
             ));
             return;
           }
 
-          wx.removeStorageSync('access_token');
-          syncSessionStoreAccessToken('');
-
-          if (isRefreshing) {
-            requestQueue.push((newToken) => {
-              retryRequestWithToken(options, newToken, resolve, reject);
-            });
-            return;
+          // Share only within the same session generation. Logout/new login invalidates
+          // the old flight without allowing its completion to overwrite the new one.
+          if (!refreshFlight || refreshFlight.snapshot.revision !== snapshot.revision ||
+              refreshFlight.snapshot.token !== snapshot.token) {
+            const flight = { snapshot };
+            flight.promise = refreshAccessToken(snapshot)
+              .catch((error) => {
+                clearCurrentSession(snapshot);
+                throw error;
+              })
+              .finally(() => {
+                if (refreshFlight === flight) refreshFlight = null;
+              });
+            refreshFlight = flight;
           }
-
-          isRefreshing = true;
-          refreshAccessToken()
-            .then((newToken) => {
-              isRefreshing = false;
-              requestQueue.forEach((callback) => callback(newToken));
-              requestQueue = [];
-              retryRequestWithToken(options, newToken, resolve, reject);
+          refreshFlight.promise
+            .then((refreshed) => {
+              retryRequestWithToken(options, refreshed, resolve, reject);
             })
-            .catch((error) => {
-              isRefreshing = false;
-              requestQueue = [];
-              reject(error);
-            });
+            .catch(reject);
           return;
         }
 

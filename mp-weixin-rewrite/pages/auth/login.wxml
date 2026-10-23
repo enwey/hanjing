@@ -31,6 +31,7 @@
         wx:if="{{agreed}}"
         class="auth-btn"
         open-type="getPhoneNumber"
+        disabled="{{submitting}}"
         bindtap="onLoginTap"
         bindgetphonenumber="onGetPhoneNumber"
         binderror="onLoginOpenTypeError"
@@ -40,6 +41,7 @@
       <button
         wx:else
         class="auth-btn"
+        disabled="{{submitting}}"
         bindtap="onAgreementRequiredTap"
       >
         {{copy.loginButton}}
@@ -84,7 +86,7 @@
         bindinput="handlePasswordInput"
       />
       <text class="password-login-hint">{{copy.passwordLoginHint}}</text>
-      <button class="auth-btn password-modal-btn" bindtap="onPasswordLoginTap">
+      <button class="auth-btn password-modal-btn" disabled="{{submitting}}" bindtap="onPasswordLoginTap">
         {{copy.passwordLoginButton}}
       </button>
     </view>

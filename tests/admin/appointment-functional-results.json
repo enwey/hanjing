@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-22",
+  "scope": "运营后台预约管理",
+  "api": {
+    "login": 200,
+    "unauthenticated": 401,
+    "list": {"status": 200, "total": 34, "returned": 30},
+    "exactAppointmentNoSearch": {"query": "AP202606140001", "status": 200, "total": 0},
+    "invalidStatus": {"status": 200, "total": 0},
+    "negativePage": {"status": 500},
+    "negativePageSize": {"status": 500}
+  },
+  "browser": {
+    "desktop": {"viewport": "1440x900", "totalBadge": 34, "rows": 30, "alerts": []},
+    "narrow": {"viewport": "375x812", "documentScrollWidth": 375, "panelWidth": 272, "tableWidth": 1164, "contentScrollWidth": 296},
+    "corruptPersistedFilters": {"activeTabs": [], "tab": "corrupt", "store": "已删除门店", "doctor": "已删除医生", "alerts": []},
+    "blockedAppointmentsRequest": {"alerts": [], "visibleErrorText": false}
+  },
+  "permissionMapping": {
+    "POST /appointments/123/pre-exam": ["appointment:add"],
+    "POST /appointments/123/postpone": ["appointment:add"],
+    "PUT /appointments/123": ["appointment:edit"]
+  },
+  "cleanup": {"remainingTemporaryAccounts": 0}
+}

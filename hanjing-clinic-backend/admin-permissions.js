@@ -1,6 +1,6 @@
 export function requiredAdminPermissions(method, route) {
   const path = String(route || '').replace(/^\/api\/admin\//, '');
-  if (['me', 'profile', 'change-password'].includes(path)) return [];
+  if (['me', 'profile', 'change-password', 'logout'].includes(path)) return [];
   const read = method === 'GET' || method === 'HEAD';
   // The fulfillment menu uses order:view; viewing assigned work must not
   // require system administration privileges.
@@ -27,6 +27,7 @@ export function requiredAdminPermissions(method, route) {
   else if (/^uploads\/files/.test(path)) return ['medical_record:edit'];
   else return null;
   let action = read ? 'view' : method === 'DELETE' ? 'delete' : method === 'POST' && !path.includes(':') ? 'add' : 'edit';
+  if (method === 'POST' && /^appointments\/[^/]+\/.+/.test(path)) action = 'edit';
   if (/^products|^product-categories/.test(path)) action = read ? 'view' : 'edit';
   if (/^orders|^pay/.test(path) && !read) action = 'edit';
   if (/^im\//.test(path) && !read) action = 'edit';

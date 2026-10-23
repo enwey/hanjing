@@ -8,5 +8,9 @@ export function validateProduct(input) {
   const rates = [input.commission_rate_level1 ?? input.commission_rate ?? 0, input.commission_rate_level2 ?? 0];
   if (rates.some(v => v === '' || !['number', 'string'].includes(typeof v) || !Number.isFinite(Number(v)) || Number(v) < 0 || Number(v) > 99.99 || Math.abs(Number(v) * 100 - Math.round(Number(v) * 100)) > 1e-8) || rates.reduce((a, b) => a + Number(b), 0) > 100) return '佣金比例必须在0至99.99之间，最多两位小数，两级合计不能超过100%';
   if (input.status !== undefined && !['on', 'off'].includes(input.status)) return '商品状态无效';
+  const extra=[input.backend_rate_x ?? 0,input.backend_rate_y ?? 0];
+  if(extra.some(v=>v===''||!['number','string'].includes(typeof v)||!Number.isFinite(Number(v))||Number(v)<0||Number(v)>100||Math.abs(Number(v)*100-Math.round(Number(v)*100))>1e-8))return '后台推荐佣金比例需为0-100且最多两位小数';
+  if(input.backend_referral_enabled!==undefined && ![0,1,false,true].includes(input.backend_referral_enabled))return '后台推荐开关无效';
+  if(Number(input.backend_referral_enabled)===1 && Number(extra[1])+rates.reduce((s,v)=>s+Number(v),0)>100)return '已有上级推荐佣金与两级佣金合计不能超过100%';
   return '';
 }

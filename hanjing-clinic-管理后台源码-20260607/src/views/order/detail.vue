@@ -204,7 +204,7 @@ function handlePrintReceipt() {
         </style>
       </head>
       <body onload="window.print(); window.close();">
-        <div class="header">鼾静健康诊所</div>
+        <div class="header">兴康明诊所</div>
         <div class="subtitle">结账小票 (POS RECEIPT)</div>
         <div class="info-line">小票单号: ${orderNo}</div>
         <div class="info-line">下单日期: ${createTime}</div>
@@ -233,7 +233,7 @@ function handlePrintReceipt() {
         
         <div class="footer">
           谢谢惠顾，祝您健康睡眠！<br>
-          鼾静健康诊所 · 鼾声分析管理系统
+          兴康明诊所 · 鼾声分析管理系统
         </div>
       </body>
     </html>

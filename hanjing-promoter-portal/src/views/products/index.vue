@@ -40,6 +40,7 @@ onMounted(loadData)
           <span>库存 {{ item.stock || 0 }}</span>
         </div>
         <div class="product-commission">
+          <div v-if="item.backend_referral_enabled">无上级首次成单 X：{{item.backend_rate_x}}% / 已有上级本次推荐 Y：{{item.backend_rate_y}}%</div>
           一级佣金 {{ item.commission_rate_level1 ?? item.commission_rate ?? 0 }}% / 二级佣金 {{ item.commission_rate_level2 || 0 }}%
         </div>
       </div>

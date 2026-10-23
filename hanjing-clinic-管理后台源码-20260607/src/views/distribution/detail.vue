@@ -335,6 +335,8 @@ onMounted(() => {
                 <td>
                   <span class="tag tag-green" v-if="comm.commission_level === 1">一级推广佣金</span>
                   <span class="tag tag-blue" v-else-if="comm.commission_level === 2">二级推广佣金</span>
+                  <span class="tag tag-green" v-else-if="comm.commission_kind === 'referral_new'">无上级推荐 X</span>
+                  <span class="tag tag-blue" v-else-if="comm.commission_kind === 'referral_existing'">有上级推荐 Y</span>
                   <span class="tag tag-gray" v-else>其他佣金</span>
                 </td>
                 <td style="font-size: 13px;">下级用户 {{ comm.buyer_name || comm.patient_name }} 消费</td>

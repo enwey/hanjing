@@ -1,0 +1,7 @@
+{
+  "chunk_id": "5f3fb8",
+  "wall_time_seconds": 0.5665778,
+  "exit_code": 0,
+  "original_token_count": 270,
+  "output": "{\n  \"configs\": [\n    {\n      \"version\": \"develop\",\n      \"override\": \"\",\n      \"base\": \"http://127.0.0.1:5005/api/v1\"\n    },\n    {\n      \"version\": \"develop\",\n      \"override\": \"production\",\n      \"base\": \"https://m.hanjinghealth.com/api/v1\"\n    },\n    {\n      \"version\": \"release\",\n      \"override\": \"\",\n      \"base\": \"https://m.hanjinghealth.com/api/v1\"\n    }\n  ],\n  \"http\": [\n    {\n      \"url\": \"http://127.0.0.1:3000/login\",\n      \"status\": 200\n    },\n    {\n      \"url\": \"http://127.0.0.1:3002/login\",\n      \"status\": 200\n    },\n    {\n      \"url\": \"http://127.0.0.1:5005/health/ready\",\n      \"error\": \"ECONNREFUSED\"\n    },\n    {\n      \"url\": \"http://127.0.0.1:5005/api/v1/home/stats\",\n      \"error\": \"ECONNREFUSED\"\n    },\n    {\n      \"url\": \"http://127.0.0.1:5005/api/v1/doctors\",\n      \"error\": \"ECONNREFUSED\"\n    },\n    {\n      \"url\": \"http://127.0.0.1:5005/api/v1/stores\",\n      \"error\": \"ECONNREFUSED\"\n    },\n    {\n      \"url\": \"http://127.0.0.1:5005/api/v1/products\",\n      \"error\": \"ECONNREFUSED\"\n    }\n  ],\n  \"db\": {\n    \"port\": 3306,\n    \"error\": \"ECONNREFUSED\"\n  }\n}\n"
+}

@@ -1,7 +1,11 @@
 <view class="page data-v-c4ff781e">
   <hj-navbar title="ESS嗜睡量表" showBack="{{true}}" />
   <view class="page-content data-v-c4ff781e {{memberNames.length <= 1 ? 'page-content--with-navbar-gap' : ''}}">
-    <picker wx:if="{{memberNames.length > 1}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker data-v-c4ff781e">
+    <view wx:if="{{isLoading || loadError}}" class="load-state data-v-c4ff781e">
+      <text class="load-message data-v-c4ff781e">{{isLoading ? '正在加载量表...' : loadError}}</text>
+      <button wx:if="{{loadError && !isLoading}}" class="retry-button data-v-c4ff781e" bindtap="retryLoad">重新加载</button>
+    </view>
+    <picker wx:if="{{isPageReady && memberNames.length > 1}}" disabled="{{isSubmitting}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" class="member-picker data-v-c4ff781e">
       <view class="member-picker-content data-v-c4ff781e">
         <view class="member-info data-v-c4ff781e">
           <text class="member-label data-v-c4ff781e">当前评测人：</text>

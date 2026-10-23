@@ -1,0 +1,121 @@
+{
+  "scope": "Isolated production functions; mock wx/API/transaction, not real DB or device",
+  "total": 28,
+  "passed": 27,
+  "failed": 1,
+  "results": [
+    {
+      "name": "parse direct",
+      "status": "PASS"
+    },
+    {
+      "name": "parse legacy",
+      "status": "PASS"
+    },
+    {
+      "name": "parse encoded scene",
+      "status": "PASS"
+    },
+    {
+      "name": "parse bare scene",
+      "status": "PASS"
+    },
+    {
+      "name": "parse scene code alias",
+      "status": "PASS"
+    },
+    {
+      "name": "parse no invite",
+      "status": "PASS"
+    },
+    {
+      "name": "malformed scene does not interrupt launch [BIND-01]",
+      "status": "PASS"
+    },
+    {
+      "name": "terminal status bound",
+      "status": "PASS"
+    },
+    {
+      "name": "terminal status already_bound",
+      "status": "PASS"
+    },
+    {
+      "name": "terminal status ignored_self",
+      "status": "PASS"
+    },
+    {
+      "name": "error 无效的邀请码",
+      "status": "PASS"
+    },
+    {
+      "name": "error 邀请码不能为空",
+      "status": "PASS"
+    },
+    {
+      "name": "error network down",
+      "status": "PASS"
+    },
+    {
+      "name": "app old invalid response preserves newer invite [BIND-02]",
+      "status": "PASS"
+    },
+    {
+      "name": "session old invalid response preserves newer invite [BIND-02]",
+      "status": "PASS"
+    },
+    {
+      "name": "cold start single binding attempt [BIND-03]",
+      "status": "PASS"
+    },
+    {
+      "name": "distribution API forwards exact code",
+      "status": "PASS"
+    },
+    {
+      "name": "backend invalid undefined",
+      "status": "PASS"
+    },
+    {
+      "name": "backend invalid ",
+      "status": "PASS"
+    },
+    {
+      "name": "backend invalid UNKNOWN",
+      "status": "PASS"
+    },
+    {
+      "name": "backend self ignored",
+      "status": "PASS"
+    },
+    {
+      "name": "backend binds once and cannot reparent",
+      "status": "PASS"
+    },
+    {
+      "name": "backend creates two levels",
+      "status": "PASS"
+    },
+    {
+      "name": "backend DB failure returns 500",
+      "status": "PASS"
+    },
+    {
+      "name": "inactive promoter is not reactivated by invitee [BIND-04]",
+      "status": "PASS"
+    },
+    {
+      "name": "pending promoter activates on first invite [BIND-04]",
+      "status": "PASS"
+    },
+    {
+      "name": "ancestor cannot bind own descendant [BIND-05]",
+      "status": "PASS"
+    },
+    {
+      "name": "late upstream binding maintains level-2 relationship [BIND-RISK-01]",
+      "status": "FAIL",
+      "actual": "C -> A -> B exists but C -> B level 2 missing"
+    }
+  ]
+}

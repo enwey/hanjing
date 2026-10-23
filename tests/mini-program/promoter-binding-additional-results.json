@@ -1,0 +1,41 @@
+{
+  "scope": "Actual admin route and mini-program functions, mocked SQL/wx/API; no real writes",
+  "total": 7,
+  "passed": 2,
+  "failed": 5,
+  "results": [
+    {
+      "name": "admin denies unauthorized patient access",
+      "status": "PASS"
+    },
+    {
+      "name": "admin first direct bind",
+      "status": "PASS"
+    },
+    {
+      "name": "BIND-04 admin must not reactivate inactive promoter",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'active'\n- 'inactive'\n"
+    },
+    {
+      "name": "BIND-05 admin must reject descendant binding",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\ntrue !== false\n"
+    },
+    {
+      "name": "BIND-06 admin rebind must not assign same parent to both levels",
+      "status": "FAIL",
+      "actual": "[{\"id\":1,\"parent\":1,\"child\":2,\"level\":1},{\"id\":2,\"parent\":1,\"child\":2,\"level\":2}]"
+    },
+    {
+      "name": "BIND-07 failed admin bind must not leave committed relationship",
+      "status": "FAIL",
+      "actual": "HTTP 500 but relationship persists: [{\"id\":1,\"parent\":1,\"child\":2,\"level\":1}]\n\n1 !== 0\n"
+    },
+    {
+      "name": "BIND-03 app and login completion must not submit same invite twice",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\n2 !== 1\n"
+    }
+  ]
+}

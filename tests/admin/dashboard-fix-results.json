@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "scope": "DASH-01～05 development verification",
+  "typecheck": "passed",
+  "productionBuild": "passed",
+  "browser": {
+    "desktopViewport": "1440x900",
+    "desktopLoaded": true,
+    "narrowViewport": "375x812",
+    "narrowDocumentScrollWidth": 375,
+    "narrowKpiWidthsPx": [272, 272, 272, 272],
+    "narrowPanelWidthsPx": [272, 272, 272, 272],
+    "tableHorizontalScrollContainers": true,
+    "corruptStateErrors": [],
+    "normalizedStorage": {"filter": "month", "chart": "month", "type": "appointment"}
+  },
+  "api": {"today": 200, "week": 200, "month": 200, "invalidRange": 400, "unauthenticated": 401},
+  "cleanup": {"remainingTemporaryAccounts": 0},
+  "note": "开发自测不代替独立回归"
+}

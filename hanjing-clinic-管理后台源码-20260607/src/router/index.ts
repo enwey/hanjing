@@ -41,12 +41,6 @@ const router = createRouter({
           meta: { title: '预约详情', parentPath: '/appointment' }
         },
         {
-          path: 'appointment/checkout',
-          name: 'appointment-checkout',
-          component: () => import('@/views/appointment/checkout.vue'),
-          meta: { title: '收银结账', parentPath: '/appointment' }
-        },
-        {
           path: 'appointment/emr/:id',
           name: 'appointment-emr',
           component: () => import('@/views/appointment/emr.vue'),
@@ -287,6 +281,18 @@ const router = createRouter({
 
 import request from '@/utils/request'
 
+function isExpiredOrMalformedToken(token: string) {
+  try {
+    const segment = token.split('.')[1]
+    if (!segment) return true
+    const normalized = segment.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(segment.length / 4) * 4, '=')
+    const payload = JSON.parse(atob(normalized))
+    return !Number.isFinite(payload.exp) || payload.exp * 1000 <= Date.now()
+  } catch {
+    return true
+  }
+}
+
 function shouldPreserveNavigationContext(to: any, from: any) {
   // Disabling redirect-based context preservation. The logical parent path mapping (parentPath) 
   // is now prioritized and correctly resolved, meaning query.from redirection is no longer needed.
@@ -313,7 +319,16 @@ router.beforeEach(async (to, from, next) => {
     next()
   }
 
-  const token = localStorage.getItem('auth_token')
+  let token = localStorage.getItem('auth_token')
+  if (token && isExpiredOrMalformedToken(token)) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('user_info')
+    token = null
+  }
+  if (to.name === 'login' && token) {
+    next({ name: 'dashboard' })
+    return
+  }
   if (to.name !== 'login' && !token) {
     next({ name: 'login' })
     return

@@ -1,0 +1,280 @@
+{
+  "date": "2026-10-22",
+  "role": "independent regression",
+  "scripts": [
+    {
+      "file": "ess-functional.cjs",
+      "exitCode": 0,
+      "result": {
+        "scope": "actual ESS page modules with mocked wx/API/session; template inspection",
+        "total": 7,
+        "passed": 7,
+        "failed": 0,
+        "results": [
+          {
+            "name": "ESS-01 changing person must not silently submit previous persons answers",
+            "status": "PASS"
+          },
+          {
+            "name": "ESS-02 old session rejection must not unlock current submission",
+            "status": "PASS"
+          },
+          {
+            "name": "ESS-03 questionnaire initial failure exposes persistent retry or error state",
+            "status": "PASS"
+          },
+          {
+            "name": "eight answers including zero progress and submit correct member",
+            "status": "PASS"
+          },
+          {
+            "name": "cannot skip unanswered intermediate question using dots",
+            "status": "PASS"
+          },
+          {
+            "name": "pending submit freezes answer edits and member changes",
+            "status": "PASS"
+          },
+          {
+            "name": "result presents eight answer labels",
+            "status": "PASS"
+          }
+        ]
+      },
+      "error": ""
+    },
+    {
+      "file": "ess-regression-01.cjs",
+      "exitCode": 0,
+      "result": {
+        "scope": "independent regression with mocked wx/API/session; template inspection",
+        "total": 6,
+        "passed": 6,
+        "failed": 0,
+        "results": [
+          {
+            "name": "same person preserves answers; new person clears all answers and resets position",
+            "status": "PASS"
+          },
+          {
+            "name": "failed load then retry restores questions and clears persistent error",
+            "status": "PASS"
+          },
+          {
+            "name": "repeated retry while loading sends only one questions request",
+            "status": "PASS"
+          },
+          {
+            "name": "empty question response enters recoverable error state",
+            "status": "PASS"
+          },
+          {
+            "name": "old navigation failure cannot unlock new session submission",
+            "status": "PASS"
+          },
+          {
+            "name": "WXML tags balanced and retry button bound to handler",
+            "status": "PASS"
+          }
+        ]
+      },
+      "error": ""
+    },
+    {
+      "file": "assessment.cjs",
+      "exitCode": 0,
+      "result": {
+        "scope": "actual assessment source with mocked wx/API/session/DB; no real medical data or recording",
+        "total": 29,
+        "passed": 29,
+        "failed": 0,
+        "results": [
+          {
+            "name": "guest does not request protected records",
+            "status": "PASS"
+          },
+          {
+            "name": "normal list and selected self",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-01 logout clears prior records and family members",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-01 late response after logout cannot restore records",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-02 latest selected member wins out of order response",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-03 pending sync failure does not block existing online records",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-04 successful refresh clears previous load error",
+            "status": "PASS"
+          },
+          {
+            "name": "questionnaire initial patient and eight questions",
+            "status": "PASS"
+          },
+          {
+            "name": "unanswered question blocks next and submit",
+            "status": "PASS"
+          },
+          {
+            "name": "normal answer progression and previous answer retained",
+            "status": "PASS"
+          },
+          {
+            "name": "questionnaire duplicate submit locked while pending",
+            "status": "PASS"
+          },
+          {
+            "name": "submission rejection unlocks retry",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-06 successful ESS submit with failed redirect does not stay locked",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-05 ESS fallback rejects another account cache",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-01 ESS result clears stale data after unauthorized refresh",
+            "status": "PASS"
+          },
+          {
+            "name": "snore local report rejects different owner",
+            "status": "PASS"
+          },
+          {
+            "name": "snore unknown risk produces error, not healthy result",
+            "status": "PASS"
+          },
+          {
+            "name": "recording under five seconds cannot analyze",
+            "status": "PASS"
+          },
+          {
+            "name": "recording error resets status and selectors",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-07 unloading active recording stops recorder",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-07 recorder stop after unload cannot submit old page",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-08 ESS rejects patient outside authenticated ownership",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-09 ESS rejects invalid answers empty",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-09 ESS rejects invalid answers out-of-range",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-09 ESS rejects invalid answers negative",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-09 ESS rejects invalid answers strings",
+            "status": "PASS"
+          },
+          {
+            "name": "ESS backend accepts eight numeric 0-3 answers",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-10 same ESS score has consistent list and result severity",
+            "status": "PASS"
+          },
+          {
+            "name": "ASMT-11 sync retains record queued during in-flight upload",
+            "status": "PASS"
+          }
+        ]
+      },
+      "error": ""
+    },
+    {
+      "file": "assessment-fix-01-check.cjs",
+      "exitCode": 0,
+      "result": {
+        "scope": "related developer checks only",
+        "total": 8,
+        "passed": 8,
+        "results": [
+          {
+            "name": "saved ESS retry only retries navigation",
+            "status": "PASS"
+          },
+          {
+            "name": "unauthorized session invalidation clears existing list",
+            "status": "PASS"
+          },
+          {
+            "name": "same logged state with new generation reloads family members",
+            "status": "PASS"
+          },
+          {
+            "name": "cache fallback accepts only matching ESS owner",
+            "status": "PASS"
+          },
+          {
+            "name": "ESS all possible totals match list and result classification",
+            "status": "PASS"
+          },
+          {
+            "name": "unowned patient and invalid answers never issue INSERT",
+            "status": "PASS"
+          },
+          {
+            "name": "sync flights coalesce and preserve other owners and new records",
+            "status": "PASS"
+          },
+          {
+            "name": "actual session cache archives ESS result on logout",
+            "status": "PASS"
+          }
+        ]
+      },
+      "error": ""
+    }
+  ],
+  "http": [
+    {
+      "method": "GET",
+      "path": "/assessments/ess-questions",
+      "status": 401,
+      "expected": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "GET",
+      "path": "/assessments/snore-analysis/asmt-test",
+      "status": 401,
+      "expected": 401,
+      "result": "PASS"
+    },
+    {
+      "method": "POST",
+      "path": "/assessments/ess",
+      "status": 401,
+      "expected": 401,
+      "result": "PASS"
+    }
+  ]
+}

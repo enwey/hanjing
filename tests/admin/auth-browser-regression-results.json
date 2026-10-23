@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-22",
+  "browser": "Google Chrome headless via DevTools Protocol",
+  "results": {
+    "issued_token_ttl_seconds": 604800,
+    "logout_dialog_visible": true,
+    "logout_dialog_has_cancel": true,
+    "logout_dialog_has_confirm": true,
+    "second_tab_after_first_tab_clears_auth": {
+      "path": "/dashboard",
+      "token": null,
+      "shows_workbench": true
+    },
+    "token_expired_seven_days_ago": {
+      "path": "/login",
+      "token": null,
+      "user": null
+    },
+    "temporary_accounts_remaining": 0
+  },
+  "blocked": [
+    "Dialog cancel/confirm clicks and the success message/redirect after confirmation: the headless TDesign dialog animation remained at scale(0.01), making pointer coordinates unreliable.",
+    "Natural seven-day wall-clock expiration was not waited out; issuance TTL and an already-expired token were verified instead."
+  ]
+}

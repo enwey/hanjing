@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-22",
+  "target": "ADMIN-AUTH-02 logout token revocation",
+  "results": {
+    "login": 200,
+    "before_logout_me": 200,
+    "logout": 200,
+    "reuse_logged_out_token": 401,
+    "reuse_response_code": 401,
+    "reuse_response_message": "登录已失效，请重新登录",
+    "temporary_account_cleanup_changes": 1,
+    "remaining_temporary_accounts": 0
+  },
+  "scope": "Temporary isolated administrator account; backend API chain only. Browser click flow was not executed."
+}

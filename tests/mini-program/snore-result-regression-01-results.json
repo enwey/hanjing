@@ -1,0 +1,349 @@
+{
+  "date": "2026-10-22",
+  "role": "independent regression",
+  "suites": [
+    {
+      "file": "snore-result-functional.cjs",
+      "exit_code": 0,
+      "scope": "actual analyzer, pages and POST handler; synthetic PCM, mocked SQL/session; not real database or device",
+      "total": 17,
+      "passed": 17,
+      "failed": 0,
+      "results": [
+        {
+          "name": "RESULT-01 local analysis and server-shaped report have identical risk score",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-02 zero apnea count must not claim detected apnea events",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 malformed explicit risk score must not become a valid zero",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-04 high alias has consistent list and detail severity",
+          "status": "PASS"
+        },
+        {
+          "name": "complete report renders four measurement cards",
+          "status": "PASS"
+        },
+        {
+          "name": "unknown risk rejects report",
+          "status": "PASS"
+        },
+        {
+          "name": "missing measurement rejects report",
+          "status": "PASS"
+        },
+        {
+          "name": "appointment handoff stores current report id",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score invalid",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score 70",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score NaN",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score Infinity",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score -1",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score 101",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score 70.5",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe score 0",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-01 repeat preserves stored score and conflicting score returns409",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "file": "snore-functional.cjs",
+      "exit_code": 0,
+      "scope": "actual page and snore handler; mocked wx/API/session/ownership resolver/DB; synthetic PCM",
+      "total": 17,
+      "passed": 17,
+      "failed": 0,
+      "results": [
+        {
+          "name": "SNORE-01 early recorder stop resets recording state",
+          "status": "PASS"
+        },
+        {
+          "name": "SNORE-02 failed member load must prevent recording start",
+          "status": "PASS"
+        },
+        {
+          "name": "SNORE-03 result rejects missing measurements",
+          "status": "PASS"
+        },
+        {
+          "name": "SNORE-04 repeated upload of same local record does not create twice",
+          "status": "PASS"
+        },
+        {
+          "name": "pause then resume keeps duration and restores recording mode",
+          "status": "PASS"
+        },
+        {
+          "name": "short PCM file is rejected before submitting",
+          "status": "PASS"
+        },
+        {
+          "name": "normal client analysis sends metrics only, no audio",
+          "status": "PASS"
+        },
+        {
+          "name": "pending report submission coalesces duplicate calls",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects duration 4",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects duration 601",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects duration 5.5",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects unowned patient resolver failure",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects malformed metrics {\"snoreRate\":101}",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects malformed metrics {\"apneaEvents\":-1}",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects malformed metrics {\"peakDecibel\":20}",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects malformed metrics {\"riskLevel\":\"unknown\"}",
+          "status": "PASS"
+        },
+        {
+          "name": "backend accepts five-second valid report",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "file": "snore-fix-01-check.cjs",
+      "exit_code": 0,
+      "scope": "developer isolation checks; unique constraint simulated, not real MySQL",
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "results": [
+        {
+          "name": "concurrent identical retries return same id with one insert",
+          "status": "PASS"
+        },
+        {
+          "name": "same key with changed contents returns conflict without another insert",
+          "status": "PASS"
+        },
+        {
+          "name": "different recordings with identical measurements remain distinct",
+          "status": "PASS"
+        },
+        {
+          "name": "legacy timestamp queue retries deduplicate",
+          "status": "PASS"
+        },
+        {
+          "name": "initial upload and queued retry keep same recording identity",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "file": "snore-result-regression-01.cjs",
+      "scope": "independent regression; actual JS handlers/pages, mocked SQL/wx/session",
+      "total": 33,
+      "passed": 33,
+      "failed": 0,
+      "results": [
+        {
+          "name": "RESULT-03 accepts normal boundary 0",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts normal boundary 29",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects normal outside -1",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects normal outside 30",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts low boundary 0",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts low boundary 29",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects low outside -1",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects low outside 30",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts mild boundary 30",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts mild boundary 49",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects mild outside 29",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects mild outside 50",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts moderate boundary 50",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts moderate boundary 69",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects moderate outside 49",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects moderate outside 70",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts severe boundary 70",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts severe boundary 100",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe outside 69",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects severe outside 101",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts high boundary 70",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 accepts high boundary 100",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects high outside 69",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-03 rejects high outside 101",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-02 description matches actual count 0",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-02 description matches actual count 1",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-02 description matches actual count 7",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-04 exact label and color high",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-04 exact label and color medium",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-01 list and detail preserve zero score, not treated as missing",
+          "status": "PASS"
+        },
+        {
+          "name": "RESULT-01 concurrent identical score retries keep one stored row",
+          "status": "PASS"
+        },
+        {
+          "name": "legacy score undefined remains readable",
+          "status": "PASS"
+        },
+        {
+          "name": "legacy score null remains readable",
+          "status": "PASS"
+        }
+      ]
+    }
+  ],
+  "total": 72,
+  "passed": 72,
+  "failed": 0,
+  "http": {
+    "url": "http://localhost:5005/api/v1/assessments/snore-analysis/snore-test",
+    "authenticated": false,
+    "status": 401
+  },
+  "runtime": {
+    "pid": 19428,
+    "startTime": "2026-10-22T16:50:14+08:00",
+    "clientModified": "2026-10-22 17:51:38",
+    "dbModified": "2026-10-22 17:47:53",
+    "migration": "not verified",
+    "authenticatedRoundtrip": "blocked"
+  }
+}

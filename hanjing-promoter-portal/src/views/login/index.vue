@@ -7,6 +7,7 @@ import { setPromoterAuth } from '@/utils/auth'
 
 const router = useRouter()
 const brandLogoUrl = `${import.meta.env.BASE_URL}brand-koala.png`
+const isSubmitting = ref(false)
 const loginForm = ref({
   phone: '',
   password: ''
@@ -14,22 +15,29 @@ const loginForm = ref({
 
 const rules = {
   phone: [
-    { required: true, message: '请输入手机号', type: 'error', trigger: 'submit' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确手机号', type: 'error', trigger: 'submit' }
+    { required: true, message: '请输入推广员账号', type: 'error', trigger: 'submit' },
+    { pattern: /^[a-zA-Z0-9_@.\-]{4,64}$/, message: '请输入运营后台创建的推广员账号', type: 'error', trigger: 'submit' }
   ],
   password: [{ required: true, message: '请输入登录密码', type: 'error', trigger: 'submit' }]
 }
 
 async function handleLogin({ validateResult }: any) {
-  if (validateResult !== true) return
+  if (validateResult !== true || isSubmitting.value) return
 
-  const res: any = await request.post('/api/promoter/login', {
-    phone: loginForm.value.phone,
-    password: loginForm.value.password
-  })
-  setPromoterAuth(res.data.token, res.data.user)
-  MessagePlugin.success('登录成功')
-  router.push('/dashboard')
+  isSubmitting.value = true
+  try {
+    const res: any = await request.post('/api/promoter/login', {
+      account: loginForm.value.phone,
+      password: loginForm.value.password
+    })
+    setPromoterAuth(res.data.token, res.data.user)
+    MessagePlugin.success('登录成功')
+    await router.push('/dashboard')
+  } catch {
+    // The shared request interceptor displays the server or network error.
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -43,10 +51,10 @@ async function handleLogin({ validateResult }: any) {
     <div class="login-card">
       <div class="login-brand">
         <span class="brand-logo">
-          <img class="brand-logo-image" :src="brandLogoUrl" alt="鼾静推广端" />
+          <img class="brand-logo-image" :src="brandLogoUrl" alt="兴康明推广端" />
         </span>
         <div class="brand-title">
-          鼾静推广端
+          兴康明推广端
           <small>推广数据工作台</small>
         </div>
       </div>
@@ -55,7 +63,7 @@ async function handleLogin({ validateResult }: any) {
 
       <t-form :data="loginForm" :rules="rules" label-width="0" @submit="handleLogin">
         <t-form-item name="phone">
-          <t-input v-model="loginForm.phone" placeholder="请输入绑定的手机号" size="large">
+          <t-input v-model="loginForm.phone" placeholder="请输入后台创建的推广员账号" size="large">
             <template #prefix-icon>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748B;">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -76,12 +84,14 @@ async function handleLogin({ validateResult }: any) {
         </t-form-item>
 
         <t-form-item style="margin-top: 32px;">
-          <t-button theme="primary" type="submit" block size="large">立即登录</t-button>
+          <t-button theme="primary" type="submit" block size="large" :loading="isSubmitting" :disabled="isSubmitting">
+            {{ isSubmitting ? '登录中…' : '立即登录' }}
+          </t-button>
         </t-form-item>
       </t-form>
 
       <div class="login-footer">
-        © 2026 鼾静健康诊所 · 推广数据工作台
+        © 2026 兴康明诊所 · 推广数据工作台
       </div>
     </div>
   </div>
@@ -139,11 +149,19 @@ async function handleLogin({ validateResult }: any) {
   position: relative;
   z-index: 2;
   width: 400px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 40px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 28px 24px;
+  }
 }
 
 .login-brand {

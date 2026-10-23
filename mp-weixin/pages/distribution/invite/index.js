@@ -51,7 +51,7 @@ const n = e.defineComponent({
             n.fillRect(0, 0, u, 300);
             n.setFillStyle("#ffffff");
             n.setFontSize(22);
-            n.fillText("鼾静健康", 48, 72);
+            n.fillText("兴康明", 48, 72);
             n.setFontSize(42);
             n.fillText("邀请好友，一起推广", 48, 150);
             n.setFontSize(26);
@@ -99,7 +99,7 @@ const n = e.defineComponent({
             }
             n.setFillStyle("#6b7280");
             n.setFontSize(22);
-            n.fillText("打开“鼾静健康诊所”小程序，输入邀请码即可绑定", 74, 842);
+            n.fillText("打开“兴康明诊所”小程序，输入邀请码即可绑定", 74, 842);
             n.draw(!1, () => {
               e.index.canvasToTempFilePath({
                 canvasId: a,
@@ -152,7 +152,7 @@ const n = e.defineComponent({
             r.value = iData.inviteCode || nData.inviteCode || nData.invite_code || "";
             s.value = iData.inviteQrCode || nData.inviteQrCode || "";
             c.value = iData.sharePath || (r.value ? `/pages/index/index?inviteCode=${r.value}` : "/pages/index/index");
-            d.value = iData.shareTitle || "邀请好友体验鼾静健康诊所";
+            d.value = iData.shareTitle || "邀请好友体验兴康明诊所";
           } catch (aErr) {
             e.index.showToast({ title: "加载邀请信息失败", icon: "none" });
           }
@@ -161,7 +161,7 @@ const n = e.defineComponent({
         e.onMounted(f),
         e.onShow(f),
         e.onShareAppMessage(() => ({
-          title: d.value || "邀请好友体验鼾静健康诊所",
+          title: d.value || "邀请好友体验兴康明诊所",
           path: c.value || "/pages/index/index",
           imageUrl: shareImageUrl,
         })),

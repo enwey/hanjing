@@ -2,6 +2,12 @@ const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
 const navigation = require('../../common/utils/navigation');
 
+function checkoutStorageKey(productId) {
+  const profile = sessionStore.state && sessionStore.state.profile;
+  const owner = (profile && profile.id) || wx.getStorageSync('account_cache_owner') || 'unresolved';
+  return 'product_checkout_v1:' + encodeURIComponent(String(owner)) + ':' + encodeURIComponent(String(productId));
+}
+
 const CATEGORY_COLORS = {
   device: '#d9e6ff',
   accessory: '#dff4e8',
@@ -139,6 +145,7 @@ Page({
   },
 
   onLoad(options) {
+    this._unloaded = false;
     this.imageLoadFailedMap = {};
     const productId = options && options.id;
     if (!productId) {
@@ -158,6 +165,8 @@ Page({
   },
 
   async loadProduct(productId, options = {}) {
+    if (this._unloaded) return;
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
@@ -168,6 +177,7 @@ Page({
         api.getProductDetail(productId),
         hasToken ? api.getMemberInfo().catch(() => null) : Promise.resolve(null),
       ]);
+      if (this._unloaded || requestId !== this._loadRequestId) return;
       const rawProduct = (response && response.data) || response || null;
       if (!rawProduct) {
         throw new Error('商品不存在');
@@ -211,6 +221,7 @@ Page({
         displaySalesCount: this.formatSalesCount(product.salesCount),
       }, () => this.refreshCheckoutView());
     } catch (error) {
+      if (this._unloaded || requestId !== this._loadRequestId) return;
       console.error(error);
       if (!this.data.hasLoaded) {
         wx.showToast({ title: (error && error.message) || '获取商品详情失败', icon: 'none' });
@@ -301,6 +312,10 @@ Page({
   },
 
   increaseQty() {
+    if (this.data.quantity >= 99) {
+      wx.showToast({ title: '同一商品最多购买99件', icon: 'none' });
+      return;
+    }
     this.setData({ quantity: this.data.quantity + 1 }, () => this.refreshCheckoutView());
   },
 
@@ -481,42 +496,126 @@ Page({
   },
 
   async submitOrder() {
-    if (this.data.isSubmitting || !this.data.product) return;
+    if (this._unloaded || this.data.isSubmitting || !this.data.product) return;
+    if (!Number.isSafeInteger(this.data.quantity) || this.data.quantity < 1 || this.data.quantity > 99) {
+      wx.showToast({ title: '购买数量应为1至99的整数', icon: 'none' });
+      return;
+    }
     if (!this.validateAddress(false)) return;
+    const revision = sessionStore.getLoginGeneration();
+    let checkoutKey;
+    const orderInput = {
+      items: [{ productId: String(this.data.product.id), quantity: this.data.quantity }],
+      shippingAddress: {
+        contactName: this.data.contactName,
+        phone: this.data.phone,
+        detailAddress: this.data.detailAddress,
+        deliveryMethod: 'online',
+      },
+    };
+    const fingerprint = JSON.stringify(orderInput);
+    if (this._checkoutOrder && this._checkoutOrder.revision !== revision) {
+      wx.showToast({ title: '登录状态已变化，请在订单列表确认原订单', icon: 'none' });
+      return;
+    }
     this.setData({ isSubmitting: true });
     try {
       wx.showLoading({ title: '发起支付...' });
-      const createOrderResponse = await api.createOrder({
-        items: [{ productId: String(this.data.product.id), quantity: this.data.quantity }],
-        shippingAddress: {
-          contactName: this.data.contactName,
-          phone: this.data.phone,
-          detailAddress: this.data.detailAddress,
-          deliveryMethod: 'online',
-        },
-      });
-      const createdOrder = (createOrderResponse && createOrderResponse.data) || createOrderResponse || {};
-      const orderId = createdOrder.id;
+      checkoutKey = checkoutStorageKey(this.data.product.id);
+      const savedCheckout = wx.getStorageSync(checkoutKey);
+      // An earlier page may have resolved this attempt since our last submit.
+      // Re-read persisted state before deciding whether creation is still blocked.
+      this._checkoutUncertain = Boolean(savedCheckout && !savedCheckout.id);
+      if (!this._checkoutOrder && savedCheckout) {
+        if (!savedCheckout.id) {
+          this._checkoutUncertain = true;
+          wx.hideLoading();
+          wx.showToast({ title: '下单结果待确认，请先查看订单列表', icon: 'none' });
+          wx.navigateTo({ url: '/pages/order/index' });
+          return;
+        }
+        this._checkoutOrder = { id: savedCheckout.id, fingerprint: savedCheckout.fingerprint, revision };
+      }
+      if (this._checkoutOrder) {
+        const response = await api.getOrderDetail(this._checkoutOrder.id);
+        if (this._unloaded) return;
+        const existing = (response && response.data) || response || {};
+        if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
+        if (existing.status === 'cancelled') {
+          wx.removeStorageSync(checkoutKey);
+          this._checkoutOrder = null;
+        } else if (existing.status !== 'pending' || this._checkoutOrder.fingerprint !== fingerprint) {
+          if (['paid', 'processing', 'shipping', 'shipped', 'completed', 'refund_pending', 'refunding', 'refunded'].includes(existing.status)) {
+            wx.removeStorageSync(checkoutKey);
+          }
+          wx.hideLoading();
+          wx.showToast({ title: '请在原订单中确认状态或取消订单', icon: 'none' });
+          wx.navigateTo({ url: '/pages/order/detail?id=' + this._checkoutOrder.id });
+          return;
+        }
+      }
+      if (!this._checkoutOrder) {
+        // Persist before sending: failure to save must prevent the create request.
+        wx.setStorageSync(checkoutKey, { uncertain: true });
+        this._checkoutUncertain = true;
+        let createOrderResponse;
+        try {
+          createOrderResponse = await api.createOrder(orderInput);
+        } catch (error) {
+          // Only explicit rejection responses permit a new create attempt.
+          // Transport errors, timeouts and server failures remain uncertain.
+          if (error && [400, 401, 403, 404, 422].includes(Number(error.statusCode))) {
+            wx.removeStorageSync(checkoutKey);
+            this._checkoutUncertain = false;
+          }
+          if (this._checkoutUncertain) {
+            throw new Error('下单结果待确认，请先查看订单列表');
+          }
+          throw error;
+        }
+        const createdOrder = (createOrderResponse && createOrderResponse.data) || createOrderResponse || {};
+        if (!createdOrder.id) throw new Error('未取得订单编号，请在订单列表确认');
+        // Even after page unload, preserve a late successful response for recovery.
+        wx.setStorageSync(checkoutKey, { id: createdOrder.id });
+        this._checkoutOrder = { id: createdOrder.id, fingerprint, revision };
+        this._checkoutUncertain = false;
+        if (this._unloaded) return;
+      }
+      if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
+      const orderId = this._checkoutOrder.id;
       const payResponse = await api.payOrder(orderId);
+      if (this._unloaded) return;
+      if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
       const payParams = (payResponse && payResponse.data) || payResponse || {};
       wx.hideLoading();
       await requestWxPay(payParams);
+      if (this._unloaded) return;
+      if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
       wx.showLoading({ title: '同步订单状态...' });
       await syncPaidOrder(orderId);
+      if (this._unloaded) return;
+      if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
       wx.hideLoading();
       wx.showToast({ title: '支付已提交', icon: 'success' });
       this.setData({ showCheckout: false });
       setTimeout(() => {
+        if (this._unloaded || sessionStore.getLoginGeneration() !== revision) return;
         wx.navigateTo({ url: '/pages/order/detail?id=' + orderId });
       }, 300);
     } catch (error) {
+      if (this._unloaded) return;
       wx.hideLoading();
       wx.showToast({
         title: getPaymentErrorMessage(error, '支付未完成'),
         icon: 'none',
       });
     } finally {
-      this.setData({ isSubmitting: false });
+      if (!this._unloaded) this.setData({ isSubmitting: false });
     }
+  },
+  onUnload() {
+    this._unloaded = true;
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+    if (this.data.isSubmitting) wx.hideLoading();
   },
 });

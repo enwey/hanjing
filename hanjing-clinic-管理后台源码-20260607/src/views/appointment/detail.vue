@@ -20,7 +20,8 @@ import {
   type CheckoutProduct
 } from '@/utils/checkoutProducts'
 import TechnicianSelect from '@/components/TechnicianSelect.vue'
-import { createNativePay, getAdminPayStatus, isPaidStatus, submitMicropay } from '@/utils/wechatCashier'
+import { createNativePay, getAdminPayStatus, isPaidStatus } from '@/utils/wechatCashier'
+import { speakMandarin } from '@/utils/speech'
 
 const route = useRoute()
 const router = useRouter()
@@ -84,6 +85,7 @@ const appointment = ref<any>({
   fee: '0.00',
   feeStatus: 'paid',
   source: '',
+  referralPromoter: '',
   symptom: '',
   pre_exam: null,
   latest_pre_exam: null,
@@ -186,6 +188,7 @@ const fetchAppointmentDetail = async () => {
         fee: appt.consult_fee !== null && appt.consult_fee !== undefined ? (appt.consult_fee / 100).toFixed(2) : '0.00',
         feeStatus: appt.status === 'pending_payment' ? 'unpaid' : 'paid',
         source: appt.source === 'mini_app' ? '小程序' : appt.source === 'telephone' ? '电话' : '到店',
+        referralPromoter: appt.referral_promoter_name || '',
         symptom: appt.symptom_desc || '',
         deposit: appt.deposit_amount !== null && appt.deposit_amount !== undefined ? (appt.deposit_amount / 100).toFixed(2) : '0.00',
         pre_exam: appt.pre_exam,
@@ -295,8 +298,7 @@ const checkoutLoading = ref(false)
 const checkoutSuccess = ref(false)
 const orderResult = ref<any>(null)
 const nativePayInfo = ref<any>(null)
-const miniPayOrderNo = ref('')
-const micropayAuthCode = ref('')
+const nativePayReceipt = ref<any>(null)
 const payWaiting = ref(false)
 const cashierSession = createCashierSession(request)
 const checkoutFlow = createCheckoutLifecycle(() => `${route.fullPath}:${appointmentId.value}`)
@@ -319,8 +321,9 @@ const fetchProducts = async () => {
 
 const billingItems = ref<BillingItem[]>([])
 const discountAmount = ref<number>(0)
-const payMethod = ref<string>('wechat_native')
+const payMethod = ref<'cash' | 'wechat' | 'wechat_native'>('cash')
 const fulfillmentTechnicianId = ref<string>('')
+const isRegistrationCheckout = computed(() => appointment.value?.status === 'pending_payment')
 
 const totalAmount = computed(() => {
   return billingItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
@@ -332,6 +335,7 @@ const payableAmount = computed(() => {
 })
 
 function addBillingItem() {
+  if (isRegistrationCheckout.value) return
   const product = findCheckoutProduct(productOptions.value)
   if (!product) {
     MessagePlugin.warning('暂无可添加的上架商品')
@@ -341,6 +345,7 @@ function addBillingItem() {
 }
 
 function removeBillingItem(idx: number) {
+  if (isRegistrationCheckout.value) return
   billingItems.value.splice(idx, 1)
 }
 
@@ -386,7 +391,9 @@ async function openCheckoutDialog() {
     if (!checkoutFlow.isCurrent(attempt)) return
     const items = await appointmentBillingItems(request, productOptions.value, appointmentId.value)
     if (!checkoutFlow.isCurrent(attempt)) return
-    billingItems.value = items
+    billingItems.value = isRegistrationCheckout.value
+      ? items.map(item => ({ ...item, quantity: 1 }))
+      : items
   } catch (error: any) {
     if (checkoutFlow.isCurrent(attempt)) MessagePlugin.error(error.message || '获取预约收费信息失败')
     return
@@ -394,12 +401,12 @@ async function openCheckoutDialog() {
     if (checkoutFlow.isCurrent(attempt)) checkoutLoading.value = false
   }
   discountAmount.value = 0
-  payMethod.value = 'wechat_native'
+  payMethod.value = 'cash'
   fulfillmentTechnicianId.value = ''
   checkoutSuccess.value = false
   orderResult.value = null
   nativePayInfo.value = null
-  micropayAuthCode.value = ''
+  nativePayReceipt.value = null
   payWaiting.value = false
   
   deliveryType.value = 'offline_direct'
@@ -443,6 +450,7 @@ async function markCheckoutPaid(receipt: any, attempt: CheckoutAttempt | null, i
   if (!isActive()) return
   checkoutFlow.stopPolling()
   nativePayInfo.value = null
+  nativePayReceipt.value = null
   payWaiting.value = false
   orderResult.value = createCheckoutReceiptResult(receipt)
   checkoutSuccess.value = true
@@ -498,7 +506,11 @@ async function completeCheckoutSettlement() {
 }
 
 function handlePrintInvoice() {
+  document.body.classList.add('printing-invoice')
+  const cleanup = () => document.body.classList.remove('printing-invoice')
+  window.addEventListener('afterprint', cleanup, { once: true })
   window.print()
+  window.setTimeout(cleanup, 1000)
 }
 
 async function submitCheckout() {
@@ -506,7 +518,6 @@ async function submitCheckout() {
   if (!detailReady.value || String(appointment.value.id) !== appointmentId.value) return
   const attempt = checkoutFlow.capture()
   if (!checkoutFlow.isCurrent(attempt)) return
-  const authCode = micropayAuthCode.value.trim()
   if (!appointment.value) return
   if (billingItems.value.length === 0) {
     MessagePlugin.warning('结账明细不能为空')
@@ -567,27 +578,31 @@ async function submitCheckout() {
 
     const payload = {
       patient_id: appointment.value.patient_id,
-      items: billingItems.value,
+      items: billingItems.value.map(item => ({
+        ...item,
+        quantity: isRegistrationCheckout.value ? 1 : item.quantity
+      })),
       pay_amount: payableAmount.value,
       discount_amount: discountAmount.value,
       pay_method: payMethod.value,
-      payment_confirmed: ['cash', 'bank'].includes(payMethod.value),
+      payment_confirmed: payMethod.value === 'cash',
       technician_id: fulfillmentTechnicianId.value ? Number(fulfillmentTechnicianId.value) : undefined,
       appointment_id: Number(appointmentId.value),
-      type: orderType,
-      status: orderStatus,
-      shipping_address: shipAddr
+      type: isRegistrationCheckout.value ? 'offline' : orderType,
+      status: isRegistrationCheckout.value ? 'paid' : orderStatus,
+      shipping_address: isRegistrationCheckout.value ? null : shipAddr
     }
-    if (['cash', 'bank'].includes(payMethod.value) && !window.confirm('请确认已实际收到款项。此操作仅登记人工收款，不会发起微信支付。')) return
+    if (payMethod.value === 'cash' && !window.confirm('请确认已实际收到现金。确认后将登记本次线下收款。')) return
     const res: any = await cashierSession.submit(payload)
     if (!checkoutFlow.isCurrent(attempt)) return
     if (res.code === 200) {
       if (!checkoutFlow.bindOrder(attempt, res.data.order_id)) return
       const receipt = res.data.receipt
       if (payload.pay_method === 'wechat') {
-        miniPayOrderNo.value = res.data.order_no
-        startPayPolling(res.data.order_id, receipt, attempt)
-        MessagePlugin.success('待支付订单已生成，请用户在小程序「我的订单」中支付')
+        checkoutFlow.invalidate()
+        checkoutVisible.value = false
+        MessagePlugin.success('待支付订单已发送至用户小程序，请用户在预约详情中支付')
+        fetchAppointmentDetail()
       } else if (payload.pay_method === 'wechat_native') {
         const payInfo = await createNativePay(res.data.order_id)
         if (!checkoutFlow.isCurrent(attempt)) return
@@ -595,21 +610,9 @@ async function submitCheckout() {
           await markCheckoutPaid(receipt, attempt)
         } else {
           nativePayInfo.value = payInfo
-          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信扫码支付' }), attempt)
-          MessagePlugin.info('请患者使用微信扫码完成支付')
-        }
-      } else if (payload.pay_method === 'wechat_micropay') {
-        if (!micropayAuthCode.value.trim()) {
-          MessagePlugin.warning('请先扫描或输入患者微信付款码')
-          return
-        }
-        const payInfo = await submitMicropay(res.data.order_id, authCode)
-        if (!checkoutFlow.isCurrent(attempt)) return
-        if (payInfo.tradeState === 'SUCCESS') {
-          await markCheckoutPaid(receipt, attempt)
-        } else {
-          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: '微信付款码支付' }), attempt)
-          MessagePlugin.info('支付处理中，请等待患者确认')
+          nativePayReceipt.value = receipt
+          startPayPolling(res.data.order_id, Object.assign({}, receipt, { payMethod: 'wechat_native' }), attempt)
+          MessagePlugin.info('支付二维码已生成，可直接打印给用户扫码')
         }
       } else {
         await markCheckoutPaid(receipt, attempt)
@@ -625,12 +628,8 @@ async function submitCheckout() {
 
 // 叫号
 const callPatient = () => {
-  if ('speechSynthesis' in window) {
-    const text = `请患者 ${appointment.value.patient}，到 ${appointment.value.doctor} 医生诊室就诊。`
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'zh-CN'
-    utterance.rate = 0.9
-    window.speechSynthesis.speak(utterance)
+  const text = `请患者 ${appointment.value.patient}，到 ${appointment.value.doctor} 医生诊室就诊。`
+  if (speakMandarin(text)) {
     MessagePlugin.success(`呼叫广播成功: "${text}"`)
   } else {
     MessagePlugin.warning('浏览器不支持语音播报，已通过系统弹窗提示')
@@ -708,7 +707,7 @@ function handleBack() {
 
 function handlePrint() {
   const oldTitle = document.title
-  document.title = '鼾静健康诊所'
+  document.title = '兴康明诊所'
   window.print()
   setTimeout(() => {
     document.title = oldTitle
@@ -742,7 +741,7 @@ function handleViewProfile() {
 <template>
   <div class="page-container">
     <!-- 打印预览专用页眉 -->
-    <div class="print-header">鼾静健康诊所</div>
+    <div class="print-header">兴康明诊所</div>
 
     <!-- Header Title Row -->
     <div class="page-title-row">
@@ -976,7 +975,7 @@ function handleViewProfile() {
           </div>
           <div class="info-item">
             <div class="info-label">预约来源</div>
-            <div class="info-value"><span class="tag tag-green">{{ appointment.source }}</span></div>
+            <div class="info-value"><span class="tag tag-green">{{ appointment.source }}</span><div v-if="appointment.referralPromoter">推荐人：{{ appointment.referralPromoter }}</div></div>
           </div>
           <div class="info-item">
             <div class="info-label">挂号费</div>
@@ -1060,8 +1059,8 @@ function handleViewProfile() {
           <div style="margin-bottom: 16px; font-size: 14px; color: #374151;">
             收费结算单支付收款成功！交易收费凭证信息如下：
           </div>
-          <div style="background: #F3F4F6; padding: 16px; border-radius: 8px; font-family: monospace; border: 1px dashed #D1D5DB;">
-            <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #000;">鼾静健康诊所 · 收费凭证</div>
+          <div class="invoice-box" style="background: #F3F4F6; padding: 16px; border-radius: 8px; font-family: monospace; border: 1px dashed #D1D5DB;">
+            <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #000;">兴康明诊所 · 收费凭证</div>
             <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">================================</div>
             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>交易单号:</span> <span>{{ orderResult?.orderNo }}</span></div>
             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>结账客户:</span> <span>{{ orderResult?.patientName }}</span></div>
@@ -1089,6 +1088,33 @@ function handleViewProfile() {
           </div>
         </div>
 
+        <div v-else-if="nativePayInfo" class="native-payment-view">
+          <div class="invoice-box native-payment-sheet">
+            <div class="invoice-title">兴康明诊所 · 扫码支付单</div>
+            <div class="invoice-divider">================================</div>
+            <div class="invoice-row"><span>交易单号:</span><span>{{ nativePayReceipt?.orderNo }}</span></div>
+            <div class="invoice-row"><span>结账客户:</span><span>{{ nativePayReceipt?.patientName }}</span></div>
+            <div class="invoice-divider">--------------------------------</div>
+            <div v-for="item in nativePayReceipt?.items" :key="item.productId" class="invoice-row">
+              <span>{{ item.productName }} x{{ item.quantity }}</span>
+              <span>¥{{ ((item.price * item.quantity) / 100).toFixed(2) }}</span>
+            </div>
+            <div class="invoice-divider">--------------------------------</div>
+            <div class="invoice-row invoice-payable"><span>待支付金额:</span><span>¥{{ (Number(nativePayReceipt?.payAmount || 0) / 100).toFixed(2) }}</span></div>
+            <div class="invoice-payment-footer">
+              <div class="invoice-payment-copy"><strong>微信扫码支付</strong><span>等待用户完成支付</span></div>
+              <div class="invoice-payment-qr">
+                <img :src="nativePayInfo.qrCodeImageUrl" alt="微信扫码支付二维码">
+                <span>请使用微信扫码支付</span>
+              </div>
+            </div>
+          </div>
+          <div class="native-payment-actions">
+            <t-button variant="outline" @click="handlePrintInvoice"><AppIcon name="print" /> 打印支付单</t-button>
+            <t-button theme="default" @click="closeCheckoutDialog">关闭</t-button>
+          </div>
+        </div>
+
         <div v-else class="dialog-body-form" style="padding: 10px 0;">
           <div style="margin-bottom: 16px; font-size: 14px; color: #374151;">
             正在为患者 <strong>{{ appointment.patient }}</strong> 开立收费结算账单：
@@ -1101,7 +1127,7 @@ function handleViewProfile() {
                 <th style="padding: 8px;">项目/商品名称</th>
                 <th style="padding: 8px; width: 100px;">单价</th>
                 <th style="padding: 8px; width: 60px;">数量</th>
-                <th style="padding: 8px; width: 50px;">操作</th>
+                <th v-if="!isRegistrationCheckout" style="padding: 8px; width: 50px;">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -1120,20 +1146,21 @@ function handleViewProfile() {
                 </td>
                 <td style="padding: 8px;">¥{{ (item.price / 100).toFixed(2) }}</td>
                 <td style="padding: 8px;">
-                  <input v-model="item.quantity" type="number" class="form-control" style="height: 30px; padding: 2px 6px; text-align: center;" min="1">
+                  <div v-if="isRegistrationCheckout" class="fixed-quantity">1</div>
+                  <input v-else v-model="item.quantity" type="number" class="form-control" style="height: 30px; padding: 2px 6px; text-align: center;" min="1">
                 </td>
-                <td style="padding: 8px;">
+                <td v-if="!isRegistrationCheckout" style="padding: 8px;">
                   <button class="btn-text-del" @click="removeBillingItem(idx)">删除</button>
                 </td>
               </tr>
             </tbody>
           </table>
 
-          <button class="btn-add-item" style="margin-bottom: 16px;" @click="addBillingItem"><AppIcon name="plus" />  添加诊疗费/项目/药品</button>
+          <button v-if="!isRegistrationCheckout" class="btn-add-item" style="margin-bottom: 16px;" @click="addBillingItem"><AppIcon name="plus" />  添加诊疗费/项目/药品</button>
 
           <!-- Discount & Delivery selector -->
           <div style="display: flex; gap: 16px; margin-bottom: 16px;">
-            <div class="form-group" style="flex: 1;">
+            <div v-if="!isRegistrationCheckout" class="form-group" style="flex: 1;">
               <label class="form-label">卡券折扣金额 (元)</label>
               <t-input-number v-model="discountAmount" :min="0" :step="1000" :format="(val: string | number) => `¥${(Number(val) / 100).toFixed(2)}`" style="width: 100%;" />
             </div>
@@ -1148,7 +1175,7 @@ function handleViewProfile() {
           </div>
 
           <!-- Shipping Address Form -->
-          <div v-if="deliveryType === 'online'" style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div v-if="!isRegistrationCheckout && deliveryType === 'online'" style="background: #F9FAFB; padding: 12px; border-radius: 8px; border: 1px solid #E5E7EB; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;">
             <div style="font-weight: 700; font-size: 12px; color: #374151;"><AppIcon name="truck" />  快递收货地址</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
               <div class="form-group" style="margin-bottom: 0;">
@@ -1167,7 +1194,7 @@ function handleViewProfile() {
           </div>
 
           <!-- Pickup Info Form -->
-          <div v-if="deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 12px; border-radius: 8px; border: 1px solid #FCD34D; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
+          <div v-if="!isRegistrationCheckout && deliveryType === 'offline_pending'" style="background: #FFFBEB; padding: 12px; border-radius: 8px; border: 1px solid #FCD34D; margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px;">
             <div style="font-weight: 700; font-size: 12px; color: #D97706;"><AppIcon name="pickup" />  缺货自提预订</div>
             <div style="font-size: 11px; color: #B45309; line-height: 1.4;">
               货到后系统将通过微信推送通知该患者到店自提。
@@ -1204,39 +1231,26 @@ function handleViewProfile() {
           <div style="margin-bottom: 24px;">
             <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: #374151;">支付方式</div>
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-              <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
-                <input v-model="payMethod" type="radio" value="wechat">
-                小程序支付
-              </label>
               <label class="pay-method-label" :class="{ active: payMethod === 'cash' }">
                 <input v-model="payMethod" type="radio" value="cash" style="display: none;">
-                <AppIcon name="money" />  现金已收款
+                <AppIcon name="money" />  现金支付
+              </label>
+              <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
+                <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
+                小程序支付
               </label>
               <label class="pay-method-label" :class="{ active: payMethod === 'wechat_native' }">
                 <input v-model="payMethod" type="radio" value="wechat_native" style="display: none;">
-                <AppIcon name="qrcode" />  微信扫码
-              </label>
-              <label class="pay-method-label" :class="{ active: payMethod === 'wechat_micropay' }">
-                <input v-model="payMethod" type="radio" value="wechat_micropay" style="display: none;">
-                <AppIcon name="scan" />  付款码
+                <AppIcon name="qrcode" />  扫码支付
               </label>
             </div>
-            <div v-if="payMethod === 'wechat_micropay'" style="margin-top: 12px;">
-              <input class="form-control" v-model="micropayAuthCode" placeholder="请扫描或输入患者微信付款码">
-            </div>
-            <div v-if="payMethod === 'wechat' && miniPayOrderNo && payWaiting" style="margin: 12px 0; overflow-wrap: anywhere;">小程序待支付订单：{{ miniPayOrderNo }}</div>
+            <div class="payment-method-tip">{{ payMethod === 'cash' ? '确认后表示线下现金已经实际收取。' : payMethod === 'wechat' ? '将生成待支付订单，并通知用户前往小程序预约详情完成支付。' : '将生成微信支付二维码，可打印支付单交给用户扫码付款。' }}</div>
             <TechnicianSelect v-model="fulfillmentTechnicianId" />
-            <div v-if="nativePayInfo" style="margin-top: 14px; text-align: center; padding: 14px; border: 1px solid #E5E7EB; border-radius: 8px;">
-              <img v-if="nativePayInfo.qrCodeImageUrl" :src="nativePayInfo.qrCodeImageUrl" alt="微信支付二维码" style="width: 220px; height: 220px;">
-              <div style="font-size: 13px; color: #374151; margin-top: 8px;">请患者使用微信扫码支付</div>
-              <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">订单号：{{ nativePayInfo.orderNo }}</div>
-            </div>
-            <div v-if="payWaiting" style="margin-top: 10px; font-size: 13px; color: #2563EB;">正在等待微信支付结果...</div>
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 10px;">
             <t-button theme="default" @click="closeCheckoutDialog">取消</t-button>
-            <t-button theme="primary" :loading="checkoutLoading" :disabled="payWaiting" @click="submitCheckout">{{ payMethod === 'wechat' ? '生成待支付订单' : '确认支付收款' }} · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
+            <t-button theme="primary" :loading="checkoutLoading" @click="submitCheckout">{{ payMethod === 'wechat' ? '生成待支付订单并通知' : payMethod === 'wechat_native' ? '生成支付二维码' : '确认现金收款' }} · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
           </div>
         </div>
       </div>
@@ -1721,6 +1735,31 @@ function handleViewProfile() {
   font-weight: 600;
 }
 
+.fixed-quantity {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  background: #F9FAFB;
+  color: #374151;
+}
+
+.payment-method-tip { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #F9FAFB; color: #6B7280; font-size: 12px; line-height: 1.6; }
+.native-payment-view { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 10px 0; }
+.native-payment-sheet { width: 100%; box-sizing: border-box; padding: 20px; border: 1px solid #E5E7EB; border-radius: 8px; background: #FCFCFA; color: #111827; font-family: monospace; }
+.invoice-title { margin-bottom: 10px; color: #000; font-size: 16px; font-weight: 700; text-align: center; }
+.invoice-divider { margin: 6px 0; color: #9CA3AF; text-align: center; overflow: hidden; }
+.invoice-row { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 4px; font-size: 12px; }
+.invoice-payable { color: #000; font-size: 14px; font-weight: 700; }
+.invoice-payment-footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-top: 18px; padding-top: 14px; border-top: 1px dashed #D1D5DB; }
+.invoice-payment-copy { display: flex; flex-direction: column; gap: 6px; color: #374151; font-size: 12px; }
+.invoice-payment-copy span { color: #6B7280; }
+.invoice-payment-qr { display: flex; flex-direction: column; align-items: center; gap: 5px; color: #4B5563; font-size: 10px; text-align: center; }
+.invoice-payment-qr img { width: 132px; height: 132px; border: 1px solid #E5E7EB; background: #FFF; object-fit: contain; }
+.native-payment-actions { display: flex; justify-content: flex-end; gap: 10px; width: 100%; }
+
 .btn-add-item {
   width: 100%;
   height: 36px;
@@ -1816,6 +1855,39 @@ function handleViewProfile() {
 }
 
 @media print {
+  body.printing-invoice * {
+    visibility: hidden !important;
+  }
+
+  body.printing-invoice .t-dialog__wrapper,
+  body.printing-invoice .t-dialog__ctx,
+  body.printing-invoice .t-dialog,
+  body.printing-invoice .invoice-box,
+  body.printing-invoice .invoice-box * {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  body.printing-invoice .invoice-box {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body.printing-invoice .invoice-row,
+  body.printing-invoice .invoice-payment-footer,
+  body.printing-invoice .invoice-payment-qr,
+  body.printing-invoice .invoice-payment-copy {
+    display: flex !important;
+  }
+
+  body.printing-invoice .invoice-payment-footer { break-inside: avoid; }
+  body.printing-invoice .invoice-payment-qr img { width: 132px !important; height: 132px !important; }
+
   /* Hide all layouts, sidebar toggle buttons, top headers and custom app layouts */
   aside,
   header,

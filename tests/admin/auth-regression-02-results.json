@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-22",
+  "target": "admin authentication runtime on 127.0.0.1:5005",
+  "results": [
+    { "case": "me-no-token", "source": "127.0.0.1", "status": 401 },
+    { "case": "me-invalid-token", "source": "127.0.0.1", "status": 401 },
+    { "case": "logout-no-token", "source": "127.0.0.1", "status": 401 },
+    { "case": "login-source-a-1", "source": "127.0.0.1", "status": 400 },
+    { "case": "login-source-a-2", "source": "127.0.0.1", "status": 400 },
+    { "case": "login-source-a-3", "source": "127.0.0.1", "status": 400 },
+    { "case": "login-source-a-4", "source": "127.0.0.1", "status": 400 },
+    { "case": "login-source-b-1", "source": "127.0.0.2", "status": 400 },
+    { "case": "login-source-a-5", "source": "127.0.0.1", "status": 429 }
+  ],
+  "notes": [
+    "The username was a unique synthetic nonexistent value; no real account was locked.",
+    "A valid administrator token was unavailable, so logout revocation and token reuse were not executed."
+  ]
+}

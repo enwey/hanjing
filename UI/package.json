@@ -1,7 +1,7 @@
 {
   "name": "hanjing-clinic-ui-draft",
   "version": "1.0.0",
-  "description": "鼾静健康诊所 - 小程序真实全页面UI设计稿项目",
+  "description": "兴康明诊所 - 小程序真实全页面UI设计稿项目",
   "main": "index.html",
   "scripts": {
     "dev": "vite",

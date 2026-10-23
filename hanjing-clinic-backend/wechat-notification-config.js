@@ -16,7 +16,7 @@ export const WECHAT_NOTIFICATION_EVENTS = [
   ['withdraw_result', '提现审核结果', '推广', false, '提现审核完成后（待接入发送触发点）', withdrawFields],
   ['withdraw_paid', '提现到账', '推广', false, '实际打款确认后（待接入发送触发点）', withdrawFields],
   ['commission_settled', '佣金到账', '推广', false, '佣金结算入账后（待接入发送触发点）', { amount1: '金额', thing2: '备注', time3: '时间', phrase4: '状态' }],
-  ['payment_due', '运营开单待付款', '订单', false, '运营生成小程序待支付订单后', orderFields],
+  ['payment_due', '运营开单待付款', '订单', true, '运营生成小程序待支付订单后', orderFields],
   ['order_shipped', '发货通知', '订单', false, '实际填写物流并发货后；独立通知待接入', orderFields],
   ['device_arrived', '定制器械到店', '就诊', false, '定制器械验收入库后；独立通知待接入', orderFields],
   ['report_ready', '报告已出具', '就诊', false, '报告审核发布后，不在通知中展示诊断结果', { thing1: '标题', thing2: '备注' }],

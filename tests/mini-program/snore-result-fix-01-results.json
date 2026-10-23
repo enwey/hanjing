@@ -1,0 +1,195 @@
+{
+  "date": "2026-10-22",
+  "role": "developer self-check, not independent regression",
+  "result": {
+    "scope": "actual analyzer, pages and POST handler; synthetic PCM, mocked SQL/session; not real database or device",
+    "total": 17,
+    "passed": 17,
+    "failed": 0,
+    "results": [
+      {
+        "name": "RESULT-01 local analysis and server-shaped report have identical risk score",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-02 zero apnea count must not claim detected apnea events",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-03 malformed explicit risk score must not become a valid zero",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-04 high alias has consistent list and detail severity",
+        "status": "PASS"
+      },
+      {
+        "name": "complete report renders four measurement cards",
+        "status": "PASS"
+      },
+      {
+        "name": "unknown risk rejects report",
+        "status": "PASS"
+      },
+      {
+        "name": "missing measurement rejects report",
+        "status": "PASS"
+      },
+      {
+        "name": "appointment handoff stores current report id",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-03 rejects severe score invalid",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-03 rejects severe score 70",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-03 rejects severe score NaN",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-03 rejects severe score Infinity",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-03 rejects severe score -1",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-03 rejects severe score 101",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-03 rejects severe score 70.5",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-03 rejects severe score 0",
+        "status": "PASS"
+      },
+      {
+        "name": "RESULT-01 repeat preserves stored score and conflicting score returns409",
+        "status": "PASS"
+      }
+    ]
+  },
+  "related": [
+    {
+      "script": "snore-functional.cjs",
+      "scope": "actual page and snore handler; mocked wx/API/session/ownership resolver/DB; synthetic PCM",
+      "total": 17,
+      "passed": 17,
+      "failed": 0,
+      "results": [
+        {
+          "name": "SNORE-01 early recorder stop resets recording state",
+          "status": "PASS"
+        },
+        {
+          "name": "SNORE-02 failed member load must prevent recording start",
+          "status": "PASS"
+        },
+        {
+          "name": "SNORE-03 result rejects missing measurements",
+          "status": "PASS"
+        },
+        {
+          "name": "SNORE-04 repeated upload of same local record does not create twice",
+          "status": "PASS"
+        },
+        {
+          "name": "pause then resume keeps duration and restores recording mode",
+          "status": "PASS"
+        },
+        {
+          "name": "short PCM file is rejected before submitting",
+          "status": "PASS"
+        },
+        {
+          "name": "normal client analysis sends metrics only, no audio",
+          "status": "PASS"
+        },
+        {
+          "name": "pending report submission coalesces duplicate calls",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects duration 4",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects duration 601",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects duration 5.5",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects unowned patient resolver failure",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects malformed metrics {\"snoreRate\":101}",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects malformed metrics {\"apneaEvents\":-1}",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects malformed metrics {\"peakDecibel\":20}",
+          "status": "PASS"
+        },
+        {
+          "name": "backend rejects malformed metrics {\"riskLevel\":\"unknown\"}",
+          "status": "PASS"
+        },
+        {
+          "name": "backend accepts five-second valid report",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "script": "snore-fix-01-check.cjs",
+      "scope": "developer isolation checks; unique constraint simulated, not real MySQL",
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "results": [
+        {
+          "name": "concurrent identical retries return same id with one insert",
+          "status": "PASS"
+        },
+        {
+          "name": "same key with changed contents returns conflict without another insert",
+          "status": "PASS"
+        },
+        {
+          "name": "different recordings with identical measurements remain distinct",
+          "status": "PASS"
+        },
+        {
+          "name": "legacy timestamp queue retries deduplicate",
+          "status": "PASS"
+        },
+        {
+          "name": "initial upload and queued retry keep same recording identity",
+          "status": "PASS"
+        }
+      ]
+    }
+  ],
+  "syntax": "4 modified business JS files passed node --check",
+  "limits": [
+    "MySQL migration not executed",
+    "backend not restarted",
+    "visual and device verification not performed",
+    "historical missing risk scores cannot be reconstructed exactly"
+  ]
+}

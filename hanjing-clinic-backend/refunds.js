@@ -84,7 +84,7 @@ async function settleRefund(conn, order, succeededAt, providerRefundId = null) {
       refund_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [providerRefundId, succeededAt, order.id]);
     await syncUserMembership(order.user_id, conn);
     for (const distributorId of new Set(commissions.map(row => row.distributor_id))) {
-      const [[row]] = await conn.execute("SELECT COUNT(DISTINCT order_id) AS count FROM distribution_orders WHERE distributor_id = ? AND commission_level = 1 AND status != 'refunded'", [distributorId]);
+      const [[row]] = await conn.execute("SELECT COUNT(DISTINCT order_id) AS count FROM distribution_orders WHERE distributor_id = ? AND commission_level IN (1,3) AND status != 'refunded'", [distributorId]);
       await conn.execute('UPDATE distributors SET level = ? WHERE id = ?', [row.count >= 50 ? 'diamond' : row.count >= 10 ? 'gold' : 'silver', distributorId]);
     }
     await conn.execute("INSERT INTO user_notifications (user_id, title, content, type) VALUES (?, '退款成功', ?, 'order')",

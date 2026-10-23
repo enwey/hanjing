@@ -1,9 +1,10 @@
 const api = require('../../../api/index');
+const sessionStore = require('../../../stores/session-store');
 
 function getEssLevelInfo(score) {
   if (score <= 5) {
     return {
-      level: '正常（低嗜睡倾向）',
+      level: '正常',
       color: 'linear-gradient(135deg, #10B981, #059669)',
       desc: '您的日间嗜睡程度在正常范围内，白天精神状态良好。',
       advice: '保持现有作息规律，定期关注睡眠质量变化。如仍存在打鼾问题，建议进行睡眠评估。',
@@ -16,28 +17,15 @@ function getEssLevelInfo(score) {
   }
   if (score <= 10) {
     return {
-      level: '正常偏高',
+      level: '轻度嗜睡',
       color: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
-      desc: '您的日间嗜睡程度略高于正常范围，可能存在轻度睡眠质量下降。',
+      desc: '本次评估记录为轻度嗜睡，请结合自身情况关注睡眠质量。',
       advice: '注意保持规律作息，避免熬夜。建议使用 APP 内的 AI 鼾声分析功能，了解夜间睡眠状况。',
       adviceBg: '#eff6ff',
       adviceBorder: '#bfdbfe',
       adviceTitleColor: '#1e40af',
       adviceTextColor: '#1d4ed8',
       adviceIcon: '/static/icons/info.svg',
-    };
-  }
-  if (score <= 12) {
-    return {
-      level: '轻度嗜睡',
-      color: 'linear-gradient(135deg, #F59E0B, #D97706)',
-      desc: '您存在轻度日间过度嗜睡，可能影响日常工作和生活质量。',
-      advice: '建议在线预约睡眠呼吸门诊，进行专业的睡眠评估。及早干预可有效改善睡眠质量。',
-      adviceBg: '#fffbeb',
-      adviceBorder: '#fde68a',
-      adviceTitleColor: '#92400e',
-      adviceTextColor: '#b45309',
-      adviceIcon: '/static/icons/alert.svg',
     };
   }
   if (score <= 15) {
@@ -57,7 +45,7 @@ function getEssLevelInfo(score) {
     level: '重度嗜睡',
     color: 'linear-gradient(135deg, #EF4444, #B91C1C)',
     desc: '您存在重度日间嗜睡，可能对健康和安全造成严重影响。',
-    advice: '请立即预约鼾静健康门诊进行专业诊断。建议避免长途驾驶，尽快进行多导睡眠监测。',
+    advice: '请立即预约兴康明门诊进行专业诊断。建议避免长途驾驶，尽快进行多导睡眠监测。',
     adviceBg: '#fef2f2',
     adviceBorder: '#fee2e2',
     adviceTitleColor: '#991b1b',
@@ -95,27 +83,45 @@ Page({
   },
 
   async onShow() {
+    this._unloaded = false;
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onUnload() {
+    this._unloaded = true;
+    this._requestId = (this._requestId || 0) + 1;
+  },
+
   async loadPage(options = {}) {
-    const silent = !!options.silent;
-    if (!silent) {
-      this.setData({ isLoading: true });
-    }
+    if (this._unloaded) return;
+    const requestId = this._requestId = (this._requestId || 0) + 1;
+    const generation = sessionStore.getLoginGeneration();
+    const current = () => !this._unloaded && requestId === this._requestId &&
+      sessionStore.isLoggedIn() && sessionStore.getLoginGeneration() === generation;
+    this.setData({ isLoading: sessionStore.isLoggedIn(), hasLoaded: true,
+      resultDetail: null, questionList: [], score: 0, levelInfo: null, answerReviewList: [] });
+    if (!sessionStore.isLoggedIn()) return;
     try {
       const assessmentId = (this.options && this.options.id) || '';
       const questionsResponse = await api.getESSQuestions();
+      if (!current()) return;
       const questionList = unwrapList(questionsResponse);
       let resultDetail = null;
       if (assessmentId) {
         const detailResponse = await api.getAssessmentDetail(assessmentId);
+        if (!current()) return;
         const payload = (detailResponse && detailResponse.data) || detailResponse || null;
         if (payload && payload.type === 'ess') {
           resultDetail = payload;
         }
       } else {
-        resultDetail = wx.getStorageSync('last_ess_assessment_result') || null;
+        const profile = await sessionStore.fetchProfile();
+        if (!current()) return;
+        const cached = wx.getStorageSync('last_ess_assessment_result');
+        if (profile && profile.id && cached && cached.userId &&
+            String(cached.userId) === String(profile.id) && cached.type === 'ess') {
+          resultDetail = cached;
+        }
       }
       const score = Number((resultDetail && resultDetail.essScore) || 0);
       const levelInfo = resultDetail ? getEssLevelInfo(score) : null;
@@ -140,8 +146,10 @@ Page({
         hasLoaded: true,
       });
     } catch (error) {
+      if (this._unloaded || requestId !== this._requestId) return;
       console.error('加载结果详情失败', error);
-      this.setData({ isLoading: false, hasLoaded: true });
+      this.setData({ isLoading: false, hasLoaded: true, resultDetail: null,
+        questionList: [], score: 0, levelInfo: null, answerReviewList: [] });
     }
   },
 

@@ -1,0 +1,120 @@
+PASS UI-01 initial consent/modal/submitting are false
+PASS UI-02 template password masked and both submit methods guarded
+PASS UI-03 linked agreement/privacy pages registered and files exist
+PASS CONSENT-01 password modal blocked before agreement
+PASS CONSENT-02 agreement/revoke respected
+PASS CONSENT-03 password callback cannot bypass consent
+PASS CONSENT-03 wechat callback cannot bypass consent
+PASS INPUT phone rejected [empty]
+PASS INPUT phone rejected [123]
+PASS INPUT phone rejected [1380000000]
+PASS INPUT phone rejected [138000000000]
+PASS INPUT phone rejected [23800000000]
+PASS INPUT phone rejected [138abc00000]
+PASS INPUT empty password rejected
+PASS INPUT phone sanitization and 11 digit maximum
+PASS INPUT password maximum 20 and whitespace preserved
+PASS INPUT explicit cancel clears credentials
+PASS AUTH password successful token/profile/single redirect
+PASS AUTH password failure 400
+PASS AUTH password failure 401
+PASS AUTH password failure 403
+PASS AUTH password failure 404
+PASS AUTH password failure 429
+PASS AUTH password failure 500
+PASS AUTH password failure network
+PASS AUTH password failure missing-token
+PASS PROFILE password 401
+PASS PROFILE password 500
+PASS PROFILE password network
+PASS CONCURRENCY password 20 submissions plus other method
+PASS LIFECYCLE password unload cancels delayed navigation
+PASS AUTH wechat successful token/profile/single redirect
+PASS AUTH wechat failure 400
+PASS AUTH wechat failure 401
+PASS AUTH wechat failure 403
+PASS AUTH wechat failure 404
+PASS AUTH wechat failure 429
+PASS AUTH wechat failure 500
+PASS AUTH wechat failure network
+PASS AUTH wechat failure missing-token
+PASS PROFILE wechat 401
+PASS PROFILE wechat 500
+PASS PROFILE wechat network
+PASS CONCURRENCY wechat 20 submissions plus other method
+PASS LIFECYCLE wechat unload cancels delayed navigation
+PASS WX cancelled authorization does not authenticate
+PASS WX wx.login failure releases submission lock
+PASS WX error text is limited to 120 characters
+PASS NAV redirect default
+PASS NAV redirect https://example.invalid
+PASS NAV redirect /pages/product/index?a=1
+PASS NAV redirect /pages/auth/privacy/index?a=1
+PASS NAV return uses stack
+PASS NAV return stack failure uses home fallback
+PASS NAV explicit return query preserved
+PASS NAV failure releases submission lock
+PASS SESSION valid stored token restores authentication
+PASS INVITE bound removes pending invitation
+PASS INVITE already_bound removes pending invitation
+PASS INVITE ignored_self removes pending invitation
+PASS INVITE transient failure retains invitation without failing login
+PASS SESSION expired token not authenticated
+PASS SESSION invalid token format rejected
+PASS SESSION logout isolates patient and preserves pending private caches
+PASS REFRESH 30 concurrent success
+PASS REFRESH 30 concurrent 503
+PASS REFRESH 30 concurrent network
+PASS REFRESH 30 concurrent missing-token
+PASS REFRESH 30 concurrent wx-fail
+PASS RETRY failed password auth can be resubmitted
+PASS EDGE diagnostic log delay must not prevent auth request
+PASS EDGE unloading before session starts must cancel auth
+PASS EDGE stale original 401 must not clear a newer session
+PASS EDGE logout during refresh must remain logged out
+PASS EDGE late open-type error must not show dialog after unload
+PASS EDGE renewed account must not inherit previous patient
+PASS EDGE token with undecodable payload is not authenticated
+PASS EDGE development environment switch also moves diagnostic destination
+PASS RISK unload during auth balances loading calls (visual result untested)
+PASS FIX cancellation while wx.login pending prevents API request
+PASS FIX password cancelled response cannot commit session
+PASS FIX wechat cancelled response cannot commit session
+PASS FIX rejecting diagnostics do not fail successful login
+PASS FIX refresh response cannot overwrite replacement session
+PASS FIX same-token replacement still protects session generation
+PASS REG BUG-01 refresh without wx code settles 30 callers
+PASS REG BUG-01 failed refresh permits later fresh login and refresh
+PASS REG BUG-05 all wechat diagnostic promises may remain pending
+PASS REG BUG-07 delayed retry 401 preserves replacement session
+PASS REG BUG-08 logout cancels all 30 refresh waiters without reauthentication
+PASS REG BUG-08 logout before wx refresh callback prevents auth request
+PASS REG BUG-10 invalid payload null
+PASS REG BUG-10 invalid payload []
+PASS REG BUG-10 invalid payload {}
+PASS REG BUG-10 invalid payload {"exp":"4102444800"}
+PASS REG BUG-10 invalid payload {"exp":0}
+PASS REG BUG-10 invalid payload {"exp":-1}
+PASS REG BUG-11 normal and immediate logs follow switch from local
+PASS REG BUG-11 normal and immediate logs follow switch from production
+PASS REG RISK-01 password unload during profile balances loading
+PASS REG RISK-01 wechat unload during profile balances loading
+PASS REG stale successful profile must not overwrite replacement account profile
+PASS FIX12 late profile after logout is rejected without restoring profile
+PASS FIX12 same-token new login still rejects old profile
+PASS FIX12 automatic token refresh still allows current profile response
+PASS FIX12 account switch while refreshed profile is pending rejects old data
+PASS FIXR loading closes immediately on unload and late failure leaves next page alone password
+PASS FIXR loading closes immediately on unload and late failure leaves next page alone wechat
+PASS FIXR unload without login does not hide another page loading
+PASS FIXR unknown old records are archived not deleted or adopted
+PASS FIXR owned pending data restored only when original account logs back in
+PASS FIXR late patient context response cannot restore previous members
+PASS FIXR failed authentication does not move account caches
+PASS REG5 archive write failure must not leave explicitly logged-out session active
+PASS REG5 archive write failure on account switch preserves previous account and data
+PASS REG5 expired account cache ownership survives restart and switching back
+PASS FIX13 logout archive failure clears auth and members without losing pending records
+PASS FIX13 archive failure blocks new account until recovery and retains old records
+PASS FIX13 pending refresh cannot resurrect session after archive failure on logout
+TOTAL 119 PASS 119 FAIL 0

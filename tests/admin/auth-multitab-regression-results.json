@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-22",
+  "target": "ADMIN-AUTH-06 multi-tab logout synchronization",
+  "browser": "Google Chrome headless via DevTools Protocol",
+  "result": "passed",
+  "second_tab_after_first_tab_clears_auth": {
+    "path": "/login",
+    "token": null,
+    "shows_workbench": false
+  },
+  "expired_token_seven_days_past": {
+    "path": "/login",
+    "token": null,
+    "user": null
+  },
+  "issued_token_ttl_seconds": 604800,
+  "temporary_accounts_remaining": 0
+}

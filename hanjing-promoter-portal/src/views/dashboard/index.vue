@@ -28,6 +28,35 @@ const overview = ref({
 const commissions = ref<any[]>([])
 const loading = ref(true)
 const loadError = ref(false)
+const qrImage = ref('')
+const qrLoading = ref(false)
+const qrError = ref('')
+
+async function loadQr() {
+  if (qrLoading.value) return
+  qrLoading.value = true
+  qrError.value = ''
+  try {
+    const res:any = await request.get('/api/promoter/qr')
+    if (!res.data?.image) throw new Error('Missing QR image')
+    qrImage.value = res.data.image
+  } catch {
+    qrImage.value = ''
+    qrError.value = '小程序码暂时无法获取'
+  }
+  finally { qrLoading.value = false }
+}
+
+function downloadQr() {
+  if (!qrImage.value) return
+  const link = document.createElement('a')
+  link.href = qrImage.value
+  link.download = `${promoter.value.nickname || '推广员'}-预约推广小程序码.png`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  MessagePlugin.success('小程序码已下载')
+}
 
 function yuan(value: number) {
   return (Number(value || 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })
@@ -50,7 +79,10 @@ async function loadData() {
   }
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  loadQr()
+})
 </script>
 
 <template>
@@ -60,10 +92,25 @@ onMounted(loadData)
     <template v-else>
     <t-alert v-if="overview.reconciliationRequired" theme="warning" message="佣金账务待核对，提现暂不可用，请联系运营人员。" />
     <div class="hero-card">
-      <div>
+      <div class="hero-profile">
         <div class="hero-title">{{ promoter.nickname || '推广员' }}</div>
         <div class="hero-sub">
           {{ promoter.levelLabel || '推广员' }} · 邀请码 {{ promoter.inviteCode || '—' }} · {{ promoter.phone || '未绑定手机号' }}
+        </div>
+      </div>
+      <div class="hero-qr" aria-label="预约推广小程序码">
+        <div class="qr-preview">
+          <img v-if="qrImage" :src="qrImage" alt="预约推广小程序码" />
+          <t-loading v-else-if="qrLoading" size="small" text="获取中" />
+          <div v-else class="qr-error">
+            <span>{{ qrError || '暂无小程序码' }}</span>
+            <button type="button" @click="loadQr">重新获取</button>
+          </div>
+        </div>
+        <div class="qr-actions">
+          <strong>预约推广小程序码</strong>
+          <span>患者扫码后进入预约流程</span>
+          <t-button size="small" variant="outline" :disabled="!qrImage" @click="downloadQr">下载小程序码</t-button>
         </div>
       </div>
       <div class="hero-income">
@@ -172,6 +219,11 @@ onMounted(loadData)
   font-weight: 700;
 }
 
+.hero-profile {
+  min-width: 0;
+  flex: 1;
+}
+
 .hero-sub {
   margin-top: 8px;
   font-size: 13px;
@@ -183,6 +235,77 @@ onMounted(loadData)
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+}
+
+.hero-qr {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.qr-preview {
+  width: 104px;
+  height: 104px;
+  flex: 0 0 104px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.qr-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.qr-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  color: #64748b;
+  text-align: center;
+  font-size: 12px;
+}
+
+.qr-error button {
+  border: 0;
+  padding: 0;
+  color: #2563eb;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.qr-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.qr-actions strong {
+  font-size: 14px;
+}
+
+.qr-actions span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.qr-actions :deep(.t-button--variant-outline) {
+  border-color: rgba(255, 255, 255, 0.72);
+  color: #fff;
 }
 
 .hero-income span {
@@ -275,5 +398,46 @@ onMounted(loadData)
   text-align: center;
   color: #94a3b8;
   padding: 34px 0;
+}
+
+@media (max-width: 960px) {
+  .hero-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .hero-profile {
+    flex-basis: calc(100% - 150px);
+  }
+
+  .hero-qr {
+    order: 3;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero-profile {
+    flex-basis: 100%;
+  }
+
+  .hero-income {
+    align-items: flex-start;
+  }
+
+  .hero-qr {
+    align-items: flex-start;
+  }
+
+  .qr-preview {
+    width: 88px;
+    height: 88px;
+    flex-basis: 88px;
+  }
+
+  .qr-actions span {
+    white-space: normal;
+  }
 }
 </style>

@@ -11,6 +11,8 @@ const ESS_LEVEL_LABEL_MAP = {
 };
 
 const SNORE_LEVEL_LABEL_MAP = {
+  high: '重度风险',
+  medium: '中度风险',
   normal: '正常',
   low: '低风险',
   mild: '轻度风险',
@@ -42,8 +44,8 @@ function unwrapList(response) {
 }
 
 function getRiskColor(level) {
-  if (level === 'severe') return '#ef4444';
-  if (level === 'moderate') return '#f59e0b';
+  if (level === 'severe' || level === 'high') return '#ef4444';
+  if (level === 'moderate' || level === 'medium') return '#f59e0b';
   if (level === 'mild') return '#2457e6';
   return '#22c55e';
 }
@@ -84,17 +86,43 @@ Page({
   },
 
   async onShow() {
+    this._unloaded = false;
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onUnload() {
+    this._unloaded = true;
+    this._requestId = (this._requestId || 0) + 1;
+  },
+
+  clearAccountData() {
+    this.setData({ records: [], memberList: [], memberNames: [], memberIndex: 0,
+      selectedMemberName: '本人', selectedMemberId: '', pendingCount: 0,
+      hasLoaded: false, loading: false, loadError: '', isLoggedIn: sessionStore.isLoggedIn() });
+  },
+
+  requestIsCurrent(requestId, generation) {
+    if (this._unloaded || requestId !== this._requestId) return false;
+    if (!sessionStore.isLoggedIn() || generation !== sessionStore.getLoginGeneration()) {
+      this.clearAccountData();
+      return false;
+    }
+    return true;
+  },
+
   async loadPage(options = {}) {
+    if (this._unloaded) return;
+    const requestId = this._requestId = (this._requestId || 0) + 1;
+    const generation = sessionStore.getLoginGeneration();
+    if (this._generation !== generation || !sessionStore.isLoggedIn()) this.clearAccountData();
+    this._generation = generation;
     const silent = !!options.silent;
     const isLoggedIn = sessionStore.isLoggedIn();
     this.setData({
       loading: silent ? false : isLoggedIn,
       isLoggedIn,
       loadError: silent ? this.data.loadError : '',
-      records: silent ? this.data.records : [],
+      records: silent && isLoggedIn ? this.data.records : [],
     });
 
     this.checkPendingCount();
@@ -104,17 +132,33 @@ Page({
     }
 
     try {
-      await api.syncPendingSnoreRecordings();
+      // Offline upload failures must not hide existing online history.
+      try {
+        await api.syncPendingSnoreRecordings();
+      } catch (error) {
+        if (this.requestIsCurrent(requestId, generation)) {
+          wx.showToast({ title: (error && error.message) || '离线记录同步失败', icon: 'none' });
+        }
+      }
+      if (!this.requestIsCurrent(requestId, generation)) return;
       this.checkPendingCount();
-      await this.ensureFamilyMembers();
+      await this.ensureFamilyMembers(requestId, generation);
+      if (!this.requestIsCurrent(requestId, generation)) return;
       const assessmentsResponse = await api.getAssessments(this.data.selectedMemberId ? { patientId: this.data.selectedMemberId } : {});
+      if (!this.requestIsCurrent(requestId, generation)) return;
       const records = unwrapList(assessmentsResponse).map(normalizeAssessmentRecord);
       this.setData({
         hasLoaded: true,
         loading: false,
+        loadError: '',
         records,
       });
     } catch (error) {
+      if (!this.requestIsCurrent(requestId, generation)) return;
+      if (error && (error.statusCode === 401 || error.statusCode === 403)) {
+        this.clearAccountData();
+        return;
+      }
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
@@ -127,9 +171,10 @@ Page({
     }
   },
 
-  async ensureFamilyMembers() {
+  async ensureFamilyMembers(requestId, generation) {
     if (this.data.memberList.length) return;
     const membersResponse = await api.getFamilyMembers();
+    if (!this.requestIsCurrent(requestId, generation)) return;
     const memberList = unwrapList(membersResponse);
     const memberNames = memberList.map((member) => (member.name || '') + '（' + (RELATION_LABEL_MAP[member.relation] || member.relation || '成员') + '）');
     const selfIndex = memberList.findIndex((member) => member.relation === 'self');
@@ -145,6 +190,12 @@ Page({
   },
 
   async onMemberChange(event) {
+    if (this._unloaded || !sessionStore.isLoggedIn()) return;
+    const generation = sessionStore.getLoginGeneration();
+    if (this._generation !== undefined && this._generation !== generation) {
+      return this.loadPage();
+    }
+    const requestId = this._requestId = (this._requestId || 0) + 1;
     const memberIndex = Number(event.detail.value || 0);
     const selectedMember = this.data.memberList[memberIndex];
     if (!selectedMember) return;
@@ -158,9 +209,11 @@ Page({
     });
     try {
       const assessmentsResponse = await api.getAssessments(this.data.selectedMemberId ? { patientId: this.data.selectedMemberId } : {});
+      if (!this.requestIsCurrent(requestId, generation)) return;
       const records = unwrapList(assessmentsResponse).map(normalizeAssessmentRecord);
-      this.setData({ loading: false, records });
+      this.setData({ loading: false, loadError: '', records });
     } catch (error) {
+      if (!this.requestIsCurrent(requestId, generation)) return;
       this.setData({
         loading: false,
         loadError: (error && error.message) || '加载评估记录失败',
@@ -169,6 +222,10 @@ Page({
   },
 
   checkPendingCount() {
+    if (!sessionStore.isLoggedIn()) {
+      this.setData({ pendingCount: 0 });
+      return;
+    }
     const pending = wx.getStorageSync('pending_snore_uploads') || [];
     this.setData({ pendingCount: Array.isArray(pending) ? pending.length : 0 });
   },

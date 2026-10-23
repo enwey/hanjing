@@ -1,7 +1,7 @@
 const routeRegistry = [
   {
     "path": "pages/index/index",
-    "title": "鼾静健康诊所"
+    "title": "兴康明诊所"
   },
   {
     "path": "pages/appointment/index",
@@ -9,7 +9,7 @@ const routeRegistry = [
   },
   {
     "path": "pages/appointment/booking/index",
-    "title": "预约挂号"
+    "title": "预约记录"
   },
   {
     "path": "pages/assessment/index",

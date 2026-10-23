@@ -10,6 +10,7 @@ const EVENT_TEMPLATE_KEYS = {
   visit_reminder: ['wechat_template_visit_reminder', 'appointment_subscribe_template_ids'],
   revisit_reminder: ['wechat_template_revisit_reminder', 'appointment_subscribe_template_ids'],
   order_status: ['wechat_template_order_status'],
+  payment_due: ['wechat_template_order_status'],
   withdraw_result: ['wechat_template_withdraw_result'],
   withdraw_paid: ['wechat_template_withdraw_paid', 'wechat_template_withdraw_result'],
   commission_settled: ['wechat_template_commission_settled'],
@@ -62,7 +63,7 @@ function character(value) {
 function buildTemplateData(event, payload = {}) {
   if (event.startsWith('appointment_') || event === 'visit_reminder' || event === 'revisit_reminder') {
     return {
-      name1: name(payload.patientName || payload.storeName || '鼾静健康'),
+      name1: name(payload.patientName || payload.storeName || '兴康明'),
       date3: date(payload.appointmentTime || payload.dateTime || payload.date || ''),
       thing69: thing(payload.doctorName || payload.storeName || '门诊服务'),
       phrase14: phrase(payload.status || payload.statusText || '提醒'),
@@ -70,7 +71,7 @@ function buildTemplateData(event, payload = {}) {
     };
   }
 
-  if (event === 'order_status') {
+  if (event === 'order_status' || event === 'payment_due') {
     return {
       character_string6: character(payload.orderNo || ''),
       phrase2: phrase(payload.status || payload.statusText || '通知'),
@@ -317,7 +318,7 @@ export async function processRevisitReminders() {
       page: 'pages/treatment/index',
       payload: {
         patientName: row.patient_name,
-        doctorName: '鼾静健康',
+        doctorName: '兴康明',
         appointmentTime: String(row.next_adjust_date).slice(0, 10),
         status: '复诊',
         remark: row.device_name_snapshot || row.device_model || '阻鼾器调整'

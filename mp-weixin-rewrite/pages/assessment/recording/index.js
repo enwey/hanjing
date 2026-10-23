@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const sessionStore = require('../../../stores/session-store');
 
 const RELATION_LABEL_MAP = {
   self: '本人',
@@ -75,7 +76,9 @@ function calculateStdDev(values, average) {
 }
 
 function calculateGoertzelPower(pcmData, start, end, sampleRate, frequency) {
-  const step = 2;
+  // Keep all samples: the frequency grid uses the original sample rate,
+  // including noise frequencies above the Nyquist limit of a halved rate.
+  const step = 1;
   const sampleCount = Math.max(1, Math.floor((end - start) / step));
   const omega = (2 * Math.PI * frequency) / sampleRate;
   const coefficient = 2 * Math.cos(omega);
@@ -263,11 +266,26 @@ Page({
   },
 
   onLoad(options) {
+    this._unloaded = false;
     this.setData({ initialPatientId: options && options.patientId ? String(options.patientId) : '' });
     this.bindRecorderEvents();
   },
 
   async onShow() {
+    const generation = sessionStore.getLoginGeneration();
+    if (this._generation !== generation || !sessionStore.isLoggedIn()) {
+      this._starting = null;
+      this._savedReportUrl = '';
+      this.ignoreNextStop = true;
+      if (this.data.isRecording || this.data.hasRecordingEnded) {
+        try { recorderManager.stop(); } catch (error) { console.error(error); }
+      }
+      this.resetStoppedRecording();
+      if (this._generation !== undefined) this.setData({ initialPatientId: '' });
+      this._generation = generation;
+      this.setData({ hasLoaded: false, memberList: [], memberNames: [], memberIndex: 0, selectedMemberId: '', selectedMemberName: '本人', tempFilePath: '' });
+    }
+    if (!sessionStore.isLoggedIn()) return;
     if (this.data.hasLoaded) {
       return;
     }
@@ -279,24 +297,40 @@ Page({
   },
 
   onUnload() {
+    this._unloaded = true;
+    this.ignoreNextStop = true;
     this.clearTimers();
     this.restoreScreenBrightness();
+    if (recorderManager.offStop) recorderManager.offStop(this._onRecorderStop);
+    if (recorderManager.offError) recorderManager.offError(this._onRecorderError);
+    if (recorderManager.offFrameRecorded) recorderManager.offFrameRecorded(this._onRecorderFrame);
+    if (this.data.isRecording || this.data.hasRecordingEnded) {
+      try { recorderManager.stop(); } catch (error) { console.error('Stop recorder on unload failed', error); }
+    }
   },
 
   bindRecorderEvents() {
-    recorderManager.onStop((result) => {
+    this._onRecorderStop = (result) => {
+      if (this._unloaded) return;
       if (this.ignoreNextStop) {
         this.ignoreNextStop = false;
         return;
       }
       this.setData({ tempFilePath: result.tempFilePath || '' });
       this.clearTimers();
+      if (this.data.recordingDurationSeconds < 5) {
+        this.resetStoppedRecording();
+        wx.showToast({ title: '录音时间过短，请至少录制5秒', icon: 'none' });
+        return;
+      }
       this.submitRecording();
-    });
-    recorderManager.onError((error) => {
+    };
+    this._onRecorderError = (error) => {
+      if (this._unloaded) return;
       this.handleRecorderError(error);
-    });
-    recorderManager.onFrameRecorded((result) => {
+    };
+    this._onRecorderFrame = (result) => {
+      if (this._unloaded) return;
       try {
         const pcm = toPcmInt16Array(result.frameBuffer);
         if (!pcm.length) return;
@@ -315,10 +349,14 @@ Page({
       } catch (error) {
         console.error('Frame volume calc error', error);
       }
-    });
+    };
+    recorderManager.onStop(this._onRecorderStop);
+    recorderManager.onError(this._onRecorderError);
+    recorderManager.onFrameRecorded(this._onRecorderFrame);
   },
 
   handleRecorderError(error) {
+    this._starting = null;
     console.error('Recorder error', error);
     this.ignoreNextStop = true;
     this.clearTimers();
@@ -345,14 +383,18 @@ Page({
 
   enqueuePendingSnoreRecording(payload) {
     const pending = wx.getStorageSync('pending_snore_uploads') || [];
-    const nextPending = Array.isArray(pending) ? pending : [];
+    const nextPending = Array.isArray(pending) ? pending.slice() : [];
     nextPending.push(Object.assign({ localId: 'snore_' + Date.now() }, payload));
     return safeSetStorage('pending_snore_uploads', nextPending);
   },
 
   async loadFamilyMembers() {
+    const generation = sessionStore.getLoginGeneration();
+    this._generation = generation;
+    const requestId = this._membersRequest = (this._membersRequest || 0) + 1;
     try {
       const response = await api.getFamilyMembers();
+      if (this._unloaded || requestId !== this._membersRequest || !sessionStore.isLoggedIn() || generation !== sessionStore.getLoginGeneration()) return;
       const memberList = unwrapList(response);
       const memberNames = memberList.map((member) => `${member.name}（${RELATION_LABEL_MAP[member.relation] || member.relation || '成员'}）`);
       const initialPatientId = this.data.initialPatientId;
@@ -404,12 +446,14 @@ Page({
   },
 
   async dimScreenForRecording() {
-    if (this.hasDimmedScreen) return;
+    if (this._unloaded || this.hasDimmedScreen) return;
     await this.rememberCurrentScreenBrightness();
+    if (this._unloaded) return;
     wx.setScreenBrightness({
       value: 0.01,
       success: () => {
         this.hasDimmedScreen = true;
+        if (this._unloaded) this.restoreScreenBrightness();
       },
     });
   },
@@ -433,11 +477,34 @@ Page({
   },
 
   async startRecording() {
+    if (this._unloaded || this._starting || this._submittingRecording || this.data.isRecording || this.data.isAnalyzing) return;
+    const generation = sessionStore.getLoginGeneration();
+    if (!sessionStore.isLoggedIn() || (this._generation !== undefined && this._generation !== generation)) {
+      await this.onShow();
+      return;
+    }
+    const attempt = {};
+    this._starting = attempt;
+    const current = () => !this._unloaded && this._starting === attempt && sessionStore.isLoggedIn() && generation === sessionStore.getLoginGeneration();
+    try {
+    if (!this.data.hasLoaded || !this.data.selectedMemberId) await this.loadFamilyMembers();
+    if (!current()) return;
+    if (!this.data.selectedMemberId || !this.data.memberList.some(member => String(member.id) === this.data.selectedMemberId)) {
+      this._starting = null;
+      wx.showToast({ title: '请先加载或建立就诊人，再开始录音', icon: 'none' });
+      return;
+    }
     wx.authorize({
       scope: 'scope.record',
       success: async () => {
+        try {
+        if (!current()) return;
         this.ignoreNextStop = false;
         await this.dimScreenForRecording();
+        if (!current()) { this.restoreScreenBrightness(); return; }
+        this._savedReportUrl = '';
+        this._recordingTimestamp = Date.now();
+        this._recordingLocalId = 'snore_' + this._recordingTimestamp + '_' + Math.random().toString(36).slice(2, 12);
         this.clearTimers();
         this.setData({
           isRecording: true,
@@ -461,8 +528,15 @@ Page({
           format: 'pcm',
           frameSize: 2,
         });
+        } catch (error) {
+          if (current()) this.handleRecorderError(error);
+        } finally {
+          if (this._starting === attempt) this._starting = null;
+        }
       },
       fail: () => {
+        if (!current()) return;
+        this._starting = null;
         wx.showModal({
           title: '授权提示',
           content: '我们需使用麦克风来分析您的鼾声，请在系统设置中开启麦克风录音权限。',
@@ -473,6 +547,10 @@ Page({
         });
       },
     });
+    } catch (error) {
+      if (current()) this.handleRecorderError(error);
+      if (this._starting === attempt) this._starting = null;
+    }
   },
 
   pauseRecording() {
@@ -505,6 +583,8 @@ Page({
   },
 
   stopAndAnalyze() {
+    if (this._savedReportUrl) { this.openSavedReport(); return; }
+    if (this.data.isAnalyzing) return;
     if (this.data.recordingDurationSeconds < 5) {
       wx.showToast({ title: '录音时间过短，分析前请至少录制5秒', icon: 'none' });
       return;
@@ -516,6 +596,8 @@ Page({
   },
 
   onMicTap() {
+    if (this._unloaded || this._starting || this._submittingRecording || this.data.isAnalyzing) return;
+    if (this._savedReportUrl) { this.openSavedReport(); return; }
     if (this.data.isRecording) {
       this.pauseRecording();
     } else if (this.data.hasRecordingEnded) {
@@ -525,14 +607,51 @@ Page({
     }
   },
 
+  resetStoppedRecording() {
+    this.clearTimers();
+    this.restoreScreenBrightness();
+    this.setData({ isRecording: false, hasRecordingEnded: false, isAnalyzing: false,
+      isSubmitting: false, disabledSelector: false, recordingDurationSeconds: 0,
+      durationText: '00:00', audioLevels: new Array(16).fill(6), statusText: INITIAL_STATUS_TEXT });
+  },
+
+  openSavedReport() {
+    if (this._unloaded || !this._savedReportUrl) return;
+    if (!sessionStore.isLoggedIn() || this._savedReportGeneration !== sessionStore.getLoginGeneration()) {
+      this._savedReportUrl = '';
+      this.onShow();
+      return;
+    }
+    const url = this._savedReportUrl;
+    const generation = this._savedReportGeneration;
+    this.setData({ isAnalyzing: true });
+    const fail = () => {
+      if (this._unloaded || generation !== sessionStore.getLoginGeneration()) return;
+      this.resetStoppedRecording();
+      this.setData({ isSubmitting: true, disabledSelector: true, statusText: '报告已保存，点击重试打开报告' });
+      wx.showToast({ title: '报告打开失败，请点击重试', icon: 'none' });
+    };
+    try { wx.redirectTo({ url, fail }); } catch (error) { fail(); }
+  },
+
   async submitRecording() {
+    if (this._unloaded || this._submittingRecording) return;
+    if (this._savedReportUrl) { this.openSavedReport(); return; }
     if (this.data.recordingDurationSeconds < 5) {
       wx.showToast({ title: '录音时间过短，分析前请至少录制5秒', icon: 'none' });
       return;
     }
+    const generation = sessionStore.getLoginGeneration();
+    const current = () => !this._unloaded && sessionStore.isLoggedIn() && generation === sessionStore.getLoginGeneration();
+    if (!current() || (this._generation !== undefined && this._generation !== generation)) { await this.onShow(); return; }
+    this._submittingRecording = true;
+    this.setData({ isRecording: false, hasRecordingEnded: false, isAnalyzing: true,
+      disabledSelector: true, statusText: '正在分析...' });
+    this.clearTimers();
+    this.restoreScreenBrightness();
     try {
-      const sessionStore = require('../../../stores/session-store');
       const profile = await sessionStore.fetchProfile();
+      if (!current()) return;
       if (!profile || !profile.id || !this.data.selectedMemberId) throw new Error('请先确认账号及就诊人');
       const fileBuffer = wx.getFileSystemManager().readFileSync(this.data.tempFilePath);
       if (!fileBuffer || fileBuffer.byteLength < 8000 * 2 * 5) throw new Error('有效录音不足5秒，请重新录制');
@@ -545,28 +664,37 @@ Page({
         snoreAnalysis: Object.assign({ duration: this.data.recordingDurationSeconds }, analysisResult),
         createdAt: new Date().toISOString(),
       };
-      safeSetStorage('last_local_snore_result', localReport);
+      const localSaved = safeSetStorage('last_local_snore_result', localReport);
       const submitPayload = {
+        localId: this._recordingLocalId || (this._recordingLocalId = 'snore_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12)),
         ownerUserId: String(profile.id),
         duration: this.data.recordingDurationSeconds,
         client_side_analysis: true,
         analysis_result: analysisResult,
-        timestamp: Date.now(),
+        timestamp: this._recordingTimestamp || (this._recordingTimestamp = Date.now()),
         patientId: this.data.selectedMemberId,
       };
       try {
         const submitResponse = await api.submitSnoreRecording(submitPayload);
+        if (!current()) return;
         const createdRecord = (submitResponse && submitResponse.data) || submitResponse || {};
         if (!createdRecord.id) throw new Error('报告保存结果未确认');
-        wx.redirectTo({ url: '/pages/assessment/snore-result/index?id=' + createdRecord.id });
+        this._savedReportUrl = '/pages/assessment/snore-result/index?id=' + encodeURIComponent(createdRecord.id);
       } catch (error) {
+        if (!current()) return;
         if (error && error.statusCode >= 400 && error.statusCode < 500) throw error;
-        this.enqueuePendingSnoreRecording(submitPayload);
-        wx.redirectTo({ url: '/pages/assessment/snore-result/index?id=local&patientId=' + encodeURIComponent(this.data.selectedMemberId) });
+        const queued = this.enqueuePendingSnoreRecording(submitPayload);
+        if (!localSaved || !queued) throw new Error('本地保存未完成，请检查存储空间后重试；报告尚未同步');
+        this._savedReportUrl = '/pages/assessment/snore-result/index?id=local&patientId=' + encodeURIComponent(this.data.selectedMemberId);
       }
+      this._savedReportGeneration = generation;
+      this.openSavedReport();
     } catch (error) {
+      if (!current()) return;
       wx.showToast({ title: (error && error.message) || '分析失败，请重试', icon: 'none' });
-      this.setData({ isAnalyzing: false, isSubmitting: false, disabledSelector: false, statusText: INITIAL_STATUS_TEXT });
+      this.resetStoppedRecording();
+    } finally {
+      this._submittingRecording = false;
     }
   },
 

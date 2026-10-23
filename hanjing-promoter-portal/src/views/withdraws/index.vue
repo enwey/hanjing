@@ -6,6 +6,21 @@ import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 const status = ref('全部')
 const rows = ref<any[]>([])
+const applyVisible = ref(false)
+const submitting = ref(false)
+const form = ref({amount:0,bankName:'',accountName:'',account:''})
+async function submitWithdrawal() {
+  if (submitting.value) return
+  submitting.value = true
+  try {
+    await request.post('/api/promoter/withdraws', {...form.value,amount:Math.round(Number(form.value.amount)*100)})
+    MessagePlugin.success('提现申请已提交，等待运营审核')
+    applyVisible.value = false
+    form.value = {amount:0,bankName:'',accountName:'',account:''}
+    await loadData()
+  } catch { MessagePlugin.error('申请未完成，请检查金额和收款信息') }
+  finally { submitting.value = false }
+}
 const statusOptions = [
   { label: '全部状态', value: '全部' },
   { label: '待审核', value: 'pending' },
@@ -40,12 +55,20 @@ onMounted(loadData)
 
 <template>
   <div class="page-container">
+    <t-dialog v-model:visible="applyVisible" header="申请提现" :confirm-btn="{content:'提交申请',loading:submitting}" @confirm="submitWithdrawal">
+      <t-form label-width="90px">
+        <t-form-item label="金额（元）"><t-input-number v-model="form.amount" :min="0.01" :decimal-places="2" /></t-form-item>
+        <t-form-item label="开户银行"><t-input v-model="form.bankName" :maxlength="100" /></t-form-item>
+        <t-form-item label="收款户名"><t-input v-model="form.accountName" :maxlength="100" /></t-form-item>
+        <t-form-item label="银行账号"><t-input v-model="form.account" :maxlength="30" /></t-form-item>
+      </t-form>
+    </t-dialog>
     <div class="page-title-row">
       <div>
         <div class="page-title">我的提现</div>
         <div class="page-title-sub">展示当前推广员本人历史提现记录与处理状态</div>
       </div>
-      <div class="page-count">共 {{ filteredRows.length }} 条</div>
+      <t-button @click="applyVisible=true">申请提现</t-button>
     </div>
 
     <section class="panel">

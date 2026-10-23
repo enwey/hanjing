@@ -1,5 +1,6 @@
 const api = require('../../api/index');
 const subscribe = require('../../common/utils/subscribe');
+const sessionStore = require('../../stores/session-store');
 const { formatChinaDateTime } = require('../../common/utils/date-time');
 
 const ORDER_STATUS_STEPS = {
@@ -57,6 +58,12 @@ async function syncPaidOrder(orderId) {
 }
 
 Page({
+  onUnload() {
+    this._unloaded = true;
+    if (this.paymentInProgress) wx.hideLoading();
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+  },
+
   data: {
     loading: true,
     order: null,
@@ -65,6 +72,7 @@ Page({
   },
 
   onLoad(options) {
+    this._unloaded = false;
     const orderId = options && options.id;
     if (!orderId) {
       wx.navigateBack();
@@ -76,7 +84,7 @@ Page({
   },
 
   onShow() {
-    if (!this.hasLoaded || !this.orderId) {
+    if ((!this.hasLoaded && !this._needsReload) || !this.orderId) {
       return;
     }
     this.loadOrder(this.orderId, { silent: true });
@@ -116,16 +124,19 @@ Page({
         canCancel: order.status === 'pending',
         canPay: order.status === 'pending' && !['wechat_native', 'wechat_micropay', 'cash', 'bank'].includes(order.payMethod),
         canConfirmReceipt: order.status === 'shipped',
-        canRefund: order.status === 'paid' || order.status === 'shipping',
+        canRefund: ['paid', 'processing', 'shipping', 'shipped'].includes(order.status),
       },
     };
   },
 
   async loadOrder(orderId, options = {}) {
+    if (this._unloaded) return;
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = Boolean(options.silent);
     this.setData({ loading: silent ? this.data.loading : true });
     try {
       const detailResponse = await api.getOrderDetail(orderId);
+      if (requestId !== this._loadRequestId) return;
       const rawOrder = (detailResponse && detailResponse.data) || detailResponse || null;
       const order = this.normalizeOrder(rawOrder || {});
       let logisticsList = [];
@@ -145,15 +156,25 @@ Page({
           logisticsMessage = '物流信息加载失败，请稍后重试';
         }
       }
+      if (requestId !== this._loadRequestId) return;
       this.setData({ loading: false, order, logisticsList, logisticsMessage });
       this.hasLoaded = true;
+      this._needsReload = false;
     } catch (error) {
+      if (requestId !== this._loadRequestId) return;
       console.error(error);
       wx.showToast({ title: (error && error.message) || '订单详情加载失败', icon: 'none' });
+      const unauthorized = error && [401, 403].includes(Number(error.statusCode || (error.data && error.data.code)));
+      const retain = silent && !unauthorized;
+      if (unauthorized) {
+        this.hasLoaded = false;
+        this._needsReload = true;
+      }
       this.setData({
-        loading: silent ? this.data.loading : false,
-        order: silent ? this.data.order : null,
-        logisticsList: silent ? this.data.logisticsList : [],
+        loading: false,
+        order: retain ? this.data.order : null,
+        logisticsList: retain ? this.data.logisticsList : [],
+        logisticsMessage: retain ? this.data.logisticsMessage : '',
       });
     }
   },
@@ -179,20 +200,33 @@ Page({
 
   async onPayOrder() {
     const order = this.data.order;
-    if (!order || !order.actionFlags.canPay || this.paymentInProgress) return;
+    if (this._unloaded || !order || !order.actionFlags.canPay || this.paymentInProgress) return;
+    const generation = sessionStore.getLoginGeneration();
+    const assertCurrentSession = () => {
+      if (sessionStore.getLoginGeneration() !== generation) {
+        throw new Error('登录状态已变化，请重新进入订单');
+      }
+    };
     this.paymentInProgress = true;
     wx.showLoading({ title: '发起支付...' });
     try {
       const payResponse = await api.payOrder(order.id);
+      if (this._unloaded) return;
+      assertCurrentSession();
       const payParams = (payResponse && payResponse.data) || payResponse || {};
       wx.hideLoading();
       await requestWxPay(payParams);
+      if (this._unloaded) return;
+      assertCurrentSession();
       wx.showLoading({ title: '同步订单状态...' });
       await syncPaidOrder(order.id);
+      if (this._unloaded) return;
+      assertCurrentSession();
       wx.hideLoading();
       wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });
       await this.loadOrder(order.id);
     } catch (error) {
+      if (this._unloaded) return;
       wx.hideLoading();
       wx.showToast({
         title: getPaymentErrorMessage(error, '支付未完成'),

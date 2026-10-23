@@ -4,9 +4,10 @@ export function businessError(message, statusCode = 400) {
   return Object.assign(new Error(message), { statusCode });
 }
 
-export async function getDistributionFeatureConfig() {
-  const rows = await query(`SELECT key_name, key_value FROM system_settings
-    WHERE key_name IN ('distribution_settle_days','enable_distribution','min_withdraw','withdraw_fee_rate')`);
+export async function getDistributionFeatureConfig(conn = null) {
+  const sql = `SELECT key_name, key_value FROM system_settings
+    WHERE key_name IN ('distribution_settle_days','enable_distribution','min_withdraw','withdraw_fee_rate')`;
+  const rows = conn ? (await conn.execute(sql))[0] : await query(sql);
   const values = Object.fromEntries(rows.map(row => [row.key_name, row.key_value]));
   if (Object.keys(values).length !== 4 || Object.values(values).some(value => String(value).trim() === '')) {
     throw businessError('请先配置结算天数、分销开关、最低提现金额和手续费率', 503);
@@ -47,7 +48,7 @@ export async function readCommissionLedger(conn, promoterId, userId) {
   const [[withdrawal]] = await conn.execute(
     `SELECT COALESCE(SUM(CASE WHEN status IN ('success','completed','paid') THEN amount ELSE 0 END),0) paid,
       COALESCE(SUM(CASE WHEN status IN ('pending','approved') THEN amount ELSE 0 END),0) reserved
-     FROM withdraw_records WHERE user_id = ?`, [userId]);
+     FROM withdraw_records WHERE distributor_id = ? OR (distributor_id IS NULL AND user_id = ?)`, [promoterId,userId]);
   return {
     total: Number(commission.total), frozen: Number(commission.frozen),
     withdrawn: Number(withdrawal.paid), reserved: Number(withdrawal.reserved),
@@ -55,13 +56,13 @@ export async function readCommissionLedger(conn, promoterId, userId) {
   };
 }
 
-export async function settleCommissions(userId = null) {
+export async function settleCommissions(userId = null, distributorId = null) {
   const config = await getDistributionFeatureConfig();
   if (!config.enableDistribution) return 0;
   const configuredDays = config.settleDays;
   const promoters = await query(
-    'SELECT id, user_id FROM distributors WHERE (? IS NULL OR user_id = ?) ORDER BY id',
-    [userId, userId]
+    'SELECT id, user_id FROM distributors WHERE (? IS NULL OR user_id = ?) AND (? IS NULL OR id=?) ORDER BY id',
+    [userId, userId,distributorId,distributorId]
   );
   let settled = 0;
   for (const promoter of promoters) {
@@ -87,7 +88,7 @@ export async function settleCommissions(userId = null) {
         if (result.affectedRows === 1) total += Number(row.commission_amount);
       }
       await conn.execute('UPDATE distributors SET available_commission = available_commission + ? WHERE id = ?', [total, promoter.id]);
-      await conn.execute('INSERT INTO user_notifications (user_id, title, content) VALUES (?, ?, ?)',
+      if (promoter.user_id) await conn.execute('INSERT INTO user_notifications (user_id, title, content) VALUES (?, ?, ?)',
         [promoter.user_id, '佣金已结算', `推广佣金 ¥${(total / 100).toFixed(2)} 已转为可提现余额。`]);
       return total;
     });
@@ -104,9 +105,9 @@ export async function reviewWithdrawal(id, approve, remark) {
        completed_at = NULL WHERE id = ?`, [approve ? 'approved' : 'failed', remark, id]
     );
     if (!approve) {
-      await conn.execute('UPDATE distributors SET available_commission = available_commission + ? WHERE user_id = ?', [record.amount, record.user_id]);
+      await conn.execute(`UPDATE distributors SET available_commission = available_commission + ? WHERE ${record.distributor_id?'id':'user_id'} = ?`, [record.amount, record.distributor_id||record.user_id]);
     }
-    await conn.execute('INSERT INTO user_notifications (user_id, title, content) VALUES (?, ?, ?)',
+    if(record.user_id) await conn.execute('INSERT INTO user_notifications (user_id, title, content) VALUES (?, ?, ?)',
       [record.user_id, approve ? '提现审核通过' : '提现申请已驳回',
         approve ? '提现审核通过，等待实际打款。' : `提现已驳回，¥${(record.amount / 100).toFixed(2)} 已退回余额。${remark}`]);
     return record;
@@ -126,8 +127,8 @@ export async function confirmWithdrawalPaid(id, reference) {
       "UPDATE withdraw_records SET status = 'paid', payout_reference = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?",
       [receipt, id]
     );
-    await conn.execute('UPDATE distributors SET withdrawn_amount = withdrawn_amount + ? WHERE user_id = ?', [record.amount, record.user_id]);
-    await conn.execute('INSERT INTO user_notifications (user_id, title, content) VALUES (?, ?, ?)',
+    await conn.execute(`UPDATE distributors SET withdrawn_amount = withdrawn_amount + ? WHERE ${record.distributor_id?'id':'user_id'} = ?`, [record.amount, record.distributor_id||record.user_id]);
+    if(record.user_id) await conn.execute('INSERT INTO user_notifications (user_id, title, content) VALUES (?, ?, ?)',
       [record.user_id, '提现已打款', `银行转账已登记，到账金额 ¥${(record.actual_amount / 100).toFixed(2)}。`]);
     return record;
   });

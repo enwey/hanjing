@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-22",
+  "scope": "developer self-check only",
+  "scripts": [
+    {
+      "file": "ess-functional.cjs",
+      "exitCode": 0,
+      "result": {
+        "scope": "actual ESS page modules with mocked wx/API/session; template inspection",
+        "total": 7,
+        "passed": 7,
+        "failed": 0,
+        "results": [
+          {
+            "name": "ESS-01 changing person must not silently submit previous persons answers",
+            "status": "PASS"
+          },
+          {
+            "name": "ESS-02 old session rejection must not unlock current submission",
+            "status": "PASS"
+          },
+          {
+            "name": "ESS-03 questionnaire initial failure exposes persistent retry or error state",
+            "status": "PASS"
+          },
+          {
+            "name": "eight answers including zero progress and submit correct member",
+            "status": "PASS"
+          },
+          {
+            "name": "cannot skip unanswered intermediate question using dots",
+            "status": "PASS"
+          },
+          {
+            "name": "pending submit freezes answer edits and member changes",
+            "status": "PASS"
+          },
+          {
+            "name": "result presents eight answer labels",
+            "status": "PASS"
+          }
+        ]
+      }
+    },
+    {
+      "file": "assessment-fix-01-check.cjs",
+      "exitCode": 0,
+      "result": {
+        "scope": "related developer checks only",
+        "total": 8,
+        "passed": 8,
+        "results": [
+          {
+            "name": "saved ESS retry only retries navigation",
+            "status": "PASS"
+          },
+          {
+            "name": "unauthorized session invalidation clears existing list",
+            "status": "PASS"
+          },
+          {
+            "name": "same logged state with new generation reloads family members",
+            "status": "PASS"
+          },
+          {
+            "name": "cache fallback accepts only matching ESS owner",
+            "status": "PASS"
+          },
+          {
+            "name": "ESS all possible totals match list and result classification",
+            "status": "PASS"
+          },
+          {
+            "name": "unowned patient and invalid answers never issue INSERT",
+            "status": "PASS"
+          },
+          {
+            "name": "sync flights coalesce and preserve other owners and new records",
+            "status": "PASS"
+          },
+          {
+            "name": "actual session cache archives ESS result on logout",
+            "status": "PASS"
+          }
+        ]
+      }
+    }
+  ],
+  "extra": [
+    {
+      "name": "failure retry restores eight questions and clears error",
+      "status": "PASS"
+    },
+    {
+      "name": "same person preserves answers; different person resets answers and position",
+      "status": "PASS"
+    },
+    {
+      "name": "WXML tags balanced",
+      "status": "PASS"
+    }
+  ],
+  "visual": "not verified in WeChat"
+}

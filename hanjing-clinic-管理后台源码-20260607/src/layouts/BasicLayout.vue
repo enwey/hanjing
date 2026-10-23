@@ -166,12 +166,23 @@ function logout() {
   isLogoutConfirmVisible.value = true
 }
 
-function handleConfirmLogout() {
+async function handleConfirmLogout() {
   isLogoutConfirmVisible.value = false
+  let serverRevoked = false
+  try {
+    await request.post('/api/admin/logout')
+    serverRevoked = true
+  } catch {
+    // Local cleanup still prevents this browser from continuing the session.
+  }
   localStorage.removeItem('auth_token')
   localStorage.removeItem('user_info')
-  MessagePlugin.success('已成功安全退出登录')
-  router.push('/login')
+  if (serverRevoked) {
+    MessagePlugin.success('已成功安全退出登录')
+  } else {
+    MessagePlugin.warning('本机已退出，服务端会话撤销失败')
+  }
+  await router.push('/login')
 }
 
 // ==========================================
@@ -498,16 +509,40 @@ watch(isChatVisible, (isOpen) => {
 // 生命周期挂载
 // ==========================================
 let notifInterval: any = null
+let compactLayoutMedia: MediaQueryList | null = null
+function handleCompactLayout(event: MediaQueryListEvent | MediaQueryList) {
+  if (event.matches) isSidebarCollapsed.value = true
+}
+function handleAuthStorageChange(event: StorageEvent) {
+  const authWasCleared = event.storageArea === localStorage
+    && (event.key === 'auth_token' || event.key === null)
+    && !event.newValue
+  if (!authWasCleared) return
+
+  localStorage.removeItem('user_info')
+  if (route.name !== 'login') {
+    MessagePlugin.warning('登录状态已在其他标签页退出')
+    router.replace('/login')
+  }
+}
+
 onMounted(() => {
   fetchNotifStats()
   notifInterval = setInterval(() => {
     fetchNotifStats()
   }, 20000)
+  window.addEventListener('storage', handleAuthStorageChange)
+  compactLayoutMedia = window.matchMedia('(max-width: 640px)')
+  handleCompactLayout(compactLayoutMedia)
+  compactLayoutMedia.addEventListener('change', handleCompactLayout)
 })
 
 onUnmounted(() => {
   if (notifInterval) clearInterval(notifInterval)
   if (chatInterval) clearInterval(chatInterval)
+  window.removeEventListener('storage', handleAuthStorageChange)
+  compactLayoutMedia?.removeEventListener('change', handleCompactLayout)
+  compactLayoutMedia = null
 })
 </script>
 
@@ -541,10 +576,10 @@ onUnmounted(() => {
         <template #logo>
           <div class="sidebar-logo">
             <div class="sidebar-logo-icon">
-              <img class="sidebar-logo-icon__image" src="/brand-koala.png" alt="鼾静健康诊所" />
+              <img class="sidebar-logo-icon__image" src="/brand-koala.png" alt="兴康明诊所" />
             </div>
             <div class="sidebar-logo-text" :class="{ 'logo-hidden': isMenuCollapsed }">
-              鼾静健康
+              兴康明
               <small>管理后台 v1.0</small>
             </div>
           </div>
@@ -1007,7 +1042,7 @@ onUnmounted(() => {
             <!-- Quick Replies -->
             <div class="chat-quick-replies">
               <span class="quick-reply-label">快捷回复:</span>
-              <span class="quick-reply-tag" @click="useQuickReply('您好，鼾静健康客服，请问有什么可以帮您？')">打招呼</span>
+              <span class="quick-reply-tag" @click="useQuickReply('您好，兴康明客服，请问有什么可以帮您？')">打招呼</span>
               <span class="quick-reply-tag" @click="useQuickReply('好的，已为您确认了该挂号预约，您可以前往“我的挂号”查看详细信息。')">确认预约</span>
               <span class="quick-reply-tag" @click="useQuickReply('您的订单已成功打单发货，快递单号已生成，请耐心等待配送。')">发货提醒</span>
               <span class="quick-reply-tag" @click="useQuickReply('请问您目前主要有哪些不适症状？使用止鼾设备后有什么改善吗？')">常规问询</span>
@@ -1517,6 +1552,20 @@ onUnmounted(() => {
   color: #ffffff;
   border-color: #3B6BF5;
   box-shadow: 0 4px 12px rgba(59, 107, 245, 0.25);
+}
+
+@media (max-width: 640px) {
+  .app-content {
+    padding: 16px 12px 32px;
+  }
+  .topbar {
+    padding-left: 16px;
+    padding-right: 12px;
+  }
+  .topbar-search,
+  .topbar-user-info {
+    display: none;
+  }
 }
 
 /* === Global Search CSS === */

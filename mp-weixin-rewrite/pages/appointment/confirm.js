@@ -90,6 +90,10 @@ Page({
   },
 
   async loadPage(options = {}) {
+    const requestId = this.loadRequestId = (this.loadRequestId || 0) + 1;
+    const token = sessionStore.getAccessToken();
+    const isCurrent = () => requestId === this.loadRequestId && token === sessionStore.getAccessToken();
+    if (this.createdAppointmentId) return;
     const draft = appointmentDraftStore.getDraft();
     if (!draft || !draft.doctorId || !draft.storeId || !draft.scheduleId || !draft.timeSlot) {
       this.setData({
@@ -109,6 +113,7 @@ Page({
         api.getFamilyMembers(),
         api.getBookingSettings(),
       ]);
+      if (!isCurrent() || this.createdAppointmentId) return;
 
       const stores = unwrapList(storesResponse);
       const doctors = unwrapList(doctorsResponse);
@@ -127,7 +132,10 @@ Page({
       const pendingPatientId = this.pendingPatientToken === sessionStore.getAccessToken()
         ? String(this.pendingPatientId || '') : '';
       const pendingMemberIndex = pendingPatientId ? membersPayload.findIndex((member) => String(member.id || '') === pendingPatientId) : -1;
-      const memberIndex = pendingMemberIndex >= 0 ? pendingMemberIndex : (selfIndex >= 0 ? selfIndex : 0);
+      const currentMember = this.memberOwnerToken === token && this.data.memberList[this.data.memberIndex];
+      const retainedIndex = currentMember ? membersPayload.findIndex((member) => String(member.id) === String(currentMember.id)) : -1;
+      const memberIndex = pendingMemberIndex >= 0 ? pendingMemberIndex : retainedIndex >= 0 ? retainedIndex : selfIndex;
+      this.memberOwnerToken = token;
       this.pendingPatientId = '';
       this.pendingPatientToken = '';
       const totalAmountYuan = (
@@ -161,6 +169,7 @@ Page({
         selectedMemberName: memberOptions[memberIndex] || '本人',
       });
     } catch (error) {
+      if (!isCurrent() || this.createdAppointmentId) return;
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
@@ -235,7 +244,7 @@ Page({
   },
 
   async submitAppointment() {
-    if (this.data.isSubmitting || !this.data.draft) {
+    if (this.createdAppointmentId || this.data.isSubmitting || !this.data.draft) {
       return;
     }
 
@@ -263,6 +272,11 @@ Page({
 
       const appointment = unwrapObject(createResponse);
       const appointmentId = appointment.id;
+      if (!appointmentId) throw new Error('未返回预约编号，请到预约记录核对结果');
+      this.createdAppointmentId = appointmentId;
+      // Once created, never reuse this draft to create another appointment.
+      appointmentDraftStore.clearDraft();
+      this.setData({ draft: null });
       const appointmentStatus = appointment.status;
       const appointmentRequireDeposit = appointment.requireDeposit !== undefined ? appointment.requireDeposit : appointment.require_deposit;
       const appointmentDepositAmount = appointment.depositAmount !== undefined ? appointment.depositAmount : appointment.deposit_amount;
@@ -312,8 +326,6 @@ Page({
                 setTimeout(() => {
                   wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
                 }, 1000);
-              } finally {
-                this.setData({ isSubmitting: false });
               }
             } else {
               try {
@@ -326,8 +338,11 @@ Page({
               setTimeout(() => {
                 wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
               }, 1000);
-              this.setData({ isSubmitting: false });
             }
+          },
+          fail: () => {
+            wx.showToast({ title: '预约已创建，请在预约记录中继续处理', icon: 'none' });
+            wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
           },
         });
         return;
@@ -340,11 +355,11 @@ Page({
       });
     } catch (error) {
       wx.showToast({
-        title: '预约失败，请重试',
+        title: (error && error.message) || '预约失败，请重试',
         icon: 'none',
       });
     } finally {
-      if (this.data.isSubmitting) {
+      if (!this.createdAppointmentId && this.data.isSubmitting) {
         this.setData({ isSubmitting: false });
       }
     }

@@ -130,6 +130,8 @@ Page({
   },
 
   async loadPostDetail(postId, options = {}) {
+    const requestId = this._detailRequestId = (this._detailRequestId || 0) + 1;
+    const commentRevision = this._commentRevision || 0;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
@@ -140,17 +142,24 @@ Page({
         api.getUserProfile().catch(() => null),
       ]);
       const payload = (response && response.data) || response || null;
+      if (requestId !== this._detailRequestId) return;
       const profile = (profileResponse && profileResponse.data) || profileResponse || null;
       const postDetail = normalizePostDetail(payload || {});
+      if (commentRevision !== (this._commentRevision || 0)) {
+        postDetail.comments = this.data.commentsList;
+        postDetail.commentsCount = this.data.postDetail.commentsCount;
+      }
       this.setData({
         hasLoaded: true,
         loading: false,
+        loadError: '',
         postDetail,
         commentsList: postDetail.comments,
         currentUserAvatar: normalizeCurrentUserAvatar(profile),
       });
     } catch (error) {
-      if (!this.data.hasLoaded) {
+      if (requestId !== this._detailRequestId) return;
+      if (!this.data.hasLoaded || [401, 403, 404].includes(Number(error && (error.statusCode || error.status || error.code)))) {
         this.setData({
           loading: false,
           loadError: (error && error.message) || '加载帖子详情失败，请稍后重试',
@@ -164,9 +173,15 @@ Page({
     }
   },
 
+  onUnload() {
+    this._detailRequestId = (this._detailRequestId || 0) + 1;
+  },
+
   async handlePostLike() {
+    if (this._postLikePending) return;
     const postDetail = this.data.postDetail;
     if (!postDetail) return;
+    this._postLikePending = true;
     const previousLiked = postDetail.isLiked;
     const previousLikes = postDetail.likes;
     const nextPost = Object.assign({}, postDetail, {
@@ -178,9 +193,11 @@ Page({
       await api.likeCommunityPost(postDetail.id, nextPost.isLiked);
     } catch (error) {
       this.setData({
-        postDetail: Object.assign({}, postDetail, { isLiked: previousLiked, likes: previousLikes }),
+        postDetail: Object.assign({}, this.data.postDetail, { isLiked: previousLiked, likes: previousLikes }),
       });
       wx.showToast({ title: '点赞失败，请稍后重试', icon: 'none' });
+    } finally {
+      this._postLikePending = false;
     }
   },
 
@@ -250,8 +267,10 @@ Page({
   },
 
   async handlePostFavorite() {
+    if (this._postFavoritePending) return;
     const postDetail = this.data.postDetail;
     if (!postDetail) return;
+    this._postFavoritePending = true;
     const previousFavorited = postDetail.isFavorited;
     const previousFavoritesCount = postDetail.favoritesCount;
     const nextPost = Object.assign({}, postDetail, {
@@ -263,12 +282,14 @@ Page({
       await api.favoriteCommunityPost(postDetail.id, nextPost.isFavorited);
     } catch (error) {
       this.setData({
-        postDetail: Object.assign({}, postDetail, {
+        postDetail: Object.assign({}, this.data.postDetail, {
           isFavorited: previousFavorited,
           favoritesCount: previousFavoritesCount,
         }),
       });
       wx.showToast({ title: '收藏失败，请稍后重试', icon: 'none' });
+    } finally {
+      this._postFavoritePending = false;
     }
   },
 
@@ -328,6 +349,7 @@ Page({
         this.data.replyTarget ? this.data.replyTarget.id : null,
       );
       const createdComment = normalizeComment((response && response.data) || response || {});
+      this._commentRevision = (this._commentRevision || 0) + 1;
       const commentsList = [createdComment].concat(this.data.commentsList);
       this.setData({
         commentsList,
@@ -381,12 +403,11 @@ Page({
         path: '/pages/community/index',
       };
     }
-    api.shareCommunityPost(postDetail.id).catch(() => {});
-    this.setData({
-      postDetail: Object.assign({}, postDetail, {
-        sharesCount: Number(postDetail.sharesCount || 0) + 1,
-      }),
-    });
+    api.shareCommunityPost(postDetail.id).then(() => {
+      const current = this.data.postDetail;
+      if (!current || current.id !== postDetail.id) return;
+      this.setData({ postDetail: Object.assign({}, current, { sharesCount: Number(current.sharesCount || 0) + 1 }) });
+    }).catch(() => {});
     return {
       title: postDetail.title || postDetail.content || '医患社区',
       path: '/pages/community/detail/index?id=' + postDetail.id,
