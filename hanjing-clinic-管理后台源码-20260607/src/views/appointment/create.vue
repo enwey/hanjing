@@ -180,7 +180,7 @@ const fetchPromoters = async () => {
     if (res.code === 200 && res.data) {
       promoterOptions.value = res.data.map((p: any) => ({
         label: `${p.nickname} (${p.user_phone || '无手机号'})`,
-        value: p.user_id.toString()
+        value: (p.user_id !== null && p.user_id !== undefined ? p.user_id : p.id).toString()
       }))
     }
   } catch (error) {

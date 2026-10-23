@@ -1152,9 +1152,9 @@ async function submitCreateAppt() {
                 <div style="border-right: 1px solid #E5E7EB; padding-right: 8px; padding-left: 4px;">
                   <div style="font-size: 11px; color: #6B7280; font-weight: 600;">夜间鼾声评估</div>
                   <div v-if="patientDiagnostics?.snore" style="margin-top: 4px; font-size: 12px; color: #374151;">
-                    <div>暂停事件: <span style="font-weight: 700; color: #EF4444;">{{ patientDiagnostics.snore.apnea_events }}次</span></div>
+                    <div>{{ patientDiagnostics.snore.analysis_version === 2 ? '长静音间隔（非呼吸暂停）' : '暂停事件' }}: <span style="font-weight: 700; color: #EF4444;">{{ patientDiagnostics.snore.apnea_events }}次</span></div>
                     <div style="font-size: 11px; color: #6B7280; margin-top: 1px; line-height: 1.2;">
-                      均值{{ patientDiagnostics.snore.avg_decibel }}dB (峰值{{ patientDiagnostics.snore.peak_decibel }}dB)
+                      均值{{ patientDiagnostics.snore.avg_decibel }}{{ patientDiagnostics.snore.analysis_version === 2 ? 'dBFS' : 'dB' }} (峰值{{ patientDiagnostics.snore.peak_decibel }}{{ patientDiagnostics.snore.analysis_version === 2 ? 'dBFS' : 'dB' }})
                     </div>
                   </div>
                   <div v-else style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">未评估</div>

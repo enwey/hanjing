@@ -2171,6 +2171,7 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
       else if (item.risk_level === 'mild') advice = '您的鼾声分析显示有轻度风险，可能存在间歇性打鼾，建议侧卧睡眠并注意观察。';
       else if (item.risk_level === 'moderate') advice = '本次录音分析提示中度风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
       else advice = '本次录音分析提示较高风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
+      if (item.analysis_version === 2) advice = '本报告仅反映声音特征，不是疾病风险评估。录音电平未经环境声压校准，长静音间隔不能用于判断呼吸暂停。';
 
       return {
         id: 'snore-' + item.id,
@@ -2180,6 +2181,7 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
         snoreRecordUrl: item.file_url,
         snoreAnalysis: {
           duration: item.duration,
+          analysisVersion: item.analysis_version || 1,
           avgDecibel: item.avg_decibel,
           peakDecibel: item.peak_decibel,
           snoreRate: item.snore_rate,
@@ -2343,6 +2345,10 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
   if (client_side_analysis) {
     try {
       const { avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel, riskScore } = analysis_result || {};
+      const analysisVersion = analysis_result?.analysisVersion ?? 1;
+      if (![1, 2].includes(analysisVersion) || (analysisVersion === 2 && (!Number.isInteger(riskScore) || riskScore !== snoreRate))) {
+        return res.status(400).json({ code: 400, message: '录音分析版本或特征分数无效' });
+      }
       const scoreRanges = { normal: [0, 29], low: [0, 29], mild: [30, 49], moderate: [50, 69], severe: [70, 100], high: [70, 100] };
       const scoreRange = scoreRanges[riskLevel];
       if (riskScore != null && (!Number.isInteger(riskScore) || !scoreRange || riskScore < scoreRange[0] || riskScore > scoreRange[1])) {
@@ -2350,7 +2356,7 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
       }
       if (
         ![avgDecibel, peakDecibel, snoreRate, apneaEvents].every(Number.isFinite) ||
-        avgDecibel < 0 || peakDecibel < avgDecibel || peakDecibel > 160 ||
+        avgDecibel < (analysisVersion === 2 ? -75 : 0) || peakDecibel < avgDecibel || peakDecibel > (analysisVersion === 2 ? 0 : 160) ||
         snoreRate < 0 || snoreRate > 100 ||
         !Number.isInteger(apneaEvents) || apneaEvents < 0 || apneaEvents > Math.floor(durationSeconds / 10) ||
         !['normal', 'low', 'mild', 'moderate', 'severe', 'high'].includes(riskLevel)
@@ -2367,7 +2373,8 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
         (Number.isSafeInteger(req.body.timestamp) && req.body.timestamp > 0 ? 'time:' + req.body.timestamp + ':patient:' + dbPatientId : null);
       const clientKey = identity ? crypto.createHash('sha256').update(identity).digest('hex') : null;
       const payloadHash = crypto.createHash('sha256').update(JSON.stringify([
-        dbPatientId, durationSeconds, avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel
+        dbPatientId, durationSeconds, avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel,
+        ...(analysisVersion === 2 ? [analysisVersion] : [])
       ])).digest('hex');
       const findExisting = () => get(
         'SELECT id, client_payload_hash, risk_score FROM snore_assessments WHERE user_id = ? AND client_record_key = ?',
@@ -2378,8 +2385,8 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
       if (!existing) {
         try {
           result = await run(
-        `INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level, client_record_key, client_payload_hash, risk_score)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level, client_record_key, client_payload_hash, risk_score, analysis_version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           req.user.id,
           dbPatientId,
@@ -2392,7 +2399,8 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
           String(riskLevel),
           clientKey,
           payloadHash,
-          riskScore == null ? null : riskScore
+          riskScore == null ? null : riskScore,
+          analysisVersion
         ]
       );
         } catch (error) {
@@ -2414,6 +2422,7 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
       else if (riskLevel === 'mild') advice = '本次录音筛查提示轻度风险，建议侧卧睡眠并持续观察；如伴随白天嗜睡，建议预约医生评估。';
       else if (riskLevel === 'moderate') advice = '本次录音筛查提示中度风险，建议预约线下门诊，由医生结合病史 and 必要检查进一步判断。';
       else advice = '本次录音筛查提示较高风险，建议尽快预约医生进行睡眠呼吸暂停相关检查。结果不能替代正式医学诊断。';
+      if (analysisVersion === 2) advice = '本报告仅反映声音特征，不是疾病风险评估。录音电平未经环境声压校准，长静音间隔不能用于判断呼吸暂停。';
 
       return res.json({
         code: 0,
@@ -2426,6 +2435,7 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
           snoreRecordUrl: '',
           snoreAnalysis: {
             duration: durationSeconds,
+            analysisVersion,
             avgDecibel: Number(avgDecibel),
             peakDecibel: Number(peakDecibel),
             snoreRate: Number(snoreRate),
@@ -2556,6 +2566,7 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
       else if (item.risk_level === 'mild') advice = '您的鼾声分析显示有轻度风险，可能存在间歇性打鼾，建议侧卧睡眠并注意观察。';
       else if (item.risk_level === 'moderate') advice = '本次录音分析提示中度风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
       else advice = '本次录音分析提示较高风险，疑似呼吸暂停事件次数以报告指标为准。结果仅供筛查参考。';
+      if (item.analysis_version === 2) advice = '本报告仅反映声音特征，不是疾病风险评估。录音电平未经环境声压校准，长静音间隔不能用于判断呼吸暂停。';
 
       return res.json({
         code: 0,
@@ -2568,6 +2579,7 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
           snoreRecordUrl: item.file_url,
           snoreAnalysis: {
             duration: item.duration,
+            analysisVersion: item.analysis_version || 1,
             avgDecibel: item.avg_decibel,
             peakDecibel: item.peak_decibel,
             snoreRate: item.snore_rate,
@@ -4647,7 +4659,8 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
         ]
       );
       const newId = insertResult[0]?.insertId || insertResult.insertId;
-      await attachAppointmentReferral(conn, newId, req.body.referralCode);
+      const referralCode = req.body.referralCode || req.body.referral_code;
+      await attachAppointmentReferral(conn, newId, referralCode);
       await conn.execute(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [schedule.id]);
       return { id: newId };
     });
@@ -5073,6 +5086,7 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
           } : null,
           snore: snoreAssessment ? {
             id: snoreAssessment.id,
+            analysisVersion: snoreAssessment.analysis_version || 1,
             avgDecibel: snoreAssessment.avg_decibel,
             peakDecibel: snoreAssessment.peak_decibel,
             snoreRate: snoreAssessment.snore_rate,

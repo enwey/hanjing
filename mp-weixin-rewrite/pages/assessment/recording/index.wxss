@@ -69,7 +69,9 @@
   padding: 0 16px 12px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
 }
 .analyzing-screen.data-v-70350287 {
   flex: 1;
@@ -108,9 +110,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  height: 224px;
+  min-height: 224px;
+  height: auto;
   flex-shrink: 0;
-  margin: 58px 0 8px;
+  margin: 32px 0 8px;
   padding: 0;
 }
 .waveform.data-v-70350287 {
@@ -146,6 +149,53 @@
   line-height: 38px;
   margin-bottom: 0;
   text-shadow: 0 0 12px rgba(59, 107, 245, 0.3);
+}
+.live-decibel-meter.data-v-70350287 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 20px;
+  padding: 4px 16px;
+  margin: 4px 0 10px;
+  backdrop-filter: blur(8px);
+}
+.meter-item.data-v-70350287 {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.meter-label.data-v-70350287 {
+  font-size: 12px;
+  color: rgba(224, 231, 255, 0.65);
+}
+.meter-value.data-v-70350287 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #8eafff;
+  font-family:
+    SF Mono,
+    Menlo,
+    monospace;
+  min-width: 24px;
+  text-align: right;
+  text-shadow: 0 0 8px rgba(59, 107, 245, 0.4);
+}
+.meter-value--peak.data-v-70350287 {
+  color: #38bdf8;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+.meter-unit.data-v-70350287 {
+  font-size: 11px;
+  color: rgba(224, 231, 255, 0.5);
+  margin-left: 1px;
+}
+.meter-divider.data-v-70350287 {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 12px;
 }
 .mic-btn-wrapper.data-v-70350287 {
   position: relative;

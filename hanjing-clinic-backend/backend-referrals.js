@@ -2,11 +2,18 @@ import { getDistributionFeatureConfig, businessError } from './distribution-ledg
 
 export async function attachAppointmentReferral(conn, appointmentId, code) {
   if (!code) return;
-  if (typeof code !== 'string' || !/^BP[a-f0-9]{24}$/.test(code)) throw Object.assign(businessError('推广码无效，请重新提交预约或重新扫码'),{referralInvalid:true});
-  const [[row]] = await conn.execute(`SELECT c.distributor_id FROM promoter_codes c JOIN distributors d ON d.id=c.distributor_id
-    WHERE c.code=? AND c.active=1 AND d.source_type='backend' AND d.status='active'`, [code]);
+  const cleanCode = typeof code === 'string' ? code.trim() : '';
+  if (!cleanCode || !/^BP[a-f0-9]{24}$/i.test(cleanCode)) throw Object.assign(businessError('推广码无效，请重新提交预约或重新扫码'),{referralInvalid:true});
+  const [[row]] = await conn.execute(`
+    SELECT d.id AS distributor_id FROM distributors d
+    LEFT JOIN promoter_codes c ON c.distributor_id = d.id AND c.active = 1
+    WHERE (c.code = ? OR d.invite_code = ?)
+      AND d.source_type = 'backend'
+      AND d.status = 'active'
+    LIMIT 1
+  `, [cleanCode, cleanCode]);
   if (!row) throw Object.assign(businessError('推广码已失效，请重新提交预约或重新扫码'),{referralInvalid:true});
-  await conn.execute('UPDATE appointments SET referral_promoter_id=?,referral_code=? WHERE id=?', [row.distributor_id,code,appointmentId]);
+  await conn.execute('UPDATE appointments SET referral_promoter_id=?,referral_code=? WHERE id=?', [row.distributor_id,cleanCode,appointmentId]);
 }
 
 export async function snapshotReferralOrder(conn, orderId, appointmentId = null) {

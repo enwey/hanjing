@@ -70,11 +70,11 @@ function attachmentUrl(item: any) {
           <p v-else class="muted">本次就诊未关联 ESS 评估</p>
           <h4>AI 鼾声分析</h4>
           <dl v-if="data.snore_report" class="fields">
-            <div><dt>风险等级</dt><dd>{{ ({high:'高风险',medium:'中风险',low:'低风险'} as any)[data.snore_report.risk_level] || show(data.snore_report.risk_level) }}</dd></div>
+            <div><dt>{{ data.snore_report.analysis_version === 2 ? '分析口径' : '风险等级' }}</dt><dd>{{ data.snore_report.analysis_version === 2 ? '声音特征，非疾病风险' : (({high:'高风险',medium:'中风险',low:'低风险'} as any)[data.snore_report.risk_level] || show(data.snore_report.risk_level)) }}</dd></div>
             <div><dt>录音时长</dt><dd>{{ (data.snore_report.duration / 60).toFixed(1) }} 分钟</dd></div>
-            <div><dt>平均 / 峰值分贝</dt><dd>{{ data.snore_report.avg_decibel }} / {{ data.snore_report.peak_decibel }} dB</dd></div>
+            <div><dt>{{ data.snore_report.analysis_version === 2 ? '平均 / 峰值录音电平' : '平均 / 峰值分贝' }}</dt><dd>{{ data.snore_report.avg_decibel }} / {{ data.snore_report.peak_decibel }} {{ data.snore_report.analysis_version === 2 ? 'dBFS' : 'dB' }}</dd></div>
             <div><dt>鼾声占比</dt><dd>{{ data.snore_report.snore_rate }}%</dd></div>
-            <div><dt>疑似呼吸暂停</dt><dd>{{ data.snore_report.apnea_events }} 次</dd></div>
+            <div><dt>{{ data.snore_report.analysis_version === 2 ? '长静音间隔（非呼吸暂停）' : '疑似呼吸暂停' }}</dt><dd>{{ data.snore_report.apnea_events }} 次</dd></div>
           </dl><p v-else class="muted">本次就诊未关联鼾声分析</p>
         </section>
         <section class="card">

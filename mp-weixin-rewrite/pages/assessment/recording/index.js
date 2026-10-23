@@ -56,8 +56,10 @@ function clampNumber(value, min, max) {
 }
 
 function calculateFrameDecibel(rms) {
-  const normalized = clampNumber(rms / 32768, 0, 1);
-  return Math.round(clampNumber(30 + Math.log10(1 + normalized * 9) * 50, 30, 95));
+  const safeRms = Math.max(1, rms);
+  const dbfs = 20 * Math.log10(safeRms / 32768);
+  const spl = dbfs + 96;
+  return Math.round(clampNumber(spl, 30, 95));
 }
 
 function calculateRiskScore(avgDecibel, peakDecibel, snoreRate, apneaEvents, durationSeconds) {
@@ -122,9 +124,10 @@ function calculateBandProfile(pcmData, start, end, sampleRate) {
 }
 
 function calculateSnoreToneScore(zeroCrossingRate) {
-  if (zeroCrossingRate >= 70 && zeroCrossingRate <= 520) return 1;
-  if (zeroCrossingRate >= 40 && zeroCrossingRate <= 760) return 0.65;
-  return 0.2;
+  if (zeroCrossingRate >= 60 && zeroCrossingRate <= 600) return 1;
+  if (zeroCrossingRate >= 40 && zeroCrossingRate <= 1200) return 0.7;
+  if (zeroCrossingRate >= 30 && zeroCrossingRate <= 1600) return 0.4;
+  return 0.15;
 }
 
 function calculateSnoreSpectralScore(bandRatio, dominantFrequency) {
@@ -176,9 +179,10 @@ function analyzePcmOnClient(pcmData, durationSeconds) {
     const bandProfile = calculateBandProfile(pcmData, offset, end, sampleRate);
     const toneScore = calculateSnoreToneScore(zeroCrossingRate);
     const spectralScore = calculateSnoreSpectralScore(bandProfile.bandRatio, bandProfile.dominantFrequency);
+    const snoreScore = clampNumber(toneScore * 0.35 + spectralScore * 0.65, 0.05, 1);
     frameFeatures.push({
       decibel: frameDecibel,
-      snoreScore: toneScore * 0.35 + spectralScore * 0.65,
+      snoreScore,
     });
     peakDecibel = Math.max(peakDecibel, frameDecibel);
     totalDurationSeconds += frameSeconds;
@@ -190,15 +194,30 @@ function analyzePcmOnClient(pcmData, durationSeconds) {
 
   const frameDecibels = frameFeatures.map(item => item.decibel);
   const sortedDecibels = frameDecibels.slice().sort((a, b) => a - b);
-  const quietIndex = Math.floor(sortedDecibels.length * 0.3);
+  const decibelTotal = frameDecibels.reduce((sum, d) => sum + d, 0);
+  const avgDecibel = Math.round(decibelTotal / frameDecibels.length);
+  const decibelStdDev = calculateStdDev(frameDecibels, avgDecibel);
+
+  const quietIndex = Math.floor(sortedDecibels.length * 0.15);
   const noiseFloor = sortedDecibels[quietIndex] || sortedDecibels[0] || 30;
-  const snoreThreshold = clampNumber(noiseFloor + 8, 42, 62);
-  const quietThreshold = clampNumber(noiseFloor + 3, 34, 48);
-  let decibelTotal = 0;
+  const dynamicRange = peakDecibel - noiseFloor;
+
+  // Flat Ambient Noise Gate:
+  // If peak is below 42dB, or dynamic range < 5dB, or stdDev < 1.8 with peak-avg <= 2dB,
+  // this is pure flat room ambient background noise, NOT snoring.
+  if (peakDecibel < 42 || dynamicRange < 5 || (decibelStdDev < 1.8 && peakDecibel - avgDecibel <= 2)) {
+    return { avgDecibel, peakDecibel, snoreRate: 0, apneaEvents: 0, riskLevel: 'normal', riskScore: 0 };
+  }
+
+  // Snore threshold must be at least 4 dB above ambient noise floor, and at least 42 dB
+  const snoreThreshold = clampNumber(Math.max(noiseFloor + 4, 42), 42, 54);
+  // Quiet threshold for apnea: sound drops below snore level down towards room ambient noise
+  const quietThreshold = Math.min(snoreThreshold - 2, Math.max(noiseFloor + 2, 40));
   let snoreFrames = 0;
   let loudSnoreFrames = 0;
   let quietFrames = 0;
   let inApneaState = false;
+  let recoveryWindow = 0;
   let apneaEventsCount = 0;
   let snoreConfidenceTotal = 0;
   let currentSnoreRun = 0;
@@ -207,35 +226,67 @@ function analyzePcmOnClient(pcmData, durationSeconds) {
   for (let index = 0; index < frameFeatures.length; index += 1) {
     const frame = frameFeatures[index];
     const frameDecibel = frame.decibel;
-    decibelTotal += frameDecibel;
 
     if (frameDecibel >= snoreThreshold) {
-      snoreFrames += 1;
       if (frameDecibel >= snoreThreshold + 8) loudSnoreFrames += 1;
-      const loudnessScore = clampNumber((frameDecibel - snoreThreshold) / 12, 0.45, 1);
-      snoreConfidenceTotal += loudnessScore * frame.snoreScore;
-      currentSnoreRun += 1;
-      longestSnoreRun = Math.max(longestSnoreRun, currentSnoreRun);
+      // Acoustic snore confidence check: snoreScore >= 0.35 verifies human vocal/airway vibration frequency
+      if (frame.snoreScore >= 0.35) {
+        snoreFrames += 1;
+        const loudnessBoost = clampNumber((frameDecibel - snoreThreshold) / 10, 0, 0.3);
+        const frameConfidence = clampNumber(frame.snoreScore + loudnessBoost, 0.5, 1.0);
+        snoreConfidenceTotal += frameConfidence;
+        currentSnoreRun += 1;
+        longestSnoreRun = Math.max(longestSnoreRun, currentSnoreRun);
+      } else {
+        currentSnoreRun = 0;
+      }
     } else {
       currentSnoreRun = 0;
     }
 
     if (frameDecibel <= quietThreshold) {
       quietFrames += 1;
-      if (quietFrames >= 10 && !inApneaState) inApneaState = true;
+      // 7 or more consecutive 1-second frames in absence of snoring (~7-10 seconds pause)
+      if (quietFrames >= 7) {
+        inApneaState = true;
+      }
     } else {
-      if (inApneaState && frameDecibel >= snoreThreshold + 6) apneaEventsCount += 1;
-      inApneaState = false;
+      if (inApneaState) {
+        if (frameDecibel >= snoreThreshold) {
+          apneaEventsCount += 1;
+          inApneaState = false;
+        } else {
+          // If volume began to rise (transition), allow a 2-second recovery window
+          recoveryWindow = 2;
+        }
+      } else if (recoveryWindow > 0) {
+        recoveryWindow -= 1;
+        if (frameDecibel >= snoreThreshold) {
+          apneaEventsCount += 1;
+          recoveryWindow = 0;
+        }
+      }
       quietFrames = 0;
     }
   }
 
-  const avgDecibel = Math.round(decibelTotal / frameDecibels.length);
-  const decibelStdDev = calculateStdDev(frameDecibels, avgDecibel);
+  // If recording ended while in apnea pause
+  if (inApneaState) {
+    apneaEventsCount += 1;
+  }
+
+  // If fewer than 2 snore frames, treat as transient isolated click/noise
+  if (snoreFrames < 2) {
+    return { avgDecibel, peakDecibel, snoreRate: 0, apneaEvents: 0, riskLevel: 'normal', riskScore: 0 };
+  }
+
   const activeRatio = snoreFrames / frameDecibels.length;
   const longestRunRatio = longestSnoreRun / frameDecibels.length;
-  const stableNoisePenalty = activeRatio >= 0.75 && longestRunRatio >= 0.75 && decibelStdDev < 4 ? 0.45 : 1;
-  const sustainedSnoreFrames = Math.max(0, snoreConfidenceTotal - Math.floor(loudSnoreFrames * 0.08));
+  // Stationary machine noise penalty only penalizes flat sounds that LACK snore acoustic features (avgSnoreScore < 0.5)
+  const avgSnoreScore = snoreFrames > 0 ? snoreConfidenceTotal / snoreFrames : 0;
+  const isStationaryMachineNoise = activeRatio >= 0.75 && longestRunRatio >= 0.75 && decibelStdDev < 3.5 && avgSnoreScore < 0.5;
+  const stableNoisePenalty = isStationaryMachineNoise ? 0.45 : 1;
+  const sustainedSnoreFrames = Math.max(0, snoreConfidenceTotal - Math.floor(loudSnoreFrames * 0.05));
   const snoreRate = Math.round(clampNumber((sustainedSnoreFrames / frameDecibels.length) * 100 * stableNoisePenalty, 0, 95));
   const apneaEvents = apneaEventsCount;
   const rawRiskScore = calculateRiskScore(avgDecibel, peakDecibel, snoreRate, apneaEvents, Math.max(durationSeconds, totalDurationSeconds));
@@ -263,6 +314,8 @@ Page({
     durationText: '00:00',
     statusText: INITIAL_STATUS_TEXT,
     tempFilePath: '',
+    currentDecibel: '--',
+    peakLiveDecibel: '--',
   },
 
   onLoad(options) {
@@ -332,11 +385,20 @@ Page({
     this._onRecorderFrame = (result) => {
       if (this._unloaded) return;
       try {
+        if (!result || !result.frameBuffer) return;
         const pcm = toPcmInt16Array(result.frameBuffer);
         if (!pcm.length) return;
         let sum = 0;
+        let squareSum = 0;
         for (let index = 0; index < pcm.length; index += 1) {
-          sum += Math.abs(pcm[index]);
+          const sample = pcm[index];
+          squareSum += sample * sample;
+          sum += Math.abs(sample);
+        }
+        const rms = Math.sqrt(squareSum / pcm.length);
+        const currentDb = calculateFrameDecibel(rms);
+        if (!this._peakLiveDecibel || currentDb > this._peakLiveDecibel) {
+          this._peakLiveDecibel = currentDb;
         }
         const avgAbs = sum / pcm.length;
         const scale = Math.min(1, Math.max(0, (avgAbs - 80) / 1800));
@@ -345,7 +407,11 @@ Page({
           const factor = [0.15, 0.25, 0.4, 0.6, 0.8, 0.95, 1, 1, 1, 1, 0.95, 0.8, 0.6, 0.4, 0.25, 0.15][index];
           nextLevels.push(Math.min(38, Math.max(6, 6 + Math.floor(32 * scale * factor))));
         }
-        this.setData({ audioLevels: nextLevels });
+        this.setData({
+          audioLevels: nextLevels,
+          currentDecibel: currentDb,
+          peakLiveDecibel: this._peakLiveDecibel,
+        });
       } catch (error) {
         console.error('Frame volume calc error', error);
       }
@@ -357,6 +423,7 @@ Page({
 
   handleRecorderError(error) {
     this._starting = null;
+    this._peakLiveDecibel = 0;
     console.error('Recorder error', error);
     this.ignoreNextStop = true;
     this.clearTimers();
@@ -372,6 +439,8 @@ Page({
       audioLevels: new Array(16).fill(6),
       tempFilePath: '',
       disabledSelector: false,
+      currentDecibel: '--',
+      peakLiveDecibel: '--',
     });
     wx.showModal({
       title: '录音失败',
@@ -505,6 +574,7 @@ Page({
         this._savedReportUrl = '';
         this._recordingTimestamp = Date.now();
         this._recordingLocalId = 'snore_' + this._recordingTimestamp + '_' + Math.random().toString(36).slice(2, 12);
+        this._peakLiveDecibel = 0;
         this.clearTimers();
         this.setData({
           isRecording: true,
@@ -516,6 +586,8 @@ Page({
           statusText: '正在监测睡眠声音...',
           audioLevels: new Array(16).fill(6),
           disabledSelector: true,
+          currentDecibel: '--',
+          peakLiveDecibel: '--',
         });
         this.durationTimer = setInterval(() => {
           this.setData({ recordingDurationSeconds: this.data.recordingDurationSeconds + 1 });
@@ -608,11 +680,13 @@ Page({
   },
 
   resetStoppedRecording() {
+    this._peakLiveDecibel = 0;
     this.clearTimers();
     this.restoreScreenBrightness();
     this.setData({ isRecording: false, hasRecordingEnded: false, isAnalyzing: false,
       isSubmitting: false, disabledSelector: false, recordingDurationSeconds: 0,
-      durationText: '00:00', audioLevels: new Array(16).fill(6), statusText: INITIAL_STATUS_TEXT });
+      durationText: '00:00', audioLevels: new Array(16).fill(6), statusText: INITIAL_STATUS_TEXT,
+      currentDecibel: '--', peakLiveDecibel: '--' });
   },
 
   openSavedReport() {

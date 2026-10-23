@@ -437,7 +437,7 @@ const handleSubmit = async () => {
               <div class="report-box-title">
                 <span><AppIcon name="volume" />  AI 鼾声录音分析报告</span>
                 <span class="risk-badge" :class="snoreReport.risk_level">
-                  {{ snoreReport.risk_level === 'high' ? '高风险' : (snoreReport.risk_level === 'medium' ? '中风险' : '低风险') }}
+                  {{ snoreReport.analysis_version === 2 ? '声音特征分析' : (snoreReport.risk_level === 'high' ? '高风险' : (snoreReport.risk_level === 'medium' ? '中风险' : '低风险')) }}
                 </span>
               </div>
               <div class="report-box-content">
@@ -447,20 +447,21 @@ const handleSubmit = async () => {
                     <span class="metric-val">{{ formatDuration(snoreReport.duration) }}</span>
                   </div>
                   <div class="metric-item">
-                    <span class="metric-lbl">平均分贝</span>
-                    <span class="metric-val">{{ snoreReport.avg_decibel }} dB</span>
+                    <span class="metric-lbl">{{ snoreReport.analysis_version === 2 ? '平均录音电平' : '平均分贝' }}</span>
+                    <span class="metric-val">{{ snoreReport.avg_decibel }} {{ snoreReport.analysis_version === 2 ? 'dBFS' : 'dB' }}</span>
                   </div>
                   <div class="metric-item">
-                    <span class="metric-lbl">峰值分贝</span>
-                    <span class="metric-val">{{ snoreReport.peak_decibel }} dB</span>
+                    <span class="metric-lbl">{{ snoreReport.analysis_version === 2 ? '采样峰值电平' : '峰值分贝' }}</span>
+                    <span class="metric-val">{{ snoreReport.peak_decibel }} {{ snoreReport.analysis_version === 2 ? 'dBFS' : 'dB' }}</span>
                   </div>
                   <div class="metric-item">
-                    <span class="metric-lbl">呼吸暂停 (次数)</span>
+                    <span class="metric-lbl">{{ snoreReport.analysis_version === 2 ? '长静音间隔（非呼吸暂停）' : '呼吸暂停 (次数)' }}</span>
                     <span class="metric-val font-error">{{ snoreReport.apnea_events }} 次</span>
                   </div>
                 </div>
                 <div class="metric-desc">
-                  鼾声占比 {{ snoreReport.snore_rate }}%，夜间监测过程中记录到 {{ snoreReport.apnea_events }} 次疑似呼吸暂停事件，提示气道塌陷风险。
+                  <template v-if="snoreReport.analysis_version === 2">疑似鼾声占比 {{ snoreReport.snore_rate }}%。录音电平未经环境声压校准，声音分析不能判断是否存在呼吸暂停。</template>
+                  <template v-else>鼾声占比 {{ snoreReport.snore_rate }}%，夜间监测过程中记录到 {{ snoreReport.apnea_events }} 次疑似呼吸暂停事件，提示气道塌陷风险。</template>
                 </div>
               </div>
             </div>
