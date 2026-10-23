@@ -45,7 +45,7 @@ function getEssLevelInfo(score) {
     level: '重度嗜睡',
     color: 'linear-gradient(135deg, #EF4444, #B91C1C)',
     desc: '您存在重度日间嗜睡，可能对健康和安全造成严重影响。',
-    advice: '请立即预约鼾静健康门诊进行专业诊断。建议避免长途驾驶，尽快进行多导睡眠监测。',
+    advice: '请立即预约兴康明门诊进行专业诊断。建议避免长途驾驶，尽快进行多导睡眠监测。',
     adviceBg: '#fef2f2',
     adviceBorder: '#fee2e2',
     adviceTitleColor: '#991b1b',

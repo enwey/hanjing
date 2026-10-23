@@ -1,12 +1,12 @@
 <view class="agreement-page">
   <hj-navbar title="用户协议" showBack="{{true}}" />
   <scroll-view scroll-y class="agreement-content">
-    <view class="article-title">鼾静健康诊所用户协议</view>
+    <view class="article-title">兴康明诊所用户协议</view>
     <view class="article-meta">更新日期：2026年06月11日</view>
 
     <view class="section">
       <view class="section-title">一、协议的范围与确认</view>
-      <text class="section-text">欢迎您使用鼾静健康诊所微信小程序。本协议由您与鼾静健康诊所共同订立。在您使用本小程序提供的各项服务之前，请务必仔细阅读本协议。当您勾选同意或开始使用本小程序服务时，即视为您已充分阅读、理解并接受本协议的全部内容。</text>
+      <text class="section-text">欢迎您使用兴康明诊所微信小程序。本协议由您与兴康明诊所共同订立。在您使用本小程序提供的各项服务之前，请务必仔细阅读本协议。当您勾选同意或开始使用本小程序服务时，即视为您已充分阅读、理解并接受本协议的全部内容。</text>
     </view>
 
     <view class="section">

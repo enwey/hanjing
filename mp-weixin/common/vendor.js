@@ -811,7 +811,7 @@ const Qt = {
           const S = (s || "").replace(/_/g, "-"),
             k = {
               appId: "__UNI__XXXXXXX",
-              appName: "鼾静健康诊所",
+              appName: "兴康明诊所",
               appVersion: "1.0.0",
               appVersionCode: "100",
               appLanguage: Jt(S),
@@ -895,7 +895,7 @@ const Qt = {
         u = (o || "").replace(/_/g, "-");
       const a = {
         appId: "__UNI__XXXXXXX",
-        appName: "鼾静健康诊所",
+        appName: "兴康明诊所",
         appVersion: "1.0.0",
         appVersionCode: "100",
         appLanguage: Jt(u),

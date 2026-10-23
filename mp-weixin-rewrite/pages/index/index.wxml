@@ -3,7 +3,7 @@
     <hj-navbar title="" textColor="#FFFFFF" backgroundColor="transparent" transparent="{{true}}" sticky="{{false}}" />
     <view class="hero-navbar-spacer"></view>
     <view class="hero-content">
-      <text class="hero-title">鼾静健康诊所</text>
+      <text class="hero-title">兴康明诊所</text>
       <text class="hero-subtitle">专注睡眠呼吸健康 · 让每一个夜晚安宁无声</text>
       <view class="hero-stats">
         <view class="hero-stat">
@@ -28,8 +28,8 @@
 
   <view class="section quick-actions">
     <view class="quick-action" bindtap="navigateToApptTab">
-      <image class="quick-action-icon quick-action-icon--appointment" src="/static/icons/appointment_blue.svg" />
-      <text class="quick-action-text">预约挂号</text>
+      <image class="quick-action-icon quick-action-icon--appointment" src="/static/icons/appointment-record-blue.svg" />
+      <text class="quick-action-text">预约记录</text>
     </view>
     <view class="quick-action" bindtap="goAssessment">
       <image class="quick-action-icon quick-action-icon--assessment" src="/static/icons/assessment_purple.svg" />

@@ -40,10 +40,10 @@ async function handleLogin({ validateResult }: any) {
     <div class="login-card">
       <div class="login-brand">
         <span class="brand-logo">
-          <img class="brand-logo-image" src="/brand-koala.png" alt="鼾静健康诊所" />
+          <img class="brand-logo-image" src="/brand-koala.png" alt="兴康明诊所" />
         </span>
         <div class="brand-title">
-          鼾静健康诊所
+          兴康明诊所
           <small>睡眠健康管理后台</small>
         </div>
       </div>
@@ -84,7 +84,7 @@ async function handleLogin({ validateResult }: any) {
       </t-form>
       
       <div class="login-footer">
-        © 2026 鼾静健康诊所 · 睡眠呼吸障碍无创阻鼾方案
+        © 2026 兴康明诊所 · 睡眠呼吸障碍无创阻鼾方案
       </div>
     </div>
   </div>

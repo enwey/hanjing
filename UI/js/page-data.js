@@ -15,7 +15,7 @@ const HJ_UI_PAGES = [
   {
     "id": "phone-1",
     "path": "pages/index/index",
-    "title": "鼾静健康诊所",
+    "title": "兴康明诊所",
     "category": "首页及基础 (Main & Base)",
     "screenClass": "page-pages-index-index"
   },

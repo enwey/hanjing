@@ -123,9 +123,9 @@
     const timeSlot = params.get('timeSlot') || '09:00-09:30';
 
     const storeNames = {
-      'store-001': '鼾静健康·深圳旗舰中心',
-      'store-002': '鼾静健康·南山分中心',
-      'store-003': '鼾静健康·宝安分中心'
+      'store-001': '兴康明·深圳旗舰中心',
+      'store-002': '兴康明·南山分中心',
+      'store-003': '兴康明·宝安分中心'
     };
     const doctorNames = {
       'doc-001': '李明辉 (主任医师)',
@@ -140,7 +140,7 @@
 
     // Load data
     const feeValue = doctorFees[doctorId] || 200;
-    document.getElementById('info-store').textContent = storeNames[storeId] || '鼾静健康·深圳旗舰中心';
+    document.getElementById('info-store').textContent = storeNames[storeId] || '兴康明·深圳旗舰中心';
     document.getElementById('info-doctor').textContent = doctorNames[doctorId] || '李明辉 (主任医师)';
     document.getElementById('info-date').textContent = date;
     document.getElementById('info-time').textContent = timeSlot;

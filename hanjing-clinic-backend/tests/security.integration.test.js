@@ -66,10 +66,12 @@ test('launch security and payment boundaries', async t => {
       const saved = await api(url + '/order_status', config, superToken, 'PUT');
       assert.equal(saved.status, 200);
       assert.equal((await api(url + '/order_status', config, superToken, 'PUT')).status, 409);
-      assert.equal((await api(url + '/payment_due', config, superToken, 'PUT')).status, 400);
+      const paymentDueConfig = { ...config, revision: '' };
+      assert.equal((await api(url + '/payment_due', paymentDueConfig, superToken, 'PUT')).status, 200);
       assert.equal((await api('/api/admin/settings', { wechat_notification_order_status: '{}' }, superToken)).status, 400);
       const service = await import('../wechatSubscribe.js');
       assert.equal((await service.getSubscribeTemplateMap()).order_status, config.templateId);
+      assert.equal((await service.getSubscribeTemplateMap()).payment_due, config.templateId);
       const originalFetch = globalThis.fetch;
       const oldId = process.env.WX_MINI_APP_ID, oldSecret = process.env.WX_MINI_APP_SECRET;
       let sent;

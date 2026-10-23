@@ -97,7 +97,7 @@ async function tryBindPendingInvite(inviteCode) {
     if (status === "bound" || status === "already_bound" || status === "ignored_self") {
       e.index.removeStorageSync("pending_invite_code");
     }
-    console.log("[鼾静健康] 邀请绑定结果:", status);
+    console.log("[兴康明] 邀请绑定结果:", status);
   } catch (err) {
     if (
       err &&
@@ -107,7 +107,7 @@ async function tryBindPendingInvite(inviteCode) {
     ) {
       e.index.removeStorageSync("pending_invite_code");
     }
-    console.error("[鼾静健康] 邀请绑定失败", err);
+    console.error("[兴康明] 邀请绑定失败", err);
   }
 }
 
@@ -115,7 +115,7 @@ function handleInviteOptions(options) {
   const inviteCode = parseInviteCodeFromOptions(options);
   if (!inviteCode) return;
 
-  console.log("[鼾静健康] 监测到推荐邀请码:", inviteCode);
+  console.log("[兴康明] 监测到推荐邀请码:", inviteCode);
   e.index.setStorageSync("pending_invite_code", inviteCode);
   tryBindPendingInvite(inviteCode);
 }
@@ -124,9 +124,9 @@ const o = e.defineComponent({
   __name: "App",
   setup: (o) => {
     e.onLaunch((options) => {
-      console.log("[鼾静健康] App Launch", options);
+      console.log("[兴康明] App Launch", options);
       if (!e.index.getStorageSync("access_token")) {
-        console.log("[鼾静健康] 未登录");
+        console.log("[兴康明] 未登录");
       }
       handleInviteOptions(options);
 
@@ -176,12 +176,12 @@ const o = e.defineComponent({
     });
 
     e.onShow((options) => {
-      console.log("[鼾静健康] App Show", options);
+      console.log("[兴康明] App Show", options);
       handleInviteOptions(options);
     });
 
     e.onHide(() => {
-      console.log("[鼾静健康] App Hide");
+      console.log("[兴康明] App Hide");
     });
 
     return () => {};

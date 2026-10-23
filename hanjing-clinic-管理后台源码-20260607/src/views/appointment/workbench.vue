@@ -853,7 +853,7 @@ function goToEmr(item: QueueItem) {
 const createApptVisible = ref(false)
 const apptSearchQuery = ref('')
 const apptSelectedPatient = ref<any>(null)
-const apptStore = ref('鼾静健康·龙岗总店')
+const apptStore = ref('兴康明·龙岗总店')
 const apptDate = ref(getTodayDateString())
 const apptSlot = ref('09:00 - 09:30')
 const apptVisitType = ref('复诊')

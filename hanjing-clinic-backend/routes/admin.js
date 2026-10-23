@@ -1613,10 +1613,13 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
-  const { patient_id, store_id, doctor_id, date, period, time, type, symptom_desc, consult_fee, deposit_amount } = req.body;
+  const { patient_id, store_id, doctor_id, date, period, time, type, symptom_desc, consult_fee, deposit_amount, defer_notification } = req.body;
   
   if (!patient_id || !store_id || !doctor_id || !date || !time) {
     return res.status(400).json({ code: 400, message: '必填参数缺失' });
+  }
+  if (defer_notification !== undefined && typeof defer_notification !== 'boolean') {
+    return res.status(400).json({ code: 400, message: '通知延迟参数无效' });
   }
   const appointmentType = normalizeAppointmentType(type);
   if (!appointmentType) {
@@ -1729,7 +1732,7 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
     });
 
     res.json({ code: 200, message: '新建预约成功', data: { appointment_no, id: result.id, status: initialStatus } });
-    setImmediate(() => {
+    if (!defer_notification) setImmediate(() => {
       sendWechatSubscribeMessage({
         userId: user_id,
         event: 'appointment_created',
@@ -7068,6 +7071,23 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
         payAt: order.pay_at, status: order.status, type: order.type, shippingAddress: order.shipping_address,
         items: savedItems.map(item => ({productId:item.product_id,productName:item.product_name,price:item.price,quantity:item.quantity})) }
     } });
+    if (normalizedPayMethod === 'wechat' && appointment?.id) {
+      setImmediate(() => {
+        sendWechatSubscribeMessage({
+          userId: patient.user_id,
+          event: 'payment_due',
+          businessId: `admin_appointment_payment_due:${order.id}`,
+          page: `pages/appointment/detail?id=${appointment.id}`,
+          payload: {
+            orderNo,
+            status: '待付款',
+            productName: savedItems.map(item => item.product_name).filter(Boolean).slice(0, 2).join('、') || '预约费用',
+            amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
+            remark: '请进入预约详情完成支付'
+          }
+        });
+      });
+    }
   } catch (error) {
     console.error('Cashier order:', error);
     const statusCode = error.statusCode || 500;

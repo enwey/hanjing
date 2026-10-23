@@ -153,7 +153,7 @@ const stats = computed(() => ({
 }))
 
 function getAvatarBg(author: string) {
-  if (author === '官方发布' || author === '官方客服' || author === '鼾静助手') {
+  if (author === '官方发布' || author === '官方客服' || author === '兴康明助手') {
     return 'linear-gradient(135deg, #3B6BF5, #1D4ED8)'
   }
   return 'linear-gradient(135deg, #F5A623, #FFD700)'

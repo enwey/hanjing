@@ -23,7 +23,7 @@
           {
             "name": "RESULT-03 malformed explicit risk score must not become a valid zero",
             "status": "FAIL",
-            "actual": "invalid score rendered as 0 with 高风险\n+ actual - expected\n\n+ {\n+   advice: '请尽快到鼾静健康门诊进行多导睡眠监测和上气道评估，及早治疗可避免并发症风险。',\n+   bgColor: '#FEF2F2',\n+   color: '#EF4444',\n+   desc: '检测到重度鼾声和较多呼吸暂停事件，可能存在中度至重度睡眠呼吸暂停综合征。',\n+   tips: [\n+     '立即预约门诊',\n+     '避免长途驾驶',\n+     '告知家属观察',\n+     '记录日间嗜睡情况'\n+   ],\n+   title: '高风险'\n+ }\n- null\n"
+            "actual": "invalid score rendered as 0 with 高风险\n+ actual - expected\n\n+ {\n+   advice: '请尽快到兴康明门诊进行多导睡眠监测和上气道评估，及早治疗可避免并发症风险。',\n+   bgColor: '#FEF2F2',\n+   color: '#EF4444',\n+   desc: '检测到重度鼾声和较多呼吸暂停事件，可能存在中度至重度睡眠呼吸暂停综合征。',\n+   tips: [\n+     '立即预约门诊',\n+     '避免长途驾驶',\n+     '告知家属观察',\n+     '记录日间嗜睡情况'\n+   ],\n+   title: '高风险'\n+ }\n- null\n"
           },
           {
             "name": "RESULT-04 high alias has consistent list and detail severity",

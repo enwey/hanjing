@@ -9,6 +9,11 @@ import { getShanghaiTodayString } from '@/utils/dateTime'
 const router = useRouter()
 const searchKeyword = ref('')
 const sourceFilter = ref('全部来源')
+const sourceOptions = [
+  { label: '全部来源', value: '全部来源' },
+  { label: '后台创建', value: '后台创建' },
+  { label: '小程序', value: '小程序' },
+]
 const activeLevelTab = ref('全部')
 const detailVisible = ref(false)
 const selectedDistributor = ref<any>(null)
@@ -17,7 +22,7 @@ interface Commission {
   date: string; orderNo: string; patient: string; product: string; amount: number; rate: string; commission: number
 }
 interface Distributor {
-  id: string; name: string; phone: string; level: string;
+  id: string; name: string; avatar: string; avatarFailed: boolean; phone: string; level: string;
   firstLevelDownline: number; secondLevelDownline: number;
   totalOrders: number; totalAmount: number; totalCommission: number; withdrawableCommission: number
   joinDate: string; source: string; status: string; loginName: string
@@ -49,7 +54,7 @@ const filteredDistributors = computed(() => {
   return list
 })
 
-watch([searchKeyword, activeLevelTab], () => {
+watch([searchKeyword, activeLevelTab, sourceFilter], () => {
   currentPage.value = 1
 })
 
@@ -153,6 +158,8 @@ async function fetchDistributors() {
     distributors.value = (res.data || []).map((row: any) => ({
       id: String(row.id),
       name: row.nickname || '推广员',
+      avatar: row.avatar_url || '',
+      avatarFailed: false,
       phone: row.user_phone || '',
       level: levelLabel(row.level),
       firstLevelDownline: Number(row.invitees_l1_count || 0),
@@ -177,6 +184,14 @@ function getAvatarBg(level: string) {
   if (level === '金牌') return 'linear-gradient(135deg, #F59E0B, #D97706)'
   if (level === '银牌') return 'linear-gradient(135deg, #9CA3AF, #6B7280)'
   return 'linear-gradient(135deg, #3B82F6, #1D4ED8)'
+}
+
+function handleAvatarError(row: Distributor) {
+  row.avatarFailed = true
+}
+
+function avatarInitial(name: string) {
+  return String(name || '推广员').trim().substring(0, 1) || '推'
 }
 
 function getLevelStyle(level: string) {
@@ -217,7 +232,6 @@ watch(operationColumnWidth, () => {
         <div class="page-title-sub">管理分销推广渠道与推广人员</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <select v-model="sourceFilter" class="form-control"><option>全部来源</option><option>后台创建</option><option>小程序</option></select>
         <BackendPromoterActions @saved="fetchDistributors" />
         <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出报表</button>
       </div>
@@ -227,15 +241,18 @@ watch(operationColumnWidth, () => {
     <div class="panel">
       <!-- 筛选栏 -->
       <div class="filter-bar">
-        <div class="filter-tabs">
-          <div
-            v-for="tab in levelTabs"
-            :key="tab"
-            :class="['filter-tab', activeLevelTab === tab ? 'active' : '']"
-            @click="activeLevelTab = tab"
-          >
-            {{ tab }}
+        <div class="filter-controls">
+          <div class="filter-tabs">
+            <div
+              v-for="tab in levelTabs"
+              :key="tab"
+              :class="['filter-tab', activeLevelTab === tab ? 'active' : '']"
+              @click="activeLevelTab = tab"
+            >
+              {{ tab }}
+            </div>
           </div>
+          <t-select v-model="sourceFilter" :options="sourceOptions" style="width: 120px" />
         </div>
 
         <input 
@@ -268,12 +285,13 @@ watch(operationColumnWidth, () => {
               <td>
                 <div class="name-cell" style="min-width: 0; overflow: hidden; display: flex; align-items: center; gap: 8px;">
                   <div class="avatar-sm" :style="{ background: getAvatarBg(row.level), flexShrink: 0 }">
-                    {{ row.name.substring(0, 1) }}
+                    <img v-if="row.avatar && !row.avatarFailed" :src="row.avatar" alt="" class="avatar-image" @error="handleAvatarError(row)">
+                    <template v-else>{{ avatarInitial(row.name) }}</template>
                   </div>
-                  <div style="min-width: 0; overflow: hidden; display: flex; flex-direction: column;">
-                    <div style="font-weight:600;color:#1F2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.name }}</div>
-                    <div style="font-size:11px;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.phone }}</div>
-                    <div style="font-size:12px;color:#64748b;">{{ row.source }}<span v-if="row.loginName"> · {{ row.loginName }}</span></div>
+                  <div class="promoter-info">
+                    <div class="promoter-name">{{ row.name }}</div>
+                    <div class="promoter-phone">{{ row.phone || '未填写联系电话' }}</div>
+                    <div class="promoter-source">{{ row.source }}<span v-if="row.loginName"> · {{ row.loginName }}</span></div>
                   </div>
                 </div>
               </td>
@@ -413,6 +431,13 @@ watch(operationColumnWidth, () => {
 }
 
 /* Filter components */
+.filter-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .filter-tabs {
   display: flex;
   gap: 0;
@@ -454,6 +479,13 @@ watch(operationColumnWidth, () => {
 }
 .filter-input:focus {
   border-color: #3B6BF5;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 /* Table styles matching mockup */
@@ -499,6 +531,33 @@ watch(operationColumnWidth, () => {
   font-weight: bold;
   color: #fff;
   flex-shrink: 0;
+  overflow: hidden;
+}
+.promoter-info {
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.promoter-name,
+.promoter-phone,
+.promoter-source {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.promoter-name {
+  color: #1F2937;
+  font-weight: 600;
+}
+.promoter-phone {
+  color: #9CA3AF;
+  font-size: 11px;
+}
+.promoter-source {
+  color: #64748B;
+  font-size: 12px;
 }
 .actions {
   display: flex;

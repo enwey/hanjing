@@ -1,7 +1,7 @@
 {
   "name": "hanjing-clinic-backend",
   "version": "1.0.0",
-  "description": "鼾静健康诊所后台服务",
+  "description": "兴康明诊所后台服务",
   "main": "server.js",
   "type": "module",
   "scripts": {

@@ -1,4 +1,4 @@
-# 鼾静健康诊所微信小程序端 · 开发规范偏差与缺失分析报告 (WeChat Mini Program Development Gaps Analysis)
+# 兴康明诊所微信小程序端 · 开发规范偏差与缺失分析报告 (WeChat Mini Program Development Gaps Analysis)
 
 ---
 

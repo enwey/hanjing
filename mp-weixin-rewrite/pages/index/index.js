@@ -206,7 +206,12 @@ Page({
   },
 
   navigateToApptTab() {
-    this.navigateOnce('/pages/appointment/booking/index');
+    const appointmentRecordsUrl = '/pages/appointment/booking/index?tab=mine';
+    if (!sessionStore.isLoggedIn()) {
+      this.navigateOnce('/pages/auth/login?redirect=' + encodeURIComponent(appointmentRecordsUrl));
+      return;
+    }
+    this.navigateOnce(appointmentRecordsUrl);
   },
 
   goAssessment() {

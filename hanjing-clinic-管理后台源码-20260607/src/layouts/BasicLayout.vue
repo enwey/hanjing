@@ -576,10 +576,10 @@ onUnmounted(() => {
         <template #logo>
           <div class="sidebar-logo">
             <div class="sidebar-logo-icon">
-              <img class="sidebar-logo-icon__image" src="/brand-koala.png" alt="鼾静健康诊所" />
+              <img class="sidebar-logo-icon__image" src="/brand-koala.png" alt="兴康明诊所" />
             </div>
             <div class="sidebar-logo-text" :class="{ 'logo-hidden': isMenuCollapsed }">
-              鼾静健康
+              兴康明
               <small>管理后台 v1.0</small>
             </div>
           </div>
@@ -1042,7 +1042,7 @@ onUnmounted(() => {
             <!-- Quick Replies -->
             <div class="chat-quick-replies">
               <span class="quick-reply-label">快捷回复:</span>
-              <span class="quick-reply-tag" @click="useQuickReply('您好，鼾静健康客服，请问有什么可以帮您？')">打招呼</span>
+              <span class="quick-reply-tag" @click="useQuickReply('您好，兴康明客服，请问有什么可以帮您？')">打招呼</span>
               <span class="quick-reply-tag" @click="useQuickReply('好的，已为您确认了该挂号预约，您可以前往“我的挂号”查看详细信息。')">确认预约</span>
               <span class="quick-reply-tag" @click="useQuickReply('您的订单已成功打单发货，快递单号已生成，请耐心等待配送。')">发货提醒</span>
               <span class="quick-reply-tag" @click="useQuickReply('请问您目前主要有哪些不适症状？使用止鼾设备后有什么改善吗？')">常规问询</span>

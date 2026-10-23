@@ -81,7 +81,7 @@ function createPosterContextAdapter(context) {
 }
 
 Page({
-  data: { inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: '邀请好友体验鼾静健康诊所', qrUnavailableNotice: '', isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
+  data: { inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: '邀请好友体验兴康明诊所', qrUnavailableNotice: '', isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
   async onShow() { await this.loadInviteInfo({ silent: this.data.hasLoaded }); },
   async loadInviteInfo(options = {}) {
     try {
@@ -189,7 +189,7 @@ Page({
 
     context.setFillStyle('#ffffff');
     context.setFontSize(28);
-    context.fillText('鼾静健康', contentX + 58, currentY + 20);
+    context.fillText('兴康明', contentX + 58, currentY + 20);
     context.setFillStyle('rgba(255, 255, 255, 0.52)');
     context.setFontSize(14);
     context.fillText('HANJING HEALTH', contentX + 58, currentY + 42);
@@ -526,7 +526,7 @@ Page({
   },
   onShareAppMessage() {
     return {
-      title: this.data.shareTitle || '邀请好友体验鼾静健康诊所',
+      title: this.data.shareTitle || '邀请好友体验兴康明诊所',
       path: this.data.sharePath || '/pages/index/index',
       imageUrl: '/static/images/distribution-invite-share-cover.png',
     };

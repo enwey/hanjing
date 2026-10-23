@@ -144,10 +144,11 @@ test('independent backend promoters and paid referral accounting', async t => {
         return nativeFetch(url,options);
       };
       try{
-        const body={nickname:'Created',phone:'13900139000',login_name:'created-account',password:'Created123'};
+        const body={nickname:'Created',phone:'',avatar_url:'http://localhost:5005/uploads/admin/images/promoter-avatar/test-avatar.png',login_name:'created-account',password:'Created123'};
         const created=await api('/api/admin/distribution/promoters',adminToken,body);
         assert.equal(created.status,200,JSON.stringify(created.body));assert.match(created.body.data.qr.image,/^data:image\/png;base64,/);
-        const id=created.body.data.id;assert.equal((await rows('SELECT user_id FROM distributors WHERE id='+id))[0].user_id,null);
+        const id=created.body.data.id;const stored=(await rows('SELECT user_id,contact_phone,avatar_url FROM distributors WHERE id='+id))[0];
+        assert.equal(stored.user_id,null);assert.equal(stored.contact_phone,null);assert.equal(stored.avatar_url,'/uploads/admin/images/promoter-avatar/test-avatar.png');
         assert.equal((await api('/api/admin/distribution/promoters/'+id+'/qr',adminToken)).status,200);assert.equal(wxCalls,2);
         const session=await api('/api/promoter/login',null,{account:body.login_name,password:body.password});
         assert.equal(session.status,200);

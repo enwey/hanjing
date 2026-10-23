@@ -5,7 +5,7 @@
     <view class="invite-heading__copy">
       <view class="invite-brand">
         <image class="invite-brand__logo" src="/static/images/brand-koala.png" mode="aspectFit" />
-        <text>鼾静健康</text>
+        <text>兴康明</text>
       </view>
       <text class="invite-heading__title">好眠邀请函</text>
       <text class="invite-heading__subtitle">把一夜好眠的心愿，<text class="invite-heading__accent">送给你在乎的人。</text></text>
@@ -28,7 +28,7 @@
         </view>
         <view class="invite-pass__message">
           <text class="invite-pass__qr-caption">从关注睡眠开始<text class="invite-pass__message-line">多一点对自己的照顾</text></text>
-          <text class="invite-pass__qr-note">{{inviteQrCode ? '扫码接受邀请，认识鼾静健康' : '分享邀请链接，认识鼾静健康'}}</text>
+          <text class="invite-pass__qr-note">{{inviteQrCode ? '扫码接受邀请，认识兴康明' : '分享邀请链接，认识兴康明'}}</text>
         </view>
       </view>
       <view class="invite-code-row">

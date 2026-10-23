@@ -1,5 +1,5 @@
 <view class="page">
-  <hj-navbar title="预约挂号" showBack="{{true}}" />
+  <hj-navbar title="预约记录" showBack="{{true}}" />
 
   <view class="page-content">
     <view class="booking-banner">

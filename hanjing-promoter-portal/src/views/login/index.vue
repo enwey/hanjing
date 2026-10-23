@@ -50,10 +50,10 @@ async function handleLogin({ validateResult }: any) {
     <div class="login-card">
       <div class="login-brand">
         <span class="brand-logo">
-          <img class="brand-logo-image" src="/brand-koala.png" alt="鼾静推广端" />
+          <img class="brand-logo-image" src="/brand-koala.png" alt="兴康明推广端" />
         </span>
         <div class="brand-title">
-          鼾静推广端
+          兴康明推广端
           <small>推广数据工作台</small>
         </div>
       </div>
@@ -90,7 +90,7 @@ async function handleLogin({ validateResult }: any) {
       </t-form>
 
       <div class="login-footer">
-        © 2026 鼾静健康诊所 · 推广数据工作台
+        © 2026 兴康明诊所 · 推广数据工作台
       </div>
     </div>
   </div>

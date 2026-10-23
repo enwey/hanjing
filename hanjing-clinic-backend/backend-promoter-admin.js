@@ -23,16 +23,19 @@ export async function promoterQr(id) {
 }
 export function registerBackendPromoterAdmin(app) {
   app.post('/api/admin/distribution/promoters',authenticateToken,async(req,res)=>{
-    const {nickname,login_name,password,phone}=req.body;
-    if(typeof nickname!=='string'||!nickname.trim()||nickname.length>100||typeof login_name!=='string'||! /^[a-zA-Z0-9_@.\-]{4,64}$/.test(login_name)||typeof password!=='string'||password.length<8||password.length>64||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password)||!/^1[3-9]\d{9}$/.test(phone||''))return res.status(400).json({code:400,message:'请填写姓名、有效手机号、4-64位账号及8-64位字母数字密码'});
+    const {nickname,login_name,password,phone,avatar_url}=req.body;
+    const phoneClean=String(phone||'').trim(),avatarClean=String(avatar_url||'').trim();
+    let avatarPath='';
+    try{avatarPath=avatarClean?(avatarClean.startsWith('/')?avatarClean:new URL(avatarClean).pathname):''}catch{}
+    if(typeof nickname!=='string'||!nickname.trim()||nickname.length>100||typeof login_name!=='string'||! /^[a-zA-Z0-9_@.\-]{4,64}$/.test(login_name)||typeof password!=='string'||password.length<8||password.length>64||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password)||phoneClean&&!/^1[3-9]\d{9}$/.test(phoneClean)||avatarClean&&(!/^\/uploads\/admin\/images\/promoter-avatar\/[a-zA-Z0-9_.-]+$/.test(avatarPath)||avatarClean.length>255))return res.status(400).json({code:400,message:'请填写推广员姓名、4-64位账号及8-64位字母数字密码；联系电话选填，填写时需为有效手机号'});
     try {
       const id=await transaction(async conn=>{
         const code='BP'+crypto.randomBytes(12).toString('hex');
-        const [created]=await conn.execute(`INSERT INTO distributors(user_id,nickname,invite_code,source_type,contact_phone,created_by,status)
-          VALUES(NULL,?,?,'backend',?,?,'active')`,[nickname.trim(),code,encryptPII(phone),req.user.id]);
+        const [created]=await conn.execute(`INSERT INTO distributors(user_id,nickname,avatar_url,invite_code,source_type,contact_phone,created_by,status)
+          VALUES(NULL,?,?,?,'backend',?,?,'active')`,[nickname.trim(),avatarPath||null,code,phoneClean?encryptPII(phoneClean):null,req.user.id]);
         await conn.execute('INSERT INTO promoter_accounts(distributor_id,login_name,password_hash) VALUES(?,?,?)',[created.insertId,login_name,hashPassword(password)]);
         await conn.execute('INSERT INTO promoter_codes(code,distributor_id) VALUES(?,?)',[code,created.insertId]);
-        await conn.execute("INSERT INTO audit_logs(admin_id,action,target_type,target_id,details,status) VALUES(?,'create_backend_promoter','distributor',?,?,'success')",[req.user.id,String(created.insertId),JSON.stringify({nickname:nickname.trim(),login_name})]);
+        await conn.execute("INSERT INTO audit_logs(admin_id,action,target_type,target_id,details,status) VALUES(?,'create_backend_promoter','distributor',?,?,'success')",[req.user.id,String(created.insertId),JSON.stringify({nickname:nickname.trim(),login_name,has_avatar:Boolean(avatarClean),has_phone:Boolean(phoneClean)})]);
         return created.insertId;
       });
       let qr=null,qrError='';try{qr=await promoterQr(id)}catch(e){qrError=e.message}

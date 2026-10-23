@@ -35,7 +35,7 @@ const activeMenu = computed(() => {
 })
 
 const breadcrumbs = computed(() => [
-  { label: '鼾静推广端', path: '/dashboard' },
+  { label: '兴康明推广端', path: '/dashboard' },
   { label: activeMenu.value?.label || String(route.meta.title || '推广概览'), path: route.path }
 ])
 
@@ -183,10 +183,10 @@ async function handleSavePassword() {
     <aside :class="['portal-sidebar', collapsed ? 'is-collapsed' : '']">
       <div class="portal-brand">
         <div class="portal-brand-logo">
-          <img class="portal-brand-logo-image" src="/brand-koala.png" alt="鼾静推广端" />
+          <img class="portal-brand-logo-image" src="/brand-koala.png" alt="兴康明推广端" />
         </div>
         <div class="portal-brand-text" :class="{ 'is-hidden': collapsed }">
-          鼾静推广
+          兴康明推广
           <small>推广端 v1.0</small>
         </div>
       </div>

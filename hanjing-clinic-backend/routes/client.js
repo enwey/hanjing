@@ -1209,14 +1209,14 @@ function notifyPaidProductOrder(order) {
 }
 
 const DISTRIBUTION_QRCODE_PLACEHOLDER = '/static/demo/qrcode.png';
-const DISTRIBUTOR_LEVEL_RULES = {
-  silver: { level1Rate: 0.1, level2Rate: 0.03, label: '银牌' },
-  gold: { level1Rate: 0.15, level2Rate: 0.05, label: '金牌' },
-  diamond: { level1Rate: 0.2, level2Rate: 0.08, label: '钻石' }
+const DISTRIBUTOR_LEVEL_LABELS = {
+  silver: '银牌',
+  gold: '金牌',
+  diamond: '钻石'
 };
 
-function getDistributorLevelRule(level) {
-  return DISTRIBUTOR_LEVEL_RULES[level] || DISTRIBUTOR_LEVEL_RULES.silver;
+function getDistributorLevelLabel(level) {
+  return DISTRIBUTOR_LEVEL_LABELS[level] || DISTRIBUTOR_LEVEL_LABELS.silver;
 }
 
 const getDistributionFeatureConfig = async () => (await import('../distribution-ledger.js')).getDistributionFeatureConfig();
@@ -1397,7 +1397,7 @@ async function getDistributionSummary(userId, req = null) {
     withdrawnAmount: Number(distributor.withdrawn_amount || 0),
     frozenCommission: Number(pendingStats?.frozen_commission || 0),
     level: distributor.level,
-    levelLabel: getDistributorLevelRule(distributor.level).label,
+    levelLabel: getDistributorLevelLabel(distributor.level),
     inviteCode: distributor.invite_code,
     inviteQrCode,
     inviteQrReason,
@@ -7171,7 +7171,7 @@ app.get('/api/v1/distribution/invite-info', authenticateWxToken, async (req, res
         inviteQrCode: summary.inviteQrCode,
         inviteQrReason: summary.inviteQrReason || '',
         sharePath: `/pages/index/index?inviteCode=${summary.inviteCode}`,
-        shareTitle: '邀请你体验鼾静健康诊所，扫码下单可享专业睡眠健康服务'
+        shareTitle: '邀请你体验兴康明诊所，扫码下单可享专业睡眠健康服务'
       }
     });
   } catch (error) {

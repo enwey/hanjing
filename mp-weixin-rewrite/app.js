@@ -109,7 +109,7 @@ async function tryBindPendingInvite() {
 }
 
 App({
-  globalData: { appName: "鼾静健康诊所", currentRoute: '', lastRoute: '' },
+  globalData: { appName: "兴康明诊所", currentRoute: '', lastRoute: '' },
   onLaunch(options) {
     miniLog.init();
     miniLog.report({

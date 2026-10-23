@@ -29,7 +29,7 @@ export function sendSystemAlert(level, title, message, error = null) {
       const payload = JSON.stringify({
         msg_type: 'text',
         content: {
-          text: `🚨【鼾静诊所系统告警 - ${level.toUpperCase()}】\n时间: ${timestamp}\n标题: ${title}\n详情: ${message}${error ? `\n报错原因: ${error.message}` : ''}`
+          text: `🚨【兴康明诊所系统告警 - ${level.toUpperCase()}】\n时间: ${timestamp}\n标题: ${title}\n详情: ${message}${error ? `\n报错原因: ${error.message}` : ''}`
         }
       });
 
