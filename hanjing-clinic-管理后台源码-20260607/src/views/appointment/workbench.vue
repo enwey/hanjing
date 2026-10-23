@@ -19,6 +19,7 @@ import {
 } from '@/utils/checkoutProducts'
 import TechnicianSelect from '@/components/TechnicianSelect.vue'
 import { createNativePay, getAdminPayStatus, isPaidStatus, submitMicropay } from '@/utils/wechatCashier'
+import { speakMandarin } from '@/utils/speech'
 
 const router = useRouter()
 
@@ -339,12 +340,8 @@ const completedQueue = computed(() => {
 
 // Call patient voice broadcast
 const callPatient = (patientName: string, doctorName: string) => {
-  if ('speechSynthesis' in window) {
-    const text = `请患者 ${patientName}，到 ${doctorName} 医生诊室就诊。`
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'zh-CN'
-    utterance.rate = 0.9
-    window.speechSynthesis.speak(utterance)
+  const text = `请患者 ${patientName}，到 ${doctorName} 医生诊室就诊。`
+  if (speakMandarin(text)) {
     MessagePlugin.success(`呼叫广播成功: "${text}"`)
   } else {
     MessagePlugin.warning('浏览器不支持语音播报，已通过系统弹窗提示')
