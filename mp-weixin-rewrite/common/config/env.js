@@ -1,10 +1,16 @@
 const accountInfo = (wx.getAccountInfoSync && wx.getAccountInfoSync()) || {};
 const miniProgram = accountInfo.miniProgram || {};
 const envVersion = miniProgram.envVersion || 'develop';
+let runtimePlatform = '';
+try {
+  const systemInfo = (wx.getSystemInfoSync && wx.getSystemInfoSync()) || {};
+  runtimePlatform = String(systemInfo.platform || '').toLowerCase();
+} catch (error) {}
+const canUseLocalApi = envVersion === 'develop' && runtimePlatform === 'devtools';
 
 const API_ENV_OVERRIDE_KEY = 'debug_api_env_override';
 const localApiBaseUrl = 'http://127.0.0.1:5005/api/v1';
-const productionApiBaseUrl = 'https://m.hanjinghealth.com/api/v1';
+const productionApiBaseUrl = 'https://m.xingkangming.com/api/v1';
 
 const apiBaseUrlMap = {
   local: localApiBaseUrl,
@@ -12,7 +18,7 @@ const apiBaseUrlMap = {
 };
 
 function readApiEnvOverride() {
-  if (envVersion !== 'develop') return '';
+  if (!canUseLocalApi) return '';
   try {
     const value = String(wx.getStorageSync(API_ENV_OVERRIDE_KEY) || '').trim();
     return value && apiBaseUrlMap[value] ? value : '';
@@ -22,7 +28,10 @@ function readApiEnvOverride() {
 }
 
 function getDefaultApiEnv() {
-  return envVersion === 'develop' ? 'local' : 'production';
+  // A real-device preview is also reported as `develop`. Defaulting develop
+  // builds to 127.0.0.1 makes the phone call itself instead of the backend.
+  // Developers can still explicitly select the local API from the debug switch.
+  return 'production';
 }
 
 function getCurrentApiEnv() {
@@ -39,7 +48,7 @@ function getApiBaseUrls() {
 }
 
 function setApiEnvOverride(value) {
-  if (envVersion !== 'develop') return;
+  if (!canUseLocalApi) return;
   try {
     const nextValue = String(value || '').trim();
     if (!nextValue) {
@@ -61,6 +70,8 @@ function getApiEnvOptions() {
 
 const exportsObject = {
   envVersion,
+  runtimePlatform,
+  canUseLocalApi,
   localApiBaseUrl,
   productionApiBaseUrl,
   getCurrentApiEnv,

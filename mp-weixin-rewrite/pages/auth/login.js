@@ -6,7 +6,7 @@ const LOGIN_DIAGNOSTIC_VERSION = 'login-diagnostics-20260812-1';
 
 const COPY = {
   navTitle: '\u624b\u673a\u53f7\u5feb\u6377\u767b\u5f55',
-  brandName: '\u9f3e\u9759\u5065\u5eb7\u8bca\u6240',
+  brandName: '兴康明诊所',
   brandSlogan: '\u4e13\u6ce8\u7761\u7720\u547c\u5438\u5065\u5eb7 \u00b7 \u8ba9\u6bcf\u4e00\u4e2a\u591c\u665a\u5b89\u5b81\u65e0\u58f0',
   lockIcon: '\ud83d\udd12',
   tipTitle: '\u5b89\u5168\u63d0\u793a',
@@ -168,7 +168,7 @@ Page({
       this.setData({
         redirectUrl: readRedirectUrl(options),
         backUrl: readBackUrl(options),
-        showEnvSwitcher: envConfig.envVersion === 'develop',
+        showEnvSwitcher: envConfig.canUseLocalApi,
       });
       this.syncApiEnvInfo();
       reportLoginEvent('info', 'login_page_loaded', LOGIN_DIAGNOSTIC_VERSION, {
@@ -213,7 +213,7 @@ Page({
   },
 
   handleApiEnvSwitch() {
-    if (envConfig.envVersion !== 'develop') {
+    if (!envConfig.canUseLocalApi) {
       return;
     }
     const options = envConfig.getApiEnvOptions();
