@@ -2,12 +2,10 @@ const { getBookingSettings } = require('../../api/modules/appointment-api');
 
 const MAX_TEMPLATE_IDS_PER_REQUEST = 3;
 const SCENE_EVENTS = {
-  appointment: ['appointment_created', 'appointment_paid', 'appointment_status', 'visit_reminder', 'revisit_reminder'],
-  appointmentCancel: ['appointment_changed', 'appointment_status', 'refund_result'],
-  order: ['payment_due', 'order_status', 'refund_result'],
-  refund: ['refund_result', 'order_status'],
+  appointment: ['visit_reminder'],
   withdraw: ['withdraw_result', 'withdraw_paid'],
-  distribution: ['commission_settled'],
+  order: ['order_shipped'],
+  distribution: ['promoter_activated'],
 };
 
 let cachedSettings = null;

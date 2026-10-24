@@ -1,6 +1,7 @@
 const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
 const navigation = require('../../common/utils/navigation');
+const subscribe = require('../../common/utils/subscribe');
 
 function checkoutStorageKey(productId) {
   const profile = sessionStore.state && sessionStore.state.profile;
@@ -503,6 +504,7 @@ Page({
     }
     if (!this.validateAddress(false)) return;
     const revision = sessionStore.getLoginGeneration();
+    let createdPayAmount = null;
     let checkoutKey;
     const orderInput = {
       items: [{ productId: String(this.data.product.id), quantity: this.data.quantity }],
@@ -578,11 +580,26 @@ Page({
         // Even after page unload, preserve a late successful response for recovery.
         wx.setStorageSync(checkoutKey, { id: createdOrder.id });
         this._checkoutOrder = { id: createdOrder.id, fingerprint, revision };
+        createdPayAmount = Number(createdOrder.payAmount);
         this._checkoutUncertain = false;
         if (this._unloaded) return;
       }
       if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
       const orderId = this._checkoutOrder.id;
+      if (createdPayAmount === 0) {
+        wx.removeStorageSync(checkoutKey);
+        this._checkoutOrder = null;
+        wx.hideLoading();
+        await subscribe.requestSubscribe({ force: true, scene: 'order' });
+        if (this._unloaded) return;
+        wx.showToast({ title: '订单已提交', icon: 'success' });
+        this.setData({ showCheckout: false });
+        setTimeout(() => {
+          if (this._unloaded || sessionStore.getLoginGeneration() !== revision) return;
+          wx.navigateTo({ url: '/pages/order/detail?id=' + orderId });
+        }, 300);
+        return;
+      }
       const payResponse = await api.payOrder(orderId);
       if (this._unloaded) return;
       if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
@@ -596,6 +613,8 @@ Page({
       if (this._unloaded) return;
       if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
       wx.hideLoading();
+      await subscribe.requestSubscribe({ force: true, scene: 'order' });
+      if (this._unloaded) return;
       wx.showToast({ title: '支付已提交', icon: 'success' });
       this.setData({ showCheckout: false });
       setTimeout(() => {

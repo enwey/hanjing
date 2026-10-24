@@ -2248,17 +2248,11 @@ export const initDB = async () => {
     await query(`
       INSERT IGNORE INTO system_settings (key_name, key_value, description)
       VALUES
-        ('wechat_template_appointment_created', '', '微信订阅消息模板ID：预约创建成功'),
-        ('wechat_template_appointment_paid', '', '微信订阅消息模板ID：预约支付成功'),
-        ('wechat_template_appointment_changed', '', '微信订阅消息模板ID：预约改期'),
-        ('wechat_template_appointment_status', '', '微信订阅消息模板ID：预约状态变更'),
         ('wechat_template_visit_reminder', '', '微信订阅消息模板ID：就诊提醒'),
-        ('wechat_template_revisit_reminder', '', '微信订阅消息模板ID：复诊/调整提醒'),
-        ('wechat_template_order_status', '', '微信订阅消息模板ID：订单状态'),
         ('wechat_template_withdraw_result', '', '微信订阅消息模板ID：提现结果'),
         ('wechat_template_withdraw_paid', '', '微信订阅消息模板ID：提现到账'),
-        ('wechat_template_commission_settled', '', '微信订阅消息模板ID：佣金到账'),
-        ('wechat_template_refund_result', '', '微信订阅消息模板ID：退款结果'),
+        ('wechat_template_order_shipped', '', '微信订阅消息模板ID：发货通知'),
+        ('wechat_template_promoter_activated', '', '微信订阅消息模板ID：推广资格生效'),
         ('wechat_pay_app_id', '', '微信支付小程序AppID'),
         ('wechat_pay_mch_id', '', '微信支付商户号'),
         ('wechat_pay_serial_no', '', '微信支付商户API证书序列号'),
@@ -2270,6 +2264,19 @@ export const initDB = async () => {
         ('wechat_pay_refund_notify_url', '', '微信支付退款回调地址'),
         ('wechat_pay_platform_cert', '', '微信支付平台证书或证书文件路径')
     `);
+    await query(`DELETE FROM system_settings WHERE key_name IN (
+      'wechat_template_appointment_created', 'wechat_template_appointment_paid',
+      'wechat_template_appointment_changed', 'wechat_template_appointment_status',
+      'wechat_template_revisit_reminder', 'wechat_template_order_status',
+      'wechat_template_refund_result', 'appointment_subscribe_template_ids',
+      'wechat_notification_appointment_created', 'wechat_notification_appointment_paid',
+      'wechat_notification_appointment_changed', 'wechat_notification_appointment_status',
+      'wechat_notification_revisit_reminder', 'wechat_notification_order_status',
+      'wechat_notification_refund_result', 'wechat_notification_payment_due',
+      'wechat_template_commission_settled', 'wechat_notification_commission_settled',
+      'wechat_notification_device_arrived', 'wechat_notification_report_ready',
+      'wechat_notification_service_reply', 'wechat_notification_after_sales_updated'
+    )`);
   } catch (err) {
     console.error('Failed to initialize empty integration settings:', err);
   }

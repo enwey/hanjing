@@ -130,7 +130,6 @@ Page({
     }
     this.setData({ isSubmitting: true, isSubmitEnabled: false });
     try {
-      await subscribe.requestSubscribe({ force: true, scene: 'withdraw' });
       await api.applyWithdraw(
         Math.round((parseFloat(this.data.withdrawAmountInput || '0') || 0) * 100),
         this.data.withdrawMethod,
@@ -142,6 +141,7 @@ Page({
             }
           : null,
       );
+      await subscribe.requestSubscribe({ force: true, scene: 'withdraw' });
       wx.showToast({ title: '提现申请已提交', icon: 'success' });
       this.setData({
         withdrawAmountInput: '',

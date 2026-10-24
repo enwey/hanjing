@@ -9,6 +9,7 @@ async function loadInviteShareInfo() {
   const distributorData = results[1].data || results[1] || {};
   const inviteCode = inviteData.inviteCode || distributorData.inviteCode || distributorData.invite_code || '';
   return {
+    isDistributor: Boolean(inviteData.isDistributor || distributorData.isDistributor),
     inviteCode,
     inviteQrCode: inviteData.inviteQrCode || distributorData.inviteQrCode || '',
     inviteQrReason: inviteData.inviteQrReason || distributorData.inviteQrReason || '',

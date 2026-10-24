@@ -312,11 +312,9 @@ Page({
                 wx.showToast({ title: '支付已提交', icon: 'success' });
                 appointmentDraftStore.clearDraft();
                 wx.removeStorageSync('pending_appointment_assessment');
-                setTimeout(() => {
-                  this.requestSubscribe(() => {
-                    wx.reLaunch({ url: '/pages/appointment/success?id=' + appointmentId });
-                  });
-                }, 1000);
+                this.requestSubscribe(() => {
+                  wx.reLaunch({ url: '/pages/appointment/success?id=' + appointmentId });
+                });
                 } catch (error) {
                   wx.hideLoading();
                   wx.showToast({

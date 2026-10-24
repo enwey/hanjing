@@ -296,7 +296,7 @@ function editRole(roleId: number) {
           <div class="panel-title"><AppIcon name="bell" />  通知设置</div>
         </div>
         <div class="panel-body">
-          <t-button variant="outline" @click="router.push('/settings/wechat-notifications')"><AppIcon name="bell" /> 微信通知配置</t-button>
+          <t-button variant="outline" @click="router.push('/wechat-notifications')"><AppIcon name="bell" /> 微信通知配置</t-button>
         </div>
       </div>
 

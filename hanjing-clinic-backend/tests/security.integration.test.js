@@ -58,20 +58,18 @@ test('launch security and payment boundaries', async t => {
       assert.equal((await api(url + '/logs', undefined, staff)).status, 403);
       const catalog = await api(url, undefined, superToken);
       assert.equal(catalog.status, 200);
-      assert.equal(catalog.body.data.length, 18);
-      const initial = catalog.body.data.find(row => row.event === 'order_status');
+      assert.equal(catalog.body.data.length, 5);
+      const initial = catalog.body.data.find(row => row.event === 'visit_reminder');
       assert.equal(initial.templateId, '');
-      const config = { enabled: true, templateId: 'TEST_TEMPLATE_ID_123', mapping: { character_string8: 'character_string6', thing9: 'thing1' }, revision: '' };
-      assert.equal((await api(url + '/order_status', config, staff, 'PUT')).status, 403);
-      const saved = await api(url + '/order_status', config, superToken, 'PUT');
+      const config = { enabled: true, templateId: 'TEST_TEMPLATE_ID_123', mapping: { name8: 'name1', thing9: 'thing69' }, revision: '' };
+      assert.equal((await api(url + '/visit_reminder', config, staff, 'PUT')).status, 403);
+      const saved = await api(url + '/visit_reminder', config, superToken, 'PUT');
       assert.equal(saved.status, 200);
-      assert.equal((await api(url + '/order_status', config, superToken, 'PUT')).status, 409);
-      const paymentDueConfig = { ...config, revision: '' };
-      assert.equal((await api(url + '/payment_due', paymentDueConfig, superToken, 'PUT')).status, 200);
-      assert.equal((await api('/api/admin/settings', { wechat_notification_order_status: '{}' }, superToken)).status, 400);
+      assert.equal((await api(url + '/visit_reminder', config, superToken, 'PUT')).status, 409);
+      assert.equal((await api(url + '/order_status', config, superToken, 'PUT')).status, 400);
+      assert.equal((await api('/api/admin/settings', { wechat_notification_visit_reminder: '{}' }, superToken)).status, 400);
       const service = await import('../wechatSubscribe.js');
-      assert.equal((await service.getSubscribeTemplateMap()).order_status, config.templateId);
-      assert.equal((await service.getSubscribeTemplateMap()).payment_due, config.templateId);
+      assert.equal((await service.getSubscribeTemplateMap()).visit_reminder, config.templateId);
       const originalFetch = globalThis.fetch;
       const oldId = process.env.WX_MINI_APP_ID, oldSecret = process.env.WX_MINI_APP_SECRET;
       let sent;
@@ -84,21 +82,21 @@ test('launch security and payment boundaries', async t => {
           sent = JSON.parse(options.body);
           return { ok: true, json: async () => ({ errcode: 0 }) };
         };
-        assert.deepEqual(await service.sendWechatSubscribeMessage({ userId: 1, event: 'order_status', businessId: 'test-notification-config', payload: { orderNo: 'ORDER-1', productName: 'Service' } }), { sent: true });
+        assert.deepEqual(await service.sendWechatSubscribeMessage({ userId: 1, event: 'visit_reminder', businessId: 'test-notification-config', payload: { patientName: 'Patient', doctorName: 'Doctor' } }), { sent: true });
         assert.equal(sent.template_id, config.templateId);
-        assert.deepEqual(sent.data, { character_string8: { value: 'ORDER-1' }, thing9: { value: 'Service' } });
+        assert.deepEqual(sent.data, { name8: { value: 'Patient' }, thing9: { value: 'Doctor' } });
       } finally {
         globalThis.fetch = originalFetch;
         if (oldId === undefined) delete process.env.WX_MINI_APP_ID; else process.env.WX_MINI_APP_ID = oldId;
         if (oldSecret === undefined) delete process.env.WX_MINI_APP_SECRET; else process.env.WX_MINI_APP_SECRET = oldSecret;
       }
-      const logs = await api(url + '/logs?event=order_status', undefined, superToken);
+      const logs = await api(url + '/logs?event=visit_reminder', undefined, superToken);
       assert.equal(logs.body.data.total, 1);
       assert.equal(logs.body.data.list[0].status, 'sent');
       assert.equal(Object.hasOwn(logs.body.data.list[0], 'openid'), false);
-      assert.equal((await api(url + '/order_status', { ...saved.body.data, enabled: false }, superToken, 'PUT')).status, 200);
-      assert.equal((await service.getSubscribeTemplateMap()).order_status, undefined);
-      assert.deepEqual(await service.sendWechatSubscribeMessage({ userId: 1, event: 'order_status', businessId: 'disabled' }), { skipped: true, reason: 'disabled' });
+      assert.equal((await api(url + '/visit_reminder', { ...saved.body.data, enabled: false }, superToken, 'PUT')).status, 200);
+      assert.equal((await service.getSubscribeTemplateMap()).visit_reminder, undefined);
+      assert.deepEqual(await service.sendWechatSubscribeMessage({ userId: 1, event: 'visit_reminder', businessId: 'disabled' }), { skipped: true, reason: 'disabled' });
       await control.query("DELETE FROM system_settings WHERE key_name LIKE 'wechat_notification_%'");
     });
 

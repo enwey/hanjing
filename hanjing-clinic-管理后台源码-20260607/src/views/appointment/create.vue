@@ -498,8 +498,7 @@ async function handleCreate() {
         type: visitTypeValueMap[visitType.value] || 'first',
         symptom_desc: remarks.value,
         consult_fee: parsedConsultFee,
-        deposit_amount: parsedDepositAmount,
-        defer_notification: true
+        deposit_amount: parsedDepositAmount
       })
       if (selectedPromoterId.value) {
         try {

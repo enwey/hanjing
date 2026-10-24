@@ -1,7 +1,7 @@
 const api = require('../../api/index');
-const subscribe = require('../../common/utils/subscribe');
 const sessionStore = require('../../stores/session-store');
 const { formatChinaDateTime } = require('../../common/utils/date-time');
+const subscribe = require('../../common/utils/subscribe');
 
 const ORDER_STATUS_STEPS = {
   pending: [{ label: '待付款', done: true }, { label: '待取货', done: false }, { label: '已发货', done: false }, { label: '已完成', done: false }],
@@ -223,6 +223,8 @@ Page({
       if (this._unloaded) return;
       assertCurrentSession();
       wx.hideLoading();
+      await subscribe.requestSubscribe({ force: true, scene: 'order' });
+      if (this._unloaded) return;
       wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });
       await this.loadOrder(order.id);
     } catch (error) {
@@ -265,7 +267,6 @@ Page({
       success: async (result) => {
         const reason = reasons[result.tapIndex] || '其他原因';
         try {
-          await subscribe.requestSubscribe({ force: true, scene: 'refund' });
           await api.applyRefund(order.id, { reason });
           wx.showToast({ title: '退款申请已提交', icon: 'success' });
           await this.loadOrder(order.id);

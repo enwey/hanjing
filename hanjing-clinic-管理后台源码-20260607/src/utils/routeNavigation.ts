@@ -20,6 +20,7 @@ const MENU_ROOTS = [
   '/live',
   '/banner',
   '/settings',
+  '/wechat-notifications',
   '/permission',
   '/log'
 ]

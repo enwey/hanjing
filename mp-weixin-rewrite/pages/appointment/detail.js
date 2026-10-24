@@ -1,6 +1,5 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
-const subscribe = require('../../common/utils/subscribe');
 const { getStoreCoverUrl, normalizeImageUrl } = require('../../common/utils/image-url');
 
 const APPOINTMENT_STATUS_MAP = {
@@ -328,7 +327,6 @@ Page({
     }
 
     try {
-      await subscribe.requestSubscribe({ force: true, scene: 'appointmentCancel' });
       await api.cancelAppointment(this.data.appointmentId, '用户主动取消');
       wx.showToast({ title: '已取消', icon: 'success' });
       await this.loadPage();

@@ -11,7 +11,7 @@ function harness(file, api, storage = new Map()) {
   vm.runInNewContext(fs.readFileSync(path.join(root,'stores/session-store.js'),'utf8'),ctx);
   const store = ctx.module.exports; store.setAccessToken('fixture-original');
   vm.runInNewContext(fs.readFileSync(path.join(root,'pages',file),'utf8'),{wx, Page:o=>p=o, console:{error(){}}, setTimeout(){},
-    require:s=>s.includes('api/index')?api:s.includes('session-store')?store:s.includes('date-time')?{formatChinaDateTime:x=>x}:{}});
+    require:s=>s.includes('api/index')?api:s.includes('session-store')?store:s.includes('date-time')?{formatChinaDateTime:x=>x}:s.includes('utils/subscribe')?{requestSubscribe:async()=>{}}:{}});
   p.data = JSON.parse(JSON.stringify(p.data)); p.setData = o=>Object.assign(p.data,o);
   return {p,store,payments,toasts,routes};
 }

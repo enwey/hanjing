@@ -7,7 +7,7 @@ import adminRouter from './routes/admin.js';
 import clientRouter from './routes/client.js';
 import promoterRouter from './routes/promoter.js';
 import { sendSystemAlert } from './alert-notifier.js';
-import { processRevisitReminders, processVisitReminders } from './wechatSubscribe.js';
+import { processVisitReminders } from './wechatSubscribe.js';
 
 const app = express();
 const PORT = process.env.PORT || 5005;
@@ -123,7 +123,6 @@ const startServer = async () => {
         await autoUpdateExpiredAppointments();
         await autoSettleDistributionCommissions();
         await processVisitReminders();
-        await processRevisitReminders();
       } catch (err) {
         console.error('Failed to run periodic background jobs:', err);
         sendSystemAlert('warning', 'Background Job Failed', err.message, err);

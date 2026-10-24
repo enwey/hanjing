@@ -40,7 +40,7 @@ import {
   formatShanghaiDateTime,
   decryptPII
 } from '../helpers.js';
-import { sendWechatSubscribeMessage, getWechatNotificationSettings } from '../wechatSubscribe.js';
+import { getWechatNotificationSettings, sendWechatSubscribeMessage } from '../wechatSubscribe.js';
 import { notificationConfigKey, validateNotificationConfig, WECHAT_NOTIFICATION_EVENTS } from '../wechat-notification-config.js';
 import { getWechatMiniAccessToken } from '../wechatMiniToken.js';
 import {
@@ -1553,22 +1553,6 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
         );
       });
       await logAdminAction(req.user.id, 'reschedule_appointment', 'appointment', appt.id, { nextDate, nextTime, nextDoctorId, nextStoreId });
-      setImmediate(() => {
-        sendWechatSubscribeMessage({
-          userId: appt.user_id,
-          event: 'appointment_changed',
-          businessId: `admin_appointment_changed:${appt.id}:${nextDate}:${nextTime}`,
-          page: `pages/appointment/detail/index?id=${appt.id}`,
-          payload: {
-            appointmentNo: appt.appointment_no,
-            appointmentTime: `${nextDate} ${nextTime}`,
-            doctorName: doctorObj ? doctorObj.name : appt.doctor_name,
-            storeName: storeObj ? storeObj.name : appt.store_name,
-            status: '已改期',
-            remark: appt.appointment_no
-          }
-        });
-      });
       return res.json({ code: 200, message: '预约改约成功' });
     }
 
@@ -1619,13 +1603,10 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
-  const { patient_id, store_id, doctor_id, date, period, time, type, symptom_desc, consult_fee, deposit_amount, defer_notification } = req.body;
+  const { patient_id, store_id, doctor_id, date, period, time, type, symptom_desc, consult_fee, deposit_amount } = req.body;
   
   if (!patient_id || !store_id || !doctor_id || !date || !time) {
     return res.status(400).json({ code: 400, message: '必填参数缺失' });
-  }
-  if (defer_notification !== undefined && typeof defer_notification !== 'boolean') {
-    return res.status(400).json({ code: 400, message: '通知延迟参数无效' });
   }
   const appointmentType = normalizeAppointmentType(type);
   if (!appointmentType) {
@@ -1738,22 +1719,6 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
     });
 
     res.json({ code: 200, message: '新建预约成功', data: { appointment_no, id: result.id, status: initialStatus } });
-    if (!defer_notification) setImmediate(() => {
-      sendWechatSubscribeMessage({
-        userId: user_id,
-        event: 'appointment_created',
-        businessId: `admin_appointment_created:${result.id}`,
-        page: `pages/appointment/detail/index?id=${result.id}`,
-        payload: {
-          appointmentNo: appointment_no,
-          appointmentTime: `${date} ${time}`,
-          doctorName: doctorObj ? doctorObj.name : '',
-          storeName: storeObj ? storeObj.name : '',
-          status: initialStatus === 'pending_payment' ? '待支付' : '待就诊',
-          remark: appointment_no
-        }
-      });
-    });
   } catch (error) {
     console.error('Failed to create appointment:', error);
     const status = error.statusCode || 500;
@@ -2962,22 +2927,6 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
     });
 
     await logAdminAction(req.user.id, 'complete_consultation', 'appointment', id, result);
-    setImmediate(() => {
-      sendWechatSubscribeMessage({
-        userId: appt.user_id,
-        event: 'appointment_status',
-        businessId: `appointment_completed:${id}`,
-        page: `pages/appointment/detail/index?id=${id}`,
-        payload: {
-          appointmentNo: appt.appointment_no,
-          appointmentTime: `${formatDate(appt.appointment_date)} ${appt.appointment_time}`,
-          doctorName: appt.doctor_name,
-          storeName: appt.store_name,
-          status: '已完成',
-          remark: '病历和医嘱已同步'
-        }
-      });
-    });
     res.json({ code: 200, message: '接诊已完成', data: result });
   } catch (error) {
     console.error('Complete consultation error:', error);
@@ -4955,6 +4904,22 @@ app.post('/api/admin/orders/:id/ship', authenticateToken, async (req, res) => {
     if (shipped.changes !== 1) return res.status(409).json({ code: 409, message: '订单状态已变更，请刷新后再操作' });
     await logAdminAction(req.user.id, 'ship_order', 'order', id, { carrier, trackingNo }, req.ip || null);
     res.json({ code: 200, message: '发货成功' });
+    setImmediate(() => (async () => {
+      const item = await get('SELECT product_name FROM order_items WHERE order_id = ? ORDER BY id LIMIT 1', [id]);
+      await sendWechatSubscribeMessage({
+        userId: order.user_id,
+        event: 'order_shipped',
+        businessId: `order_shipped:${id}`,
+        page: `pages/order/detail?id=${id}`,
+        payload: {
+          orderNo: order.order_no,
+          status: '已发货',
+          productName: item?.product_name || '商城商品',
+          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
+          remark: `${carrier} ${trackingNo}`
+        }
+      });
+    })().catch(error => console.warn('[Wechat Subscribe] Order shipped notification failed:', error.message || error)));
   } catch (error) {
     await logAdminAction(req.user.id, 'ship_order', 'order', id, { express_company: req.body.express_company, tracking_number: req.body.tracking_number }, req.ip || null, 'fail', error.message || '发货失败');
     res.status(500).json({ code: 500, message: '操作失败' });
@@ -5037,23 +5002,7 @@ app.post('/api/admin/orders/:id/notify', authenticateToken, async (req, res) => 
       return addr;
     });
     await logAdminAction(req.user.id, 'notify_order_arrival', 'order', id, { orderNo: order.order_no });
-    setImmediate(() => {
-      sendWechatSubscribeMessage({
-        userId: order.user_id,
-        event: 'order_status',
-        businessId: `order_arrival:${id}`,
-        page: `pages/order/detail/index?id=${id}`,
-        payload: {
-          orderNo: order.order_no,
-          status: '已到店',
-          amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
-          storeName: addr.storeName || '',
-          remark: '商品已到店，可到店自提'
-        }
-      });
-    });
-
-    res.json({ code: 200, message: '到店状态及站内通知已登记，微信通知发送结果请查看发送记录' });
+    res.json({ code: 200, message: '到店状态及站内通知已登记' });
   } catch (error) {
     console.error(error);
     const status = error.statusCode || 500;
@@ -5689,9 +5638,21 @@ app.put('/api/admin/distribution/withdraws/:id/status', authenticateToken, async
   if (!approve && !remark) return res.status(400).json({ code: 400, message: '请填写驳回原因' });
   try {
     const { reviewWithdrawal } = await import('../distribution-ledger.js');
-    await reviewWithdrawal(req.params.id, approve, remark);
+    const record = await reviewWithdrawal(req.params.id, approve, remark);
     await logAdminAction(req.user.id, approve ? 'approve_withdraw' : 'reject_withdraw', 'withdraw', req.params.id, { remark });
     res.json({ code: 200, message: approve ? '审核通过，等待实际打款' : '已驳回并退回余额' });
+    setImmediate(() => sendWechatSubscribeMessage({
+      userId: record.user_id,
+      event: 'withdraw_result',
+      businessId: `withdraw_result:${req.params.id}:${approve ? 'approved' : 'rejected'}`,
+      page: 'pages/distribution/withdraw-records/index',
+      payload: {
+        amount: `¥${(Number(record.amount || 0) / 100).toFixed(2)}`,
+        status: approve ? '审核通过' : '已驳回',
+        time: formatShanghaiDateTime(new Date()),
+        remark: remark || (approve ? '等待实际打款' : '金额已退回余额')
+      }
+    }));
   } catch (error) {
     const code = error.statusCode || 500;
     res.status(code).json({ code, message: code === 500 ? '处理失败' : error.message });
@@ -5716,9 +5677,21 @@ app.put('/api/admin/distribution/withdraws/:id/paid', authenticateToken, async (
   if (!requireWithdrawalAdmin(req, res)) return;
   try {
     const { confirmWithdrawalPaid } = await import('../distribution-ledger.js');
-    await confirmWithdrawalPaid(req.params.id, req.body.reference);
+    const record = await confirmWithdrawalPaid(req.params.id, req.body.reference);
     await logAdminAction(req.user.id, 'record_withdraw_payment', 'withdraw', req.params.id, { reference: req.body.reference });
     res.json({ code: 200, message: '已登记实际银行转账' });
+    setImmediate(() => sendWechatSubscribeMessage({
+      userId: record.user_id,
+      event: 'withdraw_paid',
+      businessId: `withdraw_paid:${req.params.id}`,
+      page: 'pages/distribution/withdraw-records/index',
+      payload: {
+        amount: `¥${(Number(record.actual_amount || 0) / 100).toFixed(2)}`,
+        status: '已到账',
+        time: formatShanghaiDateTime(new Date()),
+        remark: `转账流水：${String(req.body.reference || '').trim()}`
+      }
+    }));
   } catch (error) {
     const code = error.code === 'ER_DUP_ENTRY' ? 409 : error.statusCode || 500;
     res.status(code).json({ code, message: error.code === 'ER_DUP_ENTRY' ? '该转账流水号已使用' : code === 500 ? '登记失败' : error.message });
@@ -6879,7 +6852,7 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
     return res.status(400).json({ code: 400, message: '请选择推广人' });
   }
   try {
-    await transaction(async (conn) => {
+    const bindResult = await transaction(async (conn) => {
       const readOne = async (sql, args) => {
         const [rows] = await conn.execute(sql, args);
         return rows[0];
@@ -6934,9 +6907,19 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
           "UPDATE distributors SET status = 'active' WHERE user_id = ? AND status = 'pending'", [parentUserId]);
       }
       await syncDirectChildrenSecondLevel(conn, childUserId, parentUserId);
+      return { activatedUserId: promoter.status === 'pending' ? parentUserId : null };
     });
     await logAdminAction(req.user.id, 'bind_patient_promoter', 'patient', id, { promoter_user_id });
     res.json({ code: 200, message: '绑定推广人成功' });
+    if (bindResult.activatedUserId) {
+      setImmediate(() => sendWechatSubscribeMessage({
+        userId: bindResult.activatedUserId,
+        event: 'promoter_activated',
+        businessId: `promoter_activated:${bindResult.activatedUserId}`,
+        page: 'pages/distribution/index',
+        payload: { title: '推广资格已生效', remark: '首位邀请用户已绑定，可开始获得推广收益' }
+      }));
+    }
   } catch (error) {
     console.error('Bind promoter failed:', error);
     if (error.bindingStatus) {
@@ -7078,23 +7061,6 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
         payAt: order.pay_at, status: order.status, type: order.type, shippingAddress: order.shipping_address,
         items: savedItems.map(item => ({productId:item.product_id,productName:item.product_name,price:item.price,quantity:item.quantity})) }
     } });
-    if (normalizedPayMethod === 'wechat' && appointment?.id) {
-      setImmediate(() => {
-        sendWechatSubscribeMessage({
-          userId: patient.user_id,
-          event: 'payment_due',
-          businessId: `admin_appointment_payment_due:${order.id}`,
-          page: `pages/appointment/detail?id=${appointment.id}`,
-          payload: {
-            orderNo,
-            status: '待付款',
-            productName: savedItems.map(item => item.product_name).filter(Boolean).slice(0, 2).join('、') || '预约费用',
-            amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
-            remark: '请进入预约详情完成支付'
-          }
-        });
-      });
-    }
   } catch (error) {
     console.error('Cashier order:', error);
     const statusCode = error.statusCode || 500;

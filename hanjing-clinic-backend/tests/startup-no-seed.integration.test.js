@@ -45,7 +45,7 @@ test('startup preserves operator data and never creates sample business records'
     }
     await admin.query("INSERT INTO coupons (id,title,type,value,min_spend,status,valid_start,valid_end) VALUES (1,'Operator coupon','cash',321,9000,'inactive','2026-01-01','2027-01-01')");
     await admin.query("INSERT INTO system_settings(key_name,key_value) VALUES ('distribution_settle_days','21'),('min_withdraw','75'),('withdraw_fee_rate','0.8'),('enable_distribution','false')");
-    await admin.query("UPDATE system_settings SET key_value='operator-template' WHERE key_name='wechat_template_order_status'");
+    await admin.query("UPDATE system_settings SET key_value='operator-template' WHERE key_name='wechat_template_visit_reminder'");
     const [productsBefore] = await admin.query('SELECT * FROM products ORDER BY id');
     const [couponsBefore] = await admin.query('SELECT * FROM coupons ORDER BY id');
     const [settingsBefore] = await admin.query('SELECT * FROM system_settings ORDER BY key_name');

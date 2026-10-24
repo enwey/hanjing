@@ -70,7 +70,7 @@
       <image wx:if="{{!isSavingPoster}}" class="invite-actions__icon" src="/static/icons/poster-save-share-style.svg" mode="aspectFit" />
       <text>{{isSavingPoster ? '生成中' : '保存海报'}}</text>
     </button>
-    <button class="invite-actions__button invite-actions__button--primary" open-type="share" disabled="{{!inviteCode}}">
+    <button class="invite-actions__button invite-actions__button--primary" open-type="share" bindtap="handleShareInvite" disabled="{{!inviteCode}}">
       <image class="invite-actions__icon invite-actions__icon--light" src="/static/icons/paper-plane.svg" mode="aspectFit" />
       <text>把关怀送给好友</text>
     </button>

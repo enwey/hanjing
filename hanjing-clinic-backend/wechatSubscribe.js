@@ -3,24 +3,15 @@ import { getWechatMiniAccessToken } from './wechatMiniToken.js';
 import { WECHAT_NOTIFICATION_EVENTS, notificationConfigKey, defaultNotificationMapping, normalizeNotificationPage } from './wechat-notification-config.js';
 
 const EVENT_TEMPLATE_KEYS = {
-  appointment_created: ['wechat_template_appointment_created', 'appointment_subscribe_template_ids'],
-  appointment_paid: ['wechat_template_appointment_paid', 'appointment_subscribe_template_ids'],
-  appointment_changed: ['wechat_template_appointment_changed', 'appointment_subscribe_template_ids'],
-  appointment_status: ['wechat_template_appointment_status', 'appointment_subscribe_template_ids'],
-  visit_reminder: ['wechat_template_visit_reminder', 'appointment_subscribe_template_ids'],
-  revisit_reminder: ['wechat_template_revisit_reminder', 'appointment_subscribe_template_ids'],
-  order_status: ['wechat_template_order_status'],
-  payment_due: ['wechat_template_order_status'],
+  visit_reminder: ['wechat_template_visit_reminder'],
   withdraw_result: ['wechat_template_withdraw_result'],
   withdraw_paid: ['wechat_template_withdraw_paid', 'wechat_template_withdraw_result'],
-  commission_settled: ['wechat_template_commission_settled'],
-  refund_result: ['wechat_template_refund_result', 'wechat_template_order_status']
+  order_shipped: ['wechat_template_order_shipped'],
+  promoter_activated: ['wechat_template_promoter_activated'],
 };
 
 const EVENT_SWITCH_KEYS = {
-  appointment_created: 'notify_new_booking',
   visit_reminder: 'notify_visit_reminder',
-  revisit_reminder: 'notify_revisit_reminder',
   withdraw_result: 'notify_withdraw_apply'
 };
 
@@ -61,7 +52,7 @@ function character(value) {
 }
 
 function buildTemplateData(event, payload = {}) {
-  if (event.startsWith('appointment_') || event === 'visit_reminder' || event === 'revisit_reminder') {
+  if (event === 'visit_reminder') {
     return {
       name1: name(payload.patientName || payload.storeName || '兴康明'),
       date3: date(payload.appointmentTime || payload.dateTime || payload.date || ''),
@@ -71,7 +62,7 @@ function buildTemplateData(event, payload = {}) {
     };
   }
 
-  if (event === 'order_status' || event === 'payment_due') {
+  if (event === 'order_shipped') {
     return {
       character_string6: character(payload.orderNo || ''),
       phrase2: phrase(payload.status || payload.statusText || '通知'),
@@ -96,25 +87,6 @@ function buildTemplateData(event, payload = {}) {
       phrase3: phrase(payload.status || payload.statusText || '已到账'),
       time6: date(payload.time || ''),
       thing5: thing(payload.remark || '提现已到账')
-    };
-  }
-
-  if (event === 'commission_settled') {
-    return {
-      amount1: amount(payload.amount || ''),
-      thing2: thing(payload.remark || '佣金已结算'),
-      time3: date(payload.time || ''),
-      phrase4: phrase(payload.status || '已到账')
-    };
-  }
-
-  if (event === 'refund_result') {
-    return {
-      character_string2: character(payload.orderNo || ''),
-      amount1: amount(payload.amount || ''),
-      time7: date(payload.time || ''),
-      phrase4: phrase(payload.status || payload.statusText || '退款'),
-      thing5: thing(payload.remark || '请查看退款详情')
     };
   }
 
@@ -150,14 +122,12 @@ async function getTemplateIdByKey(key) {
   const setting = await get(`SELECT key_value FROM system_settings WHERE key_name = ?`, [key]);
   return firstTemplateId(setting?.key_value || process.env[key.toUpperCase()]);
 }
-
 async function getNotificationOverride(event) {
   const row = await get('SELECT key_value FROM system_settings WHERE key_name = ?', [notificationConfigKey(event)]);
   if (!row) return null;
   try { return JSON.parse(row.key_value); }
   catch { return { enabled: false, templateId: '' }; }
 }
-
 export async function getWechatNotificationSettings() {
   return Promise.all(WECHAT_NOTIFICATION_EVENTS.map(async definition => {
     const config = await getNotificationOverride(definition.event);
@@ -171,7 +141,6 @@ export async function getWechatNotificationSettings() {
     };
   }));
 }
-
 async function hasSent(event, businessId) {
   if (!businessId) return false;
   const row = await get(
@@ -268,7 +237,6 @@ export async function sendWechatSubscribeMessage({ userId, event, businessId = '
     return { skipped: true, reason: error.message || 'send_failed' };
   }
 }
-
 export async function processVisitReminders() {
   if (!await isEventEnabled('visit_reminder')) return;
   const rows = await query(
@@ -298,31 +266,3 @@ export async function processVisitReminders() {
   }
 }
 
-export async function processRevisitReminders() {
-  if (!await isEventEnabled('revisit_reminder')) return;
-  const rows = await query(
-    `SELECT pd.id, pd.patient_id, pd.next_adjust_date, pd.device_model, pd.device_name_snapshot,
-            p.user_id, p.name AS patient_name
-     FROM patient_devices pd
-     JOIN patients p ON p.id = pd.patient_id
-     WHERE pd.status = 'active'
-       AND pd.next_adjust_date IS NOT NULL
-       AND pd.next_adjust_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
-  );
-
-  for (const row of rows) {
-    await sendWechatSubscribeMessage({
-      userId: row.user_id,
-      event: 'revisit_reminder',
-      businessId: `revisit:${row.id}:${String(row.next_adjust_date).slice(0, 10)}`,
-      page: 'pages/treatment/index',
-      payload: {
-        patientName: row.patient_name,
-        doctorName: '兴康明',
-        appointmentTime: String(row.next_adjust_date).slice(0, 10),
-        status: '复诊',
-        remark: row.device_name_snapshot || row.device_model || '阻鼾器调整'
-      }
-    });
-  }
-}

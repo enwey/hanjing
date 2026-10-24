@@ -1,4 +1,5 @@
 const inviteService = require('./invite-service');
+const subscribe = require('../../../common/utils/subscribe');
 
 const POSTER_CANVAS_ID = 'distributionInvitePoster';
 const POSTER_WIDTH = 900;
@@ -81,7 +82,7 @@ function createPosterContextAdapter(context) {
 }
 
 Page({
-  data: { inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: '邀请好友体验兴康明诊所', qrUnavailableNotice: '', isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
+  data: { isDistributor: false, inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: '邀请好友体验兴康明诊所', qrUnavailableNotice: '', isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
   async onShow() { await this.loadInviteInfo({ silent: this.data.hasLoaded }); },
   async loadInviteInfo(options = {}) {
     try {
@@ -92,6 +93,7 @@ Page({
           ? `当前环境未生成小程序码：${inviteInfo.inviteQrReason}。将使用邀请码海报进行分享。`
           : '当前环境未生成小程序码，将使用邀请码海报进行分享。';
       this.setData({
+        isDistributor: inviteInfo.isDistributor,
         hasLoaded: true,
         inviteCode: inviteInfo.inviteCode,
         inviteQrCode: inviteInfo.inviteQrCode,
@@ -523,6 +525,10 @@ Page({
         fail: resolve,
       });
     });
+  },
+  handleShareInvite() {
+    if (this.data.isDistributor) return;
+    subscribe.requestSubscribe({ force: true, scene: 'distribution' }).catch(() => {});
   },
   onShareAppMessage() {
     return {
