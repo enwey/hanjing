@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { brandPromoterQr } from '@/utils/promoterQr'
 import ImageUploadField from '@/components/ImageUploadField.vue'
 import AppIcon from '@/components/AppIcon.vue'
 const props=defineProps<{ promoterId?: string; status?: string }>()
@@ -27,8 +28,8 @@ function validateForm(){
 }
 watch(form,()=>{(Object.keys(errors.value) as FieldName[]).forEach(field=>{if(errors.value[field])errors.value[field]=validateField(field)})},{deep:true})
 watch(visible,(opened)=>{if(!opened){form.value=emptyForm();errors.value=emptyErrors()}})
-async function create(){if(busy.value||!validateForm())return;busy.value=true;try{const r:any=await request.post('/api/admin/distribution/promoters',form.value);visible.value=false;emit('saved');MessagePlugin.success('推广员已创建');if(r.data?.qr?.image){qr.value=r.data.qr.image;qrCode.value=r.data.qr.code||'';qrVisible.value=true}else MessagePlugin.warning(r.data?.qrError||'小程序码暂未生成，可稍后重试')}finally{busy.value=false}}
-async function showQr(){busy.value=true;try{const r:any=await request.get(`/api/admin/distribution/promoters/${props.promoterId}/qr`);qr.value=r.data.image;qrCode.value=r.data.code||'';qrVisible.value=true}finally{busy.value=false}}
+async function create(){if(busy.value||!validateForm())return;busy.value=true;try{const r:any=await request.post('/api/admin/distribution/promoters',form.value);visible.value=false;emit('saved');MessagePlugin.success('推广员已创建');if(r.data?.qr?.image){qr.value=await brandPromoterQr(r.data.qr.image);qrCode.value=r.data.qr.code||'';qrVisible.value=true}else MessagePlugin.warning(r.data?.qrError||'小程序码暂未生成，可稍后重试')}finally{busy.value=false}}
+async function showQr(){busy.value=true;try{const r:any=await request.get(`/api/admin/distribution/promoters/${props.promoterId}/qr`);qr.value=await brandPromoterQr(r.data.image);qrCode.value=r.data.code||'';qrVisible.value=true}finally{busy.value=false}}
 async function reset(){if(busy.value)return;busy.value=true;try{await request.put(`/api/admin/distribution/promoters/${props.promoterId}/password`,{password:password.value});password.value='';resetVisible.value=false;MessagePlugin.success('密码已重置')}finally{busy.value=false}}
 async function toggle(){await request.put(`/api/admin/distribution/promoters/${props.promoterId}/status`,{status:props.status==='active'?'disabled':'active'});emit('saved')}
 </script>
@@ -79,7 +80,7 @@ async function toggle(){await request.put(`/api/admin/distribution/promoters/${p
       <div v-if="qrCode" class="qr-code-text" style="margin-top: 8px; font-size: 13px; color: #4B5563; font-family: monospace; background: #F3F4F6; padding: 4px 10px; border-radius: 4px; word-break: break-all;">
         推广编码：{{ qrCode }}
       </div>
-      <a :href="qr" download="预约推广小程序码.jpg" class="qr-download-button">
+      <a :href="qr" download="预约推广小程序码.png" class="qr-download-button">
         <AppIcon name="download" />
         下载小程序码
       </a>

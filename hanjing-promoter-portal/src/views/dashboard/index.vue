@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { brandPromoterQr } from '@/utils/promoterQr'
 import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 const promoter = ref({
@@ -39,7 +40,7 @@ async function loadQr() {
   try {
     const res:any = await request.get('/api/promoter/qr')
     if (!res.data?.image) throw new Error('Missing QR image')
-    qrImage.value = res.data.image
+    qrImage.value = await brandPromoterQr(res.data.image)
   } catch {
     qrImage.value = ''
     qrError.value = '小程序码暂时无法获取'
