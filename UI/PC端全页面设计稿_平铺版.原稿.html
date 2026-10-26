@@ -1,0 +1,2405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>兴康明诊所 - 小程序平铺PC端高保真设计方案 (完全忠实还原版)</title>
+<style>
+
+:root {
+  --color-primary-50:  #EEF4FF;
+  --color-primary-100: #D9E6FF;
+  --color-primary-200: #BCCFFF;
+  --color-primary-300: #8EAFFF;
+  --color-primary-400: #5A85F5;
+  --color-primary-500: #3B6BF5;
+  --color-primary-600: #2A52D4;
+  --color-primary-700: #1E3FA8;
+  --color-primary-800: #1A3580;
+
+  --color-secondary-50:  #EDFBF5;
+  --color-secondary-100: #D3F5E3;
+  --color-secondary-500: #1A9D5C;
+
+  --color-success-50:  #ECFDF5;
+  --color-success-500: #22C55E;
+  --color-warning-50:  #FFFBEB;
+  --color-warning-500: #F59E0B;
+  --color-error-50:    #FEF2F2;
+  --color-error-500:   #EF4444;
+
+  --color-gray-50:  #F8FAFC;
+  --color-gray-100: #F1F5F9;
+  --color-gray-200: #E2E8F0;
+  --color-gray-300: #CBD5E1;
+  --color-gray-400: #94A3B8;
+  --color-gray-500: #64748B;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1E293B;
+  --color-gray-900: #0F172A;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --font-sans: 'PingFang SC', 'HarmonyOS Sans', 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  --font-mono: 'SF Mono', Menlo, Monaco, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  background-color: #0b1120;
+  color: var(--color-gray-800);
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* TOP TOOLBAR */
+.viewer-toolbar {
+  position: sticky; top: 0; left: 0; right: 0; z-index: 9999;
+  height: 60px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; color: #fff;
+}
+.viewer-brand { display: flex; align-items: center; gap: 12px; }
+.viewer-logo-badge {
+  background: var(--color-primary-500); color: #fff; width: 34px; height: 34px;
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+}
+.viewer-title-box h1 { font-size: 15px; font-weight: 600; color: #fff; }
+.viewer-title-box p { font-size: 11px; color: #94A3B8; }
+.viewer-controls { display: flex; align-items: center; gap: 16px; }
+.viewer-btn-group {
+  display: flex; background: rgba(255,255,255,0.08); padding: 3px; border-radius: 8px;
+}
+.viewer-btn {
+  background: transparent; border: none; color: #CBD5E1; padding: 6px 12px;
+  font-size: 12px; font-weight: 500; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+}
+.viewer-btn.active { background: var(--color-primary-500); color: #fff; }
+.viewer-select {
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+  color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 6px; outline: none; cursor: pointer;
+}
+.viewer-select option { background: #1E293B; color: #fff; }
+
+/* MAIN LAYOUT */
+.viewer-layout { display: flex; min-height: calc(100vh - 60px); }
+.viewer-sidebar {
+  width: 300px; background: #0f172a; border-right: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0; position: sticky; top: 60px; height: calc(100vh - 60px);
+  overflow-y: auto; padding: 20px 14px;
+}
+.sidebar-heading {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748B;
+  letter-spacing: 0.8px; padding: 12px 10px 6px;
+}
+.toc-nav { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.toc-link {
+  display: flex; align-items: center; justify-content: space-between; padding: 8px 10px;
+  border-radius: 8px; color: #94A3B8; text-decoration: none; font-size: 13px; transition: all 0.2s;
+}
+.toc-link:hover { background: rgba(255, 255, 255, 0.05); color: #F8FAFC; }
+.toc-link.active {
+  background: rgba(59, 107, 245, 0.15); color: #93C5FD; font-weight: 600;
+}
+.toc-badge {
+  font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.08);
+  color: #94A3B8; font-family: var(--font-mono); margin-right: 8px;
+}
+
+/* WORKSPACE */
+.viewer-workspace {
+  flex: 1; padding: 40px 48px 80px; display: flex; flex-direction: column;
+  align-items: center; gap: 60px; background: #090e1a; overflow-y: auto;
+}
+.pc-page-block {
+  width: 1360px; max-width: 100%; display: flex; flex-direction: column; gap: 14px;
+  scroll-margin-top: 80px;
+}
+.page-meta-card {
+  background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px; padding: 14px 20px; display: flex; align-items: center;
+  justify-content: space-between; color: #fff;
+}
+.meta-title-box { display: flex; align-items: center; gap: 12px; }
+.page-num-tag {
+  background: var(--color-primary-500); color: #fff; font-weight: 700; font-size: 12px;
+  padding: 3px 8px; border-radius: 6px; font-family: var(--font-mono);
+}
+.page-level-tag {
+  background: rgba(255, 255, 255, 0.15); color: #e2e8f0; font-weight: 600; font-size: 11px;
+  padding: 2px 6px; border-radius: 4px;
+}
+.meta-title { font-size: 16px; font-weight: 600; color: #F8FAFC; }
+.route-mapping-badge {
+  font-size: 12px; color: #93C5FD; background: rgba(59, 107, 245, 0.2);
+  border: 1px solid rgba(59, 107, 245, 0.35); padding: 3px 10px; border-radius: 6px;
+  font-family: var(--font-mono);
+}
+.meta-desc { font-size: 12px; color: #94A3B8; max-width: 600px; text-align: right; }
+
+/* DESKTOP WINDOW */
+.desktop-window {
+  width: 100%; background: #ffffff; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); display: flex; flex-direction: column;
+}
+.window-titlebar {
+  height: 38px; background: #1e293b; display: flex; align-items: center; padding: 0 16px;
+  position: relative; border-bottom: 1px solid #334155;
+}
+.window-dots { display: flex; gap: 7px; }
+.window-dot { width: 11px; height: 11px; border-radius: 50%; }
+.dot-red { background: #ef4444; } .dot-yellow { background: #f59e0b; } .dot-green { background: #10b981; }
+.window-address-bar {
+  position: absolute; left: 50%; transform: translateX(-50%); background: #0f172a;
+  border: 1px solid #334155; border-radius: 6px; padding: 2px 18px; font-size: 11px;
+  color: #94a3b8; font-family: var(--font-mono); display: flex; align-items: center; gap: 8px;
+}
+
+/* NAVBAR */
+.desktop-nav {
+  height: 60px; background: #ffffff; border-bottom: 1px solid var(--color-gray-200);
+  display: flex; align-items: center; justify-content: space-between; padding: 0 32px;
+}
+.nav-brand { display: flex; align-items: center; gap: 12px; }
+.brand-icon-box {
+  width: 34px; height: 34px; background: var(--color-primary-500); border-radius: 8px;
+  color: #fff; display: flex; align-items: center; justify-content: center;
+}
+.brand-text-box h2 { font-size: 15px; font-weight: 700; color: var(--color-gray-900); }
+.brand-text-box span { font-size: 11px; color: var(--color-gray-500); }
+.nav-links { display: flex; gap: 6px; list-style: none; }
+.nav-item {
+  padding: 6px 14px; font-size: 13px; font-weight: 500; color: var(--color-gray-600);
+  border-radius: 6px; cursor: pointer;
+}
+.nav-item.active { color: var(--color-primary-600); background: var(--color-primary-50); font-weight: 600; }
+.nav-user-area { display: flex; align-items: center; gap: 14px; }
+.user-avatar-badge {
+  display: flex; align-items: center; gap: 8px; padding: 3px 10px 3px 3px;
+  border-radius: 9999px; background: var(--color-gray-50); border: 1px solid var(--color-gray-200);
+}
+.avatar-circle {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--color-primary-100);
+  color: var(--color-primary-600); display: flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: 12px;
+}
+.user-name { font-size: 12px; font-weight: 600; color: var(--color-gray-800); }
+
+/* DESKTOP BODY */
+.desktop-body { background: var(--color-gray-50); min-height: 580px; padding: 28px 32px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+.card {
+  background: #fff; border-radius: var(--radius-md); border: 1px solid var(--color-gray-200);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden;
+}
+.card-header {
+  padding: 14px 20px; border-bottom: 1px solid var(--color-gray-100);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title {
+  font-size: 14px; font-weight: 700; color: var(--color-gray-900); display: flex;
+  align-items: center; gap: 8px;
+}
+.card-body { padding: 20px; }
+
+.btn-primary {
+  background: var(--color-primary-500); color: #fff; border: none; padding: 8px 18px;
+  font-size: 13px; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-secondary {
+  background: #fff; color: var(--color-gray-700); border: 1px solid var(--color-gray-300);
+  padding: 8px 16px; font-size: 13px; font-weight: 600; border-radius: var(--radius-sm);
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+}
+.tag-badge {
+  display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-weight: 600;
+}
+.badge-primary { background: var(--color-primary-50); color: var(--color-primary-600); border: 1px solid var(--color-primary-200); }
+.badge-success { background: var(--color-success-50); color: var(--color-success-500); border: 1px solid #bbf7d0; }
+.badge-warning { background: var(--color-warning-50); color: var(--color-warning-500); border: 1px solid #fde68a; }
+.badge-danger  { background: var(--color-error-50); color: var(--color-error-500); border: 1px solid #fecaca; }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+.data-table th {
+  background: var(--color-gray-50); color: var(--color-gray-600); font-weight: 600;
+  padding: 10px 14px; border-bottom: 1px solid var(--color-gray-200);
+}
+.data-table td { padding: 12px 14px; border-bottom: 1px solid var(--color-gray-100); }
+.data-table tr:hover td { background: var(--color-primary-50); }
+
+</style>
+</head>
+<body>
+
+<!-- TOP TOOLBAR -->
+<header class="viewer-toolbar">
+  <div class="viewer-brand">
+    <div class="viewer-logo-badge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+    <div class="viewer-title-box">
+      <h1>兴康明诊所 · 小程序全页面平铺PC端设计方案</h1>
+      <p>100% 忠实还原 mp-weixin-rewrite 业务逻辑与数据模型 · 拒绝任何额外臆造功能</p>
+    </div>
+  </div>
+
+  <div class="viewer-controls">
+    <div class="viewer-btn-group">
+      <button class="viewer-btn active" id="btnModeTiled" onclick="setViewMode('tiled')">平铺总览模式</button>
+      <button class="viewer-btn" id="btnModeSingle" onclick="setViewMode('single')">单页聚焦模式</button>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:12px; color:#94A3B8;">缩放比例：</span>
+      <select class="viewer-select" id="zoomSelect" onchange="changeZoom(this.value)">
+        <option value="1">100% 原始尺寸</option>
+        <option value="0.85">85% 笔记本适中</option>
+        <option value="0.75" selected>75% 宽屏全览</option>
+        <option value="0.6">60% 鸟瞰紧凑</option>
+      </select>
+    </div>
+
+    <div class="viewer-btn-group">
+      <button class="viewer-btn" id="btnToggleRoutes" onclick="toggleRoutes()">
+        <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span> 显示/隐藏小程序路径标注
+      </button>
+    </div>
+
+    <button class="viewer-btn" style="background:var(--color-primary-500); color:#fff;" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+      ↑ 回到顶部
+    </button>
+  </div>
+</header>
+
+<div class="viewer-layout">
+  <!-- LEFT SIDEBAR TOC -->
+  <aside class="viewer-sidebar">
+    <div class="sidebar-heading">小程序真实页面索引 (12个核心模块)</div>
+    <ul class="toc-nav">
+      
+        <li>
+          <a href="#p-1" class="toc-link" data-target="p-1">
+            <div>
+              <span class="toc-badge">01</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L1</span>
+              <span>首</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-2" class="toc-link" data-target="p-2">
+            <div>
+              <span class="toc-badge">02</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L1</span>
+              <span>预约挂号</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-3" class="toc-link" data-target="p-3">
+            <div>
+              <span class="toc-badge">03</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L1</span>
+              <span>睡眠评估</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-4" class="toc-link" data-target="p-4">
+            <div>
+              <span class="toc-badge">04</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L2/L3</span>
+              <span>量表答题与评估报告</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-5" class="toc-link" data-target="p-5">
+            <div>
+              <span class="toc-badge">05</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L2/L3</span>
+              <span>AI鼾声录制与声学报告</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-6" class="toc-link" data-target="p-6">
+            <div>
+              <span class="toc-badge">06</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L1</span>
+              <span>治疗追踪</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-7" class="toc-link" data-target="p-7">
+            <div>
+              <span class="toc-badge">07</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L2/L3</span>
+              <span>调整记录与医嘱详情</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-8" class="toc-link" data-target="p-8">
+            <div>
+              <span class="toc-badge">08</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L1/L2</span>
+              <span>产品中心</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-9" class="toc-link" data-target="p-9">
+            <div>
+              <span class="toc-badge">09</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L1/L2</span>
+              <span>个人中心与阻鼾器管理</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-10" class="toc-link" data-target="p-10">
+            <div>
+              <span class="toc-badge">10</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L2</span>
+              <span>家庭成员与在线客服</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-11" class="toc-link" data-target="p-11">
+            <div>
+              <span class="toc-badge">11</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L2/L3</span>
+              <span>分销中心与推广功能</span>
+            </div>
+          </a>
+        </li>
+        
+        <li>
+          <a href="#p-12" class="toc-link" data-target="p-12">
+            <div>
+              <span class="toc-badge">12</span>
+              <span style="font-size:11px; color:#cbd5e1; background:rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; margin-right:4px;">L2</span>
+              <span>统一登录与就诊协议</span>
+            </div>
+          </a>
+        </li>
+        
+    </ul>
+    <div style="margin-top:20px; padding:12px; background:rgba(255,255,255,0.04); border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+      <div style="font-size:11px; color:#94a3b8; font-weight:700; margin-bottom:4px;">适配原则核验说明</div>
+      <div style="font-size:11px; color:#64748b; line-height:1.5;">
+        已彻底剔除所有外部无关业务（长视频播放器、外部直播、通用呼吸机电商等）。完全围绕<strong>定制式可调阻鼾器、门诊挂号、量表/鼾声评估、前伸调档追踪、分销中心</strong>进行 1:1 桌面化适配。
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN TILED WORKSPACE -->
+  <main class="viewer-workspace" id="mainWorkspace" style="transform: scale(0.75); transform-origin: top center; width: calc(100% / 0.75);">
+    
+    <div class="pc-page-block" id="p-1">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">01</span>
+          <span class="page-level-tag">L1</span>
+          <span class="meta-title">首 页 (门诊综合工作台)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/index/index</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序首页：顶部打招呼与患者统计数据、昨夜睡眠概览卡（睡眠分83、深睡/浅睡、打鼾次数）、4个快捷入口（阻鼾器打卡、预约记录、睡眠评估、病历档案）、推荐坐诊医生与门店（龙岗总店）。手机竖向排列转为桌面宽屏左右对称布局。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/index/index</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item active">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item ">睡眠评估</li><li class="nav-item ">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item ">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- HERO ROW -->
+    <div style="background: linear-gradient(135deg, #1A3580 0%, #3B6BF5 50%, #8EAFFF 100%); border-radius: 12px; padding: 28px 32px; color: #fff; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <div style="font-size: 14px; opacity: 0.9;">晚上好 👋</div>
+        <h1 style="font-size: 26px; font-weight: 800; margin-top: 2px;">张先生 · 欢迎回到兴康明诊所</h1>
+        <p style="font-size: 13px; opacity: 0.85; margin-top: 4px;">无创下颌前移定制阻鼾解决方案 · 专注睡眠呼吸健康 · 让每一个夜晚安宁无声</p>
+      </div>
+      <div style="display: flex; gap: 16px;">
+        <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 20px; text-align: center;">
+          <div style="font-size: 22px; font-weight: 800; font-family: var(--font-mono);">12,800+</div>
+          <div style="font-size: 11px; opacity: 0.8;">累计就诊患者</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 20px; text-align: center;">
+          <div style="font-size: 22px; font-weight: 800; font-family: var(--font-mono); color: #a7f3d0;">98.6%</div>
+          <div style="font-size: 11px; opacity: 0.8;">患者满意率</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 20px; text-align: center;">
+          <div style="font-size: 22px; font-weight: 800; font-family: var(--font-mono);">3 家</div>
+          <div style="font-size: 11px; opacity: 0.8;">线下实体专科门诊</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN 2-COL LAYOUT: LEFT SLEEP OVERVIEW, RIGHT APPOINTMENT & DOCTORS -->
+    <div style="display: grid; grid-template-columns: 460px 1fr; gap: 24px;">
+      <!-- LEFT COL: SLEEP SCORE & QUICK ACTIONS -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Sleep Overview Card -->
+        <div class="card" style="background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%);">
+          <div class="card-header">
+            <div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> 昨夜睡眠概览</div>
+            <span class="tag-badge badge-success">阻鼾器已佩戴 6.5h</span>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; align-items: center; justify-content: space-around; margin-bottom: 20px;">
+              <div style="width: 100px; height: 100px; border-radius: 50%; background: #dbeafe; border: 6px solid #3b6bf5; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <div style="font-size: 28px; font-weight: 800; color: #1e40af; font-family: var(--font-mono); line-height: 1;">83</div>
+                <div style="font-size: 11px; color: #3b6bf5; font-weight: 600; margin-top: 2px;">睡眠分</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #3b6bf5;"></span>
+                  <span style="font-size: 12px; color: var(--color-gray-600);">深度睡眠：</span>
+                  <strong style="font-size: 13px; color: var(--color-gray-900);">2h 15min</strong>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #93c5fd;"></span>
+                  <span style="font-size: 12px; color: var(--color-gray-600);">浅度睡眠：</span>
+                  <strong style="font-size: 13px; color: var(--color-gray-900);">3h 42min</strong>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></span>
+                  <span style="font-size: 12px; color: var(--color-gray-600);">打鼾疑似暂停：</span>
+                  <strong style="font-size: 13px; color: #f59e0b;">12 次 (较基线-72%)</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4 Quick Actions -->
+            <div style="border-top: 1px solid var(--color-gray-200); padding-top: 16px;">
+              <div style="font-size: 12px; font-weight: 700; color: var(--color-gray-700); margin-bottom: 12px;">快捷入口 (小程序原功能)</div>
+              <div class="grid-2" style="gap: 10px;">
+                <button class="btn-secondary" style="padding: 10px; justify-content: center; font-size: 12px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.5 2 6 4 6 7c0 3.5 1.5 7 2 11 .5 3.5 2.5 4 4 4s3.5-.5 4-4c.5-4 2-7.5 2-11 0-3-2.5-5-6-5z"/></svg> 阻鼾器佩戴打卡
+                </button>
+                <button class="btn-secondary" style="padding: 10px; justify-content: center; font-size: 12px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> 预约挂号记录
+                </button>
+                <button class="btn-secondary" style="padding: 10px; justify-content: center; font-size: 12px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> 睡眠质量评估
+                </button>
+                <button class="btn-secondary" style="padding: 10px; justify-content: center; font-size: 12px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> 我的病历档案
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clinic Store Info -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> 推荐门店</div>
+            <span class="tag-badge badge-success">📍 距您 2.3km</span>
+          </div>
+          <div class="card-body" style="padding: 16px;">
+            <div style="font-size: 15px; font-weight: 700; color: var(--color-gray-900);">兴康明 · 龙岗总店</div>
+            <div style="font-size: 12px; color: var(--color-gray-600); margin: 4px 0 8px;">深圳市龙岗区吉华路达成工业区3号</div>
+            <div style="display: flex; gap: 8px;">
+              <span class="tag-badge badge-primary">🕐 09:00 - 18:00</span>
+              <span class="tag-badge badge-primary">🅿️ 有专属就诊车位</span>
+              <span class="tag-badge badge-success">营业中</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COL: RECOMMENDED DOCTORS & BOOKING CTA -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Booking CTA Banner -->
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 15px; font-weight: 700; color: #1e40af;">专业鼾症诊疗专家团队，一对一精准定制</div>
+            <div style="font-size: 12px; color: #3b82f6; margin-top: 2px;">到店数字化三维口腔扫描取模 · 个性化定制前伸量</div>
+          </div>
+          <button class="btn-primary" style="padding: 10px 20px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> 立即预约门诊初诊 &gt;
+          </button>
+        </div>
+
+        <!-- Doctor List -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> 推荐坐诊医生</div>
+            <span style="font-size: 12px; color: var(--color-primary-600); cursor: pointer;">查看全部坐诊医生 &gt;</span>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- Doctor 1 -->
+              <div style="display: flex; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--color-gray-100);">
+                <div style="width: 60px; height: 60px; border-radius: 50%; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; flex-shrink: 0;">
+                  刘
+                </div>
+                <div style="flex: 1;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <span style="font-size: 16px; font-weight: 700;">刘医生</span>
+                      <span class="tag-badge badge-primary" style="margin-left: 6px;">副主任医师</span>
+                      <span style="font-size: 12px; color: var(--color-gray-500); margin-left: 8px;">鼾症专科 / 口腔矫治</span>
+                    </div>
+                    <span style="color: #f59e0b; font-weight: 700; font-size: 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> 9.9 分</span>
+                  </div>
+                  <div style="font-size: 12px; color: var(--color-gray-600); margin: 6px 0;">
+                    擅长：成人打鼾下颌前移滴定调整、轻中度OSAHS口腔矫治器精准设计与佩戴舒适度管理。
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 12px; color: #10b981; font-weight: 600;">出诊时间：周二、周四、周六全天</span>
+                    <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;">预约挂号 · ¥ 100</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Doctor 2 -->
+              <div style="display: flex; gap: 16px;">
+                <div style="width: 60px; height: 60px; border-radius: 50%; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; flex-shrink: 0;">
+                  王
+                </div>
+                <div style="flex: 1;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <span style="font-size: 16px; font-weight: 700;">王医生</span>
+                      <span class="tag-badge badge-success" style="margin-left: 6px;">主任医师</span>
+                      <span style="font-size: 12px; color: var(--color-gray-500); margin-left: 8px;">耳鼻咽喉科 / 气道评估</span>
+                    </div>
+                    <span style="color: #f59e0b; font-weight: 700; font-size: 12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> 9.8 分</span>
+                  </div>
+                  <div style="font-size: 12px; color: var(--color-gray-600); margin: 6px 0;">
+                    擅长：上气道阻塞部位评估、舌根后坠与软腭松弛临床鉴别、多导睡眠监测报告深度解读。
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 12px; color: #10b981; font-weight: 600;">出诊时间：周三、周五下午</span>
+                    <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;">预约挂号 · ¥ 150</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-2">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">02</span>
+          <span class="page-level-tag">L1</span>
+          <span class="meta-title">预约挂号 (门店/科室/排班/填单)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/appointment/index & booking/index</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序挂号业务：门店选择（龙岗总店等）、科室选择（鼾症专科、口腔科、耳鼻喉科）、医生时段选择（上午/下午剩余号源）、就诊人与主诉填单确认。手机端的多级弹窗在PC端适配为三栏联动直达。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/appointment/index & booking/index</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item active">预约挂号</li><li class="nav-item ">睡眠评估</li><li class="nav-item ">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item ">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- APPOINTMENT BOOKING (PC DESKTOP ADAPTATION) -->
+    <div style="display: grid; grid-template-columns: 320px 1fr 340px; gap: 20px;">
+      <!-- LEFT: STORE SELECTOR & DEPARTMENTS -->
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <!-- Store Selector Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> 选择就诊门店</div>
+          </div>
+          <div class="card-body" style="padding: 14px;">
+            <div style="border: 2px solid var(--color-primary-500); background: var(--color-primary-50); border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer;">
+              <div style="font-weight: 700; font-size: 14px; color: var(--color-primary-800);">兴康明 · 龙岗总店</div>
+              <div style="font-size: 11px; color: var(--color-gray-600); margin: 4px 0;">深圳市龙岗区吉华路达成工业区3号</div>
+              <div style="display: flex; gap: 4px;">
+                <span class="tag-badge badge-primary">📍 距您2.3km</span>
+                <span class="tag-badge badge-success">营业中</span>
+              </div>
+            </div>
+            <div style="border: 1px solid var(--color-gray-200); background: #fff; border-radius: 8px; padding: 12px; cursor: pointer;">
+              <div style="font-weight: 700; font-size: 14px; color: var(--color-gray-800);">兴康明 · 福田旗舰门诊</div>
+              <div style="font-size: 11px; color: var(--color-gray-500); margin: 4px 0;">深圳市福田区深南中路华强北商务中心</div>
+              <span style="font-size: 11px; color: var(--color-gray-400);">距您 12.5km</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dept Grid -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg> 选择就诊科室</div>
+          </div>
+          <div class="card-body" style="padding: 14px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="background: var(--color-primary-500); color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+                <span>🫁 鼾症专科 (推荐)</span>
+                <span style="font-size: 11px; opacity: 0.9;">下颌前移定制</span>
+              </div>
+              <div style="background: var(--color-gray-50); color: var(--color-gray-700); padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                🦷 口腔科 (牙颌咬合评估)
+              </div>
+              <div style="background: var(--color-gray-50); color: var(--color-gray-700); padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                👂 耳鼻喉科 (软腭气道检查)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: DOCTORS & SCHEDULE TIME SLOTS -->
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> 专家出诊时段选择</div>
+            <span class="tag-badge badge-primary">2026年10月28日 (周三)</span>
+          </div>
+          <div class="card-body">
+            <!-- Doctor info snippet -->
+            <div style="display: flex; gap: 14px; align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--color-gray-100); margin-bottom: 16px;">
+              <div style="width: 52px; height: 52px; border-radius: 50%; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;">
+                刘
+              </div>
+              <div>
+                <div style="font-size: 16px; font-weight: 700;">刘医生 · 副主任医师</div>
+                <div style="font-size: 12px; color: var(--color-gray-500);">擅长阻鼾器初次数字化取模、前伸位精度调节</div>
+              </div>
+            </div>
+
+            <div style="font-size: 13px; font-weight: 700; color: var(--color-gray-800); margin-bottom: 10px;">上午时段 (08:30 - 12:00)</div>
+            <div class="grid-3" style="gap: 10px; margin-bottom: 16px;">
+              <div style="border: 2px solid var(--color-primary-500); background: var(--color-primary-50); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer;">
+                <div style="font-weight: 700; color: var(--color-primary-700); font-size: 13px;">09:00 - 09:30</div>
+                <div style="font-size: 11px; color: var(--color-primary-600);">余 2 号 (已选)</div>
+              </div>
+              <div style="border: 1px solid var(--color-gray-200); background: #fff; padding: 10px; border-radius: 8px; text-align: center; cursor: pointer;">
+                <div style="font-weight: 600; font-size: 13px;">09:30 - 10:00</div>
+                <div style="font-size: 11px; color: #10b981;">余 4 号</div>
+              </div>
+              <div style="border: 1px solid var(--color-gray-200); background: #fff; padding: 10px; border-radius: 8px; text-align: center; cursor: pointer;">
+                <div style="font-weight: 600; font-size: 13px;">10:00 - 10:30</div>
+                <div style="font-size: 11px; color: #10b981;">余 3 号</div>
+              </div>
+            </div>
+
+            <div style="font-size: 13px; font-weight: 700; color: var(--color-gray-800); margin-bottom: 10px;">下午时段 (13:30 - 17:30)</div>
+            <div class="grid-3" style="gap: 10px;">
+              <div style="border: 1px solid var(--color-gray-200); background: #fff; padding: 10px; border-radius: 8px; text-align: center; cursor: pointer;">
+                <div style="font-weight: 600; font-size: 13px;">14:00 - 14:30</div>
+                <div style="font-size: 11px; color: #10b981;">余 5 号</div>
+              </div>
+              <div style="border: 1px solid var(--color-gray-200); background: #fff; padding: 10px; border-radius: 8px; text-align: center; cursor: pointer;">
+                <div style="font-weight: 600; font-size: 13px;">14:30 - 15:00</div>
+                <div style="font-size: 11px; color: #10b981;">余 2 号</div>
+              </div>
+              <div style="border: 1px solid var(--color-gray-200); background: var(--color-gray-50); padding: 10px; border-radius: 8px; text-align: center; color: var(--color-gray-400);">
+                <div style="font-size: 13px;">15:00 - 15:30</div>
+                <div style="font-size: 11px;">已约满</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: APPOINTMENT CONFIRMATION SUMMARY -->
+      <div class="card" style="border: 1px solid var(--color-primary-200);">
+        <div class="card-header" style="background: var(--color-primary-50);">
+          <div class="card-title" style="color: var(--color-primary-800);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> 预约确认填报</div>
+        </div>
+        <div class="card-body">
+          <div style="margin-bottom: 14px;">
+            <label style="font-size: 12px; font-weight: 600; color: var(--color-gray-700); display: block; margin-bottom: 4px;">就诊人</label>
+            <select style="width: 100%; padding: 8px 10px; border: 1px solid var(--color-gray-300); border-radius: 6px; font-size: 13px;">
+              <option>张先生 (本人 · 138****8899)</option>
+              <option>李女士 (家属)</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label style="font-size: 12px; font-weight: 600; color: var(--color-gray-700); display: block; margin-bottom: 4px;">就诊类别</label>
+            <div style="display: flex; gap: 8px;">
+              <label style="font-size: 12px; display: flex; align-items: center; gap: 4px;"><input type="radio" checked name="pc_type"> 初诊检查</label>
+              <label style="font-size: 12px; display: flex; align-items: center; gap: 4px;"><input type="radio" name="pc_type"> 复诊调档</label>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="font-size: 12px; font-weight: 600; color: var(--color-gray-700); display: block; margin-bottom: 4px;">主诉症状</label>
+            <textarea placeholder="例如：夜间打鼾频繁、早起口干、白天犯困..." style="width: 100%; height: 60px; padding: 8px; border: 1px solid var(--color-gray-300); border-radius: 6px; font-size: 12px; resize: none;"></textarea>
+          </div>
+
+          <div style="border-top: 1px solid var(--color-gray-100); padding-top: 12px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+              <span style="color: var(--color-gray-600);">门诊挂号费：</span>
+              <span style="font-weight: 800; color: var(--color-primary-600); font-family: var(--font-mono);">¥ 100.00</span>
+            </div>
+            <div style="font-size: 11px; color: var(--color-gray-400);">支持就诊日前一天无损退款</div>
+          </div>
+
+          <button class="btn-primary" style="width: 100%; justify-content: center; padding: 10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> 立即确认预约 · ¥ 100
+          </button>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-3">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">03</span>
+          <span class="page-level-tag">L1</span>
+          <span class="meta-title">睡眠评估 (三大科学量表与AI自测入口)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/assessment/index</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序评估中心：ESS 嗜睡量表（8题）、PSQI 睡眠质量（19题）、STOP-Bang 阻塞性筛查（8题）、AI 鼾声录制入口及个人历史测评表格。手机单列卡片适配为PC端3列卡片与宽幅表格。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/assessment/index</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item active">睡眠评估</li><li class="nav-item ">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item ">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- SLEEP ASSESSMENT PAGE (PC DESKTOP ADAPTATION) -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <!-- TOP HERO -->
+      <div style="background: linear-gradient(135deg, #1A3580 0%, #3B6BF5 100%); border-radius: 12px; padding: 24px 32px; color: #fff; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2 style="font-size: 22px; font-weight: 800;">🛏️ 睡眠质量评估中心</h2>
+          <p style="font-size: 13px; opacity: 0.9; margin-top: 4px;">科学量表评估 + AI鼾声分析，精准诊断您的睡眠打鼾与呼吸通畅度</p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn-primary" style="background: #fff; color: var(--color-primary-600);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> AI鼾声录制
+          </button>
+        </div>
+      </div>
+
+      <!-- 3 SCALES IN 3-COL GRID -->
+      <div class="grid-3">
+        <!-- Scale 1: ESS -->
+        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="card-body">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                📝
+              </div>
+              <div>
+                <h4 style="font-size: 16px; font-weight: 700; color: var(--color-gray-900);">ESS 嗜睡量表</h4>
+                <div style="font-size: 11px; color: var(--color-gray-400);">8 题 · 约 2 分钟 · 国际标准</div>
+              </div>
+            </div>
+            <p style="font-size: 12px; color: var(--color-gray-600); line-height: 1.5; margin-bottom: 16px;">
+              Epworth 嗜睡量表，评估日间过度嗜睡程度，是阻塞性睡眠呼吸暂停 (OSAHS) 初筛的核心临床工具。
+            </p>
+          </div>
+          <div style="padding: 14px 20px; background: var(--color-gray-50); border-top: 1px solid var(--color-gray-100); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: var(--color-gray-500);">已有 2,847 人完成</span>
+            <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;">开始测评</button>
+          </div>
+        </div>
+
+        <!-- Scale 2: PSQI -->
+        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="card-body">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                😴
+              </div>
+              <div>
+                <h4 style="font-size: 16px; font-weight: 700; color: var(--color-gray-900);">PSQI 睡眠质量</h4>
+                <div style="font-size: 11px; color: var(--color-gray-400);">19 题 · 约 5 分钟 · 匹兹堡大学</div>
+              </div>
+            </div>
+            <p style="font-size: 12px; color: var(--color-gray-600); line-height: 1.5; margin-bottom: 16px;">
+              综合评估近 1 个月的睡眠质量、入睡时间、睡眠效率、日间功能障碍等 7 个生理维度。
+            </p>
+          </div>
+          <div style="padding: 14px 20px; background: var(--color-gray-50); border-top: 1px solid var(--color-gray-100); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: var(--color-gray-500);">已有 1,562 人完成</span>
+            <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;">开始测评</button>
+          </div>
+        </div>
+
+        <!-- Scale 3: STOP-Bang -->
+        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="card-body">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: #fef3c7; color: #b45309; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                ⚠️
+              </div>
+              <div>
+                <h4 style="font-size: 16px; font-weight: 700; color: var(--color-gray-900);">STOP-Bang 筛查</h4>
+                <div style="font-size: 11px; color: var(--color-gray-400);">8 题 · 约 1 分钟 · 临床高危筛查</div>
+              </div>
+            </div>
+            <p style="font-size: 12px; color: var(--color-gray-600); line-height: 1.5; margin-bottom: 16px;">
+              重点筛查打鼾、疲倦、憋醒、高血压、BMI及颈围等客观指标，预测重度呼吸暂停。
+            </p>
+          </div>
+          <div style="padding: 14px 20px; background: var(--color-gray-50); border-top: 1px solid var(--color-gray-100); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: var(--color-gray-500);">已有 3,120 人完成</span>
+            <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;">开始测评</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI SNORE RECORDING ENTRY & HISTORY TABLE -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> 我的历史自测与鼾声记录</div>
+          <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;">刷新记录</button>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>测试日期</th>
+                <th>评估项目</th>
+                <th>分值 / 评定结果</th>
+                <th>临床风险等级</th>
+                <th>改善建议</th>
+                <th style="text-align: right;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-family: var(--font-mono);">2026-10-20</td>
+                <td>ESS 嗜睡量表</td>
+                <td><strong>14 分</strong> (轻度0-10分)</td>
+                <td><span class="tag-badge badge-warning">中度嗜睡风险</span></td>
+                <td>结合夜间打鼾，建议行专科门诊检查</td>
+                <td style="text-align: right;"><button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;">查看详细报告</button></td>
+              </tr>
+              <tr>
+                <td style="font-family: var(--font-mono);">2026-10-18</td>
+                <td>AI 鼾声录制</td>
+                <td>整晚打鼾 <strong>23 次</strong> (峰值 68dB)</td>
+                <td><span class="tag-badge badge-warning">存在低通气嫌疑</span></td>
+                <td>建议佩戴阻鼾器前伸 2.0mm 观察</td>
+                <td style="text-align: right;"><button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;">查看声学波形</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-4">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">04</span>
+          <span class="page-level-tag">L2/L3</span>
+          <span class="meta-title">量表答题与评估报告 (逐题作答与报告解读)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/assessment/questionnaire & result</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序量表业务：ESS 8题答题器（进度条、0-3分单选项）、答卷得分计算（14分中度日间嗜睡）、风险提示与改善建议。PC端支持左侧答题、右侧即时查看评估解读与报告。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/assessment/questionnaire & result</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item active">睡眠评估</li><li class="nav-item ">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item ">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- QUESTIONNAIRE & ASSESSMENT RESULT (PC DUAL COLUMN) -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+      <!-- LEFT: QUESTION CARD -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📝 ESS 嗜睡量表 · 答题界面</div>
+          <span class="tag-badge badge-primary">进度：4 / 8 题 (50%)</span>
+        </div>
+        <div class="card-body">
+          <div style="width: 100%; height: 6px; background: var(--color-gray-100); border-radius: 3px; overflow: hidden; margin-bottom: 20px;">
+            <div style="width: 50%; height: 100%; background: var(--color-primary-500);"></div>
+          </div>
+
+          <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--color-gray-900); margin-bottom: 12px;">
+              第 4 题：在以下情况下，您打瞌睡（不仅是疲倦）的可能性有多大？
+            </h3>
+            <div style="font-size: 14px; font-weight: 600; color: var(--color-primary-700); margin-bottom: 16px;">
+              —— “坐着看书或阅读报纸时”
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <label style="border: 1px solid var(--color-gray-200); background: #fff; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                <input type="radio" name="ess_q4">
+                <span style="font-size: 13px; font-weight: 600;">0 分 - 从不打瞌睡</span>
+              </label>
+              <label style="border: 1px solid var(--color-gray-200); background: #fff; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                <input type="radio" name="ess_q4">
+                <span style="font-size: 13px; font-weight: 600;">1 分 - 很少打瞌睡</span>
+              </label>
+              <label style="border: 2px solid var(--color-primary-500); background: var(--color-primary-50); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                <input type="radio" name="ess_q4" checked>
+                <span style="font-size: 13px; font-weight: 700; color: var(--color-primary-800);">2 分 - 有时打瞌睡 (选定)</span>
+              </label>
+              <label style="border: 1px solid var(--color-gray-200); background: #fff; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                <input type="radio" name="ess_q4">
+                <span style="font-size: 13px; font-weight: 600;">3 分 - 经常打瞌睡</span>
+              </label>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between;">
+            <button class="btn-secondary" style="padding: 10px 24px;">上一题</button>
+            <button class="btn-primary" style="padding: 10px 28px;">下一题 &gt;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: COMPREHENSIVE RESULT CARD -->
+      <div class="card" style="border: 1px solid #fecaca; background: linear-gradient(180deg, #fff 0%, #fffafa 100%);">
+        <div class="card-header" style="background: #fff1f2;">
+          <div class="card-title" style="color: #9f1239;">📊 评估分析报告 (即时生成预览)</div>
+          <span class="tag-badge badge-warning">中度嗜睡风险</span>
+        </div>
+        <div class="card-body">
+          <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
+            <div style="width: 88px; height: 88px; border-radius: 50%; background: #fee2e2; border: 4px solid #ef4444; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0;">
+              <div style="font-size: 26px; font-weight: 800; color: #b91c1c; font-family: var(--font-mono); line-height: 1;">14</div>
+              <div style="font-size: 10px; color: #ef4444; margin-top: 2px;">ESS 评分</div>
+            </div>
+            <div>
+              <div style="font-size: 18px; font-weight: 800; color: var(--color-gray-900);">评估等级：中度日间嗜睡</div>
+              <p style="font-size: 12px; color: var(--color-gray-600); margin-top: 4px; line-height: 1.5;">
+                正常范围 0-10 分，轻度 11-12 分，中度 13-15 分，重度 16-24 分。您的得分为 14 分，提示可能存在睡眠呼吸暂停或睡眠结构紊乱。
+              </p>
+            </div>
+          </div>
+
+          <div style="background: #fff; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 700; color: #b91c1c; margin-bottom: 6px;">⚠️ 风险提示与临床关联</div>
+            <div style="font-size: 12px; color: var(--color-gray-700); line-height: 1.5;">
+              结合您近期鼾声自测记录（日均鼾声 23 次），建议预约鼾症专科进行数字化口颌与气道评估。
+            </div>
+          </div>
+
+          <div style="background: var(--color-gray-50); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 700; color: var(--color-gray-800); margin-bottom: 6px;">💡 临床改善建议 (小程序原案)</div>
+            <ul style="font-size: 12px; color: var(--color-gray-600); line-height: 1.6; padding-left: 18px;">
+              <li>预约鼾症专科进行下颌前伸量检查与阻鼾器试戴；</li>
+              <li>尝试侧卧睡姿，减轻软腭下坠对气道的压迫；</li>
+              <li>睡前避免饮酒和服用镇静药物；保持规律作息。</li>
+            </ul>
+          </div>
+
+          <button class="btn-primary" style="width: 100%; justify-content: center; padding: 10px;">
+            凭此报告一键预约刘医生门诊 &gt;
+          </button>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-5">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">05</span>
+          <span class="page-level-tag">L2/L3</span>
+          <span class="meta-title">AI鼾声录制与声学报告 (整晚监测与分贝分析)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/assessment/recording & snore-result</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序录音功能：录音计时、动态声波条、4条录制指南、整晚打鼾23次与最高声压68dB分析。桌面端展现收音控制台与声学分析卡片。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/assessment/recording & snore-result</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item active">睡眠评估</li><li class="nav-item ">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item ">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- AI SNORE RECORDING (PC DESKTOP ADAPTATION) -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+      <!-- LEFT: RECORDING CONSOLE -->
+      <div class="card" style="background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); color: #fff;">
+        <div class="card-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+          <div class="card-title" style="color: #fff;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg> AI 鼾声录制监测 (夜间执行)</div>
+          <span class="tag-badge" style="background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid #10b981;">
+            ● 监测录音中
+          </span>
+        </div>
+        <div class="card-body" style="text-align: center; padding: 32px 24px;">
+          <div style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">
+            录制整晚鼾声，AI 自动识别呼吸暂停低通气风险
+          </div>
+
+          <!-- Wave Bars SVG -->
+          <div style="display: flex; justify-content: center; align-items: center; gap: 6px; height: 60px; margin-bottom: 24px;">
+            <span style="width: 6px; height: 20px; background: #38bdf8; border-radius: 3px;"></span>
+            <span style="width: 6px; height: 45px; background: #38bdf8; border-radius: 3px;"></span>
+            <span style="width: 6px; height: 30px; background: #38bdf8; border-radius: 3px;"></span>
+            <span style="width: 6px; height: 55px; background: #f59e0b; border-radius: 3px;"></span>
+            <span style="width: 6px; height: 25px; background: #38bdf8; border-radius: 3px;"></span>
+            <span style="width: 6px; height: 60px; background: #ef4444; border-radius: 3px;"></span>
+            <span style="width: 6px; height: 35px; background: #38bdf8; border-radius: 3px;"></span>
+            <span style="width: 6px; height: 18px; background: #38bdf8; border-radius: 3px;"></span>
+          </div>
+
+          <div style="width: 80px; height: 80px; border-radius: 50%; background: #3b6bf5; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px; box-shadow: 0 0 25px rgba(59,107,245,0.6); cursor: pointer;">
+            🎙️
+          </div>
+
+          <div style="font-size: 28px; font-weight: 800; font-family: var(--font-mono); letter-spacing: 2px;">
+            03:42:18
+          </div>
+          <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">当前环境分贝：38 dB (正常安静)</div>
+
+          <button class="btn-primary" style="background: #ef4444; margin-top: 24px; padding: 10px 28px;">
+            结束录制并生成报告
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT: RECORDING TIPS & ANALYSIS RESULT -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📖 录制操作指南 (小程序规范要求)</div>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">
+                  1
+                </div>
+                <div style="font-size: 13px; color: var(--color-gray-700);">
+                  点击录制开始后，将设备放置于枕边 50-80cm 处即可，保持收音麦克风通畅。
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">
+                  2
+                </div>
+                <div style="font-size: 13px; color: var(--color-gray-700);">
+                  保持设备充电状态，锁屏防休眠已开启，确保整晚监测不中断。
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">
+                  3
+                </div>
+                <div style="font-size: 13px; color: var(--color-gray-700);">
+                  录制完成后 AI 算法自动清洗环境白噪音，提取鼾声频率与暂停段。
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--color-primary-50); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">
+                  4
+                </div>
+                <div style="font-size: 13px; color: var(--color-gray-700);">
+                  数据严格加密存储在私有健康云端，保障个人隐私安全。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 最近一次整夜鼾声报告样本</div>
+            <span class="tag-badge badge-warning">2026-10-18 报告</span>
+          </div>
+          <div class="card-body">
+            <div class="grid-3" style="text-align: center; margin-bottom: 16px;">
+              <div style="background: var(--color-gray-50); padding: 12px; border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--color-gray-400);">整晚打鼾总次数</div>
+                <div style="font-size: 20px; font-weight: 800; color: #ef4444; font-family: var(--font-mono); margin-top: 4px;">23 次</div>
+              </div>
+              <div style="background: var(--color-gray-50); padding: 12px; border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--color-gray-400);">最高鼾声分贝</div>
+                <div style="font-size: 20px; font-weight: 800; color: #f59e0b; font-family: var(--font-mono); margin-top: 4px;">68 dB</div>
+              </div>
+              <div style="background: var(--color-gray-50); padding: 12px; border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--color-gray-400);">疑似气道受阻时长</div>
+                <div style="font-size: 20px; font-weight: 800; color: var(--color-primary-600); font-family: var(--font-mono); margin-top: 4px;">14.2 min</div>
+              </div>
+            </div>
+            <div style="font-size: 12px; color: var(--color-gray-600); line-height: 1.5;">
+              * 临床建议：患者佩戴阻鼾器前伸 2.00mm 状态下打鼾次数较基线期大幅下降 72%，建议维持目前前伸量。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-6">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">06</span>
+          <span class="page-level-tag">L1</span>
+          <span class="meta-title">治疗追踪 (5阶段进度/趋势对比/打卡日历)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/treatment/index</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序治疗追踪：5阶段进度时间线（初诊评估➔方案定制➔舒适观察期➔阶段性微调期➔长期巩固期）、治疗第45天状态、睡眠趋势改善折线图、月度佩戴打卡日历。PC端贯通展示，形成就诊看板。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/treatment/index</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item ">睡眠评估</li><li class="nav-item active">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item ">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- TREATMENT TRACKING DASHBOARD (PC DESKTOP ADAPTATION) -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <!-- TOP STATUS BAR -->
+      <div class="card" style="padding: 20px 28px; background: linear-gradient(90deg, #1A3580 0%, #2A52D4 100%); color: #fff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div>
+            <div style="font-size: 12px; opacity: 0.8;">全病程个性化无创矫治管理</div>
+            <h2 style="font-size: 20px; font-weight: 800; margin-top: 2px;">治疗追踪 · 治疗第 45 天 · 舒适观察期已完成</h2>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn-primary" style="background: #fff; color: var(--color-primary-700); font-size: 12px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.5 2 6 4 6 7c0 3.5 1.5 7 2 11 .5 3.5 2.5 4 4 4s3.5-.5 4-4c.5-4 2-7.5 2-11 0-3-2.5-5-6-5z"/></svg> 立即今日打卡
+            </button>
+          </div>
+        </div>
+
+        <!-- 5 TREATMENT PROGRESS PHASES (EXACT MATCHING ui/01) -->
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
+          <div style="background: rgba(255,255,255,0.15); border-left: 4px solid #10b981; padding: 12px; border-radius: 6px;">
+            <div style="font-size: 11px; color: #a7f3d0; font-weight: 700;">✓ 第一阶段 (已完成)</div>
+            <div style="font-size: 13px; font-weight: 700; margin-top: 2px;">初诊评估</div>
+            <div style="font-size: 11px; opacity: 0.8; margin-top: 2px;">睡眠监测与口腔检查 · 2026-03-15</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.15); border-left: 4px solid #10b981; padding: 12px; border-radius: 6px;">
+            <div style="font-size: 11px; color: #a7f3d0; font-weight: 700;">✓ 第二阶段 (已完成)</div>
+            <div style="font-size: 13px; font-weight: 700; margin-top: 2px;">方案定制</div>
+            <div style="font-size: 11px; opacity: 0.8; margin-top: 2px;">数字化取模/初始前伸量 · 2026-03-22</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.15); border-left: 4px solid #10b981; padding: 12px; border-radius: 6px;">
+            <div style="font-size: 11px; color: #a7f3d0; font-weight: 700;">✓ 第三阶段 (已完成)</div>
+            <div style="font-size: 13px; font-weight: 700; margin-top: 2px;">舒适观察期</div>
+            <div style="font-size: 11px; opacity: 0.8; margin-top: 2px;">适应佩戴与受力分布 · 2026-03-29~04-28</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.3); border: 2px solid #a7f3d0; padding: 12px; border-radius: 6px;">
+            <div style="font-size: 11px; color: #a7f3d0; font-weight: 800;">● 当前阶段</div>
+            <div style="font-size: 13px; font-weight: 800; margin-top: 2px;">阶段性微调期</div>
+            <div style="font-size: 11px; opacity: 0.9; margin-top: 2px;">根据鼾声微调前伸量 · 进行中</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 6px; opacity: 0.7;">
+            <div style="font-size: 11px; opacity: 0.8;">第五阶段 (计划中)</div>
+            <div style="font-size: 13px; font-weight: 600; margin-top: 2px;">长期巩固期</div>
+            <div style="font-size: 11px; opacity: 0.8; margin-top: 2px;">稳定佩戴、定期复查保养</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MIDDLE: WEARING CALENDAR & TREND CHART -->
+      <div style="display: grid; grid-template-columns: 1fr 440px; gap: 24px;">
+        <!-- Sleep Trends Chart SVG -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> 治疗依从性与睡眠健康指标改善趋势</div>
+            <span style="font-size: 12px; color: var(--color-primary-600); font-weight: 600;">● 睡眠分 83 (基线 58)</span>
+          </div>
+          <div class="card-body">
+            <svg width="100%" height="200" viewBox="0 0 700 200">
+              <line x1="30" y1="20" x2="680" y2="20" stroke="#f1f5f9"/>
+              <line x1="30" y1="70" x2="680" y2="70" stroke="#f1f5f9"/>
+              <line x1="30" y1="120" x2="680" y2="120" stroke="#f1f5f9"/>
+              <line x1="30" y1="170" x2="680" y2="170" stroke="#f1f5f9"/>
+
+              <!-- Baseline 60 -->
+              <line x1="30" y1="130" x2="680" y2="130" stroke="#cbd5e1" stroke-dasharray="4,4"/>
+              <text x="35" y="125" font-size="10" fill="#94a3b8">基线水平 60分</text>
+
+              <!-- Improvement curve -->
+              <path d="M 40 140 Q 150 125, 260 100 T 480 65 T 670 45" fill="none" stroke="#3b6bf5" stroke-width="3"/>
+              <circle cx="40" cy="140" r="4" fill="#3b6bf5"/>
+              <circle cx="260" cy="100" r="4" fill="#3b6bf5"/>
+              <circle cx="480" cy="65" r="4" fill="#3b6bf5"/>
+              <circle cx="670" cy="45" r="5" fill="#3b6bf5" stroke="#fff" stroke-width="2"/>
+              <text x="640" y="35" font-size="12" font-weight="700" fill="#3b6bf5">83 分</text>
+
+              <text x="35" y="190" font-size="11" fill="#94a3b8">第1周(初戴)</text>
+              <text x="240" y="190" font-size="11" fill="#94a3b8">第3周(适应)</text>
+              <text x="460" y="190" font-size="11" fill="#94a3b8">第5周(调档)</text>
+              <text x="640" y="190" font-size="11" fill="#94a3b8">当前(第45天)</text>
+            </svg>
+            <div style="font-size: 12px; color: var(--color-gray-500); text-align: right; margin-top: 8px;">
+              * 临床表现：随下颌前伸量提升至 2.00mm，夜间血氧饱和度恢复稳定，晨起精神状态良好。
+            </div>
+          </div>
+        </div>
+
+        <!-- Adherence Heatmap Calendar -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> 本月佩戴打卡记录</div>
+            <span class="tag-badge badge-success">连续打卡 14 天</span>
+          </div>
+          <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center;">
+              <span style="font-size: 11px; color: var(--color-gray-400);">一</span>
+              <span style="font-size: 11px; color: var(--color-gray-400);">二</span>
+              <span style="font-size: 11px; color: var(--color-gray-400);">三</span>
+              <span style="font-size: 11px; color: var(--color-gray-400);">四</span>
+              <span style="font-size: 11px; color: var(--color-gray-400);">五</span>
+              <span style="font-size: 11px; color: var(--color-gray-400);">六</span>
+              <span style="font-size: 11px; color: var(--color-gray-400);">日</span>
+
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">1</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">2</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">3</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">4</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">5</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">6</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">7</div>
+
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">8</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">9</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">10</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">11</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">12</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">13</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">14</div>
+
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">15</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">16</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">17</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">18</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">19</div>
+              <div style="background: #bbf7d0; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700; color: #15803d;">20</div>
+              <div style="background: #3b6bf5; color: #fff; border-radius: 4px; padding: 6px 0; font-size: 11px; font-weight: 700;">今日</div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--color-gray-500); margin-top: 14px;">
+              <span><span style="display:inline-block; width:8px; height:8px; background:#bbf7d0; border-radius:2px;"></span> 已达标佩戴 (&gt;6h)</span>
+              <span><span style="display:inline-block; width:8px; height:8px; background:#3b6bf5; border-radius:2px;"></span> 今日已打卡</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-7">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">07</span>
+          <span class="page-level-tag">L2/L3</span>
+          <span class="meta-title">调整记录与医嘱详情 (阻鼾器毫米调档与随访)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/treatment/adjust-detail & doctor-advice</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序调档业务：阻鼾器前伸量毫米调整流水表格（1.50mm ➔ 1.75mm ➔ 2.00mm，调档原因、随诊医师）、主诊刘医生签发医嘱详情（晨起牙合翼操、下次复诊时间）。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/treatment/adjust-detail & doctor-advice</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item ">睡眠评估</li><li class="nav-item active">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item ">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- ADJUST DETAILS & DOCTOR ADVICE (PC DUAL COLUMN) -->
+    <div style="display: grid; grid-template-columns: 1fr 420px; gap: 24px;">
+      <!-- LEFT: ADJUSTMENT LOG TABLE -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔧 阻鼾器前伸量毫米级调档记录流水</div>
+          <span class="tag-badge badge-primary">当前在用档位：2.00 mm</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>调档时间</th>
+                <th>前伸量变更</th>
+                <th>增量</th>
+                <th>调整原因与患者反馈</th>
+                <th>随诊医生</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-family: var(--font-mono);">2026-04-15</td>
+                <td style="font-weight: 700; color: var(--color-primary-600);">1.75mm ➔ 2.00mm</td>
+                <td>+0.25 mm</td>
+                <td>患者仰卧位仍有轻度呼噜声，无颞下颌关节酸胀，递增1/4毫米增强气道通畅。</td>
+                <td>刘医生 (副主任医师)</td>
+                <td><span class="tag-badge badge-success">生效中</span></td>
+              </tr>
+              <tr>
+                <td style="font-family: var(--font-mono);">2026-04-05</td>
+                <td style="font-weight: 700; color: var(--color-primary-600);">1.50mm ➔ 1.75mm</td>
+                <td>+0.25 mm</td>
+                <td>初戴适应一周良好，无压痛感，按计划进入第一阶段微调。</td>
+                <td>刘医生 (副主任医师)</td>
+                <td><span class="tag-badge badge-success">历史记录</span></td>
+              </tr>
+              <tr>
+                <td style="font-family: var(--font-mono);">2026-03-29</td>
+                <td style="font-weight: 700; color: var(--color-primary-600);">初始前伸量 1.50mm</td>
+                <td>基准起始</td>
+                <td>初次戴入，指导咬合复位垫佩戴手法与晨起牙合翼操。</td>
+                <td>刘医生 (副主任医师)</td>
+                <td><span class="tag-badge badge-success">初戴建档</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RIGHT: DOCTOR ADVICE CARD -->
+      <div class="card" style="border: 1px solid var(--color-primary-200); background: #fdfefe;">
+        <div class="card-header" style="background: var(--color-primary-50);">
+          <div class="card-title" style="color: var(--color-primary-800);">📋 最新医嘱与随访指导详情</div>
+          <span class="tag-badge badge-primary">2026-04-15 签发</span>
+        </div>
+        <div class="card-body">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <div style="width: 44px; height: 44px; border-radius: 50%; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700;">
+              刘
+            </div>
+            <div>
+              <div style="font-size: 14px; font-weight: 700;">刘医生 (主诊医师)</div>
+              <div style="font-size: 11px; color: var(--color-gray-500);">兴康明·龙岗总店 鼾症专科</div>
+            </div>
+          </div>
+
+          <div style="font-size: 13px; color: var(--color-gray-700); line-height: 1.6; background: #fff; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            “张先生，您已顺利过渡到 2.00mm 前伸量。请继续坚持每日睡前佩戴，晨起取出后请用冷水及专用泡腾片浸泡清洁。早晨摘下后如有轻度牙齿轻微咬合不实感，请咬紧配送的咬合复位硅胶垫 5-10 分钟即可恢复。”
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--color-gray-500);">
+            <span>下次复查时间：2026-05-15</span>
+            <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;">申请提前复诊</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-8">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">08</span>
+          <span class="page-level-tag">L1/L2</span>
+          <span class="meta-title">产品中心 (定制式可调舌型阻鼾器与原理)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/product/index & detail</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序产品定义：定制式可调舌型阻鼾器（NMPA二类医疗器械 · 无创下颌前移方案）、止鼾原理说明、三大核心优势（精准定制、安全无创、隐形美观）、专用清洁泡腾片耗材与收纳盒配件。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/product/index & detail</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item ">睡眠评估</li><li class="nav-item ">治疗追踪</li><li class="nav-item active">产品中心</li><li class="nav-item ">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- PRODUCT CENTER (PC DESKTOP ADAPTATION) -->
+    <div style="display: grid; grid-template-columns: 480px 1fr; gap: 24px;">
+      <!-- LEFT: PRODUCT HERO & INTRO CARD -->
+      <div class="card">
+        <div class="card-body" style="padding: 28px;">
+          <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 12px; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 20px;">
+            <div style="font-size: 54px; margin-bottom: 6px;">🦷</div>
+            <h3 style="font-size: 20px; font-weight: 800; color: #1e40af;">定制式可调舌型阻鼾器</h3>
+            <span style="font-size: 12px; color: #3b82f6; font-weight: 600; margin-top: 2px;">NMPA 二类医疗器械 · 无创下颌前移方案</span>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+            <span class="tag-badge badge-primary">无创物理治疗</span>
+            <span class="tag-badge badge-success">1/4mm精准可调</span>
+            <span class="tag-badge badge-warning">终身质保维护</span>
+          </div>
+
+          <div style="border-top: 1px solid var(--color-gray-100); padding-top: 16px;">
+            <h4 style="font-size: 14px; font-weight: 700; color: var(--color-gray-900); margin-bottom: 6px;">止鼾原理说明 (小程序原案)</h4>
+            <p style="font-size: 12px; color: var(--color-gray-600); line-height: 1.6;">
+              通过佩戴定制阻鼾器，将下颌限制在适当的前伸位，带动压迫呼吸道的软组织前移，扩宽呼吸道，使呼吸通畅，从而消除打鼾。增量调整精度达 1/4 毫米，兼顾有效性与舒适度。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: ADVANTAGES & ACCESSORIES -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Core Advantages Grid -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">✨ 产品核心优势</div>
+          </div>
+          <div class="card-body">
+            <div class="grid-3" style="gap: 14px;">
+              <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px;">
+                <div style="font-size: 20px; margin-bottom: 6px;">🎯</div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--color-gray-900);">精准定制</div>
+                <div style="font-size: 11px; color: var(--color-gray-500); margin-top: 4px; line-height: 1.4;">
+                  根据患者三维口腔数据系统设计，一人一器，1/4毫米级渐进调节。
+                </div>
+              </div>
+              <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px;">
+                <div style="font-size: 20px; margin-bottom: 6px;">🛡️</div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--color-gray-900);">安全无创</div>
+                <div style="font-size: 11px; color: var(--color-gray-500); margin-top: 4px; line-height: 1.4;">
+                  无需手术、无面罩气流异物感，纯物理无创拓宽咽喉气道。
+                </div>
+              </div>
+              <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px;">
+                <div style="font-size: 20px; margin-bottom: 6px;">✨</div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--color-gray-900);">隐形美观</div>
+                <div style="font-size: 11px; color: var(--color-gray-500); margin-top: 4px; line-height: 1.4;">
+                  高分子透明医用材料，轻薄类似正畸保持器，随身小巧便携。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Accessories & Consumables -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📦 原厂清洁耗材与配套工具</div>
+          </div>
+          <div class="card-body">
+            <div class="grid-2" style="gap: 14px;">
+              <div style="display: flex; gap: 12px; align-items: center; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 12px;">
+                <div style="font-size: 28px;">🫧</div>
+                <div>
+                  <div style="font-size: 13px; font-weight: 700;">阻鼾器专用抑菌清洁泡腾片</div>
+                  <div style="font-size: 11px; color: var(--color-gray-500);">30片/盒 · 深度去垢防黄变</div>
+                  <div style="font-size: 13px; font-weight: 800; color: var(--color-primary-600); margin-top: 2px;">¥ 48.00</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; align-items: center; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 12px;">
+                <div style="font-size: 28px;">🧰</div>
+                <div>
+                  <div style="font-size: 13px; font-weight: 700;">便携收纳盒 + 前伸刻度扳手</div>
+                  <div style="font-size: 11px; color: var(--color-gray-500);">原厂配件 · 随身透气透水</div>
+                  <div style="font-size: 13px; font-weight: 800; color: var(--color-primary-600); margin-top: 2px;">¥ 60.00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-9">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">09</span>
+          <span class="page-level-tag">L1/L2</span>
+          <span class="meta-title">个人中心与阻鼾器管理 (设备状态与质保)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/profile/index & device-manage/index</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序个人中心与设备卡：张先生基础信息、阻鼾器卡片（SN: HJ-2026-0315-0042，当前前伸量 2.00mm，累计调整 4次，质保到期 2027-03-22）、佩戴数据、维护保养指南、问题反馈、产品证书4大入口。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/profile/index & device-manage/index</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item ">睡眠评估</li><li class="nav-item ">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item active">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- USER PROFILE & SNORE DEVICE MANAGEMENT (PC DUAL COLUMN) -->
+    <div style="display: grid; grid-template-columns: 360px 1fr; gap: 24px;">
+      <!-- LEFT: USER PROFILE INFO & NAV MENU -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="card" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #fff; padding: 24px;">
+          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+            <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--color-primary-500); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800;">
+              张
+            </div>
+            <div>
+              <div style="font-size: 16px; font-weight: 800;">张先生</div>
+              <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">138****8899</div>
+              <span class="tag-badge" style="background: #f59e0b; color: #fff; margin-top: 4px;">普通会员</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Menu List (exact matching mp-weixin-rewrite) -->
+        <div class="card">
+          <div class="card-body" style="padding: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <div style="padding: 10px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--color-primary-600); background: var(--color-primary-50); cursor: pointer;">
+                🦷 阻鼾器管理 (当前设备)
+              </div>
+              <div style="padding: 10px 14px; border-radius: 6px; font-size: 13px; color: var(--color-gray-700); cursor: pointer;">
+                📁 我的病历档案
+              </div>
+              <div style="padding: 10px 14px; border-radius: 6px; font-size: 13px; color: var(--color-gray-700); cursor: pointer;">
+                👥 家庭成员管理
+              </div>
+              <div style="padding: 10px 14px; border-radius: 6px; font-size: 13px; color: var(--color-gray-700); cursor: pointer;">
+                💬 在线客服咨询
+              </div>
+              <div style="padding: 10px 14px; border-radius: 6px; font-size: 13px; color: var(--color-gray-700); cursor: pointer;">
+                👑 会员权益说明
+              </div>
+              <div style="padding: 10px 14px; border-radius: 6px; font-size: 13px; color: var(--color-gray-700); cursor: pointer;">
+                🔔 消息通知中心
+              </div>
+              <div style="padding: 10px 14px; border-radius: 6px; font-size: 13px; color: var(--color-gray-700); cursor: pointer;">
+                ⚙️ 个人账号设置
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: DEVICE MANAGEMENT DASHBOARD (EXACT MATCHING ui/02) -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="card" style="border: 1px solid var(--color-primary-200);">
+          <div class="card-header" style="background: var(--color-primary-50);">
+            <div class="card-title" style="color: var(--color-primary-800);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.5 2 6 4 6 7c0 3.5 1.5 7 2 11 .5 3.5 2.5 4 4 4s3.5-.5 4-4c.5-4 2-7.5 2-11 0-3-2.5-5-6-5z"/></svg> 阻鼾器设备信息 (SN: HJ-2026-0315-0042)
+            </div>
+            <span class="tag-badge badge-success">🟢 正常使用中</span>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 18px; font-weight: 800; color: var(--color-gray-900); margin-bottom: 4px;">
+              定制式可调舌型阻鼾器
+            </div>
+            <div style="font-size: 12px; color: var(--color-gray-500); margin-bottom: 20px;">
+              定制门诊：兴康明·龙岗总店 · 主治医生：刘医生
+            </div>
+
+            <!-- 4 Grid Stats -->
+            <div class="grid-4" style="margin-bottom: 20px;">
+              <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px;">
+                <div style="font-size: 11px; color: var(--color-gray-500);">当前前伸量</div>
+                <div style="font-size: 22px; font-weight: 800; color: var(--color-primary-600); font-family: var(--font-mono); margin-top: 4px;">
+                  2.00 mm
+                </div>
+              </div>
+              <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px;">
+                <div style="font-size: 11px; color: var(--color-gray-500);">累计调整次数</div>
+                <div style="font-size: 22px; font-weight: 800; color: var(--color-gray-900); font-family: var(--font-mono); margin-top: 4px;">
+                  4 次
+                </div>
+              </div>
+              <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px;">
+                <div style="font-size: 11px; color: var(--color-gray-500);">定制交付日期</div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--color-gray-800); font-family: var(--font-mono); margin-top: 8px;">
+                  2026-03-22
+                </div>
+              </div>
+              <div style="background: var(--color-gray-50); border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px;">
+                <div style="font-size: 11px; color: var(--color-gray-500);">质保到期时间</div>
+                <div style="font-size: 14px; font-weight: 700; color: #10b981; font-family: var(--font-mono); margin-top: 8px;">
+                  2027-03-22
+                </div>
+              </div>
+            </div>
+
+            <!-- 4 Actions -->
+            <div class="grid-4" style="border-top: 1px solid var(--color-gray-100); padding-top: 16px;">
+              <button class="btn-secondary" style="padding: 10px; justify-content: center; font-size: 12px;">
+                📊 佩戴数据分析
+              </button>
+              <button class="btn-secondary" style="padding: 10px; justify-content: center; font-size: 12px;">
+                🔧 维护保养指南
+              </button>
+              <button class="btn-secondary" style="padding: 10px; justify-content: center; font-size: 12px;">
+                ⚠️ 临床问题反馈
+              </button>
+              <button class="btn-secondary" style="padding: 10px; justify-content: center; font-size: 12px;">
+                📋 医疗产品证书
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-10">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">10</span>
+          <span class="page-level-tag">L2</span>
+          <span class="meta-title">家庭成员与在线客服 (多档案与即时咨询)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/profile/family-members & online-service</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序就诊人与客服业务：本人、配偶、父亲多家庭成员病历无缝切换；在线客服即时问答对话窗口，咨询阻鼾器佩戴与耗材采买。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/profile/family-members & online-service</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item ">睡眠评估</li><li class="nav-item ">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item active">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- FAMILY MEMBERS & CUSTOMER SERVICE (PC DUAL COLUMN) -->
+    <div style="display: grid; grid-template-columns: 460px 1fr; gap: 24px;">
+      <!-- LEFT: FAMILY MEMBERS -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> 家庭成员健康病历</div>
+          <button class="btn-primary" style="padding: 4px 10px; font-size: 11px;">+ 添加家庭成员</button>
+        </div>
+        <div class="card-body">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="border: 2px solid var(--color-primary-500); background: var(--color-primary-50); border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--color-primary-800);">张先生 (本人)</div>
+                <div style="font-size: 12px; color: var(--color-gray-600); margin-top: 2px;">46岁 · 男 · 阻鼾器使用第45天</div>
+              </div>
+              <span class="tag-badge badge-primary">当前病历</span>
+            </div>
+
+            <div style="border: 1px solid var(--color-gray-200); background: #fff; border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--color-gray-800);">李女士 (配偶)</div>
+                <div style="font-size: 12px; color: var(--color-gray-500); margin-top: 2px;">43岁 · 女 · 2026-03 开展ESS嗜睡量表自测</div>
+              </div>
+              <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;">切换病历</button>
+            </div>
+
+            <div style="border: 1px solid var(--color-gray-200); background: #fff; border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--color-gray-800);">张老先生 (父亲)</div>
+                <div style="font-size: 12px; color: var(--color-gray-500); margin-top: 2px;">73岁 · 男 · 伴有重度夜间打鼾憋醒史</div>
+              </div>
+              <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;">切换病历</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: ONLINE SERVICE CHAT -->
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div class="card-header">
+          <div class="card-title">💬 兴康明在线客服与随诊助理</div>
+          <span class="tag-badge badge-success">客服在线中</span>
+        </div>
+        <div class="card-body" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-height: 280px;">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- Incoming message -->
+            <div style="display: flex; gap: 10px; max-width: 80%;">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--color-primary-100); color: var(--color-primary-600); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">
+                服
+              </div>
+              <div style="background: var(--color-gray-100); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--color-gray-800); line-height: 1.5;">
+                您好，张先生！我是兴康明诊所的专属客服。请问您目前的 2.00mm 阻鼾器佩戴是否还有松动或口干情况？如有任何问题可随时留言。
+              </div>
+            </div>
+
+            <!-- Outgoing message -->
+            <div style="display: flex; gap: 10px; max-width: 80%; align-self: flex-end;">
+              <div style="background: var(--color-primary-500); color: #fff; border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.5;">
+                目前佩戴挺稳定的，打呼噜基本听不到了，想咨询下清洁泡腾片快用完了，直接在小程序商城拍就可以吗？
+              </div>
+              <div style="width: 32px; height: 32px; border-radius: 50%; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">
+                张
+              </div>
+            </div>
+          </div>
+
+          <!-- Input bar -->
+          <div style="display: flex; gap: 10px; border-top: 1px solid var(--color-gray-200); padding-top: 14px; margin-top: 20px;">
+            <input type="text" placeholder="输入您的问题..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--color-gray-300); border-radius: 6px; font-size: 13px;">
+            <button class="btn-primary" style="padding: 8px 20px;">发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-11">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">11</span>
+          <span class="page-level-tag">L2/L3</span>
+          <span class="meta-title">分销中心与推广功能 (合伙人收益与团队拓客)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/distribution/* (center, products, team, commission)</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序分销模块：佣金看板（可提现余额 ¥4,320、累计收益 ¥18,650、团队42人）、阻鼾器推广海报生成、佣金明细表格与分销规则。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/distribution/* (center, products, team, commission)</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item ">睡眠评估</li><li class="nav-item ">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item active">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- DISTRIBUTION & REFERRAL DASHBOARD (PC DESKTOP ADAPTATION) -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <!-- TOP COMMISSION BANNER (EXACT MATCHING ui/03) -->
+      <div class="card" style="background: linear-gradient(135deg, #78350f 0%, #b45309 50%, #d97706 100%); color: #fff; padding: 24px 32px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div>
+            <span style="background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600;">
+              合伙人等级：黄金推广员
+            </span>
+            <h2 style="font-size: 22px; font-weight: 800; margin-top: 4px;">分销推广中心</h2>
+          </div>
+          <button class="btn-primary" style="background: #fff; color: #b45309; padding: 8px 18px; font-size: 12px;">
+            提现中心申请 &gt;
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+          <div style="background: rgba(0,0,0,0.15); padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);">
+            <div style="font-size: 11px; opacity: 0.8;">可提现佣金余额</div>
+            <div style="font-size: 24px; font-weight: 800; font-family: var(--font-mono); color: #fef08a; margin-top: 4px;">¥ 4,320.00</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.15); padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);">
+            <div style="font-size: 11px; opacity: 0.8;">累计推广收益</div>
+            <div style="font-size: 24px; font-weight: 800; font-family: var(--font-mono); margin-top: 4px;">¥ 18,650.00</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.15); padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);">
+            <div style="font-size: 11px; opacity: 0.8;">直推团队人数</div>
+            <div style="font-size: 24px; font-weight: 800; font-family: var(--font-mono); margin-top: 4px;">42 人</div>
+          </div>
+          <div style="background: rgba(0,0,0,0.15); padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);">
+            <div style="font-size: 11px; opacity: 0.8;">待结算审核订单</div>
+            <div style="font-size: 24px; font-weight: 800; font-family: var(--font-mono); margin-top: 4px;">¥ 850.00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MIDDLE: PROMOTION PRODUCTS & REFERRAL COMMISSIONS -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- Promotion Products Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🎁 推广商品库与专属海报</div>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-size: 14px; font-weight: 700; color: var(--color-gray-900);">定制式可调舌型阻鼾器</div>
+                  <div style="font-size: 11px; color: var(--color-gray-500); margin-top: 2px;">全国专科门诊数字化定制</div>
+                  <div style="font-size: 13px; font-weight: 800; color: #10b981; margin-top: 4px;">提成比例：15% (约 ¥450/台)</div>
+                </div>
+                <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;">生成邀请海报</button>
+              </div>
+
+              <div style="border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-size: 14px; font-weight: 700; color: var(--color-gray-900);">阻鼾器专用抑菌清洁泡腾片 (盒装)</div>
+                  <div style="font-size: 11px; color: var(--color-gray-500); margin-top: 2px;">高频复购易损医用耗材</div>
+                  <div style="font-size: 13px; font-weight: 800; color: #10b981; margin-top: 4px;">提成比例：20%</div>
+                </div>
+                <button class="btn-primary" style="padding: 6px 14px; font-size: 12px;">生成邀请海报</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Referral Team & Rules -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">👥 我的团队与返佣流水</div>
+            <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;">分销规则</button>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>成交时间</th>
+                  <th>客户</th>
+                  <th>购买项目</th>
+                  <th>获得佣金</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-family: var(--font-mono);">10-22</td>
+                  <td>王先生 (135****9901)</td>
+                  <td>定制式阻鼾器全套</td>
+                  <td style="color: #10b981; font-weight: 700;">+ ¥ 450.00</td>
+                  <td><span class="tag-badge badge-success">已到账</span></td>
+                </tr>
+                <tr>
+                  <td style="font-family: var(--font-mono);">10-18</td>
+                  <td>陈先生 (139****2211)</td>
+                  <td>门诊专家初诊挂号</td>
+                  <td style="color: #10b981; font-weight: 700;">+ ¥ 15.00</td>
+                  <td><span class="tag-badge badge-success">已到账</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+    <div class="pc-page-block" id="p-12">
+      <div class="page-meta-card">
+        <div class="meta-title-box">
+          <span class="page-num-tag">12</span>
+          <span class="page-level-tag">L2</span>
+          <span class="meta-title">统一登录与就诊协议 (手机验证码与隐私)</span>
+          <span class="route-mapping-badge">小程序对应路径: pages/auth/login, agreement, privacy</span>
+        </div>
+        <div class="meta-desc"><strong>PC适配要点：</strong>严格基于小程序登录流程：手机号快捷验证码登录、账号密码登录、就诊服务协议与医疗隐私保护条款合规勾选。</div>
+      </div>
+
+      <div class="desktop-window">
+        <div class="window-titlebar">
+          <div class="window-dots">
+            <div class="window-dot dot-red"></div>
+            <div class="window-dot dot-yellow"></div>
+            <div class="window-dot dot-green"></div>
+          </div>
+          <div class="window-address-bar">
+            <span style="color:#10b981;">🔒 兴康明诊所</span>
+            <span>https://clinic.xingkangming.com/auth/login, agreement, privacy</span>
+          </div>
+        </div>
+
+        
+    <div class="desktop-nav">
+      <div class="nav-brand">
+        <div class="brand-icon-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M18 10v4a6 6 0 0 1-12 0v-2"/><circle cx="18" cy="10" r="2"/></svg></div>
+        <div class="brand-text-box">
+          <h2>兴康明诊所 · 桌面网页端</h2>
+          <span>无创下颌前移定制阻鼾解决方案 · 门诊服务平台</span>
+        </div>
+      </div>
+      <ul class="nav-links">
+        <li class="nav-item ">首页</li><li class="nav-item ">预约挂号</li><li class="nav-item ">睡眠评估</li><li class="nav-item ">治疗追踪</li><li class="nav-item ">产品中心</li><li class="nav-item active">个人中心</li>
+      </ul>
+      <div class="nav-user-area">
+        <div style="position:relative; cursor:pointer; color:var(--color-gray-600);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div class="user-avatar-badge">
+          <div class="avatar-circle">张</div>
+          <span class="user-name">张先生</span>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="desktop-body">
+          
+    <!-- UNIFIED AUTH LOGIN & AGREEMENT (PC DESKTOP ADAPTATION) -->
+    <div style="min-height: 480px; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 50%, #1e293b 0%, #0f172a 100%); border-radius: 12px; padding: 40px 20px;">
+      <div class="card" style="width: 440px; max-width: 100%; border: 1px solid rgba(255,255,255,0.1); background: #fff; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+        <div style="background: var(--color-primary-500); padding: 20px 24px; color: #fff; text-align: center;">
+          <h3 style="font-size: 18px; font-weight: 800; color: #fff;">兴康明诊所 · 患者端登录</h3>
+          <p style="font-size: 11px; opacity: 0.85; margin-top: 2px;">无创下颌前移定制阻鼾 · 健康档案快速接入</p>
+        </div>
+
+        <div class="card-body" style="padding: 24px;">
+          <!-- Tab selector -->
+          <div style="display: flex; border-bottom: 1px solid var(--color-gray-200); margin-bottom: 20px;">
+            <div style="flex: 1; text-align: center; padding-bottom: 8px; font-size: 13px; font-weight: 700; color: var(--color-primary-600); border-bottom: 2px solid var(--color-primary-500); cursor: pointer;">
+              手机号快捷登录
+            </div>
+            <div style="flex: 1; text-align: center; padding-bottom: 8px; font-size: 13px; color: var(--color-gray-500); cursor: pointer;">
+              账号密码登录
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div>
+              <label style="font-size: 12px; font-weight: 600; color: var(--color-gray-700); display: block; margin-bottom: 4px;">手机号码</label>
+              <input type="text" value="13800138899" style="width: 100%; padding: 8px 12px; border: 1px solid var(--color-gray-300); border-radius: 6px; font-size: 13px; font-family: var(--font-mono);">
+            </div>
+            <div>
+              <label style="font-size: 12px; font-weight: 600; color: var(--color-gray-700); display: block; margin-bottom: 4px;">短信验证码</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" placeholder="6 位验证码" style="flex: 1; padding: 8px 12px; border: 1px solid var(--color-gray-300); border-radius: 6px; font-size: 13px; font-family: var(--font-mono);">
+                <button class="btn-secondary" style="padding: 8px 12px; font-size: 12px; white-space: nowrap;">获取验证码</button>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--color-gray-600); margin-top: 2px;">
+              <input type="checkbox" checked id="pc_agree">
+              <label for="pc_agree">已阅读并同意《就诊服务协议》与《医疗隐私政策》</label>
+            </div>
+
+            <button class="btn-primary" style="width: 100%; justify-content: center; padding: 10px; margin-top: 6px;">
+              登 录
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+        </div>
+      </div>
+    </div>
+    
+  </main>
+</div>
+
+<script>
+let currentMode = 'tiled';
+let showRoutes = true;
+
+function setViewMode(mode) {
+  currentMode = mode;
+  document.getElementById('btnModeTiled').classList.toggle('active', mode === 'tiled');
+  document.getElementById('btnModeSingle').classList.toggle('active', mode === 'single');
+
+  const blocks = document.querySelectorAll('.pc-page-block');
+  if (mode === 'single') {
+    blocks.forEach((b, idx) => {
+      b.style.display = idx === 0 ? 'flex' : 'none';
+    });
+  } else {
+    blocks.forEach(b => {
+      b.style.display = 'flex';
+    });
+  }
+}
+
+function changeZoom(val) {
+  const ws = document.getElementById('mainWorkspace');
+  const scale = parseFloat(val);
+  ws.style.transform = `scale(${scale})`;
+  ws.style.width = `calc(100% / ${scale})`;
+}
+
+function toggleRoutes() {
+  showRoutes = !showRoutes;
+  const badges = document.querySelectorAll('.route-mapping-badge');
+  badges.forEach(b => {
+    b.style.display = showRoutes ? 'inline-block' : 'none';
+  });
+}
+
+// TOC Click Handling
+document.querySelectorAll('.toc-link').forEach(link => {
+  link.addEventListener('click', function(e) {
+    const targetId = this.getAttribute('data-target');
+    if (currentMode === 'single') {
+      e.preventDefault();
+      document.querySelectorAll('.pc-page-block').forEach(b => {
+        b.style.display = b.id === targetId ? 'flex' : 'none';
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// ScrollSpy in tiled mode
+window.addEventListener('scroll', () => {
+  if (currentMode !== 'tiled') return;
+  const blocks = document.querySelectorAll('.pc-page-block');
+  let currentId = '';
+  blocks.forEach(b => {
+    const rect = b.getBoundingClientRect();
+    if (rect.top <= 200) {
+      currentId = b.id;
+    }
+  });
+  if (currentId) {
+    document.querySelectorAll('.toc-link').forEach(l => {
+      l.classList.toggle('active', l.getAttribute('data-target') === currentId);
+    });
+  }
+});
+</script>
+
+</body>
+</html>
+
