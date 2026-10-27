@@ -1,0 +1,16 @@
+.halcyon-design .hc-header .top-nav {position:relative;isolation:isolate;}
+html {scrollbar-gutter:stable;}
+.nav-selection {position:absolute;border-radius:999px;background:#3b6bf5;pointer-events:none;z-index:-1;transition:transform .32s cubic-bezier(.22,.68,0,1),width .32s cubic-bezier(.22,.68,0,1),opacity .18s;}
+.halcyon-design .hc-header .top-nav.has-selection a.current {background:transparent;}
+.halcyon-design .hc-header .top-nav a {font-weight:600;transition:color .25s,background .25s,box-shadow .25s;}
+.pc-content .login-modes {position:relative;isolation:isolate;}
+.pc-content .login-modes::before {content:'';position:absolute;left:4px;top:4px;bottom:4px;width:calc((100% - 12px)/2);background:#3b6bf5;border-radius:24px;z-index:-1;transition:transform .3s cubic-bezier(.22,.68,0,1);}
+.pc-content .login-modes:has([data-mode="wechat"][aria-pressed="true"])::before {transform:translateX(calc(100% + 4px));}
+.pc-content .login-modes button[aria-pressed='true'] {background:transparent;}
+.pc-content #password-login,.pc-content #wechat-login {min-height:254px;}
+.pc-content .field input,.pc-content .field select,.pc-content .field textarea {transition:border-color .2s,box-shadow .2s;}
+.pc-content .field :is(input,select,textarea):focus-visible {outline:2px solid #3b6bf5;outline-offset:2px;}
+@media(prefers-reduced-motion:reduce) {
+  .nav-selection {transition:none;}
+  .pc-content .login-modes::before,.pc-content .login-modes button,.halcyon-design .hc-header .top-nav a,.pc-content .field :is(input,select,textarea) {transition:none;}
+}

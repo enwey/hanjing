@@ -1,0 +1,22 @@
+{
+  "name": "hanjing-patient-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:assets": "node scripts/prepare-assets.mjs",
+    "dev": "npm run prepare:assets && vite --host 127.0.0.1 --port 3003 --strictPort",
+    "build": "npm run prepare:assets && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 3003 --strictPort",
+    "test": "npm run prepare:assets && node --experimental-test-module-mocks --test tests/*.test.mjs",
+    "test:browser": "node tests/browser-check.mjs"
+  },
+  "devDependencies": {
+    "@vue/compiler-dom": "^3.5.22",
+    "prettier": "^3.6.2",
+    "vite": "6.4.5"
+  },
+  "engines": {
+    "node": ">=22.20.0"
+  }
+}

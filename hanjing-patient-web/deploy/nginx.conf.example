@@ -1,0 +1,38 @@
+# Merge into a dedicated HTTPS PC virtual host after replacing the domain and
+# TLS certificate paths. Do not replace the existing mini-program virtual host.
+server {
+    listen 443 ssl;
+    server_name patient.example.com;
+    ssl_certificate /etc/nginx/certs/patient.example.com/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/patient.example.com/privkey.pem;
+    root /srv/hanjing-patient-web/dist;
+    index index.html;
+    client_max_body_size 10m;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    add_header X-Frame-Options SAMEORIGIN always;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:5005;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 35s;
+    }
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:5005;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    location = /index.html {
+        add_header Cache-Control "no-store";
+    }
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

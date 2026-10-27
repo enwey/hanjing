@@ -1,5 +1,7 @@
 # 测试记录
 
+- 2026-10-27 [独立 PC 患者端实现](patient-web/implementation-2026-10-27.md)：41 个路由入口接入现有小程序 API，保留预约状态、不实现 PC 支付；60 项模板/隔离处理器、74 项浏览器、22 项本地真实接口开发自检通过，状态待回归；微信网站应用配置及真实扫码仍受阻。
+
 - 2026-10-24 [推广小程序码项目Logo](promoter/qr-brand-logo-2026-10-24.md)：运营新建/查看、推广概览及两端下载统一项目考拉Logo；两端Vite打包与定向合成逻辑自测通过，视觉和真机扫码待验收，状态待回归。
 
 - 2026-10-24 [小程序正式 API 域名迁移](mini-program/production-domain-migration-2026-10-24.md)：正式 API 已切换到 `https://m.xingkangming.com/api/v1`，物理真机预览现强制忽略本地 API 历史缓存；线上门店及登录代理可达、4项环境隔离检查通过，微信公众平台合法域名、WebSocket和重新扫码后的真机链路仍待回归。
@@ -221,6 +223,7 @@
 | 推广员门户 | 3002 | [promoter](promoter/README.md) |
 | 后端 API | 5005 | [backend-api](backend-api/README.md) |
 | UI 设计稿 | 按实际启动配置 | [ui-preview](ui-preview/README.md) |
+| PC 患者网站 | 3003 | [patient-web](patient-web/README.md) |
 
 原版 `mp-weixin` 如需测试，应另建报告并标明版本，不混用重写版结论。管理后台的不同角色账号属于同一个端。
 

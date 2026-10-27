@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>兴康明 · 蓝色医疗官网设计</title>
+  <link rel="stylesheet" href="css/pc-redesign.css">
+  <link rel="stylesheet" href="css/pc-consumer.css">
+  <link rel="stylesheet" href="css/pc-halcyon.css">
+</head>
+<body class="halcyon-design">
+  <div class="design-switch" aria-label="设计预览工具"><span>独立设计 · 演示数据</span><button data-mode="preview" class="selected">网站效果</button><button data-mode="gallery">全部页面</button></div>
+  <div class="workspace"><aside class="catalog"><div class="catalog-title">页面目录 <span id="count"></span></div><input id="search" aria-label="搜索页面" placeholder="搜索页面 / 功能"><nav id="catalog"></nav></aside><main id="stage"></main></div>
+  <div id="toast" role="status"></div>
+  <dialog id="modal"><div id="modal-body"></div><button class="btn" id="close-modal">知道了</button></dialog>
+  <!-- Existing prototype dependencies are read-only; this variant replaces presentation only. -->
+  <script src="js/pc-mini-reference.js"></script>
+  <script src="js/pc-redesign.js"></script>
+  <script src="js/pc-halcyon.js"></script>
+</body>
+</html>

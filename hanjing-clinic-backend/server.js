@@ -5,6 +5,7 @@ import { initDB, get, closePool } from './db.js';
 import { createRateLimiter, createRotatingLog } from './runtime-safety.js';
 import adminRouter from './routes/admin.js';
 import clientRouter from './routes/client.js';
+import pcAuthRouter from './routes/pc-auth.js';
 import promoterRouter from './routes/promoter.js';
 import { sendSystemAlert } from './alert-notifier.js';
 import { processVisitReminders } from './wechatSubscribe.js';
@@ -68,6 +69,7 @@ app.get('/static/demo/:filename', (req, res, next) => {
 });
 app.use(adminRouter);
 app.use(clientRouter);
+app.use(pcAuthRouter);
 app.use(promoterRouter);
 
 // 404 Handler for unmatched routes

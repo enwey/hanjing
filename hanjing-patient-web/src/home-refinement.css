@@ -1,0 +1,34 @@
+@font-face {font-family:'Noto Serif SC Services';src:url('/fonts/noto-serif-sc-services.ttf') format('truetype');font-weight:600;font-display:swap}
+.halcyon-design .hc-strip {font-family:'Noto Serif SC Services',var(--font-serif);font-size:18px;font-weight:600;letter-spacing:.06em}
+.halcyon-design .hc-shortcuts {gap:12px}
+.halcyon-design .hc-shortcuts .text-button {padding:10px 16px;border:1px solid #3b6bf54d;border-radius:999px;background:#edf2ff;color:#1a3580;font-weight:600;transition:background .25s,transform .25s cubic-bezier(.32,.72,0,1)}
+.halcyon-design .hc-shortcuts .text-button:hover {background:#dfe8ff;transform:translateY(-2px)}
+.halcyon-design .hc-service .btn,.halcyon-design .hc-stories .btn {padding:12px 23px;margin-top:14px;font-size:14px}
+.halcyon-design .hc-service-blue .btn,.halcyon-design .hc-band-link .btn {background:#fff;color:#1a3580;border-color:#fff}
+.hc-community-band .hc-section-head .btn {margin-top:20px}
+.hc-process li {border-radius:12px;transition:background .25s,transform .3s cubic-bezier(.32,.72,0,1)}
+.hc-process li:hover,.hc-process li:focus-visible {background:#edf2ff;transform:translateX(8px)}
+.hc-post-author {display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.hc-post-author .hc-author-avatar {width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.hc-post-author .image-fallback {display:grid;place-items:center;background:#edf2ff;color:#1a3580}
+.hc-post-author time {display:block;color:#738098;font-size:12px;margin-top:3px}
+.hc-device .hc-carousel {overflow:hidden;position:relative}
+.hc-carousel-images {display:grid}
+.hc-device .hc-carousel-images img {grid-area:1/1;opacity:0;transition:opacity .65s cubic-bezier(.32,.72,0,1)}
+.hc-device .hc-carousel-images img.is-active {opacity:1}
+.hc-carousel-controls {display:flex;justify-content:center;gap:10px;padding:12px}
+.hc-carousel-controls button {border:0;border-radius:999px;padding:6px 14px;color:#1a3580;background:#fff;font-size:12px;min-height:36px}
+.hc-carousel-controls button[aria-pressed=true] {background:#1a3580;color:#fff}
+.hc-support {display:inline-flex;align-items:center;gap:14px;padding:18px 24px;margin-top:26px;border-radius:18px;background:#edf2ff;color:#1a3580}
+.hc-support svg {width:32px;height:32px}
+.hc-support span {font-size:17px;font-weight:600}
+.hc-support small {display:block;font-size:12px;color:#647087;font-weight:400;margin-top:4px}
+.hc-faq-item {border-bottom:1px solid #1a358018;padding:20px 0}
+.hc-faq-item h3 {margin:0}
+.hc-faq-question {display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;padding:0;border:0;background:transparent;color:#1a3580;text-align:left;font-size:14px;font-weight:400;min-height:28px}
+.hc-faq-question span {font-size:22px;color:#3b6bf5}
+.hc-faq-answer p {font-size:13px;line-height:1.9;color:#647087;margin:15px 30px 0 0}
+.consumer-footer .pc-copyright {display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center}
+.consumer-footer .pc-copyright a {color:inherit}
+@media(max-width:767px) {.halcyon-design .hc-strip {font-size:15px}.hc-process li:hover,.hc-process li:focus-visible {transform:translateX(3px)}}
+@media(prefers-reduced-motion:reduce) {.hc-process li,.halcyon-design .hc-shortcuts .text-button,.hc-device .hc-carousel-images img {transition:none;transform:none}}

@@ -1,0 +1,48 @@
+import fs from 'node:fs';
+import {createRequire} from 'node:module';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import path from 'node:path';
+const root=fileURLToPath(new URL('../../',import.meta.url));
+const require=createRequire(import.meta.url);
+const {parse}=require(path.join(root,'hanjing-clinic-管理后台源码-20260607/node_modules/@vue/compiler-dom'));
+const targets=await(await fetch('http://127.0.0.1:9337/json/list')).json();
+const ws=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);
+await new Promise(r=>ws.onopen=r);
+let seq=0;const pending=new Map(),errors=[],results=[];
+ws.onmessage=e=>{const d=JSON.parse(e.data);if(d.method==='Runtime.exceptionThrown')errors.push(d.params.exceptionDetails.text);if(d.id){pending.get(d.id)(d.result);pending.delete(d.id)}};
+const send=(method,params={})=>new Promise(r=>{const id=++seq;pending.set(id,r);ws.send(JSON.stringify({id,method,params}))});
+const ev=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value};
+const check=(name,ok)=>results.push({name,ok});
+await send('Page.enable');await send('Runtime.enable');
+await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+await send('Page.navigate',{url:pathToFileURL(path.join(root,'UI/PC端设计稿_蓝色医疗官网.html')).href});
+await new Promise(r=>setTimeout(r,1000));
+check('59 pages retained',await ev('PAGES.length===59'));
+check('Guest homepage and brand blue',await ev("!state.loggedIn && !!document.querySelector('.hc-hero') && getComputedStyle(document.body).getPropertyValue('--pine').trim()==='#3b6bf5'"));
+const entry=fs.readFileSync(path.join(root,'UI/PC端设计稿_蓝色医疗官网.html'),'utf8');
+const markup=await ev('state.loggedIn=true;PAGES.map(p=>({id:p.id,html:shell(p)}))');
+for(const {id,html} of [{id:'entry',html:entry},...markup]){const errs=[];parse(html,{onError:e=>errs.push(e.message)});check('Markup '+id,errs.length===0)}
+for(const width of [1440,1024,390]){
+ await send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:false});
+ await ev("state.loggedIn=false;go('home')");
+ await new Promise(r=>setTimeout(r,300));
+ check('Home width '+width,await ev('document.documentElement.scrollWidth<=innerWidth'));
+ check('Home images '+width,await ev('[...document.images].every(i=>i.complete&&i.naturalWidth>0)'));
+ const shot=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});
+ fs.writeFileSync('/tmp/hanjing-halcyon-'+width+'.png',Buffer.from(shot.data,'base64'));
+ const viewport=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
+ fs.writeFileSync('/tmp/hanjing-halcyon-top-'+width+'.png',Buffer.from(viewport.data,'base64'));
+}
+await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+check('Booking CTA',await ev("go('home');document.querySelector('.hc-actions [data-go=stores]').click();state.page==='stores'"));
+check('Private service gated',await ev("go('home');document.querySelector('.hc-device [data-go=devices]').click();!!document.querySelector('.guest-invitation')"));
+check('FAQ expands',await ev("go('home');document.querySelectorAll('.hc-faq summary')[1].click();document.querySelectorAll('.hc-faq details')[1].open"));
+check('Community remains posts',await ev("go('community-tab');!!document.querySelector('.post')&&!document.querySelector('.app-body').textContent.includes('课程')"));
+check('Doctor selects times',await ev("go('home');document.querySelector('.hc-doctor').click();state.page==='times'&&state.doctor==='王医生'"));
+await ev("state.loggedIn=true;go('products')");
+const inner=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync('/tmp/hanjing-halcyon-products.png',Buffer.from(inner.data,'base64'));
+check('Gallery retains 59 pages',await ev("state.mode='gallery';render();document.querySelectorAll('.thumbnail').length===59"));
+await ev("state.loggedIn=false;go('home')");
+check('No runtime exceptions',errors.length===0);
+ws.close();console.log(JSON.stringify({passed:results.filter(r=>r.ok).length,failed:results.filter(r=>!r.ok),total:results.length},null,2));
+if(results.some(r=>!r.ok))process.exitCode=1;

@@ -1,0 +1,7 @@
+node_modules/
+src/generated/
+dist/
+public/static/
+public/素材/
+.env
+.env.local
