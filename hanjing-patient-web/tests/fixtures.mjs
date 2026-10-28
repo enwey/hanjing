@@ -255,6 +255,7 @@ export const fixtures = {
   '/treatment/device-feedback': {
     list: [{ date: '2026-10-27', content: '测试反馈', reply: '测试回复' }],
   },
+  '/im/unread-count': {unread:0},
   '/im/messages': [
     {
       id: 1,
@@ -264,6 +265,8 @@ export const fixtures = {
       time: '09:00',
     },
   ],
+  '/distribution/rules': {qualificationText:'测试规则',commissionRules:['测试佣金规则'],promotionWays:['测试推广方式'],withdrawRules:['测试提现规则']},
+  '/distribution/orders': {list:[]},
   '/distribution/info': {
     inviteCode: 'TEST',
     inviteQrCode: '',

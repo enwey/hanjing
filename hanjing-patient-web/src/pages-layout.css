@@ -184,3 +184,8 @@
 .pc-content .pc-legal .legal-important{padding:16px 20px;background:var(--soft);border-left:3px solid var(--pine);border-radius:6px;color:var(--night);font-weight:500}.pc-content .pc-legal .legal-meta{font-size:13px;color:var(--muted)}
 
 .pc-content .pc-legal{width:100%;max-width:none;margin-inline:0;min-width:0}.pc-content .pc-legal p{max-width:none;width:100%;overflow-wrap:anywhere}.pc-content .pc-legal>h2:first-child{margin-top:0}
+
+/* Standalone page entry links retain navigation semantics with button styling. */
+.halcyon-design .entry-button{flex-shrink:0;white-space:nowrap;text-decoration:none;background:#fff;border:1px solid #c9d6f5;color:#1a3580;min-height:44px;padding:10px 22px;line-height:1.5}
+.halcyon-design .entry-button:hover{background:#edf2ff;border-color:#8ba7ef}
+.halcyon-design .entry-button:focus-visible{outline:3px solid #90adff;outline-offset:3px}

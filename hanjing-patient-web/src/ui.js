@@ -19,7 +19,7 @@ export const href = (page, params = {}) =>
   '#/' +
   page +
   (Object.keys(params).length ? '?' + new URLSearchParams(params) : '');
-export const link = (label, page, params = {}, cls = 'text-button') =>
+export const link = (label, page, params = {}, cls = 'btn secondary entry-button') =>
   `<a class="${esc(cls)}" href="${esc(href(page, params))}">${esc(label)}</a>`;
 export const btn = (label, page, params = {}) =>
   link(label, page, params, 'btn');

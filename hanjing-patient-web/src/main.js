@@ -1,3 +1,6 @@
+import {withdrawalAmounts,updatePendingForm,uploadPendingImage} from './pending-interactions.js';
+import './pending-pages.css';
+import './ess-report.css';
 import {setRecordingPhase,updateRecordingLevel} from './recording-page.js';
 import './recording.css';
 import {appointmentList} from './appointment-list.js';
@@ -104,7 +107,7 @@ function shell(content, isHome = false) {
     community: ['post', 'publish', 'live', 'room'],
     products: ['product', 'checkout', 'orders', 'order'],
   };
-  return `<div class="app ${isHome ? 'is-home' : ''}"><header class="app-header hc-header"><a class="brand" href="#/home" aria-label="兴康明首页"><img src="/brand/logo.svg" alt=""><span>兴康明<small>专注睡眠呼吸健康</small></span></a><nav class="top-nav" aria-label="网站导航">${nav.map(([t, p]) => `<a href="#/${p}" ${current.page === p || groups[p]?.includes(current.page) ? 'class="current" aria-current="page"' : ''}>${t}</a>`).join('')}</nav><div class="header-user">${session.token() ? link('个人中心', 'profile') + `<button data-action="logout">退出</button>` : link('登录', 'login')}<a class="btn small hc-header-book" href="#/stores">预约就诊</a></div></header><main id="content" class="${isHome ? '' : 'pc-content hc-wrap'}" tabindex="-1">${content}</main>${footer()}</div>`;
+  return `<div class="app ${isHome ? 'is-home' : ''}"><header class="app-header hc-header"><a class="brand" href="#/home" aria-label="兴康明首页"><img src="/brand/logo.svg" alt=""><span>兴康明<small>专注睡眠呼吸健康</small></span></a><nav class="top-nav" aria-label="网站导航">${nav.map(([t, p]) => `<a href="#/${p}" ${current.page === p || groups[p]?.includes(current.page) ? 'class="current" aria-current="page"' : ''}>${t}</a>`).join('')}</nav><div class="header-user">${session.token() ? link('个人中心', 'profile', {}, 'text-button') + `<button data-action="logout">退出</button>` : link('登录', 'login', {}, 'text-button')}<a class="btn small hc-header-book" href="#/stores">预约就诊</a></div></header><main id="content" class="${isHome ? '' : 'pc-content hc-wrap'}" tabindex="-1">${content}</main>${footer()}</div>`;
 }
 async function render() {
   wearingDrawer.close({force:true,restoreFocus:false});
@@ -362,10 +365,12 @@ document.addEventListener('submit', async (event) => {
         break;
       }
       case 'publish': {
+        const tags = [...f.querySelectorAll('[data-publish-tag]:checked')].map(x=>x.value);
+        if(tags.length>3)throw Error('最多选择3个标签');
         const r = await post('/community/posts', {
           title: data.title.trim(),
           content: data.content.trim(),
-          tags: [data.category],
+          tags: [data.category,...tags],
         });
         if (active(c)) navigate('post', { id: r.id });
         break;
@@ -406,9 +411,13 @@ document.addEventListener('submit', async (event) => {
         if (active(c)) navigate('order', { id: result.id });
         break;
       }
-      case 'profile':
+      case 'profile': {
+        const avatar = data.avatarFile?.size ? await uploadPendingImage(data.avatarFile,c) : undefined;
+        if(!active(c))return;
         await put('/user/profile', {
           nickname: data.nickname.trim(),
+          ...(avatar ? {avatar} : {}),
+          ...(data.idCard?.trim() ? {idCard:data.idCard.trim()} : {}),
           birthday: data.birthday,
           gender: data.gender === '' ? null : Number(data.gender),
         });
@@ -417,12 +426,15 @@ document.addEventListener('submit', async (event) => {
           navigate('profile');
         }
         break;
+      }
       case 'member': {
         const payload = {
           ...data,
           name: data.name.trim(),
           gender: Number(data.gender),
         };
+        if(data.avatarFile?.size){payload.avatar=await uploadPendingImage(data.avatarFile,c);if(!active(c))return;}
+        delete payload.avatarFile;
         // Existing PUT treats an omitted identity as null: preserve the full identity
         // returned by the authorized detail API when the user leaves this field blank.
         if (!payload.idCard) payload.idCard = c.member.idCard || '';
@@ -474,10 +486,16 @@ document.addEventListener('submit', async (event) => {
           render();
         }
         break;
-      case 'message':
-        await post('/im/send', { text: data.text.trim() });
-        if (active(c)) render();
+      case 'message': {
+        const text=data.text.trim();
+        if(!text&&!data.messageFile?.size)throw Error('请输入内容或选择图片');
+        if(text&&data.messageFile?.size)throw Error('请分别发送文字和图片');
+        const url=data.messageFile?.size?await uploadPendingImage(data.messageFile,c):'';
+        if(!active(c))return;
+        await post('/im/send',{text:url?'[image]'+url:text});
+        if(active(c))render();
         break;
+      }
       case 'attachment': {
         const file = data.file;
         if (
@@ -513,13 +531,13 @@ document.addEventListener('submit', async (event) => {
         break;
       }
       case 'withdraw': {
-        const amount = Math.round(Number(data.amount) * 100);
-        if (!Number.isSafeInteger(amount) || amount <= 0)
-          throw new Error('请输入有效金额');
+        const calculation=withdrawalAmounts(data.amount,c.distribution);
+        if(!calculation.valid)throw Error('提现金额不符合最低金额、可用余额或手续费要求');
+        const amount=calculation.amount;
         if (
           !(await confirmDialog(
             '确认提现申请',
-            `申请金额 ${money(amount)}，将提交至后台审核。实际到账金额扣除现行规则手续费。`,
+            `申请金额 ${money(amount)}，手续费 ${money(calculation.fee)}，预计到账 ${money(calculation.net)}，将提交至后台审核。`,
           ))
         )
           break;
@@ -908,10 +926,12 @@ document.addEventListener('change', async (event) => {
     if (c.page === 'booking') return;
     navigate(c.page, { ...Object.fromEntries(c.params), patientId: target.value });
   }
+  const pendingMessage=updatePendingForm(target,c);if(pendingMessage)notify(pendingMessage);
   if (target.matches('[data-delivery-method]')) updateDelivery(target.form);
   if (target.matches('[data-product-category]')) filterProducts();
 });
 document.addEventListener('input', (event) => {
+  const pendingMessage=updatePendingForm(event.target,current);if(pendingMessage)notify(pendingMessage);
   if (event.target.dataset.search === 'posts') {
     filterPosts();
   }

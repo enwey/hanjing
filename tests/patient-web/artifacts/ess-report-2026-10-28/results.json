@@ -1,0 +1,26 @@
+[
+  {
+    "name": "eight answers and moderate score",
+    "ok": true
+  },
+  {
+    "name": "desktop two columns",
+    "ok": true
+  },
+  {
+    "name": "three navigation actions",
+    "ok": true
+  },
+  {
+    "name": "report and heading share both edges",
+    "ok": true
+  },
+  {
+    "name": "narrow screen no overflow",
+    "ok": true
+  },
+  {
+    "name": "narrow summary stacked",
+    "ok": true
+  }
+]

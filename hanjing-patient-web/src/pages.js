@@ -1,3 +1,5 @@
+import {pendingPage,pendingRoutes} from './pending-pages.js';
+import {essReport} from './ess-report.js';
 import {snoreReport} from './snore-report.js';
 import {recordingPage} from './recording-page.js';
 import {appointmentList} from './appointment-list.js';
@@ -111,7 +113,7 @@ function linkImage(src, alt, page, params) {
   return `<a href="#/${page}?${new URLSearchParams(params)}">${image(src, alt)}</a>`;
 }
 const postCard = (p) =>
-  `<article class="pc-post">${p.coverUrl ? linkImage(p.coverUrl, p.title, 'post', { id: p.id }) : ''}<div><div class="feed-author"><span class="feed-avatar" aria-hidden="true">${esc((p.author || '用户').slice(0,1))}</span><small>${esc(p.author)} · ${esc(p.roleLabel)}</small></div><h3>${link(p.title, 'post', { id: p.id })}</h3><p class="clamp">${esc(p.summary || p.content)}</p><div class="feed-bottom"><small>${date(p.createdAt)} · ${esc(p.likes || 0)} 点赞 · ${esc(p.comments || 0)} 评论</small>${link('阅读全文', 'post', { id:p.id })}</div></div></article>`;
+  `<article class="pc-post">${p.coverUrl ? linkImage(p.coverUrl, p.title, 'post', { id: p.id }) : ''}<div><div class="feed-author"><span class="feed-avatar" aria-hidden="true">${esc((p.author || '用户').slice(0,1))}</span><small>${esc(p.author)} · ${esc(p.roleLabel)}</small></div><h3>${link(p.title, 'post', { id: p.id }, 'text-button')}</h3><p class="clamp">${esc(p.summary || p.content)}</p><div class="feed-bottom"><small>${date(p.createdAt)} · ${esc(p.likes || 0)} 点赞 · ${esc(p.comments || 0)} 评论</small>${link('阅读全文', 'post', { id:p.id })}</div></div></article>`;
 async function scoped(c) {
   c.members = list(await c.get('/user/family-members'));
   c.patientId = c.params.get('patientId') || '';
@@ -125,6 +127,13 @@ function scopeBar(c) {
 }
 
 export async function page(c) {
+  if (!pendingRoutes.has(c.page)) return basePage(c);
+  const originalGet = c.get, cache = new Map();
+  c.get = path => {if(!cache.has(path))cache.set(path,originalGet(path));return cache.get(path);};
+  try { return await pendingPage(c, await basePage(c), titles); }
+  finally { c.get = originalGet; }
+}
+async function basePage(c) {
   const p = c.params,
     id = p.get('id') || '',
     get = c.get;
@@ -304,7 +313,7 @@ export async function page(c) {
           link('全部评估', 'assessments', {
             patientId: p.get('patientId') || '',
           }),
-        ) + reportCard(a)
+        ) + reportCard(a, a.type === 'ess' ? list(await get('/assessments/ess-questions')) : [])
       );
     }
     case 'recording': {
@@ -361,12 +370,10 @@ export async function page(c) {
             'publish',
             field('标题', 'title', '', 'text', 'required maxlength="40"') +
               select('分类', 'category', [
-                ['分享', '分享'],
-                ['提问', '提问'],
-                ['科普', '科普'],
+                ...['睡眠科普','治疗知识','设备介绍','患者故事','阻鼾器配戴','科普问答'].map(x=>[x,x]),
               ]) +
-              area('内容', 'content', '', 'required maxlength="1000"') +
-              submit('发布动态'),
+              area('内容', 'content', '', 'required maxlength="1000" data-publish-content placeholder="详细描述你的情况、问题或分享经验..."') + '<p class="parity-count" data-publish-count>0/1000</p><fieldset class="parity-tag-options"><legend>标签（最多3个）</legend>'+['适应期','治疗分享','AHI改善','设备保养','情感支持','经验交流'].map(t=>`<label><input type="checkbox" name="tags" value="${t}" data-publish-tag>${t}</label>`).join('')+'</fieldset>'+
+              submit('发布帖子'),
           ),
         )
       );
@@ -407,7 +414,7 @@ export async function page(c) {
         head('checkout', '请核对商品与订单信息，付款请联系门店。') +
         panel(
           c.product.name,
-          `<p class="price">${money(c.product.price)}</p>${form(
+          `${image(c.product.imageUrl,c.product.name,'parity-thumb')}<p class="price">${money(c.product.price)}</p>${form(
             'order',
             field(
               '数量',
@@ -448,7 +455,7 @@ export async function page(c) {
                   `${v.title}（满 ${money(v.minSpend)} 可用）`,
                 ]),
               ]) +
-              submit('创建订单'),
+              `<div class="parity-fee" aria-live="polite"><span>商品金额：<b data-checkout-total>${money(c.product.price)}</b></span><span data-checkout-coupon>未使用优惠券</span></div><p class="muted">最终优惠与应付金额以创建后的订单详情为准。</p>`+submit('创建订单'),
           )}<p class="muted">如提交结果不明确，请先查看“我的订单”，避免重复创建。</p>`,
         )
       );
@@ -527,12 +534,12 @@ export async function page(c) {
       c.profile = await get('/user/profile');
       const a = c.profile;
       return (
-        head('editProfile') +
+        head('editProfile', '', link('返回个人中心','profile')) +
         panel(
           '',
           form(
             'profile',
-            field(
+            `<div class="profile-heading">${image(a.avatar,a.nickname,'avatar')}${field('更换头像','avatarFile','','file','accept="image/jpeg,image/png,image/gif"')}</div>${kv([['手机号',a.phone||'未绑定'],['病历号',a.cardNo]])}`+field('身份证号（留空保留原值）','idCard','','text','pattern="[0-9]{17}[0-9Xx]" maxlength="18"')+(a.idCard?`<p>已保存：${esc(a.idCard)}</p>`:'')+field(
               '昵称',
               'nickname',
               a.nickname,
@@ -554,7 +561,7 @@ export async function page(c) {
                   [1, '男'],
                   [2, '女'],
                 ],
-                a.gender,
+                a.gender==='male'?1:a.gender==='female'?2:a.gender,
               ) +
               submit(),
           ),
@@ -590,6 +597,7 @@ export async function page(c) {
         ? await get('/user/family-members/' + encodeURIComponent(id))
         : {};
       const a = c.member;
+      const memberStores = list(await get('/stores'));
       if (id && a.relation === 'self')
         return (
           head('member') +
@@ -600,19 +608,20 @@ export async function page(c) {
               ['联系电话', a.phone],
               ['出生日期', a.birthday],
               ['病历号', a.cardNo],
+              ['性别',a.gender===1||a.gender==='male'?'男':a.gender===2||a.gender==='female'?'女':'未填写'],['身份证',a.idCard],['所属诊所',a.storeName],['地区',a.region],['地址',a.address],
             ]) + link('编辑本人资料', 'editProfile'),
           )
         );
       return (
         head(
           'member',
-          id ? '修改已关联就诊人的资料。' : '添加本人或家庭成员的就诊资料。',
+          id ? '修改已关联就诊人的资料。' : '添加本人或家庭成员的就诊资料。', link('就诊人管理','family'),
         ) +
         panel(
           '',
           form(
             'member',
-            field('姓名', 'name', a.name, 'text', 'required maxlength="50"') +
+            `<div class="profile-heading">${image(a.avatar||a.avatarUrl,a.name,'avatar')}${field('头像','avatarFile','','file','accept="image/jpeg,image/png,image/gif"')}</div>`+select('所属诊所','storeId',[['','请选择诊所'],...memberStores.map(x=>[x.id,x.name])],a.storeId||'')+field('病历号','cardNo',a.cardNo,'text','maxlength="50"')+field('姓名', 'name', a.name, 'text', 'required maxlength="50"') +
               select(
                 '关系',
                 'relation',
@@ -626,7 +635,7 @@ export async function page(c) {
                   [1, '男'],
                   [2, '女'],
                 ],
-                a.gender,
+                a.gender==='male'?1:a.gender==='female'?2:a.gender,
               ) +
               field(
                 '出生日期',
@@ -655,7 +664,7 @@ export async function page(c) {
               submit(),
           ) +
             (id && a.relation !== 'self'
-              ? `<hr>${action('移除此就诊人', 'delete-member')}`
+              ? `<hr>${action('解除关联', 'delete-member')}`
               : ''),
         )
       );
@@ -731,7 +740,7 @@ export async function page(c) {
           c.medical,
           (m) =>
             panel(
-              `${date(m.visitDate)} · ${m.storeName}`,
+              `${({first:'初诊',followup:'复诊',adjust:'调整'})[m.type]||'就诊记录'} · ${date(m.visitDate)} · ${m.storeName||m.hospital||''}`,
               medicalCard(m) +
                 form(
                   'attachment',
@@ -817,6 +826,8 @@ export async function page(c) {
       body += panel(
         a.device?.name || a.deviceModel,
         `${kv([
+          ['设备编号',a.serialNumber||a.device?.serialNumber||a.deviceProductId],
+          ['下颌前移量',a.adjustmentValue==null?'—':a.adjustmentValue+' mm'],
           ['就诊人', a.patientName],
           ['医生', a.doctorName],
           ['诊断', a.diagnosis],
@@ -1035,32 +1046,8 @@ function medicalCard(m) {
       .join('')}</div>`
   );
 }
-export function reportCard(a) {
-  if(a.type!=='ess')return snoreReport(a);
-  const s = a.snoreAnalysis || {},
-    unit = s.analysisVersion === 2 ? ' dBFS' : ' dB（估算）';
-  return (
-    panel(
-      a.type === 'ess' ? 'ESS 嗜睡量表' : 'AI 鼾声分析',
-      a.type === 'ess'
-        ? `${kv([
-            ['嗜睡评分', a.essScore],
-            ['等级', a.essLevel],
-          ])}<p>${esc(a.recommendation)}</p>`
-        : `${kv([
-            ['录音时长', s.duration + ' 秒'],
-            ['平均音量', s.avgDecibel + unit],
-            ['峰值音量', s.peakDecibel + unit],
-            ['疑似鼾声占比', s.snoreRate + '%'],
-            ['分析分数', s.riskScore ?? '—'],
-          ])}<p class="notice">录音分析仅供参考，电脑麦克风未经过声压校准，不能用于诊断呼吸暂停。</p>`,
-    ) +
-    panel(
-      '后续安排',
-      '<p>如有持续嗜睡、憋醒等不适，请预约医生进一步评估。</p>' +
-        btn('预约就诊', 'stores'),
-    )
-  );
+export function reportCard(a, questions = []) {
+  return a.type === 'ess' ? essReport(a, questions) : snoreReport(a);
 }
 function distributionRow(type, a) {
   if (type === 'team')
