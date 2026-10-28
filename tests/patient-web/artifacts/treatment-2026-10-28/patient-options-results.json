@@ -1,0 +1,74 @@
+[
+  {
+    "name": "medical uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "assessments uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "devices uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "treatment uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "treatmentCalendar uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "treatmentTrend uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "treatmentReport uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "treatmentTimeline uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "treatmentAdvice uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "treatmentAdjust uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "booking uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "questionnaire uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "recording uses flat options with right management link",
+    "ok": true
+  },
+  {
+    "name": "medical switch scopes data to selected patient",
+    "ok": true
+  },
+  {
+    "name": "questionnaire selection updates form and resets answers",
+    "ok": true
+  },
+  {
+    "name": "booking uses new patient without replacing form",
+    "ok": true
+  },
+  {
+    "name": "recording disabled patient choice cannot switch",
+    "ok": true
+  },
+  {
+    "name": "narrow patient choices fit without overflow",
+    "ok": true
+  }
+]

@@ -1,0 +1,86 @@
+[
+  {
+    "name": "doctor hero displays identity tags rather than expertise",
+    "ok": true
+  },
+  {
+    "name": "doctor and times on same page",
+    "ok": true
+  },
+  {
+    "name": "calendar has weekdays and only backend available dates selectable",
+    "ok": true
+  },
+  {
+    "name": "calendar month switch works without reload",
+    "ok": true
+  },
+  {
+    "name": "old schedule response cannot overwrite latest selection",
+    "ok": true
+  },
+  {
+    "name": "same-day multiple schedules expose all periods",
+    "ok": true
+  },
+  {
+    "name": "unavailable slot hidden and available duplicates removed",
+    "ok": true
+  },
+  {
+    "name": "morning and afternoon are grouped",
+    "ok": true
+  },
+  {
+    "name": "confirmation modal preserves detail route",
+    "ok": true
+  },
+  {
+    "name": "desktop 768px confirmation fits without internal scrolling",
+    "ok": true
+  },
+  {
+    "name": "confirmation has no manual visit type",
+    "ok": true
+  },
+  {
+    "name": "mini confirmation fields show configured fees and notice",
+    "ok": true
+  },
+  {
+    "name": "patient switch stays inside modal",
+    "ok": true
+  },
+  {
+    "name": "cancel keeps selected slot and unlocks body",
+    "ok": true
+  },
+  {
+    "name": "server rejection retains confirmation input",
+    "ok": true
+  },
+  {
+    "name": "single successful submit and correct scoped payload",
+    "ok": true
+  },
+  {
+    "name": "legacy booking entry opens integrated detail",
+    "ok": true
+  },
+  {
+    "name": "mobile detail has no horizontal overflow",
+    "ok": true
+  },
+  {
+    "name": "mobile confirmation fits viewport",
+    "ok": true
+  },
+  {
+    "name": "navigation closes confirmation and restores scroll",
+    "ok": true
+  },
+  {
+    "name": "no schedule clearly disables confirmation",
+    "ok": true
+  }
+]

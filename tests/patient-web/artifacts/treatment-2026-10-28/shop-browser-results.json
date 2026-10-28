@@ -1,0 +1,62 @@
+[
+  {
+    "name": "real catalog covers every product",
+    "ok": true
+  },
+  {
+    "name": "no-image and broken-image covers keep mini category colors",
+    "ok": true
+  },
+  {
+    "name": "catalog matches sales price discount hierarchy",
+    "ok": true
+  },
+  {
+    "name": "catalog order entry is a button",
+    "ok": true
+  },
+  {
+    "name": "card titles limited to two lines and prices reserve equal height",
+    "ok": true
+  },
+  {
+    "name": "description uses first 144 text characters",
+    "ok": true
+  },
+  {
+    "name": "full rich description includes ending and image",
+    "ok": true
+  },
+  {
+    "name": "detail fallback matches category and purchase keeps checkout",
+    "ok": true
+  },
+  {
+    "name": "HTML rich text strips scripts and unsafe attributes",
+    "ok": true
+  },
+  {
+    "name": "gallery recovers after main image fails",
+    "ok": true
+  },
+  {
+    "name": "detail has separated purchase content and recommendation sections",
+    "ok": true
+  },
+  {
+    "name": "detail cover is compact",
+    "ok": true
+  },
+  {
+    "name": "related list excludes current and other categories",
+    "ok": true
+  },
+  {
+    "name": "detail has no narrow horizontal overflow",
+    "ok": true
+  },
+  {
+    "name": "mobile catalog has two columns",
+    "ok": true
+  }
+]

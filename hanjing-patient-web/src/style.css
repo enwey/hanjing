@@ -929,3 +929,10 @@ video {
     padding: 25px;
   }
 }
+
+/* Empty-state actions share the primary button treatment. */
+.empty-state a.text-button,.empty-state button.text-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:120px;margin:16px 6px 0;padding:10px 24px;border:1px solid var(--pine);border-radius:10px;background:var(--pine);color:white;font-size:14px;font-weight:500;line-height:1.5;text-align:center;text-decoration:none;box-shadow:none;transition:background .15s,border-color .15s}
+.empty-state a.text-button:hover,.empty-state button.text-button:hover{background:var(--pine-2);border-color:var(--pine-2);color:white}
+
+.empty-state a.text-button,.empty-state button.text-button,.empty-state>.btn{min-width:220px;min-height:48px;padding:12px 32px;border-radius:12px;font-size:15px;line-height:1.5;letter-spacing:.03em}
+@media(max-width:560px){.empty-state a.text-button,.empty-state button.text-button,.empty-state>.btn{min-width:0;width:min(100%,260px);max-width:100%;padding-inline:24px}}

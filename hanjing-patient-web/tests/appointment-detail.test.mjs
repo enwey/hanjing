@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {parse} from '@vue/compiler-dom';
+import {appointmentActions,appointmentDetail} from '../src/appointment-detail.js';
+const a={id:51,appointmentNo:'TEST-51',status:'pending',appointmentDate:'2099-01-01',appointmentTime:'09:00-09:30',patientName:'测试就诊人'};
+test('appointment status and conditional information follow mini detail',()=>{const html=appointmentDetail({appointment:a});assert.match(html,/已预约/);assert.match(html,/就诊及门店信息/);assert.ok(!html.includes('取消原因'));assert.ok(!html.includes('门诊评价'));const errors=[];parse(html,{onError:e=>errors.push(e)});assert.deepEqual(errors,[]);});
+test('appointment actions honor cutoff and terminal statuses',()=>{assert.equal(appointmentActions(a).canChange,true);assert.equal(appointmentActions({...a,appointmentDate:'2020-01-01'}).canChange,false);assert.equal(appointmentActions({...a,status:'pending_payment'}).canCancel,true);assert.equal(appointmentActions({...a,status:'completed'}).canCancel,false);assert.equal(appointmentActions({...a,status:'checked_in'}).canChange,false);assert.equal(appointmentActions({...a,appointmentTime:''}).canChange,false);});
+test('completed evaluation is readonly when already evaluated',()=>{const html=appointmentDetail({appointment:{...a,status:'completed'},evaluation:{rating:5,content:'满意'}});assert.match(html,/满意/);assert.ok(!html.includes('data-form="evaluation"'));assert.match(appointmentDetail({appointment:{...a,status:'completed'}}),/data-form="evaluation"/);});
+test('clinical details preserve zero and escape content',()=>{const html=appointmentDetail({appointment:{...a,symptomDesc:'<script>bad</script>',requireDeposit:true,depositAmount:5000,consultFee:10000},preExam:{height:170,bmi:0},assessments:{ess:{score:0,riskLevel:'低风险'}}});assert.match(html,/&lt;script&gt;/);assert.match(html,/0分/);assert.match(html,/¥50.00/);assert.match(html,/¥100.00/);assert.match(html,/BMI/);});

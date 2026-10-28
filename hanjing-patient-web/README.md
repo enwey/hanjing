@@ -72,3 +72,13 @@ WECHAT_WEB_APP_SECRET=对应的网站应用密钥
 - `npm run test:browser`：需单独 headless Chrome 在 9337 提供 CDP；脚本拒绝普通用户浏览器。先访问本地真实公开接口，再在隔离标签页中替换 API 验证交互；不会用夹具冒充真实数据库验收。
 - `PC_RUN_LOCAL_INTEGRATION=1 node tests/local-integration.mjs`：显式执行本地真实接口集成。只支持本地数据库；创建唯一临时用户、门店、医生、排班及业务记录，并在 finally 中按实际 ID 清理。不能用于正式环境。
 - 测试记录在 `tests/patient-web/implementation-2026-10-27.md`。开发自测不替代独立回归；实际微信账号扫码和物理麦克风准确性仍需验收。
+
+## 本地模拟登录
+
+`npm run dev` 启动后，在 `http://127.0.0.1:3003/#/login` 或 localhost 登录页可点击“本地模拟登录”。后端需 `NODE_ENV=development`、`ENABLE_LOCAL_DEV_LOGIN=true` 并连接本地数据库。复用小程序独立测试账号，走正常本地业务API；不绑定真实微信，不更改现有患者身份或权限。入口仅Vite开发模式且浏览器为本机地址时可见；生产构建不显示。本地会话使用独立标记，非本地开发环境不能恢复。模拟登录不替代真实微信授权及支付验收。
+
+## 治疗板块
+
+治疗总览对齐小程序：无治疗记录时仍展示日历、统计及功能入口，有就诊人档案即可打卡，无需绑定设备。完整月历、7/30天趋势、睡眠报告、时间线、医嘱与设备调整均使用既有患者API，并在导航中携带所选就诊人。佩戴表单支持0–10疼痛评分、多部位选择和原舒适度映射。验证范围见 tests/patient-web/treatment-parity-2026-10-28.md（仓库根tests目录）。
+
+佩戴打卡采用当前页右侧抽屉，旧 `#/wearing` 链接自动转入治疗页并打开抽屉。专项浏览器自测：在隔离 Headless Chrome CDP 9338 下执行 `node tests/wearing-drawer-browser-check.mjs`。

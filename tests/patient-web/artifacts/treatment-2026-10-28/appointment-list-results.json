@@ -1,0 +1,22 @@
+[
+  {
+    "name": "active list full mini fields and status",
+    "ok": true
+  },
+  {
+    "name": "confirmed has no cancel action",
+    "ok": true
+  },
+  {
+    "name": "history switches locally",
+    "ok": true
+  },
+  {
+    "name": "list cancellation targets correct appointment and updates grouping",
+    "ok": true
+  },
+  {
+    "name": "narrow list no overflow",
+    "ok": true
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "name": "light studio has guide and real idle levels",
+    "ok": true
+  },
+  {
+    "name": "permission error allows retry and unlocks patient",
+    "ok": true
+  },
+  {
+    "name": "real PCM updates wave and peak, patient locked",
+    "ok": true
+  },
+  {
+    "name": "mini live dB and sixteen-bar waveform",
+    "ok": true
+  },
+  {
+    "name": "under five seconds retains paused recording instead of discarding it",
+    "ok": true
+  },
+  {
+    "name": "pause freezes captured duration and permits resume",
+    "ok": true
+  },
+  {
+    "name": "failed report generation retains analysis and exposes retry",
+    "ok": true
+  },
+  {
+    "name": "retry preserves local identity and only sends analysis",
+    "ok": true
+  },
+  {
+    "name": "standalone report has mini sections and actions",
+    "ok": true
+  },
+  {
+    "name": "390px report no overflow",
+    "ok": true
+  },
+  {
+    "name": "ending recording automatically generates one report and navigates",
+    "ok": true
+  },
+  {
+    "name": "390px no horizontal overflow",
+    "ok": true
+  }
+]

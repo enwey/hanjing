@@ -1,0 +1,134 @@
+[
+  {
+    "name": "real local PC login",
+    "ok": true
+  },
+  {
+    "name": "real empty treatment keeps six features",
+    "ok": true
+  },
+  {
+    "name": "real calendar and metrics",
+    "ok": true
+  },
+  {
+    "name": "overview previous month updates month and keeps patient",
+    "ok": true
+  },
+  {
+    "name": "future day cannot check in",
+    "ok": true
+  },
+  {
+    "name": "six mini-program icons render",
+    "ok": true
+  },
+  {
+    "name": "desktop timeline is right of main and top aligned",
+    "ok": true
+  },
+  {
+    "name": "right sidebar has one third of column width",
+    "ok": true
+  },
+  {
+    "name": "hero checkin and medical button shown",
+    "ok": true
+  },
+  {
+    "name": "legend uses unchecked wording",
+    "ok": true
+  },
+  {
+    "name": "month navigation has visible backgrounds and directional arrows",
+    "ok": true
+  },
+  {
+    "name": "empty trend has centered compact checkin action",
+    "ok": true
+  },
+  {
+    "name": "empty trend action opens drawer in place",
+    "ok": true
+  },
+  {
+    "name": "empty report has centered compact checkin action",
+    "ok": true
+  },
+  {
+    "name": "advice appointment entry styled as button",
+    "ok": true
+  },
+  {
+    "name": "adjustment appointment entry styled as button",
+    "ok": true
+  },
+  {
+    "name": "bound device shown",
+    "ok": true
+  },
+  {
+    "name": "patient switch clears old device",
+    "ok": true
+  },
+  {
+    "name": "unbound patient has active checkin link",
+    "ok": true
+  },
+  {
+    "name": "treatmentCalendar opens",
+    "ok": true
+  },
+  {
+    "name": "monthly calendar renders days",
+    "ok": true
+  },
+  {
+    "name": "treatmentTrend opens",
+    "ok": true
+  },
+  {
+    "name": "treatmentReport opens",
+    "ok": true
+  },
+  {
+    "name": "treatmentTimeline opens",
+    "ok": true
+  },
+  {
+    "name": "treatmentAdvice opens",
+    "ok": true
+  },
+  {
+    "name": "treatmentAdjust opens",
+    "ok": true
+  },
+  {
+    "name": "flat range click keeps patient and updates selection",
+    "ok": true
+  },
+  {
+    "name": "month trend has 30 days",
+    "ok": true
+  },
+  {
+    "name": "checkin sends two pain locations, scoped patient and mapped comfort",
+    "ok": true
+  },
+  {
+    "name": "unbound patient has wearing form",
+    "ok": true
+  },
+  {
+    "name": "unbound checkin keeps selected patient and zero pain",
+    "ok": true
+  },
+  {
+    "name": "narrow timeline follows main",
+    "ok": true
+  },
+  {
+    "name": "no global narrow-screen horizontal overflow",
+    "ok": true
+  }
+]

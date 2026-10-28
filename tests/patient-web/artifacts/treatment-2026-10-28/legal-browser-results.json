@@ -1,0 +1,46 @@
+[
+  {
+    "name": "agreement has operator address and version date",
+    "ok": true
+  },
+  {
+    "name": "agreement has fourteen sections and important notice",
+    "ok": true
+  },
+  {
+    "name": "agreement has contact without phone or email fields",
+    "ok": true
+  },
+  {
+    "name": "agreement heading body and notices share content edges",
+    "ok": true
+  },
+  {
+    "name": "agreement renders final contact section",
+    "ok": true
+  },
+  {
+    "name": "privacy has operator address and version date",
+    "ok": true
+  },
+  {
+    "name": "privacy has fourteen sections and important notice",
+    "ok": true
+  },
+  {
+    "name": "privacy has contact without phone or email fields",
+    "ok": true
+  },
+  {
+    "name": "privacy heading body and notices share content edges",
+    "ok": true
+  },
+  {
+    "name": "privacy renders final contact section",
+    "ok": true
+  },
+  {
+    "name": "narrow legal text has no horizontal overflow",
+    "ok": true
+  }
+]

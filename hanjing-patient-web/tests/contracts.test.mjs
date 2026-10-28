@@ -62,12 +62,13 @@ test('product order pending is presented as unpaid, with cancel operation', asyn
   assert.match(html, /cancel-order/);
   assert.ok(!html.includes('待确认'));
 });
-test('snore report reads the existing nested response and disclaims calibrated SPL', () => {
-  const html = reportCard(assessments[1]);
+test('snore report reads existing response and follows mini unit display', () => {
+  const html = reportCard(assessments[1]).replace(/<[^>]*>/g, ' ');
   assert.match(html, /42 dB/);
   assert.match(html, /65 dB/);
-  assert.match(html, /25%/);
-  assert.match(html, /未经过声压校准/);
+  assert.match(html, /25\s*%/);
+  assert.ok(!html.includes('未经过声压校准'));
+  assert.ok(!html.includes('估算'));
 });
 test('untrusted text is escaped in all public rendering', async () => {
   const evil = '<img src=x onerror=alert(1)>';

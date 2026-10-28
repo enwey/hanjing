@@ -1,0 +1,8 @@
+import {esc,btn} from './ui.js';
+export function snoreReport(a){
+ const s=a.snoreAnalysis||{},level=({normal:'低风险',low:'低风险',mild:'轻度风险',moderate:'中风险',medium:'中风险',severe:'高风险',high:'高风险'})[s.riskLevel]||'待评估';
+ const score=Number.isFinite(s.riskScore)?Math.max(0,Math.min(100,s.riskScore)):null;
+ const unit=s.analysisVersion===2?'dBFS':'dB';
+ const facts=[['平均分贝',s.avgDecibel,unit],['峰值分贝',s.peakDecibel,unit],['鼾声占比',s.snoreRate,'%'],['疑似呼吸暂停',s.apneaEvents,'次']];
+ return `<div class="snore-report"><section class="snore-report-risk"><span class="snore-eyebrow">${esc(level)}</span><p>鼾声风险指数</p><strong>${score===null?'—':score}<small>${score===null?'':'%'}</small></strong><div class="snore-risk-track" role="meter" aria-label="鼾声风险指数" ${score===null?'':`aria-valuenow="${score}"`} aria-valuemin="0" aria-valuemax="100"><i style="width:${score??0}%"></i></div><div class="snore-risk-scale"><span>低</span><span>中</span><span>高</span></div><p class="snore-report-note">本次录音分析提示${esc(level)}，结果仅供筛查参考。</p></section><section><h2>鼾声数据详情</h2><div class="snore-report-stats">${facts.map(([label,value,u])=>`<article><span>${label}</span><strong>${esc(value??'—')}<small>${u}</small></strong></article>`).join('')}</div><p class="snore-report-duration">录音时长：${esc(s.duration??'—')} 秒</p></section><div class="snore-report-notes"><section><h2>专业建议</h2><p>${esc(a.recommendation||'如有持续嗜睡、憋醒或明显鼾声，请预约医生进一步评估。')}</p></section><section><h2>改善小贴士</h2><div class="snore-report-tips">${['保持规律作息','避免睡前饮酒','关注睡眠姿势','记录夜间睡眠情况'].map((x,i)=>`<span><b>${i+1}</b>${x}</span>`).join('')}</div></section></div><div class="snore-report-actions">${btn('立即预约门诊','stores')}${btn('返回睡眠评估','assessment')}${btn('重新测试','recording',{patientId:a.patientId})}</div></div>`;
+}

@@ -1,3 +1,14 @@
+import {setRecordingPhase,updateRecordingLevel} from './recording-page.js';
+import './recording.css';
+import {appointmentList} from './appointment-list.js';
+import {appointmentActions} from './appointment-detail.js';
+import {createDoctorBooking} from './doctor-booking.js';
+import './clinic.css';
+import './shop.css';
+import { createWearingDrawer } from './wearing-drawer.js';
+import './wearing-drawer.css';
+import { comfortFromPain } from './treatment.js';
+import { localMockLogin } from './local-login.js';
 import './styles/pc-redesign.css';
 import './styles/pc-consumer.css';
 import './styles/pc-halcyon.css';
@@ -6,6 +17,7 @@ import './home-refinement.css';
 import './header.css';
 import './home-motion.css';
 import './pages-layout.css';
+import './treatment.css';
 import './navigation-motion.css';
 import { animateNavigation, revealContent } from './navigation-motion.js';
 import { setupHome } from './home-interactions.js';
@@ -34,7 +46,8 @@ let current,
   sequence = 0,
   toastTimer,
   recorder = null,
-  loginBinding = false;
+  loginBinding = false,
+  authSubmitting = false;
 const notify = (text) => {
   const el = document.querySelector('#toast');
   el.textContent = text;
@@ -42,6 +55,17 @@ const notify = (text) => {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('visible'), 5000);
 };
+const wearingDrawer = createWearingDrawer({
+  request, post, session,
+  getPatientId: () => current?.patientId || current?.params.get('patientId') || '',
+  onSaved: async () => {
+    const hash = location.hash, top = window.scrollY;
+    notify('打卡成功');
+    await render();
+    if (location.hash === hash) window.scrollTo(0, top);
+  },
+});
+const doctorBooking=createDoctorBooking({getCurrent:()=>current,request,session});
 function navigate(page, params = {}) {
   const url = href(page, params);
   if (location.hash === url) render();
@@ -76,20 +100,29 @@ function shell(content, isHome = false) {
   ];
   const groups = {
     assessment: ['questionnaire', 'recording', 'assessments', 'report'],
-    treatment: ['devices', 'device', 'wearing'],
+    treatment: ['devices', 'device', 'wearing', 'treatmentCalendar', 'treatmentTrend', 'treatmentReport', 'treatmentTimeline', 'treatmentAdvice', 'treatmentAdjust'],
     community: ['post', 'publish', 'live', 'room'],
     products: ['product', 'checkout', 'orders', 'order'],
   };
   return `<div class="app ${isHome ? 'is-home' : ''}"><header class="app-header hc-header"><a class="brand" href="#/home" aria-label="兴康明首页"><img src="/brand/logo.svg" alt=""><span>兴康明<small>专注睡眠呼吸健康</small></span></a><nav class="top-nav" aria-label="网站导航">${nav.map(([t, p]) => `<a href="#/${p}" ${current.page === p || groups[p]?.includes(current.page) ? 'class="current" aria-current="page"' : ''}>${t}</a>`).join('')}</nav><div class="header-user">${session.token() ? link('个人中心', 'profile') + `<button data-action="logout">退出</button>` : link('登录', 'login')}<a class="btn small hc-header-book" href="#/stores">预约就诊</a></div></header><main id="content" class="${isHome ? '' : 'pc-content hc-wrap'}" tabindex="-1">${content}</main>${footer()}</div>`;
 }
 async function render() {
+  wearingDrawer.close({force:true,restoreFocus:false});
+  doctorBooking.close(true);
+  const requested = route();
+  if(requested.page==='booking'&&!requested.params.get('id')&&requested.params.get('storeId')&&requested.params.get('doctorId'))history.replaceState(null,'',href('doctors',{id:requested.params.get('doctorId'),storeId:requested.params.get('storeId')}));
+  const drawerRoute = requested.page === 'wearing' && !!session.token();
+  if (drawerRoute) history.replaceState(null, '', href('treatment', {patientId:requested.params.get('patientId') || ''}));
+  const preserveView = current?.page === requested.page && current?.params.get('id') === requested.params.get('id') && current?.token === session.token() && !!root.querySelector('#content') && requested.page !== 'home';
   const generation = ++sequence;
   controller?.abort();
   controller = new AbortController();
   recorder?.dispose();
   recorder = null;
   current = {
+    ...(preserveView ? current : {}),
     ...route(),
+    viewHash: location.hash,
     generation,
     token: session.token(),
     signal: controller.signal,
@@ -105,6 +138,7 @@ async function render() {
     navigate('profile');
     return;
   }
+  if (!preserveView) {
   const nextShell = shell(
     c.page === 'home'
       ? home()
@@ -132,6 +166,7 @@ async function render() {
   } else root.innerHTML = nextShell;
   window.scrollTo(0, 0);
   animateNavigation();
+  }
   if (c.page === 'home') {
     setupHome(document.getElementById('content'), c.signal);
     for (const [path, id, draw] of [
@@ -153,14 +188,18 @@ async function render() {
   try {
     const html = await page(c);
     if (current !== c) return;
+    const scroll = {x:window.scrollX,y:window.scrollY};
     document.getElementById('content').innerHTML = html;
-    revealContent(document.getElementById('content'));
+    if (preserveView) window.scrollTo(scroll.x, scroll.y);
+    else revealContent(document.getElementById('content'));
+    if (drawerRoute) wearingDrawer.open({patientId:c.patientId || requested.params.get('patientId') || '',date:requested.params.get('date') || undefined});
     if (c.page === 'login' && loginBinding)
       document.querySelector('#wechat-message').textContent =
         '微信授权已完成，请先使用密码登录已有患者账号，再确认关联。';
   } catch (error) {
     if (current !== c || error.name === 'AbortError') return;
-    document.getElementById('content').innerHTML = errors(error.message);
+    if (preserveView) notify(error.message);
+    else document.getElementById('content').innerHTML = errors(error.message);
   }
 }
 function active(c) {
@@ -240,6 +279,8 @@ document.addEventListener('submit', async (event) => {
   const c = current,
     type = f.dataset.form;
   if (type !== 'login' && !ensureAuth(c)) return;
+  if (type === 'login' && authSubmitting) return;
+  if (type === 'login') authSubmitting = true;
   const data = Object.fromEntries(new FormData(f));
   const message = f.querySelector('.form-message');
   message.textContent = '';
@@ -290,7 +331,8 @@ document.addEventListener('submit', async (event) => {
           appointmentDate: schedule.date,
           appointmentTime: slot.label,
           patientId: data.patientId,
-          type: data.type || c.reschedule?.type,
+          // Match the mini-program: ordinary booking defaults to first; rescheduling preserves its type.
+          type: c.reschedule?.type || 'first',
           symptomDesc: data.symptomDesc || '',
         };
         const referral = sessionStorage.getItem('pc-referral');
@@ -407,14 +449,15 @@ document.addEventListener('submit', async (event) => {
           rating: Number(data.rating),
           content: data.content,
         });
-        if (active(c)) notify('评价已提交');
+        if (active(c)) {notify('评价已提交');render();}
         break;
       case 'wearing':
         await post('/treatment/wearing', {
           ...data,
           wearDuration: Number(data.wearDuration),
-          comfort: Number(data.comfort),
+          comfort: comfortFromPain(data.painScore),
           painScore: Number(data.painScore),
+          painLocations: [...f.querySelectorAll('[name="painLocations"]:checked')].map(input => input.value),
         });
         if (active(c)) {
           notify('佩戴记录已保存');
@@ -507,6 +550,7 @@ document.addEventListener('submit', async (event) => {
       }
     }
   } finally {
+    if (type === 'login') authSubmitting = false;
     f.dataset.busy = 'false';
     controls.forEach((e) => (e.disabled = false));
     if (type === 'order') updateDelivery(f);
@@ -538,8 +582,17 @@ document.addEventListener('click', async (event) => {
     revealContent(document.querySelector(wx ? '#wechat-login' : '#password-login'));
     return;
   }
+  const isAuthAction = name === 'local-login' || name === 'wechat-start';
+  if (isAuthAction && authSubmitting) return;
+  if (isAuthAction) authSubmitting = true;
   button.disabled = true;
   try {
+    if (name === 'local-login') {
+      if (loginBinding) throw new Error('请先使用密码登录完成微信关联');
+      const ok = await localMockLogin({ post, session, isActive: () => current === c });
+      if (ok) { notify('本地模拟登录成功'); location.hash = nextRoute(); }
+      return;
+    }
     if (name === 'wechat-start') {
       sessionStorage.setItem(
         'pc-login-return',
@@ -555,15 +608,41 @@ document.addEventListener('click', async (event) => {
       if (current === c) location.assign(url.href);
       return;
     }
+    if (name === 'product-gallery') {
+      const cover=document.querySelector('.shop-cover-detail');
+      if(cover && safeUrl(button.dataset.src)) {
+        let img=cover.querySelector('img');
+        if(!img){img=document.createElement('img');img.setAttribute('data-product-cover','');img.alt='商品图片';cover.append(img);}
+        img.src=safeUrl(button.dataset.src);
+      }
+      document.querySelectorAll('[data-action="product-gallery"]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));
+      return;
+    }
     if (!ensureAuth(c)) return;
     switch (name) {
+      case 'appointment-tab':
+        c.appointmentTab=button.dataset.tab==='history'?'history':'upcoming';
+        document.querySelector('#appointment-list').innerHTML=appointmentList(c);
+        history.replaceState(null,'','#/appointments'+(c.appointmentTab==='history'?'?tab=history':''));
+        break;
+      case 'appointment-copy':
+        await navigator.clipboard.writeText(c.appointment.appointmentNo);
+        if(active(c))notify('预约单号已复制');
+        break;
+      case 'doctor-book':
+        await doctorBooking.open(c);
+        break;
       case 'cancel-appointment': {
-        const reason = await promptDialog('取消预约', '请填写取消原因');
-        if (reason && active(c)) {
-          await post('/appointments/' + c.appointment.id + '/cancel', {
-            reason,
+        const appointment=button.dataset.appointmentId?c.appointments?.find(a=>String(a.id)===button.dataset.appointmentId):c.appointment;
+        if(!appointment)throw new Error('预约记录不存在，请刷新后重试');
+        if (!appointmentActions(appointment,c.bookingSettings).canCancel) throw new Error('已超过取消截止时间，请联系门店处理');
+        const confirmed = await confirmDialog('取消预约', '确定要取消这次预约吗？', '确认取消预约');
+        if (confirmed && active(c)) {
+          if (!appointmentActions(appointment,c.bookingSettings).canCancel) throw new Error('已超过取消截止时间，请联系门店处理');
+          await post('/appointments/' + appointment.id + '/cancel', {
+            reason: '用户主动取消',
           });
-          if (active(c)) render();
+          if (active(c)) { notify('预约已取消'); await render(); }
         }
         break;
       }
@@ -571,13 +650,21 @@ document.addEventListener('click', async (event) => {
         await post('/community/posts/' + c.post.id + '/like', {
           isLiked: !c.post.isLiked,
         });
-        if (active(c)) render();
+        if (active(c)) {
+          c.post.likes = Math.max(0, Number(c.post.likes || 0) + (c.post.isLiked ? -1 : 1));
+          c.post.isLiked = !c.post.isLiked;
+          button.textContent = `${c.post.isLiked ? '已点赞' : '点赞'} · ${c.post.likes}`;
+        }
         break;
       case 'post-favorite':
         await post('/community/posts/' + c.post.id + '/favorite', {
           isFavorited: !c.post.isFavorited,
         });
-        if (active(c)) render();
+        if (active(c)) {
+          c.post.favoritesCount = Math.max(0, Number(c.post.favoritesCount || 0) + (c.post.isFavorited ? -1 : 1));
+          c.post.isFavorited = !c.post.isFavorited;
+          button.textContent = `${c.post.isFavorited ? '已收藏' : '收藏'} · ${c.post.favoritesCount}`;
+        }
         break;
       case 'post-share':
         await navigator.clipboard.writeText(location.href);
@@ -600,7 +687,11 @@ document.addEventListener('click', async (event) => {
         await post('/community/comments/' + comment.id + '/like', {
           isLiked: !comment.isLiked,
         });
-        if (active(c)) render();
+        if (active(c)) {
+          comment.likes = Math.max(0, Number(comment.likes || 0) + (comment.isLiked ? -1 : 1));
+          comment.isLiked = !comment.isLiked;
+          button.textContent = `${comment.isLiked ? '已点赞' : '点赞'} · ${comment.likes}`;
+        }
         break;
       }
       case 'comment-reply': {
@@ -714,16 +805,19 @@ document.addEventListener('click', async (event) => {
       case 'record-start':
         await startRecording(c);
         break;
+      case 'record-pause':
+        await recorder?.pause();
+        if(active(c)){setRecordingPhase('paused');document.querySelector('#record-status').textContent='录音已暂停，可生成分析报告';}
+        break;
+      case 'record-resume':
+        await recorder?.resume();
+        if(active(c)){setRecordingPhase('recording');document.querySelector('#record-status').textContent='正在录音，请保持页面在前台';}
+        break;
       case 'record-stop':
         await stopRecording(c);
         break;
       case 'record-save': {
-        if (!c.recordPayload) throw new Error('请先完成录音');
-        const result = await post('/assessments/snore', c.recordPayload);
-        if (active(c)) {
-          c.recordPayload = null;
-          navigate('report', { id: result.id, patientId: result.patientId });
-        }
+        await generateSnoreReport(c);
         break;
       }
       case 'acknowledge-create':
@@ -742,9 +836,25 @@ document.addEventListener('click', async (event) => {
   } catch (error) {
     if (current === c) notify(error.message);
   } finally {
+    if (isAuthAction) authSubmitting = false;
     if (name !== 'record-stop') button.disabled = false;
   }
 });
+document.addEventListener('click', event => {
+  const button=event.target.closest('[data-patient-option]');
+  if(!button)return;
+  const bar=button.closest('.patient-options-bar'),select=bar.querySelector('[data-patient-select]');
+  if(select.disabled||select.value===button.dataset.patientOption)return;
+  select.value=button.dataset.patientOption;
+  bar.querySelectorAll('[data-patient-option]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));
+  select.dispatchEvent(new Event('change',{bubbles:true}));
+});
+function disablePatientChoice(select, disabled) {
+  if(!select)return;
+  select.disabled=disabled;
+  select.closest('.patient-options-bar')?.querySelectorAll('[data-patient-option]').forEach(x=>x.disabled=disabled);
+}
+
 document.addEventListener('change', async (event) => {
   const target = event.target,
     c = current;
@@ -774,6 +884,7 @@ document.addEventListener('change', async (event) => {
     }
   }
   if (target.matches('[data-patient-select]')) {
+    if(target.closest('.clinic-confirm-dialog'))return;
     if (c.page === 'questionnaire') {
       document
         .querySelectorAll('.question input')
@@ -782,6 +893,12 @@ document.addEventListener('change', async (event) => {
     }
     if (c.page === 'recording') {
       c.recordPayload = null;
+      setRecordingPhase('ready');
+      document.querySelector('#record-time').textContent='00:00';
+      document.querySelector('#record-level').textContent='—';
+      document.querySelector('#record-peak').textContent='—';
+      document.querySelector('#record-progress').value=0;
+      document.querySelectorAll('.snore-wave i').forEach(bar=>bar.style.setProperty('--level','6px'));
       document.querySelector('[data-action="record-save"]').hidden = true;
       document.querySelector('#record-result').innerHTML = '';
       document.querySelector('#record-status').textContent =
@@ -789,7 +906,7 @@ document.addEventListener('change', async (event) => {
       return;
     }
     if (c.page === 'booking') return;
-    navigate(c.page, { patientId: target.value });
+    navigate(c.page, { ...Object.fromEntries(c.params), patientId: target.value });
   }
   if (target.matches('[data-delivery-method]')) updateDelivery(target.form);
   if (target.matches('[data-product-category]')) filterProducts();
@@ -843,40 +960,54 @@ async function startRecording(c) {
   const patientId = member.value;
   recorder?.dispose();
   c.recordPayload = null;
+  c.recordPeak=0;
+  document.querySelector('#record-time').textContent='00:00';
+  document.querySelector('#record-level').textContent='—';
+  document.querySelector('#record-peak').textContent='—';
+  document.querySelectorAll('.snore-wave i').forEach(bar=>bar.style.setProperty('--level','6px'));
   document.querySelector('#record-result').innerHTML = '';
-  const instance = new Recorder(({ seconds, dbfs, error }) => {
+  const instance = new Recorder(({ seconds, decibel, audioLevels, error }) => {
     if (current !== c) return;
     if (error) {
+      setRecordingPhase('error');
       document.querySelector('#record-status').textContent = error;
       document.querySelector('[data-action="record-start"]').hidden = false;
       document.querySelector('[data-action="record-stop"]').disabled = true;
-      member.disabled = false;
+      disablePatientChoice(member,false);
       return;
     }
     document.querySelector('#record-time').textContent =
       `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-    document.querySelector('#record-level').textContent = dbfs.toFixed(1);
-    document.querySelector('#record-progress').value = Math.max(0, 100 + dbfs);
+    c.recordPeak=Math.max(c.recordPeak,decibel);
+    updateRecordingLevel(decibel,c.recordPeak,audioLevels);
     if (seconds >= 600) stopRecording(c).catch((e) => notify(e.message));
   });
   recorder = instance;
-  await instance.start();
+  disablePatientChoice(member,true);
+  document.querySelector('#record-status').textContent='正在请求麦克风权限…';
+  try { await instance.start(); } catch(error) {
+    if(current===c){disablePatientChoice(member,false);setRecordingPhase('error');document.querySelector('#record-status').textContent=error.message;}
+    throw error;
+  }
   if (current !== c) {
     instance.dispose();
     return;
   }
   c.recordPatient = patientId;
-  member.disabled = true;
+  setRecordingPhase('recording');
+  disablePatientChoice(member,true);
   document.querySelector('[data-action="record-start"]').hidden = true;
-  document.querySelector('[data-action="record-stop"]').disabled = false;
   document.querySelector('[data-action="record-save"]').hidden = true;
   document.querySelector('#record-status').textContent =
     '正在录音，请保持页面在前台。';
 }
 async function stopRecording(c) {
   if (!recorder || recorder.stopping) return;
+  if(Math.floor(recorder.length/(recorder.context?.sampleRate||8000))<5)
+    throw new Error('录音时间过短，分析前请至少录制5秒');
   const instance = recorder;
   document.querySelector('[data-action="record-stop"]').disabled = true;
+  setRecordingPhase('analyzing');
   document.querySelector('#record-status').textContent = '正在分析录音…';
   try {
     const r = await instance.stop();
@@ -888,29 +1019,44 @@ async function stopRecording(c) {
       client_side_analysis: true,
       analysis_result: r.analysis,
     };
-    document.querySelector('#record-result').innerHTML = panel(
-      '本次录音结果',
-      kv([
-        ['录音时长', r.duration + ' 秒'],
-        ['估算平均音量', r.analysis.avgDecibel + ' dB'],
-        ['估算峰值音量', r.analysis.peakDecibel + ' dB'],
-        ['疑似鼾声占比', r.analysis.snoreRate + '%'],
-      ]) +
-        '<p class="muted">分析结果仅供参考；音量为估算值，不是校准声级计读数，不能据此诊断呼吸暂停。</p>',
-    );
-    document.querySelector('[data-action="record-save"]').hidden = false;
-    document.querySelector('#record-status').textContent =
-      '分析完成，保存后可在评估记录中查看。';
+    await generateSnoreReport(c);
   } catch (e) {
-    if (current === c)
+    if (current === c) {
+      setRecordingPhase(c.recordPayload?'complete':'error');
+      document.querySelector('[data-action="record-save"]').hidden=!c.recordPayload;
       document.querySelector('#record-status').textContent = e.message;
+    }
     throw e;
   } finally {
     if (current === c) {
       document.querySelector('[data-action="record-start"]').hidden = false;
-      document.querySelector('[name="patientId"]').disabled = false;
+      disablePatientChoice(document.querySelector('[name="patientId"]'),false);
     }
   }
+}
+async function generateSnoreReport(c) {
+  if(c.recordSubmitting)return;
+  if(!c.recordPayload)throw new Error('请先完成录音');
+  c.recordSubmitting=true;
+  const payload=c.recordPayload;
+  setRecordingPhase('analyzing');
+  disablePatientChoice(document.querySelector('[name="patientId"]'),true);
+  document.querySelector('#record-status').textContent='正在生成分析报告…';
+  try {
+    const result=await post('/assessments/snore',payload);
+    if(!active(c))return;
+    if(!result?.id)throw new Error('报告生成结果未确认，请重试');
+    c.recordPayload=null;
+    navigate('report',{id:result.id,patientId:payload.patientId});
+  }catch(error){
+    if(active(c)){
+      setRecordingPhase('complete');
+      document.querySelector('[data-action="record-save"]').hidden=false;
+      document.querySelector('#record-status').textContent=error.message+'；录音分析结果已保留，可重试生成报告。';
+      disablePatientChoice(document.querySelector('[name="patientId"]'),false);
+    }
+    throw error;
+  }finally{c.recordSubmitting=false;}
 }
 window.addEventListener('hashchange', render);
 window.addEventListener('patient-session-expired', () => {
@@ -938,6 +1084,8 @@ root.addEventListener(
   (event) => {
     if (event.target instanceof HTMLImageElement) {
       const img = event.target;
+      if((img.hasAttribute('data-product-cover')||img.hasAttribute('data-clinic-cover'))){img.remove();return;}
+
       const fallback = document.createElement('div');
       fallback.className = 'image-fallback ' + img.className;
       fallback.textContent = img.alt || '暂无图片';

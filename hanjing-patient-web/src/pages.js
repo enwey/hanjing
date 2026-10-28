@@ -1,3 +1,12 @@
+import {snoreReport} from './snore-report.js';
+import {recordingPage} from './recording-page.js';
+import {appointmentList} from './appointment-list.js';
+import {appointmentDetail} from './appointment-detail.js';
+import {doctorSchedule} from './doctor-booking.js';
+import {storeCard,doctorCard,doctorDetail} from './clinic.js';
+import {shopProductCard,shopProductDetail,relatedProducts} from './shop.js';
+import { renderTreatment, treatmentTitles, wearingForm } from './treatment.js';
+import { isLocalMockLoginAvailable } from './local-login.js';
 import { list, query } from './api.js';
 import { legal } from './legal.js';
 import {
@@ -25,6 +34,7 @@ import {
 } from './ui.js';
 
 export const titles = {
+  ...treatmentTitles,
   agreement: '用户协议',
   privacy: '隐私政策',
   home: '首页',
@@ -96,16 +106,12 @@ const relation = {
   sibling: '兄弟姐妹',
   other: '其他',
 };
-const appointmentCard = (a) =>
-  `<article class="pc-list-row"><div><small>${esc(a.appointmentNo)}</small><h3>${esc(a.patientName)} · ${esc(a.doctorName)}</h3><p>${esc(a.storeName)} · ${esc(a.appointmentDate)} ${esc(a.appointmentTime)}</p></div><div>${badge(a.status)}${link('查看详情', 'appointment', { id: a.id })}</div></article>`;
-const productCard = (p) =>
-  `<article class="pc-product ${p.imageUrl ? '' : 'product-text-only'}">${p.imageUrl ? linkImage(p.imageUrl, p.name, 'product', { id: p.id }) : ''}<div><h3>${link(p.name, 'product', { id: p.id })}</h3><p class="clamp">${esc(p.description)}</p><strong>${money(p.price)}</strong></div></article>`;
+const productCard = shopProductCard;
 function linkImage(src, alt, page, params) {
   return `<a href="#/${page}?${new URLSearchParams(params)}">${image(src, alt)}</a>`;
 }
 const postCard = (p) =>
   `<article class="pc-post">${p.coverUrl ? linkImage(p.coverUrl, p.title, 'post', { id: p.id }) : ''}<div><div class="feed-author"><span class="feed-avatar" aria-hidden="true">${esc((p.author || '用户').slice(0,1))}</span><small>${esc(p.author)} · ${esc(p.roleLabel)}</small></div><h3>${link(p.title, 'post', { id: p.id })}</h3><p class="clamp">${esc(p.summary || p.content)}</p><div class="feed-bottom"><small>${date(p.createdAt)} · ${esc(p.likes || 0)} 点赞 · ${esc(p.comments || 0)} 评论</small>${link('阅读全文', 'post', { id:p.id })}</div></div></article>`;
-const familyTools = `${link('管理就诊人', 'family')}`;
 async function scoped(c) {
   c.members = list(await c.get('/user/family-members'));
   c.patientId = c.params.get('patientId') || '';
@@ -115,7 +121,7 @@ async function scoped(c) {
   return c.patientId;
 }
 function scopeBar(c) {
-  return `<div class="scope-bar">${patientSelect(c.members, c.patientId)}${familyTools}</div>`;
+  return patientSelect(c.members, c.patientId);
 }
 
 export async function page(c) {
@@ -125,57 +131,30 @@ export async function page(c) {
   switch (c.page) {
     case 'agreement':
     case 'privacy':
-      return head(c.page) + `<article class="pc-legal">${legal[c.page].map(item => item.type === 'section-title' || item.type === 'article-title' ? `<h2>${esc(item.text)}</h2>` : `<p>${esc(item.text)}</p>`).join('')}</article>`;
+      return head(c.page) + `<article class="pc-legal">${legal[c.page].map(item => item.type === 'section-title' || item.type === 'article-title' ? `<h2>${esc(item.text)}</h2>` : `<p class="${item.type==='important'?'legal-important':item.type==='article-meta'?'legal-meta':''}">${esc(item.text)}</p>`).join('')}</article>`;
     case 'login':
       return (
-        `<div class="login-layout"><section class="login-intro"><h2>从今天起，<br>持续关注每一夜好眠。</h2><p>预约就诊、管理家庭成员，<br>查看评估报告和治疗记录。</p>${image('/brand/clinic-wall.jpg', '兴康明诊所')}</section>${panel('欢迎来到兴康明', `<div class="login-modes"><button type="button" data-action="login-mode" data-mode="password" aria-pressed="true">密码登录</button><button type="button" data-action="login-mode" data-mode="wechat" aria-pressed="false">微信扫码登录</button></div><div id="password-login">${form('login', field('手机号', 'phone', '', 'tel', 'required pattern="1[0-9]{10}" maxlength="11" autocomplete="username" placeholder="请输入手机号"') + field('密码', 'password', '', 'password', 'required maxlength="128" autocomplete="current-password" placeholder="请输入密码"') + submit('登录'))}</div><div id="wechat-login" hidden><h3>微信扫码登录</h3><p>打开微信官方登录页后，使用微信扫一扫二维码完成授权。</p>${action('前往微信扫码', 'wechat-start', '', false)}</div><div id="wechat-message" role="alert"></div>`, 'login-panel')}</div>`
+        `<div class="login-layout"><section class="login-intro"><h2>从今天起，<br>持续关注每一夜好眠。</h2><p>预约就诊、管理家庭成员，<br>查看评估报告和治疗记录。</p>${image('/brand/clinic-wall.jpg', '兴康明诊所')}</section>${panel('欢迎来到兴康明', `<div class="login-modes"><button type="button" data-action="login-mode" data-mode="password" aria-pressed="true">密码登录</button><button type="button" data-action="login-mode" data-mode="wechat" aria-pressed="false">微信扫码登录</button></div><div id="password-login">${form('login', field('手机号', 'phone', '', 'tel', 'required pattern="1[0-9]{10}" maxlength="11" autocomplete="username" placeholder="请输入手机号"') + field('密码', 'password', '', 'password', 'required maxlength="128" autocomplete="current-password" placeholder="请输入密码"') + submit('登录'))}</div><div id="wechat-login" hidden><h3>微信扫码登录</h3><p>打开微信官方登录页后，使用微信扫一扫二维码完成授权。</p>${action('前往微信扫码', 'wechat-start', '', false)}</div>${isLocalMockLoginAvailable() ? `<div class="local-login-entry">${action('本地模拟登录', 'local-login')}<small>使用独立测试账号</small></div>` : ''}<div id="wechat-message" role="alert"></div>`, 'login-panel')}</div>`
       );
     case 'stores': {
-      const stores = list(await get('/stores'));
-      c.stores = stores;
-      return (
-        head(
-          'stores',
-          '选择方便前往的诊所，查看医生和可预约时间。',
-          link('我的预约', 'appointments'),
-        ) +
-        `<div class="pc-grid two">${records(
-          stores,
-          (s) =>
-            panel(
-              '',
-              `${image(s.coverUrl, s.name, 'store-image')}<h2>${esc(s.name)}</h2><p>${esc(s.address)}</p>${kv(
-                [
-                  ['营业时间', s.businessHours],
-                  ['联系电话', s.phone],
-                  ['服务', s.features?.join('、')],
-                ],
-              )}${s.status === 'open' ? btn('查看医生与时段', 'doctors', { storeId: s.id }) : badge('筹备中')}`,
-            ),
-          '暂无可展示的门店',
-        )}</div>`
-      );
+      const stores=list(await get('/stores'));c.stores=stores;
+      return pageHead('请选择就诊门店','选择方便前往的诊所，查看医生和可预约时间。',btn('我的预约','appointments'))+`<div class="clinic-store-grid">${records(stores,storeCard,'暂无可展示的门店')}</div>`;
     }
     case 'doctors': {
-      const storeId = p.get('storeId') || '';
-      const doctors = list(await get('/doctors' + query({ storeId })));
-      const shown = id ? doctors.filter((d) => String(d.id) === id) : doctors;
-      return (
-        head(
-          'doctors',
-          '查看专业领域、医生介绍与就诊安排。',
-          link('选择门店', 'stores'),
-        ) +
-        records(
-          shown,
-          (d) =>
-            panel(
-              '',
-              `<div class="doctor-detail">${image(d.avatar, d.name)}<div><h2>${esc(d.name)} <small>${esc(d.title)}</small></h2><p>${esc(d.specialty)} · ${esc(d.hospital)}</p><p class="prewrap">${esc(d.intro || '暂无医生介绍')}</p><p>${esc(d.expertise?.join(' / '))}</p><p>诊金 · ${money(d.consultFee)}</p>${storeId ? btn('选择就诊时间', 'booking', { storeId, doctorId: d.id }) : `<div class="pc-actions">${(d.storeIds || []).map((s) => btn('查看门店时段', 'booking', { storeId: s, doctorId: d.id })).join('') || link('选择门店', 'stores')}</div>`}</div></div>`,
-            ),
-          '暂无可预约医生',
-        )
-      );
+      const storeId=p.get('storeId')||'';
+      const doctors=list(await get('/doctors'+query({storeId})));
+      const shown=id?doctors.filter(d=>String(d.id)===id):doctors;
+      if(id && shown.length){
+        c.clinicDoctor=shown[0];c.doctorId=String(c.clinicDoctor.id);
+        const stores=list(await get('/stores'));
+        c.clinicStores=stores.filter(s=>s.status==='open'&&(c.clinicDoctor.storeIds||[]).some(v=>String(v)===String(s.id)));
+        c.storeId=String(storeId||c.clinicStores[0]?.id||'');
+        if(c.storeId&&!c.clinicStores.some(s=>String(s.id)===c.storeId))return pageHead('医生详情')+empty('该门店暂不可预约',btn('选择门店','stores'));
+        c.clinicSlot=null;c.clinicSchedule=null;c.clinicMonth=null;c.clinicDate=null;
+        if(c.storeId){const [rawSchedules,rawDates]=await Promise.all([get('/schedules'+query({storeId:c.storeId,doctorId:c.doctorId})),get('/schedules/dates'+query({storeId:c.storeId,doctorId:c.doctorId}))]);c.clinicDates=list(rawDates);c.schedules=list(rawSchedules).filter(s=>s.status==='available'&&s.date>=today()&&c.clinicDates.includes(s.date));}else{c.schedules=[];c.clinicDates=[];}c.slots=[];
+        return pageHead('医生详情','查看医生介绍，选择门店与就诊时段。',btn('我的预约','appointments'))+`<div class="doctor-booking-layout">${doctorDetail(c.clinicDoctor,c.storeId,true)}${doctorSchedule(c)}</div>`;
+      }
+      return (id?pageHead('医生详情','查看专业领域、医生介绍与就诊安排。',btn('选择门店','stores')):pageHead('请选择医生','查看专业领域、医生介绍与就诊安排。',btn('选择门店','stores')))+(id?records(shown,d=>doctorDetail(d,storeId),'暂无可预约医生'):`<div class="clinic-doctor-grid">${records(shown,d=>doctorCard(d,storeId),'暂无可预约医生')}</div>`);
     }
     case 'booking': {
       c.reschedule = id
@@ -226,12 +205,7 @@ export async function page(c) {
                 `${c.reschedule ? hidden('patientId', c.reschedule.patientId) + `<p>就诊人：${esc(c.reschedule.patientName)}</p>` : patientSelect(c.members)}${select('就诊日期与时段', 'scheduleId', [['', '请选择排班'], ...c.schedules.filter((s) => s.status === 'available').map((s) => [s.id, `${s.date} ${s.startTime.slice(0, 5)}—${s.endTime.slice(0, 5)}`])], '', 'required data-schedule-select')}<div id="booking-slots" class="slots"><p>选择排班后显示具体时段。</p></div>${
                   c.reschedule
                     ? ''
-                    : select('就诊类型', 'type', [
-                        ['first', '初诊'],
-                        ['followup', '复诊'],
-                        ['adjust', '设备调整'],
-                      ]) +
-                      area(
+                    : area(
                         '症状描述（选填）',
                         'symptomDesc',
                         '',
@@ -242,63 +216,15 @@ export async function page(c) {
         )}</div>`
       );
     }
-    case 'appointments':
-      return (
-        head(
-          'appointments',
-          '查看本人及家人的预约安排。',
-          btn('预约就诊', 'stores'),
-        ) +
-        panel(
-          '',
-          records(
-            list(await get('/appointments')),
-            appointmentCard,
-            '暂无预约记录',
-          ),
-        )
-      );
+    case 'appointments': {
+      const [appointments,settings]=await Promise.all([get('/appointments'),get('/settings/booking')]);
+      c.appointments=list(appointments);c.bookingSettings=settings;c.appointmentTab=p.get('tab')==='history'?'history':'upcoming';
+      return head('appointments','查看本人及家人的预约安排。',btn('预约就诊','stores'))+`<div id="appointment-list">${appointmentList(c)}</div>`;
+    }
     case 'appointment': {
-      const detail = await get('/appointments/' + encodeURIComponent(id));
-      c.appointment = {
-        ...detail.appointment,
-        medicalRecord: detail.medicalRecord,
-      };
-      const a = c.appointment;
-      return (
-        head('appointment', a.appointmentNo, link('全部预约', 'appointments')) +
-        panel(
-          '',
-          `${badge(a.status)}${kv([
-            ['就诊人', a.patientName],
-            ['医生', a.doctorName],
-            ['门店', a.storeName],
-            ['就诊时间', `${a.appointmentDate} ${a.appointmentTime}`],
-            ['症状描述', a.symptomDesc],
-            ['取消原因', a.cancelReason],
-          ])}${a.status === 'pending_payment' ? '<p class="notice">预约待支付，请联系门店完成付款。</p>' : ''}${['pending_payment', 'pending', 'confirmed'].includes(a.status) ? `<div class="pc-actions">${link('修改时间', 'booking', { id: a.id })}${action('取消预约', 'cancel-appointment')}</div>` : ''}`,
-        ) +
-        (a.medicalRecord
-          ? panel('本次病历', medicalCard(a.medicalRecord))
-          : '') +
-        (['completed', 'arrived'].includes(a.status)
-          ? panel(
-              '就诊评价',
-              form(
-                'evaluation',
-                select('评分', 'rating', [
-                  [5, '5 分 · 非常满意'],
-                  [4, '4 分 · 满意'],
-                  [3, '3 分 · 一般'],
-                  [2, '2 分 · 不满意'],
-                  [1, '1 分 · 非常不满意'],
-                ]) +
-                  area('评价内容', 'content', '', 'maxlength="500"') +
-                  submit('提交评价'),
-              ),
-            )
-          : '')
-      );
+      const [detail,settings]=await Promise.all([get('/appointments/'+encodeURIComponent(id)),get('/settings/booking')]);
+      c.appointment={...detail.appointment,medicalRecord:detail.medicalRecord};c.bookingSettings=settings;
+      return head('appointment','',btn('全部预约','appointments'))+appointmentDetail(detail,settings,medicalCard);
     }
     case 'assessment':
       return (
@@ -372,8 +298,8 @@ export async function page(c) {
       const a = all.find((v) => String(v.id) === id);
       if (!a) throw new Error('评估记录不存在或无权访问');
       return (
-        head(
-          'report',
+        pageHead(
+          a.type==='ess'?'评估报告':'鼾声分析报告',
           date(a.createdAt),
           link('全部评估', 'assessments', {
             patientId: p.get('patientId') || '',
@@ -382,16 +308,8 @@ export async function page(c) {
       );
     }
     case 'recording': {
-      c.members = list(await get('/user/family-members'));
-      return (
-        head('recording', '保持页面在前台，录音仅用于健康筛查参考。') +
-        panel(
-          '',
-          !c.members.length
-            ? empty('请先添加就诊人', btn('就诊人管理', 'family'))
-            : `${patientSelect(c.members)}<div class="recording-meter"><span id="record-time">00:00</span><strong id="record-level">—</strong><p>录音电平 dBFS（非校准环境声压）</p><progress id="record-progress" max="100" value="0"></progress><p id="record-status" role="status">准备好后开始录音，最长 10 分钟。</p></div><div class="pc-actions">${action('开始录音', 'record-start', '', false)}${action('结束并分析', 'record-stop', 'disabled')}${action('保存报告', 'record-save', 'hidden')}</div><div id="record-result"></div><p class="notice">普通电脑麦克风未经声压校准，不能提供真实环境分贝值。声音分析不能诊断呼吸暂停。</p>`,
-        )
-      );
+      c.members=list(await get('/user/family-members'));
+      return head('recording','记录睡眠声音，了解夜间呼吸情况。')+(c.members.length?recordingPage(c.members,p.get('patientId')):empty('请先添加就诊人',btn('就诊人管理','family')));
     }
     case 'community': {
       c.posts = list(await get('/community/posts'));
@@ -463,7 +381,7 @@ export async function page(c) {
         head(
           'products',
           '阻鼾器、配件耗材与服务套餐，选择日常护理所需。',
-          link('我的订单', 'orders'),
+          btn('我的订单', 'orders'),
         ) +
         `<div class="browse-toolbar"><div class="browse-tabs" aria-label="商品分类">${[['','全部'],...c.categories.map(v=>[v.code,v.name])].map(([value,name],i)=>`<button type="button" data-browse-product="${esc(value)}" aria-pressed="${i===0}">${esc(name)}</button>`).join('')}</div>${field('搜索商品', 'search', '', 'search', 'data-search="products" placeholder="搜索商品名称或描述"')}</div><div id="search-results" class="product-grid compact-products">${records(c.products, productCard, '暂无在售商品')}</div>`
       );
@@ -471,12 +389,14 @@ export async function page(c) {
     case 'product': {
       c.product = await get('/products/' + encodeURIComponent(id));
       const a = c.product;
+      const similar = list(await get('/products'));
       return (
         head('product', '', link('全部商品', 'products')) +
         panel(
           '',
-          `<div class="product-detail"><div>${image(a.imageUrl, a.name, 'product-main')}<div class="gallery">${(a.galleryUrls || []).map((u) => image(u, a.name)).join('')}</div></div><div><h1>${esc(a.name)}</h1><strong class="price">${money(a.price)}</strong>${a.originalPrice > a.price ? `<del>${money(a.originalPrice)}</del>` : ''}<p class="prewrap">${esc(a.description)}</p><p>库存 · ${esc(a.stock)}</p>${a.stock > 0 ? btn('确认订单', 'checkout', { id: a.id }) : badge('暂时缺货')}</div></div>`,
-        )
+          shopProductDetail(a),
+          'shop-detail-panel',
+        )+relatedProducts(a,similar)
       );
     }
     case 'checkout': {
@@ -831,6 +751,13 @@ export async function page(c) {
       );
     }
     case 'treatment':
+    case 'treatmentCalendar':
+    case 'treatmentTrend':
+    case 'treatmentReport':
+    case 'treatmentTimeline':
+    case 'treatmentAdvice':
+    case 'treatmentAdjust':
+      return renderTreatment(c, { scoped, scopeBar, head });
     case 'devices':
     case 'device':
     case 'wearing': {
@@ -867,40 +794,9 @@ export async function page(c) {
       }
       if (c.page === 'wearing') {
         const rows = list(await get('/treatment/wearing-records' + q));
-        const fields =
-          hidden('patientId', c.patientId) +
-          field('日期', 'date', today(), 'date', `required max="${today()}"`) +
-          field(
-            '佩戴时长（小时）',
-            'wearDuration',
-            '',
-            'number',
-            'required min="0" max="24" step="0.1"',
-          ) +
-          select(
-            '舒适度',
-            'comfort',
-            [
-              [5, '非常舒适'],
-              [4, '较舒适'],
-              [3, '一般'],
-              [2, '不舒适'],
-              [1, '非常不舒适'],
-            ],
-            3,
-          ) +
-          field(
-            '疼痛评分（0—10）',
-            'painScore',
-            0,
-            'number',
-            'required min="0" max="10" step="1"',
-          ) +
-          area('备注', 'note', '', 'maxlength="1000"') +
-          submit('保存佩戴记录');
         return (
           body +
-          panel('记录今日佩戴', form('wearing', fields)) +
+          wearingForm(c, rows) +
           panel(
             '佩戴记录',
             records(
@@ -929,35 +825,6 @@ export async function page(c) {
           ['下次调整日期', a.nextAdjustDate],
         ])}<div class="pc-actions">${btn('佩戴打卡', 'wearing', { patientId: c.patientId })}${link('全部设备', 'devices', { patientId: c.patientId })}</div>`,
       );
-      if (c.page === 'treatment') {
-        const [timeline, sleep] = await Promise.all([
-          get('/treatment/timeline' + q),
-          get('/treatment/sleep-report' + q),
-        ]);
-        return (
-          body +
-          panel(
-            '睡眠报告',
-            sleep.hasData
-              ? kv([
-                  ['平均佩戴', `${sleep.weekAvg} 小时`],
-                  ['依从率', `${sleep.compliance}%`],
-                  ['平均疼痛评分', sleep.avgPainScore],
-                  ['连续记录', `${sleep.streak} 天`],
-                ])
-              : empty('暂无佩戴数据'),
-          ) +
-          panel(
-            '治疗时间线',
-            records(
-              list(timeline),
-              (t) =>
-                `<div class="timeline-entry"><small>${esc(t.date)}</small><h3>${esc(t.title)}</h3><p>${esc(t.description)}</p></div>`,
-              '暂无时间线记录',
-            ),
-          )
-        );
-      }
       const [adjustments, maintenance, feedback] = await Promise.all([
         get('/treatment/adjustments' + q),
         get('/treatment/device-maintenance' + q),
@@ -1169,6 +1036,7 @@ function medicalCard(m) {
   );
 }
 export function reportCard(a) {
+  if(a.type!=='ess')return snoreReport(a);
   const s = a.snoreAnalysis || {},
     unit = s.analysisVersion === 2 ? ' dBFS' : ' dB（估算）';
   return (

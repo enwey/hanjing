@@ -274,18 +274,18 @@ try {
   check(
     'recording streams real PCM levels',
     await ev(
-      `Number.isFinite(Number(document.querySelector('#record-level').textContent)) && Number(document.querySelector('#record-level').textContent)<0`,
+      `Number.isFinite(Number(document.querySelector('#record-level').textContent)) && Number(document.querySelector('#record-level').textContent)>=30`,
     ),
   );
-  await ev(`document.querySelector('[data-action="record-stop"]').click()`);
-  await wait(`!document.querySelector('[data-action="record-save"]').hidden`);
+  await ev(`document.querySelector('[data-action="record-pause"]').click()`);await wait(`!document.querySelector('[data-action="record-stop"]').hidden`);await ev(`document.querySelector('[data-action="record-stop"]').click()`);
+  await wait(`location.hash.includes('snore-1') && !!document.querySelector('.snore-report')`);
   check(
     'recording analysis uses worker and produces a result',
     await ev(
-      `document.querySelector('#record-result').textContent.includes('本次录音结果') && document.querySelector('[data-action="record-stop"]').disabled`,
+      `document.querySelector('.snore-report').textContent.includes('鼾声数据详情')`,
     ),
   );
-  await ev(`document.querySelector('[data-action="record-save"]').click()`);
+  // Ending recording now automatically creates the report and navigates.
   await wait(`location.hash.includes('snore-1')`);
   check(
     'recording save matches mini API contract',

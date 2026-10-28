@@ -75,6 +75,14 @@ function isTokenExpired(token) {
 }
 
 function readStoredAccessToken() {
+  if (wx.getStorageSync(AUTH_MODE_STORAGE_KEY) === 'local') {
+    const env = require('../common/config/env');
+    if (!env.canUseLocalApi || env.getCurrentApiEnv() !== 'local') {
+      wx.removeStorageSync('access_token');
+      wx.removeStorageSync(AUTH_MODE_STORAGE_KEY);
+      return '';
+    }
+  }
   const rawToken = wx.getStorageSync('access_token') || '';
   const token = normalizeAccessToken(rawToken);
   if (!token) {
@@ -470,6 +478,24 @@ const sessionStore = {
         hasPhone: Boolean(payload.user && payload.user.phone),
       },
     });
+    await bindPendingInviteCode();
+    return payload;
+  },
+  async localLogin(options = {}) {
+    const env = require('../common/config/env');
+    if (!env.canUseLocalApi || env.getCurrentApiEnv() !== 'local') throw new Error('仅支持开发者工具本地环境');
+    const revision = sessionRevision;
+    assertLoginActive(options, revision);
+    const response = await require('../api/modules/auth-api').localLogin(options);
+    assertLoginActive(options, revision);
+    if (env.getCurrentApiEnv() !== 'local') throw new Error('环境已切换，请重新登录');
+    const payload = response.data || response;
+    if (!normalizeAccessToken(payload.access_token) || isTokenExpired(payload.access_token)) throw new Error('本地登录返回无效登录状态');
+    const identity = parseJwtPayload(payload.access_token);
+    this.switchAccount('local:' + ((payload.user && payload.user.id) || identity.id));
+    this.setAccessToken(payload.access_token);
+    this.setAuthMode('local');
+    this.state.profile = payload.user || null;
     await bindPendingInviteCode();
     return payload;
   },

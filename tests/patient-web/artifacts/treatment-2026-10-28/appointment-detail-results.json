@@ -1,0 +1,50 @@
+[
+  {
+    "name": "status and doctor",
+    "ok": true
+  },
+  {
+    "name": "change and cancel buttons",
+    "ok": true
+  },
+  {
+    "name": "conditional fees and symptoms",
+    "ok": true
+  },
+  {
+    "name": "desktop two columns",
+    "ok": true
+  },
+  {
+    "name": "mobile no overflow",
+    "ok": true
+  },
+  {
+    "name": "completed clinical data and readonly evaluation",
+    "ok": true
+  },
+  {
+    "name": "cutoff hides unavailable operations",
+    "ok": true
+  },
+  {
+    "name": "pending payment contact notice",
+    "ok": true
+  },
+  {
+    "name": "reschedule submits once to original appointment and returns detail",
+    "ok": true
+  },
+  {
+    "name": "cancel uses mini confirmation without mandatory reason",
+    "ok": true
+  },
+  {
+    "name": "dismiss sends no cancellation",
+    "ok": true
+  },
+  {
+    "name": "confirmed cancellation calls API and refreshes detail",
+    "ok": true
+  }
+]

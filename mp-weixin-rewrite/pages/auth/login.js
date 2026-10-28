@@ -157,6 +157,7 @@ Page({
     loginTraceId: '',
     copy: COPY,
     showEnvSwitcher: false,
+    showLocalLogin: false,
     currentApiEnvLabel: '',
     currentApiBaseUrl: '',
   },
@@ -207,13 +208,14 @@ Page({
     const options = envConfig.getApiEnvOptions();
     const currentOption = options.find((item) => item.key === currentApiEnv) || options[0] || {};
     this.setData({
+      showLocalLogin: Boolean(envConfig.canUseLocalApi && currentApiEnv === 'local'),
       currentApiEnvLabel: currentOption.label || '未设置',
       currentApiBaseUrl: currentOption.baseUrl || envConfig.getApiBaseUrl(),
     });
   },
 
   handleApiEnvSwitch() {
-    if (!envConfig.canUseLocalApi) {
+    if (this.data.submitting || !envConfig.canUseLocalApi) {
       return;
     }
     const options = envConfig.getApiEnvOptions();
@@ -222,6 +224,7 @@ Page({
       success: (result) => {
         const selected = options[result.tapIndex];
         if (!selected) return;
+        if (selected.key !== envConfig.getCurrentApiEnv()) sessionStore.clearLoginState();
         envConfig.setApiEnvOverride(selected.key);
         this.syncApiEnvInfo();
         wx.showToast({
@@ -363,6 +366,23 @@ Page({
     this._loginRedirectTimer = setTimeout(() => {
       this.navigateAfterLogin();
     }, 1200);
+  },
+
+  async onLocalLogin() {
+    if (this.data.submitting || this._unloaded) return;
+    if (!envConfig.canUseLocalApi || envConfig.getCurrentApiEnv() !== 'local') return;
+    if (!this.data.agreed) return wx.showToast({ title: TOAST.needAgreement, icon: 'none' });
+    this.setData({ submitting: true });
+    this.showLoginLoading('本地模拟登录中');
+    try {
+      await sessionStore.localLogin({ isCancelled: () => this._unloaded });
+      await this.completeLogin({ source: 'local_login' });
+    } catch (error) {
+      this.hideLoginLoading();
+      if (this._unloaded) return;
+      this.setData({ submitting: false });
+      wx.showModal({ title: '本地模拟登录失败', content: buildLoginErrorMessage(error), showCancel: false });
+    }
   },
 
   async onGetPhoneNumber(event) {

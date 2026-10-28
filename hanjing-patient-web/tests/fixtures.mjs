@@ -142,8 +142,10 @@ export const assessments = [
   },
 ];
 export const fixtures = {
+  '/settings/booking': {requireDeposit:false,depositAmount:5000,cancelLimit:'就诊前2小时'},
   '/stores': [store],
   '/doctors': [doctor],
+  '/schedules/dates': ['2099-01-01','2099-01-02'],
   '/schedules': [
     {
       id: 31,
@@ -228,6 +230,7 @@ export const fixtures = {
   })),
   '/treatment/records': { list: [device] },
   '/treatment/record': device,
+  '/treatment/wearing-summary': { weekWorn: 5, weekAvg: 6.5, weekCompliance: 71, streak: 3, wornDays: 17, avgDuration: 6.2, monthCompliance: 57 },
   '/treatment/sleep-report': {
     hasData: true,
     weekAvg: 6.5,

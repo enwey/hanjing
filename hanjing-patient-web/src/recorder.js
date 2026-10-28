@@ -1,3 +1,4 @@
+import {livePcmFrame} from './generated/mini-analysis.js';
 export class Recorder {
   constructor(onLevel) {
     this.onLevel = onLevel;
@@ -26,7 +27,9 @@ export class Recorder {
         this.stream.getTracks().forEach((t) => t.stop());
         return;
       }
-      this.context = new AudioContext();
+      // Match the mini-program's 8 kHz mono PCM capture where supported.
+      try { this.context = new AudioContext({sampleRate:8000}); }
+      catch(error) { if(error.name!=='NotSupportedError')throw error;this.context=new AudioContext(); }
       await this.context.audioWorklet.addModule('/pcm-capture.js');
       if (this.disposed) {
         await this.context.close();
@@ -40,20 +43,13 @@ export class Recorder {
         this.chunks.push(chunk);
         this.length += chunk.length;
         const now = performance.now();
-        if (!this.lastLevel || now - this.lastLevel >= 160) {
+        if (!this.lastLevel || now - this.lastLevel >= 120) {
           this.lastLevel = now;
-          let sum = 0;
-          for (const value of chunk) sum += value * value;
-          const dbfs = Math.max(
-            -96,
-            Math.min(
-              0,
-              20 * Math.log10(Math.max(Math.sqrt(sum / chunk.length), 1e-8)),
-            ),
-          );
+          const pcm=Int16Array.from(chunk,v=>Math.max(-32768,Math.min(32767,Math.round(v*32768))));
+          const {decibel,audioLevels}=livePcmFrame(pcm);
           this.onLevel({
             seconds: Math.floor(this.length / this.context.sampleRate),
-            dbfs,
+            decibel,audioLevels,
           });
         }
       };
@@ -63,12 +59,12 @@ export class Recorder {
       await this.context.resume();
       this.running = true;
       this.stream.getAudioTracks()[0].addEventListener('ended', () => {
-        if (this.running) {
+        if (this.running || this.paused) {
           this.running = false;
           this.dispose();
           this.onLevel({
             seconds: 0,
-            dbfs: -96,
+            decibel:30,audioLevels:new Array(16).fill(6),
             error: '麦克风已断开，请重新录音',
           });
         }
@@ -83,6 +79,18 @@ export class Recorder {
             : error.message || '无法启动录音',
       );
     }
+  }
+  async pause() {
+    if(!this.running||this.stopping||this.disposed)return;
+    this.running=false;
+    await this.context.suspend();
+    this.paused=true;
+  }
+  async resume() {
+    if(!this.paused||this.stopping||this.disposed)return;
+    await this.context.resume();
+    this.running=true;
+    this.paused=false;
   }
   async stop() {
     this.stopping = true;

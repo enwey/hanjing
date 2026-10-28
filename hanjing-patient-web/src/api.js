@@ -1,14 +1,22 @@
+import { isLocalMockLoginAvailable } from './local-login.js';
 const KEY = 'xingkangming.patient.pc.session';
 export const session = {
   token() {
+    if (sessionStorage.getItem(KEY + '.mode') === 'local' && !isLocalMockLoginAvailable()) {
+      this.clear();
+      return '';
+    }
     return sessionStorage.getItem(KEY) || '';
   },
-  save(token) {
+  save(token, { local = false } = {}) {
     if (!token) throw new Error('登录响应缺少凭据');
     sessionStorage.setItem(KEY, token);
+    if (local) sessionStorage.setItem(KEY + '.mode', 'local');
+    else sessionStorage.removeItem(KEY + '.mode');
   },
   clear() {
     sessionStorage.removeItem(KEY);
+    sessionStorage.removeItem(KEY + '.mode');
   },
 };
 export class ApiError extends Error {

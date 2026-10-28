@@ -32,7 +32,14 @@ function verifyRealName(realName, idCard) {
   return request({ url: '/user/verify-realname', method: 'POST', data: { realName, idCard }, failMessage: '实名认证失败' });
 }
 
+function localLogin(options = {}) {
+  const env = require('../../common/config/env');
+  if (!env.canUseLocalApi || env.getCurrentApiEnv() !== 'local') return Promise.reject(new Error('仅支持开发者工具本地环境'));
+  return request({ url: '/auth/local-login', method: 'POST', data: {}, failMessage: '本地模拟登录失败', traceId: options.traceId });
+}
+
 module.exports = {
+  localLogin,
   wxLogin,
   passwordLogin,
   sendPhoneCode,

@@ -1,0 +1,22 @@
+[
+  {
+    "name": "corner click opens same post",
+    "ok": true
+  },
+  {
+    "name": "summary click opens same post",
+    "ok": true
+  },
+  {
+    "name": "author click opens same post",
+    "ok": true
+  },
+  {
+    "name": "keyboard Enter opens post",
+    "ok": true
+  },
+  {
+    "name": "read more keeps its own link target",
+    "ok": true
+  }
+]

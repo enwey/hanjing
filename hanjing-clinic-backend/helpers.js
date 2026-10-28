@@ -1,3 +1,4 @@
+import { canUseLocalDevLogin } from './local-dev-login.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -299,7 +300,8 @@ export const authenticateWxToken = (req, res, next) => {
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err || !user || user.scope === 'asset' || !user.openid || !user.id) {
+    if (err || !user || user.scope === 'asset' || !user.openid || !user.id ||
+        (user.authSource === 'local-dev' && !canUseLocalDevLogin(req))) {
       return res.status(401).json({ code: 401, message: '未授权或登录过期' });
     }
     req.user = user;

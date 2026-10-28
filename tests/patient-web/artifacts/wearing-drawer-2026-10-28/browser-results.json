@@ -1,0 +1,82 @@
+[
+  {
+    "name": "real local PC login",
+    "ok": true
+  },
+  {
+    "name": "real empty treatment keeps six features",
+    "ok": true
+  },
+  {
+    "name": "real calendar and metrics",
+    "ok": true
+  },
+  {
+    "name": "opens on treatment without route change",
+    "ok": true
+  },
+  {
+    "name": "mini defaults seven hours and pain two",
+    "ok": true
+  },
+  {
+    "name": "body locked while drawer open",
+    "ok": true
+  },
+  {
+    "name": "small left corners and square right corners",
+    "ok": true
+  },
+  {
+    "name": "no custom duration input",
+    "ok": true
+  },
+  {
+    "name": "submit text centered on both axes",
+    "ok": true
+  },
+  {
+    "name": "submit uses project theme",
+    "ok": true
+  },
+  {
+    "name": "slider drag does not apply white input focus background",
+    "ok": true
+  },
+  {
+    "name": "selected duration unit matches selected text",
+    "ok": true
+  },
+  {
+    "name": "duration chips and VAS badge update",
+    "ok": true
+  },
+  {
+    "name": "Escape closes and unlocks scroll",
+    "ok": true
+  },
+  {
+    "name": "failed save keeps form inputs",
+    "ok": true
+  },
+  {
+    "name": "successful save closes and stays on treatment",
+    "ok": true
+  },
+  {
+    "name": "legacy route redirects to treatment drawer",
+    "ok": true
+  },
+  {
+    "name": "narrow drawer fits viewport",
+    "ok": true
+  },
+  {
+    "name": "footer stays visible and body scrolls",
+    "ok": true
+  },
+  {
+    "name": "cancel removes drawer",
+    "ok": true
+  }
+]

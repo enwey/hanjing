@@ -59,7 +59,7 @@ function harness(opts = {}) {
 const cases=[];
 const test=(name,fn)=>cases.push({name,fn});
 test('UI-01 initial consent/modal/submitting are false',()=>{const h=harness();assert.equal(h.page.data.agreed,false);assert.equal(h.page.data.submitting,false);assert.equal(Boolean(h.page.data.showPasswordLoginModal),false);});
-test('UI-02 template password masked and both submit methods guarded',()=>{const s=fs.readFileSync(path.join(root,'pages/auth/login.wxml'),'utf8');assert.ok(!s.includes('password'));assert.equal((s.match(/disabled="\{\{submitting\}\}"/g)||[]).length,2);});
+test('UI-02 template password masked and all submit buttons guarded',()=>{const s=fs.readFileSync(path.join(root,'pages/auth/login.wxml'),'utf8');assert.ok(!s.includes('password'));assert.equal((s.match(/disabled="\{\{submitting\}\}"/g)||[]).length,3);});
 test('UI-03 linked agreement/privacy pages registered and files exist',()=>{const h=harness();h.page.viewAgreement();h.page.viewPrivacy();const app=JSON.parse(fs.readFileSync(path.join(root,'app.json')));for(const [,url] of h.nav){assert.ok(app.pages.includes(url.slice(1)));assert.ok(fs.existsSync(path.join(root,url.slice(1)+'.wxml')));}});
 test('CONSENT-01 password modal blocked before agreement',()=>{const h=harness();assert.equal(typeof h.page.openPasswordLoginModal,'undefined');assert.equal(typeof h.page.closePasswordLoginModal,'undefined');assert.equal(h.page.data.showPasswordLoginModal,undefined);});
 test('CONSENT-02 agreement/revoke respected',()=>{const h=harness();h.page.handleAgreementChange({detail:{value:['agree']}});assert.equal(h.page.data.agreed,true);h.page.handleAgreementChange({detail:{value:[]}});assert.equal(h.page.data.agreed,false);});

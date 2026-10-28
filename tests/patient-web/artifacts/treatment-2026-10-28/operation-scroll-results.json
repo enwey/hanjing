@@ -1,0 +1,46 @@
+[
+  {
+    "name": "post-like updates without replacing content or jumping",
+    "ok": true
+  },
+  {
+    "name": "post-favorite updates without replacing content or jumping",
+    "ok": true
+  },
+  {
+    "name": "comment-like updates without replacing content or jumping",
+    "ok": true
+  },
+  {
+    "name": "like reflects new state",
+    "ok": true
+  },
+  {
+    "name": "failed like retains state and scroll",
+    "ok": true
+  },
+  {
+    "name": "comment submit retains scroll with refreshed data",
+    "ok": true
+  },
+  {
+    "name": "notification read retains scroll",
+    "ok": true
+  },
+  {
+    "name": "notification read-all retains scroll",
+    "ok": true
+  },
+  {
+    "name": "range switch retains scroll",
+    "ok": true
+  },
+  {
+    "name": "month switch retains scroll",
+    "ok": true
+  },
+  {
+    "name": "different route starts at top",
+    "ok": true
+  }
+]

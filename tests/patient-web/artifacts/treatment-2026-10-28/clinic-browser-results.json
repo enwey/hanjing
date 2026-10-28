@@ -1,0 +1,66 @@
+[
+  {
+    "name": "store heading has no duplicate count row",
+    "ok": true
+  },
+  {
+    "name": "stationary hover stable at cover",
+    "ok": true
+  },
+  {
+    "name": "stationary hover stable at edge",
+    "ok": true
+  },
+  {
+    "name": "stationary hover stable at body",
+    "ok": true
+  },
+  {
+    "name": "card hover leaves button color unchanged",
+    "ok": true
+  },
+  {
+    "name": "button hover changes only button color",
+    "ok": true
+  },
+  {
+    "name": "doctor heading has no duplicate count row",
+    "ok": true
+  },
+  {
+    "name": "real store opens filtered doctor list",
+    "ok": true
+  },
+  {
+    "name": "status distinguishes open closed and preparing",
+    "ok": true
+  },
+  {
+    "name": "preparing store cannot book",
+    "ok": true
+  },
+  {
+    "name": "failed store cover leaves mini placeholder",
+    "ok": true
+  },
+  {
+    "name": "doctor card keeps selected store",
+    "ok": true
+  },
+  {
+    "name": "doctor detail preserves booking params and real intro",
+    "ok": true
+  },
+  {
+    "name": "unscoped doctor detail keeps own store mappings",
+    "ok": true
+  },
+  {
+    "name": "doctor list has no narrow overflow",
+    "ok": true
+  },
+  {
+    "name": "store list has no narrow overflow",
+    "ok": true
+  }
+]

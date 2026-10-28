@@ -28,7 +28,14 @@
       </view>
 
       <button
-        wx:if="{{agreed}}"
+        wx:if="{{showLocalLogin}}"
+        class="auth-btn"
+        disabled="{{submitting}}"
+        loading="{{submitting}}"
+        bindtap="onLocalLogin"
+      >本地模拟登录</button>
+      <button
+        wx:elif="{{agreed}}"
         class="auth-btn"
         open-type="getPhoneNumber"
         disabled="{{submitting}}"

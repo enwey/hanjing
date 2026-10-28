@@ -89,14 +89,10 @@ export const kv = (pairs) =>
   `<dl class="detail-grid">${pairs.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v ?? '—')}</dd></div>`).join('')}</dl>`;
 export const records = (rows, render, msg) =>
   rows.length ? rows.map(render).join('') : empty(msg);
-export const patientSelect = (members, id = '') =>
-  select(
-    '就诊人',
-    'patientId',
-    [['', '请选择就诊人'], ...members.map((p) => [p.id, p.name])],
-    id,
-    'required data-patient-select',
-  );
+export const patientSelect = (members, id = '') => {
+ const selected=String(id || members.find(p=>p.relation==='self')?.id || members[0]?.id || '');
+ return `<div class="patient-options-bar"><div class="patient-options-main"><span class="patient-options-label">就诊人</span><select name="patientId" data-patient-select hidden aria-hidden="true" tabindex="-1">${members.map(p=>`<option value="${esc(p.id)}" ${String(p.id)===selected?'selected':''}>${esc(p.name)}</option>`).join('')}</select><div class="patient-options" role="group" aria-label="选择就诊人">${members.map(p=>`<button type="button" data-patient-option="${esc(p.id)}" aria-pressed="${String(p.id)===selected}">${esc(p.name)}</button>`).join('')}</div></div>${link('管理就诊人','family')}</div>`;
+};
 export const pageHead = (title, desc = '', actions = '') =>
   `<div class="pc-page-head"><div><h1>${esc(title)}</h1>${desc ? `<p>${esc(desc)}</p>` : ''}</div><div class="pc-actions">${actions}</div></div>`;
 export const errors = (text) =>

@@ -1,3 +1,4 @@
+import { canUseLocalDevLogin } from '../local-dev-login.js';
 import { getCurrentUserMembership, getMemberLevelRules, syncUserMembership } from '../membership.js';
 import { createPaidFulfillment } from '../paid-fulfillment.js';
 import { syncDirectChildrenSecondLevel } from '../distribution-relationships.js';
@@ -1480,6 +1481,22 @@ app.post('/api/v1/logs/mini-program', async (req, res) => {
   }
 });
 
+
+// Dedicated development account; never adopt, merge or overwrite a WeChat identity.
+app.post('/api/v1/auth/local-login', async (req, res) => {
+  if (!canUseLocalDevLogin(req)) return res.status(404).json({ code: 404, message: '接口不存在' });
+  const openid = 'local_devtools_dedicated_user_v1';
+  await run(`INSERT INTO users (openid, nickname, points) VALUES (?, ?, 0)
+    ON DUPLICATE KEY UPDATE openid = VALUES(openid)`, [openid, '本地测试用户']);
+  let user = await get('SELECT * FROM users WHERE openid = ?', [openid]);
+  if (!await getSelfPatientForUser(user.id)) await createDefaultSelfPatientForUser(user);
+  await syncUserMembership(user.id);
+  user = await get('SELECT * FROM users WHERE id = ?', [user.id]);
+  const payload = await buildMiniProgramLoginPayload(user);
+  payload.access_token = jwt.sign({ id: user.id, openid, authSource: 'local-dev' }, JWT_SECRET, { expiresIn: '8h' });
+  payload.expires_in = 28800;
+  res.json({ code: 0, message: 'success', data: payload });
+});
 
 // 1. WeChat Login
 app.post('/api/v1/auth/wx-login', async (req, res) => {
