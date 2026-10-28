@@ -27,7 +27,7 @@ export function drawerForm({patientId,patientName,date,record}) {
   const duration=record?.wearDuration ?? 7,score=record?painValue(record)??2:2,meta=painMeta(score),locations=selectedLocations(record);
   return `<form class="checkin-form" data-checkin-form>
     <div class="checkin-body">
-      <div class="checkin-context"><div><small>当前就诊人</small><strong>${esc(patientName)}</strong></div><label><span>打卡日期</span><input type="date" name="date" value="${esc(date)}" max="${today()}" required></label></div>
+      <div class="checkin-context"><div><small>当前就诊人</small><strong>${esc(patientName)}</strong></div><label><span>打卡日期</span><input type="date" name="date" value="${esc(date)}" max="${today()}" required aria-description="请选择打卡日期，不晚于今天"><small class="input-hint">请选择打卡日期，不晚于今天</small></label></div>
       <section class="checkin-section"><div class="checkin-section-head"><h3>佩戴时长</h3><span><b data-duration-value>${esc(duration)}</b> 小时</span></div>
         <div class="checkin-duration-options" role="group" aria-label="快捷选择佩戴时长">${Array.from({length:10},(_,i)=>i+1).map(h=>`<label><input type="radio" name="quickDuration" value="${h}" ${Number(duration)===h?'checked':''}><span>${h}<small>h</small></span></label>`).join('')}</div>
         <input type="hidden" name="wearDuration" value="${esc(duration)}">

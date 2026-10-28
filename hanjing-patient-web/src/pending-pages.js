@@ -1,3 +1,4 @@
+import { getEssLevelInfo } from "./ess-report.js";
 import {
   esc,
   btn,
@@ -32,8 +33,6 @@ export const pendingRoutes = new Set([
   "device",
   "medical",
   "publish",
-  "live",
-  "room",
   "checkout",
   "orders",
   "order",
@@ -44,13 +43,7 @@ export const pendingRoutes = new Set([
   "membership",
   "security",
   "notifications",
-  "coupons",
   "service",
-  "distribution",
-  "team",
-  "commissions",
-  "withdraws",
-  "withdraw",
 ]);
 const stats = (pairs) =>
   `<div class="parity-stats">${pairs.map(([label, value]) => `<article><span>${esc(label)}</span><strong>${esc(value ?? "—")}</strong></article>`).join("")}</div>`;
@@ -90,16 +83,26 @@ const progress = (value, max = 100) =>
   `<div class="parity-progress"><i style="width:${limited((Number(value) / max) * 100)}%"></i></div>`;
 function reportInsights(r) {
   const out = [];
-  if (r.compliance >= 85) out.push("佩戴依从率较高，当前治疗执行情况良好。");
+  if (r.compliance >= 85) out.push(["表现良好", "佩戴依从率较高，当前治疗执行情况良好。"]);
   else if (r.compliance < 60)
-    out.push("佩戴依从率偏低，建议固定佩戴时间，提高连续使用天数。");
-  if (r.weekAvg >= 7) out.push("平均佩戴时长已达到理想区间，可继续保持。");
+    out.push(["需要关注", "佩戴依从率偏低，建议固定佩戴时间，提高连续使用天数。"]);
+  if (r.weekAvg >= 7) out.push(["表现良好", "平均佩戴时长已达到理想区间，可继续保持。"]);
   else if (r.weekAvg < 5)
-    out.push("平均佩戴时长偏低，建议逐步延长到每晚 6 到 8 小时。");
+    out.push(["需要关注", "平均佩戴时长偏低，建议逐步延长到每晚 6 到 8 小时。"]);
   if (r.avgPainScore >= 4)
-    out.push("平均痛感偏高，建议预约医生评估当前设备参数。");
-  out.push("建议每周至少佩戴 6 晚，并持续观察趋势变化。");
+    out.push(["需要关注", "平均痛感偏高，建议预约医生评估当前设备参数。"]);
+  out.push(["建议提醒", "建议每周至少佩戴 6 晚，并持续观察趋势变化。"]);
   return out;
+}
+export function assessmentDescription(record) {
+  const analysis = record.snoreAnalysis || record.analysis || {};
+  const recommendation = record.recommendation || analysis.recommendation;
+  if (recommendation) return recommendation;
+  const score = record.essScore;
+  if (record.type === "ess" && score !== null && score !== undefined && score !== "" && Number.isFinite(Number(score)) && Number(score) >= 0 && Number(score) <= 24) {
+    return getEssLevelInfo(Number(score)).desc;
+  }
+  return "";
 }
 export async function pendingPage(c, original, titles) {
   if (!pendingRoutes.has(c.page)) return original;
@@ -108,7 +111,7 @@ export async function pendingPage(c, original, titles) {
     filter = p.get("filter") || "",
     patientId = c.patientId || p.get("patientId") || "",
     q = query({ patientId }),
-    head = (desc = "", actions = "") => pageHead(titles[c.page], desc, actions);
+    head = (desc = "", actions = "") => pageHead(titles[c.page], desc, actions || (["membership","notifications","security","service"].includes(c.page) ? link("个人中心","profile") : ""));
   // Preserve the selected patient control produced by the existing scoped renderer.
   if (
     c.members &&
@@ -136,11 +139,18 @@ export async function pendingPage(c, original, titles) {
       ) +
       records(
         shown,
-        (a) =>
-          panel(
-            a.type === "ess" ? "ESS嗜睡量表" : "AI鼾声分析",
-            `<div class="parity-record-summary"><div><p>${esc(a.createdAt || "")}</p><strong>${esc(a.type === "ess" ? (a.essScore ?? "—") : (a.snoreAnalysis?.riskScore ?? "—"))} <small>分</small></strong><p>${esc(a.type === "ess" ? { normal: "正常", mild: "轻度嗜睡", moderate: "中度嗜睡", severe: "重度嗜睡" }[a.essLevel] || a.essLevel || "" : { normal: "低风险", low: "低风险", mild: "轻度风险", moderate: "中风险", high: "高风险", severe: "高风险" }[a.snoreAnalysis?.riskLevel] || "")}</p></div>${link("查看报告", "report", { id: a.id, patientId })}</div>`,
-          ),
+        (a) => {
+          const isEss = a.type === "ess";
+          const analysis = a.snoreAnalysis || a.analysis || {};
+          const level = (isEss ? a.essLevel : analysis.riskLevel) || "normal";
+          const label = (isEss
+            ? {normal:"正常", mild:"轻度嗜睡", moderate:"中度嗜睡", severe:"重度嗜睡"}
+            : {normal:"正常", low:"低风险", mild:"轻度风险", medium:"中度风险", moderate:"中度风险", high:"重度风险", severe:"重度风险"})[level] || "正常";
+          const color = ["severe", "high"].includes(level) ? "#ef4444" : ["moderate", "medium"].includes(level) ? "#f59e0b" : level === "mild" ? "#2457e6" : "#22c55e";
+          const summary = isEss ? `总分 ${a.essScore ?? "—"} 分` : `录音 ${analysis.duration || 0} 秒，鼾声占比 ${analysis.snoreRate || 0}%`;
+          const description = assessmentDescription(a);
+          return `<a class="assessment-record-card parity-record-summary" href="#/report${query({id:a.id,patientId})}" style="--record-level-color:${color}"><div class="assessment-record-left"><span class="assessment-record-dot" aria-hidden="true"></span><div class="assessment-record-info"><span class="assessment-record-type">${isEss ? "ESS 嗜睡量表" : "AI 鼾声分析"}</span><span class="assessment-record-desc">${esc(summary)}${description ? `，<span class="assessment-description">${esc(description)}</span>` : ""}</span><time class="assessment-record-date">${esc(a.createdAt || "")}</time></div></div><div class="assessment-record-right"><span class="assessment-record-level">${esc(label)}</span><span class="assessment-record-arrow" aria-hidden="true">›</span></div></a>`;
+        },
         "暂无评估记录",
       );
   }
@@ -159,7 +169,8 @@ export async function pendingPage(c, original, titles) {
       const range = p.get("range") === "month" ? "month" : "week",
         r = await get("/treatment/sleep-report" + q + "&range=" + range);
       body += `<nav class="parity-tabs treatment-range-options">${["week", "month"].map((v) => link(v === "week" ? "最近7天" : "最近30天", "treatmentReport", { patientId, range: v }, `btn secondary${range === v ? " selected" : ""}`).replace("<a ", range === v ? '<a aria-current="true" ' : "<a ")).join("")}</nav>`;
-      if (!r?.hasData)
+      const hasData = typeof r?.hasData === "boolean" ? r.hasData : !!(r && ((r.trend || []).length || [r.compliance, r.weekAvg, r.avgPainScore, r.streak, r.score].some(v => Number(v) > 0)));
+      if (!hasData)
         body += empty(
           "暂无睡眠报告，完成佩戴打卡后查看。",
           btn("今日打卡", "wearing", { patientId }),
@@ -176,27 +187,20 @@ export async function pendingPage(c, original, titles) {
                   : score >= 60
                     ? "一般"
                     : "需改善";
-        body +=
-          panel(
-            "睡眠健康评分",
-            `<div class="parity-score"><strong>${esc(r.score ?? "—")}<small> / 100 分</small></strong><b>${level}</b></div>${progress(r.score)}<p>${esc(c.members?.find((m) => String(m.id) === String(patientId))?.name || "当前就诊人")} · ${range === "week" ? "过去7天" : "过去30天"}</p>`,
-          ) +
-          stats([
-            ["平均时长", `${r.weekAvg ?? "—"} h`],
-            ["依从率", `${r.compliance ?? "—"}%`],
-            ["平均痛感", `${r.avgPainScore ?? "—"} / 10`],
-            ["连续天数", r.streak],
-          ]) +
-          panel(
-            "趋势分布",
-            `<div class="parity-chart">${(r.trend || []).map((t) => `<div title="${esc(t.date)}：${esc(t.score)}分"><span>${esc(t.score)}</span><div><i style="height:${limited(t.score)}%"></i></div><small>${esc(String(t.date).slice(-5))}</small></div>`).join("")}</div>`,
-          ) +
-          panel(
-            "报告建议",
-            reportInsights(r)
-              .map((t) => `<p class="parity-insight">${esc(t)}</p>`)
-              .join(""),
-          );
+        const [scoreBg, scoreColor] = score === null ? ["#f8fafc", "#64748b"] : score >= 90 ? ["#D3F5E3", "#1A9D5C"] : score >= 75 ? ["#EEF4FF", "#3B6BF5"] : score >= 60 ? ["#FFFBEB", "#F59E0B"] : ["#FEE2E2", "#EF4444"];
+        const member = c.members?.find(m => String(m.id) === String(patientId));
+        const relation = {self:"本人",spouse:"配偶",child:"子女",parent:"父母",sibling:"兄弟姐妹",other:"其他"}[member?.relation];
+        body += `<div class="sleep-score-card" style="--sleep-score-bg:${scoreBg};--sleep-score-color:${scoreColor}">` +
+          panel("睡眠健康评分", `<div class="parity-score"><strong>${esc(r.score ?? "—")}<small> / 100 分</small></strong><b>${level}</b></div>${progress(r.score)}<p>${esc(member?.name || "当前就诊人")}${relation ? `（${relation}）` : ""} · ${range === "week" ? "过去7天" : "过去30天"}</p>`) + `</div><h2 class="sleep-metrics-heading">核心指标</h2>` +
+          `<div class="parity-stats sleep-metrics">${[
+            ["平均时长", `${r.weekAvg ?? "—"} h`, r.weekAvg, 8, "#1A9D5C"],
+            ["依从率", `${r.compliance ?? "—"}%`, r.compliance, 100, "#3B6BF5"],
+            ["平均痛感", `${r.avgPainScore ?? "—"} / 10`, r.avgPainScore, 10, "#F59E0B"],
+            ["连续天数", r.streak ?? "—", r.streak, 30, "#3B6BF5"],
+          ].map(([label,value,amount,max,color]) => `<article style="--metric-color:${color}"><strong>${esc(value)}</strong><span>${label}</span>${progress(amount,max)}</article>`).join("")}</div>` +
+          `<div class="sleep-report-columns">` + panel("趋势分布",
+            `<div class="parity-chart sleep-report-chart">${(r.trend || []).map((t,index,trend) => `<div title="${esc(t.date)}：${esc(t.score)}分"><div><i style="height:${Math.max(8,limited(t.score))}%;background:${Number(t.score) >= 80 ? "#1A9D5C" : Number(t.score) >= 60 ? "#F59E0B" : "#EF4444"}"></i></div><small>${range === "week" || index === 0 || index === trend.length-1 || index % 5 === 0 ? esc(String(t.date).slice(-5)) : ""}</small></div>`).join("")}</div>`
+          ) + panel("报告建议", reportInsights(r).map(([title,text]) => `<div class="parity-insight"><h3>${title}</h3><p>${esc(text)}</p></div>`).join("")) + `</div>`;
       }
     } else if (!record)
       body += empty(
@@ -298,47 +302,24 @@ export async function pendingPage(c, original, titles) {
       );
   }
   if (c.page === "order") {
-    const a = c.order,
-      s = a.shippingAddress || {};
-    body =
-      head(a.orderNo, link("全部订单", "orders")) +
-      panel(
-        "订单状态",
-        `${status(a.status)}${a.status === "pending" ? "<p>订单待支付，请联系门店完成付款。</p>" : ""}`,
-      ) +
-      panel("商品信息", orderItems(a.items)) +
-      panel(
-        "金额明细",
-        kv([
-          ["商品总价", money(a.totalAmount)],
-          ["优惠减免", money(a.discountAmount)],
-          [a.payAt ? "实付金额" : "应付金额", money(a.payAmount)],
-        ]),
-      ) +
-      panel(
-        "订单信息",
-        kv([
-          ["订单编号", a.orderNo],
-          ["下单时间", a.createdAt],
-          ["支付时间", a.payAt],
-          [
-            "支付方式",
-            { wechat: "微信支付", cash: "现金", balance: "余额" }[
-              a.payMethod
-            ] || a.payMethod,
-          ],
-          ["配送方式", s.deliveryMethod === "pickup" ? "门店自提" : "快递配送"],
-          ["自提门店", s.storeName],
-          ["营业时间", s.storeBusinessHours],
-          ["收货人", s.contactName || s.receiver],
-          ["联系电话", s.phone],
-          ["地址", s.detailAddress || s.detail],
-          ["快递公司", s.express_company],
-          ["运单号", s.tracking_number],
-          ["退款原因", s.refund_reason],
-        ]),
-      ) +
-      `<div class="pc-actions">${a.status === "pending" ? action("取消订单", "cancel-order") : ""}${a.status === "shipped" ? action("确认收货", "receive-order") : ""}${["paid", "shipping", "shipped", "completed"].includes(a.status) ? action("申请退款", "refund-order") : ""}${action("查看物流", "logistics")}</div><div id="logistics"></div>`;
+    const a = c.order, s = a.shippingAddress || {}, pickup = s.deliveryMethod === "pickup";
+    const stage = {pending:0,paid:1,shipping:1,shipped:2,completed:3}[a.status];
+    const steps = pickup ? ["提交订单","等待取货","商品交付","订单完成"] : ["提交订单","准备发货","商品发出","订单完成"];
+    const notes = {pending:"订单待支付，请联系门店完成付款。",paid:pickup?"订单已付款，请按门店安排取货。":"订单已付款，等待安排发货。",shipping:"商品正在准备中，请留意配送信息。",shipped:"商品已发出，收到后可确认收货。",completed:"订单已完成，感谢您的信任。",cancelled:"订单已取消。",refund_pending:"退款申请已提交，等待审核。",refunding:"退款处理中，请留意订单状态。",refunded:"订单已退款。"};
+    const info = pairs => kv(pairs.filter(([,value])=>value!==undefined&&value!==null&&value!==""));
+    body = head(a.orderNo, link("全部订单", "orders")) + `<div class="order-detail-layout">
+      <section class="order-status-banner"><div><span class="order-section-label">订单状态</span><h2>${esc(labels[a.status] || a.status || "—")}</h2>${notes[a.status]?`<p>${esc(notes[a.status])}</p>`:""}</div>${stage!==undefined?`<ol class="order-progress" aria-label="订单进度">${steps.map((label,i)=>`<li class="${i<=stage?"is-done":""}" ${i===stage?'aria-current="step"':""}><i aria-hidden="true"></i><span>${label}</span></li>`).join("")}</ol>`:""}</section>
+      <div class="order-detail-columns"><div class="order-detail-main">
+      ${panel("商品信息",orderItems(a.items))}
+      ${panel(pickup?"自提信息":"配送信息",info([
+        ["配送方式",pickup?"门店自提":"快递配送"],["自提门店",s.storeName],["营业时间",s.storeBusinessHours],
+        ["联系人",s.contactName||s.receiver],["联系电话",s.phone],[pickup?"自提地址":"收货地址",s.detailAddress||s.detail],
+        ["快递公司",s.express_company],["运单号",s.tracking_number]
+      ]))}
+      ${panel("订单信息",info([["订单编号",a.orderNo],["下单时间",a.createdAt],["支付时间",a.payAt],["支付方式",{wechat:"微信支付",cash:"现金",balance:"余额"}[a.payMethod]||a.payMethod],["退款原因",s.refund_reason]]))}
+      <div id="logistics"></div></div>
+      <aside class="order-detail-summary">${panel("金额明细",`<div class="order-amount-row"><span>商品总价</span><strong>${money(a.totalAmount)}</strong></div>${Number(a.discountAmount)>0?`<div class="order-amount-row"><span>优惠减免</span><strong>−${money(a.discountAmount)}</strong></div>`:""}<div class="order-amount-total"><span>${a.payAt?"实付金额":"应付金额"}</span><strong>${money(a.payAmount)}</strong></div><div class="order-detail-actions">${a.status==="pending"?action("取消订单","cancel-order"):""}${a.status==="shipped"?action("确认收货","receive-order"):""}${["paid","shipping","shipped","completed"].includes(a.status)?action("申请退款","refund-order"):""}${action("查看物流","logistics")}</div>`)}
+      </aside></div></div>`;
   }
   if (c.page === "membership") {
     const info = await get("/user/member-info"),
@@ -381,7 +362,7 @@ export async function pendingPage(c, original, titles) {
     body =
       head(
         `${unread} 条未读`,
-        unread ? action("全部标为已读", "read-all") : "",
+        link("个人中心", "profile") + (unread ? action("全部标为已读", "read-all") : ""),
       ) +
       records(
         rows,
@@ -389,54 +370,10 @@ export async function pendingPage(c, original, titles) {
           panel(
             "",
             `<div class="pc-list-row"><div><h3>${esc(a.title)} ${a.isRead ? "" : '<span class="badge">未读</span>'}</h3>${multiline(a.content)}<small>${esc(a.createdAt)}</small></div>${a.isRead ? "" : action("标为已读", "read", `data-id="${esc(a.id)}"`)}</div>`,
-            a.isRead ? "" : "parity-unread",
+            a.isRead ? "account-notice" : "account-notice parity-unread",
           ),
         "暂无消息",
       );
-  }
-  if (c.page === "live") {
-    const rows = list(await get("/live/rooms"));
-    body =
-      head("专家科普与睡眠健康分享。") +
-      tabs(
-        "live",
-        [
-          ["", "全部"],
-          ["live", "直播中"],
-          ["upcoming", "预告"],
-          ["replay", "回放"],
-        ],
-        filter,
-      ) +
-      `<div class="pc-grid two">${records(
-        rows.filter((r) => !filter || r.status === filter),
-        (a) =>
-          panel(
-            "",
-            `${image(a.cover, a.title, "article-cover")}<div class="pc-list-row">${a.status === "replay" ? badge("回放") : badge(a.status)}<small>${esc(a.startTime)}</small></div><h2>${esc(a.title)}</h2><p>${esc(a.anchorName)}${a.viewerCount != null ? " · " + esc(a.viewerCount) + "人观看" : ""}</p><p>${(a.tags || []).map((t) => `<span class="badge">${esc(t)}</span>`).join("")}</p>${link("查看详情", "room", { id: a.id })}`,
-          ),
-        "暂无直播",
-      )}</div>`;
-  }
-  if (c.page === "room") {
-    const a = await get("/live/rooms/" + encodeURIComponent(p.get("id") || "")),
-      video = safeUrl(a.replayUrl);
-    body =
-      head("", link("直播中心", "live")) +
-      panel(
-        a.title,
-        `${a.status === "replay" ? badge("回放") : badge(a.status)}<p>${esc(a.anchorName)} · ${esc(a.startTime)}</p>${a.viewerCount != null ? `<p>${esc(a.viewerCount)}人观看</p>` : ""}${multiline(a.description)}${video ? `<video controls preload="metadata" src="${esc(video)}" poster="${esc(safeUrl(a.cover))}"></video>` : '<p class="notice">请在微信小程序直播中心打开对应直播间观看。</p>'}`,
-      ) +
-      (Array.isArray(a.products) && a.products.length
-        ? panel(
-            "直播好物",
-            records(
-              a.products,
-              (i) =>
-                `<div class="pc-list-row"><h3>${esc(i.name)}</h3><strong>${money(i.price)}</strong>${link("查看商品", "product", { id: i.productId || i.id })}</div>`,
-            ),
-          )
-        : "");
   }
   if (c.page === "profile") {
     const serviceUnread = Number((await get("/im/unread-count"))?.unread || 0);
@@ -448,11 +385,13 @@ export async function pendingPage(c, original, titles) {
       panel(
         "",
         `<div class="profile-heading">${image(a.avatar, a.nickname, "avatar")}<div><h2>${esc(a.nickname || "患者")}</h2><p>${esc(a.memberLevelTitle || "普通会员")} · ${esc(a.phone || "未绑定手机")}</p></div>${link("编辑资料", "editProfile")}</div>`,
+        "account-profile-card",
       ) +
       (!a.birthday || !a.gender
         ? panel(
             "完善资料",
             `<div class="pc-list-row"><p>完善资料，有助于客服和门诊更好地服务你。</p>${link("去完善", "editProfile")}</div>`,
+            "account-setup-card",
           )
         : "") +
       [
@@ -471,7 +410,6 @@ export async function pendingPage(c, original, titles) {
           [
             ["我的订单", "orders"],
             ["会员权益", "membership"],
-            ["优惠券", "coupons"],
             [
               "消息通知" + (unread ? " · " + unread + "条未读" : ""),
               "notifications",
@@ -484,10 +422,9 @@ export async function pendingPage(c, original, titles) {
           ],
         ],
         [
-          "账号与推广",
+          "账号设置",
           [
             ["账号安全", "security"],
-            ["我的推广", "distribution"],
           ],
         ],
       ]
@@ -495,13 +432,14 @@ export async function pendingPage(c, original, titles) {
           panel(
             title,
             `<div class="parity-entry-grid">${items.map(([title, target]) => link(title, target)).join("")}</div>`,
+            "account-menu-card",
           ),
         )
         .join("");
   }
   if (c.page === "family") {
     body =
-      head("本人及家庭成员的就诊资料。", btn("新增就诊人", "member")) +
+      head("本人及家庭成员的就诊资料。", link("个人中心","profile") + btn("新增就诊人", "member")) +
       `<div class="pc-grid two">${records(
         c.members || [],
         (a) =>
@@ -524,6 +462,7 @@ export async function pendingPage(c, original, titles) {
                 ["上次就诊", a.lastVisit],
               ],
             )}${a.hasSnore ? '<p class="badge">有打鼾</p>' : ""}<div>${link("查看与编辑", "member", { id: a.id })}</div>`,
+            "account-member-card",
           ),
         "暂无已关联就诊人",
       )}</div>`;
@@ -553,39 +492,6 @@ export async function pendingPage(c, original, titles) {
   }
   if (c.page === "medical") {
     body = body.replaceAll("上传病历图片", "补充病历图片");
-  }
-  if (c.page === "coupons") {
-    const mine = list(await get("/user/coupons" + query({ status: "all" })));
-    body =
-      head("查看优惠券及积分兑换权益。") +
-      tabs(
-        "coupons",
-        [
-          ["", "全部"],
-          ["active", "可使用"],
-          ["used", "已使用"],
-          ["expired", "已过期"],
-        ],
-        filter,
-      ) +
-      panel(
-        "我的优惠券",
-        `<div class="pc-grid two">${records(
-          mine.filter((a) => !filter || a.status === filter),
-          (a) =>
-            `<article class="parity-coupon"><strong>${a.type === "discount" ? esc(a.value) + "折" : money(a.amount ?? a.discountAmount ?? a.value)}</strong><div><h3>${esc(a.title)}</h3><p>满 ${money(a.minSpend)} 可用</p><small>有效期至 ${date(a.validEnd)}</small><p>${badge(a.status)}</p></div></article>`,
-          "暂无优惠券",
-        )}</div>`,
-      ) +
-      panel(
-        "积分兑换",
-        records(
-          c.coupons || [],
-          (a) =>
-            `<div class="pc-list-row"><div><h3>${esc(a.title)}</h3><p>${esc(a.pointsCost)} 积分 · 满 ${money(a.minSpend)} 可用</p></div>${action("兑换", "redeem", `data-id="${esc(a.id)}"`)}</div>`,
-          "暂无可兑换优惠券",
-        ),
-      );
   }
   if (c.page === "devices" && patientId) {
     const summary = await get("/treatment/wearing-summary" + q),
@@ -632,164 +538,10 @@ export async function pendingPage(c, original, titles) {
       );
   }
 
-  if (["team", "commissions", "withdraws"].includes(c.page)) {
-    const d = await get("/distribution/info"),
-      rows = list(await get("/distribution/" + c.page));
-    body = head("", link("推广概览", "distribution"));
-    if (c.page === "team")
-      body +=
-        stats([
-          ["一级成员", d.teamCount ?? rows.length],
-          ["二级成员", d.teamLevel2Count ?? "—"],
-          [
-            "团队销售额",
-            money(rows.reduce((n, a) => n + Number(a.totalSales || 0), 0)),
-          ],
-        ]) +
-        panel(
-          "团队成员",
-          records(
-            rows,
-            (a) =>
-              `<div class="pc-list-row"><div class="profile-heading">${image(a.avatar, a.nickname, "avatar")}<div><h3>${esc(a.nickname || a.name || "用户")}</h3><p>${esc(a.orderCount ?? 0)}单 · 加入 ${date(a.joinedAt)}</p></div></div><div>${a.statusText ? badge(a.statusText) : ""}<strong>${money(a.totalSales)}</strong></div></div>`,
-            "暂无团队成员",
-          ),
-        );
-    if (c.page === "commissions")
-      body +=
-        stats([
-          ["累计佣金", money(d.totalCommission)],
-          ["待结算", money(d.frozenCommission)],
-          ["已结算", money(d.availableCommission)],
-        ]) +
-        tabs(
-          "commissions",
-          [
-            ["", "全部"],
-            ["pending", "待结算"],
-            ["settled", "已结算"],
-            ["refunded", "已撤销"],
-          ],
-          filter,
-        ) +
-        panel(
-          "",
-          records(
-            rows.filter((a) => !filter || a.status === filter),
-            (a) =>
-              `<div class="pc-list-row"><div><h3>${esc(a.productName || a.orderNo)}</h3><p>${esc(a.buyerName || "")} · ${date(a.createdAt)}</p><small>${Number(a.commissionLevel) === 2 ? "二级佣金" : "一级佣金"}</small></div><div><strong>+${money(a.commission)}</strong>${a.status === "pending" ? badge("待结算") : a.status === "refunded" ? badge("已撤销") : status(a.status)}</div></div>`,
-            "暂无佣金记录",
-          ),
-        );
-    if (c.page === "withdraws")
-      body += panel(
-        "",
-        records(
-          rows,
-          (a) =>
-            `<div class="pc-list-row"><div><h3>−${money(a.amount)}</h3><p>${esc(a.accountInfo?.bankName || "银行卡")} ${esc(a.accountInfo?.accountNoMasked || a.accountInfo?.accountNo || "")}</p><small>${date(a.createdAt)}</small>${a.rejectReason ? multiline(a.rejectReason) : ""}</div><div>${badge({ pending: "待审核", approved: "审核通过", paid: "已到账", success: "已到账", rejected: "已驳回", processing: "处理中" }[a.status] || a.status)}<small>手续费 ${money(a.serviceFee ?? a.fee)} · 到账 ${money(a.actualAmount)}</small></div></div>`,
-          "暂无提现记录",
-        ),
-      );
-  }
-  if (c.page === "distribution") {
-    const d = c.distribution,
-      rules = await get("/distribution/rules"),
-      rows = list(await get("/distribution/orders"));
-    body =
-      body.replace(
-        "<h2>推广概览</h2>",
-        `<h2>推广概览</h2>${stats([["团队成员", d.teamCount ?? 0]])}`,
-      ) +
-      panel(
-        "近期推广订单",
-        records(
-          rows.slice(0, 5),
-          (a) =>
-            `<div class="pc-list-row"><div><h3>${esc(a.productName || a.name || a.orderNo)}</h3><p>${esc(a.buyerName || "")} · ${date(a.createdAt)}</p></div><div>+${money(a.commission ?? a.commissionAmount)}${badge({ pending: "待结算", settled: "已结算", refunded: "已退款" }[a.status] || a.status)}</div></div>`,
-          "暂无推广订单",
-        ),
-      ) +
-      panel(
-        "分销规则与说明",
-        `<h3>开通条件</h3>${multiline(rules?.qualificationText)}${[
-          ["佣金规则", "commissionRules"],
-          ["推广方式", "promotionWays"],
-          ["提现规则", "withdrawRules"],
-        ]
-          .map(
-            ([title, key]) =>
-              `<h3>${title}</h3><ul>${(rules?.[key] || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`,
-          )
-          .join("")}`,
-      );
-  }
-  if (c.page === "withdraw") {
-    const d = c.distribution,
-      rate = d.withdrawFeeRates?.bank,
-      min = d.minWithdrawAmount,
-      valid =
-        Number.isFinite(Number(rate)) &&
-        rate != null &&
-        Number.isSafeInteger(min) &&
-        min >= 0;
-    body =
-      head(
-        "提现至银行卡，提交后请等待审核。",
-        link("查看提现记录", "withdraws"),
-      ) +
-      stats([
-        ["可提现佣金", money(d.availableCommission)],
-        ["累计佣金", money(d.totalCommission)],
-        ["已提现", money(d.withdrawnAmount)],
-      ]) +
-      panel(
-        "提现申请",
-        valid
-          ? form(
-              "withdraw",
-              field(
-                "提现金额（元）",
-                "amount",
-                "",
-                "number",
-                `required min="${min / 100}" max="${Number(d.availableCommission || 0) / 100}" step="0.01" data-withdraw-amount data-fee-rate="${Number(rate)}"`,
-              ) +
-                `<p>到账方式：银行卡</p><p class="muted">微信零钱暂未开通</p><p>最低提现金额 ${money(min)}；银行卡手续费 ${Number(rate) * 100}%，最低 1 元。</p><div class="parity-fee" aria-live="polite"><span>手续费：<b data-withdraw-fee>¥0.00</b></span><span>预计到账：<b data-withdraw-net>¥0.00</b></span></div>` +
-                field(
-                  "开户银行",
-                  "bankName",
-                  "",
-                  "text",
-                  'required maxlength="100"',
-                ) +
-                field(
-                  "开户姓名",
-                  "accountName",
-                  "",
-                  "text",
-                  'required maxlength="100"',
-                ) +
-                field(
-                  "银行卡号",
-                  "accountNo",
-                  "",
-                  "text",
-                  'required pattern="[0-9]{8,34}" maxlength="34"',
-                ) +
-                submit("确认提现"),
-            )
-          : empty(
-              "提现规则暂不可用，请稍后重试。",
-              action("重新加载", "retry"),
-            ),
-      );
-  }
-
   if (c.page === "service") {
     const messages = list(await get("/im/messages"));
     body =
-      head("在线咨询就诊与服务问题。", action("刷新消息", "retry")) +
+      head("在线咨询就诊与服务问题。", link("个人中心","profile") + action("刷新消息", "retry")) +
       panel(
         "",
         `<div class="messages" role="log" aria-label="客服对话">${records(
@@ -807,5 +559,6 @@ export async function pendingPage(c, original, titles) {
         )}</div>${form("message", area("咨询内容", "text", "", 'maxlength="1000" placeholder="输入您的问题..."') + field("发送图片（选填）", "messageFile", "", "file", 'accept="image/jpeg,image/png,image/gif"') + submit("发送消息"))}`,
       );
   }
-  return `<div class="pending-page" data-pending-page="${esc(c.page)}">${body}</div>`;
+  const accountPage = ["profile","editProfile","family","member","membership","security","notifications","service"].includes(c.page);
+  return `<div class="pending-page${accountPage ? " account-page" : ""}" data-pending-page="${esc(c.page)}">${body}</div>`;
 }

@@ -1,0 +1,70 @@
+[
+  {
+    "name": "real local API /user/profile",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-info",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-levels",
+    "ok": true
+  },
+  {
+    "name": "real local API /im/unread-count",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/info",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/rules",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/orders",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/coupons?status=all",
+    "ok": true
+  },
+  {
+    "name": "signed old live redirects",
+    "ok": true
+  },
+  {
+    "name": "signed old room redirects",
+    "ok": true
+  },
+  {
+    "name": "signed old live redirects",
+    "ok": true
+  },
+  {
+    "name": "guest old live redirects",
+    "ok": true
+  },
+  {
+    "name": "guest old room redirects",
+    "ok": true
+  },
+  {
+    "name": "guest old live redirects",
+    "ok": true
+  },
+  {
+    "name": "no live API calls",
+    "ok": true
+  },
+  {
+    "name": "1440 community and footer no live entry",
+    "ok": true
+  },
+  {
+    "name": "390 community and footer no live entry",
+    "ok": true
+  }
+]

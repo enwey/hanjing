@@ -1,0 +1,620 @@
+{
+  "checks": [
+    {
+      "name": "real local API /user/profile",
+      "ok": true
+    },
+    {
+      "name": "real local API /user/member-info",
+      "ok": true
+    },
+    {
+      "name": "real local API /user/member-levels",
+      "ok": true
+    },
+    {
+      "name": "real local API /im/unread-count",
+      "ok": true
+    },
+    {
+      "name": "real local API /distribution/info",
+      "ok": true
+    },
+    {
+      "name": "real local API /distribution/rules",
+      "ok": true
+    },
+    {
+      "name": "real local API /distribution/orders",
+      "ok": true
+    },
+    {
+      "name": "real local API /live/rooms",
+      "ok": true
+    },
+    {
+      "name": "real local API /user/coupons?status=all",
+      "ok": true
+    },
+    {
+      "name": "treatmentCalendar inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "treatmentTrend inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "treatmentReport inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "treatmentTimeline inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "treatmentAdvice inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "treatmentAdjust inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "agreement inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "privacy inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "stores inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "doctors inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "booking inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "appointments inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "appointment inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "assessment inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "questionnaire inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "recording inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "assessments inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "report inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "treatment inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "devices inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "device inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "medical inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "community inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "post inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "publish inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "products inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "product inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "checkout inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "orders inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "order inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "profile inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "editProfile inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "family inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "member inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "membership inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "security inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "notifications inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "coupons inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "service inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "distribution inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "team inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "commissions inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "withdraws inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "withdraw inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "live inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "room inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "member-add inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "member-edit inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "appointment-evaluation inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "login inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "1440 member no overflow",
+      "ok": true
+    },
+    {
+      "name": "1440 security no overflow",
+      "ok": true
+    },
+    {
+      "name": "1440 checkout no overflow",
+      "ok": true
+    },
+    {
+      "name": "1440 withdraw no overflow",
+      "ok": true
+    },
+    {
+      "name": "1440 publish no overflow",
+      "ok": true
+    },
+    {
+      "name": "1440 medical no overflow",
+      "ok": true
+    },
+    {
+      "name": "390 member no overflow",
+      "ok": true
+    },
+    {
+      "name": "390 security no overflow",
+      "ok": true
+    },
+    {
+      "name": "390 checkout no overflow",
+      "ok": true
+    },
+    {
+      "name": "390 withdraw no overflow",
+      "ok": true
+    },
+    {
+      "name": "390 publish no overflow",
+      "ok": true
+    },
+    {
+      "name": "390 medical no overflow",
+      "ok": true
+    },
+    {
+      "name": "report-dialog inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "refund-dialog inputs have prompts",
+      "ok": true
+    },
+    {
+      "name": "wearing-drawer inputs have prompts",
+      "ok": true
+    }
+  ],
+  "inventory": [
+    {
+      "name": "treatmentCalendar",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "treatmentTrend",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "treatmentReport",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "treatmentTimeline",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "treatmentAdvice",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "treatmentAdjust",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "agreement",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "privacy",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "stores",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "doctors",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "booking",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "appointments",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "appointment",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "assessment",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "questionnaire",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "recording",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "assessments",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "report",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "treatment",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "devices",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "device",
+      "total": 1,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "medical",
+      "total": 1,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "community",
+      "total": 1,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "post",
+      "total": 1,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "publish",
+      "total": 2,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "products",
+      "total": 1,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "product",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "checkout",
+      "total": 4,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "orders",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "order",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "profile",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "editProfile",
+      "total": 4,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "family",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "member",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "membership",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "security",
+      "total": 3,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "notifications",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "coupons",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "service",
+      "total": 2,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "distribution",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "team",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "commissions",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "withdraws",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "withdraw",
+      "total": 4,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "live",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "room",
+      "total": 0,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "member-add",
+      "total": 8,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "member-edit",
+      "total": 8,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "appointment-evaluation",
+      "total": 1,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "login",
+      "total": 2,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "report-dialog",
+      "total": 2,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "refund-dialog",
+      "total": 1,
+      "missing": [],
+      "error": false
+    },
+    {
+      "name": "wearing-drawer",
+      "total": 2,
+      "missing": [],
+      "error": false
+    }
+  ]
+}

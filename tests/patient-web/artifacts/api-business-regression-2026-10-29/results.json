@@ -1,0 +1,142 @@
+[
+  {
+    "name": "real local API /user/profile",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-info",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-levels",
+    "ok": true
+  },
+  {
+    "name": "real local API /im/unread-count",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/account-security",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/family-members",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/notifications",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/medical-records",
+    "ok": true
+  },
+  {
+    "name": "real local API /assessments",
+    "ok": true
+  },
+  {
+    "name": "real local API /assessments/ess-questions",
+    "ok": true
+  },
+  {
+    "name": "real local API /appointments",
+    "ok": true
+  },
+  {
+    "name": "real local API /orders",
+    "ok": true
+  },
+  {
+    "name": "real local API /products",
+    "ok": true
+  },
+  {
+    "name": "real local API /product-categories",
+    "ok": true
+  },
+  {
+    "name": "real local API /stores",
+    "ok": true
+  },
+  {
+    "name": "real local API /doctors",
+    "ok": true
+  },
+  {
+    "name": "real local API /community/posts",
+    "ok": true
+  },
+  {
+    "name": "real local API /treatment/records",
+    "ok": true
+  },
+  {
+    "name": "real local API /treatment/record",
+    "ok": true
+  },
+  {
+    "name": "real local API /treatment/wearing-summary",
+    "ok": true
+  },
+  {
+    "name": "real local API /treatment/wearing-records",
+    "ok": true
+  },
+  {
+    "name": "real local API /treatment/sleep-report",
+    "ok": true
+  },
+  {
+    "name": "real local API /treatment/timeline",
+    "ok": true
+  },
+  {
+    "name": "real local API /treatment/adjustments",
+    "ok": true
+  },
+  {
+    "name": "real local API /treatment/device-maintenance",
+    "ok": true
+  },
+  {
+    "name": "real local API /treatment/device-feedback",
+    "ok": true
+  },
+  {
+    "name": "real local API /im/messages",
+    "ok": true
+  },
+  {
+    "name": "medical timezone date",
+    "ok": true
+  },
+  {
+    "name": "failed list cannot acknowledge unknown order",
+    "ok": true
+  },
+  {
+    "name": "loaded list offers manual acknowledgement",
+    "ok": true
+  },
+  {
+    "name": "abandoned share does not send request",
+    "ok": true
+  },
+  {
+    "name": "failed booking list retains protection",
+    "ok": true
+  },
+  {
+    "name": "loaded booking list allows manual acknowledgement",
+    "ok": true
+  },
+  {
+    "name": "account change during share does not send request",
+    "ok": true
+  },
+  {
+    "name": "ordinary login hides mock and developer copy",
+    "ok": true
+  }
+]

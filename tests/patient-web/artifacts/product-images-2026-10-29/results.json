@@ -1,0 +1,170 @@
+[
+  {
+    "name": "real local API /user/profile",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-info",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-levels",
+    "ok": true
+  },
+  {
+    "name": "real local API /im/unread-count",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/info",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/rules",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/orders",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/coupons?status=all",
+    "ok": true
+  },
+  {
+    "name": "home square 1440",
+    "ok": true
+  },
+  {
+    "name": "home full image 1440",
+    "ok": true
+  },
+  {
+    "name": "home no overflow 1440",
+    "ok": true
+  },
+  {
+    "name": "products square 1440",
+    "ok": true
+  },
+  {
+    "name": "products full image 1440",
+    "ok": true
+  },
+  {
+    "name": "products no overflow 1440",
+    "ok": true
+  },
+  {
+    "name": "product square 1440",
+    "ok": true
+  },
+  {
+    "name": "product full image 1440",
+    "ok": true
+  },
+  {
+    "name": "product no overflow 1440",
+    "ok": true
+  },
+  {
+    "name": "orders square 1440",
+    "ok": true
+  },
+  {
+    "name": "orders full image 1440",
+    "ok": true
+  },
+  {
+    "name": "orders no overflow 1440",
+    "ok": true
+  },
+  {
+    "name": "order square 1440",
+    "ok": true
+  },
+  {
+    "name": "order full image 1440",
+    "ok": true
+  },
+  {
+    "name": "order no overflow 1440",
+    "ok": true
+  },
+  {
+    "name": "checkout square 1440",
+    "ok": true
+  },
+  {
+    "name": "checkout full image 1440",
+    "ok": true
+  },
+  {
+    "name": "home square 390",
+    "ok": true
+  },
+  {
+    "name": "home full image 390",
+    "ok": true
+  },
+  {
+    "name": "home no overflow 390",
+    "ok": true
+  },
+  {
+    "name": "products square 390",
+    "ok": true
+  },
+  {
+    "name": "products full image 390",
+    "ok": true
+  },
+  {
+    "name": "products no overflow 390",
+    "ok": true
+  },
+  {
+    "name": "product square 390",
+    "ok": true
+  },
+  {
+    "name": "product full image 390",
+    "ok": true
+  },
+  {
+    "name": "product no overflow 390",
+    "ok": true
+  },
+  {
+    "name": "orders square 390",
+    "ok": true
+  },
+  {
+    "name": "orders full image 390",
+    "ok": true
+  },
+  {
+    "name": "orders no overflow 390",
+    "ok": true
+  },
+  {
+    "name": "order square 390",
+    "ok": true
+  },
+  {
+    "name": "order full image 390",
+    "ok": true
+  },
+  {
+    "name": "order no overflow 390",
+    "ok": true
+  },
+  {
+    "name": "checkout square 390",
+    "ok": true
+  },
+  {
+    "name": "checkout full image 390",
+    "ok": true
+  }
+]

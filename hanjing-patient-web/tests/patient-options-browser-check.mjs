@@ -98,7 +98,7 @@ fs.mkdirSync('../tests/patient-web/artifacts/treatment-2026-10-28',{recursive:tr
 
 
 try {
- await send('Page.enable');await send('Runtime.enable');await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});await send('Page.navigate',{url:base+'/#/login'});await wait(`!!document.querySelector('[data-action="local-login"]')`);await ev(`document.querySelector('[data-action="local-login"]').click()`);await wait(`location.hash==='#/profile'&&!document.querySelector('.loading-state')`);
+ await send('Page.enable');await send('Runtime.enable');await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});await send('Page.navigate',{url:base+'/?localLogin=1#/login'});await wait(`!!document.querySelector('[data-action="local-login"]')`);await ev(`document.querySelector('[data-action="local-login"]').click()`);await wait(`location.hash==='#/profile'&&!document.querySelector('.loading-state')`);
  const data=structuredClone(fixtures);data['/user/family-members'].list.push({id:22,name:'测试家人',relation:'parent'});
  await ev(`window.__fixture=${JSON.stringify(data)};window.__realFetch=fetch;window.__calls=[];window.fetch=async(input,opts={})=>{const u=new URL(input,location.origin);if(!u.pathname.startsWith('/api/v1/'))return __realFetch(input,opts);__calls.push(u.pathname+u.search);return new Response(JSON.stringify({code:0,data:__fixture[u.pathname.slice(7)]??[]}))}`);
  for(const route of ['medical','assessments','devices','treatment','treatmentCalendar','treatmentTrend','treatmentReport','treatmentTimeline','treatmentAdvice','treatmentAdjust','booking','questionnaire','recording']){

@@ -31,7 +31,17 @@ export const image = (src, alt, cls = '') =>
     : `<div class="image-fallback ${esc(cls)}" role="img" aria-label="暂无图片">${esc(alt?.slice(0, 1) || '兴')}</div>`;
 export const money = (value) =>
   Number.isFinite(Number(value)) ? '¥' + (Number(value) / 100).toFixed(2) : '—';
-export const date = (value) => (value ? String(value).slice(0, 10) : '—');
+export const date = (value) => {
+  if (!value) return '—';
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  if (value instanceof Date || /T.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(parsed);
+  }
+  return text.slice(0, 10);
+};
 export const today = () =>
   new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Shanghai',
@@ -75,10 +85,36 @@ export const empty = (text = '暂无记录', extra = '') =>
   `<div class="empty-state"><h3>${esc(text)}</h3>${extra}</div>`;
 export const panel = (title, body, cls = '') =>
   `<section class="pc-panel ${cls}">${title ? `<h2>${esc(title)}</h2>` : ''}${body}</section>`;
-export const field = (label, name, value = '', type = 'text', attrs = '') =>
-  `<label class="field"><span>${esc(label)}</span><input name="${esc(name)}" type="${esc(type)}" value="${esc(value)}" ${attrs}></label>`;
+const inputHint = (label, name, attrs = '') => {
+  const hints = {
+    phone: '请输入11位手机号', password: '请输入登录密码',
+    oldPassword: '请输入原密码，未设置可留空', newPassword: '请输入6–20位新密码', confirmPassword: '请再次输入新密码',
+    title: '请输入标题，最多40字', nickname: '请输入昵称', name: '请输入就诊人真实姓名',
+    contactName: '请输入收货或自提联系人姓名', idCard: '请输入18位身份证号，已有号码可留空保留',
+    cardNo: '请输入病历号（选填）', region: '例如：广东省深圳市南山区',
+    address: '请输入街道、小区及门牌号（选填）', detailAddress: '请输入省市区、街道及门牌号',
+    bankName: '例如：中国工商银行', accountName: '请输入与银行卡一致的开户姓名', accountNo: '请输入8–34位银行卡号，不含空格',
+    amount: '请输入提现金额（元），最多两位小数', quantity: '请输入购买数量',
+    wearDuration: '请输入0–24小时，可保留一位小数', painScore: '请输入0–10的整数，0表示无痛',
+    symptomDesc: '例如：打鼾多久、白天是否嗜睡、夜间呼吸情况（选填）',
+    note: '可填写佩戴感受、不适情况或其他补充说明', text: '请输入需要咨询的问题',
+  };
+  let hint = hints[name];
+  if (name === 'content') hint = label.includes('评论') ? '请写下你的评论，最多1000字' : label.includes('评价') ? '可描述本次就诊体验，最多500字' : label.includes('反馈') ? '请描述设备问题、发生时间和使用情况，最多1000字' : '请输入具体内容';
+  if (name === 'quantity') {
+    const max = attrs.match(/\bmax="([^"]+)"/)?.[1];
+    hint = max ? `请输入1–${max}之间的整数` : hint;
+  }
+  return hint || `请输入${label.replace(/（.*?）/g, '')}`;
+};
+const placeholder = (label, name, attrs) => /\bplaceholder\s*=/.test(attrs) ? '' : `placeholder="${esc(inputHint(label, name, attrs))}"`;
+export const field = (label, name, value = '', type = 'text', attrs = '') => {
+  const nativeHint = type === 'date' ? (name === 'birthday' ? '请选择出生日期，不晚于今天' : '请选择日期，不晚于今天') : type === 'file' ? '请选择 JPG、PNG 或 GIF 图片，单张不超过8MB' : '';
+  const textLike = ['text','tel','email','url','search','password','number'].includes(type);
+  return `<label class="field"><span>${esc(label)}</span><input name="${esc(name)}" type="${esc(type)}" value="${esc(value)}" ${attrs} ${textLike ? placeholder(label,name,attrs) : ''} ${nativeHint ? `aria-description="${esc(nativeHint)}"` : ''}>${nativeHint ? `<small class="input-hint">${nativeHint}</small>` : ''}</label>`;
+};
 export const area = (label, name, value = '', attrs = '') =>
-  `<label class="field"><span>${esc(label)}</span><textarea name="${esc(name)}" rows="4" ${attrs}>${esc(value)}</textarea></label>`;
+  `<label class="field"><span>${esc(label)}</span><textarea name="${esc(name)}" rows="4" ${attrs} ${placeholder(label,name,attrs)}>${esc(value)}</textarea></label>`;
 export const select = (label, name, options, value = '', attrs = '') =>
   `<label class="field"><span>${esc(label)}</span><select name="${esc(name)}" ${attrs}>${options.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
 export const submit = (label = '保存') =>

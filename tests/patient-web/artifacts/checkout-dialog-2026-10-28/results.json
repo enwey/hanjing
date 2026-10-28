@@ -1,0 +1,106 @@
+[
+  {
+    "name": "real local API /user/profile",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-info",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-levels",
+    "ok": true
+  },
+  {
+    "name": "real local API /im/unread-count",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/info",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/rules",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/orders",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/coupons?status=all",
+    "ok": true
+  },
+  {
+    "name": "opens on product without navigation",
+    "ok": true
+  },
+  {
+    "name": "coupon and extra hints removed",
+    "ok": true
+  },
+  {
+    "name": "large red total and centered close icon",
+    "ok": true
+  },
+  {
+    "name": "single modal",
+    "ok": true
+  },
+  {
+    "name": "1440 modal fits",
+    "ok": true
+  },
+  {
+    "name": "390 modal fits",
+    "ok": true
+  },
+  {
+    "name": "amount and pickup requirements",
+    "ok": true
+  },
+  {
+    "name": "close restores focus and unlocks",
+    "ok": true
+  },
+  {
+    "name": "escape closes",
+    "ok": true
+  },
+  {
+    "name": "legacy checkout opens product modal",
+    "ok": true
+  },
+  {
+    "name": "route navigation removes modal",
+    "ok": true
+  },
+  {
+    "name": "load error remains in modal",
+    "ok": true
+  },
+  {
+    "name": "submit error preserves fields",
+    "ok": true
+  },
+  {
+    "name": "cannot close during submit",
+    "ok": true
+  },
+  {
+    "name": "one order per attempt, closes on success",
+    "ok": true
+  },
+  {
+    "name": "payload preserved",
+    "ok": true
+  },
+  {
+    "name": "guest login remembers purchase",
+    "ok": true
+  },
+  {
+    "name": "login resumes product modal",
+    "ok": true
+  }
+]

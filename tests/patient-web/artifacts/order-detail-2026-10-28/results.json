@@ -1,0 +1,130 @@
+[
+  {
+    "name": "real local API /user/profile",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-info",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-levels",
+    "ok": true
+  },
+  {
+    "name": "real local API /im/unread-count",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/info",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/rules",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/orders",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/coupons?status=all",
+    "ok": true
+  },
+  {
+    "name": "layout 1440",
+    "ok": true
+  },
+  {
+    "name": "responsive columns 1440",
+    "ok": true
+  },
+  {
+    "name": "layout 390",
+    "ok": true
+  },
+  {
+    "name": "responsive columns 390",
+    "ok": true
+  },
+  {
+    "name": "actions pending",
+    "ok": true
+  },
+  {
+    "name": "progress pending",
+    "ok": true
+  },
+  {
+    "name": "actions paid",
+    "ok": true
+  },
+  {
+    "name": "progress paid",
+    "ok": true
+  },
+  {
+    "name": "actions shipping",
+    "ok": true
+  },
+  {
+    "name": "progress shipping",
+    "ok": true
+  },
+  {
+    "name": "actions shipped",
+    "ok": true
+  },
+  {
+    "name": "progress shipped",
+    "ok": true
+  },
+  {
+    "name": "actions completed",
+    "ok": true
+  },
+  {
+    "name": "progress completed",
+    "ok": true
+  },
+  {
+    "name": "actions cancelled",
+    "ok": true
+  },
+  {
+    "name": "progress cancelled",
+    "ok": true
+  },
+  {
+    "name": "actions refund_pending",
+    "ok": true
+  },
+  {
+    "name": "progress refund_pending",
+    "ok": true
+  },
+  {
+    "name": "actions refunding",
+    "ok": true
+  },
+  {
+    "name": "progress refunding",
+    "ok": true
+  },
+  {
+    "name": "actions refunded",
+    "ok": true
+  },
+  {
+    "name": "progress refunded",
+    "ok": true
+  },
+  {
+    "name": "pickup paid and discount",
+    "ok": true
+  },
+  {
+    "name": "logistics interaction",
+    "ok": true
+  }
+]

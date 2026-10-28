@@ -93,7 +93,6 @@ test('each supported page has a useful empty state', async () => {
     'assessments',
     'medical',
     'devices',
-    'live',
     'orders',
   ]) {
     const ctx = {

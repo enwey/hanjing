@@ -8,7 +8,7 @@ import {doctorSchedule} from './doctor-booking.js';
 import {storeCard,doctorCard,doctorDetail} from './clinic.js';
 import {shopProductCard,shopProductDetail,relatedProducts} from './shop.js';
 import { renderTreatment, treatmentTitles, wearingForm } from './treatment.js';
-import { isLocalMockLoginAvailable } from './local-login.js';
+import { showLocalLogin } from './local-login.js';
 import { list, query } from './api.js';
 import { legal } from './legal.js';
 import {
@@ -71,15 +71,7 @@ export const titles = {
   membership: '会员权益',
   security: '账号安全',
   notifications: '消息通知',
-  coupons: '优惠券',
   service: '在线客服',
-  distribution: '我的推广',
-  team: '我的团队',
-  commissions: '佣金明细',
-  withdraws: '提现记录',
-  withdraw: '申请提现',
-  live: '科普直播',
-  room: '直播详情',
 };
 export const publicPages = new Set([
   'agreement',
@@ -93,8 +85,6 @@ export const publicPages = new Set([
   'post',
   'products',
   'product',
-  'live',
-  'room',
 ]);
 const head = (id, desc = '', buttons = '') =>
   pageHead(titles[id], desc, buttons);
@@ -143,7 +133,7 @@ async function basePage(c) {
       return head(c.page) + `<article class="pc-legal">${legal[c.page].map(item => item.type === 'section-title' || item.type === 'article-title' ? `<h2>${esc(item.text)}</h2>` : `<p class="${item.type==='important'?'legal-important':item.type==='article-meta'?'legal-meta':''}">${esc(item.text)}</p>`).join('')}</article>`;
     case 'login':
       return (
-        `<div class="login-layout"><section class="login-intro"><h2>从今天起，<br>持续关注每一夜好眠。</h2><p>预约就诊、管理家庭成员，<br>查看评估报告和治疗记录。</p>${image('/brand/clinic-wall.jpg', '兴康明诊所')}</section>${panel('欢迎来到兴康明', `<div class="login-modes"><button type="button" data-action="login-mode" data-mode="password" aria-pressed="true">密码登录</button><button type="button" data-action="login-mode" data-mode="wechat" aria-pressed="false">微信扫码登录</button></div><div id="password-login">${form('login', field('手机号', 'phone', '', 'tel', 'required pattern="1[0-9]{10}" maxlength="11" autocomplete="username" placeholder="请输入手机号"') + field('密码', 'password', '', 'password', 'required maxlength="128" autocomplete="current-password" placeholder="请输入密码"') + submit('登录'))}</div><div id="wechat-login" hidden><h3>微信扫码登录</h3><p>打开微信官方登录页后，使用微信扫一扫二维码完成授权。</p>${action('前往微信扫码', 'wechat-start', '', false)}</div>${isLocalMockLoginAvailable() ? `<div class="local-login-entry">${action('本地模拟登录', 'local-login')}<small>使用独立测试账号</small></div>` : ''}<div id="wechat-message" role="alert"></div>`, 'login-panel')}</div>`
+        `<div class="login-layout"><section class="login-intro"><h2>从今天起，<br>持续关注每一夜好眠。</h2><p>预约就诊、管理家庭成员，<br>查看评估报告和治疗记录。</p>${image('/brand/clinic-wall.jpg', '兴康明诊所')}</section>${panel('欢迎来到兴康明', `<div class="login-modes"><button type="button" data-action="login-mode" data-mode="password" aria-pressed="true">密码登录</button><button type="button" data-action="login-mode" data-mode="wechat" aria-pressed="false">微信扫码登录</button></div><div id="password-login">${form('login', field('手机号', 'phone', '', 'tel', 'required pattern="1[0-9]{10}" maxlength="11" autocomplete="username" placeholder="请输入手机号"') + field('密码', 'password', '', 'password', 'required maxlength="128" autocomplete="current-password" placeholder="请输入密码"') + submit('登录'))}</div><div id="wechat-login" hidden><h3>微信扫码登录</h3><p>打开微信官方登录页后，使用微信扫一扫二维码完成授权。</p>${action('前往微信扫码', 'wechat-start', '', false)}</div>${showLocalLogin() ? `<div class="local-login-entry">${action('本地模拟登录', 'local-login')}<small>使用独立测试账号</small></div>` : ''}<div id="wechat-message" role="alert"></div>`, 'login-panel')}</div>`
       );
     case 'stores': {
       const stores=list(await get('/stores'));c.stores=stores;
@@ -326,7 +316,7 @@ async function basePage(c) {
         head(
           'community',
           '睡眠科普、患者故事与佩戴经验，在这里分享和交流。',
-          btn('发布动态', 'publish') + link('科普直播', 'live'),
+          btn('发布动态', 'publish'),
         ) +
         `<div class="browse-toolbar"><div class="browse-tabs" aria-label="社区分类">${['全部', '分享', '提问', '科普'].map((name,i)=>`<button type="button" data-browse-post="${i ? name : ''}" aria-pressed="${i===0}">${name}</button>`).join('')}</div><label class="field browse-search"><span class="sr-only">搜索社区</span><input type="search" data-search="posts" placeholder="搜索标题或内容"></label></div><div id="search-results" class="post-list community-feed">${records(c.posts, postCard, '暂无社区动态')}</div>`
       );
@@ -409,7 +399,6 @@ async function basePage(c) {
     case 'checkout': {
       c.product = await get('/products/' + encodeURIComponent(id));
       c.stores = list(await get('/stores')).filter((s) => s.status === 'open');
-      c.coupons = list(await get('/user/coupons'));
       return (
         head('checkout', '请核对商品与订单信息，付款请联系门店。') +
         panel(
@@ -448,15 +437,8 @@ async function basePage(c) {
                 'required pattern="1[0-9]{10}" maxlength="11" autocomplete="tel"',
               ) +
               `<div id="shipping-fields">${area('完整收货地址', 'detailAddress', '', 'required maxlength="255" autocomplete="street-address"')}</div><div id="pickup-fields" hidden>${select('自提门店', 'storeId', [['', '请选择门店'], ...c.stores.map((s) => [s.id, s.name])])}</div>` +
-              select('优惠券', 'couponId', [
-                ['', '不使用优惠券'],
-                ...c.coupons.map((v) => [
-                  v.id,
-                  `${v.title}（满 ${money(v.minSpend)} 可用）`,
-                ]),
-              ]) +
-              `<div class="parity-fee" aria-live="polite"><span>商品金额：<b data-checkout-total>${money(c.product.price)}</b></span><span data-checkout-coupon>未使用优惠券</span></div><p class="muted">最终优惠与应付金额以创建后的订单详情为准。</p>`+submit('创建订单'),
-          )}<p class="muted">如提交结果不明确，请先查看“我的订单”，避免重复创建。</p>`,
+              `<div class="parity-fee" aria-live="polite"><span>商品金额：<b data-checkout-total>${money(c.product.price)}</b></span></div>`+submit('创建订单'),
+          )}`,
         )
       );
     }
@@ -517,10 +499,8 @@ async function basePage(c) {
           ['阻鼾器管理', 'devices', '设备与调整记录'],
           ['我的订单', 'orders', '订单及配送信息'],
           ['会员权益', 'membership', '会员等级与积分'],
-          ['优惠券', 'coupons', '查看与兑换优惠券'],
           ['消息通知', 'notifications', '接收服务动态'],
           ['账号安全', 'security', '修改登录密码'],
-          ['我的推广', 'distribution', '邀请与佣金记录'],
           ['在线客服', 'service', '咨询就诊与服务问题'],
         ]
           .map(
@@ -536,7 +516,7 @@ async function basePage(c) {
       return (
         head('editProfile', '', link('返回个人中心','profile')) +
         panel(
-          '',
+          '个人资料',
           form(
             'profile',
             `<div class="profile-heading">${image(a.avatar,a.nickname,'avatar')}${field('更换头像','avatarFile','','file','accept="image/jpeg,image/png,image/gif"')}</div>${kv([['手机号',a.phone||'未绑定'],['病历号',a.cardNo]])}`+field('身份证号（留空保留原值）','idCard','','text','pattern="[0-9]{17}[0-9Xx]" maxlength="18"')+(a.idCard?`<p>已保存：${esc(a.idCard)}</p>`:'')+field(
@@ -563,7 +543,7 @@ async function basePage(c) {
                 ],
                 a.gender==='male'?1:a.gender==='female'?2:a.gender,
               ) +
-              submit(),
+              submit('保存资料'),
           ),
         )
       );
@@ -600,7 +580,7 @@ async function basePage(c) {
       const memberStores = list(await get('/stores'));
       if (id && a.relation === 'self')
         return (
-          head('member') +
+          pageHead('就诊人详情', '', link('就诊人管理','family')) +
           panel(
             a.name,
             kv([
@@ -613,12 +593,12 @@ async function basePage(c) {
           )
         );
       return (
-        head(
-          'member',
+        pageHead(
+          id ? '编辑就诊人' : '新增就诊人',
           id ? '修改已关联就诊人的资料。' : '添加本人或家庭成员的就诊资料。', link('就诊人管理','family'),
         ) +
         panel(
-          '',
+          id ? '编辑就诊资料' : '新增就诊资料',
           form(
             'member',
             `<div class="profile-heading">${image(a.avatar||a.avatarUrl,a.name,'avatar')}${field('头像','avatarFile','','file','accept="image/jpeg,image/png,image/gif"')}</div>`+select('所属诊所','storeId',[['','请选择诊所'],...memberStores.map(x=>[x.id,x.name])],a.storeId||'')+field('病历号','cardNo',a.cardNo,'text','maxlength="50"')+field('姓名', 'name', a.name, 'text', 'required maxlength="50"') +
@@ -661,7 +641,7 @@ async function basePage(c) {
               (a.idCard ? `<p>已保存：${esc(a.idCard)}</p>` : '') +
               field('所在地区', 'region', a.region, 'text', 'maxlength="120"') +
               area('详细地址', 'address', a.address, 'maxlength="255"') +
-              submit(),
+              submit(id ? '保存修改' : '添加就诊人'),
           ) +
             (id && a.relation !== 'self'
               ? `<hr>${action('解除关联', 'delete-member')}`
@@ -672,7 +652,7 @@ async function basePage(c) {
     case 'security': {
       c.security = await get('/user/account-security');
       return (
-        head('security', '修改登录密码。') +
+        head('security', '管理账号信息与登录密码。', link('个人中心','profile')) +
         panel(
           '登录密码',
           form(
@@ -916,34 +896,6 @@ async function basePage(c) {
         )
       );
     }
-    case 'coupons': {
-      const [mine, available] = await Promise.all([
-        get('/user/coupons' + query({ status: 'all' })),
-        get('/user/coupons/available'),
-      ]);
-      c.coupons = list(available);
-      return (
-        head('coupons', '查看我的优惠券，使用积分兑换可用权益。') +
-        panel(
-          '我的优惠券',
-          records(
-            list(mine),
-            (a) =>
-              `<div class="pc-list-row"><div><h3>${esc(a.title)}</h3><p>满 ${money(a.minSpend)} 可用 · 有效期至 ${date(a.validEnd)}</p></div>${badge(a.status)}</div>`,
-            '暂无优惠券',
-          ),
-        ) +
-        panel(
-          '积分兑换',
-          records(
-            c.coupons,
-            (a) =>
-              `<div class="pc-list-row"><div><h3>${esc(a.title)}</h3><p>${esc(a.pointsCost)} 积分 · 满 ${money(a.minSpend)} 可用</p></div>${action('兑换', 'redeem', `data-id="${esc(a.id)}"`)}</div>`,
-            '暂无可兑换优惠券',
-          ),
-        )
-      );
-    }
     case 'service': {
       const messages = list(await get('/im/messages'));
       return (
@@ -955,70 +907,6 @@ async function basePage(c) {
         panel(
           '',
           `<div class="messages">${records(messages, (a) => `<article class="message ${a.sender === 'patient' ? 'mine' : ''}"><small>${esc(a.senderName || '客服')} · ${esc(a.time)}</small><p>${esc(a.text)}</p></article>`, '暂无消息')}</div>${form('message', area('咨询内容', 'text', '', 'required maxlength="1000"') + submit('发送消息'))}`,
-        )
-      );
-    }
-    case 'distribution': {
-      c.distribution = await get('/distribution/info');
-      const d = c.distribution;
-      return (
-        head('distribution', '查看邀请关系与佣金记录。') +
-        panel(
-          '推广概览',
-          kv([
-            ['累计佣金', money(d.totalCommission)],
-            ['可提现佣金', money(d.availableCommission)],
-            ['冻结佣金', money(d.frozenCommission)],
-            ['已提现', money(d.withdrawnAmount)],
-          ]) +
-            `<div class="pc-actions">${link('我的团队', 'team')}${link('佣金明细', 'commissions')}${link('提现记录', 'withdraws')}${btn('申请提现', 'withdraw')}</div>`,
-        ) +
-        panel(
-          '邀请好友',
-          d.inviteCode
-            ? `${image(d.inviteQrCode, '邀请小程序码', 'invite-qr')}<p>邀请码：${esc(d.inviteCode)}</p><p>${esc(d.inviteQrReason || '通过小程序邀请好友，按现行推广规则获得佣金。')}</p>`
-            : `<p>开通后可获取个人邀请信息。绑定首个下级后的身份以系统规则为准。</p>${action('开通推广', 'distribution-open')}`,
-        )
-      );
-    }
-    case 'team':
-    case 'commissions':
-    case 'withdraws': {
-      const rows = list(await get('/distribution/' + c.page));
-      return (
-        head(c.page, '', link('推广概览', 'distribution')) +
-        panel(
-          '',
-          records(rows, (a) => distributionRow(c.page, a), '暂无记录'),
-        )
-      );
-    }
-    case 'withdraw': {
-      const d = await get('/distribution/info');
-      c.distribution = d;
-      return (
-        head('withdraw', '提现至银行卡，提交后请等待审核。') +
-        panel(
-          '申请提现',
-          `<p>可提现：${money(d.availableCommission)}</p>${form('withdraw', field('提现金额（元）', 'amount', '', 'number', `required min="0.01" step="0.01" max="${Number(d.availableCommission || 0) / 100}"`) + field('开户银行', 'bankName', '', 'text', 'required maxlength="100"') + field('户名', 'accountName', '', 'text', 'required maxlength="100"') + field('银行卡号', 'accountNo', '', 'text', 'required pattern="[0-9]{8,34}" maxlength="34"') + submit('提交提现申请'))}`,
-        )
-      );
-    }
-    case 'live': {
-      const rows = list(await get('/live/rooms'));
-      return (
-        head('live', '专家科普与睡眠健康分享。') +
-        `<div class="pc-grid two">${records(rows, (a) => panel(a.title, `${image(a.cover, a.title, 'article-cover')}<p>${esc(a.anchorName)} · ${date(a.startTime)}</p>${badge(a.status)}${link('查看详情', 'room', { id: a.id })}`), '暂无直播')}</div>`
-      );
-    }
-    case 'room': {
-      const a = await get('/live/rooms/' + encodeURIComponent(id));
-      const video = safeUrl(a.replayUrl);
-      return (
-        head('room') +
-        panel(
-          a.title,
-          `${badge(a.status)}<p>${esc(a.anchorName)} · ${date(a.startTime)}</p><p>${esc(a.description)}</p>${video ? `<video controls preload="metadata" src="${esc(video)}" poster="${esc(safeUrl(a.cover))}"></video>` : '<p class="notice">请前往小程序观看直播。</p>'}`,
         )
       );
     }
@@ -1048,10 +936,5 @@ function medicalCard(m) {
 }
 export function reportCard(a, questions = []) {
   return a.type === 'ess' ? essReport(a, questions) : snoreReport(a);
-}
-function distributionRow(type, a) {
-  if (type === 'team')
-    return `<div class="pc-list-row"><div><h3>${esc(a.nickname || a.name || '用户')}</h3><p>${date(a.joinedAt)}</p></div><span>${esc(a.statusText || '')}</span></div>`;
-  return `<div class="pc-list-row"><div><h3>${esc(a.orderNo || a.withdrawNo || '记录')}</h3><p>${date(a.createdAt)}</p></div><div>${money(a.amount ?? a.commission)} ${badge(a.status)}</div></div>`;
 }
 export { productCard, postCard };

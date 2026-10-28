@@ -1,0 +1,122 @@
+[
+  {
+    "name": "real local API /user/profile",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-info",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-levels",
+    "ok": true
+  },
+  {
+    "name": "real local API /im/unread-count",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/info",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/rules",
+    "ok": true
+  },
+  {
+    "name": "real local API /distribution/orders",
+    "ok": true
+  },
+  {
+    "name": "real local API /live/rooms",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/coupons?status=all",
+    "ok": true
+  },
+  {
+    "name": "1440 assessments rendered",
+    "ok": true
+  },
+  {
+    "name": "1440 assessments overflow",
+    "ok": true
+  },
+  {
+    "name": "390 assessments rendered",
+    "ok": true
+  },
+  {
+    "name": "390 assessments overflow",
+    "ok": true
+  },
+  {
+    "name": "assessment type filter",
+    "ok": true
+  },
+  {
+    "name": "assessment recommendation visible",
+    "ok": true
+  },
+  {
+    "name": "zero ESS score explanation visible",
+    "ok": true
+  },
+  {
+    "name": "assessment whole card opens scoped report",
+    "ok": true
+  },
+  {
+    "name": "publish maximum three tags",
+    "ok": true
+  },
+  {
+    "name": "publish live count",
+    "ok": true
+  },
+  {
+    "name": "publish carries category and three tags",
+    "ok": true
+  },
+  {
+    "name": "profile identity and gender payload",
+    "ok": true
+  },
+  {
+    "name": "member clinic and record payload",
+    "ok": true
+  },
+  {
+    "name": "withdraw actual fee summary",
+    "ok": true
+  },
+  {
+    "name": "self member remains read-only",
+    "ok": true
+  },
+  {
+    "name": "API failure is not shown as empty success",
+    "ok": true
+  },
+  {
+    "name": "empty assessments",
+    "ok": true
+  },
+  {
+    "name": "empty treatmentReport",
+    "ok": true
+  },
+  {
+    "name": "empty treatmentTimeline",
+    "ok": true
+  },
+  {
+    "name": "empty treatmentAdvice",
+    "ok": true
+  },
+  {
+    "name": "empty treatmentAdjust",
+    "ok": true
+  }
+]

@@ -1,0 +1,3 @@
+PASS timeout during headers
+PASS timeout during body
+PASS caller cancellation preserved

@@ -97,7 +97,7 @@ const go = async (page, params = {}) => {
 fs.mkdirSync('../tests/patient-web/artifacts/wearing-drawer-2026-10-28',{recursive:true});
 try {
  await send('Page.enable');await send('Runtime.enable');await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1100,deviceScaleFactor:1,mobile:false});
- await send('Page.navigate',{url:base+'/#/login'});await wait(`!!document.querySelector('[data-action="local-login"]')`);await ev(`document.querySelector('[data-action="local-login"]').click()`);await wait(`location.hash==='#/profile' && !document.querySelector('.loading-state')`);check('real local PC login',true);
+ await send('Page.navigate',{url:base+'/?localLogin=1#/login'});await wait(`!!document.querySelector('[data-action="local-login"]')`);await ev(`document.querySelector('[data-action="local-login"]').click()`);await wait(`location.hash==='#/profile' && !document.querySelector('.loading-state')`);check('real local PC login',true);
  await ev(`location.hash='#/treatment'`);await wait(`!!document.querySelector('.treatment-hero')`);check('real empty treatment keeps six features',await ev(`document.querySelectorAll('.treatment-entries>a').length===6`));check('real calendar and metrics',await ev(`document.querySelectorAll('.treatment-calendar [data-date]').length>=28 && document.querySelectorAll('.treatment-metrics article').length===4`));await shot('empty-real-1440');
 
  await ev(`document.querySelector('a[href*="wearing"]').click()`);await wait(`!!document.querySelector('[data-checkin-form]')`);

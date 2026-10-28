@@ -1,0 +1,82 @@
+[
+  {
+    "name": "real local API /user/profile",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-info",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-levels",
+    "ok": true
+  },
+  {
+    "name": "real local API /im/unread-count",
+    "ok": true
+  },
+  {
+    "name": "profile no entries 1440",
+    "ok": true
+  },
+  {
+    "name": "profile no entries 390",
+    "ok": true
+  },
+  {
+    "name": "signed coupons inaccessible",
+    "ok": true
+  },
+  {
+    "name": "signed distribution inaccessible",
+    "ok": true
+  },
+  {
+    "name": "signed team inaccessible",
+    "ok": true
+  },
+  {
+    "name": "signed commissions inaccessible",
+    "ok": true
+  },
+  {
+    "name": "signed withdraws inaccessible",
+    "ok": true
+  },
+  {
+    "name": "signed withdraw inaccessible",
+    "ok": true
+  },
+  {
+    "name": "guest coupons inaccessible",
+    "ok": true
+  },
+  {
+    "name": "guest distribution inaccessible",
+    "ok": true
+  },
+  {
+    "name": "guest team inaccessible",
+    "ok": true
+  },
+  {
+    "name": "guest commissions inaccessible",
+    "ok": true
+  },
+  {
+    "name": "guest withdraws inaccessible",
+    "ok": true
+  },
+  {
+    "name": "guest withdraw inaccessible",
+    "ok": true
+  },
+  {
+    "name": "no removed feature API requests",
+    "ok": true
+  },
+  {
+    "name": "removed page registry",
+    "ok": true
+  }
+]

@@ -25,7 +25,7 @@ try {
     await ev('window.scrollTo(0,document.body.scrollHeight)');
     await new Promise(r=>setTimeout(r,400));
     assert.equal(await ev('document.querySelectorAll(".consumer-footer > div").length'),4);
-    assert.equal(await ev('document.querySelectorAll(".consumer-footer a").length'),6);
+    assert.equal(await ev('document.querySelectorAll(".consumer-footer a").length'),5);
     assert(await ev('document.documentElement.scrollWidth<=innerWidth'));
     const shot=await tab.send('Page.captureScreenshot',{format:'png'});
     fs.writeFileSync('/tmp/hanjing-pc-footer-'+width+'.png',Buffer.from(shot.data,'base64'));

@@ -99,7 +99,7 @@ fs.mkdirSync('../tests/patient-web/artifacts/treatment-2026-10-28',{recursive:tr
 
 
 try {
- await send('Page.enable');await send('Runtime.enable');await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});await send('Page.navigate',{url:base+'/#/login'});await wait(`!!document.querySelector('[data-action="local-login"]')`);await ev(`document.querySelector('[data-action="local-login"]').click()`);await wait(`location.hash==='#/profile'&&!document.querySelector('.loading-state')`);
+ await send('Page.enable');await send('Runtime.enable');await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});await send('Page.navigate',{url:base+'/?localLogin=1#/login'});await wait(`!!document.querySelector('[data-action="local-login"]')`);await ev(`document.querySelector('[data-action="local-login"]').click()`);await wait(`location.hash==='#/profile'&&!document.querySelector('.loading-state')`);
  const data=structuredClone(fixtures);Object.assign(data['/appointments/51'].appointment,{status:'pending',symptomDesc:'睡眠打鼾，白天嗜睡',consultFee:10000,requireDeposit:true,depositAmount:5000});delete data['/appointments/51'].medicalRecord;
  await ev(`window.__fixture=${JSON.stringify(data)};window.__realFetch=fetch;window.fetch=async(input,opts={})=>{const u=new URL(input,location.origin);if(!u.pathname.startsWith('/api/v1/'))return __realFetch(input,opts);return new Response(JSON.stringify({code:0,data:__fixture[u.pathname.slice(7)]??[]}))}`);
  await go('appointment',{id:'51'});await wait(`!!document.querySelector('.appointment-status-hero')`);

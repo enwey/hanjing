@@ -1,0 +1,18 @@
+
+> hanjing-patient-web@0.1.0 build
+> npm run prepare:assets && vite build
+
+
+> hanjing-patient-web@0.1.0 prepare:assets
+> node scripts/prepare-assets.mjs
+
+vite v6.4.5 building for production...
+transforming...
+✓ 47 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                            0.56 kB │ gzip:  0.42 kB
+dist/assets/analysis-worker-BsAiOE08.js    3.04 kB
+dist/assets/index-DS0QF3Py.css           188.20 kB │ gzip: 34.83 kB
+dist/assets/index-CIFh47cm.js            184.02 kB │ gzip: 64.66 kB
+✓ built in 563ms

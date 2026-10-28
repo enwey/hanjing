@@ -9,7 +9,7 @@ export const session = {
     return sessionStorage.getItem(KEY) || '';
   },
   save(token, { local = false } = {}) {
-    if (!token) throw new Error('登录响应缺少凭据');
+    if (!token) throw new Error('登录未完成，请重试');
     sessionStorage.setItem(KEY, token);
     if (local) sessionStorage.setItem(KEY + '.mode', 'local');
     else sessionStorage.removeItem(KEY + '.mode');
@@ -27,11 +27,11 @@ export class ApiError extends Error {
 }
 export async function request(
   path,
-  { method = 'GET', data, signal, token = session.token() } = {},
+  { method = 'GET', data, rawBody, signal, token = session.token() } = {},
 ) {
   if (!path.startsWith('/') || path.startsWith('//'))
-    throw new Error('无效接口路径');
-  let response;
+    throw new Error('暂时无法完成操作，请刷新后重试');
+  let response, body;
   const timeout = AbortSignal.timeout(30000);
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   try {
@@ -42,24 +42,29 @@ export async function request(
       headers: {
         ...(token ? { Authorization: 'Bearer ' + token } : {}),
         ...(data !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(rawBody !== undefined ? { 'Content-Type': 'application/octet-stream' } : {}),
       },
-      body: data !== undefined ? JSON.stringify(data) : undefined,
+      body: rawBody !== undefined ? rawBody : data !== undefined ? JSON.stringify(data) : undefined,
     });
+    try { body = await response.json(); } catch (error) {
+      if (combined.aborted) throw error;
+      body = null;
+    }
   } catch (error) {
     if (signal?.aborted) throw error;
     if (timeout.aborted)
-      throw new ApiError('请求超时，提交类操作请先查看记录确认结果');
+      throw new ApiError('请求超时。如果刚刚提交过，请先查看记录确认是否成功');
     throw new ApiError('网络连接失败，请检查网络后重试');
   }
-  const body = await response.json().catch(() => null);
   if (!response.ok || !body || ![0, 200].includes(body.code)) {
-    if (response.status === 401 && token && session.token() === token) {
+    const status = response.ok && Number.isInteger(body?.code) && body.code >= 400 && body.code <= 599 ? body.code : response.status;
+    if (status === 401 && token && session.token() === token) {
       session.clear();
       window.dispatchEvent(new Event('patient-session-expired'));
     }
     throw new ApiError(
       body?.message || '服务暂不可用，请稍后重试',
-      response.status,
+      status,
     );
   }
   return body.data !== undefined ? body.data : body;

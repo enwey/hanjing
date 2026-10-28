@@ -1,4 +1,6 @@
-import {withdrawalAmounts,updatePendingForm,uploadPendingImage} from './pending-interactions.js';
+import {createCheckoutDialog} from './checkout-dialog.js';
+import './checkout-dialog.css';
+import {updatePendingForm,uploadPendingImage} from './pending-interactions.js';
 import './pending-pages.css';
 import './ess-report.css';
 import {setRecordingPhase,updateRecordingLevel} from './recording-page.js';
@@ -22,6 +24,8 @@ import './home-motion.css';
 import './pages-layout.css';
 import './treatment.css';
 import './navigation-motion.css';
+import './product-images.css';
+import './account-pages.css';
 import { animateNavigation, revealContent } from './navigation-motion.js';
 import { setupHome } from './home-interactions.js';
 import { session, request, list, query, post, put } from './api.js';
@@ -69,6 +73,7 @@ const wearingDrawer = createWearingDrawer({
   },
 });
 const doctorBooking=createDoctorBooking({getCurrent:()=>current,request,session});
+const checkoutDialog=createCheckoutDialog({getCurrent:()=>current,session,updateDelivery,load:async c=>{const checkout={...c,page:'checkout',params:new URLSearchParams({id:c.product.id})};const html=await page(checkout);return {html,product:checkout.product,stores:checkout.stores};}});
 function navigate(page, params = {}) {
   const url = href(page, params);
   if (location.hash === url) render();
@@ -104,7 +109,7 @@ function shell(content, isHome = false) {
   const groups = {
     assessment: ['questionnaire', 'recording', 'assessments', 'report'],
     treatment: ['devices', 'device', 'wearing', 'treatmentCalendar', 'treatmentTrend', 'treatmentReport', 'treatmentTimeline', 'treatmentAdvice', 'treatmentAdjust'],
-    community: ['post', 'publish', 'live', 'room'],
+    community: ['post', 'publish'],
     products: ['product', 'checkout', 'orders', 'order'],
   };
   return `<div class="app ${isHome ? 'is-home' : ''}"><header class="app-header hc-header"><a class="brand" href="#/home" aria-label="兴康明首页"><img src="/brand/logo.svg" alt=""><span>兴康明<small>专注睡眠呼吸健康</small></span></a><nav class="top-nav" aria-label="网站导航">${nav.map(([t, p]) => `<a href="#/${p}" ${current.page === p || groups[p]?.includes(current.page) ? 'class="current" aria-current="page"' : ''}>${t}</a>`).join('')}</nav><div class="header-user">${session.token() ? link('个人中心', 'profile', {}, 'text-button') + `<button data-action="logout">退出</button>` : link('登录', 'login', {}, 'text-button')}<a class="btn small hc-header-book" href="#/stores">预约就诊</a></div></header><main id="content" class="${isHome ? '' : 'pc-content hc-wrap'}" tabindex="-1">${content}</main>${footer()}</div>`;
@@ -112,7 +117,12 @@ function shell(content, isHome = false) {
 async function render() {
   wearingDrawer.close({force:true,restoreFocus:false});
   doctorBooking.close(true);
+  checkoutDialog.close(true);
+  if (['live', 'room'].includes(route().page)) history.replaceState(null, '', href('community'));
+  if (['coupons','distribution','team','commissions','withdraws','withdraw'].includes(route().page)) history.replaceState(null, '', href('profile'));
   const requested = route();
+  const checkoutRoute=requested.page==='checkout';
+  if(checkoutRoute){if(!session.token()){requireLogin();return;}history.replaceState(null,'',href('product',{id:requested.params.get('id')||''}));}
   if(requested.page==='booking'&&!requested.params.get('id')&&requested.params.get('storeId')&&requested.params.get('doctorId'))history.replaceState(null,'',href('doctors',{id:requested.params.get('doctorId'),storeId:requested.params.get('storeId')}));
   const drawerRoute = requested.page === 'wearing' && !!session.token();
   if (drawerRoute) history.replaceState(null, '', href('treatment', {patientId:requested.params.get('patientId') || ''}));
@@ -195,6 +205,7 @@ async function render() {
     document.getElementById('content').innerHTML = html;
     if (preserveView) window.scrollTo(scroll.x, scroll.y);
     else revealContent(document.getElementById('content'));
+    if(checkoutRoute)await checkoutDialog.open(c);
     if (drawerRoute) wearingDrawer.open({patientId:c.patientId || requested.params.get('patientId') || '',date:requested.params.get('date') || undefined});
     if (c.page === 'login' && loginBinding)
       document.querySelector('#wechat-message').textContent =
@@ -256,7 +267,7 @@ async function confirmDialog(title, message, confirmText = '确认') {
 async function promptDialog(title, label, max = 500) {
   const d = document.createElement('dialog');
   d.className = 'pc-dialog';
-  d.innerHTML = `<form method="dialog"><h2>${esc(title)}</h2><label class="field"><span>${esc(label)}</span><textarea name="answer" required maxlength="${max}" rows="4"></textarea></label><div class="pc-actions"><button value="cancel" formnovalidate class="btn secondary">取消</button><button value="ok" class="btn">确认</button></div></form>`;
+  d.innerHTML = `<form method="dialog"><h2>${esc(title)}</h2><label class="field"><span>${esc(label)}</span><textarea name="answer" required maxlength="${max}" rows="4" placeholder="${esc(label)}，最多${max}字"></textarea></label><div class="pc-actions"><button value="cancel" formnovalidate class="btn secondary">取消</button><button value="ok" class="btn">确认</button></div></form>`;
   document.body.append(d);
   d.showModal();
   return new Promise((resolve) =>
@@ -530,33 +541,7 @@ document.addEventListener('submit', async (event) => {
         }
         break;
       }
-      case 'withdraw': {
-        const calculation=withdrawalAmounts(data.amount,c.distribution);
-        if(!calculation.valid)throw Error('提现金额不符合最低金额、可用余额或手续费要求');
-        const amount=calculation.amount;
-        if (
-          !(await confirmDialog(
-            '确认提现申请',
-            `申请金额 ${money(amount)}，手续费 ${money(calculation.fee)}，预计到账 ${money(calculation.net)}，将提交至后台审核。`,
-          ))
-        )
-          break;
-        if (!active(c)) return;
-        await post('/distribution/withdraw', {
-          amount,
-          method: 'bank',
-          bankInfo: {
-            bankName: data.bankName.trim(),
-            accountName: data.accountName.trim(),
-            accountNo: data.accountNo.trim(),
-          },
-        });
-        if (active(c)) {
-          notify('提现申请已提交');
-          navigate('withdraws');
-        }
-        break;
-      }
+
     }
   } catch (error) {
     if (current === c) {
@@ -636,6 +621,10 @@ document.addEventListener('click', async (event) => {
       document.querySelectorAll('[data-action="product-gallery"]').forEach(x=>x.setAttribute('aria-pressed',String(x===button)));
       return;
     }
+    if(name==='checkout-open'){
+      if(!session.token()){sessionStorage.setItem('pc-login-return',href('checkout',{id:c.product.id}));navigate('login');return;}
+      if(ensureAuth(c))await checkoutDialog.open(c);return;
+    }
     if (!ensureAuth(c)) return;
     switch (name) {
       case 'appointment-tab':
@@ -686,6 +675,7 @@ document.addEventListener('click', async (event) => {
         break;
       case 'post-share':
         await navigator.clipboard.writeText(location.href);
+        if (!active(c)) break;
         await post('/community/posts/' + c.post.id + '/share');
         if (active(c)) notify('链接已复制');
         break;
@@ -759,7 +749,7 @@ document.addEventListener('click', async (event) => {
               ['承运公司', r.company],
               ['运单号', r.trackingNumber],
             ]) +
-              `<p>${esc(r.message || '')}</p>` +
+              `<p>${esc(r.message === '尚未接入物流轨迹服务，请凭运单号向承运方查询' ? '暂无物流轨迹，请凭运单号向承运方查询' : r.message || '')}</p>` +
               (r.steps || [])
                 .map(
                   (t) =>
@@ -773,7 +763,7 @@ document.addEventListener('click', async (event) => {
         if (
           (await confirmDialog(
             '移除就诊人',
-            '确认移除此就诊人的关联？此操作将按现有系统规则执行。',
+            '确认移除此就诊人？移除后将无法在当前账号中查看其就诊记录。',
           )) &&
           active(c)
         ) {
@@ -790,35 +780,6 @@ document.addEventListener('click', async (event) => {
       case 'read':
         await post('/user/notifications/' + button.dataset.id + '/read');
         if (active(c)) render();
-        break;
-      case 'redeem': {
-        const coupon = c.coupons.find(
-          (v) => String(v.id) === button.dataset.id,
-        );
-        if (!coupon) throw new Error('优惠券不存在');
-        if (
-          (await confirmDialog(
-            '兑换优惠券',
-            `使用 ${coupon.pointsCost} 积分兑换 ${coupon.title}？`,
-          )) &&
-          active(c)
-        ) {
-          await post('/user/coupons/redeem', { couponId: coupon.id });
-          if (active(c)) {
-            notify('兑换成功');
-            render();
-          }
-        }
-        break;
-      }
-      case 'distribution-open':
-        if (
-          (await confirmDialog('开通推广', '确定生成个人推广身份与邀请码？')) &&
-          active(c)
-        ) {
-          await post('/distribution/open');
-          if (active(c)) render();
-        }
         break;
       case 'record-start':
         await startRecording(c);
@@ -969,8 +930,8 @@ function filterProducts() {
 }
 function updateDelivery(f) {
   const pickup = f.elements.deliveryMethod.value === 'pickup';
-  document.querySelector('#shipping-fields').hidden = pickup;
-  document.querySelector('#pickup-fields').hidden = !pickup;
+  f.querySelector('#shipping-fields').hidden = pickup;
+  f.querySelector('#pickup-fields').hidden = !pickup;
   f.elements.detailAddress.required = !pickup;
   f.elements.storeId.required = pickup;
 }
@@ -1108,7 +1069,8 @@ root.addEventListener(
 
       const fallback = document.createElement('div');
       fallback.className = 'image-fallback ' + img.className;
-      fallback.textContent = img.alt || '暂无图片';
+      fallback.textContent = img.matches('.parity-thumb') ? (img.alt?.slice(0,1) || '兴') : (img.alt || '暂无图片');
+      if(img.matches('.parity-thumb')){fallback.setAttribute('role','img');fallback.setAttribute('aria-label','暂无图片');}
       img.replaceWith(fallback);
     }
   },
@@ -1151,7 +1113,7 @@ const listObserver = new MutationObserver(() => {
     sessionStorage.getItem(key) &&
     content &&
     !content.querySelector('.pending-notice') &&
-    !content.querySelector('.loading-state')
+    !content.querySelector('.loading-state, .error-state')
   )
     content.insertAdjacentHTML(
       'afterbegin',

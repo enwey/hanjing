@@ -111,14 +111,14 @@ try {
     deviceScaleFactor: 1,
     mobile: false,
   });
-  await send("Page.navigate", { url: base + "/#/login" });
+  await send("Page.navigate", { url: base + "/?localLogin=1#/login" });
   await wait(`!!document.querySelector('[data-action="local-login"]')`);
   await ev(`document.querySelector('[data-action="local-login"]').click()`);
   await wait(
     `location.hash==='#/profile'&&!document.querySelector('.loading-state')`,
   );
   const realChecks = await ev(
-    `(async()=>{const api=await import('/src/api.js');const result=[];for(const path of ['/user/profile','/user/member-info','/user/member-levels','/im/unread-count','/distribution/info','/distribution/rules','/distribution/orders','/live/rooms','/user/coupons?status=all']){try{await api.request(path);result.push({path,ok:true})}catch(e){result.push({path,ok:false,message:e.message})}}return result})()`,
+    `(async()=>{const api=await import('/src/api.js');const result=[];for(const path of ['/user/profile','/user/member-info','/user/member-levels','/im/unread-count','/distribution/info','/distribution/rules','/distribution/orders','/user/coupons?status=all']){try{await api.request(path);result.push({path,ok:true})}catch(e){result.push({path,ok:false,message:e.message})}}return result})()`,
   );
   for (const item of realChecks) check("real local API " + item.path, item.ok);
   const data = structuredClone(fixtures);
@@ -156,9 +156,10 @@ try {
     });
     for (const item of scenarios) {
       const key = item.key || item.name;
+      if (process.env.PC_SCENES && !process.env.PC_SCENES.split(",").includes(key)) continue;
       await go(item.name, item.params);
       await wait(
-        `!!document.querySelector('[data-pending-page]')&&!document.querySelector('.loading-state')`,
+        key === "checkout" ? `!!document.querySelector('.checkout-dialog [data-form="order"]')` : `!!document.querySelector('[data-pending-page]')&&!document.querySelector('.loading-state')`,
       );
       check(
         width + " " + key + " rendered",
@@ -170,7 +171,20 @@ try {
         width + " " + key + " overflow",
         await ev(`document.documentElement.scrollWidth<=${width}`),
       );
+      if (key === "treatmentReport") {
+        check(width + " report columns responsive", await ev(`(() => { const p=[...document.querySelectorAll('.sleep-report-columns > section')].map(x=>x.getBoundingClientRect()); return ${width}>760 ? Math.abs(p[0].top-p[1].top)<2 : p[1].top>=p[0].bottom; })()`));
+        check(width + " report metric bars and insight headings", await ev(`document.querySelectorAll('.sleep-metrics .parity-progress').length===4 && document.querySelector('.parity-insight h3').textContent==='表现良好'`));
+      }
       await shot(key + "-" + width);
+    }
+  }
+  if (process.env.PC_SCENES === "treatmentReport") {
+    await ev(`__fixture['/treatment/sleep-report'].trend=Array.from({length:30},(_,i)=>({date:'10-'+String(i+1).padStart(2,'0'),score:[30,65,90][i%3]}))`);
+    for (const width of [1440,390]) {
+      await send("Emulation.setDeviceMetricsOverride", {width,height:1100,deviceScaleFactor:1,mobile:false});
+      await go("treatmentReport", {patientId:21,range:"month"});
+      check(width + " monthly labels and bars", await ev(`document.querySelectorAll('.sleep-report-chart i').length===30 && [...document.querySelectorAll('.sleep-report-chart small')].filter(x=>x.textContent).length===7 && document.documentElement.scrollWidth<=${width}`));
+      await shot("treatmentReport-month-"+width);
     }
   }
   await go("assessments", { filter: "ess", patientId: 21 });
@@ -180,6 +194,16 @@ try {
       `document.querySelectorAll('.parity-record-summary').length===1&&!document.querySelector('.parity-record-summary').textContent.includes('AI')`,
     ),
   );
+  check("assessment recommendation visible", await ev(`document.querySelector(".assessment-description")?.textContent === "测试建议"`));
+  if (process.env.PC_SCENES === "assessments") {
+    await ev(`__fixture['/assessments'][0].recommendation='';__fixture['/assessments'][0].essScore=0`);
+    await go("assessments", {patientId:21});
+    check("zero ESS score explanation visible", await ev(`document.querySelector('.assessment-description')?.textContent.includes('正常范围')`));
+    await shot("assessments-zero-390");
+    await ev(`document.querySelector('.assessment-record-card').click()`);
+    await wait(`location.hash.startsWith('#/report?') && !document.querySelector('.loading-state')`);
+    check("assessment whole card opens scoped report", await ev(`location.hash.includes('patientId=21') && document.querySelector('#content').textContent.includes('评估报告')`));
+  }
   await go("publish");
   await ev(
     `const fields=document.querySelectorAll('[data-publish-tag]');for(const x of Array.from(fields).slice(0,4)){x.checked=true;x.dispatchEvent(new Event('change',{bubbles:true}))}document.querySelector('[data-publish-content]').value='发布测试内容';document.querySelector('[data-publish-content]').dispatchEvent(new Event('input',{bubbles:true}));`,
@@ -234,16 +258,6 @@ try {
       `(()=>{const c=__calls.findLast(x=>x.path==='/user/family-members'&&x.method==='POST');return c&&JSON.parse(c.body).storeId==='9'&&JSON.parse(c.body).cardNo==='TEST-CARD'})()`,
     ),
   );
-  await go("withdraw");
-  await ev(
-    `const input=document.querySelector('[data-withdraw-amount]');input.value='10';input.dispatchEvent(new Event('input',{bubbles:true}))`,
-  );
-  check(
-    "withdraw actual fee summary",
-    await ev(
-      `document.querySelector('[data-withdraw-fee]').textContent==='¥1.00'&&document.querySelector('[data-withdraw-net]').textContent==='¥9.00'`,
-    ),
-  );
   await go("member", { id: 21 });
   check(
     "self member remains read-only",
@@ -276,7 +290,7 @@ try {
     );
   }
   fs.writeFileSync(
-    "../tests/patient-web/artifacts/pending-pages-2026-10-28/results.json",
+    "../tests/patient-web/artifacts/pending-pages-2026-10-28/" + (process.env.PC_SCENES ? (process.env.PC_SCENES === "treatmentReport" ? "sleep-report-results.json" : "description-results.json") : "results.json"),
     JSON.stringify(checks, null, 2),
   );
   console.log(

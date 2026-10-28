@@ -1,0 +1,286 @@
+[
+  {
+    "name": "real local API /user/profile",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-info",
+    "ok": true
+  },
+  {
+    "name": "real local API /user/member-levels",
+    "ok": true
+  },
+  {
+    "name": "real local API /im/unread-count",
+    "ok": true
+  },
+  {
+    "name": "profile fits 1440",
+    "ok": true
+  },
+  {
+    "name": "profile hints 1440",
+    "ok": true
+  },
+  {
+    "name": "profile removed entries absent 1440",
+    "ok": true
+  },
+  {
+    "name": "editProfile fits 1440",
+    "ok": true
+  },
+  {
+    "name": "editProfile hints 1440",
+    "ok": true
+  },
+  {
+    "name": "editProfile removed entries absent 1440",
+    "ok": true
+  },
+  {
+    "name": "family fits 1440",
+    "ok": true
+  },
+  {
+    "name": "family hints 1440",
+    "ok": true
+  },
+  {
+    "name": "family removed entries absent 1440",
+    "ok": true
+  },
+  {
+    "name": "member-add fits 1440",
+    "ok": true
+  },
+  {
+    "name": "member-add hints 1440",
+    "ok": true
+  },
+  {
+    "name": "member-add removed entries absent 1440",
+    "ok": true
+  },
+  {
+    "name": "member-edit fits 1440",
+    "ok": true
+  },
+  {
+    "name": "member-edit hints 1440",
+    "ok": true
+  },
+  {
+    "name": "member-edit removed entries absent 1440",
+    "ok": true
+  },
+  {
+    "name": "membership fits 1440",
+    "ok": true
+  },
+  {
+    "name": "membership hints 1440",
+    "ok": true
+  },
+  {
+    "name": "membership removed entries absent 1440",
+    "ok": true
+  },
+  {
+    "name": "security fits 1440",
+    "ok": true
+  },
+  {
+    "name": "security hints 1440",
+    "ok": true
+  },
+  {
+    "name": "security removed entries absent 1440",
+    "ok": true
+  },
+  {
+    "name": "notifications fits 1440",
+    "ok": true
+  },
+  {
+    "name": "notifications hints 1440",
+    "ok": true
+  },
+  {
+    "name": "notifications removed entries absent 1440",
+    "ok": true
+  },
+  {
+    "name": "service fits 1440",
+    "ok": true
+  },
+  {
+    "name": "service hints 1440",
+    "ok": true
+  },
+  {
+    "name": "service removed entries absent 1440",
+    "ok": true
+  },
+  {
+    "name": "profile fits 390",
+    "ok": true
+  },
+  {
+    "name": "profile hints 390",
+    "ok": true
+  },
+  {
+    "name": "profile removed entries absent 390",
+    "ok": true
+  },
+  {
+    "name": "editProfile fits 390",
+    "ok": true
+  },
+  {
+    "name": "editProfile hints 390",
+    "ok": true
+  },
+  {
+    "name": "editProfile removed entries absent 390",
+    "ok": true
+  },
+  {
+    "name": "family fits 390",
+    "ok": true
+  },
+  {
+    "name": "family hints 390",
+    "ok": true
+  },
+  {
+    "name": "family removed entries absent 390",
+    "ok": true
+  },
+  {
+    "name": "member-add fits 390",
+    "ok": true
+  },
+  {
+    "name": "member-add hints 390",
+    "ok": true
+  },
+  {
+    "name": "member-add removed entries absent 390",
+    "ok": true
+  },
+  {
+    "name": "member-edit fits 390",
+    "ok": true
+  },
+  {
+    "name": "member-edit hints 390",
+    "ok": true
+  },
+  {
+    "name": "member-edit removed entries absent 390",
+    "ok": true
+  },
+  {
+    "name": "membership fits 390",
+    "ok": true
+  },
+  {
+    "name": "membership hints 390",
+    "ok": true
+  },
+  {
+    "name": "membership removed entries absent 390",
+    "ok": true
+  },
+  {
+    "name": "security fits 390",
+    "ok": true
+  },
+  {
+    "name": "security hints 390",
+    "ok": true
+  },
+  {
+    "name": "security removed entries absent 390",
+    "ok": true
+  },
+  {
+    "name": "notifications fits 390",
+    "ok": true
+  },
+  {
+    "name": "notifications hints 390",
+    "ok": true
+  },
+  {
+    "name": "notifications removed entries absent 390",
+    "ok": true
+  },
+  {
+    "name": "service fits 390",
+    "ok": true
+  },
+  {
+    "name": "service hints 390",
+    "ok": true
+  },
+  {
+    "name": "service removed entries absent 390",
+    "ok": true
+  },
+  {
+    "name": "profile save payload",
+    "ok": true
+  },
+  {
+    "name": "member add payload",
+    "ok": true
+  },
+  {
+    "name": "member edit payload",
+    "ok": true
+  },
+  {
+    "name": "self stays read only",
+    "ok": true
+  },
+  {
+    "name": "password mismatch no request",
+    "ok": true
+  },
+  {
+    "name": "password save",
+    "ok": true
+  },
+  {
+    "name": "read all action",
+    "ok": true
+  },
+  {
+    "name": "empty chat blocked",
+    "ok": true
+  },
+  {
+    "name": "message payload",
+    "ok": true
+  },
+  {
+    "name": "family empty",
+    "ok": true
+  },
+  {
+    "name": "notifications empty",
+    "ok": true
+  },
+  {
+    "name": "service empty",
+    "ok": true
+  },
+  {
+    "name": "profile failure retry",
+    "ok": true
+  }
+]
