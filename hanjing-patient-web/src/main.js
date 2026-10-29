@@ -27,6 +27,7 @@ import './navigation-motion.css';
 import './product-images.css';
 import './account-pages.css';
 import './avatar-fallback.css';
+import './article-rich-text.css';
 import { animateNavigation, revealContent } from './navigation-motion.js';
 import { setupHome } from './home-interactions.js';
 import { session, request, list, query, post, put } from './api.js';

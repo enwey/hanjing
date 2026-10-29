@@ -1,4 +1,5 @@
 import { reviewRefund, syncRefund, registerOfflineRefund } from '../refunds.js';
+import { resolveArticlePublisher } from '../article-publisher.js';
 import { syncDirectChildrenSecondLevel } from '../distribution-relationships.js';
 import { lockAppointmentChange, RESCHEDULABLE_STATUSES, TERMINAL_STATUSES, assertAppointmentFeesPaid, validateAppointmentFeeItems, assertConsultationAllowed, settlePaidAppointmentOrder } from '../appointment-workflow.js';
 import { patientAccessScope, orderAccessScope, fulfillmentAccessScope, readPagination } from '../admin-scope.js';
@@ -6076,7 +6077,8 @@ app.get('/api/admin/content/articles', authenticateToken, async (req, res) => {
     const list = await query(
       `SELECT p.id, p.title, p.summary, p.content, p.cover_url, p.tags,
               p.related_product_name, p.related_doctor_name, p.publish_at, p.sort_weight,
-              p.likes_count, p.comments_count, p.is_top, p.status, p.created_at, u.nickname, u.phone
+              p.likes_count, p.comments_count, p.is_top, p.status, p.created_at,
+              CASE WHEN p.user_role='admin' THEN '兴康明诊所' ELSE u.nickname END AS nickname, u.phone
        FROM community_posts p
        LEFT JOIN users u ON p.user_id = u.id
        ORDER BY p.is_top DESC, p.sort_weight DESC, COALESCE(p.publish_at, p.created_at) DESC, p.id DESC
@@ -6088,10 +6090,16 @@ app.get('/api/admin/content/articles', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/admin/content/article-authors', authenticateToken, async (req, res) => {
+  const search = String(req.query.search || '').trim().slice(0, 100);
+  const users = await query("SELECT id,nickname FROM users WHERE openid <> 'editorial:xkm:community-official' AND nickname LIKE ? ORDER BY id DESC LIMIT 50", ['%' + search + '%']);
+  res.json({ code: 200, data: users });
+});
+
 app.get('/api/admin/content/articles/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const post = await get(`SELECT * FROM community_posts WHERE id = ?`, [id]);
+    const post = await get(`SELECT p.*,u.nickname AS author_name FROM community_posts p LEFT JOIN users u ON u.id=p.user_id WHERE p.id = ?`, [id]);
     if (!post) {
       return res.status(404).json({ code: 404, message: '文章不存在' });
     }
@@ -6122,10 +6130,7 @@ app.post('/api/admin/content/articles', authenticateToken, async (req, res) => {
   }
 
   try {
-    const author = await get(`SELECT id FROM users ORDER BY id ASC LIMIT 1`);
-    if (!author) {
-      return res.status(400).json({ code: 400, message: '缺少系统用户，无法发布文章' });
-    }
+    const author = await resolveArticlePublisher(req.body.author_id, { get, run });
     const normalizedTags = Array.isArray(tags)
       ? tags.map((item) => String(item || '').trim()).filter(Boolean)
       : [];
@@ -6144,9 +6149,10 @@ app.post('/api/admin/content/articles', authenticateToken, async (req, res) => {
         user_id, user_role, title, summary, content, cover_url, tags,
         related_product_name, related_doctor_name, publish_at, sort_weight, status
       )
-       VALUES (?, 'admin', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         author.id,
+        author.role,
         String(title).trim(),
         normalizedSummary,
         String(content).trim(),
@@ -6166,7 +6172,7 @@ app.post('/api/admin/content/articles', authenticateToken, async (req, res) => {
     });
     res.json({ code: 200, message: '保存文章成功', data: { id: result.id } });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '保存文章失败' });
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.statusCode ? error.message : '保存文章失败' });
   }
 });
 
@@ -6195,6 +6201,10 @@ app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) =
 
   try {
     const hasField = (key) => Object.prototype.hasOwnProperty.call(req.body, key);
+    const publisher = hasField('author_id')
+      ? await resolveArticlePublisher(req.body.author_id, { get, run })
+      : { id: post.user_id, role: post.user_role };
+    if (publisher.role !== 'admin' && Number(publisher.id) === Number(post.user_id) && post.user_role !== 'admin') publisher.role = post.user_role;
     const normalizedTags = Array.isArray(tags)
       ? tags.map((item) => String(item || '').trim()).filter(Boolean)
       : null;
@@ -6239,7 +6249,9 @@ app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) =
            publish_at = ?,
            sort_weight = ?,
            status = ?,
-           is_top = ?
+           is_top = ?,
+           user_id = ?,
+           user_role = ?
        WHERE id = ?`,
       [
         resolvedTitle,
@@ -6253,6 +6265,8 @@ app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) =
         resolvedSortWeight,
         resolvedStatus,
         resolvedIsTop,
+        publisher.id,
+        publisher.role,
         id
       ]
     );
@@ -6264,7 +6278,7 @@ app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) =
     });
     res.json({ code: 200, message: '更新内容成功' });
   } catch (error) {
-    res.status(500).json({ code: 500, message: '更新内容失败' });
+    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.statusCode ? error.message : '更新内容失败' });
   }
 });
 

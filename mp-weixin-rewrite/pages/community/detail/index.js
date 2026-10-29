@@ -65,6 +65,7 @@ function normalizePostDetail(detail) {
     roleClass: 'role--' + role,
     title: detail.title || '',
     content: detail.content || '',
+    isRichText: /<\/?(?:p|div|img|h[1-6]|ul|ol|table|br)\b/i.test(detail.content || ''),
     coverUrl: detail.coverUrl || '',
     category: tags.category,
     categoryClass: getCategoryClass(tags.category),

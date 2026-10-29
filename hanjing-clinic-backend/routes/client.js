@@ -1,3 +1,4 @@
+import { communityPublisher } from '../article-publisher.js';
 import { canUseLocalDevLogin } from '../local-dev-login.js';
 import { getCurrentUserMembership, getMemberLevelRules, syncUserMembership } from '../membership.js';
 import { createPaidFulfillment } from '../paid-fulfillment.js';
@@ -2167,7 +2168,8 @@ app.get('/api/v1/assessments', authenticateWxToken, async (req, res) => {
           peakDecibel: item.peak_decibel,
           snoreRate: item.snore_rate,
           apneaEvents: item.apnea_events,
-          riskLevel: item.risk_level,
+          riskLevel: item.risk_level
+,
           riskScore: item.risk_score == null ? null : item.risk_score
         },
         recommendation: advice,
@@ -2565,7 +2567,8 @@ app.get('/api/v1/assessments/snore-analysis/:id', authenticateWxToken, async (re
             peakDecibel: item.peak_decibel,
             snoreRate: item.snore_rate,
             apneaEvents: item.apnea_events,
-            riskLevel: item.risk_level,
+            riskLevel: item.risk_level
+,
             riskScore: item.risk_score == null ? null : item.risk_score
           },
           recommendation: advice,
@@ -2661,10 +2664,7 @@ app.get('/api/v1/community/posts', async (req, res) => {
 
     const formatted = list.map(p => ({
       id: p.id,
-      author: p.author_name || '',
-      avatar: p.author_avatar || '',
-      role: p.user_role,
-      roleLabel: p.user_role === 'doctor' ? '专家医生' : p.user_role === 'expert' ? '睡眠专家' : '鼾友',
+      ...communityPublisher(p),
       title: p.title,
       summary: p.summary || '',
       content: p.content,
@@ -2791,10 +2791,7 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
       message: 'success',
       data: {
         id: post.id,
-        author: post.author_name || '',
-        avatar: post.author_avatar || '',
-        role: post.user_role,
-        roleLabel: post.user_role === 'doctor' ? '专家医生' : post.user_role === 'expert' ? '睡眠专家' : '鼾友',
+        ...communityPublisher(post),
         title: post.title,
         content: post.content,
         coverUrl: post.cover_url || '',

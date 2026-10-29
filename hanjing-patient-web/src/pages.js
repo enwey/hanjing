@@ -1,4 +1,5 @@
 import {pendingPage,pendingRoutes} from './pending-pages.js';
+import {articleRichText} from './article-rich-text.js';
 import {essReport} from './ess-report.js';
 import {snoreReport} from './snore-report.js';
 import {recordingPage} from './recording-page.js';
@@ -328,7 +329,7 @@ async function basePage(c) {
         head('post', '', link('返回社区', 'community')) +
         panel(
           '',
-          `<article><small>${esc(a.author)} · ${esc(a.roleLabel)} · ${date(a.createdAt)}</small><h1 class="article-title">${esc(a.title)}</h1>${a.coverUrl ? image(a.coverUrl, a.title, 'article-cover') : ''}<p class="prewrap article-content">${esc(a.content)}</p><div class="pc-actions">${action(`${a.isLiked ? '已点赞' : '点赞'} · ${a.likes || 0}`, 'post-like')}${action(`${a.isFavorited ? '已收藏' : '收藏'} · ${a.favoritesCount || 0}`, 'post-favorite')}${action('复制链接', 'post-share')}${action('举报', 'post-report')}</div></article>`,
+          `<article><small>${esc(a.author)} · ${esc(a.roleLabel)} · ${date(a.createdAt)}</small><h1 class="article-title">${esc(a.title)}</h1>${a.coverUrl ? image(a.coverUrl, a.title, 'article-cover') : ''}${articleRichText(a.content)}<div class="pc-actions">${action(`${a.isLiked ? '已点赞' : '点赞'} · ${a.likes || 0}`, 'post-like')}${action(`${a.isFavorited ? '已收藏' : '收藏'} · ${a.favoritesCount || 0}`, 'post-favorite')}${action('复制链接', 'post-share')}${action('举报', 'post-report')}</div></article>`,
         ) +
         panel(
           '评论',

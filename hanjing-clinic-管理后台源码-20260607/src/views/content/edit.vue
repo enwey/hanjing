@@ -16,6 +16,22 @@ const isEdit = ref(!!route.params.id)
 const editorMode = ref<'edit' | 'preview'>('edit')
 
 const title = ref('')
+const authorId = ref('')
+const authorOptions = ref<Array<{ label: string; value: string }>>([])
+const authorLoading = ref(false)
+let authorSearchVersion = 0
+async function fetchAuthors(search = '') {
+  const version = ++authorSearchVersion
+  authorLoading.value = true
+  try {
+    const res = await request.get('/api/admin/content/article-authors', { params: { search } })
+    if (version !== authorSearchVersion) return
+    const selected = authorOptions.value.find(a => a.value === authorId.value)
+    authorOptions.value = (res.data || []).map((u: any) => ({ label: `${u.nickname || '未命名用户'}（ID ${u.id}）`, value: String(u.id) }))
+    if (selected && !authorOptions.value.some(a => a.value === selected.value)) authorOptions.value.unshift(selected)
+  } catch { MessagePlugin.error('加载发布者失败，请重新搜索') }
+  finally { if (version === authorSearchVersion) authorLoading.value = false }
+}
 const category = ref('睡眠科普')
 const tags = ref('')
 const summary = ref('')
@@ -35,6 +51,10 @@ async function fetchArticle() {
     const res: any = await request.get(`/api/admin/content/articles/${articleId.value}`)
     if (res.code === 200 && res.data) {
       const data = res.data
+      authorId.value = data.user_role === 'admin' ? '' : String(data.user_id)
+      if (authorId.value && !authorOptions.value.some(a => a.value === authorId.value)) {
+        authorOptions.value.unshift({ value: authorId.value, label: `${data.author_name || '未命名用户'}（ID ${data.user_id}）` })
+      }
       title.value = data.title || ''
       summary.value = data.summary || ''
       editorHtml.value = data.content || ''
@@ -83,6 +103,7 @@ function buildPayload(status: string) {
   }
   return {
     title: normalizeTextInput(title.value),
+    author_id: authorId.value || null,
     summary: normalizeTextInput(summary.value),
     content: editorHtml.value.trim(),
     tags: list,
@@ -182,6 +203,7 @@ async function fetchDoctors() {
 }
 
 onMounted(() => {
+  fetchAuthors()
   fetchCategories()
   fetchProducts()
   fetchDoctors()
@@ -244,6 +266,15 @@ async function handleDescImageUpload(files: File[], callback: (urls: string[]) =
           </div>
 
           <!-- Category -->
+          <div class="form-group full">
+            <label class="form-label">发布者</label>
+            <t-select v-model="authorId" filterable :loading="authorLoading" placeholder="兴康明诊所（默认）" @search="fetchAuthors">
+              <t-option value="" label="兴康明诊所（默认）" />
+              <t-option v-for="author in authorOptions" :key="author.value" :value="author.value" :label="author.label" />
+            </t-select>
+            <div style="font-size:12px;color:#7b8494;margin-top:8px">可搜索社区用户昵称；未选择时以兴康明诊所发布。</div>
+          </div>
+
           <div class="form-group">
             <label class="form-label">分类</label>
             <select class="form-control" v-model="category">

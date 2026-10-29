@@ -1,5 +1,9 @@
 # 管理后台测试
 
+- 2026-10-29 [社區問答原文還原](community-qa-source-restore-2026-10-29.md)：30篇、251段問答完整恢復，資料庫及30篇API逐字核對通過，PC抽查完成，待回歸。
+
+- 2026-10-29 [科普文章發布者](article-publisher-2026-10-29.md)：新增發布者選擇、默認品牌身份及官方顯示；專項、MySQL、瀏覽器及構建自測通過，待回歸。
+
 - 2026-10-29 [项目品牌Logo统一替换](../brand-logo-replacement-2026-10-29.md)：指定Logo覆盖各端品牌、默认图、二维码中心图及favicon，开发自测完成，待回归。
 
 - 2026-10-24 [微信通知顶级路由调整](wechat-notification-route-fix-2026-10-24.md)：将运营后台微信通知由 `/settings/wechat-notifications` 调整为与权限管理、操作日志同级的 `/wechat-notifications`；路径检索和生产构建通过，状态待回归。

@@ -1,14 +1,20 @@
 import {esc,safeUrl,money,btn} from './ui.js';
 export const categoryColor=p=>({device:'#d9e6ff',accessory:'#dff4e8',service:'#fff1d6'})[p.category]||'#f3f4f6';
 const inline=text=>esc(text).replace(/!\[([^\]]*)\]\(([^\s)]+)\)/g,(_,alt,url)=>safeUrl(url)?`<img src="${esc(safeUrl(url))}" alt="${alt}" loading="lazy">`:'').replace(/\[([^\]]+)\]\(([^\s)]+)\)/g,(_,label,url)=>safeUrl(url)?`<a href="${esc(safeUrl(url))}" target="_blank" rel="noopener noreferrer">${label}</a>`:label).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
-export function productRichText(value){
+export function productRichText(value,{allowInlineStyles=false}={}){
  const raw=String(value||'');
  if(/<\/?(?:p|div|img|h[1-6]|ul|ol|table|br)\b/i.test(raw)){
   if(typeof DOMParser==='undefined')return esc(raw.replace(/<[^>]*>/g,''));
   const doc=new DOMParser().parseFromString(raw,'text/html');
   const allowed=new Set(['P','DIV','BR','H1','H2','H3','H4','H5','H6','UL','OL','LI','STRONG','B','EM','I','U','S','BLOCKQUOTE','HR','TABLE','THEAD','TBODY','TR','TH','TD','IMG','A','SPAN']);
   const blocked=new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','MATH','FORM','INPUT','BUTTON','TEMPLATE']);
-  const clean=node=>{if(node.nodeType===3)return esc(node.textContent);if(node.nodeType!==1||blocked.has(node.tagName))return '';const children=[...node.childNodes].map(clean).join('');if(!allowed.has(node.tagName))return children;const tag=node.tagName.toLowerCase();if(tag==='img'){const url=safeUrl(node.getAttribute('src'));return url?`<img src="${esc(url)}" alt="${esc(node.getAttribute('alt')||'')}" loading="lazy">`:''}if(tag==='br'||tag==='hr')return `<${tag}>`;if(tag==='a'){const url=safeUrl(node.getAttribute('href'));return url?`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${children}</a>`:children}return `<${tag}>${children}</${tag}>`};
+  const safeStyle=node=>{
+   if(!allowInlineStyles)return '';
+   const properties=['color','background-color','border','border-left','border-color','border-radius','padding','margin','font-size','font-weight','line-height','text-align'];
+   const styles=properties.map(key=>{const value=node.style.getPropertyValue(key);return value&&/^[#(),.%\w\s-]+$/.test(value)&&!/(?:url|expression|javascript|behavior)/i.test(value)?`${key}:${value}`:''}).filter(Boolean).join(';');
+   return styles?` style="${esc(styles)}"`:'';
+  };
+  const clean=node=>{if(node.nodeType===3)return esc(node.textContent);if(node.nodeType!==1||blocked.has(node.tagName))return '';const children=[...node.childNodes].map(clean).join('');if(!allowed.has(node.tagName))return children;const tag=node.tagName.toLowerCase();if(tag==='img'){const url=safeUrl(node.getAttribute('src'));return url?`<img src="${esc(url)}" alt="${esc(node.getAttribute('alt')||'')}" loading="lazy">`:''}if(tag==='br'||tag==='hr')return `<${tag}>`;if(tag==='a'){const url=safeUrl(node.getAttribute('href'));return url?`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${children}</a>`:children}return `<${tag}${safeStyle(node)}>${children}</${tag}>`};
   return [...doc.body.childNodes].map(clean).join('');
  }
  return raw.split(/\r?\n/).map(line=>{if(!line.trim())return '';const h=line.match(/^(#{1,6})\s+(.*)/);if(h)return `<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`;return `<p>${inline(line.replace(/^[-*]\s+/,'• '))}</p>`}).join('');

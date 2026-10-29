@@ -62,6 +62,9 @@ import { initWebSocket } from './im-socket.js';
 
 // Register routers
 // Public bundled demo portraits only; do not expose arbitrary project files.
+app.get('/api/v1/community/brand-logo.png', (req, res) => {
+  res.sendFile(fileURLToPath(new URL('../assets/brand/logo.png', import.meta.url)));
+});
 app.get('/static/demo/:filename', (req, res, next) => {
   if (!/^doctor-[1-4]\.jpg$/.test(req.params.filename)) return next();
   res.sendFile(fileURLToPath(new URL('./static/demo/' + req.params.filename, import.meta.url)));

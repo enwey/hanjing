@@ -1,0 +1,6 @@
+.article-rich-content{margin:24px 0;color:var(--night,#24334a);font-size:16px;line-height:1.9;overflow-wrap:anywhere}
+.article-rich-content p{max-width:none}
+.article-rich-content img{display:block;max-width:100%;height:auto}
+.article-rich-content table{max-width:100%;border-collapse:collapse}
+.article-rich-content th,.article-rich-content td{border:1px solid #e5e7eb;padding:8px}
+@media(max-width:640px){.article-rich-content{font-size:15px}}
