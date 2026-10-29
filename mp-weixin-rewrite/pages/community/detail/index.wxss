@@ -87,3 +87,5 @@
 .comment-bar__emoji { width: 58rpx; height: 58rpx; border-radius: 9999rpx; background: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 30rpx; line-height: 1; color: #f5a623; flex-shrink: 0; box-shadow: 0 4rpx 12rpx rgba(15,23,42,0.06); }
 .comment-bar__send--disabled { opacity: 0.45; }
 .post-rich-content { display: block; margin: 28rpx 0; font-size: 27rpx; line-height: 1.9; color: #374151; word-break: break-all; }
+.official-badge { display: inline-flex; align-items: center; flex-shrink: 0; gap: 5rpx; padding: 3rpx 10rpx 3rpx 6rpx; border: 1rpx solid var(--color-primary-100, #d9e6ff); border-radius: 8rpx; background: var(--color-primary-50, #eef4ff); color: var(--color-primary-600, #2a52d4); font-size: 20rpx; font-weight: 600; line-height: 1.5; }
+.official-badge__icon { display: block; width: 24rpx; height: 24rpx; }

@@ -26,7 +26,11 @@
           <view class="post-author">
             <view class="post-author__row">
               <text class="post-author__name">{{item.author}}</text>
-              <text class="post-author__role {{item.roleClass}}">{{item.roleLabel}}</text>
+              <view wx:if="{{item.isOfficial}}" class="official-badge" aria-label="诊所官方认证">
+                <image class="official-badge__icon" src="/static/icons/official-verified.svg" mode="aspectFit"></image>
+                <text>官方</text>
+              </view>
+              <text wx:else class="post-author__role {{item.roleClass}}">{{item.roleLabel}}</text>
             </view>
             <text class="post-author__time">{{item.displayTime}}</text>
           </view>

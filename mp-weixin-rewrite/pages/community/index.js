@@ -101,6 +101,7 @@ function normalizePost(post) {
     avatarBg: getAvatarColor(author || '友'),
     author,
     role,
+    isOfficial: role === 'admin',
     roleLabel: post.roleLabel || (role === 'doctor' ? '专家医生' : role === 'expert' ? '睡眠专家' : '鼾友'),
     roleClass: 'role--' + role,
     createdAt: post.createdAt || '',

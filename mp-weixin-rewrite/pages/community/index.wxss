@@ -44,3 +44,5 @@
 .empty-tip { text-align: center; padding: 40rpx 0; color: #9ca3af; font-size: 24rpx; }
 .publish-fab { position: fixed; right: 32rpx; bottom: calc(32rpx + env(safe-area-inset-bottom, 0)); z-index: 20; width: 104rpx; height: 104rpx; border-radius: 9999rpx; background: linear-gradient(135deg, #3b6bf5, #5a85f5); display: flex; align-items: center; justify-content: center; box-shadow: 0 12rpx 28rpx rgba(59, 107, 245, 0.35); }
 .publish-fab__icon { width: 42rpx; height: 42rpx; }
+.official-badge { display: inline-flex; align-items: center; flex-shrink: 0; gap: 5rpx; padding: 3rpx 10rpx 3rpx 6rpx; border: 1rpx solid var(--color-primary-100, #d9e6ff); border-radius: 8rpx; background: var(--color-primary-50, #eef4ff); color: var(--color-primary-600, #2a52d4); font-size: 20rpx; font-weight: 600; line-height: 1.5; }
+.official-badge__icon { display: block; width: 24rpx; height: 24rpx; }

@@ -1,5 +1,7 @@
 # 测试记录
 
+- 2026-10-29 [小程序社區圖文與官方徽標](mini-program/community-richtext-official-2026-10-29.md)：修正正文展示分支、獨立官方徽標，5項代碼測試通過，待回歸。
+
 - 2026-10-29 [文章圖文正文樣式](patient-web/article-rich-text-2026-10-29.md)：撤回專用問答渲染，將樣式存入圖文正文，原文保留，自測完成待回歸。
 
 - 2026-10-29 [社區問答原文還原](admin/community-qa-source-restore-2026-10-29.md)：本地30篇恢復Word原始問答，逐字核對完成，待回歸。

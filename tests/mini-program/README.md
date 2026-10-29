@@ -1,5 +1,7 @@
 # 微信小程序测试
 
+- 2026-10-29 [社區圖文標籤與官方徽標](community-richtext-official-2026-10-29.md)：統一rich-text、兼容轉義及獨立認證徽標；5項代碼自測通過，按使用者要求不操作界面，待回歸。
+
 - 2026-10-29 [文章圖文正文樣式](../patient-web/article-rich-text-2026-10-29.md)：改用通用rich-text，處理器及模板校驗完成，原生工具與真機待回歸。
 
 - 2026-10-29 [项目品牌Logo统一替换](../brand-logo-replacement-2026-10-29.md)：指定Logo覆盖各端品牌、默认图、二维码中心图及favicon，开发自测完成，待回归。

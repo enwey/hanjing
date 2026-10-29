@@ -1,5 +1,6 @@
 const api = require('../../../api/index');
 const { formatChinaDateTime } = require('../../../common/utils/date-time');
+const { articleRichText } = require('../../../common/utils/article-rich-text');
 
 function getCategoryClass(name) {
   if (['阻鼾器配戴', '睡眠科普', '科普问答', '专家'].includes(name)) return 'tag-theme--blue';
@@ -61,11 +62,12 @@ function normalizePostDetail(detail) {
     avatarText: (author || '友').slice(0, 1),
     avatarBg: getAvatarColor(author || '友'),
     role,
+    isOfficial: role === 'admin',
     roleLabel: detail.roleLabel || (role === 'doctor' ? '专家医生' : role === 'expert' ? '睡眠专家' : '鼾友'),
     roleClass: 'role--' + role,
     title: detail.title || '',
     content: detail.content || '',
-    isRichText: /<\/?(?:p|div|img|h[1-6]|ul|ol|table|br)\b/i.test(detail.content || ''),
+    richContent: articleRichText(detail.content),
     coverUrl: detail.coverUrl || '',
     category: tags.category,
     categoryClass: getCategoryClass(tags.category),
