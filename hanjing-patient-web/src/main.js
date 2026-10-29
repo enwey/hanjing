@@ -54,7 +54,6 @@ let current,
   sequence = 0,
   toastTimer,
   recorder = null,
-  loginBinding = false,
   authSubmitting = false;
 const notify = (text) => {
   const el = document.querySelector('#toast');
@@ -148,7 +147,7 @@ async function render() {
     requireLogin();
     return;
   }
-  if (c.page === 'login' && session.token() && !loginBinding) {
+  if (c.page === 'login' && session.token()) {
     navigate('profile');
     return;
   }
@@ -208,9 +207,6 @@ async function render() {
     else revealContent(document.getElementById('content'));
     if(checkoutRoute)await checkoutDialog.open(c);
     if (drawerRoute) wearingDrawer.open({patientId:c.patientId || requested.params.get('patientId') || '',date:requested.params.get('date') || undefined});
-    if (c.page === 'login' && loginBinding)
-      document.querySelector('#wechat-message').textContent =
-        '微信授权已完成，请先使用密码登录已有患者账号，再确认关联。';
   } catch (error) {
     if (current !== c || error.name === 'AbortError') return;
     if (preserveView) notify(error.message);
@@ -311,18 +307,6 @@ document.addEventListener('submit', async (event) => {
         });
         if (current !== c) return;
         session.save(result.access_token);
-        if (loginBinding) {
-          const ok = await confirmDialog(
-            '关联微信',
-            '将刚才扫码的微信关联到当前患者账号？不会合并其他患者账号。',
-            '确认关联',
-          );
-          if (ok) {
-            await post('/pc/auth/wechat/bind', { confirm: true });
-            notify('微信已关联');
-          } else notify('已登录，未关联微信');
-          loginBinding = false;
-        }
         location.hash = nextRoute();
         break;
       }
@@ -548,7 +532,6 @@ document.addEventListener('submit', async (event) => {
     if (current === c) {
       message.textContent = error.message;
       if (type === 'login' && session.token()) {
-        loginBinding = false;
         message.textContent += '；密码登录已成功，可前往个人中心。';
         message.insertAdjacentHTML('beforeend', link('个人中心', 'profile'));
       }
@@ -571,45 +554,18 @@ document.addEventListener('click', async (event) => {
   }
   if (name === 'logout') {
     session.clear();
-    loginBinding = false;
     recorder?.dispose();
     navigate('home');
     return;
   }
-  if (name === 'login-mode') {
-    const wx = button.dataset.mode === 'wechat';
-    document.querySelector('#password-login').hidden = wx;
-    document.querySelector('#wechat-login').hidden = !wx;
-    document
-      .querySelectorAll('[data-action="login-mode"]')
-      .forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
-    revealContent(document.querySelector(wx ? '#wechat-login' : '#password-login'));
-    return;
-  }
-  const isAuthAction = name === 'local-login' || name === 'wechat-start';
+  const isAuthAction = name === 'local-login';
   if (isAuthAction && authSubmitting) return;
   if (isAuthAction) authSubmitting = true;
   button.disabled = true;
   try {
     if (name === 'local-login') {
-      if (loginBinding) throw new Error('请先使用密码登录完成微信关联');
       const ok = await localMockLogin({ post, session, isActive: () => current === c });
       if (ok) { notify('本地模拟登录成功'); location.hash = nextRoute(); }
-      return;
-    }
-    if (name === 'wechat-start') {
-      sessionStorage.setItem(
-        'pc-login-return',
-        sessionStorage.getItem('pc-login-return') || '#/profile',
-      );
-      const r = await post('/pc/auth/wechat/start');
-      const url = new URL(r.authorizeUrl);
-      if (
-        url.origin !== 'https://open.weixin.qq.com' ||
-        url.pathname !== '/connect/qrconnect'
-      )
-        throw new Error('微信登录地址无效');
-      if (current === c) location.assign(url.href);
       return;
     }
     if (name === 'product-gallery') {
@@ -1043,7 +999,6 @@ async function generateSnoreReport(c) {
 window.addEventListener('hashchange', render);
 window.addEventListener('patient-session-expired', () => {
   recorder?.dispose();
-  loginBinding = false;
   notify('登录已过期，请重新登录');
   if (!publicPages.has(current?.page)) {
     sessionStorage.setItem('pc-login-return', location.hash);
@@ -1078,32 +1033,13 @@ root.addEventListener(
   },
   true,
 );
-async function boot() {
+function boot() {
   const search = new URLSearchParams(location.search);
-  const code = search.get('code'),
-    state = search.get('state');
-  const referral = search.get('referralCode');
-  if (referral && /^[A-Za-z0-9_-]{1,64}$/.test(referral))
-    sessionStorage.setItem('pc-referral', referral);
-  if (search.get('wechat') === 'callback') {
-    history.replaceState(null, '', location.pathname + '#/login');
-    render();
-    try {
-      if (!code || !state) throw new Error('微信授权未完成，请重新扫码');
-      const r = await post('/pc/auth/wechat/exchange', { code, state });
-      if (r.bindingRequired) {
-        loginBinding = true;
-        session.clear();
-        await render();
-        notify(r.message);
-      } else {
-        session.save(r.access_token);
-        location.hash = nextRoute();
-      }
-    } catch (e) {
-      notify(e.message);
-    }
-  } else render();
+  const referral=search.get('referralCode');
+  if(referral&&/^[A-Za-z0-9_-]{1,64}$/.test(referral))sessionStorage.setItem('pc-referral',referral);
+  // Expired links from the removed login method return to password login.
+  if(search.get('wechat')==='callback')history.replaceState(null,'',location.pathname+'#/login');
+  render();
 }
 // Acknowledgement is only shown on the lists after a result was uncertain.
 const listObserver = new MutationObserver(() => {

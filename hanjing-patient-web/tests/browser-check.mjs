@@ -135,13 +135,7 @@ try {
     await ev(`location.hash==='#/login'`),
   );
   await shot('login-1440');
-  await ev(
-    `document.querySelector('[data-action="login-mode"][data-mode="wechat"]').click();document.querySelector('[data-action="wechat-start"]').click()`,
-  );
-  await wait(
-    `document.querySelector('#toast').textContent.includes('尚未配置')`,
-  );
-  check('missing real WeChat credentials not faked', true);
+  check('password login only',await ev(`!!document.querySelector('[data-form="login"]')&&!document.querySelector('[data-action="wechat-start"]')`));
   // Isolated browser-only API fixtures. No writes to the real backend below.
   const injection = `window.__calls=[];window.__fixtures=${JSON.stringify(fixtures)};window.__fail='';window.__unauthorized=false;window.fetch=async function(input,options={}){const url=new URL(input,location.href);if(!url.pathname.startsWith('/api/v1/'))return window.__realFetch(input,options);const path=url.pathname.slice(7),method=options.method||'GET';window.__calls.push({path,method,body:options.body?JSON.parse(options.body):null});await new Promise(r=>setTimeout(r,80));if(window.__unauthorized)return new Response(JSON.stringify({code:401,message:'登录已过期'}),{status:401});if(window.__fail===path)return new Response(JSON.stringify({code:500,message:'隔离网络错误'}),{status:500});let data;if(method==='GET'){data=window.__fixtures[path];if(data===undefined)return new Response(JSON.stringify({code:404,message:'Fixture missing '+path}),{status:404});}else if(path==='/auth/password-login')data={access_token:'browser-isolated-token'};else if(path==='/appointments')data=${JSON.stringify(appointment)};else if(path==='/orders')data=${JSON.stringify(order)};else if(path==='/assessments/ess')data=${JSON.stringify(assessments[0])};else if(path==='/assessments/snore')data=${JSON.stringify(assessments[1])};else if(path==='/community/posts')data=${JSON.stringify(post)};else data={};return new Response(JSON.stringify({code:0,data}),{status:200,headers:{'Content-Type':'application/json'}});};`;
   await send('Page.addScriptToEvaluateOnNewDocument', {

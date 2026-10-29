@@ -29,9 +29,9 @@ test('failed or malformed response cannot set a session', async () => {
   for (const post of [async()=>({}),async()=>{throw new Error('network')}]) await assert.rejects(localMockLogin({enabled:true,post,session:{save:()=>saved=true}}));
   assert.equal(saved,false);
 });
-test('non-dev login page keeps password and WeChat, hides local entry', async () => {
+test('non-dev login page keeps password only and hides local entry', async () => {
   const html=await page({page:'login',params:new URLSearchParams()});
-  assert.ok(html.includes('密码登录'));assert.ok(html.includes('微信扫码登录'));assert.ok(!html.includes('data-action="local-login"'));
+  assert.ok(html.includes('data-form="login"'));assert.ok(!html.includes('微信扫码登录'));assert.ok(!html.includes('data-action="local-login"'));
 });
 test('local token is discarded outside local dev without changing normal tokens', () => {
   const map=new Map();globalThis.sessionStorage={getItem:k=>map.get(k)||null,setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)};
