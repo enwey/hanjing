@@ -57,7 +57,7 @@ function normalizePostDetail(detail) {
   return {
     id: String(detail.id || ''),
     author,
-    avatar: detail.avatar || '',
+    avatar: role === 'admin' ? '/static/images/brand-logo.png' : detail.avatar || '',
     avatarLoaded: false,
     avatarText: (author || '友').slice(0, 1),
     avatarBg: getAvatarColor(author || '友'),

@@ -95,7 +95,7 @@ function normalizePost(post) {
   return {
     id: String(post.id || ''),
     isTop: Boolean(post.isTop),
-    avatar: post.avatar || '',
+    avatar: role === 'admin' ? '/static/images/brand-logo.png' : post.avatar || '',
     avatarLoaded: false,
     avatarText: (author || '友').slice(0, 1),
     avatarBg: getAvatarColor(author || '友'),

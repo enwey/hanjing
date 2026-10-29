@@ -2632,6 +2632,16 @@ function getOptionalWxUser(req) {
   }
 }
 
+// Categories are shared with the admin content category manager.
+app.get('/api/v1/community/categories', async (req, res) => {
+  try {
+    const categories = await query('SELECT id, name, sort_order FROM article_categories ORDER BY sort_order ASC, id ASC');
+    res.json({ code: 0, data: categories.map(item => ({ id: item.id, name: item.name, sortOrder: Number(item.sort_order || 0) })) });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取社区分类失败' });
+  }
+});
+
 // GET /api/v1/community/posts
 app.get('/api/v1/community/posts', async (req, res) => {
   try {

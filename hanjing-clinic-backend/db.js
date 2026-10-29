@@ -2217,29 +2217,8 @@ export const initDB = async () => {
     );
   `);
 
-  try {
-    const catCount = await get(`SELECT COUNT(*) as count FROM article_categories`);
-    if (catCount && catCount.count === 0) {
-      const defaults = ['睡眠科普', '治疗知识', '设备介绍', '患者故事', '专家'];
-      for (let i = 0; i < defaults.length; i++) {
-        await query(`INSERT INTO article_categories (name, sort_order) VALUES (?, ?)`, [defaults[i], i * 10]);
-      }
-      console.log('Seeded default article categories.');
-    }
-  } catch (e) {
-    console.error('Failed to seed article categories:', e);
-  }
-  try {
-    await query(
-      `INSERT INTO article_categories (name, sort_order)
-       SELECT '专家', 40
-       WHERE NOT EXISTS (
-         SELECT 1 FROM article_categories WHERE name = '专家'
-       )`
-    );
-  } catch (e) {
-    console.error('Failed to ensure expert article category:', e);
-  }
+  // Article categories are maintained by administrators; startup must not recreate deleted categories.
+
 
   // Business settings must be configured by an operator; startup never invents business records.
 

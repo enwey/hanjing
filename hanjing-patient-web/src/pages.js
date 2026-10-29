@@ -1,5 +1,6 @@
 import {pendingPage,pendingRoutes} from './pending-pages.js';
 import {articleRichText} from './article-rich-text.js';
+import {communityPublisherIdentity, communityPublisherAvatar} from './community-publisher.js';
 import {essReport} from './ess-report.js';
 import {snoreReport} from './snore-report.js';
 import {recordingPage} from './recording-page.js';
@@ -104,7 +105,7 @@ function linkImage(src, alt, page, params) {
   return `<a href="#/${page}?${new URLSearchParams(params)}">${image(src, alt)}</a>`;
 }
 const postCard = (p) =>
-  `<article class="pc-post">${p.coverUrl ? linkImage(p.coverUrl, p.title, 'post', { id: p.id }) : ''}<div><div class="feed-author"><span class="feed-avatar" aria-hidden="true">${esc((p.author || '用户').slice(0,1))}</span><small>${esc(p.author)} · ${esc(p.roleLabel)}</small></div><h3>${link(p.title, 'post', { id: p.id }, 'text-button')}</h3><p class="clamp">${esc(p.summary || p.content)}</p><div class="feed-bottom"><small>${date(p.createdAt)} · ${esc(p.likes || 0)} 点赞 · ${esc(p.comments || 0)} 评论</small>${link('阅读全文', 'post', { id:p.id })}</div></div></article>`;
+  `<article class="pc-post">${p.coverUrl ? linkImage(p.coverUrl, p.title, 'post', { id: p.id }) : ''}<div><div class="feed-author">${communityPublisherAvatar(p)}<small>${communityPublisherIdentity(p)}</small></div><h3>${link(p.title, 'post', { id: p.id }, 'text-button')}</h3><p class="clamp">${esc(p.summary || p.content)}</p><div class="feed-bottom"><small>${date(p.createdAt)} · ${esc(p.likes || 0)} 点赞 · ${esc(p.comments || 0)} 评论</small>${link('阅读全文', 'post', { id:p.id })}</div></div></article>`;
 async function scoped(c) {
   c.members = list(await c.get('/user/family-members'));
   c.patientId = c.params.get('patientId') || '';
@@ -312,14 +313,16 @@ async function basePage(c) {
       return head('recording','记录睡眠声音，了解夜间呼吸情况。')+(c.members.length?recordingPage(c.members,p.get('patientId')):empty('请先添加就诊人',btn('就诊人管理','family')));
     }
     case 'community': {
-      c.posts = list(await get('/community/posts'));
+      const [posts, categories] = await Promise.all([get('/community/posts'), get('/community/categories')]);
+      c.posts = list(posts);
+      c.categories = list(categories).filter(category => c.posts.some(post => Array.isArray(post.tags) && post.tags.includes(category.name)));
       return (
         head(
           'community',
           '睡眠科普、患者故事与佩戴经验，在这里分享和交流。',
           btn('发布动态', 'publish'),
         ) +
-        `<div class="browse-toolbar"><div class="browse-tabs" aria-label="社区分类">${['全部', '分享', '提问', '科普'].map((name,i)=>`<button type="button" data-browse-post="${i ? name : ''}" aria-pressed="${i===0}">${name}</button>`).join('')}</div><label class="field browse-search"><span class="sr-only">搜索社区</span><input type="search" data-search="posts" placeholder="搜索标题或内容"></label></div><div id="search-results" class="post-list community-feed">${records(c.posts, postCard, '暂无社区动态')}</div>`
+        `<div class="browse-toolbar"><div class="browse-tabs" aria-label="社区分类">${[['','全部'],...c.categories.map(v=>[v.name,v.name])].map(([value,name],i)=>`<button type="button" data-browse-post="${esc(value)}" aria-pressed="${i===0}">${esc(name)}</button>`).join('')}</div><label class="field browse-search"><span class="sr-only">搜索社区</span><input type="search" data-search="posts" placeholder="搜索标题或内容"></label></div><div id="search-results" class="post-list community-feed">${records(c.posts, postCard, '暂无社区动态')}</div>`
       );
     }
     case 'post': {
@@ -329,7 +332,7 @@ async function basePage(c) {
         head('post', '', link('返回社区', 'community')) +
         panel(
           '',
-          `<article><small>${esc(a.author)} · ${esc(a.roleLabel)} · ${date(a.createdAt)}</small><h1 class="article-title">${esc(a.title)}</h1>${a.coverUrl ? image(a.coverUrl, a.title, 'article-cover') : ''}${articleRichText(a.content)}<div class="pc-actions">${action(`${a.isLiked ? '已点赞' : '点赞'} · ${a.likes || 0}`, 'post-like')}${action(`${a.isFavorited ? '已收藏' : '收藏'} · ${a.favoritesCount || 0}`, 'post-favorite')}${action('复制链接', 'post-share')}${action('举报', 'post-report')}</div></article>`,
+          `<article><div class="community-detail-meta">${a.role === 'admin' ? communityPublisherAvatar(a) : ''}${communityPublisherIdentity(a)}<time>${esc(date(a.createdAt))}</time></div><h1 class="article-title">${esc(a.title)}</h1>${a.coverUrl ? image(a.coverUrl, a.title, 'article-cover') : ''}${articleRichText(a.content)}<div class="pc-actions">${action(`${a.isLiked ? '已点赞' : '点赞'} · ${a.likes || 0}`, 'post-like')}${action(`${a.isFavorited ? '已收藏' : '收藏'} · ${a.favoritesCount || 0}`, 'post-favorite')}${action('复制链接', 'post-share')}${action('举报', 'post-report')}</div></article>`,
         ) +
         panel(
           '评论',
@@ -349,7 +352,8 @@ async function basePage(c) {
         )
       );
     }
-    case 'publish':
+    case 'publish': {
+      c.categories = list(await get('/community/categories'));
       return (
         head(
           'publish',
@@ -361,20 +365,21 @@ async function basePage(c) {
             'publish',
             field('标题', 'title', '', 'text', 'required maxlength="40"') +
               select('分类', 'category', [
-                ...['睡眠科普','治疗知识','设备介绍','患者故事','阻鼾器配戴','科普问答'].map(x=>[x,x]),
+                ['', '请选择分类'], ...c.categories.map(x=>[x.name,x.name]),
               ]) +
               area('内容', 'content', '', 'required maxlength="1000" data-publish-content placeholder="详细描述你的情况、问题或分享经验..."') + '<p class="parity-count" data-publish-count>0/1000</p><fieldset class="parity-tag-options"><legend>标签（最多3个）</legend>'+['适应期','治疗分享','AHI改善','设备保养','情感支持','经验交流'].map(t=>`<label><input type="checkbox" name="tags" value="${t}" data-publish-tag>${t}</label>`).join('')+'</fieldset>'+
               submit('发布帖子'),
           ),
         )
       );
+    }
     case 'products': {
       const [products, categories] = await Promise.all([
         get('/products'),
         get('/product-categories'),
       ]);
       c.products = list(products);
-      c.categories = list(categories);
+      c.categories = list(categories).filter(category => c.products.some(product => product.category === category.code));
       return (
         head(
           'products',

@@ -1,0 +1,10 @@
+.community-publisher{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;vertical-align:middle}
+.community-publisher__name{overflow-wrap:anywhere;min-width:0}
+.community-publisher__role{color:inherit}
+.community-official-badge{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;white-space:nowrap;padding:2px 7px 2px 4px;border:1px solid var(--color-primary-100,#d9e6ff);border-radius:4px;background:var(--color-primary-50,#eef4ff);color:var(--color-primary-600,#2a52d4);font-size:12px;font-weight:600;line-height:1.5;vertical-align:middle}
+.community-official-badge .community-official-badge__icon,.pc-content .community-feed .pc-post .community-official-badge .community-official-badge__icon{display:block;width:14px;height:14px;min-width:14px;max-width:14px;flex-shrink:0;object-fit:contain;border-radius:0;margin:0}
+.community-detail-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink-500,#647087);margin-bottom:18px}
+.community-detail-meta time{font-size:12px;color:var(--ink-400,#738098)}
+.pc-content .feed-author small{min-width:0}
+
+.community-official-avatar{display:inline-block;width:40px;height:40px;min-width:40px;flex:0 0 40px;border-radius:50%;background:#fff url("/static/images/brand-logo.png") center/contain no-repeat;overflow:hidden}

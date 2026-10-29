@@ -7,6 +7,9 @@ for (const dir of ['static'])
     new URL('public/' + dir + '/', root),
     { recursive: true },
   );
+// Reuse the exact official verification artwork from the mini-program.
+await mkdir(new URL('public/static/icons/', root), { recursive: true });
+await cp(new URL('../mp-weixin-rewrite/static/icons/official-verified.svg', root), new URL('public/static/icons/official-verified.svg', root));
 // Read-only reuse of the mini-program's pure PCM analysis. Never load wx/Page
 // or maintain a divergent copy of its algorithm in the PC application.
 const source = await readFile(
@@ -41,3 +44,6 @@ await writeFile(
     source.slice(start, end) +
     liveFrame+'\nexport { analyzePcmOnClient, calculateFrameDecibel, livePcmFrame };\n',
 );
+
+await mkdir(new URL('public/static/images/', root), { recursive: true });
+await cp(new URL('../mp-weixin-rewrite/static/images/brand-logo.png', root), new URL('public/static/images/brand-logo.png', root));
