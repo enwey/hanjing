@@ -1,0 +1,26 @@
+[
+  {
+    "name": "http://127.0.0.1:3003 missing and failed avatar same size and one character",
+    "ok": true
+  },
+  {
+    "name": "http://127.0.0.1:3003 narrow failed avatar does not expand",
+    "ok": true
+  },
+  {
+    "name": "http://127.0.0.1:3003 valid avatar still renders image",
+    "ok": true
+  },
+  {
+    "name": "http://127.0.0.1:3004 missing and failed avatar same size and one character",
+    "ok": true
+  },
+  {
+    "name": "http://127.0.0.1:3004 narrow failed avatar does not expand",
+    "ok": true
+  },
+  {
+    "name": "http://127.0.0.1:3004 valid avatar still renders image",
+    "ok": true
+  }
+]

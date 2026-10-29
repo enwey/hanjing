@@ -8,7 +8,7 @@ export async function brandPromoterQr(source: string): Promise<string> {
     img.src = url
   })
   if (!/^data:image\/(png|jpeg);base64,/.test(source)) throw new Error('小程序码图片格式无效')
-  const [qr, logo] = await Promise.all([load(source), load(import.meta.env.BASE_URL + 'brand-koala.png')])
+  const [qr, logo] = await Promise.all([load(source), load(import.meta.env.BASE_URL + 'brand-logo.png')])
   if (!qr.naturalWidth || qr.naturalWidth !== qr.naturalHeight) throw new Error('小程序码尺寸无效')
   const canvas = document.createElement('canvas')
   canvas.width = qr.naturalWidth; canvas.height = qr.naturalHeight

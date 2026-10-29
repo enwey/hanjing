@@ -12,7 +12,7 @@ const paths = ['hanjing-promoter-portal', 'hanjing-clinic-管理后台源码-202
     vm.runInNewContext(ts.transpileModule(source.replace('import.meta.env.BASE_URL', "'/promoter/'"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, box);
     const result = await box.exports.brandPromoterQr('data:image/jpeg;base64,fixture');
     assert.equal(result,'data:image/png;base64,result');
-    assert.equal(urls[1],'/promoter/brand-koala.png');
+    assert.equal(urls[1],'/promoter/brand-logo.png');
     assert.equal(canvas.width,430); assert.equal(canvas.height,430);
     const arc = calls.find(c=>c[0]==='arc'); assert.equal(arc[1],215); assert.equal(arc[3],94.6);
     assert.equal(calls.filter(c=>c[0]==='drawImage').length,2);

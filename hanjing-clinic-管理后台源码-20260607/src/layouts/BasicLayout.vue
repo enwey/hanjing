@@ -576,7 +576,7 @@ onUnmounted(() => {
         <template #logo>
           <div class="sidebar-logo">
             <div class="sidebar-logo-icon">
-              <img class="sidebar-logo-icon__image" src="/brand-koala.png" alt="兴康明诊所" />
+              <img class="sidebar-logo-icon__image" src="/brand-logo.png" alt="兴康明诊所" />
             </div>
             <div class="sidebar-logo-text" :class="{ 'logo-hidden': isMenuCollapsed }">
               兴康明

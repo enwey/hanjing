@@ -3,7 +3,7 @@
   <view class="page-content login-page">
     <view class="brand-section">
       <view class="logo-container">
-        <image class="logo-image" src="/static/images/brand-koala.png" mode="aspectFit" />
+        <image class="logo-image" src="/static/images/brand-logo.png" mode="aspectFit" />
       </view>
       <text class="brand-name">{{copy.brandName}}</text>
       <text class="brand-slogan">{{copy.brandSlogan}}</text>

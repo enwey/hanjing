@@ -1,0 +1,5 @@
+/* Keep avatar placeholders single-line and within each page's portrait size. */
+.profile-heading .avatar.image-fallback{display:grid;place-items:center;flex-shrink:0;overflow:hidden;white-space:nowrap;font:600 24px/1 var(--font-sans)}
+.profile-heading .avatar{min-width:80px;max-width:80px;max-height:80px}
+.pending-page .profile-heading>.avatar{min-width:60px;max-width:60px;min-height:60px;max-height:60px}
+.doctor-avatar.image-fallback{min-height:140px;max-height:140px;max-width:120px;overflow:hidden;white-space:nowrap;font:600 32px/1 var(--font-sans)}

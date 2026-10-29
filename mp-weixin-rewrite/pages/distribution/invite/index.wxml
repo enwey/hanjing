@@ -4,7 +4,7 @@
     <image class="invite-heading__art" src="/static/images/invite-sleep-letter.jpg" mode="aspectFill" />
     <view class="invite-heading__copy">
       <view class="invite-brand">
-        <image class="invite-brand__logo" src="/static/images/brand-koala.png" mode="aspectFit" />
+        <image class="invite-brand__logo" src="/static/images/brand-logo.png" mode="aspectFit" />
         <text>兴康明</text>
       </view>
       <text class="invite-heading__title">好眠邀请函</text>
@@ -22,7 +22,7 @@
         <view class="invite-qr">
           <image wx:if="{{inviteQrCode}}" class="invite-qr__image" src="{{inviteQrCode}}" mode="aspectFit" />
           <view wx:else class="invite-qr__fallback">
-            <image class="invite-qr__brand" src="/static/images/brand-koala.png" mode="aspectFit" />
+            <image class="invite-qr__brand" src="/static/images/brand-logo.png" mode="aspectFit" />
             <text>{{hasLoaded ? '使用邀请码邀请' : '正在加载邀请信息'}}</text>
           </view>
         </view>

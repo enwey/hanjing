@@ -78,7 +78,7 @@ export const homeDoctors = (doctors) =>
         .slice(0, 3)
         .map(
           (d) =>
-            `<a class="hc-doctor" href="#/doctors?id=${encodeURIComponent(d.id)}">${image(d.avatar, d.name)}<span><strong>${esc(d.name)}</strong><small>${esc(d.title)} · ${esc(d.specialty)}</small></span></a>`,
+            `<a class="hc-doctor" href="#/doctors?id=${encodeURIComponent(d.id)}">${image(d.avatar, d.name,'home-doctor-avatar')}<span><strong>${esc(d.name)}</strong><small>${esc(d.title)} · ${esc(d.specialty)}</small></span></a>`,
         )
         .join('')}</div>`
     : empty('医生资料更新中', link('查看门店', 'stores'));

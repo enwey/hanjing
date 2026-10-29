@@ -26,6 +26,7 @@ import './treatment.css';
 import './navigation-motion.css';
 import './product-images.css';
 import './account-pages.css';
+import './avatar-fallback.css';
 import { animateNavigation, revealContent } from './navigation-motion.js';
 import { setupHome } from './home-interactions.js';
 import { session, request, list, query, post, put } from './api.js';
@@ -112,7 +113,7 @@ function shell(content, isHome = false) {
     community: ['post', 'publish'],
     products: ['product', 'checkout', 'orders', 'order'],
   };
-  return `<div class="app ${isHome ? 'is-home' : ''}"><header class="app-header hc-header"><a class="brand" href="#/home" aria-label="兴康明首页"><img src="/brand/logo.svg" alt=""><span>兴康明<small>专注睡眠呼吸健康</small></span></a><nav class="top-nav" aria-label="网站导航">${nav.map(([t, p]) => `<a href="#/${p}" ${current.page === p || groups[p]?.includes(current.page) ? 'class="current" aria-current="page"' : ''}>${t}</a>`).join('')}</nav><div class="header-user">${session.token() ? link('个人中心', 'profile', {}, 'text-button') + `<button data-action="logout">退出</button>` : link('登录', 'login', {}, 'text-button')}<a class="btn small hc-header-book" href="#/stores">预约就诊</a></div></header><main id="content" class="${isHome ? '' : 'pc-content hc-wrap'}" tabindex="-1">${content}</main>${footer()}</div>`;
+  return `<div class="app ${isHome ? 'is-home' : ''}"><header class="app-header hc-header"><a class="brand" href="#/home" aria-label="兴康明首页"><img src="/brand/logo.svg?v=20261029-brand2" alt=""><span>兴康明<small>专注睡眠呼吸健康</small></span></a><nav class="top-nav" aria-label="网站导航">${nav.map(([t, p]) => `<a href="#/${p}" ${current.page === p || groups[p]?.includes(current.page) ? 'class="current" aria-current="page"' : ''}>${t}</a>`).join('')}</nav><div class="header-user">${session.token() ? link('个人中心', 'profile', {}, 'text-button') + `<button data-action="logout">退出</button>` : link('登录', 'login', {}, 'text-button')}<a class="btn small hc-header-book" href="#/stores">预约就诊</a></div></header><main id="content" class="${isHome ? '' : 'pc-content hc-wrap'}" tabindex="-1">${content}</main>${footer()}</div>`;
 }
 async function render() {
   wearingDrawer.close({force:true,restoreFocus:false});
@@ -1069,8 +1070,9 @@ root.addEventListener(
 
       const fallback = document.createElement('div');
       fallback.className = 'image-fallback ' + img.className;
-      fallback.textContent = img.matches('.parity-thumb') ? (img.alt?.slice(0,1) || '兴') : (img.alt || '暂无图片');
-      if(img.matches('.parity-thumb')){fallback.setAttribute('role','img');fallback.setAttribute('aria-label','暂无图片');}
+      const avatar=img.hasAttribute('data-avatar');
+      fallback.textContent = avatar || img.matches('.parity-thumb') ? (Array.from(img.alt||'兴')[0]) : (img.alt || '暂无图片');
+      if(avatar||img.matches('.parity-thumb')){fallback.setAttribute('role','img');fallback.setAttribute('aria-label',avatar?img.alt||'作者头像':'暂无图片');}
       img.replaceWith(fallback);
     }
   },

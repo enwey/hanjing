@@ -4,7 +4,7 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
 const rows = ref<any[]>([])
-const brandLogoUrl = `${import.meta.env.BASE_URL}brand-koala.png`
+const brandLogoUrl = `${import.meta.env.BASE_URL}brand-logo.png`
 
 function yuan(value: number) {
   return (Number(value || 0) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })

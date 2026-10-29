@@ -40,7 +40,7 @@ async function handleLogin({ validateResult }: any) {
     <div class="login-card">
       <div class="login-brand">
         <span class="brand-logo">
-          <img class="brand-logo-image" src="/brand-koala.png" alt="兴康明诊所" />
+          <img class="brand-logo-image" src="/brand-logo.png" alt="兴康明诊所" />
         </span>
         <div class="brand-title">
           兴康明诊所

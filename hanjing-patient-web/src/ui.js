@@ -27,8 +27,8 @@ export const action = (label, name, attrs = '', secondary = true) =>
   `<button type="button" class="btn${secondary ? ' secondary' : ''}" data-action="${esc(name)}" ${attrs}>${esc(label)}</button>`;
 export const image = (src, alt, cls = '') =>
   safeUrl(src)
-    ? `<img class="${esc(cls)}" src="${esc(safeUrl(src))}" alt="${esc(alt)}" loading="lazy" referrerpolicy="no-referrer">`
-    : `<div class="image-fallback ${esc(cls)}" role="img" aria-label="暂无图片">${esc(alt?.slice(0, 1) || '兴')}</div>`;
+    ? `<img class="${esc(cls)}" ${cls.split(/\s+/).some(c=>/(^|-)avatar$/.test(c))?'data-avatar':''} src="${esc(safeUrl(src))}" alt="${esc(alt)}" loading="lazy" referrerpolicy="no-referrer">`
+    : `<div class="image-fallback ${esc(cls)}" role="img" aria-label="暂无图片">${esc(Array.from(alt||'兴')[0])}</div>`;
 export const money = (value) =>
   Number.isFinite(Number(value)) ? '¥' + (Number(value) / 100).toFixed(2) : '—';
 export const date = (value) => {

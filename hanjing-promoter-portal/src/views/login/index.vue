@@ -6,7 +6,7 @@ import request from '@/utils/request'
 import { setPromoterAuth } from '@/utils/auth'
 
 const router = useRouter()
-const brandLogoUrl = `${import.meta.env.BASE_URL}brand-koala.png`
+const brandLogoUrl = `${import.meta.env.BASE_URL}brand-logo.png`
 const isSubmitting = ref(false)
 const loginForm = ref({
   phone: '',

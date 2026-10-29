@@ -1,5 +1,7 @@
 # 管理后台测试
 
+- 2026-10-29 [项目品牌Logo统一替换](../brand-logo-replacement-2026-10-29.md)：指定Logo覆盖各端品牌、默认图、二维码中心图及favicon，开发自测完成，待回归。
+
 - 2026-10-24 [微信通知顶级路由调整](wechat-notification-route-fix-2026-10-24.md)：将运营后台微信通知由 `/settings/wechat-notifications` 调整为与权限管理、操作日志同级的 `/wechat-notifications`；路径检索和生产构建通过，状态待回归。
 
 - 2026-10-24 [微信订阅消息条目移除](wechat-subscription-removal-2026-10-24.md)：累计移除13类微信订阅消息的配置、发送和授权入口，保留就诊提醒及原业务/站内通知；语法、4项单测与后台构建通过，数据库集成测试受MySQL权限阻碍，状态待回归。

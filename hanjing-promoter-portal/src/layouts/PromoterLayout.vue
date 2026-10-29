@@ -7,7 +7,7 @@ import request from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
-const brandLogoUrl = `${import.meta.env.BASE_URL}brand-koala.png`
+const brandLogoUrl = `${import.meta.env.BASE_URL}brand-logo.png`
 const collapsed = ref(false)
 const currentUser = ref(getPromoterUser())
 

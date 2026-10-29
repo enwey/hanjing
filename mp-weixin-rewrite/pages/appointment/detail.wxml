@@ -47,7 +47,7 @@
         <image
           wx:if="{{!doctorAvatarLoaded}}"
           class="doc-avatar-placeholder-large"
-          src="/static/images/brand-koala.png"
+          src="/static/images/brand-logo.png"
           mode="aspectFill"
         />
         <image

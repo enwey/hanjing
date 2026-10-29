@@ -1,0 +1,34 @@
+[
+  {
+    "name": "patient-dev logo loads new asset",
+    "ok": true
+  },
+  {
+    "name": "patient-dev favicon points at fresh project resource",
+    "ok": true
+  },
+  {
+    "name": "patient-production logo loads new asset",
+    "ok": true
+  },
+  {
+    "name": "patient-production favicon points at fresh project resource",
+    "ok": true
+  },
+  {
+    "name": "admin logo loads new asset",
+    "ok": true
+  },
+  {
+    "name": "admin favicon points at fresh project resource",
+    "ok": true
+  },
+  {
+    "name": "promoter logo loads new asset",
+    "ok": true
+  },
+  {
+    "name": "promoter favicon points at fresh project resource",
+    "ok": true
+  }
+]
