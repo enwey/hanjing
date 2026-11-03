@@ -1,7 +1,8 @@
+import { chargeAmount, lockChargeAppointment, prepareCharge, settleCharge, settleOnlineCharge, queueCancelledChargeRefunds, submitChargeRefund, syncChargeRefund } from '../appointment-charges.js';
 import { reviewRefund, syncRefund, registerOfflineRefund } from '../refunds.js';
 import { resolveArticlePublisher } from '../article-publisher.js';
 import { syncDirectChildrenSecondLevel } from '../distribution-relationships.js';
-import { lockAppointmentChange, RESCHEDULABLE_STATUSES, TERMINAL_STATUSES, assertAppointmentFeesPaid, validateAppointmentFeeItems, assertConsultationAllowed, settlePaidAppointmentOrder } from '../appointment-workflow.js';
+import { lockAppointmentChange, RESCHEDULABLE_STATUSES, TERMINAL_STATUSES, assertAppointmentFeesPaid, orderCoversAppointmentFees, assertConsultationAllowed, settlePaidAppointmentOrder } from '../appointment-workflow.js';
 import { patientAccessScope, orderAccessScope, fulfillmentAccessScope, readPagination } from '../admin-scope.js';
 import { lockFulfillmentCase } from '../fulfillment-guard.js';
 import { readFulfillmentClinical, resolveFulfillmentMedicalRecord } from '../fulfillment-clinical.js';
@@ -905,12 +906,23 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
       const dateFormat = range === 'today' ? '%H:00' : '%Y-%m-%d';
       const receiptDate = group ? `DATE_FORMAT(pay_at, '${dateFormat}')` : 'NULL';
       const refundDate = group ? `DATE_FORMAT(refund_at, '${dateFormat}')` : 'NULL';
+      const appointmentScope = req.user.role !== 'super_admin'
+        ? ` AND a.store_id IN (${placeholders})${req.user.role === 'doctor' ? ' AND a.doctor_id=?' : ''}` : '';
+      const appointmentParams = appointmentScope ? [...storeIds, ...(req.user.role === 'doctor' ? [req.user.doctor_id || 0] : [])] : [];
       return query(`SELECT ${group ? 'date' : 'NULL AS date'}, COALESCE(SUM(amount), 0) AS total FROM (
         SELECT ${receiptDate} AS date, pay_amount AS amount FROM orders WHERE pay_at IS NOT NULL AND ${filter}${scope}
         UNION ALL
         SELECT ${refundDate} AS date, -pay_amount AS amount FROM orders WHERE status = 'refunded' AND ${filter.replaceAll('pay_at', 'refund_at')}${scope}
+        UNION ALL
+        SELECT ${receiptDate.replaceAll('pay_at','c.paid_at')} AS date, c.consult_fee+c.deposit_amount AS amount
+        FROM appointment_charges c JOIN appointments a ON a.id=c.appointment_id
+        WHERE c.paid_at IS NOT NULL AND ${filter.replaceAll('pay_at','c.paid_at')}${appointmentScope}
+        UNION ALL
+        SELECT ${refundDate.replaceAll('refund_at','r.refunded_at')} AS date, -r.amount
+        FROM appointment_charge_refunds r JOIN appointment_charges c ON c.id=r.charge_id JOIN appointments a ON a.id=c.appointment_id
+        WHERE r.status='refunded' AND ${filter.replaceAll('pay_at','r.refunded_at')}${appointmentScope}
       ) cash ${group ? 'GROUP BY date ORDER BY date DESC' : ''}`,
-      [...scopeParams, ...scopeParams]);
+      [...scopeParams, ...scopeParams, ...appointmentParams, ...appointmentParams]);
     };
     const [revRow] = await readCash(dateFilterOrder);
     const [prevRevRow] = await readCash(prevDateFilterOrder);
@@ -1357,6 +1369,107 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
   }
 });
 
+function assertChargeAccess(user, appointment) {
+  if (!canAccessStore(user, appointment.store_id) ||
+      (user.role === 'doctor' && Number(user.doctor_id) !== Number(appointment.doctor_id))) {
+    throw businessError('您无权处理该预约', 403);
+  }
+}
+
+async function adminChargeAppointment(req) {
+  const appointment = await get('SELECT * FROM appointments WHERE id=?', [req.params.id]);
+  if (!appointment) throw businessError('预约不存在', 404);
+  assertChargeAccess(req.user, appointment);
+  return appointment;
+}
+
+app.get('/api/admin/appointments/:id/charges', authenticateToken, async (req, res) => {
+  const appointment = await adminChargeAppointment(req);
+  const [charges, orders] = await Promise.all([
+    query('SELECT c.*,r.status AS refund_status,r.refund_no,r.amount AS refund_amount FROM appointment_charges c LEFT JOIN appointment_charge_refunds r ON r.charge_id=c.id WHERE c.appointment_id=? ORDER BY c.id DESC', [appointment.id]),
+    query('SELECT * FROM orders WHERE appointment_id=? ORDER BY id DESC', [appointment.id])
+  ]);
+  const legacy = orders.find(order => !['cancelled','refunded'].includes(order.status) && orderCoversAppointmentFees(order, appointment))
+    || (!charges.length && orders.find(order => orderCoversAppointmentFees(order, appointment)));
+  const { id, status, consult_fee, deposit_amount } = appointment;
+  res.json({ code: 200, data: { appointment: { id, status, consult_fee, deposit_amount }, charges, legacy_order_id: legacy?.id || null } });
+});
+
+app.post('/api/admin/appointments/:id/charges', authenticateToken, async (req, res) => {
+  const method = req.body.method;
+  const paymentReference = String(req.body.payment_reference || '').trim();
+  if (paymentReference.length > 128 || (method === 'offline' && !paymentReference)) {
+    throw businessError('请填写线下收款凭证（最多128字）', 400);
+  }
+  if (!['cash', 'offline', 'wechat_native', 'wechat'].includes(method)) throw businessError('请选择有效的收费方式', 400);
+  if (!['wechat_native', 'wechat'].includes(method) && req.body.payment_confirmed !== true) {
+    throw businessError('请确认已实际收到款项', 400);
+  }
+  const charge = await transaction(async conn => {
+    const appointment = await lockChargeAppointment(conn, req.params.id);
+    assertChargeAccess(req.user, appointment);
+    const row = await prepareCharge(conn, appointment, method, async () => {
+      if (['wechat_native', 'wechat'].includes(method) && (await getMissingWechatPayConfig()).length) throw businessError('微信支付配置未完成', 503);
+    });
+    if (['wechat_native', 'wechat'].includes(method)) return row;
+    return settleCharge(conn, appointment, row, null, paymentReference || null, { actorId:req.user.id, ip:req.ip });
+  });
+  if (method === 'wechat_native') {
+    const result = charge.qr_code_url ? { code_url: charge.qr_code_url }
+      : await createNativePayment({ subject: '预约收费', amount: chargeAmount(charge), outTradeNo: charge.charge_no });
+    if (!charge.qr_code_url) await run("UPDATE appointment_charges SET qr_code_url=? WHERE id=? AND status='pending'", [result.code_url, charge.id]);
+    res.json({ code: 200, data: { ...charge, code_url: result.code_url } });
+    return;
+  }
+  res.json({ code: 200, data: charge });
+});
+
+app.post('/api/admin/appointments/:id/charges/:chargeId/sync', authenticateToken, async (req, res) => {
+  const appointment = await adminChargeAppointment(req);
+  const row = await get('SELECT * FROM appointment_charges WHERE id=? AND appointment_id=?', [req.params.chargeId, appointment.id]);
+  if (!row) throw businessError('收费单不存在', 404);
+  if (row.status !== 'pending' || !['wechat_native', 'wechat'].includes(row.payment_method)) {
+    return res.json({ code: 200, data: row });
+  }
+  const result = await queryOrderByOutTradeNo(row.charge_no);
+  if (result?.out_trade_no !== row.charge_no) throw businessError('支付单号不一致', 409);
+  if (result.trade_state === 'SUCCESS') return res.json({ code: 200, data: await settleOnlineCharge(result) });
+  if (['CLOSED', 'REVOKED', 'PAYERROR'].includes(result.trade_state)) {
+    await transaction(async conn => {
+      const current = await lockChargeAppointment(conn, appointment.id);
+      assertChargeAccess(req.user, current);
+      await conn.execute("UPDATE appointment_charges SET status='cancelled' WHERE id=? AND status='pending' AND paid_at IS NULL", [row.id]);
+    });
+    return res.json({ code: 200, data: await get('SELECT * FROM appointment_charges WHERE id=?', [row.id]) });
+  }
+  res.json({ code: 200, data: row });
+});
+
+app.post('/api/admin/appointments/:id/charges/:chargeId/refund', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
+  const reason = String(req.body.reason || '').trim();
+  if (!reason || reason.length > 255) throw businessError('请填写退款原因（最多255字）', 400);
+  const appointment = await adminChargeAppointment(req);
+  const charge = await get('SELECT payment_method FROM appointment_charges WHERE id=? AND appointment_id=?', [req.params.chargeId, appointment.id]);
+  if (!charge) throw businessError('收费单不存在', 404);
+  if (['wechat','wechat_native'].includes(charge.payment_method) && (await getMissingWechatPayConfig()).length) {
+    throw businessError('微信支付配置未完成', 503);
+  }
+  if (!['wechat','wechat_native'].includes(charge.payment_method) && req.body.offline_confirmed !== true) {
+    throw businessError('请确认已完成线下退款', 400);
+  }
+  const data = await submitChargeRefund(appointment.id, req.params.chargeId, reason,
+    row => assertChargeAccess(req.user, row), undefined, { actorId:req.user.id, ip:req.ip });
+  res.json({ code: 200, data });
+});
+
+app.post('/api/admin/appointments/:id/charges/:chargeId/refund-sync', authenticateToken, async (req, res) => {
+  if (!ensureSuperAdmin(req, res)) return;
+  const appointment = await adminChargeAppointment(req);
+  const data = await syncChargeRefund(appointment.id, req.params.chargeId);
+  res.json({ code: 200, data });
+});
+
 app.get('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   if (req.user.role === 'doctor' && !req.user.doctor_id) {
@@ -1581,7 +1694,13 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       if (settling) {
         const [[receipt]] = await conn.execute(`SELECT id FROM orders WHERE appointment_id=? AND pay_at IS NOT NULL
           AND status IN ('paid','processing','shipping','shipped','delivered','completed') LIMIT 1 FOR UPDATE`, [current.id]);
-        if (!receipt) throw businessError('未找到有效结算凭证，请先收银', 409);
+        if (!receipt) {
+          const [[chargeReceipt]] = await conn.execute(
+            "SELECT id FROM appointment_charges WHERE appointment_id=? AND status='paid' AND paid_at IS NOT NULL LIMIT 1 FOR UPDATE",
+            [current.id]
+          );
+          if (!chargeReceipt) throw businessError('未找到有效结算凭证，请先收银', 409);
+        }
       }
       if (!['cancelled', 'no_show'].includes(status)) await assertAppointmentFeesPaid(conn, current);
       if (status === 'cancelled') {
@@ -1591,6 +1710,9 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       }
       if (['cancelled', 'no_show'].includes(status)) {
         await conn.execute('UPDATE doctor_schedules SET booked_slots = GREATEST(0, booked_slots - 1) WHERE id = ?', [current.schedule_id]);
+      }
+      if (status === 'cancelled' || status === 'no_show') {
+        await queueCancelledChargeRefunds(conn, current.id, cancel_reason || '预约已取消');
       }
       await conn.execute('UPDATE appointments SET status = ?, cancel_reason = COALESCE(?, cancel_reason), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [status, cancel_reason || null, current.id]);
@@ -7064,8 +7186,9 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
         totalAmount += price * quantity;
         return { product, quantity, price, feeKind: item.appointment_fee_kind };
       });
-      const appointmentFees = await validateAppointmentFeeItems(conn, lockedAppointment, validated);
-      if (appointmentFees) cashierContext.appointment_fees = appointmentFees;
+      if (validated.some(item => item.feeKind)) {
+        throw businessError('预约费用请从预约收费入口收取', 409);
+      }
       const discount = Number(discount_amount ?? 0);
       if (!Number.isSafeInteger(totalAmount) || totalAmount > 2147483647) fail('订单金额超出范围');
       if (typeof discount_amount === 'boolean' || !Number.isSafeInteger(discount) || discount < 0 || discount > totalAmount) fail('优惠金额不正确');

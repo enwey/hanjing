@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -603,6 +604,7 @@ const selectedCheckoutRow = ref<Appointment | null>(null)
 const nativePayInfo = ref<any>(null)
 const nativePayReceipt = ref<any>(null)
 const payWaiting = ref(false)
+const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
 const cashierSession = createCashierSession(request)
 const checkoutFlow = createCheckoutLifecycle(() => `${route.fullPath}:${selectedCheckoutRow.value?.id || ''}`)
 
@@ -682,6 +684,10 @@ const fetchProducts = async () => {
 
 async function openCheckoutDialog(row: Appointment) {
   selectedCheckoutRow.value = row
+  if (row.status === 'pending_payment') {
+    await appointmentCharge.value?.open(row.id)
+    return
+  }
   const attempt = checkoutFlow.begin()
   cashierSession.reset()
   checkoutSuccess.value = false
@@ -934,6 +940,7 @@ async function submitCheckout() {
 
 <template>
   <div class="page-container">
+    <AppointmentChargeDialog ref="appointmentCharge" @changed="fetchAppointments()" />
     <!-- Header aligned with UI mockup -->
     <div class="page-title-row">
       <div>
@@ -1068,7 +1075,10 @@ async function submitCheckout() {
                     v-if="row.status === 'pending_payment'"
                     class="btn btn-xs btn-primary"
                     @click="openCheckoutDialog(row)"
-                  >挂号收银</button>
+                  >预约收费</button>
+
+                  <button v-if="['cancelled', 'no_show'].includes(row.status) && (row.consult_fee > 0 || row.deposit_amount > 0)"
+                    class="btn btn-xs btn-outline" @click="appointmentCharge?.open(row.id)">收费与退款</button>
 
                   <!-- status is pending (已预约) -->
                   <button

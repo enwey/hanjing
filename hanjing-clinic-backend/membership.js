@@ -39,10 +39,14 @@ export async function getCurrentUserMembership(userId, conn = null) {
 }
 
 async function calculateUserTotalSpent(userId, conn = null) {
-  const rows = await execute(conn, `SELECT COALESCE(SUM(pay_amount), 0) AS total_spent
-    FROM orders WHERE user_id = ? AND pay_at IS NOT NULL
+  const rows = await execute(conn, `SELECT COALESCE(SUM(amount), 0) AS total_spent FROM (
+    SELECT pay_amount AS amount FROM orders WHERE user_id = ? AND pay_at IS NOT NULL
       AND status IN ('paid', 'shipping', 'shipped', 'processing', 'completed', 'refund_pending', 'refunding')
-      AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(shipping_address), shipping_address, '{}'), '$.refund_payment_conflict')), 'false') <> 'true'`, [userId]);
+      AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(shipping_address), shipping_address, '{}'), '$.refund_payment_conflict')), 'false') <> 'true'
+    UNION ALL
+    SELECT c.consult_fee+c.deposit_amount FROM appointment_charges c JOIN appointments a ON a.id=c.appointment_id
+    WHERE a.user_id=? AND c.credited=1 AND c.status IN ('paid','refund_pending','refunding')
+    ) spending`, [userId, userId]);
   return Number(rows[0]?.total_spent || 0);
 }
 

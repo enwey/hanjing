@@ -1141,6 +1141,53 @@ export const initDB = async () => {
 
   // 20. order_items
   await query(`
+    CREATE TABLE IF NOT EXISTS appointment_charges (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      appointment_id BIGINT UNSIGNED NOT NULL,
+      charge_no VARCHAR(64) NOT NULL UNIQUE,
+      consult_fee INT UNSIGNED NOT NULL DEFAULT 0,
+      deposit_amount INT UNSIGNED NOT NULL DEFAULT 0,
+      status VARCHAR(24) NOT NULL DEFAULT 'pending',
+      payment_method VARCHAR(24) DEFAULT NULL,
+      provider_transaction_id VARCHAR(64) DEFAULT NULL UNIQUE,
+      paid_at DATETIME DEFAULT NULL,
+      credited TINYINT NOT NULL DEFAULT 0,
+      payment_reference VARCHAR(128) DEFAULT NULL,
+      qr_code_url VARCHAR(512) DEFAULT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_appointment_charge_status (appointment_id, status),
+      FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS appointment_charge_refunds (
+      id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+      charge_id BIGINT UNSIGNED NOT NULL,
+      refund_no VARCHAR(64) NOT NULL UNIQUE,
+      amount INT UNSIGNED NOT NULL,
+      status VARCHAR(24) NOT NULL DEFAULT 'pending',
+      provider_refund_id VARCHAR(64) DEFAULT NULL UNIQUE,
+      reason VARCHAR(255) DEFAULT NULL,
+      refunded_at DATETIME DEFAULT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_appointment_refund_charge (charge_id, status),
+      FOREIGN KEY (charge_id) REFERENCES appointment_charges(id)
+    )
+  `);
+
+  for (const [table, column, definition] of [
+    ['appointment_charges', 'credited', 'TINYINT NOT NULL DEFAULT 0'],
+    ['appointment_charges', 'payment_reference', 'VARCHAR(128) DEFAULT NULL'],
+    ['appointment_charges', 'qr_code_url', 'VARCHAR(512) DEFAULT NULL'],
+    ['appointment_charge_refunds', 'refunded_at', 'DATETIME DEFAULT NULL']
+  ]) {
+    const columns = await query(`SHOW COLUMNS FROM ${table} LIKE '${column}'`);
+    if (!columns.length) await query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+
+  await query(`
     CREATE TABLE IF NOT EXISTS order_items (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       order_id BIGINT UNSIGNED NOT NULL,

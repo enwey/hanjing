@@ -14,22 +14,13 @@ export interface BillingItem {
   appointment_fee_kind?: 'consult_fee' | 'deposit_amount';
 }
 
-export async function appointmentBillingItems(request: any, products: CheckoutProduct[], appointmentId: string | number): Promise<BillingItem[]> {
+export async function appointmentBillingItems(request: any, _products: CheckoutProduct[], appointmentId: string | number): Promise<BillingItem[]> {
   const res = await request.get(`/api/admin/appointments/${appointmentId}`)
   if (res.code !== 200 || !res.data?.id) throw new Error(res.message || '获取预约收费信息失败')
   const appointment = res.data
   if (['cancelled', 'no_show', 'refunding', 'refunded'].includes(appointment.status)) throw new Error('该预约不能继续收银')
-  if (appointment.status !== 'pending_payment') return []
-  const result: BillingItem[] = []
-  for (const kind of ['consult_fee', 'deposit_amount'] as const) {
-    const amount = Number(appointment[kind] || 0)
-    if (amount <= 0) continue
-    const product = products.find(p => p.category === 'service' && (kind === 'consult_fee'
-      ? /挂号|门诊费/.test(p.name) : /定金/.test(p.name)))
-    if (!product) throw new Error(`请先配置上架的${kind === 'consult_fee' ? '挂号费' : '预约定金'}服务项目`)
-    result.push({ ...createBillingItem(product, { price: amount }), appointment_fee_kind: kind })
-  }
-  return result
+  if (appointment.status === 'pending_payment') throw new Error('请先在预约收费中结清挂号费及定金')
+  return []
 }
 
 export interface CheckoutReceiptResult {

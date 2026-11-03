@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -372,6 +373,7 @@ const nativePayInfo = ref<any>(null)
 const miniPayOrderNo = ref('')
 const micropayAuthCode = ref('')
 const payWaiting = ref(false)
+const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
 const cashierSession = createCashierSession(request)
 const checkoutFlow = createCheckoutLifecycle(() => `${router.currentRoute.value.fullPath}:${selectedQueueItem.value?.id || ''}`)
 
@@ -448,6 +450,10 @@ const fetchProducts = async () => {
 
 async function openCheckoutDialog(item: QueueItem) {
   selectedQueueItem.value = item
+  if (item.status === 'pending_payment') {
+    await appointmentCharge.value?.open(item.id)
+    return
+  }
   const attempt = checkoutFlow.begin()
   cashierSession.reset()
   checkoutSuccess.value = false
@@ -865,6 +871,7 @@ const filteredTodayAppointments = computed(() => {
 
 <template>
   <div class="page-container">
+    <AppointmentChargeDialog ref="appointmentCharge" @changed="fetchAppointments()" />
     <div class="page-title-row">
       <div>
         <div class="page-title">排队分诊控制台</div>

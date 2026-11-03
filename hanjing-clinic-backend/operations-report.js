@@ -43,6 +43,16 @@ export async function readStoreReport(user, filters) {
       SUM(o.pay_amount) AS amount FROM orders o LEFT JOIN appointments a ON a.id = o.appointment_id
       LEFT JOIN doctors d ON d.id = a.doctor_id WHERE o.refund_at >= ? AND o.refund_at < ? AND o.status = 'refunded'
       AND ${orderScope} GROUP BY MONTH(o.refund_at), a.doctor_id, d.name`, params);
+    const [chargeReceipts] = await conn.execute(`SELECT MONTH(c.paid_at) AS month, a.doctor_id, d.name AS doctor_name,
+      SUM(c.consult_fee+c.deposit_amount) AS amount FROM appointment_charges c
+      JOIN appointments a ON a.id=c.appointment_id LEFT JOIN doctors d ON d.id=a.doctor_id
+      WHERE c.paid_at >= ? AND c.paid_at < ? ${appointmentStoreScope} AND (? IS NULL OR a.doctor_id = ?)
+      GROUP BY MONTH(c.paid_at), a.doctor_id, d.name`, params);
+    const [chargeRefunds] = await conn.execute(`SELECT MONTH(r.refunded_at) AS month, a.doctor_id, d.name AS doctor_name,
+      SUM(r.amount) AS amount FROM appointment_charge_refunds r JOIN appointment_charges c ON c.id=r.charge_id
+      JOIN appointments a ON a.id=c.appointment_id LEFT JOIN doctors d ON d.id=a.doctor_id
+      WHERE r.refunded_at >= ? AND r.refunded_at < ? AND r.status='refunded' ${appointmentStoreScope}
+      AND (? IS NULL OR a.doctor_id = ?) GROUP BY MONTH(r.refunded_at), a.doctor_id, d.name`, params);
     const [ratings] = await conn.execute(`SELECT MONTH(e.created_at) AS month, e.doctor_id, COUNT(*) AS count,
       SUM(e.rating) AS total, SUM(e.rating >= 4) AS positive FROM appointment_evaluations e
       JOIN appointments a ON a.id = e.appointment_id WHERE e.created_at >= ? AND e.created_at < ?
@@ -63,7 +73,7 @@ export async function readStoreReport(user, filters) {
         doctor(row.month, row.doctor_id, row.doctor_name).visits++;
       }
     }
-    for (const [rows, sign, field] of [[receipts, 1, 'receipts'], [refunds, -1, 'refunds']]) {
+    for (const [rows, sign, field] of [[[...receipts, ...chargeReceipts], 1, 'receipts'], [[...refunds, ...chargeRefunds], -1, 'refunds']]) {
       for (const row of rows) {
         months[row.month - 1][field] += Number(row.amount);
         months[row.month - 1].net += sign * Number(row.amount);

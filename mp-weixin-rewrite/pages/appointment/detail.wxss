@@ -535,3 +535,5 @@
 .footer-btn-hover {
   opacity: 0.9;
 }
+
+.appointment-charge-summary { display: flex; flex-direction: column; gap: 12rpx; padding: 24rpx; margin: 20rpx 24rpx; border-radius: 16rpx; background: #fff; color: #374151; }

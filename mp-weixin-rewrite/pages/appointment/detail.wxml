@@ -295,6 +295,12 @@
       </view>
     </view>
 
+    <view wx:if="{{appointmentCharge}}" class="appointment-charge-summary">
+      <text>预约收费</text>
+      <text>{{appointmentCharge.status}} · {{appointmentCharge.amount}}</text>
+      <text wx:if="{{appointmentCharge.chargeNo}}">收费单号 {{appointmentCharge.chargeNo}}</text>
+      <text wx:if="{{appointmentCharge.refundedAmount}}">已退款 {{appointmentCharge.refundedAmount}}</text>
+    </view>
     <view wx:if="{{canPay}}" class="action-footer">
       <button class="footer-btn btn-primary-full" hover-class="footer-btn-hover" bindtap="payDeposit">立即支付</button>
       <button wx:if="{{canCancelOrReschedule}}" class="footer-btn btn-danger-ghost" hover-class="footer-btn-hover" bindtap="cancelAppointment">取消</button>

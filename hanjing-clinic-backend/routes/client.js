@@ -1,3 +1,4 @@
+import { chargeAmount, prepareCharge, settleOnlineCharge, queueCancelledChargeRefunds, completeChargeRefund, readAppointmentCharge } from '../appointment-charges.js';
 import { communityPublisher } from '../article-publisher.js';
 import { canUseLocalDevLogin } from '../local-dev-login.js';
 import { getCurrentUserMembership, getMemberLevelRules, syncUserMembership } from '../membership.js';
@@ -1058,7 +1059,8 @@ export async function finalizePaidAppointment(conn, appt, userId, paymentPayload
   const [existingOrders] = await conn.execute('SELECT * FROM orders WHERE appointment_id = ? ORDER BY id', [appt.id]);
   if (existingOrders.some(order => order.wechat_transaction_id === paymentPayload.transaction_id && order.pay_at)) return false;
   const alreadyPaid = existingOrders.some(order => order.pay_at && !['cancelled', 'refunded'].includes(order.status) && orderCoversAppointmentFees(order, appt));
-  if (appt.status !== 'pending_payment' || alreadyPaid) {
+  const [[independentCharge]] = await conn.execute("SELECT id FROM appointment_charges WHERE appointment_id=? AND status='paid' LIMIT 1", [appt.id]);
+  if (appt.status !== 'pending_payment' || alreadyPaid || independentCharge) {
     // A verified late/duplicate payment must remain visible for a real refund, not revive the booking.
     await conn.execute(`INSERT INTO orders
       (order_no,user_id,type,total_amount,discount_amount,pay_amount,pay_method,pay_at,status,appointment_id,wechat_transaction_id,shipping_address)
@@ -4705,20 +4707,20 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
 app.post('/api/v1/appointments/:id/pay', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const appt = await transaction(async conn => {
+    const charge = await transaction(async conn => {
       const [[row]] = await conn.execute('SELECT * FROM appointments WHERE id=? AND user_id=? FOR UPDATE', [id, req.user.id]);
       if (!row) throw businessError('预约不存在', 404);
       if (row.status !== 'pending_payment') throw businessError('预约不需要支付或已支付', 400);
-      const [orders] = await conn.execute("SELECT * FROM orders WHERE appointment_id=? AND status NOT IN ('cancelled','refunded')", [id]);
-      if (orders.some(order => orderCoversAppointmentFees(order, row))) throw businessError('该预约已有收银付款单，请先在门店处理原付款单，勿重复支付', 409);
-      return row;
+      return prepareCharge(conn, row, 'wechat', async () => {
+        if ((await getMissingWechatPayConfig()).length) throw businessError('微信支付配置未完成，请联系门店', 503);
+      });
     });
 
-    const totalPayAmount = await getAppointmentPayAmount(appt);
+    const totalPayAmount = chargeAmount(charge);
     const payParams = await serviceBuildPaymentParams(
-      appt.appointment_no,
+      '预约收费',
       totalPayAmount,
-      appt.appointment_no,
+      charge.charge_no,
       req.user.openid,
       'appointment'
     );
@@ -4758,12 +4760,19 @@ app.post('/api/v1/appointments/:id/confirm-pay', authenticateWxToken, async (req
       return res.json({ code: 0, message: '预约支付状态已同步' });
     }
 
-    const paymentPayload = await queryOrderByOutTradeNo(appt.appointment_no);
+    const charge = await get("SELECT * FROM appointment_charges WHERE appointment_id=? AND status='pending' AND payment_method='wechat' ORDER BY id DESC LIMIT 1", [id]);
+    const paymentPayload = await queryOrderByOutTradeNo(charge?.charge_no || appt.appointment_no);
     if (!paymentPayload || paymentPayload.trade_state !== 'SUCCESS') {
       return res.status(409).json({ code: 409, message: '微信支付结果尚未确认，请稍后刷新重试' });
     }
 
-    await transaction(conn => finalizePaidAppointment(conn, appt, req.user.id, paymentPayload));
+    if (charge) {
+      if (paymentPayload.out_trade_no !== charge.charge_no) throw businessError('支付单号不一致', 409);
+      const paid = await settleOnlineCharge(paymentPayload);
+      if (paid.status !== 'paid') throw businessError('预约状态已变化，请核对付款及退款状态', 409);
+    } else {
+      await transaction(conn => finalizePaidAppointment(conn, appt, req.user.id, paymentPayload));
+    }
 
     res.json({ code: 0, message: '支付同步成功' });
   } catch (error) {
@@ -4787,6 +4796,10 @@ app.post('/api/v1/appointments/pay-callback', async (req, res) => {
     const payload = await serviceDecryptWechatPayResource(resource);
     if (payload.trade_state !== 'SUCCESS') {
       return res.json({ code: 'SUCCESS', message: 'ignored' });
+    }
+    if (/^AC[a-f0-9]{28}$/.test(payload.out_trade_no || '')) {
+      await settleOnlineCharge(payload);
+      return res.json({ code: 'SUCCESS', message: 'success' });
     }
     const appt = await get(`SELECT * FROM appointments WHERE appointment_no = ?`, [payload.out_trade_no]);
     if (!appt) {
@@ -4967,9 +4980,10 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
       doctorTitle: row.doctor_title,
       doctorAvatar: row.doctor_avatar,
       storeName: row.store_name,
-      requireDeposit,
-      depositAmount,
-      consultFee: row.consult_fee
+      requireDeposit: row.deposit_amount == null ? requireDeposit : Number(row.deposit_amount) > 0,
+      depositAmount: row.deposit_amount == null ? depositAmount : Number(row.deposit_amount),
+      consultFee: row.consult_fee,
+      appointmentCharge: await readAppointmentCharge(row)
     };
 
     const medicalRecord = await get(
@@ -5186,6 +5200,7 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
         [reasonClean, id]
       );
       await conn.execute(`UPDATE doctor_schedules SET booked_slots = GREATEST(0, booked_slots - 1) WHERE id = ?`, [appt.schedule_id]);
+      await queueCancelledChargeRefunds(conn, lockedAppt.id, reasonClean);
       const [[paidOrder]] = await conn.execute(
         `SELECT id, user_id, order_no, pay_amount, shipping_address, wechat_transaction_id FROM orders WHERE appointment_id = ? AND type = 'appointment_deposit' AND status = 'paid' ORDER BY id DESC LIMIT 1 FOR UPDATE`,
         [id]
@@ -6830,6 +6845,10 @@ app.post('/api/v1/orders/pay-callback', express.raw({ type: 'application/json' }
     if (payload.trade_state !== 'SUCCESS') {
       return res.json({ code: 'SUCCESS', message: 'ignored' });
     }
+    if (/^AC[a-f0-9]{28}$/.test(payload.out_trade_no || '')) {
+      await settleOnlineCharge(payload);
+      return res.json({ code: 'SUCCESS', message: 'success' });
+    }
     const order = await get(`SELECT * FROM orders WHERE order_no = ?`, [payload.out_trade_no]);
     if (!order) {
       return res.status(404).json({ code: 'FAIL', message: '订单不存在' });
@@ -6858,7 +6877,11 @@ app.post('/api/v1/pay/refund-callback', async (req, res) => {
     if (!refundNo) {
       return res.json({ code: 'SUCCESS', message: 'ignored' });
     }
-    if (payload.refund_status === 'SUCCESS') await completeRefund(payload);
+    if (/^AR[a-f0-9]{28}$/.test(refundNo)) {
+      if (['SUCCESS','ABNORMAL','CLOSED'].includes(payload.refund_status)) await completeChargeRefund(payload);
+    } else if (payload.refund_status === 'SUCCESS') {
+      await completeRefund(payload);
+    }
     res.json({ code: 'SUCCESS', message: 'success' });
   } catch (error) {
     console.error('Wechat refund callback error:', error);

@@ -64,7 +64,11 @@ const mask=value=>{const s=decryptPII(value)||'';return s.length>=7?s.slice(0,3)
 // Referral accounts see appointment conversion and patient detail.
 app.get('/api/promoter/patients',async(req,res)=>{
   const list=await query(`SELECT a.id,a.appointment_no,a.appointment_date,a.appointment_time,a.status,p.name AS patient_name,
-    a.user_id,a.patient_id,(SELECT COUNT(*) FROM orders o WHERE o.appointment_id=a.id AND o.pay_at IS NOT NULL AND o.status!='refunded') AS order_count
+    a.user_id,a.patient_id,(SELECT COUNT(*) FROM orders o WHERE o.appointment_id=a.id AND o.pay_at IS NOT NULL
+      AND o.status IN ('paid','processing','shipping','shipped','delivered','completed')
+      AND o.type <> 'appointment_deposit'
+      AND o.total_amount > COALESCE(JSON_EXTRACT(o.cashier_context,'$.appointment_fees.consult_fee') + 0,0)
+        + COALESCE(JSON_EXTRACT(o.cashier_context,'$.appointment_fees.deposit_amount') + 0,0)) AS order_count
     FROM appointments a JOIN patients p ON p.id=a.patient_id WHERE a.referral_promoter_id=? ORDER BY a.id DESC`,[req.user.promoter_id]);
   res.json({code:200,data:{list:list.map(r=>({...r,id:String(r.id),patient_id:String(r.patient_id),name:r.patient_name,patientName:r.patient_name,progressCode:r.order_count?'purchased':'appointed',progressLabel:r.order_count?'已成单':'已预约',orderCount:r.order_count,appointmentCount:1})),total:list.length}});
 });

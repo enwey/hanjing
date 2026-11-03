@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { formatShanghaiDateTime } from '@/utils/dateTime'
 import { appointmentTimeline } from '@/utils/appointmentTimeline'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
@@ -302,6 +303,7 @@ const orderResult = ref<any>(null)
 const nativePayInfo = ref<any>(null)
 const nativePayReceipt = ref<any>(null)
 const payWaiting = ref(false)
+const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
 const cashierSession = createCashierSession(request)
 const checkoutFlow = createCheckoutLifecycle(() => `${route.fullPath}:${appointmentId.value}`)
 
@@ -382,6 +384,10 @@ watch(deliveryType, (newVal) => {
 async function openCheckoutDialog() {
   if (!detailReady.value || String(appointment.value.id) !== appointmentId.value) {
     MessagePlugin.warning('请等待当前预约详情加载完成后再收银')
+    return
+  }
+  if (appointment.value.status === 'pending_payment') {
+    await appointmentCharge.value?.open(appointmentId.value)
     return
   }
   const attempt = checkoutFlow.begin()
@@ -742,6 +748,7 @@ function handleViewProfile() {
 
 <template>
   <div class="page-container">
+    <AppointmentChargeDialog ref="appointmentCharge" @changed="fetchAppointmentDetail" />
     <!-- 打印预览专用页眉 -->
     <div class="print-header">兴康明诊所</div>
 
@@ -763,12 +770,14 @@ function handleViewProfile() {
       <div class="action-buttons">
         <button class="btn btn-outline" @click="handlePrint"><AppIcon name="print" />  打印</button>
         
+        <button v-if="detailReady && appointment.status !== 'pending_payment'" class="btn btn-outline"
+          @click="appointmentCharge?.open(appointmentId)">收费与退款</button>
         <!-- 挂号收银 -->
         <button
           v-if="appointment.status === 'pending_payment'"
           class="btn btn-primary"
           @click="openCheckoutDialog"
-        >挂号收银</button>
+        >预约收费</button>
 
         <!-- 签到 -->
         <button

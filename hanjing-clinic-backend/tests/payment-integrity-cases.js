@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-export async function runPaymentIntegrityTests({ t, db, control, api, wxApi, root, staff, admin, clientRoutes, refunds, createFeeAppointment, feeBill, bill }) {
+export async function runPaymentIntegrityTests({ t, db, control, api, wxApi, root, staff, admin, clientRoutes, refunds, createFeeAppointment, feeBill, seedHistoricalFeeOrder, bill }) {
   const { syncUserMembership } = await import('../membership.js');
   const { readStoreReport } = await import('../operations-report.js');
   await db.run('UPDATE products SET stock=100 WHERE id=1');
@@ -9,10 +9,8 @@ export async function runPaymentIntegrityTests({ t, db, control, api, wxApi, roo
     const appointmentId = await createFeeAppointment();
     const body = { ...feeBill(appointmentId, 'wechat'), payment_confirmed: false,
       request_id: 'MINI-FEE-PAYMENT-20261020-0001' };
-    const created = await api('/orders', body);
-    assert.equal(created.status, 200, JSON.stringify(created));
-    const orderId = created.body.data.order_id;
-    assert.equal(created.body.data.receipt.payAt, null);
+    const { order_id:orderId } = await seedHistoricalFeeOrder(appointmentId,'wechat');
+    assert.equal((await db.get('SELECT pay_at FROM orders WHERE id=?',[orderId])).pay_at,null);
     assert.equal((await db.get('SELECT status FROM appointments WHERE id=?', [appointmentId])).status, 'pending_payment');
     assert.equal((await api('/orders', { ...body, discount_amount: 1, pay_amount: 6999 })).status, 409);
     const order = await db.get('SELECT * FROM orders WHERE id=?', [orderId]);
@@ -33,8 +31,7 @@ export async function runPaymentIntegrityTests({ t, db, control, api, wxApi, roo
     const body = feeBill(id,'wechat_native');
     body.items.push({product_id:1,price:10000,quantity:1}); body.pay_amount += 10000;
     const stock = (await db.get('SELECT stock FROM products WHERE id=1')).stock;
-    const created = await api('/orders',body);
-    assert.equal(created.status,200,JSON.stringify(created));
+    const created = { body:{ data:await seedHistoricalFeeOrder(id,'wechat_native',{extraItems:[{product_id:1,price:10000,quantity:1}]}) } };
     assert.equal((await wxApi(`/appointments/${id}/pay`)).status,409);
     const spentBefore = (await syncUserMembership(1)).total_spent;
     const appt = await db.get('SELECT * FROM appointments WHERE id=?',[id]);
@@ -56,8 +53,7 @@ export async function runPaymentIntegrityTests({ t, db, control, api, wxApi, roo
   await t.test('F2 callback competition recognizes fees only once in either order', async () => {
     for (const mode of ['cashier-first','parallel']) {
       const id=await createFeeAppointment();
-      const created=await api('/orders',feeBill(id,'wechat_native'));
-      assert.equal(created.status,200);
+      const created={body:{data:await seedHistoricalFeeOrder(id)}};
       const appt=await db.get('SELECT * FROM appointments WHERE id=?',[id]);
       const cashier=()=>admin.finalizeAdminPaidOrder({id:created.body.data.order_id},payment(created.body.data.order_no,7000,'F2-C-'+id));
       const mini=()=>db.transaction(conn=>clientRoutes.finalizePaidAppointment(conn,appt,1,payment(appt.appointment_no,7000,'F2-M-'+id)));

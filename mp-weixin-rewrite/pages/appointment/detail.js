@@ -1,3 +1,18 @@
+const chargeStatusLabels = {
+  pending: '待支付', paid: '已支付', refund_pending: '退款待处理',
+  refunding: '退款中', refunded: '已退款', cancelled: '已取消',
+};
+function chargeDisplay(charge) {
+  if (!charge || !chargeStatusLabels[charge.status]) return null;
+  return {
+    chargeNo: charge.chargeNo || '',
+    amount: '¥' + (Number(charge.amount || 0) / 100).toFixed(2),
+    refundedAmount: Number(charge.refundedAmount) > 0
+      ? '¥' + (Number(charge.refundedAmount) / 100).toFixed(2) : '',
+    status: ['abnormal', 'closed'].includes(charge.refundStatus) ? '退款待门店核实' : chargeStatusLabels[charge.status],
+  };
+}
+
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const { getStoreCoverUrl, normalizeImageUrl } = require('../../common/utils/image-url');
@@ -217,7 +232,8 @@ Page({
         depositAmountLabel: appointment.requireDeposit ? '¥' + (Number(appointment.depositAmount || 0) / 100).toFixed(2) : '',
         consultFeeLabel: appointment.consultFee ? '¥' + (Number(appointment.consultFee || 0) / 100).toFixed(2) : '',
         canCancel: ['pending_payment', 'pending', 'confirmed', 'reminded'].includes(appointment.status),
-        canPay: appointment.status === 'pending_payment',
+        appointmentCharge: chargeDisplay(appointment.appointmentCharge),
+        canPay: appointment.status === 'pending_payment' && appointment.appointmentCharge?.canPay !== false,
         canCancelOrReschedule,
         showLimitNotice:
           !isFinishedStatus &&

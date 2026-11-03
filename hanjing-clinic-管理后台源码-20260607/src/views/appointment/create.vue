@@ -1,24 +1,12 @@
 <script setup lang="ts">
+import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
-import { createCheckoutLifecycle, settleCashierAppointment, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
-import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
-import RegistrationCheckoutPanel from '@/components/RegistrationCheckoutPanel.vue'
 import { navigateToParent } from '@/utils/routeNavigation'
-import {
-  createBillingItem,
-  createCashierSession,
-  appointmentBillingItems,
-  createCheckoutReceiptResult,
-  confirmedCashierReceipt,
-  fetchCheckoutProducts,
-  findCheckoutProduct,
-  type BillingItem,
-  type CheckoutProduct
-} from '@/utils/checkoutProducts'
+
 
 const router = useRouter()
 const route = useRoute()
@@ -77,8 +65,6 @@ const remarks = ref('')
 // Modal/Form States for registering new patient
 const createVisible = ref(false)
 
-const selectedPromoterId = ref<string | null>(null)
-const promoterOptions = ref<Array<{ label: string; value: string }>>([])
 const requireDeposit = ref(false)
 const stores = ref<any[]>([])
 const doctors = ref<any[]>([])
@@ -174,19 +160,7 @@ const fetchSettings = async () => {
   }
 }
 
-const fetchPromoters = async () => {
-  try {
-    const res: any = await request.get('/api/admin/distribution/promoters')
-    if (res.code === 200 && res.data) {
-      promoterOptions.value = res.data.map((p: any) => ({
-        label: `${p.nickname} (${p.user_phone || '无手机号'})`,
-        value: (p.user_id !== null && p.user_id !== undefined ? p.user_id : p.id).toString()
-      }))
-    }
-  } catch (error) {
-    console.error('获取推广员列表失败:', error)
-  }
-}
+
 
 function setSelectedPatientFromRecord(record: any) {
   const levelMap: Record<string, string> = {
@@ -217,8 +191,6 @@ function setSelectedPatientFromRecord(record: any) {
 onMounted(async () => {
   await fetchSettings()
   await fetchStoresAndDoctors()
-  fetchProducts()
-  fetchPromoters()
   if (isReschedule.value) {
     try {
       const res: any = await request.get(`/api/admin/appointments`)
@@ -439,7 +411,10 @@ function handleCancel() {
   }
 }
 
+const creatingAppointment = ref(false)
+
 async function handleCreate() {
+  if (creatingAppointment.value) return
   if (!selectedPatient.value) {
     MessagePlugin.error('请先选择或新建患者')
     return
@@ -469,6 +444,7 @@ async function handleCreate() {
   const slotHour = parseInt(selectedSlot.value.split(':')[0])
   const period = slotHour < 12 ? 'morning' : 'afternoon'
 
+  creatingAppointment.value = true
   try {
     if (isReschedule.value) {
       await request.put(`/api/admin/appointments/${rescheduleId.value}`, {
@@ -500,34 +476,9 @@ async function handleCreate() {
         consult_fee: parsedConsultFee,
         deposit_amount: parsedDepositAmount
       })
-      if (selectedPromoterId.value) {
-        try {
-          await request.post(`/api/admin/patients/${selectedPatient.value.id}/bind-promoter`, {
-            promoter_user_id: parseInt(selectedPromoterId.value)
-          })
-        } catch (bindErr) {
-          console.error('绑定推荐人失败:', bindErr)
-        }
-      }
-      
       const sum = parsedConsultFee + parsedDepositAmount
       if (sum > 0 && res.data && res.data.id) {
-        const doc = doctors.value.find(d => String(d.id) === String(selectedDoctor.value))
-        const patientName = selectedPatient.value ? selectedPatient.value.name : ''
-        const patientPhone = selectedPatient.value ? selectedPatient.value.phone : ''
-        
-        const row = {
-          id: res.data.id.toString(),
-          patientId: selectedPatient.value.id.toString(),
-          no: res.data.appointment_no,
-          patient: patientName,
-          phone: patientPhone,
-          doctor: doc ? doc.name : '',
-          consult_fee: parsedConsultFee,
-          deposit_amount: parsedDepositAmount,
-          status: 'pending_payment'
-        }
-        openCheckoutDialog(row)
+        await appointmentCharge.value?.open(res.data.id)
       } else {
         MessagePlugin.success(`预约创建成功！已写入门诊就诊记录`)
         navigateToParent(router, route, '/appointment')
@@ -535,288 +486,40 @@ async function handleCreate() {
     }
   } catch (error) {
     console.error(error)
-  }
-}
-
-/* ---- 诊所收银结算弹窗相关状态与方法 ---- */
-const checkoutVisible = ref(false)
-const checkoutLoading = ref(false)
-const checkoutSuccess = ref(false)
-const orderResult = ref<any>(null)
-const selectedCheckoutRow = ref<any>(null)
-const checkoutClosing = ref(false)
-const cashierSession = createCashierSession(request)
-const checkoutFlow = createCheckoutLifecycle(() => `${route.fullPath}:${selectedCheckoutRow.value?.id || ''}`)
-
-const deliveryType = ref<string>('offline_direct')
-const shippingReceiver = ref<string>('')
-const shippingPhone = ref<string>('')
-const shippingAddressStr = ref<string>('')
-
-const productOptions = ref<CheckoutProduct[]>([])
-
-const billingItems = ref<BillingItem[]>([])
-const discountAmount = ref<number>(0)
-const payMethod = ref<'cash' | 'wechat'>('cash')
-
-const totalAmount = computed(() => {
-  return billingItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-})
-
-const payableAmount = computed(() => {
-  const diff = totalAmount.value - discountAmount.value
-  return diff > 0 ? diff : 0
-})
-
-watch(deliveryType, (newVal) => {
-  if (newVal === 'online') {
-    const freightProduct = findCheckoutProduct(productOptions.value, '运费')
-    if (!freightProduct) {
-      MessagePlugin.warning('商品管理中暂无上架运费项目，请先配置后再选择快递邮寄')
-      deliveryType.value = 'offline_direct'
-      return
-    }
-    const exists = billingItems.value.some(item => item.product_id === freightProduct.id)
-    if (!exists) {
-      billingItems.value.push(createBillingItem(freightProduct))
-    }
-  } else {
-    const freightProduct = findCheckoutProduct(productOptions.value, '运费')
-    const idx = billingItems.value.findIndex(item => item.product_id === freightProduct?.id || item.product_name.includes('运费'))
-    if (idx !== -1) {
-      billingItems.value.splice(idx, 1)
-    }
-  }
-})
-
-const fetchProducts = async () => {
-  try {
-    productOptions.value = await fetchCheckoutProducts(request)
-  } catch (error) {
-    console.error('获取商品列表失败:', error)
-    MessagePlugin.error('获取商品列表失败')
-  }
-}
-
-async function openCheckoutDialog(row: any) {
-  selectedCheckoutRow.value = row
-  const attempt = checkoutFlow.begin()
-  cashierSession.reset()
-  checkoutSuccess.value = false
-  checkoutLoading.value = true
-  if (productOptions.value.length === 0) await fetchProducts()
-  try {
-    if (!checkoutFlow.isCurrent(attempt)) return
-    const items = await appointmentBillingItems(request, productOptions.value, row.id)
-    if (!checkoutFlow.isCurrent(attempt)) return
-    billingItems.value = items.map(item => ({ ...item, quantity: 1 }))
-  } catch (error: any) {
-    if (checkoutFlow.isCurrent(attempt)) MessagePlugin.error(error.message || '获取预约收费信息失败')
-    return
   } finally {
-    if (checkoutFlow.isCurrent(attempt)) checkoutLoading.value = false
-  }
-  selectedCheckoutRow.value = row
-  discountAmount.value = 0
-  payMethod.value = 'cash'
-  checkoutSuccess.value = false
-  orderResult.value = null
-  
-  deliveryType.value = 'offline_direct'
-  shippingReceiver.value = ''
-  shippingPhone.value = ''
-  shippingAddressStr.value = ''
-  
-  checkoutVisible.value = true
-}
-
-async function closeCheckoutDialog() {
-  if (checkoutClosing.value) return
-  if (checkoutSuccess.value) {
-    MessagePlugin.warning('请点击底部“完成结算”完成本次结算流程')
-    checkoutVisible.value = true
-    return
-  }
-
-  checkoutVisible.value = false
-  checkoutFlow.invalidate()
-  selectedCheckoutRow.value = null
-  MessagePlugin.info('预约已保留，未取消预约或付款单')
-  navigateToParent(router, route, '/appointment')
-}
-
-function leaveCheckout() {
-  checkoutFlow.invalidate()
-  checkoutLoading.value = false
-  checkoutVisible.value = false
-}
-onBeforeRouteLeave(leaveCheckout)
-onBeforeRouteUpdate(leaveCheckout)
-
-async function markCheckoutPaid(receipt: any, attempt: CheckoutAttempt | null, isActive = () => checkoutFlow.isCurrent(attempt)) {
-  if (!isActive() || String(receipt.orderId) !== attempt?.orderId) return
-  receipt = await confirmedCashierReceipt(request, receipt)
-  if (!isActive()) return
-  orderResult.value = createCheckoutReceiptResult(receipt)
-  checkoutSuccess.value = true
-  MessagePlugin.success('预约创建成功，现金收款已登记')
-}
-
-async function completeCheckoutSettlement() {
-  if (!selectedCheckoutRow.value || !orderResult.value || checkoutLoading.value) return
-  const attempt = checkoutFlow.capture()
-  const isActive = () => checkoutFlow.isCurrent(attempt) && String(orderResult.value?.orderId) === attempt?.orderId
-  if (!isActive()) return
-  const targetId = selectedCheckoutRow.value.id
-  checkoutLoading.value = true
-  try {
-    if (!await settleCashierAppointment(request, targetId, isActive)) return
-    MessagePlugin.success('结算已完成')
-    checkoutLoading.value = false
-    checkoutFlow.invalidate()
-    checkoutVisible.value = false
-    selectedCheckoutRow.value = null
-    checkoutSuccess.value = false
-    orderResult.value = null
-    navigateToParent(router, route, '/appointment')
-  } catch (err) {
-    console.error('完成结算失败:', err)
-    if (isActive()) MessagePlugin.error('完成结算失败，请刷新预约状态后重试')
-  } finally {
-    if (isActive()) checkoutLoading.value = false
+    creatingAppointment.value = false
   }
 }
 
-function handlePrintInvoice() {
-  window.print()
-}
-
-async function submitCheckout() {
-  if (checkoutLoading.value) return
-  const attempt = checkoutFlow.capture()
-  if (!checkoutFlow.isCurrent(attempt)) return
-  if (!selectedCheckoutRow.value) return
-  if (billingItems.value.length === 0) {
-    MessagePlugin.warning('结账明细不能为空')
-    return
-  }
-  if (deliveryType.value !== 'offline_direct') {
-    if (!shippingReceiver.value || !shippingReceiver.value.trim()) {
-      MessagePlugin.warning('请填写联系人/收件人姓名')
-      return
-    }
-    if (!shippingPhone.value || !shippingPhone.value.trim()) {
-      MessagePlugin.warning('请填写联系电话')
-      return
-    }
-    if (!/^1\d{10}$/.test(shippingPhone.value.trim())) {
-      MessagePlugin.warning('请输入有效的11位手机号码')
-      return
-    }
-  }
-  if (deliveryType.value === 'online' && (!shippingAddressStr.value || !shippingAddressStr.value.trim())) {
-    MessagePlugin.warning('请填写详细收货地址')
-    return
-  }
-  checkoutLoading.value = true
-  try {
-    let orderType = 'offline'
-    let orderStatus = 'paid'
-    let shipAddr: any = null
-
-    if (deliveryType.value === 'online') {
-      orderType = 'online'
-      orderStatus = 'shipping'
-      shipAddr = {
-        receiver: shippingReceiver.value,
-        phone: shippingPhone.value,
-        detail: shippingAddressStr.value,
-        deliveryMethod: 'online'
-      }
-    } else if (deliveryType.value === 'offline_pending') {
-      orderType = 'offline'
-      orderStatus = 'processing'
-      shipAddr = {
-        receiver: shippingReceiver.value,
-        phone: shippingPhone.value,
-        detail: '缺货登记（待货通知自提）',
-        deliveryMethod: 'pickup_pending'
-      }
-    } else {
-      orderType = 'offline'
-      orderStatus = 'paid'
-      shipAddr = {
-        receiver: shippingReceiver.value,
-        phone: shippingPhone.value,
-        detail: '到店自提',
-        deliveryMethod: 'pickup'
-      }
-    }
-
-    const payload = {
-      patient_id: parseInt(selectedCheckoutRow.value.patientId, 10),
-      appointment_id: Number(selectedCheckoutRow.value.id),
-      items: billingItems.value.map(item => ({ ...item, quantity: 1 })),
-      pay_amount: payableAmount.value,
-      discount_amount: discountAmount.value,
-      pay_method: payMethod.value,
-      payment_confirmed: ['cash', 'bank'].includes(payMethod.value),
-      type: orderType,
-      status: orderStatus,
-      shipping_address: shipAddr
-    }
-    if (['cash', 'bank'].includes(payMethod.value) && !window.confirm('请确认已实际收到款项。此操作仅登记人工收款，不会发起微信支付。')) return
-    const res: any = await cashierSession.submit(payload)
-    if (!checkoutFlow.isCurrent(attempt)) return
-    if (res.code === 200) {
-      if (!checkoutFlow.bindOrder(attempt, res.data.order_id)) return
-      const receipt = res.data.receipt
-      if (payload.pay_method === 'wechat') {
-        MessagePlugin.success('预约创建成功，待支付订单已发送至用户小程序')
-        checkoutVisible.value = false
-        selectedCheckoutRow.value = null
-        checkoutFlow.invalidate()
-        navigateToParent(router, route, '/appointment')
-      } else {
-        await markCheckoutPaid(receipt, attempt)
-      }
-    }
-  } catch (error) {
-    console.error(error)
-    if (checkoutFlow.isCurrent(attempt)) MessagePlugin.error('结算收费失败')
-  } finally {
-    if (checkoutFlow.isCurrent(attempt)) checkoutLoading.value = false
-  }
-}
+const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
 </script>
 
 <template>
-  <div class="page-container">
+  <div class="page-container appointment-form-page">
+    <AppointmentChargeDialog ref="appointmentCharge" @closed="id => navigateToParent(router, route, `/appointment/detail/${id}`)" />
     <!-- Page Title Row -->
     <div class="page-title-row">
       <div>
         <div class="page-title">{{ isReschedule ? '预约改约' : '新建预约' }}</div>
         <div class="page-title-sub">{{ isReschedule ? '调整已有预约的时间及就诊规则' : '手动为患者创建预约' }}</div>
       </div>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <t-button variant="outline" theme="default" @click="handleCancel">取消</t-button>
-        <t-button theme="primary" @click="handleCreate">{{ isReschedule ? '确认改约' : '确认创建' }}</t-button>
-      </div>
     </div>
 
+    <div class="appointment-workspace">
+      <div class="appointment-fields">
     <!-- Step 1: Select Patient -->
     <div class="panel">
       <div class="panel-header"><div class="panel-title">① {{ isReschedule ? '就诊患者' : '选择患者' }}</div></div>
       <div class="panel-body">
         <!-- Search bar (hidden during reschedule) -->
-        <div v-if="!isReschedule" style="display: flex; gap: 12px; align-items: center; width: 100%;">
+        <div v-if="!isReschedule" class="patient-picker">
           <t-select
             v-model="selectedPatientId"
             filterable
             placeholder="输入姓名/手机号搜索并选择患者"
             :loading="isSearching"
             :options="patientOptions"
-            style="flex: 1;"
+            class="patient-picker-select"
             @search="handleSearchInput"
             @change="handlePatientChange"
             clearable
@@ -942,7 +645,7 @@ async function submitCheckout() {
     <div class="panel" style="margin-top: 16px;">
       <div class="panel-header"><div class="panel-title">④ 补充信息</div></div>
       <div class="panel-body">
-        <div class="form-grid">
+        <div class="form-grid supplementary-grid">
           <div class="form-group">
             <label class="form-label">预约类型</label>
             <t-select v-model="visitType" placeholder="预约类型">
@@ -957,10 +660,6 @@ async function submitCheckout() {
               <span class="input-prefix">¥</span>
               <input type="number" class="form-control-inner" v-model="consultFee" placeholder="请输入挂号费" />
             </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">分销推荐人</label>
-            <t-select v-model="selectedPromoterId" clearable filterable placeholder="选择分销推荐人（可选）" :options="promoterOptions" />
           </div>
           <div class="form-group" v-if="requireDeposit">
             <label class="form-label">预约定金</label>
@@ -977,6 +676,29 @@ async function submitCheckout() {
       </div>
     </div>
     
+      </div>
+      <aside class="panel appointment-summary" aria-labelledby="appointment-summary-title">
+        <div class="panel-header">
+          <div id="appointment-summary-title" class="panel-title">预约摘要</div>
+        </div>
+        <div class="panel-body">
+          <dl class="appointment-summary-list">
+            <div><dt>就诊患者</dt><dd>{{ selectedPatient?.name || '请选择患者' }}</dd></div>
+            <div><dt>就诊门店</dt><dd>{{ stores.find(store => String(store.id) === String(selectedStore))?.name || '请选择门店' }}</dd></div>
+            <div><dt>就诊医生</dt><dd>{{ selectedDoctor ? selectedDoctorName : '请选择医生' }}</dd></div>
+            <div><dt>就诊时间</dt><dd>{{ selectedDate && selectedSlot ? selectedDate + ' ' + selectedSlot : '请选择日期和时段' }}</dd></div>
+            <div><dt>预约类型</dt><dd>{{ visitType || '—' }}</dd></div>
+            <div><dt>挂号费</dt><dd>¥{{ Number(consultFee || 0).toFixed(2) }}</dd></div>
+            <div v-if="requireDeposit"><dt>预约定金</dt><dd>¥{{ Number(depositAmount || 0).toFixed(2) }}</dd></div>
+          </dl>
+          <div class="appointment-summary-actions">
+            <t-button variant="outline" theme="default" @click="handleCancel">取消</t-button>
+            <t-button theme="primary" :loading="creatingAppointment" @click="handleCreate">{{ isReschedule ? '确认改约' : '确认创建' }}</t-button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
     <!-- 统一共用新患者建档弹窗 -->
     <PatientCreateDialog
       v-model:visible="createVisible"
@@ -984,60 +706,7 @@ async function submitCheckout() {
       @success="handleCreatePatientSuccess"
     />
 
-    <!-- 收银结算弹窗 -->
-    <t-dialog
-      v-model:visible="checkoutVisible"
-      header="门诊电子收银结算与划扣"
-      width="540px"
-      :footer="false"
-      @close="closeCheckoutDialog"
-    >
-      <div v-if="checkoutSuccess" style="display: flex; flex-direction: column; align-items: center; padding: 10px 0;">
-        <div class="invoice-box" style="width: 100%; background: #FCFCFA; border: 1px solid #E5E7EB; border-radius: 8px; padding: 20px; font-family: monospace;">
-          <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #000;">兴康明诊所 · 收费凭证</div>
-          <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">================================</div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>交易单号:</span> <span>{{ orderResult?.orderNo }}</span></div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>结账客户:</span> <span>{{ orderResult?.patientName }}</span></div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>交易时间:</span> <span>{{ orderResult?.time }}</span></div>
-          <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">--------------------------------</div>
-          <div v-for="item in orderResult?.items" :key="item.product_id" style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-            <span>{{ item.product_name }} x{{ item.quantity }}</span>
-            <span>¥{{ ((item.price * item.quantity) / 100).toFixed(2) }}</span>
-          </div>
-          <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">--------------------------------</div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>总计金额:</span> <span>¥{{ orderResult?.total }}</span></div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; color: #EF4444;"><span>优惠折扣:</span> <span>-¥{{ orderResult?.discount }}</span></div>
-          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; color: #000; margin-bottom: 4px;">
-            <span>实收金额:</span> <span>¥{{ orderResult?.payable }}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;"><span>支付方式:</span> <span>{{ orderResult?.payMethodText }}</span></div>
-          <div style="text-align: center; color: #9CA3AF; margin: 6px 0;">================================</div>
-          <div style="font-size: 11px; color: #9CA3AF; text-align: center; margin-top: 10px; line-height: 1.4;">
-            谢谢惠顾，请妥善保管收款凭证。
-          </div>
-        </div>
-        <div style="margin-top: 20px; display: flex; gap: 12px;">
-          <t-button variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
-          <t-button theme="primary" :loading="checkoutLoading" @click="completeCheckoutSettlement">完成结算</t-button>
-        </div>
-      </div>
 
-      <RegistrationCheckoutPanel
-        v-else
-        :patient-name="selectedCheckoutRow?.patient || ''"
-        :items="billingItems"
-        :discount-amount="discountAmount"
-        :total-amount="totalAmount"
-        :payable-amount="payableAmount"
-        :pay-method="payMethod"
-        :loading="checkoutLoading"
-        wechat-submit-text="创建预约并通知支付"
-        @update:discount-amount="discountAmount = $event"
-        @update:pay-method="payMethod = $event"
-        @close="closeCheckoutDialog"
-        @submit="submitCheckout"
-      />
-    </t-dialog>
   </div>
 </template>
 
@@ -1087,9 +756,78 @@ async function submitCheckout() {
 }
 
 /* Form Styles */
+.appointment-form-page {
+  max-width: 1440px;
+  margin-inline: auto;
+}
+.appointment-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  gap: 24px;
+  align-items: start;
+}
+.appointment-fields {
+  min-width: 0;
+}
+.appointment-summary {
+  position: sticky;
+  top: 20px;
+}
+.appointment-summary-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+.appointment-summary-list > div {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  font-size: 13px;
+}
+.appointment-summary-list dt {
+  color: #6b7280;
+}
+.appointment-summary-list dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.appointment-summary-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+@media (max-width: 1100px) {
+  .appointment-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .appointment-summary {
+    position: static;
+  }
+}
+.patient-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.patient-picker-select {
+  width: min(100%, 440px);
+}
+.form-grid.supplementary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  max-width: 940px;
+}
+.supplementary-grid .form-group.full {
+  grid-column: 1 / -1;
+}
+
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 360px));
   gap: 16px;
 }
 .form-group {
@@ -1100,6 +838,15 @@ async function submitCheckout() {
 .form-group.full {
   grid-column: span 2;
 }
+@media (max-width: 640px) {
+  .appointment-form-page .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .appointment-form-page .form-group.full {
+    grid-column: 1 / -1;
+  }
+}
+
 .form-label {
   font-size: 13px;
   font-weight: 600;

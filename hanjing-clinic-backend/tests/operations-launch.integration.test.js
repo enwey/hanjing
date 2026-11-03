@@ -45,8 +45,8 @@ test('operations launch fixes preserve scope, payment, stock and fulfillment inv
     await control.query("INSERT INTO distributors(id,user_id,nickname,invite_code,status) VALUES(1,3,'L1','LAUNCH-L1','active'),(2,4,'L2','LAUNCH-L2','active')");
     await control.query('INSERT INTO distribution_relationships(parent_user_id,child_user_id,level) VALUES(3,1,1),(4,1,2)');
     await control.query("INSERT INTO medical_records(id,patient_id,doctor_id,store_id,appointment_id,visit_date,diagnosis,attachments) VALUES(1,1,1,1,1,CURDATE(),'Fixture',JSON_ARRAY(JSON_OBJECT('url','/uploads/medical-attachments/launch.pdf')))");
-    const root = jwt.sign({id:1000,role:'super_admin'}, helpers.JWT_SECRET);
-    const staff = jwt.sign({id:1001,role:'launch_staff'}, helpers.JWT_SECRET);
+    const root = jwt.sign({id:1000,role:'super_admin',token_version:0}, helpers.JWT_SECRET);
+    const staff = jwt.sign({id:1001,role:'launch_staff',token_version:0}, helpers.JWT_SECRET);
     async function api(path, body, token=staff, method=body===undefined?'GET':'POST') {
       const r=await fetch(`http://127.0.0.1:${server.address().port}/api/admin${path}`,{method,headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
       const text = await r.text();
@@ -672,6 +672,27 @@ test('operations launch fixes preserve scope, payment, stock and fulfillment inv
       await db.run('UPDATE appointments SET deposit_amount=2000 WHERE id=?',[id]);
       return id;
     };
+    const seedHistoricalFeeOrder = async (appointmentId, method = 'wechat_native', options = {}) => {
+      const orderNo = 'LEGACY-FEE-' + appointmentId;
+      const items = [...feeBill(appointmentId).items, ...(options.extraItems || [])];
+      const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const discount = options.discount || 0;
+      const payAmount = total - discount;
+      const paid = options.paid ? 1 : 0;
+      const inserted = await db.run(`INSERT INTO orders
+        (order_no,user_id,type,total_amount,discount_amount,pay_amount,pay_method,pay_at,status,shipping_address,appointment_id,cashier_context)
+        VALUES(?,1,'offline',?,?,?,?,IF(?,CURRENT_TIMESTAMP,NULL),?,JSON_OBJECT('deliveryMethod','offline','storeId',1),?,?)`,
+        [orderNo,total,discount,payAmount,method,paid,paid?'paid':'pending',appointmentId,
+          JSON.stringify({appointment_fees:{version:1,consult_fee:5000,deposit_amount:2000}})]);
+      for (const item of items) {
+        const product = await db.get('SELECT name,category FROM products WHERE id=?',[item.product_id]);
+        await db.run('INSERT INTO order_items(order_id,product_id,product_name,price,quantity) VALUES(?,?,?,?,?)',
+          [inserted.id,item.product_id,product.name,item.price,item.quantity]);
+        if (product.category !== 'service') await db.run('UPDATE products SET stock=stock-? WHERE id=?',[item.quantity,item.product_id]);
+      }
+      if (paid) await db.run("UPDATE appointments SET status='pending' WHERE id=?",[appointmentId]);
+      return { order_id:inserted.id, order_no:orderNo };
+    };
     await t.test('cashier retries reuse one order and reject reuse with changed contents', async () => {
       const id=await createReviewAppointment();
       const payload={...bill,appointment_id:id,request_id:'retry-20261016-cashier-000001',items:[{product_id:3,quantity:1,price:1000}],pay_amount:1000};
@@ -692,15 +713,14 @@ test('operations launch fixes preserve scope, payment, stock and fulfillment inv
         {items:[feeBill(id).items[0]],pay_amount:5000},
         {items:[{...feeBill(id).items[0],product_id:3},feeBill(id).items[1]]},
         {items:[{...feeBill(id).items[0],price:1000},feeBill(id).items[1]],pay_amount:3000}
-      ]) assert.equal((await api('/orders',{...feeBill(id),...patch})).status,400);
+      ]) assert.equal((await api('/orders',{...feeBill(id),...patch})).status,409);
       assert.equal((await db.get('SELECT status FROM appointments WHERE id=?',[id])).status,'pending_payment');
       assert.equal((await db.get('SELECT COUNT(*) n FROM orders WHERE appointment_id=?',[id])).n,1);
     });
     await t.test('explicit fee discounts remain auditable and settle exactly once', async () => {
       const id = await createFeeAppointment();
-      const results=await Promise.all([api('/orders',{...feeBill(id),discount_amount:1000,pay_amount:6000}),api('/orders',{...feeBill(id),discount_amount:1000,pay_amount:6000})]);
-      assert.deepEqual(results.map(r=>r.status).sort(),[200,409],JSON.stringify(results));
-      const paid=results.find(r=>r.status===200).body.data;
+      const paid=await seedHistoricalFeeOrder(id,'cash',{discount:1000,paid:true});
+      assert.equal((await api('/orders',{...feeBill(id),discount_amount:1000,pay_amount:6000})).status,409);
       assert.equal((await db.get('SELECT status FROM appointments WHERE id=?',[id])).status,'pending');
       const order=await db.get('SELECT * FROM orders WHERE id=?',[paid.order_id]);
       const context=typeof order.cashier_context==='string'?JSON.parse(order.cashier_context):order.cashier_context;
@@ -712,13 +732,12 @@ test('operations launch fixes preserve scope, payment, stock and fulfillment inv
       await refunds.reviewRefund(order.id,false,1000);
       assert.equal((await change(id,{status:'checked_in'})).status,200);
       const freeId=await createFeeAppointment();
-      assert.equal((await api('/orders',{...feeBill(freeId),discount_amount:7000,pay_amount:0})).status,200);
+      await seedHistoricalFeeOrder(freeId,'cash',{discount:7000,paid:true});
       assert.equal((await db.get('SELECT status FROM appointments WHERE id=?',[freeId])).status,'pending');
     });
     await t.test('wechat fees wait for verified payment and callback retries do not duplicate receipts', async () => {
       const id=await createFeeAppointment();
-      const created=await api('/orders',feeBill(id,'wechat_native'));
-      assert.equal(created.status,200,JSON.stringify(created));
+      const created={body:{data:await seedHistoricalFeeOrder(id)}};
       assert.equal((await change(id,{status:'confirmed'})).status,409);
       assert.equal((await api('/orders',feeBill(id))).status,409);
       const payment={trade_state:'SUCCESS',out_trade_no:created.body.data.order_no,transaction_id:'FEE-'+id,amount:{currency:'CNY',total:7000}};
@@ -767,7 +786,7 @@ test('operations launch fixes preserve scope, payment, stock and fulfillment inv
       assert.equal((await api('/patients/1/medical-records',{...record,appointment_id:id},root)).status,409);
       assert.equal((await api('/patients/2/medical-records',{...record,appointment_id:id},root)).status,400);
       assert.equal((await db.get('SELECT COUNT(*) n FROM medical_records WHERE appointment_id=?',[id])).n,0);
-      assert.equal((await api('/orders',feeBill(id))).status,200);
+      assert.equal((await api('/appointments/'+id+'/charges',{method:'cash',payment_confirmed:true},root)).status,200);
       assert.equal((await api(`/appointments/${id}/complete-consultation`,{medical_record:{...record,store_id:2}},root)).status,400);
       assert.equal((await api(`/appointments/${id}/complete-consultation`,{medical_record:record},root)).status,200);
       assert.equal((await api(`/appointments/${id}/complete-consultation`,{medical_record:record},root)).status,409);
@@ -809,7 +828,7 @@ test('operations launch fixes preserve scope, payment, stock and fulfillment inv
       });
       return {status:response.status,body:await response.json()};
     };
-    await runPaymentIntegrityTests({ t, db, control, api, wxApi, root, staff, admin, clientRoutes, refunds, createFeeAppointment, feeBill, bill });
+    await runPaymentIntegrityTests({ t, db, control, api, wxApi, root, staff, admin, clientRoutes, refunds, createFeeAppointment, feeBill, seedHistoricalFeeOrder, bill });
     await runAccountDisplayTests({ t, db, api, root, staff, helpers });
   } finally {
     if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}

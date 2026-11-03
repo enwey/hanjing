@@ -23,7 +23,14 @@ export async function readPatientActivity(user, patientId) {
         AND (a.patient_id=p.id OR (o.appointment_id IS NULL
           AND JSON_UNQUOTE(JSON_EXTRACT(o.cashier_context,'$.patient_id'))=CAST(p.id AS CHAR)))`,
       [patientId,...orderScope.params]);
-    const receipts=Number(money.receipts), refunds=Number(money.refunds);
+    const [[chargeMoney]] = await conn.execute(`SELECT
+      COALESCE(SUM(c.consult_fee+c.deposit_amount),0) AS receipts,
+      COALESCE(SUM(CASE WHEN r.status='refunded' AND r.refunded_at IS NOT NULL THEN r.amount ELSE 0 END),0) AS refunds
+      FROM appointment_charges c JOIN appointments a ON a.id=c.appointment_id
+      LEFT JOIN appointment_charge_refunds r ON r.charge_id=c.id
+      WHERE a.patient_id=? AND c.paid_at IS NOT NULL AND ${visitScope.sql}`,
+      [patientId,...visitScope.params]);
+    const receipts=Number(money.receipts)+Number(chargeMoney.receipts), refunds=Number(money.refunds)+Number(chargeMoney.refunds);
     return {visit_count:Number(visits.count),receipts,refunds,net_receipts:receipts-refunds};
   });
 }

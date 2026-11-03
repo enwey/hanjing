@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import OrderCreateDialog from '@/components/OrderCreateDialog.vue'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -6,6 +7,13 @@ import request from '@/utils/request'
 import { formatShanghaiDateTime, getShanghaiTodayString } from '@/utils/dateTime'
 
 const router = useRouter()
+const createOrderVisible = ref(false)
+const canCreateOrder = computed(() => {
+  try {
+    const user = JSON.parse(localStorage.getItem('user_info') || '{}')
+    return user.role_code === 'super_admin' || ['order:edit', 'patient:view', 'distribution:view'].every(key => user.permissions?.includes(key))
+  } catch { return false }
+})
 const searchKeyword = ref(localStorage.getItem('order_list_search_keyword') || '')
 const currentPage = ref(1)
 const pageSize = ref(30)
@@ -333,13 +341,16 @@ watch(operationColumnWidth, () => {
 <template>
   <div class="page-container">
     <!-- Header -->
+    <OrderCreateDialog :visible="createOrderVisible" @close="createOrderVisible = false"
+      @created="id => { createOrderVisible = false; fetchOrders(); router.push('/order/detail/' + id) }" />
     <div class="page-title-row">
       <div>
         <div class="page-title">订单管理</div>
         <div class="page-title-sub">管理所有商品及服务订单</div>
       </div>
-      <div style="display:flex;gap:8px;">
+      <div style="display: flex; gap: 8px; align-items: center;">
         <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出</button>
+        <button v-if="canCreateOrder" class="btn btn-primary" @click="createOrderVisible = true"><AppIcon name="plus" /> 创建订单</button>
       </div>
     </div>
 
