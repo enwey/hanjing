@@ -117,7 +117,7 @@ watch(operationColumnWidth, () => {
     <!-- Header -->
     <div class="page-title-row">
       <div>
-        <div class="page-title">权限管理</div>
+        <div class="page-title">角色管理</div>
         <div class="page-title-sub">配置系统的角色类型，自定义不同岗位管理员的功能访问与操作权限。</div>
       </div>
       <button class="btn btn-primary" @click="handleAddRole">

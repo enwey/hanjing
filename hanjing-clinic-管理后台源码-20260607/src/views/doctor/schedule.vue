@@ -7,7 +7,34 @@ import { navigateToParent } from '@/utils/routeNavigation'
 
 const route = useRoute()
 const router = useRouter()
-const doctorId = ref(route.params.id as string || '1')
+const storeId = String(route.params.storeId || '')
+const doctorId = ref(String(route.params.id || ''))
+const storeDoctors = ref<{ id: string; name: string }[]>([])
+const selectedDoctors = ref<string[]>([])
+const changedPeriods = new Set<string>()
+const savedDoctors = new Set<string>()
+const saveResults = ref<string[]>([])
+const monthRows = ref<any[]>([])
+const previewFailed = ref(false)
+const loading = ref(false)
+
+function canEditStoreSchedule() {
+  if (!storeId || selectedDoctors.value.length) return true
+  MessagePlugin.warning('请勾选应用医生后进行排班')
+  return false
+}
+
+const selectedSchedules = computed(() => {
+  const result = new Map<string, any[]>()
+  for (const row of monthRows.value) {
+    if (!selectedDoctors.value.includes(String(row.doctor_id))) continue
+    const key = String(row.date).slice(0, 10) + row.period
+    const rows = result.get(key) || []
+    rows.push(row)
+    result.set(key, rows)
+  }
+  return result
+})
 
 /* ---- Doctor Info ---- */
 const doctor = ref({
@@ -23,6 +50,7 @@ interface PeriodData {
   storeId: string;
   store: string;
   slots: number;
+  intervalMinutes?: number;
   peoplePerSlot?: number;
   booked?: number;
   startTime?: string;
@@ -51,6 +79,19 @@ const scheduleChunks = computed(() => {
 })
 
 const schedules = ref<DaySchedule[]>([])
+
+type SchedulePeriod = 'morning' | 'afternoon'
+const bookingHours = ref('')
+function defaultPeriodTimes(period: SchedulePeriod) {
+  const match = bookingHours.value.trim().match(/^(\d{1,2}:[0-5]\d)\s*[-–—~～至]\s*(\d{1,2}:[0-5]\d)$/)
+  let start = match?.[1]?.padStart(5, '0') || '09:00'
+  let end = match?.[2]?.padStart(5, '0') || '18:00'
+  if (start >= end || end > '23:59') [start, end] = ['09:00', '18:00']
+  if (period === 'morning') end = end < '12:00' ? end : '12:00'
+  else start = start > '12:00' ? start : '12:00'
+  return start < end ? { start, end } : { start: '', end: '' }
+}
+const batchTimes = ref({ morning: defaultPeriodTimes('morning'), afternoon: defaultPeriodTimes('afternoon') })
 
 const generateMonthSchedules = () => {
   const year = currentYear.value
@@ -94,6 +135,7 @@ const generateMonthSchedules = () => {
 const storesList = ref<any[]>([])
 const doctorStoreIds = ref<string[]>([])
 const activeStoreOptions = computed(() => {
+  if (storeId) return storesList.value.filter(store => String(store.id) === storeId)
   if (!doctorStoreIds.value.length) return storesList.value
   return storesList.value.filter(store => doctorStoreIds.value.includes(String(store.id)))
 })
@@ -125,7 +167,7 @@ const fetchDoctorInfo = async () => {
         doctorStoreIds.value = Array.isArray(doc.store_ids) ? doc.store_ids.map((id: any) => String(id)) : []
       } else {
         MessagePlugin.error('医生档案不存在或无权访问')
-        navigateToParent(router, route, '/doctor')
+        navigateToParent(router, route, storeId ? '/store' : '/doctor')
       }
     }
   } catch (err) {
@@ -141,19 +183,29 @@ const loadSchedules = async () => {
   if (storesList.value.length === 0) {
     await fetchStores()
   }
-  await fetchDoctorInfo()
+  if (!storeId) await fetchDoctorInfo()
   generateMonthSchedules()
+  if (storeId) {
+    loading.value = true
+    changedPeriods.clear()
+    savedDoctors.clear()
+    monthRows.value = []
+  }
 
   try {
     const monthStr = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}`
     const res: any = await request.get(`/api/admin/schedules`, {
       params: {
-        doctor_id: doctorId.value,
+        doctor_id: storeId ? undefined : doctorId.value,
         date: monthStr
       }
     })
     if (res.code === 200 && Array.isArray(res.data)) {
+      defaultInterval.value = Number(res.bookingInterval) || 30
+      bookingHours.value = String(res.bookingHours || '')
+      if (storeId) monthRows.value = res.data
       res.data.forEach((row: any) => {
+        if (storeId && String(row.doctor_id) !== doctorId.value) return
         const rowDate = String(row.date).slice(0, 10)
         const day = schedules.value.find(d => d.date === rowDate)
         if (day) {
@@ -163,6 +215,7 @@ const loadSchedules = async () => {
               storeId: row.store_id ? String(row.store_id) : '',
               store: row.store_name || getStoreName(String(row.store_id || '')),
               slots: row.total_slots || 0,
+              intervalMinutes: row.slot_interval_minutes ?? undefined,
               peoplePerSlot: row.people_per_slot || 1,
               booked: row.booked_count || 0,
               startTime: row.start_time || (period === 'morning' ? '09:00:00' : '14:00:00'),
@@ -172,17 +225,48 @@ const loadSchedules = async () => {
         }
       })
     }
+    if (storeId) previewFailed.value = res.code !== 200
   } catch (err) {
+    if (storeId) previewFailed.value = true
     console.error('加载排班数据失败:', err)
+  } finally {
+    if (storeId) loading.value = false
   }
 }
 
 // Initialize
-onMounted(() => {
-  loadSchedules()
+onMounted(async () => {
+  if (storeId) {
+    loading.value = true
+    try {
+      const response = await request.get('/api/admin/doctors', { params: { store_id: storeId } })
+      storeDoctors.value = (response.data || []).filter((item: any) =>
+        item.store_ids?.some((id: unknown) => String(id) === storeId)
+      ).map((item: any) => ({ id: String(item.id), name: item.name }))
+    } finally {
+      await loadSchedules()
+      loading.value = false
+    }
+  } else {
+    await loadSchedules()
+  }
 })
 
+async function changeCalendarDoctor(event: Event) {
+  const select = event.target as HTMLSelectElement
+  if (changedPeriods.size && !window.confirm('切换医生会放弃当前未保存的排班修改，是否继续？')) {
+    select.value = doctorId.value
+    return
+  }
+  doctorId.value = select.value
+  selectedDoctors.value = doctorId.value ? [doctorId.value] : []
+  isBatchMode.value = false
+  selectedDays.value = []
+  await loadSchedules()
+}
+
 function prevMonth() {
+  if (storeId && changedPeriods.size && !window.confirm('切换月份会放弃当前未保存的排班修改，是否继续？')) return
   if (currentMonth.value === 0) {
     currentYear.value--
     currentMonth.value = 11
@@ -193,6 +277,7 @@ function prevMonth() {
 }
 
 function nextMonth() {
+  if (storeId && changedPeriods.size && !window.confirm('切换月份会放弃当前未保存的排班修改，是否继续？')) return
   if (currentMonth.value === 11) {
     currentYear.value++
     currentMonth.value = 0
@@ -206,7 +291,8 @@ const showEdit = ref(false)
 const editingDayIndex = ref(-1)
 const editingPeriod = ref<'morning' | 'afternoon'>('morning')
 const editStoreId = ref('')
-const editSlots = ref(4)
+const defaultInterval = ref(30)
+const editInterval = ref(30)
 const editPeoplePerSlot = ref(1)
 const editStartTime = ref('09:00')
 const editEndTime = ref('12:00')
@@ -217,6 +303,7 @@ const selectedDays = ref<number[]>([])
 const batchPeriod = ref<('morning' | 'afternoon')[]>(['morning', 'afternoon'])
 
 function toggleDaySelection(dayIdx: number) {
+  if (!canEditStoreSchedule()) return
   const idx = selectedDays.value.indexOf(dayIdx)
   if (idx > -1) {
     selectedDays.value.splice(idx, 1)
@@ -234,6 +321,7 @@ function deselectAllDays() {
 }
 
 function enterBatchMode() {
+  if (!canEditStoreSchedule()) return
   isBatchMode.value = true
   selectedDays.value = []
 }
@@ -249,21 +337,21 @@ function openBatchEdit() {
     return
   }
   editStoreId.value = activeStoreOptions.value[0] ? String(activeStoreOptions.value[0].id) : ''
-  editSlots.value = 4
+  editInterval.value = defaultInterval.value
   editPeoplePerSlot.value = 1
-  editStartTime.value = '09:00'
-  editEndTime.value = '12:00'
-  batchPeriod.value = ['morning', 'afternoon']
+  batchTimes.value = { morning: defaultPeriodTimes('morning'), afternoon: defaultPeriodTimes('afternoon') }
+  batchPeriod.value = (['morning', 'afternoon'] as const).filter(period => batchTimes.value[period].start)
   showEdit.value = true
 }
 
 function handleBack() {
-  navigateToParent(router, route, '/doctor')
+  navigateToParent(router, route, storeId ? '/store' : '/doctor')
 }
 
 const isSaving = ref(false)
 
 async function handleSaveAll() {
+  if (!canEditStoreSchedule()) return
   if (isSaving.value) return
   isSaving.value = true
   
@@ -279,6 +367,7 @@ async function handleSaveAll() {
         start_time: day.morning.startTime || '09:00:00',
         end_time: day.morning.endTime || '12:00:00',
         total_slots: day.morning.slots,
+        slot_interval_minutes: day.morning.intervalMinutes,
         people_per_slot: day.morning.peoplePerSlot || 1
       })
       
@@ -290,9 +379,35 @@ async function handleSaveAll() {
         start_time: day.afternoon.startTime || '14:00:00',
         end_time: day.afternoon.endTime || '18:00:00',
         total_slots: day.afternoon.slots,
+        slot_interval_minutes: day.afternoon.intervalMinutes,
         people_per_slot: day.afternoon.peoplePerSlot || 1
       })
     })
+
+    if (storeId) {
+      const list = saveList.filter(item => changedPeriods.has(item.date + item.period))
+      if (!list.length) {
+        MessagePlugin.warning('请选择需要保存的排班时段')
+        return
+      }
+      saveResults.value = []
+      for (const id of selectedDoctors.value) {
+        if (savedDoctors.has(id)) continue
+        const name = storeDoctors.value.find(item => item.id === id)?.name || id
+        try {
+          const response = await request.post('/api/admin/schedules/batch', {
+            doctor_id: id, list, restrict_store_id: Number(storeId)
+          })
+          if (response.code !== 200) throw new Error(response.message || '保存失败')
+          savedDoctors.add(id)
+          saveResults.value.push(name + '：已保存')
+        } catch (error: any) {
+          saveResults.value.push(name + '：' + (error?.response?.data?.message || error?.message || '保存失败'))
+        }
+      }
+      if (selectedDoctors.value.every(id => savedDoctors.has(id))) await loadSchedules()
+      return
+    }
 
     const res: any = await request.post('/api/admin/schedules/batch', {
       doctor_id: doctorId.value,
@@ -301,7 +416,7 @@ async function handleSaveAll() {
 
     if (res.code === 200) {
       MessagePlugin.success('保存排班成功')
-      navigateToParent(router, route, '/doctor')
+      navigateToParent(router, route, storeId ? '/store' : '/doctor')
     } else {
       MessagePlugin.error(res.message || '保存排班失败')
     }
@@ -335,44 +450,83 @@ function handleClear() {
 }
 
 function openEdit(dayIdx: number, period: 'morning' | 'afternoon') {
+  if (!canEditStoreSchedule()) return
   editingDayIndex.value = dayIdx
   editingPeriod.value = period
   const data = schedules.value[dayIdx][period]
+  if (storeId && data.storeId && data.storeId !== storeId) {
+    MessagePlugin.warning('该时段已有其他门店排班')
+    return
+  }
   editStoreId.value = data.storeId || (activeStoreOptions.value[0] ? String(activeStoreOptions.value[0].id) : '')
-  editSlots.value = data.slots || 4
+  editInterval.value = data.intervalMinutes ?? defaultInterval.value
   editPeoplePerSlot.value = data.peoplePerSlot || 1
-  editStartTime.value = String(data.startTime || (period === 'morning' ? '09:00:00' : '14:00:00')).slice(0, 5)
-  editEndTime.value = String(data.endTime || (period === 'morning' ? '12:00:00' : '18:00:00')).slice(0, 5)
+  const defaults = defaultPeriodTimes(period)
+  editStartTime.value = data.storeId ? String(data.startTime || defaults.start).slice(0, 5) : defaults.start
+  editEndTime.value = data.storeId ? String(data.endTime || defaults.end).slice(0, 5) : defaults.end
   showEdit.value = true
 }
 
 function handleSaveEdit() {
-  if (editStoreId.value && editStartTime.value >= editEndTime.value) {
+  if (!canEditStoreSchedule()) return
+  const periods = isBatchMode.value ? batchPeriod.value : [editingPeriod.value]
+  const timesFor = (period: SchedulePeriod) => isBatchMode.value ? batchTimes.value[period]
+    : { start: editStartTime.value, end: editEndTime.value }
+  if (!periods.length) {
+    MessagePlugin.warning('请选择出诊时段')
+    return
+  }
+  if (editStoreId.value && periods.some(period => {
+    const { start, end } = timesFor(period)
+    return !start || !end || start >= end
+  })) {
     MessagePlugin.warning('结束时间必须晚于开始时间')
     return
   }
-  const nextStoreName = editStoreId.value ? getStoreName(editStoreId.value) : '休息'
-  const nextPeriodData = {
-    storeId: editStoreId.value,
-    store: nextStoreName,
-    slots: editStoreId.value ? editSlots.value : 0,
-    peoplePerSlot: editStoreId.value ? editPeoplePerSlot.value : 1,
-    startTime: `${editStartTime.value}:00`,
-    endTime: `${editEndTime.value}:00`
+  if (storeId) savedDoctors.clear()
+  if (editStoreId.value && (!Number.isInteger(editInterval.value) || editInterval.value < 1 || editInterval.value > 240)) {
+    MessagePlugin.warning('时段间隔需为1–240之间的整数分钟')
+    return
+  }
+  const toMinutes = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number)
+    return hours * 60 + minutes
+  }
+  const periodData = (period: SchedulePeriod) => {
+    const { start: startTime, end: endTime } = timesFor(period)
+    let slots = 0
+    if (editStoreId.value) {
+      const end = toMinutes(endTime)
+      for (let start = toMinutes(startTime); start < end; start += editInterval.value) {
+        if (start >= 840 || Math.min(start + editInterval.value, end) <= 720) slots++
+      }
+    }
+    const nextStoreName = editStoreId.value ? getStoreName(editStoreId.value) : '休息'
+    return {
+      storeId: editStoreId.value,
+      store: nextStoreName,
+      slots,
+      intervalMinutes: editStoreId.value ? editInterval.value : undefined,
+      peoplePerSlot: editStoreId.value ? editPeoplePerSlot.value : 1,
+      startTime: `${startTime || '09:00'}:00`,
+      endTime: `${endTime || '12:00'}:00`
+    }
   }
   if (isBatchMode.value) {
     selectedDays.value.forEach(dayIdx => {
       const day = schedules.value[dayIdx]
       if (day) {
         if (batchPeriod.value.includes('morning')) {
+          if (storeId) changedPeriods.add(day.date + 'morning')
           day.morning = {
-            ...nextPeriodData,
+            ...periodData('morning'),
             booked: day.morning.booked || 0
           }
         }
         if (batchPeriod.value.includes('afternoon')) {
+          if (storeId) changedPeriods.add(day.date + 'afternoon')
           day.afternoon = {
-            ...nextPeriodData,
+            ...periodData('afternoon'),
             booked: day.afternoon.booked || 0
           }
         }
@@ -383,8 +537,9 @@ function handleSaveEdit() {
   } else {
     const day = schedules.value[editingDayIndex.value]
     if (day) {
+      if (storeId) changedPeriods.add(day.date + editingPeriod.value)
       day[editingPeriod.value] = {
-        ...nextPeriodData,
+        ...periodData(editingPeriod.value),
         booked: day[editingPeriod.value].booked || 0
       }
     }
@@ -401,19 +556,46 @@ function handleSaveEdit() {
     <!-- Page Title Row -->
     <div class="page-title-row">
       <div>
-        <div class="page-title">{{ doctor.name }} · 排班管理</div>
-        <div class="page-title-sub">{{ doctor.title }} · {{ doctor.specialty }} · {{ doctor.stores }}</div>
+        <div class="page-title">{{ storeId ? getStoreName(storeId) + ' · 门店排班' : doctor.name + ' · 排班管理' }}</div>
+        <div v-if="!storeId" class="page-title-sub">{{ doctor.title }} · {{ doctor.specialty }} · {{ doctor.stores }}</div>
       </div>
       <div class="action-buttons">
         <button class="btn btn-outline" :disabled="isSaving" @click="handleBack">取消</button>
-        <button class="btn btn-primary" :disabled="isSaving" @click="handleSaveAll">
+        <button class="btn btn-primary" :disabled="isSaving || loading" @click="handleSaveAll">
           {{ isSaving ? '保存中...' : '保存排班' }}
         </button>
       </div>
     </div>
 
+    <div v-if="storeId" class="panel">
+      <div class="panel-body store-schedule-fields">
+        <div class="form-group">
+          <label class="form-label" for="calendar-doctor">查看医生</label>
+          <select id="calendar-doctor" class="form-control" :value="doctorId" :disabled="loading || isSaving" @change="changeCalendarDoctor">
+            <option value="">请选择医生</option>
+            <option v-for="item in storeDoctors" :key="item.id" :value="item.id">{{ item.name }}</option>
+          </select>
+        </div>
+        <fieldset class="form-group schedule-targets">
+          <legend class="form-label">应用到医生</legend>
+          <div class="schedule-doctor-options">
+            <label v-for="item in storeDoctors" :key="item.id">
+              <input v-model="selectedDoctors" type="checkbox" :value="item.id" :disabled="isSaving || loading">
+              {{ item.name }}
+            </label>
+            <span v-if="!loading && !storeDoctors.length">暂无可排班医生</span>
+          </div>
+          <p class="schedule-target-help">保存后更新所选医生的排班时间</p>
+        </fieldset>
+        <p v-if="previewFailed" role="status">现有排班加载失败，请重新进入页面。</p>
+        <ul v-if="saveResults.length" aria-live="polite">
+          <li v-for="result in saveResults" :key="result">{{ result }}</li>
+        </ul>
+      </div>
+    </div>
+
     <!-- Calendar Panel -->
-    <div class="panel">
+    <div class="panel" :inert="isSaving || loading">
       <div class="panel-header">
         <div style="display: flex; align-items: center; gap: 16px;">
           <div class="panel-title">{{ monthLabel }} 排班</div>
@@ -425,8 +607,8 @@ function handleSaveEdit() {
         <div style="display: flex; gap: 8px; align-items: center;">
           <template v-if="!isBatchMode">
             <button class="btn btn-sm btn-primary" @click="enterBatchMode">批量排班</button>
-            <button class="btn btn-sm btn-outline" @click="handleCopyLastMonth">复制上月排班</button>
-            <button class="btn btn-sm btn-outline" @click="handleClear">清空</button>
+            <button v-if="!storeId" class="btn btn-sm btn-outline" @click="handleCopyLastMonth">复制上月排班</button>
+            <button v-if="!storeId" class="btn btn-sm btn-outline" @click="handleClear">清空</button>
           </template>
           <template v-else>
             <span style="font-size: 13px; color: #4B5563; font-weight: 600;">已选中 {{ selectedDays.length }} 天</span>
@@ -446,7 +628,7 @@ function handleSaveEdit() {
             :key="index"
             class="grid-header-cell"
             :class="{ 'selected-column': isBatchMode && selectedDays.includes(chunkIdx * 10 + index) }"
-            @click="isBatchMode && toggleDaySelection(chunkIdx * 10 + index)"
+            @click="canEditStoreSchedule() && isBatchMode && toggleDaySelection(chunkIdx * 10 + index)"
             :style="{ cursor: isBatchMode ? 'pointer' : 'default' }"
           >
             <div v-if="isBatchMode" style="margin-bottom: 6px;">
@@ -479,6 +661,11 @@ function handleSaveEdit() {
             <template v-else>
               <span class="rest-text">休息</span>
             </template>
+            <ul v-if="storeId && selectedSchedules.has(day.date + 'morning')" class="cell-existing-schedules">
+              <li v-for="row in selectedSchedules.get(day.date + 'morning')" :key="row.id">
+                {{ row.doctor_name }} · {{ String(row.store_id) === storeId ? '本门店' : '其他门店 · ' + row.store_name }}
+              </li>
+            </ul>
           </div>
           <div v-for="n in (10 - chunk.length)" :key="'empty-m-' + n" class="grid-cell rest-bg empty-cell"></div>
 
@@ -504,6 +691,11 @@ function handleSaveEdit() {
             <template v-else>
               <span class="rest-text">休息</span>
             </template>
+            <ul v-if="storeId && selectedSchedules.has(day.date + 'afternoon')" class="cell-existing-schedules">
+              <li v-for="row in selectedSchedules.get(day.date + 'afternoon')" :key="row.id">
+                {{ row.doctor_name }} · {{ String(row.store_id) === storeId ? '本门店' : '其他门店 · ' + row.store_name }}
+              </li>
+            </ul>
           </div>
           <div v-for="n in (10 - chunk.length)" :key="'empty-a-' + n" class="grid-cell rest-bg empty-cell"></div>
         </div>
@@ -543,7 +735,16 @@ function handleSaveEdit() {
             </option>
           </select>
         </div>
-        <div class="form-group" v-if="editStoreId">
+        <template v-if="editStoreId && isBatchMode">
+          <div v-for="period in batchPeriod" :key="period" class="form-group">
+            <label class="form-label">{{ period === 'morning' ? '上午' : '下午' }}出诊时间</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <input v-model="batchTimes[period].start" type="time" class="form-control" aria-label="开始时间">
+              <input v-model="batchTimes[period].end" type="time" class="form-control" aria-label="结束时间">
+            </div>
+          </div>
+        </template>
+        <div class="form-group" v-else-if="editStoreId">
           <label class="form-label">出诊时间</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <input type="time" class="form-control" v-model="editStartTime">
@@ -551,8 +752,8 @@ function handleSaveEdit() {
           </div>
         </div>
         <div class="form-group" v-if="editStoreId">
-          <label class="form-label">可约时段数 (个)</label>
-          <input type="number" class="form-control" v-model.number="editSlots" min="1" max="12">
+          <label class="form-label">时段间隔（分钟）</label>
+          <input type="number" class="form-control" v-model.number="editInterval" min="1" max="240" step="1">
         </div>
         <div class="form-group" v-if="editStoreId">
           <label class="form-label">每个时段可约人数 (人)</label>
@@ -564,6 +765,14 @@ function handleSaveEdit() {
 </template>
 
 <style scoped>
+.store-schedule-fields { display: grid; grid-template-columns: minmax(160px, 240px) minmax(0, 1fr); gap: 16px 32px; }
+.schedule-targets { border: 0; padding: 0; margin: 0; min-width: 0; }
+.schedule-doctor-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; min-height: 38px; font-size: 14px; }
+.schedule-doctor-options input { accent-color: var(--td-brand-color, #3b6bf5); }
+.schedule-target-help { margin: 0; font-size: 13px; color: #6b7280; }
+.cell-existing-schedules { margin: 6px 0 0; padding: 6px 0 0; border-top: 1px solid #e5e7eb; list-style: none; font-size: 12px; overflow-wrap: anywhere; }
+@media (max-width: 720px) { .store-schedule-fields { grid-template-columns: 1fr; } }
+
 
 
 /* Breadcrumb */

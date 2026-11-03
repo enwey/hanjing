@@ -533,6 +533,11 @@ export const initDB = async () => {
     );
   `);
 
+  const intervalColumn = await query("SHOW COLUMNS FROM doctor_schedules LIKE 'slot_interval_minutes'");
+  if (!intervalColumn.length) {
+    await query('ALTER TABLE doctor_schedules ADD COLUMN slot_interval_minutes SMALLINT UNSIGNED NULL');
+  }
+
   // 8. ess_assessments
   await query(`
     CREATE TABLE IF NOT EXISTS ess_assessments (

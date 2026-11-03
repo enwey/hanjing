@@ -351,7 +351,10 @@ function buildScheduleSlots(schedule, intervalMinutes = 30) {
   const startMins = (startParts[0] || 0) * 60 + (startParts[1] || 0);
   const endMins = (endParts[0] || 0) * 60 + (endParts[1] || 0);
   if (endMins <= startMins) return [];
-  const safeInterval = Number.isFinite(Number(intervalMinutes)) && Number(intervalMinutes) > 0 ? Number(intervalMinutes) : 30;
+  const override = Number(schedule.slot_interval_minutes);
+  const fallback = Number(intervalMinutes);
+  const safeInterval = override > 0 && Number.isInteger(override) ? override
+    : fallback > 0 && Number.isInteger(fallback) ? fallback : 30;
   const lunchStartMins = 12 * 60;
   const lunchEndMins = 14 * 60;
   const slots = [];
@@ -3682,15 +3685,21 @@ app.get('/api/admin/schedules', authenticateToken, async (req, res) => {
       params.push(...scope.params);
     }
     const list = await query(sql, params);
-    const formattedList = list.map(item => ({
+    const bookingInterval = await getBookingIntervalMinutes();
+    const formattedList = list.map(item => {
+      const total_slots = buildScheduleSlots(item, bookingInterval).length;
+      return {
       ...item,
+      total_slots,
       date: item.date instanceof Date ? 
         `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, '0')}-${String(item.date.getDate()).padStart(2, '0')}` : 
         String(item.date).slice(0, 10),
-      capacity: Number(item.total_slots || 0) * Number(item.people_per_slot || 1),
-      available_capacity: Math.max(0, Number(item.total_slots || 0) * Number(item.people_per_slot || 1) - Number(item.booked_count || 0))
-    }));
-    res.json({ code: 200, data: formattedList });
+      capacity: total_slots * Number(item.people_per_slot || 1),
+      available_capacity: Math.max(0, total_slots * Number(item.people_per_slot || 1) - Number(item.booked_count || 0))
+      };
+    });
+    const bookingHours = await get("SELECT key_value FROM system_settings WHERE key_name = 'booking_hours'");
+    res.json({ code: 200, data: formattedList, bookingInterval, bookingHours: bookingHours?.key_value || '' });
   } catch (error) {
     res.status(500).json({ code: 500, message: '获取排班列表失败' });
   }
@@ -3765,8 +3774,15 @@ function assertScheduleStoreAccess(user, schedule) {
   if (!canAccessStore(user, schedule.store_id)) throw businessError('您无权修改原排班所属门店的数据', 403);
 }
 
+function validateScheduleInterval(value) {
+  if (value == null) return;
+  if (!Number.isInteger(value) || value < 1 || value > 240) {
+    throw businessError('时段间隔需为1-240之间的整数分钟', 400);
+  }
+}
+
 app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
-  const { doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, is_rest } = req.body;
+  const { doctor_id, store_id, date, period, start_time, end_time, total_slots, slot_interval_minutes, people_per_slot, is_rest } = req.body;
   if (!doctor_id || !date || !period) {
     return res.status(400).json({ code: 400, message: '排班参数不足' });
   }
@@ -3786,6 +3802,8 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
   }
 
   try {
+    const bookingInterval = await getBookingIntervalMinutes();
+    validateScheduleInterval(slot_interval_minutes);
     await transaction(async conn => {
       await lockScheduleDoctor(conn, doctor_id);
       const [existingRows] = await conn.execute(
@@ -3805,6 +3823,11 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
       const targetStartTime = start_time || (period === 'morning' ? '09:00:00' : '14:00:00');
       const targetEndTime = end_time || (period === 'morning' ? '12:00:00' : '18:00:00');
 
+      const interval = slot_interval_minutes ?? existing?.slot_interval_minutes ?? null;
+      const count = interval == null ? total_slots || 6 : buildScheduleSlots({
+        start_time: targetStartTime, end_time: targetEndTime, slot_interval_minutes: interval
+      }, bookingInterval).length;
+
       if (existing) {
         const [[booked]] = await conn.execute(
           `SELECT COUNT(*) as count FROM appointments WHERE schedule_id = ? AND status NOT IN ('cancelled', 'no_show')`,
@@ -3814,21 +3837,21 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
         if (bookedCount > 0) {
           await conn.execute(`UPDATE doctor_schedules SET status = 'archived' WHERE id = ?`, [existing.id]);
           await conn.execute(
-            `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
-            [doctor_id, store_id, date, period, targetStartTime, targetEndTime, total_slots || 6, people_per_slot || 1]
+            `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, slot_interval_minutes, people_per_slot, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
+            [doctor_id, store_id, date, period, targetStartTime, targetEndTime, count, interval, people_per_slot || 1]
           );
         } else {
           await conn.execute(
-            `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ?, status = 'available' WHERE id = ?`,
-            [store_id, targetStartTime, targetEndTime, total_slots || 6, people_per_slot || 1, existing.id]
+            `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, slot_interval_minutes = ?, people_per_slot = ?, status = 'available' WHERE id = ?`,
+            [store_id, targetStartTime, targetEndTime, count, interval, people_per_slot || 1, existing.id]
           );
         }
       } else {
         await conn.execute(
-          `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
-          [doctor_id, store_id, date, period, targetStartTime, targetEndTime, total_slots || 6, people_per_slot || 1]
+          `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, slot_interval_minutes, people_per_slot, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
+          [doctor_id, store_id, date, period, targetStartTime, targetEndTime, count, interval, people_per_slot || 1]
         );
       }
     });
@@ -3842,7 +3865,7 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
-  const { doctor_id, list } = req.body;
+  const { doctor_id, list, restrict_store_id } = req.body;
   if (!doctor_id || !Array.isArray(list) || list.length === 0) {
     return res.status(400).json({ code: 400, message: '排班参数不足' });
   }
@@ -3851,6 +3874,12 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
   }
 
   try {
+    if (restrict_store_id != null && (!Number.isSafeInteger(Number(restrict_store_id)) ||
+      Number(restrict_store_id) < 1 || list.some(item => !item?.is_rest && Number(item?.store_id) !== Number(restrict_store_id)))) {
+      throw businessError('门店排班范围无效', 400);
+    }
+    const bookingInterval = await getBookingIntervalMinutes();
+    list.forEach(item => validateScheduleInterval(item?.slot_interval_minutes));
     const keys = list.map(item => `${item?.date}_${item?.period}`);
     if (list.some(item => !/^\d{4}-\d{2}-\d{2}$/.test(item?.date) || !item.period) || new Set(keys).size !== keys.length) {
       throw businessError('排班日期与时段无效或重复', 400);
@@ -3872,7 +3901,12 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
           `${row.date.getFullYear()}-${String(row.date.getMonth() + 1).padStart(2, '0')}-${String(row.date.getDate()).padStart(2, '0')}` : 
           String(row.date).slice(0, 10);
         const key = `${dateStr}_${row.period}`;
-        if (keys.includes(key)) assertScheduleStoreAccess(req.user, row);
+        if (keys.includes(key)) {
+          assertScheduleStoreAccess(req.user, row);
+          if (restrict_store_id != null && Number(row.store_id) !== Number(restrict_store_id)) {
+            throw businessError('该医生在所选日期和时段已有其他门店排班', 409);
+          }
+        }
         existingMap[key] = row;
       });
 
@@ -3926,7 +3960,10 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
 
           const targetStartTime = start_time || (period === 'morning' ? '09:00:00' : '14:00:00');
           const targetEndTime = end_time || (period === 'morning' ? '12:00:00' : '18:00:00');
-          const targetTotalSlots = total_slots || 6;
+          const interval = item.slot_interval_minutes ?? existing?.slot_interval_minutes ?? null;
+          const targetTotalSlots = interval == null ? total_slots || 6 : buildScheduleSlots({
+            start_time: targetStartTime, end_time: targetEndTime, slot_interval_minutes: interval
+          }, bookingInterval).length;
           const targetPeoplePerSlot = people_per_slot || 1;
 
           if (existing) {
@@ -3937,6 +3974,7 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
               Number(existing.store_id) !== Number(store_id) ||
               existingStartTime !== targetStartTime ||
               existingEndTime !== targetEndTime ||
+              (existing.slot_interval_minutes ?? null) !== interval ||
               Number(existing.total_slots) !== Number(targetTotalSlots) ||
               Number(existing.people_per_slot) !== Number(targetPeoplePerSlot);
 
@@ -3952,6 +3990,7 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
                   targetStartTime,
                   targetEndTime,
                   targetTotalSlots,
+                  interval,
                   targetPeoplePerSlot,
                   'available'
                 ]);
@@ -3962,6 +4001,7 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
                   start_time: targetStartTime,
                   end_time: targetEndTime,
                   total_slots: targetTotalSlots,
+                  slot_interval_minutes: interval,
                   people_per_slot: targetPeoplePerSlot
                 });
               }
@@ -3975,6 +4015,7 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
               targetStartTime,
               targetEndTime,
               targetTotalSlots,
+              interval,
               targetPeoplePerSlot,
               'available'
             ]);
@@ -3992,10 +4033,10 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
       }
 
       if (inserts.length > 0) {
-        const placeholders = inserts.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(',');
+        const placeholders = inserts.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(',');
         const flatValues = inserts.reduce((acc, val) => acc.concat(val), []);
         await conn.execute(
-          `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, status)
+          `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, slot_interval_minutes, people_per_slot, status)
            VALUES ${placeholders}`,
           flatValues
         );
@@ -4003,8 +4044,8 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
 
       for (const val of updates) {
         await conn.execute(
-          `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ?, status = 'available' WHERE id = ?`,
-          [val.store_id, val.start_time, val.end_time, val.total_slots, val.people_per_slot, val.id]
+          `UPDATE doctor_schedules SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, slot_interval_minutes = ?, people_per_slot = ?, status = 'available' WHERE id = ?`,
+          [val.store_id, val.start_time, val.end_time, val.total_slots, val.slot_interval_minutes, val.people_per_slot, val.id]
         );
       }
     });
@@ -4081,23 +4122,23 @@ app.post('/api/admin/schedules/copy-last-month', authenticateToken, async (req, 
           if (Number(booked.count || 0) > 0) {
             await conn.execute(`UPDATE doctor_schedules SET status = 'archived' WHERE id = ?`, [existing.id]);
             await conn.execute(
-              `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, status)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
-              [doctor_id, row.store_id, targetDate, row.period, row.start_time, row.end_time, row.total_slots, row.people_per_slot]
+              `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, slot_interval_minutes, people_per_slot, status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
+              [doctor_id, row.store_id, targetDate, row.period, row.start_time, row.end_time, row.total_slots, row.slot_interval_minutes ?? null, row.people_per_slot]
             );
           } else {
             await conn.execute(
               `UPDATE doctor_schedules
-               SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, people_per_slot = ?, status = 'available'
+               SET store_id = ?, start_time = ?, end_time = ?, total_slots = ?, slot_interval_minutes = ?, people_per_slot = ?, status = 'available'
                WHERE id = ?`,
-              [row.store_id, row.start_time, row.end_time, row.total_slots, row.people_per_slot, existing.id]
+              [row.store_id, row.start_time, row.end_time, row.total_slots, row.slot_interval_minutes ?? null, row.people_per_slot, existing.id]
             );
           }
         } else {
           await conn.execute(
-            `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, people_per_slot, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
-            [doctor_id, row.store_id, targetDate, row.period, row.start_time, row.end_time, row.total_slots, row.people_per_slot]
+            `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, slot_interval_minutes, people_per_slot, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'available')`,
+            [doctor_id, row.store_id, targetDate, row.period, row.start_time, row.end_time, row.total_slots, row.slot_interval_minutes ?? null, row.people_per_slot]
           );
         }
         count += 1;

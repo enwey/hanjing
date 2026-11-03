@@ -286,7 +286,7 @@ watch(operationColumnWidth, () => {
     <!-- Page Title Row -->
     <div class="page-title-row">
       <div>
-        <div class="page-title">管理员账号</div>
+        <div class="page-title">成员管理</div>
         <div class="page-title-sub">{{ admins.length }}位管理员</div>
       </div>
       <button class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" />  添加管理员</button>

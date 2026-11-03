@@ -89,7 +89,8 @@ const menuGroups = computed<Array<{ title: string; items: MenuItem[] }>>(() => [
     items: [
       { path: '/settings', label: '系统设置', icon: '⚙️', permission: 'system:view' },
       { path: '/wechat-notifications', label: '微信通知', icon: 'bell', permission: 'system:view', superAdminOnly: true },
-      { path: '/permission', label: '权限管理', icon: '🔐', permission: 'system:edit' },
+      { path: '/admin', label: '成员管理', icon: 'team', permission: 'system:edit' },
+      { path: '/permission', label: '角色管理', icon: '🔐', permission: 'system:edit' },
       { path: '/log', label: '操作日志', icon: '📋', permission: 'audit_log:view' },
       { path: '/mini-program-log', label: '小程序日志', icon: '📱', permission: 'audit_log:view' },
       { path: '/database-tools', label: '数据库工具', icon: '🗄️', permission: 'system:edit', superAdminOnly: true }
@@ -133,7 +134,7 @@ const filteredMenuGroups = computed(() => {
         return hasPermission(item.permission);
       }
       if (userRole === 'store_mgr') {
-        return !['/permission', '/settings'].includes(item.path);
+        return !['/permission', '/settings', '/admin'].includes(item.path);
       }
       if (userRole === 'doctor') {
         return ['/dashboard', '/appointment', '/queue', '/workbench', '/patient', '/doctor'].includes(item.path);

@@ -272,7 +272,7 @@ function handleViewData(id: string) {
 }
 
 function openAdminAccounts(doctorId?: string) {
-  router.push({ path: '/settings/admin', query: doctorId ? { doctor_id: doctorId } : {} })
+  router.push({ path: '/admin', query: doctorId ? { doctor_id: doctorId } : {} })
 }
 
 async function handleDisableDoctor(id: string) {

@@ -11,10 +11,10 @@ const secretConfigured = ref<Record<string, boolean>>({})
 
 // 1. 预约设置
 const bookingAdvanceDays = ref<number | null>(null)
-const bookingHours = ref('')
+const defaultBookingHours = '09:00 - 18:00'
+const bookingHours = ref(defaultBookingHours)
 const bookingInterval = ref<number | null>(null)
 const bookingCancelLimit = ref('')
-const allowSelfBooking = ref(false)
 const requireDeposit = ref(false)
 const depositAmount = ref<number | null>(null)
 
@@ -25,8 +25,6 @@ const cancelLimitOptions = [
 ]
 
 // 2. 分销设置
-const commission1 = ref<number | null>(null)
-const commission2 = ref<number | null>(null)
 const distributionSettleDays = ref<number | null>(null)
 const minWithdraw = ref<number | null>(null)
 const withdrawFeeRate = ref<number | null>(null)
@@ -46,26 +44,21 @@ const wechatPayRefundNotifyUrl = ref('')
 const wechatPayPlatformCert = ref('')
 
 // 4. 权限管理 (角色表格数据)
-const roles = ref<any[]>([])
 
 async function loadSettings() {
   settingsLoaded.value = false
-  roles.value = []
   try {
     const res: any = await request.get('/api/admin/settings')
     if (res && res.code === 200 && res.data) {
       const data = res.data
       secretConfigured.value = res.configured || {}
       bookingAdvanceDays.value = data.booking_advance_days ?? null
-      bookingHours.value = data.booking_hours ?? ''
+      bookingHours.value = String(data.booking_hours ?? '').trim() || defaultBookingHours
       bookingInterval.value = data.booking_interval ?? null
       bookingCancelLimit.value = data.booking_cancel_limit ?? ''
-      allowSelfBooking.value = data.allow_self_booking ?? false
       requireDeposit.value = data.require_deposit ?? false
       depositAmount.value = data.deposit_amount == null ? null : (data.deposit_amount / 100)
 
-      commission1.value = data.commission1 ?? null
-      commission2.value = data.commission2 ?? null
       distributionSettleDays.value = data.distribution_settle_days ?? null
       minWithdraw.value = data.min_withdraw ?? null
       withdrawFeeRate.value = data.withdraw_fee_rate ?? null
@@ -82,8 +75,6 @@ async function loadSettings() {
       wechatPayAppointmentNotifyUrl.value = data.wechat_pay_appointment_notify_url ?? ''
       wechatPayRefundNotifyUrl.value = data.wechat_pay_refund_notify_url ?? ''
       wechatPayPlatformCert.value = data.wechat_pay_platform_cert ?? ''
-      const roleRes: any = await request.get('/api/admin/roles')
-      roles.value = (roleRes.data || []).map((role: any) => ({ ...role, membersCount: Number(role.members_count), scope: (role.permissions || []).join('、') || '未配置' }))
       settingsLoaded.value = true
     }
   } catch (err) {
@@ -95,7 +86,7 @@ onMounted(loadSettings)
 
 async function handleSaveAll() {
   if (!settingsLoaded.value || saving.value) return
-  if (enableDistribution.value && [commission1.value, commission2.value, distributionSettleDays.value, minWithdraw.value, withdrawFeeRate.value].some(value => value === null)) {
+  if (enableDistribution.value && [distributionSettleDays.value, minWithdraw.value, withdrawFeeRate.value].some(value => value === null)) {
     MessagePlugin.warning('请先完整填写分销财务配置')
     return
   }
@@ -106,12 +97,9 @@ async function handleSaveAll() {
       booking_hours: bookingHours.value,
       booking_interval: bookingInterval.value,
       booking_cancel_limit: bookingCancelLimit.value,
-      allow_self_booking: allowSelfBooking.value,
       require_deposit: requireDeposit.value,
       deposit_amount: depositAmount.value == null ? null : Math.round(depositAmount.value * 100),
 
-      commission1: commission1.value,
-      commission2: commission2.value,
       distribution_settle_days: distributionSettleDays.value,
       min_withdraw: minWithdraw.value,
       withdraw_fee_rate: withdrawFeeRate.value,
@@ -147,9 +135,7 @@ function handleReset() {
 }
 
 
-function editRole(roleId: number) {
-  router.push('/permission/role-edit/' + roleId)
-}
+
 </script>
 
 <template>
@@ -183,7 +169,7 @@ function editRole(roleId: number) {
             </div>
             <div class="form-group">
               <label class="form-label">每日可约时段</label>
-              <input type="text" class="form-control" v-model="bookingHours" placeholder="例如：08:30 - 18:00">
+              <input type="text" class="form-control" v-model="bookingHours" :placeholder="defaultBookingHours">
             </div>
             <div class="form-group">
               <label class="form-label">时段间隔（分钟）</label>
@@ -196,15 +182,6 @@ function editRole(roleId: number) {
                   {{ opt.label }}
                 </option>
               </select>
-            </div>
-            <div class="form-group full">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <label class="form-label" style="margin-bottom: 0;">允许患者自助预约</label>
-                <label class="switch">
-                  <input type="checkbox" v-model="allowSelfBooking">
-                  <span class="switch-slider"></span>
-                </label>
-              </div>
             </div>
             <div class="form-group full">
               <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -233,20 +210,6 @@ function editRole(roleId: number) {
         </div>
         <div class="panel-body">
           <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">一级佣金比例</label>
-              <div class="input-group">
-                <input type="number" class="form-control-inner form-control-inner-suffix" v-model.number="commission1" min="0" max="100">
-                <span class="input-suffix">%</span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">二级佣金比例</label>
-              <div class="input-group">
-                <input type="number" class="form-control-inner form-control-inner-suffix" v-model.number="commission2" min="0" max="100">
-                <span class="input-suffix">%</span>
-              </div>
-            </div>
             <div class="form-group">
               <label class="form-label">最低提现金额</label>
               <div class="input-group">
@@ -290,59 +253,7 @@ function editRole(roleId: number) {
         </div>
       </div>
 
-      <!-- Panel 3: 通知设置 -->
-      <div class="panel" style="margin: 0;">
-        <div class="panel-header">
-          <div class="panel-title"><AppIcon name="bell" />  通知设置</div>
-        </div>
-        <div class="panel-body">
-          <t-button variant="outline" @click="router.push('/wechat-notifications')"><AppIcon name="bell" /> 微信通知配置</t-button>
-        </div>
-      </div>
-
-      <!-- Panel 4: 权限管理 -->
-      <div class="panel" style="margin: 0;">
-        <div class="panel-header">
-          <div class="panel-title"><AppIcon name="lock" /> 权限管理</div>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn btn-sm btn-outline" @click="router.push('/settings/admin')"><AppIcon name="team" />  成员账号</button>
-            <button class="btn btn-sm btn-primary" @click="router.push('/permission')"><AppIcon name="plus" />  添加角色</button>
-          </div>
-        </div>
-        <div class="panel-body" style="padding: 0;">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>角色</th>
-                <th style="width: 100px;">成员数</th>
-                <th>权限范围</th>
-                <th style="width: 100px;">状态</th>
-                <th style="text-align: right; width: 80px;">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="role in roles" :key="role.name">
-                <td style="font-weight: 600; color: #1F2937;">{{ role.name }}</td>
-                <td>
-                  <span style="font-weight: 600; color: #4B5563;">{{ role.membersCount }}</span>
-                </td>
-                <td style="font-size: 12px; color: #6B7280;">{{ role.scope }}</td>
-                <td>
-                  <span class="status-tag green">启用</span>
-                </td>
-                <td>
-                  <div style="display: flex; gap: 4px; justify-content: flex-end;">
-                    <button class="btn btn-xs btn-outline" @click="editRole(role.id)">编辑</button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
-
-
   </div>
 </template>
 

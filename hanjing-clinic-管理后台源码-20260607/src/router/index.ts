@@ -83,6 +83,12 @@ const router = createRouter({
           meta: { title: '排班管理', parentPath: '/doctor' }
         },
         {
+          path: 'store/schedule/:storeId',
+          name: 'store-schedule',
+          component: () => import('@/views/doctor/schedule.vue'),
+          meta: { title: '门店排班', parentPath: '/store' }
+        },
+        {
           path: 'store',
           name: 'store',
           component: () => import('@/views/store/index.vue'),
@@ -218,7 +224,7 @@ const router = createRouter({
           path: 'permission',
           name: 'permission',
           component: () => import('@/views/settings/permission.vue'),
-          meta: { title: '权限管理' }
+          meta: { title: '角色管理' }
         },
         {
           path: 'permission/role-edit/:id',
@@ -233,10 +239,10 @@ const router = createRouter({
           meta: { title: '添加角色', parentPath: '/permission' }
         },
         {
-          path: 'settings/admin',
+          path: 'admin',
           name: 'admin',
           component: () => import('@/views/settings/admin.vue'),
-          meta: { title: '管理员账号', parentPath: '/settings' }
+          meta: { title: '成员管理' }
         },
         {
           path: 'log',

@@ -201,11 +201,11 @@ async function handleDisable(store: Store) {
 }
 
 function openStoreSchedule(store: Store) {
-  router.push({ path: '/doctor', query: { store_id: store.id } })
+  router.push({ name: 'store-schedule', params: { storeId: store.id } })
 }
 
 function openStoreAccounts(store: Store) {
-  router.push({ path: '/settings/admin', query: { store_id: store.id } })
+  router.push({ path: '/admin', query: { store_id: store.id } })
 }
 </script>
 

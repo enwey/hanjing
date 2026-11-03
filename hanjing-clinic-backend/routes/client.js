@@ -948,6 +948,26 @@ function normalizeNumericId(raw) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+async function getBookingDateWindow() {
+  const row = await get("SELECT key_value FROM system_settings WHERE key_name = 'booking_advance_days'");
+  const configured = String(row?.key_value ?? '').trim();
+  const days = Number(configured);
+  const advanceDays = configured && Number.isSafeInteger(days) && days >= 0 ? days : 7;
+  const today = getShanghaiNow();
+  return {
+    today,
+    todayStr: formatShanghaiDate(today),
+    maxDateStr: formatShanghaiDate(addShanghaiDays(today, advanceDays))
+  };
+}
+
+async function rejectOutsideBookingWindow(date, res) {
+  const { todayStr, maxDateStr } = await getBookingDateWindow();
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= todayStr && date <= maxDateStr) return false;
+  res.status(400).json({ code: 400, message: `请选择 ${todayStr} 至 ${maxDateStr} 之间的预约日期` });
+  return true;
+}
+
 async function getBookingIntervalMinutes() {
   const row = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_interval'`);
   const interval = Number(row?.key_value || 30);
@@ -960,7 +980,10 @@ function buildScheduleSlots(schedule, intervalMinutes = 30) {
   const startMins = (startParts[0] || 0) * 60 + (startParts[1] || 0);
   const endMins = (endParts[0] || 0) * 60 + (endParts[1] || 0);
   if (endMins <= startMins) return [];
-  const safeInterval = Number.isFinite(Number(intervalMinutes)) && Number(intervalMinutes) > 0 ? Number(intervalMinutes) : 30;
+  const override = Number(schedule.slot_interval_minutes);
+  const fallback = Number(intervalMinutes);
+  const safeInterval = override > 0 && Number.isInteger(override) ? override
+    : fallback > 0 && Number.isInteger(fallback) ? fallback : 30;
   const lunchStartMins = 12 * 60;
   const lunchEndMins = 14 * 60;
   const slots = [];
@@ -4186,12 +4209,7 @@ app.get('/api/v1/schedules/dates', async (req, res) => {
   }
 
   try {
-    const advanceDaysRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_advance_days'`);
-    const advanceDays = advanceDaysRow ? parseInt(advanceDaysRow.key_value, 10) : 7;
-
-    const today = getShanghaiNow();
-    const todayStr = formatShanghaiDate(today);
-    const maxDateStr = formatShanghaiDate(addShanghaiDays(today, advanceDays));
+    const { todayStr, maxDateStr } = await getBookingDateWindow();
     const bookingInterval = await getBookingIntervalMinutes();
 
     const list = await query(
@@ -4275,10 +4293,7 @@ app.get('/api/v1/schedules', async (req, res) => {
         [doctorId, storeId, startDate, endDate]
       );
     } else {
-      const advanceDaysRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_advance_days'`);
-      const advanceDays = advanceDaysRow ? parseInt(advanceDaysRow.key_value, 10) : 7;
-
-      const maxDateStr = formatShanghaiDate(addShanghaiDays(today, advanceDays));
+      const { maxDateStr } = await getBookingDateWindow();
 
       list = await query(
         `SELECT * FROM doctor_schedules
@@ -4507,6 +4522,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
   const symptomDescClean = symptomDesc ? escapeHtml(symptomDesc) : '';
 
   try {
+    if (await rejectOutsideBookingWindow(appointmentDate, res)) return;
     const resolvedStoreId = normalizeNumericId(storeId);
     const resolvedDoctorId = normalizeNumericId(doctorId);
     const resolvedScheduleId = normalizeNumericId(scheduleId);
@@ -5215,6 +5231,7 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
   const { scheduleId, appointmentDate, appointmentTime } = req.body;
 
   try {
+    if (await rejectOutsideBookingWindow(appointmentDate, res)) return;
     let sql = `SELECT a.* FROM appointments a JOIN patients p ON a.patient_id = p.id WHERE a.id = ? AND (a.user_id = ?`;
     const params = [id, req.user.id];
 
