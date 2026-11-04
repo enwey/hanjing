@@ -1,3 +1,4 @@
+import { publicAvatar } from '../brand-avatar.js';
 import { recordReschedule } from '../appointment-reschedule-history.js';
 import { nextAppointmentNumber } from '../appointment-number.js';
 import { chargeAmount, prepareCharge, settleOnlineCharge, queueCancelledChargeRefunds, completeChargeRefund, readAppointmentCharge } from '../appointment-charges.js';
@@ -1427,7 +1428,7 @@ async function buildMiniProgramLoginPayload(user) {
     user: {
       id: user.id.toString(),
       nickname: user.nickname,
-      avatar: user.avatar_url || '',
+      avatar: publicAvatar(user.avatar_url),
       phone: decryptPII(user.phone) || '',
       memberLevel: membership?.level || 'normal',
       memberLevelTitle: membership?.title || '',
@@ -1745,7 +1746,7 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
       data: {
         id: patient ? patient.id.toString() : user.id.toString(),
         nickname: user.nickname,
-        avatar: user.avatar_url || '',
+        avatar: publicAvatar(user.avatar_url),
         gender: patient ? patient.gender : null,
         age: patient && patient.age !== null && patient.age !== undefined ? patient.age : calculateAgeFromBirthday(user.birthday),
         phone: decryptPII(user.phone) || (patient ? decryptPII(patient.phone) : ''),
@@ -1882,7 +1883,7 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
       data: {
         id: patient ? patient.id.toString() : user.id.toString(),
         nickname: user.nickname,
-        avatar: user.avatar_url || '',
+        avatar: publicAvatar(user.avatar_url),
         gender: patient ? patient.gender : null,
         age: patient && patient.age !== null && patient.age !== undefined ? patient.age : calculateAgeFromBirthday(user.birthday),
         phone: decryptPII(user.phone),
@@ -2825,7 +2826,7 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
     const formattedComments = comments.map(c => ({
       id: c.id,
       author: c.author_name || '',
-      avatar: c.author_avatar || '',
+      avatar: publicAvatar(c.author_avatar),
       content: c.content,
       likes: c.likes_count,
       createdAt: c.created_at,
@@ -2959,7 +2960,7 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
       data: {
         id: result.id,
         author: user.nickname || '',
-        avatar: user.avatar_url || '',
+        avatar: publicAvatar(user.avatar_url),
         role,
         roleLabel: role === 'doctor' ? '专家医生' : '鼾友',
         title: titleClean,
@@ -3220,7 +3221,7 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
       data: {
         id: result.id,
         author: user.nickname || '',
-        avatar: user.avatar_url || '',
+        avatar: publicAvatar(user.avatar_url),
         content: contentClean,
         likes: 0,
         createdAt: new Date().toISOString(),
@@ -3324,8 +3325,8 @@ function formatFamilyMember(patient, relationOverride = '') {
     hasSnore: patient.has_snore === 1,
     idCard: maskedIdCard,
     cardNo: getPatientRecordNo(patient),
-    avatar: patient.avatar_url || '',
-    avatarUrl: patient.avatar_url || '',
+    avatar: publicAvatar(patient.avatar_url),
+    avatarUrl: publicAvatar(patient.avatar_url),
     storeId: patient.store_id ? String(patient.store_id) : '',
     storeName: patient.store_name || '',
     region: patient.region || '',
@@ -4194,8 +4195,8 @@ app.get('/api/v1/doctors', async (req, res) => {
       formatted.push({
         id: d.id,
         name: d.name,
-        avatar: d.avatar_url || '',
-        avatarUrl: d.avatar_url || '',
+        avatar: publicAvatar(d.avatar_url),
+        avatarUrl: publicAvatar(d.avatar_url),
         title: d.title,
         specialty: d.specialty,
         hospital: d.hospital || '',
@@ -4224,7 +4225,7 @@ app.get('/api/v1/schedules/dates', async (req, res) => {
   }
 
   try {
-    const { todayStr, maxDateStr } = await getBookingDateWindow();
+    const { today, todayStr, maxDateStr } = await getBookingDateWindow();
     const bookingInterval = await getBookingIntervalMinutes();
 
     const list = await query(
@@ -4900,7 +4901,7 @@ app.get('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       patientName: row.patient_name,
       doctorName: row.doctor_name,
       doctorTitle: row.doctor_title,
-      doctorAvatar: row.doctor_avatar,
+      doctorAvatar: publicAvatar(row.doctor_avatar),
       storeName: row.store_name
     }));
 
@@ -4991,7 +4992,7 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
       patientName: row.patient_name,
       doctorName: row.doctor_name,
       doctorTitle: row.doctor_title,
-      doctorAvatar: row.doctor_avatar,
+      doctorAvatar: publicAvatar(row.doctor_avatar),
       storeName: row.store_name,
       requireDeposit: row.deposit_amount == null ? requireDeposit : Number(row.deposit_amount) > 0,
       depositAmount: row.deposit_amount == null ? depositAmount : Number(row.deposit_amount),
@@ -5057,7 +5058,7 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
         doctor: {
           id: row.doctor_id,
           name: row.doctor_name,
-          avatarUrl: row.doctor_avatar,
+          avatarUrl: publicAvatar(row.doctor_avatar),
           title: row.doctor_title,
           specialty: row.doctor_specialty,
           hospital: row.doctor_hospital,
@@ -7241,7 +7242,7 @@ app.get('/api/v1/distribution/team', authenticateWxToken, async (req, res) => {
       list.push({
         id: rel.child_user_id.toString(),
         nickname: rel.nickname,
-        avatar: rel.avatar_url || '',
+        avatar: publicAvatar(rel.avatar_url),
         level: rel.level || 'member',
         orderCount: orderCount,
         totalSales: totalSales,
@@ -7808,7 +7809,7 @@ app.get('/api/v1/live/rooms', async (req, res) => {
         cover: r.cover_url,
         wechatRoomId: r.wechat_room_id ? String(r.wechat_room_id) : '',
         anchorName: r.anchor_name,
-        anchorAvatar: r.anchor_avatar || '',
+        anchorAvatar: publicAvatar(r.anchor_avatar),
         status: r.status,
         startTime: r.start_time,
         endTime: r.end_time || null,
@@ -7854,7 +7855,7 @@ app.get('/api/v1/live/rooms/:id', async (req, res) => {
         cover: r.cover_url,
         wechatRoomId: r.wechat_room_id ? String(r.wechat_room_id) : '',
         anchorName: r.anchor_name,
-        anchorAvatar: r.anchor_avatar || '',
+        anchorAvatar: publicAvatar(r.anchor_avatar),
         status: r.status,
         startTime: r.start_time,
         endTime: r.end_time || null,

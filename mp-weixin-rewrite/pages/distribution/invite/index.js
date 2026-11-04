@@ -1,59 +1,19 @@
+const { normalizeDistributionRules } = require('../utils/rules');
+const api = require('../../../api/index');
 const inviteService = require('./invite-service');
+const { copy, drawInviteDesign } = require('./invite-design');
 const subscribe = require('../../../common/utils/subscribe');
 
 const POSTER_CANVAS_ID = 'distributionInvitePoster';
 const POSTER_WIDTH = 900;
-const POSTER_HEIGHT = 1360;
+const POSTER_HEIGHT = 1064;
 const POSTER_EXPORT_SCALE = 2;
-
-function drawRoundedRect(context, x, y, width, height, radius) {
-  context.beginPath();
-  context.moveTo(x + radius, y);
-  context.lineTo(x + width - radius, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + radius);
-  context.lineTo(x + width, y + height - radius);
-  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  context.lineTo(x + radius, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - radius);
-  context.lineTo(x, y + radius);
-  context.quadraticCurveTo(x, y, x + radius, y);
-  context.closePath();
-}
-
-function fillCenteredText(context, text, centerX, y, fontSize, color) {
-  context.setFontSize(fontSize);
-  context.setFillStyle(color);
-  const content = String(text || '');
-  const width = context.measureText(content).width;
-  context.fillText(content, centerX - width / 2, y);
-}
-
-function fillWrappedText(context, text, x, y, maxWidth, lineHeight, color, fontSize) {
-  const content = String(text || '');
-  context.setFillStyle(color);
-  context.setFontSize(fontSize);
-  let line = '';
-  let currentY = y;
-  for (let i = 0; i < content.length; i += 1) {
-    const nextLine = line + content[i];
-    if (context.measureText(nextLine).width > maxWidth && line) {
-      context.fillText(line, x, currentY);
-      line = content[i];
-      currentY += lineHeight;
-    } else {
-      line = nextLine;
-    }
-  }
-  if (line) {
-    context.fillText(line, x, currentY);
-  }
-  return currentY;
-}
 
 function createPosterContextAdapter(context) {
   let fontSize = 16;
+  let fontWeight = 400;
   const applyFont = () => {
-    context.font = `${fontSize}px sans-serif`;
+    context.font = `${fontWeight} ${fontSize}px sans-serif`;
     context.textBaseline = 'alphabetic';
   };
   applyFont();
@@ -77,13 +37,38 @@ function createPosterContextAdapter(context) {
     createLinearGradient: (x0, y0, x1, y1) => context.createLinearGradient(x0, y0, x1, y1),
     setTransform: (a, b, c, d, e, f) => context.setTransform(a, b, c, d, e, f),
     setFillStyle: (value) => { context.fillStyle = value; },
-    setFontSize: (value) => { fontSize = value; applyFont(); },
+    setFontSize: (value, weight = 400) => { fontSize = value; fontWeight = weight; applyFont(); },
   };
 }
 
 Page({
-  data: { isDistributor: false, inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: '邀请好友体验兴康明诊所', qrUnavailableNotice: '', isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
-  async onShow() { await this.loadInviteInfo({ silent: this.data.hasLoaded }); },
+  data: { shareImagePath: '', rulesLoading: true, rulesError: false, ruleSections: [], copy, isDistributor: false, inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: copy.shareTitle, qrUnavailableNotice: '', isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
+  onReady() {
+    this.canvasReady = true;
+    if (this.data.inviteCode) this.prepareInviteImage().catch(() => {});
+  },
+  async prepareInviteImage() {
+    const key = JSON.stringify([this.data.inviteCode, this.data.inviteQrCode]);
+    if (this.imageKey === key && this.data.shareImagePath) return this.data.shareImagePath;
+    if (this.imageFlight) {
+      await this.imageFlight;
+      return this.prepareInviteImage();
+    }
+    this.setData({ shareImagePath: '' });
+    this.imageFlight = this.drawInvitePoster();
+    try {
+      const imagePath = await this.imageFlight;
+      if (key === JSON.stringify([this.data.inviteCode, this.data.inviteQrCode])) {
+        this.imageKey = key;
+        this.setData({ shareImagePath: imagePath });
+        return imagePath;
+      }
+    } finally {
+      this.imageFlight = null;
+    }
+    return this.prepareInviteImage();
+  },
+  async onShow() { await Promise.all([this.loadInviteInfo({ silent: this.data.hasLoaded }), this.loadInviteRules()]); },
   async loadInviteInfo(options = {}) {
     try {
       const inviteInfo = await inviteService.loadInviteShareInfo();
@@ -98,12 +83,34 @@ Page({
         inviteCode: inviteInfo.inviteCode,
         inviteQrCode: inviteInfo.inviteQrCode,
         sharePath: inviteInfo.sharePath,
-        shareTitle: inviteInfo.shareTitle,
+        shareTitle: copy.shareTitle,
         qrUnavailableNotice: qrNotice,
+        shareImagePath: '',
       });
+      if (this.canvasReady) this.prepareInviteImage().catch(() => {});
     } catch (error) {
       wx.showToast({ title: '加载邀请信息失败', icon: 'none' });
     }
+  },
+  async loadInviteRules() {
+    this.setData({ rulesLoading: true, rulesError: false });
+    try {
+      const response = await api.getDistributionRules();
+      const payload = normalizeDistributionRules(response);
+      const ruleSections = [
+        { title: '开通条件', items: [payload.qualificationText || '当前暂无分销开通说明'] },
+        { title: '佣金规则', items: payload.commissionRules },
+        { title: '推广方式', items: payload.promotionWays },
+        { title: '提现规则', items: payload.withdrawRules },
+      ].filter(section => Array.isArray(section.items) && section.items.length);
+      this.setData({ ruleSections, rulesLoading: false });
+    } catch (error) {
+      this.setData({ rulesLoading: false, rulesError: true });
+    }
+  },
+  handleQrError() {
+    this.setData({ inviteQrCode: '', shareImagePath: '' });
+    if (this.canvasReady) this.prepareInviteImage().catch(() => {});
   },
   handleCopyInviteCode() {
     if (!this.data.inviteCode) { wx.showToast({ title: '邀请码加载中', icon: 'none' }); return; }
@@ -120,7 +127,7 @@ Page({
     this.setData({ isSavingPoster: true });
     wx.showLoading({ title: '生成海报中', mask: true });
     try {
-      const posterImagePath = await this.drawInvitePoster();
+      const posterImagePath = await this.prepareInviteImage();
       await this.ensureAlbumPermission();
       await this.savePosterImage(posterImagePath);
       wx.hideLoading();
@@ -137,223 +144,11 @@ Page({
     const { canvas, context } = await this.getPosterCanvasContext();
     const qrImageSource = await this.resolvePosterQrImage();
     const qrImage = await this.loadPosterImage(canvas, qrImageSource);
-    const inviteCode = this.data.inviteCode || '';
-    const pageGradient = context.createLinearGradient(0, 0, POSTER_WIDTH, POSTER_HEIGHT);
-    pageGradient.addColorStop(0, '#0a1529');
-    pageGradient.addColorStop(0.6, '#11254c');
-    pageGradient.addColorStop(1, '#0d1e3d');
-    context.setFillStyle(pageGradient);
-    context.fillRect(0, 0, POSTER_WIDTH, POSTER_HEIGHT);
-
-    context.setFillStyle('rgba(16, 185, 129, 0.14)');
-    context.beginPath();
-    context.arc(POSTER_WIDTH - 60, 120, 190, 0, Math.PI * 2);
-    context.fill();
-    context.setFillStyle('rgba(99, 102, 241, 0.14)');
-    context.beginPath();
-    context.arc(80, POSTER_HEIGHT - 260, 220, 0, Math.PI * 2);
-    context.fill();
-
-    const posterX = 42;
-    const posterY = 42;
-    const posterWidth = POSTER_WIDTH - 84;
-    const posterHeight = POSTER_HEIGHT - 84;
-
-    context.save();
-    drawRoundedRect(context, posterX, posterY, posterWidth, posterHeight, 42);
-    context.clip();
-    const posterGradient = context.createLinearGradient(posterX, posterY, posterX + posterWidth, posterY + posterHeight);
-    posterGradient.addColorStop(0, '#09152a');
-    posterGradient.addColorStop(0.6, '#11254c');
-    posterGradient.addColorStop(1, '#0d1e3d');
-    context.setFillStyle(posterGradient);
-    context.fillRect(posterX, posterY, posterWidth, posterHeight);
-
-    context.setFillStyle('rgba(255, 255, 255, 0.04)');
-    context.beginPath();
-    context.arc(posterX + posterWidth - 10, posterY + 120, 170, 0, Math.PI * 2);
-    context.fill();
-    context.beginPath();
-    context.arc(posterX - 20, posterY + posterHeight - 180, 210, 0, Math.PI * 2);
-    context.fill();
-
-    const contentX = posterX + 42;
-    let currentY = posterY + 48;
-
-    const logoGradient = context.createLinearGradient(contentX, currentY, contentX + 44, currentY + 44);
-    logoGradient.addColorStop(0, '#10b981');
-    logoGradient.addColorStop(1, '#3b82f6');
-    context.setFillStyle(logoGradient);
-    drawRoundedRect(context, contentX, currentY, 44, 44, 12);
-    context.fill();
-    context.setFillStyle('#ffffff');
-    fillCenteredText(context, '月', contentX + 22, currentY + 30, 22, '#ffffff');
-
-    context.setFillStyle('#ffffff');
-    context.setFontSize(28);
-    context.fillText('兴康明', contentX + 58, currentY + 20);
-    context.setFillStyle('rgba(255, 255, 255, 0.52)');
-    context.setFontSize(14);
-    context.fillText('HANJING HEALTH', contentX + 58, currentY + 42);
-    currentY += 86;
-
-    const tagGradient = context.createLinearGradient(contentX, currentY, contentX + 220, currentY + 28);
-    tagGradient.addColorStop(0, 'rgba(16, 185, 129, 0.12)');
-    tagGradient.addColorStop(1, 'rgba(16, 185, 129, 0.06)');
-    context.setFillStyle(tagGradient);
-    drawRoundedRect(context, contentX, currentY, 220, 34, 17);
-    context.fill();
-    fillCenteredText(context, '✦ 睡眠健康管理伙伴 ✦', contentX + 110, currentY + 23, 16, '#10b981');
-    currentY += 64;
-
-    context.setFillStyle('#ffffff');
-    context.setFontSize(62);
-    context.fillText('邀请好友', contentX, currentY + 8);
-    const titleGradient = context.createLinearGradient(contentX, currentY + 42, contentX + 420, currentY + 42);
-    titleGradient.addColorStop(0, '#ffffff');
-    titleGradient.addColorStop(1, '#93c5fd');
-    context.setFillStyle(titleGradient);
-    context.setFontSize(58);
-    context.fillText('一起赚取推广佣金', contentX, currentY + 86);
-    currentY += 126;
-
-    currentY = fillWrappedText(
-      context,
-      '分享好眠，传递健康。好友通过您分享的链接或小程序码下单，系统将自动绑定邀请关系，并为您记录推广佣金。',
-      contentX,
-      currentY + 8,
-      posterWidth - 84,
-      36,
-      '#94a3b8',
-      22
-    ) + 38;
-
-    const processX = contentX;
-    const processY = currentY;
-    const processWidth = posterWidth - 84;
-    const processHeight = 88;
-    context.setFillStyle('rgba(255, 255, 255, 0.03)');
-    drawRoundedRect(context, processX, processY, processWidth, processHeight, 18);
-    context.fill();
-    const stepCenters = [processX + 116, processX + processWidth / 2, processX + processWidth - 116];
-    const stepTitles = ['分享此海报', '好友扫码下单', '绑定关系得佣金'];
-    stepCenters.forEach((centerX, index) => {
-      context.setFillStyle('rgba(255, 255, 255, 0.1)');
-      context.beginPath();
-      context.arc(centerX - 46, processY + processHeight / 2, 14, 0, Math.PI * 2);
-      context.fill();
-      fillCenteredText(context, String(index + 1), centerX - 46, processY + processHeight / 2 + 5, 12, '#ffffff');
-      context.setFillStyle('#94a3b8');
-      fillCenteredText(context, stepTitles[index], centerX + 18, processY + processHeight / 2 + 5, 18, '#94a3b8');
-    });
-    currentY += processHeight + 28;
-
-    const targetX = contentX;
-    const targetY = currentY;
-    const targetWidth = posterWidth - 84;
-    const targetHeight = 172;
-    context.setFillStyle('rgba(255, 255, 255, 0.05)');
-    drawRoundedRect(context, targetX, targetY, targetWidth, targetHeight, 24);
-    context.fill();
-    context.setFillStyle('rgba(255, 255, 255, 0.42)');
-    context.setFontSize(16);
-    context.fillText('适合分享给身边的朋友', targetX + 24, targetY + 30);
-
-    const badges = [
-      { text: '经常打鼾', color: '#fca5a5', bg: 'rgba(239, 68, 68, 0.08)', width: 108 },
-      { text: '睡眠质量差', color: '#e2e8f0', bg: 'rgba(255,255,255,0.06)', width: 118 },
-      { text: '呼吸暂停隐患', color: '#e2e8f0', bg: 'rgba(255,255,255,0.06)', width: 128 },
-    ];
-    let badgeX = targetX + 24;
-    badges.forEach((badge) => {
-      context.setFillStyle(badge.bg);
-      drawRoundedRect(context, badgeX, targetY + 54, badge.width, 34, 10);
-      context.fill();
-      fillCenteredText(context, badge.text, badgeX + badge.width / 2, targetY + 77, 16, badge.color);
-      badgeX += badge.width + 12;
-    });
-    context.setFillStyle('rgba(255, 255, 255, 0.1)');
-    context.fillRect(targetX + 24, targetY + 116, targetWidth - 48, 1);
-    context.setFillStyle('#10b981');
-    context.beginPath();
-    context.arc(targetX + 30, targetY + 140, 6, 0, Math.PI * 2);
-    context.fill();
-    context.setFillStyle('#cbd5e1');
-    context.setFontSize(18);
-    context.fillText('推荐体验：专业睡眠评估、定制化治疗方案与健康服务', targetX + 46, targetY + 146);
-
-    const actionCardX = contentX;
-    const actionCardY = targetY + targetHeight + 44;
-    const actionCardWidth = posterWidth - 84;
-    const actionCardHeight = 238;
-    context.setFillStyle('#ffffff');
-    drawRoundedRect(context, actionCardX, actionCardY, actionCardWidth, actionCardHeight, 28);
-    context.fill();
-
-    context.setFillStyle('#0f172a');
-    context.setFontSize(28);
-    context.fillText('扫码立即体验', actionCardX + 32, actionCardY + 42);
-    currentY = fillWrappedText(
-      context,
-      '进入小程序即可开启睡眠测试及专家预约服务。',
-      actionCardX + 32,
-      actionCardY + 82,
-      360,
-      30,
-      '#64748b',
-      19
-    );
-
-    context.setFillStyle('#f1f5f9');
-    drawRoundedRect(context, actionCardX + 32, actionCardY + 124, 304, 70, 16);
-    context.fill();
-    context.setFillStyle('#94a3b8');
-    context.setFontSize(14);
-    context.fillText('专属邀请码', actionCardX + 52, actionCardY + 149);
-    context.setFillStyle('#1e3a8a');
-    context.setFontSize(32);
-    context.fillText(inviteCode, actionCardX + 52, actionCardY + 181);
-
-    const qrBoxSize = 138;
-    const qrWrapX = actionCardX + actionCardWidth - qrBoxSize - 28;
-    const qrWrapY = actionCardY + 24;
-    context.setFillStyle('#ffffff');
-    drawRoundedRect(context, qrWrapX, qrWrapY, qrBoxSize, qrBoxSize, 14);
-    context.fill();
-    context.setFillStyle('#e2e8f0');
-    drawRoundedRect(context, qrWrapX, qrWrapY, qrBoxSize, qrBoxSize, 14);
-    // subtle border via top strip and corners
-    context.fillRect(qrWrapX, qrWrapY, qrBoxSize, 1);
-
-    if (qrImage) {
-      context.drawImage(qrImage, qrWrapX + 10, qrWrapY + 10, qrBoxSize - 20, qrBoxSize - 20);
-    } else {
-      context.setFillStyle('#f8fafc');
-      drawRoundedRect(context, qrWrapX + 6, qrWrapY + 6, qrBoxSize - 12, qrBoxSize - 12, 10);
-      context.fill();
-      const patternStartX = qrWrapX + 14;
-      const patternStartY = qrWrapY + 14;
-      context.setFillStyle('#0f172a');
-      for (let row = 0; row < 6; row += 1) {
-        for (let col = 0; col < 6; col += 1) {
-          if ((row + col) % 2 === 0 || (row === 0 && col < 2) || (col === 0 && row < 2)) {
-            context.fillRect(patternStartX + col * 11, patternStartY + row * 11, 6, 6);
-          }
-        }
-      }
-      const qrLogoGradient = context.createLinearGradient(qrWrapX + 37, qrWrapY + 37, qrWrapX + 59, qrWrapY + 59);
-      qrLogoGradient.addColorStop(0, '#10b981');
-      qrLogoGradient.addColorStop(1, '#3b82f6');
-      context.setFillStyle(qrLogoGradient);
-      context.beginPath();
-      context.arc(qrWrapX + 48, qrWrapY + 48, 12, 0, Math.PI * 2);
-      context.fill();
-      fillCenteredText(context, '月', qrWrapX + 48, qrWrapY + 53, 13, '#ffffff');
-    }
-    fillCenteredText(context, '微信扫码/长按识别', qrWrapX + qrBoxSize / 2, qrWrapY + qrBoxSize + 26, 14, '#94a3b8');
-
-    fillCenteredText(context, '保存海报至相册，分享给好友或朋友圈即可推广', posterX + posterWidth / 2, actionCardY + actionCardHeight + 42, 14, 'rgba(255, 255, 255, 0.42)');
-    context.restore();
+    const brandImage = await this.loadPosterImage(canvas, '/static/images/brand-logo-v20261105.png');
+    if (!brandImage) throw new Error('品牌图片加载失败，请重试');
+    const artwork = await this.loadPosterImage(canvas, '/static/images/invite-sleep-letter.jpg');
+    if (!artwork) throw new Error('海报图片加载失败，请重试');
+    drawInviteDesign(context, { logo: brandImage, artwork, qr: qrImage, code: this.data.inviteCode || '' });
 
     return new Promise((resolve, reject) => {
       setTimeout(() => {
@@ -532,9 +327,9 @@ Page({
   },
   onShareAppMessage() {
     return {
-      title: this.data.shareTitle || '邀请好友体验兴康明诊所',
+      title: copy.shareTitle,
       path: this.data.sharePath || '/pages/index/index',
-      imageUrl: '/static/images/distribution-invite-share-cover.png',
+      imageUrl: this.data.shareImagePath || '/static/images/distribution-invite-share-v20261105.jpg',
     };
   },
 });

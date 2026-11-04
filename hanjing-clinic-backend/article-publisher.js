@@ -1,5 +1,6 @@
 export const BRAND_AUTHOR = '兴康明诊所';
-export const BRAND_AVATAR = '/api/v1/community/brand-logo.png';
+import { BRAND_AVATAR, publicAvatar } from './brand-avatar.js';
+export { BRAND_AVATAR };
 const BRAND_OPENID = 'editorial:xkm:community-official';
 
 export async function resolveArticlePublisher(value, { get, run }) {
@@ -19,6 +20,6 @@ export async function resolveArticlePublisher(value, { get, run }) {
 
 export function communityPublisher(post) {
   if (post.user_role === 'admin') return { author: BRAND_AUTHOR, avatar: BRAND_AVATAR, role: 'admin', roleLabel: '诊所官方' };
-  return { author: post.author_name || '', avatar: post.author_avatar || '', role: post.user_role,
+  return { author: post.author_name || '', avatar: publicAvatar(post.author_avatar), role: post.user_role,
     roleLabel: post.user_role === 'doctor' ? '专家医生' : post.user_role === 'expert' ? '睡眠专家' : '鼾友' };
 }

@@ -1,3 +1,4 @@
+const { normalizeDistributionRules } = require('../utils/rules');
 const api = require('../../../api/index');
 const navigation = require('../../../common/utils/navigation');
 const { formatChinaDate } = require('../../../common/utils/date-time');
@@ -89,7 +90,7 @@ Page({
       ]);
       const distributorInfo = unwrapObject(distributorInfoResponse);
       const orderList = unwrapList(distributionOrdersResponse).slice(0, 5).map(normalizeDistributionOrder);
-      const rulesPayload = unwrapObject(distributionRulesResponse);
+      const rulesPayload = normalizeDistributionRules(distributionRulesResponse);
 
       this.setData({
         hasLoaded: true,

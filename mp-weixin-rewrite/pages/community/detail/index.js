@@ -1,6 +1,7 @@
+const { normalizeImageUrl, BRAND_LOGO } = require('../../../common/utils/image-url');
 const api = require('../../../api/index');
 const { formatChinaDateTime } = require('../../../common/utils/date-time');
-const { articleRichText } = require('../../../common/utils/article-rich-text');
+const { articleRichText } = require('../utils/article-rich-text');
 
 function getCategoryClass(name) {
   if (['阻鼾器配戴', '睡眠科普', '科普问答', '专家'].includes(name)) return 'tag-theme--blue';
@@ -36,7 +37,7 @@ function normalizeComment(comment) {
   return {
     id: String(comment.id || ''),
     author,
-    avatar: comment.avatar || '',
+    avatar: comment.role === 'admin' ? BRAND_LOGO : normalizeImageUrl(comment.avatar),
     avatarLoaded: false,
     avatarText: (author || '友').slice(0, 1),
     avatarBg: getAvatarColor(author || '友'),
@@ -57,7 +58,7 @@ function normalizePostDetail(detail) {
   return {
     id: String(detail.id || ''),
     author,
-    avatar: role === 'admin' ? '/static/images/brand-logo.png' : detail.avatar || '',
+    avatar: role === 'admin' ? BRAND_LOGO : normalizeImageUrl(detail.avatar),
     avatarLoaded: false,
     avatarText: (author || '友').slice(0, 1),
     avatarBg: getAvatarColor(author || '友'),
@@ -88,7 +89,7 @@ function normalizePostDetail(detail) {
 function normalizeCurrentUserAvatar(profile) {
   const nickname = String((profile && (profile.nickname || profile.name)) || '我');
   return {
-    avatar: (profile && profile.avatar) || '',
+    avatar: normalizeImageUrl(profile && profile.avatar),
     avatarLoaded: false,
     avatarText: nickname.slice(0, 1) || '我',
     avatarBg: getAvatarColor(nickname),

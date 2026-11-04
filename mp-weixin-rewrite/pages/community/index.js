@@ -1,3 +1,4 @@
+const { normalizeImageUrl, BRAND_LOGO } = require('../../common/utils/image-url');
 const api = require('../../api/index');
 const { formatChinaDateTime } = require('../../common/utils/date-time');
 
@@ -95,7 +96,7 @@ function normalizePost(post) {
   return {
     id: String(post.id || ''),
     isTop: Boolean(post.isTop),
-    avatar: role === 'admin' ? '/static/images/brand-logo.png' : post.avatar || '',
+    avatar: role === 'admin' ? BRAND_LOGO : normalizeImageUrl(post.avatar),
     avatarLoaded: false,
     avatarText: (author || '友').slice(0, 1),
     avatarBg: getAvatarColor(author || '友'),

@@ -2,7 +2,9 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const { articleRichText } = require('../../mp-weixin-rewrite/common/utils/article-rich-text');
+const imageBox={module:{exports:{}},require:()=>({apiBaseUrl:'https://fixture.test/api/v1'})};
+vm.runInNewContext(fs.readFileSync('mp-weixin-rewrite/common/utils/image-url.js','utf8'),imageBox);
+const { articleRichText } = require('../../mp-weixin-rewrite/pages/community/utils/article-rich-text');
 
 test('圖文直接交給rich-text，支持一層及多層轉義', () => {
   const html='<div style="color:#3b6bf5"><p>患者提问</p><p>医生回答</p></div>';
@@ -18,7 +20,7 @@ test('普通文字保留換行，數學符號不會被當標籤', () => {
 test('實際詳情處理器使用richContent並正確識別官方', async () => {
   let config;const payload={id:1,author:'兴康明诊所',role:'admin',roleLabel:'诊所官方',content:'&lt;p&gt;正文&lt;/p&gt;'};
   vm.runInNewContext(fs.readFileSync('mp-weixin-rewrite/pages/community/detail/index.js','utf8'),{
-    require:name=>name.includes('article-rich-text')?{articleRichText}:name.includes('date-time')?{formatChinaDateTime:()=>''}:{getCommunityPostDetail:async()=>({data:payload}),getUserProfile:async()=>null},
+    require:name=>name.includes('image-url')?imageBox.module.exports:name.includes('article-rich-text')?{articleRichText}:name.includes('date-time')?{formatChinaDateTime:()=>''}:{getCommunityPostDetail:async()=>({data:payload}),getUserProfile:async()=>null},
     Page:x=>config=x,wx:{},console
   });
   const instance={...config,data:JSON.parse(JSON.stringify(config.data)),setData(x){Object.assign(this.data,x)}};
@@ -32,7 +34,7 @@ test('實際詳情處理器使用richContent並正確識別官方', async () => 
 test('實際列表處理器只有官方身份顯示認證徽標', async () => {
   let config;
   vm.runInNewContext(fs.readFileSync('mp-weixin-rewrite/pages/community/index.js','utf8'),{
-    require:name=>name.includes('date-time')?{formatChinaDateTime:()=>''}:{getCommunityPosts:async()=>({data:[{id:1,role:'admin',author:'兴康明诊所'},{id:2,role:'patient',author:'普通用户'}]})},
+    require:name=>name.includes('image-url')?imageBox.module.exports:name.includes('date-time')?{formatChinaDateTime:()=>''}:{getCommunityPosts:async()=>({data:[{id:1,role:'admin',author:'兴康明诊所'},{id:2,role:'patient',author:'普通用户'}]})},
     Page:x=>config=x,wx:{},console
   });
   const instance={...config,data:JSON.parse(JSON.stringify(config.data)),setData(x){Object.assign(this.data,x)}};

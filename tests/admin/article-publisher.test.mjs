@@ -15,7 +15,7 @@ test('指定有效用戶，不建立品牌；錯誤及不存在的ID必須拒絕
   for(const id of [0,-1,'1 OR 1=1',{},true,999])await assert.rejects(resolveArticlePublisher(id,db));
 });
 test('官方文章顯示品牌，普通作者與專家身份保持', () => {
-  assert.deepEqual(communityPublisher({user_role:'admin',author_name:'错误患者'}),{author:'兴康明诊所',avatar:'/api/v1/community/brand-logo.png',role:'admin',roleLabel:'诊所官方'});
+  assert.deepEqual(communityPublisher({user_role:'admin',author_name:'错误患者'}),{author:'兴康明诊所',avatar:'/api/v1/community/brand-logo-v20261105.png',role:'admin',roleLabel:'诊所官方'});
   assert.equal(communityPublisher({user_role:'patient',author_name:'甲'}).author,'甲');
   assert.equal(communityPublisher({user_role:'doctor'}).roleLabel,'专家医生');
 });

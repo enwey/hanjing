@@ -4,7 +4,7 @@
     <view class="avatar-row data-v-33d45858" bindtap="chooseAvatar">
       <view class="avatar-wrap data-v-33d45858">
         <image wx:if="{{avatarPreviewUrl}}" class="avatar-img data-v-33d45858" src="{{avatarPreviewUrl}}" mode="aspectFill" />
-        <image wx:else class="avatar-img data-v-33d45858 avatar-placeholder" src="/static/icons/profile_gray.svg" mode="aspectFit" />
+        <image wx:else class="avatar-img data-v-33d45858 avatar-placeholder" src="/static/images/brand-logo-v20261105.png" mode="aspectFit" />
       </view>
       <view class="avatar-action data-v-33d45858">
         <text class="avatar-action-text data-v-33d45858">上传头像</text>
