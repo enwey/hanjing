@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -50,14 +51,14 @@ const scheduleWeekDays = computed(() => {
 })
 
 const fetchStores = async () => {
-  const res: any = await request.get('/api/admin/stores')
+  const res: any = await request.get('/api/admin/doctors/options/stores')
   storesList.value = res.data || []
 }
 
 const fetchDoctors = async () => {
   try {
     const storeId = typeof route.query.store_id === 'string' ? route.query.store_id : ''
-    const res: any = await request.get('/api/admin/doctors', {
+    const res: any = await request.get(hasPermission('doctor:view') ? '/api/admin/doctors' : '/api/admin/schedules/options/doctors', {
       params: storeId ? { store_id: storeId } : {}
     })
     const gradients = [
@@ -113,6 +114,7 @@ onMounted(async () => {
 const schedules = ref<any[]>([])
 
 const loadWeeklySchedules = async () => {
+  if (!hasPermission('schedule:view')) return
   try {
     const res: any = await request.get('/api/admin/schedules', {
       params: { date: formatDate(currentWeekStart.value).slice(0, 7) }
@@ -309,7 +311,7 @@ function handleNextWeek() {
         <div class="page-title">医生管理</div>
         <div class="page-title-sub">管理坐诊医生信息与排班</div>
       </div>
-      <button class="btn btn-primary" @click="handleAddDoctor"><AppIcon name="plus" />  添加医生</button>
+      <button v-permission="'doctor:add'" class="btn btn-primary" @click="handleAddDoctor"><AppIcon name="plus" />  添加医生</button>
     </div>
 
     <!-- Doctor Cards Grid -->
@@ -345,7 +347,7 @@ function handleNextWeek() {
           <div style="font-size: 12px; color: #374151; margin-top: 4px; font-weight: 500;">
             挂号费：<span style="color: #EC4899; font-weight: bold;">¥{{ dr.consultFee !== undefined ? dr.consultFee.toFixed(2) : '0.00' }}</span>
           </div>
-          <div style="margin-top: 8px;">
+          <div v-if="hasPermission('doctor:view')" style="margin-top: 8px;">
             <span v-if="dr.adminUserId" :class="['status-tag', dr.adminStatus === 'disabled' ? 'red' : 'green']">后台账号：{{ dr.adminUsername }}{{ dr.adminStatus === 'disabled' ? '（已禁用）' : '' }}</span>
             <span v-else class="status-tag gray">未开通后台账号</span>
           </div>
@@ -360,7 +362,7 @@ function handleNextWeek() {
           </div>
           
           <!-- Statistics Row -->
-          <div style="display: flex; justify-content: center; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #F3F4F6;">
+          <div v-if="hasPermission('doctor:view')" style="display: flex; justify-content: center; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #F3F4F6;">
             <div style="flex: 1;">
               <div style="font-size: 18px; font-weight: 700; color: #3B6BF5;">{{ dr.consults }}</div>
               <div style="font-size: 10px; color: #9CA3AF;">累计接诊</div>
@@ -377,17 +379,17 @@ function handleNextWeek() {
 
           <!-- Actions button bar -->
           <div style="display: flex; gap: 8px; margin-top: 16px; justify-content: center;">
-            <button class="btn btn-sm btn-outline" style="flex: 1;" @click="handleEditDoctor(dr.id)">编辑</button>
-            <button class="btn btn-sm btn-outline" style="flex: 1;" @click="openSchedule(dr.id)">排班</button>
-            <button class="btn btn-sm btn-outline" style="flex: 1;" @click="dr.adminUserId ? handleViewData(dr.id) : openAdminAccounts(dr.id)">{{ dr.adminUserId ? '数据' : '开通账号' }}</button>
-            <button v-if="dr.isOnline" class="btn btn-sm btn-outline" style="flex: 1;" @click="handleDisableDoctor(dr.id)">停用</button>
+            <button v-permission="'doctor:edit'" class="btn btn-sm btn-outline" style="flex: 1;" v-if="hasPermission('doctor:edit')" @click="handleEditDoctor(dr.id)">编辑</button>
+            <button v-permission="'schedule:view'" class="btn btn-sm btn-outline" style="flex: 1;" v-if="hasPermission('schedule:view')" @click="openSchedule(dr.id)">排班</button>
+            <button class="btn btn-sm btn-outline" style="flex: 1;" v-if="dr.adminUserId ? hasPermission('store:report') : hasPermission('member:view')" @click="dr.adminUserId ? handleViewData(dr.id) : openAdminAccounts(dr.id)">{{ dr.adminUserId ? '数据' : '开通账号' }}</button>
+            <button v-permission="'doctor:delete'" v-if="dr.isOnline && hasPermission('doctor:delete')" class="btn btn-sm btn-outline" style="flex: 1;" @click="handleDisableDoctor(dr.id)">停用</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Schedule Weekly Calendar Panel -->
-    <div class="panel" style="margin-top: 16px;">
+    <div v-if="hasPermission('schedule:view')" class="panel" style="margin-top: 16px;">
       <div class="panel-header">
         <div class="panel-title">本周排班 · {{ currentWeek }}</div>
         <div class="panel-actions">

@@ -5,7 +5,13 @@ import * as echarts from 'echarts'
 import request from '@/utils/request'
 import { formatShanghaiDateOnly } from '@/utils/dateTime'
 
+import { visibleMenuGroups } from '@/utils/menu'
+
 const router = useRouter()
+const canOpenMenu = (path: string) => {
+  try { return visibleMenuGroups(JSON.parse(localStorage.getItem('user_info') || '{}')).some(group => group.items.some(item => item.path === path)) }
+  catch { return false }
+}
 type DashboardRange = 'today' | 'week' | 'month'
 type TrendType = 'appointment' | 'revenue'
 const readDashboardRange = (key: string): DashboardRange => {
@@ -285,8 +291,19 @@ const fetchTrendChartData = async () => {
 const fetchDataLists = async () => {
   appointmentListError.value = ''
   orderListError.value = ''
+  let lists: any
   try {
-    const apptsRes: any = await request.get('/api/admin/appointments?tab=today')
+    const response: any = await request.get('/api/admin/dashboard/lists')
+    lists = response.data
+  } catch {
+    todayAppointments.value = []
+    latestOrders.value = []
+    appointmentListError.value = '今日预约加载失败'
+    orderListError.value = '最新订单加载失败'
+    return
+  }
+  try {
+    const apptsRes = { data: lists.appointments }
     todayAppointments.value = apptsRes.data.slice(0, 5).map((a: any) => ({
       id: a.id,
       patient: a.patient_name || '未知患者',
@@ -303,7 +320,7 @@ const fetchDataLists = async () => {
   }
 
   try {
-    const ordersRes: any = await request.get('/api/admin/orders')
+    const ordersRes = { data: lists.orders }
     latestOrders.value = ordersRes.data.slice(0, 5).map((o: any) => {
       const prodName = o.items && o.items[0] ? o.items[0].product_name : '订单商品'
       const productDesc = o.items && o.items.length > 1 ? `${prodName} 等${o.items.length}件` : prodName
@@ -518,7 +535,7 @@ onUnmounted(() => {
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">今日预约</div>
-          <button class="btn btn-sm btn-outline" @click="router.push('/appointment')">查看全部</button>
+          <button v-if="canOpenMenu('/appointment')" class="btn btn-sm btn-outline" @click="router.push('/appointment')">查看全部</button>
         </div>
         <div class="table-scroll">
         <table class="data-table">
@@ -556,7 +573,7 @@ onUnmounted(() => {
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">最新订单</div>
-          <button class="btn btn-sm btn-outline" @click="router.push('/order')">查看全部</button>
+          <button v-if="canOpenMenu('/order')" class="btn btn-sm btn-outline" @click="router.push('/order')">查看全部</button>
         </div>
         <div class="table-scroll">
         <table class="data-table">

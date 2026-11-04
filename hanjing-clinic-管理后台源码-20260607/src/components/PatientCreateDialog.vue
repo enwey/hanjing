@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -31,7 +32,7 @@ const createForm = ref({
 })
 
 watch(() => props.visible, async (val) => {
-  if (val) {
+  if (val && hasPermission('patient:add')) {
     stores.value = []
     registrationStoreId.value = ''
     createForm.value = {
@@ -60,6 +61,7 @@ watch(() => props.visible, async (val) => {
 const loading = ref(false)
 
 async function handleConfirm() {
+  if (!hasPermission('patient:add')) return
   if (loading.value || storesLoading.value) return
   if (!registrationStoreId.value) {
     MessagePlugin.warning('请选择建档门店')

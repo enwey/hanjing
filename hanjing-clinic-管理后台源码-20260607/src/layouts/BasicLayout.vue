@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import { resolveBreadcrumbs, resolveMenuPathFromRoute } from '@/utils/routeNavigation'
+
+import { getMenuGroups, visibleMenuGroups } from '@/utils/menu'
 
 const router = useRouter()
 const route = useRoute()
@@ -14,6 +17,7 @@ const isMenuCollapsed = computed(() => isSidebarCollapsed.value)
 const activeAppointmentCount = ref(0)
 
 async function fetchAppointmentBadgeCount() {
+  if (!visibleMenuGroups(userInfo.value).some(group => group.items.some(item => item.path === '/appointment'))) return
   try {
     const res: any = await request.get('/api/admin/appointments')
     if (res && res.code === 200) {
@@ -29,74 +33,7 @@ async function fetchAppointmentBadgeCount() {
   }
 }
 
-interface MenuItem { path: string; label: string; icon: string; permission: string; badge?: string; badgeColor?: string; superAdminOnly?: boolean }
-const menuGroups = computed<Array<{ title: string; items: MenuItem[] }>>(() => [
-  {
-    title: '概览',
-    items: [
-      { path: '/dashboard', label: '数据看板', icon: '📊', permission: '' }
-    ]
-  },
-  {
-    title: '业务管理',
-    items: [
-      { 
-        path: '/appointment', 
-        label: '预约管理', 
-        icon: '📅', 
-        permission: 'appointment:view',
-        badge: activeAppointmentCount.value > 0 ? String(activeAppointmentCount.value) : undefined, 
-        badgeColor: 'red' 
-      },
-      { path: '/queue', label: '排队分诊', icon: '📣', permission: 'appointment:view' },
-      { path: '/workbench', label: '接诊工作台', icon: '🩺', permission: 'appointment:edit' },
-      { path: '/patient', label: '患者管理', icon: '🧑‍⚕️', permission: 'patient:view' },
-      { path: '/doctor', label: '医生管理', icon: '👨‍⚕️', permission: 'schedule:view' },
-      { path: '/store', label: '门店管理', icon: '🏥', permission: 'store:view' },
-      { path: '/order', label: '订单管理', icon: '📦', permission: 'order:view' },
-      { path: '/fulfillment', label: '交付管理', icon: '🧰', permission: 'order:view' },
-      { path: '/after-sales', label: '售后工作台', icon: '🛠️', permission: 'order:view' }
-    ]
-  },
-  {
-    title: '分销管理',
-    items: [
-      { path: '/distribution', label: '分销总览', icon: '💰', permission: 'distribution:view' },
-      { path: '/promoter', label: '推广员管理', icon: '👥', permission: 'distribution:view' },
-      { 
-        path: '/withdraw', 
-        label: '提现审核', 
-        icon: '💳', 
-        permission: 'distribution:audit',
-        badge: notifStats.value.withdrawCount > 0 ? String(notifStats.value.withdrawCount) : undefined, 
-        badgeColor: 'gold' 
-      },
-      { path: '/products', label: '商品管理', icon: '🛍️', permission: 'distribution:edit' },
-      { path: '/product-categories', label: '商品分类', icon: '🏷️', permission: 'distribution:edit' }
-    ]
-  },
-  {
-    title: '内容',
-    items: [
-      { path: '/content', label: '科普文章', icon: '📝', permission: 'content:view' },
-      { path: '/content-category', label: '分类管理', icon: '🏷️', permission: 'content:edit' },
-      { path: '/live', label: '直播管理', icon: 'video', permission: 'content:view' },
-      { path: '/banner', label: '轮播图管理', icon: '🎨', permission: 'content:edit' }
-    ]
-  },
-  {
-    title: '系统',
-    items: [
-      { path: '/settings', label: '系统设置', icon: '⚙️', permission: 'system:view' },
-      { path: '/wechat-notifications', label: '微信通知', icon: 'bell', permission: 'system:view', superAdminOnly: true },
-      { path: '/admin', label: '成员管理', icon: 'team', permission: 'system:edit' },
-      { path: '/permission', label: '角色管理', icon: '🔐', permission: 'system:edit' },
-      { path: '/log', label: '操作日志', icon: '📋', permission: 'audit_log:view' },
-      { path: '/mini-program-log', label: '小程序日志', icon: '📱', permission: 'audit_log:view' },
-      { path: '/database-tools', label: '数据库工具', icon: '🗄️', permission: 'system:edit', superAdminOnly: true }
-    ]
-  }
-])
+const menuGroups = computed(() => getMenuGroups(activeAppointmentCount.value, notifStats.value.withdrawCount))
 
 const currentUserInfo = ref<any>({ name: '管理员', role_name: '超级管理员' })
 const loadUserInfo = () => {
@@ -113,37 +50,7 @@ const userInfo = computed(() => {
   return currentUserInfo.value
 })
 
-const filteredMenuGroups = computed(() => {
-  const userRole = userInfo.value.role_code || 'super_admin';
-  if (userRole === 'super_admin') {
-    return menuGroups.value;
-  }
-  const permissions = Array.isArray(userInfo.value.permissions) ? userInfo.value.permissions : [];
-  const hasPermission = (permission?: string) => {
-    if (!permission) return true;
-    if (permissions.includes('*')) return true;
-    return permissions.includes(permission);
-  };
-  
-  return menuGroups.value.map(group => {
-    const items = group.items.filter(item => {
-      if ((item as any).superAdminOnly && userRole !== 'super_admin') {
-        return false;
-      }
-      if (permissions.length > 0) {
-        return hasPermission(item.permission);
-      }
-      if (userRole === 'store_mgr') {
-        return !['/permission', '/settings', '/admin'].includes(item.path);
-      }
-      if (userRole === 'doctor') {
-        return ['/dashboard', '/appointment', '/queue', '/workbench', '/patient', '/doctor'].includes(item.path);
-      }
-      return true;
-    });
-    return { ...group, items };
-  }).filter(group => group.items.length > 0);
-});
+const filteredMenuGroups = computed(() => visibleMenuGroups(userInfo.value, menuGroups.value))
 
 const currentActiveMenu = computed(() => {
   const targetPath = resolveMenuPathFromRoute(route)
@@ -343,6 +250,7 @@ watch(isSearchVisible, (isOpen) => {
 })
 
 async function handleSearch() {
+  if (!['patient:view', 'appointment:view', 'order:view'].some(hasPermission)) return
   if (!searchKeyword.value.trim()) return
   isSearching.value = true
   try {
@@ -425,6 +333,7 @@ function useQuickReply(text: string) {
 }
 
 async function fetchChatUsers() {
+  if (!hasPermission('patient:view')) return
   try {
     const res = await request.get('/api/admin/im/users')
     if (res && res.code === 200) {
@@ -444,6 +353,7 @@ async function selectChatUser(userId: number) {
 }
 
 async function fetchChatMessages() {
+  if (!hasPermission('patient:view')) return
   if (!selectedUserId.value) return
   try {
     const res = await request.get(`/api/admin/im/messages?patient_id=${selectedUserId.value}`)
@@ -457,6 +367,7 @@ async function fetchChatMessages() {
 }
 
 async function sendChatMessage() {
+  if (!hasPermission('patient:message')) return
   if (!selectedUserId.value || !chatInputText.value.trim() || isSendingMsg.value) return
   const text = chatInputText.value.trim()
   const patientId = selectedUserId.value
@@ -533,6 +444,7 @@ onMounted(() => {
     fetchNotifStats()
   }, 20000)
   window.addEventListener('storage', handleAuthStorageChange)
+  window.addEventListener('admin-permissions-updated', loadUserInfo)
   compactLayoutMedia = window.matchMedia('(max-width: 640px)')
   handleCompactLayout(compactLayoutMedia)
   compactLayoutMedia.addEventListener('change', handleCompactLayout)
@@ -542,6 +454,7 @@ onUnmounted(() => {
   if (notifInterval) clearInterval(notifInterval)
   if (chatInterval) clearInterval(chatInterval)
   window.removeEventListener('storage', handleAuthStorageChange)
+  window.removeEventListener('admin-permissions-updated', loadUserInfo)
   compactLayoutMedia?.removeEventListener('change', handleCompactLayout)
   compactLayoutMedia = null
 })
@@ -1064,7 +977,7 @@ onUnmounted(() => {
                 </svg>
                 消息记录
               </span>
-              <t-button theme="primary" size="medium" :loading="isSendingMsg" @click="sendChatMessage" class="chat-send-btn">
+              <t-button theme="primary" size="medium" :loading="isSendingMsg" v-permission="'patient:message'" @click="sendChatMessage" class="chat-send-btn">
                 <span>发送消息</span>
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 6px;">
                   <line x1="22" y1="2" x2="11" y2="13"></line>

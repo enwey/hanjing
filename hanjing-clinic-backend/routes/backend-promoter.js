@@ -1,3 +1,4 @@
+import { referredPatient, referredMedical, referredDevice, referredPatientOrder } from '../promoter-patient-scope.js';
 import jwt from 'jsonwebtoken';
 import { createAsyncRouter } from '../async-router.js';
 import { get,query,run,transaction } from '../db.js';
@@ -77,41 +78,21 @@ app.get('/api/promoter/patients/:id',async(req,res)=>{
   const {id}=req.params;
   if(!/^[1-9]\d*$/.test(id))return res.status(400).json({code:400,message:'患者编号无效'});
   try{
+    const patientScope=referredPatient(promoterId,'p'), medicalScope=referredMedical(promoterId,'r'), deviceScope=referredDevice(promoterId,'pd'), orderScope=referredPatientOrder(promoterId,id,'o');
     const patient=await get(
       `SELECT p.id, p.user_id, p.name, p.relation, p.gender, p.age, p.phone, p.has_snore,
               p.created_at, p.patient_no, p.source,
-              u.nickname as user_nickname, u.phone as user_phone, COALESCE(ml.code, 'normal') AS member_level, ml.name AS member_level_name,
-              (
-                SELECT COALESCE(d.nickname, pu.nickname, pu.phone)
-                FROM distribution_relationships dr
-                LEFT JOIN users pu ON dr.parent_user_id = pu.id
-                LEFT JOIN distributors d ON d.user_id = pu.id OR d.id=dr.parent_distributor_id
-                WHERE dr.child_user_id = p.user_id AND dr.level=1
-                ORDER BY dr.created_at ASC
-                LIMIT 1
-              ) as referrer_name
+              u.nickname as user_nickname, u.phone as user_phone, COALESCE(ml.code, 'normal') AS member_level, ml.name AS member_level_name
        FROM patients p
        JOIN users u ON p.user_id = u.id
        LEFT JOIN user_memberships um ON um.user_id = u.id
        LEFT JOIN member_levels ml ON ml.id = um.level_id
-       WHERE p.id = ?`,
-      [id]
+       WHERE p.id = ? AND ${patientScope.sql}`,
+      [id,...patientScope.params]
     );
 
     if(!patient){
       return res.status(404).json({code:404,message:'患者不存在'});
-    }
-
-    const hasAppointment=await get(
-      `SELECT 1 FROM appointments WHERE referral_promoter_id = ? AND patient_id = ? LIMIT 1`,
-      [promoterId, id]
-    );
-    const hasRelation=await get(
-      `SELECT 1 FROM distribution_relationships WHERE parent_distributor_id = ? AND child_user_id = ? LIMIT 1`,
-      [promoterId, patient.user_id]
-    );
-    if(!hasAppointment&&!hasRelation){
-      return res.status(403).json({code:403,message:'您无权查看该患者的信息'});
     }
 
     const appointments=await query(
@@ -119,16 +100,16 @@ app.get('/api/promoter/patients/:id',async(req,res)=>{
        FROM appointments a
        LEFT JOIN doctors d ON a.doctor_id = d.id
        LEFT JOIN stores s ON a.store_id = s.id
-       WHERE a.patient_id = ?
+       WHERE a.patient_id = ? AND a.referral_promoter_id=?
        ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.id DESC`,
-      [id]
+      [id,promoterId]
     );
 
     const totalSpentRow=await get(
       `SELECT COALESCE(SUM(pay_amount), 0) as total_spent
-       FROM orders
-       WHERE user_id = ? AND status IN ('paid', 'processing', 'shipping', 'shipped', 'delivered', 'completed')`,
-      [patient.user_id]
+       FROM orders o
+       WHERE o.user_id = ? AND ${orderScope.sql} AND status IN ('paid', 'processing', 'shipping', 'shipped', 'delivered', 'completed')`,
+      [patient.user_id,...orderScope.params]
     );
 
     const medicalRecords=await query(
@@ -138,9 +119,9 @@ app.get('/api/promoter/patients/:id',async(req,res)=>{
        FROM medical_records r
        LEFT JOIN doctors d ON r.doctor_id = d.id
        LEFT JOIN stores s ON r.store_id = s.id
-       WHERE r.patient_id = ?
+       WHERE r.patient_id = ? AND ${medicalScope.sql}
        ORDER BY r.visit_date DESC, r.id DESC`,
-      [id]
+      [id,...medicalScope.params]
     );
 
     const tr=await get(
@@ -149,8 +130,8 @@ app.get('/api/promoter/patients/:id',async(req,res)=>{
               d.name as doctor_name
        FROM patient_devices pd
        LEFT JOIN doctors d ON pd.bind_doctor_id = d.id
-       WHERE pd.patient_id = ? AND pd.status = 'active'`,
-      [id]
+       WHERE pd.patient_id = ? AND pd.status = 'active' AND ${deviceScope.sql} ORDER BY pd.id DESC LIMIT 1`,
+      [id,...deviceScope.params]
     );
     let wearingLogs=[];
     if(tr){
@@ -164,9 +145,9 @@ app.get('/api/promoter/patients/:id',async(req,res)=>{
       `SELECT o.*, u.nickname as buyer_nickname, u.phone as buyer_phone
        FROM orders o
        JOIN users u ON o.user_id = u.id
-       WHERE o.user_id = ?
+       WHERE o.user_id = ? AND ${orderScope.sql}
        ORDER BY o.created_at DESC`,
-      [patient.user_id]
+      [patient.user_id,...orderScope.params]
     );
     const orderIds=orders.map(o=>o.id);
     let allOrderItems=[];
@@ -188,16 +169,18 @@ app.get('/api/promoter/patients/:id',async(req,res)=>{
     }
 
     const ess=await get(
-      `SELECT * FROM ess_assessments
-       WHERE patient_id = ? OR (patient_id IS NULL AND user_id = ?)
+      `SELECT report.* FROM ess_assessments report
+       WHERE (report.patient_id=? OR (report.patient_id IS NULL AND report.user_id=?))
+         AND EXISTS(SELECT 1 FROM appointments report_visit WHERE report_visit.ess_assessment_id=report.id AND report_visit.patient_id=? AND report_visit.referral_promoter_id=?)
        ORDER BY created_at DESC LIMIT 1`,
-      [id, patient.user_id]
+      [id, patient.user_id,id,promoterId]
     );
     const snore=await get(
-      `SELECT * FROM snore_assessments
-       WHERE patient_id = ? OR (patient_id IS NULL AND user_id = ?)
+      `SELECT report.* FROM snore_assessments report
+       WHERE (report.patient_id=? OR (report.patient_id IS NULL AND report.user_id=?))
+         AND EXISTS(SELECT 1 FROM appointments report_visit WHERE report_visit.snore_assessment_id=report.id AND report_visit.patient_id=? AND report_visit.referral_promoter_id=?)
        ORDER BY created_at DESC LIMIT 1`,
-      [id, patient.user_id]
+      [id, patient.user_id,id,promoterId]
     );
     const wearingStats=await get(
       `SELECT COUNT(wl.id) as total_days,
@@ -216,33 +199,23 @@ app.get('/api/promoter/patients/:id',async(req,res)=>{
               COALESCE(AVG(wl.ahi_index), 0) as avg_ahi
        FROM patient_devices pd
        LEFT JOIN wearing_logs wl ON wl.patient_device_id = pd.id AND wl.source = 'mini_program_checkin'
-       WHERE pd.patient_id = ?`,
-      [id]
+       WHERE pd.patient_id = ? AND ${deviceScope.sql}`,
+      [id,...deviceScope.params]
     );
 
     const familyMembers=await query(
-      `SELECT id, name, relation, gender, age, phone FROM patients WHERE user_id = ?`,
-      [patient.user_id]
+      `SELECT p.id, p.name, p.relation, p.gender, p.age, p.phone FROM patients p WHERE p.user_id = ? AND ${patientScope.sql}`,
+      [patient.user_id,...patientScope.params]
     );
     const familyMembersWithDiagnostics=[];
     for(const member of familyMembers){
-      const mEss=await get(
-        `SELECT total_score, risk_level, created_at FROM ess_assessments WHERE patient_id = ? ORDER BY created_at DESC LIMIT 1`,
-        [member.id]
-      );
-      const mSnore=await get(
-        `SELECT apnea_events, risk_level, created_at FROM snore_assessments WHERE patient_id = ? ORDER BY created_at DESC LIMIT 1`,
-        [member.id]
-      );
       familyMembersWithDiagnostics.push({
         id: member.id.toString(),
         name: member.name,
         relation: member.relation,
         gender: member.gender,
         age: member.age,
-        phone: mask(member.phone),
-        ess: mEss||null,
-        snore: mSnore||null
+        phone: mask(member.phone)
       });
     }
 

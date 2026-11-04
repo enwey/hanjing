@@ -1,3 +1,4 @@
+import { appointmentReadScope } from './data-read-scope.js';
 import { transaction } from './db.js';
 import { orderAccessScope } from './admin-scope.js';
 
@@ -5,7 +6,7 @@ import { orderAccessScope } from './admin-scope.js';
 export async function readPatientActivity(user, patientId) {
   const orderScope = orderAccessScope(user, 'o');
   const stores = [...new Set((user.store_ids || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
-  const visitScope = user.role === 'super_admin' ? {sql:'1=1',params:[]} : {
+  const visitScope = user.read_data_scope ? appointmentReadScope(user, 'a') : user.role === 'super_admin' ? {sql:'1=1',params:[]} : {
     sql: stores.length && (user.role !== 'doctor' || user.doctor_id)
       ? `a.store_id IN (${stores.map(()=>'?').join(',')})${user.role === 'doctor'?' AND a.doctor_id=?':''}` : '1=0',
     params: stores.length && (user.role !== 'doctor' || user.doctor_id) ? [...stores,...(user.role === 'doctor'?[user.doctor_id]:[])] : []

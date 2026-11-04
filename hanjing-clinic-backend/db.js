@@ -1,3 +1,6 @@
+import { rescheduleHistorySchema } from './appointment-reschedule-history.js';
+import { appointmentNumberSchema } from './appointment-number.js';
+import { migrateAdminPermissions, migratePermissionCodes } from './permission-migration.js';
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -117,6 +120,25 @@ export const autoSettleDistributionCommissions = async () => {
 
 
 // Initialize Tables
+export async function migrateRoleMemberDataScopes() {
+  // A removed role membership leaves the account available for reassignment.
+  await query('ALTER TABLE admin_users MODIFY COLUMN role_id BIGINT UNSIGNED NULL');
+  await query(`CREATE TABLE IF NOT EXISTS role_member_data_scopes (
+    role_id BIGINT UNSIGNED NOT NULL,
+    admin_user_id BIGINT UNSIGNED NOT NULL,
+    data_scope JSON NOT NULL,
+    PRIMARY KEY (role_id, admin_user_id),
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_user_id) REFERENCES admin_users(id) ON DELETE CASCADE
+  )`);
+  // Preserve legacy overrides exactly once, bound to the account's current role.
+  await transaction(async conn => {
+    await conn.execute(`INSERT IGNORE INTO role_member_data_scopes (role_id, admin_user_id, data_scope)
+      SELECT role_id, id, data_scope FROM admin_users WHERE role_id IS NOT NULL AND data_scope IS NOT NULL`);
+    await conn.execute('UPDATE admin_users SET data_scope=NULL WHERE data_scope IS NOT NULL');
+  });
+}
+
 export const initDB = async () => {
   console.log('Initializing MySQL connection...');
 
@@ -585,6 +607,9 @@ export const initDB = async () => {
       if (!['ER_DUP_FIELDNAME', 'ER_DUP_KEYNAME'].includes(error.code)) throw error;
     }
   }
+
+  await query(appointmentNumberSchema);
+  await query(rescheduleHistorySchema);
 
   // 10. appointments
   await query(`
@@ -1660,6 +1685,10 @@ export const initDB = async () => {
   try {
     await query(`ALTER TABLE roles ADD COLUMN status VARCHAR(30) DEFAULT 'active'`);
   } catch (e) {}
+  try {
+    await query('ALTER TABLE roles ADD COLUMN data_scope JSON NULL');
+    await query(`UPDATE roles SET data_scope=JSON_OBJECT('type','system','all_stores',false,'store_ids',JSON_ARRAY()) WHERE code='super_admin'`);
+  } catch (error) { if (error.code !== 'ER_DUP_FIELDNAME') throw error; }
   // 31. permissions
   await query(`
     CREATE TABLE IF NOT EXISTS permissions (
@@ -1697,6 +1726,9 @@ export const initDB = async () => {
   try {
     await query(`ALTER TABLE admin_users ADD COLUMN token_version INT NOT NULL DEFAULT 0`);
   } catch (e) {}
+  try { await query('ALTER TABLE admin_users ADD COLUMN data_scope JSON NULL'); }
+  catch (error) { if (error.code !== 'ER_DUP_FIELDNAME') throw error; }
+  await migrateRoleMemberDataScopes();
   await query(`
     CREATE TABLE IF NOT EXISTS admin_user_stores (
       admin_user_id BIGINT UNSIGNED NOT NULL,
@@ -1999,6 +2031,7 @@ export const initDB = async () => {
     const adminCount = await get(`SELECT COUNT(*) as count FROM admin_users`);
     if (Number(adminCount?.count || 0) > 0) {
       let role = await get(`SELECT id FROM roles WHERE code = 'doctor' LIMIT 1`);
+      const newDoctorRole = !role;
       if (!role) {
         const result = await run(
           `INSERT INTO roles (name, code, description, status) VALUES (?, ?, ?, ?)`,
@@ -2017,7 +2050,7 @@ export const initDB = async () => {
         'schedule:view',
         'schedule:edit'
       ];
-      for (const permission of doctorPermissions) {
+      for (const permission of newDoctorRole ? migratePermissionCodes(doctorPermissions, 'doctor') : []) {
         const existingPermission = await get(
           `SELECT id FROM permissions WHERE role_id = ? AND permission_resource = ? LIMIT 1`,
           [role.id, permission]
@@ -2371,6 +2404,7 @@ export const initDB = async () => {
   await initBackendPromoterSchema(query);
   await query('SET FOREIGN_KEY_CHECKS = 1;');
 
+  await migrateAdminPermissions(query, transaction);
   console.log('MySQL Database tables verified/created successfully.');
 };
 

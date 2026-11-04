@@ -47,7 +47,7 @@ defineExpose({load,openDetail})
 </script>
 <template>
   <div class="panel">
-    <div class="filter-bar"><strong>送厂批次</strong><div class="actions"><button class="btn btn-outline" @click="load">刷新</button><button class="btn btn-primary" @click="openCreate">汇总口模 / 新建批次</button></div></div>
+    <div class="filter-bar"><strong>送厂批次</strong><div class="actions"><button class="btn btn-outline" @click="load">刷新</button><button v-permission="'fulfillment:batch'" class="btn btn-primary" @click="openCreate">汇总口模 / 新建批次</button></div></div>
     <div class="panel-body"><table class="data-table" v-resizable><thead><tr><th>批次编号</th><th>制作工厂</th><th>口模数量</th><th>回货进度</th><th>状态</th><th>快递 / 运单</th><th style="width:120px;min-width:120px;text-align:right">操作</th></tr></thead><tbody>
       <tr v-for="b in batches" :key="b.id"><td>{{ b.batch_no }}</td><td>{{ b.factory_name }}</td><td>{{ b.item_count }}</td><td>{{ b.returned_count }} / {{ b.item_count }}</td><td><t-tag size="small" variant="light">{{ batchLabel(b) }}</t-tag></td><td>{{ b.carrier || '未寄出' }}<small>{{ b.tracking_no }}</small></td><td style="text-align:right"><button class="btn btn-xs btn-outline" @click="openDetail(b.id)">批次详情</button></td></tr>
       <tr v-if="!batches.length"><td colspan="7" class="empty">暂无送厂批次</td></tr>
@@ -63,7 +63,7 @@ defineExpose({load,openDetail})
       </tbody></table></div>
       <t-pagination :current="readyPage" :page-size="50" :total="readyTotal" :show-page-size="false" @change="changeReadyPage" />
     </div>
-    <div class="footer"><span>已选择 {{ selected.length }} 件</span><button class="btn btn-outline" @click="createVisible=false">关闭</button><button class="btn btn-primary" :disabled="busy" @click="create">生成待寄批次</button></div>
+    <div class="footer"><span>已选择 {{ selected.length }} 件</span><button class="btn btn-outline" @click="createVisible=false">关闭</button><button v-permission="'fulfillment:batch'" class="btn btn-primary" :disabled="busy" @click="create">生成待寄批次</button></div>
   </t-dialog>
   <t-dialog v-model:visible="detailVisible" header="送厂批次与制作清单" width="min(1100px, 94vw)" placement="center" :footer="false">
     <template v-if="detail">
@@ -83,15 +83,15 @@ defineExpose({load,openDetail})
           <p v-if="item.feedback" class="feedback">工厂反馈：{{ item.feedback }}</p>
           <div v-if="item.receipt" class="receipt"><h4>设备回店验收</h4><p>设备编号：{{ item.receipt.device_serial_no }} · 存放位置：{{ item.receipt.storage_location }}</p><p>验收人：{{ item.receipt.receiver_name }} · {{ shanghaiTime(item.receipt.received_at) }}</p><p v-if="item.receipt.note">{{ item.receipt.note }}</p></div>
           <div v-if="detail.status==='shipped'" class="actions">
-            <button v-if="item.status==='shipped'" class="btn btn-xs btn-primary" @click="openAction('received',item)">工厂签收</button>
-            <button v-if="['received','exception'].includes(item.status)" class="btn btn-xs btn-primary" @click="openAction('producing',item)">制作 / 恢复制作</button>
-            <button v-if="['shipped','received','producing'].includes(item.status)" class="btn btn-xs btn-warning" @click="openAction('exception',item)">登记异常</button>
-            <button v-if="['shipped','received','producing','exception'].includes(item.status)" class="btn btn-xs btn-outline" @click="openAction('retake',item)">重新取模</button>
-            <button v-if="['received','producing'].includes(item.status)" class="btn btn-xs btn-success" @click="openAction('receipt',item)">此件回货验收</button>
+            <button v-permission="'fulfillment:progress'" v-if="item.status==='shipped'" class="btn btn-xs btn-primary" @click="openAction('received',item)">工厂签收</button>
+            <button v-permission="'fulfillment:progress'" v-if="['received','exception'].includes(item.status)" class="btn btn-xs btn-primary" @click="openAction('producing',item)">制作 / 恢复制作</button>
+            <button v-permission="'fulfillment:progress'" v-if="['shipped','received','producing'].includes(item.status)" class="btn btn-xs btn-warning" @click="openAction('exception',item)">登记异常</button>
+            <button v-permission="'fulfillment:progress'" v-if="['shipped','received','producing','exception'].includes(item.status)" class="btn btn-xs btn-outline" @click="openAction('retake',item)">重新取模</button>
+            <button v-permission="'fulfillment:receipt'" v-if="['received','producing'].includes(item.status)" class="btn btn-xs btn-success" @click="openAction('receipt',item)">此件回货验收</button>
           </div>
         </section>
       </div>
-      <div class="footer"><button class="btn btn-outline" @click="detailVisible=false">关闭</button><button v-if="detail.status!=='cancelled'" class="btn btn-outline" @click="exportManifest(detail)">导出制作清单 CSV</button><template v-if="detail.status==='draft'"><button class="btn btn-outline" :disabled="busy" @click="cancel">取消批次</button><button class="btn btn-primary" @click="openAction('ship')">确认寄出</button></template></div>
+      <div class="footer"><button class="btn btn-outline" @click="detailVisible=false">关闭</button><button v-permission="'fulfillment:export'" v-if="detail.status!=='cancelled'" class="btn btn-outline" @click="exportManifest(detail)">导出制作清单 CSV</button><template v-if="detail.status==='draft'"><button v-permission="'fulfillment:cancel'" class="btn btn-outline" :disabled="busy" @click="cancel">取消批次</button><button v-permission="'fulfillment:ship'" class="btn btn-primary" @click="openAction('ship')">确认寄出</button></template></div>
     </template>
   </t-dialog>
   <t-dialog v-model:visible="actionVisible" :header="actionName" placement="center" :footer="false">

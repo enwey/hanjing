@@ -4,6 +4,7 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
 import { navigateToParent } from '@/utils/routeNavigation'
 
@@ -37,18 +38,7 @@ const getLocalTodayStr = () => {
   return `${year}-${month}-${day}`
 }
 
-const normalizeDateOnly = (value: any) => {
-  const text = String(value || '').trim()
-  if (!text) return ''
-  const match = text.match(/^(\d{4}-\d{2}-\d{2})/)
-  if (match) return match[1]
-  const parsed = new Date(text)
-  if (Number.isNaN(parsed.getTime())) return ''
-  const year = parsed.getFullYear()
-  const month = String(parsed.getMonth() + 1).padStart(2, '0')
-  const day = String(parsed.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+const normalizeDateOnly = (value: any) => value ? formatShanghaiDateTime(value, false).slice(0, 10) : ''
 
 const selectedDate = ref(getLocalTodayStr())
 const selectedSlot = ref('09:00-09:30')
@@ -70,17 +60,24 @@ const stores = ref<any[]>([])
 const doctors = ref<any[]>([])
 const bookingInterval = ref(30)
 
-const currentYear = ref(new Date().getFullYear())
-const currentMonth = ref(new Date().getMonth())
+const currentYear = ref(Number(getLocalTodayStr().slice(0, 4)))
+const currentMonth = ref(Number(getLocalTodayStr().slice(5, 7)) - 1)
+const canGoPreviousMonth = computed(() =>
+  `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}` > getLocalTodayStr().slice(0, 7))
+let monthRequestVersion = 0
+let monthChangeVersion = 0
 const doctorMonthSchedules = ref<any[]>([])
 
 async function fetchDoctorMonthSchedules() {
+  const version = ++monthRequestVersion
+  doctorMonthSchedules.value = []
   if (!selectedDoctor.value) return
   const monthStr = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}`
   try {
-    const res: any = await request.get('/api/admin/schedules', {
+    const res: any = await request.get('/api/admin/appointments/options/schedules', {
       params: { doctor_id: selectedDoctor.value, date: monthStr }
     })
+    if (version !== monthRequestVersion) return
     doctorMonthSchedules.value = res.data || []
   } catch (error) {
     console.error('获取医生月排班失败:', error)
@@ -92,10 +89,10 @@ const datesList = computed(() => {
   const month = currentMonth.value
   const result = []
   
-  const today = new Date()
-  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month
+  const [todayYear, todayMonth, todayDay] = getLocalTodayStr().split('-').map(Number)
+  const isCurrentMonth = todayYear === year && todayMonth - 1 === month
   
-  const startDay = isCurrentMonth ? today.getDate() : 1
+  const startDay = isCurrentMonth ? todayDay : 1
   const endDay = new Date(year, month + 1, 0).getDate()
   
   const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
@@ -103,6 +100,7 @@ const datesList = computed(() => {
   for (let d = startDay; d <= endDay; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
     const dateObj = new Date(year, month, d)
+    if (dateStr < getLocalTodayStr()) continue
     const hasSchedule = doctorMonthSchedules.value.some((s: any) => s.date === dateStr)
     
     result.push({
@@ -117,9 +115,16 @@ const datesList = computed(() => {
 
 async function changeMonth(delta: number) {
   const newDate = new Date(currentYear.value, currentMonth.value + delta, 1)
+  const targetMonth = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`
+  if (targetMonth < getLocalTodayStr().slice(0, 7)) return
+  const version = ++monthChangeVersion
+  selectedDate.value = ''
+  selectedSlot.value = ''
+  timeSlots.value = []
   currentYear.value = newDate.getFullYear()
   currentMonth.value = newDate.getMonth()
   await fetchDoctorMonthSchedules()
+  if (version !== monthChangeVersion) return
   
   const match = datesList.value.find(d => d.hasSchedule)
   if (match) {
@@ -130,6 +135,7 @@ async function changeMonth(delta: number) {
 }
 
 function selectDate(dateStr: string) {
+  if (dateStr < getLocalTodayStr()) return
   selectedDate.value = dateStr
 }
 
@@ -148,7 +154,7 @@ const selectableDoctors = computed(() => {
 
 const fetchSettings = async () => {
   try {
-    const res: any = await request.get('/api/admin/settings')
+    const res: any = await request.get('/api/admin/appointments/options/booking-settings')
     if (res.code === 200 && res.data) {
       requireDeposit.value = res.data.require_deposit === true || res.data.require_deposit === 'true'
       depositAmount.value = (Number(res.data.deposit_amount || 0) / 100).toFixed(2)
@@ -193,8 +199,8 @@ onMounted(async () => {
   await fetchStoresAndDoctors()
   if (isReschedule.value) {
     try {
-      const res: any = await request.get(`/api/admin/appointments`)
-      const appt = res.data.find((a: any) => a.id.toString() === rescheduleId.value)
+      const res: any = await request.get(`/api/admin/appointments/${rescheduleId.value}`)
+      const appt = res.data
       if (appt) {
         selectedPatientId.value = appt.patient_id.toString()
         patientOptions.value = [{
@@ -213,7 +219,7 @@ onMounted(async () => {
         }
         selectedStore.value = String(appt.store_id || stores.value.find(s => s.name === appt.store_name)?.id || '')
         selectedDoctor.value = String(appt.doctor_id || doctors.value.find(d => d.name === appt.doctor_name)?.id || '')
-        selectedDate.value = normalizeDateOnly(appt.appointment_date)
+        selectedDate.value = normalizeDateOnly(appt.appointment_date) < getLocalTodayStr() ? getLocalTodayStr() : normalizeDateOnly(appt.appointment_date)
         if (selectedDate.value) {
           const [year, month] = selectedDate.value.split('-').map(Number)
           currentYear.value = year
@@ -259,8 +265,8 @@ watch(selectedDoctor, (newDoctorId) => {
 
 async function fetchStoresAndDoctors() {
   const [storeRes, doctorRes]: any[] = await Promise.all([
-    request.get('/api/admin/stores'),
-    request.get('/api/admin/doctors')
+    request.get('/api/admin/appointments/options/stores'),
+    request.get('/api/admin/appointments/options/doctors')
   ])
   stores.value = storeRes.data || []
   doctors.value = doctorRes.data || []
@@ -381,31 +387,53 @@ function handleRemovePatient() {
 
 const timeSlots = ref<Array<{ time: string; status: string; label: string; period: string; booked?: number; total?: number; schedule_id?: number }>>([])
 
+const slotLoadState = ref<'loading' | 'error' | 'ready'>('ready')
+const hasDaySlots = ref(false)
+const emptySlotText = computed(() => slotLoadState.value === 'loading' ? '正在加载时段' : slotLoadState.value === 'error' ? '时段加载失败，请重试' : hasDaySlots.value ? '当日预约时段已全部过期' : '未排班')
+
+let slotRequestVersion = 0
 async function fetchTimeSlots() {
-  if (!selectedDoctor.value || !selectedDate.value) return
+  const version = ++slotRequestVersion
+  const date = selectedDate.value
+  timeSlots.value = []
+  hasDaySlots.value = false
+  slotLoadState.value = 'ready'
+  if (!selectedDoctor.value || !date) { selectedSlot.value = ''; return }
+  slotLoadState.value = 'loading'
   try {
-    const res: any = await request.get('/api/admin/day-slots', {
+    const res: any = await request.get('/api/admin/appointments/options/day-slots', {
       params: {
         doctor_id: selectedDoctor.value,
         store_id: selectedStore.value,
-        date: selectedDate.value
+        date
       }
     })
-    timeSlots.value = res.data || []
+    if (version !== slotRequestVersion || date !== selectedDate.value) return
+    hasDaySlots.value = (res.data || []).length > 0
+    slotLoadState.value = 'ready'
+    timeSlots.value = (res.data || []).filter((slot: any) =>
+      Date.parse(`${selectedDate.value}T${slot.time.split('-')[1].trim()}:00+08:00`) > Date.now())
     const firstAvailable = timeSlots.value.find(slot => slot.status === 'available')
-    selectedSlot.value = firstAvailable?.time || (timeSlots.value[0]?.time || '')
+    if (!timeSlots.value.some(slot => slot.time === selectedSlot.value)) {
+      selectedSlot.value = firstAvailable?.time || (timeSlots.value[0]?.time || '')
+    }
   } catch (error) {
-    MessagePlugin.error('加载号源失败')
+    if (version === slotRequestVersion) { slotLoadState.value = 'error'; selectedSlot.value = ''; MessagePlugin.error('加载号源失败') }
   }
 }
 
 function selectSlot(slot: any) {
+  if (!(Date.parse(`${selectedDate.value}T${slot.time.split('-')[1].trim()}:00+08:00`) > Date.now())) {
+    MessagePlugin.warning('该时段已过期，请选择其他时段')
+    fetchTimeSlots()
+    return
+  }
   selectedSlot.value = slot.time
 }
 
 function handleCancel() {
   if (isReschedule.value) {
-    navigateToParent(router, route, `/appointment/detail/${rescheduleId.value}`)
+    router.push(`/appointment/detail/${rescheduleId.value}`)
   } else {
     navigateToParent(router, route, '/appointment')
   }
@@ -441,6 +469,12 @@ async function handleCreate() {
     return
   }
 
+  if (!(Date.parse(`${dateStr}T${selectedSlot.value.split('-')[1].trim()}:00+08:00`) > Date.now())) {
+    MessagePlugin.error('该时段已过期，请重新选择预约时间')
+    await fetchTimeSlots()
+    return
+  }
+
   const slotHour = parseInt(selectedSlot.value.split(':')[0])
   const period = slotHour < 12 ? 'morning' : 'afternoon'
 
@@ -457,7 +491,7 @@ async function handleCreate() {
         symptom_desc: remarks.value
       })
       MessagePlugin.success(`预约改约成功！已修改就诊时间。`)
-      navigateToParent(router, route, `/appointment/detail/${rescheduleId.value}`)
+      router.push(`/appointment/detail/${rescheduleId.value}`)
     } else {
       const parsedConsultFee = Math.round((Number(consultFee.value) || 0) * 100)
       const parsedDepositAmount = requireDeposit.value
@@ -524,7 +558,7 @@ const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
             @change="handlePatientChange"
             clearable
           />
-          <t-button variant="outline" theme="primary" @click="handleAddNewPatient">
+          <t-button v-permission="'patient:add'" variant="outline" theme="primary" @click="handleAddNewPatient">
             <AppIcon name="plus" />  新患者建档
           </t-button>
         </div>
@@ -580,9 +614,9 @@ const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
       <div class="panel-body">
         <!-- Month Selector Header -->
         <div class="calendar-month-selector">
-          <span class="month-arrow" @click="changeMonth(-1)">‹</span>
+          <button type="button" class="month-arrow" aria-label="上个月" :disabled="!canGoPreviousMonth" @click="changeMonth(-1)">‹</button>
           <span class="month-label">{{ currentYear }}年{{ String(currentMonth + 1).padStart(2, '0') }}月</span>
-          <span class="month-arrow" @click="changeMonth(1)">›</span>
+          <button type="button" class="month-arrow" aria-label="下个月" @click="changeMonth(1)">›</button>
           
           <div class="legend-container" style="margin-left: auto;">
             <span class="legend-item"><span class="dot green">●</span> 可约</span>
@@ -634,9 +668,9 @@ const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
           <div>
             <strong style="color: #DC2626;">{{ selectedDate }}</strong> 
             <span style="color: #4B5563; margin: 0 6px;">{{ selectedDoctorName }}医生</span>
-            <strong style="color: #DC2626;">未排班</strong>
+            <strong style="color: #DC2626;">{{ emptySlotText }}</strong>
           </div>
-          <span style="font-size: 12px; color: #9CA3AF;">您可以尝试切换就诊日期、就诊门店或医生</span>
+          <span style="font-size: 12px; color: #9CA3AF;">{{ hasDaySlots && slotLoadState === 'ready' ? '已结束的时段不可预约，请选择其他日期' : '您可以尝试切换就诊日期、就诊门店或医生' }}</span>
         </div>
       </div>
     </div>
@@ -693,7 +727,7 @@ const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
           </dl>
           <div class="appointment-summary-actions">
             <t-button variant="outline" theme="default" @click="handleCancel">取消</t-button>
-            <t-button theme="primary" :loading="creatingAppointment" @click="handleCreate">{{ isReschedule ? '确认改约' : '确认创建' }}</t-button>
+            <t-button v-permission="'appointment:add'" theme="primary" :loading="creatingAppointment" @click="handleCreate">{{ isReschedule ? '确认改约' : '确认创建' }}</t-button>
           </div>
         </div>
       </aside>
@@ -956,6 +990,7 @@ const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
   margin-bottom: 16px;
 }
 .month-arrow {
+  border: 0; background: transparent; width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
   font-size: 24px;
   color: #9CA3AF;
   cursor: pointer;
@@ -963,9 +998,11 @@ const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
   transition: color 150ms;
   line-height: 1;
 }
-.month-arrow:hover {
+.month-arrow:not(:disabled):hover {
   color: var(--primary-500);
 }
+.month-arrow:disabled { color: #d1d5db; cursor: not-allowed; }
+.month-arrow:focus-visible { outline: 2px solid var(--primary-500); border-radius: 4px; }
 .month-label {
   font-size: 15px;
   font-weight: 700;

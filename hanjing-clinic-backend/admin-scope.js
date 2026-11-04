@@ -1,4 +1,6 @@
+import { patientReadScope, orderReadScope, dataStoreScope } from './data-read-scope.js';
 export function patientAccessScope(user, alias = 'p') {
+  if (user.read_data_scope) return patientReadScope(user, alias);
   if (!/^[a-z][a-z0-9_]*$/i.test(alias)) throw new Error('Invalid SQL alias');
   if (user.role === 'super_admin') return { sql: '1=1', params: [] };
   const stores = [...new Set((user.store_ids || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
@@ -12,6 +14,7 @@ export function patientAccessScope(user, alias = 'p') {
 }
 
 export function orderAccessScope(user, alias = 'o') {
+  if (user.read_data_scope) return orderReadScope(user, alias);
   if (!/^[a-z][a-z0-9_]*$/i.test(alias)) throw new Error('Invalid SQL alias');
   if (user.role === 'super_admin') return { sql: '1=1', params: [] };
   const stores = [...new Set((user.store_ids || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
@@ -28,6 +31,11 @@ export function orderAccessScope(user, alias = 'o') {
 
 export function fulfillmentAccessScope(user, alias = 'c') {
   if (!/^[a-z][a-z0-9_]*$/i.test(alias)) throw new Error('Invalid SQL alias');
+  if (user.read_data_scope) {
+    const scope = dataStoreScope(user, `${alias}.store_id`);
+    if (scope) return scope;
+    return { sql: `(${alias}.created_by=? OR ${alias}.technician_id=? OR EXISTS(SELECT 1 FROM orders own_order WHERE own_order.id=${alias}.order_id AND ${orderReadScope(user, 'own_order').sql}))`, params: [Number(user.id)||0, Number(user.id)||0, ...orderReadScope(user, 'own_order').params] };
+  }
   if (user.role === 'super_admin') return { sql: '1=1', params: [] };
   const stores = [...new Set((user.store_ids || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
   if (!stores.length) return { sql: '1=0', params: [] };

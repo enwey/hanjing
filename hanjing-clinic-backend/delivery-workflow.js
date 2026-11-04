@@ -1,3 +1,4 @@
+import { dashboardScope } from './dashboard-scope.js';
 import crypto from 'node:crypto';
 import { fulfillmentAccessScope, readPagination } from './admin-scope.js';
 import { lockFulfillmentCase as lockCase, FULFILLMENT_PAID_STATUSES } from './fulfillment-guard.js';
@@ -21,7 +22,7 @@ async function accessBatch(id, user) {
     LEFT JOIN admin_users a ON a.id=b.sender_id WHERE b.id=?`, [id]);
   if (!b) fail('送厂批次不存在或无权访问', 404);
   const items = await query('SELECT * FROM fulfillment_factory_items WHERE batch_id=? ORDER BY fulfillment_case_id', [id]);
-  if (!items.length && user.role !== 'super_admin' && Number(b.created_by) !== Number(user.id)) fail('送厂批次不存在或无权访问', 404);
+  if (!items.length && (user.read_data_scope ? dashboardScope(user).kind !== 'all' : user.role !== 'super_admin') && Number(b.created_by) !== Number(user.id)) fail('送厂批次不存在或无权访问', 404);
   for (const item of items) await accessCase(item.fulfillment_case_id, user);
   return { ...b, items };
 }
@@ -169,8 +170,9 @@ export function registerDeliveryWorkflow(app) {
   route('get','/batches',async(req,res)=>{
     const scope=fulfillmentAccessScope(req.user), pagination=readPagination(req.query);
     // Check the whole batch in SQL, before pagination; never leak partial batches.
-    const emptyScope=req.user.role==='super_admin' ? '1=1' : 'b.created_by=? OR EXISTS (SELECT 1 FROM fulfillment_factory_items own_item WHERE own_item.batch_id=b.id)';
-    if(req.user.role!=='super_admin')scope.params.unshift(req.user.id);
+    const systemScope=dashboardScope(req.user).kind==='all';
+    const emptyScope=systemScope ? '1=1' : 'b.created_by=? OR EXISTS (SELECT 1 FROM fulfillment_factory_items own_item WHERE own_item.batch_id=b.id)';
+    if(!systemScope)scope.params.unshift(req.user.id);
     const where=`(${emptyScope}) AND NOT EXISTS (SELECT 1 FROM fulfillment_factory_items i
       JOIN fulfillment_cases c ON c.id=i.fulfillment_case_id JOIN patients p ON p.id=c.patient_id
       WHERE i.batch_id=b.id AND NOT (${scope.sql}))`;

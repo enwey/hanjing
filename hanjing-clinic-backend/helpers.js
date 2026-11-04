@@ -1,3 +1,5 @@
+import { adminPermissionContext, assertPermissionDelegation } from './permission-context.js';
+import { attachDataScope } from './data-scope.js';
 import { canUseLocalDevLogin } from './local-dev-login.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -86,7 +88,7 @@ export const authenticateToken = (req, res, next) => {
     }
     try {
       const admin = await get(
-        `SELECT u.id, u.username, u.name, u.all_stores, u.doctor_id, u.role_id, u.token_version, r.code AS role
+        `SELECT u.id, u.username, u.name, u.all_stores, u.doctor_id, u.role_id, u.token_version, u.data_scope, r.data_scope AS role_data_scope, r.code AS role
          FROM admin_users u JOIN roles r ON r.id = u.role_id
          WHERE u.id = ? AND u.status = 'online' AND r.status = 'active'`,
         [user.id]
@@ -95,7 +97,8 @@ export const authenticateToken = (req, res, next) => {
         return res.status(401).json({ code: 401, message: '登录已失效，请重新登录' });
       }
       admin.permissions = (await query('SELECT permission_resource FROM permissions WHERE role_id = ?', [admin.role_id])).map(p => p.permission_resource);
-      if (!hasAdminPermission(admin, requiredAdminPermissions(req.method, req.route?.path))) {
+      req.permissionContext = await adminPermissionContext(req);
+      if (!hasAdminPermission(admin, requiredAdminPermissions(req.method, req.path, req.permissionContext))) {
         return res.status(403).json({ code: 403, message: '没有此操作的权限' });
       }
       admin.all_stores = Number(admin.all_stores) === 1;
@@ -105,12 +108,16 @@ export const authenticateToken = (req, res, next) => {
           : 'SELECT store_id FROM admin_user_stores WHERE admin_user_id = ? ORDER BY store_id',
         admin.all_stores ? [] : [admin.id]
       )).map(row => Number(row.store_id));
-      if (admin.role !== 'super_admin' && admin.store_ids.length === 0 && /^\/api\/admin\/(patients|appointments|orders|pay|im|assessments|dashboard|global-search|notifications|reports)(\/|$)/.test(req.route?.path || '')) {
+      await attachDataScope(admin);
+      await assertPermissionDelegation(req, admin);
+      admin.read_data_scope = req.method === 'GET' || req.method === 'HEAD';
+      if (!admin.read_data_scope && admin.role !== 'super_admin' && admin.store_ids.length === 0 && /^\/api\/admin\/(patients|appointments|orders|pay|im|assessments|global-search|notifications|reports)(\/|$)/.test(req.route?.path || '')) {
         return res.status(403).json({ code: 403, message: '请先由管理员配置所属门店' });
       }
       req.user = admin;
       next();
     } catch (error) {
+      if (error.statusCode === 403) return res.status(403).json({code:403,message:error.message});
       return res.status(503).json({ code: 503, message: '暂时无法验证管理员权限' });
     }
   });
@@ -141,7 +148,7 @@ export const authenticatePromoterToken = (req, res, next) => {
 
 // Doctors are scoped to their own clinical records; other staff are scoped to their store.
 export const verifyPatientAccess = async (patientId, user) => {
-  if (user.role === 'super_admin') return true;
+  if (!user.read_data_scope && user.role === 'super_admin') return true;
   const scope = patientAccessScope(user);
   const record = await get(`SELECT 1 FROM patients p WHERE p.id = ? AND ${scope.sql} LIMIT 1`, [patientId, ...scope.params]);
   return !!record;
@@ -213,6 +220,10 @@ export const verifyUserAccess = async (userId, user) => {
     return false;
   }
 
+  if (user.read_data_scope) {
+    const scope = patientAccessScope(user);
+    return !!await get(`SELECT 1 FROM patients p WHERE p.id IN (${scopedPatientIds.map(() => '?').join(',')}) AND ${scope.sql} LIMIT 1`, [...scopedPatientIds, ...scope.params]);
+  }
   const placeholders = scopedPatientIds.map(() => '?').join(',');
   if (user.role === 'doctor') {
     const storeIds = assignedStoreIds(user);

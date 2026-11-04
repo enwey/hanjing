@@ -1,3 +1,4 @@
+import { appointmentReadScope, orderReadScope } from './data-read-scope.js';
 import { transaction } from './db.js';
 import { businessError } from './distribution-ledger.js';
 
@@ -9,7 +10,7 @@ export async function readStoreReport(user, filters) {
   let allowedStoreIds = storeId ? [storeId] : null;
   if ((storeId !== null && (!Number.isSafeInteger(storeId) || storeId <= 0)) ||
       (doctorId !== null && (!Number.isSafeInteger(doctorId) || doctorId <= 0))) throw businessError('门店或医生编号不正确');
-  if (user.role !== 'super_admin') {
+  if (!user.read_data_scope && user.role !== 'super_admin') {
     if (user.role === 'doctor') {
       if (!user.doctor_id || (doctorId && doctorId !== Number(user.doctor_id))) throw businessError('无权查看该医生报表', 403);
       doctorId = Number(user.doctor_id);
@@ -22,19 +23,23 @@ export async function readStoreReport(user, filters) {
   }
   const start = `${year}-01-01`, end = `${year + 1}-01-01`;
   const storePlaceholders = allowedStoreIds?.map(() => '?').join(',') || '';
-  const appointmentStoreScope = allowedStoreIds ? ` AND a.store_id IN (${storePlaceholders})` : '';
+  const dataAppt = user.read_data_scope ? appointmentReadScope(user, 'a') : {sql:'1=1',params:[]};
+  const dataOrder = user.read_data_scope ? orderReadScope(user, 'o') : {sql:'1=1',params:[]};
+  const appointmentStoreScope = (allowedStoreIds ? ` AND a.store_id IN (${storePlaceholders})` : '') + ` AND ${dataAppt.sql}`;
   const orderStoreScope = allowedStoreIds
     ? ` AND COALESCE(a.store_id, CAST(JSON_UNQUOTE(JSON_EXTRACT(o.shipping_address, '$.storeId')) AS UNSIGNED)) IN (${storePlaceholders})`
     : '';
-  const storeParams = allowedStoreIds || [];
+  const storeParams = [...(allowedStoreIds || []), ...dataAppt.params];
+  const orderParams = [...(allowedStoreIds || []), ...dataOrder.params];
   return transaction(async conn => {
     const [appointments] = await conn.execute(`SELECT a.id, a.doctor_id, d.name AS doctor_name,
       MONTH(a.appointment_date) AS month, a.status FROM appointments a LEFT JOIN doctors d ON d.id = a.doctor_id
       WHERE a.appointment_date >= ? AND a.appointment_date < ?${appointmentStoreScope}
       AND (? IS NULL OR a.doctor_id = ?)`, [start, end, ...storeParams, doctorId, doctorId]);
     // A patient's previous visits do not establish ownership of an unrelated order.
-    const orderScope = `1=1${orderStoreScope} AND (? IS NULL OR a.doctor_id = ?)`;
-    const params = [start, end, ...storeParams, doctorId, doctorId];
+    const orderScope = `1=1${orderStoreScope} AND ${dataOrder.sql} AND (? IS NULL OR a.doctor_id = ?)`;
+    const params = [start, end, ...orderParams, doctorId, doctorId];
+    const appointmentParams = [start, end, ...storeParams, doctorId, doctorId];
     const [receipts] = await conn.execute(`SELECT MONTH(o.pay_at) AS month, a.doctor_id, d.name AS doctor_name,
       SUM(o.pay_amount) AS amount FROM orders o LEFT JOIN appointments a ON a.id = o.appointment_id
       LEFT JOIN doctors d ON d.id = a.doctor_id WHERE o.pay_at >= ? AND o.pay_at < ? AND o.pay_amount > 0
@@ -47,12 +52,12 @@ export async function readStoreReport(user, filters) {
       SUM(c.consult_fee+c.deposit_amount) AS amount FROM appointment_charges c
       JOIN appointments a ON a.id=c.appointment_id LEFT JOIN doctors d ON d.id=a.doctor_id
       WHERE c.paid_at >= ? AND c.paid_at < ? ${appointmentStoreScope} AND (? IS NULL OR a.doctor_id = ?)
-      GROUP BY MONTH(c.paid_at), a.doctor_id, d.name`, params);
+      GROUP BY MONTH(c.paid_at), a.doctor_id, d.name`, appointmentParams);
     const [chargeRefunds] = await conn.execute(`SELECT MONTH(r.refunded_at) AS month, a.doctor_id, d.name AS doctor_name,
       SUM(r.amount) AS amount FROM appointment_charge_refunds r JOIN appointment_charges c ON c.id=r.charge_id
       JOIN appointments a ON a.id=c.appointment_id LEFT JOIN doctors d ON d.id=a.doctor_id
       WHERE r.refunded_at >= ? AND r.refunded_at < ? AND r.status='refunded' ${appointmentStoreScope}
-      AND (? IS NULL OR a.doctor_id = ?) GROUP BY MONTH(r.refunded_at), a.doctor_id, d.name`, params);
+      AND (? IS NULL OR a.doctor_id = ?) GROUP BY MONTH(r.refunded_at), a.doctor_id, d.name`, appointmentParams);
     const [ratings] = await conn.execute(`SELECT MONTH(e.created_at) AS month, e.doctor_id, COUNT(*) AS count,
       SUM(e.rating) AS total, SUM(e.rating >= 4) AS positive FROM appointment_evaluations e
       JOIN appointments a ON a.id = e.appointment_id WHERE e.created_at >= ? AND e.created_at < ?

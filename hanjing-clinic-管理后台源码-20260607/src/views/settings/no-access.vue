@@ -1,0 +1,1 @@
+<template><div class="page-container"><div class="panel" style="padding:48px;text-align:center"><h2>暂无可访问的菜单</h2><p>请联系管理员分配菜单权限。</p></div></div></template>

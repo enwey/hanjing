@@ -11,7 +11,7 @@ const createOrderVisible = ref(false)
 const canCreateOrder = computed(() => {
   try {
     const user = JSON.parse(localStorage.getItem('user_info') || '{}')
-    return user.role_code === 'super_admin' || ['order:edit', 'patient:view', 'distribution:view'].every(key => user.permissions?.includes(key))
+    return user.role_code === 'super_admin' || user.permissions?.includes('order:add')
   } catch { return false }
 })
 const searchKeyword = ref(localStorage.getItem('order_list_search_keyword') || '')
@@ -349,8 +349,8 @@ watch(operationColumnWidth, () => {
         <div class="page-title-sub">管理所有商品及服务订单</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出</button>
-        <button v-if="canCreateOrder" class="btn btn-primary" @click="createOrderVisible = true"><AppIcon name="plus" /> 创建订单</button>
+        <button v-permission="'order:export'" class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出</button>
+        <button v-permission="'order:add'" v-if="canCreateOrder" class="btn btn-primary" @click="createOrderVisible = true"><AppIcon name="plus" /> 创建订单</button>
       </div>
     </div>
 
@@ -418,9 +418,9 @@ watch(operationColumnWidth, () => {
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;">
                   <button class="btn btn-xs btn-outline" @click="openOrderDetail(row.id)">详情</button>
-                  <button v-if="row.status === 'processing'" class="btn btn-xs btn-outline" @click="handleNotify(row)" style="margin-right: 4px;">通知到货</button>
-                  <button v-if="row.status === 'processing' || (row.type === 'offline' && row.status === 'paid')" class="btn btn-xs btn-success" @click="handleComplete(row)">提货核销</button>
-                  <button v-if="row.status === 'shipping'" class="btn btn-xs btn-primary" @click="handleShip(row)">发货</button>
+                  <button v-permission="'order:notify'" v-if="row.status === 'processing'" class="btn btn-xs btn-outline" @click="handleNotify(row)" style="margin-right: 4px;">通知到货</button>
+                  <button v-permission="'order:complete'" v-if="row.status === 'processing' || (row.type === 'offline' && row.status === 'paid')" class="btn btn-xs btn-success" @click="handleComplete(row)">提货核销</button>
+                  <button v-permission="'order:ship'" v-if="row.status === 'shipping'" class="btn btn-xs btn-primary" @click="handleShip(row)">发货</button>
                 </div>
               </td>
             </tr>

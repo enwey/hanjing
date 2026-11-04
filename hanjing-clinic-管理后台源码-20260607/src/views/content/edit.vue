@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -142,13 +143,13 @@ async function handlePublish() {
     return
   }
   try {
-    const payload = buildPayload('approved')
+    const payload = buildPayload(hasPermission('content:audit') ? 'approved' : 'pending')
     if (isEdit.value && articleId.value) {
       await request.put(`/api/admin/content/articles/${articleId.value}`, payload)
-      MessagePlugin.success('文章已更新并发布')
+      MessagePlugin.success('文章已保存')
     } else {
       await request.post('/api/admin/content/articles', payload)
-      MessagePlugin.success('文章发布成功')
+      MessagePlugin.success('文章已提交')
     }
     navigateToParent(router, route, '/content')
   } catch (error) {
@@ -161,7 +162,7 @@ const categoryList = ref<string[]>([])
 
 async function fetchCategories() {
   try {
-    const res: any = await request.get('/api/admin/content/categories')
+    const res: any = await request.get('/api/admin/content/options/categories')
     if (res.code === 200 && res.data) {
       categoryList.value = res.data.map((cat: any) => cat.name)
     }
@@ -172,7 +173,7 @@ async function fetchCategories() {
 
 async function fetchProducts() {
   try {
-    const res: any = await request.get('/api/admin/products')
+    const res: any = await request.get('/api/admin/content/options/products')
     if (res.code === 200 && Array.isArray(res.data)) {
       productOptions.value = res.data
         .filter((item: any) => String(item.name || '').trim())
@@ -187,6 +188,7 @@ async function fetchProducts() {
 }
 
 async function fetchDoctors() {
+  if (!hasPermission('doctor:view')) return
   try {
     const res: any = await request.get('/api/admin/doctors')
     if (res.code === 200 && Array.isArray(res.data)) {
@@ -250,8 +252,8 @@ async function handleDescImageUpload(files: File[], callback: (urls: string[]) =
       </div>
       <div class="action-buttons">
         <button class="btn btn-outline" @click="handlePreview">预览</button>
-        <button class="btn btn-outline" @click="handleSaveDraft">保存草稿</button>
-        <button class="btn btn-primary" @click="handlePublish">发布</button>
+        <button class="btn btn-outline" v-permission="isEdit ? 'content:edit' : 'content:add'" @click="handleSaveDraft">保存草稿</button>
+        <button class="btn btn-primary" v-permission="isEdit ? 'content:edit' : 'content:add'" @click="handlePublish">{{ hasPermission('content:audit') ? '发布' : '提交审核' }}</button>
       </div>
     </div>
 

@@ -380,14 +380,14 @@ async function handleNotifyOrder() {
       <div class="action-buttons" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
         <OrderPaymentActions v-if="order.raw" :key="order.raw.id" :order="order.raw" @changed="fetchOrderDetail" />
         <!-- Print Receipt Action -->
-        <button class="btn btn-outline" v-if="['paid', 'completed', 'shipped'].includes(order.status)" @click="handlePrintReceipt"><AppIcon name="printer" />  打印小票</button>
+        <button v-permission="'order:print'" class="btn btn-outline" v-if="['paid', 'completed', 'shipped'].includes(order.status)" @click="handlePrintReceipt"><AppIcon name="printer" />  打印小票</button>
 
 
         <!-- For online shipping -->
-        <button class="btn btn-primary" v-if="order.type === 'online' && order.status === 'shipping'" @click="handleConfirmShip"><AppIcon name="box" />  确认发货</button>
+        <button v-permission="'order:ship'" class="btn btn-primary" v-if="order.type === 'online' && order.status === 'shipping'" @click="handleConfirmShip"><AppIcon name="box" />  确认发货</button>
         <!-- For offline pending self-pickup -->
-        <button class="btn btn-outline" v-if="order.type === 'offline' && order.status === 'processing'" @click="handleNotifyOrder"><AppIcon name="bell" />  到货通知</button>
-        <button class="btn btn-success" v-if="order.type === 'offline' && (order.status === 'processing' || order.status === 'paid')" @click="handleCompleteOrder"><AppIcon name="check-circle" />  完成自提核销</button>
+        <button v-permission="'order:notify'" class="btn btn-outline" v-if="order.type === 'offline' && order.status === 'processing'" @click="handleNotifyOrder"><AppIcon name="bell" />  到货通知</button>
+        <button v-permission="'order:complete'" class="btn btn-success" v-if="order.type === 'offline' && (order.status === 'processing' || order.status === 'paid')" @click="handleCompleteOrder"><AppIcon name="check-circle" />  完成自提核销</button>
       </div>
     </div>
 
@@ -439,7 +439,7 @@ async function handleNotifyOrder() {
               </div>
               <div v-else class="info-value" style="font-size: 13px; color: #9CA3AF; font-weight: normal; display: flex; justify-content: space-between; align-items: center;">
                 <span>待发货 (暂无快递单号)</span>
-                <button class="btn btn-outline" @click="handleConfirmShip" style="padding: 4px 10px; font-size: 12px; height: 28px; line-height: 1;"><AppIcon name="box" /> 录入发货</button>
+                <button v-permission="'order:ship'" class="btn btn-outline" @click="handleConfirmShip" style="padding: 4px 10px; font-size: 12px; height: 28px; line-height: 1;"><AppIcon name="box" /> 录入发货</button>
               </div>
             </div>
           </template>
@@ -447,8 +447,8 @@ async function handleNotifyOrder() {
           <!-- Self-pickup Info for Offline -->
           <template v-else>
             <div v-if="order.status === 'processing' || order.status === 'paid'" class="info-item" style="grid-column: span 2; display: flex; align-items: center; justify-content: flex-end; gap: 6px; border-left: none;">
-              <button class="btn btn-outline" v-if="order.status === 'processing'" @click="handleNotifyOrder" style="padding: 4px 10px; font-size: 12px; height: 28px; line-height: 1;"><AppIcon name="bell" /> 通知到货</button>
-              <button class="btn btn-success" v-if="order.status === 'processing' || order.status === 'paid'" @click="handleCompleteOrder" style="padding: 4px 10px; font-size: 12px; height: 28px; line-height: 1; border: 1px solid #BBF7D0; background: #ECFDF5; color: #16A34A;"><AppIcon name="check-circle" /> 提货核销</button>
+              <button v-permission="'order:notify'" class="btn btn-outline" v-if="order.status === 'processing'" @click="handleNotifyOrder" style="padding: 4px 10px; font-size: 12px; height: 28px; line-height: 1;"><AppIcon name="bell" /> 通知到货</button>
+              <button v-permission="'order:complete'" class="btn btn-success" v-if="order.status === 'processing' || order.status === 'paid'" @click="handleCompleteOrder" style="padding: 4px 10px; font-size: 12px; height: 28px; line-height: 1; border: 1px solid #BBF7D0; background: #ECFDF5; color: #16A34A;"><AppIcon name="check-circle" /> 提货核销</button>
             </div>
           </template>
         </div>

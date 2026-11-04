@@ -1,29 +1,8 @@
+import { permissionCatalog as catalog } from './permissionCatalog'
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router'
 type RouteSnapshot = Pick<RouteLocationNormalizedLoaded, 'fullPath' | 'path' | 'params' | 'query' | 'meta'> & { name?: string | symbol | null }
 
-const MENU_ROOTS = [
-  '/dashboard',
-  '/appointment',
-  '/queue',
-  '/workbench',
-  '/patient',
-  '/doctor',
-  '/store',
-  '/order',
-  '/fulfillment',
-  '/after-sales',
-  '/distribution',
-  '/promoter',
-  '/withdraw',
-  '/products',
-  '/content',
-  '/live',
-  '/banner',
-  '/settings',
-  '/wechat-notifications',
-  '/permission',
-  '/log'
-]
+const MENU_ROOTS = catalog.filter(group => group.path).map(group => group.path)
 
 function resolvePathPattern(pathPattern: string, params: Record<string, any>) {
   let resolved = pathPattern
@@ -66,7 +45,7 @@ function resolveBaseMenuPath(path: string) {
       }
     }
   }
-  return bestMatch || '/dashboard'
+  return bestMatch
 }
 
 export function buildRouteNavigationQuery(route: RouteLocationNormalizedLoaded, overrides: Record<string, any> = {}) {

@@ -68,7 +68,7 @@ export async function confirmedCashierReceipt(request: any, receipt: any) {
 }
 
 export async function fetchCheckoutProducts(request: any): Promise<CheckoutProduct[]> {
-  const res = await request.get('/api/admin/products')
+  const res = await request.get('/api/admin/orders/options/products')
   if (res.code !== 200) {
     throw new Error(res.message || '获取商品列表失败')
   }

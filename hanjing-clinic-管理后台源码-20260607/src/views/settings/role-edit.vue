@@ -1,10 +1,18 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, computed, onMounted } from 'vue'
+import { permissionCatalog, fullCatalog } from '@/utils/permissionCatalog'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import { navigateToParent } from '@/utils/routeNavigation'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
+import DataScopeSelector from '@/components/DataScopeSelector.vue'
+import { personalScope, scopeLabel, type DataScope } from '@/utils/dataScope'
+
+const dataScope = ref<DataScope | null>(personalScope())
+const scopeStores = ref<Array<{ id: number; name: string }>>([])
 const router = useRouter()
 const route = useRoute()
 
@@ -20,6 +28,43 @@ interface Member {
   avatarChar: string;
   avatarColor: string;
   store: string;
+  username: string;
+  phone: string;
+  doctorName: string;
+  lastLogin: string;
+  status: string;
+  dataScope: DataScope | null;
+}
+
+function mapMember(user: any): Member {
+  return {
+    id: String(user.id), name: user.name || user.username,
+    username: user.username || '—', phone: user.phone || '—',
+    doctorName: user.doctor_name || '—',
+    lastLogin: user.last_login_at ? formatShanghaiDateTime(user.last_login_at, false) : '从未登录',
+    status: user.status || 'offline',
+    avatarChar: (user.name || user.username || '管').charAt(0), avatarColor: 'var(--primary-500)',
+    store: user.all_stores ? '全部门店' : (user.store_names || '未分配门店'),
+    dataScope: String(user.role_id) === roleId.value ? (user.role_member_data_scope ?? null) : null
+  }
+}
+const scopeMemberId = ref('')
+const memberScopeDraft = ref<DataScope | null>(null)
+const showMemberScope = ref(false)
+const scopeMemberName = computed(() => members.value.find(m => m.id === scopeMemberId.value)?.name || '')
+function openMemberScope(member: Member) {
+  scopeMemberId.value = member.id
+  memberScopeDraft.value = member.dataScope ? JSON.parse(JSON.stringify(member.dataScope)) : null
+  showMemberScope.value = true
+}
+function saveMemberScope() {
+  const scope = memberScopeDraft.value
+  if (scope?.type === 'store' && !scope.all_stores && !scope.store_ids.length) {
+    MessagePlugin.warning('请至少选择一家门店'); return
+  }
+  const member = members.value.find(m => m.id === scopeMemberId.value)
+  if (member) member.dataScope = scope ? JSON.parse(JSON.stringify(scope)) : null
+  showMemberScope.value = false
 }
 
 const members = ref<Member[]>([])
@@ -30,43 +75,7 @@ const addableUsers = computed(() => {
   return allAdminUsers.value.filter(u => !members.value.some(m => String(m.id) === String(u.id)))
 })
 
-interface PermissionRow {
-  module: string;
-  view: boolean;
-  add: boolean | null;
-  edit: boolean;
-  delete: boolean;
-  audit: boolean | null;
-}
-
-const permissionMatrix = ref<PermissionRow[]>([
-  { module: 'appointment', view: false, add: false, edit: false, delete: false, audit: false },
-  { module: 'patient', view: false, add: false, edit: false, delete: false, audit: null },
-  { module: 'medical_record', view: false, add: false, edit: false, delete: false, audit: null },
-  { module: 'schedule', view: false, add: false, edit: false, delete: false, audit: null },
-  { module: 'doctor', view: false, add: false, edit: false, delete: false, audit: null },
-  { module: 'store', view: false, add: false, edit: false, delete: false, audit: null },
-  { module: 'order', view: false, add: null, edit: false, delete: false, audit: null },
-  { module: 'distribution', view: false, add: false, edit: false, delete: false, audit: false },
-  { module: 'content', view: false, add: false, edit: false, delete: false, audit: false },
-  { module: 'system', view: false, add: false, edit: false, delete: false, audit: false },
-  { module: 'audit_log', view: false, add: null, edit: false, delete: false, audit: null }
-])
-
-const moduleLabels: Record<string, string> = {
-  appointment: '预约管理',
-  patient: '患者管理',
-  medical_record: '诊疗病历',
-  schedule: '医生排班',
-  doctor: '医生管理',
-  store: '门店管理',
-  order: '订单管理',
-  distribution: '分销管理',
-  content: '内容管理',
-  system: '系统设置',
-  audit_log: '操作日志'
-}
-
+const selectedPermissions = ref<string[]>([])
 const showAddMember = ref(false)
 
 function removeMember(index: number) {
@@ -82,43 +91,23 @@ function handleAddMember() {
   }
   const user = allAdminUsers.value.find(u => String(u.id) === selectedUserIdToAdd.value)
   if (user) {
-    members.value.push({
-      id: String(user.id),
-      name: user.name || user.username,
-      avatarChar: (user.name || user.username || '管').charAt(0),
-      avatarColor: 'var(--primary-500)',
-      store: user.store_name || '全部门店'
-    })
+    members.value.push(mapMember(user))
     MessagePlugin.success(`已临时将成员 ${user.name || user.username} 加入列表，点击右上角“保存权限”以生效。`)
   }
   showAddMember.value = false
   selectedUserIdToAdd.value = ''
 }
 
-function buildPermissions() {
-  const permissions: string[] = []
-  permissionMatrix.value.forEach(row => {
-    if (row.view) permissions.push(`${row.module}:view`)
-    if (row.add) permissions.push(`${row.module}:add`)
-    if (row.edit) permissions.push(`${row.module}:edit`)
-    if (row.delete) permissions.push(`${row.module}:delete`)
-    if (row.audit) permissions.push(`${row.module}:audit`)
-  })
-  return permissions
-}
-
+function buildPermissions() { return [...new Set(selectedPermissions.value)] }
 function applyPermissions(permissions: string[]) {
-  permissionMatrix.value.forEach(row => {
-    row.view = permissions.includes(`${row.module}:view`)
-    if (row.add !== null) row.add = permissions.includes(`${row.module}:add`)
-    row.edit = permissions.includes(`${row.module}:edit`)
-    row.delete = permissions.includes(`${row.module}:delete`)
-    if (row.audit !== null) row.audit = permissions.includes(`${row.module}:audit`)
-  })
+  const known = new Set(fullCatalog.flatMap(group => group.actions.map(action => action.code)))
+  selectedPermissions.value = permissions.filter(permission => known.has(permission))
 }
 
 async function fetchRole() {
   try {
+    const storesRes: any = await request.get('/api/admin/data-scope-stores')
+    scopeStores.value = storesRes.data || []
     const usersRes: any = await request.get('/api/admin/users')
     allAdminUsers.value = usersRes.data || []
 
@@ -126,19 +115,14 @@ async function fetchRole() {
     const res: any = await request.get('/api/admin/roles')
     const role = (res.data || []).find((row: any) => String(row.id) === roleId.value)
     if (!role) return
+    dataScope.value = role.data_scope || personalScope()
     roleName.value = role.name
     roleDesc.value = role.description || ''
     applyPermissions(role.permissions || [])
 
     members.value = allAdminUsers.value
       .filter((row: any) => String(row.role_id) === roleId.value)
-      .map((row: any) => ({
-        id: String(row.id),
-        name: row.name || row.username,
-        avatarChar: (row.name || row.username || '管').charAt(0),
-        avatarColor: 'var(--primary-500)',
-        store: row.store_name || '全部门店'
-      }))
+      .map(mapMember)
   } catch (error) {
     MessagePlugin.error('加载角色或账号列表失败')
   }
@@ -149,14 +133,16 @@ async function handleSave() {
     MessagePlugin.warning('请填写角色名称')
     return
   }
+  if (dataScope.value?.type === 'store' && !dataScope.value.all_stores && !dataScope.value.store_ids.length) {
+    MessagePlugin.warning('请至少选择一家门店')
+    return
+  }
   try {
-    const payload = {
-      name: roleName.value,
-      description: roleDesc.value,
-      status: 'active',
-      permissions: buildPermissions(),
-      memberIds: members.value.map(m => m.id)
-    }
+    const payload: Record<string, unknown> = {}
+    if (!isEdit.value || hasPermission('role:edit')) Object.assign(payload, { name:roleName.value,description:roleDesc.value,status:'active' })
+    if (hasPermission('role:assign')) payload.permissions = buildPermissions()
+    if (hasPermission('role:scope')) Object.assign(payload, { data_scope:dataScope.value || personalScope(), member_data_scopes:members.value.map(m=>({admin_user_id:m.id,data_scope:m.dataScope})) })
+    if (hasPermission('role:members')) payload.memberIds = members.value.map(m=>m.id)
     if (isEdit.value) {
       await request.put(`/api/admin/roles/${roleId.value}`, payload)
     } else {
@@ -185,12 +171,12 @@ onMounted(() => {
     <!-- Page Title Row -->
     <div class="page-title-row">
       <div>
-        <div class="page-title">编辑角色 — {{ roleName }}</div>
+        <div class="page-title">{{ isEdit ? '编辑角色' : '新建角色' }}{{ roleName ? ` — ${roleName}` : '' }}</div>
         <div class="page-title-sub">{{ members.length }}位成员 · 自定义权限</div>
       </div>
       <div class="action-buttons">
         <button class="btn btn-outline" @click="handleCancel">取消</button>
-        <button class="btn btn-primary" @click="handleSave">保存权限</button>
+        <button v-if="isEdit ? ['role:edit','role:assign','role:scope','role:members'].some(hasPermission) : hasPermission('role:add')" class="btn btn-primary" @click="handleSave">保存权限</button>
       </div>
     </div>
 
@@ -203,43 +189,45 @@ onMounted(() => {
           <div class="form-grid">
             <div class="form-group full">
               <label class="form-label">角色名称<span class="required">*</span></label>
-              <input type="text" class="form-control" v-model="roleName">
+              <input type="text" class="form-control" v-model="roleName" :disabled="isEdit && !hasPermission('role:edit')">
             </div>
             <div class="form-group full">
               <label class="form-label">角色描述</label>
-              <textarea class="form-control" style="min-height: 60px;" v-model="roleDesc"></textarea>
+              <textarea class="form-control" style="min-height: 60px;" v-model="roleDesc" :disabled="isEdit && !hasPermission('role:edit')"></textarea>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Members list -->
       <div class="panel" style="margin: 0;">
-        <div class="panel-header">
-          <div class="panel-title"><AppIcon name="team" />  成员列表</div>
-          <button class="btn btn-sm btn-primary" @click="showAddMember = true"><AppIcon name="plus" />  添加</button>
+        <div class="panel-header"><div class="panel-title">查看数据范围</div></div>
+        <div class="panel-body">
+          <fieldset :disabled="!hasPermission('role:scope')" class="scope-fieldset"><DataScopeSelector v-model="dataScope" :stores="scopeStores" /></fieldset>
+          <p class="scope-help">成员默认继承当前角色范围，可在下方成员列表中单独调整。</p>
         </div>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>成员</th>
-              <th>负责门店</th>
-              <th>操作</th>
-            </tr>
-          </thead>
+      </div>
+    </div>
+
+    <div class="panel member-panel">
+      <div class="panel-header">
+        <div class="panel-title"><AppIcon name="team" /> 成员列表 <span class="member-count">{{ members.length }} 人</span></div>
+        <button v-permission="'role:members'" class="btn btn-sm btn-primary" @click="showAddMember = true"><AppIcon name="plus" /> 添加成员</button>
+      </div>
+      <div class="member-table-wrap">
+        <table class="data-table member-table">
+          <thead><tr><th>成员 / 账号</th><th>手机号</th><th>业务操作门店</th><th>关联医生</th><th>账号状态</th><th>最近登录</th><th>当前角色中的数据范围</th><th>操作</th></tr></thead>
           <tbody>
-            <tr v-for="(m, idx) in members" :key="idx">
-              <td>
-                <div class="name-cell">
-                  <div class="avatar avatar-sm" :style="{ background: m.avatarColor }">{{ m.avatarChar }}</div>
-                  <span>{{ m.name }}</span>
-                </div>
-              </td>
-              <td>{{ m.store }}</td>
-              <td>
-                <button class="btn btn-xs btn-danger" @click="removeMember(idx)">移除</button>
-              </td>
+            <tr v-for="(member, index) in members" :key="member.id">
+              <td><div class="name-cell"><div class="avatar avatar-sm" :style="{ background: member.avatarColor }">{{ member.avatarChar }}</div><div><div>{{ member.name }}</div><div class="member-account">{{ member.username }}</div></div></div></td>
+              <td>{{ member.phone }}</td>
+              <td class="member-stores">{{ member.store }}</td>
+              <td>{{ member.doctorName }}</td>
+              <td><span class="member-status" :class="{ disabled: member.status === 'disabled' }">{{ member.status === 'disabled' ? '已禁用' : member.status === 'online' ? '正常' : '离线' }}</span></td>
+              <td>{{ member.lastLogin }}</td>
+              <td class="member-scope"><div>{{ scopeLabel(member.dataScope || dataScope, scopeStores) }}</div><span class="member-account">{{ member.dataScope ? '当前角色单独调整' : '继承当前角色' }}</span></td>
+              <td><div class="member-actions"><button v-permission="'role:scope'" class="btn btn-xs btn-outline" @click="openMemberScope(member)">调整范围</button><button v-permission="'role:members'" class="btn btn-xs btn-danger" @click="removeMember(index)">移除</button></div></td>
             </tr>
+            <tr v-if="!members.length"><td colspan="8" class="members-empty">暂无成员</td></tr>
           </tbody>
         </table>
       </div>
@@ -248,41 +236,26 @@ onMounted(() => {
     <!-- Permission Matrix Panel -->
     <div class="panel" style="margin-top: 16px;">
       <div class="panel-header"><div class="panel-title"><AppIcon name="lock" /> 权限矩阵</div></div>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>模块</th>
-            <th>查看</th>
-            <th>新增</th>
-            <th>编辑</th>
-            <th>删除</th>
-            <th>审核</th>
-          </tr>
-        </thead>
+      <table class="data-table permission-table">
+        <thead><tr><th>菜单 / 模块</th><th>可分配功能</th></tr></thead>
         <tbody>
-          <tr v-for="(row, idx) in permissionMatrix" :key="idx">
-            <td style="font-weight: 600; color: #1F2937;">{{ moduleLabels[row.module] || row.module }}</td>
-            <td>
-              <input type="checkbox" v-model="row.view" class="custom-checkbox">
-            </td>
-            <td>
-              <input type="checkbox" v-model="row.add" class="custom-checkbox" v-if="row.add !== null">
-              <span v-else style="color: #9CA3AF;">—</span>
-            </td>
-            <td>
-              <input type="checkbox" v-model="row.edit" class="custom-checkbox">
-            </td>
-            <td>
-              <input type="checkbox" v-model="row.delete" class="custom-checkbox">
-            </td>
-            <td>
-              <input type="checkbox" v-model="row.audit" class="custom-checkbox" v-if="row.audit !== null">
-              <span v-else style="color: #9CA3AF;">—</span>
-            </td>
+          <tr v-for="group in permissionCatalog" :key="group.module">
+            <td class="permission-module">{{ group.label }}</td>
+            <td><div class="permission-options">
+              <label v-for="action in group.actions" :key="action.code" class="permission-option">
+                <input type="checkbox" v-model="selectedPermissions" :disabled="!hasPermission('role:assign')" :value="action.code" class="custom-checkbox">
+                <span>{{ action.label }}</span>
+              </label>
+            </div></td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <t-dialog v-model:visible="showMemberScope" :header="`${scopeMemberName} · 当前角色数据范围`" :width="560" :confirm-btn="'确定'" @confirm="saveMemberScope">
+      <DataScopeSelector v-model="memberScopeDraft" :stores="scopeStores" allow-inherit :inherited-scope="dataScope" />
+      <p class="scope-help">仅调整此成员在当前角色中的查看范围，保存角色后生效。</p>
+    </t-dialog>
 
     <!-- Add Member Dialog -->
     <t-dialog
@@ -309,6 +282,20 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.scope-help { margin: 12px 0 0; color: #6b7280; font-size: 13px; line-height: 1.6; }
+.member-panel { margin-top: 16px; }
+.member-count { margin-left: 8px; color: #6b7280; font-size: 13px; font-weight: 400; }
+.member-table-wrap { overflow-x: auto; }
+.member-table { min-width: 1040px; }
+.member-table td { white-space: nowrap; }
+.member-table .member-stores, .member-table .member-scope { white-space: normal; min-width: 140px; max-width: 240px; line-height: 1.6; }
+.member-account { margin-top: 4px; color: #9ca3af; font-size: 12px; font-weight: 400; }
+.member-actions { display: flex; align-items: center; gap: 8px; }
+.member-status { display: inline-block; padding: 3px 8px; border-radius: 4px; color: #059669; background: #ecfdf5; }
+.member-status.disabled { color: #6b7280; background: #f3f4f6; }
+.member-table .members-empty { padding: 32px; text-align: center; color: #9ca3af; }
+@media (max-width: 1000px) { .card-grid-2 { grid-template-columns: 1fr !important; } }
+
 
 
 /* Breadcrumb */
@@ -549,4 +536,12 @@ select.form-control {
   cursor: pointer;
   accent-color: var(--primary-500);
 }
+</style>
+
+<style scoped>
+.scope-fieldset { border:0; margin:0; padding:0; min-width:0; }
+.permission-module { width: 160px; font-weight: 600; vertical-align: top; }
+.permission-options { display: flex; flex-wrap: wrap; gap: 14px 24px; }
+.permission-option { display: inline-flex; align-items: center; gap: 8px; min-width: 130px; cursor: pointer; }
+.permission-table td { padding: 18px 24px; }
 </style>

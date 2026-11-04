@@ -1,3 +1,4 @@
+import { migratePermissionCodes } from './permission-migration.js';
 import { run, query } from './db.js';
 import crypto from 'crypto';
 import { generateUniquePatientNo } from './patientNo.js';
@@ -59,6 +60,12 @@ export const seedData = async () => {
   await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'medical_record:edit']);
   await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'schedule:view']);
   await run(`INSERT INTO permissions (role_id, permission_resource) VALUES (?, ?)`, [doctorRoleId, 'schedule:edit']);
+  for (const [roleId, code] of [[storeMgrRoleId,'store_mgr'],[doctorRoleId,'doctor']]) {
+    const rows = await query('SELECT permission_resource FROM permissions WHERE role_id=?',[roleId]);
+    await run('DELETE FROM permissions WHERE role_id=?',[roleId]);
+    for(const permission of migratePermissionCodes(rows.map(row=>row.permission_resource),code)) await run('INSERT INTO permissions(role_id,permission_resource) VALUES (?,?)',[roleId,permission]);
+  }
+
 
   // 3. Stores
   const store1 = await run(

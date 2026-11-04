@@ -231,13 +231,13 @@ watch(operationColumnWidth, () => {
               <td style="font-size: 12px; color: #6B7280;">{{ row.applyTime }}</td>
               <td style="text-align: right;">
                 <div style="display: flex; gap: 6px; justify-content: flex-end;" v-if="row.status === 'pending'">
-                  <button class="btn btn-xs btn-success" @click="handleApprove(row)">通过</button>
-                  <button class="btn btn-xs btn-danger" @click="handleReject(row)">拒绝</button>
+                  <button v-permission="'order:refund'" class="btn btn-xs btn-success" @click="handleApprove(row)">通过</button>
+                  <button v-permission="'order:refund'" class="btn btn-xs btn-danger" @click="handleReject(row)">拒绝</button>
                   <button class="btn btn-xs btn-outline" @click="showDetail(row)">详情</button>
                 </div>
                 <div style="display: flex; justify-content: flex-end;" v-else>
                   <span class="status-tag green" v-if="row.status === 'approved'">已确认退款</span>
-                  <button v-else-if="row.status === 'processing'" class="btn btn-xs btn-outline" @click="handleSync(row)">查询退款结果</button>
+                  <button v-permission="'order:refund'" v-else-if="row.status === 'processing'" class="btn btn-xs btn-outline" @click="handleSync(row)">查询退款结果</button>
                   <span class="status-tag red" v-else-if="row.status === 'rejected'">已拒绝</span>
                 </div>
               </td>
@@ -280,8 +280,8 @@ watch(operationColumnWidth, () => {
         </div>
       </div>
       <div class="detail-actions" v-if="selectedRefund.status === 'pending'">
-        <button class="btn btn-danger" @click="handleReject(selectedRefund)"><AppIcon name="x-circle" />  拒绝退款</button>
-        <button class="btn btn-success" @click="handleApprove(selectedRefund)"><AppIcon name="check-circle" />  同意退款</button>
+        <button v-permission="'order:refund'" class="btn btn-danger" @click="handleReject(selectedRefund)"><AppIcon name="x-circle" />  拒绝退款</button>
+        <button v-permission="'order:refund'" class="btn btn-success" @click="handleApprove(selectedRefund)"><AppIcon name="check-circle" />  同意退款</button>
       </div>
     </div>
   </div>

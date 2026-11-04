@@ -224,7 +224,7 @@ watch(operationColumnWidth, () => {
         <div class="page-title">轮播图管理</div>
         <div class="page-title-sub">小程序首页轮播Banner</div>
       </div>
-      <button class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" />  添加轮播图</button>
+      <button v-permission="'banner:add'" class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" />  添加轮播图</button>
     </div>
 
     <!-- Banner List Table -->
@@ -298,28 +298,28 @@ watch(operationColumnWidth, () => {
               </td>
               <td :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">
                 <div style="display: flex; gap: 4px; justify-content: flex-end;">
-                  <button class="btn btn-xs btn-outline" @click="handleEdit(b.id)">编辑</button>
+                  <button v-permission="'banner:edit'" class="btn btn-xs btn-outline" @click="handleEdit(b.id)">编辑</button>
                   
                   <!-- Sort Up/Down arrows -->
-                  <button class="btn btn-xs btn-outline" @click="moveSort(b.id, 'up')" :disabled="banners.findIndex(item => item.id === b.id) === 0">↑</button>
-                  <button class="btn btn-xs btn-outline" @click="moveSort(b.id, 'down')" :disabled="banners.findIndex(item => item.id === b.id) === banners.length - 1">↓</button>
+                  <button v-permission="'banner:edit'" class="btn btn-xs btn-outline" @click="moveSort(b.id, 'up')" :disabled="banners.findIndex(item => item.id === b.id) === 0">↑</button>
+                  <button v-permission="'banner:edit'" class="btn btn-xs btn-outline" @click="moveSort(b.id, 'down')" :disabled="banners.findIndex(item => item.id === b.id) === banners.length - 1">↓</button>
                   
                   <button
-                    class="btn btn-xs btn-danger"
+ v-permission="'banner:edit'"                    class="btn btn-xs btn-danger"
                     @click="handleToggle(b.id)"
                     v-if="b.status === 'active'"
                   >
                     下架
                   </button>
                   <button
-                    class="btn btn-xs btn-success"
+ v-permission="'banner:edit'"                    class="btn btn-xs btn-success"
                     @click="handleToggle(b.id)"
                     v-if="b.status === 'inactive'"
                   >
                     上架
                   </button>
                   <button
-                    class="btn btn-xs btn-danger"
+ v-permission="'banner:delete'"                    class="btn btn-xs btn-danger"
                     @click="handleDelete(b.id)"
                     v-if="b.status === 'expired' || b.status === 'inactive'"
                   >

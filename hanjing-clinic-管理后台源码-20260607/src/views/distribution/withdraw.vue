@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -82,10 +83,19 @@ const todayPaid = computed(() => records.value.filter(r =>
 const paidVisible = ref(false)
 const transferReference = ref('')
 const transferAccount = ref<any>(null)
+const accountVisible = ref(false)
+async function openAccount(record: WithdrawApply) {
+  const result = await request.get(`/api/admin/distribution/withdraws/${record.id}/account`)
+  transferAccount.value = result.data
+  accountVisible.value = true
+}
 async function openPaid(record: WithdrawApply) {
   try {
-    const result: any = await request.get(`/api/admin/distribution/withdraws/${record.id}/account`)
-    transferAccount.value = result.data
+    transferAccount.value = null
+    if (hasPermission('withdraw:account')) {
+      const result = await request.get(`/api/admin/distribution/withdraws/${record.id}/account`)
+      transferAccount.value = result.data
+    }
     selectedRecord.value = record
     transferReference.value = ''
     paidVisible.value = true
@@ -120,9 +130,9 @@ const filteredRecords = computed(() => {
   // 2. Keyword filter
   if (searchKeyword.value) {
     const kw = searchKeyword.value.toLowerCase()
-    list = list.filter(r => 
-      r.name.toLowerCase().includes(kw) || 
-      r.no.toLowerCase().includes(kw) || 
+    list = list.filter(r =>
+      r.name.toLowerCase().includes(kw) ||
+      r.no.toLowerCase().includes(kw) ||
       r.phone.toLowerCase().includes(kw)
     )
   }
@@ -155,7 +165,7 @@ function toggleSelectAll() {
   const visiblePendingIds = paginatedRecords.value
     .filter(r => r.status === 'pending')
     .map(r => r.id)
-  
+
   if (isAllSelected.value) {
     // Unselect visible pending
     selectedRowKeys.value = selectedRowKeys.value.filter(id => !visiblePendingIds.includes(id))
@@ -366,14 +376,14 @@ watch(operationColumnWidth, () => {
         <div class="page-title-sub">审核推广员提现申请</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button 
-          class="btn btn-success" 
+        <button v-permission="'withdraw:audit'"
+          class="btn btn-success"
           @click="handleBatchApprove"
           :disabled="selectedRowKeys.length === 0"
         >
           <AppIcon name="check-circle" />  批量通过
         </button>
-        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出</button>
+        <button v-permission="'withdraw:export'" class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出</button>
       </div>
     </div>
 
@@ -389,7 +399,7 @@ watch(operationColumnWidth, () => {
         </div>
         <div class="stat-card-label">待审核申请</div>
       </div>
-      
+
       <div class="stat-card">
         <div class="stat-card-header">
           <div class="stat-card-icon green"><AppIcon name="check-circle" /> </div>
@@ -400,7 +410,7 @@ watch(operationColumnWidth, () => {
         </div>
         <div class="stat-card-label">今日已通过</div>
       </div>
-      
+
       <div class="stat-card">
         <div class="stat-card-header">
           <div class="stat-card-icon gold"><AppIcon name="money" /> </div>
@@ -418,42 +428,42 @@ watch(operationColumnWidth, () => {
       <!-- Filter Bar -->
       <div class="filter-bar">
         <div class="filter-tabs">
-          <div 
-            class="filter-tab" 
-            :class="{ active: activeTab === 'pending' }" 
+          <div
+            class="filter-tab"
+            :class="{ active: activeTab === 'pending' }"
             @click="activeTab = 'pending'"
           >
             待审核 <span style="opacity: 0.6; margin-left: 4px;">{{ pendingCount }}</span>
           </div>
-          <div 
-            class="filter-tab" 
-            :class="{ active: activeTab === 'approved' }" 
+          <div
+            class="filter-tab"
+            :class="{ active: activeTab === 'approved' }"
             @click="activeTab = 'approved'"
           >
             待打款
           </div>
           <div class="filter-tab" :class="{ active: activeTab === 'paid' }" @click="activeTab = 'paid'">已打款</div>
-          <div 
-            class="filter-tab" 
-            :class="{ active: activeTab === 'rejected' }" 
+          <div
+            class="filter-tab"
+            :class="{ active: activeTab === 'rejected' }"
             @click="activeTab = 'rejected'"
           >
             已拒绝
           </div>
-          <div 
-            class="filter-tab" 
-            :class="{ active: activeTab === 'all' }" 
+          <div
+            class="filter-tab"
+            :class="{ active: activeTab === 'all' }"
             @click="activeTab = 'all'"
           >
             全部
           </div>
         </div>
 
-        <input 
-          type="text" 
-          v-model="searchKeyword" 
-          class="filter-input" 
-          placeholder="搜索姓名/手机号/单号" 
+        <input
+          type="text"
+          v-model="searchKeyword"
+          class="filter-input"
+          placeholder="搜索姓名/手机号/单号"
           style="width: 210px;"
         >
       </div>
@@ -464,9 +474,9 @@ watch(operationColumnWidth, () => {
           <thead>
             <tr>
               <th style="width: 50px; text-align: center;">
-                <input 
-                  type="checkbox" 
-                  :checked="selectedRowKeys.length === paginatedRecords.filter(r => r.status === 'pending').length && selectedRowKeys.length > 0" 
+                <input
+                  type="checkbox"
+                  :checked="selectedRowKeys.length === paginatedRecords.filter(r => r.status === 'pending').length && selectedRowKeys.length > 0"
                   @change="toggleSelectAll"
                 >
               </th>
@@ -483,9 +493,9 @@ watch(operationColumnWidth, () => {
           <tbody>
             <tr v-for="row in paginatedRecords" :key="row.id">
               <td style="text-align: center;">
-                <input 
-                  type="checkbox" 
-                  :checked="selectedRowKeys.includes(row.id)" 
+                <input
+                  type="checkbox"
+                  :checked="selectedRowKeys.includes(row.id)"
                   @change="toggleSelect(row.id)"
                   :disabled="row.status !== 'pending'"
                 >
@@ -515,11 +525,12 @@ watch(operationColumnWidth, () => {
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;">
                   <template v-if="row.status === 'pending'">
-                    <button class="btn btn-xs btn-success" @click="openApprove(row)">通过</button>
-                    <button class="btn btn-xs btn-danger" @click="openReject(row)">拒绝</button>
+                    <button v-permission="'withdraw:audit'" class="btn btn-xs btn-success" @click="openApprove(row)">通过</button>
+                    <button v-permission="'withdraw:audit'" class="btn btn-xs btn-danger" @click="openReject(row)">拒绝</button>
                   </template>
                   <template v-else-if="row.status === 'approved'">
-                    <button class="btn btn-xs btn-outline" @click="openPaid(row)">登记打款</button>
+                    <button v-permission="'withdraw:account'" class="btn btn-xs btn-outline" @click="openAccount(row)">收款账户</button>
+                  <button v-permission="'withdraw:paid'" class="btn btn-xs btn-outline" @click="openPaid(row)">登记打款</button>
                   </template>
                   <template v-else-if="row.status === 'paid'">
                     <span class="status-tag green">已打款</span>
@@ -571,14 +582,17 @@ watch(operationColumnWidth, () => {
     </t-dialog>
 
     <t-dialog v-model:visible="paidVisible" header="登记实际银行转账" @confirm="confirmPaid" @close="transferAccount = null">
-      <div v-if="transferAccount && selectedRecord">
-        <p>{{ transferAccount.bankName }} · {{ transferAccount.accountName }}</p>
-        <p>{{ transferAccount.accountNo }}</p>
+      <div v-if="selectedRecord">
+        <p v-if="transferAccount">{{ transferAccount.bankName }} · {{ transferAccount.accountName }}</p>
+        <p v-if="transferAccount">{{ transferAccount.accountNo }}</p>
         <p>实际转账金额 ¥{{ selectedRecord.actualAmount.toFixed(2) }}</p>
         <t-input v-model="transferReference" placeholder="银行转账成功流水号" :maxlength="120" />
       </div>
     </t-dialog>
 
+    <t-dialog v-model:visible="accountVisible" header="收款账户" :footer="false">
+      <div v-if="transferAccount"><p>{{ transferAccount.bankName }} · {{ transferAccount.accountName }}</p><p>{{ transferAccount.accountNo }}</p></div>
+    </t-dialog>
     <!-- Reject Dialog -->
     <t-dialog
       v-model:visible="rejectVisible"

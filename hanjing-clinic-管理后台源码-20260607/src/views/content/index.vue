@@ -161,7 +161,7 @@ function getAvatarBg(author: string) {
 
 async function fetchCategories() {
   try {
-    const res: any = await request.get('/api/admin/content/categories')
+    const res: any = await request.get('/api/admin/content/options/categories')
     if (res.code === 200 && res.data) {
       categories.value = res.data.map((cat: any) => cat.name)
     }
@@ -196,7 +196,7 @@ watch(operationColumnWidth, () => {
         <div class="page-title">科普文章</div>
         <div class="page-title-sub">共 {{ stats.total }} 篇科普文章，包含 {{ stats.pending }} 篇待审核内容</div>
       </div>
-      <button class="btn btn-primary" @click="router.push('/content/edit')"><AppIcon name="plus" />  撰写科普文章</button>
+      <button v-permission="'content:add'" class="btn btn-primary" @click="router.push('/content/edit')"><AppIcon name="plus" />  撰写科普文章</button>
     </div>
 
     <!-- 统计卡片 -->
@@ -341,11 +341,11 @@ watch(operationColumnWidth, () => {
               </td>
               <td :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">
                 <div style="display: flex; gap: 6px; justify-content: flex-end;">
-                  <button class="btn btn-xs btn-success" @click="approve(post.id)" v-if="post.status === 'pending'">通过</button>
-                  <button class="btn btn-xs btn-danger" @click="reject(post.id)" v-if="post.status === 'pending'">拒绝</button>
-                  <button class="btn btn-xs btn-outline" @click="router.push('/content/edit/' + post.id)">编辑</button>
-                  <button class="btn btn-xs btn-outline" @click="toggleTop(post.id)">{{ post.isTop ? '取消置顶' : '置顶' }}</button>
-                  <button class="btn btn-xs btn-danger" style="background: #FEF2F2; color: #EF4444; border: 1px solid #FEE2E2;" @click="handleDelete(post.id)">删除</button>
+                  <button v-permission="'content:audit'" class="btn btn-xs btn-success" @click="approve(post.id)" v-if="post.status === 'pending'">通过</button>
+                  <button v-permission="'content:audit'" class="btn btn-xs btn-danger" @click="reject(post.id)" v-if="post.status === 'pending'">拒绝</button>
+                  <button v-permission="'content:edit'" class="btn btn-xs btn-outline" @click="router.push('/content/edit/' + post.id)">编辑</button>
+                  <button v-permission="'content:edit'" class="btn btn-xs btn-outline" @click="toggleTop(post.id)">{{ post.isTop ? '取消置顶' : '置顶' }}</button>
+                  <button v-permission="'content:delete'" class="btn btn-xs btn-danger" style="background: #FEF2F2; color: #EF4444; border: 1px solid #FEE2E2;" @click="handleDelete(post.id)">删除</button>
                 </div>
               </td>
             </tr>

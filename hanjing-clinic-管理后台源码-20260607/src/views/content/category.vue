@@ -125,7 +125,7 @@ onMounted(() => {
         <div class="page-title">科普文章分类管理</div>
         <div class="page-title-sub">管理打鼾、呼吸机等科普文章的前端筛选分类及权重排序</div>
       </div>
-      <button class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" /> 添加分类</button>
+      <button v-permission="'content_category:add'" class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" /> 添加分类</button>
     </div>
 
     <div class="panel">
@@ -148,8 +148,8 @@ onMounted(() => {
               <td>{{ row.createdAt ? formatShanghaiDateTime(row.createdAt) : '—' }}</td>
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;">
-                  <button class="btn btn-xs btn-outline" @click="handleEdit(row)">编辑</button>
-                  <t-popconfirm content="确认删除该分类吗？" @confirm="handleDelete(row.id)">
+                  <button v-permission="'content_category:edit'" class="btn btn-xs btn-outline" @click="handleEdit(row)">编辑</button>
+                  <t-popconfirm v-permission="'content_category:delete'" content="确认删除该分类吗？" @confirm="handleDelete(row.id)">
                     <button class="btn btn-xs btn-danger">删除</button>
                   </t-popconfirm>
                 </div>

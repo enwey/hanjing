@@ -1,3 +1,4 @@
+import { readScopedPromoters } from './distribution-read-scope.js';
 import crypto from 'node:crypto';
 import { get, query, run, transaction } from './db.js';
 import { authenticateToken, hashPassword, encryptPII, decryptPII } from './helpers.js';
@@ -42,7 +43,10 @@ export function registerBackendPromoterAdmin(app) {
       res.json({code:200,data:{id,qr,qrError},message:'推广员已创建'});
     }catch(e){if(e.code==='ER_DUP_ENTRY')return res.status(409).json({code:409,message:'登录账号已存在'});throw e}
   });
-  app.get('/api/admin/distribution/promoters/:id/qr',authenticateToken,async(req,res)=>res.json({code:200,data:await promoterQr(req.params.id)}));
+  app.get('/api/admin/distribution/promoters/:id/qr',authenticateToken,async(req,res)=>{
+    if(!(await readScopedPromoters(req.user,req.params.id)).length)return res.status(404).json({code:404,message:'推广员不存在或无权访问'});
+    res.json({code:200,data:await promoterQr(req.params.id)});
+  });
   app.put('/api/admin/distribution/promoters/:id/password',authenticateToken,async(req,res)=>{
     const password=req.body.password;
     if(typeof password!=='string'||password.length<8||password.length>64||!/[A-Za-z]/.test(password)||!/[0-9]/.test(password))return res.status(400).json({code:400,message:'密码需8-64位且包含字母和数字'});
@@ -54,11 +58,7 @@ export function registerBackendPromoterAdmin(app) {
     res.json({code:200,message:'密码已重置，旧登录已失效'});
   });
   app.get('/api/admin/distribution/promoters',authenticateToken,async(req,res)=>{
-    const list=await query(`SELECT d.*,a.login_name,COALESCE(d.contact_phone,u.phone) AS user_phone,
-      (SELECT COUNT(*) FROM distribution_relationships r WHERE r.level=1 AND (r.parent_distributor_id=d.id OR r.parent_user_id=d.user_id)) AS invitees_l1_count,
-      (SELECT COUNT(*) FROM distribution_relationships r WHERE r.level=2 AND (r.parent_distributor_id=d.id OR r.parent_user_id=d.user_id)) AS invitees_l2_count,
-      (SELECT COUNT(DISTINCT order_id) FROM distribution_orders WHERE distributor_id=d.id AND status!='refunded') AS total_orders
-      FROM distributors d LEFT JOIN users u ON u.id=d.user_id LEFT JOIN promoter_accounts a ON a.distributor_id=d.id ORDER BY d.id DESC`);
+    const list=await readScopedPromoters(req.user);
     res.json({code:200,data:list.map(r=>({...r,user_phone:decryptPII(r.user_phone)||''}))});
   });
 }

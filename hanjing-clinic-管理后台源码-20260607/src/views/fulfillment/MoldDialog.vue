@@ -68,11 +68,11 @@ defineExpose({ open })
         <label class="full">适应期要求<textarea v-model="form.adaptation" rows="2" maxlength="2000" /></label>
         <label class="full">设备规格 / 工厂制作要求 *<textarea v-model="form.requirements" rows="3" maxlength="2000" /></label>
         <label class="full">取模备注 / 注意事项<textarea v-model="form.note" rows="2" maxlength="2000" /></label>
-        <div class="full"><label>照片 / 扫描附件（勾选随本次口模送厂的文件）</label><input v-if="editable" type="file" accept=".jpg,.jpeg,.png,.pdf,.stl,.ply" @change="upload"><small>单文件不超过 5MB；计划佩戴时长不是患者实际打卡时长。</small></div>
+        <div class="full"><label>照片 / 扫描附件（勾选随本次口模送厂的文件）</label><input v-permission="'fulfillment:attachment'" v-if="editable" type="file" accept=".jpg,.jpeg,.png,.pdf,.stl,.ply" @change="upload"><small>单文件不超过 5MB；计划佩戴时长不是患者实际打卡时长。</small></div>
       </fieldset>
       <div v-for="file in files" :key="file.id" class="file-row"><label><input v-model="form.file_ids" type="checkbox" :value="file.id" :disabled="!editable || busy"> {{ file.name }}</label><button class="btn btn-xs btn-outline" @click="download(file)">下载</button></div>
     </div>
-    <div class="footer"><span v-if="!editable">当前环节资料已锁定</span><button class="btn btn-outline" @click="visible = false">关闭</button><template v-if="editable"><button class="btn btn-outline" :disabled="busy" @click="save(false)">暂存草稿</button><button class="btn btn-primary" :disabled="busy" @click="save(true)">确认取模完成</button></template></div>
+    <div class="footer"><span v-if="!editable">当前环节资料已锁定</span><button class="btn btn-outline" @click="visible = false">关闭</button><template v-if="editable"><button v-permission="'fulfillment:mold'" class="btn btn-outline" :disabled="busy" @click="save(false)">暂存草稿</button><button v-permission="'fulfillment:mold'" class="btn btn-primary" :disabled="busy" @click="save(true)">确认取模完成</button></template></div>
   </t-dialog>
 </template>
 <style scoped>

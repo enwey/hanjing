@@ -40,7 +40,7 @@ watch(() => route.params.id, loadData, { immediate: true })
 <template>
   <div class="page-container">
     <div class="page-title-row">
-      <div><div class="page-title">患者详情</div><div class="page-title-sub">查看患者基本信息、就诊记录与订单记录</div></div>
+      <div><div class="page-title">患者详情</div><div class="page-title-sub">查看本人推荐预约相关的患者信息、就诊与订单记录</div></div>
       <button class="btn btn-outline" @click="router.push('/patients')">返回列表</button>
     </div>
     <div v-if="loading" class="empty-state">加载中...</div>
@@ -54,7 +54,7 @@ watch(() => route.params.id, loadData, { immediate: true })
       <div class="stats">
         <section class="panel stat"><span>预约次数</span><strong>{{ appointments.length }}</strong></section>
         <section class="panel stat"><span>累计到诊</span><strong>{{ arrived }}</strong></section>
-        <section class="panel stat"><span>账户消费总额</span><strong>¥{{ yuan(patient.total_spent) }}</strong></section>
+        <section class="panel stat"><span>关联订单消费</span><strong>¥{{ yuan(patient.total_spent) }}</strong></section>
         <section class="panel stat"><span>患者来源</span><strong>{{ source(patient.source) }}</strong></section>
       </div>
       <div class="tabs" role="tablist"><button v-for="tab in tabs" :key="tab.key" class="tab" :class="{ active: activeTab === tab.key }" role="tab" :aria-selected="activeTab === tab.key" @click="activeTab = tab.key">{{ tab.label }}</button></div>

@@ -1,3 +1,5 @@
+import { recordReschedule } from '../appointment-reschedule-history.js';
+import { nextAppointmentNumber } from '../appointment-number.js';
 import { chargeAmount, prepareCharge, settleOnlineCharge, queueCancelledChargeRefunds, completeChargeRefund, readAppointmentCharge } from '../appointment-charges.js';
 import { communityPublisher } from '../article-publisher.js';
 import { canUseLocalDevLogin } from '../local-dev-login.js';
@@ -10,7 +12,7 @@ import express from 'express';
 import { createAsyncRouter } from '../async-router.js';
 import jwt from 'jsonwebtoken';
 import { businessError, publicWithdrawAccount, readCommissionLedger } from '../distribution-ledger.js';
-import { lockAppointmentChange, RESCHEDULABLE_STATUSES, assertAppointmentFeesPaid, orderCoversAppointmentFees, settlePaidAppointmentOrder } from '../appointment-workflow.js';
+import { assertFutureAppointmentTime, lockAppointmentChange, RESCHEDULABLE_STATUSES, assertAppointmentFeesPaid, orderCoversAppointmentFees, settlePaidAppointmentOrder } from '../appointment-workflow.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -4246,11 +4248,11 @@ app.get('/api/v1/schedules/dates', async (req, res) => {
       const apptsForSchedule = apptMap[t.id] || {};
       let availableCount = 0;
       for (const slot of buildScheduleSlots(t, bookingInterval)) {
-        const [startH, startM] = slot.startTime.split(':').map(Number);
+        const [startH, startM] = slot.endTime.split(':').map(Number);
         const slotBookedCount = apptsForSchedule[slot.label] || 0;
         let status = slotBookedCount >= t.people_per_slot ? 'booked' : 'available';
         if (isToday) {
-          if (startH < currentHour || (startH === currentHour && startM < currentMinute)) {
+          if (startH < currentHour || (startH === currentHour && startM <= currentMinute)) {
             status = 'disabled';
           }
         }
@@ -4332,11 +4334,11 @@ app.get('/api/v1/schedules', async (req, res) => {
       const scheduleSlots = buildScheduleSlots(row, bookingInterval);
       const peoplePerSlot = Number(row.people_per_slot || 1);
       for (const slot of scheduleSlots) {
-        const [startH, startM] = slot.startTime.split(':').map(Number);
+        const [startH, startM] = slot.endTime.split(':').map(Number);
         const slotBookedCount = apptsForSchedule[slot.label] || 0;
         let status = slotBookedCount >= peoplePerSlot ? 'booked' : 'available';
         if (isToday) {
-          if (startH < currentHour || (startH === currentHour && startM < currentMinute)) {
+          if (startH < currentHour || (startH === currentHour && startM <= currentMinute)) {
             status = 'disabled';
           }
         }
@@ -4420,11 +4422,11 @@ app.get('/api/v1/day-slots', async (req, res) => {
         const peoplePerSlot = Number(schedule.people_per_slot || 1);
         const apptsForSchedule = apptMap[schedule.id] || {};
         return buildScheduleSlots(schedule, bookingInterval).map((slot) => {
-          const [startH, startM] = slot.startTime.split(':').map(Number);
+          const [startH, startM] = slot.endTime.split(':').map(Number);
           const slotBookedCount = apptsForSchedule[slot.label] || 0;
           let status = slotBookedCount >= peoplePerSlot ? 'booked' : 'available';
           if (isToday) {
-            if (startH < currentHour || (startH === currentHour && startM < currentMinute)) {
+            if (startH < currentHour || (startH === currentHour && startM <= currentMinute)) {
               status = 'disabled';
             }
           }
@@ -4481,11 +4483,11 @@ app.get('/api/v1/schedules/:id/slots', async (req, res) => {
 
     const slots = [];
     for (const slot of buildScheduleSlots(t, bookingInterval)) {
-      const [startH, startM] = slot.startTime.split(':').map(Number);
+      const [startH, startM] = slot.endTime.split(':').map(Number);
       const slotBookedCount = apptMap[slot.label] || 0;
       let status = slotBookedCount >= t.people_per_slot ? 'booked' : 'available';
       if (isToday) {
-        if (startH < currentHour || (startH === currentHour && startM < currentMinute)) {
+        if (startH < currentHour || (startH === currentHour && startM <= currentMinute)) {
           status = 'disabled';
         }
       }
@@ -4579,9 +4581,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
     if (!validSlots.includes(appointmentTime)) {
       return res.status(400).json({ code: 400, message: '所选预约时段不符合排班规则' });
     }
-    if (getAppointmentStartTime(appointmentDate, appointmentTime).getTime() <= getShanghaiNow().getTime()) {
-      return res.status(400).json({ code: 400, message: '不能预约已过期的时段' });
-    }
+    assertFutureAppointmentTime(appointmentDate, appointmentTime);
 
     const essId = normalizeNumericId(essAssessmentId);
     const snoreId = normalizeNumericId(snoreAssessmentId);
@@ -4604,7 +4604,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       if (!snore) return res.status(400).json({ code: 400, message: '鼾声评估记录无效' });
     }
 
-    const apptNo = `AP${new Date().getFullYear()}${Date.now().toString().slice(-8)}${Math.floor(100 + Math.random() * 900)}`;
+    let apptNo;
 
     // Read require_deposit and deposit_amount settings
     const requireDepositRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'require_deposit'`);
@@ -4638,6 +4638,8 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
         throw err;
       }
 
+      assertFutureAppointmentTime(appointmentDate, appointmentTime);
+      apptNo = await nextAppointmentNumber(conn, appointmentDate);
       const insertResult = await conn.execute(
         `INSERT INTO appointments (appointment_no, user_id, patient_id, store_id, doctor_id, schedule_id, appointment_date, appointment_time, type, status, symptom_desc, source, ess_assessment_id, snore_assessment_id, doctor_name, doctor_title, doctor_specialty, doctor_avatar, consult_fee, deposit_amount, store_name)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'mini_app', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -5267,7 +5269,7 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
 
     // Check if within 2 hours of appointment time
     try {
-      const [year, month, day] = appt.appointment_date.split('-').map(Number);
+      const [year, month, day] = formatDate(appt.appointment_date).split('-').map(Number);
       const [hours, minutes] = appt.appointment_time.split('-')[0].trim().split(':').map(Number);
       const apptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
       const now = getShanghaiNow();
@@ -5289,11 +5291,10 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
     if (formatDate(newSchedule.date) !== appointmentDate) {
       return res.status(400).json({ code: 400, message: '目标预约日期与排班不一致' });
     }
-    if (getAppointmentStartTime(appointmentDate, appointmentTime).getTime() <= getShanghaiNow().getTime()) {
-      return res.status(400).json({ code: 400, message: '不能改约到已过期的时段' });
-    }
+    assertFutureAppointmentTime(appointmentDate, appointmentTime);
     await transaction(async (conn) => {
       const { current, schedules } = await lockAppointmentChange(conn, appt, scheduleId);
+      assertFutureAppointmentTime(appointmentDate, appointmentTime);
       const lockedSchedule = schedules.get(Number(scheduleId));
       if (!RESCHEDULABLE_STATUSES.has(current.status)) throw businessError('当前预约状态不支持改约', 409);
       if (!current || current.status !== appt.status || Number(current.schedule_id) !== Number(appt.schedule_id)
@@ -5321,6 +5322,9 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
          WHERE id = ?`,
         [scheduleId, appointmentDate, appointmentTime, id]
       );
+      await recordReschedule(conn, current, {
+        ...current, schedule_id:scheduleId, appointment_date:appointmentDate, appointment_time:appointmentTime
+      }, 'patient', req.user.id);
     });
 
     const updated = await get(`SELECT * FROM appointments WHERE id = ?`, [id]);

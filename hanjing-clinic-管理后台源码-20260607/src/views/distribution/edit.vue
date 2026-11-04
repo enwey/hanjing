@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, computed, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useRoute, useRouter } from 'vue-router'
@@ -72,7 +73,7 @@ function deleteMainImage() {
 
 async function fetchCategoryOptions() {
   try {
-    const res: any = await request.get('/api/admin/product-categories')
+    const res: any = await request.get('/api/admin/products/options/categories')
     categoryOptions.value = (res.data || []).map((row: any) => ({
       id: String(row.id),
       code: row.code,
@@ -286,7 +287,7 @@ onMounted(async () => {
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
           <t-button variant="outline" theme="default" @click="handleCancel">取消</t-button>
-          <t-button theme="primary" @click="handleSave">保存并发布</t-button>
+          <t-button theme="primary" v-permission="isEdit ? 'product:edit' : 'product:add'" @click="handleSave">保存并发布</t-button>
         </div>
       </div>
 
@@ -418,7 +419,7 @@ onMounted(async () => {
               </div>
               <div class="form-group">
                 <label class="form-label">上架状态</label>
-                <select class="form-control" v-model="formData.status">
+                <select class="form-control" v-model="formData.status" :disabled="isEdit && !hasPermission('product:status')">
                   <option value="on">立即上架 (小程序商城可见)</option>
                   <option value="off">下架暂存</option>
                 </select>
@@ -431,12 +432,12 @@ onMounted(async () => {
             <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
               <span>分销推广</span>
               <label class="checkbox-row" style="margin: 0;">
-                <input type="checkbox" v-model="formData.isDistribution">
+                <input type="checkbox" v-model="formData.isDistribution" :disabled="isEdit && !hasPermission('product:promotion')">
                 <span>设为分销商品</span>
               </label>
             </div>
             <div class="card-body">
-              <label class="checkbox-row"><input type="checkbox" v-model="formData.backendReferralEnabled" />后台推广推荐佣金</label>
+              <label class="checkbox-row"><input type="checkbox" v-model="formData.backendReferralEnabled" :disabled="isEdit && !hasPermission('product:promotion')" />后台推广推荐佣金</label>
               <div v-if="formData.backendReferralEnabled">
                 <label class="form-label">无上级患者首次成单 X (%)</label><input type="number" class="form-control" v-model.number="formData.backendRateX" min="0" max="100" step="0.01" />
                 <label class="form-label">已有上级患者本次推荐 Y (%)</label><input type="number" class="form-control" v-model.number="formData.backendRateY" min="0" max="100" step="0.01" />

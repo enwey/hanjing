@@ -114,7 +114,7 @@ onMounted(fetchDistribution)
         <div class="page-title-sub">管理分销员、佣金及推广数据</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出报表</button>
+        <button v-permission="'distribution:export'" class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出报表</button>
         <button class="btn btn-primary" @click="router.push('/settings')"><AppIcon name="settings" />  分销设置</button>
       </div>
     </div>

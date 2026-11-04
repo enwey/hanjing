@@ -24,7 +24,7 @@ interface Commission {
 interface Distributor {
   id: string; name: string; avatar: string; avatarFailed: boolean; phone: string; level: string;
   firstLevelDownline: number; secondLevelDownline: number;
-  totalOrders: number; totalAmount: number; totalCommission: number; withdrawableCommission: number
+  totalOrders: number; totalAmount: number; totalCommission: number; withdrawableCommission: number | null
   joinDate: string; source: string; status: string; loginName: string; code?: string;
   commissions: Commission[]
 }
@@ -118,7 +118,7 @@ function handleExport() {
     escapeCsv(row.secondLevelDownline),
     escapeCsv(row.totalOrders),
     escapeCsv(`¥${row.totalCommission.toFixed(2)}`),
-    escapeCsv(`¥${row.withdrawableCommission.toFixed(2)}`),
+    escapeCsv(row.withdrawableCommission === null ? '—' : `¥${row.withdrawableCommission.toFixed(2)}`),
     escapeCsv(row.joinDate),
     escapeCsv(row.status === 'active' ? '正常' : '已禁用')
   ])
@@ -167,7 +167,7 @@ async function fetchDistributors() {
       totalOrders: Number(row.total_orders || 0),
       totalAmount: 0,
       totalCommission: yuan(row.total_commission),
-      withdrawableCommission: yuan(row.available_commission),
+      withdrawableCommission: row.available_commission == null ? null : yuan(row.available_commission),
       joinDate: formatDate(row.created_at),
       source: row.source_type==='backend'?'后台创建':'小程序',
       loginName: row.login_name || '',
@@ -234,7 +234,7 @@ watch(operationColumnWidth, () => {
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
         <BackendPromoterActions @saved="fetchDistributors" />
-        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出报表</button>
+        <button v-permission="'promoter:export'" class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出报表</button>
       </div>
     </div>
 
@@ -308,7 +308,7 @@ watch(operationColumnWidth, () => {
               <td style="font-weight:600;">{{ row.secondLevelDownline }}</td>
               <td style="font-weight:600;">{{ row.totalOrders }}</td>
               <td style="font-weight:700;color:#F5A623;">¥{{ row.totalCommission.toLocaleString() }}</td>
-              <td style="font-weight:600;color:#22C55E;">¥{{ row.withdrawableCommission.toLocaleString() }}</td>
+              <td style="font-weight:600;color:#22C55E;">{{ row.withdrawableCommission === null ? '—' : `¥${row.withdrawableCommission.toLocaleString()}` }}</td>
               <td>
                 <span :class="['status-tag', row.status === 'active' ? 'green' : 'gray']">
                   {{ row.status === 'active' ? '正常' : row.status === 'pending' ? '待激活' : '已停用' }}
@@ -355,7 +355,7 @@ watch(operationColumnWidth, () => {
             <div style="font-size:12px;color:#6B7280">累计佣金</div>
           </div>
           <div class="drawer-kpi" style="background:#ECFDF5">
-            <div style="font-size:22px;font-weight:700;color:#22C55E">¥{{ selectedDistributor.withdrawableCommission.toLocaleString() }}</div>
+            <div style="font-size:22px;font-weight:700;color:#22C55E">{{ selectedDistributor.withdrawableCommission === null ? '—' : `¥${selectedDistributor.withdrawableCommission.toLocaleString()}` }}</div>
             <div style="font-size:12px;color:#6B7280">可提现</div>
           </div>
         </div>

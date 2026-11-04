@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { computed, ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -27,7 +28,7 @@ const items = computed(() => products.value.filter(p => quantities.value[p.id]).
 const total = computed(() => items.value.reduce((sum, item) => sum + item.price * item.quantity, 0))
 
 watch(() => props.visible, async visible => {
-  if (!visible) { searchVersion++; return }
+  if (!visible || !hasPermission('order:add')) { searchVersion++; return }
   cashier.reset()
   patients.value = []
   patient.value = ''
@@ -57,7 +58,7 @@ async function searchPatients(value: string) {
   const version = ++searchVersion
   if (!value.trim()) return
   try {
-    const result = await request.get('/api/admin/patients', { params: { search: value.trim() } })
+    const result = await request.get('/api/admin/orders/options/patients', { params: { search: value.trim() } })
     if (version !== searchVersion) return
     const rows = Array.isArray(result.data) ? result.data : result.data?.list || []
     patients.value = rows.map((row: any) => ({
@@ -139,7 +140,7 @@ async function submit() {
             <input v-model="method" name="order-pay-method" type="radio" value="wechat" @change="confirmed = false">
             小程序支付
           </label>
-          <label :class="{ 'is-selected': method === 'cash' }">
+          <label v-permission="'order:charge'" :class="{ 'is-selected': method === 'cash' }">
             <input v-model="method" name="order-pay-method" type="radio" value="cash" @change="confirmed = false">
             现金支付
           </label>

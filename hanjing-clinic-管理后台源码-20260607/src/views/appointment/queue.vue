@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -77,7 +78,7 @@ const fetchAppointments = async (isSilent = false) => {
       postponeCount: item.postpone_count || 0
     }))
 
-    const schedRes: any = await request.get(`/api/admin/schedules?date=${todayStr}`)
+    const schedRes: any = await request.get(`/api/admin/appointments/options/schedules?date=${todayStr}`)
     schedules.value = schedRes.data || []
   } catch (error) {
     console.error(error)
@@ -97,14 +98,14 @@ const userInfo = (() => {
 })()
 
 // Time slot filter state
-const activeTimeSlot = ref(localStorage.getItem('queue_active_time_slot') || 'all')
+const activeTimeSlot = ref('all')
 
 const selectedStore = ref(localStorage.getItem('queue_selected_store') || (userInfo.store_name || 'all'))
 const storeOptions = computed(() => stores.value.map(store => store.name))
 
 const fetchStores = async () => {
   try {
-    const res: any = await request.get('/api/admin/stores')
+    const res: any = await request.get('/api/admin/appointments/options/stores')
     stores.value = res.data || []
     if (selectedStore.value !== 'all' && !storeOptions.value.includes(selectedStore.value)) {
       selectedStore.value = 'all'
@@ -117,10 +118,6 @@ const fetchStores = async () => {
 watch(selectedStore, (newVal) => {
   localStorage.setItem('queue_selected_store', newVal)
   activeTimeSlot.value = 'all'
-})
-
-watch(activeTimeSlot, (newVal) => {
-  localStorage.setItem('queue_active_time_slot', newVal)
 })
 
 // Extract all waiting list items globally to count slots and show numbers
@@ -449,6 +446,7 @@ const fetchProducts = async () => {
 }
 
 async function openCheckoutDialog(item: QueueItem) {
+  if (!(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))) return
   selectedQueueItem.value = item
   if (item.status === 'pending_payment') {
     await appointmentCharge.value?.open(item.id)
@@ -715,7 +713,6 @@ let timerId: any = null
 
 onMounted(() => {
   fetchStores()
-  fetchProducts()
   fetchAppointments()
   timerId = setInterval(() => {
     fetchAppointments(true)
@@ -881,7 +878,7 @@ const filteredTodayAppointments = computed(() => {
         <button class="btn btn-outline" @click="fetchAppointments()" :disabled="loading">
           <AppIcon name="refresh" />  刷新队列
         </button>
-        <button class="btn btn-primary" @click="router.push('/appointment/create')"><AppIcon name="plus" />  新建预约</button>
+        <button v-permission="'appointment:add'" class="btn btn-primary" @click="router.push('/appointment/create')"><AppIcon name="plus" />  新建预约</button>
       </div>
     </div>
 
@@ -983,10 +980,10 @@ const filteredTodayAppointments = computed(() => {
               <div class="pat-time">预约时段: {{ q.current.timeSlot }}</div>
             </div>
             <div class="action-row">
-              <t-button size="extra-small" theme="primary" variant="outline" @click="callPatient(q.current, q.doctorName)">
+              <t-button v-permission="'queue:call'" size="extra-small" theme="primary" variant="outline" @click="callPatient(q.current, q.doctorName)">
                 叫号
               </t-button>
-              <t-button size="extra-small" theme="warning" variant="outline" @click="openCheckoutDialog(q.current)">
+              <t-button v-permission="'order:add'" size="extra-small" theme="warning" variant="outline" v-if="(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))" @click="openCheckoutDialog(q.current)">
                 收银
               </t-button>
             </div>
@@ -1009,13 +1006,13 @@ const filteredTodayAppointments = computed(() => {
                 </div>
               </div>
               <div class="wait-right">
-                <t-button v-if="item.status === 'pending'" size="extra-small" theme="warning" variant="outline" @click="startTreatment(item)">
+                <t-button v-permission="{ any: ['appointment:receive','workbench:receive'] }" v-if="item.status === 'pending'" size="extra-small" theme="warning" variant="outline" @click="startTreatment(item)">
                   签到
                 </t-button>
-                <t-button v-else size="extra-small" :theme="item.status === 'called' ? 'success' : 'primary'" variant="outline" @click="callPatient(item, q.doctorName)">
+                <t-button v-permission="'queue:call'" v-else size="extra-small" :theme="item.status === 'called' ? 'success' : 'primary'" variant="outline" @click="callPatient(item, q.doctorName)">
                   {{ item.status === 'called' ? '重呼' : '叫号' }}
                 </t-button>
-                <t-button size="extra-small" theme="default" variant="text" @click="delayPatient(item)">
+                <t-button v-permission="'appointment:postpone'" size="extra-small" theme="default" variant="text" @click="delayPatient(item)">
                   顺延
                 </t-button>
               </div>
@@ -1067,8 +1064,8 @@ const filteredTodayAppointments = computed(() => {
         <!-- Custom Footer -->
         <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #E5E7EB; padding-top: 16px;">
           <t-button variant="outline" theme="default" @click="closeCheckInDialog">取消</t-button>
-          <t-button variant="outline" theme="warning" @click="handleCheckInSkip">跳过录入直接签到</t-button>
-          <t-button theme="primary" @click="handleCheckInSubmit">确认签到</t-button>
+          <t-button v-permission="{ any: ['appointment:checkin','queue:checkin'] }" variant="outline" theme="warning" @click="handleCheckInSkip">跳过录入直接签到</t-button>
+          <t-button v-permission="'appointment:preexam'" theme="primary" @click="handleCheckInSubmit">确认签到</t-button>
         </div>
       </div>
     </t-dialog>
@@ -1106,8 +1103,8 @@ const filteredTodayAppointments = computed(() => {
           </div>
         </div>
         <div style="margin-top: 20px; display: flex; gap: 12px;">
-          <t-button variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
-          <t-button theme="primary" :loading="checkoutLoading" @click="completeCheckoutSettlement">完成结算</t-button>
+          <t-button v-permission="'order:print'" variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
+          <t-button v-permission="'order:charge'" theme="primary" :loading="checkoutLoading" @click="completeCheckoutSettlement">完成结算</t-button>
         </div>
       </div>
 
@@ -1247,7 +1244,7 @@ const filteredTodayAppointments = computed(() => {
             <input class="form-control" v-model="micropayAuthCode" placeholder="请扫描或输入患者微信付款码">
           </div>
           <div v-if="payMethod === 'wechat' && miniPayOrderNo && payWaiting" style="margin: 12px 0; overflow-wrap: anywhere;">小程序待支付订单：{{ miniPayOrderNo }}</div>
-          <TechnicianSelect v-model="fulfillmentTechnicianId" />
+          <TechnicianSelect v-if="checkoutVisible && hasPermission('order:view')" v-model="fulfillmentTechnicianId" />
           <div v-if="nativePayInfo" style="margin-top: 14px; text-align: center; padding: 14px; border: 1px solid #E5E7EB; border-radius: 8px;">
             <img v-if="nativePayInfo.qrCodeImageUrl" :src="nativePayInfo.qrCodeImageUrl" alt="微信支付二维码" style="width: 220px; height: 220px;">
             <div style="font-size: 13px; color: #374151; margin-top: 8px;">请患者使用微信扫码支付</div>
@@ -1258,7 +1255,7 @@ const filteredTodayAppointments = computed(() => {
 
         <div style="display: flex; justify-content: flex-end; gap: 10px;">
           <t-button theme="default" @click="closeCheckoutDialog">取消</t-button>
-          <t-button theme="primary" :loading="checkoutLoading" :disabled="payWaiting" @click="submitCheckout">{{ payMethod === 'wechat' ? '生成待支付订单' : '确认支付收款' }} · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
+          <t-button v-permission="'order:add'" theme="primary" :loading="checkoutLoading" :disabled="payWaiting" @click="submitCheckout">{{ payMethod === 'wechat' ? '生成待支付订单' : '确认支付收款' }} · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
         </div>
       </div>
     </t-dialog>

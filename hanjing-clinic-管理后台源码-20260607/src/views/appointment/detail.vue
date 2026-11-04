@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { formatShanghaiDateTime } from '@/utils/dateTime'
 import { appointmentTimeline } from '@/utils/appointmentTimeline'
@@ -53,18 +54,7 @@ const formatAppointmentType = (type?: string) => {
   return appointmentTypeMap[key] || '门诊预约'
 }
 
-const formatDateOnly = (value: any) => {
-  const text = String(value || '').trim()
-  if (!text) return ''
-  const matched = text.match(/^(\d{4}-\d{2}-\d{2})/)
-  if (matched) return matched[1]
-  const date = new Date(text)
-  if (Number.isNaN(date.getTime())) return text
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+const formatDateOnly = (value: any) => value ? formatShanghaiDateTime(value, false).slice(0, 10) : ''
 
 const appointment = ref<any>({
   id: appointmentId.value,
@@ -96,6 +86,9 @@ const appointment = ref<any>({
 
 const patientHistory = ref<any[]>([])
 const patientSummary = ref<{visit_count:number; receipts:number; refunds:number; net_receipts:number} | null>(null)
+type RescheduleSnapshot = { date: string; time: string; store_name: string; doctor_name: string }
+type RescheduleRecord = { id: number; source: string; operator_name: string; created_at: string; before_snapshot: RescheduleSnapshot; after_snapshot: RescheduleSnapshot }
+const rescheduleHistory = ref<RescheduleRecord[]>([])
 const historyTotal = ref<number | null>(null)
 const historyError = ref(false)
 
@@ -153,6 +146,7 @@ const fetchAppointmentDetail = async () => {
   const version = ++detailRequestVersion
   const targetId = appointmentId.value
   detailReady.value = false
+  rescheduleHistory.value = []
   patientHistory.value = []
   patientSummary.value = null
   historyTotal.value = null
@@ -198,6 +192,7 @@ const fetchAppointmentDetail = async () => {
         latest_pre_exam: appt.latest_pre_exam,
         previous_pre_exam: appt.previous_pre_exam
       }
+      rescheduleHistory.value = Array.isArray(appt.reschedule_history) ? appt.reschedule_history : []
       detailReady.value = true
     }
   } catch (error) {
@@ -382,6 +377,7 @@ watch(deliveryType, (newVal) => {
 })
 
 async function openCheckoutDialog() {
+  if (!(appointment.value.status === 'pending_payment' ? hasPermission('appointment:charge') : ['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))) return
   if (!detailReady.value || String(appointment.value.id) !== appointmentId.value) {
     MessagePlugin.warning('请等待当前预约详情加载完成后再收银')
     return
@@ -706,7 +702,6 @@ function openHistoryDialog() {
 
 onMounted(() => {
   fetchAppointmentDetail()
-  fetchProducts()
 })
 
 function handleBack() {
@@ -768,55 +763,55 @@ function handleViewProfile() {
         <div class="page-title-sub">创建于 {{ appointment.createTime }} · {{ appointment.source }}预约</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" @click="handlePrint"><AppIcon name="print" />  打印</button>
+        <button v-permission="'appointment:print'" class="btn btn-outline" @click="handlePrint"><AppIcon name="print" />  打印</button>
         
-        <button v-if="detailReady && appointment.status !== 'pending_payment'" class="btn btn-outline"
+        <button v-permission="{ any: ['appointment:charge','appointment:refund','appointment:print'] }" v-if="detailReady && appointment.status !== 'pending_payment'" class="btn btn-outline"
           @click="appointmentCharge?.open(appointmentId)">收费与退款</button>
         <!-- 挂号收银 -->
         <button
-          v-if="appointment.status === 'pending_payment'"
+ v-permission="'order:add'"          v-if="appointment.status === 'pending_payment'"
           class="btn btn-primary"
           @click="openCheckoutDialog"
         >预约收费</button>
 
         <!-- 签到 -->
         <button
-          v-if="appointment.status === 'pending'"
+ v-permission="{ any: ['appointment:checkin','queue:checkin'] }"          v-if="appointment.status === 'pending'"
           class="btn btn-primary"
           @click="openCheckInDialog"
         >签到</button>
 
         <!-- 叫号 -->
         <button
-          v-if="appointment.status === 'waiting' || appointment.status === 'confirmed'"
+ v-permission="'queue:call'"          v-if="appointment.status === 'waiting' || appointment.status === 'confirmed'"
           class="btn btn-warning"
           @click="callPatient"
         ><AppIcon name="megaphone" />  叫号</button>
 
         <!-- 未到诊 -->
         <button
-          v-if="appointment.status === 'pending' || appointment.status === 'waiting' || appointment.status === 'confirmed'"
+ v-permission="'appointment:edit'"          v-if="appointment.status === 'pending' || appointment.status === 'waiting' || appointment.status === 'confirmed'"
           class="btn btn-outline"
           @click="markAsNoShow"
         >未到诊</button>
 
         <!-- 诊疗完成 -->
         <button
-          v-if="appointment.status === 'checked_in'"
+ v-permission="'medical_record:complete'"          v-if="appointment.status === 'checked_in'"
           class="btn btn-success"
           @click="completeTreatment"
         >诊疗完成</button>
 
         <!-- 收银结算 -->
         <button
-          v-if="appointment.status === 'completed'"
+ v-permission="'order:add'"          v-if="appointment.status === 'completed' && (['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))"
           class="btn btn-warning"
           @click="openCheckoutDialog"
         >收银结算</button>
 
         <!-- 改约 -->
         <button
-          v-if="appointment.status === 'pending_payment' || appointment.status === 'pending' || appointment.status === 'waiting' || appointment.status === 'confirmed'"
+ v-permission="'appointment:reschedule'"          v-if="appointment.status === 'pending_payment' || appointment.status === 'pending' || appointment.status === 'waiting' || appointment.status === 'confirmed'"
           class="btn btn-warning"
           @click="handleReschedule"
         >
@@ -824,7 +819,7 @@ function handleViewProfile() {
         </button>
 
         <!-- 取消 -->
-        <button class="btn btn-danger" @click="handleCancel" v-if="appointment.status === 'pending_payment' || appointment.status === 'pending'"><AppIcon name="x-circle" />  取消</button>
+        <button v-permission="'appointment:cancel'" class="btn btn-danger" @click="handleCancel" v-if="appointment.status === 'pending_payment' || appointment.status === 'pending'"><AppIcon name="x-circle" />  取消</button>
       </div>
     </div>
 
@@ -866,7 +861,7 @@ function handleViewProfile() {
                 <span>预检体征数据 (由分诊/护士录入)</span>
               </div>
               <t-button
-                v-if="!['completed', 'arrived', 'settled', 'cancelled', 'no_show'].includes(appointment.status)"
+ v-permission="{ any: ['appointment:checkin','queue:checkin'] }"                v-if="!['completed', 'arrived', 'settled', 'cancelled', 'no_show'].includes(appointment.status)"
                 size="extra-small"
                 theme="primary"
                 variant="outline"
@@ -988,14 +983,11 @@ function handleViewProfile() {
             <div class="info-label">预约来源</div>
             <div class="info-value">
               <span class="tag tag-green">{{ appointment.source }}</span>
-              <div v-if="appointment.referralPromoter" style="margin-top: 4px; font-size: 13px; color: #059669; font-weight: 500;">
-                推荐人：{{ appointment.referralPromoter }}
-                <span v-if="appointment.referralCode" style="color: #6B7280; font-size: 12px; margin-left: 4px;">({{ appointment.referralCode }})</span>
-              </div>
-              <div v-else-if="appointment.referralCode" style="margin-top: 4px; font-size: 12px; color: #6B7280;">
-                推广码：{{ appointment.referralCode }}
-              </div>
             </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">推广员</div>
+            <div class="info-value">{{ appointment.referralPromoter || '未关联推广员' }}</div>
           </div>
           <div class="info-item">
             <div class="info-label">挂号费</div>
@@ -1015,6 +1007,23 @@ function handleViewProfile() {
       </div>
     </div>
 
+
+    <div v-if="detailReady" class="panel reschedule-panel" style="margin-top: 16px;">
+      <div class="panel-header"><div class="panel-title"><AppIcon name="history" /> 改约记录（{{ rescheduleHistory.length }}）</div></div>
+      <div v-if="!rescheduleHistory.length" class="reschedule-empty">暂无改约记录</div>
+      <div v-else class="reschedule-list">
+        <div v-for="record in rescheduleHistory" :key="record.id" class="reschedule-record">
+          <div class="reschedule-meta">
+            <div><span class="tag">{{ record.source === 'admin' ? '运营后台' : '患者端' }}</span><span class="reschedule-operator">{{ record.operator_name }}</span></div>
+            <span>{{ formatShanghaiDateTime(record.created_at, false) }}</span>
+          </div>
+          <div class="reschedule-comparison">
+            <div class="reschedule-before"><div class="info-label">改约前</div><div class="reschedule-time">{{ record.before_snapshot.date }} {{ record.before_snapshot.time }}</div><div class="reschedule-location">{{ record.before_snapshot.store_name || '—' }} · {{ record.before_snapshot.doctor_name || '—' }}</div></div>
+            <div class="reschedule-after"><div class="info-label">改约后</div><div class="reschedule-time">{{ record.after_snapshot.date }} {{ record.after_snapshot.time }}</div><div class="reschedule-location">{{ record.after_snapshot.store_name || '—' }} · {{ record.after_snapshot.doctor_name || '—' }}</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Timeline Progress -->
     <div class="panel" style="margin-top: 16px;">
@@ -1103,8 +1112,8 @@ function handleViewProfile() {
             </div>
           </div>
           <div style="margin-top: 20px; display: flex; gap: 12px;">
-            <t-button variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
-            <t-button theme="primary" :loading="checkoutLoading" @click="completeCheckoutSettlement">完成结算</t-button>
+            <t-button v-permission="'order:print'" variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
+            <t-button v-permission="'order:charge'" theme="primary" :loading="checkoutLoading" @click="completeCheckoutSettlement">完成结算</t-button>
           </div>
         </div>
 
@@ -1130,7 +1139,7 @@ function handleViewProfile() {
             </div>
           </div>
           <div class="native-payment-actions">
-            <t-button variant="outline" @click="handlePrintInvoice"><AppIcon name="print" /> 打印支付单</t-button>
+            <t-button v-permission="'order:print'" variant="outline" @click="handlePrintInvoice"><AppIcon name="print" /> 打印支付单</t-button>
             <t-button theme="default" @click="closeCheckoutDialog">关闭</t-button>
           </div>
         </div>
@@ -1265,12 +1274,12 @@ function handleViewProfile() {
               </label>
             </div>
             <div class="payment-method-tip">{{ payMethod === 'cash' ? '确认后表示线下现金已经实际收取。' : payMethod === 'wechat' ? '将生成待支付订单，并通知用户前往小程序预约详情完成支付。' : '将生成微信支付二维码，可打印支付单交给用户扫码付款。' }}</div>
-            <TechnicianSelect v-model="fulfillmentTechnicianId" />
+            <TechnicianSelect v-if="checkoutVisible && hasPermission('order:view')" v-model="fulfillmentTechnicianId" />
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 10px;">
             <t-button theme="default" @click="closeCheckoutDialog">取消</t-button>
-            <t-button theme="primary" :loading="checkoutLoading" @click="submitCheckout">{{ payMethod === 'wechat' ? '生成待支付订单并通知' : payMethod === 'wechat_native' ? '生成支付二维码' : '确认现金收款' }} · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
+            <t-button v-permission="'order:add'" theme="primary" :loading="checkoutLoading" @click="submitCheckout">{{ payMethod === 'wechat' ? '生成待支付订单并通知' : payMethod === 'wechat_native' ? '生成支付二维码' : '确认现金收款' }} · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
           </div>
         </div>
       </div>
@@ -1317,12 +1326,12 @@ function handleViewProfile() {
         <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #E5E7EB; padding-top: 16px;">
           <t-button variant="outline" theme="default" @click="closeCheckInDialog">取消</t-button>
           <t-button
-            v-if="['pending', 'pending_payment'].includes(appointment.status)"
+ v-permission="{ any: ['appointment:checkin','queue:checkin'] }"            v-if="['pending', 'pending_payment'].includes(appointment.status)"
             variant="outline"
             theme="warning"
             @click="handleCheckInSkip"
           >跳过录入直接签到</t-button>
-          <t-button theme="primary" @click="handleCheckInSubmit">
+          <t-button v-permission="'appointment:preexam'" theme="primary" @click="handleCheckInSubmit">
             {{ ['pending', 'pending_payment'].includes(appointment.status) ? '确认签到' : '确认保存' }}
           </t-button>
         </div>
@@ -1382,6 +1391,20 @@ function handleViewProfile() {
 </template>
 
 <style scoped>
+.reschedule-list { padding: 0 24px; }
+.reschedule-record { padding: 20px 0; border-bottom: 1px solid #edf0f4; }
+.reschedule-record:last-child { border-bottom: 0; }
+.reschedule-meta { display:flex; justify-content:space-between; align-items:center; gap:12px; color:#6b7280; font-size:13px; margin-bottom:14px; }
+.reschedule-operator { margin-left:10px; color:#374151; }
+.reschedule-comparison { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.reschedule-before, .reschedule-after { padding:14px 16px; border-radius:8px; background:#f7f8fa; }
+.reschedule-after { background:var(--primary-50, #eef3ff); }
+.reschedule-time { font-weight:600; margin:6px 0; }
+.reschedule-after .reschedule-time { color:var(--primary-500); }
+.reschedule-location { color:#6b7280; font-size:13px; }
+.reschedule-empty { padding:24px; color:#9ca3af; text-align:center; }
+@media (max-width: 768px) { .reschedule-comparison { grid-template-columns:1fr; } .reschedule-meta { align-items:flex-start; flex-wrap:wrap; } }
+
 
 
 /* Breadcrumb */

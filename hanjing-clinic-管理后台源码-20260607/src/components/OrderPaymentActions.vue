@@ -24,8 +24,8 @@ const wechatRefund = computed(() => superAdmin.value && ['wechat', 'wechat_nativ
 onMounted(async () => {
   try {
     const response: any = await request.get('/api/admin/me')
-    superAdmin.value = response.data?.role_code === 'super_admin'
-    canEdit.value = superAdmin.value || response.data?.permissions?.includes('order:edit')
+    superAdmin.value = response.data?.role_code === 'super_admin' || response.data?.permissions?.includes('order:refund')
+    canEdit.value = response.data?.role_code === 'super_admin' || response.data?.permissions?.includes('order:charge')
   } catch { /* Authorization remains enforced by the API. */ }
 })
 
@@ -129,7 +129,7 @@ function handleWechatRefund() {
       <div class="payment-actions">
         <t-button theme="primary" :loading="busy" @click="continuePayment">{{ order.pay_method === 'wechat_native' ? '获取原单二维码' : '提交付款码' }}</t-button>
         <t-button theme="default" :disabled="busy" @click="perform(refreshPayment)">刷新付款状态</t-button>
-        <t-button theme="danger" variant="outline" :disabled="busy" @click="cancelPayment">取消付款单</t-button>
+        <t-button theme="danger" variant="outline" :disabled="busy" v-permission="'order:cancel_payment'" @click="cancelPayment">取消付款单</t-button>
       </div>
     </div>
   </t-dialog>

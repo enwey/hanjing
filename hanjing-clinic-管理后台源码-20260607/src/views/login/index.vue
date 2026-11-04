@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 
+import { firstMenuPath } from '@/utils/menu'
+
 const router = useRouter()
 const isSubmitting = ref(false)
 const loginForm = ref({ account: '', password: '' })
@@ -21,7 +23,7 @@ async function handleLogin({ validateResult }: any) {
     localStorage.setItem('auth_token', res.data.token)
     localStorage.setItem('user_info', JSON.stringify(res.data.user))
     MessagePlugin.success('登录成功')
-    router.push('/dashboard')
+    router.push(firstMenuPath(res.data.user))
   } catch {
     // The response interceptor displays authentication errors.
   } finally {

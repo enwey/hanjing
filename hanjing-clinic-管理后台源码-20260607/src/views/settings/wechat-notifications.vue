@@ -112,7 +112,7 @@ onMounted(load)
                 <td class="trigger">{{ item.trigger }}</td>
                 <td><t-tag :theme="!item.connected ? 'warning' : item.enabled && item.templateId ? 'success' : 'default'" variant="light" size="small">{{ status(item) }}</t-tag></td>
                 <td class="template-id"><span class="mono">{{ item.templateId || '未配置' }}</span><small>{{ item.source }}</small></td>
-                <td class="actions"><t-button theme="primary" variant="text" size="small" @click="edit(item)">配置</t-button></td>
+                <td class="actions"><t-button v-permission="'wechat_notification:edit'" theme="primary" variant="text" size="small" @click="edit(item)">配置</t-button></td>
               </tr>
               <tr v-if="!filtered.length"><td colspan="5" class="empty-cell">暂无通知配置</td></tr>
             </tbody>

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { QRCode } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 interface Charge {
   id: string | number
@@ -18,7 +19,7 @@ interface Charge {
 }
 interface ChargeData {
   charges: Charge[]
-  appointment?: { id: string | number; status: string; consult_fee: number; deposit_amount: number }
+  appointment?: { id: string | number; status: string; consult_fee: number; deposit_amount: number; appointment_no?: string; patient_name?: string; doctor_name?: string; store_name?: string; appointment_date?: string; appointment_time?: string }
   legacy_order_id?: string | number
 }
 type Method = 'cash' | 'wechat'
@@ -92,8 +93,8 @@ async function open(id: string | number) {
   qr.value = ''
   try {
     const operator = JSON.parse(localStorage.getItem('user_info') || '{}')
-    canApproveRefund.value = operator?.role_code === 'super_admin'
-    canEditCharge.value = canApproveRefund.value || Boolean(operator?.permissions?.includes('appointment:edit'))
+    canApproveRefund.value = operator?.role_code === 'super_admin' || Boolean(operator?.permissions?.includes('appointment:refund'))
+    canEditCharge.value = operator?.role_code === 'super_admin' || Boolean(operator?.permissions?.includes('appointment:charge'))
   } catch {
     canApproveRefund.value = false
     canEditCharge.value = false
@@ -166,25 +167,64 @@ function openLegacyOrder() {
 }
 
 function printReceipt(charge: Charge) {
-  const tab = window.open('', '_blank', 'width=500,height=600')
-  if (!tab) return
-  tab.opener = null
-  const title = tab.document.createElement('h1')
-  title.textContent = '预约收费凭证'
-  tab.document.body.append(title)
-  const fields = [
-    ['收费单号', charge.charge_no],
-    ['挂号费', amount(charge.consult_fee)],
-    ['预约定金', amount(charge.deposit_amount)],
-    ['合计', amount(Number(charge.consult_fee) + Number(charge.deposit_amount))],
-    ['支付时间', charge.paid_at || ''],
-    ['状态', chargeLabel(charge.status)]
-  ]
-  for (const [label, value] of fields) {
-    const field = tab.document.createElement('p')
-    field.textContent = label + '：' + value
-    tab.document.body.append(field)
+  const tab = window.open('', '_blank', 'width=420,height=650')
+  if (!tab) {
+    error.value = '打印窗口未打开，请允许弹出窗口后重试。'
+    return
   }
+  tab.opener = null
+  const doc = tab.document
+  doc.title = '预约收费凭证'
+  const style = doc.createElement('style')
+  style.textContent = `
+    @page { margin: 3mm; }
+    * { box-sizing: border-box; }
+    body { width: 100%; max-width: 72mm; margin: 0 auto; color: #000; font: 12px/1.5 "Microsoft YaHei", sans-serif; }
+    header, footer { text-align: center; }
+    h1 { font-size: 17px; margin: 0; }
+    h2 { font-size: 14px; margin: 4px 0 0; }
+    section, footer { border-top: 1px dashed #000; margin-top: 10px; padding-top: 8px; }
+    .row { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 6px; margin: 3px 0; overflow-wrap: anywhere; }
+    .money { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+    .total { font-size: 16px; font-weight: 700; margin-top: 7px; }
+    @media screen { body { padding: 16px 8px; } }
+  `
+  doc.head.append(style)
+  const appendText = (parent: HTMLElement, tag: string, text: string) => {
+    const element = doc.createElement(tag)
+    element.textContent = text
+    parent.append(element)
+    return element
+  }
+  const row = (parent: HTMLElement, label: string, value: string, className = 'row') => {
+    if (!value) return
+    const element = doc.createElement('div')
+    element.className = className
+    appendText(element, 'span', label)
+    appendText(element, 'span', value)
+    parent.append(element)
+  }
+  const appointment = data.value?.appointment
+  const header = appendText(doc.body, 'header', '')
+  appendText(header, 'h1', '深圳兴康明诊所')
+  appendText(header, 'h2', '预约收费凭证')
+  const visit = appendText(doc.body, 'section', '')
+  row(visit, '预约编号', appointment?.appointment_no || '')
+  row(visit, '收费单号', charge.charge_no)
+  row(visit, '就诊患者', appointment?.patient_name || '')
+  row(visit, '就诊门店', appointment?.store_name || '')
+  row(visit, '就诊医生', appointment?.doctor_name || '')
+  row(visit, '就诊时间', [appointment?.appointment_date, appointment?.appointment_time].filter(Boolean).join(' '))
+  const fees = appendText(doc.body, 'section', '')
+  if (Number(charge.consult_fee) > 0) row(fees, '挂号费', amount(charge.consult_fee), 'money')
+  if (Number(charge.deposit_amount) > 0) row(fees, '预约定金', amount(charge.deposit_amount), 'money')
+  row(fees, '实收金额', amount(Number(charge.consult_fee) + Number(charge.deposit_amount)), 'money total')
+  const payment = appendText(doc.body, 'section', '')
+  const methods: Record<string, string> = { cash: '现金支付', wechat: '微信支付', wechat_native: '微信扫码', offline: '线下收款' }
+  row(payment, '支付方式', methods[charge.payment_method || ''] || '')
+  row(payment, '收款时间', charge.paid_at ? formatShanghaiDateTime(charge.paid_at) : '')
+  row(payment, '收费状态', chargeLabel(charge.status))
+  appendText(doc.body, 'footer', '请妥善保管此凭证')
   tab.focus()
   tab.print()
 }
@@ -249,7 +289,6 @@ defineExpose({ open })
         <div class="charge-actions">
           <t-button v-if="canEditCharge && charge.status === 'pending' && charge.payment_method === 'wechat_native' && !qr" variant="outline" :disabled="busy || needsRefresh" @click="collect('wechat_native')">获取原收款码</t-button>
           <t-button v-if="canEditCharge && charge.status === 'pending' && String(charge.payment_method || '').startsWith('wechat')" variant="outline" :disabled="busy || needsRefresh" @click="sync(charge, 'sync')">核对支付结果</t-button>
-          <t-button v-if="charge.paid_at" variant="outline" :disabled="busy" @click="printReceipt(charge)">打印凭证</t-button>
           <t-button v-if="canRefund(charge)" variant="outline" theme="danger" :disabled="busy" @click="showRefund(charge)">退款</t-button>
           <t-button v-if="canApproveRefund && (charge.status === 'refunding' || ['processing', 'refunding'].includes(charge.refund_status || ''))" variant="outline" :disabled="busy || needsRefresh" @click="sync(charge, 'refund-sync')">同步退款结果</t-button>
         </div>
@@ -262,7 +301,12 @@ defineExpose({ open })
         </form>
       </article>
       <p v-if="data && !canCollect && !data.legacy_order_id && !data.charges.length">暂无收费记录</p>
-      <div v-if="!canCollect" class="charge-footer"><t-button variant="outline" :disabled="busy" @click="close">关闭</t-button></div>
+      <div v-if="!canCollect" class="charge-footer">
+        <t-button variant="outline" :disabled="busy" @click="close">关闭</t-button>
+        <template v-for="charge in data?.charges || []" :key="charge.id">
+          <t-button v-if="charge.paid_at" theme="primary" :disabled="busy" v-permission="'appointment:print'" @click="printReceipt(charge)">打印凭证</t-button>
+        </template>
+      </div>
     </div>
   </t-dialog>
 </template>

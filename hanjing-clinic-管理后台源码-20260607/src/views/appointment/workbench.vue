@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -108,7 +109,7 @@ const selectedStoreId = ref<string>(userInfo.doctor_id ? (userInfo.store_id ? St
 
 const fetchStores = async () => {
   try {
-    const res: any = await request.get('/api/admin/stores')
+    const res: any = await request.get('/api/admin/appointments/options/stores')
     if (res.code === 200) {
       storeList.value = res.data
     }
@@ -121,8 +122,8 @@ const fetchStores = async () => {
 const fetchDoctors = async () => {
   try {
     const url = selectedStoreId.value === 'all'
-      ? '/api/admin/doctors'
-      : `/api/admin/doctors?store_id=${selectedStoreId.value}`
+      ? '/api/admin/appointments/options/doctors'
+      : `/api/admin/appointments/options/doctors?store_id=${selectedStoreId.value}`
     const res: any = await request.get(url)
     if (res.code === 200) {
       doctorsList.value = res.data
@@ -228,7 +229,6 @@ let timerId: any = null
 onMounted(async () => {
   await fetchStores()
   await fetchDoctors()
-  fetchProducts()
   await fetchAppointments()
   timerId = setInterval(() => {
     fetchAppointments(true)
@@ -399,10 +399,14 @@ const closeCheckInDialog = () => {
   selectedQueueItem.value = null
 }
 
+async function skipPreExamCheckIn(item: QueueItem) {
+  await request.put(`/api/admin/appointments/${item.id}`, { status: 'confirmed' })
+}
+
 async function handleCheckInSkip() {
   if (!selectedQueueItem.value) return
   try {
-    await request.put(`/api/admin/appointments/${selectedQueueItem.value.id}`, { status: 'confirmed' })
+    await skipPreExamCheckIn(selectedQueueItem.value)
     MessagePlugin.success(`患者 ${selectedQueueItem.value.patientName} 签到成功（已跳过体征录入）`)
     checkInVisible.value = false
     await fetchAppointments()
@@ -455,8 +459,14 @@ const triggerCallOnly = async (item: QueueItem) => {
 }
 
 // Click '接诊' button: move to room, update status to 'checked_in'
+const consultingId = ref('')
 const triggerConsultOnly = async (item: QueueItem) => {
+  if (consultingId.value) return
+  consultingId.value = item.id
   try {
+    if (item.status === 'pending') {
+      await skipPreExamCheckIn(item)
+    }
     // If there is already a checked_in patient, change their status back to 'confirmed'
     const prevCheckedIn = appointments.value.find(
       a => a.doctorId === selectedDoctorId.value && a.status === 'checked_in' && a.id !== item.id
@@ -468,10 +478,13 @@ const triggerConsultOnly = async (item: QueueItem) => {
     // Update status to checked_in (就诊中)
     await request.put(`/api/admin/appointments/${item.id}`, { status: 'checked_in' })
     MessagePlugin.success(`已接诊患者 [${item.patientName}]，进入诊室`)
-    fetchAppointments()
+    await fetchAppointments()
   } catch (error) {
     console.error('接诊状态更新失败:', error)
     MessagePlugin.error('接诊失败')
+    await fetchAppointments()
+  } finally {
+    consultingId.value = ''
   }
 }
 
@@ -545,6 +558,7 @@ const fetchProducts = async () => {
 }
 
 async function openCheckoutDialog(item: QueueItem) {
+  if (!(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))) return
   selectedQueueItem.value = item
   if (item.status === 'pending_payment') {
     await appointmentCharge.value?.open(item.id)
@@ -709,7 +723,7 @@ watch(deliveryType, (newVal) => {
 
 const patientDiagnostics = ref<any>(null)
 watch(currentPatient, async (newVal) => {
-  if (newVal) {
+  if (newVal && hasPermission('medical_record:view')) {
     try {
       const res: any = await request.get(`/api/admin/patients/${newVal.patientId}/sleep-diagnostics`)
       if (res.code === 200) {
@@ -925,7 +939,7 @@ async function submitCreateAppt() {
     const slotTime = apptSlot.value.replace(/\s+/g, '') // e.g. "09:00-09:30"
     const slotHour = parseInt(slotTime.split(':')[0], 10)
     const period = slotHour < 12 ? 'morning' : 'afternoon'
-    const scheduleRes: any = await request.get('/api/admin/schedules', {
+    const scheduleRes: any = await request.get('/api/admin/appointments/options/schedules', {
       params: {
         doctor_id: selectedDoctorId.value,
         date: apptDate.value
@@ -974,7 +988,7 @@ async function submitCreateAppt() {
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>刷新队列
         </button>
-        <button class="btn btn-primary" @click="navigateToCreateAppointment">
+        <button v-permission="'appointment:add'" class="btn btn-primary" @click="navigateToCreateAppointment">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -1045,13 +1059,13 @@ async function submitCreateAppt() {
               </div>
             </div>
             <div style="display: flex; gap: 8px; flex-shrink: 0;">
-              <t-button size="extra-small" theme="primary" variant="outline" @click="goToEmr(currentPatient)">
+              <t-button v-permission="'medical_record:view'" size="extra-small" theme="primary" variant="outline" @click="goToEmr(currentPatient)">
                 开始看诊
               </t-button>
-              <t-button size="extra-small" theme="warning" variant="outline" @click="openCheckoutDialog(currentPatient)">
+              <t-button v-permission="'order:add'" size="extra-small" theme="warning" variant="outline" v-if="(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))" @click="openCheckoutDialog(currentPatient)">
                 划扣收费
               </t-button>
-              <t-button size="extra-small" theme="default" variant="outline" @click="callPatient(currentPatient.patientName, currentPatient.doctorName)">
+              <t-button v-permission="'queue:call'" size="extra-small" theme="default" variant="outline" @click="callPatient(currentPatient.patientName, currentPatient.doctorName)">
                 叫号
               </t-button>
             </div>
@@ -1283,18 +1297,18 @@ async function submitCreateAppt() {
                 </div>
               </div>
               <div class="queue-item-right">
-                <t-button v-if="item.status === 'pending'" size="extra-small" theme="warning" variant="outline" @click="openCheckInDialog(item)">
+                <t-button v-permission="{ any: ['appointment:checkin','queue:checkin'] }" v-if="item.status === 'pending'" size="extra-small" theme="warning" variant="outline" :disabled="!!consultingId" @click="openCheckInDialog(item)">
                   签到
                 </t-button>
                 <template v-else>
-                  <t-button size="extra-small" theme="primary" variant="outline" @click="triggerCallOnly(item)" style="margin-right: 4px;">
+                  <t-button v-permission="'queue:call'" size="extra-small" theme="primary" variant="outline" :disabled="!!consultingId" @click="triggerCallOnly(item)" style="margin-right: 4px;">
                     叫号
                   </t-button>
-                  <t-button size="extra-small" theme="success" variant="outline" @click="triggerConsultOnly(item)">
-                    接诊
-                  </t-button>
                 </template>
-                <t-button size="extra-small" theme="default" variant="text" @click="delayPatient(item)" style="margin-left: 4px;">
+                <t-button v-permission="{ any: ['appointment:receive','workbench:receive'] }" size="extra-small" theme="success" variant="outline" :loading="consultingId === item.id" :disabled="!!consultingId && consultingId !== item.id" @click="triggerConsultOnly(item)">
+                  接诊
+                </t-button>
+                <t-button v-permission="'appointment:postpone'" size="extra-small" theme="default" variant="text" @click="delayPatient(item)" style="margin-left: 4px;">
                   顺延
                 </t-button>
               </div>
@@ -1328,7 +1342,7 @@ async function submitCreateAppt() {
                 <t-button size="extra-small" theme="default" variant="outline" @click="router.push(`/patient/detail/${item.patientId}`)">
                   患者详情
                 </t-button>
-                <t-button size="extra-small" theme="success" variant="outline" @click="openCheckoutDialog(item)">
+                <t-button v-permission="'order:add'" size="extra-small" theme="success" variant="outline" v-if="(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))" @click="openCheckoutDialog(item)">
                   收费结算
                 </t-button>
               </div>
@@ -1358,7 +1372,7 @@ async function submitCreateAppt() {
             <input v-model="apptSearchQuery" type="text" class="form-control" placeholder="输入患者姓名/手机号检索">
           </div>
           <t-button theme="primary" style="height: 36px;" @click="handleApptSearch">检索</t-button>
-          <t-button theme="default" style="height: 36px;" @click="handleApptNewPatient">新患者建档</t-button>
+          <t-button v-permission="'patient:add'" theme="default" style="height: 36px;" @click="handleApptNewPatient">新患者建档</t-button>
         </div>
 
         <div v-if="apptSelectedPatient" class="matched-patient-box" style="background: #EFF6FF; border: 1px solid #BFDBFE; padding: 12px; border-radius: 8px; margin-bottom: 14px;">
@@ -1442,8 +1456,8 @@ async function submitCreateAppt() {
         <!-- Custom Footer -->
         <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #E5E7EB; padding-top: 16px;">
           <t-button variant="outline" theme="default" @click="closeCheckInDialog">取消</t-button>
-          <t-button variant="outline" theme="warning" @click="handleCheckInSkip">跳过录入直接签到</t-button>
-          <t-button theme="primary" @click="handleCheckInSubmit">确认签到</t-button>
+          <t-button v-permission="{ any: ['appointment:checkin','queue:checkin'] }" variant="outline" theme="warning" @click="handleCheckInSkip">跳过录入直接签到</t-button>
+          <t-button v-permission="'appointment:preexam'" theme="primary" @click="handleCheckInSubmit">确认签到</t-button>
         </div>
       </div>
     </t-dialog>
@@ -1614,7 +1628,7 @@ async function submitCreateAppt() {
               <input class="form-control" v-model="micropayAuthCode" placeholder="请扫描或输入患者微信付款码">
             </div>
             <div v-if="payMethod === 'wechat' && miniPayOrderNo && payWaiting" style="margin: 12px 0; overflow-wrap: anywhere;">小程序待支付订单：{{ miniPayOrderNo }}</div>
-            <TechnicianSelect v-model="fulfillmentTechnicianId" />
+            <TechnicianSelect v-if="checkoutVisible && hasPermission('order:view')" v-model="fulfillmentTechnicianId" />
             <div v-if="nativePayInfo" style="margin-top: 14px; text-align: center; padding: 14px; border: 1px solid #E5E7EB; border-radius: 8px;">
               <img v-if="nativePayInfo.qrCodeImageUrl" :src="nativePayInfo.qrCodeImageUrl" alt="微信支付二维码" style="width: 220px; height: 220px;">
               <div style="font-size: 13px; color: #374151; margin-top: 8px;">请患者使用微信扫码支付</div>
@@ -1625,7 +1639,7 @@ async function submitCreateAppt() {
 
           <div style="display: flex; justify-content: flex-end; gap: 10px;">
             <t-button theme="default" @click="closeCheckoutDialog">取消</t-button>
-            <t-button theme="primary" :loading="checkoutLoading" :disabled="payWaiting" @click="submitCheckout">{{ payMethod === 'wechat' ? '生成待支付订单' : '确认支付收款' }} · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
+            <t-button v-permission="'order:add'" theme="primary" :loading="checkoutLoading" :disabled="payWaiting" @click="submitCheckout">{{ payMethod === 'wechat' ? '生成待支付订单' : '确认支付收款' }} · ¥{{ (payableAmount / 100).toFixed(2) }}</t-button>
           </div>
         </div>
 
@@ -1651,14 +1665,14 @@ async function submitCreateAppt() {
           </div>
 
           <div style="display: flex; justify-content: center; gap: 10px;">
-            <t-button theme="primary" variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;">
+            <t-button v-permission="'order:print'" theme="primary" variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 6 2 18 2 18 9"></polyline>
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                 <rect x="6" y="14" width="12" height="8"></rect>
               </svg>打印交易小票
             </t-button>
-            <t-button theme="default" @click="completeCheckoutSettlement">完成结算</t-button>
+            <t-button v-permission="'order:charge'" theme="default" @click="completeCheckoutSettlement">完成结算</t-button>
           </div>
         </div>
       </div>

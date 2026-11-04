@@ -105,13 +105,13 @@ onMounted(load)
               <td style="text-align: right;">
                 <div class="actions">
                   <button class="btn btn-xs btn-outline" @click="showDetail(item)">履约资料</button>
-                  <button v-if="item.status === 'pending_assignment'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="openAction('assign', item)">分配</button>
-                  <button v-if="item.status === 'assigned'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="moldDialog.open(item)">取模</button>
-                  <button v-else-if="item.status!=='pending_assignment'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-outline" @click="moldDialog.open(item)">取模资料</button>
-                  <button v-if="['mold_taken','mold_batched','mold_shipped','factory_received','producing','factory_exception'].includes(item.status)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="openBatch(item)">送厂批次</button>
-                  <button v-if="['factory_received','producing'].includes(item.status)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-success" @click="openAction('receipt', item)">收货</button>
-                  <button v-if="item.status === 'device_received'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="notify(item)">通知试戴</button>
-                  <button v-if="item.status === 'ready_for_fitting'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-success" @click="openAction('fitting', item)">完成试戴</button>
+                  <button v-permission="'fulfillment:assign'" v-if="item.status === 'pending_assignment'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="openAction('assign', item)">分配</button>
+                  <button v-permission="'fulfillment:mold'" v-if="item.status === 'assigned'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="moldDialog.open(item)">取模</button>
+                  <button v-permission="'fulfillment:mold'" v-else-if="item.status!=='pending_assignment'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-outline" @click="moldDialog.open(item)">取模资料</button>
+                  <button v-permission="'fulfillment:batch'" v-if="['mold_taken','mold_batched','mold_shipped','factory_received','producing','factory_exception'].includes(item.status)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="openBatch(item)">送厂批次</button>
+                  <button v-permission="'fulfillment:receipt'" v-if="['factory_received','producing'].includes(item.status)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-success" @click="openAction('receipt', item)">收货</button>
+                  <button v-permission="'fulfillment:notify'" v-if="item.status === 'device_received'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="notify(item)">通知试戴</button>
+                  <button v-permission="'fulfillment:fitting'" v-if="item.status === 'ready_for_fitting'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-success" @click="openAction('fitting', item)">完成试戴</button>
                   <button class="btn btn-xs btn-outline" @click="showEvents(item)">记录</button>
                 </div>
               </td>

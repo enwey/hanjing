@@ -151,7 +151,7 @@ onMounted(fetchCategories)
         <div class="page-title">商品分类管理</div>
         <div class="page-title-sub">维护后台与小程序商城共用的商品分类，“全部”由小程序自动汇总生成。</div>
       </div>
-      <button class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" /> 添加分类</button>
+      <button v-permission="'product_category:add'" class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" /> 添加分类</button>
     </div>
 
     <div v-if="!apiReady" class="warning-banner">
@@ -180,8 +180,8 @@ onMounted(fetchCategories)
               <td>{{ row.createdAt ? formatShanghaiDateTime(row.createdAt) : '—' }}</td>
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;">
-                  <button class="btn btn-xs btn-outline" @click="handleEdit(row)">编辑</button>
-                  <t-popconfirm content="确认删除该商品分类吗？" @confirm="handleDelete(row.id)">
+                  <button v-permission="'product_category:edit'" class="btn btn-xs btn-outline" @click="handleEdit(row)">编辑</button>
+                  <t-popconfirm v-permission="'product_category:delete'" content="确认删除该商品分类吗？" @confirm="handleDelete(row.id)">
                     <button class="btn btn-xs btn-danger">删除</button>
                   </t-popconfirm>
                 </div>

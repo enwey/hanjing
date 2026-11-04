@@ -201,7 +201,7 @@ onMounted(fetchProducts)
         <div class="page-title">商品管理</div>
         <div class="page-title-sub">统一管理小程序商城商品，上下架与是否参与分销都在这里设置</div>
       </div>
-      <button class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" /> 添加商品</button>
+      <button v-permission="'product:add'" class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" /> 添加商品</button>
     </div>
 
     <div class="panel">
@@ -312,12 +312,12 @@ onMounted(fetchProducts)
               </td>
               <td class="action-col" :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">
                 <div class="actions">
-                  <button class="btn btn-xs btn-outline" @click="handleEdit(product.id)">编辑</button>
-                  <button v-if="product.status === 'on'" class="btn btn-xs btn-danger" @click="handleToggle(product.id)">下架</button>
-                  <button v-else class="btn btn-xs btn-success" @click="handleToggle(product.id)">上架</button>
-                  <button v-if="product.isDistribution" class="btn btn-xs btn-warning" @click="handleToggleDistribution(product.id)">取消推广</button>
-                  <button v-else class="btn btn-xs btn-outline" @click="handleToggleDistribution(product.id)">设为推广</button>
-                  <button class="btn btn-xs btn-danger" @click="handleDelete(product.id)">删除</button>
+                  <button v-permission="'product:edit'" class="btn btn-xs btn-outline" @click="handleEdit(product.id)">编辑</button>
+                  <button v-permission="'product:status'" v-if="product.status === 'on'" class="btn btn-xs btn-danger" @click="handleToggle(product.id)">下架</button>
+                  <button v-permission="'product:status'" v-else class="btn btn-xs btn-success" @click="handleToggle(product.id)">上架</button>
+                  <button v-permission="'product:promotion'" v-if="product.isDistribution" class="btn btn-xs btn-warning" @click="handleToggleDistribution(product.id)">取消推广</button>
+                  <button v-permission="'product:promotion'" v-else class="btn btn-xs btn-outline" @click="handleToggleDistribution(product.id)">设为推广</button>
+                  <button v-permission="'product:delete'" class="btn btn-xs btn-danger" @click="handleDelete(product.id)">删除</button>
                 </div>
               </td>
             </tr>

@@ -35,11 +35,11 @@ async function toggle(){await request.put(`/api/admin/distribution/promoters/${p
 </script>
 <template>
   <span v-if="promoterId" class="actions">
-    <button class="btn btn-xs btn-outline" :disabled="busy" @click="showQr">小程序码</button>
-    <button class="btn btn-xs btn-outline" @click="resetVisible=true">重置密码</button>
-    <button class="btn btn-xs btn-outline" @click="toggle">{{status==='active'?'停用':'启用'}}</button>
+    <button v-permission="'promoter:qr'" class="btn btn-xs btn-outline" :disabled="busy" @click="showQr">小程序码</button>
+    <button v-permission="'promoter:password'" class="btn btn-xs btn-outline" @click="resetVisible=true">重置密码</button>
+    <button v-permission="'promoter:status'" class="btn btn-xs btn-outline" @click="toggle">{{status==='active'?'停用':'启用'}}</button>
   </span>
-  <button v-else class="btn btn-primary" @click="visible=true">添加推广员</button>
+  <button v-permission="'promoter:add'" v-else class="btn btn-primary" @click="visible=true">添加推广员</button>
   <t-dialog v-model:visible="visible" header="添加推广员" width="640px" :confirm-btn="{content:'创建',loading:busy}" @confirm="create">
     <t-form :data="form" label-width="100px">
       <t-form-item label="头像（选填）">

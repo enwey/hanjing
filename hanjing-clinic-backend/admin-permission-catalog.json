@@ -1,0 +1,742 @@
+[
+  {
+    "module": "dashboard",
+    "label": "数据看板",
+    "path": "/dashboard",
+    "actions": [
+      {
+        "code": "dashboard:view",
+        "label": "查看看板"
+      }
+    ]
+  },
+  {
+    "module": "appointment",
+    "label": "预约管理",
+    "path": "/appointment",
+    "actions": [
+      {
+        "code": "appointment:view",
+        "label": "查看预约"
+      },
+      {
+        "code": "appointment:add",
+        "label": "新建预约"
+      },
+      {
+        "code": "appointment:edit",
+        "label": "修改预约"
+      },
+      {
+        "code": "appointment:reschedule",
+        "label": "改约"
+      },
+      {
+        "code": "appointment:cancel",
+        "label": "取消预约"
+      },
+      {
+        "code": "appointment:checkin",
+        "label": "签到"
+      },
+      {
+        "code": "appointment:preexam",
+        "label": "预检"
+      },
+      {
+        "code": "appointment:receive",
+        "label": "接诊"
+      },
+      {
+        "code": "appointment:postpone",
+        "label": "延后"
+      },
+      {
+        "code": "appointment:charge",
+        "label": "收款"
+      },
+      {
+        "code": "appointment:refund",
+        "label": "退款"
+      },
+      {
+        "code": "appointment:print",
+        "label": "打印凭证"
+      },
+      {
+        "code": "appointment:export",
+        "label": "导出"
+      }
+    ]
+  },
+  {
+    "module": "queue",
+    "label": "排队分诊",
+    "path": "/queue",
+    "actions": [
+      {
+        "code": "queue:view",
+        "label": "查看队列"
+      },
+      {
+        "code": "queue:call",
+        "label": "叫号"
+      },
+      {
+        "code": "queue:checkin",
+        "label": "签到"
+      }
+    ]
+  },
+  {
+    "module": "workbench",
+    "label": "接诊工作台",
+    "path": "/workbench",
+    "actions": [
+      {
+        "code": "workbench:view",
+        "label": "查看工作台"
+      },
+      {
+        "code": "workbench:receive",
+        "label": "接诊"
+      }
+    ]
+  },
+  {
+    "module": "patient",
+    "label": "患者管理",
+    "path": "/patient",
+    "actions": [
+      {
+        "code": "patient:view",
+        "label": "查看患者"
+      },
+      {
+        "code": "patient:add",
+        "label": "新建患者"
+      },
+      {
+        "code": "patient:edit",
+        "label": "编辑患者"
+      },
+      {
+        "code": "patient:export",
+        "label": "导出"
+      },
+      {
+        "code": "patient:phone:view",
+        "label": "查看手机号"
+      },
+      {
+        "code": "patient:crm",
+        "label": "添加跟进"
+      },
+      {
+        "code": "patient:bind_promoter",
+        "label": "调整推荐关系"
+      },
+      {
+        "code": "patient:message",
+        "label": "发送消息"
+      }
+    ]
+  },
+  {
+    "module": "medical_record",
+    "label": "诊疗病历",
+    "path": "",
+    "actions": [
+      {
+        "code": "medical_record:view",
+        "label": "查看病历"
+      },
+      {
+        "code": "medical_record:edit",
+        "label": "保存病历"
+      },
+      {
+        "code": "medical_record:complete",
+        "label": "完成接诊"
+      },
+      {
+        "code": "medical_record:treatment",
+        "label": "治疗方案"
+      },
+      {
+        "code": "medical_record:adjustment",
+        "label": "设备调整"
+      },
+      {
+        "code": "medical_record:followup",
+        "label": "随访管理"
+      },
+      {
+        "code": "medical_record:attachment",
+        "label": "上传附件"
+      }
+    ]
+  },
+  {
+    "module": "doctor",
+    "label": "医生管理",
+    "path": "/doctor",
+    "actions": [
+      {
+        "code": "doctor:view",
+        "label": "查看医生"
+      },
+      {
+        "code": "doctor:add",
+        "label": "新增医生"
+      },
+      {
+        "code": "doctor:edit",
+        "label": "编辑医生"
+      },
+      {
+        "code": "doctor:delete",
+        "label": "删除医生"
+      }
+    ]
+  },
+  {
+    "module": "schedule",
+    "label": "排班管理",
+    "path": "",
+    "actions": [
+      {
+        "code": "schedule:view",
+        "label": "查看排班"
+      },
+      {
+        "code": "schedule:edit",
+        "label": "保存排班"
+      },
+      {
+        "code": "schedule:copy",
+        "label": "复制排班"
+      }
+    ]
+  },
+  {
+    "module": "store",
+    "label": "门店管理",
+    "path": "/store",
+    "actions": [
+      {
+        "code": "store:view",
+        "label": "查看门店"
+      },
+      {
+        "code": "store:add",
+        "label": "新增门店"
+      },
+      {
+        "code": "store:edit",
+        "label": "编辑门店"
+      },
+      {
+        "code": "store:delete",
+        "label": "删除门店"
+      },
+      {
+        "code": "store:report",
+        "label": "门店报表"
+      },
+      {
+        "code": "store:export",
+        "label": "导出报表"
+      }
+    ]
+  },
+  {
+    "module": "order",
+    "label": "订单管理",
+    "path": "/order",
+    "actions": [
+      {
+        "code": "order:view",
+        "label": "查看订单"
+      },
+      {
+        "code": "order:add",
+        "label": "创建订单"
+      },
+      {
+        "code": "order:charge",
+        "label": "收款"
+      },
+      {
+        "code": "order:cancel_payment",
+        "label": "取消支付"
+      },
+      {
+        "code": "order:ship",
+        "label": "发货"
+      },
+      {
+        "code": "order:complete",
+        "label": "完成订单"
+      },
+      {
+        "code": "order:notify",
+        "label": "发送通知"
+      },
+      {
+        "code": "order:refund",
+        "label": "退款"
+      },
+      {
+        "code": "order:export",
+        "label": "导出订单"
+      },
+      {
+        "code": "order:print",
+        "label": "打印凭证"
+      }
+    ]
+  },
+  {
+    "module": "fulfillment",
+    "label": "交付管理",
+    "path": "/fulfillment",
+    "actions": [
+      {
+        "code": "fulfillment:view",
+        "label": "查看交付"
+      },
+      {
+        "code": "fulfillment:add",
+        "label": "创建交付"
+      },
+      {
+        "code": "fulfillment:assign",
+        "label": "分配技师"
+      },
+      {
+        "code": "fulfillment:mold",
+        "label": "录入口模"
+      },
+      {
+        "code": "fulfillment:attachment",
+        "label": "上传口模文件"
+      },
+      {
+        "code": "fulfillment:batch",
+        "label": "创建生产批次"
+      },
+      {
+        "code": "fulfillment:ship",
+        "label": "送厂"
+      },
+      {
+        "code": "fulfillment:cancel",
+        "label": "取消批次"
+      },
+      {
+        "code": "fulfillment:progress",
+        "label": "更新制作进度"
+      },
+      {
+        "code": "fulfillment:receipt",
+        "label": "设备入库"
+      },
+      {
+        "code": "fulfillment:notify",
+        "label": "通知试戴"
+      },
+      {
+        "code": "fulfillment:fitting",
+        "label": "试戴交付"
+      },
+      {
+        "code": "fulfillment:export",
+        "label": "导出送厂单"
+      }
+    ]
+  },
+  {
+    "module": "after_sales",
+    "label": "售后工作台",
+    "path": "/after-sales",
+    "actions": [
+      {
+        "code": "after_sales:view",
+        "label": "查看售后"
+      },
+      {
+        "code": "after_sales:add",
+        "label": "创建售后"
+      },
+      {
+        "code": "after_sales:edit",
+        "label": "处理售后"
+      }
+    ]
+  },
+  {
+    "module": "distribution",
+    "label": "分销总览",
+    "path": "/distribution",
+    "actions": [
+      {
+        "code": "distribution:view",
+        "label": "查看分销"
+      },
+      {
+        "code": "distribution:export",
+        "label": "导出报表"
+      }
+    ]
+  },
+  {
+    "module": "promoter",
+    "label": "推广员管理",
+    "path": "/promoter",
+    "actions": [
+      {
+        "code": "promoter:view",
+        "label": "查看推广员"
+      },
+      {
+        "code": "promoter:add",
+        "label": "新增推广员"
+      },
+      {
+        "code": "promoter:status",
+        "label": "启用停用"
+      },
+      {
+        "code": "promoter:password",
+        "label": "重置密码"
+      },
+      {
+        "code": "promoter:qr",
+        "label": "查看推广码"
+      },
+      {
+        "code": "promoter:export",
+        "label": "导出推广员"
+      }
+    ]
+  },
+  {
+    "module": "withdraw",
+    "label": "提现审核",
+    "path": "/withdraw",
+    "actions": [
+      {
+        "code": "withdraw:view",
+        "label": "查看提现"
+      },
+      {
+        "code": "withdraw:audit",
+        "label": "审核提现"
+      },
+      {
+        "code": "withdraw:account",
+        "label": "查看收款账号"
+      },
+      {
+        "code": "withdraw:paid",
+        "label": "确认打款"
+      },
+      {
+        "code": "withdraw:export",
+        "label": "导出提现"
+      }
+    ]
+  },
+  {
+    "module": "product",
+    "label": "商品管理",
+    "path": "/products",
+    "actions": [
+      {
+        "code": "product:view",
+        "label": "查看商品"
+      },
+      {
+        "code": "product:add",
+        "label": "新增商品"
+      },
+      {
+        "code": "product:edit",
+        "label": "编辑商品"
+      },
+      {
+        "code": "product:delete",
+        "label": "删除商品"
+      },
+      {
+        "code": "product:status",
+        "label": "上下架"
+      },
+      {
+        "code": "product:promotion",
+        "label": "推广开关"
+      }
+    ]
+  },
+  {
+    "module": "product_category",
+    "label": "商品分类",
+    "path": "/product-categories",
+    "actions": [
+      {
+        "code": "product_category:view",
+        "label": "查看分类"
+      },
+      {
+        "code": "product_category:add",
+        "label": "新增分类"
+      },
+      {
+        "code": "product_category:edit",
+        "label": "编辑分类"
+      },
+      {
+        "code": "product_category:delete",
+        "label": "删除分类"
+      }
+    ]
+  },
+  {
+    "module": "content",
+    "label": "科普文章",
+    "path": "/content",
+    "actions": [
+      {
+        "code": "content:view",
+        "label": "查看文章"
+      },
+      {
+        "code": "content:add",
+        "label": "新增文章"
+      },
+      {
+        "code": "content:edit",
+        "label": "编辑文章"
+      },
+      {
+        "code": "content:delete",
+        "label": "删除文章"
+      },
+      {
+        "code": "content:audit",
+        "label": "审核文章"
+      }
+    ]
+  },
+  {
+    "module": "content_category",
+    "label": "内容分类",
+    "path": "/content-category",
+    "actions": [
+      {
+        "code": "content_category:view",
+        "label": "查看分类"
+      },
+      {
+        "code": "content_category:add",
+        "label": "新增分类"
+      },
+      {
+        "code": "content_category:edit",
+        "label": "编辑分类"
+      },
+      {
+        "code": "content_category:delete",
+        "label": "删除分类"
+      }
+    ]
+  },
+  {
+    "module": "live",
+    "label": "直播管理",
+    "path": "/live",
+    "actions": [
+      {
+        "code": "live:view",
+        "label": "查看直播"
+      },
+      {
+        "code": "live:add",
+        "label": "新增直播"
+      },
+      {
+        "code": "live:edit",
+        "label": "编辑直播"
+      },
+      {
+        "code": "live:delete",
+        "label": "删除直播"
+      },
+      {
+        "code": "live:sync",
+        "label": "同步微信"
+      }
+    ]
+  },
+  {
+    "module": "banner",
+    "label": "轮播图管理",
+    "path": "/banner",
+    "actions": [
+      {
+        "code": "banner:view",
+        "label": "查看轮播图"
+      },
+      {
+        "code": "banner:add",
+        "label": "新增轮播图"
+      },
+      {
+        "code": "banner:edit",
+        "label": "编辑轮播图"
+      },
+      {
+        "code": "banner:delete",
+        "label": "删除轮播图"
+      }
+    ]
+  },
+  {
+    "module": "settings",
+    "label": "系统设置",
+    "path": "/settings",
+    "actions": [
+      {
+        "code": "settings:view",
+        "label": "查看设置"
+      },
+      {
+        "code": "settings:edit",
+        "label": "保存设置"
+      },
+      {
+        "code": "settings:pay_check",
+        "label": "支付配置检查"
+      }
+    ]
+  },
+  {
+    "module": "wechat_notification",
+    "label": "微信通知",
+    "path": "/wechat-notifications",
+    "actions": [
+      {
+        "code": "wechat_notification:view",
+        "label": "查看通知"
+      },
+      {
+        "code": "wechat_notification:edit",
+        "label": "配置通知"
+      }
+    ]
+  },
+  {
+    "module": "member",
+    "label": "成员管理",
+    "path": "/admin",
+    "actions": [
+      {
+        "code": "member:view",
+        "label": "查看成员"
+      },
+      {
+        "code": "member:add",
+        "label": "新增成员"
+      },
+      {
+        "code": "member:edit",
+        "label": "编辑成员"
+      },
+      {
+        "code": "member:password",
+        "label": "重置密码"
+      },
+      {
+        "code": "member:status",
+        "label": "启用停用"
+      },
+      {
+        "code": "member:assign",
+        "label": "分配角色"
+      }
+    ]
+  },
+  {
+    "module": "role",
+    "label": "角色管理",
+    "path": "/permission",
+    "actions": [
+      {
+        "code": "role:view",
+        "label": "查看角色"
+      },
+      {
+        "code": "role:add",
+        "label": "新增角色"
+      },
+      {
+        "code": "role:edit",
+        "label": "编辑角色"
+      },
+      {
+        "code": "role:assign",
+        "label": "分配权限"
+      },
+      {
+        "code": "role:members",
+        "label": "管理成员"
+      },
+      {
+        "code": "role:scope",
+        "label": "配置数据范围"
+      }
+    ]
+  },
+  {
+    "module": "audit_log",
+    "label": "操作日志",
+    "path": "/log",
+    "actions": [
+      {
+        "code": "audit_log:view",
+        "label": "查看日志"
+      }
+    ]
+  },
+  {
+    "module": "mini_log",
+    "label": "小程序日志",
+    "path": "/mini-program-log",
+    "actions": [
+      {
+        "code": "mini_log:view",
+        "label": "查看日志"
+      }
+    ]
+  },
+  {
+    "module": "database",
+    "label": "数据库工具",
+    "path": "/database-tools",
+    "actions": [
+      {
+        "code": "database:view",
+        "label": "查看结构"
+      },
+      {
+        "code": "database:query",
+        "label": "查询数据"
+      },
+      {
+        "code": "database:sync",
+        "label": "同步结构"
+      }
+    ]
+  }
+]

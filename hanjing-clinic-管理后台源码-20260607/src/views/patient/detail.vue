@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -342,6 +343,7 @@ const fetchOrders = async () => {
 }
 
 const fetchFollowups = async () => {
+  if (!hasPermission('medical_record:view')) return
   try {
     const res: any = await request.get(`/api/admin/patients/${patientId.value}/follow-ups`)
     const { tasks, records } = res.data
@@ -362,6 +364,7 @@ const fetchFollowups = async () => {
 }
 
 const loadTreatmentAndChart = async () => {
+  if (!hasPermission('medical_record:view')) return
   try {
     const res: any = await request.get(`/api/admin/patients/${patientId.value}/treatment`)
     if (res.data) {
@@ -379,6 +382,7 @@ const loadTreatmentAndChart = async () => {
 }
 
 const loadSleepDiagnostics = async () => {
+  if (!hasPermission('medical_record:view')) return
   try {
     const res: any = await request.get(`/api/admin/patients/${patientId.value}/sleep-diagnostics`)
     sleepDiagnostics.value = res.data || null
@@ -404,6 +408,7 @@ const allAttachments = computed(() => medicalRecords.value.flatMap((record: any)
 }))
 
 const fetchMedicalRecords = async () => {
+  if (!hasPermission('medical_record:view')) return
   try {
     const res: any = await request.get(`/api/admin/patients/${patientId.value}/medical-records`)
     if (res.code === 200) {
@@ -755,7 +760,7 @@ const crmStageTheme: Record<string, string> = {
 
 const loadFollowers = async () => {
   try {
-    const res: any = await request.get('/api/admin/admin-users')
+    const res: any = await request.get('/api/admin/patients/options/followers')
     followers.value = res.data || []
   } catch (error) {
     console.error('Failed to load followers:', error)
@@ -763,6 +768,7 @@ const loadFollowers = async () => {
 }
 
 const loadPromoters = async () => {
+  if (!hasPermission('promoter:view')) return
   try {
     const res: any = await request.get('/api/admin/distribution/promoters')
     promoters.value = (res.data || []).filter((item:any) => item.source_type !== 'backend' && item.user_id && ['active','pending'].includes(item.status)).map((item: any) => ({
@@ -866,10 +872,10 @@ async function handleSaveCrm() {
         <div class="page-title-sub">病历号 {{ patient.no }} · 注册于 {{ patient.regDate }}</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" @click="handleEdit"><AppIcon name="edit" />  编辑</button>
-        <button class="btn btn-primary" @click="handleNewAppointment"><AppIcon name="calendar" />  新建预约</button>
-        <button class="btn btn-outline" @click="openCrmDialog"><AppIcon name="edit" />  跟进</button>
-        <button class="btn btn-success" @click="handleFollowup"><AppIcon name="phone" />  随访</button>
+        <button v-permission="'patient:edit'" class="btn btn-outline" @click="handleEdit"><AppIcon name="edit" />  编辑</button>
+        <button v-permission="'appointment:add'" class="btn btn-primary" v-if="hasPermission('appointment:add')" @click="handleNewAppointment"><AppIcon name="calendar" />  新建预约</button>
+        <button v-permission="'patient:crm'" class="btn btn-outline" @click="openCrmDialog"><AppIcon name="edit" />  跟进</button>
+        <button v-permission="'medical_record:followup'" class="btn btn-success" v-if="hasPermission('medical_record:view')" @click="handleFollowup"><AppIcon name="phone" />  随访</button>
       </div>
     </div>
 
@@ -879,8 +885,8 @@ async function handleSaveCrm() {
       <div class="tab" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">病史档案</div>
       <div class="tab" :class="{ active: activeTab === 'visits' }" @click="activeTab = 'visits'">就诊记录</div>
       <div class="tab" :class="{ active: activeTab === 'orders' }" @click="activeTab = 'orders'">订单记录</div>
-      <div class="tab" :class="{ active: activeTab === 'followups' }" @click="activeTab = 'followups'">随访计划</div>
-      <div class="tab" :class="{ active: activeTab === 'files' }" @click="activeTab = 'files'">病历附件</div>
+      <div v-if="hasPermission('medical_record:view')" class="tab" :class="{ active: activeTab === 'followups' }" @click="activeTab = 'followups'">随访计划</div>
+      <div v-if="hasPermission('medical_record:view')" class="tab" :class="{ active: activeTab === 'files' }" @click="activeTab = 'files'">病历附件</div>
       <div class="tab" :class="{ active: activeTab === 'crm' }" @click="activeTab = 'crm'">营销跟进</div>
     </div>
 
@@ -933,7 +939,7 @@ async function handleSaveCrm() {
                 <div class="info-label">手机号</div>
                 <div class="info-value" style="display: flex; align-items: center; gap: 8px;">
                   <span>{{ patient.phone }}</span>
-                  <button v-if="!fullPhoneLoaded" class="btn btn-xs btn-outline" @click="handleRevealPhone">查看完整</button>
+                  <button v-permission="'patient:phone:view'" v-if="!fullPhoneLoaded" class="btn btn-xs btn-outline" @click="handleRevealPhone">查看完整</button>
                 </div>
               </div>
               <div class="info-item"><div class="info-label">来源</div><div class="info-value"><span v-if="patient.source" class="tag tag-green">{{ patient.source }}</span><span v-else>未记录</span></div></div>
@@ -943,8 +949,8 @@ async function handleSaveCrm() {
                 <div class="info-value">
                   <div style="margin-bottom: 8px;">{{ patient.referrer || '无推荐人' }}</div>
                   <div style="display: flex; gap: 8px;">
-                    <t-select v-model="selectedPromoterId" :options="promoters" placeholder="选择推广人" clearable size="small" style="min-width: 180px;" />
-                    <button class="btn btn-xs btn-outline" :disabled="bindingPromoter" @click="handleBindPromoter">保存</button>
+                    <t-select :disabled="!hasPermission('promoter:view')" v-model="selectedPromoterId" :options="promoters" placeholder="选择推广人" clearable size="small" style="min-width: 180px;" />
+                    <button v-permission="'patient:bind_promoter'" class="btn btn-xs btn-outline" :disabled="bindingPromoter" @click="handleBindPromoter">保存</button>
                   </div>
                 </div>
               </div>
@@ -1214,9 +1220,9 @@ async function handleSaveCrm() {
                 <td><span class="status-tag" :class="f.statusRaw === 'completed' ? 'green' : (f.statusRaw === 'cancelled' ? 'red' : 'gold')">{{ f.status }}</span></td>
                 <td>
                   <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                    <button v-if="f.statusRaw !== 'completed' && f.statusRaw !== 'cancelled'" class="btn btn-xs btn-success" :disabled="completingFollowupId === f.id" @click="handleCompleteFollowup(f)">完成</button>
-                    <button v-if="f.statusRaw !== 'completed' && f.statusRaw !== 'cancelled'" class="btn btn-xs btn-outline" :disabled="reschedulingFollowupId === f.id" @click="handleRescheduleFollowup(f)">改期</button>
-                    <button v-if="f.statusRaw !== 'completed' && f.statusRaw !== 'cancelled'" class="btn btn-xs btn-danger" @click="handleCancelFollowup(f)">取消</button>
+                    <button v-permission="'medical_record:followup'" v-if="f.statusRaw !== 'completed' && f.statusRaw !== 'cancelled'" class="btn btn-xs btn-success" :disabled="completingFollowupId === f.id" @click="handleCompleteFollowup(f)">完成</button>
+                    <button v-permission="'medical_record:followup'" v-if="f.statusRaw !== 'completed' && f.statusRaw !== 'cancelled'" class="btn btn-xs btn-outline" :disabled="reschedulingFollowupId === f.id" @click="handleRescheduleFollowup(f)">改期</button>
+                    <button v-permission="'medical_record:followup'" v-if="f.statusRaw !== 'completed' && f.statusRaw !== 'cancelled'" class="btn btn-xs btn-danger" @click="handleCancelFollowup(f)">取消</button>
                   </div>
                 </td>
               </tr>
@@ -1256,7 +1262,7 @@ async function handleSaveCrm() {
                 placeholder="选择归属病历"
                 :options="medicalRecords.map((mr: any) => ({ label: `${formatDate(mr.visit_date)} ${mr.diagnosis || ''}`, value: String(mr.id) }))"
               />
-              <label class="btn btn-xs btn-outline" :class="{ disabled: uploadingAttachment || !selectedAttachmentRecordId }">
+              <label v-permission="'medical_record:attachment'" class="btn btn-xs btn-outline" :class="{ disabled: uploadingAttachment || !selectedAttachmentRecordId }">
                 上传附件
                 <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple style="display:none" :disabled="uploadingAttachment || !selectedAttachmentRecordId" @change="handleAttachmentUpload">
               </label>
@@ -1274,7 +1280,7 @@ async function handleSaveCrm() {
                   <div class="file-meta">{{ file.recordDate }} · {{ file.size ? Math.round(file.size / 1024) + 'KB' : '未知大小' }}</div>
                 </div>
                 <a class="btn btn-xs btn-outline" :href="file.url" target="_blank">预览</a>
-                <button class="btn btn-xs btn-danger" @click="handleRemoveAttachment(file)">删除</button>
+                <button v-permission="'medical_record:attachment'" class="btn btn-xs btn-danger" @click="handleRemoveAttachment(file)">删除</button>
               </div>
             </div>
           </div>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TemporaryRuntimeCleanup from '@/components/temporary-runtime-cleanup/TemporaryRuntimeCleanup.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -83,9 +84,9 @@ function ensureSuperAdminAccess() {
   } catch (error) {
     userInfo.value = {}
   }
-  if (userInfo.value?.role_code !== 'super_admin') {
-    MessagePlugin.error('只有超级管理员可以访问数据库工具')
-    router.replace('/dashboard')
+  if (userInfo.value?.role_code !== 'super_admin' && !userInfo.value?.permissions?.includes('database:view')) {
+    MessagePlugin.error('没有数据库工具访问权限')
+    router.replace('/profile')
     return false
   }
   return true
@@ -163,11 +164,13 @@ onMounted(async () => {
       <div class="header-actions">
         <div class="db-tag">当前库：{{ databaseName || '—' }}</div>
         <button class="btn btn-outline" :disabled="loadingSchema || syncingDb" @click="fetchSchema">刷新结构</button>
-        <button class="btn btn-primary" :disabled="loadingSchema || syncingDb" @click="showSyncConfirm = true">
+        <button v-permission="'database:sync'" class="btn btn-primary" :disabled="loadingSchema || syncingDb" @click="showSyncConfirm = true">
           {{ syncingDb ? '同步自检中...' : '一键结构自检与同步' }}
         </button>
       </div>
     </div>
+
+    <TemporaryRuntimeCleanup v-if="userInfo.role_code === 'super_admin'" @cleaned="fetchSchema" />
 
     <div class="database-layout">
       <div class="panel sidebar-panel">
@@ -273,7 +276,7 @@ onMounted(async () => {
           <div class="panel-body sql-body">
             <textarea v-model="sqlText" class="sql-editor" spellcheck="false" placeholder="请输入单条只读查询 SQL"></textarea>
             <div class="sql-actions">
-              <button class="btn btn-primary" :disabled="runningSql" @click="runSql">执行 SQL</button>
+              <button v-permission="'database:query'" class="btn btn-primary" :disabled="runningSql" @click="runSql">执行 SQL</button>
             </div>
 
             <div v-if="sqlResult" class="result-wrap">

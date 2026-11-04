@@ -150,7 +150,7 @@ function handleReset() {
 
 
         <button class="btn btn-outline" @click="handleReset" :disabled="saving" style="padding: 0 24px; height: 36px;">重新加载</button>
-        <button class="btn btn-primary" @click="handleSaveAll" :disabled="!settingsLoaded || saving" style="padding: 0 32px; height: 36px;">保存设置</button>
+        <button v-permission="'settings:edit'" class="btn btn-primary" @click="handleSaveAll" :disabled="!settingsLoaded || saving" style="padding: 0 32px; height: 36px;">保存设置</button>
       </div>
     </div>
 

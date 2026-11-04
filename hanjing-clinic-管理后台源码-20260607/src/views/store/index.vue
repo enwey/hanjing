@@ -217,7 +217,7 @@ function openStoreAccounts(store: Store) {
         <div class="page-title">门店管理</div>
         <div class="page-title-sub">管理所有门店/诊所信息</div>
       </div>
-      <button class="btn btn-primary" @click="openCreate"><AppIcon name="plus" />  新增门店</button>
+      <button v-permission="'store:add'" class="btn btn-primary" @click="openCreate"><AppIcon name="plus" />  新增门店</button>
     </div>
 
     <!-- 门店卡片 -->
@@ -275,11 +275,11 @@ function openStoreAccounts(store: Store) {
 
           <!-- 底部操作按钮 -->
           <div style="display:flex;gap:8px;margin-top:16px;">
-            <button class="btn btn-sm btn-outline" style="flex:1;" @click="openEdit(store)">编辑信息</button>
-            <button class="btn btn-sm btn-outline" style="flex:1;" @click="openStoreSchedule(store)">排班管理</button>
-            <button class="btn btn-sm btn-outline" style="flex:1;" @click="openStoreAccounts(store)">人员配置</button>
-            <button class="btn btn-sm btn-outline" style="flex:1;" @click="router.push('/store/report/' + store.id)">数据报表</button>
-            <button v-if="store.status !== 'closed'" class="btn btn-sm btn-outline" style="flex:1;" @click="handleDisable(store)">停用</button>
+            <button v-permission="'store:edit'" class="btn btn-sm btn-outline" style="flex:1;" @click="openEdit(store)">编辑信息</button>
+            <button v-permission="'schedule:view'" class="btn btn-sm btn-outline" style="flex:1;" @click="openStoreSchedule(store)">排班管理</button>
+            <button v-permission="'member:view'" class="btn btn-sm btn-outline" style="flex:1;" @click="openStoreAccounts(store)">人员配置</button>
+            <button v-permission="'store:report'" class="btn btn-sm btn-outline" style="flex:1;" @click="router.push('/store/report/' + store.id)">数据报表</button>
+            <button v-permission="'store:delete'" v-if="store.status !== 'closed'" class="btn btn-sm btn-outline" style="flex:1;" @click="handleDisable(store)">停用</button>
           </div>
         </div>
       </div>

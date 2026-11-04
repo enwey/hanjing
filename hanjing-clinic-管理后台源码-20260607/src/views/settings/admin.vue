@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import { formatShanghaiDateTime } from '@/utils/dateTime'
+
+import { scopeLabel, type DataScope } from '@/utils/dataScope'
 
 const route = useRoute()
 
@@ -14,6 +17,7 @@ interface AdminAccount {
   phone?: string;
   password?: string;
   roleId?: string;
+  effectiveScope?: DataScope;
   storeIds?: string[];
   allStores?: boolean;
   doctorId?: string;
@@ -31,6 +35,7 @@ interface RoleOption {
   id: string;
   name: string;
   code?: string;
+  dataScope?: DataScope;
 }
 
 interface StoreOption {
@@ -113,6 +118,7 @@ function mapAdmin(row: any): AdminAccount {
     username: row.username || '',
     name: row.name || '',
     phone: row.phone || '',
+    effectiveScope: row.effective_data_scope,
     roleId: row.role_id ? String(row.role_id) : '',
     storeIds: String(row.store_ids || '').split(',').filter(Boolean),
     allStores: Number(row.all_stores) === 1,
@@ -131,12 +137,13 @@ function mapAdmin(row: any): AdminAccount {
 async function fetchOptions() {
   const [roleRes, storeRes, doctorRes]: any[] = await Promise.all([
     request.get('/api/admin/roles'),
-    request.get('/api/admin/stores'),
-    request.get('/api/admin/doctors')
+    request.get('/api/admin/data-scope-stores'),
+    request.get('/api/admin/members/options/doctors')
   ])
   roles.value = (roleRes.data || []).map((row: any) => ({
     id: String(row.id),
     name: row.name,
+    dataScope: row.data_scope,
     code: row.code
   }))
   stores.value = (storeRes.data || []).map((row: any) => ({
@@ -289,7 +296,7 @@ watch(operationColumnWidth, () => {
         <div class="page-title">成员管理</div>
         <div class="page-title-sub">{{ admins.length }}位管理员</div>
       </div>
-      <button class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" />  添加管理员</button>
+      <button v-permission="'member:add'" class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" />  添加管理员</button>
     </div>
 
     <!-- Admins Table -->
@@ -344,6 +351,7 @@ watch(operationColumnWidth, () => {
               <th>姓名</th>
               <th>角色</th>
               <th>负责门店</th>
+              <th>查看数据范围</th>
               <th>绑定医生</th>
               <th>最近登录</th>
               <th>状态</th>
@@ -366,6 +374,7 @@ watch(operationColumnWidth, () => {
                 <span class="tag tag-gray" v-else-if="row.roleTag === 'gray'">{{ row.role }}</span>
               </td>
               <td>{{ row.store }}</td>
+              <td>{{ row.roleId ? '角色范围：' + scopeLabel(row.effectiveScope, stores) : '未分配角色' }}</td>
               <td>{{ row.doctorName || '—' }}</td>
               <td style="font-size: 12px; color: #6B7280;">{{ row.lastLogin }}</td>
               <td>
@@ -375,16 +384,16 @@ watch(operationColumnWidth, () => {
               </td>
               <td :style="{ width: operationColumnWidth, minWidth: operationColumnWidth }">
                 <div style="display: flex; gap: 4px; justify-content: flex-end;">
-                  <button class="btn btn-xs btn-outline" @click="handleEdit(row.id)">编辑</button>
+                  <button v-if="['member:edit','member:assign','member:password'].some(hasPermission)" class="btn btn-xs btn-outline" @click="handleEdit(row.id)">编辑</button>
                   <button
-                    class="btn btn-xs btn-danger"
+ v-permission="'member:status'"                    class="btn btn-xs btn-danger"
                     @click="handleToggle(row.id)"
                     v-if="row.username !== 'admin' && row.status !== 'disabled'"
                   >
                     禁用
                   </button>
                   <button
-                    class="btn btn-xs btn-success"
+ v-permission="'member:status'"                    class="btn btn-xs btn-success"
                     @click="handleToggle(row.id)"
                     v-if="row.username !== 'admin' && row.status === 'disabled'"
                   >
@@ -423,39 +432,40 @@ watch(operationColumnWidth, () => {
         </div>
         <div class="form-group">
           <label class="form-label">真实姓名</label>
-          <input type="text" class="form-control" v-model="formData.name" placeholder="请输入姓名">
+          <input type="text" class="form-control" v-model="formData.name" :disabled="isEdit && !hasPermission('member:edit')" placeholder="请输入姓名">
         </div>
         <div class="form-group">
           <label class="form-label">手机号</label>
-          <input type="text" class="form-control" v-model="formData.phone" placeholder="请输入手机号">
+          <input type="text" class="form-control" v-model="formData.phone" :disabled="isEdit && !hasPermission('member:edit')" placeholder="请输入手机号">
         </div>
         <div class="form-group">
           <label class="form-label">{{ isEdit ? '重置密码（可选）' : '初始密码' }}</label>
-          <input type="password" class="form-control" v-model="formData.password" placeholder="新增账号必须设置密码">
+          <input type="password" class="form-control" v-model="formData.password" :disabled="isEdit && !hasPermission('member:password')" placeholder="新增账号必须设置密码">
         </div>
         <div class="form-group">
           <label class="form-label">角色权限组</label>
-          <select class="form-control" v-model="formData.roleId">
+          <select class="form-control" v-model="formData.roleId" :disabled="isEdit && !hasPermission('member:assign')">
             <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
           </select>
         </div>
+
         <div class="form-group">
-          <label class="form-label">可访问门店</label>
+          <label class="form-label">业务操作门店</label>
           <label class="store-checkbox store-checkbox-all">
-            <input v-model="formData.allStores" type="checkbox">
+            <input v-model="formData.allStores" :disabled="isEdit && !hasPermission('member:edit')" type="checkbox">
             <span>全部门店（含后续新建门店）</span>
           </label>
           <div class="store-checkboxes">
             <label v-for="store in stores" :key="store.id" class="store-checkbox">
-              <input v-model="formData.storeIds" type="checkbox" :value="store.id" :disabled="formData.allStores">
+              <input v-model="formData.storeIds" type="checkbox" :value="store.id" :disabled="formData.allStores || (isEdit && !hasPermission('member:edit'))">
               <span>{{ store.name }}</span>
             </label>
           </div>
-          <div style="font-size: 12px; color: #9CA3AF;">按所选门店分配数据访问范围；勾选全部门店后，未来新建门店也会自动纳入范围。</div>
+          <div style="font-size: 12px; color: #9CA3AF;">用于排班、建档等业务操作；查看和统计范围按上方配置执行。</div>
         </div>
         <div class="form-group">
           <label class="form-label">绑定医生档案</label>
-          <select class="form-control" v-model="formData.doctorId">
+          <select class="form-control" v-model="formData.doctorId" :disabled="isEdit && !hasPermission('member:edit')">
             <option value="">不绑定医生</option>
             <option
               v-for="doctor in doctors"

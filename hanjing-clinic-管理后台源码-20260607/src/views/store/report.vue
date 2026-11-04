@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -103,7 +104,7 @@ async function fetchReportData() {
     if (doctorId.value) params.set('doctor_id', doctorId.value)
     const [res, nameRes]: any[] = await Promise.all([
       request.get('/api/admin/reports/store?' + params),
-      doctorId.value ? request.get('/api/admin/doctors/' + doctorId.value) : request.get('/api/admin/stores/' + storeId.value)
+      doctorId.value ? (hasPermission('doctor:view') ? request.get('/api/admin/doctors').then(res => ({data:(res.data || []).find((doctor:any)=>String(doctor.id)===doctorId.value)})) : Promise.resolve({ data: { name: '医生' } })) : request.get('/api/admin/stores/' + storeId.value)
     ])
     if (requestId !== reportRequest) return
     if (res.code !== 200 || !res.data) throw new Error('报表不可用')
@@ -180,7 +181,7 @@ function handleExport() {
         <div class="page-title-sub">{{ reportSubtitle }}</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-outline" style="margin-right: 8px;" @click="handleExport" :disabled="!reportLoaded"><AppIcon name="download" />  导出报表</button>
+        <button v-permission="'store:export'" class="btn btn-outline" style="margin-right: 8px;" @click="handleExport" :disabled="!reportLoaded"><AppIcon name="download" />  导出报表</button>
         <select class="form-control" style="width: 100px; margin-right: 8px;" v-model="selectedYear">
           <option v-for="yr in yearOptions" :key="yr" :value="yr">{{ yr }}年</option>
         </select>

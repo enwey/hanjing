@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { onMounted, ref } from 'vue'
 import request from '@/utils/request'
 
 const model = defineModel<string>({ default: '' })
 const options = ref<any[]>([])
 onMounted(async () => {
+  if (!hasPermission('order:view')) return
   try {
     const res: any = await request.get('/api/admin/fulfillment/technicians')
     if (res.code === 200) options.value = res.data || []
@@ -14,7 +16,7 @@ const label = (item: any) => item.real_name || item.name || item.username
 </script>
 
 <template>
-  <div class="technician-field">
+  <div v-if="hasPermission('order:view')" class="technician-field">
     <label class="form-label">履约技师（选填）</label>
     <t-select v-model="model" placeholder="不分配，不创建履约单" clearable>
       <t-option v-for="item in options" :key="item.id" :value="String(item.id)" :label="label(item)" />

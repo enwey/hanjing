@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { get, query, run } from './db.js';
 import { JWT_SECRET, verifyPatientAccess } from './helpers.js';
+import { attachDataScope } from './data-scope.js';
+import { dashboardScope } from './dashboard-scope.js';
+import { medicalReadScope } from './data-read-scope.js';
 
 export function privateUploadPath(value) {
   if (typeof value !== 'string' || !/^(\/uploads\/|https?:\/\/)/.test(value)) return '';
@@ -19,9 +22,11 @@ export async function canReadPrivateUpload(path, user) {
   if (!path || !user?.id) return false;
   let admin;
   if (user.role) {
-    admin = await get(`SELECT u.*,r.code AS role FROM admin_users u JOIN roles r ON r.id=u.role_id
+    admin = await get(`SELECT u.*,r.code AS role,r.data_scope AS role_data_scope FROM admin_users u JOIN roles r ON r.id=u.role_id
       WHERE u.id=? AND u.status='online' AND r.status='active'`, [user.id]);
     if (!admin) return false;
+    await attachDataScope(admin);
+    admin.read_data_scope = true;
     admin.store_ids = (await query(Number(admin.all_stores) === 1
       ? 'SELECT id AS store_id FROM stores'
       : 'SELECT store_id FROM admin_user_stores WHERE admin_user_id=?',
@@ -32,9 +37,10 @@ export async function canReadPrivateUpload(path, user) {
     }
   } else if (!user.openid || !await get('SELECT id FROM users WHERE id=? AND openid=?', [user.id, user.openid])) return false;
   const asset = await get('SELECT * FROM private_uploads WHERE file_path=?', [path]);
-  if (asset && (admin ? admin.role === 'super_admin' || Number(asset.admin_id) === Number(admin.id) : Number(asset.user_id) === Number(user.id))) return true;
+  if (asset && (admin ? dashboardScope(admin).kind === 'all' || (dashboardScope(admin).kind === 'self' && Number(asset.admin_id) === Number(admin.id)) : Number(asset.user_id) === Number(user.id))) return true;
   const recordings = await query('SELECT patient_id FROM snore_assessments WHERE file_url=?', [path]);
-  const attachments = await query('SELECT patient_id, attachments FROM medical_records WHERE attachments LIKE ?', ['%' + path.replace(/[\\%_]/g, '\\$&') + '%']);
+  const scope = admin ? medicalReadScope(admin,'m') : {sql:'1=1',params:[]};
+  const attachments = await query(`SELECT patient_id, attachments FROM medical_records m WHERE attachments LIKE ? AND ${scope.sql}`, ['%' + path.replace(/[\\%_]/g, '\\$&') + '%',...scope.params]);
   const records = [...recordings];
   for (const record of attachments) {
     try {

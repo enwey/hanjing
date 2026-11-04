@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { computed, onMounted, ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
@@ -222,6 +223,7 @@ async function fetchRooms() {
 }
 
 async function fetchProducts() {
+  if (!hasPermission('live:edit') || hasPermission('live:add')) return
   try {
     const res: any = await request.get('/api/admin/distribution/products')
     products.value = (res.data || [])
@@ -355,7 +357,7 @@ onMounted(async () => {
         <div class="page-title">直播管理</div>
         <div class="page-title-sub">后台直接创建微信直播间，小程序进入官方直播页播放</div>
       </div>
-      <button class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" /> 添加直播</button>
+      <button v-permission="'live:add'" class="btn btn-primary" @click="handleAdd"><AppIcon name="plus" /> 添加直播</button>
     </div>
 
     <div class="tip-card">
@@ -441,18 +443,18 @@ onMounted(async () => {
               <td>{{ room.viewerCount }}</td>
               <td>
                 <div class="action-row">
-                  <button class="btn btn-xs btn-outline" @click="handleEdit(room.id)">编辑</button>
+                  <button v-permission="'live:edit'" class="btn btn-xs btn-outline" @click="handleEdit(room.id)">编辑</button>
                   <button
-                    class="btn btn-xs btn-outline"
+ v-permission="'live:sync'"                    class="btn btn-xs btn-outline"
                     :disabled="!room.wechatRoomId || syncingId === room.id"
                     @click="handleSyncWechat(room.id)"
                   >
                     {{ syncingId === room.id ? '同步中...' : '同步微信信息' }}
                   </button>
-                  <button v-if="room.status !== 'upcoming'" class="btn btn-xs btn-outline" @click="updateStatus(room.id, 'upcoming')">设为预告</button>
-                  <button v-if="room.status !== 'live'" class="btn btn-xs btn-success" @click="updateStatus(room.id, 'live')">设为直播中</button>
-                  <button v-if="room.status !== 'replay'" class="btn btn-xs btn-outline" @click="updateStatus(room.id, 'replay')">设为回放</button>
-                  <button class="btn btn-xs btn-danger" @click="handleDelete(room.id)">删除</button>
+                  <button v-permission="'live:edit'" v-if="room.status !== 'upcoming'" class="btn btn-xs btn-outline" @click="updateStatus(room.id, 'upcoming')">设为预告</button>
+                  <button v-permission="'live:edit'" v-if="room.status !== 'live'" class="btn btn-xs btn-success" @click="updateStatus(room.id, 'live')">设为直播中</button>
+                  <button v-permission="'live:edit'" v-if="room.status !== 'replay'" class="btn btn-xs btn-outline" @click="updateStatus(room.id, 'replay')">设为回放</button>
+                  <button v-permission="'live:delete'" class="btn btn-xs btn-danger" @click="handleDelete(room.id)">删除</button>
                 </div>
               </td>
             </tr>

@@ -5,6 +5,7 @@ import 'tdesign-vue-next/es/style/index.css'
 import App from './App.vue'
 import router from './router'
 import './styles/global.css'
+import { permission } from './directives/permission'
 import { resizable } from './directives/resizable'
 import AppIcon from './components/AppIcon.vue'
 
@@ -14,4 +15,5 @@ app.use(TDesign)
 app.use(router)
 app.component('AppIcon', AppIcon)
 app.directive('resizable', resizable)
+app.directive('permission', permission)
 app.mount('#app')

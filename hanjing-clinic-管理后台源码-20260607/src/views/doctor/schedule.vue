@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -19,6 +20,7 @@ const previewFailed = ref(false)
 const loading = ref(false)
 
 function canEditStoreSchedule() {
+  if (!hasPermission('schedule:edit')) return false
   if (!storeId || selectedDoctors.value.length) return true
   MessagePlugin.warning('请勾选应用医生后进行排班')
   return false
@@ -142,7 +144,7 @@ const activeStoreOptions = computed(() => {
 
 const fetchStores = async () => {
   try {
-    const res: any = await request.get('/api/admin/stores')
+    const res: any = await request.get('/api/admin/schedules/options/stores')
     if (res.code === 200) {
       storesList.value = res.data
     }
@@ -153,7 +155,7 @@ const fetchStores = async () => {
 
 const fetchDoctorInfo = async () => {
   try {
-    const res: any = await request.get('/api/admin/doctors')
+    const res: any = await request.get('/api/admin/schedules/options/doctors')
     if (res.code === 200) {
       const doc = res.data.find((d: any) => String(d.id) === String(doctorId.value))
       if (doc) {
@@ -239,7 +241,7 @@ onMounted(async () => {
   if (storeId) {
     loading.value = true
     try {
-      const response = await request.get('/api/admin/doctors', { params: { store_id: storeId } })
+      const response = await request.get('/api/admin/schedules/options/doctors', { params: { store_id: storeId } })
       storeDoctors.value = (response.data || []).filter((item: any) =>
         item.store_ids?.some((id: unknown) => String(id) === storeId)
       ).map((item: any) => ({ id: String(item.id), name: item.name }))
@@ -561,7 +563,7 @@ function handleSaveEdit() {
       </div>
       <div class="action-buttons">
         <button class="btn btn-outline" :disabled="isSaving" @click="handleBack">取消</button>
-        <button class="btn btn-primary" :disabled="isSaving || loading" @click="handleSaveAll">
+        <button v-permission="'schedule:edit'" class="btn btn-primary" :disabled="isSaving || loading" @click="handleSaveAll">
           {{ isSaving ? '保存中...' : '保存排班' }}
         </button>
       </div>
@@ -606,15 +608,15 @@ function handleSaveEdit() {
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
           <template v-if="!isBatchMode">
-            <button class="btn btn-sm btn-primary" @click="enterBatchMode">批量排班</button>
-            <button v-if="!storeId" class="btn btn-sm btn-outline" @click="handleCopyLastMonth">复制上月排班</button>
-            <button v-if="!storeId" class="btn btn-sm btn-outline" @click="handleClear">清空</button>
+            <button v-permission="'schedule:edit'" class="btn btn-sm btn-primary" @click="enterBatchMode">批量排班</button>
+            <button v-permission="'schedule:copy'" v-if="!storeId" class="btn btn-sm btn-outline" @click="handleCopyLastMonth">复制上月排班</button>
+            <button v-permission="'schedule:edit'" v-if="!storeId" class="btn btn-sm btn-outline" @click="handleClear">清空</button>
           </template>
           <template v-else>
             <span style="font-size: 13px; color: #4B5563; font-weight: 600;">已选中 {{ selectedDays.length }} 天</span>
             <button class="btn btn-sm btn-outline" @click="selectAllDays">全选</button>
             <button class="btn btn-sm btn-outline" @click="deselectAllDays">取消全选</button>
-            <button class="btn btn-sm btn-primary" @click="openBatchEdit">统一设置</button>
+            <button v-permission="'schedule:edit'" class="btn btn-sm btn-primary" @click="openBatchEdit">统一设置</button>
             <button class="btn btn-sm btn-outline" @click="exitBatchMode">退出批量</button>
           </template>
         </div>

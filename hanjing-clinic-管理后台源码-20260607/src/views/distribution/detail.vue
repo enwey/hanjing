@@ -141,10 +141,10 @@ onMounted(() => {
         <div class="page-title-sub">注册于 {{ promoter.regDate }} · 推广码 {{ promoter.code }}</div>
       </div>
       <div class="action-buttons">
-        <button class="btn btn-danger" @click="handleFreeze">
+        <button v-permission="'promoter:status'" class="btn btn-danger" @click="handleFreeze">
           {{ promoter.status === 'active' ? '冻结账号' : '解冻账号' }}
         </button>
-        <button class="btn btn-outline" @click="handleEdit"><AppIcon name="edit" />  编辑</button>
+        <button v-permission="'promoter:edit'" class="btn btn-outline" @click="handleEdit"><AppIcon name="edit" />  编辑</button>
       </div>
     </div>
 

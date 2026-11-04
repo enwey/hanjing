@@ -186,7 +186,7 @@ const fetchPatients = async () => {
 const followers = ref<any[]>([])
 const fetchFollowers = async () => {
   try {
-    const res: any = await request.get('/api/admin/admin-users')
+    const res: any = await request.get('/api/admin/patients/options/followers')
     followers.value = res.data || []
   } catch (error) {
     console.error('Failed to load followers:', error)
@@ -570,8 +570,8 @@ async function handleExport() {
         <div class="page-title-sub">{{ totalPatients.toLocaleString() }} 位注册患者</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出</button>
-        <button class="btn btn-primary" @click="openCreate"><AppIcon name="plus" />  手动建档</button>
+        <button v-permission="'patient:export'" class="btn btn-outline" @click="handleExport"><AppIcon name="download" />  导出</button>
+        <button v-permission="'patient:add'" class="btn btn-primary" @click="openCreate"><AppIcon name="plus" />  手动建档</button>
       </div>
     </div>
 
@@ -664,8 +664,8 @@ async function handleExport() {
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;" @click.stop>
                   <button class="btn btn-xs btn-outline" @click="openDetail(row)">详情</button>
-                  <button class="btn btn-xs btn-outline" @click="openCrmDialog(row)">跟进</button>
-                  <button class="btn btn-xs btn-outline" @click="router.push('/patient/followup/' + row.id)">随访</button>
+                  <button v-permission="'patient:crm'" class="btn btn-xs btn-outline" @click="openCrmDialog(row)">跟进</button>
+                  <button v-permission="'medical_record:view'" class="btn btn-xs btn-outline" @click="router.push('/patient/followup/' + row.id)">随访</button>
                 </div>
               </td>
             </tr>

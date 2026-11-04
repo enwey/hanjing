@@ -6,13 +6,13 @@ import { formatShanghaiDateTime } from '@/utils/dateTime'
 const loading=ref(false),tickets=ref<any[]>([]),cases=ref<any[]>([]),admins=ref<any[]>([]),visible=ref(false)
 const form=ref<any>({fulfillment_case_id:'',issue_type:'',description:'',assigned_technician_id:''})
 const caseSearch=ref(''),casePage=ref(1),caseTotal=ref(0)
-async function loadCases(){try{const r:any=await request.get('/api/admin/fulfillment/cases',{params:{page:casePage.value,pageSize:20,search:caseSearch.value.trim()||undefined}});cases.value=r.data||[];caseTotal.value=Number(r.pagination?.total||0)}catch{cases.value=[];caseTotal.value=0;MessagePlugin.error('加载履约单失败')}}
+async function loadCases(){try{const r:any=await request.get('/api/admin/after-sales/options/cases',{params:{page:casePage.value,pageSize:20,search:caseSearch.value.trim()||undefined}});cases.value=r.data||[];caseTotal.value=Number(r.pagination?.total||0)}catch{cases.value=[];caseTotal.value=0;MessagePlugin.error('加载履约单失败')}}
 function searchCases(){casePage.value=1;form.value.fulfillment_case_id='';loadCases()}
 function changeCasePage(info:any){casePage.value=info.current;form.value.fulfillment_case_id='';loadCases()}
 const labels:Record<string,string>={pending:'待处理',assigned:'已分配',processing:'处理中',resolved:'已解决',closed:'已关闭'}
 const staffName=(x:any)=>x.real_name||x.name||x.username
 const caseLabel=(x:any)=>`#${x.id} · ${x.patient_name||'患者'} · ${x.order_no||'订单'}`
-async function load(){loading.value=true;try{const[a,c]:any[]=await Promise.all([request.get('/api/admin/after-sales-tickets'),request.get('/api/admin/fulfillment/technicians')]);if(a.code===200)tickets.value=a.data||[];if(c.code===200)admins.value=c.data||[]}catch(e){console.error(e);MessagePlugin.error('加载售后工单失败')}finally{loading.value=false}}
+async function load(){loading.value=true;try{const[a,c]:any[]=await Promise.all([request.get('/api/admin/after-sales-tickets'),request.get('/api/admin/after-sales/options/technicians')]);if(a.code===200)tickets.value=a.data||[];if(c.code===200)admins.value=c.data||[]}catch(e){console.error(e);MessagePlugin.error('加载售后工单失败')}finally{loading.value=false}}
 function openCreate(){form.value={fulfillment_case_id:'',issue_type:'',description:'',assigned_technician_id:''};caseSearch.value='';casePage.value=1;loadCases();visible.value=true}
 async function create(){if(!form.value.fulfillment_case_id||!form.value.issue_type||!form.value.description)return MessagePlugin.warning('请填写履约单、问题类型和问题说明');try{const r:any=await request.post('/api/admin/after-sales-tickets',{...form.value,fulfillment_case_id:Number(form.value.fulfillment_case_id),assigned_technician_id:form.value.assigned_technician_id?Number(form.value.assigned_technician_id):undefined});if(r.code!==200)throw new Error(r.message);MessagePlugin.success('售后工单已创建');visible.value=false;await load()}catch(e:any){MessagePlugin.error(e.message||'创建售后工单失败')}}
 const activeTicket = ref<any>(null)
@@ -61,7 +61,7 @@ onMounted(load)
       </div>
       <div class="header-actions">
         <button class="btn btn-outline" @click="load"><AppIcon name="refresh" /> 刷新</button>
-        <button class="btn btn-primary" @click="openCreate"><AppIcon name="plus" /> 新建售后工单</button>
+        <button v-permission="'after_sales:add'" class="btn btn-primary" @click="openCreate"><AppIcon name="plus" /> 新建售后工单</button>
       </div>
     </div>
     <div class="panel" :aria-busy="loading">
@@ -95,10 +95,10 @@ onMounted(load)
               <td>{{ formatShanghaiDateTime(ticket.updated_at) }}</td>
               <td style="text-align: right;">
                 <div class="actions">
-                  <button v-if="['pending','assigned','processing'].includes(ticket.status)" class="btn btn-xs btn-outline" @click="openAction(ticket, 'assigned')">{{ ticket.assigned_technician_id ? '转派' : '分配' }}</button>
-                  <button v-if="ticket.status === 'assigned'" class="btn btn-xs btn-primary" @click="openAction(ticket, 'processing')">开始处理</button>
-                  <button v-if="ticket.status === 'processing'" class="btn btn-xs btn-success" @click="openAction(ticket, 'resolved')">解决</button>
-                  <button v-if="['pending','assigned','processing','resolved'].includes(ticket.status)" class="btn btn-xs btn-outline" @click="openAction(ticket, 'closed')">关闭</button>
+                  <button v-permission="'after_sales:edit'" v-if="['pending','assigned','processing'].includes(ticket.status)" class="btn btn-xs btn-outline" @click="openAction(ticket, 'assigned')">{{ ticket.assigned_technician_id ? '转派' : '分配' }}</button>
+                  <button v-permission="'after_sales:edit'" v-if="ticket.status === 'assigned'" class="btn btn-xs btn-primary" @click="openAction(ticket, 'processing')">开始处理</button>
+                  <button v-permission="'after_sales:edit'" v-if="ticket.status === 'processing'" class="btn btn-xs btn-success" @click="openAction(ticket, 'resolved')">解决</button>
+                  <button v-permission="'after_sales:edit'" v-if="['pending','assigned','processing','resolved'].includes(ticket.status)" class="btn btn-xs btn-outline" @click="openAction(ticket, 'closed')">关闭</button>
                   <span v-if="ticket.status === 'closed'" class="result-time">已归档</span>
                 </div>
               </td>

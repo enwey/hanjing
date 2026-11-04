@@ -178,7 +178,7 @@ const fetchData = async () => {
 
       // Fetch on-sale device products for treatment profile binding.
       try {
-        const productRes: any = await request.get('/api/admin/products')
+        const productRes: any = await request.get('/api/admin/appointments/options/products')
         if (productRes.code === 200 && Array.isArray(productRes.data)) {
           deviceProducts.value = productRes.data.filter((item: any) => item.category === 'device' && item.status === 'on')
           if (!deviceProductId.value && deviceProducts.value.length) {
@@ -346,10 +346,10 @@ const handleSubmit = async () => {
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button class="btn btn-outline" @click="navigateToParent(router, route, '/appointment')">取消</button>
-        <button class="btn btn-outline" :disabled="savingOnly || submitting" @click="handleSaveOnly">
+        <button v-permission="'medical_record:edit'" class="btn btn-outline" :disabled="savingOnly || submitting" @click="handleSaveOnly">
           {{ savingOnly ? '保存中...' : '仅保存' }}
         </button>
-        <button class="btn btn-primary" :disabled="submitting || savingOnly" @click="handleSubmit">
+        <button v-permission="'medical_record:complete'" class="btn btn-primary" :disabled="submitting || savingOnly" @click="handleSubmit">
           {{ submitting ? '提交中...' : '保存并结束就诊' }}
         </button>
       </div>

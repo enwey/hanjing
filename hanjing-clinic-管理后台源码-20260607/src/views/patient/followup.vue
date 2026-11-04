@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hasPermission } from '@/utils/permission'
 import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -55,9 +56,9 @@ function mapTask(row: any): Task {
 async function fetchData() {
   try {
     const [patientRes, followRes, followerRes]: any[] = await Promise.all([
-      request.get(`/api/admin/patients/${patientId.value}`),
+      hasPermission('patient:view') ? request.get(`/api/admin/patients/${patientId.value}`) : Promise.resolve({ data: null }),
       request.get(`/api/admin/patients/${patientId.value}/follow-ups`),
-      request.get('/api/admin/admin-users')
+      request.get('/api/admin/patients/options/followers')
     ])
     patientName.value = patientRes.data?.name || patientName.value
     followers.value = followerRes.data || []
@@ -170,7 +171,7 @@ watch(operationColumnWidth, () => {
           {{ tasks.filter(t => t.status === 'gold').length }}个待完成 · {{ tasks.filter(t => t.status === 'green').length }}个已完成
         </div>
       </div>
-      <button class="btn btn-primary" @click="showCreate = true"><AppIcon name="plus" />  新建随访</button>
+      <button v-permission="'medical_record:followup'" class="btn btn-primary" @click="showCreate = true"><AppIcon name="plus" />  新建随访</button>
     </div>
 
     <!-- Unified Tasks Table -->
@@ -203,9 +204,9 @@ watch(operationColumnWidth, () => {
             <td style="text-align: right;">
               <template v-if="task.status === 'gold'">
                 <div style="display: flex; gap: 4px; justify-content: flex-end;">
-                  <button class="btn btn-xs btn-primary" @click="handleExecute(task)">执行</button>
-                  <button class="btn btn-xs btn-outline" @click="handleReschedule(task)">改期</button>
-                  <button class="btn btn-xs btn-danger" @click="handleCancel(idx)">取消</button>
+                  <button v-permission="'medical_record:followup'" class="btn btn-xs btn-primary" @click="handleExecute(task)">执行</button>
+                  <button v-permission="'medical_record:followup'" class="btn btn-xs btn-outline" @click="handleReschedule(task)">改期</button>
+                  <button v-permission="'medical_record:followup'" class="btn btn-xs btn-danger" @click="handleCancel(idx)">取消</button>
                 </div>
               </template>
               <template v-else>

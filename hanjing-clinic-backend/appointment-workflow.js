@@ -69,3 +69,17 @@ export async function lockAppointmentChange(conn, expected, targetScheduleId = e
   }
   return { current, schedules };
 }
+
+// 按北京时间的结束时刻判断；24:00 表示当日结束。
+export function assertFutureAppointmentTime(date, time, now = Date.now()) {
+  const dateText = String(date || '');
+  const match = String(time || '').trim().match(/^([0-2]\d:[0-5]\d)\s*-\s*([0-2]\d:[0-5]\d)$/);
+  const minutes = value => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
+  const start = match ? minutes(match[1]) : NaN;
+  const end = match ? minutes(match[2]) : NaN;
+  const midnight = /^\d{4}-\d{2}-\d{2}$/.test(dateText) ? Date.parse(`${dateText}T00:00:00+08:00`) : NaN;
+  const timestamp = midnight + end * 60000;
+  if (!Number.isFinite(timestamp) || start >= 1440 || end > 1440 || end <= start || timestamp <= now) {
+    throw businessError('不能预约已过期的时段，请重新选择预约时间', 400);
+  }
+}
