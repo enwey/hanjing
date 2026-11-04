@@ -1,3 +1,5 @@
+import { completeFittingTreatment } from '../fulfillment-treatment.js';
+import { readDistributionTrends } from '../distribution-trends.js';
 import { installTemporaryRuntimeCleanup } from '../temporary-runtime-cleanup/index.js';
 import { recordReschedule, parseRescheduleHistory } from '../appointment-reschedule-history.js';
 import { nextAppointmentNumber } from '../appointment-number.js';
@@ -1021,7 +1023,7 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
     const calculateTrend = (curr, prev) => {
       if (prev === 0) {
         if (curr === 0) return { trend: '0%', trendType: 'neutral' };
-        return { trend: '无可比基数', trendType: 'neutral' };
+        return { trend: '+100%', trendType: 'up' };
       }
       const diff = curr - prev;
       const pct = Math.round((diff / Math.abs(prev)) * 100);
@@ -1037,12 +1039,7 @@ app.get('/api/admin/dashboard/stats', authenticateToken, async (req, res) => {
     const revenueTrendInfo = calculateTrend(revenue, prevRevenue);
     const patientTrendInfo = calculateTrend(newPatients, prevNewPatients);
     
-    // Visit rate comparison (difference in percentage points)
-    const rateDiff = visitRate - prevVisitRate;
-    const rateTrendInfo = {
-      trend: rateDiff > 0 ? `+${rateDiff}个百分点` : `${rateDiff}个百分点`,
-      trendType: rateDiff === 0 ? 'neutral' : rateDiff > 0 ? 'up' : 'down'
-    };
+    const rateTrendInfo = calculateTrend(visitRate, prevVisitRate);
 
     // 5. Department distribution based on appointment counts
     let deptSql = `
@@ -1222,7 +1219,7 @@ app.get('/api/admin/orders/options/patients', authenticateToken, async (req, res
   const search = String(req.query.search || '').trim();
   if (!search) return res.json({ code: 200, data: [] });
   const rows = await query(`SELECT p.id, p.name, p.phone FROM patients p WHERE ${scope.sql} AND (p.name LIKE ? OR p.phone LIKE ?) ORDER BY p.id DESC LIMIT 30`, [...scope.params, '%' + search + '%', '%' + search + '%']);
-  res.json({ code: 200, data: rows.map(p => ({ ...p, phone: maskPhone(p.phone || '') })) });
+  res.json({ code: 200, data: rows.map(p => ({ ...p, phone: formatAdminPhone(p.phone || '') })) });
 });
 
 app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
@@ -2925,6 +2922,7 @@ app.post('/api/admin/appointments/:id/save-consultation', authenticateToken, asy
 app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { medical_record, treatment, adjustment, follow_up } = req.body;
+  if (treatment?.create) return res.status(400).json({code:400,message:'初次治疗建档请在交付管理完成试戴时办理'});
   if (!medical_record || !medical_record.diagnosis) {
     return res.status(400).json({ code: 400, message: '诊断病历信息不能为空' });
   }
@@ -2947,92 +2945,6 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
           JOIN medical_records mr ON mr.id=tr.medical_record_id
           WHERE tr.id=? AND tr.patient_id=? AND mr.store_id=? FOR UPDATE`, [treatmentId, appt.patient_id, appt.store_id]);
         if (!existingTreatment) throw businessError('治疗档案与当前患者或门店不一致', 403);
-      }
-      if (treatment && treatment.create) {
-        const deviceProduct = treatment.device_product_id
-          ? await conn.execute(
-              `SELECT id, name, image_url, price, description
-               FROM products
-               WHERE id = ? AND category = 'device' AND status = 'on'
-               LIMIT 1`,
-              [treatment.device_product_id]
-            )
-          : null;
-        const selectedDevice = deviceProduct && deviceProduct[0][0] ? deviceProduct[0][0] : null;
-        if (!selectedDevice) {
-          const err = new Error('请选择已上架的物理阻鼾器设备');
-          err.statusCode = 400;
-          throw err;
-        }
-        if (treatment.initial_advancement === undefined || treatment.initial_advancement === null || isNaN(treatment.initial_advancement) || treatment.initial_advancement < 0 || treatment.initial_advancement > 15) {
-          const err = new Error('设备初始前伸量调节参数必须在 0 ~ 15 mm 之间');
-          err.statusCode = 400;
-          throw err;
-        }
-
-        await conn.execute(`UPDATE treatment_records SET status = 'paused' WHERE patient_id = ? AND status = 'active'`, [appt.patient_id]);
-        await conn.execute(`UPDATE patient_devices SET status = 'replaced' WHERE patient_id = ? AND status = 'active'`, [appt.patient_id]);
-        const deviceSnapshot = buildTreatmentDeviceSnapshot(selectedDevice);
-        const [trResult] = await conn.execute(
-          `INSERT INTO treatment_records (
-             patient_id, doctor_id, medical_record_id, device_product_id,
-             device_product_name, device_product_image_url, device_product_price, device_product_description,
-             device_model, initial_advancement, current_advancement, start_date, status
-           )
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
-          [
-            appt.patient_id,
-            doctorId,
-            medicalRecordId,
-            deviceSnapshot.id,
-            deviceSnapshot.name,
-            deviceSnapshot.imageUrl,
-            deviceSnapshot.price,
-            deviceSnapshot.description,
-            deviceSnapshot.name,
-            treatment.initial_advancement,
-            treatment.initial_advancement,
-            treatment.start_date || visitDate
-          ]
-        );
-        treatmentId = trResult.insertId;
-        const [patientDeviceResult] = await conn.execute(
-          `INSERT INTO patient_devices (
-             patient_id, bind_treatment_record_id, bind_medical_record_id, bind_doctor_id, device_product_id,
-             device_name_snapshot, device_image_snapshot, device_price_snapshot, device_description_snapshot,
-             device_model, initial_advancement, current_advancement, bound_at, next_adjust_date, status
-           )
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'active')`,
-          [
-            appt.patient_id,
-            treatmentId,
-            medicalRecordId,
-            doctorId,
-            deviceSnapshot.id,
-            deviceSnapshot.name,
-            deviceSnapshot.imageUrl,
-            deviceSnapshot.price,
-            deviceSnapshot.description,
-            deviceSnapshot.name,
-            treatment.initial_advancement,
-            treatment.initial_advancement,
-            treatment.start_date || visitDate
-          ]
-        );
-        await conn.execute(`UPDATE treatment_records SET patient_device_id = ? WHERE id = ?`, [patientDeviceResult.insertId, treatmentId]);
-        await conn.execute(
-          `INSERT INTO treatment_timelines (user_id, patient_id, treatment_id, event_date, event_title, event_desc, event_type, doctor_name, color, icon)
-           VALUES (?, ?, ?, ?, ?, ?, 'milestone', ?, '#3B6BF5', 'device')`,
-          [
-            appt.user_id,
-            appt.patient_id,
-            treatmentId,
-            treatment.start_date || visitDate,
-            '建立物理阻鼾治疗档案',
-            `绑定设备：${deviceSnapshot.name}，初始前伸量 ${treatment.initial_advancement}mm`,
-            appt.doctor_name || ''
-          ]
-        );
       }
 
       if (adjustment && adjustment.create && treatmentId) {
@@ -4655,7 +4567,7 @@ app.get('/api/admin/fulfillment/cases', authenticateToken, async (req, res) => {
         FROM treatment_records WHERE patient_id=? AND (medical_record_id=? OR id IN
         (SELECT treatment_id FROM device_adjustments WHERE medical_record_id=?)) ORDER BY id`, [item.patient_id, record.id, record.id]) : [];
       const deviceItems = await query(`SELECT oi.product_name,oi.quantity FROM order_items oi JOIN products p ON p.id=oi.product_id
-        WHERE oi.order_id=? AND p.category='device' ORDER BY oi.id`, [item.order_id]);
+        WHERE oi.order_id=? AND COALESCE(oi.product_category_snapshot,p.category)='device' ORDER BY oi.id`, [item.order_id]);
       item.device_product_names = deviceItems.map(x => `${x.product_name} ×${x.quantity}`).join('；');
     }
     res.json({ code: 200, data: cases, pagination: { page: pagination.page, pageSize: pagination.pageSize, total: Number(count.total) } });
@@ -4685,7 +4597,7 @@ app.get('/api/admin/fulfillment/cases/:id/detail', authenticateToken, async (req
     const followup=followupReadScope(req.user,'t');
     const [patient, items, clinical, historyRecords, followUps, payment] = await Promise.all([
       get(`SELECT id, name, patient_no, gender, age, phone, medical_history, allergy_history FROM patients WHERE id = ?`, [fulfillmentCase.patient_id]),
-      query(`SELECT product_id, product_name, product_image, price, quantity FROM order_items WHERE order_id = ? ORDER BY id ASC`, [fulfillmentCase.order_id]),
+      query(`SELECT oi.product_id, oi.product_name, oi.product_image, oi.price, oi.quantity, COALESCE(oi.product_category_snapshot,p.category) AS category FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id WHERE oi.order_id = ? ORDER BY oi.id ASC`, [fulfillmentCase.order_id]),
       readFulfillmentClinical(fulfillmentCase),
       query(`SELECT m.*,d.name AS doctor_name,s.name AS store_name FROM medical_records m
         LEFT JOIN doctors d ON d.id=m.doctor_id LEFT JOIN stores s ON s.id=m.store_id
@@ -4710,6 +4622,9 @@ app.post('/api/admin/fulfillment/cases', authenticateToken, async (req, res) => 
       const [[order]] = await conn.execute(`SELECT o.* FROM orders o WHERE o.id=? AND ${scope.sql} FOR UPDATE`, [order_id, ...scope.params]);
       if (!order) fail('订单不存在或无权访问', 404);
       if (!PAID_ORDER_STATUSES.includes(order.status)) fail('只能为已支付订单建立履约单', 409);
+      const [[device]] = await conn.execute(`SELECT oi.id FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id
+        WHERE oi.order_id=? AND COALESCE(oi.product_category_snapshot,p.category)='device' LIMIT 1`,[order.id]);
+      if (!device) fail('订单不包含设备商品，无需建立交付单',400);
       const [[patient]] = await conn.execute('SELECT id,user_id FROM patients WHERE id=?', [patient_id]);
       if (!patient || Number(patient.user_id) !== Number(order.user_id)) fail('患者必须属于该订单账户', 400);
       const [[existing]] = await conn.execute('SELECT id FROM fulfillment_cases WHERE order_id=?', [order_id]);
@@ -4766,23 +4681,15 @@ app.post('/api/admin/fulfillment/cases/:id/notify-fitting', authenticateToken, a
 });
 
 app.post('/api/admin/fulfillment/cases/:id/fitting', authenticateToken, async (req, res) => {
-  const fulfillmentCase = await getFulfillmentCaseForAccess(req.params.id, req.user);
-  const { patient_device_id, note } = req.body;
-  if (!fulfillmentCase) return res.status(404).json({ code: 404, message: '履约单不存在或无权访问' });
-  if (fulfillmentCase.status !== 'ready_for_fitting') return res.status(400).json({ code: 400, message: '请先发送首次佩戴通知' });
-  if (!fulfillmentCase.technician_id) return res.status(400).json({ code: 400, message: '履约单未分配技师' });
-  if (patient_device_id) {
-    const device = await get(`SELECT id FROM patient_devices WHERE id = ? AND patient_id = ?`, [patient_device_id, fulfillmentCase.patient_id]);
-    if (!device) return res.status(400).json({ code: 400, message: '所选设备不属于该患者' });
+  try {
+    const c = await getFulfillmentCaseForAccess(req.params.id, req.user);
+    if (!c) return res.status(404).json({code:404,message:'履约单不存在或无权访问'});
+    const data = await transaction(conn => completeFittingTreatment(conn, c.id, req.body, req.user.id));
+    res.json({code:200,message:'首次佩戴交付已完成',data});
+  } catch (error) {
+    const status=error.statusCode || 500;
+    res.status(status).json({code:status,message:status<500?error.message:'保存试戴交付失败'});
   }
-  await transaction(async conn => {
-    await lockFulfillmentCase(conn, fulfillmentCase.id);
-    const [changed] = await conn.execute(`UPDATE fulfillment_cases SET status = 'fitted' WHERE id = ? AND status = 'ready_for_fitting'`, [fulfillmentCase.id]);
-    if (!changed.affectedRows) throw Object.assign(new Error('交付状态已变化，请刷新'), {statusCode:409});
-    await conn.execute(`INSERT INTO fulfillment_fittings (fulfillment_case_id, technician_id, patient_device_id, note) VALUES (?, ?, ?, ?)`, [fulfillmentCase.id, fulfillmentCase.technician_id, patient_device_id || null, note || null]);
-    await conn.execute(`INSERT INTO fulfillment_events(fulfillment_case_id,actor_id,event_type,detail) VALUES(?,?,'fitting_completed',?)`,[fulfillmentCase.id,req.user.id,JSON.stringify({patient_device_id:patient_device_id||null})]);
-  });
-  res.json({ code: 200, message: '首次佩戴交付已完成' });
 });
 
 app.get('/api/admin/after-sales-tickets', authenticateToken, async (req, res) => {
@@ -5422,12 +5329,23 @@ app.put('/api/admin/distribution/promoters/:id/status', authenticateToken, async
 });
 
 app.get('/api/admin/distribution/overview', authenticateToken, async (req,res) => {
+  if (req.query.range !== undefined) {
+    if (!['today','week','month'].includes(req.query.range)) return res.status(400).json({code:400,message:'统计范围不正确'});
+    try {
+      const trends = await readDistributionTrends(req.user, req.query.range);
+      return res.json({code:200,data:{periodLabel:trends.periodLabel,
+        totalCommission:trends.totalCommission.current, activePromoters:trends.activePromoters.current,
+        promotedOrders:trends.promotedOrders.current, invitedUsers:trends.invitedUsers.current, trends}});
+    } catch (error) {
+      return res.status(500).json({code:500,message:'获取分销统计失败'});
+    }
+  }
   const promoters=await readScopedPromoters(req.user),scope=commissionReadScope(req.user,'dc'),relation=relationReadScope(req.user,'dr');
-  const orders=await get(`SELECT COUNT(*) AS promoted_orders,COALESCE(SUM(commission_amount),0) AS generated_commission,COALESCE(SUM(order_amount),0) AS promoted_amount FROM distribution_orders dc WHERE status<>'refunded' AND ${scope.sql}`,scope.params);
+  const orders=await get(`SELECT COUNT(DISTINCT dc.order_id) AS promoted_orders,COALESCE(SUM(commission_amount),0) AS generated_commission,COALESCE(SUM(order_amount),0) AS promoted_amount FROM distribution_orders dc WHERE status<>'refunded' AND ${scope.sql}`,scope.params);
   const relations=await get(`SELECT COUNT(*) AS invited_users FROM distribution_relationships dr WHERE ${relation.sql}`,relation.params);
   res.json({code:200,data:{totalCommission:promoters.reduce((sum,p)=>sum+Number(p.total_commission),0),promotersCount:promoters.length,
     activePromoters:promoters.filter(p=>p.status==='active' && Number(p.invitees_l1_count)>0).length,
-    promotedOrders:Number(orders.promoted_orders),generatedCommission:Number(orders.generated_commission),promotedAmount:Number(orders.promoted_amount),invitedUsers:Number(relations.invited_users)}});
+    promotedOrders:Number(orders.promoted_orders),generatedCommission:Number(orders.generated_commission),promotedAmount:Number(orders.promoted_amount),invitedUsers:Number(relations.invited_users),trends:await readDistributionTrends(req.user)}});
 });
 
 app.get('/api/admin/distribution/commissions', authenticateToken, async (req, res) => {
@@ -5863,8 +5781,8 @@ app.put('/api/admin/distribution/withdraws/:id/paid', authenticateToken, async (
 
 // Leaderboard
 app.get('/api/admin/distribution/leaderboard', authenticateToken, async (req,res) => {
-  const list=(await readScopedPromoters(req.user)).sort((a,b)=>b.total_commission-a.total_commission).slice(0,10)
-    .map(d=>({id:d.id,nickname:d.nickname,avatar_url:d.avatar_url,level:d.level,total_commission:d.total_commission,invites:Number(d.invitees_l1_count)+Number(d.invitees_l2_count)}));
+  const list=(await readScopedPromoters(req.user)).sort((a,b)=>b.total_commission-a.total_commission || Number(a.id)-Number(b.id)).slice(0,5)
+    .map(d=>({id:d.id,nickname:d.nickname,avatar_url:d.avatar_url,level:d.level,total_commission:d.total_commission,total_orders:Number(d.total_orders || 0),invites:Number(d.invitees_l1_count)+Number(d.invitees_l2_count)}));
   res.json({code:200,data:list});
 });
 
@@ -7044,7 +6962,7 @@ app.post('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, 
 app.get('/api/admin/appointments/:id/pre-exam', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const appt = await get('SELECT doctor_id, store_id FROM appointments WHERE id = ?', [id]);
+    const appt = await get('SELECT id, doctor_id, store_id FROM appointments WHERE id = ?', [id]);
     if (!appt) {
       return res.status(404).json({ code: 404, message: '预约不存在' });
     }
@@ -7252,8 +7170,8 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
         isDeferredWechatPay ? null : new Date(Math.floor(Date.now() / 1000) * 1000),orderStatus,JSON.stringify(address),appointment?.id || null,JSON.stringify(cashierContext)]);
       for (const { product, quantity, price } of validated) {
         await conn.execute(`INSERT INTO order_items
-          (order_id,product_id,product_name,product_image,price,quantity,is_distribution_snapshot,commission_rate_snapshot,commission_rate_level1_snapshot,commission_rate_level2_snapshot)
-          VALUES(?,?,?,?,?,?,?,?,?,?)`, [created.insertId,product.id,product.name,product.image_url || '',price,quantity,
+          (order_id,product_id,product_name,product_image,price,quantity,product_category_snapshot,is_distribution_snapshot,commission_rate_snapshot,commission_rate_level1_snapshot,commission_rate_level2_snapshot)
+          VALUES(?,?,?,?,?,?,?,?,?,?,?)`, [created.insertId,product.id,product.name,product.image_url || '',price,quantity,product.category,
           Number(product.is_distribution || 0),Number(product.commission_rate_level1 ?? product.commission_rate ?? 0),
           Number(product.commission_rate_level1 ?? product.commission_rate ?? 0),Number(product.commission_rate_level2 || 0)]);
         if (product.category !== 'service') {

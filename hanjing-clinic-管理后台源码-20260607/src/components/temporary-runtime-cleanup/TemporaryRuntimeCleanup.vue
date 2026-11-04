@@ -19,7 +19,7 @@ async function execute(){if(!canExecute.value)return;running.value=true;try{cons
   <section class="panel cleanup-panel">
     <div class="panel-header"><div><div class="panel-title">清理运行数据 <span class="cleanup-badge">临时工具</span></div><p class="cleanup-subtitle">选择要清理数据的后台菜单，相关记录会一并处理。仅超级管理员可操作。</p></div></div>
     <div class="cleanup-body">
-      <div class="cleanup-notice">保留角色、成员、系统设置、微信通知配置及日志、门店、医生和登录账号。商品、分类和文章可单独勾选清理，关联业务会列入确认清单。清理不可撤销，请先备份；不会向微信发起退款，也不会删除服务器上的附件文件。</div>
+      <div class="cleanup-notice">保留角色、成员、系统设置、微信通知配置及日志、门店、医生和患者登录账号。“分销总览 / 提现审核”仅清流水；“推广员账号与绑定关系”会删除推广端账号、推广码及绑定关系。商品、分类和文章可单独勾选清理，关联业务会列入确认清单。清理不可撤销，请先备份；不会向微信发起退款，也不会删除服务器上的附件文件。</div>
       <div v-if="loadError" class="cleanup-error">加载清理选项失败 <button class="btn btn-outline" @click="load">重新加载</button></div>
       <div class="cleanup-section-title">选择要清理的菜单数据</div>
       <div class="cleanup-options">

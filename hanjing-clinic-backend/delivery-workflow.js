@@ -61,7 +61,7 @@ async function manufacturingSnapshot(c, profile, conn = null) {
   const p = await db.get('SELECT patient_no FROM patients WHERE id=?', [c.patient_id]);
   const technician = await db.get('SELECT name FROM admin_users WHERE id=?',[c.technician_id]);
   const products = await db.query(`SELECT oi.product_name,oi.quantity FROM order_items oi JOIN products p ON p.id=oi.product_id
-    WHERE oi.order_id=? AND p.category='device' ORDER BY oi.id`, [c.order_id]);
+    WHERE oi.order_id=? AND COALESCE(oi.product_category_snapshot,p.category)='device' ORDER BY oi.id`, [c.order_id]);
   const files = [];
   for (const id of decode(profile.details).file_ids || []) {
     const file = await db.get('SELECT id,name FROM fulfillment_mold_files WHERE id=? AND fulfillment_case_id=?', [id,c.id]);

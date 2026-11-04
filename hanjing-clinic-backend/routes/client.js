@@ -899,7 +899,8 @@ async function createDefaultSelfPatientForUser(user) {
     return Boolean(row);
   });
   const rawPhone = typeof user?.phone === 'string' ? user.phone.trim() : '';
-  const phoneEnc = rawPhone ? encryptPII(rawPhone) : null;
+  // Stored user phones are already encrypted; keep the same value on the self profile.
+  const phoneEnc = rawPhone ? (rawPhone.startsWith('det:') ? rawPhone : encryptPII(rawPhone)) : null;
   const displayName = String(user?.nickname || '本人').trim() || '本人';
   const created = await run(
     `INSERT INTO patients (patient_no, user_id, name, relation, gender, age, phone, card_no, source, has_snore)
@@ -1558,6 +1559,16 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
     const openid = session.openid;
     const unionid = String(session.unionid || '').trim() || null;
     let user = await get(`SELECT * FROM users WHERE openid = ?`, [openid]);
+
+    // Older clients renew via this same endpoint without phoneCode. Renewal may
+    // only restore a verified existing account, never register or repair profiles.
+    if (!phoneCode) {
+      if (!user?.phone || !user.phone_verified_at) {
+        return res.status(401).json({ code: 401, message: '请重新授权手机号登录' });
+      }
+      const payload = await buildMiniProgramLoginPayload(user);
+      return res.json({ code: 0, message: 'success', data: payload });
+    }
 
     if (!user) {
       const existingUserByPhone = encryptedPhone ? await get(`SELECT * FROM users WHERE phone = ?`, [encryptedPhone]) : null;
@@ -6679,8 +6690,8 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
       // 2. Insert order items & Update product stock
       for (const item of validatedItems) {
         await conn.execute(
-          `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity, is_distribution_snapshot, commission_rate_snapshot, commission_rate_level1_snapshot, commission_rate_level2_snapshot)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity, product_category_snapshot, is_distribution_snapshot, commission_rate_snapshot, commission_rate_level1_snapshot, commission_rate_level2_snapshot)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             insertedId,
             item.product.id,
@@ -6688,6 +6699,7 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
             item.product.image_url,
             item.price,
             item.quantity,
+            item.product.category,
             item.isDistributionSnapshot,
             item.commissionRateSnapshot,
             item.commissionRateLevel1Snapshot,

@@ -7,6 +7,7 @@ import { canAdvanceDelivery, paymentLabel, paymentTheme, paymentMoney } from '@/
 import ClinicalDetails from './ClinicalDetails.vue'
 import MoldDialog from './MoldDialog.vue'
 import FactoryBatches from './FactoryBatches.vue'
+import { today } from './delivery'
 const view = ref('cases'), moldDialog = ref<any>(null), batchPanel = ref<any>(null)
 const router = useRouter()
 const page = ref(1), pageSize = ref(50), total = ref(0), search = ref('')
@@ -15,6 +16,8 @@ function searchCases() { page.value=1; load() }
 async function refresh() { await load(); await batchPanel.value?.load() }
 async function openBatch(item:any) { view.value='batches'; await nextTick(); if(item.factory_batch_id)await batchPanel.value?.openDetail(item.factory_batch_id) }
 const loading=ref(false), cases=ref<any[]>([]), admins=ref<any[]>([]), events=ref<any[]>([]), eventsVisible=ref(false), detailVisible=ref(false), detail=ref<any>(null), actionVisible=ref(false), actionType=ref(''), activeCase=ref<any>(null)
+const fittingProducts=ref<any[]>([]), savingAction=ref(false)
+let actionRequest=0
 const form=ref<any>({technician_id:'',mold_no:'',storage_location:'',carrier:'',tracking_no:'',device_serial_no:'',note:''})
 const labels:Record<string,string>={pending_assignment:'待分配技师',assigned:'待取模',mold_taken:'待送厂',mold_batched:'批次待寄出',mold_shipped:'待工厂签收',factory_received:'工厂已签收',producing:'制作中',factory_exception:'工厂异常',device_received:'待通知试戴',ready_for_fitting:'待试戴',fitted:'已完成'}
 const actionTitle=computed(()=>({assign:'分配技师',mold:'登记取模',shipment:'发模登记',receipt:'设备收货入库',fitting:'完成试戴'} as any)[actionType.value]||'')
@@ -22,8 +25,31 @@ const staffName=(item:any)=>item.real_name||item.name||item.username
 const genderLabel=(value:any)=>({1:'男',2:'女',male:'男',female:'女',男:'男',女:'女'} as any)[value]||'未记录'
 const avatarColor=(name:string)=>['#5A85F5','#7C5CE0','#E6875A','#37A88D','#D96886'][String(name||'').charCodeAt(0)%5]
 async function load(){loading.value=true;try{const [a,b]:any[]=await Promise.all([request.get('/api/admin/fulfillment/cases',{params:{page:page.value,pageSize:pageSize.value,search:search.value.trim()||undefined}}),request.get('/api/admin/fulfillment/technicians')]);if(a.code===200){cases.value=a.data||[];total.value=Number(a.pagination?.total||0)}if(b.code===200)admins.value=b.data||[]}catch(e){cases.value=[];total.value=0;console.error(e);MessagePlugin.error('加载履约数据失败')}finally{loading.value=false}}
-function openAction(type:string,item:any){activeCase.value=item;actionType.value=type;form.value={technician_id:item.technician_id||'',mold_no:'',storage_location:'',carrier:'',tracking_no:'',device_serial_no:'',note:''};actionVisible.value=true}
-async function saveAction(){if(!activeCase.value)return;const path:any={assign:'/assign',mold:'/mold',shipment:'/mold-shipment',receipt:'/device-receipt',fitting:'/fitting'};const payload={...form.value,technician_id:form.value.technician_id?Number(form.value.technician_id):undefined};try{const r:any=await request.post(`/api/admin/fulfillment/cases/${activeCase.value.id}${path[actionType.value]}`,payload);if(r.code!==200)throw new Error(r.message);MessagePlugin.success('操作已保存');actionVisible.value=false;await load()}catch(e:any){MessagePlugin.error(e.message||'操作失败')}}
+async function openAction(type:string,item:any){
+  const requestId=++actionRequest
+  activeCase.value=item;actionType.value=type;fittingProducts.value=[]
+  const start=today(), next=new Date(start+'T00:00:00Z');next.setUTCDate(next.getUTCDate()+14)
+  form.value={technician_id:item.technician_id||'',mold_no:'',storage_location:'',carrier:'',tracking_no:'',device_serial_no:'',note:'',device_product_id:'',initial_advancement:4,start_date:start,next_adjust_date:next.toISOString().slice(0,10)}
+  if(type==='fitting'){
+    try{
+      const r:any=await request.get(`/api/admin/fulfillment/cases/${item.id}/detail`)
+      if(requestId!==actionRequest)return
+      if(r.code!==200)throw new Error(r.message)
+      fittingProducts.value=(r.data.items||[]).filter((p:any)=>p.category==='device').filter((p:any,i:number,all:any[])=>all.findIndex(x=>x.product_id===p.product_id)===i)
+      if(fittingProducts.value.length===1)form.value.device_product_id=String(fittingProducts.value[0].product_id)
+    }catch(e:any){MessagePlugin.error(e.message||'获取交付设备失败');return}
+  }
+  actionVisible.value=true
+}
+async function saveAction(){
+  if(!activeCase.value||savingAction.value)return
+  if(actionType.value==='fitting'&&(!form.value.device_product_id||!form.value.start_date||form.value.initial_advancement===''||form.value.initial_advancement==null)){MessagePlugin.warning('请选择交付设备并填写初始前移量和启动日期');return}
+  const path:any={assign:'/assign',mold:'/mold',shipment:'/mold-shipment',receipt:'/device-receipt',fitting:'/fitting'}
+  const payload={...form.value,technician_id:form.value.technician_id?Number(form.value.technician_id):undefined}
+  savingAction.value=true
+  try{const r:any=await request.post(`/api/admin/fulfillment/cases/${activeCase.value.id}${path[actionType.value]}`,payload);if(r.code!==200)throw new Error(r.message);MessagePlugin.success('操作已保存');actionVisible.value=false;await load()}catch(e:any){MessagePlugin.error(e.message||'操作失败')}finally{savingAction.value=false}
+}
+
 async function notify(item:any){try{const r:any=await request.post(`/api/admin/fulfillment/cases/${item.id}/notify-fitting`);if(r.code!==200)throw new Error(r.message);MessagePlugin.success('已通知患者试戴');await load()}catch(e:any){MessagePlugin.error(e.message||'通知失败')}}
 async function showEvents(item:any){try{const r:any=await request.get(`/api/admin/fulfillment/cases/${item.id}/events`);if(r.code!==200)throw new Error(r.message);events.value=r.data||[];eventsVisible.value=true}catch(e:any){MessagePlugin.error(e.message||'获取履约记录失败')}}
 async function showDetail(item:any){detail.value=null;try{const r:any=await request.get(`/api/admin/fulfillment/cases/${item.id}/detail`);if(r.code!==200)throw new Error(r.message);detail.value=r.data;detailVisible.value=true}catch(e:any){MessagePlugin.error(e.message||'获取履约资料失败')}}
@@ -124,7 +150,12 @@ onMounted(load)
     </div>
   </div>
  <MoldDialog ref="moldDialog" @saved="load" />
- <t-dialog v-model:visible="actionVisible" :header="actionTitle" :on-confirm="saveAction"><div class="form"><label v-if="actionType==='assign'">负责技师<select v-model="form.technician_id"><option value="">请选择</option><option v-for="item in admins" :key="item.id" :value="String(item.id)">{{staffName(item)}}</option></select></label><template v-if="actionType==='mold'"><label>模具编号<input v-model="form.mold_no"></label><label>存放位置<input v-model="form.storage_location"></label></template><template v-if="actionType==='shipment'"><label>快递公司<input v-model="form.carrier"></label><label>快递单号<input v-model="form.tracking_no"></label></template><template v-if="actionType==='receipt'"><label>设备序列号<input v-model="form.device_serial_no"></label><label>入库位置<input v-model="form.storage_location"></label></template><template v-if="actionType==='fitting'"><label>操作技师<select v-model="form.technician_id"><option value="">请选择</option><option v-for="item in admins" :key="item.id" :value="String(item.id)">{{staffName(item)}}</option></select></label></template><label class="full">备注 / 结果<textarea v-model="form.note" rows="3"/></label></div></t-dialog>
+ <t-dialog v-model:visible="actionVisible" :header="actionTitle" :confirm-loading="savingAction" :on-confirm="saveAction"><div class="form"><label v-if="actionType==='assign'">负责技师<select v-model="form.technician_id"><option value="">请选择</option><option v-for="item in admins" :key="item.id" :value="String(item.id)">{{staffName(item)}}</option></select></label><template v-if="actionType==='mold'"><label>模具编号<input v-model="form.mold_no"></label><label>存放位置<input v-model="form.storage_location"></label></template><template v-if="actionType==='shipment'"><label>快递公司<input v-model="form.carrier"></label><label>快递单号<input v-model="form.tracking_no"></label></template><template v-if="actionType==='receipt'"><label>设备序列号<input v-model="form.device_serial_no"></label><label>入库位置<input v-model="form.storage_location"></label></template><template v-if="actionType==='fitting'">
+  <label class="full">绑定物理阻鼾器设备<select v-model="form.device_product_id"><option value="">请选择交付订单中的设备</option><option v-for="item in fittingProducts" :key="item.product_id" :value="String(item.product_id)">{{item.product_name}}</option></select></label>
+  <label>初始下颌前移量（mm）<input v-model.number="form.initial_advancement" type="number" min="0" max="15" step="0.5"></label>
+  <label>初配戴 / 治疗启动日期<input v-model="form.start_date" type="date"></label>
+  <label>计划下次微调复诊日期<input v-model="form.next_adjust_date" type="date" :min="form.start_date"></label>
+</template><label class="full">备注 / 结果<textarea v-model="form.note" rows="3"/></label></div></t-dialog>
  <t-dialog v-model:visible="eventsVisible" header="履约记录" :footer="false"><div v-for="event in events" :key="event.id" class="event"><b>{{event.event_type}}</b><span>{{event.actor_name||'系统'}} · {{formatTime(event.created_at)}}</span><p>{{event.detail||'—'}}</p></div><p v-if="!events.length" class="empty">暂无记录</p></t-dialog>
  <t-dialog v-model:visible="detailVisible" header="履约资料 · 门诊诊疗与病历建档" placement="center" width="min(1200px, 94vw)" :footer="false"><ClinicalDetails v-if="detail" :data="detail" /></t-dialog>
 </template>

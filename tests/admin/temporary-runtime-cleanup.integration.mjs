@@ -131,6 +131,40 @@ try {
  r=await api(prefix+'/preview','POST',{groups:['articles']},root);assert.equal(r.status,200,JSON.stringify(r));
  r=await api(prefix+'/execute','POST',{token:r.body.data.token,confirmation:'确认清理'},root);assert.equal(r.status,200,JSON.stringify(r));
  assert.equal(await count('community_posts'),0);assert.equal(await count('users'),2);assert.equal(await count('admin_users'),2);
+ // Independent promoter removal must not remove user/patient/order records.
+ await db.query("INSERT INTO distributors(id,user_id,nickname,invite_code,source_type) VALUES(2,NULL,'独立推广员','TEST-BACKEND','backend')");
+ await db.query("INSERT INTO promoter_accounts(distributor_id,login_name,password_hash) VALUES(2,'cleanup-promoter','unused')");
+ await db.query("INSERT INTO promoter_codes(code,distributor_id) VALUES('TEST-CODE',2)");
+ await db.query("INSERT INTO distribution_relationships(parent_user_id,parent_distributor_id,child_user_id,level) VALUES(2,NULL,1,1),(NULL,2,2,1)");
+ await db.query("INSERT INTO patients(id,user_id,name,patient_no) VALUES(30,1,'保留患者','KEEP30')");
+ await db.query("INSERT INTO appointments(id,appointment_no,user_id,patient_id,store_id,doctor_id,schedule_id,appointment_date,appointment_time,referral_promoter_id,referral_code) VALUES(30,'KEEP30',1,30,1,1,1,?,'11:00-11:30',2,'TEST-CODE')",[date]);
+ await db.query("INSERT INTO orders(id,order_no,user_id,total_amount,pay_amount,referral_promoter_id,referral_mode,distribution_processed) VALUES(30,'KEEP30',1,100,100,2,'new',1)");
+ await db.query("INSERT INTO promoter_conversions(appointment_id,order_id,distributor_id,mode) VALUES(30,30,2,'new')");
+ await db.query("INSERT INTO distribution_orders(order_id,distributor_id,buyer_name,order_amount,commission_amount,status) VALUES(30,2,'测试',100,10,'settled')");
+ await db.query("INSERT INTO withdraw_records(user_id,distributor_id,amount,actual_amount,account_info,status) VALUES(NULL,2,10,10,'{}','paid')");
+ r=await api(prefix+'/preview','POST',{groups:['distribution']},root);assert.equal(r.status,200,JSON.stringify(r));
+ assert.ok(!r.body.data.tables.some(t=>['distributors','promoter_accounts','promoter_codes','distribution_relationships'].includes(t.table)));
+ const boardBefore=await api('/api/admin/distribution/leaderboard','GET',undefined,root);assert.equal(boardBefore.status,200);assert.equal(boardBefore.body.data.find(p=>p.id===2).total_orders,1);assert.equal(boardBefore.body.data.find(p=>p.id===1).total_orders,0);
+
+ r=await api(prefix+'/preview','POST',{groups:['promoters']},root);assert.equal(r.status,200,JSON.stringify(r));
+ for(const table of ['distributors','promoter_accounts','promoter_codes','distribution_relationships','promoter_conversions','distribution_orders','withdraw_records'])assert.ok(r.body.data.tables.some(t=>t.table===table),table);
+ assert.ok(!r.body.data.tables.some(t=>['users','patients','orders','appointments'].includes(t.table)));
+ assert.ok(r.body.data.updates.some(t=>t.table==='orders'&&t.column==='referral_promoter_id'));
+ await control.query(`CREATE TRIGGER ${schema}.reject_promoter_cleanup BEFORE DELETE ON ${schema}.distributors FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='simulated promoter cleanup failure'`);
+ r=await api(prefix+'/execute','POST',{token:r.body.data.token,confirmation:'确认清理'},root);assert.equal(r.status,500);
+ assert.equal(await count('distributors'),2);assert.equal(await count('promoter_accounts'),1);assert.equal(await count('distribution_relationships'),2);assert.equal(await count('distribution_orders'),1);
+ assert.equal((await db.get('SELECT referral_promoter_id,referral_mode FROM orders WHERE id=30')).referral_promoter_id,2);
+ assert.equal((await db.get('SELECT referral_code FROM appointments WHERE id=30')).referral_code,'TEST-CODE');
+ await control.query(`DROP TRIGGER ${schema}.reject_promoter_cleanup`);
+ r=await api(prefix+'/preview','POST',{groups:['promoters']},root);assert.equal(r.status,200,JSON.stringify(r));
+ r=await api(prefix+'/execute','POST',{token:r.body.data.token,confirmation:'确认清理'},root);assert.equal(r.status,200,JSON.stringify(r));
+ for(const table of ['distributors','promoter_accounts','promoter_codes','distribution_relationships','promoter_conversions','distribution_orders','withdraw_records'])assert.equal(await count(table),0,table);
+ assert.equal(await count('users'),2);assert.equal(await count('patients'),1);assert.equal(await count('orders'),1);assert.equal(await count('appointments'),1);
+ const keptOrder=await db.get('SELECT referral_promoter_id,referral_mode,distribution_processed FROM orders WHERE id=30');assert.equal(keptOrder.referral_promoter_id,null);assert.equal(keptOrder.referral_mode,null);assert.equal(keptOrder.distribution_processed,1);
+ const keptAppointment=await db.get('SELECT referral_promoter_id,referral_code FROM appointments WHERE id=30');assert.equal(keptAppointment.referral_promoter_id,null);assert.equal(keptAppointment.referral_code,null);
+ const emptyBoard=await api('/api/admin/distribution/leaderboard','GET',undefined,root);assert.deepEqual(emptyBoard.body.data,[]);
+ const emptyOverview=await api('/api/admin/distribution/overview','GET',undefined,root);assert.equal(emptyOverview.body.data.activePromoters,0);assert.equal(emptyOverview.body.data.invitedUsers,0);assert.equal(emptyOverview.body.data.promotedOrders,0);
+ console.log('PASS independent promoter cleanup: full preview, legacy option preserved, rollback, identity-check constraint, user/patient/order retention, referral unlinking');
  console.log('PASS cleanup actual API: dependent rows, unrelated orders preserved, protected data preserved, patient links/points, preview drift, confirmation, replay, audit');
 
 } finally {if(server)await new Promise(r=>server.close(r));if(db)await db.closePool();await control.query('DROP DATABASE '+schema);await control.end();}

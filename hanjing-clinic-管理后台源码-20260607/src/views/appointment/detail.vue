@@ -322,6 +322,12 @@ const billingItems = ref<BillingItem[]>([])
 const discountAmount = ref<number>(0)
 const payMethod = ref<'cash' | 'wechat' | 'wechat_native'>('cash')
 const fulfillmentTechnicianId = ref<string>('')
+const hasDeviceBillingItem = computed(() => billingItems.value.some(item =>
+  productOptions.value.some(product => String(product.id) === String(item.product_id) && product.category === 'device')
+))
+watch(hasDeviceBillingItem, (hasDevice) => {
+  if (!hasDevice) fulfillmentTechnicianId.value = ''
+})
 const isRegistrationCheckout = computed(() => appointment.value?.status === 'pending_payment')
 
 const totalAmount = computed(() => {
@@ -590,7 +596,7 @@ async function submitCheckout() {
       discount_amount: discountAmount.value,
       pay_method: payMethod.value,
       payment_confirmed: payMethod.value === 'cash',
-      technician_id: fulfillmentTechnicianId.value ? Number(fulfillmentTechnicianId.value) : undefined,
+      technician_id: hasDeviceBillingItem.value && fulfillmentTechnicianId.value ? Number(fulfillmentTechnicianId.value) : undefined,
       appointment_id: Number(appointmentId.value),
       type: isRegistrationCheckout.value ? 'offline' : orderType,
       status: isRegistrationCheckout.value ? 'paid' : orderStatus,
@@ -634,7 +640,7 @@ async function submitCheckout() {
 const callPatient = () => {
   const text = `请患者 ${appointment.value.patient}，到 ${appointment.value.doctor} 医生诊室就诊。`
   if (speakMandarin(text)) {
-    MessagePlugin.success(`呼叫广播成功: "${text}"`)
+    MessagePlugin.success(text)
   } else {
     MessagePlugin.warning('浏览器不支持语音播报，已通过系统弹窗提示')
   }
@@ -1262,7 +1268,7 @@ function handleViewProfile() {
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
               <label class="pay-method-label" :class="{ active: payMethod === 'cash' }">
                 <input v-model="payMethod" type="radio" value="cash" style="display: none;">
-                <AppIcon name="money" />  现金支付
+                现金支付
               </label>
               <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
                 <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
@@ -1270,11 +1276,11 @@ function handleViewProfile() {
               </label>
               <label class="pay-method-label" :class="{ active: payMethod === 'wechat_native' }">
                 <input v-model="payMethod" type="radio" value="wechat_native" style="display: none;">
-                <AppIcon name="qrcode" />  扫码支付
+                微信扫码支付
               </label>
             </div>
             <div class="payment-method-tip">{{ payMethod === 'cash' ? '确认后表示线下现金已经实际收取。' : payMethod === 'wechat' ? '将生成待支付订单，并通知用户前往小程序预约详情完成支付。' : '将生成微信支付二维码，可打印支付单交给用户扫码付款。' }}</div>
-            <TechnicianSelect v-if="checkoutVisible && hasPermission('order:view')" v-model="fulfillmentTechnicianId" />
+            <TechnicianSelect v-if="checkoutVisible && hasDeviceBillingItem && hasPermission('order:view')" v-model="fulfillmentTechnicianId" />
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 10px;">

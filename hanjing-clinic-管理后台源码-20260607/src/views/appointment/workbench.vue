@@ -343,7 +343,7 @@ const completedQueue = computed(() => {
 const callPatient = (patientName: string, doctorName: string) => {
   const text = `请患者 ${patientName}，到 ${doctorName} 医生诊室就诊。`
   if (speakMandarin(text)) {
-    MessagePlugin.success(`呼叫广播成功: "${text}"`)
+    MessagePlugin.success(text)
   } else {
     MessagePlugin.warning('浏览器不支持语音播报，已通过系统弹窗提示')
   }
@@ -450,7 +450,6 @@ const triggerCallOnly = async (item: QueueItem) => {
   try {
     // Update status to 'called' in backend
     await request.put(`/api/admin/appointments/${item.id}`, { status: 'called' })
-    MessagePlugin.success(`已成功呼叫并语音播报患者 [${item.patientName}]`)
     fetchAppointments()
   } catch (error) {
     console.error('叫号状态更新失败:', error)
@@ -522,6 +521,12 @@ const billingItems = ref<BillingItem[]>([])
 const discountAmount = ref<number>(0)
 const payMethod = ref<string>('wechat_native')
 const fulfillmentTechnicianId = ref<string>('')
+const hasDeviceBillingItem = computed(() => billingItems.value.some(item =>
+  productOptions.value.some(product => String(product.id) === String(item.product_id) && product.category === 'device')
+))
+watch(hasDeviceBillingItem, (hasDevice) => {
+  if (!hasDevice) fulfillmentTechnicianId.value = ''
+})
 
 const totalAmount = computed(() => {
   return billingItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
@@ -807,7 +812,7 @@ async function submitCheckout() {
       discount_amount: discountAmount.value,
       pay_method: payMethod.value,
       payment_confirmed: ['cash', 'bank'].includes(payMethod.value),
-      technician_id: fulfillmentTechnicianId.value ? Number(fulfillmentTechnicianId.value) : undefined,
+      technician_id: hasDeviceBillingItem.value && fulfillmentTechnicianId.value ? Number(fulfillmentTechnicianId.value) : undefined,
       appointment_id: Number(selectedQueueItem.value.id),
       type: orderType,
       status: orderStatus,
@@ -1605,30 +1610,21 @@ async function submitCreateAppt() {
           <div style="margin-bottom: 24px;">
             <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: #374151;">支付方式</div>
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <label class="pay-method-label" :class="{ active: payMethod === 'cash' }">
+                <input v-model="payMethod" type="radio" value="cash" style="display: none;">
+                现金支付
+              </label>
               <label class="pay-method-label" :class="{ active: payMethod === 'wechat' }">
-                <input v-model="payMethod" type="radio" value="wechat">
+                <input v-model="payMethod" type="radio" value="wechat" style="display: none;">
                 小程序支付
               </label>
-              <label class="pay-method-label" :class="{ active: payMethod === 'cash' }" style="display: inline-flex; align-items: center; gap: 6px;">
-                <input v-model="payMethod" type="radio" value="cash" style="display: none;">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="#22C55E" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                </svg>现金已收款
-              </label>
-              <label class="pay-method-label" :class="{ active: payMethod === 'wechat_native' }" style="display: inline-flex; align-items: center; gap: 6px;">
+              <label class="pay-method-label" :class="{ active: payMethod === 'wechat_native' }">
                 <input v-model="payMethod" type="radio" value="wechat_native" style="display: none;">
-                <AppIcon name="qrcode" size="12" />微信扫码
+                微信扫码支付
               </label>
-              <label class="pay-method-label" :class="{ active: payMethod === 'wechat_micropay' }" style="display: inline-flex; align-items: center; gap: 6px;">
-                <input v-model="payMethod" type="radio" value="wechat_micropay" style="display: none;">
-                <AppIcon name="scan" size="12" />付款码
-              </label>
-            </div>
-            <div v-if="payMethod === 'wechat_micropay'" style="margin-top: 12px;">
-              <input class="form-control" v-model="micropayAuthCode" placeholder="请扫描或输入患者微信付款码">
             </div>
             <div v-if="payMethod === 'wechat' && miniPayOrderNo && payWaiting" style="margin: 12px 0; overflow-wrap: anywhere;">小程序待支付订单：{{ miniPayOrderNo }}</div>
-            <TechnicianSelect v-if="checkoutVisible && hasPermission('order:view')" v-model="fulfillmentTechnicianId" />
+            <TechnicianSelect v-if="checkoutVisible && hasDeviceBillingItem && hasPermission('order:view')" v-model="fulfillmentTechnicianId" />
             <div v-if="nativePayInfo" style="margin-top: 14px; text-align: center; padding: 14px; border: 1px solid #E5E7EB; border-radius: 8px;">
               <img v-if="nativePayInfo.qrCodeImageUrl" :src="nativePayInfo.qrCodeImageUrl" alt="微信支付二维码" style="width: 220px; height: 220px;">
               <div style="font-size: 13px; color: #374151; margin-top: 8px;">请患者使用微信扫码支付</div>

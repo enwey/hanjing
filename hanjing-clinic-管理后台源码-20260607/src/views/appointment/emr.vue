@@ -45,12 +45,6 @@ const note = ref('')
 const medicalHistory = ref('')
 const allergyHistory = ref('')
 
-// Treatment Profile States (for new treatment creation)
-const syncTreatment = ref(true)
-const deviceProductId = ref('')
-const deviceProducts = ref<any[]>([])
-const initialAdvancement = ref(4.0)
-const startDate = ref(getShanghaiDateString())
 const nextAdjustDate = ref(addDaysInShanghai(14))
 
 // Device Adjustments States (for existing active treatment adjustment)
@@ -176,18 +170,7 @@ const fetchData = async () => {
         }
       }
 
-      // Fetch on-sale device products for treatment profile binding.
-      try {
-        const productRes: any = await request.get('/api/admin/appointments/options/products')
-        if (productRes.code === 200 && Array.isArray(productRes.data)) {
-          deviceProducts.value = productRes.data.filter((item: any) => item.category === 'device' && item.status === 'on')
-          if (!deviceProductId.value && deviceProducts.value.length) {
-            deviceProductId.value = String(deviceProducts.value[0].id)
-          }
-        }
-      } catch (e) {
-        console.error('获取物理阻鼾器设备失败', e)
-      }
+
     } else {
       MessagePlugin.error('预约记录加载失败')
     }
@@ -207,10 +190,7 @@ const applyTemplate = (type: 'diagnosis' | 'prescription' | 'advice', text: stri
   if (type === 'diagnosis') diagnosis.value = text
   else if (type === 'prescription') {
     prescription.value = text
-    // Automatically toggle treatment profiling if HJ-MAD is prescribed
-    if (text.toLowerCase().includes('hj-mad')) {
-      syncTreatment.value = true
-    }
+
   }
   else if (type === 'advice') doctorAdvice.value = text
 }
@@ -255,26 +235,6 @@ const buildConsultationPayload = (includeTreatment = true) => {
         doctor_id: appt.value.doctor_id,
         title: `阻鼾器参数微调 - 复查`,
         description: `已调至 ${adjustedAdvancement.value}mm (反馈: ${patientFeedback.value})，安排门诊复诊。`,
-        due_date: nextAdjustDate.value
-      }
-    }
-  } else if (!activeTreatment.value && syncTreatment.value) {
-    const selectedDevice = deviceProducts.value.find(item => String(item.id) === String(deviceProductId.value))
-    if (!selectedDevice) {
-      throw new Error('请选择已上架的物理阻鼾器设备')
-    }
-    payload.treatment = {
-      create: true,
-      device_product_id: selectedDevice.id,
-      initial_advancement: initialAdvancement.value,
-      start_date: startDate.value
-    }
-    if (nextAdjustDate.value) {
-      payload.follow_up = {
-        create: true,
-        doctor_id: appt.value.doctor_id,
-        title: `阻鼾器物理微调 - 2周复查`,
-        description: `初次配戴 ${selectedDevice.name} (初始前伸量 ${initialAdvancement.value}mm) 满两周，到店复查微调下颌前伸度。`,
         due_date: nextAdjustDate.value
       }
     }
@@ -342,7 +302,7 @@ const handleSubmit = async () => {
     <div class="page-title-row">
       <div>
         <div class="page-title">门诊诊疗与病历建档</div>
-        <div class="page-title-sub">录入患者电子病历、处方方案及同步建档睡眠治疗</div>
+        <div class="page-title-sub">录入患者电子病历、处方方案与医嘱</div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button class="btn btn-outline" @click="navigateToParent(router, route, '/appointment')">取消</button>
@@ -667,8 +627,8 @@ const handleSubmit = async () => {
           </div>
         </div>
 
-        <!-- Treatment Record Sync (已建档患者微调 / 未建档患者建档) -->
-        <div class="panel treatment-panel">
+        <!-- 已交付设备的复诊微调 -->
+        <div v-if="activeTreatment" class="panel treatment-panel">
           <!-- CASE 1: Patient already has active treatment. We support parameter adjustment! -->
           <template v-if="activeTreatment">
             <div class="panel-header">
@@ -744,74 +704,7 @@ const handleSubmit = async () => {
             </div>
           </template>
 
-          <!-- CASE 2: Patient has NO active treatment. We support initial profiling! -->
-          <template v-else>
-            <div class="panel-header">
-              <div class="panel-title flex-row">
-                <input 
-                  id="sync-treatment" 
-                  v-model="syncTreatment" 
-                  type="checkbox" 
-                  class="checkbox-ctrl"
-                >
-                <label for="sync-treatment" class="checkbox-label font-bold">
-                  <AppIcon name="tool" /> 同步建立/更新物理阻鼾治疗档案
-                </label>
-              </div>
-            </div>
 
-            <div v-show="syncTreatment" class="treatment-form-body" style="padding: 16px;">
-              <div class="info-alert" style="margin-bottom: 12px;">
-                <AppIcon name="lightbulb" /> 开启此项后，系统将自动为该患者建立物理阻鼾随访档案，以记录设备的日常佩戴打卡日志与物理调节量。
-              </div>
-
-              <div class="card-grid-2">
-	                <div class="form-group">
-	                  <label class="form-label">绑定物理阻鼾器设备</label>
-	                  <select v-model="deviceProductId" class="form-control select-ctrl">
-	                    <option value="" disabled>请选择商品管理中的上架设备</option>
-	                    <option v-for="device in deviceProducts" :key="device.id" :value="String(device.id)">
-	                      {{ device.name }}
-	                    </option>
-	                  </select>
-	                  <div v-if="!deviceProducts.length" class="form-hint danger">商品管理中暂无已上架的物理阻鼾器设备，请先到商品管理新增或上架设备。</div>
-	                </div>
-
-                <div class="form-group">
-                  <label class="form-label">初始下颌前移量 (mm)</label>
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <input 
-                      v-model="initialAdvancement" 
-                      type="range" 
-                      min="0" 
-                      max="10" 
-                      step="0.5" 
-                      style="flex: 1;"
-                    >
-                    <span class="adv-value">{{ initialAdvancement }} mm</span>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">初配戴/治疗启动日期</label>
-                  <input 
-                    v-model="startDate" 
-                    type="date" 
-                    class="form-control"
-                  >
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">计划下次微调复诊日期</label>
-                  <input 
-                    v-model="nextAdjustDate" 
-                    type="date" 
-                    class="form-control"
-                  >
-                </div>
-              </div>
-            </div>
-          </template>
         </div>
       </div>
     </div>

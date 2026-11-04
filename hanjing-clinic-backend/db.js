@@ -1231,6 +1231,7 @@ export const initDB = async () => {
       product_image VARCHAR(255),
       price INT NOT NULL,
       quantity INT DEFAULT 1,
+      product_category_snapshot VARCHAR(50) DEFAULT NULL,
       is_distribution_snapshot TINYINT DEFAULT 0,
       commission_rate_snapshot DECIMAL(4, 2) DEFAULT 0.0,
       commission_rate_level1_snapshot DECIMAL(4, 2) DEFAULT 0.0,
@@ -1239,6 +1240,11 @@ export const initDB = async () => {
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
   `);
+  // Freeze the best available category for legacy rows once; never overwrite an existing snapshot.
+  const categoryColumns = await query("SHOW COLUMNS FROM order_items LIKE 'product_category_snapshot'");
+  if (!categoryColumns.length) await query('ALTER TABLE order_items ADD COLUMN product_category_snapshot VARCHAR(50) DEFAULT NULL AFTER quantity');
+  await query(`UPDATE order_items oi JOIN products p ON p.id=oi.product_id
+    SET oi.product_category_snapshot=p.category WHERE oi.product_category_snapshot IS NULL`);
   let addedOrderItemDistributionSnapshot = false;
   try {
     await query(`ALTER TABLE order_items ADD COLUMN is_distribution_snapshot TINYINT DEFAULT 0`);
@@ -2417,6 +2423,8 @@ export const initDB = async () => {
   await query('SET FOREIGN_KEY_CHECKS = 1;');
 
   await migrateAdminPermissions(query, transaction);
+  const { repairDoubleEncryptedPatientPhones } = await import('./patient-phone-repair.js');
+  await repairDoubleEncryptedPatientPhones(query, run);
   console.log('MySQL Database tables verified/created successfully.');
 };
 

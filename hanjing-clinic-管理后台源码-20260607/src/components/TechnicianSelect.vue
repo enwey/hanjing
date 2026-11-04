@@ -18,7 +18,7 @@ const label = (item: any) => item.real_name || item.name || item.username
 <template>
   <div v-if="hasPermission('order:view')" class="technician-field">
     <label class="form-label">履约技师（选填）</label>
-    <t-select v-model="model" placeholder="不分配，不创建履约单" clearable>
+    <t-select v-model="model" placeholder="请选择技师（可稍后分配）" clearable>
       <t-option v-for="item in options" :key="item.id" :value="String(item.id)" :label="label(item)" />
     </t-select>
   </div>

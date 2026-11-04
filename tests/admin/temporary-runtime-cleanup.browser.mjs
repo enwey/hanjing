@@ -34,7 +34,7 @@ try {
  await sleep(1800);
  const result=await evaluate(`({text:document.body.innerText,path:location.pathname,rows:document.querySelectorAll('.permission-table tbody tr').length})`);
  await evaluate("document.querySelector('.cleanup-panel').scrollIntoView()");
- assert.equal(await evaluate("document.querySelectorAll('.cleanup-option').length"),12);
+ assert.equal(await evaluate("document.querySelectorAll('.cleanup-option').length"),13);
  const menuLabels=await evaluate("Array.from(document.querySelectorAll('.cleanup-option strong')).map(e=>e.innerText)");
  for(const name of ['商品管理','商品分类','科普文章','内容分类'])assert.ok(menuLabels.includes(name));
  assert.deepEqual(menuLabels.slice(0,4),['预约管理','患者管理','接诊工作台','订单管理']);
