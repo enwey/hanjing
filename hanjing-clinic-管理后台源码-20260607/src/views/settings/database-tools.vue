@@ -32,6 +32,10 @@ const router = useRouter()
 const userInfo = ref<any>({})
 const loadingSchema = ref(false)
 const syncingDb = ref(false)
+const previewingDb = ref(false)
+const syncPlan = ref<any>(null)
+const syncAcknowledged = ref(false)
+const syncActionNames: Record<string, string> = { create_table: '新增表', drop_column: '删除字段', add_column: '新增字段', modify_column: '调整字段', update_constraints: '调整索引或约束', rebuild_foreign_key: '重建外键' }
 const showSyncConfirm = ref(false)
 const showSyncResult = ref(false)
 const syncResultData = ref<any>(null)
@@ -132,14 +136,30 @@ function useTemplate(sql: string) {
   sqlText.value = sql
 }
 
+async function previewSyncDatabase() {
+  previewingDb.value = true
+  syncPlan.value = null
+  syncAcknowledged.value = false
+  try {
+    const res: any = await request.post('/api/admin/database/sync', { preview: true }, { timeout: 240000 })
+    syncPlan.value = res.data
+    showSyncConfirm.value = true
+  } catch (error: any) {
+    MessagePlugin.error(error?.response?.data?.message || error?.message || '结构差异预览失败')
+  } finally {
+    previewingDb.value = false
+  }
+}
+
 async function handleSyncDatabase() {
+  if (!syncPlan.value?.planToken || !syncAcknowledged.value) return
   showSyncConfirm.value = false
   syncingDb.value = true
   try {
-    const res: any = await request.post('/api/admin/database/sync')
+    const res: any = await request.post('/api/admin/database/sync', { planToken: syncPlan.value.planToken }, { timeout: 240000 })
     syncResultData.value = res.data || {}
     showSyncResult.value = true
-    MessagePlugin.success('数据库表结构自检与初始化同步完成')
+    MessagePlugin.success('数据库字段及约束已按当前代码同步并核验')
     await fetchSchema()
   } catch (error: any) {
     MessagePlugin.error(error?.response?.data?.message || error?.message || '结构自检与同步失败')
@@ -163,9 +183,9 @@ onMounted(async () => {
       </div>
       <div class="header-actions">
         <div class="db-tag">当前库：{{ databaseName || '—' }}</div>
-        <button class="btn btn-outline" :disabled="loadingSchema || syncingDb" @click="fetchSchema">刷新结构</button>
-        <button v-permission="'database:sync'" class="btn btn-primary" :disabled="loadingSchema || syncingDb" @click="showSyncConfirm = true">
-          {{ syncingDb ? '同步自检中...' : '一键结构自检与同步' }}
+        <button class="btn btn-outline" :disabled="loadingSchema || syncingDb || previewingDb" @click="fetchSchema">刷新结构</button>
+        <button v-permission="'database:sync'" class="btn btn-primary" :disabled="loadingSchema || syncingDb || previewingDb" @click="previewSyncDatabase">
+          {{ syncingDb ? '同步核验中...' : previewingDb ? '比对结构中...' : '预览并同步结构' }}
         </button>
       </div>
     </div>
@@ -320,40 +340,50 @@ onMounted(async () => {
       v-model:visible="showSyncConfirm"
       header="数据库结构自检与同步确认"
       width="540px"
-      :confirm-btn="{ content: '开始自检与同步', theme: 'primary', loading: syncingDb }"
+      :confirm-btn="{ content: '按代码同步', theme: 'danger', loading: syncingDb, disabled: !syncAcknowledged }"
       :cancel-btn="{ content: '取消' }"
       @confirm="handleSyncDatabase"
     >
       <div class="sync-confirm-content">
-        <div class="sync-confirm-lead">即将对当前数据库执行幂等表结构自检与增量迁移同步。</div>
+        <div class="sync-confirm-lead">以当前部署代码的建表和迁移结果为准，同步字段、索引及约束。</div>
         <div class="sync-confirm-list">
           <div class="sync-confirm-item">
-            <span class="item-badge">安全性</span>
-            <span>仅执行安全的字段补齐与增量表初始化，绝对不会删除任何现有数据表或业务数据。</span>
+            <span class="item-badge">数据影响</span>
+            <span>下列“删除字段”会移除该字段及其数据。执行前自动备份受影响表；类型变更不兼容时将报错停止，不会假报成功。</span>
           </div>
           <div class="sync-confirm-item">
             <span class="item-badge">适用场景</span>
-            <span>生产环境代码更新后出现字段缺失、CRM跟进人/预约来源/筛查报告关联字段滞后引发的 500 报错自愈。</span>
+            <span>请在维护窗口停止业务写入后执行。结构变更可能部分完成，失败时按返回的备份库核对恢复。代码未定义的整张表不自动删除。</span>
           </div>
           <div class="sync-confirm-item">
             <span class="item-badge">目标数据库</span>
             <span class="mono">{{ databaseName || '当前连接库' }}</span>
           </div>
         </div>
+        <div class="sync-diff-list" v-if="syncPlan?.changes?.length">
+          <div v-for="(change, index) in syncPlan.changes" :key="index" class="sync-diff-item">
+            <strong>{{ syncActionNames[change.action] || change.action }} · {{ change.table }}.{{ change.name }}</strong>
+            <div v-if="change.before" class="mono">原：{{ change.before }}</div>
+            <div v-if="change.after" class="mono">新：{{ change.after }}</div>
+          </div>
+        </div>
+        <div v-else>字段、索引及约束已与代码一致，无需变更。</div>
+        <div v-if="syncPlan?.unmanagedTables?.length">未纳管表（保留）：{{ syncPlan.unmanagedTables.join('、') }}</div>
+        <t-checkbox v-model="syncAcknowledged">已停止业务写入，并确认上述字段删除和结构变更</t-checkbox>
       </div>
     </t-dialog>
 
     <!-- 同步完成结果弹窗 -->
     <t-dialog
       v-model:visible="showSyncResult"
-      header="结构自检与初始化同步完成"
+      header="结构同步与核验完成"
       width="560px"
       :confirm-btn="{ content: '确定', theme: 'primary' }"
       :cancel-btn="null"
       @confirm="showSyncResult = false"
     >
       <div class="sync-result-content" v-if="syncResultData">
-        <div class="sync-result-status">全部表结构与增量补丁检查完毕，系统已保持最新兼容状态。</div>
+        <div class="sync-result-status">代码定义表的字段、索引及约束已核验一致；未纳管表保持原样。</div>
         <div class="sync-result-grid">
           <div class="sync-result-row">
             <span class="row-label">目标数据库</span>
@@ -368,8 +398,8 @@ onMounted(async () => {
             <span class="row-value">{{ formatDateTime(syncResultData.syncedAt) }}</span>
           </div>
           <div class="sync-result-row">
-            <span class="row-label">修复覆盖项</span>
-            <span class="row-value">CRM跟进人字段、预约来源字段、筛查就诊人关联、履约病历关联及交付模型</span>
+            <span class="row-label">备份数据库</span>
+            <span class="row-value mono">{{ syncResultData.backupDatabase || '无既有表变更，无需备份' }}</span>
           </div>
         </div>
       </div>
@@ -378,6 +408,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.sync-diff-list { max-height: 260px; overflow: auto; border: 1px solid #e5e7eb; padding: 12px; }
+.sync-diff-item { padding: 8px 0; overflow-wrap: anywhere; font-size: 12px; }
+.sync-diff-item + .sync-diff-item { border-top: 1px solid #e5e7eb; }
+
 .database-layout {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);

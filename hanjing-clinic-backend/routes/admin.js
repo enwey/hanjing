@@ -7765,18 +7765,18 @@ app.post('/api/admin/database/query', authenticateToken, async (req, res) => {
 app.post('/api/admin/database/sync', authenticateToken, async (req, res) => {
   if (!ensureOperationPermission(req, res)) return;
   try {
-    const result = await syncDatabaseSchema();
+    const result = await syncDatabaseSchema({ preview: req.body?.preview === true, planToken: req.body?.planToken });
     await logAdminAction(
       req.user.id,
       'sync_database_schema',
       'system',
       null,
-      { tableCount: result.tableCount, database: result.database },
+      { preview: req.body?.preview === true, tableCount: result.tableCount, database: result.database, changes: result.changes, backupDatabase: result.backupDatabase },
       req.ip || null
     );
     res.json({
       code: 200,
-      message: '数据库表结构自检与初始化同步完成',
+      message: req.body?.preview === true ? '结构差异预览完成' : '数据库字段及约束已按当前代码同步并核验',
       data: result
     });
   } catch (error) {
@@ -7791,8 +7791,8 @@ app.post('/api/admin/database/sync', authenticateToken, async (req, res) => {
       'fail',
       error.message || '结构同步失败'
     );
-    res.status(500).json({
-      code: 500,
+    res.status(error.statusCode || 500).json({
+      code: error.statusCode || 500,
       message: error.message || '数据库结构自检与同步失败'
     });
   }

@@ -1,5 +1,7 @@
 # 测试记录
 
+- 2026-11-04 [数据库结构按部署代码同步](backend-api/schema-sync-2026-11-04.md)：待回归：新增 SCHEMA-REG-02 参考库默认排序规则修复；原 SCHEMA-REG-01 的25项隔离回归通过结论保留，未操作生产库。
+
 - 2026-10-29 [PC社區官方徽標](patient-web/community-official-badge-2026-10-29.md)：列表及詳情對齊小程序徽標，4項代碼自測及構建通過，待回歸。
 
 - 2026-10-29 [小程序社區圖文與官方徽標](mini-program/community-richtext-official-2026-10-29.md)：修正正文展示分支、獨立官方徽標，5項代碼測試通過，待回歸。

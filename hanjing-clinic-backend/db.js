@@ -14,6 +14,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
 
 let pool;
+// Only the isolated reference-schema worker enables this collector.
+export const schemaDdlErrors = [];
 
 export const closePool = async () => {
   if (pool) await pool.end();
@@ -56,8 +58,16 @@ export const initPool = async () => {
 
 export const query = async (sql, params = []) => {
   if (!pool) await initPool();
-  const [rows] = await pool.execute(sql, params);
-  return rows;
+  try {
+    const [rows] = await pool.execute(sql, params);
+    return rows;
+  } catch (error) {
+    if (process.env.HANJING_SCHEMA_REFERENCE === '1' && /^\s*(CREATE|ALTER|DROP)\b/i.test(sql)
+        && ![1060, 1061, 1091, 1826].includes(error.errno)) {
+      schemaDdlErrors.push({ sql, code: error.code, message: error.message });
+    }
+    throw error;
+  }
 };
 
 export const rawQuery = async (sql) => {
@@ -211,7 +221,7 @@ export const initDB = async () => {
   } catch (err) {}
   await initPatientProfileSchema(query);
   try {
-    await query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(100) UNIQUE DEFAULT NULL;`);
+    await query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(100) DEFAULT NULL;`);
   } catch (err) {}
   try {
     await query(`ALTER TABLE users ADD COLUMN phone_verified_at TIMESTAMP NULL DEFAULT NULL AFTER phone;`);
@@ -1853,8 +1863,10 @@ export const initDB = async () => {
 
   try { await dropForeignKeysForColumn('patient_crm_records', 'admin_user_id'); } catch (e) {}
   try { await dropForeignKeysForColumn('patient_crm_records', 'follower_id'); } catch (e) {}
-  try { await query(`ALTER TABLE patient_crm_records CHANGE COLUMN admin_user_id follower_id BIGINT UNSIGNED NOT NULL`); } catch (e) {}
-  try { await query(`ALTER TABLE patient_crm_records RENAME COLUMN admin_user_id TO follower_id`); } catch (e) {}
+  const legacyCrmColumns = await query("SHOW COLUMNS FROM patient_crm_records LIKE 'admin_user_id'");
+  if (legacyCrmColumns.length) {
+    await query(`ALTER TABLE patient_crm_records CHANGE COLUMN admin_user_id follower_id BIGINT UNSIGNED NOT NULL`);
+  }
   try { await query(`ALTER TABLE patient_crm_records ADD CONSTRAINT fk_patient_crm_record_follower FOREIGN KEY (follower_id) REFERENCES admin_users(id) ON DELETE RESTRICT`); } catch (e) {}
 
   // Device fulfillment is a separate operational workflow. It deliberately
@@ -2408,23 +2420,8 @@ export const initDB = async () => {
   console.log('MySQL Database tables verified/created successfully.');
 };
 
-export const syncDatabaseSchema = async () => {
-  await initDB();
-  const tables = await query(
-    `SELECT TABLE_NAME AS name, TABLE_ROWS AS row_count, CREATE_TIME AS create_time, UPDATE_TIME AS update_time
-     FROM information_schema.TABLES
-     WHERE TABLE_SCHEMA = DATABASE()
-     ORDER BY TABLE_NAME ASC`
-  );
-  return {
-    success: true,
-    database: process.env.DB_NAME || '',
-    tableCount: tables.length,
-    tables: tables.map((t) => ({
-      name: t.name,
-      rowCount: Number(t.row_count || 0),
-      updateTime: t.update_time || t.create_time
-    })),
-    syncedAt: new Date().toISOString()
-  };
+// Destructive reconciliation is explicit; normal startup remains additive.
+export const syncDatabaseSchema = async (options = {}) => {
+  const { reconcileDatabaseSchema } = await import('./schema-sync.js');
+  return reconcileDatabaseSchema(options);
 };
