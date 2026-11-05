@@ -1,18 +1,14 @@
 const distributionApi = require('../../../api/index');
 
 async function loadInviteShareInfo() {
-  const results = await Promise.all([
-    distributionApi.getDistributionInviteInfo({ refreshQr: 1 }),
-    distributionApi.getDistributorInfo(),
-  ]);
-  const inviteData = results[0].data || results[0] || {};
-  const distributorData = results[1].data || results[1] || {};
-  const inviteCode = inviteData.inviteCode || distributorData.inviteCode || distributorData.invite_code || '';
+  const response = await distributionApi.getDistributionInviteInfo();
+  const inviteData = response.data || response || {};
+  const inviteCode = inviteData.inviteCode || '';
   return {
-    isDistributor: Boolean(inviteData.isDistributor || distributorData.isDistributor),
+    isDistributor: Boolean(inviteData.isDistributor),
     inviteCode,
-    inviteQrCode: inviteData.inviteQrCode || distributorData.inviteQrCode || '',
-    inviteQrReason: inviteData.inviteQrReason || distributorData.inviteQrReason || '',
+    inviteQrCode: inviteData.inviteQrCode || '',
+    inviteQrReason: inviteData.inviteQrReason || '',
     sharePath: inviteData.sharePath || (inviteCode ? '/pages/index/index?inviteCode=' + inviteCode : '/pages/index/index'),
     shareTitle: inviteData.shareTitle || '邀请好友体验兴康明诊所',
   };

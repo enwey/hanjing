@@ -11,7 +11,7 @@
     <view class="invite-card">
       <view class="invite-entry">
         <view class="invite-qr">
-          <image wx:if="{{inviteQrCode}}" class="invite-qr__image" src="{{inviteQrCode}}" mode="aspectFit" binderror="handleQrError" show-menu-by-longpress="{{true}}" />
+          <image wx:if="{{inviteQrCode}}" class="invite-qr__image" src="{{inviteQrCode}}" mode="aspectFit" binderror="handleQrError" bindload="handleQrLoaded" show-menu-by-longpress="{{true}}" />
           <view wx:else class="invite-qr__fallback"><image src="/static/images/brand-logo-v20261105.png" mode="aspectFit" /><text>{{hasLoaded ? '使用邀请码加入' : '加载中'}}</text></view>
         </view>
         <view class="invite-details">
@@ -21,6 +21,14 @@
         </view>
       </view>
 
+    </view>
+    <view class="invite-diagnostics">
+      <text class="invite-rules__title">小程序码诊断</text>
+      <text class="invite-diagnostics__text" selectable="{{true}}">{{qrDiagnosticText}}</text>
+      <view class="invite-diagnostics__actions">
+        <button bindtap="handleCopyQrDiagnostic">复制诊断信息</button>
+        <button bindtap="handleRetryQr" loading="{{qrChecking}}" disabled="{{qrChecking}}">重新检查</button>
+      </view>
     </view>
     <view class="invite-guide">
       <view class="invite-guide__header"><text>邀请流程</text></view>

@@ -1,3 +1,5 @@
+import { toAbsoluteAssetUrl } from '../public-urls.js';
+import { createInviteQrCache } from '../distribution-invite-qr.js';
 import { publicAvatar } from '../brand-avatar.js';
 import { recordReschedule } from '../appointment-reschedule-history.js';
 import { nextAppointmentNumber } from '../appointment-number.js';
@@ -203,23 +205,6 @@ const formatDateTimeInShanghai = (dateVal) => {
     })
     .replace(',', '');
 };
-
-function buildRequestOrigin(req) {
-  const configuredBaseUrl = process.env.PUBLIC_BASE_URL || process.env.API_PUBLIC_BASE_URL;
-  if (configuredBaseUrl) return configuredBaseUrl.replace(/\/$/, '');
-  const protocol = req?.headers?.['x-forwarded-proto'] || req?.protocol || 'http';
-  const host = req?.get ? req.get('host') : '';
-  return host ? `${protocol}://${host}` : '';
-}
-
-function toAbsoluteAssetUrl(req, assetPath) {
-  const value = String(assetPath || '').trim();
-  if (!value) return '';
-  if (/^https?:\/\//i.test(value)) return value;
-  const origin = buildRequestOrigin(req);
-  if (!origin) return value;
-  return `${origin}${value.startsWith('/') ? value : `/${value}`}`;
-}
 
 async function exchangeWechatMiniCode(code) {
   const appId = process.env.WX_MINI_APP_ID;
@@ -1203,7 +1188,6 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
   return true;
 }
 
-const DISTRIBUTION_QRCODE_PLACEHOLDER = '/static/demo/qrcode.png';
 const DISTRIBUTOR_LEVEL_LABELS = {
   silver: '银牌',
   gold: '金牌',
@@ -1244,57 +1228,14 @@ async function ensureDistributor(userId, conn = null) {
   return get(`SELECT * FROM distributors WHERE user_id = ?`, [userId]);
 }
 
+const getCachedDistributionQr = createInviteQrCache({
+  getToken: getWechatMiniAccessToken,
+  saveUrl: (url, id) => run('UPDATE distributors SET invite_qr_url = ? WHERE id = ?', [url, id])
+});
+
 async function ensureDistributionInviteQrUrl(distributor, req) {
-  if (!distributor?.id || !distributor.invite_code) {
-    return { url: '', reason: '缺少分销邀请码' };
-  }
-  const forceRefresh = String(req?.query?.refreshQr || '') === '1';
-  if (!forceRefresh && distributor.invite_qr_url && distributor.invite_qr_url !== DISTRIBUTION_QRCODE_PLACEHOLDER) {
-    return { url: toAbsoluteAssetUrl(req, distributor.invite_qr_url), reason: '' };
-  }
-
-  try {
-    const token = await getWechatMiniAccessToken();
-    const envVersion = process.env.WX_MINI_QRCODE_ENV || (process.env.NODE_ENV === 'production' ? 'release' : 'trial');
-    const response = await fetch(
-      `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${encodeURIComponent(token)}`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          page: 'pages/index/index',
-          scene: `inviteCode=${distributor.invite_code}`,
-          check_path: false,
-          env_version: envVersion,
-          width: 430
-        })
-      }
-    );
-    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-    if (!response.ok || contentType.includes('application/json')) {
-      let message = '生成邀请二维码失败';
-      try {
-        const data = await response.json();
-        message = data.errmsg || message;
-      } catch (error) {}
-      console.warn('[Distribution] generate invite qr skipped:', message);
-      return { url: '', reason: message };
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const qrDir = path.resolve('./uploads/distribution/qrcodes');
-    fs.mkdirSync(qrDir, { recursive: true });
-    const fileName = `${distributor.invite_code}.png`;
-    const absoluteFilePath = path.join(qrDir, fileName);
-    fs.writeFileSync(absoluteFilePath, buffer);
-    const assetPath = `/uploads/distribution/qrcodes/${fileName}`;
-    await run(`UPDATE distributors SET invite_qr_url = ? WHERE id = ?`, [assetPath, distributor.id]);
-    return { url: toAbsoluteAssetUrl(req, assetPath), reason: '' };
-  } catch (error) {
-    const message = error?.message || '生成邀请二维码失败';
-    console.warn('[Distribution] generate invite qr skipped:', message);
-    return { url: '', reason: message };
-  }
+  const result = await getCachedDistributionQr(distributor);
+  return { ...result, url: result.url ? toAbsoluteAssetUrl(req, result.url) : '' };
 }
 
 async function getDistributionWithdrawRecordList(userId) {

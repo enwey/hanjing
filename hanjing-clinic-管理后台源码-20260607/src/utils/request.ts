@@ -3,7 +3,8 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import router from '@/router'
 
 const service = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '',
+  // Production uses the site's /api reverse proxy; local overrides stay local.
+  baseURL: import.meta.env.PROD ? '' : (import.meta.env.VITE_API_BASE_URL || ''),
   timeout: 30000
 })
 

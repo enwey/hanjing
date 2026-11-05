@@ -37,6 +37,7 @@ export async function getWechatMiniAccessToken(options = {}) {
   const { appId, appSecret } = readWechatMiniCredentials();
   const response = await fetch('https://api.weixin.qq.com/cgi-bin/stable_token', {
     method: 'POST',
+    signal: options.signal,
     headers: {
       'content-type': 'application/json'
     },

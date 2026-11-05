@@ -1,3 +1,4 @@
+import { getPublicOrigin, normalizeAssetResponses } from './public-urls.js';
 import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,7 @@ import promoterRouter from './routes/promoter.js';
 import { sendSystemAlert } from './alert-notifier.js';
 import { processVisitReminders } from './wechatSubscribe.js';
 
+getPublicOrigin(); // Fail startup on conflicting/invalid public URL configuration.
 const app = express();
 const PORT = process.env.PORT || 5005;
 
@@ -69,6 +71,7 @@ app.get('/static/demo/:filename', (req, res, next) => {
   if (!/^doctor-[1-4]\.jpg$/.test(req.params.filename)) return next();
   res.sendFile(fileURLToPath(new URL('./static/demo/' + req.params.filename, import.meta.url)));
 });
+app.use(normalizeAssetResponses);
 app.use(adminRouter);
 app.use(clientRouter);
 

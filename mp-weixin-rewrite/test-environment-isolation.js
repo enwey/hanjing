@@ -13,6 +13,7 @@ function load(version, initialOverride = '', platform = 'devtools') {
   const env = { module: { exports: {} }, wx };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'common/config/env.js'), 'utf8'), env);
   const context = { module: { exports: {} }, wx, require(name) {
+    if (name.includes('config/asset-url')) return require('./common/config/asset-url');
     if (name.includes('config/env')) return env.module.exports;
     if (name.includes('mini-log')) return { createTraceId: () => 'fixture', report() {}, reportNow() {} };
     throw Error('Unexpected module');

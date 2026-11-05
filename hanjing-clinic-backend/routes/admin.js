@@ -1,3 +1,4 @@
+import { getPublicOrigin as buildRequestOrigin } from '../public-urls.js';
 import { completeFittingTreatment } from '../fulfillment-treatment.js';
 import { readDistributionTrends } from '../distribution-trends.js';
 import { installTemporaryRuntimeCleanup } from '../temporary-runtime-cleanup/index.js';
@@ -546,13 +547,6 @@ async function fetchWechatLiveRoom(roomId) {
 
 function isHttpUrl(value) {
   return /^https?:\/\//i.test(String(value || ''));
-}
-
-function buildRequestOrigin(req) {
-  const configuredBaseUrl = process.env.PUBLIC_BASE_URL || process.env.API_PUBLIC_BASE_URL;
-  if (configuredBaseUrl) return configuredBaseUrl.replace(/\/$/, '');
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  return `${protocol}://${req.get('host')}`;
 }
 
 function normalizeWechatTimestamp(value) {

@@ -1,3 +1,4 @@
+const { normalizeAssets } = require('../common/config/asset-url');
 const envConfig = require('../common/config/env');
 const miniLog = require('../common/utils/mini-log');
 
@@ -70,6 +71,7 @@ function executeWxRequest(options, token) {
         header: headers,
         timeout: options.timeout || 10000,
         success(response) {
+          response.data = normalizeAssets(response.data, currentBaseUrl);
           resolvedApiBaseUrl = currentBaseUrl;
           if (response.statusCode < 200 || response.statusCode >= 300) {
             miniLog.report({
