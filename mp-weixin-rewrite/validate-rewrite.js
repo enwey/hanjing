@@ -74,7 +74,7 @@ if (invalidJsFiles.length) {
 }
 
 const requiredAssets = [
-  'static/images/distribution-invite-share-cover.png',
+  'static/images/distribution-invite-share-v20261105.jpg',
   'static/icons/poster-save.svg',
   'static/icons/paper-plane.svg',
 ];
@@ -82,6 +82,14 @@ const missingAssets = requiredAssets.filter((assetPath) => !fs.existsSync(path.j
 if (missingAssets.length) {
   fail('Required asset validation failed.', missingAssets);
 }
+
+const mediaExtensions = /\.(jpg|jpeg|png|svg|webp|gif|flac|m4a|ogg|ape|amr|wma|wav|mp3|mp4|aac|aiff|caf)$/i;
+const mediaFiles = collectFiles(projectRoot, fullPath => mediaExtensions.test(fullPath));
+const mediaBytes = mediaFiles.reduce((total, file) => total + fs.statSync(file).size, 0);
+if (mediaBytes >= 200 * 1024) {
+  fail('Combined image and audio resources must be below 200 KiB.', [`${mediaBytes} bytes`]);
+}
+console.log(' - Combined media resources: ' + mediaBytes + ' bytes');
 
 console.log('Rewrite project validation passed.');
 console.log(' - Route entries: ' + routeEntries.length);

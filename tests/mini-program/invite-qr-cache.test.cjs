@@ -36,7 +36,7 @@ test('invite service only requests invitation endpoint without forced regenerati
 
 test('page downloads with retry and reuses local QR; failed QR prevents poster export', async () => {
   const source = await fs.readFile('mp-weixin-rewrite/pages/distribution/invite/index.js', 'utf8');
-  let config; const moduleMocks = { './qr-diagnostics': require('../../mp-weixin-rewrite/pages/distribution/invite/qr-diagnostics'), './invite-design': { copy: {} }, './invite-service': { loadInviteShareInfo: async () => ({ inviteCode: 'HJ1', inviteQrCode: 'https://host/qr.png' }) } };
+  let config; const moduleMocks = { './invite-design': { copy: {} }, './invite-service': { loadInviteShareInfo: async () => ({ inviteCode: 'HJ1', inviteQrCode: 'https://host/qr.png' }) } };
   vm.runInNewContext(source, { require: name => moduleMocks[name] || {}, Page: p => config = p, wx: { showToast() {} } });
   const p = { ...config, data: { ...config.data }, setData(values) { Object.assign(this.data, values); } };
   let tries = 0; p.resolvePosterQrImage = async () => ++tries === 1 ? '' : '/local/qr.png';

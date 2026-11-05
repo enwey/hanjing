@@ -2,41 +2,46 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const diagnostics = require('../../mp-weixin-rewrite/pages/distribution/invite/qr-diagnostics');
+const path = require('node:path');
 function setup(info, wxExtra = {}) {
-  let config, copied;
-  const wx = { showToast() {}, setClipboardData: ({ data }) => copied = data, ...wxExtra };
+  let config;
   vm.runInNewContext(fs.readFileSync('mp-weixin-rewrite/pages/distribution/invite/index.js','utf8'), {
-    Page: value => config = value, wx,
-    require: name => name === './qr-diagnostics' ? diagnostics : name === './invite-service' ? { loadInviteShareInfo: info } : name === './invite-design' ? { copy: {} } : {}
+    Page: value => config = value, wx: { showToast() {}, ...wxExtra },
+    require: name => name === './invite-service' ? { loadInviteShareInfo: info } : name === './invite-design' ? { copy: {} } : {}
   });
-  return { p: { ...config, data: { ...config.data }, setData(v) { Object.assign(this.data, v); } }, copied: () => copied };
+  return { ...config, data: { ...config.data }, setData(v) { Object.assign(this.data, v); } };
 }
-test('backend generation reason and interface failure remain visible and copyable', async () => {
-  const {p,copied} = setup(async()=>({inviteCode:'HJ1',inviteQrCode:'',inviteQrReason:'invalid appid'}));
-  await p.loadInviteInfo(); assert.match(p.data.qrDiagnosticText,/后台生成结果：invalid appid/); assert.equal(p.data.qrChecking,false);
-  p.handleCopyQrDiagnostic();assert.equal(copied(),p.data.qrDiagnosticText);
-  const other=setup(async()=>{throw Error('request:fail timeout')}).p;
-  await other.loadInviteInfo();assert.match(other.data.qrDiagnosticText,/邀请接口异常：request:fail timeout/);
+test('QR download and local cache work after diagnostic removal', async () => {
+  let downloads = 0;
+  const p = setup(async()=>({inviteCode:'HJ1',inviteQrCode:'https://example.test/qr.png'}), {
+    downloadFile:o=>{downloads++;o.success({statusCode:200,tempFilePath:'/tmp/qr'});},
+    getImageInfo:o=>o.success({path:o.src})
+  });
+  await p.loadInviteInfo(); assert.equal(p.data.inviteQrCode,'/tmp/qr');
+  await p.loadInviteInfo(); assert.equal(downloads,1);
+  assert.equal(p.inviteLoading,false); assert.equal(p.data.qrDiagnosticText,undefined);
 });
-test('download domain error, HTTP status and decode errors are distinguishable',async()=>{
-  const response=async()=>({inviteCode:'HJ1',inviteQrCode:'https://test/qr.png'});
-  const p=setup(response,{downloadFile:o=>o.fail({errMsg:'downloadFile:fail url not in domain list'}),getImageInfo:o=>o.fail({errMsg:'getImageInfo:fail'})}).p;
-  await p.loadInviteInfo();assert.match(p.data.qrDiagnosticText,/domain list/);assert.match(p.data.qrDiagnosticText,/未取得可显示图片/);
-  const q=setup(response,{downloadFile:o=>o.success({statusCode:404}),getImageInfo:o=>o.fail({errMsg:'getImageInfo:fail'})}).p;
-  await q.loadInviteInfo();assert.match(q.data.qrDiagnosticText,/图片HTTP状态：404/);
-  const r=setup(response,{downloadFile:o=>o.success({statusCode:200,tempFilePath:'/tmp/qr'}),getImageInfo:o=>o.fail({errMsg:'getImageInfo:fail decode image fail'})}).p;
-  await r.loadInviteInfo();assert.match(r.data.qrDiagnosticText,/图片校验失败：getImageInfo:fail decode/);
+test('failed image retries and preserves invite code; failed request releases guard',async()=>{
+  let downloads=0;
+  const p=setup(async()=>({inviteCode:'HJ1',inviteQrCode:'https://example.test/qr.png'}), {
+    downloadFile:o=>{downloads++;o.fail({errMsg:'downloadFile:fail'});},getImageInfo:o=>o.fail({errMsg:'decode fail'})
+  });
+  await p.loadInviteInfo(); assert.equal(downloads,2);assert.equal(p.data.inviteQrCode,'');assert.equal(p.data.inviteCode,'HJ1');assert.equal(p.inviteLoading,false);
+  const q=setup(async()=>{throw Error('timeout')});await q.loadInviteInfo();assert.equal(q.inviteLoading,false);
 });
-test('successful display and bounded sanitized diagnostic text',async()=>{
-  const p=setup(async()=>({inviteCode:'HJ1',inviteQrCode:'https://test/qr.png'}),{downloadFile:o=>o.success({statusCode:200,tempFilePath:'/tmp/qr'}),getImageInfo:o=>o.success({path:'/tmp/qr',width:430,height:430})}).p;
-  await p.loadInviteInfo();p.handleQrLoaded();assert.match(p.data.qrDiagnosticText,/页面显示：小程序码图片加载成功/);
-  assert.equal(diagnostics.safeDetail('https://test/qr?access_token=abc#hash'),'https://test/qr');
-  assert.doesNotMatch(diagnostics.safeDetail('AppSecret=abc Bearer xyz'),/abc|xyz/);
-  for(let i=0;i<30;i++)p.addQrDiagnostic('test',i);assert.equal(p.data.qrDiagnosticText.split('\n').length,16);
-});
-test('WXML tags and diagnostic actions are well formed',()=>{
-  const s=fs.readFileSync('mp-weixin-rewrite/pages/distribution/invite/index.wxml','utf8'),stack=[];
+test('template remains balanced with no diagnostic controls or orphaned module',()=>{
+  const dir='mp-weixin-rewrite/pages/distribution/invite/';
+  const s=fs.readFileSync(dir+'index.wxml','utf8'),stack=[];
   for(const m of s.matchAll(/<\/?([\w-]+)\b[^>]*>/g)){if(m[0].startsWith('</'))assert.equal(stack.pop(),m[1]);else if(!m[0].endsWith('/>'))stack.push(m[1]);}
-  assert.equal(stack.length,0);assert.match(s,/bindload="handleQrLoaded"/);assert.match(s,/bindtap="handleCopyQrDiagnostic"/);
+  assert.equal(stack.length,0);assert.doesNotMatch(s,/diagnostic|诊断|handleRetryQr|handleQrLoaded/i);
+  assert.equal(fs.existsSync(dir+'qr-diagnostics.js'),false);
+});
+test('combined packaged image and audio resources stay below 200 KiB',()=>{
+  const extensions=/\.(jpg|jpeg|png|svg|webp|gif|flac|m4a|ogg|ape|amr|wma|wav|mp3|mp4|aac|aiff|caf)$/i;
+  function walk(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name)):[path.join(dir,e.name)]);}
+  const assets=walk('mp-weixin-rewrite').filter(p=>extensions.test(p));
+  assert(assets.length>0);
+  const total=assets.reduce((sum,p)=>sum+fs.statSync(p).size,0);
+  assert(total<200*1024,`Combined media size ${total} bytes exceeds 200 KiB`);
+  console.log(`Checked ${assets.length} packaged media resources; combined ${total} bytes`);
 });

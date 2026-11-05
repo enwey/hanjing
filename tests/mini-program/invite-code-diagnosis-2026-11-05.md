@@ -56,3 +56,5 @@
 - 开发自测：invite-qr-diagnostics、invite-qr-cache、invite-share-image共10项通过；WXML标签闭合、JS语法、git diff --check通过。
 - 浏览器映射实际诊断WXML/WXSS，320/375px模拟长URL及下载域名失败，均无横向溢出；已查看两张截图。截图在artifacts/invite-qr-diagnostics/，使用虚构域名和错误，不是生产返回数据。
 - 未执行微信真机/生产验证；需要上传包含诊断页的新小程序版本后由手机查看。未部署或提交GitHub。
+
+- 2026-11-06：用户确认小程序码问题已解决，按要求移除临时诊断面板及辅助代码；保留缓存取码与重试，详见 [移除记录](invite-cleanup-2026-11-06.md)。此前诊断实现记录仅作为历史。

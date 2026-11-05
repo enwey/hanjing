@@ -1,4 +1,3 @@
-const { safeDetail, environment } = require('./qr-diagnostics');
 const { normalizeDistributionRules } = require('../utils/rules');
 const api = require('../../../api/index');
 const inviteService = require('./invite-service');
@@ -43,7 +42,7 @@ function createPosterContextAdapter(context) {
 }
 
 Page({
-  data: { qrDiagnosticText: '诊断版本：QR-20261105-1', qrChecking: false, shareImagePath: '', rulesLoading: true, rulesError: false, ruleSections: [], copy, isDistributor: false, inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: copy.shareTitle, isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
+  data: { shareImagePath: '', rulesLoading: true, rulesError: false, ruleSections: [], copy, isDistributor: false, inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: copy.shareTitle, isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
   onReady() {
     this.canvasReady = true;
     if (this.data.inviteCode) this.prepareInviteImage().catch(() => {});
@@ -71,30 +70,11 @@ Page({
     return this.prepareInviteImage();
   },
   async onShow() { await Promise.all([this.loadInviteInfo({ silent: this.data.hasLoaded }), this.loadInviteRules()]); },
-  addQrDiagnostic(stage, detail) {
-    const line = `${stage}：${safeDetail(detail)}`;
-    this.qrDiagnosticLines = [...(this.qrDiagnosticLines || []), line].slice(-16);
-    this.setData({ qrDiagnosticText: this.qrDiagnosticLines.join('\n') });
-  },
-  handleCopyQrDiagnostic() {
-    wx.setClipboardData({ data: this.data.qrDiagnosticText });
-  },
-  handleRetryQr() {
-    return this.loadInviteInfo();
-  },
   async loadInviteInfo(options = {}) {
-    if (this.data.qrChecking) return;
-    this.qrDiagnosticLines = [];
-    this.setData({ qrChecking: true });
-    this.addQrDiagnostic('诊断版本', 'QR-20261105-1');
-    this.addQrDiagnostic('小程序版本', environment(wx));
-    this.addQrDiagnostic('检查时间', new Date().toISOString());
-    this.addQrDiagnostic('邀请接口', '请求中');
+    if (this.inviteLoading) return;
+    this.inviteLoading = true;
     try {
       const inviteInfo = await inviteService.loadInviteShareInfo();
-      this.addQrDiagnostic('邀请接口', '请求成功');
-      this.addQrDiagnostic('后台图片地址', inviteInfo.inviteQrCode || '未返回');
-      if (!inviteInfo.inviteQrCode) this.addQrDiagnostic('后台生成结果', inviteInfo.inviteQrReason || '未提供失败原因，无法判断是否生成');
       this.qrRetryUsed = Boolean(options.qrRetry);
       let localQr = '';
       if (inviteInfo.inviteQrCode) {
@@ -104,7 +84,6 @@ Page({
         if (!localQr) localQr = await this.resolvePosterQrImage(inviteInfo.inviteQrCode);
         if (!localQr) localQr = await this.resolvePosterQrImage(inviteInfo.inviteQrCode);
       }
-      this.addQrDiagnostic('码图获取结果', localQr ? '本地图片校验成功，等待页面显示' : '未取得可显示图片');
       this.qrRemoteSource = inviteInfo.inviteQrCode || '';
       this.setData({
         isDistributor: inviteInfo.isDistributor,
@@ -117,10 +96,9 @@ Page({
       });
       if (localQr && this.canvasReady) this.prepareInviteImage().catch(() => {});
     } catch (error) {
-      this.addQrDiagnostic('邀请接口异常', error && (error.errMsg || error.message) || '未知错误');
       wx.showToast({ title: '加载邀请信息失败', icon: 'none' });
     } finally {
-      this.setData({ qrChecking: false });
+      this.inviteLoading = false;
     }
   },
   async loadInviteRules() {
@@ -139,11 +117,7 @@ Page({
       this.setData({ rulesLoading: false, rulesError: true });
     }
   },
-  handleQrLoaded() {
-    this.addQrDiagnostic('页面显示', '小程序码图片加载成功');
-  },
-  handleQrError(event) {
-    this.addQrDiagnostic('页面显示失败', event && event.detail && event.detail.errMsg || 'image组件加载失败');
+  handleQrError() {
     this.setData({ inviteQrCode: '', shareImagePath: '' });
     if (!this.qrRetryUsed) {
       this.qrRetryUsed = true;
@@ -249,10 +223,9 @@ Page({
       wx.getImageInfo({
         src,
         success: (result) => {
-          this.addQrDiagnostic('图片校验', `成功，${result.width || '?'}×${result.height || '?'}`);
           resolve(result.path || result.tempFilePath || src || '');
         },
-        fail: (error) => { this.addQrDiagnostic('图片校验失败', error.errMsg || '未知错误'); resolve(''); },
+        fail: () => resolve(''),
       });
     });
 
@@ -260,20 +233,18 @@ Page({
       return getLocalImage(source);
     }
 
-    this.addQrDiagnostic('图片下载', source);
     const downloadedPath = await new Promise((resolve) => {
       wx.downloadFile({
         url: source,
         timeout: 10000,
         success: (result) => {
-          this.addQrDiagnostic('图片HTTP状态', String(result.statusCode));
           if (result.statusCode >= 200 && result.statusCode < 300) {
             resolve(result.tempFilePath || '');
             return;
           }
           resolve('');
         },
-        fail: (error) => { this.addQrDiagnostic('图片下载失败', error.errMsg || '未知错误'); resolve(''); },
+        fail: () => resolve(''),
       });
     });
 
