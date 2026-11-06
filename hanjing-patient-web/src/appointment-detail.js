@@ -1,6 +1,6 @@
 import {esc,btn,action,kv,form,select,area,submit,money,safeUrl} from './ui.js';
 const stateMap={pending_payment:['待支付','预约未成功，请联系门店完成付款。'],pending:['已预约','预约成功，请准时前往门店签到并就诊。'],confirmed:['候诊中','您已完成签到，请留意叫号。'],reminded:['候诊中','您已完成签到，请留意叫号。'],checked_in:['就诊中','医生已叫号，请前往医生诊室。'],arrived:['已到店','本次服务已完成，期待再次为您守护健康。'],completed:['已完成','本次服务已完成，期待再次为您守护健康。'],cancelled:['已取消','预约已取消，退款（若有）请以实际退款记录为准。'],no_show:['未到诊','由于您未按时到诊，本次服务已结束。']};
-const chargeStatus = { pending:'待支付', paid:'已支付', refund_pending:'退款待处理', refunding:'退款中', refunded:'已退款', cancelled:'已取消' };
+const chargeStatus = { pending:'待支付', paid:'已支付', refund_waived:'无需退款', refund_pending:'退款待处理', refunding:'退款中', refunded:'已退款', cancelled:'已取消' };
 export function appointmentActions(a,settings={},now=Date.now()){
  const raw=String(a.appointmentTime||'').split('-')[0].trim();const time=Date.parse(String(a.appointmentDate||'')+'T'+raw+':00+08:00');const hours=Number(settings.cancelLimitHours||settings.cancel_limit_hours||2)||2;
  const finished=['arrived','completed','cancelled','no_show'].includes(a.status),active=['pending_payment','pending','confirmed','reminded'].includes(a.status);const permitted=a.status==='pending_payment'||(Number.isFinite(time)&&time-now>=Math.max(2,hours)*3600000);

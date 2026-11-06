@@ -22,7 +22,7 @@ const form=ref<any>({technician_id:'',mold_no:'',storage_location:'',carrier:'',
 const labels:Record<string,string>={pending_assignment:'待分配技师',assigned:'待取模',mold_taken:'待送厂',mold_batched:'批次待寄出',mold_shipped:'待工厂签收',factory_received:'工厂已签收',producing:'制作中',factory_exception:'工厂异常',device_received:'待通知试戴',ready_for_fitting:'待试戴',fitted:'已完成'}
 const actionTitle=computed(()=>({assign:'分配技师',mold:'登记取模',shipment:'发模登记',receipt:'设备收货入库',fitting:'完成试戴'} as any)[actionType.value]||'')
 const staffName=(item:any)=>item.real_name||item.name||item.username
-const genderLabel=(value:any)=>({1:'男',2:'女',male:'男',female:'女',男:'男',女:'女'} as any)[value]||'未记录'
+const genderLabel=(value:any)=>({1:'男',2:'女',male:'男',female:'女',男:'男',女:'女'} as any)[value]||'未设置'
 const avatarColor=(name:string)=>['#5A85F5','#7C5CE0','#E6875A','#37A88D','#D96886'][String(name||'').charCodeAt(0)%5]
 async function load(){loading.value=true;try{const [a,b]:any[]=await Promise.all([request.get('/api/admin/fulfillment/cases',{params:{page:page.value,pageSize:pageSize.value,search:search.value.trim()||undefined}}),request.get('/api/admin/fulfillment/technicians')]);if(a.code===200){cases.value=a.data||[];total.value=Number(a.pagination?.total||0)}if(b.code===200)admins.value=b.data||[]}catch(e){cases.value=[];total.value=0;console.error(e);MessagePlugin.error('加载履约数据失败')}finally{loading.value=false}}
 async function openAction(type:string,item:any){

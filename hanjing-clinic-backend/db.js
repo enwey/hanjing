@@ -112,10 +112,13 @@ export const autoUpdateExpiredAppointments = async () => {
     const nowInShanghai = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
     const todayStr = `${nowInShanghai.getFullYear()}-${String(nowInShanghai.getMonth() + 1).padStart(2, '0')}-${String(nowInShanghai.getDate()).padStart(2, '0')}`;
     const { writeNotification } = await import('./notification-center.js');
+    const { queueCancelledChargeRefunds } = await import('./appointment-charges.js');
     const expired = await query("SELECT id FROM appointments WHERE appointment_date<? AND status IN ('pending','confirmed','pending_payment')",[todayStr]);
     for (const item of expired) await transaction(async conn => {
       const [[row]]=await conn.execute("SELECT * FROM appointments WHERE id=? AND appointment_date<? AND status IN ('pending','confirmed','pending_payment') FOR UPDATE",[item.id,todayStr]);
       if(!row)return;
+      // Queue independent appointment charges only; staff still confirms the actual refund.
+      await queueCancelledChargeRefunds(conn, row.id, '预约未到诊');
       await conn.execute("UPDATE appointments SET status='no_show',updated_at=CURRENT_TIMESTAMP WHERE id=?",[row.id]);
       await writeNotification(conn,{userId:row.user_id,type:'appointment',businessType:'appointment',businessId:row.id,event:'expired',onceKey:String(row.appointment_date)+':'+row.appointment_time,title:'预约已结束',content:`预约 ${row.appointment_no} 已超过就诊日期且未到诊。如需就诊，请重新预约。`});
     });
@@ -660,6 +663,16 @@ export const initDB = async () => {
       FOREIGN KEY (snore_assessment_id) REFERENCES snore_assessments(id) ON DELETE SET NULL
     );
   `);
+
+  for (const [column, definition] of [
+    ['checkin_mode', 'VARCHAR(20) DEFAULT NULL'],
+    ['checkin_at', 'DATETIME DEFAULT NULL'],
+    ['consultation_started_at', 'DATETIME DEFAULT NULL'],
+    ['consultation_completed_at', 'DATETIME DEFAULT NULL']
+  ]) {
+    try { await query(`ALTER TABLE appointments ADD COLUMN ${column} ${definition}`); }
+    catch (error) { if (error.code !== 'ER_DUP_FIELDNAME') throw error; }
+  }
 
   try {
     await query(`ALTER TABLE appointments ADD COLUMN deposit_amount INT DEFAULT 0;`);

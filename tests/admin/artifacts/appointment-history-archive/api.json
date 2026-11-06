@@ -1,0 +1,121 @@
+{
+  "results": [
+    {
+      "name": "按预约筛选返回对应诊断，不混入其他就诊",
+      "status": "passed"
+    },
+    {
+      "name": "未建档的预约返回空列表",
+      "status": "passed"
+    },
+    {
+      "name": "无筛选时保留原患者病历列表",
+      "status": "passed"
+    },
+    {
+      "name": "拒绝无效预约参数",
+      "status": "passed"
+    },
+    {
+      "name": "其他患者不能读取当前预约病历",
+      "status": "passed"
+    },
+    {
+      "name": "没有病历权限的账号拒绝访问",
+      "status": "passed"
+    },
+    {
+      "name": "有病历功能但个人范围无关联时禁止读取",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/1/complete-consultation",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/2/complete-consultation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients/1/medical-records?appointment_id=1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients/1/medical-records?appointment_id=2",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients/1/medical-records?appointment_id=3",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients/1/medical-records",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients/2/medical-records?appointment_id=1",
+      "status": 200
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离管理员初始化；业务前提均由HTTP API创建；不含微信真机与生产支付"
+}

@@ -1,0 +1,54 @@
+{
+  "results": [
+    {
+      "name": "未设置性别的新患者在小程序和后台均为0",
+      "status": "passed"
+    },
+    {
+      "name": "只保存昵称不改变未设置性别",
+      "status": "passed"
+    },
+    {
+      "name": "主动选择性别和生日后各端读取一致",
+      "status": "passed"
+    },
+    {
+      "name": "后续只改昵称保留已选性别生日",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients/1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients/1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients/1",
+      "status": 200
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离管理员初始化；业务前提均由HTTP API创建；不含微信真机与生产支付"
+}

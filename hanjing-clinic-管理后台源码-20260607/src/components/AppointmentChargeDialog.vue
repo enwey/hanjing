@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppointmentTerminalDialog from './AppointmentTerminalDialog.vue'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { QRCode } from 'tdesign-vue-next'
@@ -26,6 +27,7 @@ type Method = 'cash' | 'wechat'
 
 const emit = defineEmits<{ changed: []; closed: [id: string] }>()
 const router = useRouter()
+const terminalDialog = ref<InstanceType<typeof AppointmentTerminalDialog>>()
 const visible = ref(false)
 const busy = ref(false)
 const needsRefresh = ref(false)
@@ -57,7 +59,7 @@ function amount(value: number) {
 function chargeLabel(status: string) {
   return ({
     pending: '待支付', paid: '已收款', refund_pending: '待退款', refunding: '退款处理中',
-    refunded: '已退款', cancelled: '已取消', failed: '处理失败', abnormal: '退款异常', closed: '退款已关闭'
+    refund_waived: '无需退款', waived: '无需退款', refunded: '已退款', cancelled: '已取消', failed: '处理失败', abnormal: '退款异常', closed: '退款已关闭'
   } as Record<string, string>)[status] || status
 }
 
@@ -233,6 +235,7 @@ defineExpose({ open })
 </script>
 
 <template>
+  <AppointmentTerminalDialog ref="terminalDialog" @changed="refresh(); emit('changed')" />
   <t-dialog :visible="visible" header="预约收费" dialog-class-name="appointment-charge-modal" width="min(600px, 94vw)"
     :footer="false" :close-btn="!busy" :close-on-overlay-click="false" :close-on-esc-keydown="!busy"
     @close="close">
@@ -289,6 +292,7 @@ defineExpose({ open })
         <div class="charge-actions">
           <t-button v-if="canEditCharge && charge.status === 'pending' && charge.payment_method === 'wechat_native' && !qr" variant="outline" :disabled="busy || needsRefresh" @click="collect('wechat_native')">获取原收款码</t-button>
           <t-button v-if="canEditCharge && charge.status === 'pending' && String(charge.payment_method || '').startsWith('wechat')" variant="outline" :disabled="busy || needsRefresh" @click="sync(charge, 'sync')">核对支付结果</t-button>
+          <t-button v-if="canRefund(charge) && data?.appointment?.status === 'no_show'" variant="outline" :disabled="busy" @click="terminalDialog?.open(appointmentId, 'no_show', 'waive')">无需退款</t-button>
           <t-button v-if="canRefund(charge)" variant="outline" theme="danger" :disabled="busy" @click="showRefund(charge)">退款</t-button>
           <t-button v-if="canApproveRefund && (charge.status === 'refunding' || ['processing', 'refunding'].includes(charge.refund_status || ''))" variant="outline" :disabled="busy || needsRefresh" @click="sync(charge, 'refund-sync')">同步退款结果</t-button>
         </div>

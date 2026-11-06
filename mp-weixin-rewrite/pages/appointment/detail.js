@@ -1,5 +1,5 @@
 const chargeStatusLabels = {
-  pending: '待支付', paid: '已支付', refund_pending: '退款待处理',
+  pending: '待支付', paid: '已支付', refund_waived:'无需退款', refund_pending: '退款待处理',
   refunding: '退款中', refunded: '已退款', cancelled: '已取消',
 };
 function chargeDisplay(charge) {

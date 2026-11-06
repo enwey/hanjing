@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { genderLabel } from '@/utils/gender'
 import { hasPermission } from '@/utils/permission'
 import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
-import { createCheckoutLifecycle, settleCashierAppointment, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
+import { createCheckoutLifecycle, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
 import {
@@ -356,8 +357,6 @@ const completeTreatment = async (item: QueueItem) => {
     await request.put(`/api/admin/appointments/${item.id}`, { status: 'completed' })
     MessagePlugin.success(`患者 ${item.patientName} 诊疗已完成`)
     fetchAppointments()
-    // Directly open checkout cashier dialog
-    openCheckoutDialog({ ...item, status: 'completed' })
   } catch (error) {
     console.error(error)
   }
@@ -454,7 +453,7 @@ const fetchProducts = async () => {
 }
 
 async function openCheckoutDialog(item: QueueItem) {
-  if (!(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))) return
+  if (!(['order:add', 'order:view'].every(hasPermission))) return
   selectedQueueItem.value = item
   if (item.status === 'pending_payment') {
     await appointmentCharge.value?.open(item.id)
@@ -496,7 +495,7 @@ async function openCheckoutDialog(item: QueueItem) {
 
 function closeCheckoutDialog() {
   if (checkoutSuccess.value) {
-    MessagePlugin.warning('请点击底部“完成结算”完成本次结算流程')
+    MessagePlugin.warning('请点击底部“完成”关闭收款凭证')
     checkoutVisible.value = true
     return
   }
@@ -551,30 +550,17 @@ function startPayPolling(orderId: number | string, receipt: any, attempt: Checko
   })
 }
 
-async function completeCheckoutSettlement() {
-  if (!selectedQueueItem.value || !orderResult.value || checkoutLoading.value) return
+function closePaidCheckout() {
+  if (!checkoutSuccess.value || !orderResult.value || checkoutLoading.value) return
   const attempt = checkoutFlow.capture()
-  const isActive = () => checkoutFlow.isCurrent(attempt) && String(orderResult.value?.orderId) === attempt?.orderId
-  if (!isActive()) return
-  const targetId = selectedQueueItem.value.id
-  checkoutLoading.value = true
-  try {
-    if (!await settleCashierAppointment(request, targetId, isActive)) return
-    MessagePlugin.success('结算已完成')
-    checkoutLoading.value = false
-    stopPayPolling()
-    checkoutVisible.value = false
-    selectedQueueItem.value = null
-    checkoutSuccess.value = false
-    orderResult.value = null
-    fetchAppointments()
-  } catch (err) {
-    console.error('完成结算失败:', err)
-    if (isActive()) MessagePlugin.error('完成结算失败，请刷新预约状态后重试')
-  } finally {
-    if (isActive()) checkoutLoading.value = false
-  }
+  if (!checkoutFlow.isCurrent(attempt) || String(orderResult.value.orderId) !== attempt?.orderId) return
+  checkoutFlow.invalidate()
+  checkoutVisible.value = false
+  checkoutSuccess.value = false
+  orderResult.value = null
+  selectedQueueItem.value = null
 }
+
 
 function goToEmr(item: QueueItem) {
   router.push(`/appointment/emr/${item.id}`)
@@ -789,7 +775,7 @@ async function handlePatientSearch() {
       apptSelectedPatient.value = {
         id: found.id.toString(),
         name: found.name,
-        gender: found.gender === 1 ? '男' : '女',
+        gender: genderLabel(found.gender),
         phone: found.phone || found.user_phone
       }
       MessagePlugin.success(`已自动选择患者 [${found.name}]`)
@@ -991,8 +977,8 @@ const filteredTodayAppointments = computed(() => {
               <t-button v-permission="'queue:call'" size="extra-small" theme="default" variant="outline" @click="callPatient(q.current, q.doctorName)">
                 叫号
               </t-button>
-              <t-button v-permission="'order:add'" size="extra-small" theme="warning" variant="outline" v-if="(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))" @click="openCheckoutDialog(q.current)">
-                收银
+              <t-button v-permission="'order:add'" size="extra-small" theme="warning" variant="outline" v-if="(['order:add', 'order:view'].every(hasPermission))" @click="openCheckoutDialog(q.current)">
+                额外收费
               </t-button>
             </div>
           </div>
@@ -1081,7 +1067,7 @@ const filteredTodayAppointments = computed(() => {
     <!-- 收银结算弹窗 -->
     <t-dialog
       v-model:visible="checkoutVisible"
-      header="门诊电子收银结算与划扣"
+      header="门诊额外收费"
       width="540px"
       :footer="false"
       @close="closeCheckoutDialog"
@@ -1112,7 +1098,7 @@ const filteredTodayAppointments = computed(() => {
         </div>
         <div style="margin-top: 20px; display: flex; gap: 12px;">
           <t-button v-permission="'order:print'" variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
-          <t-button v-permission="'order:charge'" theme="primary" :loading="checkoutLoading" @click="completeCheckoutSettlement">完成结算</t-button>
+          <t-button theme="primary" @click="closePaidCheckout">完成</t-button>
         </div>
       </div>
 

@@ -1,0 +1,25 @@
+{
+  "method": "Chrome headless production WXSS layout preview; not native WeChat",
+  "results": [
+    {
+      "width": 320,
+      "page": "view",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "page": "edit",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "page": "view",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "page": "edit",
+      "passed": true
+    }
+  ]
+}

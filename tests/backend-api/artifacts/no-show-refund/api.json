@@ -1,0 +1,115 @@
+{
+  "results": [
+    {
+      "name": "未过期预约不会提前进入待退款",
+      "status": "passed"
+    },
+    {
+      "name": "自动未到诊与手动未到诊的现金收费均待退款",
+      "status": "passed"
+    },
+    {
+      "name": "微信已支付进入待退款，未自动调用渠道退款",
+      "status": "passed"
+    },
+    {
+      "name": "未支付收费单关闭且不创建退款",
+      "status": "passed"
+    },
+    {
+      "name": "免费预约不创建收费退款，关联订单不变",
+      "status": "passed"
+    },
+    {
+      "name": "重复及并发执行不重复退款记录和通知",
+      "status": "passed"
+    },
+    {
+      "name": "现金须人工确认实际退款，完成后预约仍未到诊",
+      "status": "passed"
+    },
+    {
+      "name": "微信经工作人员提交后等待渠道成功才记已退款",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/1/charges",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/4/charges",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/products",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/4",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/1/charges/1/refund",
+      "status": 200
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离管理员初始化；预约/现金收费/关联订单由HTTP API创建，微信支付与退款采用真实业务模块和模拟渠道响应；模拟跨日时间并发触发过期，临时库清理；不含真机和真实资金"
+}

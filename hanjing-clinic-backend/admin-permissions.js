@@ -36,6 +36,7 @@ export function requiredAdminPermissions(method, route, context = {}) {
     if (method === 'POST') return ['appointment:add'];
     const codes = [];
     if (['date','time','period','doctor_id','store_id'].some(has)) codes.push('appointment:reschedule');
+    if (has('refund_action')) codes.push('appointment:refund');
     if (has('cancel_reason') || body.status === 'cancelled') codes.push('appointment:cancel');
     if (has('status') && body.status !== 'cancelled') {
       if (['confirmed','waiting'].includes(body.status)) return { all: [...codes, ...(has('symptom_desc') ? ['appointment:edit'] : [])], any: ['appointment:checkin','queue:checkin','workbench:receive','appointment:receive'] };

@@ -1,0 +1,21 @@
+{
+  "outcomes": [
+    {
+      "case": "主列表打开对应就诊档案",
+      "status": "passed"
+    },
+    {
+      "case": "无病历提示",
+      "status": "passed"
+    },
+    {
+      "case": "失败重试",
+      "status": "passed"
+    },
+    {
+      "case": "全部历史记录入口",
+      "status": "passed"
+    }
+  ],
+  "scope": "Actual Vue components with mocked business API; no real patient operations"
+}

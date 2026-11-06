@@ -18,7 +18,8 @@ const GENDER_OPTIONS = [
 function normalizeGenderValue(value) {
   const gender = String(value === null || value === undefined ? '' : value).trim().toLowerCase();
   if (gender === '2' || gender === '女' || gender === 'female' || gender === 'f') return '2';
-  return '1';
+  if (gender === '1' || gender === '男' || gender === 'male' || gender === 'm') return '1';
+  return '';
 }
 
 function unwrapList(response) {
@@ -59,7 +60,7 @@ Page({
   data: {
     name: '',
     relation: 'self',
-    gender: '1',
+    gender: '',
     birthday: '',
     age: '',
     phone: '',
@@ -219,7 +220,7 @@ Page({
 
   selectGender(event) {
     if (this.data.isSelf) return;
-    this.setData({ gender: String(event.currentTarget.dataset.value || '1') });
+    this.setData({ gender: String(event.currentTarget.dataset.value || '') });
   },
 
   handleStoreChange(event) {

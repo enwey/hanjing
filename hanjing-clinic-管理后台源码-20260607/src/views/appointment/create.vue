@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { genderLabel, genderColor } from '@/utils/gender'
 import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -184,12 +185,12 @@ function setSelectedPatientFromRecord(record: any) {
   selectedPatient.value = {
     id: String(record.id),
     name: record.name,
-    gender: record.gender === 1 ? '男' : record.gender === 2 ? '女' : '未知',
+    gender: genderLabel(record.gender),
     age: record.age || 30,
     phone: record.phone || record.user_phone || '',
     no: record.patient_no || '未生成',
     level: levelMap[record.member_level] || '普通',
-    avatarColor: record.gender === 1 ? '#3B6BF5' : '#EC4899'
+    avatarColor: genderColor(record.gender)
   }
   checkPatientVisitType(String(record.id))
 }
@@ -210,12 +211,12 @@ onMounted(async () => {
         selectedPatient.value = {
           id: appt.patient_id.toString(),
           name: appt.patient_name,
-          gender: appt.patient_gender === 1 ? '男' : '女',
+          gender: genderLabel(appt.patient_gender),
           age: appt.patient_age || 30,
           phone: appt.patient_phone,
           no: appt.patient_no || '未生成',
           level: '普通',
-          avatarColor: appt.patient_gender === 1 ? '#3B6BF5' : '#EC4899'
+          avatarColor: genderColor(appt.patient_gender)
         }
         selectedStore.value = String(appt.store_id || stores.value.find(s => s.name === appt.store_name)?.id || '')
         selectedDoctor.value = String(appt.doctor_id || doctors.value.find(d => d.name === appt.doctor_name)?.id || '')
@@ -287,16 +288,21 @@ async function fetchStoresAndDoctors() {
   await fetchTimeSlots()
 }
 
+let patientSearchSequence = 0
 async function handleSearchInput(val: string) {
+  const sequence = ++patientSearchSequence
   searchQuery.value = val
   const q = val.trim()
   if (!q) {
+    isSearching.value = false
+    searchResults.value = []
     patientOptions.value = []
     return
   }
   try {
     isSearching.value = true
-    const res: any = await request.get(`/api/admin/patients?search=${q}`)
+    const res: any = await request.get(`/api/admin/patients?search=${encodeURIComponent(q)}`)
+    if (sequence !== patientSearchSequence) return
     searchResults.value = res.data || []
     patientOptions.value = searchResults.value.map((p: any) => ({
       label: `${p.name} (${p.phone || p.user_phone || '无手机号'})`,
@@ -305,7 +311,7 @@ async function handleSearchInput(val: string) {
   } catch (error) {
     console.error(error)
   } finally {
-    isSearching.value = false
+    if (sequence === patientSearchSequence) isSearching.value = false
   }
 }
 
@@ -342,12 +348,12 @@ function handlePatientChange(val: any) {
     selectedPatient.value = {
       id: found.id.toString(),
       name: found.name,
-      gender: found.gender === 1 ? '男' : '女',
+      gender: genderLabel(found.gender),
       age: found.age || 30,
       phone: found.phone || found.user_phone,
       no: found.patient_no || '未生成',
       level: levelMap[found.member_level] || '普通',
-      avatarColor: found.gender === 1 ? '#3B6BF5' : '#EC4899'
+      avatarColor: genderColor(found.gender)
     }
     checkPatientVisitType(found.id.toString())
   }
@@ -372,7 +378,7 @@ function handleCreatePatientSuccess(newP: any) {
     phone: newP.phone,
     no: newP.patient_no || '未生成',
     level: newP.level || '普通',
-    avatarColor: newP.gender === '男' ? '#3B6BF5' : '#EC4899'
+    avatarColor: genderColor(newP.gender)
   }
   visitType.value = '初诊'
 }
@@ -551,6 +557,7 @@ const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
             v-model="selectedPatientId"
             filterable
             placeholder="输入姓名/手机号搜索并选择患者"
+            :filter="() => true"
             :loading="isSearching"
             :options="patientOptions"
             class="patient-picker-select"

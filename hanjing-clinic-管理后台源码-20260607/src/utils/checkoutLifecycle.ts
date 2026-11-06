@@ -47,17 +47,3 @@ export function createCheckoutLifecycle(identity: () => string) {
     }
   }
 }
-
-export async function settleCashierAppointment(request: any, id: number | string, isActive: () => boolean) {
-  if (!isActive()) return false
-  const result = await request.get(`/api/admin/appointments/${id}`)
-  if (!isActive()) return false
-  if (result.code !== 200 || String(result.data?.id) !== String(id)) throw new Error('无法确认当前预约状态')
-  const status = result.data.status
-  if (!['pending_payment', 'pending', 'confirmed', 'checked_in', 'waiting', 'called', 'completed', 'arrived', 'settled'].includes(status)) {
-    throw new Error('预约已取消或进入退款，请核对收款与预约状态')
-  }
-  const next = status === 'completed' ? 'arrived' : status === 'pending_payment' ? 'pending' : null
-  if (next) await request.put(`/api/admin/appointments/${id}`, { status: next })
-  return isActive()
-}

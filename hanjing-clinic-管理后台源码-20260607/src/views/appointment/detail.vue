@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import { genderLabel } from '@/utils/gender'
 import { hasPermission } from '@/utils/permission'
+import AppointmentTerminalDialog from '@/components/AppointmentTerminalDialog.vue'
 import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
-import { formatShanghaiDateTime } from '@/utils/dateTime'
+import { formatShanghaiDateTime, formatShanghaiDateOnly } from '@/utils/dateTime'
 import { appointmentTimeline } from '@/utils/appointmentTimeline'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
-import { createCheckoutLifecycle, settleCashierAppointment, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
+import { createCheckoutLifecycle, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { navigateToParent } from '@/utils/routeNavigation'
 import {
@@ -83,6 +85,31 @@ const appointment = ref<any>({
   latest_pre_exam: null,
   previous_pre_exam: null
 })
+
+const visitArchiveVisible = ref(false)
+const visitArchiveLoading = ref(false)
+const visitArchiveError = ref('')
+const visitArchiveRecords = ref<any[]>([])
+const visitArchiveAppointment = ref<any>(null)
+let visitArchiveRequest = 0
+watch(() => route.fullPath, () => { visitArchiveRequest++; visitArchiveVisible.value = false; visitArchiveRecords.value = [] })
+async function openVisitArchive(hist: any) {
+  if (!hasPermission('medical_record:view') || !appointment.value.patient_id) return
+  const version = ++visitArchiveRequest
+  visitArchiveAppointment.value = hist
+  visitArchiveRecords.value = []
+  visitArchiveError.value = ''
+  visitArchiveVisible.value = true
+  visitArchiveLoading.value = true
+  try {
+    const res: any = await request.get('/api/admin/patients/' + appointment.value.patient_id + '/medical-records', { params: { appointment_id: hist.id } })
+    if (version !== visitArchiveRequest) return
+    if (res.code !== 200 || !Array.isArray(res.data)) throw new Error('病历加载失败')
+    visitArchiveRecords.value = res.data.filter((record: any) => String(record.appointment_id) === String(hist.id))
+  } catch (error) {
+    if (version === visitArchiveRequest) visitArchiveError.value = '档案加载失败，请重试'
+  } finally { if (version === visitArchiveRequest) visitArchiveLoading.value = false }
+}
 
 const patientHistory = ref<any[]>([])
 const patientSummary = ref<{visit_count:number; receipts:number; refunds:number; net_receipts:number} | null>(null)
@@ -172,7 +199,7 @@ const fetchAppointmentDetail = async () => {
         patient: appt.patient_name,
         patientNo: appt.patient_no || '未生成',
         phone: appt.patient_phone,
-        gender: appt.patient_gender === 1 ? '男' : appt.patient_gender === 2 ? '女' : '未知',
+        gender: genderLabel(appt.patient_gender),
         age: appt.patient_age || '--',
         level: levelMap[appt.member_level] || '普通',
         isNew: appt.type === 'first',
@@ -188,6 +215,10 @@ const fetchAppointmentDetail = async () => {
         referralCode: appt.referral_code || '',
         symptom: appt.symptom_desc || '',
         deposit: appt.deposit_amount !== null && appt.deposit_amount !== undefined ? (appt.deposit_amount / 100).toFixed(2) : '0.00',
+        checkin_mode: appt.checkin_mode,
+        checkin_at: appt.checkin_at ? formatShanghaiDateTime(appt.checkin_at, false) : '',
+        consultation_started_at: appt.consultation_started_at ? formatShanghaiDateTime(appt.consultation_started_at, false) : '',
+        consultation_completed_at: appt.consultation_completed_at ? formatShanghaiDateTime(appt.consultation_completed_at, false) : '',
         pre_exam: appt.pre_exam,
         latest_pre_exam: appt.latest_pre_exam,
         previous_pre_exam: appt.previous_pre_exam
@@ -298,6 +329,7 @@ const orderResult = ref<any>(null)
 const nativePayInfo = ref<any>(null)
 const nativePayReceipt = ref<any>(null)
 const payWaiting = ref(false)
+const terminalDialog = ref<InstanceType<typeof AppointmentTerminalDialog>>()
 const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
 const cashierSession = createCashierSession(request)
 const checkoutFlow = createCheckoutLifecycle(() => `${route.fullPath}:${appointmentId.value}`)
@@ -383,7 +415,7 @@ watch(deliveryType, (newVal) => {
 })
 
 async function openCheckoutDialog() {
-  if (!(appointment.value.status === 'pending_payment' ? hasPermission('appointment:charge') : ['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))) return
+  if (!(appointment.value.status === 'pending_payment' ? hasPermission('appointment:charge') : ['order:add', 'order:view'].every(hasPermission))) return
   if (!detailReady.value || String(appointment.value.id) !== appointmentId.value) {
     MessagePlugin.warning('请等待当前预约详情加载完成后再收银')
     return
@@ -429,7 +461,7 @@ async function openCheckoutDialog() {
 
 function closeCheckoutDialog() {
   if (checkoutSuccess.value) {
-    MessagePlugin.warning('请点击底部“完成结算”完成本次结算流程')
+    MessagePlugin.warning('请点击底部“完成”关闭收款凭证')
     checkoutVisible.value = true
     return
   }
@@ -491,29 +523,16 @@ function startPayPolling(orderId: number | string, receipt: any, attempt: Checko
 
 onUnmounted(() => stopPayPolling())
 
-async function completeCheckoutSettlement() {
-  if (!appointment.value || !orderResult.value || checkoutLoading.value) return
+function closePaidCheckout() {
+  if (!checkoutSuccess.value || !orderResult.value || checkoutLoading.value) return
   const attempt = checkoutFlow.capture()
-  const isActive = () => checkoutFlow.isCurrent(attempt) && String(orderResult.value?.orderId) === attempt?.orderId
-  if (!isActive()) return
-  const targetId = appointmentId.value
-  checkoutLoading.value = true
-  try {
-    if (!await settleCashierAppointment(request, targetId, isActive)) return
-    MessagePlugin.success('结算已完成')
-    checkoutLoading.value = false
-    stopPayPolling()
-    checkoutVisible.value = false
-    checkoutSuccess.value = false
-    orderResult.value = null
-    fetchAppointmentDetail()
-  } catch (err) {
-    console.error('完成结算失败:', err)
-    if (isActive()) MessagePlugin.error('完成结算失败，请刷新预约状态后重试')
-  } finally {
-    if (isActive()) checkoutLoading.value = false
-  }
+  if (!checkoutFlow.isCurrent(attempt) || String(orderResult.value.orderId) !== attempt?.orderId) return
+  checkoutFlow.invalidate()
+  checkoutVisible.value = false
+  checkoutSuccess.value = false
+  orderResult.value = null
 }
+
 
 function handlePrintInvoice() {
   document.body.classList.add('printing-invoice')
@@ -647,16 +666,7 @@ const callPatient = () => {
 }
 
 // 标记为未到诊
-async function markAsNoShow() {
-  try {
-    await request.put(`/api/admin/appointments/${appointment.value.id}`, { status: 'no_show' })
-    MessagePlugin.success(`已将患者 ${appointment.value.patient} 标记为未到诊`)
-    fetchAppointmentDetail()
-  } catch (error) {
-    console.error(error)
-    MessagePlugin.error('标记未到诊失败')
-  }
-}
+function markAsNoShow() { terminalDialog.value?.open(appointment.value.id,'no_show') }
 
 // 诊疗完成
 const completeTreatment = async () => {
@@ -664,7 +674,6 @@ const completeTreatment = async () => {
     await request.put(`/api/admin/appointments/${appointment.value.id}`, { status: 'completed' })
     MessagePlugin.success(`患者 ${appointment.value.patient} 诊疗已完成`)
     await fetchAppointmentDetail()
-    openCheckoutDialog()
   } catch (error) {
     console.error(error)
   }
@@ -727,16 +736,7 @@ function handleReschedule() {
   router.push(`/appointment/create?reschedule=1&id=${appointmentId.value}`)
 }
 
-async function handleCancel() {
-  try {
-    await request.put(`/api/admin/appointments/${appointmentId.value}`, { status: 'cancelled', cancel_reason: '后台管理员手动取消' })
-    MessagePlugin.success(`预约单 ${appointment.value.no} 已成功取消。`)
-    fetchAppointmentDetail()
-  } catch (error) {
-    console.error(error)
-    MessagePlugin.error('取消预约失败')
-  }
-}
+function handleCancel() { terminalDialog.value?.open(appointmentId.value,'cancelled') }
 
 function handleViewProfile() {
   if (appointment.value.patient_id) {
@@ -749,6 +749,7 @@ function handleViewProfile() {
 
 <template>
   <div class="page-container">
+    <AppointmentTerminalDialog ref="terminalDialog" @changed="fetchAppointmentDetail()" />
     <AppointmentChargeDialog ref="appointmentCharge" @changed="fetchAppointmentDetail" />
     <!-- 打印预览专用页眉 -->
     <div class="print-header">兴康明诊所</div>
@@ -774,7 +775,7 @@ function handleViewProfile() {
           @click="appointmentCharge?.open(appointmentId)">收费与退款</button>
         <!-- 挂号收银 -->
         <button
- v-permission="'order:add'"          v-if="appointment.status === 'pending_payment'"
+ v-permission="'appointment:charge'"          v-if="appointment.status === 'pending_payment'"
           class="btn btn-primary"
           @click="openCheckoutDialog"
         >预约收费</button>
@@ -807,12 +808,7 @@ function handleViewProfile() {
           @click="completeTreatment"
         >诊疗完成</button>
 
-        <!-- 收银结算 -->
-        <button
- v-permission="'order:add'"          v-if="appointment.status === 'completed' && (['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))"
-          class="btn btn-warning"
-          @click="openCheckoutDialog"
-        >收银结算</button>
+
 
         <!-- 改约 -->
         <button
@@ -992,7 +988,7 @@ function handleViewProfile() {
           </div>
           <div class="info-item">
             <div class="info-label">推广员</div>
-            <div class="info-value">{{ appointment.referralPromoter || '未关联推广员' }}</div>
+            <div class="info-value">{{ appointment.referralPromoter || '无推广员' }}</div>
           </div>
           <div class="info-item">
             <div class="info-label">挂号费</div>
@@ -1013,10 +1009,9 @@ function handleViewProfile() {
     </div>
 
 
-    <div v-if="detailReady" class="panel reschedule-panel" style="margin-top: 16px;">
+    <div v-if="detailReady && rescheduleHistory.length" class="panel reschedule-panel" style="margin-top: 16px;">
       <div class="panel-header"><div class="panel-title"><AppIcon name="history" /> 改约记录（{{ rescheduleHistory.length }}）</div></div>
-      <div v-if="!rescheduleHistory.length" class="reschedule-empty">暂无改约记录</div>
-      <div v-else class="reschedule-list">
+      <div class="reschedule-list">
         <div v-for="record in rescheduleHistory" :key="record.id" class="reschedule-record">
           <div class="reschedule-meta">
             <div><span class="tag">{{ record.source === 'admin' ? '运营后台' : '患者端' }}</span><span class="reschedule-operator">{{ record.operator_name }}</span></div>
@@ -1032,12 +1027,12 @@ function handleViewProfile() {
 
     <!-- Timeline Progress -->
     <div class="panel" style="margin-top: 16px;">
-      <div class="panel-header"><div class="panel-title"><AppIcon name="clipboard" />  预约流程</div></div>
+      <div class="panel-header"><div class="panel-title"><AppIcon name="clipboard" />  就诊记录</div></div>
       <div class="panel-body">
         <div class="timeline">
           <div class="timeline-item" v-for="(step, idx) in timelineSteps" :key="idx">
             <div :class="['timeline-dot', step.dot]"></div>
-            <div class="timeline-time">{{ step.time }}</div>
+            <div v-if="step.time || step.badge" class="timeline-time">{{ step.time }}<span v-if="step.badge">{{ step.badge }}</span></div>
             <div class="timeline-content"><strong>{{ step.title }}</strong> · {{ step.content }}</div>
           </div>
         </div>
@@ -1058,6 +1053,7 @@ function handleViewProfile() {
             <th>门店</th>
             <th>医生</th>
             <th>状态</th>
+            <th v-if="hasPermission('medical_record:view')">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -1071,10 +1067,11 @@ function handleViewProfile() {
                 {{ getStatusText(hist.status) }}
               </span>
             </td>
+            <td v-if="hasPermission('medical_record:view')"><button class="btn btn-sm btn-outline" @click="openVisitArchive(hist)">查看档案</button></td>
           </tr>
-          <tr v-if="historyError"><td colspan="5">历史预约加载失败</td></tr>
+          <tr v-if="historyError"><td :colspan="hasPermission('medical_record:view') ? 6 : 5">历史预约加载失败</td></tr>
           <tr v-else-if="patientHistory.length === 0">
-            <td colspan="5" style="text-align: center; color: #9CA3AF; padding: 20px;">暂无历史预约记录</td>
+            <td :colspan="hasPermission('medical_record:view') ? 6 : 5" style="text-align: center; color: #9CA3AF; padding: 20px;">暂无历史预约记录</td>
           </tr>
         </tbody>
       </table>
@@ -1083,7 +1080,7 @@ function handleViewProfile() {
     <!-- 门诊收费结算收银弹窗 -->
     <t-dialog
       v-model:visible="checkoutVisible"
-      header="门诊电子收银结算与划扣"
+      header="门诊额外收费"
       width="540px"
       :footer="null"
       @cancel="closeCheckoutDialog"
@@ -1118,7 +1115,7 @@ function handleViewProfile() {
           </div>
           <div style="margin-top: 20px; display: flex; gap: 12px;">
             <t-button v-permission="'order:print'" variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
-            <t-button v-permission="'order:charge'" theme="primary" :loading="checkoutLoading" @click="completeCheckoutSettlement">完成结算</t-button>
+            <t-button theme="primary" @click="closePaidCheckout">完成</t-button>
           </div>
         </div>
 
@@ -1343,11 +1340,26 @@ function handleViewProfile() {
       </div>
     </t-dialog>
 
+    <t-dialog v-model:visible="visitArchiveVisible" header="就诊档案" width="720px" :footer="null">
+      <div class="visit-archive">
+        <div class="visit-archive-summary">{{ visitArchiveAppointment?.appointment_no }} · {{ formatShanghaiDateOnly(visitArchiveAppointment?.appointment_date) }} · {{ visitArchiveAppointment?.doctor_name }}</div>
+        <div v-if="visitArchiveLoading" class="visit-archive-state">正在加载档案…</div>
+        <div v-else-if="visitArchiveError" class="visit-archive-state">{{ visitArchiveError }} <button class="btn btn-sm btn-outline" @click="openVisitArchive(visitArchiveAppointment)">重新加载</button></div>
+        <div v-else-if="!visitArchiveRecords.length" class="visit-archive-state">暂无可查看的本次就诊档案</div>
+        <article v-for="record in visitArchiveRecords" v-else :key="record.id" class="visit-archive-record">
+          <div class="visit-archive-summary">{{ record.store_name }} · {{ record.doctor_name }} · {{ formatShanghaiDateOnly(record.visit_date) }}</div>
+          <section v-for="field in [{ key: 'diagnosis', label: '诊断' }, { key: 'prescription', label: '处方与治疗方案' }, { key: 'doctor_advice', label: '医嘱' }, { key: 'note', label: '备注' }]" :key="field.key">
+            <h4>{{ field.label }}</h4><p>{{ record[field.key] || '未填写' }}</p>
+          </section>
+        </article>
+      </div>
+    </t-dialog>
+
     <!-- 历史预约全部记录弹窗 -->
     <t-dialog
       v-model:visible="historyDialogVisible"
       header="全部历史预约记录"
-      width="680px"
+      width="900px"
       :footer="null"
     >
       <div style="padding: 10px 0;">
@@ -1359,6 +1371,7 @@ function handleViewProfile() {
               <th style="padding: 10px 14px;">门店</th>
               <th style="padding: 10px 14px;">医生</th>
               <th style="padding: 10px 14px;">状态</th>
+            <th v-if="hasPermission('medical_record:view')">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -1372,9 +1385,10 @@ function handleViewProfile() {
                   {{ getStatusText(hist.status) }}
                 </span>
               </td>
+            <td v-if="hasPermission('medical_record:view')"><button class="btn btn-sm btn-outline" @click="openVisitArchive(hist)">查看档案</button></td>
             </tr>
-            <tr v-if="historyLoading"><td colspan="5">加载中</td></tr>
-            <tr v-else-if="historyPageError"><td colspan="5">加载失败，请重新打开或切换页码重试</td></tr>
+            <tr v-if="historyLoading"><td :colspan="hasPermission('medical_record:view') ? 6 : 5">加载中</td></tr>
+            <tr v-else-if="historyPageError"><td :colspan="hasPermission('medical_record:view') ? 6 : 5">加载失败，请重新打开或切换页码重试</td></tr>
           </tbody>
         </table>
         
@@ -1894,6 +1908,12 @@ function handleViewProfile() {
 .print-header {
   display: none;
 }
+.visit-archive { max-height: 65vh; overflow-y: auto; }
+.visit-archive-summary { color: #6b7280; font-size: 13px; margin-bottom: 16px; }
+.visit-archive-state { padding: 32px 0; text-align: center; color: #6b7280; }
+.visit-archive-record + .visit-archive-record { border-top: 1px solid #e5e7eb; padding-top: 20px; }
+.visit-archive-record h4 { margin: 16px 0 8px; font-size: 14px; }
+.visit-archive-record p { margin: 0 0 16px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
 </style>
 
 <style>

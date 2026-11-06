@@ -1700,7 +1700,9 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
   const idCardClean = idCard ? escapeHtml(idCard).toUpperCase() : null;
   const idCardEnc = idCardClean ? encryptPII(idCardClean) : null;
   const birthdayClean = birthday === '' || !birthday ? null : birthday;
-  const genderClean = gender !== undefined ? gender : null;
+  const genderClean = gender === undefined ? null : Number(gender);
+  if (genderClean !== null && ![0, 1, 2].includes(genderClean)) return res.status(400).json({ code: 400, message: '请选择有效性别' });
+  if (birthdayClean && !normalizeFamilyBirthday(birthdayClean)) return res.status(400).json({ code: 400, message: '出生日期无效' });
   const ageClean = age !== undefined ? age : calculateAgeFromBirthday(birthdayClean);
   const avatarClean = avatar || avatarUrl ? escapeHtml(String(avatar || avatarUrl).trim()) : null;
   if (idCard && !/^\d{17}[\dXx]$/.test(String(idCard))) {
@@ -1797,10 +1799,11 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
              SET name = COALESCE(?, name),
                  gender = COALESCE(?, gender),
                  age = COALESCE(?, age),
+                 birthday = COALESCE(?, birthday),
                  phone = COALESCE(?, phone),
                  id_card = COALESCE(?, id_card)
          WHERE id IN (${placeholders})`,
-        [nicknameClean, genderClean, ageClean, verifiedPhoneEnc, idCardEnc, ...scopedPatientIds]
+        [nicknameClean, genderClean, ageClean, birthdayClean, verifiedPhoneEnc, idCardEnc, ...scopedPatientIds]
       );
     });
 

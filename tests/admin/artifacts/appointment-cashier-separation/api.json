@@ -1,0 +1,206 @@
+{
+  "results": [
+    {
+      "name": "仅保存病历仍在接诊中",
+      "status": "passed"
+    },
+    {
+      "name": "结束看诊保存病历并进入完成终态，不产生收费订单",
+      "status": "passed"
+    },
+    {
+      "name": "已完成筛选与计数包含刚结束的预约",
+      "status": "passed"
+    },
+    {
+      "name": "完成后不能重新接诊",
+      "status": "passed"
+    },
+    {
+      "name": "额外收费创建独立订单且不改变已完成预约",
+      "status": "passed"
+    },
+    {
+      "name": "旧前端结算请求不能再将完成预约改为arrived",
+      "status": "passed"
+    },
+    {
+      "name": "额外订单退款不改变已完成预约",
+      "status": "passed"
+    },
+    {
+      "name": "就诊中额外收费仍保持就诊中",
+      "status": "passed"
+    },
+    {
+      "name": "不支持的部分退款被拒绝且不改变预约或订单",
+      "status": "passed"
+    },
+    {
+      "name": "就诊中全额退款仍保持就诊中",
+      "status": "passed"
+    },
+    {
+      "name": "额外费用已退款仍可从列表结束诊疗进入已完成",
+      "status": "passed"
+    },
+    {
+      "name": "重复完成操作不会重开预约或新增收费",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/1/save-consultation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/1/complete-consultation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments?page=1&pageSize=30&status=completed",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/products",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments?page=1&pageSize=30&status=completed",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders/1/offline-refund",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/products",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders/2/offline-refund",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离管理员初始化；业务前提均由HTTP API创建；不含微信真机与生产支付"
+}

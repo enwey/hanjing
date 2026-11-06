@@ -1,0 +1,10 @@
+{
+  "outcomes": [
+    {
+      "page": "detail",
+      "result": "passed",
+      "visibleDialogs": 0
+    }
+  ],
+  "scope": "Actual Vue components with mocked business API; no real patient operations"
+}

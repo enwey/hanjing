@@ -8,7 +8,7 @@ async function load(name) {
   const output=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
   return import('data:text/javascript;base64,'+Buffer.from(output).toString('base64'));
 }
-const {createCheckoutLifecycle,settleCashierAppointment}=await load('checkoutLifecycle');
+const {createCheckoutLifecycle}=await load('checkoutLifecycle');
 const {createCashierSession}=await load('checkoutProducts');
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};
@@ -53,34 +53,6 @@ test('an old HTTP failure cannot reset the next cashier request id',async()=>{
   assert.equal(calls[2].request_id,requestId);assert.notEqual(calls[0].request_id,requestId);
 });
 
-test('settlement uses latest server state rather than a stale checked-in row',async()=>{
-  const puts=[];const request={get:async()=>({code:200,data:{id:12,status:'completed'}}),put:async(...args)=>puts.push(args)};
-  assert.equal(await settleCashierAppointment(request,12,()=>true),true);
-  assert.deepEqual(puts,[['/api/admin/appointments/12',{status:'arrived'}]]);
-});
-
-test('settled/active bookings are not reverted, and terminal bookings are rejected',async()=>{
-  let status='arrived',calls=0;
-  const request={get:async()=>({code:200,data:{id:12,status}}),put:async()=>calls++};
-  for(status of ['arrived','settled','pending','confirmed','checked_in','waiting','called'])assert.equal(await settleCashierAppointment(request,12,()=>true),true);
-  assert.equal(calls,0);
-  for(status of ['cancelled','no_show','refunding','refunded','invalid'])await assert.rejects(settleCashierAppointment(request,12,()=>true));
-});
-
-test('closing during the latest-state request prevents any settlement write',async()=>{
-  const gate=deferred();let active=true,writes=0;
-  const result=settleCashierAppointment({get:()=>gate.promise,put:async()=>writes++},12,()=>active);
-  active=false;gate.resolve({code:200,data:{id:12,status:'completed'}});
-  assert.equal(await result,false);assert.equal(writes,0);
-});
-
-test('closing during settlement suppresses completion and keeps the captured target',async()=>{
-  const gate=deferred();let active=true,target;
-  const result=settleCashierAppointment({get:async()=>({code:200,data:{id:12,status:'completed'}}),put:async p=>{target=p;await gate.promise;}},12,()=>active);
-  await pause(0);active=false;gate.resolve();assert.equal(await result,false);assert.equal(target,'/api/admin/appointments/12');
-});
-
-test('settlement rejects mismatched identities and propagates concurrent server rejection',async()=>{
-  await assert.rejects(settleCashierAppointment({get:async()=>({code:200,data:{id:13,status:'completed'}})},12,()=>true));
-  await assert.rejects(settleCashierAppointment({get:async()=>({code:200,data:{id:12,status:'completed'}}),put:async()=>{throw new Error('already cancelled');}},12,()=>true),/already cancelled/);
+test('cashier lifecycle exports no appointment-settlement operation',async()=>{
+  const module=await load('checkoutLifecycle');assert.equal(module.settleCashierAppointment,undefined);
 });

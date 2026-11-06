@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { genderColor } from '@/utils/gender'
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
@@ -307,7 +308,7 @@ const fetchDataLists = async () => {
     todayAppointments.value = apptsRes.data.slice(0, 5).map((a: any) => ({
       id: a.id,
       patient: a.patient_name || '未知患者',
-      avatarColor: a.patient_gender === 1 ? '#5A85F5' : '#EC4899',
+      avatarColor: genderColor(a.patient_gender),
       doctor: a.doctor_name,
       time: a.appointment_time,
       status: ['completed', 'arrived', 'settled'].includes(a.status) ? '已完成' : a.status === 'checked_in' ? '就诊中' : a.status === 'confirmed' ? '候诊中' : a.status === 'pending' ? '已预约' : '已取消',

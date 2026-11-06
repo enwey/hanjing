@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { genderLabel } from '@/utils/gender'
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -156,7 +157,7 @@ const fetchPatients = async () => {
         no: getPatientNo(item),
         name: item.name,
         phone: item.phone || item.user_phone || '',
-        gender: item.gender === 1 ? '男' : item.gender === 2 ? '女' : '未知',
+        gender: genderLabel(item.gender),
         age: item.age ?? null,
         ageText: item.age === null || item.age === undefined ? '未知' : `${item.age}岁`,
         level: levelMap[item.member_level] || '普通',
@@ -442,7 +443,7 @@ async function handleExport() {
         no: getPatientNo(item),
         name: item.name,
         phone: item.phone || item.user_phone || '',
-        gender: item.gender === 1 ? '男' : item.gender === 2 ? '女' : '未知',
+        gender: genderLabel(item.gender),
         age: item.age ?? null,
         level: levelMap[item.member_level] || '普通',
         lastVisit: item.last_visit || '暂无',

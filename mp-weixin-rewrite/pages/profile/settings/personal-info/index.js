@@ -27,29 +27,32 @@ Page({
     editing: false,
     nickname: '',
     nicknameCursor: -1,
-    gender: 1,
+    gender: 0,
     birthday: '',
     idCard: '',
     idCardCursor: -1,
-    maxBirthday: '2026-07-23',
+    maxBirthday: '',
     avatarText: '?',
     avatarUrl: '',
     pendingAvatarPath: '',
     displayIdCard: '未认证',
     displayCardNo: '未生成',
-    displayGender: '男',
+    displayGender: '未设置',
     birthdayPickerText: '请选择生日',
     birthdayDisplayText: '未设置',
-    maleChipClass: 'chip data-v-acab1652 active',
+    maleChipClass: 'chip data-v-acab1652',
     femaleChipClass: 'chip data-v-acab1652',
     avatarUploading: false,
   },
 
   onLoad(options = {}) {
+    const today = new Date();
+    const maxBirthday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const profileSetupMode = String(options.fromLogin || '') === '1';
     const autoEdit = String(options.autoEdit || '') === '1';
     this.setData({
       profileSetupMode,
+      maxBirthday,
       editing: autoEdit,
     });
   },
@@ -74,7 +77,7 @@ Page({
         editing: this.data.editing || this.data.profileSetupMode,
         nickname: resolveDisplayNickname(profile.nickname),
         nicknameCursor: String(resolveDisplayNickname(profile.nickname) || '').length,
-        gender: Number(profile.gender || 1),
+        gender: Number(profile.gender || 0),
         birthday: profile.birthday || '',
         idCard: profile.idCard || profile.id_card || '',
         idCardCursor: String(profile.idCard || profile.id_card || '').length,
@@ -93,7 +96,7 @@ Page({
     const profile = this.data.profile || {};
     this.applyProfileData({
       editing: false,
-      gender: Number(profile.gender || 1),
+      gender: Number(profile.gender || 0),
       nickname: resolveDisplayNickname(profile.nickname),
       nicknameCursor: String(resolveDisplayNickname(profile.nickname) || '').length,
       idCard: profile.idCard || profile.id_card || '',
@@ -154,7 +157,7 @@ Page({
     const profile = nextData.profile || {};
     const nickname = String(nextData.nickname || resolveDisplayNickname(profile.nickname) || '').trim();
     const birthday = nextData.birthday || '';
-    const gender = Number(nextData.gender || 1);
+    const gender = Number(nextData.gender || 0);
     const avatarUrl = normalizeImageUrl(nextData.avatarUrl || profile.avatar || profile.avatarUrl || profile.avatar_url);
 
     this.setData(
@@ -163,7 +166,7 @@ Page({
         avatarUrl,
         displayIdCard: profile.idCard || profile.id_card || '未认证',
         displayCardNo: profile.cardNo || profile.card_no || '未生成',
-        displayGender: gender === 2 ? '女' : '男',
+        displayGender: gender === 1 ? '男' : gender === 2 ? '女' : '未设置',
         birthdayPickerText: birthday || '请选择生日',
         birthdayDisplayText: birthday || '未设置',
         maleChipClass: gender === 1 ? 'chip data-v-acab1652 active' : 'chip data-v-acab1652',

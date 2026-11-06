@@ -1,0 +1,17 @@
+{
+  "outcomes": [
+    {
+      "case": "现金取消确认勾选",
+      "status": "passed"
+    },
+    {
+      "case": "未到诊无需退款确认",
+      "status": "passed"
+    },
+    {
+      "case": "微信原路退款确认",
+      "status": "passed"
+    }
+  ],
+  "scope": "Actual Vue components with mocked business API; no real patient operations"
+}

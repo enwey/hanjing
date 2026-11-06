@@ -14,7 +14,7 @@ function normalizeGenderValue(value) {
   const gender = String(value === null || value === undefined ? '' : value).trim().toLowerCase();
   if (gender === '1' || gender === '男' || gender === 'male' || gender === 'm') return '男';
   if (gender === '2' || gender === '女' || gender === 'female' || gender === 'f') return '女';
-  return '未填写';
+  return '未设置';
 }
 
 function normalizeAgeValue(value) {

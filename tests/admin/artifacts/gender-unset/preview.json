@@ -1,0 +1,9 @@
+{
+  "outcomes": [
+    {
+      "case": "完整手机号远程搜索，脱敏选项不被二次过滤",
+      "result": "passed"
+    }
+  ],
+  "scope": "Actual Vue components with mocked business API; no real patient operations"
+}

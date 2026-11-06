@@ -1,0 +1,90 @@
+{
+  "results": [
+    {
+      "name": "完整手机号检索小程序加密患者且保持脱敏",
+      "status": "passed"
+    },
+    {
+      "name": "后台明文手机号兼容检索",
+      "status": "passed"
+    },
+    {
+      "name": "登记账号手机号可查关联就诊人",
+      "status": "passed"
+    },
+    {
+      "name": "姓名搜索仍有效",
+      "status": "passed"
+    },
+    {
+      "name": "前后空格不影响手机号搜索",
+      "status": "passed"
+    },
+    {
+      "name": "分页数据和总数一致",
+      "status": "passed"
+    },
+    {
+      "name": "不存在手机号返回空列表",
+      "status": "passed"
+    },
+    {
+      "name": "手机号搜索不能越过个人数据范围",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients?search=13800005678",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients?search=13900001234",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients?search=13900001234",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients?search=%E6%89%8B%E6%9C%BA%E5%8F%B7%E6%90%9C%E7%B4%A2%E5%AE%B6%E5%B1%9E",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients?search=%2013800005678%20",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients?search=13800005678&page=1&pageSize=10",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients?search=13799998888",
+      "status": 200
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离管理员初始化；业务前提均由HTTP API创建；不含微信真机与生产支付"
+}

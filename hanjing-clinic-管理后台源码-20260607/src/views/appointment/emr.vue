@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { genderLabel } from '@/utils/gender'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -336,7 +337,7 @@ const handleSubmit = async () => {
             </div>
             <div class="info-item">
               <div class="info-label">性别/年龄</div>
-              <div class="info-value">{{ appt.patient_gender === 1 ? '男' : '女' }} / {{ appt.patient_age }}岁</div>
+              <div class="info-value">{{ genderLabel(appt.patient_gender) }} / {{ appt.patient_age }}岁</div>
             </div>
             <div class="info-item">
               <div class="info-label">联系电话</div>

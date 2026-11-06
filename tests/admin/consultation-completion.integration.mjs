@@ -7,7 +7,7 @@ import express from '../../hanjing-clinic-backend/node_modules/express/index.js'
 import jwt from '../../hanjing-clinic-backend/node_modules/jsonwebtoken/index.js';
 
 const database = 'hanjing_test_complete_' + Date.now();
-const env = JSON.parse(execFileSync('docker', ['inspect', 'hanjing-mysql'], { encoding: 'utf8' }))[0].Config.Env;
+const env = JSON.parse(execFileSync('docker', ['inspect', 'hanjing-mysql'], { encoding: 'utf8', timeout: 15000 }))[0].Config.Env;
 const password = env.find(s => s.startsWith('MYSQL_ROOT_PASSWORD=')).split('=').slice(1).join('=');
 const control = await mysql.createConnection({ host: '127.0.0.1', user: 'root', password });
 const results = [], steps = []; let db, server;
@@ -54,16 +54,58 @@ try {
   await check('完成后不能重新接诊',async()=>{
     const r=await fetch(`http://127.0.0.1:${server.address().port}${path}`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({status:'checked_in'})});assert.equal(r.status,409);
   });
-  await check('历史已结算状态仍属于已完成筛选，计数不重复',async()=>{
+  let extraOrder;
+  await check('额外收费创建独立订单且不改变已完成预约',async()=>{
     const product=await call('/api/admin/products',{name:'验证服务',category:'service',price:100,stock:10,status:'on'});
-    await call('/api/admin/orders',{patient_id:patient.id,store_id:store.id,appointment_id:first.id,items:[{product_id:product.id,quantity:1}],pay_method:'cash',payment_confirmed:true,pay_amount:100,discount_amount:0,technician_id:9000});
-    await call(path,{status:'arrived'},'PUT');
-    const result=await call('/api/admin/appointments?page=1&pageSize=30&status=completed',undefined,'GET');assert.equal(result.total,1);assert.equal(result.counts.completed,1);assert.equal(result.counts.all,1);
+    extraOrder=await call('/api/admin/orders',{patient_id:patient.id,store_id:store.id,appointment_id:first.id,items:[{product_id:product.id,quantity:1}],pay_method:'cash',payment_confirmed:true,pay_amount:100,discount_amount:0,technician_id:9000});
+    assert.equal((await call(path,undefined,'GET')).status,'completed');
+    const result=await call('/api/admin/appointments?page=1&pageSize=30&status=completed',undefined,'GET');assert.equal(result.total,1);assert.equal(result.counts.completed,1);
   });
+  await check('旧前端结算请求不能再将完成预约改为arrived',async()=>{
+    const r=await fetch(`http://127.0.0.1:${server.address().port}${path}`,{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({status:'arrived'})});assert.equal(r.status,409);assert.equal((await call(path,undefined,'GET')).status,'completed');
+  });
+  await check('额外订单退款不改变已完成预约',async()=>{
+    const orderId=extraOrder.order_id||extraOrder.id||extraOrder.orderId;
+    assert.ok(orderId,JSON.stringify(extraOrder));
+    await call(`/api/admin/orders/${orderId}/offline-refund`,{amount:100,method:'cash',confirmed:true,reference:'TEST-REFUND',refunded_at:new Date().toISOString()});
+    assert.equal((await call(path,undefined,'GET')).status,'completed');assert.equal((await db.get('SELECT status FROM orders WHERE id=?',[orderId])).status,'refunded');
+  });
+  let second, secondOrder;
+  await check('就诊中额外收费仍保持就诊中',async()=>{
+    second=await booking('10:00-10:30');await call('/api/admin/appointments/'+second.id,{status:'checked_in'},'PUT');
+    const product=await call('/api/admin/products',{name:'接诊中额外服务',category:'service',price:100,stock:10,status:'on'});
+    secondOrder=await call('/api/admin/orders',{patient_id:patient.id,store_id:store.id,appointment_id:second.id,items:[{product_id:product.id,quantity:1}],pay_method:'cash',payment_confirmed:true,pay_amount:100,discount_amount:0,technician_id:9000});
+    assert.equal((await call('/api/admin/appointments/'+second.id,undefined,'GET')).status,'checked_in');
+  });
+
+  await check('不支持的部分退款被拒绝且不改变预约或订单',async()=>{
+    const id=secondOrder.order_id||secondOrder.id||secondOrder.orderId;
+    const r=await fetch(`http://127.0.0.1:${server.address().port}/api/admin/orders/${id}/offline-refund`,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({amount:40,method:'cash',confirmed:true,reference:'TEST-PARTIAL',refunded_at:new Date().toISOString()})});
+    assert.equal(r.status,400);assert.match((await r.json()).message,/仅支持全额退款/);
+    assert.equal((await call('/api/admin/appointments/'+second.id,undefined,'GET')).status,'checked_in');
+    assert.equal((await db.get('SELECT status FROM orders WHERE id=?',[id])).status,'paid');
+  });
+  await check('就诊中全额退款仍保持就诊中',async()=>{
+    const id=secondOrder.order_id||secondOrder.id||secondOrder.orderId;
+    await call(`/api/admin/orders/${id}/offline-refund`,{amount:100,method:'cash',confirmed:true,reference:'TEST-ACTIVE-REFUND',refunded_at:new Date().toISOString()});
+    assert.equal((await call('/api/admin/appointments/'+second.id,undefined,'GET')).status,'checked_in');
+    assert.equal((await db.get('SELECT status FROM orders WHERE id=?',[id])).status,'refunded');
+  });
+  await check('额外费用已退款仍可从列表结束诊疗进入已完成',async()=>{
+    await call('/api/admin/appointments/'+second.id,{status:'completed'},'PUT');
+    assert.equal((await call('/api/admin/appointments/'+second.id,undefined,'GET')).status,'completed');
+  });
+  await check('重复完成操作不会重开预约或新增收费',async()=>{
+    const before=await db.get('SELECT COUNT(*) n FROM orders WHERE appointment_id=?',[second.id]);
+    await call('/api/admin/appointments/'+second.id,{status:'completed'},'PUT');
+    assert.equal((await call('/api/admin/appointments/'+second.id,undefined,'GET')).status,'completed');
+    assert.equal((await db.get('SELECT COUNT(*) n FROM orders WHERE appointment_id=?',[second.id])).n,before.n);
+  });
+
 } catch (error) { results.push({ name: '执行错误', status: 'failed', error: error.stack }); console.error(error); process.exitCode = 1; }
 finally {
   if (server) await new Promise(resolve => server.close(resolve)); if (db) await db.closePool();
   await control.query(`DROP DATABASE IF EXISTS \`${database}\``); await control.end();
-  const dir = new URL('./artifacts/consultation-completion/', import.meta.url); mkdirSync(dir, { recursive: true });
+  const dir = new URL('./artifacts/appointment-cashier-separation/', import.meta.url); mkdirSync(dir, { recursive: true });
   writeFileSync(new URL('api.json', dir), JSON.stringify({ results, steps, databaseDropped: true, boundaries: '隔离管理员初始化；业务前提均由HTTP API创建；不含微信真机与生产支付' }, null, 2));
 }

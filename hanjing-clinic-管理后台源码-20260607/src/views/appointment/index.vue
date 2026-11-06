@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { genderColor } from '@/utils/gender'
 import { hasPermission } from '@/utils/permission'
+import AppointmentTerminalDialog from '@/components/AppointmentTerminalDialog.vue'
 import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
-import { createCheckoutLifecycle, settleCashierAppointment, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
+import { createCheckoutLifecycle, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { createNativePay, getAdminPayStatus, isPaidStatus } from '@/utils/wechatCashier'
 import {
@@ -26,7 +28,6 @@ import { speakMandarin } from '@/utils/speech'
 
 const router = useRouter()
 const route = useRoute()
-let openedCheckoutQuery = ''
 
 const getTodayDateString = () => {
   const nowInShanghai = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }))
@@ -183,7 +184,7 @@ const fetchAppointments = async () => {
       patient: item.patient_name,
       phone: item.patient_phone,
       avatarChar: item.patient_name[0] || '患',
-      avatarColor: item.patient_gender === 1 ? '#3B6BF5' : '#EC4899',
+      avatarColor: genderColor(item.patient_gender),
       store: item.store_name,
       doctor: item.doctor_name,
       date: formatDateOnly(item.appointment_date),
@@ -198,13 +199,7 @@ const fetchAppointments = async () => {
       deposit_amount: item.deposit_amount || 0
     }))
 
-    if (route.query.checkout_id && openedCheckoutQuery !== String(route.query.checkout_id)) {
-      const appt = appointments.value.find(a => String(a.id) === String(route.query.checkout_id))
-      if (appt) {
-        openedCheckoutQuery = String(route.query.checkout_id)
-        openCheckoutDialog(appt)
-      }
-    }
+
   } catch (error) {
     if (requestId !== appointmentRequestId) return
     console.error('Failed to load appointments:', error)
@@ -539,26 +534,9 @@ function handleCheckIn(row: Appointment) {
   openCheckInDialog(row)
 }
 
-async function cancelStatus(id: string) {
-  try {
-    await request.put(`/api/admin/appointments/${id}`, { status: 'cancelled', cancel_reason: '后台管理员手动取消' })
-    MessagePlugin.success('已取消该预约')
-    fetchAppointments()
-  } catch (error) {
-    console.error(error)
-  }
-}
+function cancelStatus(id:string) { terminalDialog.value?.open(id,'cancelled') }
 
-async function markAsNoShow(row: Appointment) {
-  try {
-    await request.put(`/api/admin/appointments/${row.id}`, { status: 'no_show' })
-    MessagePlugin.success(`已将患者 ${row.patient} 标记为未到诊`)
-    fetchAppointments()
-  } catch (error) {
-    console.error(error)
-    MessagePlugin.error('标记未到诊失败')
-  }
-}
+function markAsNoShow(row:Appointment) { terminalDialog.value?.open(row.id,'no_show') }
 
 
 // 呼叫广播叫号，不改变状态
@@ -577,8 +555,6 @@ const completeTreatment = async (row: Appointment) => {
     await request.put(`/api/admin/appointments/${row.id}`, { status: 'completed' })
     MessagePlugin.success(`患者 ${row.patient} 诊疗已完成`)
     fetchAppointments()
-    // 自动打开收银结算弹窗
-    openCheckoutDialog({ ...row, status: 'completed' })
   } catch (error) {
     console.error(error)
   }
@@ -593,6 +569,7 @@ const selectedCheckoutRow = ref<Appointment | null>(null)
 const nativePayInfo = ref<any>(null)
 const nativePayReceipt = ref<any>(null)
 const payWaiting = ref(false)
+const terminalDialog = ref<InstanceType<typeof AppointmentTerminalDialog>>()
 const appointmentCharge = ref<InstanceType<typeof AppointmentChargeDialog>>()
 const cashierSession = createCashierSession(request)
 const checkoutFlow = createCheckoutLifecycle(() => `${route.fullPath}:${selectedCheckoutRow.value?.id || ''}`)
@@ -678,7 +655,7 @@ const fetchProducts = async () => {
 }
 
 async function openCheckoutDialog(row: Appointment) {
-  if (!(row.status === 'pending_payment' ? hasPermission('appointment:charge') : ['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))) return
+  if (!(row.status === 'pending_payment' ? hasPermission('appointment:charge') : ['order:add', 'order:view'].every(hasPermission))) return
   selectedCheckoutRow.value = row
   if (row.status === 'pending_payment') {
     await appointmentCharge.value?.open(row.id)
@@ -722,7 +699,7 @@ async function openCheckoutDialog(row: Appointment) {
 
 function closeCheckoutDialog() {
   if (checkoutSuccess.value) {
-    MessagePlugin.warning('请点击底部“完成结算”完成本次结算流程')
+    MessagePlugin.warning('请点击底部“完成”关闭收款凭证')
     checkoutVisible.value = true
     return
   }
@@ -782,34 +759,20 @@ function startNativePayPolling(orderId: number | string, receipt: any, attempt: 
 
 onUnmounted(() => checkoutFlow.invalidate())
 
-async function completeCheckoutSettlement() {
-  if (!selectedCheckoutRow.value || !orderResult.value || checkoutLoading.value) return
+function closePaidCheckout() {
+  if (!checkoutSuccess.value || !orderResult.value || checkoutLoading.value) return
   const attempt = checkoutFlow.capture()
-  const isActive = () => checkoutFlow.isCurrent(attempt) && String(orderResult.value?.orderId) === attempt?.orderId
-  if (!isActive()) return
-  const targetId = selectedCheckoutRow.value.id
-  checkoutLoading.value = true
-  try {
-    if (!await settleCashierAppointment(request, targetId, isActive)) return
-    MessagePlugin.success('结算已完成')
-    checkoutLoading.value = false
-    checkoutFlow.invalidate()
-    checkoutVisible.value = false
-    selectedCheckoutRow.value = null
-    checkoutSuccess.value = false
-    orderResult.value = null
-    nativePayInfo.value = null
-    nativePayReceipt.value = null
-    payWaiting.value = false
-    checkoutFlow.invalidate()
-    fetchAppointments()
-  } catch (err) {
-    console.error('完成结算失败:', err)
-    if (isActive()) MessagePlugin.error('完成结算失败，请刷新预约状态后重试')
-  } finally {
-    if (isActive()) checkoutLoading.value = false
-  }
+  if (!checkoutFlow.isCurrent(attempt) || String(orderResult.value.orderId) !== attempt?.orderId) return
+  checkoutFlow.invalidate()
+  checkoutVisible.value = false
+  checkoutSuccess.value = false
+  orderResult.value = null
+  selectedCheckoutRow.value = null
+  nativePayInfo.value = null
+  nativePayReceipt.value = null
+  payWaiting.value = false
 }
+
 
 function handlePrintInvoice() {
   window.print()
@@ -936,6 +899,7 @@ async function submitCheckout() {
 
 <template>
   <div class="page-container">
+    <AppointmentTerminalDialog ref="terminalDialog" @changed="fetchAppointments()" />
     <AppointmentChargeDialog ref="appointmentCharge" @changed="fetchAppointments()" />
     <!-- Header aligned with UI mockup -->
     <div class="page-title-row">
@@ -1068,7 +1032,7 @@ async function submitCheckout() {
 
                   <!-- status is pending_payment (待支付) -->
                   <button
- v-permission="'order:add'"                    v-if="row.status === 'pending_payment'"
+ v-permission="'appointment:charge'"                    v-if="row.status === 'pending_payment'"
                     class="btn btn-xs btn-primary"
                     @click="openCheckoutDialog(row)"
                   >预约收费</button>
@@ -1107,12 +1071,7 @@ async function submitCheckout() {
                     @click="completeTreatment(row)"
                   >诊疗完成</button>
 
-                  <!-- 诊疗已完成；收费按实际业务单独办理 -->
-                  <button
- v-permission="'order:add'"                    v-if="row.status === 'completed' && (['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))"
-                    class="btn btn-xs btn-warning"
-                    @click="openCheckoutDialog(row)"
-                  >收银结算</button>
+
 
                 </div>
               </td>
@@ -1142,7 +1101,7 @@ async function submitCheckout() {
     <!-- 收银结算弹窗 -->
     <t-dialog
       v-model:visible="checkoutVisible"
-      header="门诊电子收银结算与划扣"
+      header="门诊额外收费"
       width="540px"
       :footer="false"
       @close="closeCheckoutDialog"
@@ -1173,7 +1132,7 @@ async function submitCheckout() {
         </div>
         <div style="margin-top: 20px; display: flex; gap: 12px;">
           <t-button v-permission="'order:print'" variant="outline" @click="handlePrintInvoice" style="display: inline-flex; align-items: center; gap: 4px;"><AppIcon name="print" /> 打印小票</t-button>
-          <t-button v-permission="'order:charge'" theme="primary" :loading="checkoutLoading" @click="completeCheckoutSettlement">完成结算</t-button>
+          <t-button theme="primary" @click="closePaidCheckout">完成</t-button>
         </div>
       </div>
 

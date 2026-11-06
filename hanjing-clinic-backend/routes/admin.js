@@ -55,7 +55,8 @@ import {
   verifyPassword,
   formatShanghaiDate,
   formatShanghaiDateTime,
-  decryptPII
+  decryptPII,
+  encryptPII
 } from '../helpers.js';
 import { getWechatNotificationSettings, sendWechatSubscribeMessage } from '../wechatSubscribe.js';
 import { notificationConfigKey, validateNotificationConfig, WECHAT_NOTIFICATION_EVENTS } from '../wechat-notification-config.js';
@@ -1745,25 +1746,30 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       return res.json({ code: 200, message: '预约改约成功' });
     }
 
+    const refundAction = req.body.refund_action;
+    if (refundAction !== undefined && (!['refund', 'waive'].includes(refundAction) || !['cancelled', 'no_show'].includes(status))) throw businessError('退款处理方式无效', 400);
+    if (refundAction === 'waive' && status !== 'no_show') throw businessError('只有未到诊预约可以选择无需退款', 400);
     const allowed = new Set(['pending', 'confirmed', 'checked_in', 'waiting', 'called', 'arrived', 'completed', 'cancelled', 'no_show']);
     if (!allowed.has(status)) throw businessError('不支持该预约状态操作', 400);
     await transaction(async conn => {
       const { current } = await lockAppointmentChange(conn, appt);
-      if (current.status === status) return;
-      const settling = current.status === 'completed' && status === 'arrived';
-      if (TERMINAL_STATUSES.has(current.status) && !settling) throw businessError('预约已结束，不能修改状态', 409);
-      if (status === 'arrived' && !settling) throw businessError('请先完成诊疗，再进行结算', 409);
-      if (settling) {
-        const [[receipt]] = await conn.execute(`SELECT id FROM orders WHERE appointment_id=? AND pay_at IS NOT NULL
-          AND status IN ('paid','processing','shipping','shipped','delivered','completed') LIMIT 1 FOR UPDATE`, [current.id]);
-        if (!receipt) {
-          const [[chargeReceipt]] = await conn.execute(
-            "SELECT id FROM appointment_charges WHERE appointment_id=? AND status='paid' AND paid_at IS NOT NULL LIMIT 1 FOR UPDATE",
-            [current.id]
-          );
-          if (!chargeReceipt) throw businessError('未找到有效结算凭证，请先收银', 409);
+      if (current.status !== status && TERMINAL_STATUSES.has(current.status)) throw businessError('预约已结束，不能修改状态', 409);
+      if (refundAction) {
+        const [charges] = await conn.execute('SELECT * FROM appointment_charges WHERE appointment_id=? ORDER BY id FOR UPDATE', [current.id]);
+        const paid = charges.filter(c => ['paid','refund_pending'].includes(c.status));
+        if (refundAction === 'waive' && charges.some(c => ['refunding','refunded'].includes(c.status))) throw businessError('退款已经发起或完成，不能改为无需退款', 409);
+        if (refundAction === 'refund' && charges.some(c => c.status === 'refund_waived')) throw businessError('该预约已确认无需退款', 409);
+        if (refundAction === 'refund' && paid.some(c => !['wechat','wechat_native'].includes(c.payment_method)) && req.body.offline_confirmed !== true) throw businessError('请确认现金或线下款项已实际退还', 400);
+        if (refundAction === 'refund' && paid.some(c => ['wechat','wechat_native'].includes(c.payment_method)) && (await getMissingWechatPayConfig()).length) throw businessError('微信支付配置未完成', 503);
+        const [[legacy]] = await conn.execute("SELECT id FROM orders WHERE appointment_id=? AND status NOT IN ('cancelled','refunded') LIMIT 1", [current.id]);
+        if (legacy) throw businessError('该预约有关联订单，请先按原订单流程处理', 409);
+        if (refundAction === 'waive') {
+          await conn.execute("UPDATE appointment_charge_refunds r JOIN appointment_charges c ON c.id=r.charge_id SET r.status='waived' WHERE c.appointment_id=? AND r.status='pending'", [current.id]);
+          await conn.execute("UPDATE appointment_charges SET status='refund_waived' WHERE appointment_id=? AND status IN ('paid','refund_pending')", [current.id]);
         }
       }
+      if (current.status === status) return;
+      if (status === 'arrived') throw businessError('收费不改变预约状态，请通过诊疗完成操作结束就诊', 409);
       if (!['cancelled', 'no_show'].includes(status)) await assertAppointmentFeesPaid(conn, current);
       if (status === 'cancelled') {
         const [[openOrder]] = await conn.execute(
@@ -1774,14 +1780,39 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
         await conn.execute('UPDATE doctor_schedules SET booked_slots = GREATEST(0, booked_slots - 1) WHERE id = ?', [current.schedule_id]);
       }
       if (status === 'cancelled' || status === 'no_show') {
-        await queueCancelledChargeRefunds(conn, current.id, cancel_reason || '预约已取消');
+        await queueCancelledChargeRefunds(conn, current.id, cancel_reason || (status === 'no_show' ? '预约未到诊' : '预约已取消'));
+      }
+      // Record actual milestones; do not infer a historical check-in from later statuses.
+      if (status === 'confirmed' && ['pending', 'waiting', 'called'].includes(current.status)
+          && !current.consultation_started_at && current.checkin_mode !== 'skipped') {
+        await conn.execute("UPDATE appointments SET checkin_mode='normal', checkin_at=COALESCE(checkin_at,CURRENT_TIMESTAMP) WHERE id=?", [current.id]);
+      }
+      if (status === 'called' && current.status === 'pending' && !current.checkin_mode) {
+        await conn.execute("UPDATE appointments SET checkin_mode='unchecked' WHERE id=?", [current.id]);
+      }
+      if (status === 'checked_in') {
+        const skipped = current.checkin_mode === 'unchecked' || (!current.checkin_mode && current.status === 'pending');
+        await conn.execute(`UPDATE appointments SET consultation_started_at=COALESCE(consultation_started_at,CURRENT_TIMESTAMP),
+          checkin_mode=CASE WHEN ? THEN 'skipped' ELSE checkin_mode END WHERE id=?`, [skipped, current.id]);
+      }
+      if (status === 'completed') {
+        await conn.execute('UPDATE appointments SET consultation_completed_at=COALESCE(consultation_completed_at,CURRENT_TIMESTAMP) WHERE id=?', [current.id]);
       }
       await conn.execute('UPDATE appointments SET status = ?, cancel_reason = COALESCE(?, cancel_reason), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [status, cancel_reason || null, current.id]);
       await notifyAppointmentStatus(conn, current, status, cancel_reason);
     });
 
-    res.json({ code: 200, message: '更新预约状态成功' });
+    const refundErrors = [];
+    if (refundAction === 'refund') {
+      const charges = await query("SELECT id FROM appointment_charges WHERE appointment_id=? AND status IN ('paid','refund_pending')", [appt.id]);
+      for (const charge of charges) {
+        try { await submitChargeRefund(appt.id, charge.id, cancel_reason || (status === 'no_show' ? '预约未到诊' : '预约已取消'), row => assertChargeAccess(req.user,row), undefined, {actorId:req.user.id,ip:req.ip}); }
+        catch (error) { refundErrors.push({charge_id:charge.id,message:error.message}); }
+      }
+    }
+    if (refundAction) await logAdminAction(req.user.id, refundAction === 'waive' ? 'waive_appointment_refund' : 'confirm_appointment_refund', 'appointment', appt.id, {status,refundErrors});
+    res.json({ code: 200, message: refundErrors.length ? '预约状态已更新，部分退款尚未确认，请在收费与退款中核对' : '更新预约状态成功', data: {refund_errors:refundErrors} });
   } catch (error) {
     console.error(error);
     const code = error.statusCode || 500;
@@ -1930,10 +1961,14 @@ app.get('/api/admin/patients', authenticateToken, async (req, res) => {
   let whereClause = '';
   const params = [];
 
-  if (search) {
-    whereClause += ` AND (p.name LIKE ? OR p.phone LIKE ?)`;
-    const searchParam = `%${search}%`;
-    params.push(searchParam, searchParam);
+  const searchText = typeof search === 'string' ? search.trim() : '';
+  if (searchText) {
+    // Mini-program phone numbers are encrypted; keep legacy plaintext and account contact searches.
+    whereClause += ` AND (p.name LIKE ? OR (p.phone NOT LIKE 'det:%' AND p.phone LIKE ?)
+      OR (u.phone NOT LIKE 'det:%' AND u.phone LIKE ?) OR p.phone = ? OR u.phone = ?)`;
+    const searchParam = `%${searchText}%`;
+    const encryptedPhone = encryptPII(searchText);
+    params.push(searchParam, searchParam, searchParam, encryptedPhone, encryptedPhone);
   }
 
   const scope = patientReadScope(req.user, 'p');
@@ -2669,6 +2704,12 @@ app.get('/api/admin/patients/:id/medical-records', authenticateToken, async (req
        WHERE r.patient_id = ?
     `;
     const params = [id];
+    if (req.query.appointment_id !== undefined) {
+      const appointmentId = Number(req.query.appointment_id);
+      if (!Number.isSafeInteger(appointmentId) || appointmentId <= 0) return res.status(400).json({code:400,message:'预约编号无效'});
+      sql += ' AND r.appointment_id = ?';
+      params.push(appointmentId);
+    }
     const scope = medicalReadScope(req.user, 'r');
     if (scope) { sql += ` AND ${scope.sql}`; params.push(...scope.params); }
     sql += ` ORDER BY r.visit_date DESC`;
@@ -2771,7 +2812,7 @@ app.post('/api/admin/patients/:id/medical-records', authenticateToken, async (re
 
       // 2. If appointment_id is supplied, mark appointment as completed
       if (appointment_id) {
-        await conn.execute(`UPDATE appointments SET status = 'completed' WHERE id = ?`, [appointment_id]);
+        await conn.execute(`UPDATE appointments SET status = 'completed', consultation_completed_at=COALESCE(consultation_completed_at,CURRENT_TIMESTAMP) WHERE id = ?`, [appointment_id]);
         const [[appointment]] = await conn.execute('SELECT * FROM appointments WHERE id=?', [appointment_id]);
         await notifyConsultationCompleted(conn, appointment, newRecordId);
       } else {
@@ -3009,7 +3050,7 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
         await notifyBusiness(conn, 'followup', followupResult.insertId, 'scheduled');
       }
 
-      await conn.execute(`UPDATE appointments SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [appt.id]);
+      await conn.execute(`UPDATE appointments SET status = 'completed', consultation_completed_at=COALESCE(consultation_completed_at,CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [appt.id]);
       await notifyConsultationCompleted(conn, current, medicalRecordId);
 
       if (treatmentId) await notifyBusiness(conn, 'treatment', treatmentId, 'updated');

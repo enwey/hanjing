@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { genderLabel } from '@/utils/gender'
 import { hasPermission } from '@/utils/permission'
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -820,7 +821,7 @@ onUnmounted(() => {
                   <div>
                     <strong style="color: #1E293B; font-size: 13px;">{{ p.name }}</strong>
                     <span style="font-size: 12px; color: #64748B; margin-left: 8px;">{{ p.phone }}</span>
-                    <span style="font-size: 11px; color: #94A3B8; margin-left: 8px;">{{ p.gender === 1 ? '男' : '女' }} · {{ p.age }}岁</span>
+                    <span style="font-size: 11px; color: #94A3B8; margin-left: 8px;">{{ genderLabel(p.gender) }} · {{ p.age }}岁</span>
                   </div>
                   <t-tag size="small" theme="primary" variant="light">{{ p.member_level === 'vip' ? 'VIP' : '普通' }}</t-tag>
                 </div>

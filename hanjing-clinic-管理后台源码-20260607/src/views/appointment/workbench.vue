@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { genderLabel, genderValue } from '@/utils/gender'
 import { hasPermission } from '@/utils/permission'
 import AppointmentChargeDialog from '@/components/AppointmentChargeDialog.vue'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
-import { createCheckoutLifecycle, settleCashierAppointment, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
+import { createCheckoutLifecycle, type CheckoutAttempt } from '@/utils/checkoutLifecycle'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import PatientCreateDialog from '@/components/PatientCreateDialog.vue'
 import {
@@ -177,7 +178,7 @@ const fetchAppointments = async (isSilent = false) => {
       symptom: item.symptom_desc || '无主诉描述',
       status: item.status,
       pre_exam: item.pre_exam || null,
-      gender: item.patient_gender === 1 ? '男' : '女',
+      gender: genderLabel(item.patient_gender),
       age: item.patient_age,
       type: formatAppointmentType(item.type),
       source: item.source === 'mini_app' ? '小程序' : item.source === 'telephone' ? '电话' : '现场',
@@ -463,9 +464,6 @@ const triggerConsultOnly = async (item: QueueItem) => {
   if (consultingId.value) return
   consultingId.value = item.id
   try {
-    if (item.status === 'pending') {
-      await skipPreExamCheckIn(item)
-    }
     // If there is already a checked_in patient, change their status back to 'confirmed'
     const prevCheckedIn = appointments.value.find(
       a => a.doctorId === selectedDoctorId.value && a.status === 'checked_in' && a.id !== item.id
@@ -563,7 +561,7 @@ const fetchProducts = async () => {
 }
 
 async function openCheckoutDialog(item: QueueItem) {
-  if (!(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))) return
+  if (!(['order:add', 'order:view'].every(hasPermission))) return
   selectedQueueItem.value = item
   if (item.status === 'pending_payment') {
     await appointmentCharge.value?.open(item.id)
@@ -605,7 +603,7 @@ async function openCheckoutDialog(item: QueueItem) {
 
 function closeCheckoutDialog() {
   if (checkoutSuccess.value) {
-    MessagePlugin.warning('请点击底部“完成结算”完成本次结算流程')
+    MessagePlugin.warning('请点击底部“完成”关闭收款凭证')
     checkoutVisible.value = true
     return
   }
@@ -661,29 +659,17 @@ function startPayPolling(orderId: number | string, receipt: any, attempt: Checko
   })
 }
 
-async function completeCheckoutSettlement() {
-  if (!selectedQueueItem.value || !orderResult.value || checkoutLoading.value) return
+function closePaidCheckout() {
+  if (!checkoutSuccess.value || !orderResult.value || checkoutLoading.value) return
   const attempt = checkoutFlow.capture()
-  const isActive = () => checkoutFlow.isCurrent(attempt) && String(orderResult.value?.orderId) === attempt?.orderId
-  if (!isActive()) return
-  const targetId = selectedQueueItem.value.id
-  checkoutLoading.value = true
-  try {
-    if (!await settleCashierAppointment(request, targetId, isActive)) return
-  } catch {
-    if (isActive()) MessagePlugin.error('结算状态更新失败，请刷新预约状态后重试')
-    return
-  } finally {
-    if (isActive()) checkoutLoading.value = false
-  }
-  stopPayPolling()
+  if (!checkoutFlow.isCurrent(attempt) || String(orderResult.value.orderId) !== attempt?.orderId) return
+  checkoutFlow.invalidate()
   checkoutVisible.value = false
-  selectedQueueItem.value = null
   checkoutSuccess.value = false
   orderResult.value = null
-  await fetchAppointments()
-  MessagePlugin.success('结算已完成')
+  selectedQueueItem.value = null
 }
+
 
 const addBillingItem = () => {
   const product = findCheckoutProduct(productOptions.value)
@@ -925,7 +911,7 @@ function handleApptPatientCreated(newP: any) {
     id: newP.id,
     name: newP.name,
     phone: newP.phone,
-    gender: newP.gender === '男' ? 1 : 2,
+    gender: genderValue(newP.gender),
     age: newP.age
   }
   MessagePlugin.success(`新患者 ${newP.name} 建档并选择成功`)
@@ -1067,8 +1053,8 @@ async function submitCreateAppt() {
               <t-button v-permission="'medical_record:view'" size="extra-small" theme="primary" variant="outline" @click="goToEmr(currentPatient)">
                 开始看诊
               </t-button>
-              <t-button v-permission="'order:add'" size="extra-small" theme="warning" variant="outline" v-if="(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))" @click="openCheckoutDialog(currentPatient)">
-                划扣收费
+              <t-button v-permission="'order:add'" size="extra-small" theme="warning" variant="outline" v-if="(['order:add', 'order:view'].every(hasPermission))" @click="openCheckoutDialog(currentPatient)">
+                额外收费
               </t-button>
               <t-button v-permission="'queue:call'" size="extra-small" theme="default" variant="outline" @click="callPatient(currentPatient.patientName, currentPatient.doctorName)">
                 叫号
@@ -1163,7 +1149,7 @@ async function submitCreateAppt() {
             <!-- Sleep & Snore Diagnostics -->
             <div style="background: #F9FAFB; padding: 12px; border-radius: 6px; border: 1px solid #F3F4F6;">
               <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: left;">
-                
+
                 <!-- ESS sleepiness -->
                 <div style="border-right: 1px solid #E5E7EB; padding-right: 8px;">
                   <div style="font-size: 11px; color: #6B7280; font-weight: 600;">日间嗜睡评估 (ESS)</div>
@@ -1347,9 +1333,7 @@ async function submitCreateAppt() {
                 <t-button size="extra-small" theme="default" variant="outline" @click="router.push(`/patient/detail/${item.patientId}`)">
                   患者详情
                 </t-button>
-                <t-button v-permission="'order:add'" size="extra-small" theme="success" variant="outline" v-if="(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))" @click="openCheckoutDialog(item)">
-                  收费结算
-                </t-button>
+
               </div>
             </div>
 
@@ -1383,7 +1367,7 @@ async function submitCreateAppt() {
         <div v-if="apptSelectedPatient" class="matched-patient-box" style="background: #EFF6FF; border: 1px solid #BFDBFE; padding: 12px; border-radius: 8px; margin-bottom: 14px;">
           <div style="font-weight: 600; color: #1E40AF; margin-bottom: 4px;">已选就诊人信息：</div>
           <div style="font-size: 13px; color: #1E40AF;">
-            姓名: {{ apptSelectedPatient.name }} · 手机号: {{ apptSelectedPatient.phone }} · 性别: {{ apptSelectedPatient.gender === 1 ? '男' : '女' }} · 年龄: {{ apptSelectedPatient.age }}岁
+            姓名: {{ apptSelectedPatient.name }} · 手机号: {{ apptSelectedPatient.phone }} · 性别: {{ genderLabel(apptSelectedPatient.gender) }} · 年龄: {{ apptSelectedPatient.age }}岁
           </div>
         </div>
 
@@ -1470,7 +1454,7 @@ async function submitCreateAppt() {
     <!-- 门诊收费结算收银弹窗 -->
     <t-dialog
       v-model:visible="checkoutVisible"
-      header="门诊电子收银结算与划扣"
+      header="门诊额外收费"
       width="540px"
       :footer="null"
       @cancel="closeCheckoutDialog"
@@ -1668,7 +1652,7 @@ async function submitCreateAppt() {
                 <rect x="6" y="14" width="12" height="8"></rect>
               </svg>打印交易小票
             </t-button>
-            <t-button v-permission="'order:charge'" theme="default" @click="completeCheckoutSettlement">完成结算</t-button>
+            <t-button theme="default" @click="closePaidCheckout">完成</t-button>
           </div>
         </div>
       </div>

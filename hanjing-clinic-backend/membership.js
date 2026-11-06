@@ -46,7 +46,7 @@ async function calculateUserTotalSpent(userId, conn = null) {
       AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(shipping_address), shipping_address, '{}'), '$.refund_payment_conflict')), 'false') <> 'true'
     UNION ALL
     SELECT c.consult_fee+c.deposit_amount FROM appointment_charges c JOIN appointments a ON a.id=c.appointment_id
-    WHERE a.user_id=? AND c.credited=1 AND c.status IN ('paid','refund_pending','refunding')
+    WHERE a.user_id=? AND c.credited=1 AND c.status IN ('paid','refund_pending','refunding','refund_waived')
     ) spending`, [userId, userId]);
   return Number(rows[0]?.total_spent || 0);
 }

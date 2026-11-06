@@ -9,7 +9,7 @@ const patient = computed(() => props.data.patient || {})
 const visit = computed(() => props.data.appointment || {})
 const record = computed(() => props.data.medical_record || {})
 const date = (v: any) => v ? String(v).slice(0, 10) : '未记录'
-const gender = (v: any) => ({ '1': '男', '2': '女', male: '男', female: '女', 男: '男', 女: '女' } as any)[v] || '未记录'
+const gender = (v: any) => ({ '1': '男', '2': '女', male: '男', female: '女', 男: '男', 女: '女' } as any)[v] || '未设置'
 const show = (v: any) => v === null || v === undefined || v === '' ? '未记录' : String(v)
 const avg = (logs: any[], key: string) => logs?.length ? (logs.reduce((s, r) => s + Number(r[key] || 0), 0) / logs.length).toFixed(1) : '未记录'
 function attachments(value: any) {

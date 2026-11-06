@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { genderLabel } from '@/utils/gender'
 import { hasPermission } from '@/utils/permission'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -106,7 +107,7 @@ const fullPhoneLoaded = ref(false)
 const editForm = ref({
   name: '',
   phone: '',
-  gender: '男',
+  gender: '未设置',
   age: null as number | null,
   level: '普通',
   source: '门店',
@@ -185,11 +186,7 @@ function formatDate(value: string) {
   return `${year}-${month}-${day}`
 }
 
-function formatGender(value: number) {
-  if (value === 1) return '男'
-  if (value === 2) return '女'
-  return ''
-}
+const formatGender = genderLabel
 
 function genderToNumber(value: string) {
   if (value === '男') return 1
@@ -546,7 +543,7 @@ async function handleEdit() {
   editForm.value = {
     name: patient.value.name,
     phone: patient.value.phone,
-    gender: patient.value.gender || '男',
+    gender: patient.value.gender || '未设置',
     age: patient.value.age,
     level: patient.value.level || '普通',
     source: patient.value.source || '门店',
@@ -1063,7 +1060,7 @@ async function handleSaveCrm() {
                       {{ getMemberRelationLabel(member) }}
                     </span>
                   </td>
-                  <td style="padding: 12px 16px; border-bottom: 1px solid #F3F4F6;">{{ member.gender === 1 ? '男' : '女' }} · {{ member.age ? member.age + '岁' : '未知' }}</td>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #F3F4F6;">{{ genderLabel(member.gender) }} · {{ member.age ? member.age + '岁' : '未知' }}</td>
                   <td style="padding: 12px 16px; border-bottom: 1px solid #F3F4F6;">{{ member.phone }}</td>
                   <td style="padding: 12px 16px; border-bottom: 1px solid #F3F4F6;">
                     <span v-if="member.ess" :style="getRiskLevelStyle(member.ess.risk_level)">
@@ -1354,6 +1351,7 @@ async function handleSaveCrm() {
         <div class="form-item">
           <label>性别</label>
           <select v-model="editForm.gender" class="form-control">
+            <option value="未设置">未设置</option>
             <option value="男">男</option>
             <option value="女">女</option>
             <option value="">未知</option>

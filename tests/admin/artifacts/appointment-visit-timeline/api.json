@@ -1,0 +1,192 @@
+{
+  "results": [
+    {
+      "name": "正常签到保留签到时间，接诊和完成记录各自时间",
+      "status": "passed"
+    },
+    {
+      "name": "未签到直接接诊仅记录已跳过，不生成签到时间",
+      "status": "passed"
+    },
+    {
+      "name": "未签到先叫号再接诊仍标记跳过签到",
+      "status": "passed"
+    },
+    {
+      "name": "叫号后实际签到再接诊保留正常签到",
+      "status": "passed"
+    },
+    {
+      "name": "follow-up completion does not write appointment columns",
+      "status": "passed"
+    },
+    {
+      "name": "offline order completion does not write appointment columns",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/1/complete-consultation",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/3",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/3",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/3",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/4",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/4",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/4",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/appointments/4",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients/1/follow-ups",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients/1/follow-ups/records",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/products",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders/1/complete",
+      "status": 200
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离管理员初始化；业务前提均由HTTP API创建；不含微信真机与生产支付"
+}

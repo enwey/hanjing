@@ -23,7 +23,7 @@ const storesLoading = ref(false)
 const createForm = ref({
   name: '',
   phone: '',
-  gender: '男',
+  gender: '',
   age: 30,
   level: '普通',
   source: '门店',
@@ -38,7 +38,7 @@ watch(() => props.visible, async (val) => {
     createForm.value = {
       name: '',
       phone: '',
-      gender: '男',
+      gender: '',
       age: 30,
       level: '普通',
       source: '门店',
@@ -80,6 +80,10 @@ async function handleConfirm() {
     return
   }
 
+  if (!['男', '女'].includes(createForm.value.gender)) {
+    MessagePlugin.warning('请选择患者性别')
+    return
+  }
   loading.value = true
   try {
     const res: any = await request.post('/api/admin/patients', {

@@ -33,7 +33,15 @@ function load(relative, dependencies = {}, wxOverrides = {}, globals = {}) {
     page.data = structuredClone(page.data);
     page.setData = function(value, callback) { Object.assign(this.data, value); if (callback) callback(); };
   }
-  return { page, storage, toasts, exports: context.module.exports };
+  return { page, storage, toasts, context, exports: context.module.exports };
+}
+
+// Explicit authenticated-session fixture matching the production store contract.
+function sessionFixture() {
+  let generation = 1, loggedIn = true;
+  return { fetchProfile: async () => ({ id: 1 }), getAccessToken: () => loggedIn ? 'token' : '',
+    getLoginGeneration: () => generation, isLoggedIn: () => loggedIn,
+    switchLogin() { generation++; }, logout() { generation++; loggedIn = false; } };
 }
 
 test('store-channel orders cannot pay in mini-program and unpaid bills show their actual channel', () => {
@@ -110,6 +118,7 @@ test('paid withdrawals display as paid and rejected amounts are excluded from pa
 test('failed remote report never falls back to an unrelated cached report', async () => {
   const { page, storage } = load('pages/assessment/snore-result/index.js', {
     '../../../api/index': { getAssessmentDetail: async () => { throw new Error('Report unavailable'); } },
+    '../../../stores/session-store': sessionFixture(),
   });
   storage.set('last_local_snore_result', { id: 'local', snoreAnalysis: { riskLevel: 'low' } });
   page.onLoad({ id: 'snore-999' });
@@ -120,9 +129,9 @@ test('failed remote report never falls back to an unrelated cached report', asyn
 
 test('local reports require both account and patient to match', async () => {
   const { page, storage } = load('pages/assessment/snore-result/index.js', {
-    '../../../stores/session-store': { fetchProfile: async () => ({ id: 1 }) },
+    '../../../stores/session-store': sessionFixture(),
   });
-  const report = { id: 'local', ownerUserId: 2, patientId: 3, snoreAnalysis: { riskLevel: 'normal' } };
+  const report = { id: 'local', ownerUserId: 2, patientId: 3, snoreAnalysis: { riskLevel: 'normal', avgDecibel: 35, peakDecibel: 40, snoreRate: 0, apneaEvents: 0 } };
   storage.set('last_local_snore_result', report);
   page.onLoad({ id: 'local', patientId: '3' });
   await page.loadPage();
@@ -136,24 +145,29 @@ test('local reports require both account and patient to match', async () => {
   assert.equal(page.data.reportDetail.patientId, 3);
 });
 
-test('logout clears report and pending uploads', () => {
+test('logout removes active reports and archives them for their original account', () => {
   const { exports: session, storage } = load('stores/session-store.js');
+  session.switchAccount('1');
   for (const key of ['last_local_snore_result', 'pending_snore_uploads', 'pending_appointment_assessment', 'current_patient_id']) storage.set(key, 'old');
   session.logout();
-  assert.equal(storage.size, 0);
+  for (const key of ['last_local_snore_result', 'pending_snore_uploads', 'pending_appointment_assessment', 'current_patient_id', 'access_token']) assert.equal(storage.has(key),false);
+  assert.equal(storage.get('account_cache_archive')[0].owner,'1');
+  session.switchAccount('2');assert.equal(storage.has('last_local_snore_result'),false);assert.equal(storage.has('pending_snore_uploads'),false);
+  session.switchAccount('1');assert.equal(storage.get('last_local_snore_result'),'old');assert.equal(storage.get('pending_snore_uploads'),'old');
 });
 
 test('pending report sync skips other accounts and reports partial failure honestly', async () => {
   const submitted = [];
   const { exports: api, storage } = load('api/modules/assessment-api.js', {
-    '../../stores/session-store': { fetchProfile: async () => ({ id: 1 }), getAccessToken: () => 'token' },
+    '../../stores/session-store': sessionFixture(),
     '../request': { request: async ({ data }) => { submitted.push(data); throw new Error('Network unavailable'); } },
   });
   storage.set('pending_snore_uploads', [{ ownerUserId: 2, patientId: 2 }, { ownerUserId: 1, patientId: 1 }]);
   await assert.rejects(api.syncPendingSnoreRecordings(), /未同步成功/);
   assert.equal(submitted.length, 1);
   assert.equal(submitted[0].patientId, 1);
-  assert.equal(storage.get('pending_snore_uploads').length, 1);
+  assert.equal(storage.get('pending_snore_uploads').length, 2);
+  assert.deepEqual(storage.get('pending_snore_uploads').map(r=>r.ownerUserId),[2,1]);
 });
 
 test('refund pending is not displayed as pending payment', () => {
@@ -168,6 +182,7 @@ test('refund pending is not displayed as pending payment', () => {
 test('failed appointment cancellation never displays cancellation success', async () => {
   let modal;
   const { page, toasts } = load('pages/appointment/confirm.js', {
+    '../../stores/appointment-draft-store': { clearDraft() {} },
     '../../api/index': { createAppointment: async () => ({ id: 1, status: 'pending_payment' }),
       cancelAppointment: async () => { throw new Error('Unavailable'); } },
   }, { showModal: options => { modal = options; } });
@@ -218,7 +233,9 @@ test('home preserves successful directory responses when statistics fail', async
   } });
   await page.loadPage();
   assert.equal(page.data.loading, false);
-  assert.equal(page.data.loadError, '');
+  assert.match(page.data.loadError, /首页统计加载失败/);
+  assert.equal(page.data.doctorsLoadFailed, false);
+  assert.equal(page.data.storesLoadFailed, false);
   assert.equal(page.data.patientCountLabel, '--');
   assert.equal(page.data.recommendedDoctors[0].id, 12);
   assert.equal(page.data.stores[0].id, 34);
@@ -245,7 +262,17 @@ test('home does not require array-destructuring Babel helpers', () => {
 test('no mini-program page retains a mock payment branch or random recording wave', () => {
   const files = ['pages/product/detail.js', 'pages/order/detail.js', 'pages/appointment/confirm.js', 'pages/appointment/detail.js'];
   for (const file of files) assert.doesNotMatch(fs.readFileSync(path.join(__dirname, file), 'utf8'), /mockPayment/);
-  assert.doesNotMatch(fs.readFileSync(path.join(__dirname, 'pages/assessment/recording/index.js'), 'utf8'), /Math\.random|qualityScore:\s*85/);
+  const source = fs.readFileSync(path.join(__dirname, 'pages/assessment/recording/index.js'), 'utf8');
+  // Randomness is allowed for recording IDs, never for measured data or waves.
+  const withoutIds = source.split('\n').filter(line => !line.includes('_recordingLocalId =')).join('\n');
+  assert.doesNotMatch(withoutIds, /Math\.random|qualityScore:\s*85/);
+  const fixedMath = Object.create(Math);fixedMath.random=()=>{throw Error('measurement must not use random values')};
+  const {context}=load('pages/assessment/recording/index.js',{}, {}, {Math:fixedMath});
+  const quiet=new Int16Array(8000*5), tone=new Int16Array(8000*5);
+  for(let i=0;i<tone.length;i++)tone[i]=Math.round(5000*Math.sin(2*Math.PI*150*i/8000));
+  const a=context.analyzePcmOnClient(quiet,5),b=context.analyzePcmOnClient(tone,5);
+  assert.deepEqual(context.analyzePcmOnClient(tone,5),b);assert.ok(b.avgDecibel>a.avgDecibel);
+
 });
 
 const memberPagePath = 'pages/profile/family-members/add-member/index.js';
@@ -326,4 +353,49 @@ test('appointment selects the new patient only within the same login session', a
   token = 'session-two';
   await page.loadPage();
   assert.equal(page.data.memberIndex, 0);
+});
+
+
+test('report response arriving after account switch cannot display old account data', async () => {
+  const session=sessionFixture();let release;
+  const gate=new Promise(resolve=>{release=resolve});
+  const {page}=load('pages/assessment/snore-result/index.js',{
+    '../../../stores/session-store':session,
+    '../../../api/index':{getAssessmentDetail:()=>gate},
+  });
+  page.onLoad({id:'snore-1'});const pending=page.loadPage();session.switchLogin();
+  release({snoreAnalysis:{riskLevel:'normal',avgDecibel:35,peakDecibel:40,snoreRate:0,apneaEvents:0}});
+  await pending;assert.equal(page.data.reportDetail,null);assert.match(page.data.loadError,/登录状态已变化/);
+});
+
+test('successful pending sync removes only its record and preserves other owners and new recordings',async()=>{
+ const session=sessionFixture();let release;
+ const gate=new Promise(resolve=>{release=resolve});
+ const {exports:api,storage}=load('api/modules/assessment-api.js',{
+   '../../stores/session-store':session,'../request':{request:()=>gate},
+ });
+ const other={ownerUserId:2,patientId:2},mine={ownerUserId:1,patientId:1,localId:'old'},added={ownerUserId:1,patientId:1,localId:'new'};
+ storage.set('pending_snore_uploads',[other,mine]);const pending=api.syncPendingSnoreRecordings();await Promise.resolve();
+ storage.set('pending_snore_uploads',[other,mine,added]);release({id:'snore-1'});await pending;
+ assert.equal(storage.get('pending_snore_uploads').length,2);assert.equal(storage.get('pending_snore_uploads')[0],other);assert.equal(storage.get('pending_snore_uploads')[1],added);
+});
+
+test('account switch during upload cannot rewrite the new account queue',async()=>{
+ const session=sessionFixture();let release;const gate=new Promise(resolve=>{release=resolve});
+ const {exports:api,storage}=load('api/modules/assessment-api.js',{'../../stores/session-store':session,'../request':{request:()=>gate}});
+ storage.set('pending_snore_uploads',[{ownerUserId:1,patientId:1}]);const pending=api.syncPendingSnoreRecordings();await Promise.resolve();
+ session.switchLogin();const other=[{ownerUserId:2,patientId:2}];storage.set('pending_snore_uploads',other);release({id:'snore-1'});
+ await assert.rejects(pending,/账号已切换/);assert.equal(storage.get('pending_snore_uploads'),other);
+});
+
+test('failed cancellation preserves created booking and prevents duplicate creation',async()=>{
+ let modal,created=0,cleared=0;
+ const {page,toasts}=load('pages/appointment/confirm.js',{
+  '../../stores/appointment-draft-store':{clearDraft(){cleared++}},
+  '../../api/index':{createAppointment:async()=>{created++;return {id:1,status:'pending_payment'}},cancelAppointment:async()=>{throw Error('network')}},
+ },{showModal:o=>{modal=o}});
+ page.setData({draft:{timeSlot:{label:'10:00'}},memberList:[{id:1}],memberIndex:0});
+ await page.submitAppointment();await modal.success({confirm:false});await page.submitAppointment();
+ assert.equal(created,1);assert.equal(cleared,1);assert.equal(page.createdAppointmentId,1);
+ assert.ok(toasts.some(t=>t.title.includes('取消未成功')));assert.ok(!toasts.some(t=>t.title==='已取消预约'));
 });
