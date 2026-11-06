@@ -72,7 +72,7 @@
       </view>
 
       <view wx:if="{{commentsList.length}}" class="comment-list">
-        <view wx:for="{{commentsList}}" wx:key="id" class="comment-item">
+        <view wx:for="{{commentsList}}" wx:key="id" id="comment-{{item.id}}" class="comment-item {{highlightCommentId === item.id ? 'comment-item--highlight' : ''}}">
           <view class="comment-item__header">
             <view class="comment-item__avatar">
               <image class="comment-item__avatar-placeholder" src="/static/images/brand-logo-v20261105.png" mode="aspectFill"></image>

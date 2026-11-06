@@ -46,4 +46,4 @@ await writeFile(
 );
 
 await mkdir(new URL('public/static/images/', root), { recursive: true });
-await cp(new URL('../mp-weixin-rewrite/static/images/brand-logo.png', root), new URL('public/static/images/brand-logo.png', root));
+await cp(new URL('../mp-weixin-rewrite/static/images/brand-logo-v20261105.png', root), new URL('public/static/images/brand-logo.png', root));

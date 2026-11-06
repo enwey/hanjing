@@ -1,0 +1,42 @@
+[
+  {
+    "name": "首次加载及中文业务分类",
+    "status": "passed"
+  },
+  {
+    "name": "分页追加去重且防并发触底",
+    "status": "passed"
+  },
+  {
+    "name": "切换分类丢弃过期请求",
+    "status": "passed"
+  },
+  {
+    "name": "加载更多不推进已读快照并提示新消息",
+    "status": "passed"
+  },
+  {
+    "name": "已读不刷新或丢失分页并打开详情",
+    "status": "passed"
+  },
+  {
+    "name": "全部已读使用服务端快照并保留新未读数",
+    "status": "passed"
+  },
+  {
+    "name": "加载失败不伪装空列表并支持重试",
+    "status": "passed"
+  },
+  {
+    "name": "已读失败保留未读且不跳转",
+    "status": "passed"
+  },
+  {
+    "name": "详情页再次检查业务权限",
+    "status": "passed"
+  },
+  {
+    "name": "WXML标签闭合和页面注册",
+    "status": "passed"
+  }
+]

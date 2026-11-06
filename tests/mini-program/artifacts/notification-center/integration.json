@@ -1,0 +1,173 @@
+{
+  "results": [
+    {
+      "name": "迁移重复执行安全",
+      "status": "passed"
+    },
+    {
+      "name": "并发重试仅一条",
+      "status": "passed"
+    },
+    {
+      "name": "A到B到A合法变更不误去重",
+      "status": "passed"
+    },
+    {
+      "name": "业务事务回滚不留下通知",
+      "status": "passed"
+    },
+    {
+      "name": "事件唯一键跨内容回调仍幂等",
+      "status": "passed"
+    },
+    {
+      "name": "超过100条可完整分页且无重复",
+      "status": "passed"
+    },
+    {
+      "name": "分类筛选和全局未读一致",
+      "status": "passed"
+    },
+    {
+      "name": "分页参数拒绝无效输入",
+      "status": "passed"
+    },
+    {
+      "name": "详情与已读拒绝跨账号",
+      "status": "passed"
+    },
+    {
+      "name": "已删除关联保留通知正文并提示",
+      "status": "passed"
+    },
+    {
+      "name": "全部已读不误读并发新消息",
+      "status": "passed"
+    },
+    {
+      "name": "旧通知无关联仍可查看",
+      "status": "passed"
+    },
+    {
+      "name": "无接收人不伪造通知",
+      "status": "passed"
+    },
+    {
+      "name": "空业务提醒任务安全执行",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：appointment",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：order",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：post",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：report",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：medical",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：treatment",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：after_sale",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：followup",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：message",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：snore",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：promoter",
+      "status": "passed"
+    },
+    {
+      "name": "业务事件归属与去重：withdraw",
+      "status": "passed"
+    },
+    {
+      "name": "提醒多实例重跑幂等且改约取消后不误发",
+      "status": "passed"
+    },
+    {
+      "name": "混合排序规则下提醒与举报结果查询不报错",
+      "status": "passed"
+    },
+    {
+      "name": "举报处理结果仅通知本人且不重复",
+      "status": "passed"
+    },
+    {
+      "name": "后台发货接口提交并写入可跳转通知",
+      "status": "passed"
+    },
+    {
+      "name": "后台审核接口写入通知且重复保存不重复",
+      "status": "passed"
+    },
+    {
+      "name": "评论接口同时通知作者和被回复人且不通知自己",
+      "status": "passed"
+    },
+    {
+      "name": "帖子重复点赞及取消重赞当天不重复通知",
+      "status": "passed"
+    },
+    {
+      "name": "客服发送接口写入未读回复和通知",
+      "status": "passed"
+    },
+    {
+      "name": "鼾声提交真实接口重试仅一条报告通知且链接可读取",
+      "status": "passed"
+    },
+    {
+      "name": "后台创建预约与两端改约统一通知",
+      "status": "passed"
+    },
+    {
+      "name": "病历及随访真实创建接口均通知患者",
+      "status": "passed"
+    },
+    {
+      "name": "会员等级变更幂等且通知可打开权益页",
+      "status": "passed"
+    },
+    {
+      "name": "商城退款异常及最终成功通知保留且回调幂等",
+      "status": "passed"
+    },
+    {
+      "name": "交付异常重取模、到店与首次试戴真实链路通知",
+      "status": "passed"
+    },
+    {
+      "name": "正式客户端路由认证、分页与越权详情检查",
+      "status": "passed"
+    },
+    {
+      "name": "单条已读重复调用不影响其他记录",
+      "status": "passed"
+    }
+  ],
+  "isolatedDatabaseRemoved": true
+}

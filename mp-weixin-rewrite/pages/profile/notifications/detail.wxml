@@ -1,0 +1,29 @@
+<view class="page">
+  <hj-navbar title="通知详情" showBack="{{true}}" />
+  <view wx:if="{{loading}}" class="empty">加载中…</view>
+  <view wx:elif="{{error}}" class="empty"><text>{{error}}</text><button class="retry" bindtap="load">重新加载</button></view>
+  <block wx:elif="{{notification}}">
+    <view class="detail-card">
+      <text class="detail-title">{{notification.title}}</text>
+      <text class="detail-time">{{notification.timeText}}</text>
+      <text class="detail-content" selectable>{{notification.content}}</text>
+      <text wx:if="{{notification.unavailable}}" class="unavailable">{{notification.unavailable}}</text>
+    </view>
+    <view wx:if="{{notification.businessDetail}}" class="business-card">
+      <text class="business-title">{{notification.businessDetail.title}}</text>
+      <view wx:for="{{notification.businessDetail.sections}}" wx:key="index" wx:for-item="section" class="business-section">
+        <text class="business-subtitle">{{section.title}}</text>
+        <view wx:for="{{section.fields}}" wx:key="label" wx:for-item="field" class="business-field">
+          <text class="business-label">{{field.label}}</text>
+          <text class="business-value" selectable>{{field.value}}</text>
+        </view>
+      </view>
+      <image wx:if="{{notification.businessDetail.image}}" class="reply-image" src="{{notification.businessDetail.image}}" mode="widthFix" bindtap="previewImage" />
+      <text wx:if="{{notification.businessDetail.hint}}" class="business-hint">{{notification.businessDetail.hint}}</text>
+    </view>
+    <view class="detail-actions" wx:if="{{notification.target || notification.businessDetail.actions.length}}">
+      <button wx:if="{{notification.target}}" class="detail-action" bindtap="openTarget">查看业务详情</button>
+      <button wx:for="{{notification.businessDetail.actions}}" wx:key="path" class="detail-action detail-action--secondary" data-action-index="{{index}}" bindtap="openTarget">{{item.label}}</button>
+    </view>
+  </block>
+</view>

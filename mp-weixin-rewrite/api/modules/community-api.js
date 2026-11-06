@@ -8,6 +8,9 @@ function getCommunityPostDetail(postId) {
   return request({ url: '/community/posts/' + postId, method: 'GET', failMessage: '加载帖子详情失败' });
 }
 
+function getCommunityPostForEdit(id) { return request({url:'/community/posts/'+id+'/edit',method:'GET',failMessage:'加载待修改帖子失败'}); }
+function updateCommunityPost(id,data) { return request({url:'/community/posts/'+id+'/edit',method:'PUT',data,failMessage:'提交审核失败'}); }
+
 function createCommunityPost(data) {
   return request({ url: '/community/posts', method: 'POST', data, failMessage: '发布帖子失败' });
 }
@@ -40,6 +43,8 @@ module.exports = {
   getCommunityPosts,
   getCommunityPostDetail,
   createCommunityPost,
+  getCommunityPostForEdit,
+  updateCommunityPost,
   likeCommunityPost,
   favoriteCommunityPost,
   shareCommunityPost,

@@ -1,3 +1,6 @@
+import { resolveImPatient, validateImText } from '../im-access.js';
+import { recordCommunityLike } from '../community-notifications.js';
+import { writeNotification, notifyBusiness, runAndNotify, installNotificationRoutes } from '../notification-center.js';
 import { toAbsoluteAssetUrl } from '../public-urls.js';
 import { createInviteQrCache } from '../distribution-invite-qr.js';
 import { publicAvatar } from '../brand-avatar.js';
@@ -1056,8 +1059,7 @@ export async function finalizePaidAppointment(conn, appt, userId, paymentPayload
       VALUES(?,?,'appointment_deposit',?,0,?,'wechat',CURRENT_TIMESTAMP,'refund_pending',?,?,?)`,
     [`OD${Date.now()}${crypto.randomBytes(5).toString('hex')}`, appt.user_id, totalPayAmount, totalPayAmount, appt.id,
       paymentPayload.transaction_id, JSON.stringify({ refund_from_status: 'paid', refund_payment_conflict: true, refund_reason: '预约状态已变更或重复支付，需核对退款', refund_applied_at: new Date().toISOString() })]);
-    await conn.execute("INSERT INTO user_notifications(user_id,title,content,type) VALUES(?,'预约付款待核对',?,'appointment')",
-      [appt.user_id, `预约 ${appt.appointment_no} 收到付款，已转入退款审核，预约状态未改变。`]);
+    await writeNotification(conn, {userId:appt.user_id, title:"预约付款待核对", content:`预约 ${appt.appointment_no} 收到付款，已转入退款审核，预约状态未改变。`, type:"appointment", businessType:"appointment", businessId:appt.id});
     return false;
   }
   const resolvedUserId = appt.user_id;
@@ -1073,23 +1075,9 @@ export async function finalizePaidAppointment(conn, appt, userId, paymentPayload
     [orderNo, resolvedUserId, totalPayAmount, totalPayAmount, appt.id, paymentPayload?.transaction_id || null, paymentPayload?.prepay_id || null]
   );
   // Appointment fees belong to the appointment, not a seeded product ID.
-  await conn.execute(
-    `INSERT INTO user_notifications (user_id, title, content, type)
-     VALUES (?, '预约支付成功', ?, 'appointment')`,
-    [
-      resolvedUserId,
-      `您已成功支付预约费用 ¥${(totalPayAmount / 100).toFixed(2)} 元。预约号: ${appt.appointment_no}。`
-    ]
-  );
+  await writeNotification(conn, {userId:resolvedUserId, title:"预约支付成功", content:`您已成功支付预约费用 ¥${(totalPayAmount / 100).toFixed(2)} 元。预约号: ${appt.appointment_no}。`, type:"appointment", businessType:"appointment", businessId:appt.id});
   await syncUserMembership(resolvedUserId, conn);
   return true;
-}
-
-async function notifyAppointmentUser(userId, title, content) {
-  await run(
-    `INSERT INTO user_notifications (user_id, title, content) VALUES (?, ?, ?)`,
-    [userId, title, content]
-  );
 }
 
 export async function finalizePaidProductOrder(conn, order, paymentPayload = null) {
@@ -1108,8 +1096,7 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
       refund_description: '库存已释放，禁止发货，请审核原路退款', refund_applied_at: new Date().toISOString() });
     await conn.execute("UPDATE orders SET status='refund_pending', pay_method='wechat', pay_at=CURRENT_TIMESTAMP, wechat_transaction_id=?, shipping_address=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
       [paymentPayload.transaction_id, JSON.stringify(address), current.id]);
-    await conn.execute("INSERT INTO user_notifications(user_id,title,content,type) VALUES(?, '取消订单收到付款', ?, 'order')",
-      [current.user_id, `订单 ${current.order_no} 已收到付款，已转入退款审核，不会重复发货。`]);
+    await writeNotification(conn, {userId:current.user_id, title:"取消订单收到付款", content:`订单 ${current.order_no} 已收到付款，已转入退款审核，不会重复发货。`, type:"order", businessType:"order", businessId:current.id});
     return false;
   }
   if (current.status !== 'pending') {
@@ -1145,8 +1132,7 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
         refund_reason: '预约费用已支付或预约状态已变更，整笔收银单待原路退款', refund_applied_at: new Date().toISOString() });
       await conn.execute("UPDATE orders SET status='refund_pending', pay_at=CURRENT_TIMESTAMP, wechat_transaction_id=?, shipping_address=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
         [paymentPayload.transaction_id, JSON.stringify(address), order.id]);
-      await conn.execute("INSERT INTO user_notifications(user_id,title,content,type) VALUES(?,'付款待核对',?,'order')",
-        [order.user_id, `订单 ${order.order_no} 已收到付款，因预约付款冲突转入退款审核，不会重复发货。`]);
+      await writeNotification(conn, {userId:order.user_id, title:"付款待核对", content:`订单 ${order.order_no} 已收到付款，因预约付款冲突转入退款审核，不会重复发货。`, type:"order", businessType:"order", businessId:order.id});
       return false;
     }
   }
@@ -1173,14 +1159,7 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
     }
   }
 
-  await conn.execute(
-    `INSERT INTO user_notifications (user_id, title, content, type)
-     VALUES (?, '商品购买成功', ?, 'order')`,
-    [
-      order.user_id,
-      `您已成功支付商品订单，支付金额 ¥${(order.pay_amount / 100).toFixed(2)}。订单号: ${order.order_no}。${nextStatus === 'shipping' ? '我们会尽快为您安排发货。' : '请按门店通知到店取货。'}`
-    ]
-  );
+  await writeNotification(conn, {userId:order.user_id, title:"商品购买成功", content:`您已成功支付商品订单，支付金额 ¥${(order.pay_amount / 100).toFixed(2)}。订单号: ${order.order_no}。${nextStatus === 'shipping' ? '我们会尽快为您安排发货。' : '请按门店通知到店取货。'}`, type:"order", businessType:"order", businessId:order.id});
 
   await createPendingDistributionCommission(conn, order, order.user_id);
   await syncUserMembership(order.user_id, conn);
@@ -1316,7 +1295,7 @@ async function getDistributionSummary(userId, req = null) {
   const directTeamCount = Number(lv1?.count || 0);
   const secondTeamCount = Number(lv2?.count || 0);
   if (directTeamCount > 0 && distributor.status === 'pending') {
-    const activation = await run(`UPDATE distributors SET status = 'active' WHERE id = ? AND status = 'pending'`, [distributor.id]);
+    const activation = await runAndNotify(`UPDATE distributors SET status = 'active' WHERE id = ? AND status = 'pending'`, [distributor.id], 'promoter',distributor.id,'status');
     if (activation.changes) distributor.status = 'active';
   }
 
@@ -1420,8 +1399,7 @@ export async function cancelPendingProductOrder(conn, orderId, userId, expiredOn
     await conn.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
   }
   if (order.coupon_id) await conn.execute("UPDATE user_coupons SET status = 'active', used_at = NULL WHERE id = ? AND user_id = ? AND status = 'used'", [order.coupon_id, userId]);
-  await conn.execute("INSERT INTO user_notifications (user_id, title, content, type) VALUES (?, '订单已取消', ?, 'order')",
-    [userId, `订单 ${order.order_no} 已取消，库存和优惠券已恢复。`]);
+  await writeNotification(conn, {userId:userId, title:"订单已取消", content:`订单 ${order.order_no} 已取消，库存和优惠券已恢复。`, type:"order", businessType:"order", businessId:order.id});
   return true;
 }
 
@@ -1571,6 +1549,16 @@ app.post('/api/v1/auth/wx-login', async (req, res) => {
           phoneEnc: encryptedPhone || user.phone
         });
       }
+    }
+
+    // Explicit phone authorization may replace an existing account phone.
+    // Keep the selected self profile in sync even when it already has a phone;
+    // reuse the encrypted value rather than encrypting it a second time.
+    if (encryptedPhone && selfPatient && selfPatient.phone !== encryptedPhone) {
+      await run(
+        `UPDATE patients SET phone = ? WHERE id = ? AND user_id = ? AND relation = 'self'`,
+        [encryptedPhone, selfPatient.id, user.id]
+      );
     }
 
     user = await get(`SELECT * FROM users WHERE id = ?`, [user.id]);
@@ -2000,70 +1988,7 @@ app.post('/api/v1/user/verify-realname', authenticateWxToken, async (req, res) =
 });
 
 // 3.2 WeChat Client Get Notifications (GET)
-app.get('/api/v1/user/notifications', authenticateWxToken, async (req, res) => {
-  try {
-    const list = await query(
-      `SELECT * FROM user_notifications
-       WHERE user_id = ?
-       ORDER BY created_at DESC LIMIT 100`,
-      [req.user.id]
-    );
-    const unread = await get(
-      `SELECT COUNT(*) as count FROM user_notifications WHERE user_id = ? AND is_read = 0`,
-      [req.user.id]
-    );
-
-    const formatted = list.map(n => ({
-      id: n.id.toString(),
-      title: n.title,
-      content: n.content,
-      isRead: n.is_read === 1,
-      type: n.type || 'system',
-      createdAt: n.created_at
-    }));
-
-    res.json({
-      code: 0,
-      message: 'success',
-      data: {
-        list: formatted,
-        unread: unread ? unread.count : 0
-      }
-    });
-  } catch (error) {
-    console.error('Get notifications error:', error);
-    res.status(500).json({ code: 500, message: '获取通知失败' });
-  }
-});
-
-// 3.3 WeChat Client Read All Notifications (POST)
-app.post('/api/v1/user/notifications/read-all', authenticateWxToken, async (req, res) => {
-  try {
-    await run(
-      `UPDATE user_notifications SET is_read = 1 WHERE user_id = ?`,
-      [req.user.id]
-    );
-    res.json({ code: 0, message: '已全部标记为已读' });
-  } catch (error) {
-    console.error('Read all notifications error:', error);
-    res.status(500).json({ code: 500, message: '操作失败' });
-  }
-});
-
-// 3.4 WeChat Client Read Single Notification (POST)
-app.post('/api/v1/user/notifications/:id/read', authenticateWxToken, async (req, res) => {
-  const { id } = req.params;
-  try {
-    await run(
-      `UPDATE user_notifications SET is_read = 1 WHERE id = ? AND user_id = ?`,
-      [id, req.user.id]
-    );
-    res.json({ code: 0, message: '标记已读成功' });
-  } catch (error) {
-    console.error('Read notification error:', error);
-    res.status(500).json({ code: 500, message: '操作失败' });
-  }
-});
+installNotificationRoutes(app, authenticateWxToken);
 
 // --- Sleep & Snore Assessments ---
 
@@ -2347,10 +2272,8 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
       let result;
       if (!existing) {
         try {
-          result = await run(
-        `INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level, client_record_key, client_payload_hash, risk_score, analysis_version)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
+          result = await runAndNotify(`INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level, client_record_key, client_payload_hash, risk_score, analysis_version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
           req.user.id,
           dbPatientId,
           '',
@@ -2364,8 +2287,7 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
           payloadHash,
           riskScore == null ? null : riskScore,
           analysisVersion
-        ]
-      );
+        ], 'snore',null,'ready');
         } catch (error) {
           if (!clientKey || error.code !== 'ER_DUP_ENTRY') throw error;
           existing = await findExisting();
@@ -2465,11 +2387,8 @@ app.post('/api/v1/assessments/snore', authenticateWxToken, async (req, res) => {
     else if (apneaEvents < 30) riskLevel = 'moderate';
     else riskLevel = 'severe';
 
-    const result = await run(
-      `INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.user.id, dbPatientId, fileUrl, durationSeconds, avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel]
-    );
+    const result = await runAndNotify(`INSERT INTO snore_assessments (user_id, patient_id, file_url, duration, avg_decibel, peak_decibel, snore_rate, apnea_events, risk_level)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [req.user.id, dbPatientId, fileUrl, durationSeconds, avgDecibel, peakDecibel, snoreRate, apneaEvents, riskLevel], 'snore',null,'ready');
 
     let advice = '';
     if (riskLevel === 'normal' || riskLevel === 'low') advice = '本次录音筛查风险较低。结果仅供健康筛查参考，不能替代医生诊断。';
@@ -2832,7 +2751,8 @@ app.post('/api/v1/community/posts/:id/report', authenticateWxToken, async (req, 
         [postId, req.user.id]
       );
       if (existing) return 'existing';
-      await conn.execute("INSERT INTO community_reports (post_id, user_id, reason, status) VALUES (?, ?, ?, 'pending')", [postId, req.user.id, reason]);
+      const [reportResult] = await conn.execute("INSERT INTO community_reports (post_id, user_id, reason, status) VALUES (?, ?, ?, 'pending')", [postId, req.user.id, reason]);
+      await notifyBusiness(conn, 'report', reportResult.insertId, 'submitted');
       return 'created';
     });
     if (outcome === 'missing') return res.status(404).json({ code: 404, message: '帖子不存在' });
@@ -2923,6 +2843,35 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
   }
 });
 
+// Non-public own posts may be corrected and resubmitted; publication still requires moderation.
+const EDITABLE_COMMUNITY_STATUSES = new Set(['draft','pending','rejected']);
+const decodeCommunityText = value => String(value || '').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#0?39;|&apos;/g,"'").replace(/&amp;/g,'&');
+app.get('/api/v1/community/posts/:id/edit', authenticateWxToken, async (req,res) => {
+  const post = await get('SELECT id,user_id,user_role,title,content,tags,status,reject_reason FROM community_posts WHERE id=? AND user_id=?',[req.params.id,req.user.id]);
+  if (!post || post.user_role === 'admin') return res.status(404).json({code:404,message:'帖子不存在或不可编辑'});
+  if (!EDITABLE_COMMUNITY_STATUSES.has(post.status)) return res.status(409).json({code:409,message:'已公开的帖子不能在此修改'});
+  let tags=[];try { tags=typeof post.tags==='string'?JSON.parse(post.tags):post.tags; } catch {}
+  res.json({code:0,data:{id:String(post.id),title:decodeCommunityText(post.title),content:decodeCommunityText(post.content),tags:Array.isArray(tags)?tags.map(decodeCommunityText):[],status:post.status,rejectReason:post.reject_reason || ''}});
+});
+app.put('/api/v1/community/posts/:id/edit', authenticateWxToken, async (req,res) => {
+  const {title,content,tags}=req.body || {};
+  if (Object.keys(req.body || {}).some(key=>!['title','content','tags'].includes(key))) return res.status(400).json({code:400,message:'包含不允许修改的字段'});
+  if (typeof title!=='string' || typeof content!=='string' || !title.trim() || !content.trim() || title.length>40 || content.length>1000) return res.status(400).json({code:400,message:'标题和内容不能为空，标题最多40字，内容最多1000字'});
+  if (tags!==undefined && (!Array.isArray(tags)||tags.length>4||tags.some(tag=>typeof tag!=='string'||!tag.trim()||tag.length>30))) return res.status(400).json({code:400,message:'分类或标签无效'});
+  if (checkSensitiveWords(title)||checkSensitiveWords(content)) return res.status(400).json({code:400,message:'内容包含不适合发布的信息，请修改后提交'});
+  try {
+    await transaction(async conn=>{
+      const [[post]]=await conn.execute('SELECT * FROM community_posts WHERE id=? AND user_id=? FOR UPDATE',[req.params.id,req.user.id]);
+      if (!post || post.user_role==='admin') throw businessError('帖子不存在或不可编辑',404);
+      if (!EDITABLE_COMMUNITY_STATUSES.has(post.status)) throw businessError('已公开的帖子不能在此修改',409);
+      if (post.user_role==='patient' && tags?.some(tag=>tag.trim()==='专家')) throw businessError('普通用户不能使用专家分类',400);
+      const body=escapeHtml(content.trim());
+      await conn.execute("UPDATE community_posts SET title=?,content=?,summary=?,tags=?,status='pending',reject_reason=NULL WHERE id=?",[escapeHtml(title.trim()),body,buildCommunityPostSummary(body),JSON.stringify((tags||[]).map(tag=>escapeHtml(tag.trim()))),post.id]);
+    });
+    res.json({code:0,message:'已重新提交审核',data:{id:String(req.params.id),status:'pending'}});
+  } catch(error) { const status=error.statusCode || 500;res.status(status).json({code:status,message:status<500?error.message:'提交审核失败，请重试'}); }
+});
+
 // POST /api/v1/community/posts/:id/like
 app.post('/api/v1/community/posts/:id/like', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
@@ -2933,42 +2882,35 @@ app.post('/api/v1/community/posts/:id/like', authenticateWxToken, async (req, re
     if (!post) {
       return res.status(404).json({ code: 404, message: '帖子不存在' });
     }
+    await transaction(async conn => {
+      const txRun=async(sql,params)=>{ const [result]=await conn.execute(sql,params); return {id:result.insertId,changes:result.affectedRows}; };
     if (isLiked) {
-      const actor = await get(`SELECT nickname FROM users WHERE id = ?`, [req.user.id]);
-      const result = await run(
+      const result = await txRun(
         `INSERT IGNORE INTO community_post_likes (post_id, user_id) VALUES (?, ?)`,
         [postId, req.user.id]
       );
       if (result.changes > 0) {
-        await run(
+        await txRun(
           `UPDATE community_posts SET likes_count = likes_count + 1 WHERE id = ?`,
           [postId]
         );
         if (post.user_id && Number(post.user_id) !== Number(req.user.id)) {
-          await run(
-            `INSERT INTO user_notifications (user_id, title, content, type)
-             VALUES (?, ?, ?, ?)`,
-            [
-              post.user_id,
-              '帖子收到点赞',
-              `${actor?.nickname || '有用户'} 点赞了你的帖子《${post.title}》`,
-              'community'
-            ]
-          );
+          await recordCommunityLike(conn, {userId:post.user_id,actorId:req.user.id,postId,title:post.title});
         }
       }
     } else {
-      const result = await run(
+      const result = await txRun(
         `DELETE FROM community_post_likes WHERE post_id = ? AND user_id = ?`,
         [postId, req.user.id]
       );
       if (result.changes > 0) {
-        await run(
+        await txRun(
           `UPDATE community_posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = ?`,
           [postId]
         );
       }
     }
+    });
     res.json({ code: 0, message: 'success' });
   } catch (error) {
     console.error('likePost error:', error);
@@ -3042,42 +2984,35 @@ app.post('/api/v1/community/comments/:id/like', authenticateWxToken, async (req,
     if (!comment) {
       return res.status(404).json({ code: 404, message: '评论不存在' });
     }
+    await transaction(async conn => {
+      const txRun=async(sql,params)=>{ const [result]=await conn.execute(sql,params); return {id:result.insertId,changes:result.affectedRows}; };
     if (isLiked) {
-      const actor = await get(`SELECT nickname FROM users WHERE id = ?`, [req.user.id]);
-      const result = await run(
+      const result = await txRun(
         `INSERT IGNORE INTO post_comment_likes (comment_id, user_id) VALUES (?, ?)`,
         [commentId, req.user.id]
       );
       if (result.changes > 0) {
-        await run(
+        await txRun(
           `UPDATE post_comments SET likes_count = likes_count + 1 WHERE id = ?`,
           [commentId]
         );
         if (comment.user_id && Number(comment.user_id) !== Number(req.user.id)) {
-          await run(
-            `INSERT INTO user_notifications (user_id, title, content, type)
-             VALUES (?, ?, ?, ?)`,
-            [
-              comment.user_id,
-              '评论收到点赞',
-              `${actor?.nickname || '有用户'} 点赞了你在《${comment.title || '社区帖子'}》中的评论`,
-              'community'
-            ]
-          );
+          await recordCommunityLike(conn, {userId:comment.user_id,actorId:req.user.id,postId:comment.post_id,commentId,title:comment.title || '社区帖子'});
         }
       }
     } else {
-      const result = await run(
+      const result = await txRun(
         `DELETE FROM post_comment_likes WHERE comment_id = ? AND user_id = ?`,
         [commentId, req.user.id]
       );
       if (result.changes > 0) {
-        await run(
+        await txRun(
           `UPDATE post_comments SET likes_count = GREATEST(0, likes_count - 1) WHERE id = ?`,
           [commentId]
         );
       }
     }
+    });
     res.json({ code: 0, message: 'success' });
   } catch (error) {
     console.error('likeComment error:', error);
@@ -3120,41 +3055,28 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
       }
     }
     const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
-    const result = await run(
+    const result = await transaction(async conn => {
+    const [inserted] = await conn.execute(
       `INSERT INTO post_comments (post_id, user_id, parent_id, content, likes_count, status)
        VALUES (?, ?, ?, ?, 0, 'approved')`,
       [postId, req.user.id, parentComment ? parentComment.id : null, contentClean]
     );
 
-    await run(
+    await conn.execute(
       `UPDATE community_posts SET comments_count = comments_count + 1 WHERE id = ?`,
       [postId]
     );
 
     const actorName = user.nickname || '有用户';
     if (parentComment && parentComment.user_id && Number(parentComment.user_id) !== Number(req.user.id)) {
-      await run(
-        `INSERT INTO user_notifications (user_id, title, content, type)
-         VALUES (?, ?, ?, ?)`,
-        [
-          parentComment.user_id,
-          '社区新回复',
-          `${actorName} 回复了你在《${post.title}》中的评论`,
-          'community'
-        ]
-      );
-    } else if (post.user_id && Number(post.user_id) !== Number(req.user.id)) {
-      await run(
-        `INSERT INTO user_notifications (user_id, title, content, type)
-         VALUES (?, ?, ?, ?)`,
-        [
-          post.user_id,
-          '社区新评论',
-          `${actorName} 评论了你的帖子《${post.title}》`,
-          'community'
-        ]
-      );
+      await writeNotification(conn, {userId:parentComment.user_id, title:'社区新回复', content:`${actorName} 回复了你在《${post.title}》中的评论`, type:"community", businessType:"post", businessId:postId, onceKey:String(inserted.insertId), metadata:{commentId:String(inserted.insertId)}});
     }
+    if (post.user_id && Number(post.user_id) !== Number(req.user.id) && (!parentComment || Number(parentComment.user_id) !== Number(post.user_id))) {
+      await writeNotification(conn, {userId:post.user_id, title:'社区新评论', content:`${actorName} 评论了你的帖子《${post.title}》`, type:"community", businessType:"post", businessId:postId, onceKey:String(inserted.insertId), metadata:{commentId:String(inserted.insertId)}});
+    }
+
+      return {id:inserted.insertId};
+    });
 
     res.json({
       code: 0,
@@ -4623,6 +4545,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       const referralCode = req.body.referralCode || req.body.referral_code;
       await attachAppointmentReferral(conn, newId, referralCode);
       await conn.execute(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [schedule.id]);
+      await notifyBusiness(conn, 'appointment', newId, 'created');
       return { id: newId };
     });
 
@@ -5168,17 +5091,9 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
           [JSON.stringify({ ...address, refund_from_status: 'paid', refund_reason: reasonClean, refund_applied_at: formatShanghaiDateTime() }), paidOrder.id]
         );
         await syncUserMembership(paidOrder.user_id, conn);
-        await conn.execute(
-          `INSERT INTO user_notifications (user_id, title, content)
-           VALUES (?, '预约退款申请已提交', ?)`,
-          [paidOrder.user_id, `预约 ${appt.appointment_no} 已取消，已支付金额 ¥${(paidOrder.pay_amount / 100).toFixed(2)} 已申请退款，需等待审核及支付渠道确认。`]
-        );
+        await writeNotification(conn, {userId:paidOrder.user_id, title:"预约退款申请已提交", content:`预约 ${appt.appointment_no} 已取消，已支付金额 ¥${(paidOrder.pay_amount / 100).toFixed(2)} 已申请退款，需等待审核及支付渠道确认。`, type:"appointment", businessType:"appointment", businessId:appt.id});
       } else {
-        await conn.execute(
-          `INSERT INTO user_notifications (user_id, title, content)
-           VALUES (?, '预约已取消', ?)`,
-          [req.user.id, `预约 ${appt.appointment_no} 已取消。`]
-        );
+        await writeNotification(conn, {userId:req.user.id, title:"预约已取消", content:`预约 ${appt.appointment_no} 已取消。`, type:"appointment", businessType:"appointment", businessId:appt.id});
       }
     });
 
@@ -5278,6 +5193,7 @@ app.post('/api/v1/appointments/:id/reschedule', authenticateWxToken, async (req,
       await recordReschedule(conn, current, {
         ...current, schedule_id:scheduleId, appointment_date:appointmentDate, appointment_time:appointmentTime
       }, 'patient', req.user.id);
+      await notifyBusiness(conn, 'appointment', id, 'rescheduled', {previous:current});
     });
 
     const updated = await get(`SELECT * FROM appointments WHERE id = ?`, [id]);
@@ -6688,15 +6604,13 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
           status: freeStatus,
           shipping_address: JSON.stringify(orderShippingAddress)
         };
-        await conn.execute(
-          "INSERT INTO user_notifications (user_id, title, content, type) VALUES (?, '商品订单已提交', ?, 'order')",
-          [req.user.id, `零元商品订单已提交。订单号: ${orderNo}。${freeStatus === 'shipping' ? '我们会尽快为您安排发货。' : '请按门店通知到店取货。'}`]
-        );
+        await writeNotification(conn, {userId:req.user.id, title:"商品订单已提交", content:`零元商品订单已提交。订单号: ${orderNo}。${freeStatus === 'shipping' ? '我们会尽快为您安排发货。' : '请按门店通知到店取货。'}`, type:"order", businessType:"order", businessId:freeOrder.id});
         await createPendingDistributionCommission(conn, freeOrder, req.user.id);
         await syncUserMembership(req.user.id, conn);
         await createPaidFulfillment(conn, freeOrder);
       }
 
+      if (payAmount > 0) await notifyBusiness(conn, 'order', insertedId, 'created');
       return { id: insertedId, status: payAmount === 0 ? (deliveryMethod === 'online' ? 'shipping' : 'paid') : 'pending' };
     });
 
@@ -6837,7 +6751,7 @@ app.post('/api/v1/pay/refund-callback', async (req, res) => {
     }
     if (/^AR[a-f0-9]{28}$/.test(refundNo)) {
       if (['SUCCESS','ABNORMAL','CLOSED'].includes(payload.refund_status)) await completeChargeRefund(payload);
-    } else if (payload.refund_status === 'SUCCESS') {
+    } else if (['SUCCESS','ABNORMAL','CLOSED'].includes(payload.refund_status)) {
       await completeRefund(payload);
     }
     res.json({ code: 'SUCCESS', message: 'success' });
@@ -6888,11 +6802,7 @@ app.post('/api/v1/orders/:id/confirm-receipt', authenticateWxToken, async (req, 
         [id, req.user.id]
       );
       if (completed.affectedRows !== 1) throw businessError('订单状态已变更，请刷新后重试', 409);
-      await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content, type)
-         VALUES (?, '订单已完成', ?, 'order')`,
-        [req.user.id, `您已确认收到订单 ${order.order_no} 的商品，感谢您的购买。`]
-      );
+      await writeNotification(conn, {userId:req.user.id, title:"订单已完成", content:`您已确认收到订单 ${order.order_no} 的商品，感谢您的购买。`, type:"order", businessType:"order", businessId:order.id});
 
       const sysSetting = await get(`SELECT key_value FROM system_settings WHERE key_name = 'distribution_settle_days'`);
       const settleDays = parseInt(sysSetting?.key_value, 10);
@@ -6988,6 +6898,7 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
         await conn.execute(
           "UPDATE distributors SET status = 'active' WHERE user_id = ? AND status = 'pending'",
           [parentUserId]);
+        { const [[activated]] = await conn.execute('SELECT id FROM distributors WHERE user_id=?', [parentUserId]); if(activated) await notifyBusiness(conn,'promoter',activated.id,'status'); }
       }
       if (grandParent) {
         await conn.execute(
@@ -7466,6 +7377,7 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
         `UPDATE distributors SET available_commission = available_commission - ? WHERE id = ?`,
         [withdrawAmount, dist.id]
       );
+      await notifyBusiness(conn, 'withdraw', result.insertId, 'submitted');
       return result.insertId;
     });
 
@@ -7541,75 +7453,38 @@ app.get('/api/v1/home/stats', async (req, res) => {
 // 1) 获取与客服的聊天记录
 app.get('/api/v1/im/messages', authenticateWxToken, async (req, res) => {
   try {
-    const selfPatient = await getSelfPatientForUser(req.user.id);
-    const scope = await getPatientDataScope(selfPatient);
-    if (!scope.primaryPatient || !scope.patientIds.length) {
-      return res.json({ code: 0, message: 'success', data: [] });
-    }
-    const placeholders = buildSqlPlaceholders(scope.patientIds);
-    const messages = await query(`
-      SELECT id, sender, sender_name as senderName, text, DATE_FORMAT(created_at, '%H:%i') as time, is_read as isRead
-      FROM im_messages
-      WHERE patient_id IN (${placeholders})
-      ORDER BY created_at ASC`,
-      scope.patientIds
-    );
-    await run(
-      `UPDATE im_messages SET is_read = 1 WHERE patient_id IN (${placeholders}) AND sender = 'doctor' AND is_read = 0`,
-      scope.patientIds
-    );
-    res.json({ code: 0, message: 'success', data: messages });
-  } catch (error) {
-    console.error('Client Get IM Messages Error:', error);
-    res.status(500).json({ code: 500, message: '获取消息失败' });
-  }
-});
-
-app.get('/api/v1/im/unread-count', authenticateWxToken, async (req, res) => {
-  try {
-    const selfPatient = await getSelfPatientForUser(req.user.id);
-    const scope = await getPatientDataScope(selfPatient);
-    if (!scope.primaryPatient || !scope.patientIds.length) {
-      return res.json({ code: 0, message: 'success', data: { unread: 0 } });
-    }
-    const placeholders = buildSqlPlaceholders(scope.patientIds);
-    const unread = await get(
-      `SELECT COUNT(*) as count FROM im_messages WHERE patient_id IN (${placeholders}) AND sender = 'doctor' AND is_read = 0`,
-      scope.patientIds
-    );
-    res.json({
-      code: 0,
-      message: 'success',
-      data: {
-        unread: Number((unread && unread.count) || 0)
-      }
+    const result=await transaction(async conn=>{
+      const patient=await resolveImPatient(req.user.id,req.query.patientId,conn);
+      const [messages]=await conn.execute("SELECT id,sender,sender_name AS senderName,text,DATE_FORMAT(created_at,'%H:%i') AS time,is_read AS isRead FROM im_messages WHERE patient_id=? ORDER BY created_at ASC",[patient.id]);
+      await conn.execute("UPDATE im_messages SET is_read=1 WHERE patient_id=? AND sender='doctor' AND is_read=0",[patient.id]);
+      return {messages,patient};
     });
-  } catch (error) {
-    console.error('Client Get IM Unread Count Error:', error);
-    res.status(500).json({ code: 500, message: '获取未读消息数量失败' });
+    res.json({code:0,message:'success',data:result.messages,conversation:{patientId:String(result.patient.id),patientName:result.patient.name}});
+  } catch(error) {
+    if(error.statusCode===404 && !req.query.patientId)return res.json({code:0,data:[]});
+    res.status(error.statusCode || 500).json({code:error.statusCode || 500,message:error.statusCode?error.message:'获取消息失败'});
   }
 });
-
-// 2) 发送消息给客服
-app.post('/api/v1/im/send', authenticateWxToken, async (req, res) => {
-  const { text } = req.body;
-  if (!text) {
-    return res.status(400).json({ code: 400, message: '消息内容不能为空' });
-  }
+app.get('/api/v1/im/unread-count', authenticateWxToken, async (req,res)=>{
   try {
-    const patient = await getSelfPatientForUser(req.user.id);
-    if (!patient) {
-      return res.status(404).json({ code: 404, message: '未找到关联患者' });
-    }
-    await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read) VALUES (?, 'patient', ?, ?, 0)`,
-      [patient.id, patient.name, text]
-    );
-
-    res.json({ code: 0, message: '发送成功' });
-  } catch (error) {
-    console.error('Client Send IM Error:', error);
-    res.status(500).json({ code: 500, message: '发送失败' });
+    const patient=await resolveImPatient(req.user.id,req.query.patientId);
+    const row=await get("SELECT COUNT(*) AS count FROM im_messages WHERE patient_id=? AND sender='doctor' AND is_read=0",[patient.id]);
+    res.json({code:0,data:{unread:Number(row.count)}});
+  }catch(error){
+    if(error.statusCode===404 && !req.query.patientId)return res.json({code:0,data:{unread:0}});
+    res.status(error.statusCode || 500).json({code:error.statusCode || 500,message:error.statusCode?error.message:'获取未读消息数量失败'});
   }
+});
+app.post('/api/v1/im/send', authenticateWxToken, async(req,res)=>{
+  try {
+    const text=validateImText(req.body.text);
+    const id=await transaction(async conn=>{
+      const patient=await resolveImPatient(req.user.id,req.body.patientId,conn);
+      const [message]=await conn.execute("INSERT INTO im_messages(patient_id,sender,sender_name,text,is_read) VALUES(?,'patient',?,?,0)",[patient.id,patient.name,text]);
+      return message.insertId;
+    });
+    res.json({code:0,message:'发送成功',data:{id:String(id)}});
+  }catch(error){res.status(error.statusCode || 500).json({code:error.statusCode || 500,message:error.statusCode?error.message:'发送失败'});}
 });
 
 // 3) 获取维护记录

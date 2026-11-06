@@ -33,6 +33,11 @@ Page({
     records: [],
   },
 
+  onLoad(options) {
+    if (options.patientId) this.setStoragePatientId(options.patientId);
+    this._notificationRecordId=/^\d+$/.test(String(options.recordId || '')) ? String(options.recordId) : '';
+  },
+
   onShow() {
     this.loadPage({ silent: this.data.hasLoaded });
   },
@@ -92,7 +97,7 @@ Page({
         selectedPatientId,
         records,
         loading: false,
-      });
+      }, () => this.focusNotificationRecord());
     } catch (err) {
       console.error("加载病历档案失败", err);
       wx.showToast({ title: err.message || "加载病历档案失败", icon: "none" });
@@ -110,5 +115,16 @@ Page({
     if (!nextMember) return;
     this.setStoragePatientId(nextMember.id);
     await this.loadPage();
+  },
+
+  focusNotificationRecord() {
+    const id=this._notificationRecordId;
+    if(!id || this._recordFocused)return;
+    this._recordFocused=true;
+    if(!this.data.records.some(record=>record.id===id)) {
+      wx.showToast({title:'该病历已删除或暂不可查看',icon:'none'});
+      return;
+    }
+    this.setData({highlightRecordId:id},()=>wx.pageScrollTo({selector:'#record-'+id,offsetTop:-100,duration:250}));
   },
 });

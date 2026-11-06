@@ -1,3 +1,4 @@
+import { writeNotification } from './notification-center.js';
 import { dashboardScope } from './dashboard-scope.js';
 import crypto from 'node:crypto';
 import { fulfillmentAccessScope, readPagination } from './admin-scope.js';
@@ -29,6 +30,10 @@ async function accessBatch(id, user) {
 async function event(conn, caseId, actor, type, detail) {
   await conn.execute('INSERT INTO fulfillment_events(fulfillment_case_id,actor_id,event_type,detail) VALUES(?,?,?,?)',
     [caseId, actor, type, JSON.stringify(detail)]);
+  if (['factory_exception','factory_retake'].includes(type)) {
+    const [[row]]=await conn.execute('SELECT o.user_id FROM fulfillment_cases f JOIN orders o ON o.id=f.order_id WHERE f.id=?',[caseId]);
+    await writeNotification(conn,{userId:row?.user_id,type:'treatment',businessType:'fulfillment',businessId:caseId,event:type,title:type==='factory_retake'?'需要重新取模':'设备交付进度提醒',content:type==='factory_retake'?'您的设备需要重新取模，门店将联系您安排时间。':'设备交付出现异常，工作人员正在跟进，请留意门店联系。',revision:detail});
+  }
 }
 function moldDetails(input, complete) {
   if (!input || typeof input !== 'object') fail('取模资料不能为空');

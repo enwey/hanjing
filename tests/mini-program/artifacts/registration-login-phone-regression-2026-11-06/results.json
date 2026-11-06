@@ -1,0 +1,72 @@
+{
+  "phase": "independent regression",
+  "sourceBefore": {
+    "../../hanjing-clinic-backend/routes/client.js": "24da8cfc2f1a7e8fa9cff4e8a47c2f16040292ae6b9f7392b3361c8823c1e595",
+    "../../hanjing-clinic-backend/db.js": "e2251977f0ba8db8804f2d46bcd72b51341be4ce868c061bcfc446e82df1ae27"
+  },
+  "database": "hanjing_test_phone_reg_1793933709251",
+  "startedAt": "2026-11-06T02:55:09.255Z",
+  "method": "real Express + isolated MySQL; mocked WeChat upstream",
+  "results": [
+    {
+      "id": "PHONE-REG-01",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "sameAccountAndPatient": true,
+        "selfPhoneSynchronized": true,
+        "singleEncryption": true,
+        "allOtherSelfFieldsPreserved": true,
+        "profileAuthenticated": true
+      }
+    },
+    {
+      "id": "PHONE-REG-02",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "repeatedAndSecondPhoneChange": true,
+        "duplicateIdentityOrSelf": false
+      }
+    },
+    {
+      "id": "PHONE-REG-03",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "familySharingPreviousPhonePreserved": true,
+        "unrelatedOwnerPreserved": true,
+        "patientLinksPreserved": true
+      }
+    },
+    {
+      "id": "PHONE-REG-04",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "verifiedRenewalSucceeded": true,
+        "fiveTableSnapshotsUnchanged": true,
+        "preexistingMismatchNotSilentlyRepaired": true
+      }
+    },
+    {
+      "id": "PHONE-REG-05",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "unverifiedPhoneRejected": true,
+        "noPatientCreationOrPhoneRewrite": true,
+        "fiveTableSnapshotsUnchanged": true
+      }
+    }
+  ],
+  "cleanup": true,
+  "sourceAfter": {
+    "../../hanjing-clinic-backend/routes/client.js": "24da8cfc2f1a7e8fa9cff4e8a47c2f16040292ae6b9f7392b3361c8823c1e595",
+    "../../hanjing-clinic-backend/db.js": "e2251977f0ba8db8804f2d46bcd72b51341be4ce868c061bcfc446e82df1ae27"
+  },
+  "sourceStable": true,
+  "finishedAt": "2026-11-06T02:55:34.792Z",
+  "passed": 5,
+  "failed": 0
+}

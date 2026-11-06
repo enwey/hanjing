@@ -1,31 +1,16 @@
-<view class="page data-v-c3158b61">
+<view class="page">
   <hj-navbar title="消息通知" showBack="{{true}}" />
-  <view class="top-bar data-v-c3158b61">
-    <text class="unread-text data-v-c3158b61">{{unreadCount}} 条未读</text>
-    <text wx:if="{{unreadCount > 0}}" class="read-all data-v-c3158b61" bindtap="markAllRead">全部已读</text>
-  </view>
-  <view class="page-content data-v-c3158b61">
-    <view wx:if="{{loading}}" class="loading-wrap data-v-c3158b61"><text class="data-v-c3158b61">加载中...</text></view>
-    <block wx:else>
-      <view
-        wx:for="{{notifications}}"
-        wx:key="id"
-        class="noti-card data-v-c3158b61 {{!item.isRead ? 'unread' : ''}}"
-        data-id="{{item.id}}"
-        bindtap="openNotification"
-      >
-        <view class="noti-dot data-v-c3158b61 {{!item.isRead ? 'active' : ''}}" />
-        <view class="noti-icon data-v-c3158b61" style="background: {{item.iconBg}}; color: {{item.iconColor}}">
-          <text class="data-v-c3158b61">{{item.iconText}}</text>
-        </view>
-        <view class="noti-body data-v-c3158b61">
-          <text class="noti-title data-v-c3158b61">{{item.title}}</text>
-          <text class="noti-content data-v-c3158b61">{{item.content}}</text>
-          <text class="noti-time data-v-c3158b61">{{item.timeText}}</text>
-        </view>
-      </view>
-      <view wx:if="{{!notifications.length}}" class="empty data-v-c3158b61"><text class="data-v-c3158b61">暂无消息</text></view>
-    </block>
-    <view class="safe-bottom data-v-c3158b61" />
+  <view class="top-bar"><text>{{unreadCount}} 条未读</text><button wx:if="{{unreadCount > 0}}" class="read-all" disabled="{{marking}}" bindtap="markAllRead">{{marking ? '处理中' : '全部已读'}}</button></view>
+  <scroll-view scroll-x show-scrollbar="{{false}}" class="categories"><view class="category-row"><view wx:for="{{categories}}" wx:key="id" class="category {{category === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="selectCategory">{{item.name}}</view></view></scroll-view>
+  <view wx:if="{{hasNew}}" class="new-notice" bindtap="refreshLatest">有新消息，点击刷新</view>
+  <view class="page-content">
+    <view wx:if="{{loading}}" class="empty">加载中…</view>
+    <view wx:for="{{notifications}}" wx:key="id" class="noti-card {{!item.isRead ? 'unread' : ''}}" data-id="{{item.id}}" bindtap="openNotification">
+      <view class="noti-icon">{{item.iconText}}</view>
+      <view class="noti-body"><view class="noti-heading"><text class="noti-title">{{item.title}}</text><view wx:if="{{!item.isRead}}" class="noti-dot" /></view><text class="noti-content">{{item.content}}</text><view class="noti-footer"><text>{{item.timeText}}</text><text class="detail-link">查看详情 ›</text></view></view>
+    </view>
+    <view wx:if="{{error}}" class="empty"><text>{{error}}</text><button class="retry" bindtap="retry">重新加载</button></view>
+    <view wx:elif="{{!loading && !notifications.length}}" class="empty">暂无{{category ? '此类' : ''}}消息</view>
+    <view wx:elif="{{notifications.length}}" class="list-footer">{{loadingMore ? '加载中…' : hasMore ? '上拉加载更多' : '已显示全部消息'}}</view>
   </view>
 </view>

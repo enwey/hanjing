@@ -1,0 +1,25 @@
+{
+  "method": "Isolated Chrome headless production WXSS preview, synthetic content; not native WeChat",
+  "results": [
+    {
+      "width": 320,
+      "page": "refund",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "page": "medical",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "page": "refund",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "page": "medical",
+      "passed": true
+    }
+  ]
+}

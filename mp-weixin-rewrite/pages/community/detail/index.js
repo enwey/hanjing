@@ -121,6 +121,7 @@ Page({
 
   onLoad(options) {
     this.options = options || {};
+    this._notificationCommentId = /^\d+$/.test(String(this.options.commentId || '')) ? String(this.options.commentId) : '';
   },
 
   async onShow() {
@@ -160,7 +161,7 @@ Page({
         postDetail,
         commentsList: postDetail.comments,
         currentUserAvatar: normalizeCurrentUserAvatar(profile),
-      });
+      }, () => this.focusNotificationComment());
     } catch (error) {
       if (requestId !== this._detailRequestId) return;
       if (!this.data.hasLoaded || [401, 403, 404].includes(Number(error && (error.statusCode || error.status || error.code)))) {
@@ -179,6 +180,17 @@ Page({
 
   onUnload() {
     this._detailRequestId = (this._detailRequestId || 0) + 1;
+  },
+
+  focusNotificationComment() {
+    const id=this._notificationCommentId;
+    if(!id || this._commentFocused)return;
+    this._commentFocused=true;
+    if(!(this.data.commentsList || []).some(item=>String(item.id)===id)) {
+      wx.showToast({title:'该评论已删除或暂不可查看',icon:'none'});
+      return;
+    }
+    this.setData({highlightCommentId:id},()=>wx.pageScrollTo({selector:'#comment-'+id,offsetTop:-100,duration:250}));
   },
 
   async handlePostLike() {

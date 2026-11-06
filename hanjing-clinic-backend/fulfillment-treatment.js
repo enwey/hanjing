@@ -1,3 +1,4 @@
+import { notifyBusiness } from './notification-center.js';
 import { lockFulfillmentCase } from './fulfillment-guard.js';
 import { resolveFulfillmentMedicalRecord } from './fulfillment-clinical.js';
 const fail = (message, statusCode=400) => { throw Object.assign(new Error(message), {statusCode}); };
@@ -56,10 +57,14 @@ export async function completeFittingTreatment(conn, caseId, body, actorId) {
   const [[doctor]]=await conn.execute('SELECT name FROM doctors WHERE id=?',[record.doctor_id]);
   await conn.execute(`INSERT INTO treatment_timelines(user_id,patient_id,treatment_id,event_date,event_title,event_desc,event_type,doctor_name,color,icon)
     VALUES(?,?,?,?,?,?,'milestone',?,'#3B6BF5','device')`,[patient.user_id,c.patient_id,treatmentId,body.start_date,'完成首次佩戴交付',`绑定设备：${name}，初始前伸量 ${value}mm`,doctor?.name || '']);
-  if(next) await conn.execute(`INSERT INTO follow_up_tasks(patient_id,follower_id,title,description,due_date,status)
-    VALUES(?,?,?,?,?,'pending')`,[c.patient_id,actorId,'阻鼾器物理微调复查',`交付单 #${c.id}：${name}，初始前伸量 ${value}mm`,next]);
+  if(next) {
+    const [followup] = await conn.execute(`INSERT INTO follow_up_tasks(patient_id,follower_id,title,description,due_date,status)
+      VALUES(?,?,?,?,?,'pending')`,[c.patient_id,actorId,'阻鼾器物理微调复查',`交付单 #${c.id}：${name}，初始前伸量 ${value}mm`,next]);
+    await notifyBusiness(conn, 'followup', followup.insertId, 'scheduled');
+  }
   await conn.execute(`UPDATE fulfillment_cases SET status='fitted',medical_record_id=? WHERE id=?`,[record.id,c.id]);
   await conn.execute(`INSERT INTO fulfillment_fittings(fulfillment_case_id,technician_id,patient_device_id,note) VALUES(?,?,?,?)`,[c.id,c.technician_id,deviceId,body.note || null]);
   await conn.execute(`INSERT INTO fulfillment_events(fulfillment_case_id,actor_id,event_type,detail) VALUES(?,?,'fitting_completed',?)`,[c.id,actorId,JSON.stringify({patient_device_id:deviceId,treatment_id:treatmentId,initial_advancement:value,start_date:body.start_date,next_adjust_date:next})]);
+  await notifyBusiness(conn, 'treatment', treatmentId, 'updated');
   return {patient_device_id:deviceId,treatment_id:treatmentId};
 }

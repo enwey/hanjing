@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
+import { hasPermission } from '@/utils/permission'
 import { formatShanghaiDateTime } from '@/utils/dateTime'
 
 const router = useRouter()
@@ -118,13 +119,57 @@ async function approve(id: string) {
   }
 }
 
-async function reject(id: string) {
-  const p = posts.value.find(p => p.id === id)
-  if (p) {
-    await request.put(`/api/admin/content/articles/${id}`, { status: 'rejected' })
-    p.status = 'rejected'
-    MessagePlugin.success('已拒绝/下架该帖子')
-  }
+const rejectionId = ref('')
+const rejectionReason = ref('')
+const rejectionVisible = ref(false)
+const moderationBusy = ref(false)
+function reject(id: string) {
+  rejectionId.value = id
+  rejectionReason.value = ''
+  rejectionVisible.value = true
+}
+async function confirmReject() {
+  if (!rejectionReason.value.trim()) return MessagePlugin.warning('请填写拒绝原因')
+  if (moderationBusy.value) return
+  moderationBusy.value = true
+  try {
+    await request.put(`/api/admin/content/articles/${rejectionId.value}`, { status: 'rejected', reject_reason: rejectionReason.value.trim() })
+    const post = posts.value.find(p => p.id === rejectionId.value)
+    if (post) post.status = 'rejected'
+    rejectionVisible.value = false
+    MessagePlugin.success('审核结果已通知作者')
+  } finally { moderationBusy.value = false }
+}
+const reportsVisible = ref(false)
+const reportsLoading = ref(false)
+const reports = ref<any[]>([])
+const reportTotal = ref(0)
+const reportPage = ref(1)
+const reportStatus = ref('pending')
+const selectedReport = ref<any>(null)
+const reportResult = ref('resolved')
+const reportExplanation = ref('')
+async function fetchReports() {
+  if (!hasPermission('content:audit')) return
+  reportsLoading.value = true
+  try {
+    const res: any = await request.get('/api/admin/content/reports', { params: { page: reportPage.value, limit: 10, status: reportStatus.value } })
+    reports.value = res.data?.list || []
+    reportTotal.value = res.data?.total || 0
+  } finally { reportsLoading.value = false }
+}
+function openReports() { reportsVisible.value = true; reportPage.value = 1; fetchReports() }
+function handleReport(row: any) { selectedReport.value = row; reportResult.value = 'resolved'; reportExplanation.value = '' }
+async function confirmReport() {
+  if (!reportExplanation.value.trim()) return MessagePlugin.warning('请填写可以告知举报人的处理说明')
+  if (moderationBusy.value) return
+  moderationBusy.value = true
+  try {
+    await request.put(`/api/admin/content/reports/${selectedReport.value.id}`, { status: reportResult.value, result_text: reportExplanation.value.trim() })
+    selectedReport.value = null
+    await fetchReports()
+    MessagePlugin.success('处理结果已通知举报人')
+  } finally { moderationBusy.value = false }
 }
 
 async function toggleTop(id: string) {
@@ -196,7 +241,7 @@ watch(operationColumnWidth, () => {
         <div class="page-title">科普文章</div>
         <div class="page-title-sub">共 {{ stats.total }} 篇科普文章，包含 {{ stats.pending }} 篇待审核内容</div>
       </div>
-      <button v-permission="'content:add'" class="btn btn-primary" @click="router.push('/content/edit')"><AppIcon name="plus" />  撰写科普文章</button>
+      <div class="content-header-actions"><button v-permission="'content:audit'" class="btn btn-outline" @click="openReports">举报处理</button><button v-permission="'content:add'" class="btn btn-primary" @click="router.push('/content/edit')"><AppIcon name="plus" />  撰写科普文章</button></div>
     </div>
 
     <!-- 统计卡片 -->
@@ -367,10 +412,27 @@ watch(operationColumnWidth, () => {
         />
       </div>
     </div>
+    <t-dialog v-model:visible="rejectionVisible" header="拒绝发布" width="480px" :confirm-btn="{ content: '确认拒绝', loading: moderationBusy }" @confirm="confirmReject">
+      <t-form label-align="top"><t-form-item label="拒绝原因"><t-textarea v-model="rejectionReason" :maxlength="500" placeholder="请说明需要修改的内容，作者将收到此原因" /></t-form-item></t-form>
+    </t-dialog>
+    <t-dialog v-model:visible="reportsVisible" header="举报处理" width="min(900px, 94vw)" :footer="false">
+      <div class="report-filter"><t-radio-group v-model="reportStatus" variant="default-filled" @change="reportPage = 1; fetchReports()"><t-radio-button value="pending">待处理</t-radio-button><t-radio-button value="all">全部</t-radio-button></t-radio-group></div>
+      <t-table :data="reports" :loading="reportsLoading" row-key="id" :columns="[{colKey:'title',title:'文章',ellipsis:true},{colKey:'reason',title:'举报原因',width:150},{colKey:'result_text',title:'处理说明',ellipsis:true},{colKey:'status',title:'状态',width:100},{colKey:'operation',title:'操作',width:80}]">
+        <template #status="{ row }">{{ ({pending:'待处理',resolved:'已处理',dismissed:'不予采纳'} as Record<string,string>)[row.status] || row.status }}</template>
+        <template #operation="{ row }"><t-button v-if="row.status === 'pending'" v-permission="'content:audit'" size="small" variant="text" @click="handleReport(row)">处理</t-button><span v-else>—</span></template>
+      </t-table>
+      <t-pagination v-model="reportPage" :total="reportTotal" :page-size="10" :show-page-size="false" @current-change="fetchReports" />
+    </t-dialog>
+    <t-dialog :visible="!!selectedReport" header="处理举报" width="480px" :confirm-btn="{ content: '确认处理', loading: moderationBusy }" @close="selectedReport = null" @cancel="selectedReport = null" @confirm="confirmReport">
+      <t-form label-align="top"><t-form-item label="处理结果"><t-radio-group v-model="reportResult"><t-radio value="resolved">已核实并处理</t-radio><t-radio value="dismissed">不予采纳</t-radio></t-radio-group></t-form-item><t-form-item label="处理说明"><t-textarea v-model="reportExplanation" :maxlength="1000" placeholder="说明核实结论和已采取的处理措施，请勿包含他人隐私" /></t-form-item></t-form>
+    </t-dialog>
   </div>
 </template>
 
 <style scoped>
+.content-header-actions { display:flex;gap:12px;align-items:center; }
+.report-filter { margin-bottom:16px; }
+:deep(.t-pagination) { margin-top:16px; }
 /* Panels */
 .panel {
   background: #fff;

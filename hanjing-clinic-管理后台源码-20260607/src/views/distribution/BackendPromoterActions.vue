@@ -31,15 +31,18 @@ watch(visible,(opened)=>{if(!opened){form.value=emptyForm();errors.value=emptyEr
 async function create(){if(busy.value||!validateForm())return;busy.value=true;try{const r:any=await request.post('/api/admin/distribution/promoters',form.value);visible.value=false;emit('saved');MessagePlugin.success('推广员已创建');if(r.data?.qr?.image){qr.value=await brandPromoterQr(r.data.qr.image);qrCode.value=r.data.qr.code||'';qrVisible.value=true}else MessagePlugin.warning(r.data?.qrError||'小程序码暂未生成，可稍后重试')}finally{busy.value=false}}
 async function showQr(){busy.value=true;try{const r:any=await request.get(`/api/admin/distribution/promoters/${props.promoterId}/qr`);qr.value=await brandPromoterQr(r.data.image);qrCode.value=r.data.code||'';qrVisible.value=true}finally{busy.value=false}}
 async function reset(){if(busy.value)return;busy.value=true;try{await request.put(`/api/admin/distribution/promoters/${props.promoterId}/password`,{password:password.value});password.value='';resetVisible.value=false;MessagePlugin.success('密码已重置')}finally{busy.value=false}}
-async function toggle(){await request.put(`/api/admin/distribution/promoters/${props.promoterId}/status`,{status:props.status==='active'?'disabled':'active'});emit('saved')}
+const statusVisible=ref(false),statusReason=ref('')
+function openStatus(){statusReason.value='';statusVisible.value=true}
+async function toggle(){if(busy.value)return;if(props.status==='active'&&!statusReason.value.trim())return MessagePlugin.warning('请填写停用原因');busy.value=true;try{await request.put(`/api/admin/distribution/promoters/${props.promoterId}/status`,{status:props.status==='active'?'disabled':'active',reason:statusReason.value.trim()});statusVisible.value=false;emit('saved')}finally{busy.value=false}}
 </script>
 <template>
   <span v-if="promoterId" class="actions">
     <button v-permission="'promoter:qr'" class="btn btn-xs btn-outline" :disabled="busy" @click="showQr">小程序码</button>
     <button v-permission="'promoter:password'" class="btn btn-xs btn-outline" @click="resetVisible=true">重置密码</button>
-    <button v-permission="'promoter:status'" class="btn btn-xs btn-outline" @click="toggle">{{status==='active'?'停用':'启用'}}</button>
+    <button v-permission="'promoter:status'" class="btn btn-xs btn-outline" @click="openStatus">{{status==='active'?'停用':'启用'}}</button>
   </span>
   <button v-permission="'promoter:add'" v-else class="btn btn-primary" @click="visible=true">添加推广员</button>
+  <t-dialog v-model:visible="statusVisible" :header="status==='active'?'停用推广资格':'启用推广资格'" width="480px" :confirm-btn="{content:'确认',loading:busy}" @confirm="toggle"><t-form label-align="top"><t-form-item :label="status==='active'?'停用原因':'说明（选填）'"><t-textarea v-model="statusReason" :maxlength="500" placeholder="此说明将通知关联的小程序账号" /></t-form-item></t-form></t-dialog>
   <t-dialog v-model:visible="visible" header="添加推广员" width="640px" :confirm-btn="{content:'创建',loading:busy}" @confirm="create">
     <t-form :data="form" label-width="100px">
       <t-form-item label="头像（选填）">

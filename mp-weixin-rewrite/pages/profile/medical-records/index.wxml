@@ -20,7 +20,7 @@
     </view>
 
     <block wx:else>
-      <view wx:for="{{records}}" wx:key="id" class="record-card">
+      <view wx:for="{{records}}" wx:key="id" id="record-{{item.id}}" class="record-card {{highlightRecordId === item.id ? 'record-card--highlight' : ''}}">
         <view class="record-header">
           <view class="record-type" style="{{'background:' + item.typeBg + ';color:' + item.typeColor}}">
             <text>{{item.typeLabel}}</text>

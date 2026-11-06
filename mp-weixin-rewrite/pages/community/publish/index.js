@@ -20,6 +20,11 @@ const TAG_OPTIONS = [
 
 Page({
   data: {
+    editId: '',
+    loading: false,
+    loadError: '',
+    rejectReason: '',
+    submittedForReview: false,
     title: '',
     content: '',
     selectedCategory: '睡眠科普',
@@ -32,6 +37,32 @@ Page({
     tagOptions: TAG_OPTIONS,
   },
 
+  onLoad(options) {
+    if (options && options.editId) {
+      if (!/^\d+$/.test(String(options.editId))) { this.setData({loadError:'帖子参数无效'}); return; }
+      this.setData({editId:String(options.editId)});
+      return this.loadEditablePost();
+    }
+  },
+
+  async loadEditablePost() {
+    this.setData({loading:true,loadError:''});
+    try {
+      const response=await api.getCommunityPostForEdit(this.data.editId);
+      const post=(response && response.data) || response || {};
+      const tags=Array.isArray(post.tags)?post.tags:[];
+      const selectedCategory=tags[0] || CATEGORY_OPTIONS[0];
+      const selectedTags=tags.slice(1,4);
+      this.setData({title:post.title || '',content:post.content || '',rejectReason:post.rejectReason || '',selectedCategory,selectedTags,
+        categoryOptions:Array.from(new Set(CATEGORY_OPTIONS.concat(selectedCategory))),tagOptions:Array.from(new Set(TAG_OPTIONS.concat(selectedTags)))});
+    } catch(error) { this.setData({loadError:error.message || '加载失败，请重试'}); }
+    finally { this.setData({loading:false});this.refreshFormState(); }
+  },
+
+  returnToNotifications() {
+    wx.navigateBack({delta:1,fail:()=>wx.redirectTo({url:'/pages/profile/notifications/index'})});
+  },
+
   refreshFormState() {
     const selectedTagMap = {};
     this.data.selectedTags.forEach((tag) => {
@@ -39,7 +70,7 @@ Page({
     });
     this.setData({
       selectedTagMap,
-      canSubmit: Boolean((this.data.publishedPostId || (String(this.data.title || '').trim() && String(this.data.content || '').trim())) && !this.data.isSubmitting),
+      canSubmit: Boolean((this.data.publishedPostId || (String(this.data.title || '').trim() && String(this.data.content || '').trim())) && !this.data.isSubmitting && !this.data.loading && !this.data.loadError && !this.data.submittedForReview),
     });
   },
 
@@ -78,7 +109,8 @@ Page({
   },
 
   async submitPublish() {
-    if (this.data.isSubmitting) return;
+    if (this.data.submittedForReview) { this.returnToNotifications(); return; }
+    if (this.data.isSubmitting || this.data.loading || this.data.loadError) return;
     if (this.data.publishedPostId) {
       this.openPublishedPost();
       return;
@@ -91,11 +123,18 @@ Page({
     this.setData({ isSubmitting: true });
     this.refreshFormState();
     try {
-      const response = await api.createCommunityPost({
+      const payload = {
         title: this.data.title.trim(),
         content: this.data.content.trim(),
         tags: [this.data.selectedCategory].concat(this.data.selectedTags),
-      });
+      };
+      const response = this.data.editId ? await api.updateCommunityPost(this.data.editId,payload) : await api.createCommunityPost(payload);
+      if (this.data.editId) {
+        this.setData({submittedForReview:true,isSubmitting:false});
+        this.refreshFormState();
+        wx.showToast({title:'已提交审核',icon:'success'});
+        return;
+      }
       const createdPost = (response && response.data) || response || {};
       this.setData({ publishedPostId: String(createdPost.id) });
       wx.showToast({ title: '发布成功', icon: 'success' });
@@ -105,7 +144,7 @@ Page({
     } catch (error) {
       this.setData({ isSubmitting: false });
       this.refreshFormState();
-      wx.showToast({ title: '发布失败，请重试', icon: 'none' });
+      wx.showToast({ title: error.message || (this.data.editId ? '提交失败，请重试' : '发布失败，请重试'), icon: 'none' });
     }
   },
 

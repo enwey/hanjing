@@ -1,0 +1,25 @@
+{
+  "method": "Isolated Chrome headless production WXSS preview, synthetic content; not native WeChat",
+  "results": [
+    {
+      "width": 320,
+      "page": "family",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "page": "revoked",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "page": "family",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "page": "revoked",
+      "passed": true
+    }
+  ]
+}

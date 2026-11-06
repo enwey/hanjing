@@ -1,0 +1,70 @@
+{
+  "phase": "API reachability audit; no direct business-data writes",
+  "sourceBefore": {
+    "../../hanjing-clinic-backend/routes/client.js": "2fc02f4f8af7275ef7343a0463d308859127dd339769792ada77a00cb50f8cb5",
+    "../../hanjing-clinic-backend/db.js": "9b1a79f9bdd93c1a076bccf1479819c232c9370302295fbbfeefb797f38bf27d"
+  },
+  "database": "hanjing_test_reach_1793935004087",
+  "startedAt": "2026-11-06T03:16:44.095Z",
+  "method": "real Express + isolated MySQL; mocked WeChat upstream",
+  "results": [
+    {
+      "id": "REACH-01",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "sequentialThreeLogins": true,
+        "selfPatientCount": 1,
+        "businessDataCreatedOnlyByApi": true
+      }
+    },
+    {
+      "id": "REACH-02",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "businessDataCreatedOnlyByApi": true,
+        "controlledTwoRequestInterleaving": true,
+        "concurrentStatuses": [
+          200,
+          200
+        ],
+        "patientsAfterConcurrent": 2,
+        "patientsAfterSave": 2,
+        "patientsAfterRelogin": 2,
+        "allSamePhoneProfilesReceivedIdentity": true,
+        "originalDestructiveStateReproduced": false
+      }
+    },
+    {
+      "id": "REACH-03",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "businessDataCreatedOnlyByApi": true,
+        "controlledTwoRequestInterleaving": true,
+        "concurrentStatuses": [
+          200,
+          200
+        ],
+        "patientsAfterConcurrent": 2,
+        "patientsAfterSave": 2,
+        "patientsAfterRelogin": 1,
+        "explicitHadIdentityBefore": true,
+        "olderHadNoIdentity": true,
+        "explicitPatientDeleted": true,
+        "pointerChangedToOlder": true,
+        "scope": "concurrent API logins with different authorized phones; real WeChat multi-session grants/UI reachability unverified"
+      }
+    }
+  ],
+  "cleanup": true,
+  "sourceAfter": {
+    "../../hanjing-clinic-backend/routes/client.js": "2fc02f4f8af7275ef7343a0463d308859127dd339769792ada77a00cb50f8cb5",
+    "../../hanjing-clinic-backend/db.js": "9b1a79f9bdd93c1a076bccf1479819c232c9370302295fbbfeefb797f38bf27d"
+  },
+  "sourceStable": true,
+  "finishedAt": "2026-11-06T03:17:08.802Z",
+  "passed": 3,
+  "failed": 0
+}

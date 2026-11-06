@@ -111,13 +111,14 @@ export const autoUpdateExpiredAppointments = async () => {
   try {
     const nowInShanghai = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Shanghai" }));
     const todayStr = `${nowInShanghai.getFullYear()}-${String(nowInShanghai.getMonth() + 1).padStart(2, '0')}-${String(nowInShanghai.getDate()).padStart(2, '0')}`;
-    await run(
-      `UPDATE appointments
-       SET status = 'no_show', updated_at = CURRENT_TIMESTAMP
-       WHERE appointment_date < ?
-         AND status IN ('pending', 'confirmed', 'pending_payment')`,
-      [todayStr]
-    );
+    const { writeNotification } = await import('./notification-center.js');
+    const expired = await query("SELECT id FROM appointments WHERE appointment_date<? AND status IN ('pending','confirmed','pending_payment')",[todayStr]);
+    for (const item of expired) await transaction(async conn => {
+      const [[row]]=await conn.execute("SELECT * FROM appointments WHERE id=? AND appointment_date<? AND status IN ('pending','confirmed','pending_payment') FOR UPDATE",[item.id,todayStr]);
+      if(!row)return;
+      await conn.execute("UPDATE appointments SET status='no_show',updated_at=CURRENT_TIMESTAMP WHERE id=?",[row.id]);
+      await writeNotification(conn,{userId:row.user_id,type:'appointment',businessType:'appointment',businessId:row.id,event:'expired',onceKey:String(row.appointment_date)+':'+row.appointment_time,title:'预约已结束',content:`预约 ${row.appointment_no} 已超过就诊日期且未到诊。如需就诊，请重新预约。`});
+    });
   } catch (err) {
     console.error('Failed to auto update expired appointments:', err);
   }
@@ -2425,6 +2426,8 @@ export const initDB = async () => {
   await migrateAdminPermissions(query, transaction);
   const { repairDoubleEncryptedPatientPhones } = await import('./patient-phone-repair.js');
   await repairDoubleEncryptedPatientPhones(query, run);
+  const { initNotificationCenter } = await import('./notification-center.js');
+  await initNotificationCenter(query);
   console.log('MySQL Database tables verified/created successfully.');
 };
 

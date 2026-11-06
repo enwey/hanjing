@@ -1,0 +1,28 @@
+{
+  "database": "hanjing_test_reg_p0_1793933510262",
+  "startedAt": "2026-11-06T02:51:50.262Z",
+  "method": "real Express + isolated MySQL; mocked WeChat upstream",
+  "results": [
+    {
+      "id": "REG-006",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 1,
+        "samePatientId": true,
+        "selfPhoneMatchesNewAuthorization": true,
+        "unrelatedSelfFieldsPreserved": true,
+        "familyUnchanged": true,
+        "singleEncryption": true,
+        "repeatedAuthorizationStable": true,
+        "renewalFiveTablesUnchanged": true
+      }
+    }
+  ],
+  "cleanup": true,
+  "finishedAt": "2026-11-06T02:52:19.299Z",
+  "passed": 1,
+  "failed": 0
+}

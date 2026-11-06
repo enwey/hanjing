@@ -1,3 +1,4 @@
+import { writeNotification, notifyBusiness } from './notification-center.js';
 import { query, transaction } from './db.js';
 
 export function businessError(message, statusCode = 400) {
@@ -88,8 +89,7 @@ export async function settleCommissions(userId = null, distributorId = null) {
         if (result.affectedRows === 1) total += Number(row.commission_amount);
       }
       await conn.execute('UPDATE distributors SET available_commission = available_commission + ? WHERE id = ?', [total, promoter.id]);
-      if (promoter.user_id) await conn.execute('INSERT INTO user_notifications (user_id, title, content) VALUES (?, ?, ?)',
-        [promoter.user_id, '佣金已结算', `推广佣金 ¥${(total / 100).toFixed(2)} 已转为可提现余额。`]);
+      if (promoter.user_id) await writeNotification(conn, {userId:promoter.user_id, title:'佣金已结算', content:`推广佣金 ¥${(total / 100).toFixed(2)} 已转为可提现余额。`, type:"promo", businessType:"commission", businessId:promoter.id, onceKey:rows.map(r=>r.id).join(',')});
       return total;
     });
   }
@@ -107,9 +107,7 @@ export async function reviewWithdrawal(id, approve, remark) {
     if (!approve) {
       await conn.execute(`UPDATE distributors SET available_commission = available_commission + ? WHERE ${record.distributor_id?'id':'user_id'} = ?`, [record.amount, record.distributor_id||record.user_id]);
     }
-    if(record.user_id) await conn.execute('INSERT INTO user_notifications (user_id, title, content) VALUES (?, ?, ?)',
-      [record.user_id, approve ? '提现审核通过' : '提现申请已驳回',
-        approve ? '提现审核通过，等待实际打款。' : `提现已驳回，¥${(record.amount / 100).toFixed(2)} 已退回余额。${remark}`]);
+    if(record.user_id) await writeNotification(conn, {userId:record.user_id, title:approve ? '提现审核通过' : '提现申请已驳回', content:approve ? '提现审核通过，等待实际打款。' : `提现已驳回，¥${(record.amount / 100).toFixed(2)} 已退回余额。${remark}`, type:"promo", businessType:"withdraw", businessId:record.id});
     return record;
   });
 }
@@ -128,8 +126,7 @@ export async function confirmWithdrawalPaid(id, reference) {
       [receipt, id]
     );
     await conn.execute(`UPDATE distributors SET withdrawn_amount = withdrawn_amount + ? WHERE ${record.distributor_id?'id':'user_id'} = ?`, [record.amount, record.distributor_id||record.user_id]);
-    if(record.user_id) await conn.execute('INSERT INTO user_notifications (user_id, title, content) VALUES (?, ?, ?)',
-      [record.user_id, '提现已打款', `银行转账已登记，到账金额 ¥${(record.actual_amount / 100).toFixed(2)}。`]);
+    if(record.user_id) await writeNotification(conn, {userId:record.user_id, title:'提现已打款', content:`银行转账已登记，登记打款金额 ¥${(record.actual_amount / 100).toFixed(2)}。`, type:"promo", businessType:"withdraw", businessId:record.id});
     return record;
   });
 }

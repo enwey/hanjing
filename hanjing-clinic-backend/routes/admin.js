@@ -1,3 +1,8 @@
+import { installCommunityReportRoutes } from '../community-notifications.js';
+import { publishPatientMessage } from '../im-socket.js';
+import { resolveImPatient } from '../im-access.js';
+import { notifyAppointmentStatus, notifyConsultationCompleted, notifyScheduleImpact, notifyAvailabilityImpact, notifyFittingDateChange, notifyFollowupCompleted } from '../clinical-notifications.js';
+import { writeNotification, notifyBusiness, runAndNotify } from '../notification-center.js';
 import { getPublicOrigin as buildRequestOrigin } from '../public-urls.js';
 import { completeFittingTreatment } from '../fulfillment-treatment.js';
 import { readDistributionTrends } from '../distribution-trends.js';
@@ -1729,26 +1734,12 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
           doctor_id:nextDoctorId, doctor_name:doctorObj?.name || current.doctor_name,
           schedule_id:nextSchedule.id, appointment_date:nextDate, appointment_time:nextTime
         }, 'admin', req.user.id);
-        await conn.execute(
-          `INSERT INTO user_notifications (user_id, title, content)
-           VALUES (?, '预约已改期', ?)`,
-          [appt.user_id, `您的预约已改至 ${nextDate} ${nextTime}，请按时到诊。`]
-        );
+        await notifyBusiness(conn, 'appointment', appt.id, 'rescheduled', {previous:current});
       });
       await logAdminAction(req.user.id, 'reschedule_appointment', 'appointment', appt.id, { nextDate, nextTime, nextDoctorId, nextStoreId });
       return res.json({ code: 200, message: '预约改约成功' });
     }
 
-    const appointmentStatusTextMap = {
-      pending_payment: '待支付',
-      pending: '待就诊',
-      confirmed: '已确认',
-      completed: '已完成',
-      cancelled: '已取消',
-      refunding: '退款处理中',
-      refunded: '已退款',
-      no_show: '爽约'
-    };
     const allowed = new Set(['pending', 'confirmed', 'checked_in', 'waiting', 'called', 'arrived', 'completed', 'cancelled', 'no_show']);
     if (!allowed.has(status)) throw businessError('不支持该预约状态操作', 400);
     await transaction(async conn => {
@@ -1782,8 +1773,7 @@ app.put('/api/admin/appointments/:id', authenticateToken, async (req, res) => {
       }
       await conn.execute('UPDATE appointments SET status = ?, cancel_reason = COALESCE(?, cancel_reason), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [status, cancel_reason || null, current.id]);
-      await conn.execute(`INSERT INTO user_notifications (user_id, title, content, type) VALUES (?, '预约状态更新', ?, 'appointment')`,
-        [current.user_id, `您的预约 ${current.appointment_no} 状态已更新为${appointmentStatusTextMap[status] || status}${cancel_reason ? `，原因：${cancel_reason}` : ''}。`]);
+      await notifyAppointmentStatus(conn, current, status, cancel_reason);
     });
 
     res.json({ code: 200, message: '更新预约状态成功' });
@@ -1900,6 +1890,7 @@ app.post('/api/admin/appointments', authenticateToken, async (req, res) => {
         ]
       );
       await conn.execute(`UPDATE doctor_schedules SET booked_slots = booked_slots + 1 WHERE id = ?`, [schedule_id]);
+      await notifyBusiness(conn, 'appointment', inserted.insertId, 'created');
       return { id: inserted.insertId };
     });
 
@@ -2721,9 +2712,9 @@ app.put('/api/admin/patients/:id/medical-records/:recordId/attachments', authent
         uploaded_at: item.uploaded_at || new Date().toISOString()
       }));
 
-    await run(
+    await runAndNotify(
       `UPDATE medical_records SET attachments = ? WHERE id = ? AND patient_id = ?`,
-      [JSON.stringify(normalized), recordId, id]
+      [JSON.stringify(normalized), recordId, id], 'medical', recordId, 'updated'
     );
     await logAdminAction(req.user.id, 'update_medical_record_attachments', 'medical_record', recordId, { patientId: id, count: normalized.length });
     res.json({ code: 200, message: '保存病历附件成功', data: normalized });
@@ -2776,8 +2767,11 @@ app.post('/api/admin/patients/:id/medical-records', authenticateToken, async (re
       // 2. If appointment_id is supplied, mark appointment as completed
       if (appointment_id) {
         await conn.execute(`UPDATE appointments SET status = 'completed' WHERE id = ?`, [appointment_id]);
+        const [[appointment]] = await conn.execute('SELECT * FROM appointments WHERE id=?', [appointment_id]);
+        await notifyConsultationCompleted(conn, appointment, newRecordId);
+      } else {
+        await notifyBusiness(conn, 'medical', newRecordId, 'updated');
       }
-
       return newRecordId;
     });
 
@@ -2832,7 +2826,7 @@ const getConsultationAppointment = async (id, user, medicalRecord, actionText) =
   return appt;
 };
 
-const saveAppointmentMedicalRecord = async (conn, appt, medicalRecord) => {
+const saveAppointmentMedicalRecord = async (conn, appt, medicalRecord, notifyUpdate = true) => {
   const visitDate = medicalRecord.visit_date || formatShanghaiDate();
   const doctorId = medicalRecord.doctor_id || appt.doctor_id;
   const storeId = medicalRecord.store_id || appt.store_id;
@@ -2882,6 +2876,7 @@ const saveAppointmentMedicalRecord = async (conn, appt, medicalRecord) => {
     [medicalRecord.medical_history || null, medicalRecord.allergy_history || null, appt.patient_id]
   );
 
+  if (notifyUpdate) await notifyBusiness(conn, 'medical', medicalRecordId, 'updated');
   return {
     medicalRecordId,
     visitDate,
@@ -2931,7 +2926,7 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
       if (treatment || adjustment) {
         await conn.execute('SELECT id FROM patients WHERE id = ? FOR UPDATE', [current.patient_id]);
       }
-      const { medicalRecordId, visitDate, doctorId } = await saveAppointmentMedicalRecord(conn, appt, medical_record);
+      const { medicalRecordId, visitDate, doctorId } = await saveAppointmentMedicalRecord(conn, appt, medical_record, false);
 
       let treatmentId = treatment && treatment.treatment_id ? treatment.treatment_id : null;
       if (treatmentId && !treatment.create) {
@@ -2995,7 +2990,7 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
           err.statusCode = 400;
           throw err;
         }
-        await conn.execute(
+        const [followupResult] = await conn.execute(
           `INSERT INTO follow_up_tasks (patient_id, follower_id, title, description, due_date, status)
            VALUES (?, ?, ?, ?, ?, 'pending')`,
           [
@@ -3006,15 +3001,13 @@ app.post('/api/admin/appointments/:id/complete-consultation', authenticateToken,
             follow_up.due_date
           ]
         );
+        await notifyBusiness(conn, 'followup', followupResult.insertId, 'scheduled');
       }
 
       await conn.execute(`UPDATE appointments SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [appt.id]);
-      await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content)
-         VALUES (?, '就诊已完成', ?)`,
-        [appt.user_id, `您 ${formatDate(appt.appointment_date)} 的门诊就诊已完成，病历和医嘱已同步。`]
-      );
+      await notifyConsultationCompleted(conn, current, medicalRecordId);
 
+      if (treatmentId) await notifyBusiness(conn, 'treatment', treatmentId, 'updated');
       return { medicalRecordId, treatmentId };
     });
 
@@ -3288,6 +3281,7 @@ app.post('/api/admin/patients/:id/treatment', authenticateToken, async (req, res
         ]
       );
 
+      await notifyBusiness(conn, 'treatment', result.insertId, 'updated');
       return result.insertId;
     });
     res.json({ code: 200, message: '治疗建档成功', data: { id: treatmentId } });
@@ -3352,6 +3346,7 @@ app.post('/api/admin/patients/:id/treatment/adjustments', authenticateToken, asy
           doctor.name
         ]
       );
+      await notifyBusiness(conn, 'treatment', treatment_id, 'updated');
       return result.insertId;
     });
 
@@ -3423,11 +3418,8 @@ app.post('/api/admin/patients/:id/follow-ups', authenticateToken, async (req, re
   }
 
   try {
-    const result = await run(
-      `INSERT INTO follow_up_tasks (patient_id, follower_id, title, description, due_date, status)
-       VALUES (?, ?, ?, ?, ?, 'pending')`,
-      [id, follower_id, title, description || null, due_date]
-    );
+    const result = await runAndNotify(`INSERT INTO follow_up_tasks (patient_id, follower_id, title, description, due_date, status)
+       VALUES (?, ?, ?, ?, ?, 'pending')`, [id, follower_id, title, description || null, due_date], 'followup',null,'scheduled');
     res.json({ code: 200, message: '创建随访任务成功', data: { id: result.id } });
   } catch (error) {
     res.status(500).json({ code: 500, message: '创建随访任务失败' });
@@ -3458,6 +3450,7 @@ app.post('/api/admin/patients/:id/follow-ups/records', authenticateToken, async 
     
       // Complete the task
       await conn.execute(`UPDATE follow_up_tasks SET status = 'completed' WHERE id = ?`, [task_id]);
+      await notifyFollowupCompleted(conn, task);
     });
 
     res.json({ code: 200, message: '记录随访内容并完成任务成功' });
@@ -3500,6 +3493,9 @@ app.put('/api/admin/patients/:id/follow-ups/:taskId', authenticateToken, async (
           id
         ]
       );
+      if (task.status === 'pending' && (nextStatus !== task.status || (due_date && formatDate(due_date) !== formatDate(task.due_date)))) {
+        await notifyBusiness(conn, 'followup', taskId, 'scheduled');
+      }
     });
     await logAdminAction(req.user.id, 'update_follow_up', 'follow_up_task', taskId, { patientId: id, status, due_date });
     res.json({ code: 200, message: '更新随访任务成功' });
@@ -3674,6 +3670,7 @@ app.put('/api/admin/doctors/:id', authenticateToken, async (req, res) => {
   try {
     const normalizedStoreIds = await normalizeDoctorStoreIds(store_ids, req.user);
     await transaction(async (conn) => {
+      const [[current]] = await conn.execute('SELECT status FROM doctors WHERE id=? FOR UPDATE', [id]);
       await conn.execute(
         `UPDATE doctors
          SET name = ?, title = ?, specialty = ?, hospital = ?, intro = ?, consult_fee = ?, status = ?, avatar_url = ?, expertise = ?, experience_years = ?
@@ -3684,6 +3681,7 @@ app.put('/api/admin/doctors/:id', authenticateToken, async (req, res) => {
       for (const storeId of normalizedStoreIds) {
         await conn.execute(`INSERT INTO doctor_store_mapping (doctor_id, store_id) VALUES (?, ?)`, [id, storeId]);
       }
+      if (current && Number(current.status) !== 0 && Number(status) === 0) await notifyAvailabilityImpact(conn, 'doctor', id);
     });
     await logAdminAction(req.user.id, 'update_doctor', 'doctor', id, { name, title, specialty, status }, req.ip || null);
     res.json({ code: 200, message: '编辑医生成功' });
@@ -3700,7 +3698,12 @@ app.delete('/api/admin/doctors/:id', authenticateToken, async (req, res) => {
     if (!doctor) {
       return res.status(404).json({ code: 404, message: '医生不存在' });
     }
-    await run(`UPDATE doctors SET status = 0 WHERE id = ?`, [id]);
+    await transaction(async conn => {
+      const [[current]] = await conn.execute('SELECT status FROM doctors WHERE id=? FOR UPDATE', [id]);
+      if (Number(current?.status) === 0) return;
+      await conn.execute('UPDATE doctors SET status=0 WHERE id=?', [id]);
+      await notifyAvailabilityImpact(conn, 'doctor', id);
+    });
     
     if (doctor) {
       await logAdminAction(req.user.id, 'disable_doctor', 'doctor', id, { name: doctor.name, title: doctor.title });
@@ -3881,6 +3884,7 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
 
       if (is_rest) {
         if (existing) {
+          await notifyScheduleImpact(conn, existing.id);
           await conn.execute(`UPDATE doctor_schedules SET status = 'archived' WHERE id = ?`, [existing.id]);
         }
         return;
@@ -3901,6 +3905,7 @@ app.post('/api/admin/schedules', authenticateToken, async (req, res) => {
         );
         const bookedCount = booked ? booked.count : 0;
         if (bookedCount > 0) {
+          await notifyScheduleImpact(conn, existing.id, { store_id, start_time: targetStartTime, end_time: targetEndTime });
           await conn.execute(`UPDATE doctor_schedules SET status = 'archived' WHERE id = ?`, [existing.id]);
           await conn.execute(
             `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, slot_interval_minutes, people_per_slot, status)
@@ -4006,6 +4011,7 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
 
         if (is_rest) {
           if (existing) {
+            await notifyScheduleImpact(conn, existing.id);
             archiveIds.push(existing.id);
           }
         } else {
@@ -4047,6 +4053,7 @@ app.post('/api/admin/schedules/batch', authenticateToken, async (req, res) => {
             if (hasChanged) {
               const bookedCount = bookedMap[existing.id] || 0;
               if (bookedCount > 0) {
+                await notifyScheduleImpact(conn, existing.id, { store_id, start_time: targetStartTime, end_time: targetEndTime });
                 archiveIds.push(existing.id);
                 inserts.push([
                   doctor_id,
@@ -4186,6 +4193,7 @@ app.post('/api/admin/schedules/copy-last-month', authenticateToken, async (req, 
           }
           const [[booked]] = await conn.execute("SELECT COUNT(*) as count FROM appointments WHERE schedule_id = ? AND status NOT IN ('cancelled', 'no_show')", [existing.id]);
           if (Number(booked.count || 0) > 0) {
+            await notifyScheduleImpact(conn, existing.id, { store_id: row.store_id, start_time: row.start_time, end_time: row.end_time });
             await conn.execute(`UPDATE doctor_schedules SET status = 'archived' WHERE id = ?`, [existing.id]);
             await conn.execute(
               `INSERT INTO doctor_schedules (doctor_id, store_id, date, period, start_time, end_time, total_slots, slot_interval_minutes, people_per_slot, status)
@@ -4448,26 +4456,31 @@ app.put('/api/admin/stores/:id', authenticateToken, async (req, res) => {
       mainClose = hours[0].closeTime + ':00';
     }
 
-	    await run(
+	    await transaction(async conn => {
+      const [[current]] = await conn.execute('SELECT status FROM stores WHERE id=? FOR UPDATE', [id]);
+      await conn.execute(
 	      `UPDATE stores SET name = ?, code = COALESCE(?, code), address = ?, city = ?, district = ?, latitude = ?, longitude = ?, phone = ?, cover_url = ?, image_urls = ?, status = ?, open_time = ?, close_time = ? WHERE id = ?`,
-	      [name, code || null, address, city || '', district || '', latitude || null, longitude || null, phone, cover_url || null, image_urls ? JSON.stringify(image_urls) : null, status, mainOpen, mainClose, id]
+	      [name, code || null, address, city || '', district || '', latitude || null, longitude || null, phone || null, cover_url || null, image_urls ? JSON.stringify(image_urls) : null, status || current?.status || 'open', mainOpen, mainClose, id]
 	    );
 
     if (features && Array.isArray(features)) {
-      await run(`DELETE FROM store_features WHERE store_id = ?`, [id]);
+      await conn.execute(`DELETE FROM store_features WHERE store_id = ?`, [id]);
       for (const feature of features) {
-        await run(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [id, feature]);
+        await conn.execute(`INSERT INTO store_features (store_id, feature) VALUES (?, ?)`, [id, feature]);
       }
     }
 
     if (hours && Array.isArray(hours)) {
-      await run(`DELETE FROM store_hours WHERE store_id = ?`, [id]);
+      await conn.execute(`DELETE FROM store_hours WHERE store_id = ?`, [id]);
       for (const h of hours) {
         if (h.openTime && h.closeTime) {
-          await run(`INSERT INTO store_hours (store_id, open_time, close_time) VALUES (?, ?, ?)`, [id, h.openTime, h.closeTime]);
+          await conn.execute(`INSERT INTO store_hours (store_id, open_time, close_time) VALUES (?, ?, ?)`, [id, h.openTime, h.closeTime]);
         }
       }
     }
+
+      if (current && current.status !== 'closed' && status === 'closed') await notifyAvailabilityImpact(conn, 'store', id);
+    });
 
     await logAdminAction(req.user.id, 'update_store', 'store', id, { name, address, phone, status });
 
@@ -4484,7 +4497,12 @@ app.delete('/api/admin/stores/:id', authenticateToken, async (req, res) => {
     if (!store) {
       return res.status(404).json({ code: 404, message: '门店不存在' });
     }
-    await run(`UPDATE stores SET status = 'closed' WHERE id = ?`, [id]);
+    await transaction(async conn => {
+      const [[current]] = await conn.execute('SELECT status FROM stores WHERE id=? FOR UPDATE', [id]);
+      if (current?.status === 'closed') return;
+      await conn.execute("UPDATE stores SET status='closed' WHERE id=?", [id]);
+      await notifyAvailabilityImpact(conn, 'store', id);
+    });
     await logAdminAction(req.user.id, 'disable_store', 'store', id, { name: store.name });
     res.json({ code: 200, message: '门店已停用' });
   } catch (error) {
@@ -4651,9 +4669,10 @@ app.post('/api/admin/fulfillment/cases/:id/assign', authenticateToken, async (re
   if (!await getActiveAdminAccount(technician_id)) return res.status(400).json({ code: 400, message: '技师账号不存在或已停用' });
   if (!['pending_assignment', 'assigned'].includes(fulfillmentCase.status)) return res.status(409).json({code:409,message:'取模完成后不可通过重新分配倒退流程'});
   await transaction(async conn => {
-    await lockFulfillmentCase(conn, fulfillmentCase.id);
+    const locked = await lockFulfillmentCase(conn, fulfillmentCase.id);
     const [assigned] = await conn.execute(`UPDATE fulfillment_cases SET technician_id = ?, expected_fitting_date = COALESCE(?, expected_fitting_date), status = 'assigned' WHERE id = ? AND status IN ('pending_assignment','assigned')`, [technician_id, expected_fitting_date || null, fulfillmentCase.id]);
     if (!assigned.affectedRows) throw Object.assign(new Error('交付单状态已变化，请刷新'), {statusCode:409});
+    await notifyFittingDateChange(conn, locked, expected_fitting_date || locked.expected_fitting_date);
     await conn.execute(`INSERT INTO fulfillment_events(fulfillment_case_id,actor_id,event_type,detail) VALUES(?,?,'technician_assigned',?)`, [fulfillmentCase.id,req.user.id,JSON.stringify({technician_id,expected_fitting_date:expected_fitting_date || null})]);
   });
   res.json({ code: 200, message: '已分配技师' });
@@ -4668,7 +4687,7 @@ app.post('/api/admin/fulfillment/cases/:id/notify-fitting', authenticateToken, a
     await lockFulfillmentCase(conn, fulfillmentCase.id);
     const [changed] = await conn.execute(`UPDATE fulfillment_cases SET status = 'ready_for_fitting' WHERE id = ? AND status = 'device_received'`, [fulfillmentCase.id]);
     if (!changed.affectedRows) throw Object.assign(new Error('交付状态已变化，请刷新'), {statusCode:409});
-    await conn.execute(`INSERT INTO user_notifications (user_id, title, content, type) VALUES (?, '阻鼾器已到店', '您的定制阻鼾器已到店，请预约到店完成首次佩戴。', 'treatment')`, [fulfillmentCase.user_id]);
+    await writeNotification(conn, {userId:fulfillmentCase.user_id, title:"阻鼾器已到店", content:"您的定制阻鼾器已到店，请预约到店完成首次佩戴。", type:"treatment", businessType:"fulfillment", businessId:fulfillmentCase.id});
     await conn.execute(`INSERT INTO fulfillment_events(fulfillment_case_id,actor_id,event_type) VALUES(?,?,'fitting_notified')`,[fulfillmentCase.id,req.user.id]);
   });
   res.json({ code: 200, message: '首次佩戴通知已发送' });
@@ -4723,7 +4742,7 @@ app.post('/api/admin/after-sales-tickets', authenticateToken, async (req, res) =
   if (!ticketPatientId) return res.status(400).json({ code: 400, message: '请选择履约单或患者' });
   if (!await verifyPatientAccess(ticketPatientId, req.user)) return res.status(403).json({ code: 403, message: '您无权为该患者创建售后工单' });
   if (assigned_technician_id && !await getActiveAdminAccount(assigned_technician_id)) return res.status(400).json({ code: 400, message: '技师账号不存在或已停用' });
-  const created = await run(`INSERT INTO after_sales_tickets (fulfillment_case_id, patient_id, patient_device_id, assigned_technician_id, created_by, issue_type, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [fulfillment_case_id || null, ticketPatientId, patient_device_id || null, assigned_technician_id || null, req.user.id, issue_type, description, assigned_technician_id ? 'assigned' : 'pending']);
+  const created = await runAndNotify(`INSERT INTO after_sales_tickets (fulfillment_case_id, patient_id, patient_device_id, assigned_technician_id, created_by, issue_type, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [fulfillment_case_id || null, ticketPatientId, patient_device_id || null, assigned_technician_id || null, req.user.id, issue_type, description, assigned_technician_id ? 'assigned' : 'pending'], 'after_sale',null,'status');
   if (fulfillment_case_id) await addFulfillmentEvent(fulfillment_case_id, req.user.id, 'after_sales_created', { ticket_id: created.id, issue_type });
   res.json({ code: 200, message: '售后工单已创建', data: { id: created.id } });
 });
@@ -4784,6 +4803,7 @@ app.put('/api/admin/after-sales-tickets/:id', authenticateToken, async (req, res
             from_technician_id: current.assigned_technician_id, assigned_technician_id: technicianId
           })]);
       }
+      await notifyBusiness(conn, 'after_sale', ticket.id, 'status');
       return { status, assigned_technician_id: technicianId };
     });
     await logAdminAction(req.user.id, 'update_after_sales_ticket', 'after_sales_ticket', ticket.id, result);
@@ -4999,7 +5019,7 @@ app.post('/api/admin/orders/:id/ship', authenticateToken, async (req, res) => {
     addr.express_company = carrier;
     addr.tracking_number = trackingNo;
 
-    const shipped = await run(`UPDATE orders SET status = 'shipped', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'shipping'`, [JSON.stringify(addr), id]);
+    const shipped = await runAndNotify(`UPDATE orders SET status = 'shipped', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'shipping'`, [JSON.stringify(addr), id], 'order',id,'shipped');
     if (shipped.changes !== 1) return res.status(409).json({ code: 409, message: '订单状态已变更，请刷新后再操作' });
     await logAdminAction(req.user.id, 'ship_order', 'order', id, { carrier, trackingNo }, req.ip || null);
     res.json({ code: 200, message: '发货成功' });
@@ -5091,13 +5111,10 @@ app.post('/api/admin/orders/:id/notify', authenticateToken, async (req, res) => 
         throw Object.assign(new Error('订单状态已变化，不能发送到货通知'), { statusCode: 409 });
       }
       const addr = typeof current.shipping_address === 'string' ? JSON.parse(current.shipping_address || '{}') : (current.shipping_address || {});
+      if (addr.storeId) { const [[pickupStore]] = await conn.execute('SELECT name,address FROM stores WHERE id=?', [addr.storeId]); if (pickupStore) { addr.storeName = pickupStore.name; addr.detailAddress = pickupStore.address; } }
       addr.status = '已到店（待自提）';
       await conn.execute('UPDATE orders SET shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [JSON.stringify(addr), id]);
-      await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content, type)
-         VALUES (?, '商品已到店', ?, 'order')`,
-        [order.user_id, `您的订单 ${order.order_no} 商品已到店，可到门店自提。`]
-      );
+      await writeNotification(conn, {userId:order.user_id, title:"商品已到店", content:`您的订单 ${order.order_no} 商品已到店，请到${addr.storeName || '订单所选门店'}自提。${addr.detailAddress ? '地址：'+addr.detailAddress+'。' : ''}`, type:"order", businessType:"order", businessId:order.id});
       return addr;
     });
     await logAdminAction(req.user.id, 'notify_order_arrival', 'order', id, { orderNo: order.order_no });
@@ -5127,11 +5144,7 @@ app.post('/api/admin/orders/:id/complete', authenticateToken, async (req, res) =
     await transaction(async (conn) => {
       const [completed] = await conn.execute(`UPDATE orders SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status IN ('paid','processing')`, [id]);
       if (completed.affectedRows !== 1) throw Object.assign(new Error('订单状态已变更，请刷新后再操作'), { statusCode: 409 });
-      await conn.execute(
-        `INSERT INTO user_notifications (user_id, title, content, type)
-         VALUES (?, '订单已完成', ?, 'order')`,
-        [order.user_id, `您的订单 ${order.order_no} 已完成。`]
-      );
+      await writeNotification(conn, {userId:order.user_id, title:"订单已完成", content:`您的订单 ${order.order_no} 已完成。`, type:"order", businessType:"order", businessId:order.id});
 
       const sysSetting = await get(`SELECT key_value FROM system_settings WHERE key_name = 'distribution_settle_days'`);
       const settleDays = parseInt(sysSetting?.key_value, 10);
@@ -5313,6 +5326,7 @@ app.put('/api/admin/distribution/promoters/:id/status', authenticateToken, async
   try {
     await transaction(async conn => {
       await conn.execute('UPDATE distributors SET status = ? WHERE id = ?', [status, id]);
+      await notifyBusiness(conn, 'promoter', id, 'status', {reason:typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0,500) : ''});
       await conn.execute('UPDATE promoter_accounts SET token_version=token_version+1 WHERE distributor_id=?', [id]);
     });
     res.json({ code: 200, message: '状态修改成功' });
@@ -6137,6 +6151,8 @@ app.delete('/api/admin/content/live-rooms/:id', authenticateToken, async (req, r
 });
 
 // Articles (健康科普)
+installCommunityReportRoutes(app, authenticateToken);
+
 app.get('/api/admin/content/articles', authenticateToken, async (req, res) => {
   try {
     const list = await query(
@@ -6263,6 +6279,9 @@ app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) =
   if (status && !['draft', 'pending', 'approved', 'rejected'].includes(status)) {
     return res.status(400).json({ code: 400, message: '内容状态不合法' });
   }
+  if (status === 'rejected' && post.status !== 'rejected' && (typeof req.body.reject_reason !== 'string' || !req.body.reject_reason.trim() || req.body.reject_reason.trim().length > 500)) {
+    return res.status(400).json({ code: 400, message: '请填写拒绝原因（最多500字）' });
+  }
 
   try {
     const hasField = (key) => Object.prototype.hasOwnProperty.call(req.body, key);
@@ -6302,7 +6321,8 @@ app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) =
       : Number(post.sort_weight ?? 100);
     const resolvedStatus = requestedStatus;
     const resolvedIsTop = typeof is_top === 'boolean' ? (is_top ? 1 : 0) : post.is_top;
-    await run(
+    await transaction(async conn => {
+      await conn.execute(
       `UPDATE community_posts
        SET title = ?,
            summary = ?,
@@ -6335,6 +6355,11 @@ app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) =
         id
       ]
     );
+      const reason = typeof req.body.reject_reason === 'string' ? req.body.reject_reason.trim().slice(0,500) : '';
+      const savedReason = ['rejected','draft'].includes(resolvedStatus) ? (reason || post.reject_reason || '内容暂不符合社区发布要求，请修改后重新提交审核') : null;
+      await conn.execute('UPDATE community_posts SET reject_reason=? WHERE id=?', [savedReason,id]);
+      if (post.status !== resolvedStatus || (reason && reason !== post.reject_reason)) await notifyBusiness(conn, 'post', id, 'moderation', {revision:resolvedStatus+':'+(savedReason || ''),reason:savedReason});
+    });
     await logAdminAction(req.user.id, 'update_article', 'community_post', id, {
       title,
       status,
@@ -6350,7 +6375,15 @@ app.put('/api/admin/content/articles/:id', authenticateToken, async (req, res) =
 app.delete('/api/admin/content/articles/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
-    await run(`DELETE FROM community_posts WHERE id = ?`, [id]);
+    await transaction(async conn => {
+      const [[post]] = await conn.execute('SELECT id,title,user_id,user_role FROM community_posts WHERE id=? FOR UPDATE',[id]);
+      if (!post) return;
+      if (post.user_id && post.user_role !== 'admin') {
+        const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0,500) : '';
+        await writeNotification(conn,{userId:post.user_id,type:'community',businessType:'post',businessId:post.id,event:'moderation_removed',onceKey:String(post.id),title:'帖子已移除',content:`《${post.title}》已由平台移除。${reason ? '原因：'+reason+'。' : '如需了解详情，请联系客服。'}`});
+      }
+      await conn.execute('DELETE FROM community_posts WHERE id=?',[id]);
+    });
     await logAdminAction(req.user.id, 'delete_article', 'community_post', id, {});
     res.json({ code: 200, message: '删除内容成功' });
   } catch (error) {
@@ -7045,6 +7078,7 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
       if (promoter.status === 'pending') {
         await conn.execute(
           "UPDATE distributors SET status = 'active' WHERE user_id = ? AND status = 'pending'", [parentUserId]);
+        { const [[activated]] = await conn.execute('SELECT id FROM distributors WHERE user_id=?', [parentUserId]); if(activated) await notifyBusiness(conn,'promoter',activated.id,'status'); }
       }
       await syncDirectChildrenSecondLevel(conn, childUserId, parentUserId);
       return { activatedUserId: promoter.status === 'pending' ? parentUserId : null };
@@ -7183,6 +7217,7 @@ app.post('/api/admin/orders', authenticateToken, async (req, res) => {
         await syncUserMembership(patient.user_id, conn);
         fulfillmentCaseId = await createPaidFulfillment(conn, order);
       }
+      await notifyBusiness(conn, 'order', order.id, isDeferredWechatPay ? 'created' : 'paid');
       return { order, fulfillmentCaseId };
     }).catch(async error => {
       // The unique order number also covers concurrent retries and lost HTTP responses.
@@ -7470,9 +7505,27 @@ app.post('/api/admin/im/send', authenticateToken, async (req, res) => {
     const adminUser = req.user;
     const senderName = adminUser ? adminUser.name || '客服助理' : '客服助理';
 
-    await run(`INSERT INTO im_messages (patient_id, sender, sender_name, text, is_read) VALUES (?, 'doctor', ?, ?, 1)`,
-      [patient_id, senderName, text]
-    );
+    const saved=await transaction(async conn => {
+      const [message] = await conn.execute("INSERT INTO im_messages (patient_id,sender,sender_name,text,is_read) VALUES(?,'doctor',?,?,0)",[patient_id,senderName,text]);
+      return message.insertId;
+    });
+    // Delivery is independent from the committed message. A disconnected socket
+    // must not turn a saved reply into a 500 response and cause a duplicate retry.
+    let delivered=0;
+    try {delivered=await publishPatientMessage(patient_id,{id:String(saved),from:'assistant',text,time:formatShanghaiDateTime().slice(11,16)});}catch(error){console.error('IM live delivery failed:',error.message);}
+    try {
+      await transaction(async conn=>{
+        const [[owner]]=await conn.execute('SELECT p.user_id,u.self_patient_id FROM patients p LEFT JOIN users u ON u.id=p.user_id WHERE p.id=?',[patient_id]);
+        if(!owner?.user_id)return;
+        const isSelf=Number(owner.self_patient_id)===Number(patient_id);
+        try{const patient=await resolveImPatient(owner.user_id,isSelf?null:patient_id,conn);if(Number(patient.id)!==Number(patient_id))return;}
+        catch(error){if(error.statusCode===404)return;throw error;}
+        const [[message]]=await conn.execute('SELECT is_read FROM im_messages WHERE id=? AND patient_id=? FOR UPDATE',[saved,patient_id]);
+        if(!message || message.is_read)return;
+        if(delivered>0){await conn.execute('UPDATE im_messages SET is_read=1 WHERE id=?',[saved]);return;}
+        await notifyBusiness(conn,'message',saved,'reply');
+      });
+    }catch(error){console.error('IM reply notification deferred:',error.message);}
     await logAdminAction(req.user.id, 'send_im_message', 'patient', patient_id, { textLength: text.length });
 
     res.json({ code: 200, message: '发送成功' });

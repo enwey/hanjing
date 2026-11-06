@@ -1,0 +1,172 @@
+{
+  "results": [
+    {
+      "name": "HTTP家庭会话与默认本人会话消息严格区分",
+      "status": "passed"
+    },
+    {
+      "name": "他人账号不能读写或连接家庭会话",
+      "status": "passed"
+    },
+    {
+      "name": "后台离线回复通知目标属于家庭就诊人",
+      "status": "passed"
+    },
+    {
+      "name": "WebSocket家庭发送归属正确且后台回复实时到达两个连接",
+      "status": "passed"
+    },
+    {
+      "name": "关闭一个连接不移除同患者其他活跃连接",
+      "status": "passed"
+    },
+    {
+      "name": "实际推送回调失败仍返回成功并保留未读和通知",
+      "status": "passed"
+    },
+    {
+      "name": "推送失败前HTTP已读取不会被补偿改回未读或新增通知",
+      "status": "passed"
+    },
+    {
+      "name": "提交后投递中断由定时任务补发且迟到回调不重复",
+      "status": "passed"
+    },
+    {
+      "name": "撤销家庭关联后HTTP读写与WS推送均拒绝",
+      "status": "passed"
+    },
+    {
+      "name": "已建立WS在授权撤销后再次写入被拒绝",
+      "status": "passed"
+    },
+    {
+      "name": "本人默认WebSocket保持可用",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "path": "/api/admin/stores",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/family-members",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/im/send",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/im/send",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/im/messages?patientId=3",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/im/messages",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/im/messages?patientId=3",
+      "method": "GET",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/im/send",
+      "method": "POST",
+      "status": 404
+    },
+    {
+      "path": "/api/admin/im/send",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/notifications/1",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/im/send",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/im/send",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/im/send",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/im/messages?patientId=3",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/im/send",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/im/send",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/family-members/3",
+      "method": "DELETE",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/im/messages?patientId=3",
+      "method": "GET",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/im/send",
+      "method": "POST",
+      "status": 404
+    },
+    {
+      "path": "/api/admin/im/send",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/family-members",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/family-members/4",
+      "method": "DELETE",
+      "status": 200
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "Only roles/admin seed; patients,family links,messages and link revocation via real API. Synthetic JWT substitutes actual WeChat authorization. Real HTTP+WebSocket, no native mini renderer."
+}

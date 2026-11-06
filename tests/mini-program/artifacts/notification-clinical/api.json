@@ -1,0 +1,348 @@
+{
+  "results": [
+    {
+      "name": "实际签到/候诊/叫号/接诊入口通知为中文且标识患者",
+      "status": "passed"
+    },
+    {
+      "name": "重复提交同一接诊状态不重复通知",
+      "status": "passed"
+    },
+    {
+      "name": "完成接诊通知直接关联本次病历且不额外重复病历更新",
+      "status": "passed"
+    },
+    {
+      "name": "病历创建并完成预约入口与完成接诊通知一致",
+      "status": "passed"
+    },
+    {
+      "name": "单日设休通知现有预约但不取消或退款，重复设休不重复发送",
+      "status": "passed"
+    },
+    {
+      "name": "批量排班缩短时间通知受影响预约",
+      "status": "passed"
+    },
+    {
+      "name": "只调整时段容量不误发停诊通知",
+      "status": "passed"
+    },
+    {
+      "name": "批量设休通知未结束预约",
+      "status": "passed"
+    },
+    {
+      "name": "复制上月排班也通知时间被覆盖的既有预约",
+      "status": "passed"
+    },
+    {
+      "name": "医生停用/删除提醒有效预约且重复停用不发，完成预约不受影响",
+      "status": "passed"
+    },
+    {
+      "name": "门店关闭/删除提醒有效预约且重复关闭不发",
+      "status": "passed"
+    },
+    {
+      "name": "随访完成通知不泄露内部沟通摘要",
+      "status": "passed"
+    },
+    {
+      "name": "跨医生和门店改约通知同时包含原新医生门店日期时段",
+      "status": "passed"
+    },
+    {
+      "name": "交付预计日期变化通知原新日期且同日重存不重复",
+      "status": "passed"
+    },
+    {
+      "name": "真实取模送厂验收到试戴生成随访安排通知",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/1/complete-consultation",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients/1/medical-records",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules/batch",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules/batch",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules/batch",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules/copy-last-month",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/doctors/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/doctors/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/doctors/1",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/doctors/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/doctors/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/stores/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/stores/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/stores/1",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/stores/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/stores/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients/1/follow-ups",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients/1/follow-ups/records",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/patients/1/follow-ups/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/3",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/products",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/assign",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/assign",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/assign",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/batches",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/batches/1/ship",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/batches/1/items/1/progress",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/device-receipt",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/notify-fitting",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/fitting",
+      "status": 200
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离管理员初始化；业务前提均由HTTP API创建；不含微信真机与生产支付"
+}

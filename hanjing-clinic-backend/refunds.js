@@ -1,3 +1,4 @@
+import { writeNotification, notifyBusiness } from './notification-center.js';
 import { get, transaction } from './db.js';
 import { businessError } from './distribution-ledger.js';
 import { syncUserMembership } from './membership.js';
@@ -32,15 +33,22 @@ export async function applyRefund(orderId, userId, reason, description = '') {
     delete address.refund_rejected_at;
     await conn.execute("UPDATE orders SET status = 'refund_pending', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       [JSON.stringify(address), orderId]);
-    await conn.execute("INSERT INTO user_notifications (user_id, title, content, type) VALUES (?, '退款申请已提交', ?, 'order')",
-      [userId, `订单 ${order.order_no} 的退款申请已提交，等待审核。`]);
+    await writeNotification(conn, {userId:userId, title:"退款申请已提交", content:`订单 ${order.order_no} 的退款申请已提交，等待审核。`, type:"order", businessType:"order", businessId:order.id});
     return order;
   });
 }
 
 // Called only with a verified callback or the authenticated payment provider's response.
 export async function completeRefund(payload) {
-  if ((payload.refund_status || payload.status) !== 'SUCCESS') return false;
+  if ((payload.refund_status || payload.status) !== 'SUCCESS') {
+    if (!['ABNORMAL','CLOSED'].includes(payload.refund_status || payload.status)) return false;
+    return transaction(async conn => {
+      const [[order]]=await conn.execute('SELECT * FROM orders WHERE wechat_refund_no=? FOR UPDATE',[payload.out_refund_no || '']);
+      if(!order || order.status!=='refunding' || payload.out_trade_no!==await paymentTradeNo(order,conn) || Number(payload.amount?.refund)!==Number(order.pay_amount) || Number(payload.amount?.total)!==Number(order.pay_amount) || payload.amount?.currency!=='CNY' || !payload.refund_id) throw businessError('退款异常结果与订单不一致',409);
+      await notifyBusiness(conn,'order',order.id,'refund_failed',{onceKey:order.wechat_refund_no+':'+(payload.refund_status || payload.status)});
+      return false;
+    });
+  }
   const succeededAt = new Date(payload.success_time || '');
   if (!Number.isFinite(succeededAt.getTime())) throw businessError('退款成功时间缺失，请核对支付渠道', 409);
   return transaction(async conn => {
@@ -87,8 +95,7 @@ async function settleRefund(conn, order, succeededAt, providerRefundId = null) {
       const [[row]] = await conn.execute("SELECT COUNT(DISTINCT order_id) AS count FROM distribution_orders WHERE distributor_id = ? AND commission_level IN (1,3) AND status != 'refunded'", [distributorId]);
       await conn.execute('UPDATE distributors SET level = ? WHERE id = ?', [row.count >= 50 ? 'diamond' : row.count >= 10 ? 'gold' : 'silver', distributorId]);
     }
-    await conn.execute("INSERT INTO user_notifications (user_id, title, content, type) VALUES (?, '退款成功', ?, 'order')",
-      [order.user_id, `订单 ${order.order_no} 已确认退款 ¥${(Number(order.pay_amount) / 100).toFixed(2)}。`]);
+    await writeNotification(conn, {userId:order.user_id, title:"退款成功", content:`订单 ${order.order_no} 已确认退款 ¥${(Number(order.pay_amount) / 100).toFixed(2)}。`, type:"order", businessType:"order", businessId:order.id});
     return true;
 }
 
@@ -164,8 +171,7 @@ export async function reviewRefund(orderId, approve, actorId, provider = { creat
       address.refund_rejected_at = new Date().toISOString();
       await conn.execute('UPDATE orders SET status = ?, shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [restored, JSON.stringify(address), orderId]);
-      await conn.execute("INSERT INTO user_notifications (user_id, title, content, type) VALUES (?, '退款申请未通过', ?, 'order')",
-        [row.user_id, `订单 ${row.order_no} 的退款申请未通过。`]);
+      await writeNotification(conn, {userId:row.user_id, title:"退款申请未通过", content:`订单 ${row.order_no} 的退款申请未通过。`, type:"order", businessType:"order", businessId:row.id});
       return row;
     }
     if (!['wechat', 'wechat_native', 'wechat_micropay'].includes(row.pay_method) || !row.pay_at || !row.wechat_transaction_id || !Number.isSafeInteger(Number(row.pay_amount)) || Number(row.pay_amount) <= 0) {
@@ -183,7 +189,7 @@ export async function reviewRefund(orderId, approve, actorId, provider = { creat
   try {
     result = await provider.create({ transactionId: order.wechat_transaction_id, outTradeNo: order.payment_trade_no,
       outRefundNo: order.wechat_refund_no, reason: '退款审核通过', refundAmount: order.pay_amount, totalAmount: order.pay_amount });
-    if (result.status === 'SUCCESS') await completeRefund(result);
+    if (['SUCCESS','ABNORMAL','CLOSED'].includes(result.status)) await completeRefund(result);
   } catch (error) {
     throw businessError(`退款请求结果尚未确认，请凭退款单号 ${order.wechat_refund_no} 核对微信商户平台，勿重复退款`, 502);
   }
@@ -199,6 +205,6 @@ export async function syncRefund(orderId, actorId, lookup = queryWechatRefund) {
   if (!order?.wechat_refund_no) throw businessError('该订单尚未提交支付渠道', 409);
   const result = await lookup(order.wechat_refund_no);
   if (result.out_refund_no !== order.wechat_refund_no) throw businessError('退款查询单号不匹配', 409);
-  if (result.status === 'SUCCESS') await completeRefund(result);
+  if (['SUCCESS','ABNORMAL','CLOSED'].includes(result.status)) await completeRefund(result);
   return { status: result.status, message: result.status === 'SUCCESS' ? '支付渠道已确认退款成功' : `支付渠道退款状态：${result.status || '未知'}，尚未确认退款成功` };
 }

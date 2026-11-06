@@ -19,6 +19,8 @@ Page({
     adjustmentHistory: [],
   },
 
+  onLoad(options) { this._notificationPatientId = options.patientId || ''; },
+
   async onShow() {
     await this.loadPage({ silent: this.data.hasLoaded });
   },
@@ -30,7 +32,8 @@ Page({
     }
     try {
       const context = await patientContextStore.refresh();
-      const params = context.currentPatientId ? { patientId: context.currentPatientId, _t: Date.now() } : { _t: Date.now() };
+      const selectedPatientId = this._notificationPatientId || context.currentPatientId;
+      const params = selectedPatientId ? { patientId: selectedPatientId, _t: Date.now() } : { _t: Date.now() };
       const [recordResponse, historyResponse] = await Promise.all([
         api.getTreatmentRecord(params),
         api.getDeviceAdjustments(params),

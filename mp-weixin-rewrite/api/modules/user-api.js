@@ -83,20 +83,24 @@ function getMemberLevels() {
   return request({ url: '/user/member-levels', method: 'GET', failMessage: '加载会员等级规则失败' });
 }
 
-function getNotifications() {
-  return request({ url: '/user/notifications', method: 'GET', failMessage: '加载通知消息失败' });
+function getNotifications(query = {}) {
+  return request({ url: '/user/notifications', method: 'GET', data: query, failMessage: '加载通知消息失败' });
+}
+
+function getNotificationDetail(id) {
+  return request({ url: '/user/notifications/' + encodeURIComponent(id), method: 'GET', failMessage: '加载通知详情失败' });
 }
 
 function getImUnreadCount() {
   return request({ url: '/im/unread-count', method: 'GET', failMessage: '加载客服未读消息失败' });
 }
 
-function markNotificationRead(notificationId) {
-  return request({ url: '/user/notifications/' + notificationId + '/read', method: 'POST', failMessage: '标记消息已读失败' });
+function markNotificationRead(notificationId, throughVersion) {
+  return request({ url: '/user/notifications/' + notificationId + '/read', method: 'POST', data: { throughVersion }, failMessage: '标记消息已读失败' });
 }
 
-function markAllNotificationsRead() {
-  return request({ url: '/user/notifications/read-all', method: 'POST', failMessage: '全部消息已读失败' });
+function markAllNotificationsRead(through, throughVersion) {
+  return request({ url: '/user/notifications/read-all', method: 'POST', data: { through, throughVersion }, failMessage: '全部消息已读失败' });
 }
 
 function getAccountSecurity() {
@@ -151,6 +155,7 @@ module.exports = {
   getMemberInfo,
   getMemberLevels,
   getNotifications,
+  getNotificationDetail,
   getImUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,

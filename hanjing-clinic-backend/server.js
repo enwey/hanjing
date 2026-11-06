@@ -1,3 +1,4 @@
+import { processInAppReminders, processNotificationOutbox } from './notification-center.js';
 import { getPublicOrigin, normalizeAssetResponses } from './public-urls.js';
 import express from 'express';
 import cors from 'cors';
@@ -133,7 +134,11 @@ const startServer = async () => {
       } catch (err) {
         console.error('Failed to run periodic background jobs:', err);
         sendSystemAlert('warning', 'Background Job Failed', err.message, err);
-      } finally { jobRunning = false; }
+      } finally {
+        try { await processInAppReminders(); } catch(error) { console.error('In-app notification reminders failed:', error.message); }
+        try { await processNotificationOutbox(); } catch(error) { console.error('In-app notification delivery retry failed:', error.message); }
+        jobRunning = false;
+      }
     }, 60000);
   } catch (error) {
     console.error('Failed to start server:', error);

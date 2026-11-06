@@ -1,3 +1,4 @@
+import { writeNotification } from './notification-center.js';
 import { query, transaction } from './db.js';
 
 const DEFAULT_MEMBER_LEVEL_RULES = [
@@ -71,6 +72,7 @@ export async function syncUserMembership(userId, conn = null, reason = 'order_sy
       updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`, [matched.id, userId]);
     await execute(conn, `INSERT INTO user_membership_history (user_id, from_level_id, to_level_id, total_spent, reason)
       VALUES (?, ?, ?, ?, ?)`, [userId, currentLevelId, matched.id, totalSpent, reason]);
+    await writeNotification(conn, {userId,type:'system',businessType:'member',businessId:userId,event:'level',title:'会员等级已更新',content:`您的会员等级已调整为${matched.title}，点击查看会员权益。`,revision:matched.id});
   }
 
   return { id: userId, member_level: matched.level, total_spent: totalSpent, member_level_id: matched.id };
@@ -92,6 +94,7 @@ export async function setUserMembership(userId, levelCode, conn = null, reason =
     const totalSpent = await calculateUserTotalSpent(userId, conn);
     await execute(conn, `INSERT INTO user_membership_history (user_id, from_level_id, to_level_id, total_spent, reason)
       VALUES (?, ?, ?, ?, ?)`, [userId, currentLevelId, matched.id, totalSpent, reason]);
+    await writeNotification(conn, {userId,type:'system',businessType:'member',businessId:userId,event:'level',title:'会员等级已更新',content:`您的会员等级已调整为${matched.title}，点击查看会员权益。`,revision:matched.id});
   }
   await execute(conn, 'UPDATE user_memberships SET protected_level_id=? WHERE user_id=?', [matched.id, userId]);
   return { id: userId, member_level: matched.level, member_level_id: matched.id };

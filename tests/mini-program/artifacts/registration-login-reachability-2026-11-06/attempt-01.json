@@ -1,0 +1,64 @@
+{
+  "phase": "API reachability audit; no direct business-data writes",
+  "sourceBefore": {
+    "../../hanjing-clinic-backend/routes/client.js": "2fc02f4f8af7275ef7343a0463d308859127dd339769792ada77a00cb50f8cb5",
+    "../../hanjing-clinic-backend/db.js": "9b1a79f9bdd93c1a076bccf1479819c232c9370302295fbbfeefb797f38bf27d"
+  },
+  "database": "hanjing_test_reach_1793934947527",
+  "startedAt": "2026-11-06T03:15:47.533Z",
+  "method": "real Express + isolated MySQL; mocked WeChat upstream",
+  "results": [
+    {
+      "id": "REACH-01",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "sequentialThreeLogins": true,
+        "selfPatientCount": 1,
+        "businessDataCreatedOnlyByApi": true
+      }
+    },
+    {
+      "id": "REACH-02",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "businessDataCreatedOnlyByApi": true,
+        "controlledTwoRequestInterleaving": true,
+        "concurrentStatuses": [
+          200,
+          200
+        ],
+        "patientsAfterConcurrent": 2,
+        "patientsAfterSave": 2,
+        "patientsAfterRelogin": 2,
+        "allSamePhoneProfilesReceivedIdentity": true,
+        "originalDestructiveStateReproduced": false
+      }
+    },
+    {
+      "id": "REACH-03",
+      "result": "failed",
+      "backendErrors": [
+        {
+          "code": "",
+          "errno": null
+        }
+      ],
+      "error": {
+        "name": "AssertionError",
+        "code": "ERR_ASSERTION",
+        "message": "profile save failed"
+      }
+    }
+  ],
+  "cleanup": true,
+  "sourceAfter": {
+    "../../hanjing-clinic-backend/routes/client.js": "2fc02f4f8af7275ef7343a0463d308859127dd339769792ada77a00cb50f8cb5",
+    "../../hanjing-clinic-backend/db.js": "9b1a79f9bdd93c1a076bccf1479819c232c9370302295fbbfeefb797f38bf27d"
+  },
+  "sourceStable": true,
+  "finishedAt": "2026-11-06T03:16:07.371Z",
+  "passed": 2,
+  "failed": 1
+}

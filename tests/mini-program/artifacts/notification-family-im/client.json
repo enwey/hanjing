@@ -1,0 +1,32 @@
+[
+  {
+    "name": "家庭patientId同时用于历史HTTP和WebSocket连接",
+    "status": "passed",
+    "level": "Page VM"
+  },
+  {
+    "name": "HTTP发送保留所属家庭patientId",
+    "status": "passed",
+    "level": "Page VM"
+  },
+  {
+    "name": "默认入口保持本人并不发送伪造patientId",
+    "status": "passed",
+    "level": "Page VM"
+  },
+  {
+    "name": "撤销权限404清空历史并停止建立连接",
+    "status": "passed",
+    "level": "Page VM"
+  },
+  {
+    "name": "WS撤权关闭不启动轮询降级",
+    "status": "passed",
+    "level": "Page VM"
+  },
+  {
+    "name": "旧连接关闭不覆盖新连接引用",
+    "status": "passed",
+    "level": "Page VM"
+  }
+]

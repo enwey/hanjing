@@ -1,0 +1,100 @@
+{
+  "method": "Pure projection and Page VM unit checks; no real API/db business setup",
+  "results": [
+    {
+      "name": "具体病历仅显示患者可见字段",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "业务归属失效时拒绝详情投影",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "治疗方案按通知记录而非最新患者记录展示",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "售后显示结果不暴露内部人员",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "已取消随访不提供预约动作",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "举报展示真实处理结论",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "家庭成员客服展示实际回复并进入对应就诊人会话",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "预约退款显示实际单据金额和状态",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "商城拒绝退款不宣称已退款",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "评论入口定位具体评论并高亮",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "已删除评论显示提示不定位其他评论",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "病历入口定位具体记录",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "聚合消息版本变化可检测且追加不扩大已读快照",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "全部已读不覆盖较新的聚合互动",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "详情动作点击前重新取合法目标",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "单条已读携带所见版本并使用服务端剩余未读",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "旧版本已读被服务端拒绝时保留未读并提示新互动",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "商城异常退款通知明细不误称正常处理中",
+      "status": "passed",
+      "level": "module/mock"
+    },
+    {
+      "name": "新增详情模板标签闭合",
+      "status": "passed",
+      "level": "module/mock"
+    }
+  ]
+}

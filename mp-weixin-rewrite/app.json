@@ -42,7 +42,8 @@
     "pages/profile/settings/personal-info/index",
     "pages/profile/settings/account-security/index",
     "pages/profile/notifications/index",
-    "pages/profile/online-service/index"
+    "pages/profile/online-service/index",
+    "pages/profile/notifications/detail"
   ],
   "subpackages": [
     {

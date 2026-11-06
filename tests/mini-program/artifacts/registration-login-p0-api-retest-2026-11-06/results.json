@@ -1,0 +1,1052 @@
+{
+  "phase": "20-case API-created-data retest",
+  "sourceBefore": {
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/admin-permissions.js": "01bea8ee0f2544ddc442930ec62a077b3ce3e1da738572b3c6ab3bc53163dfb7",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/admin-scope.js": "3be408cabc5156486a118da1f7514a64bc9dad3ca4d7a61d98cb62deadba536c",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/alert-notifier.js": "70e518e132164747573da45e14f3dab57bcffec36e3d6a236d889abec1c81a36",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/appointment-charges.js": "aad621bc3282ca83b2996ef78f70210716464f76d48835ea072fffaeaf2f4198",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/appointment-number.js": "cdac884afcb1f12ccfbccf629ff5f3698595581bb526a3ca26bf75fdff7c6379",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/appointment-reschedule-history.js": "16022992142c868e8d1876b0db2d88e5668294e246d549d15fe7d99a150a865e",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/appointment-workflow.js": "3dc70b4870c536901f60c21604aa77e0747127b5f7728e233bff4e7507c22327",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/article-publisher.js": "95e920c846ec4a9d2bd05356b1a13be2b1d9b81fc669005a48fa015744a33506",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/async-router.js": "8087b18f715a9c70d54503f7787e213924077b5425242a1d54e4fd2ad45cf4f1",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/backend-promoter-admin.js": "6f1e0eaa587c8321d2d448f2052935725c046681a8156cd2937a11d38ca27465",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/backend-promoter-schema.js": "254606244941ddc9885a89aa3d95e9200acf9ed989e6f7eeb4a91b9f39a1aa08",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/backend-referrals.js": "41f0295ab1c77cd337ad0393d55942c192d356ddf6eafd0c10dece3368a94c32",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/backup-restore.js": "31d918a55c96c6928ad8d56faf1cb7e66c37559a59afbc2e70a2317f73fa9aee",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/brand-avatar.js": "de5562b6ebe84fffc098492b086d7f544d979eef86cd494205ddf81e464f15c0",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/check_promoter.js": "0dd87d2658b4eb33129170a6cf29f49c4061440f1340f708ef38613166308fea",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/clinical-notifications.js": "6ade0abc71213b8e4d2b35696ad8ef1b742120e3d2b57ca50527e50f531433a0",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/community-notifications.js": "ec467c184ed72962cf13b8c2b98fc18f0fa19b1830d12bf6c3c8e9f6010a811b",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/dashboard-scope.js": "ac252066f65e54e27996e9fec6c2871138f530d2a0903aecfcbe195c56ff667e",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/data-read-scope.js": "19007b103f7871444caa96c49a245ce563f8ccfc0063d1acdeb86ad459c40963",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/data-scope.js": "282964d97d6aca7beca19caeb6d7dedaf645a18c05da33b7617431a1c5792d70",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/db.js": "9b1a79f9bdd93c1a076bccf1479819c232c9370302295fbbfeefb797f38bf27d",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/delivery-schema.js": "77bf77e342b217d82d1da05d5b056c37bd8ac1765761c9ffab25d103c01b6e83",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/delivery-workflow.js": "7e95e87ff9ff1fbc290c43a2511ea887023355a8d72e71d9c27d98a02d4d9025",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/distribution-invite-qr.js": "36d20a1faae4862805f9549e4ab1b7940dd4be6478a125cd1bfc14d5eeb88bda",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/distribution-ledger.js": "ae5e938fc23af70b65fb5bcb585e62dbc1122d6719a3a654a06b2dc016c228a2",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/distribution-read-scope.js": "f8bd725b8bb3c7c85732e475c193b2cba95f7ef40e2c134151a393e1c3182508",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/distribution-relationships.js": "3f734aaf44899e85528ea545854fae652ce96e014c8540c59f02becab90ab76c",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/distribution-trends.js": "1816d4ec3929170947dbdb350c83d6eb3d6a60d7c4d98eb18eaa733efeb9987b",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/ecosystem.config.cjs": "88cf55351feb90c0008dcbe78a0c9a9d4d63fd1088f06b4cd14edd2487b9eaaf",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/fulfillment-clinical.js": "166b97025727ea3dcee5ebe33b8963bf888955df58bd3913572a02ebc1e39d79",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/fulfillment-guard.js": "1300d2a30d79563610c329bef016bc7a6266bc89f02199d3f1ac0952895abf29",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/fulfillment-treatment.js": "6a5b7de7181fc8994018902112a99c419c2066dcdd5e027a60727e00095e900a",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/helpers.js": "2942e743a85c000a16bae58ff72de9a09e19d7121cd8e5b3db16ad8cd3f568b7",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/im-socket.js": "3c54505c517d26971db6248f2328601aae47855b0c40c1214c81df9014dd2d47",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/local-dev-login.js": "e28deaf51647ab2bf7a15a16fdd99a8d9f99e140b7af4b7180659c78efb345d0",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/membership.js": "89016ecd52697be1db7a53dfe083a4291e82b75f18b3d4d52a3354bbaf533901",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/notification-center.js": "f489863adf6845057b01dedfde97c5144547bd78e614fcad1853553621a75f4a",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/notification-details.js": "66ae33b5913fc2d72c62920dc1083a2dff2e03313a05e6cc24ba219d11aae713",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/operations-report.js": "627a9eb5ef42a58c81cc215683c2e232a7131091b071812c663a79d0b6d5e50e",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/paid-fulfillment.js": "5e2f74bac09758e5dcec9960912ed65418e6191ef00d53681f8ec18ca28d7b66",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/patient-activity.js": "dd20f91914a9c79f79c02f226c4eac94cb803c0ab6ed8bac201639df6cd23880",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/patient-phone-repair.js": "43774f33a2c31563ce2bdf86258cdd9e9031c78c39a1eaef1081955f0edb5293",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/patient-profile-schema.js": "25d7786dff3854ecc5b981712ec72b0f6155e99b44f6fc23b983751de742004c",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/patientNo.js": "cc955751a42012d56e873b6231d4514de22eec9d59b020975a8e5774460224d0",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/permission-context.js": "63a6f907709f44993ab2448c02e32d833a4b4d2ea41a817766a4e0590d769603",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/permission-migration.js": "b02f10e157b2b80a95878283e72ad8c37a831492d9b80a955c9f0adaf80fb660",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/private-uploads.js": "55c7000fbd462e6439f04ae4db9a1144ae671e75cb20d9f7a3574b8fea054dc8",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/product-validation.js": "e4a231165cc1a3d5205dec37ee556ccae309dab2833374fafb255025ed676909",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/promoter-patient-scope.js": "c1dba5e59bc264d5bd2d80155ce574ce3d9251223eb321639656deeb9c870c40",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/public-urls.js": "dc20d90ee0fe877636fa6ebba110161021574c32c2a81378cc4f712763348930",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/refunds.js": "2d2c384de637603dc4743ae9a803329def53e1f6f1364fa86a6e5396a5078c94",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/routes/admin.js": "694d2dcff83e2afbbfd7c8842944404aca9d36754ae51fb4b802bf0ad8728061",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/routes/backend-promoter.js": "79440a3e189a5b944056a2f75f8734430f94c3aa107829ecb4743a8e08724f83",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/routes/client.js": "6af34c2d202f0fadb3f2b5d112aad2943ae094cc44058a51bc4f7ffce0b7d1e9",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/routes/promoter.js": "fe0b594823c7f1270ee0238bfa570a28d4f632a47f55d3b91ceaeacde7405ab7",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/runtime-safety.js": "8cf9cf76250603233bbc28e7e8df3b0999f30b3cba1b996b5378d99a416efe81",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/schema-sync.js": "1b6db556f9fb71dc204f09ee7ac8e429a011909173f7a0384103c29beee706f2",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/scratch_query_order.js": "b2a5809b82c503fd7cf158dcfe45f4f679c24678f27fc0574bdac5af3f307670",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/scratch_test_query.js": "2e7f6215b6d3271a0935380c7f6d31c3bd5611cf20606e60698404d59eddb2d3",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/scripts/schema-reference.mjs": "58d73898240e41f3a5d34748de66a5ef18f94986361bfdcc27b78c5bd4d942af",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/security-config.js": "44024d3a17ba94ea833a19f377c89b5c73c1a8c26a352eed371f40b64d962e2b",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/seed.js": "9a68c654455ea9d46c6f9406313792299daf25b880f24da78b41396c94003370",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/server.js": "7d84bc0a28853c7079fcc87065102dc7d85841d60702bd632ba2f6f246353a0b",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/temporary-runtime-cleanup/index.js": "d8bf9bcaa85ef405f76675715bb105f05d72ee72dfdbb24ca2154f38cb3091a9",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/test_invoice_api.js": "8ccb4917252ec90310c612e1ab8bff9ecc14b482a68d6fc70f1fa6ef13f781e5",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/test_promoter_details.js": "e7333af1a610f62c072045e4a2469ec20fb138f87b651949570645006f5ea5e7",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/wechat-notification-config.js": "d53db2750a41e86474215e4293eefd4d6622bcfb17528d9ac9c428234a8144dd",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/wechatMiniToken.js": "aba3fc33f64afebf4ff190e9bec381b2c49f4ab03ad3649db7dab868bbfed9a7",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/wechatPay.js": "01fddcc1dc259b18a0f401346d256178279d6e0534cf0a7d6e2908babb40a6b6",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/wechatSubscribe.js": "f8d0e0cab8f0232424d31eaa17abf2cc5bce1ddb828932440d3f388bea6e2352"
+  },
+  "database": "hanjing_test_api20_1793940097964",
+  "startedAt": "2026-11-06T04:41:37.984Z",
+  "method": "real Express + isolated MySQL; mocked WeChat upstream",
+  "results": [
+    {
+      "id": "REG-001",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "verifiedAccountAndUniqueSelf": true
+      }
+    },
+    {
+      "id": "REG-002",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "threeSequentialReloginsStable": true
+      }
+    },
+    {
+      "id": "REG-003",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/assessments/ess",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "newOpenidReusedApiCreatedPhoneAccount": true,
+        "assessmentPreserved": true,
+        "realWechatCrossIdentityPhoneAuthorizationUnverified": true
+      }
+    },
+    {
+      "id": "REG-004",
+      "result": "pending",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "pending": true,
+        "reason": "Authorized login creates verified phone; no demonstrated business route removes verification while retaining this WeChat identity.",
+        "normalApiCreatesVerifiedPhone": true
+      }
+    },
+    {
+      "id": "REG-005",
+      "result": "pending",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/user/change-phone",
+          "status": 400,
+          "businessCode": 400
+        }
+      ],
+      "observations": {
+        "pending": true,
+        "reason": "No business route demonstrated to create this existing WeChat account with empty phone; empty-number change rejected.",
+        "emptyPhoneChangeRejected": true
+      }
+    },
+    {
+      "id": "REG-006",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "PUT",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "selfPhoneSynchronized": true,
+        "allOtherSelfFieldsPreserved": true
+      }
+    },
+    {
+      "id": "REG-007",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/assessments/ess",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "mergedIntoApiCreatedTarget": true,
+        "assessmentMigrated": true,
+        "realWechatDifferentPhoneGrantsUnverified": true
+      }
+    },
+    {
+      "id": "REG-011",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "transport": "connection closed by test after registration commit"
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "networkDisconnectAfterCommit": true,
+        "retryReusedAccountAndSelf": true,
+        "scope": "controlled transport fault, not SQL-prepared state"
+      }
+    },
+    {
+      "id": "REG-012",
+      "result": "pending",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "pending": true,
+        "reason": "API concurrent requests exercised without SQL data writes; actual WeChat/client concurrent credential combination not demonstrated, so no business pass.",
+        "concurrentStatuses": [
+          200,
+          200
+        ],
+        "uniqueAccountAndRecoveryObserved": true
+      }
+    },
+    {
+      "id": "REG-013",
+      "result": "pending",
+      "backendErrors": [
+        {
+          "code": "ER_DUP_ENTRY",
+          "errno": 1062
+        }
+      ],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 500,
+          "businessCode": 500
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "pending": true,
+        "reason": "API concurrent requests exercised without SQL data writes; actual WeChat/client concurrent credential combination not demonstrated, so no business pass.",
+        "concurrentStatuses": [
+          200,
+          500
+        ],
+        "uniqueAccountAndRecoveryObserved": true
+      }
+    },
+    {
+      "id": "REG-016",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/user/family-members",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/user/family-members",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/assessments/ess",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/assessments/ess",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/assessments?patientId=:id",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "distinctIdsMapToSameOwner": true,
+        "ownAssessmentVisible": true
+      }
+    },
+    {
+      "id": "PAT-001",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "defaultsAndLinkCorrect": true
+      }
+    },
+    {
+      "id": "PAT-002",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/family-members/:id",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "singleEncryptionAndNoCiphertextLeak": true
+      }
+    },
+    {
+      "id": "PAT-003",
+      "result": "pending",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "PUT",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/assessments/ess",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "pending": true,
+        "reason": "Personal fields and API-created ESS records preserved, but existing clinical treatment records from original case not established via authorized business flow in this empty environment.",
+        "profileAndAssessmentPreserved": true,
+        "noSqlFixtures": true
+      }
+    },
+    {
+      "id": "PAT-006",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/user/family-members",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "apiCreatedFamilyReusedAsSelf": true,
+        "scope": "family endpoint permits optional storeId; UI requires store, not verified here"
+      }
+    },
+    {
+      "id": "PAT-007",
+      "result": "passed",
+      "backendErrors": [
+        {
+          "code": "",
+          "errno": null
+        }
+      ],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/user/family-members",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/assessments/ess",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/family-members/:id",
+          "status": 404,
+          "businessCode": 404
+        },
+        {
+          "method": "GET",
+          "path": "/assessments?patientId=:id",
+          "status": 500,
+          "businessCode": 500
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "foreignPatientUntouchedAndPrivate": true,
+        "assessmentDenialStatus": 500
+      }
+    },
+    {
+      "id": "PAT-008",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "PUT",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/user/family-members",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "documentedSamePhoneFamilyNotClaimed": true
+      }
+    },
+    {
+      "id": "PAT-010",
+      "result": "passed",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "PUT",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/user/family-members",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/user/family-members",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/assessments/ess",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/assessments/ess",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/family-members",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/assessments?patientId=:id",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/assessments?patientId=:id",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "businessDataOnlyViaApi": true,
+        "familyAndApiCreatedRecordsPreserved": true
+      }
+    },
+    {
+      "id": "PAT-015",
+      "result": "pending",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/user/family-members",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        }
+      ],
+      "observations": {
+        "pending": true,
+        "reason": "API can add a newer self-labelled member, but explicit self remains older; original required older unverified duplicate plus newer explicit self not reached by this sequential business path.",
+        "twoSelfLabelsObserved": true,
+        "originalHigherExplicitPointerNotReached": true,
+        "realConcurrentAuthorizationUnverified": true
+      }
+    },
+    {
+      "id": "PAT-016",
+      "result": "pending",
+      "backendErrors": [],
+      "steps": [
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "POST",
+          "path": "/auth/wx-login",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/profile",
+          "status": 200,
+          "businessCode": 0
+        },
+        {
+          "method": "GET",
+          "path": "/user/family-members/:id",
+          "status": 404,
+          "businessCode": 404
+        }
+      ],
+      "observations": {
+        "pending": true,
+        "reason": "Normal API flow keeps self pointer owned; no business route demonstrated that points it at another account. Healthy-state 404 is not the corrupt-pointer test.",
+        "healthyPointerAndForeignDenialObserved": true
+      }
+    }
+  ],
+  "cleanup": true,
+  "sourceAfter": {
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/admin-permissions.js": "01bea8ee0f2544ddc442930ec62a077b3ce3e1da738572b3c6ab3bc53163dfb7",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/admin-scope.js": "3be408cabc5156486a118da1f7514a64bc9dad3ca4d7a61d98cb62deadba536c",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/alert-notifier.js": "70e518e132164747573da45e14f3dab57bcffec36e3d6a236d889abec1c81a36",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/appointment-charges.js": "aad621bc3282ca83b2996ef78f70210716464f76d48835ea072fffaeaf2f4198",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/appointment-number.js": "cdac884afcb1f12ccfbccf629ff5f3698595581bb526a3ca26bf75fdff7c6379",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/appointment-reschedule-history.js": "16022992142c868e8d1876b0db2d88e5668294e246d549d15fe7d99a150a865e",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/appointment-workflow.js": "3dc70b4870c536901f60c21604aa77e0747127b5f7728e233bff4e7507c22327",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/article-publisher.js": "95e920c846ec4a9d2bd05356b1a13be2b1d9b81fc669005a48fa015744a33506",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/async-router.js": "8087b18f715a9c70d54503f7787e213924077b5425242a1d54e4fd2ad45cf4f1",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/backend-promoter-admin.js": "6f1e0eaa587c8321d2d448f2052935725c046681a8156cd2937a11d38ca27465",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/backend-promoter-schema.js": "254606244941ddc9885a89aa3d95e9200acf9ed989e6f7eeb4a91b9f39a1aa08",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/backend-referrals.js": "41f0295ab1c77cd337ad0393d55942c192d356ddf6eafd0c10dece3368a94c32",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/backup-restore.js": "31d918a55c96c6928ad8d56faf1cb7e66c37559a59afbc2e70a2317f73fa9aee",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/brand-avatar.js": "de5562b6ebe84fffc098492b086d7f544d979eef86cd494205ddf81e464f15c0",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/check_promoter.js": "0dd87d2658b4eb33129170a6cf29f49c4061440f1340f708ef38613166308fea",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/clinical-notifications.js": "6ade0abc71213b8e4d2b35696ad8ef1b742120e3d2b57ca50527e50f531433a0",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/community-notifications.js": "ec467c184ed72962cf13b8c2b98fc18f0fa19b1830d12bf6c3c8e9f6010a811b",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/dashboard-scope.js": "ac252066f65e54e27996e9fec6c2871138f530d2a0903aecfcbe195c56ff667e",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/data-read-scope.js": "19007b103f7871444caa96c49a245ce563f8ccfc0063d1acdeb86ad459c40963",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/data-scope.js": "282964d97d6aca7beca19caeb6d7dedaf645a18c05da33b7617431a1c5792d70",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/db.js": "9b1a79f9bdd93c1a076bccf1479819c232c9370302295fbbfeefb797f38bf27d",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/delivery-schema.js": "77bf77e342b217d82d1da05d5b056c37bd8ac1765761c9ffab25d103c01b6e83",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/delivery-workflow.js": "7e95e87ff9ff1fbc290c43a2511ea887023355a8d72e71d9c27d98a02d4d9025",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/distribution-invite-qr.js": "36d20a1faae4862805f9549e4ab1b7940dd4be6478a125cd1bfc14d5eeb88bda",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/distribution-ledger.js": "ae5e938fc23af70b65fb5bcb585e62dbc1122d6719a3a654a06b2dc016c228a2",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/distribution-read-scope.js": "f8bd725b8bb3c7c85732e475c193b2cba95f7ef40e2c134151a393e1c3182508",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/distribution-relationships.js": "3f734aaf44899e85528ea545854fae652ce96e014c8540c59f02becab90ab76c",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/distribution-trends.js": "1816d4ec3929170947dbdb350c83d6eb3d6a60d7c4d98eb18eaa733efeb9987b",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/ecosystem.config.cjs": "88cf55351feb90c0008dcbe78a0c9a9d4d63fd1088f06b4cd14edd2487b9eaaf",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/fulfillment-clinical.js": "166b97025727ea3dcee5ebe33b8963bf888955df58bd3913572a02ebc1e39d79",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/fulfillment-guard.js": "1300d2a30d79563610c329bef016bc7a6266bc89f02199d3f1ac0952895abf29",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/fulfillment-treatment.js": "6a5b7de7181fc8994018902112a99c419c2066dcdd5e027a60727e00095e900a",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/helpers.js": "2942e743a85c000a16bae58ff72de9a09e19d7121cd8e5b3db16ad8cd3f568b7",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/im-socket.js": "3c54505c517d26971db6248f2328601aae47855b0c40c1214c81df9014dd2d47",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/local-dev-login.js": "e28deaf51647ab2bf7a15a16fdd99a8d9f99e140b7af4b7180659c78efb345d0",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/membership.js": "89016ecd52697be1db7a53dfe083a4291e82b75f18b3d4d52a3354bbaf533901",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/notification-center.js": "f489863adf6845057b01dedfde97c5144547bd78e614fcad1853553621a75f4a",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/notification-details.js": "66ae33b5913fc2d72c62920dc1083a2dff2e03313a05e6cc24ba219d11aae713",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/operations-report.js": "627a9eb5ef42a58c81cc215683c2e232a7131091b071812c663a79d0b6d5e50e",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/paid-fulfillment.js": "5e2f74bac09758e5dcec9960912ed65418e6191ef00d53681f8ec18ca28d7b66",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/patient-activity.js": "dd20f91914a9c79f79c02f226c4eac94cb803c0ab6ed8bac201639df6cd23880",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/patient-phone-repair.js": "43774f33a2c31563ce2bdf86258cdd9e9031c78c39a1eaef1081955f0edb5293",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/patient-profile-schema.js": "25d7786dff3854ecc5b981712ec72b0f6155e99b44f6fc23b983751de742004c",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/patientNo.js": "cc955751a42012d56e873b6231d4514de22eec9d59b020975a8e5774460224d0",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/permission-context.js": "63a6f907709f44993ab2448c02e32d833a4b4d2ea41a817766a4e0590d769603",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/permission-migration.js": "b02f10e157b2b80a95878283e72ad8c37a831492d9b80a955c9f0adaf80fb660",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/private-uploads.js": "55c7000fbd462e6439f04ae4db9a1144ae671e75cb20d9f7a3574b8fea054dc8",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/product-validation.js": "e4a231165cc1a3d5205dec37ee556ccae309dab2833374fafb255025ed676909",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/promoter-patient-scope.js": "c1dba5e59bc264d5bd2d80155ce574ce3d9251223eb321639656deeb9c870c40",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/public-urls.js": "dc20d90ee0fe877636fa6ebba110161021574c32c2a81378cc4f712763348930",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/refunds.js": "2d2c384de637603dc4743ae9a803329def53e1f6f1364fa86a6e5396a5078c94",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/routes/admin.js": "694d2dcff83e2afbbfd7c8842944404aca9d36754ae51fb4b802bf0ad8728061",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/routes/backend-promoter.js": "79440a3e189a5b944056a2f75f8734430f94c3aa107829ecb4743a8e08724f83",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/routes/client.js": "6af34c2d202f0fadb3f2b5d112aad2943ae094cc44058a51bc4f7ffce0b7d1e9",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/routes/promoter.js": "fe0b594823c7f1270ee0238bfa570a28d4f632a47f55d3b91ceaeacde7405ab7",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/runtime-safety.js": "8cf9cf76250603233bbc28e7e8df3b0999f30b3cba1b996b5378d99a416efe81",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/schema-sync.js": "1b6db556f9fb71dc204f09ee7ac8e429a011909173f7a0384103c29beee706f2",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/scratch_query_order.js": "b2a5809b82c503fd7cf158dcfe45f4f679c24678f27fc0574bdac5af3f307670",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/scratch_test_query.js": "2e7f6215b6d3271a0935380c7f6d31c3bd5611cf20606e60698404d59eddb2d3",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/scripts/schema-reference.mjs": "58d73898240e41f3a5d34748de66a5ef18f94986361bfdcc27b78c5bd4d942af",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/security-config.js": "44024d3a17ba94ea833a19f377c89b5c73c1a8c26a352eed371f40b64d962e2b",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/seed.js": "9a68c654455ea9d46c6f9406313792299daf25b880f24da78b41396c94003370",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/server.js": "7d84bc0a28853c7079fcc87065102dc7d85841d60702bd632ba2f6f246353a0b",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/temporary-runtime-cleanup/index.js": "d8bf9bcaa85ef405f76675715bb105f05d72ee72dfdbb24ca2154f38cb3091a9",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/test_invoice_api.js": "8ccb4917252ec90310c612e1ab8bff9ecc14b482a68d6fc70f1fa6ef13f781e5",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/test_promoter_details.js": "e7333af1a610f62c072045e4a2469ec20fb138f87b651949570645006f5ea5e7",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/wechat-notification-config.js": "d53db2750a41e86474215e4293eefd4d6622bcfb17528d9ac9c428234a8144dd",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/wechatMiniToken.js": "aba3fc33f64afebf4ff190e9bec381b2c49f4ab03ad3649db7dab868bbfed9a7",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/wechatPay.js": "01fddcc1dc259b18a0f401346d256178279d6e0534cf0a7d6e2908babb40a6b6",
+    "file:///D:/WorkSpace/Games/hanjing/hanjing/_codex-tmp/registration-api20-source-20261106/wechatSubscribe.js": "f8d0e0cab8f0232424d31eaa17abf2cc5bce1ddb828932440d3f388bea6e2352"
+  },
+  "sourceStable": true,
+  "finishedAt": "2026-11-06T04:42:39.992Z",
+  "passed": 13,
+  "pending": 7,
+  "directBusinessSqlWrites": 0,
+  "failed": 0
+}

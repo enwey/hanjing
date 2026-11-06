@@ -101,18 +101,24 @@ function handleBack() {
   navigateToParent(router, route, '/promoter')
 }
 
-async function handleFreeze() {
-  const nextStatus = promoter.value.status === 'active' ? 'frozen' : 'active'
+const statusVisible = ref(false), statusReason = ref(''), statusBusy = ref(false)
+function handleFreeze() { statusReason.value = ''; statusVisible.value = true }
+async function confirmStatus() {
+  if (statusBusy.value) return
+  if (promoter.value.status === 'active' && !statusReason.value.trim()) return MessagePlugin.warning('请填写停用原因')
+  statusBusy.value = true
+  const nextStatus = promoter.value.status === 'active' ? 'disabled' : 'active'
   try {
-    const res: any = await request.put(`/api/admin/distribution/promoters/${distributorId.value}/status`, { status: nextStatus })
+    const res: any = await request.put(`/api/admin/distribution/promoters/${distributorId.value}/status`, { status: nextStatus, reason: statusReason.value.trim() })
     if (res.code === 200) {
       promoter.value.status = nextStatus
+      statusVisible.value = false
       MessagePlugin.success(nextStatus === 'active' ? '账号已成功解冻' : '账号已成功冻结')
     }
   } catch (error) {
     console.error(error)
     MessagePlugin.error('修改状态失败')
-  }
+  } finally { statusBusy.value = false }
 }
 
 function handleEdit() {
@@ -357,6 +363,7 @@ onMounted(() => {
         </div>
       </div>
     </div>
+    <t-dialog v-model:visible="statusVisible" :header="promoter.status === 'active' ? '停用推广资格' : '启用推广资格'" width="480px" :confirm-btn="{content:'确认',loading:statusBusy}" @confirm="confirmStatus"><t-form label-align="top"><t-form-item :label="promoter.status === 'active' ? '停用原因' : '说明（选填）'"><t-textarea v-model="statusReason" :maxlength="500" placeholder="此说明将通知关联的小程序账号" /></t-form-item></t-form></t-dialog>
   </div>
 </template>
 

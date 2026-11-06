@@ -1,0 +1,1186 @@
+{
+  "total": 235,
+  "categories": {
+    "B": 68,
+    "R": 108,
+    "E": 29,
+    "U": 30
+  },
+  "records": {
+    "AG-001": {
+      "category": "B",
+      "businessPath": "首次从个人中心打开登录页，不授权；点击未勾选按钮",
+      "limitation": "只记录UI/请求；无需预置账号表"
+    },
+    "AG-002": {
+      "category": "B",
+      "businessPath": "页面勾选后取消，再点击",
+      "limitation": "同意状态由控件产生，不改页面内存模拟正常操作"
+    },
+    "AG-003": {
+      "category": "R",
+      "businessPath": "在未同意页面注入成功回调",
+      "limitation": "防绕过健壮性，伪造回调不是正常微信流程"
+    },
+    "AG-004": {
+      "category": "B",
+      "businessPath": "从登录页打开用户协议并返回",
+      "limitation": "检查链接内容与勾选状态，不自动视为同意"
+    },
+    "AG-005": {
+      "category": "B",
+      "businessPath": "从登录页打开隐私政策并返回",
+      "limitation": "与微信原生隐私指引分开"
+    },
+    "AG-006": {
+      "category": "E",
+      "businessPath": "使用真实微信隐私待授权状态，弹窗同意",
+      "limitation": "需真机/微信能力，不用改缓存假造授权状态"
+    },
+    "AG-007": {
+      "category": "E",
+      "businessPath": "真实微信隐私待授权时拒绝",
+      "limitation": "未发生真实授权拒绝不得标通过"
+    },
+    "AG-008": {
+      "category": "E",
+      "businessPath": "在真实拒绝后重新允许",
+      "limitation": "前置拒绝也必须有实测证据"
+    },
+    "AG-009": {
+      "category": "E",
+      "businessPath": "真实已同意隐私的微信再次进页",
+      "limitation": "不能用模拟getPrivacySetting替代"
+    },
+    "AG-010": {
+      "category": "R",
+      "businessPath": "正常进入弹窗后令openPrivacyContract失败",
+      "limitation": "故障注入结果单列，不推断普通路径一定报错"
+    },
+    "AG-011": {
+      "category": "E",
+      "businessPath": "使用确实不支持openPrivacyContract的受支持旧版本",
+      "limitation": "先确定最低版本Q05；移除函数仅是健壮性检查"
+    },
+    "AG-012": {
+      "category": "U",
+      "businessPath": "找出业务中不带privacyPopup但触发隐私能力的页面",
+      "limitation": "原仅删除组件未证明当前产品存在该入口"
+    },
+    "AG-013": {
+      "category": "U",
+      "businessPath": "在上一项真实页面兜底中同意",
+      "limitation": "必须先证明AG-012前置可达"
+    },
+    "AG-014": {
+      "category": "R",
+      "businessPath": "触发兜底后令系统showModal调用失败",
+      "limitation": "系统故障边界；不作正常用户路径证据"
+    },
+    "WX-001": {
+      "category": "E",
+      "businessPath": "新测试微信在原生面板授权当前号码",
+      "limitation": "必须真机及实际微信凭证，模拟接口仅验证服务端"
+    },
+    "WX-002": {
+      "category": "E",
+      "businessPath": "原生面板选择其他已验证号码",
+      "limitation": "先确认当前微信面板实际提供该能力及成功凭证"
+    },
+    "WX-003": {
+      "category": "E",
+      "businessPath": "点击手机号授权后取消",
+      "limitation": "取消动作由真实面板产生"
+    },
+    "WX-004": {
+      "category": "E",
+      "businessPath": "真实取消后再次允许",
+      "limitation": "不能复用失效code假造真实授权"
+    },
+    "WX-005": {
+      "category": "R",
+      "businessPath": "在实际页面处理中注入binderror",
+      "limitation": "错误回调边界，不证明某特定errno会自然出现"
+    },
+    "WX-006": {
+      "category": "R",
+      "businessPath": "向授权处理器提供无detail回调",
+      "limitation": "结构健壮性，非已证实微信响应格式"
+    },
+    "WX-007": {
+      "category": "R",
+      "businessPath": "提供errMsg为ok但缺code的回调",
+      "limitation": "矛盾响应防御测试，正常流程可达性未证明"
+    },
+    "WX-008": {
+      "category": "R",
+      "businessPath": "正常点登录后模拟wx.login失败",
+      "limitation": "设备/网络失败边界，需单列故障来源"
+    },
+    "WX-009": {
+      "category": "R",
+      "businessPath": "模拟wx.login成功但不带code",
+      "limitation": "响应健壮性，不能当真实微信签发证据"
+    },
+    "WX-010": {
+      "category": "R",
+      "businessPath": "身份交换上游返回errcode",
+      "limitation": "外部故障注入，业务账号通过接口准备"
+    },
+    "WX-011": {
+      "category": "R",
+      "businessPath": "模拟身份交换200缺openid",
+      "limitation": "上游异常格式，不算正常用户状态"
+    },
+    "WX-012": {
+      "category": "R",
+      "businessPath": "模拟微信上游非JSON响应",
+      "limitation": "外部协议边界"
+    },
+    "WX-013": {
+      "category": "R",
+      "businessPath": "上游token失效一次后重取成功",
+      "limitation": "故障/重试检查，不能直接改用户状态"
+    },
+    "WX-014": {
+      "category": "R",
+      "businessPath": "失效token刷新后仍失败",
+      "limitation": "上游重试耗尽，不虚构真实发生率"
+    },
+    "WX-015": {
+      "category": "R",
+      "businessPath": "上游phone_info无号码",
+      "limitation": "协议异常健壮性；不据此证明正常可注册空号"
+    },
+    "WX-016": {
+      "category": "R",
+      "businessPath": "上游返回非法号码",
+      "limitation": "外部无效数据防御，不造患者记录"
+    },
+    "WX-017": {
+      "category": "R",
+      "businessPath": "仅返回phoneNumber合法字段",
+      "limitation": "协议兼容检查；真实微信字段取样待证"
+    },
+    "WX-018": {
+      "category": "R",
+      "businessPath": "隔离进程不提供微信配置再请求",
+      "limitation": "部署配置故障，不能当正常注册场景"
+    },
+    "REG-001": {
+      "category": "B",
+      "businessPath": "新身份POST wx-login，GET profile及family-members",
+      "limitation": "空业务库开始；账号/本人仅由认证接口创建"
+    },
+    "REG-002": {
+      "category": "B",
+      "businessPath": "REG-001账号重新获取凭证并顺序登录",
+      "limitation": "页面退出未执行时只判接口复用，不宣称UI退出验收"
+    },
+    "REG-003": {
+      "category": "B",
+      "businessPath": "先用身份A注册手机号P，再身份B授权P",
+      "limitation": "接口创建既有账号；跨微信实际授权仍需真机，不预插users"
+    },
+    "REG-004": {
+      "category": "U",
+      "businessPath": "先通过合法业务入口得到同openid且号码未验证账号",
+      "limitation": "当前授权登录会设置验证时间；未找到产生路径，不置空时间戳"
+    },
+    "REG-005": {
+      "category": "U",
+      "businessPath": "通过合法业务入口产生同openid但无phone账号",
+      "limitation": "当前注册必须授权手机号；不使用local身份冒充真实微信"
+    },
+    "REG-006": {
+      "category": "B",
+      "businessPath": "注册A号码，PUT profile完善，再授权未占用B号码",
+      "limitation": "资料和患者ID比较均来自业务接口生成的数据"
+    },
+    "REG-007": {
+      "category": "B",
+      "businessPath": "分别注册S/T，S授权T号码，读迁移记录",
+      "limitation": "记录通过ESS等业务接口创建；换绑真实授权另验"
+    },
+    "REG-008": {
+      "category": "R",
+      "businessPath": "首次身份交换仅本次附带unionid",
+      "limitation": "上游协议分支；不直接编辑users.unionid"
+    },
+    "REG-009": {
+      "category": "R",
+      "businessPath": "正常有unionid后上游本次省略该字段",
+      "limitation": "模拟外部字段缺省，不等于真实unionid发生变更"
+    },
+    "REG-010": {
+      "category": "U",
+      "businessPath": "证明同一应用/微信身份的unionid会合法改变",
+      "limitation": "未证明业务或微信协议允许；不能以模拟不同值确认缺陷"
+    },
+    "REG-011": {
+      "category": "R",
+      "businessPath": "让真实注册提交后断开HTTP连接，重新授权",
+      "limitation": "实际网络故障回放；不先SQL创建已提交账号"
+    },
+    "REG-012": {
+      "category": "U",
+      "businessPath": "两份实际有效同openid微信授权凭证并发登录",
+      "limitation": "可发API并发，但真实客户端/凭证组合未证明，不算普通业务通过"
+    },
+    "REG-013": {
+      "category": "U",
+      "businessPath": "两个微信真实授权同号并发登录",
+      "limitation": "真实授权组合和手机号关联规则Q01须证明"
+    },
+    "REG-014": {
+      "category": "R",
+      "businessPath": "真实注册过程中注入数据库写失败并恢复",
+      "limitation": "基础设施故障，仅拦截失败，禁止预写半成品用户"
+    },
+    "REG-015": {
+      "category": "R",
+      "businessPath": "真实注册会员同步失败后恢复重试",
+      "limitation": "由实际请求到达同步节点，不手造会员表"
+    },
+    "REG-016": {
+      "category": "B",
+      "businessPath": "注册、添加成员/评估后重新登录，核对实际归属",
+      "limitation": "profile.id为患者ID，按user_id映射而非强制两类ID相等"
+    },
+    "PAT-001": {
+      "category": "B",
+      "businessPath": "新微信经wx-login自动建档，GET本人和成员",
+      "limitation": "仅观察系统生成编号，不ALTER患者号计数制造测试前提"
+    },
+    "PAT-002": {
+      "category": "B",
+      "businessPath": "新注册后读取加密列并调用患者详情",
+      "limitation": "SQL仅只读；允许隔离测试密钥解密核对，不伪造密文"
+    },
+    "PAT-003": {
+      "category": "B",
+      "businessPath": "注册后PUT profile并通过后台合法诊疗流程建治疗，再登录",
+      "limitation": "个人资料可由接口创建；若没有合法诊疗创建条件，完整用例待验证"
+    },
+    "PAT-004": {
+      "category": "U",
+      "businessPath": "找到本人phone为空且账号仍可授权的业务形成路径",
+      "limitation": "不直接UPDATE patients SET phone=NULL"
+    },
+    "PAT-005": {
+      "category": "B",
+      "businessPath": "首次注册保留系统占位姓名，再经资料入口修改昵称",
+      "limitation": "昵称更新何时同步本人需按接口实际行为逐步留证"
+    },
+    "PAT-006": {
+      "category": "B",
+      "businessPath": "注册号码A，API添加无证件成员号码B，再授权B",
+      "limitation": "原前置必须这样产生；API可选storeId不等于前端表单已验证"
+    },
+    "PAT-007": {
+      "category": "B",
+      "businessPath": "账号F通过API添加号码P的成员，再新账号授权P",
+      "limitation": "他人档案与评估全部由F接口建立；实际做越权读取"
+    },
+    "PAT-008": {
+      "category": "B",
+      "businessPath": "经profile完善本人证件，添加同号不同证件成员，再登录",
+      "limitation": "不直接插入多份患者；保留与目标身份不同的证件"
+    },
+    "PAT-009": {
+      "category": "U",
+      "businessPath": "通过已上线业务路径得到已有用户但无本人",
+      "limitation": "当前注册会自动建本人；不删除患者来制造状态"
+    },
+    "PAT-010": {
+      "category": "B",
+      "businessPath": "注册及添加配偶/子女，通过评估接口建各自记录，再登录",
+      "limitation": "如要求治疗记录需另外走合法诊疗流程，不拿空表宣称治疗通过"
+    },
+    "PAT-011": {
+      "category": "R",
+      "businessPath": "让编号生成器产生一次真实已存在号的候选",
+      "limitation": "预先占用号须由注册接口生成；候选碰撞注入为健壮性"
+    },
+    "PAT-012": {
+      "category": "R",
+      "businessPath": "真实注册到patients写入时故障，再重新授权",
+      "limitation": "不通过SQL先放用户再模拟创建"
+    },
+    "PAT-013": {
+      "category": "R",
+      "businessPath": "实际注册到关联写入时故障，恢复重试",
+      "limitation": "前半状态须由同次请求形成"
+    },
+    "PAT-014": {
+      "category": "R",
+      "businessPath": "真实注册到self_patient_id写入时故障",
+      "limitation": "不直接设置悬挂指针；仅测试故障恢复"
+    },
+    "PAT-015": {
+      "category": "U",
+      "businessPath": "先经业务路径产生较早旧self和较新显式本人",
+      "limitation": "SQL原前置撤销；并发变体仅API观察，不冒充原顺序业务可达"
+    },
+    "PAT-016": {
+      "category": "U",
+      "businessPath": "证明业务入口能把本人指针置为他人患者",
+      "limitation": "健康数据越权404不等于该损坏状态已验证"
+    },
+    "PAT-017": {
+      "category": "U",
+      "businessPath": "找到仍受支持旧客户端/迁移实际产生无指针self的入口",
+      "limitation": "旧数据假设需迁移证据或接口历史流程，不手置NULL"
+    },
+    "PAT-018": {
+      "category": "U",
+      "businessPath": "证明仅self关联而患者relation非self的业务路径",
+      "limitation": "原SQL构造不证明当前版本可产生"
+    },
+    "PAT-019": {
+      "category": "U",
+      "businessPath": "找到能删本人但保留用户指针的真实业务链",
+      "limitation": "删除本人API通常受限；不能DELETE造悬挂"
+    },
+    "PAT-020": {
+      "category": "U",
+      "businessPath": "通过页面/业务API产生多个本账号同号无证件患者",
+      "limitation": "需同时记录创建与关系；并发模拟凭证仅条件性证据"
+    },
+    "PAT-021": {
+      "category": "U",
+      "businessPath": "通过合法入口建占位本人及可匹配目标和临床记录",
+      "limitation": "先证明两档并存及重绑入口，不用插入病历"
+    },
+    "PAT-022": {
+      "category": "U",
+      "businessPath": "通过业务流程产生同一本人被其他账号合法引用",
+      "limitation": "当前所有权限制下共享是否允许未证明"
+    },
+    "MER-001": {
+      "category": "B",
+      "businessPath": "业务接口分别注册S/T并建各自记录，S授权T号",
+      "limitation": "合并数据必须来自诊疗/订单/评估等实际入口"
+    },
+    "MER-002": {
+      "category": "U",
+      "businessPath": "通过支持的流程产生无本人目标T",
+      "limitation": "不直接删除T本人；有本人源S不能替代缺本人前提"
+    },
+    "MER-003": {
+      "category": "U",
+      "businessPath": "通过支持的流程产生无本人源S",
+      "limitation": "不直接删除S本人"
+    },
+    "MER-004": {
+      "category": "U",
+      "businessPath": "通过支持的流程产生S/T都无本人",
+      "limitation": "两个账号都需可达性证据"
+    },
+    "MER-005": {
+      "category": "U",
+      "businessPath": "通过业务关联产生被他人合法引用的源本人",
+      "limitation": "所有权/共享规则待证"
+    },
+    "MER-006": {
+      "category": "B",
+      "businessPath": "S注册并通过成员接口建家庭成员及记录，再合并T",
+      "limitation": "合并后必须鉴权读取成员，不仅核对SQL归属"
+    },
+    "MER-007": {
+      "category": "U",
+      "businessPath": "先证明S/T可合法关联同一个非本人患者",
+      "limitation": "不能给两账号直接插入同一patient链接"
+    },
+    "MER-008": {
+      "category": "B",
+      "businessPath": "通过订单业务与后台合法发券给S/T，再合并",
+      "limitation": "需真实有权限后台会话，不自签管理员或SQL发券"
+    },
+    "MER-009": {
+      "category": "B",
+      "businessPath": "通过预约、ESS/录音提交形成S记录，再合并",
+      "limitation": "不能用直接插入业务表充当预约/录音成功"
+    },
+    "MER-010": {
+      "category": "B",
+      "businessPath": "后台正常看诊、治疗、随访流程形成S记录，再合并",
+      "limitation": "没有合法后台环境则未测试，不以seed诊疗记录替代"
+    },
+    "MER-011": {
+      "category": "B",
+      "businessPath": "业务设备维护/反馈、通知触发入口建S数据，再合并",
+      "limitation": "通知应由真实业务事件触发，不直接插表"
+    },
+    "MER-012": {
+      "category": "U",
+      "businessPath": "通过正常积分/提现流程形成流水，并明确余额合并规则",
+      "limitation": "Q02未定义余额权益判定，不能只迁移流水即判全部通过"
+    },
+    "MER-013": {
+      "category": "R",
+      "businessPath": "业务API创建完整S/T后合并事务中途故障",
+      "limitation": "故障恢复检查，不预写半迁移状态"
+    },
+    "MER-014": {
+      "category": "U",
+      "businessPath": "证明有合法账号删除入口并可与合并并发",
+      "limitation": "未找到删除账号路径；不SQL删账号"
+    },
+    "MER-015": {
+      "category": "B",
+      "businessPath": "由正常S/T授权合并完成后多次重新登录",
+      "limitation": "以前置合并API成功证据为准"
+    },
+    "MER-016": {
+      "category": "U",
+      "businessPath": "真实授权支持两份合并请求并发到达",
+      "limitation": "可运行接口压力检查，真实授权并发前提未证"
+    },
+    "API-001": {
+      "category": "R",
+      "businessPath": "POST wx-login缺code",
+      "limitation": "明确安全输入测试，不称正常用户操作"
+    },
+    "API-002": {
+      "category": "R",
+      "businessPath": "POST wx-login code为空",
+      "limitation": "测试输入校验，不造用户数据"
+    },
+    "API-003": {
+      "category": "R",
+      "businessPath": "POST code为空白",
+      "limitation": "拒绝mock回退，独立安全边界"
+    },
+    "API-004": {
+      "category": "R",
+      "businessPath": "POST code为数字",
+      "limitation": "类型安全测试"
+    },
+    "API-005": {
+      "category": "R",
+      "businessPath": "POST code为对象",
+      "limitation": "结构安全测试"
+    },
+    "API-006": {
+      "category": "R",
+      "businessPath": "POST code为数组",
+      "limitation": "结构安全测试"
+    },
+    "API-007": {
+      "category": "R",
+      "businessPath": "POST有效code但phoneCode空白",
+      "limitation": "安全输入，微信有效code真机来源仍分开"
+    },
+    "API-008": {
+      "category": "R",
+      "businessPath": "POST phoneCode为对象",
+      "limitation": "类型安全，不用直接写phone密文"
+    },
+    "API-009": {
+      "category": "R",
+      "businessPath": "发送超长code/phoneCode",
+      "limitation": "输入容量测试，不能把64KiB当业务长度约定"
+    },
+    "API-010": {
+      "category": "R",
+      "businessPath": "模拟能力关闭时提交明文号码当phoneCode",
+      "limitation": "明确绕过授权攻击测试，不普通业务"
+    },
+    "API-011": {
+      "category": "R",
+      "businessPath": "先API注册B/F，再请求额外伪造userId/openid/phone",
+      "limitation": "账号由接口生成；伪造字段属于安全检查"
+    },
+    "API-012": {
+      "category": "E",
+      "businessPath": "真实微信授权code自然过期后提交",
+      "limitation": "模拟过期errcode仅健壮性，不证明真实有效期"
+    },
+    "API-013": {
+      "category": "E",
+      "businessPath": "真实成功消费code后原样重放",
+      "limitation": "需要真实微信一次性凭证；mock必须不能掩盖重放"
+    },
+    "API-014": {
+      "category": "E",
+      "businessPath": "真实phoneCode消费后搭配新code再重放",
+      "limitation": "不由测试服务任意宣称凭证已消费"
+    },
+    "API-015": {
+      "category": "E",
+      "businessPath": "两个实际AppID签发凭证交叉调用",
+      "limitation": "需两套有权限测试应用，未获得不能伪造完成"
+    },
+    "API-016": {
+      "category": "R",
+      "businessPath": "先真实业务API获取B令牌，再篡改签名",
+      "limitation": "攻击输入允许，底层用户数据不SQL造"
+    },
+    "API-017": {
+      "category": "R",
+      "businessPath": "API注册B/F后篡改B令牌主体但不重签",
+      "limitation": "不生成自签真实用户令牌冒充合法会话"
+    },
+    "API-018": {
+      "category": "R",
+      "businessPath": "向实际路由提交损坏JSON",
+      "limitation": "协议输入健壮性"
+    },
+    "API-019": {
+      "category": "B",
+      "businessPath": "真实注册/错误请求产生日志，再查界面及脱敏证据",
+      "limitation": "不为了验证泄露把真实密钥写进报告"
+    },
+    "API-020": {
+      "category": "R",
+      "businessPath": "POST phoneCode数组",
+      "limitation": "结构安全输入"
+    },
+    "API-021": {
+      "category": "R",
+      "businessPath": "POST phoneCode数字",
+      "limitation": "类型安全输入"
+    },
+    "API-022": {
+      "category": "R",
+      "businessPath": "未知身份提交phoneCode=null",
+      "limitation": "未知身份由新测试微信表示；检查拒绝而非创建空号账号"
+    },
+    "RESP-001": {
+      "category": "B",
+      "businessPath": "业务注册/登录，正常资料接口完成",
+      "limitation": "账号和资料实际API生成，不直接stub成功user对象当端到端"
+    },
+    "RESP-002": {
+      "category": "R",
+      "businessPath": "登录前关闭网络再恢复",
+      "limitation": "故障操作由网络层产生，不手造认证失败数据"
+    },
+    "RESP-003": {
+      "category": "R",
+      "businessPath": "在真实登录链路阻断响应直到超时再恢复",
+      "limitation": "网络健壮性，明确注入点"
+    },
+    "RESP-004": {
+      "category": "R",
+      "businessPath": "实际认证请求经过代理返回500",
+      "limitation": "仅故障恢复，不证明生产自然500"
+    },
+    "RESP-005": {
+      "category": "R",
+      "businessPath": "限流网关实际达到阈值或独立注入429",
+      "limitation": "Q04阈值未定义；注入429只算处理逻辑"
+    },
+    "RESP-006": {
+      "category": "R",
+      "businessPath": "模拟认证200但业务失败",
+      "limitation": "矛盾响应防御，不普通业务成功返回"
+    },
+    "RESP-007": {
+      "category": "R",
+      "businessPath": "模拟认证200空体",
+      "limitation": "响应健壮性"
+    },
+    "RESP-008": {
+      "category": "R",
+      "businessPath": "模拟成功user缺access_token",
+      "limitation": "无效响应防御，不先在库造半登录"
+    },
+    "RESP-009": {
+      "category": "R",
+      "businessPath": "模拟合法令牌但无user，并请求真实资料",
+      "limitation": "令牌来源须业务API，不自签普通用户冒充合法登录"
+    },
+    "RESP-010": {
+      "category": "R",
+      "businessPath": "认证成功后阻断资料请求",
+      "limitation": "实际账号已通过认证API产生"
+    },
+    "RESP-011": {
+      "category": "R",
+      "businessPath": "认证成功后资料服务500",
+      "limitation": "资料故障边界，和认证失败分开"
+    },
+    "RESP-012": {
+      "category": "R",
+      "businessPath": "业务资料401后续期及重试仍401",
+      "limitation": "从真实会话构造拒绝响应，不直接篡改账号归属"
+    },
+    "RESP-013": {
+      "category": "B",
+      "businessPath": "在慢请求期间实际快速点击按钮",
+      "limitation": "只能以真实页面调用次数判UI防抖；直接连发API不等价"
+    },
+    "RESP-014": {
+      "category": "R",
+      "businessPath": "重复投递手机号成功回调",
+      "limitation": "微信是否重复投递未知；单列回调幂等防御"
+    },
+    "RESP-015": {
+      "category": "B",
+      "businessPath": "成功提示到跳转之间再次点击按钮",
+      "limitation": "真实页面定时流程，不重写data.submitting"
+    },
+    "RESP-016": {
+      "category": "R",
+      "businessPath": "认证故障一次后恢复并重新授权",
+      "limitation": "故障产生于代理/网络，不SQL造失败账号"
+    },
+    "RESP-017": {
+      "category": "R",
+      "businessPath": "挂起诊断请求但认证服务正常",
+      "limitation": "日志服务故障，不真实业务状态"
+    },
+    "RESP-018": {
+      "category": "R",
+      "businessPath": "诊断Promise拒绝",
+      "limitation": "仅模块健壮性"
+    },
+    "RESP-019": {
+      "category": "R",
+      "businessPath": "诊断reportNow同步抛错",
+      "limitation": "仅模块健壮性"
+    },
+    "RESP-020": {
+      "category": "R",
+      "businessPath": "响应超过120字符错误",
+      "limitation": "外部异常文案边界，不认为正常接口必返回这种文案"
+    },
+    "RESP-021": {
+      "category": "B",
+      "businessPath": "账号经正常注册及后台会员业务赋予权益后登录",
+      "limitation": "需要会员创建路径证据，按实际有效期判定"
+    },
+    "RESP-022": {
+      "category": "B",
+      "businessPath": "正常业务建立/停用推广关系后分别登录",
+      "limitation": "推广资格通过业务入口产生，不SQL开关status"
+    },
+    "RESP-023": {
+      "category": "B",
+      "businessPath": "资料页正常上传头像或不设置，再登录",
+      "limitation": "404头像须真实删除/失效来源或单列资源故障"
+    },
+    "RESP-024": {
+      "category": "R",
+      "businessPath": "模拟user.id与合法令牌主体冲突",
+      "limitation": "异常服务响应防串号，不证明业务会签错身份"
+    },
+    "NAV-001": {
+      "category": "B",
+      "businessPath": "个人中心正常点击登录，无redirect",
+      "limitation": "不预置页面路由数据"
+    },
+    "NAV-002": {
+      "category": "B",
+      "businessPath": "预约Tab触发登录后返回",
+      "limitation": "用真实入口生成redirect；手工参数另列输入边界"
+    },
+    "NAV-003": {
+      "category": "B",
+      "businessPath": "业务详情页触发登录并带必要参数",
+      "limitation": "从实际页面保存回跳来源"
+    },
+    "NAV-004": {
+      "category": "R",
+      "businessPath": "向登录路由传外部URL",
+      "limitation": "路由安全输入，不当普通页面入口"
+    },
+    "NAV-005": {
+      "category": "R",
+      "businessPath": "传非pages路径",
+      "limitation": "路由参数校验"
+    },
+    "NAV-006": {
+      "category": "R",
+      "businessPath": "传损坏URL编码",
+      "limitation": "输入健壮性"
+    },
+    "NAV-007": {
+      "category": "R",
+      "businessPath": "传redirect为登录页自身",
+      "limitation": "循环跳转防御；需另确认产品会否生成该参数"
+    },
+    "NAV-008": {
+      "category": "R",
+      "businessPath": "传不存在的内部页并触发路由失败",
+      "limitation": "失效链接边界，不造正常入口"
+    },
+    "NAV-009": {
+      "category": "B",
+      "businessPath": "实际从其他页打开登录后返回",
+      "limitation": "正常页面栈产生，不伪造getCurrentPages"
+    },
+    "NAV-010": {
+      "category": "R",
+      "businessPath": "实际navigateBack失败再走back兜底",
+      "limitation": "故障路径；不得只模拟失败就认定真实页面栈异常"
+    },
+    "NAV-011": {
+      "category": "B",
+      "businessPath": "从分享/扫码单页进入登录，back指向实际详情",
+      "limitation": "需入口链接真实存在，保留参数"
+    },
+    "NAV-012": {
+      "category": "B",
+      "businessPath": "从真实业务页形成lastRoute后单页认证返回",
+      "limitation": "未实测relaunch前后lastRoute只算候选"
+    },
+    "NAV-013": {
+      "category": "B",
+      "businessPath": "从冷启动登录入口返回首页",
+      "limitation": "验证正常默认目标，空目标由入口产生"
+    },
+    "NAV-014": {
+      "category": "B",
+      "businessPath": "点击授权后立即返回，在wx.login前离页",
+      "limitation": "用真实生命周期/请求延迟形成时序，不手动设_unloaded当UI证据"
+    },
+    "NAV-015": {
+      "category": "B",
+      "businessPath": "wx.login等待期间返回",
+      "limitation": "微信回调时序实测，模拟只作逻辑证据"
+    },
+    "NAV-016": {
+      "category": "B",
+      "businessPath": "认证请求等待期间离页",
+      "limitation": "可经网络延迟后真实返回形成"
+    },
+    "NAV-017": {
+      "category": "B",
+      "businessPath": "资料请求等待期间离页",
+      "limitation": "先业务认证，再延迟资料和真实离页"
+    },
+    "NAV-018": {
+      "category": "B",
+      "businessPath": "成功提示后跳转定时器前返回",
+      "limitation": "真实点击和时间，避免改定时器语义"
+    },
+    "NAV-019": {
+      "category": "R",
+      "businessPath": "卸载后注入授权错误回调",
+      "limitation": "迟到回调防御，真实微信是否会回调另需证据"
+    },
+    "NAV-020": {
+      "category": "E",
+      "businessPath": "登录等待时真实切后台再返回",
+      "limitation": "系统生命周期设备验证"
+    },
+    "TOK-001": {
+      "category": "B",
+      "businessPath": "清除小程序数据后冷启动，不登录",
+      "limitation": "无令牌由真实退出/清数据产生，不SQL改用户"
+    },
+    "TOK-002": {
+      "category": "R",
+      "businessPath": "向本地存储写空白令牌",
+      "limitation": "缓存损坏健壮性，不算普通业务状态"
+    },
+    "TOK-003": {
+      "category": "R",
+      "businessPath": "写入两段令牌",
+      "limitation": "格式防御，仅本地模块"
+    },
+    "TOK-004": {
+      "category": "R",
+      "businessPath": "写三段但payload非JSON",
+      "limitation": "缓存/外部响应损坏边界"
+    },
+    "TOK-005": {
+      "category": "R",
+      "businessPath": "写payload为数组",
+      "limitation": "类型防御"
+    },
+    "TOK-006": {
+      "category": "R",
+      "businessPath": "写缺exp令牌",
+      "limitation": "异常凭证防御，不等于服务端会签这种令牌"
+    },
+    "TOK-007": {
+      "category": "R",
+      "businessPath": "写字符串exp",
+      "limitation": "类型边界"
+    },
+    "TOK-008": {
+      "category": "R",
+      "businessPath": "写exp为0",
+      "limitation": "无效期边界"
+    },
+    "TOK-009": {
+      "category": "R",
+      "businessPath": "写负数exp",
+      "limitation": "无效期边界"
+    },
+    "TOK-010": {
+      "category": "R",
+      "businessPath": "API签发合法令牌后冻结时钟到exp前1秒",
+      "limitation": "时间边界检查；冻结时钟不当真实等待验收"
+    },
+    "TOK-011": {
+      "category": "R",
+      "businessPath": "同一合法令牌时钟到exp",
+      "limitation": "时间临界值"
+    },
+    "TOK-012": {
+      "category": "R",
+      "businessPath": "同一合法令牌时钟到exp后1秒",
+      "limitation": "时间边界，不更改数据库会话"
+    },
+    "TOK-013": {
+      "category": "E",
+      "businessPath": "真实有效会话杀进程重开",
+      "limitation": "令牌来自业务登录，不硬塞有效JWT"
+    },
+    "TOK-014": {
+      "category": "R",
+      "businessPath": "模拟认证返回过期令牌",
+      "limitation": "异常响应防御"
+    },
+    "TOK-015": {
+      "category": "R",
+      "businessPath": "模拟续期返回乱码令牌",
+      "limitation": "异常响应防御"
+    },
+    "TOK-016": {
+      "category": "R",
+      "businessPath": "对API签发的令牌附首尾空白",
+      "limitation": "头值规范化安全测试"
+    },
+    "TOK-017": {
+      "category": "R",
+      "businessPath": "写payload=null的令牌",
+      "limitation": "类型健壮性"
+    },
+    "TOK-018": {
+      "category": "R",
+      "businessPath": "写布尔exp令牌",
+      "limitation": "类型健壮性"
+    },
+    "TOK-019": {
+      "category": "R",
+      "businessPath": "写入对象作为token",
+      "limitation": "存储类型损坏，不视为可达正常登录"
+    },
+    "REF-001": {
+      "category": "B",
+      "businessPath": "新身份仅请求续期，不显式授权手机号",
+      "limitation": "安全调用允许；不能为未知账号SQL插空号占位"
+    },
+    "REF-002": {
+      "category": "U",
+      "businessPath": "通过业务路径产生同openid无手机号账号",
+      "limitation": "与REG-005前提相同，当前未证明"
+    },
+    "REF-003": {
+      "category": "U",
+      "businessPath": "通过业务路径产生同openid未验证号码账号",
+      "limitation": "与REG-004前提相同，当前未证明"
+    },
+    "REF-004": {
+      "category": "B",
+      "businessPath": "注册并获得已验证用户，再正常续期",
+      "limitation": "比较由接口产生的五表记录，不预写verified时间"
+    },
+    "REF-005": {
+      "category": "U",
+      "businessPath": "通过业务入口产生已验证但无本人的账号",
+      "limitation": "不能SQL删患者来证明只读续期业务可达"
+    },
+    "REF-006": {
+      "category": "R",
+      "businessPath": "未知身份续期phoneCode为空字符串",
+      "limitation": "明确安全输入变体"
+    },
+    "REF-007": {
+      "category": "R",
+      "businessPath": "业务登录后令牌自然过期或认证层受控401再续期",
+      "limitation": "模拟401仅故障回放；自然失效有单独证据"
+    },
+    "REF-008": {
+      "category": "R",
+      "businessPath": "真实页面多请求重叠并令当前会话过期",
+      "limitation": "并发刷新健壮性；六个虚构响应不等于业务页面六请求已证明"
+    },
+    "REF-009": {
+      "category": "R",
+      "businessPath": "从合法会话发30并发请求并令失效",
+      "limitation": "压力/健壮性，不设未定义性能通过阈值"
+    },
+    "REF-010": {
+      "category": "R",
+      "businessPath": "续期中wx.login失败",
+      "limitation": "故障注入；账号必须通过API产生"
+    },
+    "REF-011": {
+      "category": "R",
+      "businessPath": "续期成功回调缺code",
+      "limitation": "异常微信回调防御"
+    },
+    "REF-012": {
+      "category": "R",
+      "businessPath": "续期网络真实断开/超时",
+      "limitation": "网络故障边界"
+    },
+    "REF-013": {
+      "category": "R",
+      "businessPath": "续期服务器503",
+      "limitation": "服务故障边界"
+    },
+    "REF-014": {
+      "category": "R",
+      "businessPath": "续期200无令牌",
+      "limitation": "异常响应防御"
+    },
+    "REF-015": {
+      "category": "R",
+      "businessPath": "刷新成功但原请求仍被拒绝",
+      "limitation": "认证拒绝时序检查"
+    },
+    "REF-016": {
+      "category": "R",
+      "businessPath": "刷新成功但业务接口500",
+      "limitation": "业务故障与登录态分离"
+    },
+    "REF-017": {
+      "category": "R",
+      "businessPath": "用实际本地登录模式及未登录状态请求受保护接口",
+      "limitation": "本地模式必须由合法本地入口取得，不伪造auth_mode作为普通登录"
+    },
+    "REF-018": {
+      "category": "R",
+      "businessPath": "wx-login自身401的请求处理",
+      "limitation": "安全拒绝，不递归刷新；未知身份由接口表示"
+    },
+    "REF-019": {
+      "category": "B",
+      "businessPath": "实际B业务请求延迟，退出并登录F，再释放B响应",
+      "limitation": "合法账号由API注册；网络延迟只控制时序"
+    },
+    "REF-020": {
+      "category": "B",
+      "businessPath": "B自动刷新中完成F真实登录，旧刷新迟到",
+      "limitation": "先证明刷新/新登录实际并发窗口；模拟只算模块"
+    },
+    "REF-021": {
+      "category": "B",
+      "businessPath": "同上但旧刷新失败",
+      "limitation": "失败注入另记，不能清F"
+    },
+    "REF-022": {
+      "category": "B",
+      "businessPath": "实际点击退出时旧刷新返回",
+      "limitation": "退出用页面/会话公开操作，不改存储造退出"
+    },
+    "REF-023": {
+      "category": "U",
+      "businessPath": "证明同一秒同主体重新登录可得到相同令牌而代际改变",
+      "limitation": "不能测试程序自行重用同token代替业务证据"
+    },
+    "OUT-001": {
+      "category": "B",
+      "businessPath": "正常登录后设置页退出弹窗点取消",
+      "limitation": "页面操作，资料通过API创建"
+    },
+    "OUT-002": {
+      "category": "B",
+      "businessPath": "设置页确认退出并重启",
+      "limitation": "不要用直接删除access_token冒充退出流程"
+    },
+    "OUT-003": {
+      "category": "B",
+      "businessPath": "通过合法公开退出操作连续触发两次",
+      "limitation": "第二次按钮/页面是否可达需实测，直接调用方法只算幂等模块"
+    },
+    "OUT-004": {
+      "category": "B",
+      "businessPath": "API注册B/F并修改各自资料，页面退出切账号",
+      "limitation": "不插入用户资料，检查显示与鉴权"
+    },
+    "OUT-005": {
+      "category": "B",
+      "businessPath": "正常添加成员/预约治疗后切账号并提交业务",
+      "limitation": "各记录需合法创建路径，不能插入预约治疗"
+    },
+    "OUT-006": {
+      "category": "B",
+      "businessPath": "B资料请求延迟后真实登录F再释放",
+      "limitation": "时序通过请求延迟，资料不能手写入全局状态"
+    },
+    "OUT-007": {
+      "category": "B",
+      "businessPath": "B资料请求延迟中点击退出再释放",
+      "limitation": "通过实际退出形成会话失效"
+    },
+    "OUT-008": {
+      "category": "R",
+      "businessPath": "通过业务录音产生待同步数据，再令归档存储写失败",
+      "limitation": "先用真实业务生成缓存，不能手塞pending队列当可达证据"
+    },
+    "OUT-009": {
+      "category": "R",
+      "businessPath": "实际归档失败后尝试正常F登录",
+      "limitation": "故障保护边界，原B数据须业务产生"
+    },
+    "OUT-010": {
+      "category": "R",
+      "businessPath": "恢复上项存储能力后重新登录F",
+      "limitation": "故障恢复，不手动挪动账号归属键"
+    },
+    "OUT-011": {
+      "category": "B",
+      "businessPath": "实际录音后上传失败形成B队列，再切F再回B",
+      "limitation": "录音/离线业务形成缓存，不直接setStorage造记录"
+    },
+    "OUT-012": {
+      "category": "B",
+      "businessPath": "真实完成ESS及预约流程形成缓存，切账号",
+      "limitation": "检查具体哪个业务动作写入各键"
+    },
+    "OUT-013": {
+      "category": "B",
+      "businessPath": "从对应4个页面实际选择B成员后切F",
+      "limitation": "四种键分别有页面步骤，不能一次手写四键"
+    },
+    "OUT-014": {
+      "category": "E",
+      "businessPath": "真实业务产生离线缓存并等待会话失效后重新授权",
+      "limitation": "自然失效需可执行时长；冻结时间仅边界"
+    },
+    "OUT-015": {
+      "category": "B",
+      "businessPath": "同账号正常自动刷新同时资料在途",
+      "limitation": "从实际失效请求触发刷新，不手动加代际"
+    },
+    "INV-001": {
+      "category": "B",
+      "businessPath": "从无分享参数入口首次登录",
+      "limitation": "不手动删除别人待绑定码冒充首次入口"
+    },
+    "INV-002": {
+      "category": "B",
+      "businessPath": "后台/推广业务生成合法邀请链接，再新微信注册",
+      "limitation": "邀请关系通过业务接口生成，不插distributor行"
+    },
+    "INV-003": {
+      "category": "B",
+      "businessPath": "真实邀请成功后重新进入同邀请链接登录",
+      "limitation": "通过首次绑定记录形成already_bound"
+    },
+    "INV-004": {
+      "category": "B",
+      "businessPath": "获取本人实际邀请码再从分享入口登录自己",
+      "limitation": "真实邀请码来自推广接口，不伪造自引用"
+    },
+    "INV-005": {
+      "category": "R",
+      "businessPath": "通过入口传不存在的邀请码",
+      "limitation": "安全/失效链接输入，不能当有效推广业务"
+    },
+    "INV-006": {
+      "category": "B",
+      "businessPath": "实际停用推广员后使用其原邀请链接",
+      "limitation": "停用需有权限业务入口，不SQL改状态"
+    },
+    "INV-007": {
+      "category": "U",
+      "businessPath": "从允许的邀请绑定序列建立接近循环关系",
+      "limitation": "先证明现有关系规则允许到该前提，不能SQL造环"
+    },
+    "INV-008": {
+      "category": "R",
+      "businessPath": "有效邀请绑定时断网/超时再恢复",
+      "limitation": "临时故障，邀请码先业务生成"
+    },
+    "INV-009": {
+      "category": "B",
+      "businessPath": "B真实邀请绑定等待，退出切F并进入新邀请链接",
+      "limitation": "两个邀请码和账号均由业务创建；请求延迟只控制时序"
+    },
+    "INV-010": {
+      "category": "R",
+      "businessPath": "绑定接口超时后结束认证",
+      "limitation": "网络故障；不设无来源的耗时SLA"
+    },
+    "ENV-001": {
+      "category": "E",
+      "businessPath": "开发工具develop冷启动，无用户override",
+      "limitation": "实际工具平台检测，不改platform值假装设备"
+    },
+    "ENV-002": {
+      "category": "E",
+      "businessPath": "工具选择local，先拒绝再同意协议",
+      "limitation": "本地账号由本地业务入口生成，非真实微信验收"
+    },
+    "ENV-003": {
+      "category": "E",
+      "businessPath": "真实开发版真机预览默认API",
+      "limitation": "不能mock platform来宣称真机通过"
+    },
+    "ENV-004": {
+      "category": "E",
+      "businessPath": "通过开发工具正常切local保存override，再运行体验包",
+      "limitation": "需要实际升级/包环境留存链，不能任意写越权存储值"
+    },
+    "ENV-005": {
+      "category": "E",
+      "businessPath": "开发环境正常取得local会话后运行正式包",
+      "limitation": "实际包切换与缓存保留路径需验证"
+    },
+    "ENV-006": {
+      "category": "R",
+      "businessPath": "正式等效配置请求本地登录接口",
+      "limitation": "明确越权尝试；不把隐藏入口当后端鉴权通过"
+    },
+    "ENV-007": {
+      "category": "E",
+      "businessPath": "开发工具真实环境切换操作",
+      "limitation": "只用隔离/授权环境，绝不带测试token访问生产"
+    },
+    "ENV-008": {
+      "category": "E",
+      "businessPath": "开发工具选择当前环境",
+      "limitation": "检查正常控件行为"
+    },
+    "ENV-009": {
+      "category": "E",
+      "businessPath": "登录提交期间真实点击切换卡片",
+      "limitation": "不要直接改env文件冒充控件操作"
+    },
+    "ENV-010": {
+      "category": "R",
+      "businessPath": "本地认证等待时外部改环境配置",
+      "limitation": "越过页面禁用的防御场景，不算正常用户可达"
+    },
+    "ENV-011": {
+      "category": "E",
+      "businessPath": "iOS真实注册登录链路",
+      "limitation": "需真实测试微信/授权/设备，不用iOS字符串模拟"
+    },
+    "ENV-012": {
+      "category": "E",
+      "businessPath": "Android真实注册登录链路",
+      "limitation": "同上，分别记录"
+    },
+    "ENV-013": {
+      "category": "E",
+      "businessPath": "真实窄屏/模拟器安全区及可操作性",
+      "limitation": "只承认实际检查的分辨率，模拟器不替真机"
+    },
+    "ENV-014": {
+      "category": "E",
+      "businessPath": "实际开启系统/微信大字体后授权",
+      "limitation": "不靠CSS缩放冒充系统设置"
+    },
+    "ENV-015": {
+      "category": "E",
+      "businessPath": "真实弱网及Wi-Fi/移动网络切换",
+      "limitation": "记录实际配置和操作，不用假响应代替切网"
+    },
+    "ENV-016": {
+      "category": "R",
+      "businessPath": "移除getPrivacySetting能力检查防御",
+      "limitation": "旧版支持性须Q05确定；模拟移除不是已验证兼容"
+    }
+  }
+}

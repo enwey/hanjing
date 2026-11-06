@@ -84,6 +84,7 @@ export function requiredAdminPermissions(method, route, context = {}) {
     if (Object.keys(body).some(k => !['status','is_distribution','backend_referral_enabled'].includes(k)) || !codes.length) codes.push('product:edit');
     return all(...codes);
   }
+  if (/^content\/reports(?:\/|$)/.test(path)) return ['content:audit'];
   if (/^content\/categories/.test(path)) return crud('content_category');
   if (/^content\/banners/.test(path)) return crud('banner');
   if (/^content\/live-rooms/.test(path)) return /sync-wechat$/.test(path) ? ['live:sync'] : crud('live');

@@ -1,8 +1,10 @@
 <view class="page data-v-72504f8b">
   <hj-navbar title="{{serviceTitle}}" showBack="{{true}}" />
   <view class="service-banner">
+    <text wx:if="{{conversationLabel}}" class="service-banner__patient">{{conversationLabel}}</text>
     <text class="service-banner__text">{{serviceSubtitle}}</text>
   </view>
+  <view wx:if="{{accessError}}" class="conversation-error">{{accessError}}</view>
   <scroll-view class="chat-area data-v-72504f8b" scroll-y scroll-into-view="{{scrollIntoView}}" enhanced="{{true}}" show-scrollbar="{{false}}">
     <view class="chat-list data-v-72504f8b">
       <view wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}" class="chat-msg data-v-72504f8b {{item.rowClass}}">
@@ -16,8 +18,8 @@
       </view>
     </view>
   </scroll-view>
-  <view class="input-bar data-v-72504f8b">
-    <view bindtap="onUploadImage" style="padding: 10rpx 15rpx 10rpx 10rpx; display: flex; align-items: center; justify-content: center; font-size: 44rpx; color: #6b7280; z-index: 100;">📷</view>
+  <view wx:if="{{!accessError}}" class="input-bar data-v-72504f8b">
+    <view class="upload-action" aria-label="上传图片" bindtap="onUploadImage" style="padding: 10rpx 15rpx 10rpx 10rpx; display: flex; align-items: center; justify-content: center; font-size: 44rpx; color: #6b7280; z-index: 100;">📷</view>
     <input class="chat-input data-v-72504f8b" placeholder="输入您的问题..." bindconfirm="sendMessage" value="{{inputText}}" bindinput="handleInput" />
     <view class="btn-send data-v-72504f8b" bindtap="sendMessage"><text class="data-v-72504f8b">发送</text></view>
   </view>

@@ -31,22 +31,26 @@ Page({
     scrollIntoView: '',
     serviceTitle: '在线客服',
     serviceSubtitle: '如需预约、改约或咨询治疗问题，可直接留言',
+    conversationLabel: '',
+    accessError: '',
   },
 
-  onShow() {
+  onLoad(options) { this._patientId=options.patientId || ''; },
+
+  async onShow() {
+    this._visible=true;
     this.loadServiceIdentity();
-    if (!this.data.hasLoaded) {
-      this.fetchHistory();
-    }
-    this.connectSocket();
+    if(await this.fetchHistory() && this._visible)this.connectSocket();
   },
 
   onHide() {
+    this._visible=false;
     this.disconnectSocket();
     this.stopPolling();
   },
 
   onUnload() {
+    this._visible=false;
     this.disconnectSocket();
     this.stopPolling();
   },
@@ -104,9 +108,9 @@ Page({
 
   async fetchHistory() {
     try {
-      const res = await request({ url: '/im/messages' });
+      const res = await request({ url: '/im/messages',data:this._patientId?{patientId:this._patientId}:{} });
       if (res && res.code === 0 && Array.isArray(res.data)) {
-        this.setData({ hasLoaded: true });
+        this.setData({ hasLoaded: true,accessError:'',conversationLabel:res.conversation ? '就诊人：'+res.conversation.patientName : '' });
         this.setMessages(res.data.map((item) => ({
           id: String(item.id),
           from: item.sender === 'doctor' ? 'assistant' : 'user',
@@ -114,28 +118,40 @@ Page({
           time: item.time,
           status: 'success',
         })));
+        return true;
       }
     } catch (error) {
       console.error('fetchHistory error:', error);
+      if([401,403,404].includes(Number(error.statusCode || error.status || error.code)))this.denyConversation();
     }
+    return false;
+  },
+
+  denyConversation() {
+    this.setData({messages:[],accessError:'该会话已不存在或您无权访问'});
+    this.stopPolling();this.disconnectSocket();
   },
 
   connectSocket() {
     const token = sessionStore.getAccessToken();
-    if (!token) return;
-    const wsUrl = requestModule.apiBaseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/im/ws?token=' + encodeURIComponent(token);
+    if (!token || this.data.accessError || this.socketTask) return;
+    const wsUrl = requestModule.apiBaseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/im/ws?token=' + encodeURIComponent(token)+(this._patientId?'&patientId='+encodeURIComponent(this._patientId):'');
     this.socketTask = wx.connectSocket({ url: wsUrl, complete() {} });
+    const task=this.socketTask;
     this.isSocketConnected = false;
 
     this.socketTask.onOpen(() => {
+      if(this.socketTask!==task)return;
       this.isSocketConnected = true;
       this.stopPolling();
     });
 
     this.socketTask.onMessage((res) => {
+      if(this.socketTask!==task)return;
       try {
         const data = JSON.parse(res.data);
         if (data.type === 'pong') return;
+        if(data.type==='error'){wx.showToast({title:data.message || '发送失败',icon:'none'});return;}
         const messages = this.getMutableMessages();
 
         if (data.type === 'ack') {
@@ -163,12 +179,16 @@ Page({
       }
     });
 
-    this.socketTask.onClose(() => {
+    this.socketTask.onClose((event) => {
+      if(this.socketTask!==task)return;
       this.isSocketConnected = false;
+      this.socketTask=null;
+      if(event && event.code===1008){this.denyConversation();return;}
       this.startPolling();
     });
 
     this.socketTask.onError(() => {
+      if(this.socketTask!==task)return;
       this.isSocketConnected = false;
       this.startPolling();
     });
@@ -184,6 +204,7 @@ Page({
 
   startPolling() {
     this.stopPolling();
+    if(!this._visible || this.data.accessError)return;
     this.pollTimer = setInterval(() => this.fetchHistory(), 4000);
   },
 
@@ -203,7 +224,7 @@ Page({
       const response = await request({
         url: '/im/send',
         method: 'POST',
-        data: { text: message.text },
+        data: { text: message.text,...(this._patientId?{patientId:this._patientId}:{}) },
       });
       message.status = response && response.code === 0 ? 'success' : 'fail';
       this.setMessages(this.getMutableMessages().map((item) => String(item.id) === String(message.id) ? message : item));
@@ -211,6 +232,7 @@ Page({
         setTimeout(() => this.fetchHistory(), 1600);
       }
     } catch (error) {
+      if([401,403,404].includes(Number(error.statusCode || error.status || error.code))){this.denyConversation();return;}
       message.status = 'fail';
       this.setMessages(this.getMutableMessages().map((item) => String(item.id) === String(message.id) ? message : item));
     }
@@ -236,6 +258,7 @@ Page({
   },
 
   sendMessage() {
+    if(this.data.accessError){wx.showToast({title:this.data.accessError,icon:'none'});return;}
     const text = String(this.data.inputText || '').trim();
     if (!text) return;
     const messages = this.getMutableMessages();
@@ -261,6 +284,7 @@ Page({
   },
 
   onUploadImage() {
+    if(this.data.accessError){wx.showToast({title:this.data.accessError,icon:'none'});return;}
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],

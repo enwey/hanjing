@@ -2,5 +2,7 @@
   "navigationBarTitleText": "消息通知",
   "usingComponents": {
     "hj-navbar": "../../../components/base/hj-navbar"
-  }
+  },
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 100
 }

@@ -1,0 +1,151 @@
+{
+  "database": "hanjing_test_reg_p0_1793932626336",
+  "startedAt": "2026-11-06T02:37:06.336Z",
+  "method": "real Express + isolated MySQL; mocked WeChat upstream",
+  "results": [
+    {
+      "id": "REG-001",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 1,
+        "fiveTableSnapshotsChecked": true,
+        "profileAuthenticated": true
+      }
+    },
+    {
+      "id": "REG-002",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 2,
+        "repeats": 3
+      }
+    },
+    {
+      "id": "REG-003",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 3,
+        "existingRecordPreserved": true
+      }
+    },
+    {
+      "id": "REG-004",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 4,
+        "verifiedAtSet": true
+      }
+    },
+    {
+      "id": "REG-005",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 5,
+        "phoneAdded": true
+      }
+    },
+    {
+      "id": "REG-006",
+      "result": "failed",
+      "backendErrors": [],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 6,
+        "samePatientId": true,
+        "selfPhoneMatchesNewAuthorization": false
+      },
+      "error": {
+        "name": "Error",
+        "code": "",
+        "message": "account phone updated but self profile retains previous phone"
+      }
+    },
+    {
+      "id": "REG-007",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 8,
+        "sourceRemoved": true,
+        "markerMigrated": true,
+        "scope": "identity + self profile + notification; full merge matrix not executed"
+      }
+    },
+    {
+      "id": "REG-011",
+      "result": "passed",
+      "backendErrors": [],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 9,
+        "responseDroppedAfterCommit": true,
+        "samePatientId": true
+      }
+    },
+    {
+      "id": "REG-012",
+      "result": "passed",
+      "backendErrors": [
+        {
+          "code": "ER_DUP_ENTRY",
+          "errno": 1062
+        }
+      ],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 10,
+        "concurrentStatuses": [
+          500,
+          200
+        ],
+        "barrierArrivals": 2,
+        "recoveryAuthenticated": true
+      }
+    },
+    {
+      "id": "REG-013",
+      "result": "passed",
+      "backendErrors": [
+        {
+          "code": "ER_DUP_ENTRY",
+          "errno": 1062
+        }
+      ],
+      "observations": {
+        "accountCount": 1,
+        "selfCount": 1,
+        "userId": 12,
+        "concurrentStatuses": [
+          200,
+          500
+        ],
+        "barrierArrivals": 2,
+        "recoveryAuthenticated": true
+      }
+    }
+  ],
+  "cleanup": true,
+  "finishedAt": "2026-11-06T02:37:30.264Z",
+  "passed": 9,
+  "failed": 1
+}

@@ -1,0 +1,170 @@
+{
+  "results": [
+    {
+      "name": "通知投递失败不阻断真实预约创建，故障解除补发且重复执行不重复",
+      "status": "passed"
+    },
+    {
+      "name": "业务事务后续失败同时回滚已写通知与outbox",
+      "status": "passed"
+    },
+    {
+      "name": "真实多人点赞旧pending晚恢复不覆盖已送达的新聚合",
+      "status": "passed"
+    },
+    {
+      "name": "明日随访由真实API安排后提前通知且不重复",
+      "status": "passed"
+    },
+    {
+      "name": "较新聚合延迟补发后旧快照全部已读及单条已读均不误读新版本",
+      "status": "passed"
+    },
+    {
+      "name": "真实治疗建档及调整生成明日复诊提醒且不重复",
+      "status": "passed"
+    },
+    {
+      "name": "失败随访提醒在真实取消接口执行后不再补发",
+      "status": "passed"
+    },
+    {
+      "name": "模块并发：同账号不同事件等待先前事务提交，旧快照不涵盖后提交版本",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "path": "/api/admin/stores",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/doctors",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/schedules",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/appointments",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/schedules",
+      "method": "POST",
+      "status": 500
+    },
+    {
+      "path": "/api/v1/community/posts",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/community/posts/1/like",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/community/posts/1/like",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients/1/follow-ups",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/notifications/6",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/notifications",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/community/posts/1/like",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/notifications/read-all",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/notifications/3/read",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/products",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients/1/treatment",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients/1/treatment/adjustments",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/notifications/10",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients/1/follow-ups",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "path": "/api/admin/patients/1/follow-ups/2",
+      "method": "PUT",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/notifications",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/user/notifications/read-all",
+      "method": "POST",
+      "status": 200
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离权限初始化；业务前提均来自HTTP；触发器只用于投递/事务故障注入；未测真实微信登录"
+}

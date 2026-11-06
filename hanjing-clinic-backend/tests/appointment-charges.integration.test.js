@@ -41,6 +41,9 @@ test('independent appointment charges and refunds preserve legacy orders and sco
     await control.query("INSERT INTO permissions(role_id,permission_resource) VALUES(1001,'appointment:view'),(1001,'appointment:edit')");
     await control.query("INSERT INTO stores(id,name,code,address) VALUES(1,'One','ONE','One'),(2,'Two','TWO','Two')");
     await control.query('INSERT INTO admin_user_stores(admin_user_id,store_id) VALUES(1001,2)');
+    // Explicit fixture scopes: role defaults are now personal, including test roles.
+    await control.query('UPDATE roles SET data_scope=? WHERE id=1000',[JSON.stringify({type:"system",all_stores:false,store_ids:[]})]);
+    await control.query('UPDATE roles SET data_scope=? WHERE id=1001',[JSON.stringify({type:"store",all_stores:false,store_ids:[2]})]);
     await control.query("INSERT INTO users(id,openid,nickname) VALUES(1,'charge-user','One'),(2,'other-user','Other')");
     await control.query("INSERT INTO patients(id,user_id,name,relation,patient_no) VALUES(1,1,'One','self','CHARGE-P1')");
     await control.query("INSERT INTO doctors(id,name,title,specialty) VALUES(1,'Doctor','Doctor','Sleep')");
@@ -87,7 +90,7 @@ test('independent appointment charges and refunds preserve legacy orders and sco
     }
 
     await t.test('cash and offline charge snapshots, concurrency and access boundaries', async () => {
-      assert.equal((await api(adminPath(1),staff)).status,403);
+      assert.equal((await api(adminPath(1),staff)).status,404);
       assert.equal((await api(adminPath(1),staff,{method:'cash',payment_confirmed:true})).status,403);
       assert.equal((await api(adminPath(1),root,{method:'cash'})).status,400);
       assert.equal((await api(adminPath(1),root,{method:'offline',payment_confirmed:true})).status,400);
@@ -127,6 +130,7 @@ test('independent appointment charges and refunds preserve legacy orders and sco
       assert.equal((await db.get("SELECT COUNT(*) n FROM appointment_charges WHERE appointment_id=2 AND status='paid'")).n,1);
       assert.equal((await api(patientPath(2)+'/confirm-pay',patient,{})).status,200);
       assert.equal((await db.get('SELECT COUNT(*) n FROM orders')).n,0);
+      assert.equal((await db.get("SELECT COUNT(*) n FROM user_notifications WHERE business_type='appointment' AND business_id='2' AND event_code='paid'")).n,1);
     });
 
     await t.test('cancel, offline refund confirmation and late verified online receipts', async () => {
@@ -150,6 +154,7 @@ test('independent appointment charges and refunds preserve legacy orders and sco
       assert.equal(completed.status,200);
       assert.equal((await callback('/pay/refund-callback',{...refundPayload,refund_status:'SUCCESS'})).status,200);
       assert.equal((await db.get('SELECT status FROM appointment_charges WHERE id=?',[charge.id])).status,'refunded');
+      for (const event of ['refund_pending','payment_conflict','refund_failed','refunded']) assert.equal((await db.get("SELECT COUNT(*) n FROM user_notifications WHERE business_type='appointment' AND business_id='4' AND event_code=?",[event])).n,1);
       const activeCharge = await db.get('SELECT * FROM appointment_charges WHERE appointment_id=1');
       const noRefund = await api(adminPath(1)+'/'+activeCharge.id+'/refund',root,{reason:'预约仍有效',offline_confirmed:true});
       assert.equal(noRefund.status,409);

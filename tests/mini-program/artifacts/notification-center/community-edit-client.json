@@ -1,0 +1,26 @@
+[
+  {
+    "name": "修改入口加载本人稿件和拒绝说明保留分类标签",
+    "status": "passed"
+  },
+  {
+    "name": "编辑提交仅调用更新接口并显示待审核不打开公开详情",
+    "status": "passed"
+  },
+  {
+    "name": "提交中禁止重复更新",
+    "status": "passed"
+  },
+  {
+    "name": "越权或已公开加载失败不可提交且可重试",
+    "status": "passed"
+  },
+  {
+    "name": "无效ID不请求和新建模式保持原接口",
+    "status": "passed"
+  },
+  {
+    "name": "发布页WXML标签闭合",
+    "status": "passed"
+  }
+]

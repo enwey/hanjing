@@ -147,3 +147,5 @@
 .safe-bottom {
   height: calc(env(safe-area-inset-bottom, 34px) + 20px);
 }
+
+.record-card--highlight{box-shadow:inset 3px 0 0 var(--color-primary-500,#3b6bf5);}

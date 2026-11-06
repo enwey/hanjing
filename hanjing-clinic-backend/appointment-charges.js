@@ -1,3 +1,4 @@
+import { notifyBusiness } from './notification-center.js';
 import crypto from 'node:crypto';
 import { businessError } from './distribution-ledger.js';
 import { appointmentFeeSnapshot, orderCoversAppointmentFees } from './appointment-workflow.js';
@@ -57,6 +58,8 @@ async function insertRefund(conn, charge, reason) {
     'INSERT INTO appointment_charge_refunds (charge_id,refund_no,amount,reason) VALUES (?,?,?,?)',
     [charge.id, refundNo, chargeAmount(charge), reason]
   );
+  const [[appointment]] = await conn.execute('SELECT appointment_id FROM appointment_charges WHERE id=?',[charge.id]);
+  if(appointment)await notifyBusiness(conn,'appointment',appointment.appointment_id,'refund_pending',{onceKey:String(result.insertId)});
   return { id: result.insertId, charge_id: charge.id, refund_no: refundNo, amount: chargeAmount(charge), status: 'pending' };
 }
 
@@ -85,6 +88,7 @@ export async function settleCharge(conn, appointment, charge, payment = null, pa
     await conn.execute("UPDATE appointments SET status='pending',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending_payment'", [appointment.id]);
     if (appointment.user_id) await syncUserMembership(appointment.user_id, conn, 'appointment_charge');
   }
+  await notifyBusiness(conn, 'appointment', appointment.id, conflict ? 'payment_conflict' : 'paid', {onceKey:String(charge.id)});
   await recordChargeAudit(conn, audit, 'collect_appointment_charge', appointment.id,
     { chargeId: charge.id, method: charge.payment_method, amount: chargeAmount(charge), paymentReference });
   return { ...charge, status, paid_at: new Date(), provider_transaction_id: payment?.transaction_id || null };
@@ -135,6 +139,7 @@ export async function completeChargeRefund(payload) {
         const status = providerStatus === 'ABNORMAL' ? 'abnormal' : 'closed';
         await conn.execute('UPDATE appointment_charge_refunds SET status=?,provider_refund_id=? WHERE id=?',
           [status, payload.refund_id, row.id]);
+        await notifyBusiness(conn,'appointment',appointment.id,'refund_failed',{onceKey:row.refund_no+':'+status});
         return status;
       }
       return row.status;
@@ -142,6 +147,7 @@ export async function completeChargeRefund(payload) {
     await conn.execute("UPDATE appointment_charge_refunds SET status='refunded',provider_refund_id=?,refunded_at=CURRENT_TIMESTAMP WHERE id=?", [payload.refund_id, row.id]);
     await conn.execute("UPDATE appointment_charges SET status='refunded' WHERE id=?", [row.charge_id]);
     if (appointment.user_id) await syncUserMembership(appointment.user_id, conn, 'appointment_refund');
+    await notifyBusiness(conn,'appointment',appointment.id,'refunded',{amount:row.amount,onceKey:row.refund_no});
     return 'refunded';
   });
 }
@@ -163,6 +169,7 @@ export async function submitChargeRefund(appointmentId, chargeId, reason, author
     await conn.execute('UPDATE appointment_charge_refunds SET status=?,refunded_at=IF(?,CURRENT_TIMESTAMP,NULL) WHERE id=?', [status, !isOnline, refund.id]);
     await conn.execute('UPDATE appointment_charges SET status=? WHERE id=?', [status, charge.id]);
     if (!isOnline && appointment.user_id) await syncUserMembership(appointment.user_id, conn, 'appointment_refund');
+    if(!isOnline)await notifyBusiness(conn,'appointment',appointment.id,'refunded',{amount:refund.amount,onceKey:refund.refund_no});
     await recordChargeAudit(conn, audit, 'refund_appointment_charge', appointment.id,
       { chargeId: charge.id, refundNo: refund.refund_no, amount: refund.amount, reason, status });
     return { charge, refund, isOnline, status };

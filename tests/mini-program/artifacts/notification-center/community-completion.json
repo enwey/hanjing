@@ -1,0 +1,38 @@
+{
+  "method": "system identity initialization; actual business APIs create all business states; simulated JWT authorization, no native WeChat",
+  "results": [
+    {
+      "name": "真实点赞接口将两位用户聚合为一条且同人重赞不增加人数",
+      "status": "passed"
+    },
+    {
+      "name": "真实回复接口通知保存可定位评论ID",
+      "status": "passed"
+    },
+    {
+      "name": "举报提交、列表和处理通知完整闭环且重复处理不重复",
+      "status": "passed"
+    },
+    {
+      "name": "仅文章查看权限不能读取或处理举报",
+      "status": "passed"
+    },
+    {
+      "name": "审核拒绝通知包含真实原因且重复保存不重复",
+      "status": "passed"
+    },
+    {
+      "name": "本人拒绝稿修改再审核回环且禁止越权及公开帖绕过审核",
+      "status": "passed"
+    },
+    {
+      "name": "后台真实现金订单发货通知包含承运商和单号",
+      "status": "passed"
+    },
+    {
+      "name": "平台删除用户文章保留作者通知且目标不可用与重复删除幂等",
+      "status": "passed"
+    }
+  ],
+  "cleanup": true
+}
