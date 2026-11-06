@@ -165,7 +165,7 @@ const appointmentStatusMap: Record<string, { title: string; color: string }> = {
   confirmed: { title: '候诊中', color: 'blue' },
   called: { title: '已叫号', color: 'blue' },
   checked_in: { title: '就诊中', color: 'gold' },
-  completed: { title: '待结算', color: 'red' },
+  completed: { title: '已完成', color: 'green' },
   arrived: { title: '已完成', color: 'green' },
   settled: { title: '已完成', color: 'green' },
   no_show: { title: '未到诊', color: 'gray' },

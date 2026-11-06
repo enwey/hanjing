@@ -1300,6 +1300,8 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
     const statusVal = req.query.status;
     if (statusVal === 'waiting') {
       listWhere += ` AND a.status IN ('confirmed', 'waiting', 'called')`;
+    } else if (statusVal === 'completed') {
+      listWhere += ` AND a.status IN ('completed', 'arrived', 'settled')`;
     } else if (statusVal === 'arrived') {
       listWhere += ` AND a.status IN ('arrived', 'settled')`;
     } else {
@@ -1376,7 +1378,10 @@ app.get('/api/admin/appointments', authenticateToken, async (req, res) => {
         else if (['confirmed', 'waiting', 'called'].includes(status)) countsMap.waiting += count;
         else if (status === 'checked_in') countsMap.checked_in += count;
         else if (status === 'completed') countsMap.completed += count;
-        else if (['arrived', 'settled'].includes(status)) countsMap.arrived += count;
+        else if (['arrived', 'settled'].includes(status)) {
+          countsMap.arrived += count;
+          countsMap.completed += count;
+        }
         else if (status === 'no_show') countsMap.no_show += count;
         else if (status === 'cancelled') countsMap.cancelled += count;
       });

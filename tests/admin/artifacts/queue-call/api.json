@@ -1,0 +1,88 @@
+{
+  "results": [
+    {
+      "name": "未签到不能叫号，失败不产生状态通知",
+      "status": "passed"
+    },
+    {
+      "name": "签到后叫号仅进入已叫号，不直接接诊",
+      "status": "passed"
+    },
+    {
+      "name": "重复叫号保持状态且不重复站内通知",
+      "status": "passed"
+    },
+    {
+      "name": "已接诊重呼和旧页面叫号均不回退就诊状态",
+      "status": "passed"
+    },
+    {
+      "name": "已结束预约拒绝叫号",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离管理员初始化；业务前提均由HTTP API创建；不含微信真机与生产支付"
+}

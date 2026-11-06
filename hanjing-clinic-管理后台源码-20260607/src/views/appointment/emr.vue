@@ -1141,15 +1141,9 @@ const handleSubmit = async () => {
   outline: none;
 }
 
-.btn-primary {
-  background: var(--primary-500);
-  color: #FFF;
-}
-.btn-primary:hover {
-  background: var(--primary-600);
-}
 .btn-primary:disabled {
-  background: var(--primary-200);
+  background: var(--primary-500);
+  opacity: 0.5;
   cursor: not-allowed;
 }
 

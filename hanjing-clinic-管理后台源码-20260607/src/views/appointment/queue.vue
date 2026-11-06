@@ -238,7 +238,7 @@ const doctorQueues = computed(() => {
   })
 })
 
-// Call patient voice broadcast and update status to checked_in (就诊中)
+// Match the workbench: calling does not start a consultation.
 const callPatient = async (item: QueueItem, doctorName: string) => {
   const text = `请患者 ${item.patientName}，到 ${doctorName} 医生诊室就诊。`
   if (speakMandarin(text)) {
@@ -246,11 +246,13 @@ const callPatient = async (item: QueueItem, doctorName: string) => {
   } else {
     MessagePlugin.warning('浏览器不支持语音播报，已通过系统弹窗提示')
   }
+  if (item.status === 'checked_in') return
   try {
-    await request.put(`/api/admin/appointments/${item.id}`, { status: 'checked_in' })
+    await request.put(`/api/admin/appointments/${item.id}`, { status: 'called' })
     fetchAppointments()
   } catch (error) {
-    console.error('更新就诊状态失败:', error)
+    console.error('叫号状态更新失败:', error)
+    MessagePlugin.error('叫号失败')
   }
 }
 
@@ -986,7 +988,7 @@ const filteredTodayAppointments = computed(() => {
               <div class="pat-time">预约时段: {{ q.current.timeSlot }}</div>
             </div>
             <div class="action-row">
-              <t-button v-permission="'queue:call'" size="extra-small" theme="primary" variant="outline" @click="callPatient(q.current, q.doctorName)">
+              <t-button v-permission="'queue:call'" size="extra-small" theme="default" variant="outline" @click="callPatient(q.current, q.doctorName)">
                 叫号
               </t-button>
               <t-button v-permission="'order:add'" size="extra-small" theme="warning" variant="outline" v-if="(['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))" @click="openCheckoutDialog(q.current)">
@@ -1015,8 +1017,8 @@ const filteredTodayAppointments = computed(() => {
                 <t-button v-permission="{ any: ['appointment:receive','workbench:receive'] }" v-if="item.status === 'pending'" size="extra-small" theme="warning" variant="outline" @click="startTreatment(item)">
                   签到
                 </t-button>
-                <t-button v-permission="'queue:call'" v-else size="extra-small" :theme="item.status === 'called' ? 'success' : 'primary'" variant="outline" @click="callPatient(item, q.doctorName)">
-                  {{ item.status === 'called' ? '重呼' : '叫号' }}
+                <t-button v-permission="'queue:call'" v-else size="extra-small" theme="primary" variant="outline" @click="callPatient(item, q.doctorName)">
+                  叫号
                 </t-button>
                 <t-button v-permission="'appointment:postpone'" size="extra-small" theme="default" variant="text" @click="delayPatient(item)">
                   顺延

@@ -38,7 +38,7 @@ const getTodayDateString = () => {
 
 const allowedTabValues = new Set(['all', 'today', 'pending_payment', 'pending', 'waiting', 'checked_in', 'completed', 'arrived', 'no_show', 'cancelled'])
 const storedActiveTab = localStorage.getItem('appt_list_active_tab') || 'all'
-const activeTab = ref(allowedTabValues.has(storedActiveTab) ? storedActiveTab : 'all')
+const activeTab = ref(storedActiveTab === 'arrived' ? 'completed' : allowedTabValues.has(storedActiveTab) ? storedActiveTab : 'all')
 if (activeTab.value !== storedActiveTab) localStorage.setItem('appt_list_active_tab', activeTab.value)
 const filterStore = ref(localStorage.getItem('appt_list_filter_store') || '全部门店')
 const filterDoctor = ref(localStorage.getItem('appt_list_filter_doctor') || '全部医生')
@@ -245,15 +245,15 @@ const tabOptions = [
   { label: '已预约', value: 'pending' },
   { label: '候诊中', value: 'waiting' },
   { label: '就诊中', value: 'checked_in' },
-  { label: '待结算', value: 'completed' },
-  { label: '已完成', value: 'arrived' },
+  { label: '已完成', value: 'completed' },
   { label: '未到诊', value: 'no_show' },
   { label: '已取消', value: 'cancelled' },
 ]
 
 const statusMap: Record<string, { label: string; theme: string }> = {
   arrived: { label: '已完成', theme: 'success' },
-  completed: { label: '待结算', theme: 'danger' },
+  completed: { label: '已完成', theme: 'success' },
+  settled: { label: '已完成', theme: 'success' },
   checked_in: { label: '就诊中', theme: 'warning' },
   waiting: { label: '候诊中', theme: 'primary' },
   pending: { label: '已预约', theme: 'success' },
@@ -1107,7 +1107,7 @@ async function submitCheckout() {
                     @click="completeTreatment(row)"
                   >诊疗完成</button>
 
-                  <!-- status is completed (待结算) -->
+                  <!-- 诊疗已完成；收费按实际业务单独办理 -->
                   <button
  v-permission="'order:add'"                    v-if="row.status === 'completed' && (['order:add', 'order:view', 'medical_record:complete'].every(hasPermission))"
                     class="btn btn-xs btn-warning"

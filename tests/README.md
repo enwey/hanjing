@@ -409,3 +409,7 @@
 - 2026-11-06 [通知列表WXML编译修复](mini-program/notification-wxml-fix-2026-11-06.md)：待回归；修复表达式HTML实体转义错误，6个相关模板经微信wcc编译通过，模拟器/真机未执行。
 
 - 2026-11-06 [本地启动图片路径修复](patient-web/local-start-assets-2026-11-06.md)：待回归；资源准备及三端HTTP/代理检查通过。
+
+- 2026-11-06 [排队分诊叫号对齐工作台](admin/queue-call-unification-2026-11-06.md)：待回归；仅调整分诊，5项逻辑对照及两页浏览器预览通过。
+
+- 2026-11-06 [结束就诊按钮及完成状态](admin/consultation-completion-2026-11-06.md)：待回归；5项实际API及按钮悬停预览、类型检查通过，结束看诊归入已完成。

@@ -111,7 +111,7 @@ const timelineSteps = computed(() => appointmentTimeline(appointment.value))
 
 const getStatusText = (status: string) => {
   if (status === 'arrived' || status === 'settled') return '已完成'
-  if (status === 'completed') return '待结算'
+  if (status === 'completed') return '已完成'
   if (status === 'checked_in') return '就诊中'
   if (status === 'confirmed' || status === 'waiting') return '候诊中'
   if (status === 'pending') return '已预约'
@@ -123,7 +123,7 @@ const getStatusText = (status: string) => {
 
 const getStatusTagClass = (status: string) => {
   if (status === 'arrived' || status === 'settled') return 'gray'
-  if (status === 'completed') return 'red'
+  if (status === 'completed') return 'gray'
   if (status === 'checked_in') return 'green'
   if (status === 'confirmed' || status === 'waiting') return 'blue'
   if (status === 'pending') return 'green'
@@ -758,8 +758,7 @@ function handleViewProfile() {
       <div>
         <div class="page-title">
           {{ appointment.no }}
-          <span class="status-tag gray" v-if="appointment.status === 'arrived'">已完成</span>
-          <span class="status-tag red" v-else-if="appointment.status === 'completed'">待结算</span>
+          <span class="status-tag gray" v-if="['completed', 'arrived', 'settled'].includes(appointment.status)">已完成</span>
           <span class="status-tag green" v-else-if="appointment.status === 'checked_in'">就诊中</span>
           <span class="status-tag blue" v-else-if="appointment.status === 'confirmed' || appointment.status === 'waiting'">候诊中</span>
           <span class="status-tag green" v-else-if="appointment.status === 'pending'">已预约</span>
