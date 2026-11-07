@@ -14,6 +14,16 @@ interface Charge {
   status: string
   payment_method?: string
   paid_at?: string
+  collected_by_admin_id?: number
+  collected_by_name?: string
+  collection_source?: string
+  refunded_by_admin_id?: number
+  refunded_by_name?: string
+  refund_requested_at?: string
+  refunded_at?: string
+  waived_by_admin_id?: number
+  waived_by_name?: string
+  waived_at?: string
   refund_status?: string
   code_url?: string
   qr_code_url?: string
@@ -54,6 +64,12 @@ const canCollect = computed(() => {
 
 function amount(value: number) {
   return '¥' + (Number(value || 0) / 100).toFixed(2)
+}
+
+function collectorLabel(charge: Charge) {
+  if (charge.collection_source === 'patient_wechat') return '患者支付（小程序微信）'
+  if (charge.collection_source === 'wechat_native') return '微信扫码支付（自动确认）'
+  return charge.collected_by_name || (charge.collected_by_admin_id ? '账号 #' + charge.collected_by_admin_id : '历史未记录')
 }
 
 function chargeLabel(status: string) {
@@ -223,6 +239,7 @@ function printReceipt(charge: Charge) {
   row(fees, '实收金额', amount(Number(charge.consult_fee) + Number(charge.deposit_amount)), 'money total')
   const payment = appendText(doc.body, 'section', '')
   const methods: Record<string, string> = { cash: '现金支付', wechat: '微信支付', wechat_native: '微信扫码', offline: '线下收款' }
+  row(payment, '收款人', collectorLabel(charge))
   row(payment, '支付方式', methods[charge.payment_method || ''] || '')
   row(payment, '收款时间', charge.paid_at ? formatShanghaiDateTime(charge.paid_at) : '')
   row(payment, '收费状态', chargeLabel(charge.status))
@@ -286,6 +303,20 @@ defineExpose({ open })
         </div>
         <div>挂号费 {{ amount(charge.consult_fee) }} · 预约定金 {{ amount(charge.deposit_amount) }}</div>
         <div v-if="charge.refund_status">退款状态 {{ chargeLabel(charge.refund_status) }}</div>
+        <dl class="charge-operators" v-if="charge.paid_at || charge.refund_status || charge.status === 'refund_waived'">
+          <template v-if="charge.paid_at">
+            <dt>收款人</dt><dd>{{ collectorLabel(charge) }}</dd>
+            <dt>收款时间</dt><dd>{{ formatShanghaiDateTime(charge.paid_at) }}</dd>
+          </template>
+          <template v-if="charge.refund_status && !['pending','waived'].includes(charge.refund_status)">
+            <dt>退款操作人</dt><dd>{{ charge.refunded_by_name || (charge.refunded_by_admin_id ? '账号 #' + charge.refunded_by_admin_id : '历史未记录') }}</dd>
+            <dt>退款操作时间</dt><dd>{{ charge.refund_requested_at ? formatShanghaiDateTime(charge.refund_requested_at) : '历史未记录' }}</dd>
+          </template>
+          <template v-if="charge.status === 'refund_waived'">
+            <dt>无需退款操作人</dt><dd>{{ charge.waived_by_name || (charge.waived_by_admin_id ? '账号 #' + charge.waived_by_admin_id : '历史未记录') }}</dd>
+            <dt>操作时间</dt><dd>{{ charge.waived_at ? formatShanghaiDateTime(charge.waived_at) : '历史未记录' }}</dd>
+          </template>
+        </dl>
         <p v-if="['abnormal', 'closed'].includes(charge.refund_status || '')" class="charge-error">
           请核对微信商户平台中的退款记录。
         </p>
@@ -316,6 +347,10 @@ defineExpose({ open })
 </template>
 
 <style scoped>
+.charge-operators { display: grid; grid-template-columns: 112px minmax(0,1fr); gap: 8px 12px; margin: 14px 0 0; padding-top: 14px; border-top: 1px solid #edf0f5; font-size: 13px; line-height: 1.6; }
+.charge-operators dt { color: #64748b; }
+.charge-operators dd { margin: 0; color: #334155; overflow-wrap: anywhere; }
+
 :global(.appointment-charge-modal.t-dialog) { padding-bottom: var(--td-comp-paddingTB-xxl, 24px); }
 :global(.appointment-charge-modal .t-dialog__body) { padding-bottom: 0; }
 .charge-dialog, .charge-form, .charge-card { display: grid; gap: 12px; }

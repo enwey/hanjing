@@ -122,6 +122,20 @@ const platformIncome = computed(() => {
   return Number(order.value.price || 0) * 100 - commissionTotal.value
 })
 
+const collectionOperator = computed(() => {
+  const row = order.value.raw || {}
+  if (row.collection_source === 'no_payment') return '无需支付'
+  if (row.collected_by_name) return row.collected_by_name
+  if (row.collected_by_admin_id) return `账号 #${row.collected_by_admin_id}`
+  const labels: Record<string, string> = { patient_wechat: '患者微信支付（自动确认）', wechat_native: '微信扫码支付（自动确认）', wechat_micropay: '微信付款码支付（自动确认）' }
+  return labels[row.collection_source] || '历史未记录'
+})
+const refundOperator = computed(() => {
+  const row = order.value.raw || {}
+  const actorId = row.refunded_by_admin_id || order.value.shipping_address?.offline_refund?.actor_id
+  return row.refunded_by_name || (actorId ? `账号 #${actorId}` : '历史未记录')
+})
+
 const timelineItems = computed(() => {
   const result: Array<{ time: string; title: string; content: string; theme: string }> = []
   const row = order.value.raw
@@ -388,6 +402,22 @@ async function handleNotifyOrder() {
         <!-- For offline pending self-pickup -->
         <button v-permission="'order:notify'" class="btn btn-outline" v-if="order.type === 'offline' && order.status === 'processing'" @click="handleNotifyOrder"><AppIcon name="bell" />  到货通知</button>
         <button v-permission="'order:complete'" class="btn btn-success" v-if="order.type === 'offline' && (order.status === 'processing' || order.status === 'paid')" @click="handleCompleteOrder"><AppIcon name="check-circle" />  完成自提核销</button>
+      </div>
+    </div>
+
+    <div v-if="order.raw && (order.raw.pay_at || order.raw.refund_requested_at || order.raw.refund_at)" class="panel payment-operator-panel">
+      <div class="panel-header"><div class="panel-title">收款与退款记录</div></div>
+      <div class="info-grid">
+        <template v-if="order.raw.pay_at">
+          <div class="info-item"><div class="info-label">收款人</div><div class="info-value">{{ collectionOperator }}</div></div>
+          <div class="info-item"><div class="info-label">收款时间</div><div class="info-value">{{ order.payTime }}</div></div>
+        </template>
+        <template v-if="order.raw.refund_requested_at || order.raw.refund_at || order.raw.wechat_refund_no">
+          <div class="info-item"><div class="info-label">退款操作人</div><div class="info-value">{{ refundOperator }}</div></div>
+          <div class="info-item"><div class="info-label">退款操作时间</div><div class="info-value">{{ formatDateTime(order.raw.refund_requested_at || order.shipping_address?.offline_refund?.registered_at) || '历史未记录' }}</div></div>
+          <div class="info-item"><div class="info-label">退款状态</div><div class="info-value">{{ order.status === 'refunded' ? '已退款' : '退款处理中' }}</div></div>
+          <div class="info-item"><div class="info-label">退款到账时间</div><div class="info-value">{{ formatDateTime(order.raw.refund_at) || '尚未确认到账' }}</div></div>
+        </template>
       </div>
     </div>
 

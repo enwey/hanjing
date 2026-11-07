@@ -63,7 +63,7 @@ export function requiredAdminPermissions(method, route, context = {}) {
   if (/^stores/.test(path)) return crud('store');
   if (/^fulfillment\//.test(path)) {
     if (read) return path === 'fulfillment/technicians' ? ['fulfillment:view','order:add'] : ['fulfillment:view'];
-    const action = /\/assign$/.test(path) ? 'assign' : /mold-files/.test(path) ? 'attachment' : /\/mold$/.test(path) ? 'mold' : /\/(ship|mold-shipment)$/.test(path) ? 'ship' : /\/cancel$/.test(path) ? 'cancel' : /\/progress$/.test(path) ? 'progress' : /device-receipt$/.test(path) ? 'receipt' : /notify-fitting$/.test(path) ? 'notify' : /\/fitting$/.test(path) ? 'fitting' : /batches$/.test(path) ? 'batch' : 'add';
+    const action = /\/assign$/.test(path) ? 'assign' : /mold-files/.test(path) ? 'attachment' : /\/mold$/.test(path) ? 'mold' : /\/(ship|mold-shipment)$/.test(path) ? 'ship' : /\/cancel$/.test(path) ? 'cancel' : /\/progress$/.test(path) ? 'progress' : /(device-receipt|receipts)$/.test(path) ? 'receipt' : /notify-fitting$/.test(path) ? 'notify' : /\/fitting$/.test(path) ? 'fitting' : /batches$/.test(path) ? 'batch' : 'add';
     return ['fulfillment:' + action];
   }
   if (/^after-sales-tickets/.test(path)) return crud('after_sales');

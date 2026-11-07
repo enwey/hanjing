@@ -10,6 +10,13 @@ const reference = prefix => prefix + crypto.randomBytes(14).toString('hex');
 export const chargeAmount = row => Number(row.consult_fee) + Number(row.deposit_amount);
 const online = row => ['wechat', 'wechat_native'].includes(row.payment_method);
 
+export async function readChargeOperator(conn, actorId) {
+  if (!actorId) return { id: null, name: null };
+  const [[operator]] = await conn.execute('SELECT id,name,username FROM admin_users WHERE id=?', [actorId]);
+  if (!operator) throw businessError('操作账号不存在，请重新登录', 403);
+  return { id: operator.id, name: operator.name || operator.username };
+}
+
 async function recordChargeAudit(conn, audit, action, appointmentId, details) {
   if (!audit) return;
   await conn.execute(
@@ -80,6 +87,9 @@ export async function settleCharge(conn, appointment, charge, payment = null, pa
     legacyOrders.some(order => !['cancelled', 'refunded'].includes(order.status) && orderCoversAppointmentFees(order, appointment));
   if (conflict && !online(charge)) throw businessError('预约状态已变更', 409);
   const status = conflict ? 'refund_pending' : 'paid';
+  const collector = await readChargeOperator(conn, audit?.actorId);
+  const collectionSource = online(charge) ? (charge.payment_method === 'wechat' ? 'patient_wechat' : 'wechat_native') : (collector.id ? 'admin' : null);
+  await conn.execute('UPDATE appointment_charges SET collected_by_admin_id=?,collected_by_name=?,collection_source=? WHERE id=?', [collector.id,collector.name,collectionSource,charge.id]);
   await conn.execute('UPDATE appointment_charges SET status=?,provider_transaction_id=?,payment_reference=?,credited=?,paid_at=CURRENT_TIMESTAMP WHERE id=?',
     [status, payment?.transaction_id || null, paymentReference, conflict ? 0 : 1, charge.id]);
   if (conflict) {
@@ -165,6 +175,8 @@ export async function submitChargeRefund(appointmentId, chargeId, reason, author
     if (refund.status !== 'pending') throw businessError('退款已提交，请同步状态', 409);
     const isOnline = online(charge);
     if (isOnline && !charge.provider_transaction_id) throw businessError('缺少微信支付流水', 409);
+    const operator = await readChargeOperator(conn, audit?.actorId);
+    await conn.execute('UPDATE appointment_charge_refunds SET refunded_by_admin_id=?,refunded_by_name=?,refund_requested_at=CURRENT_TIMESTAMP WHERE id=?', [operator.id,operator.name,refund.id]);
     const status = isOnline ? 'refunding' : 'refunded';
     await conn.execute('UPDATE appointment_charge_refunds SET status=?,refunded_at=IF(?,CURRENT_TIMESTAMP,NULL) WHERE id=?', [status, !isOnline, refund.id]);
     await conn.execute('UPDATE appointment_charges SET status=? WHERE id=?', [status, charge.id]);

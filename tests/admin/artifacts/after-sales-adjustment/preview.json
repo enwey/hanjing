@@ -1,0 +1,25 @@
+{
+  "outcomes": [
+    {
+      "name": "完成微调弹窗字段与布局",
+      "status": "passed"
+    },
+    {
+      "name": "继续复查提交参数及日期",
+      "status": "passed"
+    },
+    {
+      "name": "无需复查隐藏日期并正确提交",
+      "status": "passed"
+    },
+    {
+      "name": "历史参数、技师及下一次工单显示",
+      "status": "passed"
+    },
+    {
+      "name": "1366x768弹窗与底部按钮完整可见",
+      "status": "passed"
+    }
+  ],
+  "scope": "Actual Vue components with mocked business API; no real patient operations"
+}

@@ -1023,6 +1023,11 @@ export const initDB = async () => {
       FOREIGN KEY (treatment_id) REFERENCES treatment_records(id) ON DELETE CASCADE
     );
   `);
+  if (!(await query("SHOW COLUMNS FROM device_adjustments LIKE 'operator_admin_id'")).length) {
+    await query('ALTER TABLE device_adjustments ADD COLUMN operator_admin_id BIGINT UNSIGNED NULL, ADD COLUMN operator_name_snapshot VARCHAR(100) NULL');
+  }
+  const adjustmentOperatorColumn = await query("SHOW COLUMNS FROM device_adjustments LIKE 'operator_id'");
+  if (adjustmentOperatorColumn[0]?.Null === 'NO') await query('ALTER TABLE device_adjustments MODIFY operator_id BIGINT UNSIGNED NULL');
   try {
     await query(`ALTER TABLE device_adjustments ADD COLUMN patient_device_id BIGINT UNSIGNED DEFAULT NULL FIRST`);
   } catch (err) {}
@@ -1188,6 +1193,16 @@ export const initDB = async () => {
   const cashierContextColumn = await query("SHOW COLUMNS FROM orders LIKE 'cashier_context'");
   if (!cashierContextColumn.length) await query('ALTER TABLE orders ADD COLUMN cashier_context JSON NULL');
 
+  // Immutable payment operator snapshots; historical rows intentionally remain unknown.
+  for (const [column, definition] of Object.entries({
+    collected_by_admin_id: 'BIGINT UNSIGNED', collected_by_name: 'VARCHAR(100)',
+    collection_source: 'VARCHAR(24)', refunded_by_admin_id: 'BIGINT UNSIGNED',
+    refunded_by_name: 'VARCHAR(100)', refund_requested_at: 'DATETIME'
+  })) {
+    const columns = await query(`SHOW COLUMNS FROM orders LIKE '${column}'`);
+    if (!columns.length) await query(`ALTER TABLE orders ADD COLUMN ${column} ${definition} DEFAULT NULL`);
+  }
+
   // 20. order_items
   await query(`
     CREATE TABLE IF NOT EXISTS appointment_charges (
@@ -1227,6 +1242,18 @@ export const initDB = async () => {
   `);
 
   for (const [table, column, definition] of [
+    ['appointment_charges', 'collected_by_admin_id', 'BIGINT UNSIGNED DEFAULT NULL'],
+    ['appointment_charges', 'collected_by_name', 'VARCHAR(100) DEFAULT NULL'],
+    ['appointment_charges', 'collection_source', 'VARCHAR(24) DEFAULT NULL'],
+    ['appointment_charges', 'waived_by_admin_id', 'BIGINT UNSIGNED DEFAULT NULL'],
+    ['appointment_charges', 'waived_by_name', 'VARCHAR(100) DEFAULT NULL'],
+    ['appointment_charges', 'waived_at', 'DATETIME DEFAULT NULL'],
+    ['appointment_charge_refunds', 'refunded_by_admin_id', 'BIGINT UNSIGNED DEFAULT NULL'],
+    ['appointment_charge_refunds', 'refunded_by_name', 'VARCHAR(100) DEFAULT NULL'],
+    ['appointment_charge_refunds', 'refund_requested_at', 'DATETIME DEFAULT NULL'],
+    ['appointment_charge_refunds', 'waived_by_admin_id', 'BIGINT UNSIGNED DEFAULT NULL'],
+    ['appointment_charge_refunds', 'waived_by_name', 'VARCHAR(100) DEFAULT NULL'],
+    ['appointment_charge_refunds', 'waived_at', 'DATETIME DEFAULT NULL'],
     ['appointment_charges', 'credited', 'TINYINT NOT NULL DEFAULT 0'],
     ['appointment_charges', 'payment_reference', 'VARCHAR(128) DEFAULT NULL'],
     ['appointment_charges', 'qr_code_url', 'VARCHAR(512) DEFAULT NULL'],
@@ -2001,6 +2028,11 @@ export const initDB = async () => {
       FOREIGN KEY (created_by) REFERENCES admin_users(id) ON DELETE RESTRICT
     );
   `);
+  for (const [column, type] of Object.entries({next_service_date:'DATE', follow_up_task_id:'BIGINT UNSIGNED', parent_ticket_id:'BIGINT UNSIGNED', adjustment_id:'BIGINT UNSIGNED', adjustment_snapshot:'JSON'})) {
+    if (!(await query(`SHOW COLUMNS FROM after_sales_tickets LIKE '${column}'`)).length) {
+      await query(`ALTER TABLE after_sales_tickets ADD COLUMN ${column} ${type} DEFAULT NULL`);
+    }
+  }
   await query(`
     CREATE TABLE IF NOT EXISTS fulfillment_events (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,

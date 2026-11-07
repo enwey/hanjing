@@ -7,12 +7,13 @@ const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.te
 // Caller owns the transaction: device, treatment, follow-up and fulfillment commit together.
 export async function completeFittingTreatment(conn, caseId, body, actorId) {
   const c = await lockFulfillmentCase(conn, caseId);
-  if (c.status !== 'ready_for_fitting') fail('交付状态已变化，请刷新后确认是否待试戴',409);
+  if (!['device_received','ready_for_fitting'].includes(c.status)) fail('交付状态已变化，请刷新后确认是否待试戴',409);
   if (!c.technician_id) fail('履约单未分配技师');
   const advancement = body.initial_advancement;
   if (advancement === '' || advancement == null || typeof advancement === 'boolean' || !Number.isFinite(Number(advancement)) || Number(advancement)<0 || Number(advancement)>15) fail('初始前移量必须在0至15mm之间');
   if (!validDate(body.start_date)) fail('请选择有效的治疗启动日期');
   const next = body.next_adjust_date || null;
+  if (!next) fail('请设置下次微调复查日期');
   if (next && (!validDate(next) || next < body.start_date)) fail('下次复诊日期不能早于治疗启动日期');
   if (!Number.isSafeInteger(Number(body.device_product_id)) || Number(body.device_product_id)<=0) fail('请选择订单中的设备');
   const [[product]] = await conn.execute(`SELECT p.id, oi.product_name AS name, oi.product_image AS image_url, oi.price, p.description
@@ -57,14 +58,21 @@ export async function completeFittingTreatment(conn, caseId, body, actorId) {
   const [[doctor]]=await conn.execute('SELECT name FROM doctors WHERE id=?',[record.doctor_id]);
   await conn.execute(`INSERT INTO treatment_timelines(user_id,patient_id,treatment_id,event_date,event_title,event_desc,event_type,doctor_name,color,icon)
     VALUES(?,?,?,?,?,?,'milestone',?,'#3B6BF5','device')`,[patient.user_id,c.patient_id,treatmentId,body.start_date,'完成首次佩戴交付',`绑定设备：${name}，初始前伸量 ${value}mm`,doctor?.name || '']);
+  let afterSalesTicketId;
   if(next) {
     const [followup] = await conn.execute(`INSERT INTO follow_up_tasks(patient_id,follower_id,title,description,due_date,status)
-      VALUES(?,?,?,?,?,'pending')`,[c.patient_id,actorId,'阻鼾器物理微调复查',`交付单 #${c.id}：${name}，初始前伸量 ${value}mm`,next]);
+      VALUES(?,?,?,?,?,'pending')`,[c.patient_id,c.technician_id,'阻鼾器物理微调复查',`交付单 #${c.id}：${name}，初始前伸量 ${value}mm`,next]);
     await notifyBusiness(conn, 'followup', followup.insertId, 'scheduled');
+    const [ticket] = await conn.execute(`INSERT INTO after_sales_tickets
+      (fulfillment_case_id,patient_id,patient_device_id,assigned_technician_id,created_by,issue_type,description,status,next_service_date,follow_up_task_id)
+      VALUES(?,?,?,?,?,'微调复查',?,'assigned',?,?)`,
+      [c.id,c.patient_id,deviceId,c.technician_id,actorId,`${name}，初始下颌前移量 ${value}mm`,next,followup.insertId]);
+    afterSalesTicketId = ticket.insertId;
+
   }
   await conn.execute(`UPDATE fulfillment_cases SET status='fitted',medical_record_id=? WHERE id=?`,[record.id,c.id]);
   await conn.execute(`INSERT INTO fulfillment_fittings(fulfillment_case_id,technician_id,patient_device_id,note) VALUES(?,?,?,?)`,[c.id,c.technician_id,deviceId,body.note || null]);
   await conn.execute(`INSERT INTO fulfillment_events(fulfillment_case_id,actor_id,event_type,detail) VALUES(?,?,'fitting_completed',?)`,[c.id,actorId,JSON.stringify({patient_device_id:deviceId,treatment_id:treatmentId,initial_advancement:value,start_date:body.start_date,next_adjust_date:next})]);
   await notifyBusiness(conn, 'treatment', treatmentId, 'updated');
-  return {patient_device_id:deviceId,treatment_id:treatmentId};
+  return {patient_device_id:deviceId,treatment_id:treatmentId,after_sales_ticket_id:afterSalesTicketId};
 }

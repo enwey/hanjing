@@ -1,0 +1,21 @@
+{
+  "outcomes": [
+    {
+      "mode": "refunded",
+      "status": "passed"
+    },
+    {
+      "mode": "refund_waived",
+      "status": "passed"
+    },
+    {
+      "mode": "wechat",
+      "status": "passed"
+    },
+    {
+      "mode": "history",
+      "status": "passed"
+    }
+  ],
+  "scope": "Actual Vue components with mocked business API; no real patient operations"
+}

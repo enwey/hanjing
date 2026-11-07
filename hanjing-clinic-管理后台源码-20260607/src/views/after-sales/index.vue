@@ -18,26 +18,37 @@ async function create(){if(!form.value.fulfillment_case_id||!form.value.issue_ty
 const activeTicket = ref<any>(null)
 const action = ref('')
 const actionSaving = ref(false)
-const actionForm = ref({ technicianId: '', resolution: '', closeReason: '' })
-const actionTitle = computed(() => ({ assigned: activeTicket.value?.assigned_technician_id ? '转派工单' : '分配工单', processing: '开始处理', resolved: '解决工单', closed: '关闭工单' } as Record<string, string>)[action.value] || '')
+const actionForm = ref({ technicianId: '', resolution: '', closeReason: '', advancement: undefined as number | undefined, followUp: 'continue', nextDate: '' })
+const actionTitle = computed(() => ({ assigned: activeTicket.value?.assigned_technician_id ? '转派工单' : '分配工单', processing: '开始处理', resolved: activeTicket.value?.issue_type === '微调复查' ? '完成微调' : '解决工单', closed: '关闭工单' } as Record<string, string>)[action.value] || '')
 const technicianOptions = computed(() => admins.value.filter(item => Number(item.id) !== Number(activeTicket.value?.assigned_technician_id)).map(item => ({ value: String(item.id), label: staffName(item) })))
 function openAction(ticket: any, next: string) {
   activeTicket.value = { ...ticket }
   action.value = next
-  actionForm.value = { technicianId: '', resolution: '', closeReason: '' }
+  actionForm.value = { technicianId: '', resolution: '', closeReason: '', advancement: ticket.current_advancement == null ? undefined : Number(ticket.current_advancement), followUp: 'continue', nextDate: '' }
 }
+const isAdjustment = computed(() => activeTicket.value?.issue_type === '微调复查')
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+function adjustmentRecord(ticket: any) { try { return typeof ticket.adjustment_snapshot === 'string' ? JSON.parse(ticket.adjustment_snapshot) : ticket.adjustment_snapshot } catch { return null } }
 async function submitAction() {
   if (!activeTicket.value || actionSaving.value) return
   if (action.value === 'assigned' && !actionForm.value.technicianId) return MessagePlugin.warning('请选择处理技师')
   if (action.value === 'resolved' && !actionForm.value.resolution.trim()) return MessagePlugin.warning('请填写处理结果')
   if (action.value === 'closed' && activeTicket.value.status !== 'resolved' && !actionForm.value.closeReason.trim()) return MessagePlugin.warning('请填写提前关闭原因')
+  if (action.value === 'resolved' && isAdjustment.value) {
+    const n = actionForm.value.advancement
+    if (n == null || !Number.isFinite(Number(n)) || Number(n) < 0 || Number(n) > 15) return MessagePlugin.warning('请输入0至15mm的下颌前移量')
+    if (actionForm.value.followUp === 'continue' && (!actionForm.value.nextDate || actionForm.value.nextDate <= today())) return MessagePlugin.warning('请选择晚于今天的下次复查日期')
+  }
   actionSaving.value = true
   try {
     const ticket = activeTicket.value
     await request.put(`/api/admin/after-sales-tickets/${ticket.id}`, {
       status: action.value, expected_status: ticket.status, expected_technician_id: ticket.assigned_technician_id || null,
       ...(action.value === 'assigned' ? { assigned_technician_id: Number(actionForm.value.technicianId) } : {}),
-      ...(action.value === 'resolved' ? { resolution: actionForm.value.resolution.trim() } : {}),
+      ...(action.value === 'resolved' ? { resolution: actionForm.value.resolution.trim(), ...(isAdjustment.value ? {
+        adjusted_advancement: actionForm.value.advancement, expected_advancement: ticket.current_advancement,
+        needs_follow_up: actionForm.value.followUp === 'continue', next_adjust_date: actionForm.value.followUp === 'continue' ? actionForm.value.nextDate : null
+      } : {}) } : {}),
       ...(action.value === 'closed' ? { close_reason: actionForm.value.closeReason.trim() } : {})
     })
     activeTicket.value = null
@@ -57,7 +68,7 @@ onMounted(load)
     <div class="page-title-row">
       <div>
         <div class="page-title">售后工作台</div>
-        <div class="page-title-sub">独立处理已交付设备的异常、维修与佩戴问题。</div>
+        <div class="page-title-sub">跟进设备交付后的微调复查、维修与佩戴问题。</div>
       </div>
       <div class="header-actions">
         <button class="btn btn-outline" @click="load"><AppIcon name="refresh" /> 刷新</button>
@@ -76,7 +87,7 @@ onMounted(load)
               <th style="min-width: 140px;">患者</th>
               <th style="min-width: 110px;">履约单</th>
               <th style="min-width: 300px;">问题</th>
-              <th style="min-width: 130px;">处理技师</th>
+              <th style="min-width: 140px;">复查日期</th><th style="min-width: 130px;">处理技师</th>
               <th style="min-width: 110px;">状态</th>
               <th style="min-width: 260px;">处理结果 / 关闭说明</th>
               <th style="min-width: 160px;">最近更新</th>
@@ -89,28 +100,32 @@ onMounted(load)
               <td><span class="patient-name">{{ ticket.patient_name || '—' }}</span></td>
               <td>#{{ ticket.fulfillment_case_id || '—' }}</td>
               <td><div class="issue-cell"><b>{{ ticket.issue_type }}</b><small>{{ ticket.description }}</small></div></td>
-              <td>{{ ticket.technician_name || '待分配' }}</td>
+              <td>{{ ticket.next_service_date ? String(ticket.next_service_date).slice(0,10) : '—' }}</td><td>{{ ticket.technician_name || '待分配' }}</td>
               <td><t-tag :theme="statusTheme(ticket.status)" size="small" variant="light">{{ labels[ticket.status] || ticket.status }}</t-tag></td>
-              <td><div class="result-cell">{{ ticket.resolution || '未填写' }}</div><small v-if="ticket.resolved_at" class="result-time">解决于 {{ formatShanghaiDateTime(ticket.resolved_at) }}</small></td>
+              <td><div class="result-cell">{{ ticket.resolution || '未填写' }}</div><div v-if="adjustmentRecord(ticket)" class="adjustment-record">
+                <span>{{ adjustmentRecord(ticket).before_advancement }} → {{ adjustmentRecord(ticket).adjusted_advancement }} mm · {{ adjustmentRecord(ticket).operator_name }}</span>
+                <span v-if="adjustmentRecord(ticket).needs_follow_up">下次 {{ adjustmentRecord(ticket).next_adjust_date }} · 工单 #{{ adjustmentRecord(ticket).next_ticket_id }}</span>
+                <span v-else>无需再复查</span>
+              </div><small v-if="ticket.resolved_at" class="result-time">解决于 {{ formatShanghaiDateTime(ticket.resolved_at) }}</small></td>
               <td>{{ formatShanghaiDateTime(ticket.updated_at) }}</td>
               <td style="text-align: right;">
                 <div class="actions">
                   <button v-permission="'after_sales:edit'" v-if="['pending','assigned','processing'].includes(ticket.status)" class="btn btn-xs btn-outline" @click="openAction(ticket, 'assigned')">{{ ticket.assigned_technician_id ? '转派' : '分配' }}</button>
                   <button v-permission="'after_sales:edit'" v-if="ticket.status === 'assigned'" class="btn btn-xs btn-primary" @click="openAction(ticket, 'processing')">开始处理</button>
-                  <button v-permission="'after_sales:edit'" v-if="ticket.status === 'processing'" class="btn btn-xs btn-success" @click="openAction(ticket, 'resolved')">解决</button>
+                  <button v-permission="'after_sales:edit'" v-if="ticket.status === 'processing'" class="btn btn-xs btn-success" @click="openAction(ticket, 'resolved')">{{ ticket.issue_type === '微调复查' ? '完成微调' : '解决' }}</button>
                   <button v-permission="'after_sales:edit'" v-if="['pending','assigned','processing','resolved'].includes(ticket.status)" class="btn btn-xs btn-outline" @click="openAction(ticket, 'closed')">关闭</button>
                   <span v-if="ticket.status === 'closed'" class="result-time">已归档</span>
                 </div>
               </td>
             </tr>
-            <tr v-if="!tickets.length"><td colspan="9" class="empty">暂无售后工单。</td></tr>
+            <tr v-if="!tickets.length"><td colspan="10" class="empty">暂无售后工单。</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </div>
   <t-dialog v-model:visible="visible" header="新建售后工单" :on-confirm="create"><div class="form"><div class="full"><label>搜索履约单<input v-model="caseSearch" placeholder="患者、档案号、订单号" @keyup.enter="searchCases"></label><button class="btn btn-outline" @click="searchCases">搜索</button><t-pagination :current="casePage" :page-size="20" :total="caseTotal" :show-page-size="false" @change="changeCasePage" /></div><label>履约单<select v-model="form.fulfillment_case_id"><option value="">请选择</option><option v-for="item in cases" :key="item.id" :value="String(item.id)">{{caseLabel(item)}}</option></select></label><label>处理技师<select v-model="form.assigned_technician_id"><option value="">暂不分配</option><option v-for="item in admins" :key="item.id" :value="String(item.id)">{{staffName(item)}}</option></select></label><label>问题类型<input v-model="form.issue_type" placeholder="如：设备异常、佩戴不适"></label><label class="full">问题说明<textarea v-model="form.description" rows="4"/></label></div></t-dialog>
-  <t-dialog :visible="!!activeTicket" :header="actionTitle" width="min(560px, calc(100vw - 32px))" :close-on-overlay-click="false" @close="() => { if (!actionSaving) activeTicket = null }">
+  <t-dialog :visible="!!activeTicket" :header="actionTitle" top="8vh" width="min(560px, calc(100vw - 32px))" :close-on-overlay-click="false" @close="() => { if (!actionSaving) activeTicket = null }">
     <form v-if="activeTicket" id="after-sales-action" @submit.prevent="submitAction">
       <div class="ticket-summary">工单 #{{ activeTicket.id }} · {{ activeTicket.patient_name }} · {{ labels[activeTicket.status] }}</div>
       <div class="action-form">
@@ -119,7 +134,17 @@ onMounted(load)
         </template>
         <p v-if="action === 'processing'">确认由 {{ activeTicket.technician_name || '已分配技师' }} 开始处理此工单？</p>
         <template v-if="action === 'resolved'">
-          <label>处理结果 <span class="required">*</span></label><t-textarea v-model="actionForm.resolution" :maxlength="5000" :autosize="{ minRows: 5, maxRows: 12 }" :disabled="actionSaving" placeholder="填写实际处理措施与结果" />
+          <template v-if="isAdjustment">
+            <div class="device-summary"><b>{{ activeTicket.device_name_snapshot || '患者设备' }}</b><span>当前下颌前移量 {{ activeTicket.current_advancement ?? '—' }} mm</span></div>
+            <label>调整后下颌前移量（mm） <span class="required">*</span></label>
+            <t-input-number v-model="actionForm.advancement" :min="0" :max="15" :step="0.1" :decimal-places="2" :disabled="actionSaving" style="width: 100%" />
+          </template>
+          <label>处理结果 <span class="required">*</span></label><t-textarea v-model="actionForm.resolution" :maxlength="5000" :autosize="{ minRows: 3, maxRows: 6 }" :disabled="actionSaving" placeholder="填写实际处理措施与结果" />
+          <template v-if="isAdjustment">
+            <label>后续复查 <span class="required">*</span></label>
+            <t-radio-group v-model="actionForm.followUp" class="followup-options" :disabled="actionSaving"><t-radio-button value="continue">继续复查</t-radio-button><t-radio-button value="none">无需再复查</t-radio-button></t-radio-group>
+            <template v-if="actionForm.followUp === 'continue'"><label>下次复查日期 <span class="required">*</span></label><t-date-picker v-model="actionForm.nextDate" format="YYYY-MM-DD" :disable-date="(date: Date) => date <= new Date(today() + 'T23:59:59')" :disabled="actionSaving" style="width: 100%" /></template>
+          </template>
         </template>
         <template v-if="action === 'closed'">
           <t-alert v-if="activeTicket.status !== 'resolved'" theme="warning" message="工单尚未解决，此操作将提前关闭工单。" />
@@ -139,6 +164,12 @@ onMounted(load)
 .ticket-summary { margin-bottom: 20px; color: #6B7280; font-size: 13px; }
 .action-form { display: grid; gap: 12px; }
 .action-form label { font-size: 14px; color: #374151; }
+.device-summary { display:flex; flex-direction:column; gap:8px; padding:16px; background:var(--td-bg-color-secondarycontainer); border-radius:8px; font-size:14px; }
+.device-summary span { color:var(--td-text-color-secondary); }
+.followup-options { display:flex; width:100%; }
+.followup-options :deep(.t-radio-button) { flex:1; display:flex; justify-content:center; }
+#after-sales-action { max-height:calc(84vh - 140px); overflow-y:auto; padding:0 2px 4px; }
+.adjustment-record { display:grid; gap:4px; font-size:12px; color:var(--td-text-color-secondary); margin-top:8px; }
 .required { color: #d54941; }
 .page-title-row { min-height: 50px; }
 .header-actions { display: flex; gap: 8px; align-items: center; }

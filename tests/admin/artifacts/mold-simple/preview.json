@@ -1,0 +1,13 @@
+{
+  "outcomes": [
+    {
+      "mode": "single-textarea-and-save",
+      "status": "passed"
+    },
+    {
+      "mode": "batch-preview-and-export",
+      "status": "passed"
+    }
+  ],
+  "scope": "Actual Vue components with mocked business API; no real patient operations"
+}

@@ -30,7 +30,7 @@ export async function readFulfillmentClinical(c, db = defaultDB) {
   for (const treatment of treatments) {
     treatment.patient_device = treatment.patient_device_id
       ? await get('SELECT * FROM patient_devices WHERE id=? AND patient_id=?', [treatment.patient_device_id, c.patient_id]) : null;
-    treatment.adjustments = await query(`SELECT a.*, d.name AS operator_name FROM device_adjustments a
+    treatment.adjustments = await query(`SELECT a.*, COALESCE(a.operator_name_snapshot,d.name) AS operator_name FROM device_adjustments a
       LEFT JOIN doctors d ON d.id=a.operator_id WHERE a.treatment_id=? ORDER BY a.adjust_date DESC,a.id DESC`, [treatment.id]);
     treatment.logs = treatment.patient_device_id ? await query(`SELECT date,wear_duration,comfort FROM wearing_logs
       WHERE patient_device_id=? AND source='mini_program_checkin' ORDER BY date DESC LIMIT 30`, [treatment.patient_device_id]) : [];

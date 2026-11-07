@@ -1,0 +1,180 @@
+{
+  "outcomes": [
+    {
+      "mode": "refunded",
+      "status": "passed",
+      "bounds": {
+        "left": 36.5,
+        "right": 1388.5,
+        "width": 1440,
+        "items": [
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          },
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          },
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          }
+        ]
+      }
+    },
+    {
+      "mode": "legacy",
+      "status": "passed",
+      "bounds": {
+        "left": 36.5,
+        "right": 1388.5,
+        "width": 1440,
+        "items": [
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          },
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          },
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          }
+        ]
+      }
+    },
+    {
+      "mode": "wechat",
+      "status": "passed",
+      "bounds": {
+        "left": 36.5,
+        "right": 1388.5,
+        "width": 1440,
+        "items": [
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          },
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          },
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          }
+        ]
+      }
+    },
+    {
+      "mode": "history",
+      "status": "passed",
+      "bounds": {
+        "left": 36.5,
+        "right": 1388.5,
+        "width": 1440,
+        "items": [
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          },
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          },
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          }
+        ]
+      }
+    },
+    {
+      "mode": "history-receipt",
+      "status": "passed",
+      "bounds": {
+        "left": 36.5,
+        "right": 1388.5,
+        "width": 1440,
+        "items": [
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          },
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          },
+          {
+            "scroll": 635,
+            "width": 635
+          },
+          {
+            "scroll": 634,
+            "width": 634
+          }
+        ]
+      }
+    }
+  ],
+  "scope": "Actual Vue components with mocked business API; no real patient operations"
+}

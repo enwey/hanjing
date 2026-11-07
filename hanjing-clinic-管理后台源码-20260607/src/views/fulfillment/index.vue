@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { MessagePlugin } from 'tdesign-vue-next'
+import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import request from '@/utils/request'
 import { useRouter } from 'vue-router'
 import { canAdvanceDelivery, paymentLabel, paymentTheme, paymentMoney } from '@/utils/fulfillmentPayment'
@@ -19,12 +19,14 @@ const loading=ref(false), cases=ref<any[]>([]), admins=ref<any[]>([]), events=re
 const fittingProducts=ref<any[]>([]), savingAction=ref(false)
 let actionRequest=0
 const form=ref<any>({technician_id:'',mold_no:'',storage_location:'',carrier:'',tracking_no:'',device_serial_no:'',note:''})
-const labels:Record<string,string>={pending_assignment:'待分配技师',assigned:'待取模',mold_taken:'待送厂',mold_batched:'批次待寄出',mold_shipped:'待工厂签收',factory_received:'工厂已签收',producing:'制作中',factory_exception:'工厂异常',device_received:'待通知试戴',ready_for_fitting:'待试戴',fitted:'已完成'}
-const actionTitle=computed(()=>({assign:'分配技师',mold:'登记取模',shipment:'发模登记',receipt:'设备收货入库',fitting:'完成试戴'} as any)[actionType.value]||'')
+const selectedReturns=ref<number[]>([])
+const canReceive=(item:any)=>canAdvanceDelivery(item)&&['awaiting_return','mold_batched','mold_shipped','factory_received','producing','factory_exception'].includes(item.status)
+const labels:Record<string,string>={awaiting_return:'待回货',pending_assignment:'待分配技师',assigned:'待取模',mold_taken:'待送厂',mold_batched:'待回货',mold_shipped:'待回货',factory_received:'待回货',producing:'待回货',factory_exception:'待回货',device_received:'待试戴',ready_for_fitting:'待试戴',fitted:'已完成'}
+const actionTitle=computed(()=>({assign:'分配技师',fitting:'确认试戴'} as any)[actionType.value]||'')
 const staffName=(item:any)=>item.real_name||item.name||item.username
 const genderLabel=(value:any)=>({1:'男',2:'女',male:'男',female:'女',男:'男',女:'女'} as any)[value]||'未设置'
 const avatarColor=(name:string)=>['#5A85F5','#7C5CE0','#E6875A','#37A88D','#D96886'][String(name||'').charCodeAt(0)%5]
-async function load(){loading.value=true;try{const [a,b]:any[]=await Promise.all([request.get('/api/admin/fulfillment/cases',{params:{page:page.value,pageSize:pageSize.value,search:search.value.trim()||undefined}}),request.get('/api/admin/fulfillment/technicians')]);if(a.code===200){cases.value=a.data||[];total.value=Number(a.pagination?.total||0)}if(b.code===200)admins.value=b.data||[]}catch(e){cases.value=[];total.value=0;console.error(e);MessagePlugin.error('加载履约数据失败')}finally{loading.value=false}}
+async function load(){loading.value=true;try{const [a,b]:any[]=await Promise.all([request.get('/api/admin/fulfillment/cases',{params:{page:page.value,pageSize:pageSize.value,search:search.value.trim()||undefined}}),request.get('/api/admin/fulfillment/technicians')]);if(a.code===200){cases.value=a.data||[];selectedReturns.value=[];total.value=Number(a.pagination?.total||0)}if(b.code===200)admins.value=b.data||[]}catch(e){cases.value=[];total.value=0;console.error(e);MessagePlugin.error('加载履约数据失败')}finally{loading.value=false}}
 async function openAction(type:string,item:any){
   const requestId=++actionRequest
   activeCase.value=item;actionType.value=type;fittingProducts.value=[]
@@ -43,13 +45,21 @@ async function openAction(type:string,item:any){
 }
 async function saveAction(){
   if(!activeCase.value||savingAction.value)return
-  if(actionType.value==='fitting'&&(!form.value.device_product_id||!form.value.start_date||form.value.initial_advancement===''||form.value.initial_advancement==null)){MessagePlugin.warning('请选择交付设备并填写初始前移量和启动日期');return}
-  const path:any={assign:'/assign',mold:'/mold',shipment:'/mold-shipment',receipt:'/device-receipt',fitting:'/fitting'}
+  if(actionType.value==='fitting'&&(!form.value.device_product_id||!form.value.start_date||form.value.initial_advancement===''||form.value.initial_advancement==null||!form.value.next_adjust_date)){MessagePlugin.warning('请选择交付设备并填写初始前移量、启动日期和下次复查日期');return}
+  const path:any={assign:'/assign',fitting:'/fitting'}
   const payload={...form.value,technician_id:form.value.technician_id?Number(form.value.technician_id):undefined}
   savingAction.value=true
-  try{const r:any=await request.post(`/api/admin/fulfillment/cases/${activeCase.value.id}${path[actionType.value]}`,payload);if(r.code!==200)throw new Error(r.message);MessagePlugin.success('操作已保存');actionVisible.value=false;await load()}catch(e:any){MessagePlugin.error(e.message||'操作失败')}finally{savingAction.value=false}
+  try{const r:any=await request.post(`/api/admin/fulfillment/cases/${activeCase.value.id}${path[actionType.value]}`,payload);if(r.code!==200)throw new Error(r.message);MessagePlugin.success(actionType.value==='fitting'?'已确认试戴，复查安排已进入售后工作台':'操作已保存');actionVisible.value=false;await load()}catch(e:any){MessagePlugin.error(e.message||'操作失败')}finally{savingAction.value=false}
 }
 
+function confirmReceipt(ids:number[]){
+ if(!ids.length||savingAction.value)return
+ const dialog=DialogPlugin.confirm({header:'确认回货',body:`确认所选 ${ids.length} 件设备已回货并验收通过？`,confirmBtn:'确认回货',onConfirm:async()=>{
+ savingAction.value=true
+ try{await request.post('/api/admin/fulfillment/receipts',{case_ids:ids,confirmed:true});dialog.hide();await load();MessagePlugin.success('回货已确认')}
+ catch(e:any){MessagePlugin.error(e.message||'确认失败')}finally{savingAction.value=false}
+ }})
+}
 async function notify(item:any){try{const r:any=await request.post(`/api/admin/fulfillment/cases/${item.id}/notify-fitting`);if(r.code!==200)throw new Error(r.message);MessagePlugin.success('已通知患者试戴');await load()}catch(e:any){MessagePlugin.error(e.message||'通知失败')}}
 async function showEvents(item:any){try{const r:any=await request.get(`/api/admin/fulfillment/cases/${item.id}/events`);if(r.code!==200)throw new Error(r.message);events.value=r.data||[];eventsVisible.value=true}catch(e:any){MessagePlugin.error(e.message||'获取履约记录失败')}}
 async function showDetail(item:any){detail.value=null;try{const r:any=await request.get(`/api/admin/fulfillment/cases/${item.id}/detail`);if(r.code!==200)throw new Error(r.message);detail.value=r.data;detailVisible.value=true}catch(e:any){MessagePlugin.error(e.message||'获取履约资料失败')}}
@@ -61,7 +71,7 @@ onMounted(load)
     <div class="page-title-row">
       <div>
         <div class="page-title">交付管理</div>
-        <div class="page-title-sub">管理阻鼾器取模、制作交付与试戴履约记录</div>
+        <div class="page-title-sub">管理取模、送厂清单、回货与试戴交付</div>
       </div>
       <div class="header-actions">
         <button class="btn btn-outline" @click="refresh"><AppIcon name="refresh" /> 刷新</button>
@@ -71,14 +81,14 @@ onMounted(load)
     <FactoryBatches v-if="view==='batches'" ref="batchPanel" @changed="load" />
     <div v-else class="panel" :aria-busy="loading">
       <div class="filter-bar list-toolbar">
-        <h3>履约队列</h3><span class="list-count">{{ total }} 条</span>
+        <button v-permission="'fulfillment:receipt'" class="btn btn-primary" :disabled="!selectedReturns.length||savingAction" @click="confirmReceipt([...selectedReturns])">确认所选回货（{{selectedReturns.length}}）</button><h3>履约队列</h3><span class="list-count">{{ total }} 条</span>
         <form class="header-actions" @submit.prevent="searchCases"><input v-model="search" aria-label="搜索履约单" placeholder="患者、档案号、订单号"><button class="btn btn-outline" type="submit">搜索</button></form>
       </div>
       <div class="panel-body">
         <table class="data-table" v-resizable>
           <thead>
             <tr>
-              <th style="min-width: 90px;">履约单</th>
+              <th><input type="checkbox" aria-label="全选待回货" :checked="cases.some(canReceive)&&cases.filter(canReceive).every(i=>selectedReturns.includes(i.id))" @change="selectedReturns=($event.target as HTMLInputElement).checked?cases.filter(canReceive).map(i=>i.id):[]"></th><th style="min-width: 90px;">履约单</th>
               <th style="min-width: 260px;">患者信息</th>
               <th style="min-width: 220px;">阻鼾器商品</th>
               <th style="min-width: 170px;">订单收款</th>
@@ -91,7 +101,7 @@ onMounted(load)
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in cases" :key="item.id">
+            <tr v-for="item in cases" :key="item.id"><td><input v-if="canReceive(item)" v-model="selectedReturns" type="checkbox" :value="item.id" :aria-label="`选择${item.patient_name}回货`"></td>
               <td><span class="record-number">#{{ item.id }}</span></td>
               <td>
                 <div class="patient">
@@ -124,7 +134,7 @@ onMounted(load)
               <td>
                 <small>订单：{{ item.order_no || '—' }}</small>
                 <small v-if="item.mold_no">模具：{{ item.mold_no }}</small>
-                <small v-if="item.mold_tracking_no">快递：{{ item.mold_tracking_no }}</small>
+
                 <small v-if="item.factory_batch_no">送厂批次：{{ item.factory_batch_no }}</small>
                 <small v-if="item.device_serial_no">设备：{{ item.device_serial_no }}</small>
               </td>
@@ -134,15 +144,15 @@ onMounted(load)
                   <button v-permission="'fulfillment:assign'" v-if="item.status === 'pending_assignment'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="openAction('assign', item)">分配</button>
                   <button v-permission="'fulfillment:mold'" v-if="item.status === 'assigned'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="moldDialog.open(item)">取模</button>
                   <button v-permission="'fulfillment:mold'" v-else-if="item.status!=='pending_assignment'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-outline" @click="moldDialog.open(item)">取模资料</button>
-                  <button v-permission="'fulfillment:batch'" v-if="['mold_taken','mold_batched','mold_shipped','factory_received','producing','factory_exception'].includes(item.status)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="openBatch(item)">送厂批次</button>
-                  <button v-permission="'fulfillment:receipt'" v-if="['factory_received','producing'].includes(item.status)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-success" @click="openAction('receipt', item)">收货</button>
+                  <button v-permission="'fulfillment:batch'" v-if="['mold_taken','awaiting_return','mold_batched','mold_shipped','factory_received','producing','factory_exception'].includes(item.status)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="openBatch(item)">送厂批次</button>
+                  <button v-permission="'fulfillment:receipt'" v-if="canReceive(item)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-success" @click="confirmReceipt([item.id])">确认回货</button>
                   <button v-permission="'fulfillment:notify'" v-if="item.status === 'device_received'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-primary" @click="notify(item)">通知试戴</button>
-                  <button v-permission="'fulfillment:fitting'" v-if="item.status === 'ready_for_fitting'" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-success" @click="openAction('fitting', item)">完成试戴</button>
+                  <button v-permission="'fulfillment:fitting'" v-if="['device_received','ready_for_fitting'].includes(item.status)" :disabled="!canAdvanceDelivery(item)" class="btn btn-xs btn-success" @click="openAction('fitting', item)">确认试戴</button>
                   <button class="btn btn-xs btn-outline" @click="showEvents(item)">记录</button>
                 </div>
               </td>
             </tr>
-            <tr v-if="!cases.length"><td colspan="10" class="empty">暂无履约单。</td></tr>
+            <tr v-if="!cases.length"><td colspan="11" class="empty">暂无履约单。</td></tr>
           </tbody>
         </table>
       </div>
@@ -150,11 +160,11 @@ onMounted(load)
     </div>
   </div>
  <MoldDialog ref="moldDialog" @saved="load" />
- <t-dialog v-model:visible="actionVisible" :header="actionTitle" :confirm-loading="savingAction" :on-confirm="saveAction"><div class="form"><label v-if="actionType==='assign'">负责技师<select v-model="form.technician_id"><option value="">请选择</option><option v-for="item in admins" :key="item.id" :value="String(item.id)">{{staffName(item)}}</option></select></label><template v-if="actionType==='mold'"><label>模具编号<input v-model="form.mold_no"></label><label>存放位置<input v-model="form.storage_location"></label></template><template v-if="actionType==='shipment'"><label>快递公司<input v-model="form.carrier"></label><label>快递单号<input v-model="form.tracking_no"></label></template><template v-if="actionType==='receipt'"><label>设备序列号<input v-model="form.device_serial_no"></label><label>入库位置<input v-model="form.storage_location"></label></template><template v-if="actionType==='fitting'">
+ <t-dialog v-model:visible="actionVisible" :header="actionTitle" :confirm-loading="savingAction" :on-confirm="saveAction"><div class="form"><label v-if="actionType==='assign'">负责技师<select v-model="form.technician_id"><option value="">请选择</option><option v-for="item in admins" :key="item.id" :value="String(item.id)">{{staffName(item)}}</option></select></label><template v-if="actionType==='fitting'">
   <label class="full">绑定物理阻鼾器设备<select v-model="form.device_product_id"><option value="">请选择交付订单中的设备</option><option v-for="item in fittingProducts" :key="item.product_id" :value="String(item.product_id)">{{item.product_name}}</option></select></label>
   <label>初始下颌前移量（mm）<input v-model.number="form.initial_advancement" type="number" min="0" max="15" step="0.5"></label>
-  <label>初配戴 / 治疗启动日期<input v-model="form.start_date" type="date"></label>
-  <label>计划下次微调复诊日期<input v-model="form.next_adjust_date" type="date" :min="form.start_date"></label>
+  <label>治疗启动日期<input v-model="form.start_date" type="date"></label>
+  <label>下次微调复查日期 *<input v-model="form.next_adjust_date" type="date" :min="form.start_date"></label>
 </template><label class="full">备注 / 结果<textarea v-model="form.note" rows="3"/></label></div></t-dialog>
  <t-dialog v-model:visible="eventsVisible" header="履约记录" :footer="false"><div v-for="event in events" :key="event.id" class="event"><b>{{event.event_type}}</b><span>{{event.actor_name||'系统'}} · {{formatTime(event.created_at)}}</span><p>{{event.detail||'—'}}</p></div><p v-if="!events.length" class="empty">暂无记录</p></t-dialog>
  <t-dialog v-model:visible="detailVisible" header="履约资料 · 门诊诊疗与病历建档" placement="center" width="min(1200px, 94vw)" :footer="false"><ClinicalDetails v-if="detail" :data="detail" /></t-dialog>

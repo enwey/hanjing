@@ -1,0 +1,1056 @@
+{
+  "results": [
+    {
+      "name": "商城现金收款与退款保存不同操作人，忽略客户端伪造字段",
+      "status": "passed"
+    },
+    {
+      "name": "银行转账订单同样记录收退款操作人，未确认退款不写入",
+      "status": "passed"
+    },
+    {
+      "name": "商城微信自动支付不冒记工作人员，原路退款保留审批操作人",
+      "status": "passed"
+    },
+    {
+      "name": "微信退款超时仍保留发起人，核对和重复回调不改操作人",
+      "status": "passed"
+    },
+    {
+      "name": "拒绝退款不记录为退款操作，后续再次申请可记录实际退款人",
+      "status": "passed"
+    },
+    {
+      "name": "历史预约订单兼容支付与退款，使用预约原支付单号，详情可见操作人",
+      "status": "passed"
+    },
+    {
+      "name": "历史预约取消后迟到付款仍记录支付来源并可按原单退款",
+      "status": "passed"
+    },
+    {
+      "name": "后台微信扫码收款记录实际发起人，重试和到账不覆盖",
+      "status": "passed"
+    },
+    {
+      "name": "权限不足拒绝退款且不写入操作人",
+      "status": "passed"
+    },
+    {
+      "name": "管理员改名不影响已收退款姓名快照",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/products",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders/1/offline-refund",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders/1/offline-refund",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/2",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders/2/offline-refund",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/2",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/3",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/3",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/3",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/3",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/4",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/4",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/4",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/5",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/5",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/5",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/6",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/7",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/pay/native",
+      "status": 500
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/8",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/pay/native",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/8",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/9",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/orders/1",
+      "status": 200
+    }
+  ],
+  "financialEvidence": [
+    {
+      "case": "商城现金收款与退款保存不同操作人，忽略客户端伪造字段",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:08.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:09.000Z",
+          "refund_at": "2026-11-07T07:40:09.000Z"
+        }
+      ]
+    },
+    {
+      "case": "银行转账订单同样记录收退款操作人，未确认退款不写入",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:08.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:09.000Z",
+          "refund_at": "2026-11-07T07:40:09.000Z"
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:09.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9000,
+          "refunded_by_name": "隔离管理员",
+          "refund_requested_at": "2026-11-07T07:40:10.000Z",
+          "refund_at": "2026-11-07T07:40:10.000Z"
+        }
+      ]
+    },
+    {
+      "case": "商城微信自动支付不冒记工作人员，原路退款保留审批操作人",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:08.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:09.000Z",
+          "refund_at": "2026-11-07T07:40:09.000Z"
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:09.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9000,
+          "refunded_by_name": "隔离管理员",
+          "refund_requested_at": "2026-11-07T07:40:10.000Z",
+          "refund_at": "2026-11-07T07:40:10.000Z"
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:10.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:11.000Z",
+          "refund_at": "2026-11-07T07:40:11.000Z"
+        }
+      ]
+    },
+    {
+      "case": "微信退款超时仍保留发起人，核对和重复回调不改操作人",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:08.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:09.000Z",
+          "refund_at": "2026-11-07T07:40:09.000Z"
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:09.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9000,
+          "refunded_by_name": "隔离管理员",
+          "refund_requested_at": "2026-11-07T07:40:10.000Z",
+          "refund_at": "2026-11-07T07:40:10.000Z"
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:10.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:11.000Z",
+          "refund_at": "2026-11-07T07:40:11.000Z"
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:11.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:12.000Z",
+          "refund_at": "2026-11-07T07:40:12.000Z"
+        }
+      ]
+    },
+    {
+      "case": "拒绝退款不记录为退款操作，后续再次申请可记录实际退款人",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:08.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:09.000Z",
+          "refund_at": "2026-11-07T07:40:09.000Z"
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:09.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9000,
+          "refunded_by_name": "隔离管理员",
+          "refund_requested_at": "2026-11-07T07:40:10.000Z",
+          "refund_at": "2026-11-07T07:40:10.000Z"
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:10.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:11.000Z",
+          "refund_at": "2026-11-07T07:40:11.000Z"
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:11.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:12.000Z",
+          "refund_at": "2026-11-07T07:40:12.000Z"
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:12.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:13.000Z",
+          "refund_at": "2026-11-07T07:40:13.000Z"
+        }
+      ]
+    },
+    {
+      "case": "历史预约订单兼容支付与退款，使用预约原支付单号，详情可见操作人",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:08.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:09.000Z",
+          "refund_at": "2026-11-07T07:40:09.000Z"
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:09.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9000,
+          "refunded_by_name": "隔离管理员",
+          "refund_requested_at": "2026-11-07T07:40:10.000Z",
+          "refund_at": "2026-11-07T07:40:10.000Z"
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:10.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:11.000Z",
+          "refund_at": "2026-11-07T07:40:11.000Z"
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:11.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:12.000Z",
+          "refund_at": "2026-11-07T07:40:12.000Z"
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:12.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:13.000Z",
+          "refund_at": "2026-11-07T07:40:13.000Z"
+        },
+        {
+          "id": 6,
+          "type": "appointment_deposit",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:14.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:14.000Z",
+          "refund_at": "2026-11-07T07:40:15.000Z"
+        }
+      ]
+    },
+    {
+      "case": "历史预约取消后迟到付款仍记录支付来源并可按原单退款",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:08.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:09.000Z",
+          "refund_at": "2026-11-07T07:40:09.000Z"
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:09.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9000,
+          "refunded_by_name": "隔离管理员",
+          "refund_requested_at": "2026-11-07T07:40:10.000Z",
+          "refund_at": "2026-11-07T07:40:10.000Z"
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:10.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:11.000Z",
+          "refund_at": "2026-11-07T07:40:11.000Z"
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:11.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:12.000Z",
+          "refund_at": "2026-11-07T07:40:12.000Z"
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:12.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:13.000Z",
+          "refund_at": "2026-11-07T07:40:13.000Z"
+        },
+        {
+          "id": 6,
+          "type": "appointment_deposit",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:14.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:14.000Z",
+          "refund_at": "2026-11-07T07:40:15.000Z"
+        },
+        {
+          "id": 7,
+          "type": "appointment_deposit",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:15.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:15.000Z",
+          "refund_at": "2026-11-07T07:40:16.000Z"
+        }
+      ]
+    },
+    {
+      "case": "后台微信扫码收款记录实际发起人，重试和到账不覆盖",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:08.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:09.000Z",
+          "refund_at": "2026-11-07T07:40:09.000Z"
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:09.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9000,
+          "refunded_by_name": "隔离管理员",
+          "refund_requested_at": "2026-11-07T07:40:10.000Z",
+          "refund_at": "2026-11-07T07:40:10.000Z"
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:10.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:11.000Z",
+          "refund_at": "2026-11-07T07:40:11.000Z"
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:11.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:12.000Z",
+          "refund_at": "2026-11-07T07:40:12.000Z"
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:12.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:13.000Z",
+          "refund_at": "2026-11-07T07:40:13.000Z"
+        },
+        {
+          "id": 6,
+          "type": "appointment_deposit",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:14.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:14.000Z",
+          "refund_at": "2026-11-07T07:40:15.000Z"
+        },
+        {
+          "id": 7,
+          "type": "appointment_deposit",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:15.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:15.000Z",
+          "refund_at": "2026-11-07T07:40:16.000Z"
+        },
+        {
+          "id": 8,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:17.000Z",
+          "collected_by_admin_id": 9002,
+          "collected_by_name": "退款工作人员",
+          "collection_source": "wechat_native",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "权限不足拒绝退款且不写入操作人",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:08.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:09.000Z",
+          "refund_at": "2026-11-07T07:40:09.000Z"
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:09.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9000,
+          "refunded_by_name": "隔离管理员",
+          "refund_requested_at": "2026-11-07T07:40:10.000Z",
+          "refund_at": "2026-11-07T07:40:10.000Z"
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:10.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:11.000Z",
+          "refund_at": "2026-11-07T07:40:11.000Z"
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:11.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:12.000Z",
+          "refund_at": "2026-11-07T07:40:12.000Z"
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:12.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:13.000Z",
+          "refund_at": "2026-11-07T07:40:13.000Z"
+        },
+        {
+          "id": 6,
+          "type": "appointment_deposit",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:14.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:14.000Z",
+          "refund_at": "2026-11-07T07:40:15.000Z"
+        },
+        {
+          "id": 7,
+          "type": "appointment_deposit",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:15.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:15.000Z",
+          "refund_at": "2026-11-07T07:40:16.000Z"
+        },
+        {
+          "id": 8,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:17.000Z",
+          "collected_by_admin_id": 9002,
+          "collected_by_name": "退款工作人员",
+          "collection_source": "wechat_native",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 9,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:17.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "管理员改名不影响已收退款姓名快照",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:08.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:09.000Z",
+          "refund_at": "2026-11-07T07:40:09.000Z"
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:09.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": 9000,
+          "refunded_by_name": "隔离管理员",
+          "refund_requested_at": "2026-11-07T07:40:10.000Z",
+          "refund_at": "2026-11-07T07:40:10.000Z"
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:10.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:11.000Z",
+          "refund_at": "2026-11-07T07:40:11.000Z"
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:11.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:12.000Z",
+          "refund_at": "2026-11-07T07:40:12.000Z"
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:12.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:13.000Z",
+          "refund_at": "2026-11-07T07:40:13.000Z"
+        },
+        {
+          "id": 6,
+          "type": "appointment_deposit",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:14.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:14.000Z",
+          "refund_at": "2026-11-07T07:40:15.000Z"
+        },
+        {
+          "id": 7,
+          "type": "appointment_deposit",
+          "status": "refunded",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:15.000Z",
+          "collected_by_admin_id": null,
+          "collected_by_name": null,
+          "collection_source": "patient_wechat",
+          "refunded_by_admin_id": 9002,
+          "refunded_by_name": "退款工作人员",
+          "refund_requested_at": "2026-11-07T07:40:15.000Z",
+          "refund_at": "2026-11-07T07:40:16.000Z"
+        },
+        {
+          "id": 8,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:17.000Z",
+          "collected_by_admin_id": 9002,
+          "collected_by_name": "退款工作人员",
+          "collection_source": "wechat_native",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 9,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T07:40:17.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离库；业务数据通过实际API创建，历史预约付款经兼容回调模块生成；微信响应模拟，拒绝公网请求；无真实资金。"
+}

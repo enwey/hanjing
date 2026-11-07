@@ -1,0 +1,21 @@
+{
+  "outcomes": [
+    {
+      "name": "batch-and-xlsx",
+      "status": "passed"
+    },
+    {
+      "name": "multi-return-confirmation",
+      "status": "passed"
+    },
+    {
+      "name": "fitting-parameters-and-date",
+      "status": "passed"
+    },
+    {
+      "name": "after-sales-next-date",
+      "status": "passed"
+    }
+  ],
+  "scope": "Actual Vue components with mocked business API; no real patient operations"
+}

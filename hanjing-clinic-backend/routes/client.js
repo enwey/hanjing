@@ -1055,8 +1055,8 @@ export async function finalizePaidAppointment(conn, appt, userId, paymentPayload
   if (appt.status !== 'pending_payment' || alreadyPaid || independentCharge) {
     // A verified late/duplicate payment must remain visible for a real refund, not revive the booking.
     await conn.execute(`INSERT INTO orders
-      (order_no,user_id,type,total_amount,discount_amount,pay_amount,pay_method,pay_at,status,appointment_id,wechat_transaction_id,shipping_address)
-      VALUES(?,?,'appointment_deposit',?,0,?,'wechat',CURRENT_TIMESTAMP,'refund_pending',?,?,?)`,
+      (order_no,user_id,type,total_amount,discount_amount,pay_amount,pay_method,pay_at,status,appointment_id,wechat_transaction_id,shipping_address,collection_source)
+      VALUES(?,?,'appointment_deposit',?,0,?,'wechat',CURRENT_TIMESTAMP,'refund_pending',?,?,?,'patient_wechat')`,
     [`OD${Date.now()}${crypto.randomBytes(5).toString('hex')}`, appt.user_id, totalPayAmount, totalPayAmount, appt.id,
       paymentPayload.transaction_id, JSON.stringify({ refund_from_status: 'paid', refund_payment_conflict: true, refund_reason: '预约状态已变更或重复支付，需核对退款', refund_applied_at: new Date().toISOString() })]);
     await writeNotification(conn, {userId:appt.user_id, title:"预约付款待核对", content:`预约 ${appt.appointment_no} 收到付款，已转入退款审核，预约状态未改变。`, type:"appointment", businessType:"appointment", businessId:appt.id});
@@ -1070,8 +1070,8 @@ export async function finalizePaidAppointment(conn, appt, userId, paymentPayload
   if (updated.affectedRows !== 1) throw businessError('预约状态已变更', 409);
   const orderNo = `OD${Date.now()}${crypto.randomBytes(5).toString('hex')}`;
   await conn.execute(
-    `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, appointment_id, wechat_transaction_id, wechat_prepay_id)
-     VALUES (?, ?, 'appointment_deposit', ?, 0, NULL, ?, 'wechat', CURRENT_TIMESTAMP, 'paid', ?, ?, ?)`,
+    `INSERT INTO orders (order_no, user_id, type, total_amount, discount_amount, coupon_id, pay_amount, pay_method, pay_at, status, appointment_id, wechat_transaction_id, wechat_prepay_id, collection_source)
+     VALUES (?, ?, 'appointment_deposit', ?, 0, NULL, ?, 'wechat', CURRENT_TIMESTAMP, 'paid', ?, ?, ?, 'patient_wechat')`,
     [orderNo, resolvedUserId, totalPayAmount, totalPayAmount, appt.id, paymentPayload?.transaction_id || null, paymentPayload?.prepay_id || null]
   );
   // Appointment fees belong to the appointment, not a seeded product ID.
@@ -1090,6 +1090,11 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
   if (!paymentPayload || paymentPayload.trade_state !== 'SUCCESS' || paymentPayload.out_trade_no !== current.order_no ||
       paymentPayload.amount?.currency !== 'CNY' || Number(paymentPayload.amount?.total) !== Number(current.pay_amount) ||
       !paymentPayload.transaction_id) throw businessError('支付流水与订单不一致', 409);
+  if (!current.pay_at) {
+    const source = current.pay_method === 'wechat_native' ? 'wechat_native'
+      : current.pay_method === 'wechat_micropay' ? 'wechat_micropay' : 'patient_wechat';
+    await conn.execute('UPDATE orders SET collection_source=? WHERE id=?', [source,current.id]);
+  }
   if (current.status === 'cancelled' && !current.pay_at) {
     const address = typeof current.shipping_address === 'string' ? JSON.parse(current.shipping_address || '{}') : (current.shipping_address || {});
     Object.assign(address, { refund_from_status: 'cancelled', refund_payment_conflict: true, refund_reason: '取消订单后收到支付成功通知',
@@ -5662,7 +5667,7 @@ app.get('/api/v1/treatment/adjustments', authenticateWxToken, async (req, res) =
       return res.json({ code: 0, data: [] });
     }
     const adjustments = await query(
-      `SELECT da.*, d.name as doctor_name
+      `SELECT da.*, COALESCE(da.operator_name_snapshot,d.name) as doctor_name
        FROM device_adjustments da
        LEFT JOIN doctors d ON da.operator_id = d.id
        WHERE da.patient_device_id = ?
@@ -6586,7 +6591,7 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
       if (payAmount === 0) {
         const freeStatus = deliveryMethod === 'online' ? 'shipping' : 'paid';
         await conn.execute(
-          `UPDATE orders SET status = ?, pay_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+          `UPDATE orders SET status = ?, pay_at = CURRENT_TIMESTAMP, collection_source='no_payment', updated_at = CURRENT_TIMESTAMP
            WHERE id = ? AND status = 'pending'`,
           [freeStatus, insertedId]
         );

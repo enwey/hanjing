@@ -1,0 +1,1430 @@
+{
+  "results": [
+    {
+      "name": "汇总即生成待回货清单和资料快照，无需寄出或工厂制作",
+      "status": "passed"
+    },
+    {
+      "name": "批量回货必须明确确认，混入未就绪设备整体回滚",
+      "status": "passed"
+    },
+    {
+      "name": "多选回货和单件确认不要求编号位置，重复点击不重复登记",
+      "status": "passed"
+    },
+    {
+      "name": "确认试戴必须设置参数及下次时间，失败不提前绑定设备或创建售后",
+      "status": "passed"
+    },
+    {
+      "name": "回货后直接确认试戴，参数与设备绑定一致，复查进入售后",
+      "status": "passed"
+    },
+    {
+      "name": "重复确认试戴不会重复绑定、重复创建复查和售后",
+      "status": "passed"
+    },
+    {
+      "name": "参数、复查选择及日期校验失败时事务无副作用",
+      "status": "passed"
+    },
+    {
+      "name": "并发完成仅一次成功，本次记录、参数、下一次工单与随访原子保存",
+      "status": "passed"
+    },
+    {
+      "name": "第二次微调可选择无需再复查，保留两次记录并清除下次日期",
+      "status": "passed"
+    },
+    {
+      "name": "已完成工单不能重复调整，归档不覆盖设备及历史复查安排",
+      "status": "passed"
+    },
+    {
+      "name": "普通维修工单保持原处理方式",
+      "status": "passed"
+    },
+    {
+      "name": "设备更换后旧工单不能修改新设备参数",
+      "status": "passed"
+    },
+    {
+      "name": "仅查看交付权限不能批量确认回货",
+      "status": "passed"
+    },
+    {
+      "name": "只有查看售后权限不能完成微调",
+      "status": "passed"
+    },
+    {
+      "name": "个人数据范围的受派技师可完成复查，其他技师不能操作",
+      "status": "passed"
+    },
+    {
+      "name": "旧寄出和工厂制作接口已退出流程",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/1/complete-consultation",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/products",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/2/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/3/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/batches",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/batches/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/receipts",
+      "status": 400
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/receipts",
+      "status": 409
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/receipts",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/receipts",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/3/device-receipt",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/batches/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/fitting",
+      "status": 400
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/fitting",
+      "status": 400
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/fitting",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/after-sales-tickets",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/fitting",
+      "status": 409
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 400
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 400
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 400
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 400
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 400
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 400
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 409
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 400
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 409
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/2",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/2",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/patients/1/treatment",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 409
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/after-sales-tickets",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/3",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/3",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/after-sales-tickets",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/4",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/2/complete-consultation",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/5/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/batches",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/receipts",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/5/fitting",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/4",
+      "status": 409
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/5",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/5",
+      "status": 404
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/5",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/after-sales-tickets/5",
+      "status": 200
+    }
+  ],
+  "financialEvidence": [
+    {
+      "case": "汇总即生成待回货清单和资料快照，无需寄出或工厂制作",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "批量回货必须明确确认，混入未就绪设备整体回滚",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "多选回货和单件确认不要求编号位置，重复点击不重复登记",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "确认试戴必须设置参数及下次时间，失败不提前绑定设备或创建售后",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "回货后直接确认试戴，参数与设备绑定一致，复查进入售后",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "重复确认试戴不会重复绑定、重复创建复查和售后",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "参数、复查选择及日期校验失败时事务无副作用",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "并发完成仅一次成功，本次记录、参数、下一次工单与随访原子保存",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "第二次微调可选择无需再复查，保留两次记录并清除下次日期",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "已完成工单不能重复调整，归档不覆盖设备及历史复查安排",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "普通维修工单保持原处理方式",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "设备更换后旧工单不能修改新设备参数",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:57.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "仅查看交付权限不能批量确认回货",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:57.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "只有查看售后权限不能完成微调",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:57.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "个人数据范围的受派技师可完成复查，其他技师不能操作",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:57.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "旧寄出和工厂制作接口已退出流程",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:53.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 2,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 3,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 4,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:54.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        },
+        {
+          "id": 5,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T09:23:57.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离库实际HTTP：患者、预约、诊疗病历、设备订单、取模、汇总、回货、确认试戴、售后复查；无公网支付与真实资金，临时库清理。"
+}

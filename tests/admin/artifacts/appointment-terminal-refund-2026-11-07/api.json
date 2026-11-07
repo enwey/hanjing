@@ -1,0 +1,1053 @@
+{
+  "results": [
+    {
+      "name": "取消现金必须确认退还，确认后直接完成退款",
+      "status": "passed"
+    },
+    {
+      "name": "手动未到诊可直接退现金",
+      "status": "passed"
+    },
+    {
+      "name": "未到诊选择无需退款，不创建退款请求且禁止再退款",
+      "status": "passed"
+    },
+    {
+      "name": "取消预约不能选择无需退款",
+      "status": "passed"
+    },
+    {
+      "name": "未付款取消不创建退款",
+      "status": "passed"
+    },
+    {
+      "name": "已退款不得再标记无需退款",
+      "status": "passed"
+    },
+    {
+      "name": "微信未到诊可无需退款，不调用渠道",
+      "status": "passed"
+    },
+    {
+      "name": "微信取消确认经退款接口原路退款，异常结果保持待核对",
+      "status": "passed"
+    },
+    {
+      "name": "仅有预约编辑权限不能免退款或提交退款",
+      "status": "passed"
+    },
+    {
+      "name": "自动未到诊待退款可选择无需退款并结束待处理记录",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/1/charges",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/2/charges",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/2",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/3/charges",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/3",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/3",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/4/charges",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/5",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/6/charges",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/6",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/7",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/8",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/9",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/10",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/11",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/12/charges",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/appointments/13/charges",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/appointments/13",
+      "status": 200
+    }
+  ],
+  "financialEvidence": [
+    {
+      "case": "取消现金必须确认退还，确认后直接完成退款",
+      "rows": [
+        {
+          "id": 1,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:18.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        }
+      ]
+    },
+    {
+      "case": "手动未到诊可直接退现金",
+      "rows": [
+        {
+          "id": 1,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:18.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 2,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        }
+      ]
+    },
+    {
+      "case": "未到诊选择无需退款，不创建退款请求且禁止再退款",
+      "rows": [
+        {
+          "id": 1,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:18.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 2,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 3,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        }
+      ]
+    },
+    {
+      "case": "取消预约不能选择无需退款",
+      "rows": [
+        {
+          "id": 1,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:18.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 2,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 3,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 4,
+          "appointment_status": "pending",
+          "charge_status": "paid",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        }
+      ]
+    },
+    {
+      "case": "未付款取消不创建退款",
+      "rows": [
+        {
+          "id": 1,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:18.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 2,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 3,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 4,
+          "appointment_status": "pending",
+          "charge_status": "paid",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 5,
+          "appointment_status": "cancelled",
+          "charge_status": null,
+          "consult_fee": null,
+          "deposit_amount": null,
+          "payment_method": null,
+          "paid_at": null,
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        }
+      ]
+    },
+    {
+      "case": "已退款不得再标记无需退款",
+      "rows": [
+        {
+          "id": 1,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:18.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 2,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 3,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 4,
+          "appointment_status": "pending",
+          "charge_status": "paid",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 5,
+          "appointment_status": "cancelled",
+          "charge_status": null,
+          "consult_fee": null,
+          "deposit_amount": null,
+          "payment_method": null,
+          "paid_at": null,
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 6,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:20.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        }
+      ]
+    },
+    {
+      "case": "微信未到诊可无需退款，不调用渠道",
+      "rows": [
+        {
+          "id": 1,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:18.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 2,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 3,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 4,
+          "appointment_status": "pending",
+          "charge_status": "paid",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 5,
+          "appointment_status": "cancelled",
+          "charge_status": null,
+          "consult_fee": null,
+          "deposit_amount": null,
+          "payment_method": null,
+          "paid_at": null,
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 6,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:20.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 7,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:20.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        }
+      ]
+    },
+    {
+      "case": "微信取消确认经退款接口原路退款，异常结果保持待核对",
+      "rows": [
+        {
+          "id": 1,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:18.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 2,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 3,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 4,
+          "appointment_status": "pending",
+          "charge_status": "paid",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 5,
+          "appointment_status": "cancelled",
+          "charge_status": null,
+          "consult_fee": null,
+          "deposit_amount": null,
+          "payment_method": null,
+          "paid_at": null,
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 6,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:20.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 7,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:20.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 8,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:21.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": "REF-1"
+        },
+        {
+          "id": 9,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:22.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": "REF-2"
+        },
+        {
+          "id": 10,
+          "appointment_status": "cancelled",
+          "charge_status": "refunding",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:22.000Z",
+          "refund_status": "refunding",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 11,
+          "appointment_status": "no_show",
+          "charge_status": "refunding",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:23.000Z",
+          "refund_status": "refunding",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        }
+      ]
+    },
+    {
+      "case": "仅有预约编辑权限不能免退款或提交退款",
+      "rows": [
+        {
+          "id": 1,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:18.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 2,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 3,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 4,
+          "appointment_status": "pending",
+          "charge_status": "paid",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 5,
+          "appointment_status": "cancelled",
+          "charge_status": null,
+          "consult_fee": null,
+          "deposit_amount": null,
+          "payment_method": null,
+          "paid_at": null,
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 6,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:20.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 7,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:20.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 8,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:21.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": "REF-1"
+        },
+        {
+          "id": 9,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:22.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": "REF-2"
+        },
+        {
+          "id": 10,
+          "appointment_status": "cancelled",
+          "charge_status": "refunding",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:22.000Z",
+          "refund_status": "refunding",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 11,
+          "appointment_status": "no_show",
+          "charge_status": "refunding",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:23.000Z",
+          "refund_status": "refunding",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 12,
+          "appointment_status": "pending",
+          "charge_status": "paid",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:23.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        }
+      ]
+    },
+    {
+      "case": "自动未到诊待退款可选择无需退款并结束待处理记录",
+      "rows": [
+        {
+          "id": 1,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:18.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 2,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 3,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 4,
+          "appointment_status": "no_show",
+          "charge_status": "refund_pending",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:19.000Z",
+          "refund_status": "pending",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 5,
+          "appointment_status": "cancelled",
+          "charge_status": null,
+          "consult_fee": null,
+          "deposit_amount": null,
+          "payment_method": null,
+          "paid_at": null,
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 6,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:20.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 7,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:20.000Z",
+          "refund_status": null,
+          "refund_amount": null,
+          "provider_refund_id": null
+        },
+        {
+          "id": 8,
+          "appointment_status": "cancelled",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:21.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": "REF-1"
+        },
+        {
+          "id": 9,
+          "appointment_status": "no_show",
+          "charge_status": "refunded",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:22.000Z",
+          "refund_status": "refunded",
+          "refund_amount": 7000,
+          "provider_refund_id": "REF-2"
+        },
+        {
+          "id": 10,
+          "appointment_status": "cancelled",
+          "charge_status": "refunding",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:22.000Z",
+          "refund_status": "refunding",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 11,
+          "appointment_status": "no_show",
+          "charge_status": "refunding",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "wechat",
+          "paid_at": "2026-11-07T07:15:23.000Z",
+          "refund_status": "refunding",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 12,
+          "appointment_status": "no_show",
+          "charge_status": "refund_pending",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:23.000Z",
+          "refund_status": "pending",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        },
+        {
+          "id": 13,
+          "appointment_status": "no_show",
+          "charge_status": "refund_waived",
+          "consult_fee": 2000,
+          "deposit_amount": 5000,
+          "payment_method": "cash",
+          "paid_at": "2026-11-07T07:15:24.000Z",
+          "refund_status": "waived",
+          "refund_amount": 7000,
+          "provider_refund_id": null
+        }
+      ]
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离管理员初始化；预约/现金收费/关联订单由HTTP API创建，微信支付与退款采用真实业务模块和模拟渠道响应；模拟跨日时间并发触发过期，临时库清理；不含真机和真实资金"
+}

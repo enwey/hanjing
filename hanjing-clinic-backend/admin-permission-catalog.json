@@ -324,23 +324,15 @@
       },
       {
         "code": "fulfillment:batch",
-        "label": "创建生产批次"
-      },
-      {
-        "code": "fulfillment:ship",
-        "label": "送厂"
+        "label": "汇总送厂"
       },
       {
         "code": "fulfillment:cancel",
         "label": "取消批次"
       },
       {
-        "code": "fulfillment:progress",
-        "label": "更新制作进度"
-      },
-      {
         "code": "fulfillment:receipt",
-        "label": "设备入库"
+        "label": "确认回货"
       },
       {
         "code": "fulfillment:notify",
@@ -348,11 +340,11 @@
       },
       {
         "code": "fulfillment:fitting",
-        "label": "试戴交付"
+        "label": "确认试戴"
       },
       {
         "code": "fulfillment:export",
-        "label": "导出送厂单"
+        "label": "下载送厂Excel"
       }
     ]
   },

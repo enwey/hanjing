@@ -1,0 +1,305 @@
+{
+  "results": [
+    {
+      "name": "单文本草稿可空，完成时拒绝空白和超长说明",
+      "status": "passed"
+    },
+    {
+      "name": "仅填写多行说明即可完成，自动编号及日期，进入待送厂",
+      "status": "passed"
+    },
+    {
+      "name": "生成批次并寄出，多行说明进入锁定制作清单",
+      "status": "passed"
+    },
+    {
+      "name": "重新取模保留说明，完成后生成新编号，旧批次快照不变",
+      "status": "passed"
+    },
+    {
+      "name": "历史结构化资料编辑为说明时保留参数和旧编号，过期版本拒绝覆盖",
+      "status": "passed"
+    }
+  ],
+  "steps": [
+    {
+      "method": "POST",
+      "path": "/api/admin/stores",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/doctors",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/patients",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/schedules",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/products",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/orders",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 400
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 400
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/ready-molds",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/batches",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/batches/1/ship",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/batches/1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 409
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/batches/1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/batches/1/items/1/progress",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/batches/1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/fulfillment/cases/1/mold",
+      "status": 409
+    }
+  ],
+  "financialEvidence": [
+    {
+      "case": "单文本草稿可空，完成时拒绝空白和超长说明",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T08:25:28.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "仅填写多行说明即可完成，自动编号及日期，进入待送厂",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T08:25:28.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "生成批次并寄出，多行说明进入锁定制作清单",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T08:25:28.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "重新取模保留说明，完成后生成新编号，旧批次快照不变",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T08:25:28.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    },
+    {
+      "case": "历史结构化资料编辑为说明时保留参数和旧编号，过期版本拒绝覆盖",
+      "rows": [
+        {
+          "id": 1,
+          "type": "offline",
+          "status": "paid",
+          "pay_amount": 7000,
+          "pay_at": "2026-11-07T08:25:28.000Z",
+          "collected_by_admin_id": 9000,
+          "collected_by_name": "隔离管理员",
+          "collection_source": "admin",
+          "refunded_by_admin_id": null,
+          "refunded_by_name": null,
+          "refund_requested_at": null,
+          "refund_at": null
+        }
+      ]
+    }
+  ],
+  "databaseDropped": true,
+  "boundaries": "隔离库业务前提及取模流程通过实际HTTP API创建；无真实资金，临时库已清理。"
+}

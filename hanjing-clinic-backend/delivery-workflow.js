@@ -37,6 +37,12 @@ async function event(conn, caseId, actor, type, detail) {
 }
 function moldDetails(input, complete) {
   if (!input || typeof input !== 'object') fail('取模资料不能为空');
+  if (Object.hasOwn(input, 'description')) {
+    if (typeof input.description !== 'string' || input.description.length > 5000) fail('取模说明不能超过5000个字符');
+    const description = input.description.trim();
+    if (complete && !description) fail('请填写取模说明');
+    return { description, requirements: description };
+  }
   const d = Object.fromEntries(['mold_no','storage_location','taken_date','method','wear_period','adaptation','requirements','note']
     .map(key => [key, text(input[key], ['mold_no','storage_location','method','wear_period'].includes(key) ? 150 : 2000)]));
   if (d.mold_no.length > 80) fail('口模编号不能超过 80 个字符');
@@ -63,7 +69,7 @@ async function manufacturingSnapshot(c, profile, conn = null) {
     get: async (sql, params=[]) => (await conn.execute(sql, params))[0][0] || null
   } : {get,query};
   const clinical = await readFulfillmentClinical(c, db);
-  const p = await db.get('SELECT patient_no FROM patients WHERE id=?', [c.patient_id]);
+  const p = await db.get('SELECT patient_no,name FROM patients WHERE id=?', [c.patient_id]);
   const technician = await db.get('SELECT name FROM admin_users WHERE id=?',[c.technician_id]);
   const products = await db.query(`SELECT oi.product_name,oi.quantity FROM order_items oi JOIN products p ON p.id=oi.product_id
     WHERE oi.order_id=? AND COALESCE(oi.product_category_snapshot,p.category)='device' ORDER BY oi.id`, [c.order_id]);
@@ -72,7 +78,7 @@ async function manufacturingSnapshot(c, profile, conn = null) {
     const file = await db.get('SELECT id,name FROM fulfillment_mold_files WHERE id=? AND fulfillment_case_id=?', [id,c.id]);
     if (file) files.push(file);
   }
-  return { version: 1, captured_at: new Date().toISOString(), case_id: c.id, patient_ref: p.patient_no || `P${c.patient_id}`,
+  return { version: 1, captured_at: new Date().toISOString(), case_id: c.id, patient_name: p.name, patient_ref: p.patient_no || `P${c.patient_id}`,
     mold: decode(profile.details), technician_name: technician?.name || '', files, products,
     medical_record_id: clinical.medical_record?.id || null,
     prescription: clinical.medical_record?.prescription || '', doctor_advice: clinical.medical_record?.doctor_advice || '',
@@ -103,13 +109,26 @@ export function registerDeliveryWorkflow(app) {
   route('post','/cases/:id/mold',async (req,res) => {
     const c = await accessCase(req.params.id,req.user);
     const complete = req.body.complete === true;
-    const details = moldDetails(req.body.details,complete);
+    let details = moldDetails(req.body.details,complete);
     await transaction(async conn => {
       const locked = await lockCase(conn,c.id);
       if (!editable.includes(locked.status)) fail('当前环节不可修改取模资料，请先取消未寄出的批次或登记重新取模',409);
       if (!locked.technician_id) fail('请先分配技师');
       const [[profile]] = await conn.execute('SELECT * FROM fulfillment_mold_profiles WHERE fulfillment_case_id=? FOR UPDATE',[c.id]);
       if (Number(req.body.revision) !== (profile?.revision || 0)) fail('资料已被其他人更新，请重新打开',409);
+      if (Object.hasOwn(details, 'description')) {
+        const previous = profile ? decode(profile.details) : {};
+        const [[oldMold]] = !profile && locked.status === 'mold_taken'
+          ? await conn.execute('SELECT * FROM fulfillment_molds WHERE fulfillment_case_id=? ORDER BY id DESC LIMIT 1',[c.id]) : [[]];
+        details = { mold_no: oldMold?.mold_no || '', storage_location: oldMold?.storage_location || '',
+          taken_date: '', method: '', parameters: [], wear_hours: null, wear_period: '', adaptation: '', file_ids: [],
+          ...previous, ...details };
+        details.note = details.description;
+        if (complete) {
+          if (!details.mold_no) details.mold_no = `KM${c.id}-${crypto.randomBytes(6).toString('hex')}`;
+          if (!details.taken_date) details.taken_date = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+        }
+      }
       for (const id of details.file_ids) {
         const [[file]] = await conn.execute('SELECT id FROM fulfillment_mold_files WHERE id=? AND fulfillment_case_id=?',[id,c.id]);
         if (!file) fail('附件不属于当前交付单');
@@ -204,13 +223,15 @@ export function registerDeliveryWorkflow(app) {
         molds.push(p);
       }
       const batchNo='FM'+Date.now()+crypto.randomBytes(3).toString('hex');
-      const [b]=await conn.execute('INSERT INTO fulfillment_factory_batches(batch_no,factory_name,created_by) VALUES(?,?,?)',[batchNo,factory,req.user.id]);
+      const [b]=await conn.execute("INSERT INTO fulfillment_factory_batches(batch_no,factory_name,created_by,status) VALUES(?,?,?,'exported')",[batchNo,factory,req.user.id]);
       for(const p of molds){
-        await conn.execute('INSERT INTO fulfillment_factory_items(batch_id,fulfillment_case_id,mold_id,active_mold_id) VALUES(?,?,?,?)',[b.insertId,p.fulfillment_case_id,p.mold_id,p.mold_id]);
-        await conn.execute("UPDATE fulfillment_cases SET status='mold_batched' WHERE id=?",[p.fulfillment_case_id]);
+        const [[c]] = await conn.execute('SELECT * FROM fulfillment_cases WHERE id=?',[p.fulfillment_case_id]);
+        const snapshot = await manufacturingSnapshot(c,p,conn);
+        await conn.execute("INSERT INTO fulfillment_factory_items(batch_id,fulfillment_case_id,mold_id,active_mold_id,snapshot,status) VALUES(?,?,?,?,?,'awaiting_return')",[b.insertId,p.fulfillment_case_id,p.mold_id,p.mold_id,JSON.stringify(snapshot)]);
+        await conn.execute("UPDATE fulfillment_cases SET status='awaiting_return' WHERE id=?",[p.fulfillment_case_id]);
         await event(conn,p.fulfillment_case_id,req.user.id,'factory_batch_created',{batch_id:b.insertId,batch_no:batchNo,factory_name:factory});
       }return b.insertId;
-    });ok(res,{id},'送厂批次已生成，尚未寄出');
+    });ok(res,{id},'送厂清单已生成');
   });
   route('get','/batches/:id',async(req,res)=>{
     const b=await accessBatch(req.params.id,req.user);
@@ -238,64 +259,34 @@ export function registerDeliveryWorkflow(app) {
       await conn.execute("UPDATE fulfillment_factory_batches SET status='cancelled' WHERE id=?",[batch.id]);
     });ok(res,null,'批次已取消，口模已退回待送厂');
   });
-  route('post','/batches/:id/ship',async(req,res)=>{
-    const batch=await accessBatch(req.params.id,req.user);
-    const carrier=text(req.body.carrier,100),tracking=text(req.body.tracking_no,100);
-    if(!carrier||!tracking||req.body.confirmed!==true)fail('请填写快递信息并确认实物已核对寄出');
-    await transaction(async conn=>{
-      const [[b]]=await conn.execute('SELECT * FROM fulfillment_factory_batches WHERE id=? FOR UPDATE',[batch.id]);
-      if(b.status!=='draft')fail('此批次已经寄出或取消，请勿重复提交',409);
-      for(const item of batch.items){
-        const c=await lockCase(conn,item.fulfillment_case_id);
-        if(c.status!=='mold_batched')fail('交付单状态已变化',409);
-        const [[profile]]=await conn.execute('SELECT * FROM fulfillment_mold_profiles WHERE fulfillment_case_id=?',[c.id]);
-        const snapshot=await manufacturingSnapshot(c,profile,conn);
-        await conn.execute("UPDATE fulfillment_factory_items SET snapshot=?,status='shipped' WHERE id=?",[JSON.stringify(snapshot),item.id]);
-        await conn.execute('INSERT INTO fulfillment_mold_shipments(fulfillment_case_id,sender_id,carrier,tracking_no,note) VALUES(?,?,?,?,?)',[c.id,req.user.id,carrier,tracking,`批次 ${b.batch_no} · ${b.factory_name}`]);
-        await conn.execute("UPDATE fulfillment_cases SET status='mold_shipped' WHERE id=?",[c.id]);
-        await event(conn,c.id,req.user.id,'factory_batch_shipped',{batch_id:b.id,carrier,tracking_no:tracking,snapshot});
+  async function confirmReceipts(ids, req) {
+    if (req.body.confirmed !== true) fail('请确认所选设备已回货验收');
+    if (!Array.isArray(ids) || !ids.length || ids.length > 100 || !ids.every(positiveId)) fail('请选择1～100件待回货设备');
+    const unique = [...new Set(ids.map(Number))].sort((a,b)=>a-b);
+    for (const id of unique) await accessCase(id,req.user);
+    return transaction(async conn => {
+      let confirmed = 0;
+      for (const id of unique) {
+        const c = await lockCase(conn,id);
+        const [[receipt]] = await conn.execute('SELECT id FROM fulfillment_device_receipts WHERE fulfillment_case_id=? LIMIT 1',[id]);
+        if (receipt && ['device_received','ready_for_fitting','fitted'].includes(c.status)) continue;
+        if (!['awaiting_return','mold_batched','mold_shipped','factory_received','producing','factory_exception'].includes(c.status)) fail('部分设备当前不在待回货环节，请刷新后重试',409);
+        const [[item]] = await conn.execute("SELECT * FROM fulfillment_factory_items WHERE fulfillment_case_id=? AND status IN ('awaiting_return','pending','shipped','received','producing','exception') ORDER BY id DESC LIMIT 1 FOR UPDATE",[id]);
+        if (!item) fail('未找到对应的送厂清单',409);
+        if (!item.snapshot) {
+          const [[profile]] = await conn.execute('SELECT * FROM fulfillment_mold_profiles WHERE fulfillment_case_id=?',[id]);
+          if (!profile) fail('取模资料缺失，请先核对',409);
+          await conn.execute('UPDATE fulfillment_factory_items SET snapshot=? WHERE id=?',[JSON.stringify(await manufacturingSnapshot(c,profile,conn)),item.id]);
+        }
+        await conn.execute("INSERT INTO fulfillment_device_receipts(fulfillment_case_id,receiver_id,device_serial_no,storage_location,inspection_result,note) VALUES(?,?,NULL,'','passed',NULL)",[id,req.user.id]);
+        await conn.execute("UPDATE fulfillment_factory_items SET status='returned',returned_at=NOW() WHERE id=?",[item.id]);
+        await conn.execute("UPDATE fulfillment_cases SET status='device_received' WHERE id=?",[id]);
+        await event(conn,id,req.user.id,'device_received',{batch_id:item.batch_id,item_id:item.id});
+        confirmed++;
       }
-      await conn.execute("UPDATE fulfillment_factory_batches SET status='shipped',carrier=?,tracking_no=?,sent_at=NOW(),sender_id=? WHERE id=?",[carrier,tracking,req.user.id,b.id]);
-    });ok(res,null,'已确认寄出，制作资料快照已锁定');
-  });
-  route('post','/batches/:id/items/:itemId/progress',async(req,res)=>{
-    const batch=await accessBatch(req.params.id,req.user),item=batch.items.find(i=>String(i.id)===req.params.itemId);
-    if(!item)fail('批次明细不存在',404);
-    const action=req.body.action,feedback=text(req.body.feedback);
-    const allowed={received:['shipped'],producing:['received','exception'],exception:['shipped','received','producing'],retake:['shipped','received','producing','exception']};
-    if(!allowed[action])fail('不支持的工厂操作');
-    if(['exception','retake'].includes(action)&&!feedback)fail('请填写异常或重新取模原因');
-    await transaction(async conn=>{
-      const [[b]]=await conn.execute('SELECT * FROM fulfillment_factory_batches WHERE id=? FOR UPDATE',[batch.id]);
-      const c=await lockCase(conn,item.fulfillment_case_id);
-      const [[i]]=await conn.execute('SELECT * FROM fulfillment_factory_items WHERE id=? FOR UPDATE',[item.id]);
-      if(b.status!=='shipped'||!allowed[action].includes(i.status))fail('当前状态不能执行此操作，请刷新',409);
-      await conn.execute("UPDATE fulfillment_factory_items SET status=?,feedback=?,received_at=CASE WHEN ?='received' THEN NOW() ELSE received_at END WHERE id=?",[action,feedback,action,i.id]);
-      const next={received:'factory_received',producing:'producing',exception:'factory_exception',retake:'assigned'}[action];
-      await conn.execute('UPDATE fulfillment_cases SET status=? WHERE id=?',[next,c.id]);
-      if(action==='retake'){
-        const [[p]]=await conn.execute('SELECT details FROM fulfillment_mold_profiles WHERE fulfillment_case_id=?',[c.id]);
-        const d=decode(p.details);d.mold_no='';d.taken_date='';d.file_ids=[];
-        await conn.execute("UPDATE fulfillment_mold_profiles SET mold_id=NULL,status='draft',details=?,revision=revision+1,updated_by=? WHERE fulfillment_case_id=?",[JSON.stringify(d),req.user.id,c.id]);
-      }
-      await event(conn,c.id,req.user.id,'factory_'+action,{batch_id:batch.id,item_id:i.id,feedback});
-    });ok(res);
-  });
-  route('post','/cases/:id/mold-shipment',async()=>fail('请在送厂批次中汇总并确认寄出，不能单独跳过批次',409));
-  route('post','/cases/:id/device-receipt',async(req,res)=>{
-    const c=await accessCase(req.params.id,req.user);
-    const serial=text(req.body.device_serial_no,100),location=text(req.body.storage_location,150),note=text(req.body.note);
-    if(!serial||!location)fail('请填写设备编号和入库位置');
-    if(req.body.inspection_result && req.body.inspection_result!=='passed')fail('验收未通过请登记工厂异常，不可直接入库');
-    await transaction(async conn=>{
-      const locked=await lockCase(conn,c.id);
-      if(!['factory_received','producing'].includes(locked.status))fail('请先登记工厂签收；异常需先处理后再验收入库',409);
-      const [[item]]=await conn.execute("SELECT * FROM fulfillment_factory_items WHERE fulfillment_case_id=? AND status IN ('received','producing') ORDER BY id DESC LIMIT 1 FOR UPDATE",[c.id]);
-      if(!item)fail('未找到待回货的送厂明细',409);
-      await conn.execute("INSERT INTO fulfillment_device_receipts(fulfillment_case_id,receiver_id,device_serial_no,storage_location,inspection_result,note) VALUES(?,?,?,?,'passed',?)",[c.id,req.user.id,serial,location,note]);
-      await conn.execute("UPDATE fulfillment_factory_items SET status='returned',returned_at=NOW() WHERE id=?",[item.id]);
-      await conn.execute("UPDATE fulfillment_cases SET status='device_received' WHERE id=?",[c.id]);
-      await event(conn,c.id,req.user.id,'device_received',{batch_id:item.batch_id,item_id:item.id,device_serial_no:serial,storage_location:location,note});
-    });ok(res,null,'此件设备已验收入库，其他明细保持原状态');
-  });
+      return {confirmed};
+    });
+  }
+  route('post','/receipts',async(req,res)=>ok(res,await confirmReceipts(req.body.case_ids,req),'回货已确认'));
+  route('post','/cases/:id/device-receipt',async(req,res)=>ok(res,await confirmReceipts([req.params.id],req),'回货已确认'));
 }

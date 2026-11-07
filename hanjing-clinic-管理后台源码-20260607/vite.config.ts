@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
+              if (id.includes('exceljs')) return 'excel-export';
               if (id.includes('tdesign-vue-next')) {
                 return 'tdesign';
               }

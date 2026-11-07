@@ -114,7 +114,7 @@ export async function registerOfflineRefund(orderId, actorId, input) {
   }
   const receipt = { amount, method, refunded_at: refundedAt.toISOString(), reference, evidence };
   return transaction(async conn => {
-    const [[actor]] = await conn.execute(`SELECT u.id FROM admin_users u JOIN roles r ON r.id=u.role_id
+    const [[actor]] = await conn.execute(`SELECT u.id,u.name,u.username FROM admin_users u JOIN roles r ON r.id=u.role_id
       WHERE u.id=? AND u.status='online' AND r.status='active' AND r.code='super_admin' FOR UPDATE`, [actorId]);
     if (!actor) throw businessError('只有有效的超级管理员可以登记线下退款', 403);
     const [[order]] = await conn.execute('SELECT * FROM orders WHERE id=? FOR UPDATE', [orderId]);
@@ -141,7 +141,7 @@ export async function registerOfflineRefund(orderId, actorId, input) {
     }
     address.offline_refund = { ...receipt, actor_id: Number(actorId), registered_at: new Date().toISOString() };
     order.shipping_address = address;
-    await conn.execute('UPDATE orders SET shipping_address=? WHERE id=?', [JSON.stringify(address), orderId]);
+    await conn.execute('UPDATE orders SET shipping_address=?,refunded_by_admin_id=?,refunded_by_name=?,refund_requested_at=CURRENT_TIMESTAMP WHERE id=?', [JSON.stringify(address),actor.id,actor.name || actor.username,orderId]);
     await settleRefund(conn, order, refundedAt);
     // The audit record is part of the refund transaction, not a best-effort log.
     await conn.execute(`INSERT INTO audit_logs(admin_id,action,target_type,target_id,details,status)
@@ -154,7 +154,7 @@ export async function reviewRefund(orderId, approve, actorId, provider = { creat
   if (typeof approve !== 'boolean') throw businessError('请明确选择通过或拒绝');
   if (approve && (await provider.missing()).length) throw businessError('微信支付配置未完成，无法发起真实退款', 503);
   const order = await transaction(async conn => {
-    const [[actor]] = await conn.execute(`SELECT u.id FROM admin_users u JOIN roles r ON r.id = u.role_id
+    const [[actor]] = await conn.execute(`SELECT u.id,u.name,u.username FROM admin_users u JOIN roles r ON r.id = u.role_id
       WHERE u.id = ? AND u.status = 'online' AND r.status = 'active' AND r.code = 'super_admin' FOR UPDATE`, [actorId]);
     if (!actor) throw businessError('只有有效的超级管理员可以审核退款', 403);
     const [[row]] = await conn.execute('SELECT * FROM orders WHERE id = ? FOR UPDATE', [orderId]);
@@ -180,8 +180,8 @@ export async function reviewRefund(orderId, approve, actorId, provider = { creat
     row.wechat_refund_no = `HJR${row.id}`;
     row.payment_trade_no = await paymentTradeNo(row, conn);
     // Commit the reference BEFORE requesting the provider. A timeout must not create a second refund.
-    await conn.execute("UPDATE orders SET status = 'refunding', wechat_refund_no = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [row.wechat_refund_no, orderId]);
+    await conn.execute("UPDATE orders SET status = 'refunding', wechat_refund_no = ?, refunded_by_admin_id=?,refunded_by_name=?,refund_requested_at=CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [row.wechat_refund_no, actor.id, actor.name || actor.username, orderId]);
     return row;
   });
   if (!approve) return { status: 'rejected', message: '已拒绝退款申请' };
