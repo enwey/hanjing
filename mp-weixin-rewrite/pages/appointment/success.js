@@ -1,4 +1,5 @@
 const api = require('../../api/index');
+const sessionStore = require('../../stores/session-store');
 const { getStoreCoverUrl } = require('../../common/utils/image-url');
 
 function unwrapObject(response) {
@@ -26,6 +27,9 @@ Page({
   data: {
     loading: true,
     loadError: '',
+    canRetryLoad: false,
+    resultTitle: '预约成功',
+    resultDescription: '您的预约已提交，请按时就诊',
     appointmentId: '',
     appointment: null,
     appointmentNo: '',
@@ -56,12 +60,37 @@ Page({
     await this.loadPage({ silent: true });
   },
 
+  onUnload() {
+    this._unloaded = true;
+  },
+
+  retryLoad() {
+    if (this.data.canRetryLoad && !this.data.loading) return this.loadPage();
+  },
+
   async loadPage(options = {}) {
+    const request = this.resultRequest = {};
+    const generation = sessionStore.getLoginGeneration();
+    if (this.resultOwner !== generation) {
+      this.resultOwner = generation;
+      this.setData({ loading: true, appointment: null, patientName: '', symptomDesc: '' });
+    }
+    const canUpdate = () => {
+      if (this._unloaded || this.resultRequest !== request) return false;
+      if (!sessionStore.isLoggedIn()) {
+        this.setData({ loading: false, appointment: null, patientName: '', symptomDesc: '',
+          loadError: '登录已失效，请重新登录后查看预约' });
+        return false;
+      }
+      return generation === sessionStore.getLoginGeneration();
+    };
+    if (!canUpdate()) return;
     const silent = Boolean(options.silent);
     const appointmentId = String((this.options && this.options.id) || '');
     this.setData({
       loading: silent ? this.data.loading : true,
       loadError: '',
+      canRetryLoad: false,
       appointmentId,
     });
 
@@ -73,27 +102,36 @@ Page({
       return;
     }
 
+    let detailLoaded = false;
     try {
       const [detailResponse, bookingSettingsResponse] = await Promise.all([
         api.getAppointmentDetail(appointmentId),
-        api.getBookingSettings(),
+        api.getBookingSettings().catch(() => ({})),
       ]);
+      if (!canUpdate()) return;
+      detailLoaded = true;
       const detailSource = unwrapObject(detailResponse);
       const appointment = detailSource.appointment || detailSource || {};
-      if (!['pending', 'confirmed', 'arrived', 'completed'].includes(appointment.status)) {
+      if (!['pending', 'confirmed', 'checked_in', 'arrived', 'completed'].includes(appointment.status)) {
         throw new Error(appointment.status === 'pending_payment'
           ? '预约尚未确认付款，请到预约记录核对状态，勿重复付款'
-          : (appointment.status === 'cancelled' ? '该预约已取消' : '预约状态待确认，请查看预约记录'));
+          : ({ cancelled: '该预约已取消', refunded: '该预约已退款' }[appointment.status] ||
+            '预约状态待确认，请查看预约记录'));
       }
-      const storesResponse = await api.getStores();
-      const stores = unwrapList(storesResponse);
-      const store = detailSource.store || stores.find((item) => String(item.id) === String(appointment.storeId || appointment.store_id)) || {};
+      let store = detailSource.store;
+      if (!store || !Object.keys(store).length) {
+        const stores = unwrapList(await api.getStores().catch(() => []));
+        if (!canUpdate()) return;
+        store = stores.find(item => String(item.id) === String(appointment.storeId || appointment.store_id)) || {};
+      }
       const bookingSettings = unwrapObject(bookingSettingsResponse);
       const nextStoreCoverUrl = getStoreCoverUrl(store || appointment);
 
       this.setData({
         loading: false,
         appointment,
+        resultTitle: appointment.status === 'checked_in' ? '就诊中' : '预约成功',
+        resultDescription: appointment.status === 'checked_in' ? '医生已叫号，就诊进行中' : '您的预约已提交，请按时就诊',
         appointmentNo: appointment.appointmentNo || appointment.appointment_no || '',
         storeCoverUrl: nextStoreCoverUrl,
         storeCoverLoaded: silent && nextStoreCoverUrl === this.data.storeCoverUrl ? this.data.storeCoverLoaded : false,
@@ -110,8 +148,11 @@ Page({
       });
       this.hasLoaded = true;
     } catch (error) {
+      if (!canUpdate()) return;
       this.setData({
-        loading: silent ? this.data.loading : false,
+        loading: false,
+        appointment: null,
+        canRetryLoad: !detailLoaded,
         loadError: (error && error.message) || '加载预约结果失败',
       });
     }

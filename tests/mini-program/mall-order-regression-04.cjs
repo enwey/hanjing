@@ -4,11 +4,12 @@ const box={require,__dirname,module:{exports:{}}};
 vm.runInNewContext(src.slice(0,src.indexOf('\n(async()=>{'))+'\nmodule.exports={checkout,gate};',box);
 const {checkout,gate}=box.module.exports,results=[];
 async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',actual:e.message});}}
+async function waitForCreate(count){for(let i=0;i<30&&!count();i++)await Promise.resolve();assert.equal(count(),1);}
 (async()=>{
  await test('MALL-10 reopened page recovers after original late success',async()=>{
    const storage=new Map(),d=gate();let creates=0,queries=0;
    const api={createOrder:()=>{creates++;return d.promise;},getOrderDetail:async()=>{queries++;return {data:{id:9,status:'pending'}};}};
-   const old=checkout(api,storage),task=old.p.submitOrder();old.p.onUnload();
+   const old=checkout(api,storage),task=old.p.submitOrder();await waitForCreate(()=>creates);old.p.onUnload();
    const reopened=checkout(api,storage);await reopened.p.submitOrder();
    d.resolve({data:{id:9}});await task;
    assert.ok([...storage.values()].some(v=>v&&v.id===9),'late success was not saved');
@@ -19,7 +20,7 @@ async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}
  await test('MALL-10 reopened page recovers after original explicit rejection',async()=>{
    const storage=new Map(),d=gate();let creates=0;
    const api={createOrder:async()=>{creates++;if(creates===1)await d.promise;throw Object.assign(Error('rejected'),{statusCode:400});}};
-   const old=checkout(api,storage),task=old.p.submitOrder();old.p.onUnload();
+   const old=checkout(api,storage),task=old.p.submitOrder();await waitForCreate(()=>creates);old.p.onUnload();
    const reopened=checkout(api,storage);await reopened.p.submitOrder();
    d.resolve();await task;
    assert.ok(![...storage.keys()].some(k=>k.startsWith('product_checkout_v1:')),'rejection did not remove persisted guard');

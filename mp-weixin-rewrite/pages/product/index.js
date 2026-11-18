@@ -36,8 +36,10 @@ function getNavbarHeight() {
   }
 }
 
-function isNotFoundError(error) {
-  return !!(error && (error.statusCode === 404 || (error.data && error.data.code === 404)));
+function canUseDefaultCategories(error) {
+  const statusCode = Number(error?.statusCode || error?.data?.code);
+  return [404, 408, 504].includes(statusCode) ||
+    /timeout|超时/i.test(String(error?.errMsg || error?.message || ''));
 }
 
 function unwrapList(response) {
@@ -145,26 +147,21 @@ Page({
     }
     try {
       const hasToken = sessionStore.isLoggedIn();
-      let categoryList = [];
-      try {
-        const categoryResponse = await api.getProductCategories();
-        categoryList = unwrapList(categoryResponse)
-          .map((item) => ({
-            key: normalizeCategory(item.code || item.key),
-            label: item.name || item.label || '',
-          }))
-          .filter((item) => item.key && item.key !== 'all' && item.label);
-      } catch (categoryError) {
-        if (!isNotFoundError(categoryError)) {
-          throw categoryError;
-        }
-      }
-      if (requestId !== this._loadRequestId) return;
-      const [productResponse, memberInfoResponse] = await Promise.all([
+      const [categoryResponse, productResponse, memberInfoResponse] = await Promise.all([
+        api.getProductCategories().catch(error => {
+          if (!canUseDefaultCategories(error)) throw error;
+          return null;
+        }),
         api.getProducts(),
         hasToken ? api.getMemberInfo().catch(() => null) : Promise.resolve(null),
       ]);
       if (requestId !== this._loadRequestId) return;
+      const categoryList = unwrapList(categoryResponse)
+        .map((item) => ({
+          key: normalizeCategory(item.code || item.key),
+          label: item.name || item.label || '',
+        }))
+        .filter((item) => item.key && item.key !== 'all' && item.label);
       const memberLevel = memberInfoResponse && memberInfoResponse.code === 0 && memberInfoResponse.data
         ? (memberInfoResponse.data.currentLevel || memberInfoResponse.data.memberLevel || 'normal')
         : 'normal';

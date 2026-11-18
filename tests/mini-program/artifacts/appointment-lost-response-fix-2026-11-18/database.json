@@ -1,0 +1,104 @@
+{
+  "cases": [
+    {
+      "capacity": 2,
+      "afterLoss": [
+        {
+          "id": 1,
+          "appointment_no": "AP202611200001",
+          "status": "pending"
+        }
+      ],
+      "retry": {
+        "status": 200,
+        "code": 0,
+        "data": {
+          "id": 1,
+          "appointmentNo": "AP202611200001",
+          "userId": "1",
+          "patientId": 1,
+          "doctorId": 1,
+          "storeId": 1,
+          "scheduleId": 1,
+          "appointmentDate": "2026-11-20",
+          "appointmentTime": "09:00-09:30",
+          "type": "first",
+          "status": "pending",
+          "requireDeposit": false,
+          "depositAmount": 0,
+          "reused": true,
+          "source": "mini_app",
+          "createdAt": "2026-11-18T03:28:37.000Z"
+        }
+      },
+      "afterRetry": [
+        {
+          "id": 1,
+          "appointment_no": "AP202611200001",
+          "status": "pending"
+        }
+      ],
+      "duplicate": false
+    },
+    {
+      "capacity": 1,
+      "afterLoss": [
+        {
+          "id": 2,
+          "appointment_no": "AP202611200002",
+          "status": "pending"
+        }
+      ],
+      "retry": {
+        "status": 200,
+        "code": 0,
+        "data": {
+          "id": 2,
+          "appointmentNo": "AP202611200002",
+          "userId": "1",
+          "patientId": 1,
+          "doctorId": 1,
+          "storeId": 1,
+          "scheduleId": 2,
+          "appointmentDate": "2026-11-20",
+          "appointmentTime": "14:00-14:30",
+          "type": "first",
+          "status": "pending",
+          "requireDeposit": false,
+          "depositAmount": 0,
+          "reused": true,
+          "source": "mini_app",
+          "createdAt": "2026-11-18T03:28:37.000Z"
+        }
+      },
+      "afterRetry": [
+        {
+          "id": 2,
+          "appointment_no": "AP202611200002",
+          "status": "pending"
+        }
+      ],
+      "duplicate": false
+    }
+  ],
+  "droppedSuccess": {
+    "id": 2,
+    "number": "AP202611200002"
+  },
+  "concurrent": {
+    "replies": [
+      {
+        "status": 200,
+        "id": 3,
+        "reused": false
+      },
+      {
+        "status": 200,
+        "id": 3,
+        "reused": true
+      }
+    ],
+    "occupiedDelta": 1
+  },
+  "cleaned": true
+}

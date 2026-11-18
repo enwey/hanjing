@@ -221,6 +221,32 @@
   text-align: center;
 }
 
+.doctor-load-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: #f3f6fc;
+  color: #374151;
+  font-size: 28rpx;
+}
+
+.doctor-retry-btn {
+  margin: 0;
+  padding: 0 28rpx;
+  border-radius: 9999rpx;
+  background: #e1eaff;
+  color: #1a3580;
+  font-size: 28rpx;
+}
+
+.doctor-retry-btn::after {
+  border: none;
+}
+
 .bottom-fixed-bar {
   position: fixed;
   left: 0;

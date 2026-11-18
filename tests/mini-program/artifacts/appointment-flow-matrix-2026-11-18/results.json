@@ -1,0 +1,110 @@
+[
+  {
+    "id": "M01 门店入口加载失败可见",
+    "passed": false,
+    "error": "The expression evaluated to a falsy value:\n\n  assert.ok(o.error||s.toasts.length)\n",
+    "observed": {
+      "rejection": "网络请求超时",
+      "error": ""
+    }
+  },
+  {
+    "id": "M02 门店排班请求失败区别于无排班",
+    "passed": false,
+    "error": "The expression evaluated to a falsy value:\n\n  assert.ok(o.error||o.toasts.length)\n",
+    "observed": {
+      "stores": 0,
+      "error": "",
+      "toasts": []
+    }
+  },
+  {
+    "id": "M03 医生列表加载失败可见",
+    "passed": false,
+    "error": "The expression evaluated to a falsy value:\n\n  assert.ok(o.error||s.toasts.length)\n",
+    "observed": {
+      "rejection": "网络请求超时",
+      "error": ""
+    }
+  },
+  {
+    "id": "M04 时段接口失败显示错误",
+    "passed": true,
+    "observed": {
+      "error": "网络请求超时"
+    }
+  },
+  {
+    "id": "M05 创建明确拒绝保留草稿并允许重试",
+    "passed": true,
+    "observed": {
+      "toasts": [
+        "时段已满"
+      ]
+    }
+  },
+  {
+    "id": "M06 成功页已有门店详情时不受门店列表故障影响",
+    "passed": false,
+    "error": "Expected values to be strictly equal:\n\n'网络请求超时' !== ''\n",
+    "observed": {
+      "error": "网络请求超时"
+    }
+  },
+  {
+    "id": "M07 成功页新取消状态不被旧成功响应覆盖",
+    "passed": false,
+    "error": "Expected \"actual\" to be strictly unequal to:\n\n'pending'",
+    "observed": {
+      "appointment": "pending",
+      "error": "该预约已取消"
+    }
+  },
+  {
+    "id": "M08 成功页退出后拒绝旧详情回填",
+    "passed": false,
+    "error": "Expected \"actual\" to be strictly unequal to:\n\n'模拟旧就诊人'",
+    "observed": {
+      "session": false,
+      "patient": "模拟旧就诊人"
+    }
+  },
+  {
+    "id": "M09 待支付结果页不显示预约成功",
+    "passed": true,
+    "observed": {
+      "error": "预约尚未确认付款，请到预约记录核对状态，勿重复付款"
+    }
+  },
+  {
+    "id": "M10 详情取消被拒绝时显示具体原因",
+    "passed": true,
+    "observed": {
+      "toasts": [
+        "预约状态已变更"
+      ]
+    }
+  },
+  {
+    "id": "M11 微信取消支付不调用支付确认",
+    "passed": true,
+    "observed": {
+      "calls": 0,
+      "toasts": [
+        "支付未完成"
+      ],
+      "locked": false
+    }
+  },
+  {
+    "id": "M12 改约接口拒绝时无跳转且可重试",
+    "passed": true,
+    "observed": {
+      "toasts": [
+        "时段已满"
+      ],
+      "timers": 0,
+      "locked": false
+    }
+  }
+]

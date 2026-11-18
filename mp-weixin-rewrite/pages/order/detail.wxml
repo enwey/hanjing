@@ -90,4 +90,7 @@
       <view class="safe-bottom"></view>
     </view>
   </block>
+  <view wx:elif="{{loadError}}" class="loading-wrap">
+    <text>{{loadError}}</text>
+  </view>
 </view>

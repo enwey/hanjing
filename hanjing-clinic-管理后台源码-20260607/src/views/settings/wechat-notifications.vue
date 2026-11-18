@@ -23,6 +23,18 @@ const page = ref(1)
 const total = ref(0)
 const logLoading = ref(false)
 const logError = ref('')
+const logStatusLabels: Record<string, string> = {
+  sent: '微信接口受理',
+  failed: '发送失败',
+  needs_authorization: '等待重新订阅',
+  authorized: '已申请订阅',
+  skipped: '已跳过',
+}
+const logReasonLabels: Record<string, string> = {
+  missing_openid: '接收账号缺少有效微信 OpenID',
+  missing_template: '未配置微信通知模板',
+  notification_disabled: '微信通知模板未启用',
+}
 const filtered = computed(() => items.value.filter(item => !group.value || item.group === group.value))
 const groups = computed(() => [...new Set(items.value.map(item => item.group))])
 const connectedCount = computed(() => items.value.filter(item => item.connected).length)
@@ -137,8 +149,8 @@ onMounted(load)
               <tr v-for="log in logs" :key="log.id">
                 <td class="muted">{{ formatShanghaiDateTime(log.sent_at) }}</td><td>{{ items.find(item => item.event === log.event)?.title || log.event }}</td>
                 <td>{{ log.user_id }}</td><td class="mono">{{ log.business_id }}</td>
-                <td><t-tag :theme="log.status === 'sent' ? 'success' : log.status === 'failed' ? 'danger' : 'default'" variant="light" size="small">{{ log.status === 'sent' ? '微信接口受理' : log.status === 'failed' ? '发送失败' : '未发送' }}</t-tag></td>
-                <td class="log-error">{{ log.error_message || '—' }}</td>
+                <td><t-tag :theme="log.status === 'sent' ? 'success' : log.status === 'failed' ? 'danger' : 'default'" variant="light" size="small">{{ logStatusLabels[log.status] || '未发送' }}</t-tag></td>
+                <td class="log-error">{{ logReasonLabels[log.error_message] || log.error_message || '—' }}</td>
               </tr>
               <tr v-if="!logs.length"><td colspan="6" class="empty-cell">{{ logLoading ? '加载中…' : '暂无发送记录' }}</td></tr>
             </tbody>

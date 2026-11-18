@@ -1,0 +1,38 @@
+[
+  {
+    "path": "/health/ready",
+    "status": 200,
+    "code": null,
+    "ok": true
+  },
+  {
+    "path": "/api/v1/stores",
+    "status": 200,
+    "code": 0,
+    "ok": null
+  },
+  {
+    "path": "/api/v1/doctors",
+    "status": 200,
+    "code": 0,
+    "ok": null
+  },
+  {
+    "path": "/api/v1/settings/booking",
+    "status": 200,
+    "code": 0,
+    "ok": null
+  },
+  {
+    "path": "/api/v1/schedules/dates",
+    "status": 400,
+    "code": 400,
+    "ok": null
+  },
+  {
+    "path": "/api/v1/appointments",
+    "status": 401,
+    "code": 401,
+    "ok": null
+  }
+]

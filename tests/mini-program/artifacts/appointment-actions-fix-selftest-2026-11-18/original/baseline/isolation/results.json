@@ -1,0 +1,133 @@
+{
+  "phase": "development self-test, not independent regression",
+  "results": [
+    {
+      "name": "PATIENT-01 replacement load immediately clears old form and cannot submit",
+      "result": "passed"
+    },
+    {
+      "name": "PATIENT-02 replacement load failure keeps old members absent and shows error",
+      "result": "passed"
+    },
+    {
+      "name": "PATIENT-03 retry loads and submits only replacement-account patient",
+      "result": "passed"
+    },
+    {
+      "name": "PATIENT-04 same-account renewal preserves selected family and symptom",
+      "result": "passed"
+    },
+    {
+      "name": "PATIENT-05 missing replacement draft still clears old patient form",
+      "result": "passed"
+    },
+    {
+      "name": "PATIENT-06 submit before replacement load rejects old member ownership",
+      "result": "passed"
+    },
+    {
+      "name": "PATIENT-07 old submit finally cannot unlock new-account pending submission",
+      "result": "passed"
+    },
+    {
+      "name": "PATIENT-08 loading/invalid form disables button and WXML tags balance",
+      "result": "passed"
+    }
+  ],
+  "previews": [
+    {
+      "title": "换号后等待新资料",
+      "data": {
+        "loading": true,
+        "hasLoaded": false,
+        "loadError": "",
+        "draft": null,
+        "storeName": "",
+        "doctorName": "",
+        "consultFeeAmount": 0,
+        "consultFeeLabel": "¥0.00",
+        "showConsultFee": false,
+        "requireDeposit": false,
+        "depositAmountYuan": "¥0.00",
+        "cancelLimitText": "就诊前2小时",
+        "subscribeTemplateIds": [],
+        "assessmentLabel": "",
+        "buttonText": "确认预约",
+        "memberOptions": [],
+        "memberIndex": 0,
+        "memberList": [],
+        "selectedMemberName": "请选择就诊人",
+        "symptomDesc": "",
+        "isSubmitting": false
+      }
+    },
+    {
+      "title": "新资料加载失败",
+      "data": {
+        "loading": false,
+        "hasLoaded": false,
+        "loadError": "加载就诊人失败，请稍后重试",
+        "draft": null,
+        "storeName": "",
+        "doctorName": "",
+        "consultFeeAmount": 0,
+        "consultFeeLabel": "¥0.00",
+        "showConsultFee": false,
+        "requireDeposit": false,
+        "depositAmountYuan": "¥0.00",
+        "cancelLimitText": "就诊前2小时",
+        "subscribeTemplateIds": [],
+        "assessmentLabel": "",
+        "buttonText": "确认预约",
+        "memberOptions": [],
+        "memberIndex": 0,
+        "memberList": [],
+        "selectedMemberName": "请选择就诊人",
+        "symptomDesc": "",
+        "isSubmitting": false
+      }
+    },
+    {
+      "title": "恢复后只显示新账号就诊人",
+      "data": {
+        "loading": false,
+        "hasLoaded": true,
+        "loadError": "",
+        "draft": {
+          "doctorId": "1",
+          "storeId": "1",
+          "scheduleId": "1",
+          "appointmentDate": "2099-01-01",
+          "timeSlot": {
+            "label": "09:00-09:30"
+          }
+        },
+        "storeName": "门店",
+        "doctorName": "医生",
+        "consultFeeAmount": 0,
+        "consultFeeLabel": "¥0.00",
+        "showConsultFee": false,
+        "requireDeposit": false,
+        "depositAmountYuan": "¥0.00",
+        "cancelLimitText": "就诊前2小时",
+        "subscribeTemplateIds": [],
+        "assessmentLabel": "",
+        "buttonText": "确认预约",
+        "memberOptions": [
+          "新账号就诊人 (本人)"
+        ],
+        "memberIndex": 0,
+        "memberList": [
+          {
+            "id": "b-self",
+            "name": "新账号就诊人",
+            "relation": "self"
+          }
+        ],
+        "selectedMemberName": "新账号就诊人 (本人)",
+        "symptomDesc": "",
+        "isSubmitting": false
+      }
+    }
+  ]
+}

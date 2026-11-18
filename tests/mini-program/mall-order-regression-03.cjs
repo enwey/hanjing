@@ -3,7 +3,7 @@ const root = path.resolve(__dirname, '../../mp-weixin-rewrite');
 const results = [];
 const gate = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return {promise, resolve}; };
 async function test(name, fn) { try { await fn(); results.push({name, status:'PASS'}); } catch(e) { results.push({name, status:'FAIL', actual:e.message}); } }
-function harness(file, api, storage = new Map()) {
+function harness(file, api, storage = new Map(), requestSubscribe = async () => {}) {
   let p; const payments = [], toasts = [], routes = [];
   const wx = {getStorageSync:k=>storage.get(k), setStorageSync:(k,v)=>storage.set(k,v), removeStorageSync:k=>storage.delete(k),
     showLoading(){}, hideLoading(){}, showToast:o=>toasts.push(o.title), navigateTo:o=>routes.push(o.url), requestPayment:o=>payments.push(o)};
@@ -11,13 +11,62 @@ function harness(file, api, storage = new Map()) {
   vm.runInNewContext(fs.readFileSync(path.join(root,'stores/session-store.js'),'utf8'),ctx);
   const store = ctx.module.exports; store.setAccessToken('fixture-original');
   vm.runInNewContext(fs.readFileSync(path.join(root,'pages',file),'utf8'),{wx, Page:o=>p=o, console:{error(){}}, setTimeout(){},
-    require:s=>s.includes('api/index')?api:s.includes('session-store')?store:s.includes('date-time')?{formatChinaDateTime:x=>x}:s.includes('utils/subscribe')?{requestSubscribe:async()=>{}}:{}});
+    require:s=>s.includes('api/index')?api:s.endsWith('/order-payment')?require('../../mp-weixin-rewrite/common/utils/order-payment'):s.includes('session-store')?store:s.includes('date-time')?{formatChinaDateTime:x=>x}:s.includes('utils/subscribe')?{requestSubscribe,refreshSubscribeSettings:async()=>{}}:{}});
   p.data = JSON.parse(JSON.stringify(p.data)); p.setData = o=>Object.assign(p.data,o);
   return {p,store,payments,toasts,routes};
 }
-function checkout(api, storage) { const h=harness('product/detail.js',api,storage); Object.assign(h.p.data,{product:{id:1},quantity:1,contactName:'fixture',phone:'13800138001',detailAddress:'fixture'}); return h; }
+function checkout(api, storage, requestSubscribe) { const h=harness('product/detail.js',api,storage,requestSubscribe); Object.assign(h.p.data,{product:{id:1},quantity:1,contactName:'fixture',phone:'13800138001',detailAddress:'fixture'}); return h; }
 async function until(fn) { for(let i=0;i<30&&!fn();i++) await Promise.resolve(); assert.ok(fn(),'expected phase not reached'); }
 (async()=>{
+  await test('MALL-1118-01 two checkouts waiting on subscription cannot both create',async()=>{
+    const storage=new Map(), firstSubscription=gate(), secondSubscription=gate(), creation=gate();
+    let creates=0;
+    const api={createOrder:()=>{creates++;return creation.promise;}};
+    const first=checkout(api,storage,()=>firstSubscription.promise);
+    const second=checkout(api,storage,()=>secondSubscription.promise);
+    const firstSubmit=first.p.submitOrder();
+    const secondSubmit=second.p.submitOrder();
+    try {
+      firstSubscription.resolve();
+      await until(()=>creates===1);
+      secondSubscription.resolve();
+      await until(()=>creates>1||!second.p.data.isSubmitting);
+      assert.equal(creates,1);
+      assert.equal(second.routes.at(-1),'/pages/order/index');
+    } finally {
+      firstSubscription.resolve();
+      secondSubscription.resolve();
+      creation.resolve({data:{id:9,payAmount:0}});
+      await Promise.all([firstSubmit,secondSubmit]);
+    }
+  });
+  await test('MALL-1118-01 a late cancelled-order lookup preserves a newer checkout',async()=>{
+    const storage=new Map([['product_checkout_v1:unresolved:1',{id:8}]]);
+    const firstLookup=gate(), secondLookup=gate(), creation=gate();
+    let lookups=0, creates=0;
+    const api={
+      getOrderDetail:()=> (++lookups===1?firstLookup:secondLookup).promise,
+      createOrder:()=>{creates++;return creation.promise;},
+    };
+    const first=checkout(api,storage), second=checkout(api,storage);
+    const firstSubmit=first.p.submitOrder(), secondSubmit=second.p.submitOrder();
+    const cancelled={data:{id:8,status:'cancelled'}};
+    try {
+      await until(()=>lookups===2);
+      firstLookup.resolve(cancelled);
+      await until(()=>creates===1);
+      secondLookup.resolve(cancelled);
+      await until(()=>creates>1||!second.p.data.isSubmitting);
+      assert.equal(creates,1);
+      assert.equal(second.routes.at(-1),'/pages/order/index');
+      assert.ok([...storage.values()].some(value=>value?.uncertain));
+    } finally {
+      firstLookup.resolve(cancelled);
+      secondLookup.resolve(cancelled);
+      creation.resolve({data:{id:9,payAmount:0}});
+      await Promise.all([firstSubmit,secondSubmit]);
+    }
+  });
   for(const code of [400,401,403,404,422]) await test('MALL-10 explicit rejection permits retry '+code,async()=>{
     let creates=0; const h=checkout({createOrder:async()=>{creates++;throw Object.assign(Error('rejected'),{statusCode:code});}});
     await h.p.submitOrder(); await h.p.submitOrder(); assert.equal(creates,2); assert.equal(h.p.data.isSubmitting,false);
@@ -42,7 +91,7 @@ async function until(fn) { for(let i=0;i<30&&!fn();i++) await Promise.resolve();
   await test('MALL-10 late success survives unload and reuses order on reopen',async()=>{
     let creates=0; const d=gate(), storage=new Map();
     const api={createOrder:()=>{creates++;return d.promise;},getOrderDetail:async()=>({data:{id:9,status:'pending'}})};
-    const first=checkout(api,storage); const pending=first.p.submitOrder(); first.p.onUnload();
+    const first=checkout(api,storage); const pending=first.p.submitOrder(); await until(()=>creates===1); first.p.onUnload();
     d.resolve({data:{id:9}}); await pending;
     const reopened=checkout(api,storage); await reopened.p.submitOrder();
     assert.equal(creates,1); assert.equal(reopened.routes[0],'/pages/order/detail?id=9'); assert.equal(first.payments.length,0);

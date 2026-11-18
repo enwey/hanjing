@@ -7,7 +7,12 @@
       <text class="section-hint">共 {{doctors.length}} 位医生</text>
     </view>
 
-    <view wx:if="{{doctors.length > 0}}">
+    <view wx:if="{{loading}}" class="empty-state"><text>正在加载医生...</text></view>
+    <view wx:elif="{{loadError}}" class="empty-state">
+      <text>{{loadError}}</text>
+      <button bindtap="loadPage">重试</button>
+    </view>
+    <view wx:elif="{{doctors.length > 0}}">
       <view
         wx:for="{{doctors}}"
         wx:key="id"

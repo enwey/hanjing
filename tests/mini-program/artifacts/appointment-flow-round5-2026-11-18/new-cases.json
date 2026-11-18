@@ -1,0 +1,93 @@
+[
+  {
+    "id": "E01 改约页面跨过截止后应在提交时拦截",
+    "passed": false,
+    "observed": {
+      "calls": 1,
+      "toasts": [
+        "距离预约时间已不足2小时，不支持修改就诊时间"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\n1 !== 0\n"
+  },
+  {
+    "id": "E02 改约刷新发现预约已取消应阻止提交",
+    "passed": false,
+    "observed": {
+      "status": "cancelled",
+      "selected": "slot",
+      "calls": 1,
+      "toasts": [
+        "该预约状态下不支持修改就诊时间"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\n1 !== 0\n"
+  },
+  {
+    "id": "E03 改约请求超时后原页有重试入口 getAppointmentDetail",
+    "passed": false,
+    "observed": {
+      "error": "网络超时",
+      "retryInErrorState": false,
+      "refreshOnReturn": false
+    },
+    "error": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  },
+  {
+    "id": "E03 改约请求超时后原页有重试入口 getScheduleDates",
+    "passed": false,
+    "observed": {
+      "error": "网络超时",
+      "retryInErrorState": false,
+      "refreshOnReturn": false
+    },
+    "error": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  },
+  {
+    "id": "E03 改约请求超时后原页有重试入口 getTimeSlots",
+    "passed": false,
+    "observed": {
+      "error": "网络超时",
+      "retryInErrorState": false,
+      "refreshOnReturn": true
+    },
+    "error": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  },
+  {
+    "id": "E04 改约无可选日期不会发请求",
+    "passed": true,
+    "observed": {
+      "date": "",
+      "calls": 0,
+      "toasts": [
+        "请选择时段"
+      ]
+    }
+  },
+  {
+    "id": "E05 确认页资料请求超时后原页有重试入口",
+    "passed": false,
+    "observed": {
+      "error": "就诊人加载超时",
+      "retryInErrorState": false
+    },
+    "error": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  },
+  {
+    "id": "E06 预约确认成功后两次提交只创建一次",
+    "passed": true,
+    "observed": {
+      "calls": 1,
+      "navigation": [
+        "/pages/appointment/success?id=new"
+      ]
+    }
+  },
+  {
+    "id": "E07 已取消预约进入结果页不会显示成功",
+    "passed": true,
+    "observed": {
+      "error": "该预约已取消"
+    }
+  }
+]

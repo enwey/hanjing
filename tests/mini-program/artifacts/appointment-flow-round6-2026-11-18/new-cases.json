@@ -1,0 +1,104 @@
+[
+  {
+    "id": "F01 结果页按状态展示 pending",
+    "passed": true,
+    "observed": {
+      "error": "",
+      "record": "pending"
+    }
+  },
+  {
+    "id": "F01 结果页按状态展示 checked_in",
+    "passed": false,
+    "observed": {
+      "error": "预约状态待确认，请查看预约记录",
+      "record": null
+    },
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ null\n- 'checked_in'\n"
+  },
+  {
+    "id": "F01 结果页按状态展示 refunded",
+    "passed": false,
+    "observed": {
+      "error": "预约状态待确认，请查看预约记录",
+      "record": null
+    },
+    "error": "The input did not match the regular expression /已退款/. Input:\n\n'预约状态待确认，请查看预约记录'\n"
+  },
+  {
+    "id": "F02 结果页首次超时后具备原页恢复能力",
+    "passed": false,
+    "observed": {
+      "calls": 1,
+      "error": "预约结果请求超时",
+      "retry": false
+    },
+    "error": "结果页无重试且再次显示未发起加载"
+  },
+  {
+    "id": "F03 已提醒状态在详情中不应提供后端不支持的改约入口",
+    "passed": false,
+    "observed": {
+      "status": "reminded",
+      "sharedFooter": true,
+      "navigation": [
+        "/pages/appointment/reschedule?id=a&doctorId=d&storeId=s"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\n1 !== 0\n"
+  },
+  {
+    "id": "F04 预约详情本身成功且设置超时时仍能查看记录",
+    "passed": false,
+    "observed": {
+      "calls": 1,
+      "loaded": false,
+      "error": "预约设置请求超时"
+    },
+    "error": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  },
+  {
+    "id": "F05 改约入口和提交检查使用一致的时限",
+    "passed": false,
+    "observed": {
+      "hoursUntilVisit": 3.5,
+      "setting": 4,
+      "navigation": [],
+      "toasts": [
+        "已超过改约截止时间（就诊前2小时）"
+      ],
+      "serverUsesTwoHours": true
+    },
+    "error": "原预约还有3.5小时，入口按4小时拒绝，后端改约规则为2小时\n\n0 !== 1\n"
+  },
+  {
+    "id": "F06 详情已签到和退款不显示操作 checked_in",
+    "passed": true,
+    "observed": {
+      "status": "checked_in",
+      "footer": false,
+      "canCancel": false
+    }
+  },
+  {
+    "id": "F06 详情已签到和退款不显示操作 refunded",
+    "passed": true,
+    "observed": {
+      "status": "refunded",
+      "footer": false,
+      "canCancel": false
+    }
+  },
+  {
+    "id": "F07 登录后预约列表正常加载并区分退款记录",
+    "passed": true,
+    "observed": {
+      "upcoming": [
+        "pending"
+      ],
+      "history": [
+        "refunded"
+      ]
+    }
+  }
+]

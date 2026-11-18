@@ -1,0 +1,32 @@
+[
+  {
+    "id": "TIMING-01 child confirmation after list reorder retains intended patient",
+    "passed": true,
+    "observed": {
+      "submitted": [
+        "child"
+      ]
+    }
+  },
+  {
+    "id": "TIMING-02 unchanged draft reload during subscription preserves submission",
+    "passed": true,
+    "observed": {
+      "submitted": [
+        "self"
+      ],
+      "toasts": [],
+      "navigations": 1
+    }
+  },
+  {
+    "id": "TIMING-03 normal child modal confirms selected patient",
+    "passed": true,
+    "observed": {}
+  },
+  {
+    "id": "TIMING-04 changed slot requires explicit resubmission",
+    "passed": true,
+    "observed": {}
+  }
+]

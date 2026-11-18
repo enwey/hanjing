@@ -2,6 +2,7 @@ const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
 const navigation = require('../../common/utils/navigation');
 const subscribe = require('../../common/utils/subscribe');
+const { isPaymentTimeout, reconcileOrderPayment } = require('../../common/utils/order-payment');
 
 function checkoutStorageKey(productId) {
   const profile = sessionStore.state && sessionStore.state.profile;
@@ -147,6 +148,7 @@ Page({
 
   onLoad(options) {
     this._unloaded = false;
+    this.syncCheckoutSession();
     this.imageLoadFailedMap = {};
     const productId = options && options.id;
     if (!productId) {
@@ -159,7 +161,9 @@ Page({
   },
 
   onShow() {
-    if (!this.productId || !this.data.hasLoaded) {
+    this.syncCheckoutSession();
+    subscribe.refreshSubscribeSettings();
+    if (!this.productId || (!this.data.hasLoaded && !this.data.loadError)) {
       return;
     }
     this.loadProduct(this.productId, { silent: true });
@@ -209,6 +213,7 @@ Page({
       this.setData({
         hasLoaded: true,
         loading: false,
+        loadError: '',
         memberLevel,
         product,
         galleryImages: resolvedImages,
@@ -224,12 +229,16 @@ Page({
     } catch (error) {
       if (this._unloaded || requestId !== this._loadRequestId) return;
       console.error(error);
-      if (!this.data.hasLoaded) {
+      const notFound = Number(error?.statusCode || error?.data?.code) === 404;
+      if (!this.data.hasLoaded || notFound) {
         wx.showToast({ title: (error && error.message) || '获取商品详情失败', icon: 'none' });
         this.setData({
           loading: false,
+          hasLoaded: false,
           product: null,
           galleryImages: [],
+          currentImageIndex: 0,
+          showCheckout: false,
           loadError: (error && error.message) || '获取商品详情失败',
         });
         return;
@@ -283,6 +292,8 @@ Page({
   },
 
   async openCheckout() {
+    this.syncCheckoutSession();
+    if (!this.data.product) return;
     if (!sessionStore.isLoggedIn()) {
       navigation.openLogin('/pages/product/detail?id=' + encodeURIComponent(String(this.productId || '')));
       return;
@@ -291,6 +302,7 @@ Page({
   },
 
   async handlePrimaryPay() {
+    if (!this.data.product) return;
     if (!sessionStore.isLoggedIn()) {
       navigation.openLogin('/pages/product/detail?id=' + encodeURIComponent(String(this.productId || '')));
       return;
@@ -304,6 +316,12 @@ Page({
 
   closeCheckout() {
     this.setData({ showCheckout: false });
+  },
+
+  openOrderForPriceReview(orderId) {
+    this.closeCheckout();
+    wx.showToast({ title: '金额已变化，请核对后支付', icon: 'none' });
+    wx.navigateTo({ url: '/pages/order/detail?id=' + orderId });
   },
 
   noop() {},
@@ -331,6 +349,17 @@ Page({
       phone: result.telNumber || '',
       detailAddress: normalizeAddressText(result),
     });
+  },
+
+  syncCheckoutSession() {
+    const generation = sessionStore.getLoginGeneration();
+    if (this.checkoutGeneration !== undefined && this.checkoutGeneration !== generation) {
+      this._checkoutOrder = null;
+      this._checkoutUncertain = false;
+      this.setData({ contactName: '', phone: '', detailAddress: '', showCheckout: false });
+    }
+    this.checkoutGeneration = generation;
+    return generation;
   },
 
   getAddressPermissionState() {
@@ -364,9 +393,10 @@ Page({
     });
   },
 
-  openAddressPermissionSettings() {
+  openAddressPermissionSettings(isCurrent) {
     wx.openSetting({
       success: (settingResult) => {
+        if (!isCurrent()) return;
         if (settingResult && settingResult.authSetting && settingResult.authSetting['scope.address']) {
           this.chooseWxAddress();
           return;
@@ -374,12 +404,13 @@ Page({
         wx.showToast({ title: '未开启通讯地址权限，可继续手动填写', icon: 'none' });
       },
       fail: () => {
+        if (!isCurrent()) return;
         wx.showToast({ title: '请在设置中开启通讯地址权限', icon: 'none' });
       },
     });
   },
 
-  handleChooseWxAddressFail(error) {
+  handleChooseWxAddressFail(error, isCurrent) {
     const errMsg = error && error.errMsg ? String(error.errMsg) : '';
     console.error('[chooseWxAddress] failed:', error);
     if (errMsg.indexOf('cancel') >= 0) {
@@ -399,8 +430,8 @@ Page({
         confirmText: '去开启',
         cancelText: '手动填写',
         success: (result) => {
-          if (result.confirm) {
-            this.openAddressPermissionSettings();
+          if (result.confirm && isCurrent()) {
+            this.openAddressPermissionSettings(isCurrent);
           }
         },
       });
@@ -413,8 +444,8 @@ Page({
         confirmText: '去设置',
         cancelText: '知道了',
         success: (result) => {
-          if (result.confirm) {
-            this.openAddressPermissionSettings();
+          if (result.confirm && isCurrent()) {
+            this.openAddressPermissionSettings(isCurrent);
           }
         },
       });
@@ -426,23 +457,17 @@ Page({
     });
   },
 
-  onChooseWxAddress(event) {
-    const detail = event && event.detail ? event.detail : {};
-    if (detail && (detail.errMsg === 'chooseAddress:ok' || detail.userName)) {
-      this.fillAddressFromWechat(detail);
-      wx.showToast({ title: '已填充微信地址', icon: 'success' });
-      return;
-    }
-    this.handleChooseWxAddressFail(detail);
-  },
-
   async chooseWxAddress() {
+    if (this._unloaded) return;
+    const generation = this.syncCheckoutSession();
+    const isCurrent = () => !this._unloaded && this.syncCheckoutSession() === generation;
     if (typeof wx.chooseAddress !== 'function') {
       wx.showToast({ title: '当前环境暂不支持选择微信地址', icon: 'none' });
       return;
     }
     try {
       const permissionState = await this.getAddressPermissionState();
+      if (!isCurrent()) return;
       if (permissionState === false) {
         wx.showModal({
           title: '需要地址权限',
@@ -450,8 +475,8 @@ Page({
           confirmText: '去开启',
           cancelText: '取消',
           success: (result) => {
-            if (result.confirm) {
-              this.openAddressPermissionSettings();
+            if (result.confirm && isCurrent()) {
+              this.openAddressPermissionSettings(isCurrent);
             }
           },
         });
@@ -461,26 +486,29 @@ Page({
         try {
           await this.requestAddressPermission();
         } catch (authError) {
-          this.handleChooseWxAddressFail(authError);
+          if (isCurrent()) this.handleChooseWxAddressFail(authError, isCurrent);
           return;
         }
       }
+      if (!isCurrent()) return;
       wx.showLoading({ title: '读取微信地址...' });
       const result = await this.tryChooseWxAddress();
-      wx.hideLoading();
+      if (!this._unloaded) wx.hideLoading();
+      if (!isCurrent()) return;
       this.fillAddressFromWechat(result || {});
       wx.showToast({ title: '已填充微信地址', icon: 'success' });
     } catch (error) {
-      wx.hideLoading();
-      this.handleChooseWxAddressFail(error);
+      if (!this._unloaded) wx.hideLoading();
+      if (isCurrent()) this.handleChooseWxAddressFail(error, isCurrent);
     }
   },
 
-  onInputName(event) { this.setData({ contactName: event.detail.value || '' }); },
-  onInputPhone(event) { this.setData({ phone: event.detail.value || '' }); },
-  onInputDetail(event) { this.setData({ detailAddress: event.detail.value || '' }); },
+  onInputName(event) { this.syncCheckoutSession(); this.setData({ contactName: event.detail.value || '' }); },
+  onInputPhone(event) { this.syncCheckoutSession(); this.setData({ phone: event.detail.value || '' }); },
+  onInputDetail(event) { this.syncCheckoutSession(); this.setData({ detailAddress: event.detail.value || '' }); },
 
   validateAddress(silent) {
+    this.syncCheckoutSession();
     if (!String(this.data.contactName || '').trim()) {
       if (!silent) wx.showToast({ title: '请填写收货人', icon: 'none' });
       return false;
@@ -504,8 +532,12 @@ Page({
     }
     if (!this.validateAddress(false)) return;
     const revision = sessionStore.getLoginGeneration();
+    const isCurrent = () => !this._unloaded && sessionStore.getLoginGeneration() === revision;
+    const checkoutAmount = this.getTotalPayAmount();
     let createdPayAmount = null;
+    let existingPayAmount;
     let checkoutKey;
+    let paymentOrderId;
     const orderInput = {
       items: [{ productId: String(this.data.product.id), quantity: this.data.quantity }],
       shippingAddress: {
@@ -522,8 +554,13 @@ Page({
     }
     this.setData({ isSubmitting: true });
     try {
-      wx.showLoading({ title: '发起支付...' });
       checkoutKey = checkoutStorageKey(this.data.product.id);
+      await subscribe.requestSubscribe({ force: true, scene: 'order' });
+      if (this._unloaded) return;
+      if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
+      if (String(this.data.product?.id) !== orderInput.items[0].productId) return;
+
+      // Another checkout may start creating the order while this page waits for WeChat.
       const savedCheckout = wx.getStorageSync(checkoutKey);
       // An earlier page may have resolved this attempt since our last submit.
       // Re-read persisted state before deciding whether creation is still blocked.
@@ -531,23 +568,32 @@ Page({
       if (!this._checkoutOrder && savedCheckout) {
         if (!savedCheckout.id) {
           this._checkoutUncertain = true;
-          wx.hideLoading();
           wx.showToast({ title: '下单结果待确认，请先查看订单列表', icon: 'none' });
           wx.navigateTo({ url: '/pages/order/index' });
           return;
         }
         this._checkoutOrder = { id: savedCheckout.id, fingerprint: savedCheckout.fingerprint, revision };
       }
+      wx.showLoading({ title: '发起支付...' });
       if (this._checkoutOrder) {
         const response = await api.getOrderDetail(this._checkoutOrder.id);
         if (this._unloaded) return;
         const existing = (response && response.data) || response || {};
+        existingPayAmount = Number(existing.payAmount);
         if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
+        const currentCheckout = wx.getStorageSync(checkoutKey);
+        const ownsCheckout = currentCheckout && String(currentCheckout.id) === String(this._checkoutOrder.id);
         if (existing.status === 'cancelled') {
-          wx.removeStorageSync(checkoutKey);
+          if (currentCheckout && !ownsCheckout) {
+            wx.hideLoading();
+            wx.showToast({ title: '下单结果待确认，请先查看订单列表', icon: 'none' });
+            wx.navigateTo({ url: '/pages/order/index' });
+            return;
+          }
+          if (ownsCheckout) wx.removeStorageSync(checkoutKey);
           this._checkoutOrder = null;
         } else if (existing.status !== 'pending' || this._checkoutOrder.fingerprint !== fingerprint) {
-          if (['paid', 'processing', 'shipping', 'shipped', 'completed', 'refund_pending', 'refunding', 'refunded'].includes(existing.status)) {
+          if (ownsCheckout && ['paid', 'processing', 'shipping', 'shipped', 'completed', 'refund_pending', 'refunding', 'refunded'].includes(existing.status)) {
             wx.removeStorageSync(checkoutKey);
           }
           wx.hideLoading();
@@ -557,6 +603,10 @@ Page({
         }
       }
       if (!this._checkoutOrder) {
+        if (String(this.data.product?.id) !== orderInput.items[0].productId) {
+          wx.hideLoading();
+          return;
+        }
         // Persist before sending: failure to save must prevent the create request.
         wx.setStorageSync(checkoutKey, { uncertain: true });
         this._checkoutUncertain = true;
@@ -566,7 +616,9 @@ Page({
         } catch (error) {
           // Only explicit rejection responses permit a new create attempt.
           // Transport errors, timeouts and server failures remain uncertain.
-          if (error && [400, 401, 403, 404, 422].includes(Number(error.statusCode))) {
+          const statusCode = Number(error?.statusCode);
+          const inventoryConflict = statusCode === 409 && error?.data?.reason === 'ORDER_INVENTORY_CONFLICT';
+          if (inventoryConflict || [400, 401, 403, 404, 422].includes(statusCode)) {
             wx.removeStorageSync(checkoutKey);
             this._checkoutUncertain = false;
           }
@@ -579,6 +631,7 @@ Page({
         if (!createdOrder.id) throw new Error('未取得订单编号，请在订单列表确认');
         // Even after page unload, preserve a late successful response for recovery.
         wx.setStorageSync(checkoutKey, { id: createdOrder.id });
+        if (!isCurrent()) return;
         this._checkoutOrder = { id: createdOrder.id, fingerprint, revision };
         createdPayAmount = Number(createdOrder.payAmount);
         this._checkoutUncertain = false;
@@ -590,7 +643,6 @@ Page({
         wx.removeStorageSync(checkoutKey);
         this._checkoutOrder = null;
         wx.hideLoading();
-        await subscribe.requestSubscribe({ force: true, scene: 'order' });
         if (this._unloaded) return;
         wx.showToast({ title: '订单已提交', icon: 'success' });
         this.setData({ showCheckout: false });
@@ -600,11 +652,22 @@ Page({
         }, 300);
         return;
       }
+      const orderAmount = createdPayAmount ?? existingPayAmount;
+      if (orderAmount > checkoutAmount) {
+        wx.hideLoading();
+        this.openOrderForPriceReview(orderId);
+        return;
+      }
+      paymentOrderId = orderId;
       const payResponse = await api.payOrder(orderId);
       if (this._unloaded) return;
       if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
       const payParams = (payResponse && payResponse.data) || payResponse || {};
       wx.hideLoading();
+      if (Number(payParams.payAmount) > checkoutAmount) {
+        this.openOrderForPriceReview(orderId);
+        return;
+      }
       await requestWxPay(payParams);
       if (this._unloaded) return;
       if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
@@ -613,7 +676,6 @@ Page({
       if (this._unloaded) return;
       if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
       wx.hideLoading();
-      await subscribe.requestSubscribe({ force: true, scene: 'order' });
       if (this._unloaded) return;
       wx.showToast({ title: '支付已提交', icon: 'success' });
       this.setData({ showCheckout: false });
@@ -623,9 +685,24 @@ Page({
       }, 300);
     } catch (error) {
       if (this._unloaded) return;
+      const timedOut = paymentOrderId && isCurrent() && isPaymentTimeout(error);
+      if (timedOut) {
+        wx.showLoading({ title: '核对支付状态...' });
+        const { order, confirmed } = await reconcileOrderPayment(api, paymentOrderId, isCurrent).catch(() => ({}));
+        if (!isCurrent()) {
+          if (!this._unloaded) wx.hideLoading();
+          return;
+        }
+        if (confirmed || (order?.status && order.status !== 'pending')) {
+          wx.hideLoading();
+          this.setData({ showCheckout: false });
+          wx.navigateTo({ url: '/pages/order/detail?id=' + paymentOrderId });
+          return;
+        }
+      }
       wx.hideLoading();
       wx.showToast({
-        title: getPaymentErrorMessage(error, '支付未完成'),
+        title: timedOut ? '支付结果待确认，请查看订单' : getPaymentErrorMessage(error, '支付未完成'),
         icon: 'none',
       });
     } finally {

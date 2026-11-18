@@ -5,6 +5,11 @@ let sessionRevision = 0;
 // A token refresh keeps the login session; logout or a new login does not.
 let loginGeneration = 0;
 
+function clearInviteState() {
+  wx.removeStorageSync('pending_invite_code');
+  wx.removeStorageSync('backend_referral');
+}
+
 // Diagnostics are best-effort and must never delay authentication.
 function reportDiagnostic(entry) {
   try {
@@ -92,6 +97,14 @@ function readStoredAccessToken() {
     return '';
   }
   if (isTokenExpired(token)) {
+    const payload = parseJwtPayload(token);
+    // Keep a well-formed expired WeChat session available to the request layer.
+    // The server still rejects this token and must confirm renewal via wx.login.
+    // Explicit logout removes auth_mode, so it cannot trigger this recovery.
+    if (readStoredAuthMode() === 'wechat' && payload && payload.id &&
+        typeof payload.exp === 'number' && Number.isFinite(payload.exp) && payload.exp > 0) {
+      return token;
+    }
     wx.removeStorageSync('access_token');
     return '';
   }
@@ -110,6 +123,10 @@ async function bindPendingInviteCode() {
   const pendingInviteCode = wx.getStorageSync('pending_invite_code');
   const token = wx.getStorageSync('access_token');
   if (!pendingInviteCode) {
+    return;
+  }
+  if (require('../common/utils/backend-referral').isBackendCode(pendingInviteCode)) {
+    wx.removeStorageSync('pending_invite_code');
     return;
   }
   const clearCurrentInvite = () => {
@@ -232,6 +249,7 @@ const sessionStore = {
     this.setAccessToken('');
     this.setAuthMode('');
     this.state.profile = null;
+    clearInviteState();
     try {
       this.switchAccount('');
     } catch (error) {
@@ -251,6 +269,7 @@ const sessionStore = {
     if (patientContext && typeof patientContext.reset === 'function') patientContext.reset();
   },
   switchAccount(userId) {
+    if (cacheOwner && userId && cacheOwner !== String(userId)) clearInviteState();
     if (!switchAccountCache(userId)) return;
     this.state.currentPatientId = wx.getStorageSync('current_patient_id') || '';
     this.state.profile = null;

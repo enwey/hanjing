@@ -1,0 +1,75 @@
+[
+  {
+    "id": "H01 识别后端实际返回的文字取消时限 booking/index.js",
+    "passed": true,
+    "observed": {
+      "configured": "就诊前4小时",
+      "hoursUntilVisit": 3.5,
+      "modals": 0,
+      "effectiveHours": 4
+    }
+  },
+  {
+    "id": "H01 识别后端实际返回的文字取消时限 detail.js",
+    "passed": true,
+    "observed": {
+      "configured": "就诊前4小时",
+      "hoursUntilVisit": 3.5,
+      "modals": 0,
+      "effectiveHours": 4
+    }
+  },
+  {
+    "id": "H02 取消接口采用预约设置的截止规则",
+    "passed": true,
+    "observed": {
+      "configReturned": true,
+      "routeHardcodesTwoHours": false,
+      "routeReadsConfiguredLimit": true
+    }
+  },
+  {
+    "id": "H03 详情支付处理函数拦截不可支付收费单",
+    "passed": true,
+    "observed": {
+      "buttonVisible": false,
+      "calls": 0,
+      "toasts": []
+    }
+  },
+  {
+    "id": "H04 时段页刷新失败后提供原页重试入口",
+    "passed": true,
+    "observed": {
+      "dates": 1,
+      "slots": 0,
+      "error": "可约日期刷新超时",
+      "toasts": [
+        "可约日期刷新超时"
+      ]
+    }
+  },
+  {
+    "id": "H05 确认页未返回所选医生时不按零挂号费继续创建",
+    "passed": true,
+    "observed": {
+      "calls": 0,
+      "error": "未获取到所选医生的信息，请重试",
+      "advertisedFee": 0
+    }
+  },
+  {
+    "id": "H06 正常收费信息在确认按钮显示合计金额",
+    "passed": true,
+    "observed": {
+      "button": "立即支付 · ¥62.00"
+    }
+  },
+  {
+    "id": "H07 用户关闭取消弹窗时不发送取消请求",
+    "passed": true,
+    "observed": {
+      "calls": 0
+    }
+  }
+]

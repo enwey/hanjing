@@ -4,21 +4,22 @@ const results=[];const tick=()=>new Promise(r=>setImmediate(r));
 const gate=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {resolve,promise};};
 async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}catch(e){results.push({name,status:'FAIL',actual:e.message});}}
 function page(file,api={}){
-  let p,loggedIn=true;const storage=new Map(),toasts=[],modals=[],nav=[],timers=[];let draft={doctorId:1,storeId:1,scheduleId:1,appointmentDate:'2099-01-01',timeSlot:{label:'09:00-09:30'}};
+  let p,loggedIn=true,generation=0;const storage=new Map(),toasts=[],modals=[],nav=[],timers=[];let draft={doctorId:1,storeId:1,scheduleId:1,appointmentDate:'2099-01-01',timeSlot:{label:'09:00-09:30'}};
   const draftStore={getDraft:()=>draft,setDraft:v=>draft=v,clearDraft:()=>draft=null};
   const wx={getStorageSync:k=>storage.get(k),removeStorageSync:k=>storage.delete(k),showToast:o=>toasts.push(o.title),showModal:o=>modals.push(o),showLoading(){},hideLoading(){},navigateTo:o=>nav.push(o.url),reLaunch:o=>nav.push(o.url)};
   const deps={};
   const ctx=vm.createContext({Page:o=>p=o,wx,console:{error(){}},setTimeout:fn=>timers.push(fn),require:s=>{
+    if(s.includes('appointment-time'))return require(path.join(root,'common/utils/appointment-time.js'));
     if(s.includes('api/index'))return api;
     if(s.includes('appointment-draft'))return draftStore;
-    if(s.includes('session-store'))return {isLoggedIn:()=>loggedIn,getAccessToken:()=>loggedIn?'test':''};
-    if(s.includes('subscribe'))return {requestSubscribe:async()=>{}};
+    if(s.includes('session-store'))return {isLoggedIn:()=>loggedIn,getAccessToken:()=>loggedIn?'test':'',getLoginGeneration:()=>generation};
+    if(s.includes('subscribe'))return {requestSubscribe:async()=>{},refreshSubscribeSettings:async()=>{},subscribeToVisitReminder:async()=>false};
     if(s.includes('navigation'))return {openPage:url=>nav.push(url)};
     return deps;
   }});
   vm.runInContext(fs.readFileSync(path.join(root,'pages/appointment',file),'utf8'),ctx);
   p.data=JSON.parse(JSON.stringify(p.data));p.setData=o=>Object.assign(p.data,o);
-  return {p,wx,ctx,storage,toasts,modals,nav,timers,draftStore,setLoggedIn:v=>loggedIn=v};
+  return {p,wx,ctx,storage,toasts,modals,nav,timers,draftStore,setLoggedIn:v=>{if(v!==loggedIn)generation++;loggedIn=v;}};
 }
 const members=[{id:1,name:'Self',relation:'self'},{id:2,name:'Parent',relation:'parent',age:50}];
 const confirmApi=()=>({getStores:async()=>({data:[{id:1,name:'Store'}]}),getDoctors:async()=>({data:[{id:1,name:'Doctor',consultFee:0}]}),getFamilyMembers:async()=>({data:members}),getBookingSettings:async()=>({data:{requireDeposit:false}})});
@@ -29,9 +30,10 @@ const confirmApi=()=>({getStores:async()=>({data:[{id:1,name:'Store'}]}),getDoct
  await test('APT-01 booking payment action calls exported API',async()=>{
   let calls=0,payment;const ctx={module:{exports:{}},require:()=>({request:async()=>{calls++;return {data:{timeStamp:'123',nonceStr:'test',package:'prepay_id=test',signType:'RSA',paySign:'test'}};}})};
   vm.runInNewContext(fs.readFileSync(path.join(root,'api/modules/appointment-api.js'),'utf8'),ctx);
-  const h=page('booking/index.js',ctx.module.exports);h.wx.requestPayment=o=>{payment=o;};await h.p.handlePrimaryAction({detail:{id:1,status:'pending_payment'}});
+  const h=page('booking/index.js',ctx.module.exports);h.wx.requestPayment=o=>{payment=o;};const pending=h.p.handlePrimaryAction({detail:{id:1,status:'pending_payment'}});await tick();
   assert.equal(calls,1,'payment request count='+calls+' toast='+h.toasts.join(';'));
   assert.equal(payment.package,'prepay_id=test');assert.equal(payment.timeStamp,'123');
+  payment.fail({errMsg:'requestPayment:fail cancel'});await pending;
  });
  await test('APT-02 late date response cannot overwrite current date slots',async()=>{
   const a=gate(),b=gate();const h=page('time-select.js',{getDaySlots:o=>o.date==='2099-01-01'?a.promise:b.promise});h.p.data.doctorId='1';h.p.data.storeId='1';
@@ -48,7 +50,7 @@ const confirmApi=()=>({getStores:async()=>({data:[{id:1,name:'Store'}]}),getDoct
  await test('unavailable time slot cannot advance',()=>{const h=page('time-select.js');h.p.data.timeSlotSections=[{slots:[{id:'A',isAvailable:false}]}];h.p.handleTimeSlotTap({currentTarget:{dataset:{timeSlotId:'A'}}});assert.equal(h.nav.length,0);});
  await test('available time slot records selected schedule',()=>{const h=page('time-select.js');h.p.data.selectedDate='2099-01-01';h.p.data.timeSlotSections=[{slots:[{id:'A',scheduleId:22,isAvailable:true,label:'09:00-09:30'}]}];h.p.handleTimeSlotTap({currentTarget:{dataset:{timeSlotId:'A'}}});assert.equal(h.draftStore.getDraft().scheduleId,22);assert.equal(h.nav.length,1);});
  await test('missing doctor/store rejected',async()=>{const h=page('time-select.js');await h.p.loadPage();assert(h.p.data.loadError.includes('缺少'));});
- await test('reschedule original slot rejected',()=>{const h=page('reschedule.js');h.p.originalDate='2099-01-01';h.p.originalTime='09:00-09:30';h.p.data.selectedDate=h.p.originalDate;h.p.data.timeSlots=[{id:'x',label:h.p.originalTime,selectable:true}];h.p.selectTimeSlot({currentTarget:{dataset:{timeSlotId:'x'}}});assert.equal(h.p.data.selectedTimeSlotId,'');assert(h.toasts.length);});
+ await test('reschedule original slot rejected',()=>{const h=page('reschedule.js');h.p.data.loading=false;h.p.originalDate='2099-01-01';h.p.originalTime='09:00-09:30';h.p.data.selectedDate=h.p.originalDate;h.p.data.timeSlots=[{id:'x',label:h.p.originalTime,selectable:true}];h.p.selectTimeSlot({currentTarget:{dataset:{timeSlotId:'x'}}});assert.equal(h.p.data.selectedTimeSlotId,'');assert(h.toasts.length);});
  await test('APT-07 late reschedule response cannot replace current schedule slots',async()=>{
   const a=gate(),b=gate();const h=page('reschedule.js',{getTimeSlots:id=>id==='A'?a.promise:b.promise});h.p.data.schedules=[{id:'A'},{id:'B'}];
   const first=h.p.selectSchedule('A');const second=h.p.selectSchedule('B');b.resolve({data:[{id:'Bslot',label:'14:00-14:30',status:'available'}]});await second;a.resolve({data:[{id:'Aslot',label:'09:00-09:30',status:'available'}]});await first;

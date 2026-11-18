@@ -169,6 +169,15 @@
   color: #6b7280;
 }
 
+.load-retry-btn {
+  width: 200rpx;
+  margin: 24rpx auto 0;
+  border-radius: 40rpx;
+  background: #eaf0ff;
+  color: #294ca8;
+  font-size: 28rpx;
+}
+
 .bottom-fixed-bar {
   position: fixed;
   left: 0;

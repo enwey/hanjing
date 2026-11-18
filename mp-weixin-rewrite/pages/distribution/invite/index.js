@@ -69,7 +69,10 @@ Page({
     }
     return this.prepareInviteImage();
   },
-  async onShow() { await Promise.all([this.loadInviteInfo({ silent: this.data.hasLoaded }), this.loadInviteRules()]); },
+  async onShow() {
+    subscribe.refreshSubscribeSettings();
+    await Promise.all([this.loadInviteInfo({ silent: this.data.hasLoaded }), this.loadInviteRules()]);
+  },
   async loadInviteInfo(options = {}) {
     if (this.inviteLoading) return;
     this.inviteLoading = true;

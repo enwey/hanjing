@@ -1,0 +1,127 @@
+<!doctype html><meta charset="utf-8"><style>.page {
+  min-height: 100vh;
+  background: #f9fafb;
+}
+
+.page-content {
+  padding: 0 16px 100px;
+}
+
+.state-card {
+  padding: 40px 0;
+  text-align: center;
+}
+
+.state-text {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.schedule-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.schedule-period {
+  margin-right: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.schedule-time {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.slot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.slot {
+  width: calc((100% - 16px) / 3);
+  padding: 12px 0;
+  border: 0.5px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  text-align: center;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.slot--available {
+  border-color: #3b6bf5;
+  color: #3b6bf5;
+}
+
+.slot--selected {
+  border-color: #3b6bf5;
+  background: #3b6bf5;
+  color: #ffffff;
+}
+
+.slot--booked {
+  background: #f9fafb;
+  color: #d1d5db;
+  pointer-events: none;
+}
+
+.empty-card {
+  padding: 40px 0;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.bottom-fixed-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  padding: 12px 16px calc(env(safe-area-inset-bottom, 34px) + 12px);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(9px);
+}
+
+.bar-primary-btn {
+  width: 100%;
+  height: 48px;
+  line-height: 48px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 4999.5px;
+  background: linear-gradient(135deg, #3b6bf5 0%, #5a85f5 50%, #8eafff 100%);
+  box-shadow: 0 4px 14px rgba(59, 107, 245, 0.25);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.bar-primary-btn::after {
+  border: none;
+}
+
+.bar-primary-btn[disabled] {
+  background: #e5e7eb;
+  color: #9ca3af;
+  box-shadow: none;
+}
+
+.safe-bottom {
+  height: calc(env(safe-area-inset-bottom, 34px) + 20px);
+}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:#f9fafb;font-family:Arial,"Microsoft Yahei",sans-serif}section{width:390px;margin-bottom:32px}h2{font-size:15px;font-weight:500}.bar-primary-btn{width:100%}.empty-card{background:white;border-radius:16px;padding:24px}</style><section><h2>改约成功等待返回</h2><div class="schedule-header"><span class="schedule-period">下午</span><span class="schedule-time">14:00-15:00</span></div><button class="bar-primary-btn" disabled>改约成功</button></section><section><h2>可约日期失效后</h2><div class="empty-card"><span class="empty-text">暂无可改约日期，请稍后重试</span></div><button class="bar-primary-btn" disabled>确认改约</button></section>

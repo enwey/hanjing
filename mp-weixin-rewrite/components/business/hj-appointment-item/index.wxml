@@ -60,7 +60,7 @@
   </view>
 
   <view wx:if="{{showActions}}" class="apt-actions">
-    <button class="apt-btn apt-btn--ghost" catchtap="handleRescheduleTap">{{actionButtonText}}</button>
-    <button class="apt-btn apt-btn--ghost apt-btn--danger" catchtap="handleCancelTap">取消</button>
+    <button wx:if="{{showPrimaryAction}}" class="apt-btn apt-btn--ghost" catchtap="handleRescheduleTap">{{actionButtonText}}</button>
+    <button wx:if="{{showCancelAction}}" class="apt-btn apt-btn--ghost apt-btn--danger" catchtap="handleCancelTap">取消</button>
   </view>
 </view>

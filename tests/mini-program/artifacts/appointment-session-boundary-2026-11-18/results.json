@@ -1,0 +1,44 @@
+[
+  {
+    "name": "list renewal denied, silent=false",
+    "passed": false,
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   true,\n+   true,\n-   false,\n-   false,\n    0\n  ]\n",
+    "observed": {
+      "session": false,
+      "pageSession": true,
+      "loading": true,
+      "records": 0
+    }
+  },
+  {
+    "name": "list renewal denied, silent=true",
+    "passed": false,
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   true,\n    false,\n+   1\n-   false,\n-   0\n  ]\n",
+    "observed": {
+      "session": false,
+      "pageSession": true,
+      "loading": false,
+      "records": 1
+    }
+  },
+  {
+    "name": "confirmation renewal denied ends loading",
+    "passed": false,
+    "error": "Expected values to be strictly equal:\n\ntrue !== false\n",
+    "observed": {
+      "session": false,
+      "loading": true,
+      "error": ""
+    }
+  },
+  {
+    "name": "reschedule from list returns to immediate predecessor",
+    "passed": false,
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   2\n-   1\n  ]\n",
+    "observed": {
+      "back": [
+        2
+      ]
+    }
+  }
+]

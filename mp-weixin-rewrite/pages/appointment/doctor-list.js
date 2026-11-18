@@ -69,16 +69,30 @@ Page({
   },
 
   async loadPage() {
+    const request = this.doctorRequest = {};
+    this.setData({ loading: true, loadError: '' });
+    try {
+      await this.loadDoctors(request);
+    } catch (error) {
+      if (this.doctorRequest !== request) return;
+      this.setData({ doctors: [], loadError: '医生列表加载失败，请稍后重试' });
+    } finally {
+      if (this.doctorRequest === request) this.setData({ loading: false });
+    }
+  },
+
+  async loadDoctors(request) {
     const storeId = readString((this.options && this.options.storeId) || '');
     const [doctorsResponse, storesResponse] = await Promise.all([
       api.getDoctors(storeId ? { storeId } : undefined),
-      api.getStores(),
+      api.getStores().catch(() => []),
     ]);
 
     const doctors = unwrapList(doctorsResponse).map(normalizeDoctor);
     const stores = unwrapList(storesResponse);
     const currentStore = stores.find((store) => readString(store.id) === storeId) || null;
 
+    if (this.doctorRequest !== request) return;
     this.setData({
       storeId,
       storeName: currentStore ? currentStore.name || currentStore.storeName || '' : '',

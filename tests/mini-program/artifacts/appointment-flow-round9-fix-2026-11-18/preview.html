@@ -1,0 +1,25 @@
+<!doctype html><meta charset="utf-8"><style>.action-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 34px));
+  background: #ffffff;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+}.footer-btn {
+  flex: 1;
+  height: 46px;
+  line-height: 45px;
+  margin: 0;
+  padding: 0;
+  border-radius: 4999.5px;
+  font-size: 14px;
+  font-weight: 600;
+}.btn-danger-ghost {
+  border: 0.5px solid #fca5a5;
+  background: #ffffff;
+  color: #ef4444;
+}body{font:16px system-ui;background:#f9fafb;margin:30px auto;max-width:360px}</style><h3>待支付 · 收费单不可支付</h3><div class="action-footer"><button class="footer-btn btn-danger-ghost" hover-class="footer-btn-hover" bindtap="cancelAppointment">取消</button></div>

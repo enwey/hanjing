@@ -43,7 +43,7 @@ function harness(opts = {}) {
     }, {filename:file});
     return module.exports;
   }
-  request = load('api/request.js', p => p.includes('config/env') ? env : p.includes('mini-log') ? log : store);
+  request = load('api/request.js', p => p.includes('asset-url') ? { normalizeAssets: value => value } : p.includes('config/env') ? env : p.includes('mini-log') ? log : store);
   auth = load('api/modules/auth-api.js', () => request);
   const api = {wxLogin:auth.wxLogin, getUserProfile: () => request.request({url:'/user/profile'}), bindDistribution: () => request.request({url:'/distribution/bind'})};
   const patientContext = load('stores/patient-context-store.js', () => ({loadPatientContext:opts.patientContext || (async()=>({members:[],currentMember:null,currentPatientId:''}))}));

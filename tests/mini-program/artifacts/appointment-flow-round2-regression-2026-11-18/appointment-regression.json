@@ -1,0 +1,52 @@
+{
+  "scope": "Actual appointment page functions, mocked wx/API; no real payments or bookings",
+  "total": 11,
+  "passed": 11,
+  "failed": 0,
+  "results": [
+    {
+      "name": "stale error ignored time-select.js",
+      "status": "PASS"
+    },
+    {
+      "name": "stale error ignored reschedule.js",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-03 reordered patients retain id",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-03 newly added patient overrides retained selection",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-03 deleted selection falls back to available patient",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-04 payment outcome cannot create second appointment true",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-04 payment outcome cannot create second appointment false",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-04 payment dialog failure offers records route",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-05 absent message uses fallback and unlocks",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-06 stale list failure cannot override logged-out page",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-06 newer refresh wins over old list",
+      "status": "PASS"
+    }
+  ]
+}

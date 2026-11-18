@@ -1,0 +1,80 @@
+[
+  {
+    "zone": "Asia/Shanghai",
+    "name": "before",
+    "expected": true,
+    "listReschedule": true,
+    "toasts": [],
+    "passed": true
+  },
+  {
+    "zone": "Asia/Shanghai",
+    "name": "exact",
+    "expected": true,
+    "listReschedule": true,
+    "toasts": [],
+    "passed": true
+  },
+  {
+    "zone": "Asia/Shanghai",
+    "name": "after",
+    "expected": false,
+    "listReschedule": true,
+    "toasts": [
+      "距离预约时间已不足2小时，不支持取消预约"
+    ],
+    "passed": false
+  },
+  {
+    "zone": "UTC",
+    "name": "before",
+    "expected": true,
+    "listReschedule": true,
+    "toasts": [],
+    "passed": true
+  },
+  {
+    "zone": "UTC",
+    "name": "exact",
+    "expected": true,
+    "listReschedule": true,
+    "toasts": [],
+    "passed": true
+  },
+  {
+    "zone": "UTC",
+    "name": "after",
+    "expected": false,
+    "listReschedule": true,
+    "toasts": [
+      "距离预约时间已不足2小时，不支持取消预约"
+    ],
+    "passed": false
+  },
+  {
+    "zone": "Asia/Tokyo",
+    "name": "before",
+    "expected": true,
+    "listReschedule": true,
+    "toasts": [],
+    "passed": true
+  },
+  {
+    "zone": "Asia/Tokyo",
+    "name": "exact",
+    "expected": true,
+    "listReschedule": true,
+    "toasts": [],
+    "passed": true
+  },
+  {
+    "zone": "Asia/Tokyo",
+    "name": "after",
+    "expected": false,
+    "listReschedule": true,
+    "toasts": [
+      "距离预约时间已不足2小时，不支持取消预约"
+    ],
+    "passed": false
+  }
+]

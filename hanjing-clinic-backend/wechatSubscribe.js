@@ -1,5 +1,6 @@
-import { get, query, run } from './db.js';
-import { getWechatMiniAccessToken } from './wechatMiniToken.js';
+import { get, query, run, transaction } from './db.js';
+import { setTimeout as delay } from 'node:timers/promises';
+import { getWechatMiniAccessToken, isWechatAccessTokenInvalid } from './wechatMiniToken.js';
 import { WECHAT_NOTIFICATION_EVENTS, notificationConfigKey, defaultNotificationMapping, normalizeNotificationPage } from './wechat-notification-config.js';
 
 const EVENT_TEMPLATE_KEYS = {
@@ -150,16 +151,60 @@ async function hasSent(event, businessId) {
   return Boolean(row);
 }
 
-async function logSend({ userId, openid, event, templateId, businessId, status, errorMessage = '' }) {
-  await run(
+async function logSend({ userId, openid, event, templateId, businessId, status, errorMessage = '' }, execute = run) {
+  await execute(
     `INSERT INTO wechat_subscribe_logs (user_id, openid, event, template_id, business_id, status, error_message)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [userId || null, openid || '', event, templateId || '', businessId ? String(businessId) : '', status, errorMessage]
   );
 }
 
-export async function getAllSubscribeTemplateIds() {
-  return [...new Set(Object.values(await getSubscribeTemplateMap()))];
+function getVisitReminderAuthorization({ event, businessId, templateId, openid }, read = get) {
+  return read(
+    `SELECT id, status FROM wechat_subscribe_logs
+     WHERE event = ? AND business_id = ? AND template_id = ? AND openid = ?
+       AND status IN ('authorized', 'needs_authorization')
+     ORDER BY id DESC LIMIT 1`,
+    [event, businessId, templateId, openid]
+  );
+}
+
+const visitReminderEvent = 'visit_reminder';
+const visitReminderRevisionJoin = `LEFT JOIN appointment_reschedule_history h ON h.id = (
+  SELECT MAX(id) FROM appointment_reschedule_history WHERE appointment_id = a.id
+)`;
+
+function visitReminderBusinessId(row) {
+  return row.reminder_revision ? `visit:${row.id}:${row.reminder_revision}` : `visit:${row.id}`;
+}
+
+export async function recordVisitReminderAuthorization({ appointmentId, userId, templateId }) {
+  if (!await isEventEnabled(visitReminderEvent) || !templateId || templateId !== await getTemplateId(visitReminderEvent)) return false;
+  const row = await get(
+    `SELECT a.id, u.openid, h.id AS reminder_revision
+     FROM appointments a JOIN users u ON u.id = a.user_id
+     ${visitReminderRevisionJoin}
+     WHERE a.id = ? AND a.user_id = ? AND a.status IN ('pending_payment','pending','confirmed')
+       AND TIMESTAMP(a.appointment_date, SUBSTRING_INDEX(a.appointment_time, '-', 1)) >= NOW()`,
+    [appointmentId, userId]
+  );
+  if (!row?.openid || String(row.openid).startsWith('manual_')) return false;
+  return transaction(async conn => {
+    const [[user]] = await conn.execute('SELECT openid FROM users WHERE id = ? FOR UPDATE', [userId]);
+    if (user?.openid !== row.openid) return false;
+    await logSend({ userId, openid: row.openid, event: visitReminderEvent, templateId,
+      businessId: visitReminderBusinessId(row), status: 'authorized' }, conn.execute.bind(conn));
+    return true;
+  });
+}
+
+async function logNotificationSkip(details, reason) {
+  const previous = await get(
+    `SELECT id FROM wechat_subscribe_logs
+     WHERE event = ? AND business_id = ? AND status = 'skipped' AND error_message = ? LIMIT 1`,
+    [details.event, details.businessId, reason]
+  );
+  if (!previous) await logSend({ ...details, status: 'skipped', errorMessage: reason });
 }
 
 export async function getSubscribeTemplateMap() {
@@ -173,7 +218,10 @@ export async function getSubscribeTemplateMap() {
 }
 
 export async function sendWechatSubscribeMessage({ userId, event, businessId = '', page = '', payload = {} }) {
-  let attempted = null;
+  const logEventSkips = Boolean(businessId) && ['order_shipped', 'withdraw_result', 'withdraw_paid', 'promoter_activated'].includes(event);
+  const logSkips = Boolean(businessId) && (event === visitReminderEvent || logEventSkips);
+  let attempted = logEventSkips && userId ? { userId, event, businessId } : null;
+  let authorizationId;
   try {
     if (!userId || !event) return { skipped: true, reason: 'missing_user_or_event' };
     if (businessId && await hasSent(event, businessId)) {
@@ -182,47 +230,82 @@ export async function sendWechatSubscribeMessage({ userId, event, businessId = '
     const config = await getNotificationOverride(event);
     const connected = WECHAT_NOTIFICATION_EVENTS.some(item => item.event === event && item.connected);
     if (!connected || !(config ? config.enabled === true : await isEventEnabled(event))) {
+      if (logEventSkips) await logNotificationSkip({ ...attempted, templateId: config?.templateId }, 'notification_disabled');
       return { skipped: true, reason: 'disabled' };
     }
 
     const user = await get(`SELECT id, openid FROM users WHERE id = ?`, [userId]);
+    const templateId = config ? config.templateId : await getTemplateId(event);
     if (!user?.openid || String(user.openid).startsWith('manual_')) {
+      if (logSkips) {
+        await logNotificationSkip({ userId: user?.id, openid: user?.openid, event, businessId, templateId }, 'missing_openid');
+      }
       return { skipped: true, reason: 'missing_openid' };
     }
 
-    const templateId = config ? config.templateId : await getTemplateId(event);
     if (!templateId) {
+      if (logSkips) {
+        await logNotificationSkip({ userId, openid: user.openid, event, businessId }, 'missing_template');
+      }
       return { skipped: true, reason: 'missing_template' };
     }
 
     attempted = { userId, openid: user.openid, event, templateId, businessId };
-    const accessToken = await getWechatMiniAccessToken();
-    if (!accessToken) {
-      await logSend({ userId, openid: user.openid, event, templateId, businessId, status: 'failed', errorMessage: 'missing_access_token' });
-      return { skipped: true, reason: 'missing_access_token' };
+    if (event === visitReminderEvent && businessId) {
+      const latest = await getVisitReminderAuthorization(attempted);
+      if (latest?.status === 'needs_authorization') return { skipped: true, reason: 'needs_authorization' };
+      authorizationId = latest?.id;
     }
 
     const defaultData = buildTemplateData(event, payload);
     const data = config?.mapping
       ? Object.fromEntries(Object.entries(config.mapping).map(([target, source]) => [target, defaultData[source]]))
       : defaultData;
-    const response = await fetch(`https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${encodeURIComponent(accessToken)}`, {
+    const body = JSON.stringify({
+      touser: user.openid,
+      template_id: templateId,
+      page: normalizeNotificationPage(page),
+      data,
+      miniprogram_state: process.env.WX_MINI_SUBSCRIBE_STATE || 'formal',
+      lang: 'zh_CN'
+    });
+    const send = (accessToken) => fetch(`https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${encodeURIComponent(accessToken)}`, {
       method: 'POST',
       signal: AbortSignal.timeout(10000),
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        touser: user.openid,
-        template_id: templateId,
-        page: normalizeNotificationPage(page),
-        data,
-        miniprogram_state: process.env.WX_MINI_SUBSCRIBE_STATE || 'formal',
-        lang: 'zh_CN'
-      })
+      body
     });
-    const result = await response.json();
-    if (!response.ok || result.errcode) {
-      const message = result.errmsg || `HTTP ${response.status}`;
-      await logSend({ userId, openid: user.openid, event, templateId, businessId, status: 'failed', errorMessage: message });
+    let accessToken = await getWechatMiniAccessToken({ signal: AbortSignal.timeout(10000) });
+    let response = await send(accessToken);
+    let result = await response.json();
+    if (isWechatAccessTokenInvalid(result) || Number(result?.errcode) === -1) {
+      if (isWechatAccessTokenInvalid(result)) {
+        accessToken = await getWechatMiniAccessToken({ forceRefresh: true, signal: AbortSignal.timeout(10000) });
+      } else {
+        await delay(1000);
+      }
+      response = await send(accessToken);
+      result = await response.json();
+    }
+    if (!response.ok || result?.errcode !== 0) {
+      const message = String(result?.errmsg || `HTTP ${response.status}, errcode ${result?.errcode ?? 'missing'}`).slice(0, 255);
+      if (event === visitReminderEvent && businessId && Number(result?.errcode) === 43101) {
+        // Serialize with authorization writes, without holding a lock during the WeChat request.
+        await transaction(async conn => {
+          const [[user]] = await conn.execute('SELECT id FROM users WHERE id = ? FOR UPDATE', [userId]);
+          if (!user) return;
+          const latest = await getVisitReminderAuthorization(attempted, async (sql, params) => {
+            const [[row]] = await conn.execute(sql, params);
+            return row;
+          });
+          const reauthorized = latest?.status === 'authorized' && latest.id !== authorizationId;
+          const status = reauthorized ? 'failed' : 'needs_authorization';
+          const errorMessage = reauthorized ? `发送期间已重新授权：${message}`.slice(0, 255) : message;
+          await logSend({ ...attempted, status, errorMessage }, conn.execute.bind(conn));
+        });
+      } else {
+        await logSend({ ...attempted, status: 'failed', errorMessage: message });
+      }
       return { skipped: true, reason: message };
     }
 
@@ -240,27 +323,37 @@ export async function sendWechatSubscribeMessage({ userId, event, businessId = '
 export async function processVisitReminders() {
   if (!await isEventEnabled('visit_reminder')) return;
   const rows = await query(
-    `SELECT a.id, a.user_id, a.appointment_no, a.appointment_date, a.appointment_time,
-            a.doctor_name, a.store_name, p.name AS patient_name
+    `SELECT a.id, a.user_id, a.appointment_no,
+            DATE_FORMAT(a.appointment_date, '%Y-%m-%d') AS appointment_date,
+            SUBSTRING_INDEX(a.appointment_time, '-', 1) AS appointment_start_time,
+            a.doctor_name, a.store_name, p.name AS patient_name,
+            h.id AS reminder_revision, h.created_at AS rescheduled_at
      FROM appointments a
      LEFT JOIN patients p ON p.id = a.patient_id
+     ${visitReminderRevisionJoin}
      WHERE a.status IN ('pending', 'confirmed')
        AND TIMESTAMP(a.appointment_date, SUBSTRING_INDEX(a.appointment_time, '-', 1)) BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 1 HOUR)`
   );
 
   for (const row of rows) {
+    // Retain successful sends made by older releases for the current time slot.
+    if (row.reminder_revision && await get(
+      `SELECT id FROM wechat_subscribe_logs WHERE event = ? AND business_id = ?
+       AND status = 'sent' AND sent_at >= ? LIMIT 1`,
+      [visitReminderEvent, `visit:${row.id}`, row.rescheduled_at]
+    )) continue;
     await sendWechatSubscribeMessage({
       userId: row.user_id,
-      event: 'visit_reminder',
-      businessId: `visit:${row.id}`,
+      event: visitReminderEvent,
+      businessId: visitReminderBusinessId(row),
       page: `pages/appointment/detail/index?id=${row.id}`,
       payload: {
         patientName: row.patient_name,
         doctorName: row.doctor_name,
         storeName: row.store_name,
-        appointmentTime: `${String(row.appointment_date).slice(0, 10)} ${row.appointment_time}`,
+        appointmentTime: `${row.appointment_date} ${row.appointment_start_time}`,
         status: '待就诊',
-        remark: row.appointment_no
+        appointmentNo: row.appointment_no
       }
     });
   }

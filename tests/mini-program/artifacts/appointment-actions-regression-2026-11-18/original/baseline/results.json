@@ -1,0 +1,48 @@
+{
+  "phase": "second independent limited regression",
+  "startedAt": "2026-11-18T03:17:56.420Z",
+  "sourceBefore": {
+    "pages/appointment/booking/index.js": "773ef5fa466fd3216eabfa9633485ce1c2ed12a1c74334096007f7fbf7ee07e4",
+    "pages/appointment/confirm.js": "560a9742a07126c58f79b473b64a2fabf7d13d83c76f7fa1775c66cf6fa0f7c0",
+    "pages/appointment/confirm.wxml": "b6a457e8b1f78394f3a107125c3fbc1d4054aed2d4929442aeed1120c2c9d4c7",
+    "pages/appointment/detail.js": "8fd24bf05ea7edcdebdcdda6de39b78ecfd6aa89268f5d18f7fcf83538446424",
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "common/utils/subscribe.js": "573d5bf2c17c81495ccdeae7144dffcab3fe8b80fe63f3ad070ce3c37a9b5c1b"
+  },
+  "suites": [
+    {
+      "file": "appointment-regression-2026-11-18.cjs",
+      "exitCode": 0
+    },
+    {
+      "file": "appointment-patient-isolation-fix-2026-11-18.cjs",
+      "exitCode": 0
+    }
+  ],
+  "originalFailures": [
+    {
+      "id": "REG-APT-05 replacement-account confirmation hides old patient choices before response",
+      "result": "passed"
+    },
+    {
+      "id": "REG-APT-06 replacement-account load failure cannot retain old patient choices",
+      "result": "passed"
+    }
+  ],
+  "total": 62,
+  "passed": 62,
+  "failed": 0,
+  "sourceAfter": {
+    "pages/appointment/booking/index.js": "773ef5fa466fd3216eabfa9633485ce1c2ed12a1c74334096007f7fbf7ee07e4",
+    "pages/appointment/confirm.js": "560a9742a07126c58f79b473b64a2fabf7d13d83c76f7fa1775c66cf6fa0f7c0",
+    "pages/appointment/confirm.wxml": "b6a457e8b1f78394f3a107125c3fbc1d4054aed2d4929442aeed1120c2c9d4c7",
+    "pages/appointment/detail.js": "8fd24bf05ea7edcdebdcdda6de39b78ecfd6aa89268f5d18f7fcf83538446424",
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "common/utils/subscribe.js": "573d5bf2c17c81495ccdeae7144dffcab3fe8b80fe63f3ad070ce3c37a9b5c1b"
+  },
+  "sourceStable": true,
+  "method": "actual client pages, session and request modules; mocked WeChat/HTTP/storage/timing",
+  "finishedAt": "2026-11-18T03:17:56.767Z"
+}

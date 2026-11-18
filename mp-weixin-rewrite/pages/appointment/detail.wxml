@@ -197,7 +197,7 @@
           <text wx:for="{{ratingStars}}" wx:key="*this" data-rating="{{item}}" bindtap="onEvalRatingChange" class="rating-star {{item <= evalRating ? 'rating-star--active' : ''}}">★</text>
         </view>
         <textarea class="eval-textarea" placeholder="请写下本次就诊体验（选填）" maxlength="500" value="{{evalContent}}" bindinput="onEvalContentInput" />
-        <button class="inline-submit-btn" bindtap="submitEvaluation">提交评价</button>
+        <button class="inline-submit-btn" bindtap="submitEvaluation" disabled="{{evaluationSubmitting}}" loading="{{evaluationSubmitting}}">提交评价</button>
       </view>
     </view>
 
@@ -301,14 +301,13 @@
       <text wx:if="{{appointmentCharge.chargeNo}}">收费单号 {{appointmentCharge.chargeNo}}</text>
       <text wx:if="{{appointmentCharge.refundedAmount}}">已退款 {{appointmentCharge.refundedAmount}}</text>
     </view>
-    <view wx:if="{{canPay}}" class="action-footer">
-      <button class="footer-btn btn-primary-full" hover-class="footer-btn-hover" bindtap="payDeposit">立即支付</button>
-      <button wx:if="{{canCancelOrReschedule}}" class="footer-btn btn-danger-ghost" hover-class="footer-btn-hover" bindtap="cancelAppointment">取消</button>
-    </view>
+    <button wx:if="{{canSubscribeVisitReminder}}" class="footer-btn btn-ghost visit-reminder-button"
+      bindtap="subscribeVisitReminder" loading="{{subscribingVisitReminder}}" disabled="{{subscribingVisitReminder}}">订阅就诊提醒</button>
 
-    <view wx:elif="{{showRescheduleCancelFooter}}" class="action-footer">
-      <button class="footer-btn btn-ghost" hover-class="footer-btn-hover" bindtap="openReschedule">改约</button>
-      <button class="footer-btn btn-danger-ghost" hover-class="footer-btn-hover" bindtap="cancelAppointment">取消</button>
+    <view wx:if="{{canPay || showRescheduleCancelFooter}}" class="action-footer">
+      <button wx:if="{{canPay}}" class="footer-btn btn-primary-full" hover-class="footer-btn-hover" bindtap="payDeposit">立即支付</button>
+      <button wx:if="{{canReschedule}}" class="footer-btn btn-ghost" hover-class="footer-btn-hover" bindtap="openReschedule">改约</button>
+      <button wx:if="{{canCancel && canCancelOrReschedule}}" class="footer-btn btn-danger-ghost" hover-class="footer-btn-hover" bindtap="cancelAppointment">取消</button>
     </view>
 
     <view wx:elif="{{showRebookFooter}}" class="action-footer">
@@ -319,5 +318,6 @@
   <view wx:elif="{{loadError}}" class="state-card">
     <text class="state-title">加载失败</text>
     <text class="state-description">{{loadError}}</text>
+    <button wx:if="{{canRetryLoad}}" class="state-retry-btn" bindtap="retryLoad">重试</button>
   </view>
 </view>

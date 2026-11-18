@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8"><style>.state-card {
+  padding: 40px 20px;
+  text-align: center;
+}.state-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}.state-description {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #6b7280;
+}.state-retry-btn {
+  width: 100px;
+  margin: 12px auto 0;
+  border-radius: 20px;
+  background: #eaf0ff;
+  color: #294ca8;
+  font-size: 14px;
+}body{margin:auto;max-width:375px;font:16px system-ui;background:#f9fafb}button{border:0;min-height:40px}</style><div class="state-card">
+    <span class="state-title">加载失败</span>
+    <span class="state-description">详情请求超时</span>
+    <button class="state-retry-btn" bindtap="retryLoad">重试</button>
+  </div>

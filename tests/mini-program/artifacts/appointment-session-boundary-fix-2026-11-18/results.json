@@ -1,0 +1,40 @@
+[
+  {
+    "name": "list renewal denied, silent=false",
+    "passed": true,
+    "observed": {
+      "session": false,
+      "pageSession": false,
+      "loading": false,
+      "records": 0
+    }
+  },
+  {
+    "name": "list renewal denied, silent=true",
+    "passed": true,
+    "observed": {
+      "session": false,
+      "pageSession": false,
+      "loading": false,
+      "records": 0
+    }
+  },
+  {
+    "name": "confirmation renewal denied ends loading",
+    "passed": true,
+    "observed": {
+      "session": false,
+      "loading": false,
+      "error": "登录已失效，请重新登录后预约"
+    }
+  },
+  {
+    "name": "reschedule from list returns to immediate predecessor",
+    "passed": true,
+    "observed": {
+      "back": [
+        1
+      ]
+    }
+  }
+]

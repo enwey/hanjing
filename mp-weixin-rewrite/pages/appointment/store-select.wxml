@@ -7,6 +7,13 @@
       <text class="section-hint">共 {{stores.length}} 家门店</text>
     </view>
 
+    <view wx:if="{{loading}}"><text>正在加载门店...</text></view>
+    <view wx:elif="{{loadError}}">
+      <text>{{loadError}}</text>
+      <button bindtap="loadPage">重试</button>
+    </view>
+    <view wx:elif="{{!stores.length}}"><text>暂无可预约门店</text></view>
+
     <hj-store-card
       wx:for="{{stores}}"
       wx:key="id"

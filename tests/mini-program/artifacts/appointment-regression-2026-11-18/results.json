@@ -1,0 +1,81 @@
+{
+  "startedAt": "2026-11-18T02:42:21.148Z",
+  "phase": "independent limited regression",
+  "method": "actual client modules; simulated WeChat/HTTP/storage/timing",
+  "sourceBefore": {
+    "pages/appointment/booking/index.js": "3b1e87e922fd872427eb03b9136b5d0475963b36700b097c2bcbb07aa41b09ae",
+    "pages/appointment/confirm.js": "2309133a302a1ff9ff7cdac485376b3743de9b947dd31803859d2b3ce1e812b5",
+    "pages/appointment/detail.js": "d8c5c828a5d788e19ffe1271db87a15cc17b86c5757977e9c16806b579b04fbb",
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "common/utils/subscribe.js": "3660286e57c873bbefdadcfb22b2da8b15c23b9e16a89c2963aaf69db0fc82a9"
+  },
+  "suites": [
+    {
+      "file": "appointment.cjs",
+      "exitCode": 0
+    },
+    {
+      "file": "appointment-regression.cjs",
+      "exitCode": 0
+    },
+    {
+      "file": "appointment-fix-selftest-2026-11-18.cjs",
+      "exitCode": 0
+    }
+  ],
+  "boundaries": [
+    {
+      "id": "REG-APT-01 stale detail failure cannot replace latest success",
+      "result": "passed"
+    },
+    {
+      "id": "REG-APT-02 unloaded detail never renders completed response",
+      "result": "passed"
+    },
+    {
+      "id": "REG-APT-03 delayed pay-API response after account switch cannot navigate or clear new draft",
+      "result": "passed"
+    },
+    {
+      "id": "REG-APT-04 same-token new login cannot receive old booking list",
+      "result": "passed"
+    },
+    {
+      "id": "REG-APT-05 replacement-account confirmation hides old patient choices before response",
+      "result": "failed",
+      "error": "previous account patient choices remain visible during replacement load\n\n2 !== 0\n",
+      "observations": {
+        "activeAccount": "b",
+        "memberCount": 2,
+        "selectedMemberName": "家人 (父母)",
+        "hasLoaded": true
+      }
+    },
+    {
+      "id": "REG-APT-06 replacement-account load failure cannot retain old patient choices",
+      "result": "failed",
+      "error": "previous account patient choices survive replacement-account load failure\n\n2 !== 0\n",
+      "observations": {
+        "activeAccount": "b",
+        "memberCount": 2,
+        "selectedMemberName": "家人 (父母)",
+        "loadError": "",
+        "hasLoaded": true
+      }
+    }
+  ],
+  "total": 54,
+  "passed": 52,
+  "failed": 2,
+  "sourceAfter": {
+    "pages/appointment/booking/index.js": "3b1e87e922fd872427eb03b9136b5d0475963b36700b097c2bcbb07aa41b09ae",
+    "pages/appointment/confirm.js": "2309133a302a1ff9ff7cdac485376b3743de9b947dd31803859d2b3ce1e812b5",
+    "pages/appointment/detail.js": "d8c5c828a5d788e19ffe1271db87a15cc17b86c5757977e9c16806b579b04fbb",
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "common/utils/subscribe.js": "3660286e57c873bbefdadcfb22b2da8b15c23b9e16a89c2963aaf69db0fc82a9"
+  },
+  "sourceStable": true,
+  "finishedAt": "2026-11-18T02:42:21.553Z"
+}

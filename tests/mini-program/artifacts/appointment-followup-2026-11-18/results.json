@@ -1,0 +1,6 @@
+[
+ {"id":"FOLLOW-01 changed date and failed slot refresh","passed":false,"error":"Expected values to be strictly equal:\n\n1 !== 0\n","observed":{"date":"2099-01-02","loading":false,"error":"","navigations":1,"draft":{"doctorId":"1","storeId":"1","doctorName":"医生","appointmentDate":"2099-01-02","scheduleId":"old","schedule":{"id":"old"},"timeSlot":{"id":"2099-01-01","scheduleId":"old","label":"09:00-09:30","status":"available","isAvailable":true}}}},
+ {"id":"FOLLOW-02 no remaining dates clears old slots","passed":false,"error":"Expected values to be strictly equal:\n\n1 !== 0\n","observed":{"date":"","sections":1}},
+ {"id":"FOLLOW-03 successful refresh rejects old slot","passed":true,"observed":{}},
+ {"id":"FOLLOW-04 lost creation response does not create a second unresolved submission","passed":false,"error":"Expected values to be strictly equal:\n\n2 !== 1\n","observed":{"requests":2,"toasts":["请求超时"]}}
+]

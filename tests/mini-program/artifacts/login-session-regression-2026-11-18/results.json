@@ -1,0 +1,75 @@
+{
+  "startedAt": "2026-11-18T02:13:30.588Z",
+  "finishedAt": "2026-11-18T02:13:31.180Z",
+  "method": "actual client modules; mocked WeChat/HTTP and controlled timing",
+  "sourceBefore": {
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "pages/profile/index.js": "1434b895cc1441279e8409139946778bf8015e1ef97aca4b681575013923da7e"
+  },
+  "sourceAfter": {
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "pages/profile/index.js": "1434b895cc1441279e8409139946778bf8015e1ef97aca4b681575013923da7e"
+  },
+  "sourceStable": true,
+  "replayedPassed": 13,
+  "results": [
+    {
+      "id": "REG-01 original 13 scenarios",
+      "result": "passed"
+    },
+    {
+      "id": "REG-02 30 simultaneous requests share expired-session renewal",
+      "result": "passed"
+    },
+    {
+      "id": "REG-03 explicit 401 rejection clears current session",
+      "result": "passed"
+    },
+    {
+      "id": "REG-03 explicit 403 rejection clears current session",
+      "result": "passed"
+    },
+    {
+      "id": "REG-04 late rejected renewal cannot clear replacement account",
+      "result": "passed"
+    },
+    {
+      "id": "REG-05 logout while renewal pending prevents session resurrection",
+      "result": "passed"
+    },
+    {
+      "id": "REG-06 later page load wins within the same account",
+      "result": "passed"
+    },
+    {
+      "id": "REG-07 unloaded page ignores pending aggregate results",
+      "result": "passed"
+    },
+    {
+      "id": "REG-08 account replacement must clear previous unread counts immediately",
+      "result": "failed",
+      "error": "A notification unread count remains visible while loading B\n\n9 !== 0\n",
+      "observations": {
+        "activeAccount": "b",
+        "nickname": "加载中...",
+        "notificationsUnreadCount": 9,
+        "serviceUnreadCount": 7
+      }
+    },
+    {
+      "id": "REG-09 failed replacement profile must not retain old account badges",
+      "result": "failed",
+      "error": "A badge survives B profile failure\n\n9 !== 0\n",
+      "observations": {
+        "activeAccount": "b",
+        "nickname": "加载中...",
+        "notificationsUnreadCount": 9,
+        "hasLoaded": true
+      }
+    }
+  ],
+  "passed": 8,
+  "failed": 2
+}

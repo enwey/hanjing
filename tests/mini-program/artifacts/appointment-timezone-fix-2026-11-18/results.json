@@ -1,0 +1,128 @@
+[
+  {
+    "zone": "Asia/Shanghai",
+    "name": "before",
+    "now": "2026-11-19T22:59:00.000Z",
+    "expected": true,
+    "list": true,
+    "detail": true,
+    "guards": [
+      true,
+      true,
+      true
+    ],
+    "passed": true
+  },
+  {
+    "zone": "Asia/Shanghai",
+    "name": "exact",
+    "now": "2026-11-19T23:00:00.000Z",
+    "expected": true,
+    "list": true,
+    "detail": true,
+    "guards": [
+      true,
+      true,
+      true
+    ],
+    "passed": true
+  },
+  {
+    "zone": "Asia/Shanghai",
+    "name": "after",
+    "now": "2026-11-19T23:01:00.000Z",
+    "expected": false,
+    "list": false,
+    "detail": false,
+    "guards": [
+      false,
+      false,
+      false
+    ],
+    "passed": true
+  },
+  {
+    "zone": "UTC",
+    "name": "before",
+    "now": "2026-11-19T22:59:00.000Z",
+    "expected": true,
+    "list": true,
+    "detail": true,
+    "guards": [
+      true,
+      true,
+      true
+    ],
+    "passed": true
+  },
+  {
+    "zone": "UTC",
+    "name": "exact",
+    "now": "2026-11-19T23:00:00.000Z",
+    "expected": true,
+    "list": true,
+    "detail": true,
+    "guards": [
+      true,
+      true,
+      true
+    ],
+    "passed": true
+  },
+  {
+    "zone": "UTC",
+    "name": "after",
+    "now": "2026-11-19T23:01:00.000Z",
+    "expected": false,
+    "list": false,
+    "detail": false,
+    "guards": [
+      false,
+      false,
+      false
+    ],
+    "passed": true
+  },
+  {
+    "zone": "Asia/Tokyo",
+    "name": "before",
+    "now": "2026-11-19T22:59:00.000Z",
+    "expected": true,
+    "list": true,
+    "detail": true,
+    "guards": [
+      true,
+      true,
+      true
+    ],
+    "passed": true
+  },
+  {
+    "zone": "Asia/Tokyo",
+    "name": "exact",
+    "now": "2026-11-19T23:00:00.000Z",
+    "expected": true,
+    "list": true,
+    "detail": true,
+    "guards": [
+      true,
+      true,
+      true
+    ],
+    "passed": true
+  },
+  {
+    "zone": "Asia/Tokyo",
+    "name": "after",
+    "now": "2026-11-19T23:01:00.000Z",
+    "expected": false,
+    "list": false,
+    "detail": false,
+    "guards": [
+      false,
+      false,
+      false
+    ],
+    "passed": true
+  }
+]

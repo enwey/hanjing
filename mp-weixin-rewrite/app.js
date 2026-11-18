@@ -1,5 +1,5 @@
 const distributionApi = require('./api/index');
-const { capture: captureBackendReferral } = require('./common/utils/backend-referral');
+const { capture: captureBackendReferral, decodeScene, isBackendCode } = require('./common/utils/backend-referral');
 const miniLog = require('./common/utils/mini-log');
 
 const originalPage = Page;
@@ -64,28 +64,29 @@ function clearLegacyObfuscatedAccessToken() {
   }
 }
 
+function ordinaryInviteCode(value) {
+  if (typeof value !== 'string' || isBackendCode(value)) return '';
+  return value.trim();
+}
+
 function parseInviteCodeFromLaunchOptions(options) {
   if (!options || !options.query) return "";
   const query = options.query;
-  let inviteCode = query.inviteCode || query.invite_code || '';
-  if (query.scene) {
-    let sceneText;
-    try {
-      sceneText = decodeURIComponent(query.scene);
-    } catch (error) {
-      // Ignore malformed external scene data without interrupting app startup.
-      return String(inviteCode || '').trim();
-    }
+  let inviteCode = ordinaryInviteCode(query.inviteCode) || ordinaryInviteCode(query.invite_code);
+  const sceneText = decodeScene(query.scene);
+  if (sceneText) {
     if (sceneText.indexOf("=") > -1) {
       sceneText.split("&").forEach((entry) => {
         const parts = entry.split("=");
         const key = parts[0];
         const value = parts.slice(1).join("=");
-        if (key === "inviteCode" || key === "invite_code" || key === "code") inviteCode = value;
+        if (key === "inviteCode" || key === "invite_code" || key === "code") {
+          inviteCode = ordinaryInviteCode(value) || inviteCode;
+        }
       });
-    } else { inviteCode = sceneText; }
+    } else { inviteCode = ordinaryInviteCode(sceneText) || inviteCode; }
   }
-  return String(inviteCode || "").trim();
+  return inviteCode;
 }
 
 const pendingInviteFlights = new Map();
@@ -93,6 +94,10 @@ async function tryBindPendingInvite() {
   const inviteCode = wx.getStorageSync("pending_invite_code");
   const token = wx.getStorageSync("access_token");
   if (!inviteCode || !token) return;
+  if (isBackendCode(inviteCode)) {
+    wx.removeStorageSync('pending_invite_code');
+    return;
+  }
   const flightKey = JSON.stringify([token, inviteCode]);
   if (pendingInviteFlights.has(flightKey)) return pendingInviteFlights.get(flightKey);
   const clearCurrentInvite = () => {

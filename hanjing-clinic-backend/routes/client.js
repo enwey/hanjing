@@ -44,7 +44,7 @@ import {
   hashPassword,
   verifyPassword
 } from '../helpers.js';
-import { getAllSubscribeTemplateIds, getSubscribeTemplateMap } from '../wechatSubscribe.js';
+import { getSubscribeTemplateMap, recordVisitReminderAuthorization } from '../wechatSubscribe.js';
 import {
   buildPaymentParams as serviceBuildPaymentParams,
   decryptWechatPayResource as serviceDecryptWechatPayResource,
@@ -967,6 +967,15 @@ async function getBookingIntervalMinutes() {
   return Number.isFinite(interval) && interval > 0 ? interval : 30;
 }
 
+async function getBookingCancelLimit() {
+  const row = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_cancel_limit'`);
+  const match = /^就诊前\s*(\d+(?:\.\d+)?)\s*(小时|天)$/.exec(String(row?.key_value || '').trim());
+  const hours = match ? Number(match[1]) * (match[2] === '天' ? 24 : 1) : 0;
+  return Number.isFinite(hours) && hours > 0
+    ? { cancelLimit: match[0], cancelLimitHours: hours }
+    : { cancelLimit: '就诊前2小时', cancelLimitHours: 2 };
+}
+
 function buildScheduleSlots(schedule, intervalMinutes = 30) {
   const startParts = String(schedule.start_time || '').slice(0, 5).split(':').map(Number);
   const endParts = String(schedule.end_time || '').slice(0, 5).split(':').map(Number);
@@ -1408,15 +1417,34 @@ export async function cancelPendingProductOrder(conn, orderId, userId, expiredOn
   return true;
 }
 
-async function closeExpiredPendingOrders(userId) {
+const pendingExpiryChecks = new Set();
+
+async function closeExpiredPendingOrders(userId, orderId = null) {
   const expiredOrders = await query(
     `SELECT * FROM orders
      WHERE user_id = ? AND type IN ('product', 'online', 'offline') AND status = 'pending'
-       AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)`,
-    [userId]
+       AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)${orderId === null ? '' : ' AND id = ?'}`,
+    orderId === null ? [userId] : [userId, orderId]
   );
   for (const order of expiredOrders) {
-    await transaction(conn => cancelPendingProductOrder(conn, order.id, userId, true));
+    const key = String(order.id);
+    if (pendingExpiryChecks.has(key)) continue;
+    pendingExpiryChecks.add(key);
+    const reconcile = async () => {
+      try {
+        await transaction(conn => cancelPendingProductOrder(conn, order.id, userId, true));
+      } catch (error) {
+        console.warn('[Order Expiry] Reconciliation failed:', order.id, error.message || error);
+      } finally {
+        pendingExpiryChecks.delete(key);
+      }
+    };
+    if (order.wechat_prepay_id || ['wechat_native', 'wechat_micropay'].includes(order.pay_method)) {
+      // WeChat timeout can exceed the read request's deadline.
+      setImmediate(reconcile);
+    } else {
+      await reconcile();
+    }
   }
 }
 
@@ -4508,6 +4536,17 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       if (!lockedSchedule || !buildScheduleSlots(lockedSchedule, bookingInterval).some(slot => slot.label === appointmentTime)) {
         throw businessError('排班已变更，请刷新后重新选择时段', 409);
       }
+      // Check under the schedule lock, before capacity, so concurrent retries
+      // reuse the original booking even if it took the last slot.
+      const [[existing]] = await conn.execute(
+        `SELECT id, appointment_no, status, deposit_amount, consult_fee, type, created_at
+         FROM appointments
+         WHERE user_id = ? AND patient_id = ? AND schedule_id = ? AND appointment_time = ?
+           AND source = 'mini_app' AND status IN (${APPOINTMENT_SLOT_STATUSES_SQL}, 'reminded')
+         ORDER BY id LIMIT 1`,
+        [req.user.id, resolvedPatientId, schedule.id, appointmentTime]
+      );
+      if (existing) return { id: existing.id, existing };
       const [slotApptCountRows] = await conn.execute(
         `SELECT COUNT(*) as count
          FROM appointments
@@ -4559,7 +4598,7 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
 
     const o = {
       id: result.id,
-      appointmentNo: apptNo,
+      appointmentNo: result.existing?.appointment_no ?? apptNo,
       userId: req.user.id.toString(),
       patientId: resolvedPatientId,
       doctorId: resolvedDoctorId,
@@ -4567,13 +4606,15 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
       scheduleId: schedule.id,
       appointmentDate,
       appointmentTime,
-      type,
+      type: result.existing?.type ?? type,
       symptomDesc,
-      status: initialStatus,
-      requireDeposit,
-      depositAmount,
+      status: result.existing?.status ?? initialStatus,
+      consultFee: Number(result.existing ? result.existing.consult_fee || 0 : consultFee),
+      requireDeposit: result.existing ? Number(result.existing.deposit_amount) > 0 : requireDeposit,
+      depositAmount: result.existing?.deposit_amount ?? depositAmount,
+      reused: Boolean(result.existing),
       source: 'mini_app',
-      createdAt: new Date().toISOString()
+      createdAt: result.existing?.created_at ?? new Date().toISOString()
     };
 
     res.json({
@@ -4704,18 +4745,18 @@ app.get('/api/v1/settings/booking', async (req, res) => {
   try {
     const requireDepositRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'require_deposit'`);
     const depositAmountRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'deposit_amount'`);
-    const cancelLimitRow = await get(`SELECT key_value FROM system_settings WHERE key_name = 'booking_cancel_limit'`);
+    const cancelLimit = await getBookingCancelLimit();
     const bookingInterval = await getBookingIntervalMinutes();
-    const subscribeTemplateIds = await getAllSubscribeTemplateIds();
     const subscribeTemplateMap = await getSubscribeTemplateMap();
+    const subscribeTemplateIds = [...new Set(Object.values(subscribeTemplateMap))];
 
-    res.json({
+    res.set('Cache-Control', 'no-store').json({
       code: 0,
       data: {
         requireDeposit: requireDepositRow ? requireDepositRow.key_value === 'true' : false,
         depositAmount: depositAmountRow ? parseInt(depositAmountRow.key_value, 10) : 5000,
         bookingInterval,
-        cancelLimit: cancelLimitRow ? cancelLimitRow.key_value : '就诊前2小时',
+        ...cancelLimit,
         subscribeTemplateIds,
         subscribeTemplateMap
       }
@@ -4788,6 +4829,19 @@ app.get('/api/v1/appointments', authenticateWxToken, async (req, res) => {
 });
 
 // 15. Appointment Detail (GET)
+app.post('/api/v1/appointments/:id/visit-reminder-authorization', authenticateWxToken, async (req, res) => {
+  try {
+    const recorded = await recordVisitReminderAuthorization({
+      appointmentId: req.params.id, userId: req.user.id, templateId: req.body?.templateId
+    });
+    if (!recorded) return res.status(409).json({ code: 409, message: '当前预约无法订阅就诊提醒' });
+    res.json({ code: 0 });
+  } catch (error) {
+    console.error('Record visit reminder authorization failed:', error.message);
+    res.status(500).json({ code: 500, message: '保存就诊提醒订阅结果失败' });
+  }
+});
+
 app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
@@ -4850,6 +4904,7 @@ app.get('/api/v1/appointments/:id', authenticateWxToken, async (req, res) => {
       id: row.id,
       appointmentNo: row.appointment_no,
       userId: row.user_id.toString(),
+      canSubscribeVisitReminder: String(row.user_id) === String(req.user.id),
       patientId: row.patient_id,
       doctorId: row.doctor_id,
       storeId: row.store_id,
@@ -5059,13 +5114,13 @@ app.post('/api/v1/appointments/:id/cancel', authenticateWxToken, async (req, res
       return res.status(400).json({ code: 400, message: '该预约状态下不支持取消' });
     }
 
-    // Check if within 2 hours of appointment time
     if (appt.status !== 'pending_payment') {
+      const { cancelLimitHours } = await getBookingCancelLimit();
       try {
         const apptDateTime = getAppointmentStartTime(appt.appointment_date, appt.appointment_time);
         const now = getShanghaiNow();
-        if (apptDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
-          return res.status(400).json({ code: 400, message: '距离预约时间已不足2小时，不支持取消预约' });
+        if (apptDateTime.getTime() - now.getTime() < cancelLimitHours * 60 * 60 * 1000) {
+          return res.status(400).json({ code: 400, message: `距离预约时间已不足${cancelLimitHours}小时，不支持取消预约` });
         }
       } catch (err) {
         console.error('解析预约时间失败:', err);
@@ -6328,7 +6383,7 @@ app.get('/api/v1/orders', authenticateWxToken, async (req, res) => {
 app.get('/api/v1/orders/:id', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
   try {
-    await closeExpiredPendingOrders(req.user.id);
+    await closeExpiredPendingOrders(req.user.id, id);
     const order = await get(`SELECT * FROM orders WHERE id = ? AND user_id = ?`, [id, req.user.id]);
     if (!order) {
       return res.status(404).json({ code: 404, message: '订单未找到' });
@@ -6577,7 +6632,11 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
           `UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ? AND status = 'on' AND deleted_at IS NULL AND price = ?`,
           [item.quantity, item.product.id, item.quantity, item.product.price]
         );
-        if (reserved.affectedRows !== 1) throw businessError(`商品 ${item.product.name} 库存或价格已变更，请刷新`, 409);
+        if (reserved.affectedRows !== 1) {
+          const error = businessError(`商品 ${item.product.name} 库存或价格已变更，请刷新`, 409);
+          error.reason = 'ORDER_INVENTORY_CONFLICT';
+          throw error;
+        }
       }
 
       await snapshotReferralOrder(conn, insertedId);
@@ -6635,7 +6694,11 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Create client order error:', error);
-    res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.statusCode ? error.message : '订单创建失败' });
+    res.status(error.statusCode || 500).json({
+      code: error.statusCode || 500,
+      message: error.statusCode ? error.message : '订单创建失败',
+      ...(error.reason === 'ORDER_INVENTORY_CONFLICT' ? { reason: error.reason } : {}),
+    });
   }
 });
 
@@ -6927,7 +6990,7 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
         userId: result.activatedUserId,
         event: 'promoter_activated',
         businessId: `promoter_activated:${result.activatedUserId}`,
-        page: 'pages/distribution/index',
+        page: 'pages/distribution/center/index',
         payload: { title: '推广资格已生效', remark: '首位邀请用户已绑定，可开始获得推广收益' }
       }));
     }

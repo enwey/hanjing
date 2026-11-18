@@ -1,4 +1,4 @@
-const { getBookingSettings } = require('../../api/modules/appointment-api');
+const { getBookingSettings, recordVisitReminderAuthorization } = require('../../api/modules/appointment-api');
 
 const MAX_TEMPLATE_IDS_PER_REQUEST = 3;
 const SCENE_EVENTS = {
@@ -9,6 +9,7 @@ const SCENE_EVENTS = {
 };
 
 let cachedSettings = null;
+let settingsRequest = null;
 const requestedScenesInSession = {};
 
 function unwrapObject(response) {
@@ -37,22 +38,22 @@ function pickTemplateIds(settings, scene) {
   return ids.slice(0, MAX_TEMPLATE_IDS_PER_REQUEST);
 }
 
-async function getSubscribeSettings() {
-  if (cachedSettings) {
-    return cachedSettings;
+function refreshSubscribeSettings() {
+  if (!settingsRequest) {
+    settingsRequest = Promise.resolve()
+      .then(() => getBookingSettings())
+      .then((response) => {
+        cachedSettings = unwrapObject(response);
+        return cachedSettings;
+      })
+      .catch(() => ({}))
+      .finally(() => { settingsRequest = null; });
   }
-  try {
-    const response = await getBookingSettings();
-    cachedSettings = unwrapObject(response) || {};
-  } catch (error) {
-    cachedSettings = {};
-  }
-  return cachedSettings;
+  return settingsRequest;
 }
 
 async function getSubscribeTemplateIds(scene) {
-  const settings = await getSubscribeSettings();
-  return pickTemplateIds(settings, scene);
+  return pickTemplateIds(await refreshSubscribeSettings(), scene);
 }
 
 async function requestSubscribe(options) {
@@ -66,21 +67,42 @@ async function requestSubscribe(options) {
     return;
   }
 
-  const templateIds = await getSubscribeTemplateIds(scene);
+  // Use prefetched templates during the tap, before any network wait.
+  let templateIds = pickTemplateIds(cachedSettings || {}, scene);
+  if (!templateIds.length) templateIds = await getSubscribeTemplateIds(scene);
   if (!templateIds.length) {
     return;
   }
 
   requestedScenesInSession[sceneKey] = true;
-  await new Promise((resolve) => {
-    wx.requestSubscribeMessage({
-      tmplIds: templateIds,
-      complete: resolve,
-    });
+  return new Promise((resolve) => {
+    try {
+      wx.requestSubscribeMessage({
+        tmplIds: templateIds,
+        success: resolve,
+        fail: (error) => {
+          delete requestedScenesInSession[sceneKey];
+          console.warn('微信订阅消息授权调用失败', error.errCode);
+          resolve(null);
+        },
+      });
+    } catch (error) {
+      delete requestedScenesInSession[sceneKey];
+      console.warn('微信订阅消息授权调用失败', error.message);
+      resolve(null);
+    }
   });
 }
 
 module.exports = {
   getSubscribeTemplateIds,
+  refreshSubscribeSettings,
   requestSubscribe,
+  async subscribeToVisitReminder(appointmentId, isCurrent) {
+    const result = await requestSubscribe({ force: true, scene: 'appointment' });
+    const templateId = Object.keys(result || {}).find(key => result[key] === 'accept');
+    if (!templateId || !isCurrent()) return false;
+    await recordVisitReminderAuthorization(appointmentId, templateId);
+    return true;
+  },
 };

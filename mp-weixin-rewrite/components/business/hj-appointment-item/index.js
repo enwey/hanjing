@@ -1,3 +1,5 @@
+const { parseAppointmentTimestamp, RESCHEDULE_LIMIT_HOURS } = require('../../../common/utils/appointment-time');
+
 const STATUS_MAP = {
   pending_payment: { label: '待支付', tagType: 'warning' },
   pending: { label: '待确认', tagType: 'success' },
@@ -15,21 +17,6 @@ const TYPE_MAP = {
   followup: '复诊',
   adjust: '调整',
 };
-
-function parseDateTime(appointment) {
-  try {
-    const dateText = String(appointment.appointmentDate || '');
-    const timeText = String(appointment.appointmentTime || '').split('-')[0].trim();
-    if (!dateText || !timeText) {
-      return null;
-    }
-    const [year, month, day] = dateText.split('-').map(Number);
-    const [hour, minute] = timeText.split(':').map(Number);
-    return new Date(year, month - 1, day, hour, minute || 0, 0).getTime();
-  } catch (error) {
-    return null;
-  }
-}
 
 Component({
   properties: {
@@ -61,7 +48,9 @@ Component({
     'appointment, storeName, doctorName, cancelLimitHours': function syncView(appointment, storeName, doctorName, cancelLimitHours) {
       const record = appointment || {};
       const statusInfo = STATUS_MAP[record.status] || STATUS_MAP.pending;
-      const showActions = this.computeShowActions(record, cancelLimitHours);
+      const showCancelAction = this.computeShowActions(record, cancelLimitHours);
+      const showPrimaryAction = this.computeShowActions(record, RESCHEDULE_LIMIT_HOURS) &&
+        (record.status !== 'pending_payment' || record.appointmentCharge?.canPay !== false);
       this.setData({
         appointmentNo: record.appointmentNo || record.appointment_no || ('APT' + (record.id || '')),
         resolvedStoreName: storeName || record.storeName || record.store_name || record.storeId || record.store_id || '',
@@ -73,7 +62,9 @@ Component({
         symptomDesc: record.symptomDesc || record.symptom_desc || '',
         statusLabel: statusInfo.label,
         statusTagType: statusInfo.tagType,
-        showActions,
+        showActions: showCancelAction || showPrimaryAction,
+        showCancelAction,
+        showPrimaryAction,
         actionButtonText: record.status === 'pending_payment' ? '支付' : '改约',
       });
     },
@@ -86,10 +77,10 @@ Component({
       if (appointment.status === 'pending_payment') {
         return true;
       }
-      if (['arrived', 'cancelled', 'refunded', 'no_show', 'completed', 'confirmed', 'reminded', 'checked_in'].includes(appointment.status)) {
+      if (!['pending', 'confirmed'].includes(appointment.status)) {
         return false;
       }
-      const appointmentTime = parseDateTime(appointment);
+      const appointmentTime = parseAppointmentTimestamp(appointment.appointmentDate, appointment.appointmentTime);
       if (!appointmentTime) {
         return false;
       }

@@ -1,0 +1,47 @@
+<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;background:#f9fafb}section{margin:12px auto;max-width:360px;background:white}header{padding:12px;text-align:center}button{display:block;border:0;min-height:40px}</style><style>#reschedule .state-card {
+  padding: 40px 0;
+  text-align: center;
+}
+#reschedule .state-text {
+  font-size: 14px;
+  color: #9ca3af;
+}
+#reschedule .load-retry-btn {
+  width: 100px;
+  margin: 12px auto 0;
+  border-radius: 20px;
+  background: #eaf0ff;
+  color: #294ca8;
+  font-size: 14px;
+}</style><section id="reschedule"><header>改约</header><div class="state-card">
+      <span class="state-text">加载可改约时段超时</span>
+      <button class="load-retry-btn" bindtap="retryLoad">重试</button>
+    </div></section><style>#confirm .state-card {
+  padding: 24px 16px;
+  text-align: center;
+}
+#confirm .state-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+#confirm .state-description {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #6b7280;
+}
+#confirm .load-retry-btn {
+  width: 100px;
+  margin: 12px auto 0;
+  border-radius: 20px;
+  background: #eaf0ff;
+  color: #294ca8;
+  font-size: 14px;
+}</style><section id="confirm"><header>预约确认</header><div class="state-card">
+      <span class="state-title">加载失败</span>
+      <span class="state-description">就诊人加载超时</span>
+      <button class="load-retry-btn" bindtap="retryLoad">重试</button>
+    </div></section>

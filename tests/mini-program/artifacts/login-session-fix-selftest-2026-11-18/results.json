@@ -1,0 +1,57 @@
+{
+  "method": "actual client modules; mocked WeChat and HTTP",
+  "results": [
+    {
+      "name": "SESSION-01 valid token survives app restart",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-02 expired WeChat login resumes on profile entry",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-03 transient network failure during renewal preserves session",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-04 delayed member response must not render old account profile",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-05 successful renewal retries original request",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-06 explicit renewal rejection clears login",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-07 explicit logout does not silently log back in",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-08 transient network allows next request to recover",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-08 transient 503 allows next request to recover",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-08 transient wx-fail allows next request to recover",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-09 expired non-WeChat and malformed tokens stay logged out",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-10 hidden profile ignores completed pending requests",
+      "result": "passed"
+    },
+    {
+      "name": "SESSION-11 renewal rejected on profile entry displays logged out",
+      "result": "passed"
+    }
+  ]
+}

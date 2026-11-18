@@ -1,0 +1,73 @@
+[
+  {
+    "id": "B01 北京仍是当天时保留当天有排班门店",
+    "passed": true,
+    "observed": {
+      "stores": 1
+    }
+  },
+  {
+    "id": "B02 时段页优先选择北京时间当天",
+    "passed": true,
+    "observed": {
+      "selected": "2026-11-18"
+    }
+  },
+  {
+    "id": "B03 无就诊人时确认页不发送创建请求",
+    "passed": true,
+    "observed": {
+      "calls": 0
+    }
+  },
+  {
+    "id": "B04 明确拒绝创建后可提交同一草稿",
+    "passed": true,
+    "observed": {
+      "calls": 2
+    }
+  },
+  {
+    "id": "B05 补充门店接口超时不遮住已知预约结果",
+    "passed": true,
+    "observed": {
+      "store": "预约门店"
+    }
+  },
+  {
+    "id": "B06 支付确认失败时不给成功提示且释放锁",
+    "passed": true,
+    "observed": {
+      "toasts": [
+        "支付状态核对超时"
+      ]
+    }
+  },
+  {
+    "id": "B07 取消弹窗跨过截止后确认 booking/index.js",
+    "passed": true,
+    "observed": {
+      "calls": 0,
+      "toasts": [
+        "距离预约时间已不足2小时，不支持取消预约"
+      ]
+    }
+  },
+  {
+    "id": "B07 取消弹窗跨过截止后确认 detail.js",
+    "passed": true,
+    "observed": {
+      "calls": 0,
+      "toasts": [
+        "已超过取消截止时间（就诊前2小时）"
+      ]
+    }
+  },
+  {
+    "id": "B08 改约静默刷新保留仍可预约的已选日期",
+    "passed": true,
+    "observed": {
+      "selected": "2026-11-21"
+    }
+  }
+]

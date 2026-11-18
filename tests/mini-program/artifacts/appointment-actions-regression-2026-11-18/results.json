@@ -1,0 +1,109 @@
+{
+  "phase": "development self-test; not independent regression",
+  "originalBaseline": {
+    "total": 62,
+    "passed": 62,
+    "failed": 0
+  },
+  "originalAdded": {
+    "passed": 12,
+    "failed": 0
+  },
+  "results": [
+    {
+      "id": "ACTION-01 list lock covers native sheet and pending confirmation",
+      "result": "passed"
+    },
+    {
+      "id": "ACTION-02 old native success cannot confirm after account switch booking/index.js",
+      "result": "passed"
+    },
+    {
+      "id": "ACTION-02 old native success cannot confirm after account switch detail.js",
+      "result": "passed"
+    },
+    {
+      "id": "ACTION-03 old cancel response does not show success or reload replacement page",
+      "result": "passed"
+    },
+    {
+      "id": "ACTION-04 rejected reschedule unlocks for retry; success stays locked",
+      "result": "passed"
+    },
+    {
+      "id": "ACTION-05 unload cancels old successful reschedule navigation",
+      "result": "passed"
+    },
+    {
+      "id": "ACTION-06 empty dates invalidate already pending slot response",
+      "result": "passed"
+    },
+    {
+      "id": "ACTION-07 no remaining schedule clears old slot selection",
+      "result": "passed"
+    },
+    {
+      "id": "ACTION-08 reschedule WXML disables invalid and completed form with balanced tags",
+      "result": "passed"
+    }
+  ],
+  "previews": [
+    {
+      "title": "改约成功等待返回",
+      "data": {
+        "appointmentId": "apt",
+        "doctorId": "1",
+        "storeId": "1",
+        "scheduleDates": [
+          "2099-01-01"
+        ],
+        "selectedDate": "2099-01-01",
+        "schedules": [
+          {
+            "id": "schedule",
+            "date": "2099-01-01",
+            "periodLabel": "下午",
+            "startTime": "14:00",
+            "endTime": "15:00",
+            "status": "available",
+            "disabled": false
+          }
+        ],
+        "selectedScheduleId": "schedule",
+        "timeSlots": [
+          {
+            "id": "slot",
+            "label": "14:00-14:30",
+            "status": "available",
+            "selectable": true
+          }
+        ],
+        "selectedTimeSlotId": "slot",
+        "selectedTimeSlotLabel": "14:00-14:30",
+        "submitting": true,
+        "rescheduleCompleted": true,
+        "loading": false,
+        "loadError": ""
+      }
+    },
+    {
+      "title": "可约日期失效后",
+      "data": {
+        "appointmentId": "apt",
+        "doctorId": "1",
+        "storeId": "1",
+        "scheduleDates": [],
+        "selectedDate": "",
+        "schedules": [],
+        "selectedScheduleId": "",
+        "timeSlots": [],
+        "selectedTimeSlotId": "",
+        "selectedTimeSlotLabel": "",
+        "submitting": false,
+        "rescheduleCompleted": false,
+        "loading": false,
+        "loadError": ""
+      }
+    }
+  ]
+}

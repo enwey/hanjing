@@ -17,6 +17,15 @@
   color: #9ca3af;
 }
 
+.load-retry-btn {
+  width: 200rpx;
+  margin: 24rpx auto 0;
+  border-radius: 40rpx;
+  background: #eaf0ff;
+  color: #294ca8;
+  font-size: 28rpx;
+}
+
 .schedule-header {
   display: flex;
   align-items: center;
@@ -113,6 +122,12 @@
 
 .bar-primary-btn::after {
   border: none;
+}
+
+.bar-primary-btn[disabled] {
+  background: #e5e7eb;
+  color: #9ca3af;
+  box-shadow: none;
 }
 
 .safe-bottom {

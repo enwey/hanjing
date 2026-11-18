@@ -5084,10 +5084,13 @@ app.post('/api/admin/orders/:id/ship', authenticateToken, async (req, res) => {
 
     const shipped = await runAndNotify(`UPDATE orders SET status = 'shipped', shipping_address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'shipping'`, [JSON.stringify(addr), id], 'order',id,'shipped');
     if (shipped.changes !== 1) return res.status(409).json({ code: 409, message: '订单状态已变更，请刷新后再操作' });
-    await logAdminAction(req.user.id, 'ship_order', 'order', id, { carrier, trackingNo }, req.ip || null);
     res.json({ code: 200, message: '发货成功' });
     setImmediate(() => (async () => {
-      const item = await get('SELECT product_name FROM order_items WHERE order_id = ? ORDER BY id LIMIT 1', [id]);
+      const item = await get('SELECT product_name FROM order_items WHERE order_id = ? ORDER BY id LIMIT 1', [id])
+        .catch(error => {
+          console.warn('[Wechat Subscribe] Order item lookup failed:', id, error.message || error);
+          return null;
+        });
       await sendWechatSubscribeMessage({
         userId: order.user_id,
         event: 'order_shipped',
@@ -5102,6 +5105,8 @@ app.post('/api/admin/orders/:id/ship', authenticateToken, async (req, res) => {
         }
       });
     })().catch(error => console.warn('[Wechat Subscribe] Order shipped notification failed:', error.message || error)));
+    await logAdminAction(req.user.id, 'ship_order', 'order', id, { carrier, trackingNo }, req.ip || null)
+      .catch(error => console.warn('[Order Shipment] Audit log failed:', id, error.message || error));
   } catch (error) {
     await logAdminAction(req.user.id, 'ship_order', 'order', id, { express_company: req.body.express_company, tracking_number: req.body.tracking_number }, req.ip || null, 'fail', error.message || '发货失败');
     res.status(500).json({ code: 500, message: '操作失败' });
@@ -5790,7 +5795,6 @@ app.put('/api/admin/distribution/withdraws/:id/status', authenticateToken, async
   try {
     const { reviewWithdrawal } = await import('../distribution-ledger.js');
     const record = await reviewWithdrawal(req.params.id, approve, remark);
-    await logAdminAction(req.user.id, approve ? 'approve_withdraw' : 'reject_withdraw', 'withdraw', req.params.id, { remark });
     res.json({ code: 200, message: approve ? '审核通过，等待实际打款' : '已驳回并退回余额' });
     setImmediate(() => sendWechatSubscribeMessage({
       userId: record.user_id,
@@ -5804,6 +5808,8 @@ app.put('/api/admin/distribution/withdraws/:id/status', authenticateToken, async
         remark: remark || (approve ? '等待实际打款' : '金额已退回余额')
       }
     }));
+    await logAdminAction(req.user.id, approve ? 'approve_withdraw' : 'reject_withdraw', 'withdraw', req.params.id, { remark })
+      .catch(error => console.warn('[Withdrawal Review] Audit log failed:', req.params.id, error.message || error));
   } catch (error) {
     const code = error.statusCode || 500;
     res.status(code).json({ code, message: code === 500 ? '处理失败' : error.message });
@@ -5830,7 +5836,6 @@ app.put('/api/admin/distribution/withdraws/:id/paid', authenticateToken, async (
   try {
     const { confirmWithdrawalPaid } = await import('../distribution-ledger.js');
     const record = await confirmWithdrawalPaid(req.params.id, req.body.reference);
-    await logAdminAction(req.user.id, 'record_withdraw_payment', 'withdraw', req.params.id, { reference: req.body.reference });
     res.json({ code: 200, message: '已登记实际银行转账' });
     setImmediate(() => sendWechatSubscribeMessage({
       userId: record.user_id,
@@ -5844,6 +5849,8 @@ app.put('/api/admin/distribution/withdraws/:id/paid', authenticateToken, async (
         remark: `转账流水：${String(req.body.reference || '').trim()}`
       }
     }));
+    await logAdminAction(req.user.id, 'record_withdraw_payment', 'withdraw', req.params.id, { reference: req.body.reference })
+      .catch(error => console.warn('[Withdrawal Payout] Audit log failed:', req.params.id, error.message || error));
   } catch (error) {
     const code = error.code === 'ER_DUP_ENTRY' ? 409 : error.statusCode || 500;
     res.status(code).json({ code, message: error.code === 'ER_DUP_ENTRY' ? '该转账流水号已使用' : code === 500 ? '登记失败' : error.message });
@@ -7146,17 +7153,18 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
       await syncDirectChildrenSecondLevel(conn, childUserId, parentUserId);
       return { activatedUserId: promoter.status === 'pending' ? parentUserId : null };
     });
-    await logAdminAction(req.user.id, 'bind_patient_promoter', 'patient', id, { promoter_user_id });
     res.json({ code: 200, message: '绑定推广人成功' });
     if (bindResult.activatedUserId) {
       setImmediate(() => sendWechatSubscribeMessage({
         userId: bindResult.activatedUserId,
         event: 'promoter_activated',
         businessId: `promoter_activated:${bindResult.activatedUserId}`,
-        page: 'pages/distribution/index',
+        page: 'pages/distribution/center/index',
         payload: { title: '推广资格已生效', remark: '首位邀请用户已绑定，可开始获得推广收益' }
       }));
     }
+    await logAdminAction(req.user.id, 'bind_patient_promoter', 'patient', id, { promoter_user_id })
+      .catch(error => console.warn('[Promoter Binding] Audit log failed:', id, error.message || error));
   } catch (error) {
     console.error('Bind promoter failed:', error);
     if (error.bindingStatus) {

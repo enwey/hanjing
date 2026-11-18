@@ -8,6 +8,7 @@
 
     <view class="state-card" wx:elif="{{loadError}}">
       <text class="state-text">{{loadError}}</text>
+      <button wx:if="{{canRetryLoad}}" class="load-retry-btn" bindtap="retryLoad">重试</button>
     </view>
 
     <block wx:else>
@@ -42,8 +43,8 @@
         </block>
       </view>
 
-      <view wx:elif="{{selectedDate && !loading}}" class="empty-card">
-        <text class="empty-text">该日期暂无可改约时段</text>
+      <view wx:elif="{{!loading}}" class="empty-card">
+        <text class="empty-text">{{selectedDate ? '该日期暂无可改约时段' : '暂无可改约日期，请稍后重试'}}</text>
       </view>
 
       <view class="safe-bottom" />
@@ -51,8 +52,8 @@
   </view>
 
   <view class="bottom-fixed-bar" wx:if="{{!loadError}}">
-    <button class="bar-primary-btn" bindtap="submitReschedule" loading="{{submitting}}">
-      {{submitting ? '提交中...' : '确认改约'}}
+    <button class="bar-primary-btn" bindtap="submitReschedule" loading="{{submitting && !rescheduleCompleted}}" disabled="{{loading || submitting || rescheduleCompleted || !selectedDate || !selectedTimeSlotId}}">
+      {{rescheduleCompleted ? '改约成功' : submitting ? '提交中...' : '确认改约'}}
     </button>
   </view>
 </view>

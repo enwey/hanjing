@@ -1,0 +1,17 @@
+[
+  {
+    "canPay": false,
+    "showPayment": false,
+    "showCancel": true
+  },
+  {
+    "canPay": true,
+    "showPayment": true,
+    "showCancel": true
+  },
+  {
+    "canPay": null,
+    "showPayment": true,
+    "showCancel": true
+  }
+]

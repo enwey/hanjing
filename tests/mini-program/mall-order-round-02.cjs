@@ -5,7 +5,7 @@ async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}
 function harness(file,api){let p;const storage=new Map(),payments=[],toasts=[];const wx={getStorageSync:k=>storage.get(k),setStorageSync:(k,v)=>storage.set(k,v),removeStorageSync:k=>storage.delete(k),showLoading(){},hideLoading(){},showToast:o=>toasts.push(o.title),navigateTo(){},requestPayment:o=>{payments.push(o);o.fail({errMsg:'requestPayment:fail cancel'});}};
  const context={wx,module:{exports:{}},require:()=>({}),console:{error(){}}};vm.runInNewContext(read('stores/session-store.js'),context);const store=context.module.exports;
  store.setAccessToken('fixture-original');
- vm.runInNewContext(read('pages/'+file),{wx,console:{error(){}},setTimeout(){},Page:o=>p=o,require:s=>s.includes('api/index')?api:s.includes('session-store')?store:s.includes('date-time')?{formatChinaDateTime:x=>x}:{}});
+ vm.runInNewContext(read('pages/'+file),{wx,console:{error(){}},setTimeout(){},Page:o=>p=o,require:s=>s.includes('api/index')?api:s.endsWith('/order-payment')?require('../../mp-weixin-rewrite/common/utils/order-payment'):s.includes('session-store')?store:s.includes('date-time')?{formatChinaDateTime:x=>x}:s.includes('utils/subscribe')?{refreshSubscribeSettings:async()=>{},requestSubscribe:async()=>{}}:{}});
  p.data=JSON.parse(JSON.stringify(p.data));p.setData=(o,cb)=>{Object.assign(p.data,o);if(cb)cb();};return {p,store,payments,toasts};
 }
 function address(h){Object.assign(h.p.data,{product:{id:1,price:1000},quantity:1,contactName:'fixture',phone:'13800138001',detailAddress:'fixture'});}

@@ -2,6 +2,7 @@ const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
 const { formatChinaDateTime } = require('../../common/utils/date-time');
 const subscribe = require('../../common/utils/subscribe');
+const { isPaymentTimeout, reconcileOrderPayment } = require('../../common/utils/order-payment');
 
 const ORDER_STATUS_STEPS = {
   pending: [{ label: '待付款', done: true }, { label: '待取货', done: false }, { label: '已发货', done: false }, { label: '已完成', done: false }],
@@ -16,6 +17,7 @@ const ORDER_STATUS_STEPS = {
 };
 
 const STATUS_LABEL_MAP = {
+  processing: '待到货',
   pending: '待付款',
   paid: '待取货',
   shipping: '待发货',
@@ -52,6 +54,10 @@ function getPaymentErrorMessage(error, canceledText) {
   return '发起支付失败';
 }
 
+function shouldRefreshOrderAfterRejection(error) {
+  return [400, 404, 409].includes(Number(error?.statusCode || error?.data?.code));
+}
+
 async function syncPaidOrder(orderId) {
   if (!orderId) return;
   await api.confirmOrderPayment(orderId);
@@ -66,6 +72,7 @@ Page({
 
   data: {
     loading: true,
+    loadError: '',
     order: null,
     logisticsList: [],
     logisticsMessage: '',
@@ -84,6 +91,8 @@ Page({
   },
 
   onShow() {
+    subscribe.refreshSubscribeSettings();
+    this.syncOrderDetailSession();
     if ((!this.hasLoaded && !this._needsReload) || !this.orderId) {
       return;
     }
@@ -129,49 +138,90 @@ Page({
     };
   },
 
+  showConfirmedPayment(order) {
+    this.confirmedPaymentOrder = { id: order.id, generation: sessionStore.getLoginGeneration() };
+    const displayedOrder = this.data.order;
+    if (displayedOrder?.id === order.id) {
+      this.setData({ order: this.withConfirmedPayment(displayedOrder) });
+    }
+  },
+
+  withConfirmedPayment(order) {
+    const confirmed = this.confirmedPaymentOrder;
+    if (order.status !== 'pending' || confirmed?.id !== order.id ||
+      confirmed.generation !== sessionStore.getLoginGeneration()) return order;
+    return {
+      ...order,
+      statusLabel: '支付已确认，等待更新',
+      steps: [],
+      actionFlags: { ...order.actionFlags, canPay: false, canCancel: false },
+    };
+  },
+
+  withOrderActionStatus(order, status) {
+    return {
+      ...order,
+      status,
+      statusLabel: STATUS_LABEL_MAP[status],
+      steps: ORDER_STATUS_STEPS[status],
+      actionFlags: { canPay: false, canCancel: false, canConfirmReceipt: false, canRefund: false },
+    };
+  },
+
+  syncOrderDetailSession() {
+    const generation = sessionStore.getLoginGeneration();
+    if (this.orderDetailGeneration !== undefined && this.orderDetailGeneration !== generation) {
+      this.confirmedPaymentOrder = null;
+      this.hasLoaded = false;
+      this._needsReload = true;
+      this.setData({ loading: false, loadError: '', order: null, logisticsList: [], logisticsMessage: '' });
+    }
+    this.orderDetailGeneration = generation;
+    return generation;
+  },
+
   async loadOrder(orderId, options = {}) {
     if (this._unloaded) return;
     const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
+    const generation = this.syncOrderDetailSession();
     const silent = Boolean(options.silent);
+    const isCurrent = () => requestId === this._loadRequestId && generation === this.syncOrderDetailSession() &&
+      (!options.isCurrent || options.isCurrent());
     this.setData({ loading: silent ? this.data.loading : true });
     try {
-      const detailResponse = await api.getOrderDetail(orderId);
-      if (requestId !== this._loadRequestId) return;
+      const detailResponse = options.rawOrder || await api.getOrderDetail(orderId);
+      if (!isCurrent()) return;
       const rawOrder = (detailResponse && detailResponse.data) || detailResponse || null;
-      const order = this.normalizeOrder(rawOrder || {});
-      let logisticsList = [];
-      let logisticsMessage = '';
-      if (order.status === 'shipped' || order.status === 'completed') {
-        try {
-          const logisticsResponse = await api.getOrderLogistics(orderId);
-          const logisticsPayload = (logisticsResponse && logisticsResponse.data) || logisticsResponse || {};
-          logisticsMessage = logisticsPayload.message || '暂无物流轨迹';
-          logisticsList = (logisticsPayload.steps || []).map((step, index) => ({
-            time: step.time || '',
-            desc: step.desc || step.status || '',
-            isFirst: index === 0,
-          }));
-        } catch (error) {
-          logisticsList = [];
-          logisticsMessage = '物流信息加载失败，请稍后重试';
-        }
-      }
-      if (requestId !== this._loadRequestId) return;
-      this.setData({ loading: false, order, logisticsList, logisticsMessage });
+      const order = this.withConfirmedPayment(this.normalizeOrder(rawOrder || {}));
+      const hasLogistics = order.status === 'shipped' || order.status === 'completed';
+      this.setData({
+        loading: false,
+        loadError: '',
+        order,
+        logisticsList: [],
+        logisticsMessage: hasLogistics ? '物流信息加载中…' : '',
+      });
       this.hasLoaded = true;
       this._needsReload = false;
+      if (hasLogistics) {
+        void this.loadLogistics(orderId, () => isCurrent() && this.data.order?.id === order.id &&
+          this.data.order.status === order.status);
+      }
+      return order;
     } catch (error) {
-      if (requestId !== this._loadRequestId) return;
+      if (!isCurrent()) return;
       console.error(error);
-      wx.showToast({ title: (error && error.message) || '订单详情加载失败', icon: 'none' });
-      const unauthorized = error && [401, 403].includes(Number(error.statusCode || (error.data && error.data.code)));
-      const retain = silent && !unauthorized;
-      if (unauthorized) {
+      const message = error?.message || '订单详情加载失败';
+      if (!options.quiet) wx.showToast({ title: message, icon: 'none' });
+      const unavailable = [401, 403, 404].includes(Number(error?.statusCode || error?.data?.code));
+      const retain = silent && !unavailable && this.data.order;
+      if (!retain) {
         this.hasLoaded = false;
         this._needsReload = true;
       }
       this.setData({
         loading: false,
+        loadError: retain ? '' : message,
         order: retain ? this.data.order : null,
         logisticsList: retain ? this.data.logisticsList : [],
         logisticsMessage: retain ? this.data.logisticsMessage : '',
@@ -179,37 +229,94 @@ Page({
     }
   },
 
+  async loadLogistics(orderId, isCurrent) {
+    let logisticsMessage;
+    let logisticsList = [];
+    try {
+      const response = await api.getOrderLogistics(orderId);
+      const payload = response?.data || response || {};
+      logisticsMessage = payload.message || '暂无物流轨迹';
+      logisticsList = (payload.steps || []).map((step, index) => ({
+        time: step.time || '',
+        desc: step.desc || step.status || '',
+        isFirst: index === 0,
+      }));
+    } catch (error) {
+      logisticsMessage = '物流信息加载失败，请稍后重试';
+    }
+    if (isCurrent()) this.setData({ logisticsList, logisticsMessage });
+  },
+
   async onCancelOrder() {
-    const order = this.data.order;
-    if (!order) return;
-    wx.showModal({
-      title: '提示',
-      content: '确定要取消该订单吗？',
-      success: async (result) => {
-        if (!result.confirm) return;
-        try {
-          await api.cancelOrder(order.id);
-          wx.showToast({ title: '订单已取消', icon: 'success' });
-          await this.loadOrder(order.id);
-        } catch (error) {
-          wx.showToast({ title: (error && error.message) || '取消失败', icon: 'none' });
-        }
-      },
+    await this.submitOrderAction({
+      flag: 'canCancel',
+      ask: resolve => wx.showModal({
+        title: '提示',
+        content: '确定要取消该订单吗？',
+        success: result => resolve(result.confirm),
+        fail: () => resolve(false),
+      }),
+      submit: id => api.cancelOrder(id),
+      status: 'cancelled',
+      successText: '订单已取消',
+      failureText: '取消失败',
     });
   },
 
-  async onPayOrder() {
+  async submitOrderAction({ flag, ask, submit, status, successText, failureText }) {
+    const generation = this.syncOrderDetailSession();
     const order = this.data.order;
-    if (this._unloaded || !order || !order.actionFlags.canPay || this.paymentInProgress) return;
-    const generation = sessionStore.getLoginGeneration();
+    if (this._unloaded || !order?.actionFlags[flag] || this.orderActionInProgress || this.paymentInProgress) return;
+    const isCurrent = () => !this._unloaded && generation === this.syncOrderDetailSession() &&
+      this.data.order?.id === order.id;
+    this.orderActionInProgress = true;
+    try {
+      const choice = await new Promise(ask);
+      if (!choice || !isCurrent() || !this.data.order.actionFlags[flag]) return;
+      await submit(order.id, choice);
+      if (!isCurrent()) return;
+      this.setData({ order: this.withOrderActionStatus(this.data.order, status) });
+      wx.showToast({ title: successText, icon: 'success' });
+      await this.loadOrder(order.id, { silent: true, isCurrent });
+    } catch (error) {
+      if (!isCurrent()) return;
+      if (isPaymentTimeout(error)) {
+        const latest = await this.loadOrder(order.id, { silent: true, isCurrent });
+        if (!isCurrent()) return;
+        const applied = latest?.status === status ||
+          (status === 'refund_pending' && ['refunding', 'refunded'].includes(latest?.status));
+        wx.showToast({
+          title: applied ? successText : '操作结果待确认，请刷新订单',
+          icon: applied ? 'success' : 'none',
+        });
+      } else {
+        if (shouldRefreshOrderAfterRejection(error)) {
+          await this.loadOrder(order.id, { silent: true, quiet: true, isCurrent });
+          if (!isCurrent()) return;
+        }
+        wx.showToast({ title: error?.message || failureText, icon: 'none' });
+      }
+    } finally {
+      this.orderActionInProgress = false;
+    }
+  },
+
+  async onPayOrder() {
+    const generation = this.syncOrderDetailSession();
+    const order = this.data.order;
+    if (this._unloaded || !order || !order.actionFlags.canPay || this.paymentInProgress || this.orderActionInProgress) return;
+    const isCurrent = () => !this._unloaded && this.syncOrderDetailSession() === generation;
     const assertCurrentSession = () => {
-      if (sessionStore.getLoginGeneration() !== generation) {
+      if (!isCurrent()) {
         throw new Error('登录状态已变化，请重新进入订单');
       }
     };
     this.paymentInProgress = true;
-    wx.showLoading({ title: '发起支付...' });
     try {
+      await subscribe.requestSubscribe({ force: true, scene: 'order' });
+      if (this._unloaded) return;
+      assertCurrentSession();
+      wx.showLoading({ title: '发起支付...' });
       const payResponse = await api.payOrder(order.id);
       if (this._unloaded) return;
       assertCurrentSession();
@@ -222,16 +329,38 @@ Page({
       await syncPaidOrder(order.id);
       if (this._unloaded) return;
       assertCurrentSession();
+      this.showConfirmedPayment(order);
       wx.hideLoading();
-      await subscribe.requestSubscribe({ force: true, scene: 'order' });
-      if (this._unloaded) return;
       wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });
-      await this.loadOrder(order.id);
+      await this.loadOrder(order.id, { silent: true, isCurrent });
     } catch (error) {
       if (this._unloaded) return;
+      const timedOut = isCurrent() && isPaymentTimeout(error);
+      if (timedOut) {
+        wx.showLoading({ title: '核对支付状态...' });
+        const { order: latest, confirmed } = await reconcileOrderPayment(api, order.id, isCurrent).catch(() => ({}));
+        if (!isCurrent()) {
+          if (!this._unloaded) wx.hideLoading();
+          return;
+        }
+        if (confirmed) this.showConfirmedPayment(order);
+        if (latest?.status) await this.loadOrder(order.id, { silent: true, rawOrder: latest, isCurrent });
+        if (!isCurrent()) return;
+        if (confirmed || (latest?.status && latest.status !== 'pending')) {
+          if (!this._unloaded) wx.hideLoading();
+          return;
+        }
+      }
+      if (!timedOut && isCurrent() && shouldRefreshOrderAfterRejection(error)) {
+        await this.loadOrder(order.id, { silent: true, quiet: true, isCurrent });
+        if (!isCurrent()) {
+          if (!this._unloaded) wx.hideLoading();
+          return;
+        }
+      }
       wx.hideLoading();
       wx.showToast({
-        title: getPaymentErrorMessage(error, '支付未完成'),
+        title: timedOut ? '支付结果待确认，请刷新订单' : getPaymentErrorMessage(error, '支付未完成'),
         icon: 'none',
       });
     } finally {
@@ -240,40 +369,34 @@ Page({
   },
 
   async onConfirmReceipt() {
-    const order = this.data.order;
-    if (!order) return;
-    wx.showModal({
-      title: '提示',
-      content: '确定已收到商品吗？',
-      success: async (result) => {
-        if (!result.confirm) return;
-        try {
-          await api.confirmReceipt(order.id);
-          wx.showToast({ title: '已确认收货', icon: 'success' });
-          await this.loadOrder(order.id);
-        } catch (error) {
-          wx.showToast({ title: (error && error.message) || '确认失败', icon: 'none' });
-        }
-      },
+    await this.submitOrderAction({
+      flag: 'canConfirmReceipt',
+      ask: resolve => wx.showModal({
+        title: '提示',
+        content: '确定已收到商品吗？',
+        success: result => resolve(result.confirm),
+        fail: () => resolve(false),
+      }),
+      submit: id => api.confirmReceipt(id),
+      status: 'completed',
+      successText: '已确认收货',
+      failureText: '确认失败',
     });
   },
 
   async onApplyRefund() {
-    const order = this.data.order;
-    if (!order) return;
     const reasons = ['不想要了', '商品信息不符', '地址或自提信息有误', '其他原因'];
-    wx.showActionSheet({
-      itemList: reasons,
-      success: async (result) => {
-        const reason = reasons[result.tapIndex] || '其他原因';
-        try {
-          await api.applyRefund(order.id, { reason });
-          wx.showToast({ title: '退款申请已提交', icon: 'success' });
-          await this.loadOrder(order.id);
-        } catch (error) {
-          wx.showToast({ title: (error && error.message) || '申请失败', icon: 'none' });
-        }
-      },
+    await this.submitOrderAction({
+      flag: 'canRefund',
+      ask: resolve => wx.showActionSheet({
+        itemList: reasons,
+        success: result => resolve(reasons[result.tapIndex] || '其他原因'),
+        fail: () => resolve(false),
+      }),
+      submit: (id, reason) => api.applyRefund(id, { reason }),
+      status: 'refund_pending',
+      successText: '退款申请已提交',
+      failureText: '申请失败',
     });
   },
 });

@@ -1,0 +1,109 @@
+{
+  "method": "actual client modules; simulated WeChat/HTTP and controlled response order; no business database writes",
+  "sourceBefore": {
+    "pages/appointment/booking/index.js": "75f1cb9fcca89d09af8409b47b3e2062e768d726e83a55080c9e39b44d3a3de5",
+    "pages/appointment/confirm.js": "34ab078eef4199e364081da667b431a96a456c2ca6b61fe606673ad66b50614f",
+    "pages/appointment/detail.js": "9a4ba87b1accbee775d8a792df1ba657fed3ef26ab83f8d7fdb997bc033e9de0",
+    "pages/appointment/reschedule.js": "54a6489666028c9b1f4657e613b4afdb6fb14e48a128a72ba2c4875e92cbae3b",
+    "pages/appointment/time-select.js": "c1d52b5b03abc86443020436910cafdcda171dd1d894af2863d5c44bde889254",
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21"
+  },
+  "sourceAfter": {
+    "pages/appointment/booking/index.js": "75f1cb9fcca89d09af8409b47b3e2062e768d726e83a55080c9e39b44d3a3de5",
+    "pages/appointment/confirm.js": "34ab078eef4199e364081da667b431a96a456c2ca6b61fe606673ad66b50614f",
+    "pages/appointment/detail.js": "9a4ba87b1accbee775d8a792df1ba657fed3ef26ab83f8d7fdb997bc033e9de0",
+    "pages/appointment/reschedule.js": "54a6489666028c9b1f4657e613b4afdb6fb14e48a128a72ba2c4875e92cbae3b",
+    "pages/appointment/time-select.js": "c1d52b5b03abc86443020436910cafdcda171dd1d894af2863d5c44bde889254",
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21"
+  },
+  "sourceStable": true,
+  "results": [
+    {
+      "id": "APT-AUDIT-01 booking list finishes after automatic session renewal",
+      "result": "failed",
+      "error": "renewed session left appointment list loading\n\ntrue !== false\n",
+      "observations": {
+        "loading": true,
+        "appointments": 0,
+        "authCalls": 1
+      }
+    },
+    {
+      "id": "APT-AUDIT-02 confirmation finishes after automatic session renewal",
+      "result": "failed",
+      "error": "renewed session discarded confirmation load\n\ntrue !== false\n",
+      "observations": {
+        "loading": true,
+        "memberCount": 0,
+        "draftLoaded": false
+      }
+    },
+    {
+      "id": "APT-AUDIT-03 selected family survives same-account automatic renewal",
+      "result": "failed",
+      "error": "same-account refresh reset selected patient to self\n\n'self' !== 'family'\n",
+      "observations": {
+        "selectedPatient": "self",
+        "authCalls": 1
+      }
+    },
+    {
+      "id": "APT-AUDIT-04 delayed detail response cannot repopulate after logout",
+      "result": "failed",
+      "error": "old appointment detail rendered after logout\n\ntrue !== false\n",
+      "observations": {
+        "isLoggedIn": false,
+        "appointmentLoaded": true,
+        "patientName": "上一账号患者"
+      }
+    },
+    {
+      "id": "APT-AUDIT-05 older detail load cannot overwrite newer appointment status",
+      "result": "failed",
+      "error": "old detail response reverted latest cancellation status\n+ actual - expected\n\n+ 'pending'\n- 'cancelled'\n",
+      "observations": {
+        "status": "pending"
+      }
+    },
+    {
+      "id": "APT-AUDIT-06 completed create response must not clear replacement-account draft",
+      "result": "failed",
+      "error": "old create response deleted new account draft\n\nfalse !== true\n",
+      "observations": {
+        "draftPreserved": false,
+        "assessmentPreserved": false,
+        "navigation": [
+          "/pages/appointment/success?id=apt-a"
+        ]
+      }
+    },
+    {
+      "id": "APT-AUDIT-07 normal logged-in booking list loads",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-08 unchanged session retains family selection",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-09 confirmed creation clears own draft and navigates once",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-10 preparing store cannot proceed to booking",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-11 full slot cannot create an appointment draft",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-12 booking payment success confirms and reloads records",
+      "result": "passed"
+    }
+  ],
+  "passed": 6,
+  "failed": 6
+}

@@ -256,7 +256,7 @@ function refreshAccessToken(snapshot) {
           }
           resolve({ token: payload.access_token, snapshot: getSessionSnapshot() });
         }).catch((error) => {
-          reject(createRequestError((error && error.message) || '登录授权失败'));
+          reject(createRequestError((error && error.message) || '登录授权失败', error && error.statusCode, error && error.data));
         });
       },
       fail() {
@@ -332,7 +332,11 @@ function request(options) {
             const flight = { snapshot };
             flight.promise = refreshAccessToken(snapshot)
               .catch((error) => {
-                clearCurrentSession(snapshot);
+                // A timeout, network failure or server outage does not revoke a
+                // WeChat session. Let the next request attempt renewal again.
+                if (error && (error.statusCode === 401 || error.statusCode === 403)) {
+                  clearCurrentSession(snapshot);
+                }
                 throw error;
               })
               .finally(() => {

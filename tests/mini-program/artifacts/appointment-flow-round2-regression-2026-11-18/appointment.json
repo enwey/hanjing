@@ -1,0 +1,80 @@
+{
+  "scope": "Actual page functions with mocked wx/API; no real appointments or payments",
+  "total": 18,
+  "passed": 18,
+  "failed": 0,
+  "results": [
+    {
+      "name": "confirm loads patient and doctor",
+      "status": "PASS"
+    },
+    {
+      "name": "confirm rejects missing patient",
+      "status": "PASS"
+    },
+    {
+      "name": "confirm deduplicates in-flight create",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-01 booking payment action calls exported API",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-02 late date response cannot overwrite current date slots",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-03 selection survives confirm page refresh",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-04 created pending-payment order remains submission-locked",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-04 successful create cannot be resubmitted before navigation",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-05 backend rejection reason is visible",
+      "status": "PASS"
+    },
+    {
+      "name": "lunch exclusion matches backend slot generator",
+      "status": "PASS"
+    },
+    {
+      "name": "unavailable time slot cannot advance",
+      "status": "PASS"
+    },
+    {
+      "name": "available time slot records selected schedule",
+      "status": "PASS"
+    },
+    {
+      "name": "missing doctor/store rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "reschedule original slot rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-07 late reschedule response cannot replace current schedule slots",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-06 late list response must not repopulate logged-out view",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-04 failed creation releases lock for retry",
+      "status": "PASS"
+    },
+    {
+      "name": "APT-04 created order clears persistent draft",
+      "status": "PASS"
+    }
+  ]
+}

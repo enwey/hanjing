@@ -74,17 +74,13 @@ function findTimeSlotById(timeSlotSections, timeSlotId) {
   return null;
 }
 
+const { getBeijingDate } = require('../../common/utils/appointment-time');
+
 function resolveDefaultDate(scheduleDates) {
   if (!Array.isArray(scheduleDates) || !scheduleDates.length) {
     return '';
   }
-  const today = new Date();
-  const todayText =
-    today.getFullYear() +
-    '-' +
-    String(today.getMonth() + 1).padStart(2, '0') +
-    '-' +
-    String(today.getDate()).padStart(2, '0');
+  const todayText = getBeijingDate(Date.now());
   if (scheduleDates.includes(todayText)) {
     return todayText;
   }
@@ -139,7 +135,8 @@ Page({
       loadError: silent ? this.data.loadError : '',
       doctorId,
       storeId,
-      timeSlotSections: silent ? this.data.timeSlotSections : [],
+      loadingSchedules: false,
+      timeSlotSections: [],
     });
 
     if (!doctorId || !storeId) {
@@ -184,8 +181,9 @@ Page({
         });
         return;
       }
-      this.setData({ loading: false });
-      wx.showToast({ title: (error && error.message) || '加载可约时段失败，请稍后重试', icon: 'none' });
+      const loadError = (error && error.message) || '加载可约时段失败，请稍后重试';
+      this.setData({ loading: false, loadError });
+      wx.showToast({ title: loadError, icon: 'none' });
     }
   },
 
@@ -196,7 +194,7 @@ Page({
       loadingSchedules: true,
       loadError: silent ? this.data.loadError : '',
       selectedDate,
-      timeSlotSections: silent ? this.data.timeSlotSections : [],
+      timeSlotSections: [],
     });
 
     try {
@@ -215,15 +213,10 @@ Page({
       });
     } catch (error) {
       if (requestId !== this.slotsRequestId) return;
-      if (!silent) {
-        this.setData({
-          loadingSchedules: false,
-          loadError: (error && error.message) || '加载当天排班失败，请稍后重试',
-        });
-        return;
-      }
-      this.setData({ loadingSchedules: false });
-      wx.showToast({ title: (error && error.message) || '加载当天排班失败，请稍后重试', icon: 'none' });
+      this.setData({
+        loadingSchedules: false,
+        loadError: (error && error.message) || '加载当天排班失败，请稍后重试',
+      });
     }
   },
 
@@ -237,10 +230,11 @@ Page({
   },
 
   retryLoad() {
-    this.loadPage({ silent: false });
+    return this.loadPage({ silent: false });
   },
 
   handleTimeSlotTap(event) {
+    if (!this.data.selectedDate || this.data.loadingSchedules || this.data.loadError) return;
     const timeSlotId = readString(event.currentTarget.dataset.timeSlotId);
     const selectedTimeSlot = findTimeSlotById(this.data.timeSlotSections, timeSlotId);
     if (!selectedTimeSlot || !selectedTimeSlot.isAvailable) {

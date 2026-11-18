@@ -52,13 +52,7 @@ function sameId(left, right) {
   return readString(left) === readString(right);
 }
 
-function getTodayString() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return year + '-' + month + '-' + day;
-}
+const { getBeijingDate } = require('../../common/utils/appointment-time');
 
 function normalizeStore(store, location) {
   const latitude = Number(store.latitude);
@@ -122,8 +116,21 @@ Page({
   },
 
   async loadPage() {
+    const request = this.storeRequest = {};
+    this.setData({ loading: true, loadError: '' });
+    try {
+      await this.loadStores(request);
+    } catch (error) {
+      if (this.storeRequest !== request) return;
+      this.setData({ stores: [], loadError: '门店加载失败，请稍后重试' });
+    } finally {
+      if (this.storeRequest === request) this.setData({ loading: false });
+    }
+  },
+
+  async loadStores(request) {
     const doctorId = readString((this.options && (this.options.doctorId || this.options.doctorid)) || '');
-    const todayString = getTodayString();
+    const todayString = getBeijingDate(Date.now());
 
     const [location, storesResponse, doctorsResponse] = await Promise.all([
       this.getLocation(),
@@ -136,6 +143,7 @@ Page({
     const selectedDoctor = doctors.find((doctor) => sameId(doctor.id, doctorId));
 
     let availableStoreIds = [];
+    let scheduleFailed = false;
 
     if (doctorId) {
       const doctorStoreIds = selectedDoctor && Array.isArray(selectedDoctor.storeIds) ? selectedDoctor.storeIds : [];
@@ -148,6 +156,7 @@ Page({
               availableStoreIds.push(readString(storeId));
             }
           } catch (error) {
+            scheduleFailed = true;
             console.error('[StoreSelect] Load schedules error:', error);
           }
         })
@@ -164,6 +173,7 @@ Page({
                 const dates = unwrapList(response);
                 return dates.some((date) => String(date).slice(0, 10) >= todayString);
               } catch (error) {
+                scheduleFailed = true;
                 console.error('[StoreSelect] Load store schedules error:', error);
                 return false;
               }
@@ -211,9 +221,11 @@ Page({
         return leftStore._distanceValue - rightStore._distanceValue;
       });
 
+    if (this.storeRequest !== request) return;
     this.setData({
       stores: normalizedStores,
       doctorId,
+      loadError: scheduleFailed ? '部分门店排班加载失败，请重试' : '',
     });
     this.hasLoaded = true;
   },

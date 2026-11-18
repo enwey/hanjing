@@ -1,0 +1,86 @@
+[
+  {
+    "id": "D01 门店名称接口失败不阻断已有医生列表",
+    "passed": false,
+    "observed": {
+      "doctors": 0,
+      "error": "医生列表加载失败，请稍后重试"
+    },
+    "error": "Expected values to be strictly equal:\n\n0 !== 1\n"
+  },
+  {
+    "id": "D02 医生详情部分门店失败时保留成功门店",
+    "passed": true,
+    "observed": {
+      "rows": 1,
+      "error": "部分门店排班加载失败，请重试",
+      "nav": [
+        "/pages/appointment/store-select?doctorId=d"
+      ]
+    }
+  },
+  {
+    "id": "D03 预约列表返回刷新失败时提示用户",
+    "passed": false,
+    "observed": {
+      "calls": 2,
+      "records": 1,
+      "error": "",
+      "toasts": []
+    },
+    "error": "刷新失败后继续显示旧记录且无提示"
+  },
+  {
+    "id": "D04 连续点击取消只建立一个确认操作 booking/index.js",
+    "passed": false,
+    "observed": {
+      "modals": 2,
+      "calls": 2,
+      "toasts": [
+        "已取消预约",
+        "已取消预约"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\n2 !== 1\n"
+  },
+  {
+    "id": "D04 连续点击取消只建立一个确认操作 detail.js",
+    "passed": false,
+    "observed": {
+      "modals": 2,
+      "calls": 2,
+      "toasts": [
+        "已取消",
+        "已取消"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\n2 !== 1\n"
+  },
+  {
+    "id": "D05 取消弹窗等待中退出后不发请求",
+    "passed": true,
+    "observed": {
+      "calls": 0
+    }
+  },
+  {
+    "id": "D06 评价写入成功但详情刷新超时，仍拦截再次提交",
+    "passed": false,
+    "observed": {
+      "calls": 2,
+      "error": "详情刷新超时",
+      "toasts": [
+        "评价已提交",
+        "评价已提交"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\n2 !== 1\n"
+  },
+  {
+    "id": "D07 评价刷新尚未完成时继续拦截点击",
+    "passed": true,
+    "observed": {
+      "calls": 1
+    }
+  }
+]

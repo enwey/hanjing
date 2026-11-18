@@ -1,0 +1,40 @@
+[
+  {
+    "name": "self-service footer: checked_in",
+    "passed": true,
+    "observed": {
+      "footer": false
+    }
+  },
+  {
+    "name": "self-service footer: pending",
+    "passed": true,
+    "observed": {
+      "footer": true
+    }
+  },
+  {
+    "name": "self-service footer: completed",
+    "passed": true,
+    "observed": {
+      "footer": false
+    }
+  },
+  {
+    "name": "cancel rejection retains actionable reason",
+    "passed": true,
+    "observed": {
+      "calls": 1,
+      "toasts": [
+        "预约状态已变更，请刷新后重试"
+      ]
+    }
+  },
+  {
+    "name": "cancel confirmation dismissed never calls API",
+    "passed": true,
+    "observed": {
+      "calls": 0
+    }
+  }
+]

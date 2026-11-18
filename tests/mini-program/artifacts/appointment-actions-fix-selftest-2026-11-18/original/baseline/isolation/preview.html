@@ -1,0 +1,207 @@
+<!doctype html><meta charset="utf-8"><style>.page {
+  min-height: 100vh;
+  background: #f9fafb;
+}
+
+.page-content {
+  padding: 16px 16px 100px;
+}
+
+.info-card {
+  margin-bottom: 12px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.info-title {
+  display: block;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 0.5px solid #f3f4f6;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.row-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.info-label {
+  width: 56px;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.info-value {
+  flex: 1;
+  font-size: 15px;
+  color: #1f2937;
+}
+
+.info-value--bold {
+  font-weight: 600;
+  color: #3b6bf5;
+}
+
+.info-value--price {
+  font-weight: 600;
+  color: #ef4444;
+}
+
+.member-add-btn {
+  margin-left: 10px;
+  padding: 4px 9px;
+  border-radius: 499.5px;
+  background: #eef4ff;
+  color: #2457e6;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.symptom-card {
+  margin-bottom: 12px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.symptom-title {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.symptom-textarea {
+  width: 100%;
+  height: 120px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 0.5px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+  font-size: 14px;
+  color: #374151;
+}
+
+.visit-notice-card {
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 0.5px solid #fde6b8;
+  border-radius: 12px;
+  background: #fffaf0;
+}
+
+.visit-notice-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.visit-notice-header-icon {
+  width: 18px;
+  margin-right: 6px;
+  color: #f59e0b;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.visit-notice-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #d97706;
+}
+
+.visit-notice-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 4px 0;
+}
+
+.visit-notice-index {
+  width: 16px;
+  margin-right: 4px;
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+.visit-notice-text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+.state-card {
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.state-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.state-description {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #6b7280;
+}
+
+.bottom-fixed-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  height: 70px;
+  padding: 0 20px env(safe-area-inset-bottom, 0);
+  background: #ffffff;
+  border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+  box-sizing: content-box;
+}
+
+.bar-primary-btn {
+  flex: 1;
+  height: 44px;
+  line-height: 44px;
+  border: none;
+  border-radius: 4999.5px;
+  background: linear-gradient(135deg, #3b6bf5 0%, #5a85f5 50%, #8eafff 100%);
+  box-shadow: 0 4px 14px rgba(59, 107, 245, 0.25);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.bar-primary-btn::after {
+  border: none;
+}
+
+.safe-bottom {
+  height: calc(env(safe-area-inset-bottom, 34px) + 20px);
+}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:#f9fafb;font-family:Arial,"Microsoft Yahei",sans-serif}section{width:390px;margin-bottom:24px}h2{font-size:15px;font-weight:500}.state-card{padding:24px;background:white;border-radius:16px}.state-title,.state-description{display:block;line-height:1.8}</style><section><h2>换号后等待新资料</h2><div class="state-card"><span class="state-description">正在加载预约信息...</span></div></section><section><h2>新资料加载失败</h2><div class="state-card"><span class="state-title">加载失败</span><span class="state-description">加载就诊人失败，请稍后重试</span></div></section><section><h2>恢复后只显示新账号就诊人</h2><div class="info-card"><span class="info-title">预约信息确认</span><div class="info-row"><span class="info-label">就诊人</span><span class="info-value">新账号就诊人 (本人)</span></div></div></section>

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "list/detail actions: pending",
+    "passed": true,
+    "observed": {
+      "listActions": true,
+      "detailActions": true,
+      "detailLabel": "已预约"
+    }
+  },
+  {
+    "name": "list/detail actions: confirmed",
+    "passed": true,
+    "observed": {
+      "listActions": true,
+      "detailActions": true,
+      "detailLabel": "候诊中"
+    }
+  },
+  {
+    "name": "list/detail actions: refunded",
+    "passed": true,
+    "observed": {
+      "listActions": false,
+      "detailActions": false,
+      "detailLabel": "已退款"
+    }
+  },
+  {
+    "name": "list/detail actions: cancelled",
+    "passed": true,
+    "observed": {
+      "listActions": false,
+      "detailActions": false,
+      "detailLabel": "已取消"
+    }
+  },
+  {
+    "name": "list/detail actions: pending_payment",
+    "passed": true,
+    "observed": {
+      "listActions": true,
+      "detailActions": true,
+      "detailLabel": "待支付"
+    }
+  },
+  {
+    "name": "confirmed inside the cancellation cutoff hides list actions",
+    "passed": true,
+    "observed": {}
+  }
+]

@@ -1,0 +1,189 @@
+<!doctype html><meta charset="utf-8"><style>.profile-page {
+  min-height: 100vh;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content {
+  flex: 1;
+  padding: 16px 16px 0;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.user-avatar {
+  width: 56px;
+  height: 56px;
+  margin-right: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(135deg, #3b6bf5, #8eafff);
+}
+
+.user-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+.user-avatar-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+.user-info {
+  flex: 1;
+}
+
+.user-name {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.user-level-tag {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #fff9e6;
+  font-size: 12px;
+  font-weight: 500;
+  color: #f5a623;
+}
+
+.user-arrow {
+  font-size: 24px;
+  color: #d1d5db;
+}
+
+.profile-setup-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff7e8 0%, #fffaf2 100%);
+  border: 0.5px solid rgba(243, 155, 26, 0.18);
+}
+
+.profile-setup-card__body {
+  flex: 1;
+}
+
+.profile-setup-card__title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7c4a03;
+}
+
+.profile-setup-card__desc {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #9a6a27;
+}
+
+.profile-setup-card__action {
+  padding: 7px 12px;
+  border-radius: 4999.5px;
+  background: #f39b1a;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.menu-group {
+  margin-bottom: 8px;
+}
+
+.menu-group-title {
+  display: block;
+  padding: 8px 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.menu-list {
+  overflow: hidden;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+}
+
+.menu-item:not(:last-child) {
+  border-bottom: 0.5px solid #f3f4f6;
+}
+
+.menu-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.menu-icon--distribution {
+  width: 21px;
+  height: 21px;
+}
+
+.menu-label {
+  flex: 1;
+  font-size: 15px;
+  color: #374151;
+}
+
+.menu-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-right: 8px;
+  border-radius: 4999.5px;
+  background: #ef4444;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.menu-arrow {
+  font-size: 20px;
+  color: #d1d5db;
+}
+
+.safe-bottom {
+  height: calc(env(safe-area-inset-bottom, 34px) + 20px);
+}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:#f9fafb;font-family:Arial,"Microsoft Yahei",sans-serif}section{width:390px;margin-bottom:24px}h2{font-size:15px;font-weight:500}.user-card{margin-bottom:8px}</style><section><h2>切换账号后等待资料</h2><div class="user-card"><div class="user-info"><span class="user-name">加载中...</span><span class="user-level-tag">会员信息加载中</span></div></div><div class="menu-list"><div class="menu-item"><img class="menu-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4NCiAgPHBhdGggZD0iTTIxIDExLjVhOC4zOCA4LjM4IDAgMCAxLS45IDMuOCA4LjUgOC41IDAgMCAxLTcuNiA0LjcgOC4zOCA4LjM4IDAgMCAxLTMuOC0uOUwzIDIxbDEuOS01LjdhOC4zOCA4LjM4IDAgMCAxLS45LTMuOCA4LjUgOC41IDAgMCAxIDQuNy03LjYgOC4zOCA4LjM4IDAgMCAxIDMuOC0uOWguNWE4LjQ4IDguNDggMCAwIDEgOCA4di41eiI+PC9wYXRoPg0KPC9zdmc+DQo="><span class="menu-label">在线客服</span><span class="menu-arrow">›</span></div><div class="menu-item"><img class="menu-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+DQogIDxwYXRoIGQ9Ik0xOCA4QTYgNiAwIDAgMCA2IDhjMCA3LTMgOS0zIDloMThzLTMtMi0zLTkiPjwvcGF0aD4NCiAgPHBhdGggZD0iTTEzLjczIDIxYTIgMiAwIDAgMS0zLjQ2IDAiPjwvcGF0aD4NCjwvc3ZnPg0K"><span class="menu-label">消息通知</span><span class="menu-arrow">›</span></div></div></section><section><h2>新账号资料加载失败</h2><div class="user-card"><div class="user-info"><span class="user-name">微信用户</span><span class="user-level-tag">会员信息加载失败</span></div></div><div class="menu-list"><div class="menu-item"><img class="menu-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4NCiAgPHBhdGggZD0iTTIxIDExLjVhOC4zOCA4LjM4IDAgMCAxLS45IDMuOCA4LjUgOC41IDAgMCAxLTcuNiA0LjcgOC4zOCA4LjM4IDAgMCAxLTMuOC0uOUwzIDIxbDEuOS01LjdhOC4zOCA4LjM4IDAgMCAxLS45LTMuOCA4LjUgOC41IDAgMCAxIDQuNy03LjYgOC4zOCA4LjM4IDAgMCAxIDMuOC0uOWguNWE4LjQ4IDguNDggMCAwIDEgOCA4di41eiI+PC9wYXRoPg0KPC9zdmc+DQo="><span class="menu-label">在线客服</span><span class="menu-arrow">›</span></div><div class="menu-item"><img class="menu-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+DQogIDxwYXRoIGQ9Ik0xOCA4QTYgNiAwIDAgMCA2IDhjMCA3LTMgOS0zIDloMThzLTMtMi0zLTkiPjwvcGF0aD4NCiAgPHBhdGggZD0iTTEzLjczIDIxYTIgMiAwIDAgMS0zLjQ2IDAiPjwvcGF0aD4NCjwvc3ZnPg0K"><span class="menu-label">消息通知</span><span class="menu-arrow">›</span></div></div></section><section><h2>恢复网络后显示新账号数据</h2><div class="user-card"><div class="user-info"><span class="user-name">账号B</span><span class="user-level-tag">normal</span></div></div><div class="menu-list"><div class="menu-item"><img class="menu-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4NCiAgPHBhdGggZD0iTTIxIDExLjVhOC4zOCA4LjM4IDAgMCAxLS45IDMuOCA4LjUgOC41IDAgMCAxLTcuNiA0LjcgOC4zOCA4LjM4IDAgMCAxLTMuOC0uOUwzIDIxbDEuOS01LjdhOC4zOCA4LjM4IDAgMCAxLS45LTMuOCA4LjUgOC41IDAgMCAxIDQuNy03LjYgOC4zOCA4LjM4IDAgMCAxIDMuOC0uOWguNWE4LjQ4IDguNDggMCAwIDEgOCA4di41eiI+PC9wYXRoPg0KPC9zdmc+DQo="><span class="menu-label">在线客服</span><span class="menu-badge">1</span><span class="menu-arrow">›</span></div><div class="menu-item"><img class="menu-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+DQogIDxwYXRoIGQ9Ik0xOCA4QTYgNiAwIDAgMCA2IDhjMCA3LTMgOS0zIDloMThzLTMtMi0zLTkiPjwvcGF0aD4NCiAgPHBhdGggZD0iTTEzLjczIDIxYTIgMiAwIDAgMS0zLjQ2IDAiPjwvcGF0aD4NCjwvc3ZnPg0K"><span class="menu-label">消息通知</span><span class="menu-badge">2</span><span class="menu-arrow">›</span></div></div></section>

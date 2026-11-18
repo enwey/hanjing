@@ -1,0 +1,153 @@
+{
+  "total": 27,
+  "passed": 16,
+  "failed": 11,
+  "results": [
+    {
+      "id": "SCAN-01",
+      "name": "后台 ref 冷启动和热启动均记录来源，不发送普通绑定",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-02",
+      "name": "页面 onLoad 能识别独立透传的扫码参数",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-03",
+      "name": "兼容后台码格式只进入预约来源：BPaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\n1 !== 0\n"
+    },
+    {
+      "id": "SCAN-04",
+      "name": "兼容后台码格式只进入预约来源：code=BPaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\n1 !== 0\n"
+    },
+    {
+      "id": "SCAN-05",
+      "name": "兼容后台码格式只进入预约来源：inviteCode=BPaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\n1 !== 0\n"
+    },
+    {
+      "id": "SCAN-06",
+      "name": "兼容后台码格式只进入预约来源：query.invite_code",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n\n1 !== 0\n"
+    },
+    {
+      "id": "SCAN-07",
+      "name": "无法解码或缺少邀请码不覆盖已保存来源",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-08",
+      "name": "无效字段或码值不能覆盖来源：ref=beforeBPbbbbbbbbbbbbbbbbbbbbbbbbafter",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'BPbbbbbbbbbbbbbbbbbbbbbbbb'\n- 'BPaaaaaaaaaaaaaaaaaaaaaaaa'\n     ^\n"
+    },
+    {
+      "id": "SCAN-09",
+      "name": "无效字段或码值不能覆盖来源：ref=BPbbbbbbbbbbbbbbbbbbbbbbbb9",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'BPbbbbbbbbbbbbbbbbbbbbbbbb'\n- 'BPaaaaaaaaaaaaaaaaaaaaaaaa'\n     ^\n"
+    },
+    {
+      "id": "SCAN-10",
+      "name": "无效字段或码值不能覆盖来源：unrelated=BPbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'BPbbbbbbbbbbbbbbbbbbbbbbbb'\n- 'BPaaaaaaaaaaaaaaaaaaaaaaaa'\n     ^\n"
+    },
+    {
+      "id": "SCAN-11",
+      "name": "二次编码、七天到期毫秒边界及重扫续期",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-12",
+      "name": "未登录扫码，登录后预约携带来源，网络失败可重试",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-13",
+      "name": "过期或停用响应清空同一个来源，下一次预约不再携带",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-14",
+      "name": "旧码预约失败迟到时保留期间扫入的另一枚新码",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-15",
+      "name": "已登录账号扫码后退出，另一账号未扫码的预约不应携带其来源",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'BPaaaaaaaaaaaaaaaaaaaaaaaa'\n- undefined\n"
+    },
+    {
+      "id": "SCAN-16",
+      "name": "普通邀请码未登录暂存，登录/onShow 并发仅发一次",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-17",
+      "name": "普通邀请码网络失败保留，回前台后可重试，自邀结束后清除",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-18",
+      "name": "普通邀请码失败后换号，另一账号不自动发出旧邀请码绑定",
+      "status": "FAIL",
+      "actual": "账号 2 发出的旧码：MINI123\n\n1 !== 0\n"
+    },
+    {
+      "id": "SCAN-19",
+      "name": "两种类型同时保留时，后台码不占用已有普通邀请码",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-20",
+      "name": "普通邀请码已经绑定时清除缓存",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-21",
+      "name": "普通邀请码已停用、循环、无效时均清理缓存",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-22",
+      "name": "备用写法的后台码不应覆盖等待登录的普通邀请码",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'BPaaaaaaaaaaaaaaaaaaaaaaaa'\n- 'MINI123'\n"
+    },
+    {
+      "id": "SCAN-23",
+      "name": "旧普通绑定的迟到响应不清除新码",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-24",
+      "name": "无推广码的旧预约响应不得清除后扫入的新码",
+      "status": "FAIL",
+      "actual": "Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- 'BPbbbbbbbbbbbbbbbbbbbbbbbb'\n"
+    },
+    {
+      "id": "SCAN-25",
+      "name": "普通绑定旧账号迟到响应不删除新账号正在使用的同一码",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-26",
+      "name": "畸形 scene 仍可回退到独立普通邀请码",
+      "status": "PASS"
+    },
+    {
+      "id": "SCAN-27",
+      "name": "同一码再次扫码确实以最新扫码时间计算七天",
+      "status": "PASS"
+    }
+  ]
+}

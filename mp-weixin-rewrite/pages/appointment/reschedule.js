@@ -1,4 +1,8 @@
 const api = require('../../api/index');
+const sessionStore = require('../../stores/session-store');
+const { parseAppointmentTimestamp, RESCHEDULE_LIMIT_HOURS } = require('../../common/utils/appointment-time');
+
+const RESCHEDULABLE_STATUSES = ['pending_payment', 'pending', 'confirmed'];
 
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -55,8 +59,10 @@ Page({
     selectedTimeSlotId: '',
     selectedTimeSlotLabel: '',
     submitting: false,
+    rescheduleCompleted: false,
     loading: true,
     loadError: '',
+    canRetryLoad: false,
   },
 
   onLoad(options) {
@@ -66,37 +72,78 @@ Page({
   },
 
   async onShow() {
-    if (!this.hasLoaded) {
+    if (!this.hasLoaded || (this.data.rescheduleCompleted && this.ownerGeneration === sessionStore.getLoginGeneration())) {
       return;
     }
     await this.loadPage({ silent: true });
   },
 
+  onUnload() {
+    this._unloaded = true;
+    this.pageRequestId = (this.pageRequestId || 0) + 1;
+    this.schedulesRequestId = (this.schedulesRequestId || 0) + 1;
+    this.slotsRequestId = (this.slotsRequestId || 0) + 1;
+    if (this.returnTimer) clearTimeout(this.returnTimer);
+  },
+
+  clearScheduleSelection() {
+    this.setData({ schedules: [], timeSlots: [], selectedScheduleId: '',
+      selectedTimeSlotId: '', selectedTimeSlotLabel: '' });
+  },
+
+  retryLoad() {
+    if (this.data.canRetryLoad && !this.data.loading) return this.loadPage({ silent: true });
+  },
+
   async loadPage(options = {}) {
+    if (this._unloaded) return;
+    const generation = sessionStore.getLoginGeneration();
+    if (this.ownerGeneration !== generation) {
+      this.ownerGeneration = generation;
+      this.rescheduleFlight = null;
+      this.clearScheduleSelection();
+      this.setData({ selectedDate: '', scheduleDates: [], submitting: false, rescheduleCompleted: false });
+    }
+    if (this.data.submitting || this.data.rescheduleCompleted) return;
     const requestId = this.pageRequestId = (this.pageRequestId || 0) + 1;
+    const isCurrent = () => !this._unloaded && requestId === this.pageRequestId && generation === sessionStore.getLoginGeneration();
+    this.schedulesRequestId = (this.schedulesRequestId || 0) + 1;
+    this.slotsRequestId = (this.slotsRequestId || 0) + 1;
     const silent = Boolean(options.silent);
     const appointmentId = String((this.options && this.options.id) || '');
+    this.refreshingAppointment = true;
     this.setData({
-      loading: silent ? this.data.loading : true,
+      loading: true,
       loadError: '',
+      canRetryLoad: false,
       appointmentId,
     });
     try {
       const detailResponse = await api.getAppointmentDetail(appointmentId);
-      if (requestId !== this.pageRequestId) return;
+      if (!isCurrent()) return;
       const detail = unwrapObject(detailResponse);
       const appointment = detail.appointment || {};
       const doctorId = String(appointment.doctorId || (this.options && this.options.doctorId) || '');
       const storeId = String(appointment.storeId || (this.options && this.options.storeId) || '');
       this.originalDate = appointment.appointmentDate || '';
       this.originalTime = appointment.appointmentTime || '';
+      this.originalTimestamp = parseAppointmentTimestamp(this.originalDate, this.originalTime);
+      if (appointment.status && !RESCHEDULABLE_STATUSES.includes(appointment.status)) {
+        this.clearScheduleSelection();
+        this.setData({ loading: false, selectedDate: '', scheduleDates: [],
+          loadError: '当前预约状态不支持改约' });
+        this.hasLoaded = true;
+        return;
+      }
 
       const scheduleDatesResponse = await api.getScheduleDates({ doctorId, storeId });
-      if (requestId !== this.pageRequestId) return;
+      if (!isCurrent()) return;
       const scheduleDates = unwrapList(scheduleDatesResponse);
-      const selectedDate = resolveDefaultSelectedDate(scheduleDates, this.originalDate);
+      const selectedDate = silent && scheduleDates.includes(this.data.selectedDate)
+        ? this.data.selectedDate
+        : resolveDefaultSelectedDate(scheduleDates, this.originalDate);
+      if (selectedDate !== this.data.selectedDate) this.clearScheduleSelection();
       this.setData({
-        loading: silent ? this.data.loading : this.data.loading,
         appointmentId,
         doctorId,
         storeId,
@@ -106,25 +153,34 @@ Page({
       if (selectedDate) {
         await this.loadSchedulesForDate(selectedDate, { silent });
       } else {
+        this.clearScheduleSelection();
         this.setData({ loading: false });
       }
+      if (!isCurrent()) return;
       this.hasLoaded = true;
     } catch (error) {
-      if (requestId !== this.pageRequestId) return;
+      if (!isCurrent()) return;
       this.setData({
-        loading: silent ? this.data.loading : false,
+        loading: false,
+        canRetryLoad: true,
         loadError: (error && error.message) || '加载改约信息失败',
       });
+    } finally {
+      if (isCurrent()) this.refreshingAppointment = false;
     }
   },
 
   async loadSchedulesForDate(selectedDate, options = {}) {
+    if (this._unloaded || this.data.submitting || this.data.rescheduleCompleted) return;
     const requestId = this.schedulesRequestId = (this.schedulesRequestId || 0) + 1;
+    const generation = sessionStore.getLoginGeneration();
+    const isCurrent = () => !this._unloaded && requestId === this.schedulesRequestId && generation === sessionStore.getLoginGeneration();
     this.slotsRequestId = (this.slotsRequestId || 0) + 1;
     const silent = Boolean(options.silent);
     this.setData({
-      loading: silent ? this.data.loading : true,
+      loading: true,
       loadError: '',
+      canRetryLoad: false,
       selectedDate,
       schedules: silent ? this.data.schedules : [],
       timeSlots: silent ? this.data.timeSlots : [],
@@ -139,7 +195,7 @@ Page({
         startDate: selectedDate,
         endDate: selectedDate,
       });
-      if (requestId !== this.schedulesRequestId) return;
+      if (!isCurrent()) return;
       const schedules = unwrapList(response).map(normalizeSchedule);
       this.setData({ schedules });
       const nextSelectedSchedule =
@@ -148,18 +204,22 @@ Page({
       if (nextSelectedSchedule) {
         await this.selectSchedule(nextSelectedSchedule.id, { silent });
       } else {
+        this.clearScheduleSelection();
         this.setData({ loading: false });
       }
     } catch (error) {
-      if (requestId !== this.schedulesRequestId) return;
+      if (!isCurrent()) return;
+      this.clearScheduleSelection();
       this.setData({
         loading: false,
+        canRetryLoad: true,
         loadError: (error && error.message) || '加载排班失败',
       });
     }
   },
 
   async selectDate(event) {
+    if (this.refreshingAppointment || this.data.submitting || this.data.rescheduleCompleted) return;
     const selectedDate = String((event && event.detail) || event.currentTarget.dataset.date || '');
     if (!selectedDate || selectedDate === this.data.selectedDate) return;
     this.pageRequestId = (this.pageRequestId || 0) + 1;
@@ -167,19 +227,23 @@ Page({
   },
 
   async selectSchedule(scheduleId, options = {}) {
+    if (this._unloaded || this.data.submitting || this.data.rescheduleCompleted) return;
     const silent = Boolean(options.silent);
     const selectedSchedule = this.data.schedules.find((item) => item.id === scheduleId);
     if (!selectedSchedule || selectedSchedule.disabled) return;
     const requestId = this.slotsRequestId = (this.slotsRequestId || 0) + 1;
+    const generation = sessionStore.getLoginGeneration();
+    const isCurrent = () => !this._unloaded && requestId === this.slotsRequestId && generation === sessionStore.getLoginGeneration();
     this.setData({
       selectedScheduleId: scheduleId,
+      loading: true,
       timeSlots: silent ? this.data.timeSlots : [],
       selectedTimeSlotId: silent ? this.data.selectedTimeSlotId : '',
       selectedTimeSlotLabel: silent ? this.data.selectedTimeSlotLabel : '',
     });
     try {
       const response = await api.getTimeSlots(scheduleId);
-      if (requestId !== this.slotsRequestId) return;
+      if (!isCurrent()) return;
       const nextTimeSlots = unwrapList(response).map(normalizeTimeSlot);
       const keepSelected = nextTimeSlots.find((item) => item.id === this.data.selectedTimeSlotId && item.selectable);
       this.setData({
@@ -189,8 +253,9 @@ Page({
         selectedTimeSlotLabel: keepSelected ? keepSelected.label : '',
       });
     } catch (error) {
-      if (requestId !== this.slotsRequestId) return;
-      this.setData({ loading: false });
+      if (!isCurrent()) return;
+      this.setData({ loading: false, canRetryLoad: true, timeSlots: [], selectedTimeSlotId: '', selectedTimeSlotLabel: '',
+        loadError: (error && error.message) || '加载时段失败' });
       wx.showToast({ title: (error && error.message) || '加载时段失败', icon: 'none' });
     }
   },
@@ -202,7 +267,7 @@ Page({
   selectTimeSlot(event) {
     const timeSlotId = String(event.currentTarget.dataset.timeSlotId || '');
     const timeSlot = this.data.timeSlots.find((item) => item.id === timeSlotId);
-    if (!timeSlot || !timeSlot.selectable || this.data.submitting) return;
+    if (!timeSlot || !timeSlot.selectable || this.data.submitting || this.data.rescheduleCompleted || this.data.loading) return;
     if (
       this.data.selectedDate === this.originalDate &&
       String(timeSlot.label || '').replace(/\s+/g, '') === String(this.originalTime || '').replace(/\s+/g, '')
@@ -217,11 +282,27 @@ Page({
   },
 
   async submitReschedule() {
+    if (this._unloaded || this.data.submitting || this.data.rescheduleCompleted) return;
+    const generation = sessionStore.getLoginGeneration();
+    if ((this.ownerGeneration !== undefined && this.ownerGeneration !== generation) || !sessionStore.isLoggedIn()) return;
     const selectedSchedule = this.data.schedules.find((item) => item.id === this.data.selectedScheduleId);
-    if (!selectedSchedule || !this.data.selectedTimeSlotLabel || this.data.submitting) {
+    const selectedSlot = this.data.timeSlots.find((item) => item.id === this.data.selectedTimeSlotId && item.selectable && item.label === this.data.selectedTimeSlotLabel);
+    if (this.data.loading || this.data.loadError || !this.data.selectedDate || !this.data.scheduleDates.includes(this.data.selectedDate) ||
+        !selectedSchedule || selectedSchedule.disabled || !selectedSlot) {
       wx.showToast({ title: '请选择时段', icon: 'none' });
       return;
     }
+    if (this.originalTimestamp != null && this.originalTimestamp - Date.now() < RESCHEDULE_LIMIT_HOURS * 60 * 60 * 1000) {
+      wx.showToast({ title: '距离预约时间已不足2小时，不支持改约', icon: 'none' });
+      return;
+    }
+    const flight = {};
+    this.rescheduleFlight = flight;
+    const isCurrent = () => !this._unloaded && this.rescheduleFlight === flight &&
+      generation === sessionStore.getLoginGeneration() && sessionStore.isLoggedIn();
+    const appointmentId = this.data.appointmentId;
+    const appointmentDate = this.data.selectedDate;
+    const appointmentTime = selectedSlot.label;
     if (
       this.originalDate &&
       this.originalTime &&
@@ -233,19 +314,23 @@ Page({
     }
     this.setData({ submitting: true });
     try {
-      await api.rescheduleAppointment(this.data.appointmentId, {
+      await api.rescheduleAppointment(appointmentId, {
         scheduleId: selectedSchedule.id,
-        appointmentDate: this.data.selectedDate,
-        appointmentTime: this.data.selectedTimeSlotLabel,
+        appointmentDate,
+        appointmentTime,
       });
+      if (!isCurrent()) return;
+      this.setData({ rescheduleCompleted: true });
       wx.showToast({ title: '改约成功', icon: 'success' });
-      setTimeout(() => {
-        wx.navigateBack({ delta: 2 });
+      this.returnTimer = setTimeout(() => {
+        if (!isCurrent() || !this.data.rescheduleCompleted) return;
+        wx.navigateBack({ delta: 1 });
       }, 1500);
     } catch (error) {
+      if (!isCurrent()) return;
       wx.showToast({ title: (error && error.message) || '改约失败', icon: 'none' });
     } finally {
-      this.setData({ submitting: false });
+      if (isCurrent() && !this.data.rescheduleCompleted) this.setData({ submitting: false });
     }
   },
 });

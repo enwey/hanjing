@@ -1,0 +1,60 @@
+{
+  "cases": [
+    {
+      "capacity": 2,
+      "afterLoss": [
+        {
+          "id": 1,
+          "appointment_no": "AP202611200001",
+          "status": "pending"
+        }
+      ],
+      "retry": {
+        "status": 200,
+        "code": 0,
+        "message": "success"
+      },
+      "afterRetry": [
+        {
+          "id": 1,
+          "appointment_no": "AP202611200001",
+          "status": "pending"
+        },
+        {
+          "id": 2,
+          "appointment_no": "AP202611200002",
+          "status": "pending"
+        }
+      ],
+      "duplicate": true
+    },
+    {
+      "capacity": 1,
+      "afterLoss": [
+        {
+          "id": 3,
+          "appointment_no": "AP202611200003",
+          "status": "pending"
+        }
+      ],
+      "retry": {
+        "status": 400,
+        "code": 400,
+        "message": "该时间段预约人数已满，请选择其他时间段"
+      },
+      "afterRetry": [
+        {
+          "id": 3,
+          "appointment_no": "AP202611200003",
+          "status": "pending"
+        }
+      ],
+      "duplicate": false
+    }
+  ],
+  "droppedSuccess": {
+    "id": 3,
+    "number": "AP202611200003"
+  },
+  "cleaned": true
+}

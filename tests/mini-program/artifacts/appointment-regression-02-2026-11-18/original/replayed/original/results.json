@@ -1,0 +1,74 @@
+{
+  "method": "actual client modules; simulated WeChat/HTTP and controlled response order; no business database writes",
+  "sourceBefore": {
+    "pages/appointment/booking/index.js": "b8ce3ccebd8f0454eb202583c142b412cc8f12b0dee9224b24e3ab05dfdbf108",
+    "pages/appointment/confirm.js": "560a9742a07126c58f79b473b64a2fabf7d13d83c76f7fa1775c66cf6fa0f7c0",
+    "pages/appointment/detail.js": "e42230e3d8e94d6973596305db7fcba4c87f9c96e63bab85f2b7b0acce5b49b0",
+    "pages/appointment/reschedule.js": "54a6489666028c9b1f4657e613b4afdb6fb14e48a128a72ba2c4875e92cbae3b",
+    "pages/appointment/time-select.js": "c1d52b5b03abc86443020436910cafdcda171dd1d894af2863d5c44bde889254",
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21"
+  },
+  "sourceAfter": {
+    "pages/appointment/booking/index.js": "b8ce3ccebd8f0454eb202583c142b412cc8f12b0dee9224b24e3ab05dfdbf108",
+    "pages/appointment/confirm.js": "560a9742a07126c58f79b473b64a2fabf7d13d83c76f7fa1775c66cf6fa0f7c0",
+    "pages/appointment/detail.js": "e42230e3d8e94d6973596305db7fcba4c87f9c96e63bab85f2b7b0acce5b49b0",
+    "pages/appointment/reschedule.js": "54a6489666028c9b1f4657e613b4afdb6fb14e48a128a72ba2c4875e92cbae3b",
+    "pages/appointment/time-select.js": "c1d52b5b03abc86443020436910cafdcda171dd1d894af2863d5c44bde889254",
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21"
+  },
+  "sourceStable": true,
+  "results": [
+    {
+      "id": "APT-AUDIT-01 booking list finishes after automatic session renewal",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-02 confirmation finishes after automatic session renewal",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-03 selected family survives same-account automatic renewal",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-04 delayed detail response cannot repopulate after logout",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-05 older detail load cannot overwrite newer appointment status",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-06 completed create response must not clear replacement-account draft",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-07 normal logged-in booking list loads",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-08 unchanged session retains family selection",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-09 confirmed creation clears own draft and navigates once",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-10 preparing store cannot proceed to booking",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-11 full slot cannot create an appointment draft",
+      "result": "passed"
+    },
+    {
+      "id": "APT-AUDIT-12 booking payment success confirms and reloads records",
+      "result": "passed"
+    }
+  ],
+  "passed": 12,
+  "failed": 0
+}

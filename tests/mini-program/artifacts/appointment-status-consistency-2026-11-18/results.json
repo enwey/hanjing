@@ -1,0 +1,49 @@
+[
+  {
+    "name": "list/detail actions: pending",
+    "passed": true,
+    "observed": {
+      "listActions": true,
+      "detailActions": true,
+      "detailLabel": "已预约"
+    }
+  },
+  {
+    "name": "list/detail actions: confirmed",
+    "passed": false,
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   false,\n    true,\n-   true\n  ]\n",
+    "observed": {
+      "listActions": false,
+      "detailActions": true,
+      "detailLabel": "候诊中"
+    }
+  },
+  {
+    "name": "list/detail actions: refunded",
+    "passed": false,
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    false,\n+   true\n-   false\n  ]\n",
+    "observed": {
+      "listActions": false,
+      "detailActions": true,
+      "detailLabel": "预约详情"
+    }
+  },
+  {
+    "name": "list/detail actions: cancelled",
+    "passed": true,
+    "observed": {
+      "listActions": false,
+      "detailActions": false,
+      "detailLabel": "已取消"
+    }
+  },
+  {
+    "name": "list/detail actions: pending_payment",
+    "passed": true,
+    "observed": {
+      "listActions": true,
+      "detailActions": true,
+      "detailLabel": "待支付"
+    }
+  }
+]

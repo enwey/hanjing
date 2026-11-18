@@ -1,0 +1,202 @@
+{
+  "phase": "development self-test; not independent regression",
+  "originalPassed": 12,
+  "originalFailed": 0,
+  "sourceStable": true,
+  "observations": [
+    {
+      "name": "FIX-01 same-session renewal during create still completes",
+      "result": "passed"
+    },
+    {
+      "name": "FIX-02 old payment dialog cannot start payment or cancel for replacement account",
+      "result": "passed"
+    },
+    {
+      "name": "FIX-03 unloaded confirmation ignores completed create result",
+      "result": "passed"
+    },
+    {
+      "name": "FIX-04 same-token new login rejects previous detail response",
+      "result": "passed"
+    },
+    {
+      "name": "FIX-05 newly added family selection survives renewal",
+      "result": "passed"
+    },
+    {
+      "name": "FIX-06 replacement session has no previously loaded detail visible",
+      "result": "passed"
+    },
+    {
+      "name": "FIX-07 logout during refresh hides previously displayed detail",
+      "result": "passed"
+    }
+  ],
+  "previews": [
+    {
+      "title": "续期后保留家人选择",
+      "data": {
+        "loading": false,
+        "hasLoaded": true,
+        "loadError": "",
+        "draft": {
+          "doctorId": "1",
+          "storeId": "1",
+          "scheduleId": "1",
+          "appointmentDate": "2099-01-01",
+          "timeSlot": {
+            "label": "09:00-09:30"
+          }
+        },
+        "storeName": "门店",
+        "doctorName": "医生",
+        "consultFeeAmount": 0,
+        "consultFeeLabel": "¥0.00",
+        "showConsultFee": false,
+        "requireDeposit": false,
+        "depositAmountYuan": "¥0.00",
+        "cancelLimitText": "就诊前2小时",
+        "subscribeTemplateIds": [],
+        "assessmentLabel": "",
+        "buttonText": "确认预约",
+        "memberOptions": [
+          "本人 (本人)",
+          "家人 (父母)"
+        ],
+        "memberIndex": 1,
+        "memberList": [
+          {
+            "id": "self",
+            "name": "本人",
+            "relation": "self"
+          },
+          {
+            "id": "family",
+            "name": "家人",
+            "relation": "parent"
+          }
+        ],
+        "selectedMemberName": "家人 (父母)",
+        "symptomDesc": "",
+        "isSubmitting": false
+      }
+    },
+    {
+      "title": "较新详情状态保持已取消",
+      "data": {
+        "appointmentLoaded": true,
+        "loadError": "",
+        "appointmentId": "own",
+        "doctorId": "",
+        "storeId": "",
+        "statusKey": "cancelled",
+        "statusLabel": "已取消",
+        "appointmentNo": "",
+        "doctorAvatar": "医",
+        "doctorAvatarUrl": "",
+        "doctorAvatarLoaded": false,
+        "doctorName": "",
+        "doctorTitle": "",
+        "doctorDept": "",
+        "doctorExpertise": [],
+        "appointmentDate": "",
+        "appointmentTime": "",
+        "patientName": "当前就诊人",
+        "storeName": "",
+        "storeAddress": "",
+        "storeCoverUrl": "",
+        "storeCoverLoaded": false,
+        "appointmentTypeLabel": "门诊预约",
+        "symptomDesc": "",
+        "cancelReason": "",
+        "requireDeposit": false,
+        "depositAmountLabel": "",
+        "consultFeeLabel": "",
+        "canCancel": false,
+        "canPay": false,
+        "canCancelOrReschedule": false,
+        "showLimitNotice": false,
+        "showRescheduleCancelFooter": false,
+        "showRebookFooter": true,
+        "cancelLimitText": "就诊前2小时",
+        "latitude": "",
+        "longitude": "",
+        "assessmentInfo": null,
+        "preExam": null,
+        "hasPreExam": false,
+        "evaluation": null,
+        "evalRating": 5,
+        "evalContent": "",
+        "ratingStars": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "medicalRecord": null,
+        "treatmentRecord": null,
+        "appointmentCharge": null
+      }
+    },
+    {
+      "title": "退出后隐藏预约详情",
+      "data": {
+        "appointmentLoaded": false,
+        "loadError": "请先登录后查看预约详情",
+        "appointmentId": "own",
+        "doctorId": "",
+        "storeId": "",
+        "statusKey": "cancelled",
+        "statusLabel": "已取消",
+        "appointmentNo": "",
+        "doctorAvatar": "医",
+        "doctorAvatarUrl": "",
+        "doctorAvatarLoaded": false,
+        "doctorName": "",
+        "doctorTitle": "",
+        "doctorDept": "",
+        "doctorExpertise": [],
+        "appointmentDate": "",
+        "appointmentTime": "",
+        "patientName": "",
+        "storeName": "",
+        "storeAddress": "",
+        "storeCoverUrl": "",
+        "storeCoverLoaded": false,
+        "appointmentTypeLabel": "门诊预约",
+        "symptomDesc": "",
+        "cancelReason": "",
+        "requireDeposit": false,
+        "depositAmountLabel": "",
+        "consultFeeLabel": "",
+        "canCancel": false,
+        "canPay": false,
+        "canCancelOrReschedule": false,
+        "showLimitNotice": false,
+        "showRescheduleCancelFooter": false,
+        "showRebookFooter": true,
+        "cancelLimitText": "就诊前2小时",
+        "latitude": "",
+        "longitude": "",
+        "assessmentInfo": null,
+        "preExam": null,
+        "hasPreExam": false,
+        "evaluation": null,
+        "evalRating": 5,
+        "evalContent": "",
+        "ratingStars": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "medicalRecord": null,
+        "treatmentRecord": null,
+        "appointmentCharge": null
+      }
+    }
+  ]
+}

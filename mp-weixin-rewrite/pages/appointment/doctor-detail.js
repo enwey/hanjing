@@ -2,6 +2,7 @@ const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const { normalizeImageUrl } = require('../../common/utils/image-url');
 const sessionStore = require('../../stores/session-store');
+const { getBeijingDate } = require('../../common/utils/appointment-time');
 
 function unwrapList(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -21,22 +22,13 @@ function readString(value) {
   return value === null || value === undefined ? '' : String(value);
 }
 
-function getDateText(offsetDays) {
-  const date = new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000);
-  return (
-    date.getFullYear() +
-    '-' +
-    String(date.getMonth() + 1).padStart(2, '0') +
-    '-' +
-    String(date.getDate()).padStart(2, '0')
-  );
-}
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-function buildScheduleRows(schedules) {
+function buildScheduleRows(schedules, now) {
   const rows = [];
   const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  const todayText = getDateText(0);
-  const tomorrowText = getDateText(1);
+  const todayText = getBeijingDate(now);
+  const tomorrowText = getBeijingDate(now + DAY_MS);
 
   schedules
     .slice()
@@ -74,31 +66,38 @@ function buildScheduleRows(schedules) {
   return rows.slice(0, 4);
 }
 
-async function loadSchedulesByStoreIds(doctorId, storeIds) {
+async function loadSchedulesByStoreIds(doctorId, storeIds, now) {
   const normalizedStoreIds = Array.isArray(storeIds)
     ? storeIds.map((item) => readString(item)).filter(Boolean)
     : [];
 
   if (!doctorId || !normalizedStoreIds.length) {
-    return [];
+    return { schedules: [], loadError: '' };
   }
 
-  const responses = await Promise.all(
+  const responses = await Promise.allSettled(
     normalizedStoreIds.map((currentStoreId) =>
       api.getSchedules({
         doctorId,
         storeId: currentStoreId,
-        startDate: getDateText(0),
-        endDate: getDateText(7),
-      }).catch(() => [])
+        startDate: getBeijingDate(now),
+        endDate: getBeijingDate(now + 7 * DAY_MS),
+      })
     )
   );
 
-  return responses.reduce((result, response) => result.concat(unwrapList(response)), []);
+  const successful = responses.filter((response) => response.status === 'fulfilled');
+  const failed = successful.length < responses.length;
+  return {
+    schedules: successful.flatMap((response) => unwrapList(response.value)),
+    loadError: failed ? (successful.length ? '部分门店排班加载失败，请重试' : '排班加载失败，请重试') : '',
+  };
 }
 
 Page({
   data: {
+    loading: false,
+    loadError: '',
     doctorLoaded: false,
     doctorId: '',
     storeId: '',
@@ -120,7 +119,6 @@ Page({
 
   onLoad(options) {
     this.options = options || {};
-    this.hasLoaded = false;
     if (!sessionStore.isLoggedIn()) {
       return;
     }
@@ -129,34 +127,44 @@ Page({
 
   async onShow() {
     if (!sessionStore.isLoggedIn()) {
-      navigation.openLogin('/pages/appointment/doctor-detail?id=' + encodeURIComponent(String(this.data.doctorId || (this.options && this.options.id) || '')));
+      const { id = '', storeId = '' } = this.options || {};
+      navigation.openLogin('/pages/appointment/doctor-detail?id=' + encodeURIComponent(id) +
+        (storeId ? '&storeId=' + encodeURIComponent(storeId) : ''));
       return;
     }
-    if (!this.hasLoaded) {
-      return;
-    }
-    await this.loadPage();
+    const initialLoadInProgress = !this.hasShown && this.data.loading;
+    this.hasShown = true;
+    if (!initialLoadInProgress) await this.loadPage();
+  },
+
+  onUnload() {
+    this.loadRequestId = (this.loadRequestId || 0) + 1;
   },
 
   async loadPage() {
+    const requestId = this.loadRequestId = (this.loadRequestId || 0) + 1;
+    const isCurrent = () => requestId === this.loadRequestId;
     const doctorId = readString((this.options && this.options.id) || this.data.doctorId || '');
     const storeId = readString((this.options && this.options.storeId) || this.data.storeId || '');
-    const doctorsResponse = await api.getDoctors(doctorId ? { id: doctorId } : undefined);
-    const doctor = unwrapList(doctorsResponse).find((item) => readString(item.id) === doctorId) || null;
-    const schedules = doctorId
-      ? (
-          storeId
-            ? unwrapList(
-                await api.getSchedules({
-                  doctorId,
-                  storeId,
-                  startDate: getDateText(0),
-                  endDate: getDateText(7),
-                }).catch(() => [])
-              )
-            : await loadSchedulesByStoreIds(doctorId, doctor && doctor.storeIds)
-        )
-      : [];
+    this.setData({ loading: true, loadError: '' });
+    let doctor;
+    try {
+      const response = await api.getDoctors(doctorId ? { id: doctorId } : undefined);
+      if (!isCurrent()) return;
+      doctor = unwrapList(response).find((item) => readString(item.id) === doctorId);
+    } catch {
+      if (isCurrent()) {
+        this.setData({ loading: false, doctorLoaded: false, hasFutureSchedules: false, loadError: '医生资料加载失败，请重试' });
+      }
+      return;
+    }
+    if (!doctor) {
+      this.setData({ loading: false, doctorLoaded: false, hasFutureSchedules: false, loadError: '未找到医生资料，请重试' });
+      return;
+    }
+    const now = Date.now();
+    const { schedules, loadError } = await loadSchedulesByStoreIds(doctorId, storeId ? [storeId] : doctor.storeIds, now);
+    if (!isCurrent()) return;
     const expertiseTags = Array.isArray(doctor && doctor.expertise)
       ? doctor.expertise
       : String((doctor && (doctor.expertise || doctor.specialty)) || '')
@@ -171,6 +179,8 @@ Page({
     ].filter(Boolean);
 
     this.setData({
+      loading: false,
+      loadError,
       doctorLoaded: Boolean(doctor),
       doctorId,
       storeId,
@@ -186,10 +196,13 @@ Page({
       ratingLabel: String(Math.round(Number((doctor && doctor.rating) || 0) * 20)),
       introText: (doctor && (doctor.intro || doctor.introduction)) || '暂无医生简介',
       expertiseTags,
-      scheduleRows: buildScheduleRows(schedules),
+      scheduleRows: buildScheduleRows(schedules, now),
       hasFutureSchedules: schedules.some((item) => item.status === 'available'),
     });
-    this.hasLoaded = true;
+  },
+
+  retryLoad() {
+    if (!this.data.loading) return this.loadPage();
   },
 
   handleAvatarLoad() {
@@ -203,7 +216,7 @@ Page({
   },
 
   openBooking() {
-    if (!this.data.doctorId || !this.data.hasFutureSchedules) {
+    if (this.data.loading || !this.data.doctorId || !this.data.hasFutureSchedules) {
       return;
     }
 

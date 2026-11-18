@@ -98,9 +98,14 @@
       </view>
     </view>
 
+    <view class="state-card" wx:if="{{loading && !draft}}">
+      <text class="state-description">正在加载预约信息...</text>
+    </view>
+
     <view class="state-card" wx:if="{{loadError}}">
       <text class="state-title">加载失败</text>
       <text class="state-description">{{loadError}}</text>
+      <button wx:if="{{canRetryLoad}}" class="load-retry-btn" bindtap="retryLoad">重试</button>
     </view>
 
     <view class="safe-bottom" />
@@ -108,7 +113,7 @@
   </view>
 
   <view class="bottom-fixed-bar" wx:if="{{!loadError}}">
-    <button class="bar-primary-btn" bindtap="submitAppointment" loading="{{isSubmitting}}">
+    <button class="bar-primary-btn" bindtap="submitAppointment" loading="{{isSubmitting}}" disabled="{{loading || isSubmitting || !draft || !memberList.length}}">
       {{buttonText}}
     </button>
   </view>

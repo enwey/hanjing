@@ -1,0 +1,157 @@
+{
+  "total": 30,
+  "passed": 30,
+  "failed": 0,
+  "results": [
+    {
+      "group": "INV-1118-03",
+      "name": "退出后新账号预约不携带旧后台码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-03",
+      "name": "普通邀请绑定超时后退出，后续登录不会用新账号重试",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-03",
+      "name": "不经退出直接切换账号，两个旧码均不可见",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-03",
+      "name": "退出后重新登录同一账号也不继承已清除的旧后台码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-03",
+      "name": "旧普通绑定迟到成功不清除新账号重新扫入的同一码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-03",
+      "name": "旧预约的真实格式无效码响应不清除新账号重扫的不同码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-03",
+      "name": "旧预约的真实格式无效码响应不清除新账号重扫的同一码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-03",
+      "name": "首次登录消费游客普通码，同时保留游客扫入的后台码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-03",
+      "name": "退出前排队但尚未派发的普通绑定不会发送",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "正式 ref兼容入口只进入预约请求",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "裸码兼容入口只进入预约请求",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "scene code兼容入口只进入预约请求",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "scene inviteCode兼容入口只进入预约请求",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "query invite_code兼容入口只进入预约请求",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "双重编码完整场景兼容入口只进入预约请求",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "后台裸码不覆盖访客已有普通邀请码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "双重编码的后台场景不覆盖访客已有普通邀请码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "旧版本误写的待绑后台码在登录后无普通请求",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-02",
+      "name": "前后缀不会覆盖预约请求中的原推荐码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-02",
+      "name": "额外十六进制字符不会覆盖预约请求中的原推荐码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-02",
+      "name": "内部换行不会覆盖预约请求中的原推荐码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-02",
+      "name": "未知字段不会覆盖预约请求中的原推荐码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-02",
+      "name": "字段值编码分隔符不会覆盖预约请求中的原推荐码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-02",
+      "name": "非法百分号不会覆盖预约请求中的原推荐码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-02",
+      "name": "编码的附加字段不会覆盖预约请求中的原推荐码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-02",
+      "name": "合法新码与其他独立参数可以共存并覆盖旧码",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-03",
+      "name": "同一毫秒内同账号重扫同一码，旧预约无效响应只影响原扫描",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-03",
+      "name": "旧版缓存没有扫描版本，被原请求提交且未重扫时仍可清除",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "三重编码场景内的独立普通码与后台码分别送往正确入口",
+      "result": "PASS"
+    },
+    {
+      "group": "INV-1118-01",
+      "name": "历史误存的部分解码后台场景在登录时不会发出普通绑定",
+      "result": "PASS"
+    }
+  ]
+}

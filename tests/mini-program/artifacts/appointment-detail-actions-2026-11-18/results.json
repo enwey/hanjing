@@ -1,0 +1,42 @@
+[
+  {
+    "name": "self-service footer: checked_in",
+    "passed": false,
+    "error": "Expected values to be strictly equal:\n\ntrue !== false\n",
+    "observed": {
+      "footer": true
+    }
+  },
+  {
+    "name": "self-service footer: pending",
+    "passed": true,
+    "observed": {
+      "footer": true
+    }
+  },
+  {
+    "name": "self-service footer: completed",
+    "passed": true,
+    "observed": {
+      "footer": false
+    }
+  },
+  {
+    "name": "cancel rejection retains actionable reason",
+    "passed": false,
+    "error": "The expression evaluated to a falsy value:\n\n  assert.ok(s.toasts.includes(reason))\n",
+    "observed": {
+      "calls": 1,
+      "toasts": [
+        "取消失败"
+      ]
+    }
+  },
+  {
+    "name": "cancel confirmation dismissed never calls API",
+    "passed": true,
+    "observed": {
+      "calls": 0
+    }
+  }
+]

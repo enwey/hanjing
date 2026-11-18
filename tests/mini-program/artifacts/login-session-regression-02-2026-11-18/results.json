@@ -1,0 +1,47 @@
+{
+  "phase": "second independent limited regression",
+  "startedAt": "2026-11-18T02:19:25.404Z",
+  "method": "actual client modules; mocked WeChat, HTTP, storage and timing",
+  "sourceBefore": {
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "pages/profile/index.js": "7b5c79dac5d974b1ee2051020de1618d7bea12e6ce06b0f05904cc5a5e082bda"
+  },
+  "suites": [
+    {
+      "file": "login-session-regression-2026-11-18.cjs",
+      "exitCode": 0,
+      "lastLine": "{\"replayed\":13,\"passed\":10,\"failed\":0,\"sourceStable\":true}"
+    },
+    {
+      "file": "login-badges-fix-selftest-2026-11-18.cjs",
+      "exitCode": 0,
+      "lastLine": "PASSED BADGE-06 hidden old request cannot restore cleared badges"
+    },
+    {
+      "file": "login-comprehensive.cjs",
+      "exitCode": 0,
+      "lastLine": "TOTAL 119 PASS 119 FAIL 0"
+    }
+  ],
+  "passed": 147,
+  "failed": 0,
+  "total": 147,
+  "originalFailures": [
+    {
+      "id": "REG-08 account replacement must clear previous unread counts immediately",
+      "result": "passed"
+    },
+    {
+      "id": "REG-09 failed replacement profile must not retain old account badges",
+      "result": "passed"
+    }
+  ],
+  "sourceAfter": {
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "pages/profile/index.js": "7b5c79dac5d974b1ee2051020de1618d7bea12e6ce06b0f05904cc5a5e082bda"
+  },
+  "sourceStable": true,
+  "finishedAt": "2026-11-18T02:19:27.574Z"
+}

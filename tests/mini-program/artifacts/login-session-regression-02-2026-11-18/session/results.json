@@ -1,0 +1,61 @@
+{
+  "startedAt": "2026-11-18T02:19:25.432Z",
+  "finishedAt": "2026-11-18T02:19:25.969Z",
+  "method": "actual client modules; mocked WeChat/HTTP and controlled timing",
+  "sourceBefore": {
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "pages/profile/index.js": "7b5c79dac5d974b1ee2051020de1618d7bea12e6ce06b0f05904cc5a5e082bda"
+  },
+  "sourceAfter": {
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "pages/profile/index.js": "7b5c79dac5d974b1ee2051020de1618d7bea12e6ce06b0f05904cc5a5e082bda"
+  },
+  "sourceStable": true,
+  "replayedPassed": 13,
+  "results": [
+    {
+      "id": "REG-01 original 13 scenarios",
+      "result": "passed"
+    },
+    {
+      "id": "REG-02 30 simultaneous requests share expired-session renewal",
+      "result": "passed"
+    },
+    {
+      "id": "REG-03 explicit 401 rejection clears current session",
+      "result": "passed"
+    },
+    {
+      "id": "REG-03 explicit 403 rejection clears current session",
+      "result": "passed"
+    },
+    {
+      "id": "REG-04 late rejected renewal cannot clear replacement account",
+      "result": "passed"
+    },
+    {
+      "id": "REG-05 logout while renewal pending prevents session resurrection",
+      "result": "passed"
+    },
+    {
+      "id": "REG-06 later page load wins within the same account",
+      "result": "passed"
+    },
+    {
+      "id": "REG-07 unloaded page ignores pending aggregate results",
+      "result": "passed"
+    },
+    {
+      "id": "REG-08 account replacement must clear previous unread counts immediately",
+      "result": "passed"
+    },
+    {
+      "id": "REG-09 failed replacement profile must not retain old account badges",
+      "result": "passed"
+    }
+  ],
+  "passed": 10,
+  "failed": 0
+}

@@ -1,0 +1,83 @@
+{
+  "startedAt": "2026-11-18T03:17:56.408Z",
+  "finishedAt": "2026-11-18T03:17:56.866Z",
+  "method": "actual client modules; controlled WeChat callback-mode payment/HTTP/storage/timing; no real payment or business DB writes",
+  "sourceBefore": {
+    "pages/appointment/booking/index.js": "773ef5fa466fd3216eabfa9633485ce1c2ed12a1c74334096007f7fbf7ee07e4",
+    "pages/appointment/detail.js": "8fd24bf05ea7edcdebdcdda6de39b78ecfd6aa89268f5d18f7fcf83538446424",
+    "pages/appointment/reschedule.js": "10f29a0fd355b053c71c0df5d525b8934d8ed5239a212db6deee17fcd282a8d3",
+    "pages/appointment/confirm.js": "560a9742a07126c58f79b473b64a2fabf7d13d83c76f7fa1775c66cf6fa0f7c0",
+    "pages/appointment/confirm.wxml": "b6a457e8b1f78394f3a107125c3fbc1d4054aed2d4929442aeed1120c2c9d4c7",
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "common/utils/subscribe.js": "573d5bf2c17c81495ccdeae7144dffcab3fe8b80fe63f3ad070ce3c37a9b5c1b"
+  },
+  "sourceAfter": {
+    "pages/appointment/booking/index.js": "773ef5fa466fd3216eabfa9633485ce1c2ed12a1c74334096007f7fbf7ee07e4",
+    "pages/appointment/detail.js": "8fd24bf05ea7edcdebdcdda6de39b78ecfd6aa89268f5d18f7fcf83538446424",
+    "pages/appointment/reschedule.js": "10f29a0fd355b053c71c0df5d525b8934d8ed5239a212db6deee17fcd282a8d3",
+    "pages/appointment/confirm.js": "560a9742a07126c58f79b473b64a2fabf7d13d83c76f7fa1775c66cf6fa0f7c0",
+    "pages/appointment/confirm.wxml": "b6a457e8b1f78394f3a107125c3fbc1d4054aed2d4929442aeed1120c2c9d4c7",
+    "stores/session-store.js": "fa6a3bd0987a831a4fd61d8cef04210b6b85e14461da42385a42725d04f32c06",
+    "api/request.js": "36ff7c2a136d02fd7a716fc8c1d640d3c718195d76e09ad39b60a4cf2b7acd21",
+    "common/utils/subscribe.js": "573d5bf2c17c81495ccdeae7144dffcab3fe8b80fe63f3ad070ce3c37a9b5c1b"
+  },
+  "sourceStable": true,
+  "baseline": {
+    "total": 62,
+    "passed": 62,
+    "failed": 0
+  },
+  "results": [
+    {
+      "id": "DEEP-01 list payment lock stays active until native callback returns",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-02 repeat payment tap while sheet callback pending starts no second request",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-03 late payment params cannot open payment after account switch booking/index.js",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-03 late payment params cannot open payment after account switch detail.js",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-04 old cancellation confirmation cannot issue request as replacement account",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-05 removing all available dates clears old reschedule selection",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-06 reschedule success stays locked before delayed navigation",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-07 old reschedule success timer cannot navigate replacement session",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-08 failed payment-params request releases lock and never opens sheet",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-09 in-flight reschedule ignores duplicate submissions",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-10 valid reschedule submits selected date and slot",
+      "result": "passed"
+    },
+    {
+      "id": "DEEP-11 first load with no dates cannot submit reschedule",
+      "result": "passed"
+    }
+  ],
+  "passed": 12,
+  "failed": 0
+}

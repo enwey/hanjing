@@ -130,11 +130,11 @@ const startServer = async () => {
         const { autoUpdateExpiredAppointments, autoSettleDistributionCommissions } = await import('./db.js');
         await autoUpdateExpiredAppointments();
         await autoSettleDistributionCommissions();
-        await processVisitReminders();
       } catch (err) {
         console.error('Failed to run periodic background jobs:', err);
         sendSystemAlert('warning', 'Background Job Failed', err.message, err);
       } finally {
+        try { await processVisitReminders(); } catch(error) { console.error('Wechat visit reminders failed:', error.message); }
         try { await processInAppReminders(); } catch(error) { console.error('In-app notification reminders failed:', error.message); }
         try { await processNotificationOutbox(); } catch(error) { console.error('In-app notification delivery retry failed:', error.message); }
         jobRunning = false;

@@ -9,11 +9,12 @@ function getAppointmentDetail(appointmentId) {
 }
 
 function createAppointment(data) {
-  const referral=require('../../common/utils/backend-referral');
-  const referralCode=referral.current();
-  return request({ url: '/appointments', method: 'POST', data:Object.assign({},data,{referralCode}), failMessage: '创建预约失败' })
-    .catch(error=>{
-      if(error.data&&error.data.referralInvalid)referral.clear(referralCode);
+  const referral = require('../../common/utils/backend-referral');
+  const submittedReferral = referral.snapshot();
+  const referralCode = submittedReferral?.code;
+  return request({ url: '/appointments', method: 'POST', data: { ...data, referralCode }, failMessage: '创建预约失败' })
+    .catch(error => {
+      if (error.data?.referralInvalid) referral.clearSnapshot(submittedReferral);
       throw error;
     });
 }
@@ -42,6 +43,15 @@ function getBookingSettings() {
   return request({ url: '/settings/booking', method: 'GET', failMessage: '加载预约设置失败' });
 }
 
+function recordVisitReminderAuthorization(appointmentId, templateId) {
+  return request({
+    url: '/appointments/' + encodeURIComponent(appointmentId) + '/visit-reminder-authorization',
+    method: 'POST',
+    data: { templateId },
+    failMessage: '保存就诊提醒订阅结果失败',
+  });
+}
+
 module.exports = {
   getAppointments,
   getAppointmentDetail,
@@ -51,5 +61,6 @@ module.exports = {
   payAppointmentDeposit,
   confirmAppointmentPayment,
   submitAppointmentEvaluation,
-  getBookingSettings
+  getBookingSettings,
+  recordVisitReminderAuthorization
 };

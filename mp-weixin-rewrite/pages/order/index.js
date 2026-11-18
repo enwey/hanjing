@@ -1,4 +1,5 @@
 const api = require('../../api/index');
+const sessionStore = require('../../stores/session-store');
 
 const ORDER_TABS = [
   { key: 'all', label: '全部' },
@@ -10,6 +11,7 @@ const ORDER_TABS = [
 ];
 
 const ORDER_STATUS_META = {
+  processing: { label: '待到货', color: '#f59e0b' },
   pending: { label: '待付款', color: '#f59e0b' },
   paid: { label: '待取货', color: '#3b6bf5' },
   shipping: { label: '待发货', color: '#f59e0b' },
@@ -96,20 +98,31 @@ Page({
     await this.loadOrders({ silent: this.data.hasLoaded });
   },
 
+  syncOrderListSession() {
+    const generation = sessionStore.getLoginGeneration();
+    if (this.orderListGeneration !== undefined && this.orderListGeneration !== generation) {
+      this.setData({ loading: false, hasLoaded: false, orders: [], visibleOrders: [] });
+    }
+    this.orderListGeneration = generation;
+    return generation;
+  },
+
   async loadOrders(options = {}) {
     const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
+    const generation = this.syncOrderListSession();
+    const isCurrent = () => requestId === this._loadRequestId && generation === this.syncOrderListSession();
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true });
     }
     try {
       const response = await api.getOrders();
-      if (requestId !== this._loadRequestId) return;
+      if (!isCurrent()) return;
       const orders = unwrapList(response).map(normalizeOrder);
       this.setData({ hasLoaded: true, orders });
       this.refreshVisibleOrders(this.data.selectedStatus, orders);
     } catch (error) {
-      if (requestId !== this._loadRequestId) return;
+      if (!isCurrent()) return;
       console.error(error);
       const unauthorized = error && [401, 403].includes(Number(error.statusCode || (error.data && error.data.code)));
       if (!this.data.hasLoaded || unauthorized) {
@@ -149,13 +162,15 @@ Page({
   },
 
   handleTabTap(event) {
+    this.syncOrderListSession();
     const statusKey = String(event.currentTarget.dataset.statusKey || 'all');
     this.refreshVisibleOrders(statusKey);
   },
 
   openDetail(event) {
+    this.syncOrderListSession();
     const orderId = String(event.currentTarget.dataset.orderId || '');
-    if (!orderId) {
+    if (!orderId || !this.data.orders.some(order => order.id === orderId)) {
       return;
     }
     wx.navigateTo({ url: '/pages/order/detail?id=' + orderId });

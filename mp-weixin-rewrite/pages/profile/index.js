@@ -133,17 +133,35 @@ Page({
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onHide() {
+    this._profileLoadRevision = (this._profileLoadRevision || 0) + 1;
+  },
+
+  onUnload() {
+    this.onHide();
+  },
+
   async loadPage(options = {}) {
-    const silent = !!options.silent;
+    const revision = this._profileLoadRevision = (this._profileLoadRevision || 0) + 1;
+    const generation = sessionStore.getLoginGeneration();
+    const silent = !!options.silent && this._profileGeneration === generation;
+    this._profileGeneration = generation;
+    const isCurrentLoad = () => this._profileLoadRevision === revision &&
+      sessionStore.getLoginGeneration() === generation;
     const isLoggedIn = sessionStore.isLoggedIn();
     if (!silent) {
       this.setData({
         isLoggedIn,
+        hasLoaded: false,
+        showProfileSetupCard: false,
         nickname: isLoggedIn ? '加载中...' : '点击登录',
         avatarText: '👤',
         avatarUrl: '',
         avatarBg: '#3b6bf5',
         memberLevelLabel: isLoggedIn ? '会员信息加载中' : '未登录',
+        notificationsUnreadCount: 0,
+        serviceUnreadCount: 0,
+        menuGroups: MENU_GROUPS,
       });
     } else {
       this.setData({ isLoggedIn });
@@ -172,6 +190,7 @@ Page({
         api.getNotifications().catch(() => null),
         api.getImUnreadCount().catch(() => null),
       ]);
+      if (!isCurrentLoad() || !sessionStore.isLoggedIn()) return;
       const nickname = resolveDisplayNickname(profile);
       const memberInfo =
         memberInfoResponse && memberInfoResponse.code === 0
@@ -214,6 +233,12 @@ Page({
         menuGroups,
       });
     } catch (error) {
+      if (this._profileLoadRevision !== revision) return;
+      if (!sessionStore.isLoggedIn()) {
+        await this.loadPage();
+        return;
+      }
+      if (!isCurrentLoad()) return;
       if (!this.data.hasLoaded) {
         this.setData({
           showProfileSetupCard: false,

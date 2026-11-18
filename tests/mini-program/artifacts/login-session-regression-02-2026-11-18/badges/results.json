@@ -1,0 +1,290 @@
+{
+  "phase": "development self-test; not independent regression",
+  "method": "actual page/session/request modules; mocked WeChat/HTTP",
+  "results": [
+    {
+      "name": "BADGE-01 switch immediately clears both badges, completion card and premium menu",
+      "result": "passed"
+    },
+    {
+      "name": "BADGE-02 replacement profile network failure clears old data and loading label",
+      "result": "passed"
+    },
+    {
+      "name": "BADGE-03 retry after failure loads only new account counts",
+      "result": "passed"
+    },
+    {
+      "name": "BADGE-04 same-account silent refresh failure preserves its own last good data",
+      "result": "passed"
+    },
+    {
+      "name": "BADGE-05 logout clears badges and premium menu",
+      "result": "passed"
+    },
+    {
+      "name": "BADGE-06 hidden old request cannot restore cleared badges",
+      "result": "passed"
+    }
+  ],
+  "previews": [
+    {
+      "title": "切换账号后等待资料",
+      "data": {
+        "isLoggedIn": true,
+        "hasLoaded": false,
+        "showProfileSetupCard": false,
+        "nickname": "加载中...",
+        "avatarText": "👤",
+        "avatarUrl": "",
+        "avatarBg": "#3b6bf5",
+        "memberLevelLabel": "会员信息加载中",
+        "notificationsUnreadCount": 0,
+        "serviceUnreadCount": 0,
+        "menuGroups": [
+          {
+            "title": "我的健康",
+            "items": [
+              {
+                "key": "records",
+                "label": "病历档案",
+                "icon": "/static/icons/profile_orange.svg",
+                "url": "/pages/profile/medical-records/index"
+              },
+              {
+                "key": "device",
+                "label": "阻鼾器管理",
+                "icon": "/static/icons/treatment_green.svg",
+                "url": "/pages/profile/device-manage/index"
+              },
+              {
+                "key": "family",
+                "label": "就诊人管理",
+                "icon": "/static/icons/community.svg",
+                "url": "/pages/profile/family-members/index"
+              }
+            ]
+          },
+          {
+            "title": "我的服务",
+            "items": [
+              {
+                "key": "benefits",
+                "label": "会员权益",
+                "icon": "/static/icons/fee.svg",
+                "url": "/pages/profile/member-benefits/index"
+              },
+              {
+                "key": "orders",
+                "label": "我的订单",
+                "icon": "/static/icons/report.svg",
+                "url": "/pages/order/index"
+              },
+              {
+                "key": "distribution",
+                "label": "分销中心",
+                "icon": "/static/icons/distribution.svg",
+                "url": "/pages/distribution/center/index"
+              }
+            ]
+          },
+          {
+            "title": "其他",
+            "items": [
+              {
+                "key": "service",
+                "label": "在线客服",
+                "icon": "/static/icons/chat.svg",
+                "url": "/pages/profile/online-service/index"
+              },
+              {
+                "key": "notifications",
+                "label": "消息通知",
+                "icon": "/static/icons/bell.svg",
+                "url": "/pages/profile/notifications/index"
+              },
+              {
+                "key": "settings",
+                "label": "设置",
+                "icon": "/static/icons/settings-gear.svg",
+                "url": "/pages/profile/settings/index"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "新账号资料加载失败",
+      "data": {
+        "isLoggedIn": true,
+        "hasLoaded": false,
+        "showProfileSetupCard": false,
+        "nickname": "微信用户",
+        "avatarText": "微",
+        "avatarUrl": "",
+        "avatarBg": "#8B5CF6",
+        "memberLevelLabel": "会员信息加载失败",
+        "notificationsUnreadCount": 0,
+        "serviceUnreadCount": 0,
+        "menuGroups": [
+          {
+            "title": "我的健康",
+            "items": [
+              {
+                "key": "records",
+                "label": "病历档案",
+                "icon": "/static/icons/profile_orange.svg",
+                "url": "/pages/profile/medical-records/index"
+              },
+              {
+                "key": "device",
+                "label": "阻鼾器管理",
+                "icon": "/static/icons/treatment_green.svg",
+                "url": "/pages/profile/device-manage/index"
+              },
+              {
+                "key": "family",
+                "label": "就诊人管理",
+                "icon": "/static/icons/community.svg",
+                "url": "/pages/profile/family-members/index"
+              }
+            ]
+          },
+          {
+            "title": "我的服务",
+            "items": [
+              {
+                "key": "benefits",
+                "label": "会员权益",
+                "icon": "/static/icons/fee.svg",
+                "url": "/pages/profile/member-benefits/index"
+              },
+              {
+                "key": "orders",
+                "label": "我的订单",
+                "icon": "/static/icons/report.svg",
+                "url": "/pages/order/index"
+              },
+              {
+                "key": "distribution",
+                "label": "分销中心",
+                "icon": "/static/icons/distribution.svg",
+                "url": "/pages/distribution/center/index"
+              }
+            ]
+          },
+          {
+            "title": "其他",
+            "items": [
+              {
+                "key": "service",
+                "label": "在线客服",
+                "icon": "/static/icons/chat.svg",
+                "url": "/pages/profile/online-service/index"
+              },
+              {
+                "key": "notifications",
+                "label": "消息通知",
+                "icon": "/static/icons/bell.svg",
+                "url": "/pages/profile/notifications/index"
+              },
+              {
+                "key": "settings",
+                "label": "设置",
+                "icon": "/static/icons/settings-gear.svg",
+                "url": "/pages/profile/settings/index"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "恢复网络后显示新账号数据",
+      "data": {
+        "isLoggedIn": true,
+        "hasLoaded": true,
+        "showProfileSetupCard": true,
+        "nickname": "账号B",
+        "avatarText": "账",
+        "avatarUrl": "",
+        "avatarBg": "#EC4899",
+        "memberLevelLabel": "normal",
+        "notificationsUnreadCount": 2,
+        "serviceUnreadCount": 1,
+        "menuGroups": [
+          {
+            "title": "我的健康",
+            "items": [
+              {
+                "key": "records",
+                "label": "病历档案",
+                "icon": "/static/icons/profile_orange.svg",
+                "url": "/pages/profile/medical-records/index"
+              },
+              {
+                "key": "device",
+                "label": "阻鼾器管理",
+                "icon": "/static/icons/treatment_green.svg",
+                "url": "/pages/profile/device-manage/index"
+              },
+              {
+                "key": "family",
+                "label": "就诊人管理",
+                "icon": "/static/icons/community.svg",
+                "url": "/pages/profile/family-members/index"
+              }
+            ]
+          },
+          {
+            "title": "我的服务",
+            "items": [
+              {
+                "key": "benefits",
+                "label": "会员权益",
+                "icon": "/static/icons/fee.svg",
+                "url": "/pages/profile/member-benefits/index"
+              },
+              {
+                "key": "orders",
+                "label": "我的订单",
+                "icon": "/static/icons/report.svg",
+                "url": "/pages/order/index"
+              },
+              {
+                "key": "distribution",
+                "label": "分销中心",
+                "icon": "/static/icons/distribution.svg",
+                "url": "/pages/distribution/center/index"
+              }
+            ]
+          },
+          {
+            "title": "其他",
+            "items": [
+              {
+                "key": "service",
+                "label": "在线客服",
+                "icon": "/static/icons/chat.svg",
+                "url": "/pages/profile/online-service/index"
+              },
+              {
+                "key": "notifications",
+                "label": "消息通知",
+                "icon": "/static/icons/bell.svg",
+                "url": "/pages/profile/notifications/index"
+              },
+              {
+                "key": "settings",
+                "label": "设置",
+                "icon": "/static/icons/settings-gear.svg",
+                "url": "/pages/profile/settings/index"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

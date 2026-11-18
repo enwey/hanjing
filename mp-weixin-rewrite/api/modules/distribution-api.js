@@ -15,12 +15,16 @@ function getDistributionInviteInfo(query) {
 // Both app lifecycle and login completion use this module instance.
 const bindingFlights = new Map();
 function bindDistribution(inviteCode) {
-  const key = JSON.stringify([wx.getStorageSync('access_token') || '', inviteCode]);
+  const accessToken = wx.getStorageSync('access_token') || '';
+  const key = JSON.stringify([accessToken, inviteCode]);
   if (bindingFlights.has(key)) return bindingFlights.get(key);
   // Defer dispatch so the flight is registered before request callbacks can run.
-  const flight = Promise.resolve().then(() => request({
-    url: '/distribution/bind', method: 'POST', data: { inviteCode }, failMessage: '绑定邀请关系失败'
-  })).finally(() => {
+  const flight = Promise.resolve().then(() => {
+    if ((wx.getStorageSync('access_token') || '') !== accessToken) return;
+    return request({
+      url: '/distribution/bind', method: 'POST', data: { inviteCode }, failMessage: '绑定邀请关系失败'
+    });
+  }).finally(() => {
     if (bindingFlights.get(key) === flight) bindingFlights.delete(key);
   });
   bindingFlights.set(key, flight);

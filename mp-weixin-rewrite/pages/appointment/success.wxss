@@ -19,6 +19,13 @@
   color: #6b7280;
 }
 
+.result-retry-btn {
+  margin: 24rpx auto;
+  background: #eaf0ff;
+  color: #294ca8;
+  font-size: 28rpx;
+}
+
 .success-icon {
   display: flex;
   justify-content: center;

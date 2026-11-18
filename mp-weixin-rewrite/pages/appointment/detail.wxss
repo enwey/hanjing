@@ -29,6 +29,15 @@
   color: #6b7280;
 }
 
+.state-retry-btn {
+  width: 200rpx;
+  margin: 24rpx auto 0;
+  border-radius: 40rpx;
+  background: #eaf0ff;
+  color: #294ca8;
+  font-size: 28rpx;
+}
+
 .status-hero {
   position: relative;
   overflow: hidden;
@@ -508,6 +517,11 @@
   border-radius: 9999rpx;
   font-size: 28rpx;
   font-weight: 600;
+}
+
+.visit-reminder-button {
+  width: 100%;
+  margin: 0 0 24rpx;
 }
 
 .footer-btn::after {

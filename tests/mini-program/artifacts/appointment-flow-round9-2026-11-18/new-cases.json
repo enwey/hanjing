@@ -1,0 +1,70 @@
+[
+  {
+    "id": "I01 已提醒预约的取消入口与后端状态一致",
+    "passed": false,
+    "observed": {
+      "calls": 1,
+      "canCancel": true,
+      "backendAllows": false,
+      "toasts": [
+        "该预约状态下不支持取消"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\ntrue !== false\n"
+  },
+  {
+    "id": "I02 不可支付的待支付预约在详情仍可取消",
+    "passed": false,
+    "observed": {
+      "canPay": false,
+      "canCancel": true,
+      "showFooter": false
+    },
+    "error": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  },
+  {
+    "id": "I03 详情确认取消前刷新到已取消时不再发送请求",
+    "passed": false,
+    "observed": {
+      "status": "cancelled",
+      "calls": 1,
+      "toasts": [
+        "该预约状态下不支持取消"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\n1 !== 0\n"
+  },
+  {
+    "id": "I04 建单返回最新费用时支付弹窗应采用该金额",
+    "passed": false,
+    "observed": {
+      "prompt": "预约就诊需要支付 ¥62.00（含定金与挂号费），是否确认支付？"
+    },
+    "error": "The input did not match the regular expression /¥80\\.00/. Input:\n\n'预约就诊需要支付 ¥62.00（含定金与挂号费），是否确认支付？'\n"
+  },
+  {
+    "id": "I05 取消规则兼容数字、天数和默认值",
+    "passed": true,
+    "observed": {
+      "hours": [
+        4,
+        24,
+        2
+      ]
+    }
+  },
+  {
+    "id": "I06 取消确认框关闭后可重新发起取消",
+    "passed": true,
+    "observed": {
+      "modals": 2
+    }
+  },
+  {
+    "id": "I07 时段重试过程中忽略较旧的日期返回",
+    "passed": true,
+    "observed": {
+      "date": "2099-01-02"
+    }
+  }
+]

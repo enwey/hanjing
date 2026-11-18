@@ -1,6 +1,14 @@
 <view class="page">
   <hj-navbar title="医生详情" showBack="{{true}}" />
 
+  <view wx:if="{{!doctorLoaded && (loading || loadError)}}" class="doc-section">
+    <view wx:if="{{loading}}" class="schedule-empty">正在加载医生资料</view>
+    <view wx:else class="doctor-load-feedback">
+      <text>{{loadError}}</text>
+      <button class="doctor-retry-btn" bindtap="retryLoad">重试</button>
+    </view>
+  </view>
+
   <view class="page-content" wx:if="{{doctorLoaded}}">
     <view class="doctor-detail-hero">
       <view class="doc-avatar">
@@ -74,12 +82,17 @@
         近期排班
       </view>
       <view class="doc-schedule">
+        <view wx:if="{{loading}}" class="schedule-empty">正在加载排班</view>
+        <view wx:elif="{{loadError}}" class="doctor-load-feedback">
+          <text>{{loadError}}</text>
+          <button class="doctor-retry-btn" bindtap="retryLoad">重试</button>
+        </view>
         <view wx:for="{{scheduleRows}}" wx:key="id" class="schedule-row">
           <text class="date">{{item.dateLabel}}</text>
           <text class="period">{{item.periodLabel}}</text>
           <text class="status {{item.statusClass}}">{{item.statusLabel}}</text>
         </view>
-        <view wx:if="{{!scheduleRows.length}}" class="schedule-empty">
+        <view wx:if="{{!loading && !loadError && !scheduleRows.length}}" class="schedule-empty">
           <text>该医生近期暂无排班计划</text>
         </view>
       </view>
@@ -88,10 +101,11 @@
 
   <view class="bottom-fixed-bar" wx:if="{{doctorLoaded}}">
     <button
-      class="bar-primary-btn {{!hasFutureSchedules ? 'bar-primary-btn--disabled' : ''}}"
+      class="bar-primary-btn {{loading || !hasFutureSchedules ? 'bar-primary-btn--disabled' : ''}}"
+      disabled="{{loading || !hasFutureSchedules}}"
       bindtap="openBooking"
     >
-      {{hasFutureSchedules ? '立即预约' : '暂不接诊'}}
+      {{loading ? '加载中' : (hasFutureSchedules ? '立即预约' : (loadError ? '排班加载失败' : '暂不接诊'))}}
     </button>
   </view>
 </view>
