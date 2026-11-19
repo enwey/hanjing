@@ -1,5 +1,4 @@
 const api = require('../../../api/index');
-const subscribe = require('../../../common/utils/subscribe');
 const sessionStore = require('../../../stores/session-store');
 
 function unwrapObject(response) {
@@ -35,11 +34,15 @@ Page({
   },
 
   async onShow() {
-    subscribe.refreshSubscribeSettings();
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onUnload() {
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+  },
+
   async loadPage(options = {}) {
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = !!options.silent;
     this.setData({ isSubmitEnabled: false, loading: true, loadError: '' });
     if (!silent) {
@@ -47,6 +50,7 @@ Page({
     }
     try {
       const response = await api.getDistributorInfo();
+      if (requestId !== this._loadRequestId) return;
       const info = unwrapObject(response);
       const rawRate = info.withdrawFeeRates && info.withdrawFeeRates.bank;
       const withdrawFeeRate = Number(rawRate);
@@ -69,6 +73,7 @@ Page({
       });
       this.refreshAmountSummary();
     } catch (error) {
+      if (requestId !== this._loadRequestId) return;
       this.setData({ hasLoaded: false, isSubmitEnabled: false });
       if (!this.data.hasLoaded) {
         this.setData({
@@ -134,8 +139,6 @@ Page({
     const { withdrawAmountInput, withdrawMethod, bankName, bankAccountName, bankAccountNo } = this.data;
     this.setData({ isSubmitting: true, isSubmitEnabled: false });
     try {
-      await subscribe.requestSubscribe({ force: true, scene: 'withdraw' });
-      if (token !== sessionStore.getAccessToken()) return;
       await api.applyWithdraw(
         Math.round((parseFloat(withdrawAmountInput || '0') || 0) * 100),
         withdrawMethod,
@@ -147,6 +150,7 @@ Page({
             }
           : null,
       );
+      if (token !== sessionStore.getAccessToken()) return;
       wx.showToast({ title: '提现申请已提交', icon: 'success' });
       this.setData({
         withdrawAmountInput: '',

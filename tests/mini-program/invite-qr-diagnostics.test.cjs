@@ -7,7 +7,7 @@ function setup(info, wxExtra = {}) {
   let config;
   vm.runInNewContext(fs.readFileSync('mp-weixin-rewrite/pages/distribution/invite/index.js','utf8'), {
     Page: value => config = value, wx: { showToast() {}, ...wxExtra },
-    require: name => name === './invite-service' ? { loadInviteShareInfo: info } : name === './invite-design' ? { copy: {} } : {}
+    require: name => name.includes('session-store') ? {getLoginGeneration:()=>1} : name === './invite-service' ? { loadInviteShareInfo: info } : name === './invite-design' ? { copy: {} } : {}
   });
   return { ...config, data: { ...config.data }, setData(v) { Object.assign(this.data, v); } };
 }

@@ -1,0 +1,789 @@
+{
+  "passed": [
+    {
+      "name": "后台创建推广员并获取小程序码，微信上游模拟"
+    },
+    {
+      "name": "模拟扫码冷启动，保留推荐来源，真实预约绑定来源但尚无上下级"
+    },
+    {
+      "name": "普通小程序商城未付款订单无推荐来源、无佣金、无绑定"
+    },
+    {
+      "name": "普通商城订单通过预支付、真实回调验签及解密接口入账，始终无绑定和 X/Y 佣金"
+    },
+    {
+      "name": "关联预约确认收款后首次绑定，X 佣金按实付 9000 分计算，请求重放未重复发佣",
+      "details": {
+        "commission": 1800
+      }
+    },
+    {
+      "name": "同预约再次成单仅计普通一级佣金",
+      "details": {
+        "commission": 900
+      }
+    },
+    {
+      "name": "订单核销后按零天结算配置释放佣金，未核销第二单仍冻结",
+      "details": {
+        "available": 1800
+      }
+    },
+    {
+      "name": "扫码来源停用时拒绝预约，清理无效来源并回滚预约"
+    },
+    {
+      "name": "关联预约预支付及回调验签，篡改拒绝，合法回调重放不重复计佣，原上级得 900 分，推荐人得 Y 佣金 720 分"
+    },
+    {
+      "name": "全额退款后冲回已结算 1800 分，原推广绑定保留"
+    }
+  ],
+  "matrix": [
+    {
+      "id": "FLOW-11",
+      "name": "微信出码失败仍保留后台账号，恢复后可重新取码",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-12",
+      "name": "重新扫码后重试旧预约，旧来源不改写，后台详情显示原推荐人",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-13",
+      "name": "不参与后台推荐的商品无 X/Y 且不绑定",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-14",
+      "name": "X=0 仍绑定，免单不绑定且无佣金",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-15",
+      "name": "同预约两个并发现金订单只产生一次 X 奖励",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-16",
+      "name": "关联其他账号预约的订单被拒绝，无法取得他人的推广来源",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-17",
+      "name": "并行查询结算不会重复增加可用佣金，未满结算期仍冻结",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-18",
+      "name": "极值金额按精确余数分配 1 分差额",
+      "result": "PASS",
+      "details": {
+        "orderId": 11,
+        "commissionAmount": 999999991,
+        "lines": [
+          {
+            "rate": 100,
+            "amount": 999999991,
+            "itemId": 11,
+            "paidAmount": 999999991
+          }
+        ]
+      }
+    },
+    {
+      "id": "FLOW-19",
+      "name": "普通金额混合商品仅对推荐行按折后实付计 X",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-20",
+      "name": "重复离线退款不会二次冲扣余额",
+      "result": "PASS",
+      "details": {
+        "httpStatus": 409
+      }
+    },
+    {
+      "id": "FLOW-22",
+      "name": "无效推广码预约失败后，最后一个号源仍可提交",
+      "result": "PASS",
+      "details": {
+        "httpStatus": 400,
+        "before": {
+          "appointments": 0,
+          "booked": 0
+        },
+        "afterFailure": {
+          "appointments": 0,
+          "booked": 0
+        },
+        "afterRetry": {
+          "appointments": 1,
+          "booked": 1
+        }
+      }
+    },
+    {
+      "id": "FLOW-23",
+      "name": "第二项库存不足阻断收银订单并回滚第一项库存",
+      "result": "PASS",
+      "details": {
+        "httpStatus": 409,
+        "before": {
+          "orders": 0,
+          "lines": 0,
+          "first": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "second": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "edges": 0
+        },
+        "afterFailure": {
+          "orders": 0,
+          "lines": 0,
+          "first": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "second": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "edges": 0
+        },
+        "afterRetry": {
+          "orders": 1,
+          "lines": 2,
+          "first": {
+            "stock": 0,
+            "sales_count": 1
+          },
+          "second": {
+            "stock": 0,
+            "sales_count": 1
+          },
+          "edges": 0
+        }
+      }
+    },
+    {
+      "id": "FLOW-24",
+      "name": "微信预支付失败保留待付订单，同一订单可重试",
+      "result": "PASS",
+      "details": {
+        "httpStatus": 500,
+        "tradeNo": "OD1795075781307fda4a73765",
+        "before": {
+          "order": {
+            "status": "pending",
+            "pay_at": null,
+            "wechat_prepay_id": null
+          },
+          "stock": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "ledger": 0
+        },
+        "afterFailure": {
+          "order": {
+            "status": "pending",
+            "pay_at": null,
+            "wechat_prepay_id": "REQUESTING"
+          },
+          "stock": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "ledger": 0
+        },
+        "afterRetry": {
+          "order": {
+            "status": "pending",
+            "pay_at": null,
+            "wechat_prepay_id": "REQUESTING"
+          },
+          "stock": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "ledger": 0
+        },
+        "afterPayment": {
+          "order": {
+            "status": "paid",
+            "pay_at": "2026-11-19T08:09:41.000Z",
+            "wechat_prepay_id": "REQUESTING"
+          },
+          "stock": {
+            "stock": 1,
+            "sales_count": 1
+          },
+          "ledger": 0
+        }
+      }
+    },
+    {
+      "id": "FLOW-25",
+      "name": "分佣插入失败回滚现金订单、库存、绑定、转化和账本",
+      "result": "PASS",
+      "details": {
+        "httpStatus": 500,
+        "before": {
+          "orders": 0,
+          "lines": 0,
+          "stock": {
+            "stock": 2,
+            "sales_count": 0
+          },
+          "edges": 0,
+          "conversions": 0,
+          "ledger": 9,
+          "balance": {
+            "total_commission": 1000008291,
+            "available_commission": 900
+          }
+        },
+        "afterFailure": {
+          "orders": 0,
+          "lines": 0,
+          "stock": {
+            "stock": 2,
+            "sales_count": 0
+          },
+          "edges": 0,
+          "conversions": 0,
+          "ledger": 9,
+          "balance": {
+            "total_commission": 1000008291,
+            "available_commission": 900
+          }
+        },
+        "afterRetry": {
+          "orders": 1,
+          "lines": 1,
+          "stock": {
+            "stock": 1,
+            "sales_count": 1
+          },
+          "edges": 1,
+          "conversions": 1,
+          "ledger": 10,
+          "balance": {
+            "total_commission": 1000009131,
+            "available_commission": 900
+          }
+        },
+        "commission": 840
+      }
+    },
+    {
+      "id": "FLOW-26",
+      "name": "微信回调分佣故障后恢复、并发重放只入账一次",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-27",
+      "name": "签名有效但金额、币种或交易状态不符不入账",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-28",
+      "name": "已取消预约拒绝新建收银订单",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-29",
+      "name": "同一微信流水号不能给两个订单重复计佣",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-29-CONCURRENT",
+      "name": "不同预约并发认领同一流水时只有一个订单入账",
+      "result": "PASS"
+    },
+    {
+      "id": "FLOW-21A",
+      "name": "上游返回不可解压 PNG 时拒绝出码且无缓存写入",
+      "result": "PASS",
+      "details": {
+        "httpStatus": 503,
+        "cacheIsNull": true
+      }
+    },
+    {
+      "id": "FLOW-21B",
+      "name": "已存在的坏缓存只在新图验证成功后覆盖并复用",
+      "result": "PASS",
+      "details": {
+        "upstreamRequests": 2,
+        "rejectedStatus": 503,
+        "replacementBytes": 68,
+        "reused": true
+      }
+    }
+  ],
+  "onlineRollback": {
+    "before": {
+      "order": {
+        "status": "pending",
+        "pay_at": null,
+        "wechat_transaction_id": null,
+        "distribution_processed": 0
+      },
+      "stock": {
+        "stock": 1,
+        "sales_count": 0
+      },
+      "entries": [],
+      "edges": [],
+      "conversion": null,
+      "balance": {
+        "total_commission": 1000009131,
+        "available_commission": 900
+      }
+    },
+    "afterFailure": {
+      "order": {
+        "status": "pending",
+        "pay_at": null,
+        "wechat_transaction_id": null,
+        "distribution_processed": 0
+      },
+      "stock": {
+        "stock": 1,
+        "sales_count": 0
+      },
+      "entries": [],
+      "edges": [],
+      "conversion": null,
+      "balance": {
+        "total_commission": 1000009131,
+        "available_commission": 900
+      }
+    },
+    "failed": {
+      "status": 500,
+      "code": "FAIL",
+      "message": "fixture online commission write failure"
+    },
+    "retries": [
+      {
+        "status": 200,
+        "code": "SUCCESS",
+        "message": "success"
+      },
+      {
+        "status": 200,
+        "code": "SUCCESS",
+        "message": "success"
+      }
+    ],
+    "afterRetry": {
+      "order": {
+        "status": "paid",
+        "pay_at": "2026-11-19T08:09:42.000Z",
+        "wechat_transaction_id": "FIXTURE-WXPAY-18",
+        "distribution_processed": 1
+      },
+      "stock": {
+        "stock": 1,
+        "sales_count": 1
+      },
+      "entries": [
+        {
+          "distributor_id": 1,
+          "commission_kind": "referral_new",
+          "commission_amount": 680,
+          "status": "pending"
+        }
+      ],
+      "edges": [
+        {
+          "parent_distributor_id": 1
+        }
+      ],
+      "conversion": {
+        "order_id": 18,
+        "mode": "new"
+      },
+      "balance": {
+        "total_commission": 1000009811,
+        "available_commission": 900
+      }
+    }
+  },
+  "paymentValidation": {
+    "before": {
+      "order": {
+        "status": "pending",
+        "pay_at": null,
+        "wechat_transaction_id": null,
+        "distribution_processed": 0
+      },
+      "stock": {
+        "stock": 1,
+        "sales_count": 0
+      },
+      "entries": [],
+      "edges": [],
+      "conversion": null,
+      "balance": {
+        "total_commission": 1000009811,
+        "available_commission": 900
+      }
+    },
+    "receiptResults": [
+      {
+        "name": "少付",
+        "response": {
+          "status": 409,
+          "code": "FAIL",
+          "message": "支付流水与订单不一致"
+        },
+        "persisted": {
+          "order": {
+            "status": "pending",
+            "pay_at": null,
+            "wechat_transaction_id": null,
+            "distribution_processed": 0
+          },
+          "stock": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "entries": [],
+          "edges": [],
+          "conversion": null,
+          "balance": {
+            "total_commission": 1000009811,
+            "available_commission": 900
+          }
+        }
+      },
+      {
+        "name": "多付",
+        "response": {
+          "status": 409,
+          "code": "FAIL",
+          "message": "支付流水与订单不一致"
+        },
+        "persisted": {
+          "order": {
+            "status": "pending",
+            "pay_at": null,
+            "wechat_transaction_id": null,
+            "distribution_processed": 0
+          },
+          "stock": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "entries": [],
+          "edges": [],
+          "conversion": null,
+          "balance": {
+            "total_commission": 1000009811,
+            "available_commission": 900
+          }
+        }
+      },
+      {
+        "name": "币种",
+        "response": {
+          "status": 409,
+          "code": "FAIL",
+          "message": "支付流水与订单不一致"
+        },
+        "persisted": {
+          "order": {
+            "status": "pending",
+            "pay_at": null,
+            "wechat_transaction_id": null,
+            "distribution_processed": 0
+          },
+          "stock": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "entries": [],
+          "edges": [],
+          "conversion": null,
+          "balance": {
+            "total_commission": 1000009811,
+            "available_commission": 900
+          }
+        }
+      },
+      {
+        "name": "未成功",
+        "response": {
+          "status": 200,
+          "code": "SUCCESS",
+          "message": "ignored"
+        },
+        "persisted": {
+          "order": {
+            "status": "pending",
+            "pay_at": null,
+            "wechat_transaction_id": null,
+            "distribution_processed": 0
+          },
+          "stock": {
+            "stock": 1,
+            "sales_count": 0
+          },
+          "entries": [],
+          "edges": [],
+          "conversion": null,
+          "balance": {
+            "total_commission": 1000009811,
+            "available_commission": 900
+          }
+        }
+      }
+    ],
+    "paid": {
+      "order": {
+        "status": "paid",
+        "pay_at": "2026-11-19T08:09:42.000Z",
+        "wechat_transaction_id": "FIXTURE-WXPAY-19",
+        "distribution_processed": 1
+      },
+      "stock": {
+        "stock": 1,
+        "sales_count": 1
+      },
+      "entries": [
+        {
+          "distributor_id": 1,
+          "commission_kind": "referral_new",
+          "commission_amount": 500,
+          "status": "pending"
+        }
+      ],
+      "edges": [
+        {
+          "parent_distributor_id": 1
+        }
+      ],
+      "conversion": {
+        "order_id": 19,
+        "mode": "new"
+      },
+      "balance": {
+        "total_commission": 1000010311,
+        "available_commission": 900
+      }
+    }
+  },
+  "cancelledBooking": {
+    "appointmentState": {
+      "status": "cancelled"
+    },
+    "before": {
+      "stock": 2,
+      "sales_count": 0
+    },
+    "after": {
+      "stock": 2,
+      "sales_count": 0
+    },
+    "rejected": {
+      "status": 409,
+      "code": 409,
+      "message": "该预约已取消、爽约或退款，不能继续收银"
+    },
+    "orders": []
+  },
+  "duplicatePayment": {
+    "before": {
+      "order": {
+        "status": "pending",
+        "pay_at": null,
+        "wechat_transaction_id": null,
+        "distribution_processed": 0
+      },
+      "stock": {
+        "stock": 1,
+        "sales_count": 1
+      },
+      "entries": [],
+      "edges": [
+        {
+          "parent_distributor_id": 1
+        }
+      ],
+      "conversion": {
+        "order_id": 20,
+        "mode": "new"
+      },
+      "balance": {
+        "total_commission": 1000010631,
+        "available_commission": 900
+      }
+    },
+    "response": {
+      "status": 409,
+      "code": "FAIL",
+      "message": "微信支付流水已用于其他订单，请核对支付流水"
+    },
+    "after": {
+      "order": {
+        "status": "pending",
+        "pay_at": null,
+        "wechat_transaction_id": null,
+        "distribution_processed": 0
+      },
+      "stock": {
+        "stock": 1,
+        "sales_count": 1
+      },
+      "entries": [],
+      "edges": [
+        {
+          "parent_distributor_id": 1
+        }
+      ],
+      "conversion": {
+        "order_id": 20,
+        "mode": "new"
+      },
+      "balance": {
+        "total_commission": 1000010631,
+        "available_commission": 900
+      }
+    },
+    "orders": [
+      {
+        "id": 20,
+        "status": "paid",
+        "wechat_transaction_id": "fixture-shared-transaction"
+      }
+    ],
+    "replay": {
+      "status": 200,
+      "code": "SUCCESS",
+      "message": "success"
+    },
+    "historicalConflict": {
+      "status": 409,
+      "code": "FAIL",
+      "message": "微信支付流水已用于其他订单，请核对支付流水"
+    }
+  },
+  "concurrentPayment": {
+    "results": [
+      {
+        "status": 200,
+        "code": "SUCCESS",
+        "message": "success"
+      },
+      {
+        "status": 409,
+        "code": "FAIL",
+        "message": "微信支付流水已用于其他订单，请核对支付流水"
+      }
+    ],
+    "states": [
+      {
+        "order": {
+          "status": "paid",
+          "pay_at": "2026-11-19T08:09:44.000Z",
+          "wechat_transaction_id": "fixture-concurrent-transaction",
+          "distribution_processed": 1
+        },
+        "stock": {
+          "stock": 1,
+          "sales_count": 1
+        },
+        "entries": [
+          {
+            "distributor_id": 1,
+            "commission_kind": "referral_new",
+            "commission_amount": 340,
+            "status": "pending"
+          }
+        ],
+        "edges": [
+          {
+            "parent_distributor_id": 1
+          }
+        ],
+        "conversion": {
+          "order_id": 22,
+          "mode": "new"
+        },
+        "balance": {
+          "total_commission": 1000010971,
+          "available_commission": 900
+        }
+      },
+      {
+        "order": {
+          "status": "pending",
+          "pay_at": null,
+          "wechat_transaction_id": null,
+          "distribution_processed": 0
+        },
+        "stock": {
+          "stock": 1,
+          "sales_count": 1
+        },
+        "entries": [],
+        "edges": [],
+        "conversion": null,
+        "balance": {
+          "total_commission": 1000010971,
+          "available_commission": 900
+        }
+      }
+    ],
+    "retry": {
+      "status": 200,
+      "code": "SUCCESS",
+      "message": "success"
+    },
+    "recovered": {
+      "order": {
+        "status": "paid",
+        "pay_at": "2026-11-19T08:09:44.000Z",
+        "wechat_transaction_id": "FIXTURE-WXPAY-23",
+        "distribution_processed": 1
+      },
+      "stock": {
+        "stock": 1,
+        "sales_count": 2
+      },
+      "entries": [
+        {
+          "distributor_id": 1,
+          "commission_kind": "referral_new",
+          "commission_amount": 340,
+          "status": "pending"
+        }
+      ],
+      "edges": [
+        {
+          "parent_distributor_id": 1
+        }
+      ],
+      "conversion": {
+        "order_id": 23,
+        "mode": "new"
+      },
+      "balance": {
+        "total_commission": 1000011311,
+        "available_commission": 900
+      }
+    }
+  },
+  "cleaned": true
+}

@@ -1,0 +1,78 @@
+TAP version 13
+# (node:14100) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FLOW-21 rejects PNG signature only without caching
+ok 1 - FLOW-21 rejects PNG signature only without caching
+  ---
+  duration_ms: 28.1378
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG missing IEND without caching
+ok 2 - FLOW-21 rejects PNG missing IEND without caching
+  ---
+  duration_ms: 0.6371
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG interrupted inside IDAT without caching
+ok 3 - FLOW-21 rejects PNG interrupted inside IDAT without caching
+  ---
+  duration_ms: 0.6362
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects JPEG signature only without caching
+ok 4 - FLOW-21 rejects JPEG signature only without caching
+  ---
+  duration_ms: 0.4679
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects JPEG without frame and scan without caching
+ok 5 - FLOW-21 rejects JPEG without frame and scan without caching
+  ---
+  duration_ms: 0.7273
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG with undecodable IDAT without caching
+ok 6 - FLOW-21 rejects PNG with undecodable IDAT without caching
+  ---
+  duration_ms: 1.8955
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes old truncated PNG after upstream recovery
+ok 7 - FLOW-21 refreshes old truncated PNG after upstream recovery
+  ---
+  duration_ms: 2.2684
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes old truncated JPEG after upstream recovery
+ok 8 - FLOW-21 refreshes old truncated JPEG after upstream recovery
+  ---
+  duration_ms: 2.1938
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes valid cache from a different app after upstream recovery
+ok 9 - FLOW-21 refreshes valid cache from a different app after upstream recovery
+  ---
+  duration_ms: 1.2018
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes a cache with undecodable PNG data
+ok 10 - FLOW-21 refreshes a cache with undecodable PNG data
+  ---
+  duration_ms: 1.8091
+  type: 'test'
+  ...
+# Subtest: FLOW-21 keeps undecodable cache out of the response until a valid replacement is saved
+ok 11 - FLOW-21 keeps undecodable cache out of the response until a valid replacement is saved
+  ---
+  duration_ms: 1.5197
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 371.9732

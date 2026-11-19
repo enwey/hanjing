@@ -1,8 +1,9 @@
 const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
 const navigation = require('../../common/utils/navigation');
-const subscribe = require('../../common/utils/subscribe');
 const { isPaymentTimeout, reconcileOrderPayment } = require('../../common/utils/order-payment');
+
+const activeCheckoutRequests = new Set();
 
 function checkoutStorageKey(productId) {
   const profile = sessionStore.state && sessionStore.state.profile;
@@ -162,7 +163,6 @@ Page({
 
   onShow() {
     this.syncCheckoutSession();
-    subscribe.refreshSubscribeSettings();
     if (!this.productId || (!this.data.hasLoaded && !this.data.loadError)) {
       return;
     }
@@ -555,24 +555,25 @@ Page({
     this.setData({ isSubmitting: true });
     try {
       checkoutKey = checkoutStorageKey(this.data.product.id);
-      await subscribe.requestSubscribe({ force: true, scene: 'order' });
       if (this._unloaded) return;
       if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
       if (String(this.data.product?.id) !== orderInput.items[0].productId) return;
 
-      // Another checkout may start creating the order while this page waits for WeChat.
+      // Read the latest persisted attempt shared by all checkout pages.
       const savedCheckout = wx.getStorageSync(checkoutKey);
       // An earlier page may have resolved this attempt since our last submit.
       // Re-read persisted state before deciding whether creation is still blocked.
       this._checkoutUncertain = Boolean(savedCheckout && !savedCheckout.id);
       if (!this._checkoutOrder && savedCheckout) {
-        if (!savedCheckout.id) {
+        if (!savedCheckout.id && (!savedCheckout.requestId || activeCheckoutRequests.has(checkoutKey))) {
           this._checkoutUncertain = true;
           wx.showToast({ title: '下单结果待确认，请先查看订单列表', icon: 'none' });
           wx.navigateTo({ url: '/pages/order/index' });
           return;
         }
-        this._checkoutOrder = { id: savedCheckout.id, fingerprint: savedCheckout.fingerprint, revision };
+        if (savedCheckout.id) {
+          this._checkoutOrder = { id: savedCheckout.id, fingerprint: savedCheckout.fingerprint, revision };
+        }
       }
       wx.showLoading({ title: '发起支付...' });
       if (this._checkoutOrder) {
@@ -608,34 +609,48 @@ Page({
           return;
         }
         // Persist before sending: failure to save must prevent the create request.
-        wx.setStorageSync(checkoutKey, { uncertain: true });
+        const requestId = savedCheckout?.requestId ||
+          `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+        wx.setStorageSync(checkoutKey, { requestId });
         this._checkoutUncertain = true;
         let createOrderResponse;
+        activeCheckoutRequests.add(checkoutKey);
         try {
-          createOrderResponse = await api.createOrder(orderInput);
+          createOrderResponse = await api.createOrder({ ...orderInput, requestId });
         } catch (error) {
           // Only explicit rejection responses permit a new create attempt.
           // Transport errors, timeouts and server failures remain uncertain.
           const statusCode = Number(error?.statusCode);
           const inventoryConflict = statusCode === 409 && error?.data?.reason === 'ORDER_INVENTORY_CONFLICT';
-          if (inventoryConflict || [400, 401, 403, 404, 422].includes(statusCode)) {
+          if (!savedCheckout?.requestId && (inventoryConflict || [400, 401, 403, 404, 422].includes(statusCode))) {
             wx.removeStorageSync(checkoutKey);
             this._checkoutUncertain = false;
           }
           if (this._checkoutUncertain) {
-            throw new Error('下单结果待确认，请先查看订单列表');
+            wx.setStorageSync(checkoutKey, { requestId, retryable: true });
+            throw new Error('下单结果待确认，可重试核对原订单');
           }
           throw error;
+        } finally {
+          activeCheckoutRequests.delete(checkoutKey);
         }
         const createdOrder = (createOrderResponse && createOrderResponse.data) || createOrderResponse || {};
-        if (!createdOrder.id) throw new Error('未取得订单编号，请在订单列表确认');
+        if (!createdOrder.id) {
+          wx.setStorageSync(checkoutKey, { requestId, retryable: true });
+          throw new Error('未取得订单编号，可重试核对原订单');
+        }
         // Even after page unload, preserve a late successful response for recovery.
         wx.setStorageSync(checkoutKey, { id: createdOrder.id });
         if (!isCurrent()) return;
         this._checkoutOrder = { id: createdOrder.id, fingerprint, revision };
         createdPayAmount = Number(createdOrder.payAmount);
         this._checkoutUncertain = false;
-        if (this._unloaded) return;
+        if (createdOrder.replayed) {
+          wx.hideLoading();
+          this.setData({ showCheckout: false });
+          wx.navigateTo({ url: `/pages/order/detail?id=${encodeURIComponent(createdOrder.id)}` });
+          return;
+        }
       }
       if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
       const orderId = this._checkoutOrder.id;

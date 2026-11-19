@@ -136,8 +136,10 @@ async function inventoryConflict() {
   for (const [statusCode, confirmedRollback] of [[400, false], [409, true], [409, false], [408, false]]) {
     await check('建单失败后再次提交 ' + statusCode + (confirmedRollback ? ' 确认回滚' : ''), async () => {
       let requests = 0;
+      const requestIds = [];
       const h = harness('product/detail', {
-        createOrder: async () => {
+        createOrder: async ({ requestId }) => {
+          requestIds.push(requestId);
           requests++;
           if (requests === 1) {
             const error = requestError(statusCode, '测试建单失败');
@@ -150,7 +152,8 @@ async function inventoryConflict() {
       fillCheckout(h.page);
       await h.page.submitOrder();
       await h.page.submitOrder();
-      assert.equal(requests, statusCode === 400 || confirmedRollback ? 2 : 1);
+      assert.equal(requests, 2);
+      assert.equal(requestIds[0] === requestIds[1], statusCode !== 400 && !confirmedRollback);
     });
   }
   for (const [route, label] of [['/api/v1/orders', '列表'], ['/api/v1/orders/:id', '详情']]) {

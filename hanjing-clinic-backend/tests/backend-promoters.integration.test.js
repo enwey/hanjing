@@ -139,7 +139,7 @@ test('independent backend promoters and paid referral accounting', async t => {
           if(String(url).includes('stable_token'))return new Response(JSON.stringify({access_token:'fixture-token',expires_in:7200}),{status:200});
           const body=JSON.parse(options.body);
           assert.match(body.scene,/^ref=BP[a-f0-9]{24}$/);assert.equal(body.page,'pages/index/index');
-          return new Response(Buffer.from([137,80,78,71,13,10,26,10]),{status:200});
+          return new Response(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNg+A8AAQIBAEK+vGgAAAAASUVORK5CYII=','base64'),{status:200});
         }
         return nativeFetch(url,options);
       };

@@ -12,18 +12,26 @@ assert.match(subscribe, /withdraw:\s*\['withdraw_result', 'withdraw_paid'\]/);
 assert.match(subscribe, /order:\s*\['order_shipped'\]/);
 assert.match(subscribe, /distribution:\s*\['promoter_activated'\]/);
 
-const withdraw = read('mp-weixin-rewrite/pages/distribution/withdraw/index.js');
-assert.match(withdraw, /scene: 'withdraw'[\s\S]*await api\.applyWithdraw\(/);
-
-const appointment = read('mp-weixin-rewrite/pages/appointment/confirm.js');
-assert.match(appointment, /scene: 'appointment'[\s\S]*await api\.createAppointment\(/);
-
-const product = read('mp-weixin-rewrite/pages/product/detail.js');
-assert.match(product, /scene: 'order'[\s\S]*await api\.createOrder\(/);
-assert.match(read('mp-weixin-rewrite/pages/order/detail.js'), /scene: 'order'[\s\S]*await api\.payOrder\(/);
-
-const invite = read('mp-weixin-rewrite/pages/distribution/invite/index.js');
-assert.match(invite, /if \(this\.data\.isDistributor\) return;[\s\S]*scene: 'distribution'/);
+const pages = 'mp-weixin-rewrite/pages/';
+for (const name of ['distribution/withdraw/index', 'appointment/confirm', 'appointment/booking/index', 'product/detail']) {
+  assert.doesNotMatch(read(pages + name + '.js'), /requestSubscribe\(|subscribeToVisitReminder\(|subscribeToUpdates\(/);
+}
+const order = read(pages + 'order/detail.js');
+assert.match(order, /canSubscribeShipment: order.status === 'shipping'/);
+assert.match(order, /subscribeToUpdates\('order'/);
+assert.doesNotMatch(order.slice(order.indexOf('async onPayOrder()')), /requestSubscribe\(|subscribeToUpdates\(/);
+assert.match(read(pages + 'order/detail.wxml'), /wx:if="{{order.canSubscribeShipment}}"[^>]+bindtap="subscribeShipment"/);
+const appointmentSuccess = read(pages + 'appointment/success.js');
+assert.match(appointmentSuccess, /\['pending', 'confirmed'\]\.includes\((?:resultAppointment|appointment).status\)/);
+const appointmentDetail = read(pages + 'appointment/detail.js');
+assert.doesNotMatch(appointmentDetail.slice(appointmentDetail.indexOf('async payDeposit()')), /subscribeToVisitReminder\(/);
+assert.match(read(pages + 'appointment/success.wxml'), /wx:if="{{canSubscribeVisitReminder}}"[^>]+bind:tap="subscribeVisitReminder"/);
+const withdrawRecords = read(pages + 'distribution/withdraw-records/index.js');
+assert.match(withdrawRecords, /subscribeToUpdates\(this.data.withdrawSubscribeScene/);
+assert.match(read(pages + 'distribution/withdraw-records/index.wxml'), /wx:if="{{withdrawSubscribeScene}}"[^>]+bindtap="subscribeWithdrawUpdates"/);
+const invite = read(pages + 'distribution/invite/index.js');
+assert.match(invite, /!this.data.inviteCode \|\| this.data.isDistributor/);
+assert.doesNotMatch(read(pages + 'distribution/invite/index.wxml'), /open-type="share"[^>]+bindtap=/);
 
 const admin = read('hanjing-clinic-backend/routes/admin.js');
 for (const event of ['withdraw_result', 'withdraw_paid', 'order_shipped', 'promoter_activated']) {
@@ -76,10 +84,62 @@ async function checkConfigRecovery(initial) {
   response = {};
   await refreshSubscribeSettings();
   await requestSubscribe(options);
-  assert.equal(invocations.length, 3, '停用后不应继续使用旧模板');
+  assert.equal(invocations.length, 2, '停用后不应继续使用旧模板');
 }
 
-Promise.all([checkConfigRecovery(new Error('offline')), checkConfigRecovery({})]).then(() => {
+async function checkInviteSubscription() {
+  let generation = 1;
+  let page;
+  const calls = [];
+  const dependencies = {
+    'session-store': { getLoginGeneration: () => generation },
+    subscribe: { subscribeToUpdates: async scene => calls.push(scene) },
+    'invite-design': { copy: {} },
+    'invite-service': { loadInviteShareInfo: async () => ({ inviteCode: 'TEST-CODE' }) },
+  };
+  vm.runInNewContext(invite, {
+    require: name => dependencies[name.split('/').at(-1)] || {},
+    Page: config => { page = config; },
+    wx: { showLoading() {}, hideLoading() {}, showToast() {} },
+  });
+  page.setData = patch => Object.assign(page.data, patch);
+  page.prepareInviteImage = async () => 'poster.png';
+  page.ensureAlbumPermission = async () => {};
+  page.showPosterSavedNotice = async () => {};
+  await page.loadInviteInfo();
+  await page.subscribePromotionActivation();
+  page.savePosterImage = async () => { throw Error('保存失败'); };
+  await page.handleSavePoster();
+  assert.equal(page.data.activationSubscribeSource, '');
+  assert.deepEqual(calls, []);
+  let finishSave;
+  page.savePosterImage = () => new Promise(resolve => { finishSave = resolve; });
+  const saving = page.handleSavePoster();
+  for (let i = 0; i < 8 && !finishSave; i++) await Promise.resolve();
+  assert.equal(page.data.activationSubscribeSource, '');
+  finishSave();
+  await saving;
+  assert.equal(page.data.activationSubscribeSource, 'saved');
+  assert.deepEqual(calls, []);
+  await page.subscribePromotionActivation();
+  assert.deepEqual(calls, ['distribution']);
+  generation++;
+  await page.subscribePromotionActivation();
+  await page.loadInviteInfo();
+  assert.equal(page.data.activationSubscribeSource, '');
+  page.onShareAppMessage();
+  assert.equal(page.data.activationSubscribeSource, 'share');
+  assert.deepEqual(calls, ['distribution']);
+  await page.loadInviteInfo();
+  assert.equal(page.data.activationSubscribeSource, 'share');
+  await page.subscribePromotionActivation();
+  assert.deepEqual(calls, ['distribution', 'distribution']);
+  page.data.isDistributor = true;
+  await page.subscribePromotionActivation();
+  assert.equal(calls.length, 2);
+}
+
+Promise.all([checkConfigRecovery(new Error('offline')), checkConfigRecovery({}), checkInviteSubscription()]).then(() => {
   console.log('wechat notification trigger and config recovery checks passed');
 }).catch((error) => {
   console.error(error);

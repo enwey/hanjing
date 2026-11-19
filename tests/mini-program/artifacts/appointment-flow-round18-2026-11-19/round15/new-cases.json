@@ -1,0 +1,134 @@
+[
+  {
+    "id": "cross-instance-separate-runtimes",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "legacy-a",
+        "charge-a",
+        "charge-a",
+        "charge-2",
+        "charge-2"
+      ],
+      "created": [
+        "charge-2"
+      ],
+      "retired": [
+        "charge-a"
+      ],
+      "builds": [
+        "charge-2"
+      ],
+      "settled": 0,
+      "native": [
+        {
+          "kind": "list",
+          "package": "prepay_id=charge-2"
+        }
+      ],
+      "status": "pending_payment"
+    }
+  },
+  {
+    "id": "cross-instance-shared-runtime",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "charge-a",
+        "charge-2"
+      ],
+      "created": [
+        "charge-2"
+      ],
+      "retired": [
+        "charge-a"
+      ],
+      "builds": [
+        "charge-2"
+      ],
+      "settled": 0,
+      "native": [
+        {
+          "kind": "list",
+          "package": "prepay_id=charge-2"
+        }
+      ],
+      "status": "pending_payment"
+    }
+  },
+  {
+    "id": "cross-instance-legacy-paid",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "legacy-a"
+      ],
+      "created": [],
+      "retired": [],
+      "builds": [],
+      "settled": 1,
+      "native": [],
+      "status": "pending"
+    }
+  },
+  {
+    "id": "lease-expiry-NOTPAY",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "charge-2"
+      ],
+      "builds": [
+        "charge-2",
+        "charge-2"
+      ],
+      "settled": 0
+    }
+  },
+  {
+    "id": "lease-expiry-USERPAYING",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "charge-2"
+      ],
+      "builds": [
+        "charge-2"
+      ],
+      "settled": 0
+    }
+  },
+  {
+    "id": "lease-expiry-SUCCESS",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "charge-2"
+      ],
+      "builds": [
+        "charge-2"
+      ],
+      "settled": 1
+    }
+  },
+  {
+    "id": "lease-expiry-timeout",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "charge-2"
+      ],
+      "builds": [
+        "charge-2"
+      ],
+      "settled": 0
+    }
+  }
+]

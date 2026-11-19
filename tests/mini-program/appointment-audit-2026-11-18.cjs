@@ -25,8 +25,13 @@ function loadPage(file, h, api, options = {}) {
     showToast: o => toasts.push(o.title), showLoading() {}, hideLoading() {}, showModal: o => modals.push(o),
     reLaunch: o => nav.push(o.url), navigateTo: o => nav.push(o.url), navigateBack: o => nav.push(o.delta),
     requestPayment: o => options.requestPayment ? options.requestPayment(o) : o.success({}), stopPullDownRefresh() {} };
+  if (!h.paymentReceipt) {
+    const module = { exports: {} };
+    vm.runInNewContext(fs.readFileSync(path.join(root, 'common/utils/appointment-payment-receipt.js'), 'utf8'), { module, wx });
+    h.paymentReceipt = module.exports;
+  }
   vm.runInNewContext(fs.readFileSync(path.join(root, 'pages/appointment', file), 'utf8'), {
-    require: p => p.includes('appointment-time') ? require(path.join(root,'common/utils/appointment-time.js')) :
+    require: p => p.includes('appointment-payment-receipt') ? h.paymentReceipt : p.includes('appointment-time') ? require(path.join(root,'common/utils/appointment-time.js')) :
       p.includes('api/index') ? api : p.includes('session-store') ? h.store : p.includes('appointment-draft') ? draftStore :
       p.includes('subscribe') ? { requestSubscribe: async () => {}, refreshSubscribeSettings: async () => {}, subscribeToVisitReminder: async () => {} } :
       p.includes('image-url') ? { normalizeImageUrl: x => x || '', getStoreCoverUrl: () => '' } :

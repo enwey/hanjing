@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: orders：较早请求晚到不能覆盖新数据
+ok 1 - orders：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 7.942
+  type: 'test'
+  ...
+# Subtest: commission：较早请求晚到不能覆盖新数据
+ok 2 - commission：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 3.131
+  type: 'test'
+  ...
+# Subtest: team：较早请求晚到不能覆盖新数据
+ok 3 - team：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 1.9252
+  type: 'test'
+  ...
+# Subtest: products：较早请求晚到不能覆盖新数据
+ok 4 - products：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 1.7691
+  type: 'test'
+  ...
+# Subtest: 提现：超额和三位小数拦截；合法金额连续提交只发一次
+ok 5 - 提现：超额和三位小数拦截；合法金额连续提交只发一次
+  ---
+  duration_ms: 3.6729
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 196.114

@@ -1,3 +1,4 @@
+const paymentReceipt = require('../../common/utils/appointment-payment-receipt');
 const { parseAppointmentTimestamp, RESCHEDULE_LIMIT_HOURS, getCancelLimitHours } = require('../../common/utils/appointment-time');
 
 const chargeStatusLabels = {
@@ -280,7 +281,7 @@ Page({
         canPay: appointment.status === 'pending_payment' && appointment.appointmentCharge?.canPay !== false,
         canSubscribeVisitReminder: Boolean(appointment.canSubscribeVisitReminder &&
           bookingSettings.subscribeTemplateMap?.visit_reminder &&
-          ['pending_payment', 'pending', 'confirmed'].includes(appointment.status) &&
+          ['pending', 'confirmed'].includes(appointment.status) &&
           appointmentTimestamp > Date.now()),
         canCancelOrReschedule,
         canReschedule,
@@ -369,6 +370,8 @@ Page({
     if (!this.data.canPay) return;
     const generation = sessionStore.getLoginGeneration();
     if (this.paymentFlight && this.paymentFlight.generation === generation) return;
+    const releasePayment = paymentReceipt.acquire(this.data.appointmentId);
+    if (!releasePayment) return;
     const flight = { generation };
     this.paymentFlight = flight;
     this.appointmentPaymentInProgress = true;
@@ -377,9 +380,9 @@ Page({
       generation === sessionStore.getLoginGeneration() && sessionStore.isLoggedIn();
     try {
       if (!isCurrent()) return;
-      await subscribe.subscribeToVisitReminder(appointmentId, isCurrent).catch(() => {});
       if (isCurrent()) await this.payAppointmentDeposit({ appointmentId, isCurrent });
     } finally {
+      releasePayment();
       if (this.paymentFlight === flight) {
         this.paymentFlight = null;
         this.appointmentPaymentInProgress = false;
@@ -396,14 +399,22 @@ Page({
     if (!isCurrent()) return;
     wx.showLoading({ title: '发起支付...' });
     try {
-      const payResponse = await api.payAppointmentDeposit(appointmentId);
-      if (!isCurrent()) return;
-      const payParams = unwrapObject(payResponse);
-      wx.hideLoading();
-      await requestWxPay(payParams);
+      let alreadyPaid = false;
+      if (!paymentReceipt.hasSubmitted(appointmentId)) {
+        const payResponse = await paymentReceipt.preparePayment(api, appointmentId, isCurrent);
+        if (!isCurrent()) return;
+        const payParams = unwrapObject(payResponse);
+        wx.hideLoading();
+        alreadyPaid = payParams.alreadyPaid === true;
+        if (!alreadyPaid) {
+          await requestWxPay(payParams);
+          paymentReceipt.markSubmitted(appointmentId);
+        }
+      }
       if (!isCurrent()) return;
       wx.showLoading({ title: '同步预约状态...' });
-      await syncPaidAppointment(appointmentId);
+
+      if (!alreadyPaid) await syncPaidAppointment(appointmentId);
       if (!isCurrent()) return;
       wx.hideLoading();
       wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });

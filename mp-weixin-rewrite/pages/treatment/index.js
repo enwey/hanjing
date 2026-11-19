@@ -1,6 +1,7 @@
 const api = require('../../api/index');
 const navigation = require('../../common/utils/navigation');
 const { formatChinaDate } = require('../../common/utils/date-time');
+const patientContextStore = require('../../stores/patient-context-store');
 const sessionStore = require('../../stores/session-store');
 
 const RELATION_LABEL_MAP = {
@@ -349,11 +350,12 @@ Page({
   },
 
   onLoad() {
-    this.selectedPatientId = wx.getStorageSync('selected_treatment_patient_id') || '';
+    this.selectedPatientId = patientContextStore.state.currentPatientId;
   },
 
   onShow() {
     if (!sessionStore.isLoggedIn()) {
+      this._loadVersion = (this._loadVersion || 0) + 1;
       this.setData({
         isLoggedIn: false,
         loading: false,
@@ -363,6 +365,7 @@ Page({
       });
       return;
     }
+    this.selectedPatientId = patientContextStore.state.currentPatientId;
     this.setData({ isLoggedIn: true });
     this.loadPage({ silent: this.data.hasLoaded });
   },
@@ -374,6 +377,7 @@ Page({
   },
 
   onUnload() {
+    this._loadVersion = (this._loadVersion || 0) + 1;
     if (this.data.checkinVisible || this.data.pageStyle !== 'overflow: visible; background-color: #f3f4f6;') {
       this.setData({ checkinVisible: false, pageStyle: 'overflow: visible; background-color: #f3f4f6;' });
     }
@@ -388,26 +392,25 @@ Page({
   },
 
   async loadPage(options = {}) {
+    const version = this._loadVersion = (this._loadVersion || 0) + 1;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
     }
     try {
       const memberRes = await api.getFamilyMembers();
+      if (version !== this._loadVersion) return;
       const members = unwrapList(memberRes);
       const hasSelectedMember = members.length > 0 && members.some((item) => String(item.id) === String(this.selectedPatientId || ''));
 
-      if (this.selectedPatientId && members.length > 0 && !hasSelectedMember) {
+      if (this.selectedPatientId && !hasSelectedMember) {
         this.selectedPatientId = '';
-        wx.removeStorageSync('selected_treatment_patient_id');
       }
 
       if (!this.selectedPatientId && members.length) {
         const selfMember = members.find((item) => item.relation === 'self') || members[0];
         this.selectedPatientId = String(selfMember.id);
-        wx.setStorageSync('selected_treatment_patient_id', this.selectedPatientId);
       }
-
       const params = this.queryParams();
       const [recordRes, wearingRes, summaryRes, timelineRes] = await Promise.all([
         api.getTreatmentRecord(params),
@@ -416,7 +419,10 @@ Page({
         api.getTimeline(params),
       ]);
 
-      const treatmentRecord = unwrapObject(recordRes) || null;
+      if (version !== this._loadVersion) return;
+      const treatmentRecord = recordRes && Object.prototype.hasOwnProperty.call(recordRes, 'data')
+        ? (recordRes.data == null ? null : unwrapObject(recordRes))
+        : recordRes;
       const wearingRecords = unwrapList(wearingRes).map((item) => ({
         date: item.date || '',
         wearDuration: Number(item.wearDuration || 0),
@@ -431,6 +437,7 @@ Page({
       const hasRealTreatmentRecord = !!(treatmentRecord && treatmentRecord.isRealTreatmentRecord);
       const heroCompliance = Number(summary.weekCompliance != null ? summary.weekCompliance : summary.compliance || 0);
 
+      patientContextStore.setCurrentPatientId(this.selectedPatientId);
       this.members = members;
       this.wearingRecords = wearingRecords;
 
@@ -470,6 +477,8 @@ Page({
         timelinePreview: buildTimelinePreview(timeline),
       });
     } catch (error) {
+      if (version !== this._loadVersion) return;
+      this.selectedPatientId = patientContextStore.state.currentPatientId;
       console.error('[Treatment loadPage] 加载失败', error);
       if (!this.data.hasLoaded) {
         this.setData({
@@ -489,8 +498,7 @@ Page({
       return;
     }
     this.selectedPatientId = String(member.id);
-    wx.setStorageSync('selected_treatment_patient_id', this.selectedPatientId);
-    this.setData({ loading: true, memberIndex: nextIndex });
+    this.setData({ checkinVisible: false, pageStyle: 'overflow: visible;' });
     await this.loadPage();
   },
 
@@ -682,9 +690,11 @@ Page({
       return;
     }
     this.setData({ isSubmittingCheckin: true });
+    const version = this._loadVersion;
+    const params = this.queryParams();
     try {
       await api.submitWearingCheckin({
-        ...this.queryParams(),
+        ...params,
         date: getTodayText(),
         wearDuration: this.data.selectedWearDuration,
         comfort: this.data.selectedComfort,
@@ -693,11 +703,13 @@ Page({
         note: String(this.data.checkinNote || '').trim() || undefined,
       });
 
+      if (version !== this._loadVersion) return;
       const [wearingRes, summaryRes] = await Promise.all([
-        api.getWearingRecords(this.queryParams()),
-        api.getWearingSummary(this.queryParams()),
+        api.getWearingRecords(params),
+        api.getWearingSummary(params),
       ]);
 
+      if (version !== this._loadVersion) return;
       this.wearingRecords = unwrapList(wearingRes).map((item) => ({
         date: item.date || '',
         wearDuration: Number(item.wearDuration || 0),
@@ -730,11 +742,12 @@ Page({
       });
       wx.showToast({ title: '打卡成功', icon: 'success' });
     } catch (error) {
-      wx.showToast({ title: (error && error.message) || '打卡失败', icon: 'none' });
+      if (version === this._loadVersion) {
+        wx.showToast({ title: (error && error.message) || '打卡失败', icon: 'none' });
+      }
+    } finally {
       this.setData({ isSubmittingCheckin: false });
-      return;
     }
-    this.setData({ isSubmittingCheckin: false });
   },
 
   noop() {},

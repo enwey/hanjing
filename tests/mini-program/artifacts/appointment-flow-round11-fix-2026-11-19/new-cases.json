@@ -1,0 +1,94 @@
+[
+  {
+    "id": "K01-cancel-before-settings",
+    "passed": true,
+    "observed": {
+      "cutoffBefore": 2,
+      "modals": 0,
+      "calls": 0,
+      "cutoffAfter": 4,
+      "toasts": [
+        "取消规则暂未加载，请下拉刷新后重试"
+      ]
+    }
+  },
+  {
+    "id": "K02-refresh-drops-catalog-labels",
+    "passed": true,
+    "observed": {
+      "before": [
+        "甲门店",
+        "甲医生"
+      ],
+      "after": [
+        "甲门店",
+        "甲医生"
+      ]
+    }
+  },
+  {
+    "id": "K03-result-waits-for-settings",
+    "passed": true,
+    "observed": {
+      "visibleBeforeSettings": true,
+      "loading": false,
+      "visibleAfterSettings": true
+    }
+  },
+  {
+    "id": "K04-reminded-result",
+    "passed": true,
+    "observed": {
+      "visible": true,
+      "error": "",
+      "retry": false
+    }
+  },
+  {
+    "id": "K05-payment-receipt-write-fails-list",
+    "passed": true,
+    "observed": {
+      "confirmAfterFirst": 1,
+      "prepay": 1,
+      "native": 1,
+      "confirm": 2,
+      "toasts": [
+        "同步超时",
+        "同步超时"
+      ]
+    }
+  },
+  {
+    "id": "K05-payment-receipt-write-fails-detail",
+    "passed": true,
+    "observed": {
+      "confirmAfterFirst": 1,
+      "prepay": 1,
+      "native": 1,
+      "confirm": 2,
+      "toasts": [
+        "同步超时",
+        "同步超时"
+      ]
+    }
+  },
+  {
+    "id": "K06-settings-arrive-before-cancel-confirm",
+    "passed": true,
+    "observed": {
+      "calls": 0,
+      "toasts": [
+        "取消规则暂未加载，请下拉刷新后重试",
+        "距离预约时间已不足4小时，不支持取消预约"
+      ]
+    }
+  },
+  {
+    "id": "K07-late-catalog-enriches-list",
+    "passed": true,
+    "observed": {
+      "count": 1,
+      "store": "甲门店"
+    }
+  }
+]

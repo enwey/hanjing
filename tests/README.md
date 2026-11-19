@@ -1,5 +1,127 @@
 # 测试记录
 
+- 2026-11-19 提现页和分销首页余额覆盖独立回归 10/10，60 元超额申请未发送。[记录](mini-program/distribution-center-2026-11-19.md#余额覆盖独立回归)
+
+- 2026-11-19 [商城完整测试第十三轮](mini-program/mall-full-audit-round13-2026-11-19.md)，两项独立回归通过，商城模块 186/186。
+
+- 2026-11-19 提现页和分销首页余额覆盖已修复，开发自测 10/10，待回归。[记录](mini-program/distribution-center-2026-11-19.md#余额覆盖修复)
+
+- 2026-11-19 分销中心复测 93/95：旧五项失败已区分环境和替身原因，新增两处余额覆盖。[报告](mini-program/distribution-center-2026-11-19.md)
+
+- 2026-11-19 [商城完整测试第十二轮](mini-program/mall-full-audit-round12-2026-11-19.md)，三项独立回归通过，商城模块 183/183。
+
+- 2026-11-19 分销中心三页独立回归 8/8，旧成功和旧错误均不影响最新状态。[记录](mini-program/distribution-center-2026-11-19.md#独立回归)
+
+- 2026-11-19 分销中心三页旧响应覆盖已修复，开发自测 5/5，待回归。[记录](mini-program/distribution-center-2026-11-19.md#修复记录)
+
+- 2026-11-19 分销中心测试：页面 2/5，复现三页旧响应覆盖；推广隔离 MySQL 脚本通过。[报告](mini-program/distribution-center-2026-11-19.md)
+
+- 2026-11-19 [商城完整测试第十一轮](mini-program/mall-full-audit-round11-2026-11-19.md)，两项独立回归通过，商城模块 180/180。
+
+- 2026-11-19 小程序预约第十九轮全流程复测 201/201，未发现新问题。[报告](mini-program/appointment-flow-round19-2026-11-19.md)
+
+- 2026-11-19 [商城完整测试第十轮](mini-program/mall-full-audit-round10-2026-11-19.md)，三项独立模块回归通过，专项 4/4。
+
+- 2026-11-19 小程序预约第十八轮：197/197，旧版付款隔离 MySQL 5/5，未发现新问题。[报告](mini-program/appointment-flow-round18-2026-11-19.md)
+
+- 2026-11-19 小程序预约 R17-01 隔离 MySQL 独立回归 4/4 通过。[回归记录](mini-program/appointment-flow-round17-2026-11-19.md#独立回归)
+
+- 2026-11-19 [商城完整测试第九轮](mini-program/mall-full-audit-round9-2026-11-19.md)，三项独立回归通过，商城模块 172/172。
+
+- 2026-11-19 小程序预约 R17-01 已修复，隔离 MySQL 开发自测 4/4，待回归。[修复记录](mini-program/appointment-flow-round17-2026-11-19.md#修复记录)
+
+- 2026-11-19 小程序预约第十七轮：195/196，隔离 MySQL 复现并发确认误报 409，待决定修复。[报告](mini-program/appointment-flow-round17-2026-11-19.md)
+
+- 2026-11-19 小程序预约第十六轮：既有 192/192，隔离 MySQL 并发 3/3，未发现新业务缺陷。[报告](mini-program/appointment-flow-round16-2026-11-19.md)
+
+- 2026-11-19 [商城完整测试第八轮](mini-program/mall-full-audit-round8-2026-11-19.md)，三项独立回归通过，商城模块 169/169。
+
+- 2026-11-19 小程序预约跨实例支付防重专项回归 7/7，隔离 MySQL 并发占用结果符合预期。[回归记录](mini-program/appointment-flow-round15-2026-11-19.md#独立回归)
+
+- 2026-11-19 小程序预约跨实例支付防重已修复，开发自测 49/49，待回归。[修复记录](mini-program/appointment-flow-round15-2026-11-19.md#修复记录)
+
+- 2026-11-19 [商城完整测试第七轮](mini-program/mall-full-audit-round7-2026-11-19.md)，两项独立回归通过，商城模块 165/165。
+
+- 2026-11-19 小程序预约第十五轮：188 项，187 通过、1 失败，待决定修复。[报告](mini-program/appointment-flow-round15-2026-11-19.md)
+
+- 2026-11-19 [小程序治疗模块非真机测试](mini-program/treatment-2026-11-19.md)，TRT-01～TRT-06 独立回归通过，页面 30/30，隔离 MySQL 集成 17/19，TRT-07、TRT-08 独立回归通过；已绑定设备全模块复测 39/44，治疗人切换及异常复测 52/61，页面 30/30，TRT-11～TRT-13 独立回归通过，隔离 MySQL 65/65。
+
+- 2026-11-19 小程序预约第十四轮三项修复独立回归通过，185/185；真机、跨实例并发及实际扣款未验证。[回归记录](mini-program/appointment-flow-round14-2026-11-19.md#独立回归)
+
+- 2026-11-19 小程序预约第十四轮三项问题已修复，开发自测 45/45，待回归。[修复记录](mini-program/appointment-flow-round14-2026-11-19.md#修复记录)
+
+- 2026-11-19 [小程序商城完整测试第六轮](mini-program/mall-full-audit-round6-2026-11-19.md)，三项独立回归通过，模块 161/161，隔离 MySQL 建单专项通过。
+
+- 2026-11-19 [后台推广流程本地启动后全链路复测](mini-program/backend-promoter-flow-2026-11-18.md#2026-11-19-本地启动后全链路复测)，隔离 MySQL 31/31、扫码 30/30，已测场景无新缺陷。
+
+- 2026-11-19 小程序预约第十四轮：183 项，180 通过、3 失败，待决定修复。[报告](mini-program/appointment-flow-round14-2026-11-19.md)
+
+- 2026-11-19 [FLOW-29 独立回归](mini-program/backend-promoter-flow-2026-11-18.md#flow-29-独立回归)，隔离 MySQL 31/31、支付模块 10/10，回归通过。
+
+- 2026-11-19 [FLOW-29 微信流水跨订单防重修复](mini-program/backend-promoter-flow-2026-11-18.md#flow-29-修复记录)，隔离 MySQL 开发自测 31/31，支付模块 10/10，待独立回归。
+
+- 2026-11-19 小程序预约第十三轮两项修复独立回归通过，177/177；真实支付及数据库落库未验证。[回归记录](mini-program/appointment-flow-round13-2026-11-19.md#独立回归)
+
+- 2026-11-19 [商城第五轮剩余四项修复](mini-program/mall-full-audit-round5-2026-11-19.md)，独立回归通过，商城模块 157/157，隔离 MySQL 验证并发重试仅建单和扣库存一次。
+
+- 2026-11-19 小程序预约第十三轮两类问题已修复，开发自测 34/34，待回归。[修复记录](mini-program/appointment-flow-round13-2026-11-19.md#修复记录)
+
+- 2026-11-19 [推广全链路再次集成排查](mini-program/backend-promoter-flow-2026-11-18.md#2026-11-19-推广全链路再次集成排查)，集成 29/30、扫码 30/30，新增 FLOW-29，待决定修复。
+
+- 2026-11-19 小程序预约第十三轮：173 项，169 通过、4 失败，归为 2 类问题，待决定修复。[报告](mini-program/appointment-flow-round13-2026-11-19.md)
+
+- 2026-11-19 小程序预约第十二轮四项修复独立回归通过，164/164；真实支付及数据库落库未验证。[回归记录](mini-program/appointment-flow-round12-2026-11-19.md#独立回归)
+
+- 2026-11-19 [后台推广流程隔离 MySQL 异常补测](mini-program/backend-promoter-flow-2026-11-18.md#2026-11-19-隔离-mysql-异常补测)，新增 4/4、集成合计 24/24，通过预约号源、库存、预支付重试和现金订单回滚检查。
+
+- 2026-11-19 小程序预约第十二轮四类问题已修复，开发自测 40/40，待回归。[修复记录](mini-program/appointment-flow-round12-2026-11-19.md#修复记录)
+
+- 2026-11-19 [发货通知和就诊提醒独立回归](mini-program/wechat-post-success-subscribe-2026-11-19.md#发货通知和就诊提醒独立回归)：客户端模块专项 12/12，既有流程和数据完整性 77/77 通过。微信真机未验证。
+
+- 2026-11-19 [后台推广码全链路隔离 MySQL 回归](mini-program/backend-promoter-flow-2026-11-18.md#2026-11-19-恢复-mysql-后全链路集成回归)，集成 22/22、扫码模块 30/30，FLOW-21 与 FLOW-18 落库回归通过。
+
+- 2026-11-19 小程序预约第十二轮：152 项，143 通过、9 失败，归为 4 类问题，待决定修复。[报告](mini-program/appointment-flow-round12-2026-11-19.md)
+
+- 2026-11-19 [推广资格订阅独立回归](mini-program/wechat-post-success-subscribe-2026-11-19.md#推广资格订阅独立回归)：客户端模块 7/7，通过；微信真机未验证。
+
+- 2026-11-19 [推广资格订阅时点调整](mini-program/wechat-post-success-subscribe-2026-11-19.md#推广资格订阅入口调整)：保存海报成功后或用户确认已分享后可订阅，专项自测通过，待独立回归。
+
+- 2026-11-19 [FLOW-21 PNG 解压独立回归](mini-program/backend-promoter-flow-2026-11-18.md#flow-21-png-解压独立回归)，模块 11/11 通过，隔离 MySQL 集成验证受阻。
+
+- 2026-11-19 小程序预约第十一轮五类修复独立回归通过，139/139；微信真机及实际扣款未验证。[回归记录](mini-program/appointment-flow-round11-2026-11-19.md#独立回归)
+
+- 2026-11-19 小程序预约第十一轮五类问题已修复，开发自测 61/61，待回归。[修复记录](mini-program/appointment-flow-round11-2026-11-19.md#修复记录)
+
+- 2026-11-19 [小程序业务完成后订阅](mini-program/wechat-post-success-subscribe-2026-11-19.md)：商城、预约、提现及推广入口调整完成，开发自测通过，待独立回归。
+
+- 2026-11-19 [FLOW-21 PNG 解压校验修复](mini-program/backend-promoter-flow-2026-11-18.md#flow-21-png-解压校验修复)，非真机开发自测 19/19，待独立回归。
+
+- 2026-11-19 小程序预约第十一轮：137 项，131 通过、6 失败，归为 5 类问题，待决定修复。[报告](mini-program/appointment-flow-round11-2026-11-19.md)
+
+- 2026-11-19 [后台推广码两项独立回归](mini-program/backend-promoter-flow-2026-11-18.md#flow-21-与-flow-18-独立回归)，模块 12/14。FLOW-18 通过，FLOW-21 不通过；隔离集成验证受阻。
+
+- 2026-11-19 [后台推广码 FLOW-21 与 FLOW-18 修复](mini-program/backend-promoter-flow-2026-11-18.md#2026-11-19-flow-21-与-flow-18-修复记录)，非真机开发自测 47/47，待回归。
+
+- 2026-11-19 小程序预约第十轮四类修复独立回归通过，129/129；微信真机和实际扣款未验证。[回归记录](mini-program/appointment-flow-round10-2026-11-19.md#独立回归)
+
+- 2026-11-19 [后台推广码全链路再次逐项排查](mini-program/backend-promoter-flow-2026-11-18.md#2026-11-19-全链路再次逐项排查)，非真机模块 83/86，新增 FLOW-21，复现 FLOW-18，隔离接口验证受阻。
+
+- 2026-11-19 [小程序商城完整复测第五轮](mini-program/mall-full-audit-round5-2026-11-19.md)：154 项中 148 项通过、6 项失败，归为 5 类问题，待决定修复。微信真机未验证。
+
+- 2026-11-19 小程序预约第十轮四类问题已修复，开发自测 42/42，待回归。[修复记录](mini-program/appointment-flow-round10-2026-11-19.md#修复记录)
+
+- 2026-11-19 [小程序商城补付超时独立回归](mini-program/mall-full-audit-2026-11-19.md#独立回归)：客户端模块回归通过，独立用例 7/7、相关脚本 60/60，微信真机未验证。
+
+- 2026-11-19 [后台推广码全流程异常补测](mini-program/backend-promoter-flow-2026-11-18.md#2026-11-19-非真机阻断与异常补测)，模块 50/51，复现 FLOW-18；隔离数据库集成验证受阻。
+
+- 2026-11-19 [小程序商城补付超时修复](mini-program/mall-full-audit-2026-11-19.md#修复记录)：核对返回 401、403 或 404 时清除旧订单，核对超时时保留订单。开发自测 46/46，待独立回归。
+
+- 2026-11-19 小程序预约第十轮：127 项，121 通过、6 失败，归为 4 类问题，待决定修复。[报告](mini-program/appointment-flow-round10-2026-11-19.md)
+
+- 2026-11-19 [小程序商城完整复测第四轮](mini-program/mall-full-audit-2026-11-19.md)：145 项中 143 项通过，2 项失败归为 1 类缺陷。补付超时后核对返回 403 或 404 仍显示旧订单，待决定修复。微信真机未验证。
+
+- 2026-11-19 小程序预约第九轮四类修复独立回归通过，119/119；微信真机、真实写库及支付未验证。[回归记录](mini-program/appointment-flow-round9-2026-11-18.md#独立回归)
+
 - 2026-11-18 小程序预约第九轮四类问题已修复，119 项开发自测通过，待回归。[修复记录](mini-program/appointment-flow-round9-2026-11-18.md#修复记录)
 
 - 2026-11-18 小程序预约第九轮逐项测试 119 项，115 通过、4 失败，归为 4 类，待决定修复。[报告](mini-program/appointment-flow-round9-2026-11-18.md)

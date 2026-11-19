@@ -1,6 +1,6 @@
+const paymentReceipt = require('../../common/utils/appointment-payment-receipt');
 const api = require('../../api/index');
 const appointmentDraftStore = require('../../stores/appointment-draft-store');
-const subscribe = require('../../common/utils/subscribe');
 const sessionStore = require('../../stores/session-store');
 
 const RELATION_LABEL_MAP = {
@@ -94,7 +94,6 @@ Page({
   },
 
   onShow() {
-    subscribe.refreshSubscribeSettings();
     this.loadPage({ silent: this.data.hasLoaded });
   },
 
@@ -332,7 +331,6 @@ Page({
 
     let creating = false;
     try {
-      await subscribe.requestSubscribe({ force: true, scene: 'appointment' });
       if (!isCurrent()) return;
       const currentMember = this.data.memberList[this.data.memberIndex];
       if (!slotKey || slotKey !== bookingSlotKey(this.data.draft) ||
@@ -393,33 +391,45 @@ Page({
           success: async (result) => {
             if (!isCurrent()) return;
             if (result.confirm) {
-              wx.showLoading({ title: '发起支付...' });
+              const releasePayment = paymentReceipt.acquire(appointmentId);
+              if (!releasePayment) return;
               try {
-                const payResponse = await api.payAppointmentDeposit(appointmentId);
-                if (!isCurrent()) { wx.hideLoading(); return; }
-                const payParams = unwrapObject(payResponse);
-                wx.hideLoading();
-                await requestWxPay(payParams);
+                wx.showLoading({ title: '发起支付...' });
+                let alreadyPaid = false;
+                if (!paymentReceipt.hasSubmitted(appointmentId)) {
+                  const payResponse = await paymentReceipt.preparePayment(api, appointmentId, isCurrent);
+                  if (!isCurrent()) { wx.hideLoading(); return; }
+                  const payParams = unwrapObject(payResponse);
+                  wx.hideLoading();
+                  alreadyPaid = payParams.alreadyPaid === true;
+                  if (!alreadyPaid) {
+                    await requestWxPay(payParams);
+                    paymentReceipt.markSubmitted(appointmentId);
+                  }
+                }
                 if (!isCurrent()) return;
                 wx.showLoading({ title: '同步预约状态...' });
-                await syncPaidAppointment(appointmentId);
+
+                if (!alreadyPaid) await syncPaidAppointment(appointmentId);
                 wx.hideLoading();
                 if (!isCurrent()) return;
                 wx.showToast({ title: '支付已提交', icon: 'success' });
                 appointmentDraftStore.clearDraft();
                 wx.removeStorageSync('pending_appointment_assessment');
                 wx.reLaunch({ url: '/pages/appointment/success?id=' + appointmentId });
-                } catch (error) {
-                  wx.hideLoading();
-                  if (!isCurrent()) return;
-                  wx.showToast({
-                    title: getPaymentErrorMessage(error, '支付未完成'),
-                    icon: 'none',
-                  });
+              } catch (error) {
+                wx.hideLoading();
+                if (!isCurrent()) return;
+                wx.showToast({
+                  title: getPaymentErrorMessage(error, '支付未完成'),
+                  icon: 'none',
+                });
                 setTimeout(() => {
                   if (!isCurrent()) return;
                   wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
                 }, 1000);
+              } finally {
+                releasePayment();
               }
             } else {
               try {

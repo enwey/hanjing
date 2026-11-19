@@ -1,0 +1,421 @@
+TAP version 13
+# Subtest: mini referral captures cold/hot launch, latest valid code and expiry
+ok 1 - mini referral captures cold/hot launch, latest valid code and expiry
+  ---
+  duration_ms: 3.1432
+  type: 'test'
+  ...
+# ◇ injected env (8) from hanjing-clinic-backend\\.env // tip: ⌘ suppress logs { quiet: true }
+# Subtest: appointment rejects wrong length before querying the database
+ok 2 - appointment rejects wrong length before querying the database
+  ---
+  duration_ms: 3.0093
+  type: 'test'
+  ...
+# Subtest: appointment rejects invalid characters before querying the database
+ok 3 - appointment rejects invalid characters before querying the database
+  ---
+  duration_ms: 0.4127
+  type: 'test'
+  ...
+# Subtest: appointment rejects non-string before querying the database
+ok 4 - appointment rejects non-string before querying the database
+  ---
+  duration_ms: 0.2337
+  type: 'test'
+  ...
+# Subtest: appointment rejects whitespace only before querying the database
+ok 5 - appointment rejects whitespace only before querying the database
+  ---
+  duration_ms: 0.2218
+  type: 'test'
+  ...
+# Subtest: appointment rejects missing active source and never attempts to write
+ok 6 - appointment rejects missing active source and never attempts to write
+  ---
+  duration_ms: 1.562
+  type: 'test'
+  ...
+# Subtest: appointment writes active source and normalized code
+ok 7 - appointment writes active source and normalized code
+  ---
+  duration_ms: 0.5709
+  type: 'test'
+  ...
+# Subtest: missing order produces no commission writes
+ok 8 - missing order produces no commission writes
+  ---
+  duration_ms: 1.5124
+  type: 'test'
+  ...
+# Subtest: unpaid produces no commission writes
+ok 9 - unpaid produces no commission writes
+  ---
+  duration_ms: 0.2927
+  type: 'test'
+  ...
+# Subtest: zero payment produces no commission writes
+ok 10 - zero payment produces no commission writes
+  ---
+  duration_ms: 0.7698
+  type: 'test'
+  ...
+# Subtest: already processed produces no commission writes
+ok 11 - already processed produces no commission writes
+  ---
+  duration_ms: 0.7427
+  type: 'test'
+  ...
+# Subtest: feature disabled records processing without referral or ledger writes
+ok 12 - feature disabled records processing without referral or ledger writes
+  ---
+  duration_ms: 0.7973
+  type: 'test'
+  ...
+# Subtest: ineligible item records processing without referral or ledger writes
+ok 13 - ineligible item records processing without referral or ledger writes
+  ---
+  duration_ms: 0.1729
+  type: 'test'
+  ...
+# Subtest: inactive referrer records processing without referral or ledger writes
+ok 14 - inactive referrer records processing without referral or ledger writes
+  ---
+  duration_ms: 0.6666
+  type: 'test'
+  ...
+# Subtest: appointment already converted records processing without referral or ledger writes
+ok 15 - appointment already converted records processing without referral or ledger writes
+  ---
+  duration_ms: 0.2819
+  type: 'test'
+  ...
+# Subtest: missing settings stops processing before any write
+ok 16 - missing settings stops processing before any write
+  ---
+  duration_ms: 0.2785
+  type: 'test'
+  ...
+# Subtest: invalid setting stops processing before any write
+ok 17 - invalid setting stops processing before any write
+  ---
+  duration_ms: 0.2064
+  type: 'test'
+  ...
+# Subtest: X creates one relationship and one pending ledger entry
+ok 18 - X creates one relationship and one pending ledger entry
+  ---
+  duration_ms: 0.6726
+  type: 'test'
+  ...
+# Subtest: Y preserves existing relationship and records the Y amount
+ok 19 - Y preserves existing relationship and records the Y amount
+  ---
+  duration_ms: 0.4815
+  type: 'test'
+  ...
+# Subtest: ledger write failure propagates before marking order processed
+ok 20 - ledger write failure propagates before marking order processed
+  ---
+  duration_ms: 0.842
+  type: 'test'
+  ...
+# Subtest: large mixed order allocates cents by exact integer remainders (FLOW-18)
+not ok 21 - large mixed order allocates cents by exact integer remainders (FLOW-18)
+  ---
+  duration_ms: 1.6677
+  type: 'test'
+  location: 'D:\\WorkSpace\\Games\\hanjing\\tests\\mini-program\\backend-promoter-faults-2026-11-19.test.mjs:100:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+
+    + 999999990
+    - 999999991
+              ^
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 999999991
+  actual: 999999990
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/WorkSpace/Games/hanjing/tests/mini-program/backend-promoter-faults-2026-11-19.test.mjs:106:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# (node:22272) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: missing or disabled promotion QR is rejected before upstream call
+ok 22 - missing or disabled promotion QR is rejected before upstream call
+  ---
+  duration_ms: 3.2953
+  type: 'test'
+  ...
+# Subtest: QR HTTP failure does not cache and can be retried
+ok 23 - QR HTTP failure does not cache and can be retried
+  ---
+  duration_ms: 25.2917
+  type: 'test'
+  ...
+# Subtest: QR HTTP 200 with WeChat error JSON does not cache and can be retried
+ok 24 - QR HTTP 200 with WeChat error JSON does not cache and can be retried
+  ---
+  duration_ms: 1.165
+  type: 'test'
+  ...
+# Subtest: QR empty response does not cache and can be retried
+ok 25 - QR empty response does not cache and can be retried
+  ---
+  duration_ms: 1.033
+  type: 'test'
+  ...
+# Subtest: QR connection failure does not cache and can be retried
+ok 26 - QR connection failure does not cache and can be retried
+  ---
+  duration_ms: 0.7657
+  type: 'test'
+  ...
+# Subtest: QR rejects and never caches truncated PNG
+not ok 27 - QR rejects and never caches truncated PNG
+  ---
+  duration_ms: 2.1842
+  type: 'test'
+  location: 'D:\\WorkSpace\\Games\\hanjing\\tests\\mini-program\\backend-promoter-lifecycle-2026-11-19.test.mjs:50:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+      {
+    +   cacheWrites: 1,
+    +   result: 'fulfilled'
+    -   cacheWrites: 0,
+    -   result: 'rejected'
+      }
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    result: 'rejected'
+    cacheWrites: 0
+  actual:
+    result: 'fulfilled'
+    cacheWrites: 1
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/WorkSpace/Games/hanjing/tests/mini-program/backend-promoter-lifecycle-2026-11-19.test.mjs:53:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: QR rejects and never caches truncated JPEG
+not ok 28 - QR rejects and never caches truncated JPEG
+  ---
+  duration_ms: 1.8433
+  type: 'test'
+  location: 'D:\\WorkSpace\\Games\\hanjing\\tests\\mini-program\\backend-promoter-lifecycle-2026-11-19.test.mjs:50:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+      {
+    +   cacheWrites: 1,
+    +   result: 'fulfilled'
+    -   cacheWrites: 0,
+    -   result: 'rejected'
+      }
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    result: 'rejected'
+    cacheWrites: 0
+  actual:
+    result: 'fulfilled'
+    cacheWrites: 1
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/WorkSpace/Games/hanjing/tests/mini-program/backend-promoter-lifecycle-2026-11-19.test.mjs:53:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: payment callback signature valid
+ok 29 - payment callback signature valid
+  ---
+  duration_ms: 3.1355
+  type: 'test'
+  ...
+# Subtest: payment callback signature tampered
+ok 30 - payment callback signature tampered
+  ---
+  duration_ms: 1.5433
+  type: 'test'
+  ...
+# Subtest: payment callback signature stale
+ok 31 - payment callback signature stale
+  ---
+  duration_ms: 1.4042
+  type: 'test'
+  ...
+# Subtest: payment callback signature future
+ok 32 - payment callback signature future
+  ---
+  duration_ms: 0.9692
+  type: 'test'
+  ...
+# Subtest: payment callback signature missing signature
+ok 33 - payment callback signature missing signature
+  ---
+  duration_ms: 0.2775
+  type: 'test'
+  ...
+# Subtest: refund processing leaves the ledger untouched
+ok 34 - refund processing leaves the ledger untouched
+  ---
+  duration_ms: 0.2606
+  type: 'test'
+  ...
+# Subtest: refund missing success time leaves the ledger untouched
+ok 35 - refund missing success time leaves the ledger untouched
+  ---
+  duration_ms: 0.2003
+  type: 'test'
+  ...
+# Subtest: refund unknown refund leaves the ledger untouched
+ok 36 - refund unknown refund leaves the ledger untouched
+  ---
+  duration_ms: 0.399
+  type: 'test'
+  ...
+# Subtest: refund wrong trade leaves the ledger untouched
+ok 37 - refund wrong trade leaves the ledger untouched
+  ---
+  duration_ms: 0.2645
+  type: 'test'
+  ...
+# Subtest: refund wrong currency leaves the ledger untouched
+ok 38 - refund wrong currency leaves the ledger untouched
+  ---
+  duration_ms: 0.1235
+  type: 'test'
+  ...
+# Subtest: refund partial amount leaves the ledger untouched
+ok 39 - refund partial amount leaves the ledger untouched
+  ---
+  duration_ms: 0.1837
+  type: 'test'
+  ...
+# Subtest: refund incorrect original total leaves the ledger untouched
+ok 40 - refund incorrect original total leaves the ledger untouched
+  ---
+  duration_ms: 0.1225
+  type: 'test'
+  ...
+# Subtest: refund missing reference leaves the ledger untouched
+ok 41 - refund missing reference leaves the ledger untouched
+  ---
+  duration_ms: 0.1636
+  type: 'test'
+  ...
+# Subtest: refund wrong order state leaves the ledger untouched
+ok 42 - refund wrong order state leaves the ledger untouched
+  ---
+  duration_ms: 0.2445
+  type: 'test'
+  ...
+# Subtest: refund replay leaves the ledger untouched
+ok 43 - refund replay leaves the ledger untouched
+  ---
+  duration_ms: 0.1197
+  type: 'test'
+  ...
+# Subtest: settlement credits only rows that successfully transition from pending
+ok 44 - settlement credits only rows that successfully transition from pending
+  ---
+  duration_ms: 0.9495
+  type: 'test'
+  ...
+# Subtest: full refund reverses a pending commission exactly once in the module
+ok 45 - full refund reverses a pending commission exactly once in the module
+  ---
+  duration_ms: 0.8203
+  type: 'test'
+  ...
+# Subtest: full refund reverses a settled commission exactly once in the module
+ok 46 - full refund reverses a settled commission exactly once in the module
+  ---
+  duration_ms: 0.3325
+  type: 'test'
+  ...
+# ◇ injected env (8) from hanjing-clinic-backend\\.env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+# Subtest: order order disappeared stops before any write
+ok 47 - order order disappeared stops before any write
+  ---
+  duration_ms: 3.1277
+  type: 'test'
+  ...
+# Subtest: order empty payment stops before any write
+ok 48 - order empty payment stops before any write
+  ---
+  duration_ms: 0.2223
+  type: 'test'
+  ...
+# Subtest: order non-success trade stops before any write
+ok 49 - order non-success trade stops before any write
+  ---
+  duration_ms: 0.1672
+  type: 'test'
+  ...
+# Subtest: order different order number stops before any write
+ok 50 - order different order number stops before any write
+  ---
+  duration_ms: 0.2372
+  type: 'test'
+  ...
+# Subtest: order different currency stops before any write
+ok 51 - order different currency stops before any write
+  ---
+  duration_ms: 0.277
+  type: 'test'
+  ...
+# Subtest: order underpayment stops before any write
+ok 52 - order underpayment stops before any write
+  ---
+  duration_ms: 0.1522
+  type: 'test'
+  ...
+# Subtest: order overpayment stops before any write
+ok 53 - order overpayment stops before any write
+  ---
+  duration_ms: 0.2158
+  type: 'test'
+  ...
+# Subtest: order empty transaction ID stops before any write
+ok 54 - order empty transaction ID stops before any write
+  ---
+  duration_ms: 0.1625
+  type: 'test'
+  ...
+# Subtest: order different payment for an already paid order stops before any write
+ok 55 - order different payment for an already paid order stops before any write
+  ---
+  duration_ms: 0.7035
+  type: 'test'
+  ...
+# Subtest: identical payment on an already paid order is idempotent
+ok 56 - identical payment on an already paid order is idempotent
+  ---
+  duration_ms: 0.576
+  type: 'test'
+  ...
+1..56
+# tests 56
+# suites 0
+# pass 53
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 777.1419

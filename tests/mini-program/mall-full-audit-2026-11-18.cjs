@@ -44,6 +44,7 @@ function harness(file, api, extraWx = {}) {
     'utils/order-payment': payment,
   };
   vm.runInNewContext(fs.readFileSync(path.join(root, 'pages', file + '.js'), 'utf8'), {
+    Set: extraWx.checkoutRequestSet ? function () { return extraWx.checkoutRequestSet; } : Set,
     wx, Page: config => { page = config; }, setTimeout: callback => callback(),
     console: { error() {} },
     require: name => Object.entries(dependencies).find(([suffix]) => name.endsWith(suffix))?.[1] || {},

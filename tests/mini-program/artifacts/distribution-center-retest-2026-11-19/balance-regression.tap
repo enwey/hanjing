@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: orders：较早请求晚到不能覆盖新数据
+ok 1 - orders：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 17.6796
+  type: 'test'
+  ...
+# Subtest: commission：较早请求晚到不能覆盖新数据
+ok 2 - commission：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 10.4857
+  type: 'test'
+  ...
+# Subtest: team：较早请求晚到不能覆盖新数据
+ok 3 - team：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 3.753
+  type: 'test'
+  ...
+# Subtest: products：较早请求晚到不能覆盖新数据
+ok 4 - products：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 2.6532
+  type: 'test'
+  ...
+# Subtest: 提现：超额和三位小数拦截；合法金额连续提交只发一次
+ok 5 - 提现：超额和三位小数拦截；合法金额连续提交只发一次
+  ---
+  duration_ms: 7.214
+  type: 'test'
+  ...
+# Subtest: commission：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+ok 6 - commission：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+  ---
+  duration_ms: 5.991
+  type: 'test'
+  ...
+# Subtest: team：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+ok 7 - team：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+  ---
+  duration_ms: 7.4041
+  type: 'test'
+  ...
+# Subtest: products：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+ok 8 - products：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+  ---
+  duration_ms: 4.9828
+  type: 'test'
+  ...
+# Subtest: center：新余额先返回后不会被旧余额覆盖
+ok 9 - center：新余额先返回后不会被旧余额覆盖
+  ---
+  duration_ms: 14.2295
+  type: 'test'
+  ...
+# Subtest: withdraw：新余额先返回后不会被旧余额覆盖
+ok 10 - withdraw：新余额先返回后不会被旧余额覆盖
+  ---
+  duration_ms: 4.9826
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 602.9325

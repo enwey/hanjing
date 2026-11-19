@@ -1049,6 +1049,19 @@ async function getAppointmentPayAmount(appt) {
   return apptDepositAmount + Number(appt.consult_fee || 0);
 }
 
+async function claimWechatOrderPayment(conn, transactionId) {
+  // Existing orders predate the claim table. Leave their payment history intact.
+  const [[existing]] = await conn.execute('SELECT id FROM orders WHERE wechat_transaction_id=? LIMIT 1', [transactionId]);
+  if (existing) throw businessError('微信支付流水已用于其他订单，请核对支付流水', 409);
+  try {
+    // The unique key serializes claims across different order and appointment locks.
+    await conn.execute('INSERT INTO order_wechat_payment_claims(transaction_id) VALUES(?)', [transactionId]);
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') throw businessError('微信支付流水已用于其他订单，请核对支付流水', 409);
+    throw error;
+  }
+}
+
 export async function finalizePaidAppointment(conn, appt, userId, paymentPayload = null) {
   const [[current]] = await conn.execute('SELECT * FROM appointments WHERE id = ? FOR UPDATE', [appt.id]);
   if (!current || Number(current.user_id) !== Number(userId)) throw businessError('预约不存在', 404);
@@ -1059,6 +1072,7 @@ export async function finalizePaidAppointment(conn, appt, userId, paymentPayload
     || !paymentPayload.transaction_id) throw businessError('支付流水与预约不一致', 409);
   const [existingOrders] = await conn.execute('SELECT * FROM orders WHERE appointment_id = ? ORDER BY id', [appt.id]);
   if (existingOrders.some(order => order.wechat_transaction_id === paymentPayload.transaction_id && order.pay_at)) return false;
+  await claimWechatOrderPayment(conn, paymentPayload.transaction_id);
   const alreadyPaid = existingOrders.some(order => order.pay_at && !['cancelled', 'refunded'].includes(order.status) && orderCoversAppointmentFees(order, appt));
   const [[independentCharge]] = await conn.execute("SELECT id FROM appointment_charges WHERE appointment_id=? AND status='paid' LIMIT 1", [appt.id]);
   if (appt.status !== 'pending_payment' || alreadyPaid || independentCharge) {
@@ -1099,6 +1113,11 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
   if (!paymentPayload || paymentPayload.trade_state !== 'SUCCESS' || paymentPayload.out_trade_no !== current.order_no ||
       paymentPayload.amount?.currency !== 'CNY' || Number(paymentPayload.amount?.total) !== Number(current.pay_amount) ||
       !paymentPayload.transaction_id) throw businessError('支付流水与订单不一致', 409);
+  if (current.status !== 'pending' && !(current.status === 'cancelled' && !current.pay_at)) {
+    if (current.pay_at && current.wechat_transaction_id === paymentPayload.transaction_id) return false;
+    throw businessError('订单状态与支付结果不一致，请核对支付流水', 409);
+  }
+  await claimWechatOrderPayment(conn, paymentPayload.transaction_id);
   if (!current.pay_at) {
     const source = current.pay_method === 'wechat_native' ? 'wechat_native'
       : current.pay_method === 'wechat_micropay' ? 'wechat_micropay' : 'patient_wechat';
@@ -1112,10 +1131,6 @@ export async function finalizePaidProductOrder(conn, order, paymentPayload = nul
       [paymentPayload.transaction_id, JSON.stringify(address), current.id]);
     await writeNotification(conn, {userId:current.user_id, title:"取消订单收到付款", content:`订单 ${current.order_no} 已收到付款，已转入退款审核，不会重复发货。`, type:"order", businessType:"order", businessId:current.id});
     return false;
-  }
-  if (current.status !== 'pending') {
-    if (current.pay_at && current.wechat_transaction_id === paymentPayload.transaction_id) return false;
-    throw businessError('订单状态与支付结果不一致，请核对支付流水', 409);
   }
   order = current;
   let address = {};
@@ -4630,40 +4645,123 @@ app.post('/api/v1/appointments', authenticateWxToken, async (req, res) => {
 });
 
 // 13.5 Pay Appointment Deposit (POST)
-// 13.5 Pay Appointment Deposit (POST)
+async function queryAppointmentOrderBeforePay(outTradeNo) {
+  try {
+    const result = await queryOrderByOutTradeNo(outTradeNo);
+    if (!result || result.out_trade_no !== outTradeNo) throw businessError('支付单号不一致', 409);
+    return result;
+  } catch (error) {
+    if (error.statusCode === 404 && error.data?.code === 'ORDER_NOT_EXIST') return null;
+    throw error;
+  }
+}
+
+const appointmentPrepayFlights = new Set();
+
 app.post('/api/v1/appointments/:id/pay', authenticateWxToken, async (req, res) => {
   const { id } = req.params;
+  const key = String(id);
+  if (appointmentPrepayFlights.has(key)) {
+    return res.status(409).json({ code: 409, message: '预约支付正在发起，请稍后重试' });
+  }
+  appointmentPrepayFlights.add(key);
   try {
-    const charge = await transaction(async conn => {
+    const settled = () => res.json({ code: 0, message: '预约支付状态已同步', data: { appointmentId: id, alreadyPaid: true } });
+    const lockAppointment = async conn => {
       const [[row]] = await conn.execute('SELECT * FROM appointments WHERE id=? AND user_id=? FOR UPDATE', [id, req.user.id]);
       if (!row) throw businessError('预约不存在', 404);
-      if (row.status !== 'pending_payment') throw businessError('预约不需要支付或已支付', 400);
+      return row;
+    };
+    const isSettled = async (conn, row) => {
+      if (row.status === 'pending_payment') return false;
+      if (['cancelled', 'refunding', 'refunded', 'no_show'].includes(row.status)) {
+        throw businessError('预约已结束，请核对付款及退款状态', 409);
+      }
+      await assertAppointmentFeesPaid(conn, row);
+      return true;
+    };
+    const appointment = await transaction(async conn => {
+      const row = await lockAppointment(conn);
+      return await isSettled(conn, row) ? null : row;
+    });
+    if (!appointment) return settled();
+    // Older clients used the appointment number. Reconcile it before creating a new charge.
+    if (appointment.appointment_no) {
+      const legacy = await queryAppointmentOrderBeforePay(appointment.appointment_no);
+      if (legacy?.trade_state === 'SUCCESS') {
+        await transaction(async conn => {
+          const finalized = await finalizePaidAppointment(conn, appointment, req.user.id, legacy);
+          if (!finalized) {
+            const current = await lockAppointment(conn);
+            if (!await isSettled(conn, current)) throw businessError('历史预约付款待核对，请稍后重试', 409);
+          }
+        });
+        return settled();
+      }
+      if (legacy && legacy.trade_state !== 'CLOSED') {
+        throw businessError('历史微信订单尚未关闭，请核对付款状态后重试', 409);
+      }
+    }
+    const prepare = closedCharge => transaction(async conn => {
+      const row = await lockAppointment(conn);
+      if (await isSettled(conn, row)) return null;
+      if (closedCharge) {
+        // Only retire the exact pending charge whose provider order was verified closed.
+        await conn.execute("UPDATE appointment_charges SET status='cancelled' WHERE id=? AND appointment_id=? AND charge_no=? AND status='pending' AND payment_method='wechat'",
+          [closedCharge.id, id, closedCharge.charge_no]);
+      }
       return prepareCharge(conn, row, 'wechat', async () => {
         if ((await getMissingWechatPayConfig()).length) throw businessError('微信支付配置未完成，请联系门店', 503);
       });
     });
-
-    const totalPayAmount = chargeAmount(charge);
-    const payParams = await serviceBuildPaymentParams(
-      '预约收费',
-      totalPayAmount,
-      charge.charge_no,
-      req.user.openid,
-      'appointment'
+    let charge = await prepare();
+    if (!charge) return settled();
+    const settle = async (result) => {
+      if (!result || result.trade_state !== 'SUCCESS') throw businessError('微信支付结果尚未确认，请稍后重试', 409);
+      if (result.out_trade_no !== charge.charge_no) throw businessError('支付单号不一致', 409);
+      const paid = await settleOnlineCharge(result);
+      if (paid.status !== 'paid') throw businessError('预约状态已变化，请核对付款及退款状态', 409);
+      return settled();
+    };
+    let previous = await queryAppointmentOrderBeforePay(charge.charge_no);
+    if (previous?.trade_state === 'CLOSED') {
+      if (previous.out_trade_no !== charge.charge_no) throw businessError('支付单号不一致', 409);
+      const replacement = await prepare(charge);
+      if (!replacement) return settled();
+      if (replacement.charge_no === charge.charge_no) throw businessError('收费单未更新，请稍后重试', 409);
+      charge = replacement;
+      previous = await queryAppointmentOrderBeforePay(charge.charge_no);
+    }
+    if (previous?.trade_state === 'SUCCESS') return await settle(previous);
+    if (previous && previous.trade_state !== 'NOTPAY') {
+      throw businessError('微信订单当前不可支付，请稍后核对预约状态', 409);
+    }
+    // Keep the claim briefly after returning parameters: another instance may
+    // reach this point before the first client has opened the payment sheet.
+    const claim = await run(
+      `UPDATE appointment_charges SET prepay_lease_until = DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 120 SECOND)
+       WHERE charge_no = ? AND status = 'pending' AND payment_method = 'wechat'
+         AND (prepay_lease_until IS NULL OR prepay_lease_until <= UTC_TIMESTAMP(6))`,
+      [charge.charge_no],
     );
-
+    if (claim.changes !== 1) throw businessError('该预约正在发起支付，请稍后重试', 409);
+    const totalPayAmount = chargeAmount(charge);
+    let payParams;
+    try {
+      payParams = await serviceBuildPaymentParams('预约收费', totalPayAmount, charge.charge_no, req.user.openid, 'appointment');
+    } catch (error) {
+      if (error.data?.code !== 'ORDERPAID' && !/(?:微信|商户)?订单已支付/.test(error.message || '')) throw error;
+      return await settle(await queryAppointmentOrderBeforePay(charge.charge_no));
+    }
     res.json({
-      code: 0,
-      message: 'success',
-      data: {
-        appointmentId: id,
-        payAmount: totalPayAmount,
-        ...payParams
-      }
+      code: 0, message: 'success',
+      data: { appointmentId: id, payAmount: totalPayAmount, ...payParams },
     });
   } catch (error) {
     console.error('Unified order error:', error);
     res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '生成支付订单失败' });
+  } finally {
+    appointmentPrepayFlights.delete(key);
   }
 });
 
@@ -4688,17 +4786,35 @@ app.post('/api/v1/appointments/:id/confirm-pay', authenticateWxToken, async (req
     }
 
     const charge = await get("SELECT * FROM appointment_charges WHERE appointment_id=? AND status='pending' AND payment_method='wechat' ORDER BY id DESC LIMIT 1", [id]);
-    const paymentPayload = await queryOrderByOutTradeNo(charge?.charge_no || appt.appointment_no);
-    if (!paymentPayload || paymentPayload.trade_state !== 'SUCCESS') {
-      return res.status(409).json({ code: 409, message: '微信支付结果尚未确认，请稍后刷新重试' });
-    }
-
-    if (charge) {
-      if (paymentPayload.out_trade_no !== charge.charge_no) throw businessError('支付单号不一致', 409);
-      const paid = await settleOnlineCharge(paymentPayload);
+    const current = charge ? await queryAppointmentOrderBeforePay(charge.charge_no) : null;
+    if (current?.trade_state === 'SUCCESS') {
+      const paid = await settleOnlineCharge(current);
       if (paid.status !== 'paid') throw businessError('预约状态已变化，请核对付款及退款状态', 409);
     } else {
-      await transaction(conn => finalizePaidAppointment(conn, appt, req.user.id, paymentPayload));
+      const legacy = appt.appointment_no ? await queryAppointmentOrderBeforePay(appt.appointment_no) : null;
+      if (legacy?.trade_state !== 'SUCCESS') {
+        // A callback can settle between the appointment read and the pending-charge lookup.
+        const alreadySettled = await transaction(async conn => {
+          const [[latest]] = await conn.execute(
+            'SELECT * FROM appointments WHERE id=? AND user_id=? FOR UPDATE', [id, req.user.id]
+          );
+          if (!latest || ['pending_payment', 'cancelled', 'refunding', 'refunded', 'no_show'].includes(latest.status)) return false;
+          await assertAppointmentFeesPaid(conn, latest);
+          return true;
+        });
+        if (alreadySettled) return res.json({ code: 0, message: '预约支付状态已同步' });
+        throw businessError('微信支付结果尚未确认，请稍后刷新重试', 409);
+      }
+      const finalized = await transaction(conn => finalizePaidAppointment(conn, appt, req.user.id, legacy));
+      if (!finalized) {
+        await transaction(async conn => {
+          const [[row]] = await conn.execute('SELECT * FROM appointments WHERE id=? FOR UPDATE', [id]);
+          if (!row || ['pending_payment', 'cancelled', 'refunding', 'refunded', 'no_show'].includes(row.status)) {
+            throw businessError('历史预约付款待核对，请稍后重试', 409);
+          }
+          await assertAppointmentFeesPaid(conn, row);
+        });
+      }
     }
 
     res.json({ code: 0, message: '支付同步成功' });
@@ -5758,7 +5874,7 @@ app.get('/api/v1/treatment/sleep-report', authenticateWxToken, async (req, res) 
     }
     const safeLimitDays = limitDays === 30 ? 30 : 7;
     const wearResult = await getMiniProgramWearingLogsForPatientScope(scope, { limit: safeLimitDays, treatmentId: req.query.treatmentId });
-    const logs = wearResult?.logs || [];
+    const logs = (wearResult?.logs || []).filter(log => Number(log.wear_duration) > 0);
 
     let totalDuration = 0;
     let totalPainScore = 0;
@@ -6469,7 +6585,29 @@ app.get('/api/v1/orders/:id/logistics', authenticateWxToken, async (req, res) =>
 
 // 21.7 WeChat Client Create Order (POST)
 app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
-  const { items, shippingAddress, couponId } = req.body;
+  const { items, shippingAddress, couponId, requestId } = req.body;
+  if (requestId !== undefined && (typeof requestId !== 'string' || !/^[a-z0-9-]{8,64}$/.test(requestId))) {
+    return res.status(400).json({ code: 400, message: '无效的下单请求标识' });
+  }
+  // The existing unique order number also guards concurrent retries at commit time.
+  const orderNo = requestId
+    ? `ODR${crypto.createHash('sha256').update(`${req.user.id}:${requestId}`).digest('hex').slice(0, 28)}`
+    : `OD${Date.now()}${crypto.randomBytes(5).toString('hex')}`;
+  const findExistingOrder = () => get(
+    'SELECT id, status, pay_amount FROM orders WHERE order_no = ? AND user_id = ?', [orderNo, req.user.id],
+  );
+  const sendExistingOrder = order => res.json({
+    code: 0,
+    message: '订单已存在',
+    data: {
+      id: order.id.toString(),
+      orderNo,
+      payAmount: Number(order.pay_amount),
+      status: order.status,
+      paymentRequired: order.status === 'pending' && Number(order.pay_amount) > 0,
+      replayed: true,
+    },
+  });
   const deliveryMethod = shippingAddress?.deliveryMethod === 'pickup' || shippingAddress?.deliveryMethod === 'offline'
     ? 'pickup'
     : 'online';
@@ -6487,6 +6625,10 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
   }
 
   try {
+    if (requestId) {
+      const existing = await findExistingOrder();
+      if (existing) return sendExistingOrder(existing);
+    }
     const currentUser = await syncUserMemberLevel(req.user.id);
     if (!currentUser) {
       return res.status(404).json({ code: 404, message: '用户不存在' });
@@ -6585,8 +6727,6 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
       storePhone: pickupStore ? pickupStore.phone : '',
       storeBusinessHours: pickupStore ? `${String(pickupStore.open_time || '').slice(0, 5)}-${String(pickupStore.close_time || '').slice(0, 5)}` : ''
     };
-
-    const orderNo = `OD${Date.now()}${crypto.randomBytes(5).toString('hex')}`;
 
     const createdOrder = await transaction(async (conn) => {
       if (couponId) {
@@ -6693,6 +6833,14 @@ app.post('/api/v1/orders', authenticateWxToken, async (req, res) => {
       }
     });
   } catch (error) {
+    if (requestId && error.code === 'ER_DUP_ENTRY') {
+      try {
+        const existing = await findExistingOrder();
+        if (existing) return sendExistingOrder(existing);
+      } catch (lookupError) {
+        console.error('Recover client order error:', lookupError);
+      }
+    }
     console.error('Create client order error:', error);
     res.status(error.statusCode || 500).json({
       code: error.statusCode || 500,

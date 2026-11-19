@@ -147,14 +147,24 @@ Page({
     }
     try {
       const hasToken = sessionStore.isLoggedIn();
-      const [categoryResponse, productResponse, memberInfoResponse] = await Promise.all([
-        api.getProductCategories().catch(error => {
-          if (!canUseDefaultCategories(error)) throw error;
-          return null;
-        }),
+      const categoryRequest = api.getProductCategories().then(
+        response => ({ response }),
+        error => ({ error }),
+      );
+      const [productResponse, memberInfoResponse] = await Promise.all([
         api.getProducts(),
         hasToken ? api.getMemberInfo().catch(() => null) : Promise.resolve(null),
       ]);
+      if (requestId !== this._loadRequestId) return;
+      const memberLevel = memberInfoResponse && memberInfoResponse.code === 0 && memberInfoResponse.data
+        ? (memberInfoResponse.data.currentLevel || memberInfoResponse.data.memberLevel || 'normal')
+        : 'normal';
+      const products = unwrapList(productResponse).map((item) => applyMemberPricing(normalizeProduct(item), memberLevel));
+      this.imageLoadFailedMap = {};
+      this.setData({ products, hasLoaded: true, memberLevel });
+      this.refreshVisibleProducts(this.data.selectedCategory, products);
+
+      const { response: categoryResponse, error: categoryError } = await categoryRequest;
       if (requestId !== this._loadRequestId) return;
       const categoryList = unwrapList(categoryResponse)
         .map((item) => ({
@@ -162,21 +172,14 @@ Page({
           label: item.name || item.label || '',
         }))
         .filter((item) => item.key && item.key !== 'all' && item.label);
-      const memberLevel = memberInfoResponse && memberInfoResponse.code === 0 && memberInfoResponse.data
-        ? (memberInfoResponse.data.currentLevel || memberInfoResponse.data.memberLevel || 'normal')
-        : 'normal';
-      const products = unwrapList(productResponse).map((item) => applyMemberPricing(normalizeProduct(item), memberLevel));
-      this.imageLoadFailedMap = {};
-      const nextCategories = [{ key: 'all', label: '全部' }].concat(categoryList.length ? categoryList : DEFAULT_CATEGORY_TABS.slice(1));
-      const selectedCategoryExists = nextCategories.some((item) => item.key === this.data.selectedCategory);
-      this.setData({
-        products,
-        hasLoaded: true,
-        categories: nextCategories,
-        memberLevel,
-        selectedCategory: selectedCategoryExists ? this.data.selectedCategory : 'all',
-      });
-      this.refreshVisibleProducts(selectedCategoryExists ? this.data.selectedCategory : 'all', products);
+      const categories = categoryList.length ? [DEFAULT_CATEGORY_TABS[0], ...categoryList] : DEFAULT_CATEGORY_TABS;
+      const selectedCategory = categories.some((item) => item.key === this.data.selectedCategory)
+        ? this.data.selectedCategory : 'all';
+      this.setData({ categories });
+      this.refreshVisibleProducts(selectedCategory, products);
+      if (categoryError && !canUseDefaultCategories(categoryError)) {
+        wx.showToast({ title: categoryError.message || '商品分类加载失败', icon: 'none' });
+      }
     } catch (error) {
       if (requestId !== this._loadRequestId) return;
       if (!this.data.hasLoaded) {

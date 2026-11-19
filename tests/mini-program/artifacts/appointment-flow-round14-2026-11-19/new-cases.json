@@ -1,0 +1,146 @@
+[
+  {
+    "id": "N01-concurrent-closed-charge-count",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "legacy-a",
+        "charge-a",
+        "charge-a",
+        "charge-2",
+        "charge-2"
+      ],
+      "created": [
+        "charge-2"
+      ],
+      "retired": [
+        "charge-a"
+      ],
+      "builds": [
+        "charge-2",
+        "charge-2"
+      ],
+      "settled": 0,
+      "native": [
+        {
+          "kind": "list",
+          "package": "prepay_id=charge-2"
+        },
+        {
+          "kind": "detail",
+          "package": "prepay_id=charge-2"
+        }
+      ],
+      "status": "pending_payment",
+      "nativeCount": 2
+    }
+  },
+  {
+    "id": "N02-concurrent-closed-double-launch",
+    "passed": false,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "legacy-a",
+        "charge-a",
+        "charge-a",
+        "charge-2",
+        "charge-2"
+      ],
+      "created": [
+        "charge-2"
+      ],
+      "retired": [
+        "charge-a"
+      ],
+      "builds": [
+        "charge-2",
+        "charge-2"
+      ],
+      "settled": 0,
+      "native": [
+        {
+          "kind": "list",
+          "package": "prepay_id=charge-2"
+        },
+        {
+          "kind": "detail",
+          "package": "prepay_id=charge-2"
+        }
+      ],
+      "status": "pending_payment",
+      "nativeCount": 2
+    },
+    "error": "Expected values to be strictly equal:\n\n2 !== 1\n"
+  },
+  {
+    "id": "N03-restart-legacy-only",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "legacy-a"
+      ],
+      "created": [],
+      "retired": [],
+      "builds": [],
+      "settled": 1,
+      "native": [],
+      "status": "pending",
+      "nativeCount": 0
+    }
+  },
+  {
+    "id": "N03-restart-legacy-with-charge",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "legacy-a"
+      ],
+      "created": [],
+      "retired": [],
+      "builds": [],
+      "settled": 1,
+      "native": [],
+      "status": "pending",
+      "nativeCount": 0
+    }
+  },
+  {
+    "id": "N04-legacy-confirm-with-new-pending-charge",
+    "passed": false,
+    "observed": {
+      "error": "不存在",
+      "queries": [
+        "charge-a"
+      ],
+      "created": [],
+      "retired": [],
+      "builds": [],
+      "settled": 0,
+      "native": [],
+      "status": "pending_payment"
+    },
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'pending_payment'\n- 'pending'\n          ^\n"
+  },
+  {
+    "id": "N05-legacy-closed-number-mismatch",
+    "passed": false,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "charge-a"
+      ],
+      "created": [],
+      "retired": [],
+      "builds": [
+        "charge-a"
+      ],
+      "settled": 0,
+      "native": []
+    },
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    'legacy-a',\n+   'charge-a'\n  ]\n"
+  }
+]

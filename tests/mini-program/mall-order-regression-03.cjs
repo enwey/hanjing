@@ -3,6 +3,7 @@ const root = path.resolve(__dirname, '../../mp-weixin-rewrite');
 const results = [];
 const gate = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return {promise, resolve}; };
 async function test(name, fn) { try { await fn(); results.push({name, status:'PASS'}); } catch(e) { results.push({name, status:'FAIL', actual:e.message}); } }
+const activeCheckoutByStorage = new WeakMap();
 function harness(file, api, storage = new Map(), requestSubscribe = async () => {}) {
   let p; const payments = [], toasts = [], routes = [];
   const wx = {getStorageSync:k=>storage.get(k), setStorageSync:(k,v)=>storage.set(k,v), removeStorageSync:k=>storage.delete(k),
@@ -10,7 +11,9 @@ function harness(file, api, storage = new Map(), requestSubscribe = async () => 
   const ctx = {wx, module:{exports:{}}, require:()=>({}), console:{error(){}}};
   vm.runInNewContext(fs.readFileSync(path.join(root,'stores/session-store.js'),'utf8'),ctx);
   const store = ctx.module.exports; store.setAccessToken('fixture-original');
-  vm.runInNewContext(fs.readFileSync(path.join(root,'pages',file),'utf8'),{wx, Page:o=>p=o, console:{error(){}}, setTimeout(){},
+  if (!activeCheckoutByStorage.has(storage)) activeCheckoutByStorage.set(storage, new Set());
+  vm.runInNewContext(fs.readFileSync(path.join(root,'pages',file),'utf8'),{wx,
+    Set: file === 'product/detail.js' ? function () { return activeCheckoutByStorage.get(storage); } : Set, Page:o=>p=o, console:{error(){}}, setTimeout(){},
     require:s=>s.includes('api/index')?api:s.endsWith('/order-payment')?require('../../mp-weixin-rewrite/common/utils/order-payment'):s.includes('session-store')?store:s.includes('date-time')?{formatChinaDateTime:x=>x}:s.includes('utils/subscribe')?{requestSubscribe,refreshSubscribeSettings:async()=>{}}:{}});
   p.data = JSON.parse(JSON.stringify(p.data)); p.setData = o=>Object.assign(p.data,o);
   return {p,store,payments,toasts,routes};
@@ -59,7 +62,7 @@ async function until(fn) { for(let i=0;i<30&&!fn();i++) await Promise.resolve();
       await until(()=>creates>1||!second.p.data.isSubmitting);
       assert.equal(creates,1);
       assert.equal(second.routes.at(-1),'/pages/order/index');
-      assert.ok([...storage.values()].some(value=>value?.uncertain));
+      assert.ok([...storage.values()].some(value=>value?.requestId && !value.retryable));
     } finally {
       firstLookup.resolve(cancelled);
       secondLookup.resolve(cancelled);
@@ -71,16 +74,19 @@ async function until(fn) { for(let i=0;i<30&&!fn();i++) await Promise.resolve();
     let creates=0; const h=checkout({createOrder:async()=>{creates++;throw Object.assign(Error('rejected'),{statusCode:code});}});
     await h.p.submitOrder(); await h.p.submitOrder(); assert.equal(creates,2); assert.equal(h.p.data.isSubmitting,false);
   });
-  for(const code of [408,500]) await test('MALL-10 uncertain response blocks retry '+code,async()=>{
-    let creates=0; const h=checkout({createOrder:async()=>{creates++;throw Object.assign(Error('uncertain'),{statusCode:code});}});
-    await h.p.submitOrder(); await h.p.submitOrder(); assert.equal(creates,1); assert.equal(h.routes[0],'/pages/order/index'); assert.equal(h.p.data.isSubmitting,false);
+  for(const code of [408,500]) await test('MALL-10 uncertain response reuses request ID '+code,async()=>{
+    const ids=[]; const h=checkout({createOrder:async({requestId})=>{ids.push(requestId);throw Object.assign(Error('uncertain'),{statusCode:code});}});
+    await h.p.submitOrder(); await h.p.submitOrder(); assert.equal(ids.length,2); assert.ok(ids[0]); assert.equal(ids[0],ids[1]); assert.equal(h.p.data.isSubmitting,false);
   });
   await test('MALL-10 reopening same checkout after unknown commit must not create another order',async()=>{
-    let commits=0; const api={createOrder:async()=>{commits++;throw Error('response lost after simulated commit');}};
+    const orders=new Map(); const api={createOrder:async({requestId})=>{
+      if(orders.has(requestId)) return {data:{id:orders.get(requestId),replayed:true}};
+      orders.set(requestId,9); throw Error('response lost after simulated commit');
+    }};
     const storage=new Map();
     const first=checkout(api,storage); await first.p.submitOrder(); first.p.onUnload();
     const reopened=checkout(api,storage); await reopened.p.submitOrder();
-    assert.equal(commits,1,'simulated committed orders after page recreation='+commits);
+    assert.equal(orders.size,1); assert.equal(reopened.routes[0],'/pages/order/detail?id=9');
   });
   await test('MALL-10 storage failure prevents sending create',async()=>{
     let creates=0;
@@ -97,12 +103,12 @@ async function until(fn) { for(let i=0;i<30&&!fn();i++) await Promise.resolve();
     assert.equal(creates,1); assert.equal(reopened.routes[0],'/pages/order/detail?id=9'); assert.equal(first.payments.length,0);
   });
   await test('MALL-10 unresolved attempt is isolated by account',async()=>{
-    let creates=0; const storage=new Map([['account_cache_owner','A']]);
-    const api={createOrder:async()=>{creates++;throw Error('lost response');}};
+    const ids=[]; const storage=new Map([['account_cache_owner','A']]);
+    const api={createOrder:async({requestId})=>{ids.push(requestId);throw Error('lost response');}};
     await checkout(api,storage).p.submitOrder();
     storage.set('account_cache_owner','B'); await checkout(api,storage).p.submitOrder();
     storage.set('account_cache_owner','A'); await checkout(api,storage).p.submitOrder();
-    assert.equal(creates,2);
+    assert.equal(ids.length,3); assert.notEqual(ids[0],ids[1]); assert.equal(ids[0],ids[2]);
   });
   await test('MALL-11 account change during native payment skips confirmation',async()=>{
     let confirms=0; const h=harness('order/detail.js',{payOrder:async()=>({data:{}}),confirmOrderPayment:async()=>confirms++});

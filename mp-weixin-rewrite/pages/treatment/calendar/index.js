@@ -138,18 +138,36 @@ Page({
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  clearPatientData(patientId) {
+    if (this._loadedPatientId === patientId) return;
+    this.wearingRecords = [];
+    this._checkinPatientId = null;
+    this.setData({
+      hasLoaded: false, loading: true, loadError: '',
+      dayCells: [], hasMonthRecords: false, monthStats: { worn: '0', avgHours: '0', avgComfort: '0', streak: '0' },
+      checkinVisible: false, checkinNote: '',
+    });
+  },
+
   async loadPage(options = {}) {
-    const silent = !!options.silent;
+    const version = this._loadVersion = (this._loadVersion || 0) + 1;
+    this.clearPatientData(patientContextStore.state.currentPatientId);
+    const silent = !!options.silent && this.data.hasLoaded;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
     }
     try {
       const context = await patientContextStore.refresh();
+      if (version !== this._loadVersion) return;
+      const patientId = context.currentPatientId;
+      this.clearPatientData(patientId);
       const params = context.currentPatientId ? { patientId: context.currentPatientId, _t: Date.now() } : { _t: Date.now() };
       const [wearingRecordsResponse, wearingSummaryResponse] = await Promise.all([
         api.getWearingRecords(params),
         api.getWearingSummary(params),
       ]);
+      if (version !== this._loadVersion || patientId !== (patientContextStore.state.currentPatientId)) return;
+      this._loadedPatientId = patientId;
       const recordList = ((wearingRecordsResponse && wearingRecordsResponse.data) || wearingRecordsResponse || []).map((record) => ({
         date: record.date,
         wearDuration: Number(record.wearDuration || 0),
@@ -169,6 +187,7 @@ Page({
 
       this.setData({
         hasLoaded: true,
+        loadError: '',
         loading: false,
         monthText: buildMonthText(this.currentMonth),
         dayCells: this.buildDayCells(recordMap),
@@ -181,6 +200,8 @@ Page({
         },
       });
     } catch (error) {
+      if (version !== this._loadVersion) return;
+      this.clearPatientData(patientContextStore.state.currentPatientId);
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
@@ -248,6 +269,9 @@ Page({
   },
 
   openCheckinModal() {
+    const patientId = patientContextStore.state.currentPatientId;
+    if (!patientId || !this.data.hasLoaded || this._loadedPatientId !== patientId) return;
+    this._checkinPatientId = patientId;
     const todayText = this.getTodayText();
     const todayRecord = (this.wearingRecords || []).find((record) => record.date === todayText);
     const selectedWearDuration = todayRecord && todayRecord.wearDuration ? Number(todayRecord.wearDuration) : 7;
@@ -271,6 +295,7 @@ Page({
   },
 
   closeCheckinModal() {
+    this._checkinPatientId = null;
     this.setData({ checkinVisible: false });
   },
 
@@ -324,12 +349,13 @@ Page({
 
   async submitCheckin() {
     if (this.data.isSubmittingCheckin) return;
+    const patientId = this._checkinPatientId;
+    if (!this.data.checkinVisible || !patientId || patientId !== patientContextStore.state.currentPatientId ||
+        !this.data.hasLoaded || patientId !== this._loadedPatientId) return;
     this.setData({ isSubmittingCheckin: true });
     try {
-      const context = await patientContextStore.refresh();
-      const params = context.currentPatientId ? { patientId: context.currentPatientId } : {};
       await api.submitWearingCheckin({
-        ...params,
+        patientId,
         date: this.getTodayText(),
         wearDuration: this.data.selectedWearDuration,
         comfort: this.data.selectedComfort,
@@ -338,8 +364,8 @@ Page({
         note: this.data.checkinNote || undefined,
       });
       wx.showToast({ title: '打卡成功', icon: 'success' });
-      this.setData({ checkinVisible: false });
-      await this.loadPage();
+      if (patientId === this._checkinPatientId) this.closeCheckinModal();
+      if (patientId === patientContextStore.state.currentPatientId) await this.loadPage();
     } catch (error) {
       wx.showToast({
         title: (error && error.message) || '打卡失败',

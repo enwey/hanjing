@@ -15,10 +15,22 @@ const schema = 'hanjing_test_promoter_flow_' + Date.now();
 const control = await mysql.createConnection({host:'127.0.0.1',user:'root',password});
 const http = globalThis.fetch;
 const evidence = {passed:[]};
-const matrix = process.argv.includes('--full-matrix');
+const localRetest = process.argv.includes('--local-retest');
+const regressPaymentClaim = localRetest || process.argv.includes('--regress-flow-29');
+const verifyPaymentClaim = regressPaymentClaim || process.argv.includes('--verify-flow-29');
+const audit = verifyPaymentClaim || process.argv.includes('--full-audit');
+const verifyFixes = audit || process.argv.includes('--verify-flow-18-21');
+const verifyFailures = audit || process.argv.includes('--verify-failures');
+const matrix = verifyFailures || verifyFixes || process.argv.includes('--full-matrix');
+const validQr = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNg+A8AAQIBAEK+vGgAAAAASUVORK5CYII=','base64');
+const invalidQr = Buffer.from(validQr);
+invalidQr.fill(0,41,41+validQr.readUInt32BE(33));
 let qrUnavailable = false;
+let invalidQrResponse = false;
+let qrRequests = 0;
 let qrRequest;
 let prepayRequest;
+let failPrepay = false;
 const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});
 const apiKey=randomBytes(16).toString('hex');
 function signedHeaders(body) {
@@ -47,6 +59,10 @@ try {
     const u = new URL(url);
     if (u.hostname==='api.mch.weixin.qq.com' && u.pathname==='/v3/pay/transactions/jsapi') {
       prepayRequest=JSON.parse(options.body);
+      if (failPrepay) {
+        const body=JSON.stringify({code:'SYSTEM_ERROR',message:'fixture prepay unavailable'});
+        return new Response(body,{status:500,headers:signedHeaders(body)});
+      }
       const response=JSON.stringify({prepay_id:'fixture-prepay'});
       return new Response(response,{headers:signedHeaders(response)});
     }
@@ -54,7 +70,8 @@ try {
       if (u.pathname === '/wxa/getwxacodeunlimit') {
         qrRequest=JSON.parse(options.body);
         if (qrUnavailable) return Response.json({errcode:45009,errmsg:'fixture unavailable'});
-        return new Response(Buffer.from([137,80,78,71,13,10,26,10]));
+        qrRequests++;
+        return new Response(invalidQrResponse ? invalidQr : validQr);
       }
       if (u.pathname === '/sns/jscode2session') {
         const code=u.searchParams.get('js_code');
@@ -80,6 +97,11 @@ try {
   app.use((await import('../../hanjing-clinic-backend/routes/admin.js')).default);
   const client=await import('../../hanjing-clinic-backend/routes/client.js');
   app.use(client.default);
+  // Match the production JSON error envelope without enabling its alerts.
+  app.use((error,_req,res,_next)=>{
+    const status=error.statusCode || error.status || 500;
+    res.status(status).json({code:status,message:status>=500?'系统繁忙，请稍后再试':error.message || '请求失败'});
+  });
   server = await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>resolve(s));});
   async function call(path,body,token,method=body?'POST':'GET') {
     const r=await http('http://127.0.0.1:'+server.address().port+path,{method,
@@ -150,15 +172,8 @@ try {
 
   const product=await ok('/api/admin/products',{name:'Fixture product',category:'accessory',price:10000,status:'on',stock:20,is_distribution:true,commission_rate_level1:10,backend_referral_enabled:true,backend_rate_x:20,backend_rate_y:8},admin);
   const entries=id=>db.query('SELECT distributor_id,commission_kind,commission_amount,status FROM distribution_orders WHERE order_id=? ORDER BY commission_level',[id]);
-  const simulateVerifiedPayment=async id=>{
-    const order=await db.get('SELECT * FROM orders WHERE id=?',[id]);
-    const params=await ok('/api/v1/orders/'+id+'/pay',{},token);
-    assert.equal(params.package,'prepay_id=fixture-prepay');
-    assert.equal(params.signType,'RSA');
-    assert.equal(prepayRequest.out_trade_no,order.order_no);
-    assert.equal(prepayRequest.amount.total,Number(order.pay_amount));
-    assert.equal(prepayRequest.payer.openid,'fixture-booking-user');
-    const receipt={trade_state:'SUCCESS',out_trade_no:order.order_no,amount:{currency:'CNY',total:Number(order.pay_amount)},transaction_id:'FIXTURE-WXPAY-'+id};
+  const prepareNotification=(order,overrides={})=>{
+    const receipt={trade_state:'SUCCESS',out_trade_no:order.order_no,amount:{currency:'CNY',total:Number(order.pay_amount)},transaction_id:'FIXTURE-WXPAY-'+order.id,...overrides};
     const nonce=randomBytes(9).toString('base64');
     const associatedData='transaction';
     const cipher=createCipheriv('aes-256-gcm',Buffer.from(apiKey),Buffer.from(nonce));
@@ -169,6 +184,17 @@ try {
     const notify=(raw)=>http('http://127.0.0.1:'+server.address().port+'/api/v1/orders/pay-callback',{
       method:'POST',headers,body:raw,signal:AbortSignal.timeout(15000)
     });
+    return {body,notify};
+  };
+  const simulateVerifiedPayment=async id=>{
+    const order=await db.get('SELECT * FROM orders WHERE id=?',[id]);
+    const params=await ok('/api/v1/orders/'+id+'/pay',{},token);
+    assert.equal(params.package,'prepay_id=fixture-prepay');
+    assert.equal(params.signType,'RSA');
+    assert.equal(prepayRequest.out_trade_no,order.order_no);
+    assert.equal(prepayRequest.amount.total,Number(order.pay_amount));
+    assert.equal(prepayRequest.payer.openid,'fixture-booking-user');
+    const {body,notify}=prepareNotification(order);
     assert.equal((await notify(body+' ')).status,401);
     assert.equal((await db.get('SELECT status FROM orders WHERE id=?',[id])).status,'pending');
     assert.equal((await entries(id)).length,0);
@@ -280,13 +306,13 @@ try {
     const futureSlots=await ok('/api/v1/day-slots?doctorId='+doctor.id+'&storeId='+store.id+'&date='+future);
     const morning=futureSlots.find(item=>item.label==='09:00-09:30'&&item.status==='available');
     assert.ok(morning);
-    async function newBooking(number, referralCode=qr.code) {
+    async function newBooking(number, referralCode=qr.code, bookingSlot=morning) {
       const suffix=String(number).padStart(2,'0');
       const {access_token:buyerToken}=await ok('/api/v1/auth/wx-login',{code:'buyer-'+suffix,phoneCode:'phone-'+suffix});
       const list=await ok('/api/v1/user/family-members',undefined,buyerToken);
       const member=(Array.isArray(list)?list:list.list).find(item=>item.relation==='self');
       const booked=await ok('/api/v1/appointments',{...appointmentPayload,patientId:member.id,appointmentDate:future,
-        scheduleId:morning.scheduleId,appointmentTime:morning.label,referralCode},buyerToken);
+        scheduleId:bookingSlot.scheduleId,appointmentTime:bookingSlot.label,referralCode},buyerToken);
       const {user_id:buyerId}=await db.get('SELECT user_id FROM patients WHERE id=?',[member.id]);
       return {patient_id:member.id,appointment_id:booked.id,buyerId,buyerToken};
     }
@@ -356,6 +382,10 @@ try {
       const amount=Number((await entries(paid.order_id))[0].commission_amount);
       // 999999999 > 999999991, so the eligible line receives the extra cent.
       assert.equal(amount,999999991,'精确分摊应给较大余数的推荐行多分配 1 分');
+      const ledger=await db.get("SELECT calculation_snapshot FROM distribution_orders WHERE order_id=? AND commission_kind='referral_new'",[paid.order_id]);
+      const lines=typeof ledger.calculation_snapshot==='string' ? JSON.parse(ledger.calculation_snapshot) : ledger.calculation_snapshot;
+      assert.deepEqual(lines.map(line=>[line.paidAmount,line.amount]),[[999999991,999999991]]);
+      return {orderId:paid.order_id,commissionAmount:amount,lines};
     });
     await check('FLOW-19','普通金额混合商品仅对推荐行按折后实付计 X',async()=>{
       const buyer=await newBooking(19);
@@ -373,6 +403,291 @@ try {
       assert.equal((await entries(order.order_id))[0].status,'refunded');
       return {httpStatus:repeat.status};
     });
+
+    if (verifyFailures) {
+      const numberOf=async(sql,args)=>Number((await db.get(sql,args)).n);
+      const stockFor=id=>db.get('SELECT stock,sales_count FROM products WHERE id=?',[id]);
+      const orderCount=buyer=>numberOf('SELECT COUNT(*) n FROM orders WHERE appointment_id=?',[buyer.appointment_id]);
+      const withLedgerFailure=async run=>{
+        // Test-only trigger in this invocation's isolated schema.
+        await control.query('USE ??',[schema]);
+        await control.query("CREATE TRIGGER fixture_ledger_failure AFTER INSERT ON distribution_orders FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fixture commission insert failure'");
+        try { return await run(); }
+        finally { await control.query('DROP TRIGGER fixture_ledger_failure'); }
+      };
+      await check('FLOW-22','无效推广码预约失败后，最后一个号源仍可提交',async()=>{
+        const {day}=await db.get("SELECT DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 4 DAY),'%Y-%m-%d') day");
+        await ok('/api/admin/schedules',{doctor_id:doctor.id,store_id:store.id,date:day,period:'morning',start_time:'09:00:00',end_time:'09:30:00',slot_interval_minutes:30,people_per_slot:1},admin);
+        const daySlots=()=>ok('/api/v1/day-slots?doctorId='+doctor.id+'&storeId='+store.id+'&date='+day);
+        const [available]=await daySlots();
+        assert.equal(available.status,'available');
+        const payload={...appointmentPayload,scheduleId:available.scheduleId,appointmentDate:day,appointmentTime:available.label};
+        const snapshot=async()=>({appointments:await numberOf('SELECT COUNT(*) n FROM appointments WHERE schedule_id=?',[available.scheduleId]),booked:Number((await db.get('SELECT booked_slots FROM doctor_schedules WHERE id=?',[available.scheduleId])).booked_slots)});
+        const before=await snapshot();
+        const rejected=await call('/api/v1/appointments',{...payload,referralCode:'BP'+'f'.repeat(24)},token);
+        assert.equal(rejected.status,400,rejected.message);
+        assert.equal(rejected.referralInvalid,true,rejected.message);
+        const afterFailure=await snapshot();
+        assert.deepEqual(afterFailure,before);
+        assert.equal((await daySlots())[0].status,'available');
+        const booked=await ok('/api/v1/appointments',{...payload,referralCode:qr.code},token);
+        const afterRetry=await snapshot();
+        assert.deepEqual(afterRetry,{appointments:1,booked:1});
+        assert.equal((await db.get('SELECT referral_code FROM appointments WHERE id=?',[booked.id])).referral_code,qr.code);
+        return {httpStatus:rejected.status,before,afterFailure,afterRetry};
+      });
+      await check('FLOW-23','第二项库存不足阻断收银订单并回滚第一项库存',async()=>{
+        const buyer=await newBooking(23);
+        const first=await createProduct('Rollback stocked item',1500,{stock:1});
+        const secondItem=await createProduct('Rollback scarce item',2000,{stock:1});
+        const countLines=()=>numberOf('SELECT COUNT(*) n FROM order_items WHERE product_id IN (?,?)',[first.id,secondItem.id]);
+        const snapshot=async()=>({orders:await orderCount(buyer),lines:await countLines(),first:await stockFor(first.id),second:await stockFor(secondItem.id),edges:(await edges(buyer)).length});
+        const before=await snapshot();
+        const rejected=await call('/api/admin/orders',checkout(buyer,[...single(first.id),{product_id:secondItem.id,quantity:2}],5500,0,'23'),admin);
+        assert.equal(rejected.status,409,rejected.message);
+        assert.match(rejected.message,/库存不足/);
+        const afterFailure=await snapshot();
+        assert.deepEqual(afterFailure,before);
+        await ok('/api/admin/orders',checkout(buyer,[...single(first.id),...single(secondItem.id)],3500,0,'23'),admin);
+        const afterRetry=await snapshot();
+        assert.deepEqual(afterRetry,{orders:1,lines:2,first:{stock:0,sales_count:1},second:{stock:0,sales_count:1},edges:0});
+        return {httpStatus:rejected.status,before,afterFailure,afterRetry};
+      });
+      await check('FLOW-24','微信预支付失败保留待付订单，同一订单可重试',async()=>{
+        const item=await createProduct('Prepay retry item',2300,{stock:2});
+        const created=await ok('/api/v1/orders',{items:[{productId:item.id,quantity:1}],shippingAddress:{deliveryMethod:'pickup',storeId:store.id,contactName:'Fixture',phone:'13800009101'}},token);
+        const path='/api/v1/orders/'+created.id+'/pay';
+        const snapshot=async()=>({order:await db.get('SELECT status,pay_at,wechat_prepay_id FROM orders WHERE id=?',[created.id]),stock:await stockFor(item.id),ledger:(await entries(created.id)).length});
+        const before=await snapshot();
+        let rejected, firstTrade;
+        failPrepay=true;
+        try { rejected=await call(path,{},token); firstTrade=prepayRequest.out_trade_no; }
+        finally { failPrepay=false; }
+        assert.ok(rejected.status>=400,rejected.message);
+        assert.equal(rejected.data,undefined);
+        const afterFailure=await snapshot();
+        assert.deepEqual(afterFailure,{...before,order:{status:'pending',pay_at:null,wechat_prepay_id:'REQUESTING'}});
+        const retried=await ok(path,{},token);
+        assert.equal(retried.package,'prepay_id=fixture-prepay');
+        assert.equal(prepayRequest.out_trade_no,firstTrade);
+        const afterRetry=await snapshot();
+        assert.deepEqual(afterRetry,afterFailure);
+        await simulateVerifiedPayment(created.id);
+        const afterPayment=await snapshot();
+        assert.equal(afterPayment.order.status,'paid');
+        assert.ok(afterPayment.order.pay_at);
+        assert.equal(Number(afterPayment.stock.sales_count),1);
+        assert.equal(afterPayment.ledger,0);
+        return {httpStatus:rejected.status,tradeNo:firstTrade,before,afterFailure,afterRetry,afterPayment};
+      });
+      await check('FLOW-25','分佣插入失败回滚现金订单、库存、绑定、转化和账本',async()=>{
+        const buyer=await newBooking(25);
+        const item=await createProduct('Commission rollback item',4200,{stock:2,backend_referral_enabled:true,backend_rate_x:20});
+        const snapshot=async()=>({orders:await orderCount(buyer),lines:await numberOf('SELECT COUNT(*) n FROM order_items WHERE product_id=?',[item.id]),stock:await stockFor(item.id),edges:(await edges(buyer)).length,conversions:await numberOf('SELECT COUNT(*) n FROM promoter_conversions WHERE appointment_id=?',[buyer.appointment_id]),ledger:await numberOf('SELECT COUNT(*) n FROM distribution_orders WHERE distributor_id=?',[promoter.id]),balance:await db.get('SELECT total_commission,available_commission FROM distributors WHERE id=?',[promoter.id])});
+        const body=checkout(buyer,single(item.id),4200,0,'25');
+        const before=await snapshot();
+        const rejected=await withLedgerFailure(()=>call('/api/admin/orders',body,admin));
+        assert.equal(rejected.status,500,rejected.message);
+        const afterFailure=await snapshot();
+        assert.deepEqual(afterFailure,before);
+        const retry=await ok('/api/admin/orders',body,admin);
+        const repeat=await ok('/api/admin/orders',body,admin);
+        assert.equal(retry.order_id,repeat.order_id);
+        const afterRetry=await snapshot();
+        assert.equal(afterRetry.orders,1);
+        assert.equal(afterRetry.lines,1);
+        assert.deepEqual(afterRetry.stock,{stock:1,sales_count:1});
+        assert.equal(afterRetry.edges,1);
+        assert.equal(afterRetry.conversions,1);
+        assert.equal(afterRetry.ledger,before.ledger+1);
+        assert.equal(Number(afterRetry.balance.total_commission)-Number(before.balance.total_commission),840);
+        assert.equal(afterRetry.balance.available_commission,before.balance.available_commission);
+        assert.deepEqual((await entries(retry.order_id)).map(x=>[Number(x.commission_amount),x.status]),[[840,'pending']]);
+        return {httpStatus:rejected.status,before,afterFailure,afterRetry,commission:840};
+      });
+    }
+    if (audit) {
+      const productState=id=>db.get('SELECT stock,sales_count FROM products WHERE id=?',[id]);
+      const ledgerState=async (id,buyer,item)=>({
+        order:await db.get('SELECT status,pay_at,wechat_transaction_id,distribution_processed FROM orders WHERE id=?',[id]),
+        stock:await productState(item.id),
+        entries:await entries(id),edges:await edges(buyer),
+        conversion:await db.get('SELECT order_id,mode FROM promoter_conversions WHERE appointment_id=?',[buyer.appointment_id]) ?? null,
+        balance:await db.get('SELECT total_commission,available_commission FROM distributors WHERE id=?',[promoter.id])
+      });
+      const online=async (buyer,item,key)=>{
+        const {order_id:id}=await ok('/api/admin/orders',checkout(buyer,single(item.id),Number(item.fixturePrice),0,key,{pay_method:'wechat'}),admin);
+        await ok('/api/v1/orders/'+id+'/pay',{},buyer.buyerToken);
+        return db.get('SELECT * FROM orders WHERE id=?',[id]);
+      };
+      const send=async(order,patch)=>{
+        const {body,notify}=prepareNotification(order,patch);
+        const response=await notify(body);
+        return {status:response.status,...await response.json()};
+      };
+      await check('FLOW-26','微信回调分佣故障后恢复、并发重放只入账一次',async()=>{
+        const buyer=await newBooking(26);
+        const item={...await createProduct('Online commission rollback',3400,{stock:2,backend_referral_enabled:true,backend_rate_x:20}),fixturePrice:3400};
+        const order=await online(buyer,item,'26');
+        const snapshot=()=>ledgerState(order.id,buyer,item);
+        const before=await snapshot();
+        await control.query('USE ??',[schema]);
+        await control.query("CREATE TRIGGER fixture_online_ledger_failure AFTER INSERT ON distribution_orders FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fixture online commission write failure'");
+        let failed;
+        try {failed=await send(order);}
+        finally {await control.query('DROP TRIGGER fixture_online_ledger_failure');}
+        const afterFailure=await snapshot();
+        evidence.onlineRollback={before,afterFailure,failed};
+        assert.equal(failed.status,500,failed.message);
+        assert.match(failed.message,/fixture online commission write failure/);
+        assert.deepEqual(afterFailure,before);
+        const retries=await Promise.all([send(order),send(order)]);
+        const afterRetry=await snapshot();
+        Object.assign(evidence.onlineRollback,{retries,afterRetry});
+        assert.deepEqual(retries.map(x=>x.status),[200,200]);
+        assert.equal(afterRetry.order.status,'paid');
+        assert.ok(afterRetry.order.pay_at);
+        assert.equal(afterRetry.order.distribution_processed,1);
+        assert.deepEqual(afterRetry.stock,{stock:1,sales_count:1});
+        assert.deepEqual(afterRetry.entries.map(row=>[Number(row.commission_amount),row.status]),[[680,'pending']]);
+        assert.equal(afterRetry.edges.length,1);
+        assert.equal(afterRetry.conversion.mode,'new');
+        assert.equal(Number(afterRetry.balance.total_commission)-Number(before.balance.total_commission),680);
+        assert.equal(afterRetry.balance.available_commission,before.balance.available_commission);
+      });
+      await check('FLOW-27','签名有效但金额、币种或交易状态不符不入账',async()=>{
+        const buyer=await newBooking(27);
+        const item={...await createProduct('Payment validation item',2500,{stock:2,backend_referral_enabled:true,backend_rate_x:20}),fixturePrice:2500};
+        const order=await online(buyer,item,'27');
+        const before=await ledgerState(order.id,buyer,item);
+        const receiptResults=[];
+        for (const [name,patch,expected] of [
+          ['少付',{amount:{currency:'CNY',total:2499}},409],['多付',{amount:{currency:'CNY',total:2501}},409],
+          ['币种',{amount:{currency:'USD',total:2500}},409],['未成功',{trade_state:'NOTPAY'},200]
+        ]) {
+          const response=await send(order,patch);
+          const persisted=await ledgerState(order.id,buyer,item);
+          receiptResults.push({name,response,persisted});
+          evidence.paymentValidation={before,receiptResults};
+          assert.equal(response.status,expected,name);
+          assert.deepEqual(persisted,before,name);
+        }
+        assert.equal((await send(order)).status,200);
+        const paid=await ledgerState(order.id,buyer,item);
+        evidence.paymentValidation.paid=paid;
+        assert.equal(paid.order.status,'paid');
+        assert.deepEqual(paid.entries.map(row=>Number(row.commission_amount)),[500]);
+      });
+      await check('FLOW-28','已取消预约拒绝新建收银订单',async()=>{
+        const buyer=await newBooking(28);
+        const item=await createProduct('Cancelled booking item',1800,{stock:2,backend_referral_enabled:true,backend_rate_x:20});
+        await ok('/api/v1/appointments/'+buyer.appointment_id+'/cancel',{reason:'fixture cancellation'},buyer.buyerToken);
+        const appointmentState=await db.get('SELECT status FROM appointments WHERE id=?',[buyer.appointment_id]);
+        assert.equal(appointmentState.status,'cancelled');
+        const before=await productState(item.id);
+        const rejected=await call('/api/admin/orders',checkout(buyer,single(item.id),1800,0,'28'),admin);
+        const after=await productState(item.id);
+        const orders=await db.query('SELECT id,status FROM orders WHERE appointment_id=?',[buyer.appointment_id]);
+        evidence.cancelledBooking={appointmentState,before,after,rejected,orders};
+        assert.equal(rejected.status,409,rejected.message);
+        assert.deepEqual(after,before);
+        assert.deepEqual(orders,[]);
+      });
+      await check('FLOW-29','同一微信流水号不能给两个订单重复计佣',async()=>{
+        const buyer=await newBooking(29);
+        const item={...await createProduct('Payment reference item',1600,{stock:3,backend_referral_enabled:true,backend_rate_x:20,is_distribution:true,commission_rate_level1:10}),fixturePrice:1600};
+        const first=await online(buyer,item,'29-first');
+        const secondOrder=await online(buyer,item,'29-second');
+        const sharedId='fixture-shared-transaction';
+        assert.equal((await send(first,{transaction_id:sharedId})).status,200);
+        const before=await ledgerState(secondOrder.id,buyer,item);
+        const response=await send(secondOrder,{transaction_id:sharedId});
+        const after=await ledgerState(secondOrder.id,buyer,item);
+        evidence.duplicatePayment={before,response,after,orders:await db.query('SELECT id,status,wechat_transaction_id FROM orders WHERE wechat_transaction_id=? ORDER BY id',[sharedId])};
+        assert.deepEqual(after,before,'同一上游流水的第二次入账不应改变订单或佣金');
+        assert.equal(response.status,409,response.message);
+        if (!verifyPaymentClaim) return;
+        const originalState=await ledgerState(first.id,buyer,item);
+        const replay=await send(first,{transaction_id:sharedId});
+        assert.equal(replay.status,200);
+        assert.deepEqual(await ledgerState(first.id,buyer,item),originalState);
+        // Model an order paid before the claim table was introduced.
+        await db.run('DELETE FROM order_wechat_payment_claims WHERE transaction_id=?',[sharedId]);
+        const historicalConflict=await send(secondOrder,{transaction_id:sharedId});
+        assert.equal(historicalConflict.status,409);
+        assert.deepEqual(await ledgerState(secondOrder.id,buyer,item),before);
+        assert.equal((await send(first,{transaction_id:sharedId})).status,200);
+        assert.deepEqual(await ledgerState(first.id,buyer,item),originalState);
+        Object.assign(evidence.duplicatePayment,{replay,historicalConflict});
+      });
+      if (verifyPaymentClaim) await check('FLOW-29-CONCURRENT','不同预约并发认领同一流水时只有一个订单入账',async()=>{
+        const alternate=futureSlots.find(slot=>slot.label==='09:30-10:00'&&slot.status==='available');
+        assert.ok(alternate);
+        const buyers=[await newBooking(30,qr.code,alternate),await newBooking(31,qr.code,alternate)];
+        const item={...await createProduct('Concurrent payment claim',1700,{stock:3,backend_referral_enabled:true,backend_rate_x:20}),fixturePrice:1700};
+        const orders=await Promise.all(buyers.map((buyer,index)=>online(buyer,item,'29-concurrent-'+index)));
+        const sharedId='fixture-concurrent-transaction';
+        const results=await Promise.all(orders.map(order=>send(order,{transaction_id:sharedId})));
+        const states=await Promise.all(orders.map((order,index)=>ledgerState(order.id,buyers[index],item)));
+        evidence.concurrentPayment={results,states};
+        assert.deepEqual(results.map(x=>x.status).sort(),[200,409]);
+        assert.deepEqual(states.map(x=>x.order.status).sort(),['paid','pending']);
+        assert.equal(states[0].stock.sales_count,1);
+        assert.deepEqual(states.flatMap(x=>x.entries).map(row=>Number(row.commission_amount)),[340]);
+        const losing=states[results.findIndex(x=>x.status===409)];
+        assert.equal(losing.order.pay_at,null);
+        assert.equal(losing.order.wechat_transaction_id,null);
+        assert.equal(losing.edges.length,0);
+        assert.equal(losing.conversion,null);
+        if (!regressPaymentClaim) return;
+        const losingIndex=results.findIndex(x=>x.status===409);
+        const retry=await send(orders[losingIndex]);
+        assert.equal(retry.status,200);
+        const recovered=await ledgerState(orders[losingIndex].id,buyers[losingIndex],item);
+        assert.equal(recovered.order.status,'paid');
+        assert.equal(recovered.order.wechat_transaction_id,'FIXTURE-WXPAY-'+orders[losingIndex].id);
+        assert.equal(recovered.stock.sales_count,2);
+        assert.deepEqual(recovered.entries.map(x=>Number(x.commission_amount)),[340]);
+        assert.equal(Number(recovered.balance.total_commission)-Number(losing.balance.total_commission),340);
+        assert.equal((await send(orders[losingIndex])).status,200);
+        assert.deepEqual(await ledgerState(orders[losingIndex].id,buyers[losingIndex],item),recovered);
+        Object.assign(evidence.concurrentPayment,{retry,recovered});
+      });
+    }
+    if (verifyFixes) {
+      const path='/api/admin/distribution/promoters/'+promoter.id+'/qr';
+      const readCache=()=>db.get('SELECT image,qr_environment,qr_app_id FROM promoter_codes WHERE code=?',[qr.code]);
+      await check('FLOW-21A','上游返回不可解压 PNG 时拒绝出码且无缓存写入',async()=>{
+        await db.run('UPDATE promoter_codes SET image=NULL WHERE code=?',[qr.code]);
+        invalidQrResponse=true;
+        try {
+          const rejected=await call(path,undefined,admin);
+          assert.equal(rejected.status,503,rejected.message);
+          assert.equal((await readCache()).image,null);
+          return {httpStatus:rejected.status,cacheIsNull:true};
+        } finally { invalidQrResponse=false; }
+      });
+      await check('FLOW-21B','已存在的坏缓存只在新图验证成功后覆盖并复用',async()=>{
+        await db.run('UPDATE promoter_codes SET image=?,qr_environment=?,qr_app_id=? WHERE code=?',[invalidQr,'trial','fixture-app',qr.code]);
+        const initialRequests=qrRequests;
+        invalidQrResponse=true;
+        let rejected;
+        try {
+          rejected=await call(path,undefined,admin);
+          assert.equal(rejected.status,503,rejected.message);
+          assert.deepEqual((await readCache()).image,invalidQr);
+        } finally { invalidQrResponse=false; }
+        const refreshed=await ok(path,undefined,admin);
+        const saved=await readCache();
+        assert.deepEqual(saved.image,validQr);
+        assert.equal(saved.qr_environment,'trial');
+        assert.equal(saved.qr_app_id,'fixture-app');
+        assert.equal(refreshed.image,'data:image/png;base64,'+validQr.toString('base64'));
+        assert.deepEqual(await ok(path,undefined,admin),refreshed);
+        assert.equal(qrRequests-initialRequests,2);
+        return {upstreamRequests:2,rejectedStatus:rejected.status,replacementBytes:saved.image.length,reused:true};
+      });
+    }
   }
 } catch (error) {
   evidence.failure=error.message;
@@ -386,7 +701,7 @@ try {
     await control.end();
     const out=new URL('./artifacts/backend-promoter-flow-2026-11-18/',import.meta.url);
     mkdirSync(out,{recursive:true});
-    writeFileSync(new URL(matrix?'full-matrix-database.json':'database.json',out),JSON.stringify(evidence,null,2));
+    writeFileSync(new URL(localRetest?'2026-11-19-local-retest-mysql.json':regressPaymentClaim?'2026-11-19-flow29-independent.json':verifyPaymentClaim?'2026-11-19-flow29-isolated-selftest.json':audit?'2026-11-19-isolated-full-audit.json':verifyFailures?'2026-11-19-isolated-failures.json':verifyFixes?'2026-11-19-isolated-flow-18-21.json':matrix?'full-matrix-database.json':'database.json',out),JSON.stringify(evidence,null,2));
     console.log(JSON.stringify(evidence));
   }
 }

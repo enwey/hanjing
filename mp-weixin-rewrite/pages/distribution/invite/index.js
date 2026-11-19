@@ -3,6 +3,7 @@ const api = require('../../../api/index');
 const inviteService = require('./invite-service');
 const { copy, drawInviteDesign } = require('./invite-design');
 const subscribe = require('../../../common/utils/subscribe');
+const sessionStore = require('../../../stores/session-store');
 
 const POSTER_CANVAS_ID = 'distributionInvitePoster';
 const POSTER_WIDTH = 900;
@@ -42,7 +43,7 @@ function createPosterContextAdapter(context) {
 }
 
 Page({
-  data: { shareImagePath: '', rulesLoading: true, rulesError: false, ruleSections: [], copy, isDistributor: false, inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: copy.shareTitle, isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
+  data: { shareImagePath: '', rulesLoading: true, rulesError: false, ruleSections: [], copy, isDistributor: false, inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: copy.shareTitle, isSavingPoster: false, activationSubscribeSource: '', hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
   onReady() {
     this.canvasReady = true;
     if (this.data.inviteCode) this.prepareInviteImage().catch(() => {});
@@ -77,6 +78,7 @@ Page({
     if (this.inviteLoading) return;
     this.inviteLoading = true;
     try {
+      const generation = sessionStore.getLoginGeneration();
       const inviteInfo = await inviteService.loadInviteShareInfo();
       this.qrRetryUsed = Boolean(options.qrRetry);
       let localQr = '';
@@ -87,9 +89,13 @@ Page({
         if (!localQr) localQr = await this.resolvePosterQrImage(inviteInfo.inviteQrCode);
         if (!localQr) localQr = await this.resolvePosterQrImage(inviteInfo.inviteQrCode);
       }
+      if (this._unloaded || generation !== sessionStore.getLoginGeneration()) return;
+      const sameInvite = this.inviteGeneration === generation && this.data.inviteCode === inviteInfo.inviteCode;
+      this.inviteGeneration = generation;
       this.qrRemoteSource = inviteInfo.inviteQrCode || '';
       this.setData({
         isDistributor: inviteInfo.isDistributor,
+        activationSubscribeSource: sameInvite && !inviteInfo.isDistributor ? this.data.activationSubscribeSource : '',
         hasLoaded: true,
         inviteCode: inviteInfo.inviteCode,
         inviteQrCode: localQr,
@@ -139,20 +145,29 @@ Page({
       wx.showToast({ title: '邀请码加载中', icon: 'none' });
       return;
     }
+    const generation = sessionStore.getLoginGeneration();
+    const inviteCode = this.data.inviteCode;
+    const isCurrent = () => !this._unloaded && generation === sessionStore.getLoginGeneration() &&
+      generation === this.inviteGeneration && inviteCode === this.data.inviteCode;
+    if (!isCurrent()) return;
     this.setData({ isSavingPoster: true });
     wx.showLoading({ title: '生成海报中', mask: true });
     try {
       const posterImagePath = await this.prepareInviteImage();
       await this.ensureAlbumPermission();
+      if (!isCurrent()) return;
       await this.savePosterImage(posterImagePath);
+      if (!isCurrent()) return;
+      if (!this.data.isDistributor) this.setData({ activationSubscribeSource: 'saved' });
       wx.hideLoading();
       await this.showPosterSavedNotice();
     } catch (error) {
+      if (!isCurrent()) return;
       const message = error && error.message ? error.message : '保存海报失败';
       wx.showToast({ title: message, icon: 'none' });
     } finally {
       wx.hideLoading();
-      this.setData({ isSavingPoster: false });
+      if (!this._unloaded) this.setData({ isSavingPoster: false });
     }
   },
   async drawInvitePoster() {
@@ -340,11 +355,22 @@ Page({
       });
     });
   },
-  handleShareInvite() {
-    if (this.data.isDistributor) return;
-    subscribe.requestSubscribe({ force: true, scene: 'distribution' }).catch(() => {});
+  onUnload() {
+    this._unloaded = true;
+  },
+  subscribePromotionActivation() {
+    const generation = sessionStore.getLoginGeneration();
+    if (this._unloaded || generation !== this.inviteGeneration || !this.data.inviteCode || this.data.isDistributor ||
+        !this.data.activationSubscribeSource) return;
+    return subscribe.subscribeToUpdates('distribution', () => !this._unloaded &&
+      generation === sessionStore.getLoginGeneration());
   },
   onShareAppMessage() {
+    // WeChat exposes the opening of the share flow. The user confirms completion by tapping the subscription button.
+    if (!this._unloaded && this.inviteGeneration === sessionStore.getLoginGeneration() &&
+        this.data.inviteCode && !this.data.isDistributor && !this.data.activationSubscribeSource) {
+      this.setData({ activationSubscribeSource: 'share' });
+    }
     return {
       title: copy.shareTitle,
       path: this.data.sharePath || '/pages/index/index',

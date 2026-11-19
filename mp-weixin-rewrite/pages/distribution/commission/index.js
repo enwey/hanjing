@@ -77,7 +77,12 @@ Page({
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onUnload() {
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+  },
+
   async loadPage(options = {}) {
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
@@ -87,6 +92,7 @@ Page({
         api.getDistributionCommissionStats(),
         api.getDistributionCommissions(),
       ]);
+      if (requestId !== this._loadRequestId) return;
       const stats = unwrapObject(statsResponse);
       const commissions = unwrapList(commissionsResponse).map(normalizeCommission);
       this.setData({
@@ -99,6 +105,7 @@ Page({
       });
       this.refreshVisibleCommissions(this.data.selectedTab, commissions);
     } catch (error) {
+      if (requestId !== this._loadRequestId) return;
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,

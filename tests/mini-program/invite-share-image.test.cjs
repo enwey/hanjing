@@ -1,7 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm');
 const design=require('../../mp-weixin-rewrite/pages/distribution/invite/invite-design');
-function setup(){let config;vm.runInNewContext(fs.readFileSync('mp-weixin-rewrite/pages/distribution/invite/index.js','utf8'),{require:n=>n==='./invite-design'?design:{},Page:p=>config=p,wx:{showLoading(){},hideLoading(){},showToast(){}}});return {...config,data:{...config.data,inviteCode:'HJtest',inviteQrCode:'qr'},setData(v){Object.assign(this.data,v)}};}
+function setup(){let config;vm.runInNewContext(fs.readFileSync('mp-weixin-rewrite/pages/distribution/invite/index.js','utf8'),{require:n=>n.includes('session-store')?{getLoginGeneration:()=>1}:n==='./invite-design'?design:{},Page:p=>config=p,wx:{showLoading(){},hideLoading(){},showToast(){}}});return {...config,inviteGeneration:1,data:{...config.data,inviteCode:'HJtest',inviteQrCode:'qr'},setData(v){Object.assign(this.data,v)}};}
 test('share and album use the same image, concurrent requests draw once',async()=>{
  const p=setup();let count=0,saved;p.drawInvitePoster=async()=>{count++;return '/tmp/invite.png';};
  const paths=await Promise.all([p.prepareInviteImage(),p.prepareInviteImage()]);assert.equal(count,1);assert.equal(paths[0],paths[1]);assert.equal(p.onShareAppMessage().imageUrl,paths[0]);

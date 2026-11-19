@@ -48,7 +48,7 @@
 
       <view class="section-card">
         <text class="section-title">订单信息</text>
-        <view class="info-row"><text class="info-row__label">订单编号</text><text class="info-row__value">{{order.orderNo}}</text></view>
+        <view class="info-row"><text class="info-row__label">订单编号</text><text class="info-row__value info-row__value--order-no">{{order.orderNo}}</text></view>
         <view class="info-row"><text class="info-row__label">下单时间</text><text class="info-row__value">{{order.createdAtText}}</text></view>
         <view wx:if="{{order.payAtText}}" class="info-row"><text class="info-row__label">支付时间</text><text class="info-row__value">{{order.payAtText}}</text></view>
         <view wx:if="{{order.payMethod}}" class="info-row"><text class="info-row__label">支付方式</text><text class="info-row__value">{{order.payMethodLabel}}</text></view>
@@ -80,7 +80,8 @@
         </view>
       </view>
 
-      <view wx:if="{{order.actionFlags.canCancel || order.actionFlags.canPay || order.actionFlags.canConfirmReceipt || order.actionFlags.canRefund}}" class="action-footer">
+      <view wx:if="{{order.actionFlags.canCancel || order.actionFlags.canPay || order.actionFlags.canConfirmReceipt || order.actionFlags.canRefund || order.canSubscribeShipment}}" class="action-footer">
+        <button wx:if="{{order.canSubscribeShipment}}" class="action-button action-button--ghost" bindtap="subscribeShipment">订阅发货通知</button>
         <button wx:if="{{order.actionFlags.canCancel}}" bindtap="onCancelOrder" class="action-button action-button--ghost">取消订单</button>
         <button wx:if="{{order.actionFlags.canPay}}" bindtap="onPayOrder" class="action-button action-button--primary">立即支付</button>
         <button wx:if="{{order.actionFlags.canConfirmReceipt}}" bindtap="onConfirmReceipt" class="action-button action-button--primary">确认收货</button>

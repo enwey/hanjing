@@ -1,0 +1,116 @@
+[
+  {
+    "mode": "both-seen-pending",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": 0,
+          "message": "支付同步成功"
+        }
+      }
+    ],
+    "status": "pending",
+    "records": 1,
+    "legacyOrders": 0,
+    "settlements": 1,
+    "notices": 1,
+    "passed": true
+  },
+  {
+    "mode": "callback-between-reads",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      },
+      {
+        "status": 409,
+        "body": {
+          "code": 409,
+          "message": "微信支付结果尚未确认，请稍后刷新重试"
+        }
+      }
+    ],
+    "status": "pending",
+    "records": 1,
+    "legacyOrders": 0,
+    "settlements": 1,
+    "notices": 1,
+    "passed": false
+  },
+  {
+    "mode": "callback-already-committed",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": 0,
+          "message": "预约支付状态已同步"
+        }
+      }
+    ],
+    "status": "pending",
+    "records": 1,
+    "legacyOrders": 0,
+    "settlements": 1,
+    "notices": 1,
+    "passed": true
+  },
+  {
+    "mode": "repeat-confirm-and-callback",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "code": 0,
+          "message": "支付同步成功"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": 0,
+          "message": "支付同步成功"
+        }
+      }
+    ],
+    "status": "pending",
+    "records": 1,
+    "legacyOrders": 0,
+    "settlements": 1,
+    "notices": 1,
+    "passed": true
+  }
+]

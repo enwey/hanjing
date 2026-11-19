@@ -1,0 +1,246 @@
+[
+  {
+    "id": "M01-timeout-recovery-detail",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:legacy-a",
+        "query:charge-a"
+      ],
+      "firstToast": "查单超时",
+      "afterRestart": [
+        "query:legacy-a",
+        "query:charge-a",
+        "query:legacy-a",
+        "query:charge-a",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "查单超时",
+        "支付已提交，请稍后刷新"
+      ]
+    }
+  },
+  {
+    "id": "M02-processing-recovery-detail",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:legacy-a",
+        "query:charge-a"
+      ],
+      "firstToast": "微信订单当前不可支付，请稍后核对预约状态",
+      "afterRestart": [
+        "query:legacy-a",
+        "query:charge-a",
+        "query:legacy-a",
+        "query:charge-a",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "微信订单当前不可支付，请稍后核对预约状态",
+        "支付已提交，请稍后刷新"
+      ]
+    }
+  },
+  {
+    "id": "M03-legacy-paid-detail",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:legacy-a",
+        "settle"
+      ],
+      "firstToast": "支付已提交，请稍后刷新",
+      "afterRestart": [
+        "query:legacy-a",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ]
+    }
+  },
+  {
+    "id": "M04-closed-order-detail",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:legacy-a",
+        "query:charge-a",
+        "retire:charge-a",
+        "query:charge-b",
+        "build",
+        "wechat",
+        "query:charge-b",
+        "settle"
+      ],
+      "firstToast": "支付已提交，请稍后刷新",
+      "afterRestart": [
+        "query:legacy-a",
+        "query:charge-a",
+        "retire:charge-a",
+        "query:charge-b",
+        "build",
+        "wechat",
+        "query:charge-b",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ]
+    }
+  },
+  {
+    "id": "M01-timeout-recovery-list",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:legacy-a",
+        "query:charge-a"
+      ],
+      "firstToast": "查单超时",
+      "afterRestart": [
+        "query:legacy-a",
+        "query:charge-a",
+        "query:legacy-a",
+        "query:charge-a",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "查单超时",
+        "支付成功"
+      ]
+    }
+  },
+  {
+    "id": "M02-processing-recovery-list",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:legacy-a",
+        "query:charge-a"
+      ],
+      "firstToast": "微信订单当前不可支付，请稍后核对预约状态",
+      "afterRestart": [
+        "query:legacy-a",
+        "query:charge-a",
+        "query:legacy-a",
+        "query:charge-a",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "微信订单当前不可支付，请稍后核对预约状态",
+        "支付成功"
+      ]
+    }
+  },
+  {
+    "id": "M03-legacy-paid-list",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:legacy-a",
+        "settle"
+      ],
+      "firstToast": "支付成功",
+      "afterRestart": [
+        "query:legacy-a",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "支付成功"
+      ]
+    }
+  },
+  {
+    "id": "M04-closed-order-list",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:legacy-a",
+        "query:charge-a",
+        "retire:charge-a",
+        "query:charge-b",
+        "build",
+        "wechat",
+        "query:charge-b",
+        "settle"
+      ],
+      "firstToast": "支付成功",
+      "afterRestart": [
+        "query:legacy-a",
+        "query:charge-a",
+        "retire:charge-a",
+        "query:charge-b",
+        "build",
+        "wechat",
+        "query:charge-b",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "支付成功"
+      ]
+    }
+  },
+  {
+    "id": "M05-late-store-response-does-not-overwrite-new-result",
+    "passed": true,
+    "observed": {
+      "id": "b",
+      "storeName": "新门店"
+    }
+  },
+  {
+    "id": "M06-legacy-timeout",
+    "passed": true,
+    "observed": {
+      "code": 504,
+      "calls": [
+        "query:legacy-a"
+      ]
+    }
+  },
+  {
+    "id": "M06-legacy-processing",
+    "passed": true,
+    "observed": {
+      "code": 409,
+      "calls": [
+        "query:legacy-a"
+      ]
+    }
+  },
+  {
+    "id": "M06-wrong-closed-number",
+    "passed": true,
+    "observed": {
+      "code": 409,
+      "calls": [
+        "query:legacy-a",
+        "query:charge-a"
+      ]
+    }
+  },
+  {
+    "id": "M06-replacement-processing",
+    "passed": true,
+    "observed": {
+      "code": 409,
+      "calls": [
+        "query:legacy-a",
+        "query:charge-a",
+        "retire:charge-a",
+        "query:charge-b"
+      ]
+    }
+  }
+]

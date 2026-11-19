@@ -77,7 +77,12 @@ Page({
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onUnload() {
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+  },
+
   async loadPage(options = {}) {
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
@@ -88,6 +93,7 @@ Page({
         api.getDistributionOrders(),
         api.getDistributionRules(),
       ]);
+      if (requestId !== this._loadRequestId) return;
       const distributorInfo = unwrapObject(distributorInfoResponse);
       const orderList = unwrapList(distributionOrdersResponse).slice(0, 5).map(normalizeDistributionOrder);
       const rulesPayload = normalizeDistributionRules(distributionRulesResponse);
@@ -105,6 +111,7 @@ Page({
         withdrawRules: rulesPayload.withdrawRules || [],
       });
     } catch (error) {
+      if (requestId !== this._loadRequestId) return;
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,

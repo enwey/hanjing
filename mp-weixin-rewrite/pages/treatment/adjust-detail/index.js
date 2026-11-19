@@ -25,30 +25,45 @@ Page({
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  clearPatientData(patientId) {
+    if (this._loadedPatientId === patientId) return;
+    this.setData({
+      hasLoaded: false, loading: true, loadError: '',
+      hasRealTreatmentRecord: false, recordDetail: null, adjustmentHistory: [],
+    });
+  },
+
   async loadPage(options = {}) {
-    const silent = !!options.silent;
+    const version = this._loadVersion = (this._loadVersion || 0) + 1;
+    this.clearPatientData(this._notificationPatientId || patientContextStore.state.currentPatientId);
+    const silent = !!options.silent && this.data.hasLoaded;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
     }
     try {
       const context = await patientContextStore.refresh();
-      const selectedPatientId = this._notificationPatientId || context.currentPatientId;
-      const params = selectedPatientId ? { patientId: selectedPatientId, _t: Date.now() } : { _t: Date.now() };
+      if (version !== this._loadVersion) return;
+      const patientId = this._notificationPatientId || context.currentPatientId;
+      this.clearPatientData(patientId);
+      const params = patientId ? { patientId: patientId, _t: Date.now() } : { _t: Date.now() };
       const [recordResponse, historyResponse] = await Promise.all([
         api.getTreatmentRecord(params),
         api.getDeviceAdjustments(params),
       ]);
+      if (version !== this._loadVersion || patientId !== (this._notificationPatientId || patientContextStore.state.currentPatientId)) return;
+      this._loadedPatientId = patientId;
       const recordDetail = (recordResponse && recordResponse.data) || recordResponse || null;
       const adjustmentHistory = unwrapList(historyResponse).map((item) => ({
         id: String(item.id || ''),
         date: item.date || item.createdAt || '',
-        value: item.value || item.adjustmentValue || '',
+        value: item.value === 0 || item.value ? item.value : (item.adjustmentValue ?? ''),
         note: item.note || item.description || '',
         doctor: item.doctor || item.doctorName || '',
         comfort: Number(item.comfort || 0),
       }));
       this.setData({
         hasLoaded: true,
+        loadError: '',
         loading: false,
         hasRealTreatmentRecord: Boolean(
           recordDetail &&
@@ -62,6 +77,8 @@ Page({
         adjustmentHistory,
       });
     } catch (error) {
+      if (version !== this._loadVersion) return;
+      this.clearPatientData(this._notificationPatientId || patientContextStore.state.currentPatientId);
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,

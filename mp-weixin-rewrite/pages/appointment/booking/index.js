@@ -1,3 +1,4 @@
+const paymentReceipt = require('../../../common/utils/appointment-payment-receipt');
 const { parseAppointmentTimestamp, RESCHEDULE_LIMIT_HOURS, getCancelLimitHours } = require('../../../common/utils/appointment-time');
 
 const api = require('../../../api/index');
@@ -96,7 +97,6 @@ Page({
   },
 
   onShow() {
-    subscribe.refreshSubscribeSettings();
     this.loadPage({ silent: this.data.hasLoaded });
   },
 
@@ -106,8 +106,11 @@ Page({
   },
 
   async onPullDownRefresh() {
-    await this.loadPage({ silent: false });
-    wx.stopPullDownRefresh();
+    try {
+      await this.loadPage({ silent: this.data.hasLoaded });
+    } finally {
+      wx.stopPullDownRefresh();
+    }
   },
 
   async loadPage(options = {}) {
@@ -133,23 +136,37 @@ Page({
     this.listOwnerGeneration = generation;
     this.setData(nextState);
 
-    const [storesResult, doctorsResult, settingsResult] = await Promise.allSettled([
-      api.getStores(),
-      api.getDoctors(),
-      api.getBookingSettings(),
-    ]);
-    if (!isCurrent()) { showSignedOut(); return; }
-
-    const stores = storesResult.status === 'fulfilled' ? unwrapList(storesResult.value) : [];
-    const doctors = doctorsResult.status === 'fulfilled' ? unwrapList(doctorsResult.value) : [];
-    const bookingSettings = settingsResult.status === 'fulfilled' ? unwrapObject(settingsResult.value) : {};
-    const cancelLimitHours = settingsResult.status === 'fulfilled'
-      ? getCancelLimitHours(bookingSettings)
-      : this.data.cancelLimitHours;
-
-    this.setData({
-      bookingNotice: bookingSettings.notice || bookingSettings.bookingNotice || '选择门店、医生和时段，轻松完成预约',
-      cancelLimitHours: cancelLimitHours > 0 ? cancelLimitHours : 2,
+    if (this.catalogOwner !== generation) {
+      this.catalogOwner = generation;
+      this.storeCatalog = [];
+      this.doctorCatalog = [];
+    }
+    this.cancelSettingsReady = false;
+    let appointments;
+    const publishAppointments = () => {
+      if (!appointments || !isCurrent() || !sessionStore.isLoggedIn()) return;
+      const list = appointments.map((item) => normalizeAppointment(item, this.storeCatalog, this.doctorCatalog));
+      this.setData({
+        loading: false,
+        hasLoaded: true,
+        loadError: '',
+        upcomingAppointments: list.filter((item) => ACTIVE_STATUSES.includes(item.status)),
+        historyAppointments: list.filter((item) => !ACTIVE_STATUSES.includes(item.status)),
+      });
+    };
+    const enrich = (request, apply) => Promise.resolve().then(request).then((response) => {
+      if (!isCurrent()) return;
+      apply(response);
+    }).catch(() => {});
+    enrich(() => api.getStores(), (response) => { this.storeCatalog = unwrapList(response); publishAppointments(); });
+    enrich(() => api.getDoctors(), (response) => { this.doctorCatalog = unwrapList(response); publishAppointments(); });
+    enrich(() => api.getBookingSettings(), (response) => {
+      const settings = unwrapObject(response);
+      this.cancelSettingsReady = true;
+      this.setData({
+        bookingNotice: settings.notice || settings.bookingNotice || '选择门店、医生和时段，轻松完成预约',
+        cancelLimitHours: getCancelLimitHours(settings) || 2,
+      });
     });
 
     if (!isLoggedIn) {
@@ -166,14 +183,8 @@ Page({
     try {
       const appointmentsResponse = await api.getAppointments();
       if (!isCurrent() || !sessionStore.isLoggedIn()) { showSignedOut(); return; }
-      const appointmentList = unwrapList(appointmentsResponse).map((appointment) => normalizeAppointment(appointment, stores, doctors));
-      this.setData({
-        loading: false,
-        hasLoaded: true,
-        loadError: '',
-        upcomingAppointments: appointmentList.filter((appointment) => ACTIVE_STATUSES.includes(appointment.status)),
-        historyAppointments: appointmentList.filter((appointment) => !ACTIVE_STATUSES.includes(appointment.status)),
-      });
+      appointments = unwrapList(appointmentsResponse);
+      publishAppointments();
     } catch (error) {
       if (!isCurrent()) { showSignedOut(); return; }
       if (!this.data.hasLoaded) {
@@ -223,9 +234,18 @@ Page({
     const isCurrent = () => !this._unloaded && generation === sessionStore.getLoginGeneration() && sessionStore.isLoggedIn();
     if (!isCurrent() || this.cancelFlight?.generation === generation) return;
 
-    const appointmentTimestamp = parseAppointmentTimestamp(appointment.appointmentDate, appointment.appointmentTime);
     const canCancelNow = () => {
-      if (appointmentTimestamp !== null && appointment.status !== 'pending_payment' &&
+      const latest = this.data.upcomingAppointments.find((item) => item.id === String(appointment.id));
+      if (!latest || !['pending_payment', 'pending', 'confirmed'].includes(latest.status)) {
+        wx.showToast({ title: '当前预约状态不支持取消', icon: 'none' });
+        return false;
+      }
+      if (latest.status !== 'pending_payment' && !this.cancelSettingsReady) {
+        wx.showToast({ title: '取消规则暂未加载，请下拉刷新后重试', icon: 'none' });
+        return false;
+      }
+      const appointmentTimestamp = parseAppointmentTimestamp(latest.appointmentDate, latest.appointmentTime);
+      if (appointmentTimestamp !== null && latest.status !== 'pending_payment' &&
           appointmentTimestamp - Date.now() < this.data.cancelLimitHours * 60 * 60 * 1000) {
         wx.showToast({
           title: '距离预约时间已不足' + this.data.cancelLimitHours + '小时，不支持取消预约',
@@ -281,6 +301,8 @@ Page({
       }
       const generation = sessionStore.getLoginGeneration();
       if (this.paymentFlight && this.paymentFlight.generation === generation) return;
+      const releasePayment = paymentReceipt.acquire(appointment.id);
+      if (!releasePayment) return;
       const flight = { generation };
       this.paymentFlight = flight;
       this.appointmentPaymentInProgress = true;
@@ -288,17 +310,23 @@ Page({
         generation === sessionStore.getLoginGeneration() && sessionStore.isLoggedIn();
       try {
         if (!isCurrent()) return;
-        await subscribe.subscribeToVisitReminder(appointment.id, isCurrent).catch(() => {});
-        if (!isCurrent()) return;
         wx.showLoading({ title: '拉起支付中...' });
-        const paymentResponse = await api.payAppointmentDeposit(appointment.id);
-        if (!isCurrent()) return;
-        const paymentResult = unwrapObject(paymentResponse);
-        wx.hideLoading();
-        await requestWxPay(paymentResult);
+        let alreadyPaid = false;
+        if (!paymentReceipt.hasSubmitted(appointment.id)) {
+          const paymentResponse = await paymentReceipt.preparePayment(api, appointment.id, isCurrent);
+          if (!isCurrent()) return;
+          const paymentResult = unwrapObject(paymentResponse);
+          wx.hideLoading();
+          alreadyPaid = paymentResult.alreadyPaid === true;
+          if (!alreadyPaid) {
+            await requestWxPay(paymentResult);
+            paymentReceipt.markSubmitted(appointment.id);
+          }
+        }
         if (!isCurrent()) return;
         wx.showLoading({ title: '确认支付中...' });
-        await syncPaidAppointment(appointment.id);
+
+        if (!alreadyPaid) await syncPaidAppointment(appointment.id);
         if (!isCurrent()) return;
         wx.hideLoading();
         wx.showToast({ title: '支付成功', icon: 'success' });
@@ -308,6 +336,7 @@ Page({
           wx.showToast({ title: getPaymentErrorMessage(error, '支付未完成'), icon: 'none' });
         }
       } finally {
+        releasePayment();
         if (this.paymentFlight === flight) {
           wx.hideLoading();
           this.paymentFlight = null;

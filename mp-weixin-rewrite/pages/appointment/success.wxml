@@ -98,6 +98,7 @@
     </view>
 
     <view class="actions">
+      <hj-button wx:if="{{canSubscribeVisitReminder}}" block="{{true}}" type="secondary" bind:tap="subscribeVisitReminder">订阅就诊提醒</hj-button>
       <hj-button block="{{true}}" bind:tap="openAppointmentDetail">查看预约详情</hj-button>
       <hj-button block="{{true}}" type="secondary" bind:tap="goHome">返回首页</hj-button>
     </view>

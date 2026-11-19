@@ -5,6 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 function load(relative, dependencies = {}, wxOverrides = {}, globals = {}) {
+  const session = sessionFixture();
   const storage = new Map();
   const toasts = [];
   let page;
@@ -15,7 +16,8 @@ function load(relative, dependencies = {}, wxOverrides = {}, globals = {}) {
       if (Object.hasOwn(dependencies, name)) return dependencies[name];
       if (name.endsWith('date-time')) return { formatChinaDate: value => value, formatChinaDateTime: value => value };
       if (name.endsWith('image-url')) return { normalizeImageUrl: value => value, getStoreCoverUrl: () => '' };
-      if (name.endsWith('subscribe')) return { requestSubscribe: async () => {} };
+      if (name.endsWith('subscribe')) return { refreshSubscribeSettings: async () => {} };
+      if (name.endsWith('session-store')) return session;
       return {};
     },
     wx: {
@@ -339,10 +341,10 @@ test('failed avatar uploads preserve the saved avatar and block submitting while
 test('appointment selects the new patient only within the same login session', async () => {
   let token = 'session-one';
   const { page } = load('pages/appointment/confirm.js', {
-    '../../stores/session-store': { getAccessToken: () => token },
+    '../../stores/session-store': { ...sessionFixture(), getAccessToken: () => token, getLoginGeneration: () => token },
     '../../stores/appointment-draft-store': { getDraft: () => ({ doctorId: 1, storeId: 1, scheduleId: 1, timeSlot: { label: '09:00' } }) },
     '../../api/index': {
-      getStores: async () => [], getDoctors: async () => [], getBookingSettings: async () => ({}),
+      getStores: async () => [], getDoctors: async () => [{ id: 1 }], getBookingSettings: async () => ({}),
       getFamilyMembers: async () => [{ id: 1, relation: 'self', name: 'Self' }, { id: 37, relation: 'child', name: 'Child' }],
     },
   });

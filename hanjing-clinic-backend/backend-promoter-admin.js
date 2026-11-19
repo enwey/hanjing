@@ -1,26 +1,82 @@
 import { readScopedPromoters } from './distribution-read-scope.js';
 import crypto from 'node:crypto';
+import { inflateSync } from 'node:zlib';
 import { get, query, run, transaction } from './db.js';
 import { authenticateToken, hashPassword, encryptPII, decryptPII } from './helpers.js';
 import { getWechatMiniAccessToken } from './wechatMiniToken.js';
 
+const PNG_SIGNATURE = Buffer.from([137,80,78,71,13,10,26,10]);
+
+function qrImageType(bytes) {
+  if (!Buffer.isBuffer(bytes)) return;
+  if (bytes.subarray(0, 8).equals(PNG_SIGNATURE)) {
+    const imageChunks = [];
+    for (let offset = 8; offset + 12 <= bytes.length;) {
+      const size = bytes.readUInt32BE(offset);
+      const type = bytes.toString('ascii', offset + 4, offset + 8);
+      const next = offset + 12 + size;
+      if (next > bytes.length) return;
+      if (offset === 8 && (type !== 'IHDR' || size !== 13 ||
+          !bytes.readUInt32BE(offset + 8) || !bytes.readUInt32BE(offset + 12))) return;
+      if (type === 'IDAT' && size > 0) imageChunks.push(bytes.subarray(offset + 8, next - 4));
+      if (type === 'IEND') {
+        if (size !== 0 || !imageChunks.length || next !== bytes.length) return;
+        try {
+          // Bound decompression for the 430 px codes, including previously cached images.
+          const pixels = inflateSync(Buffer.concat(imageChunks), { maxOutputLength: 8 * 1024 * 1024 });
+          if (pixels.length > 0) return 'image/png';
+        } catch {
+          return;
+        }
+        return;
+      }
+      offset = next;
+    }
+    return;
+  }
+  if (bytes.length < 4 || bytes.readUInt16BE(0) !== 0xffd8 ||
+      bytes.readUInt16BE(bytes.length - 2) !== 0xffd9) return;
+  let hasFrame = false;
+  for (let offset = 2; offset + 4 <= bytes.length - 2;) {
+    if (bytes[offset++] !== 0xff) return;
+    while (bytes[offset] === 0xff) offset++;
+    const marker = bytes[offset++];
+    if (offset + 2 > bytes.length - 2) return;
+    const size = bytes.readUInt16BE(offset);
+    const next = offset + size;
+    if (size < 2 || next > bytes.length - 2) return;
+    if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+      if (size < 11 || !bytes.readUInt16BE(offset + 3) || !bytes.readUInt16BE(offset + 5)) return;
+      hasFrame = true;
+    }
+    if (marker === 0xda) {
+      if (hasFrame && size >= 8 && next < bytes.length - 2) return 'image/jpeg';
+      return;
+    }
+    offset = next;
+  }
+}
+
 export async function promoterQr(id) {
   const env=process.env.WX_MINI_QRCODE_ENV|| (process.env.NODE_ENV==='production'?'release':'trial');
   const appId=String(process.env.WX_MINI_APP_ID||'').trim();
-  const imageData=bytes=>'data:'+(bytes[0]===255?'image/jpeg':'image/png')+';base64,'+bytes.toString('base64');
+  const imageData=(bytes,type)=>'data:'+type+';base64,'+bytes.toString('base64');
   const row=await get(`SELECT c.* FROM promoter_codes c JOIN distributors d ON d.id=c.distributor_id
     WHERE c.distributor_id=? AND c.active=1 AND d.status='active' ORDER BY c.created_at DESC LIMIT 1`,[id]);
   if(!row)throw Object.assign(new Error('推广码不存在或已停用'),{statusCode:404});
-  if(row.image && row.qr_environment===env && row.qr_app_id===appId)return {code:row.code,image:imageData(row.image)};
+  if(row.qr_environment===env && row.qr_app_id===appId) {
+    const cachedType = qrImageType(row.image);
+    if (cachedType) return {code:row.code,image:imageData(row.image,cachedType)};
+  }
   const token=await getWechatMiniAccessToken();
   const response=await fetch('https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token='+encodeURIComponent(token),{
     method:'POST',headers:{'content-type':'application/json'},signal:AbortSignal.timeout(15000),
     body:JSON.stringify({page:'pages/index/index',scene:'ref='+row.code,check_path:false,env_version:env,width:430})});
   const bytes=Buffer.from(await response.arrayBuffer());
-  const isImage=bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))||bytes.subarray(0,3).equals(Buffer.from([255,216,255]));
-  if(!response.ok || !isImage)throw Object.assign(new Error('微信小程序码生成失败，请检查小程序配置后重试'),{statusCode:503});
+  const type = response.ok && qrImageType(bytes);
+  if(!type)throw Object.assign(new Error('微信小程序码生成失败，请检查小程序配置后重试'),{statusCode:503});
   await run('UPDATE promoter_codes SET image=?,qr_environment=?,qr_app_id=? WHERE code=?',[bytes,env,appId,row.code]);
-  return {code:row.code,image:imageData(bytes)};
+  return {code:row.code,image:imageData(bytes,type)};
 }
 export function registerBackendPromoterAdmin(app) {
   app.post('/api/admin/distribution/promoters',authenticateToken,async(req,res)=>{

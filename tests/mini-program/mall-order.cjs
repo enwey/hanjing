@@ -4,13 +4,45 @@ async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
 async function until(check){for(let i=0;i<20&&!check();i++)await Promise.resolve();assert.ok(check(),'expected request was not started');}
 function page(file,api){let p;const toasts=[],storage=new Map();vm.runInNewContext(read('mp-weixin-rewrite/pages/'+file),{Page:o=>p=o,console:{error(){}},setTimeout(){},wx:{getStorageSync:k=>storage.get(k),setStorageSync:(k,v)=>storage.set(k,v),removeStorageSync:k=>storage.delete(k),showToast:o=>toasts.push(o.title),getWindowInfo:()=>({}),showLoading(){},hideLoading(){},navigateTo(){},requestPayment:o=>o.fail({errMsg:'cancel'})},require:s=>s.includes('api/index')?api:s.includes('date-time')?{formatChinaDateTime:x=>x}:{isLoggedIn:()=>false,getRevision:()=>0,getLoginGeneration:()=>0}});p.data=JSON.parse(JSON.stringify(p.data));p.setData=(o,cb)=>{Object.assign(p.data,o);if(cb)cb();};p.imageLoadFailedMap={};return {p,toasts};}
-async function create(body,product={id:1,name:'fixture',price:1000,stock:10,status:'on'},rate=1){
+async function create(body,product={id:1,name:'fixture',price:1000,stock:10,status:'on'},rate=1,overrides={}){
  let handler;const writes=[];const src=read('hanjing-clinic-backend/routes/client.js');const start=src.indexOf("app.post('/api/v1/orders',"),end=src.indexOf("app.post('/api/v1/orders/:id/pay'",start);
- const ctx={app:{post:(...args)=>handler=args.at(-1)},authenticateWxToken(){},console:{error(){}},syncUserMemberLevel:async()=>({member_level:'normal'}),getMemberDiscountRate:()=>rate,query:async()=>product?[product]:[],get:async()=>null,crypto:{randomBytes:()=>({toString:()=> 'fixture'})},businessError:(message,statusCode)=>Object.assign(Error(message),{statusCode}),snapshotReferralOrder:async()=>{},createPendingDistributionCommission:async()=>{},syncUserMembership:async()=>{},createPaidFulfillment:async()=>{},transaction:async fn=>fn({execute:async(sql,args)=>{writes.push({sql,args});return [{insertId:9,affectedRows:1}];}})};
+ const ctx={app:{post:(...args)=>handler=args.at(-1)},authenticateWxToken(){},console:{error(){}},syncUserMemberLevel:async()=>({member_level:'normal'}),getMemberDiscountRate:()=>rate,query:async()=>product?[product]:[],get:async()=>null,crypto:{randomBytes:()=>({toString:()=> 'fixture'})},businessError:(message,statusCode)=>Object.assign(Error(message),{statusCode}),snapshotReferralOrder:async()=>{},createPendingDistributionCommission:async()=>{},syncUserMembership:async()=>{},createPaidFulfillment:async()=>{},notifyBusiness:async()=>{},writeNotification:async()=>{},transaction:async fn=>fn({execute:async(sql,args)=>{writes.push({sql,args});return [{insertId:9,affectedRows:1}];}}),...overrides};
  vm.runInNewContext(src.slice(start,end),ctx);const res={statusCode:200,status(n){this.statusCode=n;return this;},json(data){this.body=data;return this;}};await handler({body,user:{id:5}},res);return {res,writes};
 }
 const address={contactName:'fixture',phone:'13800138001',detailAddress:'fixture',deliveryMethod:'online'};
 (async()=>{
+ for (const existingAtStart of [true, false]) {
+  await test('backend idempotent replay ' + (existingAtStart ? 'before validation' : 'after concurrent insert'), async () => {
+   const requestId='fixture-retry-001';
+   const crypto=require('node:crypto');
+   const body={requestId,items:[{productId:1,quantity:1}],shippingAddress:address};
+   const first=await create(body,undefined,1,{crypto});
+   assert.equal(first.res.statusCode,200);
+   const orderNo=first.res.body.data.orderNo;
+   assert.match(orderNo,/^ODR[a-f0-9]{28}$/);
+   let lookups=0;
+   let insertAttempts=0;
+   const replay=await create(body,undefined,1,{
+    crypto,
+    get:async(sql,args)=>{
+     assert.match(sql,/order_no = \? AND user_id = \?/);
+     assert.equal(args[0],orderNo);
+     assert.equal(args[1],5);
+     return ++lookups === 1 && !existingAtStart ? null : {id:9,pay_amount:1000,status:'pending'};
+    },
+    transaction:async fn=>fn({execute:async(sql,args)=>{
+     assert.match(sql,/INSERT INTO orders/);
+     assert.equal(args[0],orderNo);
+     insertAttempts++;
+     throw Object.assign(Error('duplicate'),{code:'ER_DUP_ENTRY'});
+    }}),
+   });
+   assert.equal(replay.res.statusCode,200);
+   assert.equal(replay.res.body.data.id,'9');
+   assert.equal(replay.res.body.data.replayed,true);
+   assert.equal(insertAttempts,existingAtStart ? 0 : 1);
+  });
+ }
  await test('MALL-01 quantity label counts units, not product rows',async()=>{const h=page('order/index.js',{getOrders:async()=>({data:[{id:1,items:[{quantity:3},{quantity:2}]}]})});await h.p.loadOrders();assert.equal(h.p.data.visibleOrders[0].itemCountLabel,'共 5 件商品');});
  await test('MALL-02 shipped order offers refund supported by backend',()=>{const h=page('order/detail.js',{});assert.equal(h.p.normalizeOrder({id:1,status:'shipped'}).actionFlags.canRefund,true);});
  for(const [file,method,apiMethod,payload] of [['order/index.js','loadOrders','getOrders',id=>({data:[{id,items:[]}]})],['order/detail.js','loadOrder','getOrderDetail',id=>({data:{id,status:'pending'}})],['product/index.js','loadProducts','getProducts',id=>({data:[{id,price:1000}]})]])await test('MALL-03 newer response wins '+file,async()=>{const a=deferred(),b=deferred();let calls=0;const h=page(file,{[apiMethod]:()=>++calls===1?a.promise:b.promise,getProductCategories:async()=>({data:[]})});const x=h.p[method]();await until(()=>calls===1);const y=h.p[method]();await until(()=>calls===2);b.resolve(payload('new'));await y;a.resolve(payload('old'));await x;const actual=h.p.data.order?.id||h.p.data.orders?.[0]?.id||h.p.data.products?.[0]?.id;assert.equal(actual,'new');});

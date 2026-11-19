@@ -1,0 +1,576 @@
+TAP version 13
+# ◇ injected env (8) from hanjing-clinic-backend\\.env // tip: ⌘ suppress logs { quiet: true }
+# Subtest: appointment rejects wrong length before querying the database
+ok 1 - appointment rejects wrong length before querying the database
+  ---
+  duration_ms: 7.748
+  type: 'test'
+  ...
+# Subtest: appointment rejects invalid characters before querying the database
+ok 2 - appointment rejects invalid characters before querying the database
+  ---
+  duration_ms: 0.9065
+  type: 'test'
+  ...
+# Subtest: appointment rejects non-string before querying the database
+ok 3 - appointment rejects non-string before querying the database
+  ---
+  duration_ms: 0.7813
+  type: 'test'
+  ...
+# Subtest: appointment rejects whitespace only before querying the database
+ok 4 - appointment rejects whitespace only before querying the database
+  ---
+  duration_ms: 0.7043
+  type: 'test'
+  ...
+# Subtest: appointment rejects missing active source and never attempts to write
+ok 5 - appointment rejects missing active source and never attempts to write
+  ---
+  duration_ms: 2.6128
+  type: 'test'
+  ...
+# Subtest: appointment writes active source and normalized code
+ok 6 - appointment writes active source and normalized code
+  ---
+  duration_ms: 0.8796
+  type: 'test'
+  ...
+# Subtest: missing order produces no commission writes
+ok 7 - missing order produces no commission writes
+  ---
+  duration_ms: 4.1931
+  type: 'test'
+  ...
+# Subtest: unpaid produces no commission writes
+ok 8 - unpaid produces no commission writes
+  ---
+  duration_ms: 1.1925
+  type: 'test'
+  ...
+# Subtest: zero payment produces no commission writes
+ok 9 - zero payment produces no commission writes
+  ---
+  duration_ms: 1.31
+  type: 'test'
+  ...
+# Subtest: already processed produces no commission writes
+ok 10 - already processed produces no commission writes
+  ---
+  duration_ms: 2.3388
+  type: 'test'
+  ...
+# Subtest: feature disabled records processing without referral or ledger writes
+ok 11 - feature disabled records processing without referral or ledger writes
+  ---
+  duration_ms: 1.9795
+  type: 'test'
+  ...
+# Subtest: ineligible item records processing without referral or ledger writes
+ok 12 - ineligible item records processing without referral or ledger writes
+  ---
+  duration_ms: 0.467
+  type: 'test'
+  ...
+# Subtest: inactive referrer records processing without referral or ledger writes
+ok 13 - inactive referrer records processing without referral or ledger writes
+  ---
+  duration_ms: 1.4975
+  type: 'test'
+  ...
+# Subtest: appointment already converted records processing without referral or ledger writes
+ok 14 - appointment already converted records processing without referral or ledger writes
+  ---
+  duration_ms: 0.8278
+  type: 'test'
+  ...
+# Subtest: missing settings stops processing before any write
+ok 15 - missing settings stops processing before any write
+  ---
+  duration_ms: 0.669
+  type: 'test'
+  ...
+# Subtest: invalid setting stops processing before any write
+ok 16 - invalid setting stops processing before any write
+  ---
+  duration_ms: 0.6431
+  type: 'test'
+  ...
+# Subtest: X creates one relationship and one pending ledger entry
+ok 17 - X creates one relationship and one pending ledger entry
+  ---
+  duration_ms: 3.5799
+  type: 'test'
+  ...
+# Subtest: Y preserves existing relationship and records the Y amount
+ok 18 - Y preserves existing relationship and records the Y amount
+  ---
+  duration_ms: 2.4914
+  type: 'test'
+  ...
+# Subtest: ledger write failure propagates before marking order processed
+ok 19 - ledger write failure propagates before marking order processed
+  ---
+  duration_ms: 2.7122
+  type: 'test'
+  ...
+# Subtest: large mixed order allocates cents by exact integer remainders (FLOW-18)
+ok 20 - large mixed order allocates cents by exact integer remainders (FLOW-18)
+  ---
+  duration_ms: 3.3808
+  type: 'test'
+  ...
+# (node:23984) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FLOW-21 rejects PNG signature only without caching
+ok 21 - FLOW-21 rejects PNG signature only without caching
+  ---
+  duration_ms: 106.8204
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG missing IEND without caching
+ok 22 - FLOW-21 rejects PNG missing IEND without caching
+  ---
+  duration_ms: 2.6536
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG interrupted inside IDAT without caching
+ok 23 - FLOW-21 rejects PNG interrupted inside IDAT without caching
+  ---
+  duration_ms: 2.1749
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects JPEG signature only without caching
+ok 24 - FLOW-21 rejects JPEG signature only without caching
+  ---
+  duration_ms: 1.9351
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects JPEG without frame and scan without caching
+ok 25 - FLOW-21 rejects JPEG without frame and scan without caching
+  ---
+  duration_ms: 2.9367
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG with undecodable IDAT without caching
+ok 26 - FLOW-21 rejects PNG with undecodable IDAT without caching
+  ---
+  duration_ms: 2.8601
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes old truncated PNG after upstream recovery
+ok 27 - FLOW-21 refreshes old truncated PNG after upstream recovery
+  ---
+  duration_ms: 9.4787
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes old truncated JPEG after upstream recovery
+ok 28 - FLOW-21 refreshes old truncated JPEG after upstream recovery
+  ---
+  duration_ms: 7.5293
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes valid cache from a different app after upstream recovery
+ok 29 - FLOW-21 refreshes valid cache from a different app after upstream recovery
+  ---
+  duration_ms: 13.3434
+  type: 'test'
+  ...
+# Subtest: FLOW-18 original unequal remainders
+ok 30 - FLOW-18 original unequal remainders
+  ---
+  duration_ms: 12.6819
+  type: 'test'
+  ...
+# Subtest: FLOW-18 large equal remainders favor earlier line
+ok 31 - FLOW-18 large equal remainders favor earlier line
+  ---
+  duration_ms: 0.9451
+  type: 'test'
+  ...
+# Subtest: FLOW-18 quantity and fractional rate
+ok 32 - FLOW-18 quantity and fractional rate
+  ---
+  duration_ms: 0.9327
+  type: 'test'
+  ...
+# Subtest: FLOW-18 regular-size mixed order
+ok 33 - FLOW-18 regular-size mixed order
+  ---
+  duration_ms: 0.7941
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes a cache with undecodable PNG data
+ok 34 - FLOW-21 refreshes a cache with undecodable PNG data
+  ---
+  duration_ms: 2.8892
+  type: 'test'
+  ...
+# Subtest: FLOW-21 keeps undecodable cache out of the response until a valid replacement is saved
+ok 35 - FLOW-21 keeps undecodable cache out of the response until a valid replacement is saved
+  ---
+  duration_ms: 11.2676
+  type: 'test'
+  ...
+# (node:21916) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: missing or disabled promotion QR is rejected before upstream call
+ok 36 - missing or disabled promotion QR is rejected before upstream call
+  ---
+  duration_ms: 12.7224
+  type: 'test'
+  ...
+# Subtest: QR HTTP failure does not cache and can be retried
+ok 37 - QR HTTP failure does not cache and can be retried
+  ---
+  duration_ms: 64.0979
+  type: 'test'
+  ...
+# Subtest: QR HTTP 200 with WeChat error JSON does not cache and can be retried
+ok 38 - QR HTTP 200 with WeChat error JSON does not cache and can be retried
+  ---
+  duration_ms: 3.303
+  type: 'test'
+  ...
+# Subtest: QR empty response does not cache and can be retried
+ok 39 - QR empty response does not cache and can be retried
+  ---
+  duration_ms: 4.0208
+  type: 'test'
+  ...
+# Subtest: QR connection failure does not cache and can be retried
+ok 40 - QR connection failure does not cache and can be retried
+  ---
+  duration_ms: 3.4183
+  type: 'test'
+  ...
+# Subtest: QR rejects and never caches truncated PNG
+ok 41 - QR rejects and never caches truncated PNG
+  ---
+  duration_ms: 2.8982
+  type: 'test'
+  ...
+# Subtest: QR rejects and never caches truncated JPEG
+ok 42 - QR rejects and never caches truncated JPEG
+  ---
+  duration_ms: 3.1993
+  type: 'test'
+  ...
+# Subtest: payment callback signature valid
+ok 43 - payment callback signature valid
+  ---
+  duration_ms: 8.8781
+  type: 'test'
+  ...
+# Subtest: payment callback signature tampered
+ok 44 - payment callback signature tampered
+  ---
+  duration_ms: 3.053
+  type: 'test'
+  ...
+# Subtest: payment callback signature stale
+ok 45 - payment callback signature stale
+  ---
+  duration_ms: 3.8274
+  type: 'test'
+  ...
+# Subtest: payment callback signature future
+ok 46 - payment callback signature future
+  ---
+  duration_ms: 2.9397
+  type: 'test'
+  ...
+# Subtest: payment callback signature missing signature
+ok 47 - payment callback signature missing signature
+  ---
+  duration_ms: 0.7693
+  type: 'test'
+  ...
+# Subtest: refund processing leaves the ledger untouched
+ok 48 - refund processing leaves the ledger untouched
+  ---
+  duration_ms: 1.677
+  type: 'test'
+  ...
+# Subtest: refund missing success time leaves the ledger untouched
+ok 49 - refund missing success time leaves the ledger untouched
+  ---
+  duration_ms: 0.8975
+  type: 'test'
+  ...
+# Subtest: refund unknown refund leaves the ledger untouched
+ok 50 - refund unknown refund leaves the ledger untouched
+  ---
+  duration_ms: 1.407
+  type: 'test'
+  ...
+# Subtest: refund wrong trade leaves the ledger untouched
+ok 51 - refund wrong trade leaves the ledger untouched
+  ---
+  duration_ms: 0.668
+  type: 'test'
+  ...
+# Subtest: refund wrong currency leaves the ledger untouched
+ok 52 - refund wrong currency leaves the ledger untouched
+  ---
+  duration_ms: 0.3243
+  type: 'test'
+  ...
+# Subtest: refund partial amount leaves the ledger untouched
+ok 53 - refund partial amount leaves the ledger untouched
+  ---
+  duration_ms: 0.4588
+  type: 'test'
+  ...
+# Subtest: refund incorrect original total leaves the ledger untouched
+ok 54 - refund incorrect original total leaves the ledger untouched
+  ---
+  duration_ms: 0.4412
+  type: 'test'
+  ...
+# Subtest: refund missing reference leaves the ledger untouched
+ok 55 - refund missing reference leaves the ledger untouched
+  ---
+  duration_ms: 0.4562
+  type: 'test'
+  ...
+# Subtest: refund wrong order state leaves the ledger untouched
+ok 56 - refund wrong order state leaves the ledger untouched
+  ---
+  duration_ms: 0.4052
+  type: 'test'
+  ...
+# Subtest: refund replay leaves the ledger untouched
+ok 57 - refund replay leaves the ledger untouched
+  ---
+  duration_ms: 0.3555
+  type: 'test'
+  ...
+# Subtest: settlement credits only rows that successfully transition from pending
+ok 58 - settlement credits only rows that successfully transition from pending
+  ---
+  duration_ms: 1.8832
+  type: 'test'
+  ...
+# Subtest: full refund reverses a pending commission exactly once in the module
+ok 59 - full refund reverses a pending commission exactly once in the module
+  ---
+  duration_ms: 1.6449
+  type: 'test'
+  ...
+# Subtest: full refund reverses a settled commission exactly once in the module
+ok 60 - full refund reverses a settled commission exactly once in the module
+  ---
+  duration_ms: 0.641
+  type: 'test'
+  ...
+# Subtest: invalid PNG cache (8 bytes) is replaced and the valid replacement is reused
+ok 61 - invalid PNG cache (8 bytes) is replaced and the valid replacement is reused
+  ---
+  duration_ms: 2.2028
+  type: 'test'
+  ...
+# Subtest: invalid PNG cache (56 bytes) is replaced and the valid replacement is reused
+ok 62 - invalid PNG cache (56 bytes) is replaced and the valid replacement is reused
+  ---
+  duration_ms: 1.3165
+  type: 'test'
+  ...
+# ◇ injected env (8) from hanjing-clinic-backend\\.env // tip: ◈ secrets for agents [www.dotenvx.com]
+# Subtest: order order disappeared stops before any write
+ok 63 - order order disappeared stops before any write
+  ---
+  duration_ms: 11.3622
+  type: 'test'
+  ...
+# Subtest: order empty payment stops before any write
+ok 64 - order empty payment stops before any write
+  ---
+  duration_ms: 0.8334
+  type: 'test'
+  ...
+# Subtest: order non-success trade stops before any write
+ok 65 - order non-success trade stops before any write
+  ---
+  duration_ms: 0.5712
+  type: 'test'
+  ...
+# Subtest: order different order number stops before any write
+ok 66 - order different order number stops before any write
+  ---
+  duration_ms: 0.854
+  type: 'test'
+  ...
+# Subtest: order different currency stops before any write
+ok 67 - order different currency stops before any write
+  ---
+  duration_ms: 0.913
+  type: 'test'
+  ...
+# Subtest: order underpayment stops before any write
+ok 68 - order underpayment stops before any write
+  ---
+  duration_ms: 0.4938
+  type: 'test'
+  ...
+# Subtest: order overpayment stops before any write
+ok 69 - order overpayment stops before any write
+  ---
+  duration_ms: 0.791
+  type: 'test'
+  ...
+# Subtest: order empty transaction ID stops before any write
+ok 70 - order empty transaction ID stops before any write
+  ---
+  duration_ms: 0.6315
+  type: 'test'
+  ...
+# Subtest: order different payment for an already paid order stops before any write
+ok 71 - order different payment for an already paid order stops before any write
+  ---
+  duration_ms: 4.0379
+  type: 'test'
+  ...
+# Subtest: identical payment on an already paid order is idempotent
+ok 72 - identical payment on an already paid order is idempotent
+  ---
+  duration_ms: 2.2154
+  type: 'test'
+  ...
+# Subtest: orders：较早请求晚到不能覆盖新数据
+ok 73 - orders：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 10.7295
+  type: 'test'
+  ...
+# Subtest: commission：较早请求晚到不能覆盖新数据
+ok 74 - commission：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 13.0473
+  type: 'test'
+  ...
+# Subtest: team：较早请求晚到不能覆盖新数据
+ok 75 - team：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 15.0276
+  type: 'test'
+  ...
+# Subtest: products：较早请求晚到不能覆盖新数据
+ok 76 - products：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 5.1532
+  type: 'test'
+  ...
+# Subtest: 提现：超额和三位小数拦截；合法金额连续提交只发一次
+ok 77 - 提现：超额和三位小数拦截；合法金额连续提交只发一次
+  ---
+  duration_ms: 5.3423
+  type: 'test'
+  ...
+# Subtest: commission：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+ok 78 - commission：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+  ---
+  duration_ms: 6.7224
+  type: 'test'
+  ...
+# Subtest: team：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+ok 79 - team：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+  ---
+  duration_ms: 4.421
+  type: 'test'
+  ...
+# Subtest: products：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+ok 80 - products：新数据已显示后旧请求失败不提示；最新请求失败仍提示
+  ---
+  duration_ms: 4.6767
+  type: 'test'
+  ...
+# [Distribution] invite qr unavailable: 微信小程序码生成失败
+# Subtest: backend caches valid image, coalesces requests, regenerates lost/corrupt/environment-changed files
+ok 81 - backend caches valid image, coalesces requests, regenerates lost/corrupt/environment-changed files
+  ---
+  duration_ms: 261.895
+  type: 'test'
+  ...
+# Subtest: invite service only requests invitation endpoint without forced regeneration
+ok 82 - invite service only requests invitation endpoint without forced regeneration
+  ---
+  duration_ms: 54.6071
+  type: 'test'
+  ...
+# Subtest: page downloads with retry and reuses local QR; failed QR prevents poster export
+ok 83 - page downloads with retry and reuses local QR; failed QR prevents poster export
+  ---
+  duration_ms: 54.789
+  type: 'test'
+  ...
+# Checked 66 packaged media resources; combined 185791 bytes
+# Subtest: QR download and local cache work after diagnostic removal
+ok 84 - QR download and local cache work after diagnostic removal
+  ---
+  duration_ms: 11.041
+  type: 'test'
+  ...
+# Subtest: failed image retries and preserves invite code; failed request releases guard
+ok 85 - failed image retries and preserves invite code; failed request releases guard
+  ---
+  duration_ms: 10.0855
+  type: 'test'
+  ...
+# Subtest: template remains balanced with no diagnostic controls or orphaned module
+ok 86 - template remains balanced with no diagnostic controls or orphaned module
+  ---
+  duration_ms: 1.9161
+  type: 'test'
+  ...
+# Subtest: combined packaged image and audio resources stay below 200 KiB
+ok 87 - combined packaged image and audio resources stay below 200 KiB
+  ---
+  duration_ms: 45.3037
+  type: 'test'
+  ...
+# Subtest: inline rules use all four API groups and preserve invitation data
+ok 88 - inline rules use all four API groups and preserve invitation data
+  ---
+  duration_ms: 17.0661
+  type: 'test'
+  ...
+# Subtest: rules failure preserves loaded rules and can retry; empty payload clears old rules
+ok 89 - rules failure preserves loaded rules and can retry; empty payload clears old rules
+  ---
+  duration_ms: 2.9614
+  type: 'test'
+  ...
+# Subtest: invitation matches actual center handler for direct, wrapped and nested dynamic responses
+ok 90 - invitation matches actual center handler for direct, wrapped and nested dynamic responses
+  ---
+  duration_ms: 40.7042
+  type: 'test'
+  ...
+# Subtest: share and album use the same image, concurrent requests draw once
+ok 91 - share and album use the same image, concurrent requests draw once
+  ---
+  duration_ms: 16.4846
+  type: 'test'
+  ...
+# Subtest: failed rendering can retry without caching a broken image
+ok 92 - failed rendering can retry without caching a broken image
+  ---
+  duration_ms: 10.8324
+  type: 'test'
+  ...
+# Subtest: QR sits inside artwork lower right with white padding and identical rendering modes
+ok 93 - QR sits inside artwork lower right with white padding and identical rendering modes
+  ---
+  duration_ms: 4.8888
+  type: 'test'
+  ...
+1..93
+# tests 93
+# suites 0
+# pass 93
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1731.2652

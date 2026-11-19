@@ -1,5 +1,7 @@
 const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
+const subscribe = require('../../common/utils/subscribe');
+const { parseAppointmentTimestamp } = require('../../common/utils/appointment-time');
 const { getStoreCoverUrl } = require('../../common/utils/image-url');
 
 function unwrapObject(response) {
@@ -49,6 +51,7 @@ Page({
 
   onLoad(options) {
     this.options = options || {};
+    subscribe.refreshSubscribeSettings();
     this.hasLoaded = false;
     this.loadPage({ silent: false });
   },
@@ -104,34 +107,41 @@ Page({
 
     let detailLoaded = false;
     try {
-      const [detailResponse, bookingSettingsResponse] = await Promise.all([
-        api.getAppointmentDetail(appointmentId),
-        api.getBookingSettings().catch(() => ({})),
-      ]);
+      let bookingSettings = {};
+      let resultAppointment;
+      const canSubscribe = () => Boolean(resultAppointment?.canSubscribeVisitReminder &&
+        bookingSettings.subscribeTemplateMap?.visit_reminder && ['pending', 'confirmed'].includes(resultAppointment.status) &&
+        parseAppointmentTimestamp(resultAppointment.appointmentDate, resultAppointment.appointmentTime) > Date.now());
+      Promise.resolve().then(() => api.getBookingSettings()).then((response) => {
+        bookingSettings = unwrapObject(response);
+        if (resultAppointment && canUpdate()) this.setData({
+          canSubscribeVisitReminder: canSubscribe(),
+          cancelLimitText: bookingSettings.cancelLimit || bookingSettings.cancelLimitText || '就诊前 2 小时',
+        });
+      }).catch(() => {});
+      const detailResponse = await api.getAppointmentDetail(appointmentId);
       if (!canUpdate()) return;
       detailLoaded = true;
       const detailSource = unwrapObject(detailResponse);
       const appointment = detailSource.appointment || detailSource || {};
-      if (!['pending', 'confirmed', 'checked_in', 'arrived', 'completed'].includes(appointment.status)) {
+      if (!['pending', 'confirmed', 'reminded', 'checked_in', 'arrived', 'completed'].includes(appointment.status)) {
         throw new Error(appointment.status === 'pending_payment'
           ? '预约尚未确认付款，请到预约记录核对状态，勿重复付款'
           : ({ cancelled: '该预约已取消', refunded: '该预约已退款' }[appointment.status] ||
             '预约状态待确认，请查看预约记录'));
       }
-      let store = detailSource.store;
-      if (!store || !Object.keys(store).length) {
-        const stores = unwrapList(await api.getStores().catch(() => []));
-        if (!canUpdate()) return;
-        store = stores.find(item => String(item.id) === String(appointment.storeId || appointment.store_id)) || {};
-      }
-      const bookingSettings = unwrapObject(bookingSettingsResponse);
-      const nextStoreCoverUrl = getStoreCoverUrl(store || appointment);
+      const hasStore = detailSource.store && Object.keys(detailSource.store).length;
+      const store = hasStore ? detailSource.store : {};
+      resultAppointment = appointment;
+      const nextStoreCoverUrl = getStoreCoverUrl(hasStore ? store : appointment);
 
       this.setData({
         loading: false,
         appointment,
-        resultTitle: appointment.status === 'checked_in' ? '就诊中' : '预约成功',
-        resultDescription: appointment.status === 'checked_in' ? '医生已叫号，就诊进行中' : '您的预约已提交，请按时就诊',
+        canSubscribeVisitReminder: canSubscribe(),
+        resultTitle: appointment.status === 'reminded' ? '候诊中' : appointment.status === 'checked_in' ? '就诊中' : '预约成功',
+        resultDescription: appointment.status === 'reminded' ? '请留意就诊叫号' :
+          appointment.status === 'checked_in' ? '医生已叫号，就诊进行中' : '您的预约已提交，请按时就诊',
         appointmentNo: appointment.appointmentNo || appointment.appointment_no || '',
         storeCoverUrl: nextStoreCoverUrl,
         storeCoverLoaded: silent && nextStoreCoverUrl === this.data.storeCoverUrl ? this.data.storeCoverLoaded : false,
@@ -147,6 +157,20 @@ Page({
         cancelLimitText: bookingSettings.cancelLimit || bookingSettings.cancelLimitText || '就诊前 2 小时',
       });
       this.hasLoaded = true;
+      const storeId = appointment.storeId || appointment.store_id;
+      if (!hasStore && storeId) {
+        Promise.resolve().then(() => api.getStores()).then((response) => {
+          if (!canUpdate()) return;
+          const match = unwrapList(response).find(item => String(item.id) === String(storeId));
+          if (!match) return;
+          const cover = getStoreCoverUrl(match) || this.data.storeCoverUrl;
+          this.setData({
+            storeName: this.data.storeName || match.name || match.storeName || '',
+            storeCoverUrl: cover,
+            storeCoverLoaded: cover === this.data.storeCoverUrl && this.data.storeCoverLoaded,
+          });
+        }).catch(() => {});
+      }
     } catch (error) {
       if (!canUpdate()) return;
       this.setData({
@@ -166,6 +190,23 @@ Page({
 
   handleStoreCoverError() {
     this.setData({ storeCoverLoaded: false });
+  },
+
+  async subscribeVisitReminder() {
+    const generation = sessionStore.getLoginGeneration();
+    const appointmentId = this.data.appointmentId;
+    const isCurrent = () => !this._unloaded && this.resultOwner === generation &&
+      generation === sessionStore.getLoginGeneration() && this.data.appointmentId === appointmentId;
+    if (!isCurrent() || !this.data.appointment || !this.data.canSubscribeVisitReminder || this.subscribingReminder) return;
+    this.subscribingReminder = true;
+    try {
+      const accepted = await subscribe.subscribeToVisitReminder(appointmentId, isCurrent);
+      if (isCurrent()) wx.showToast({ title: accepted ? '已订阅就诊提醒' : '未获得就诊提醒授权', icon: accepted ? 'success' : 'none' });
+    } catch (error) {
+      if (isCurrent()) wx.showToast({ title: error.message || '订阅结果保存失败', icon: 'none' });
+    } finally {
+      this.subscribingReminder = false;
+    }
   },
 
   openAppointmentDetail() {

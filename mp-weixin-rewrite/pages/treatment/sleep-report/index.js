@@ -145,29 +145,48 @@ Page({
     await this.loadReportData({ silent: this.data.hasLoaded });
   },
 
+  clearPatientData(patientId) {
+    if (this._loadedPatientId === patientId) return;
+    this.setData({
+      hasLoaded: false, loading: true, loadError: '',
+      report: null, insights: [], currentPatientLabel: '',
+    });
+  },
+
   async loadReportData(options = {}) {
-    const silent = !!options.silent;
+    const version = this._reportVersion = (this._reportVersion || 0) + 1;
+    const range = this.data.selectedRange;
+    this.clearPatientData(patientContextStore.state.currentPatientId);
+    const silent = !!options.silent && this.data.hasLoaded;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
     }
     try {
       const context = await patientContextStore.refresh();
-      const params = context.currentPatientId ? { patientId: context.currentPatientId, range: this.data.selectedRange, _t: Date.now() } : { range: this.data.selectedRange, _t: Date.now() };
+      if (version !== this._reportVersion) return;
+      const patientId = context.currentPatientId;
+      this.clearPatientData(patientId);
+      const params = context.currentPatientId ? { patientId: context.currentPatientId, range, _t: Date.now() } : { range, _t: Date.now() };
       const response = await api.getSleepReport(params);
+      if (version !== this._reportVersion || patientId !== (patientContextStore.state.currentPatientId)) return;
+      this._loadedPatientId = patientId;
       const baseReport = normalizeSleepReport(response);
       const currentPatientLabel = context.currentMember
         ? (context.currentMember.name || '') + '（' + patientContextService.getRelationLabel(context.currentMember.relation) + '）'
         : '';
-      const report = buildReportViewModel(baseReport, this.data.selectedRange, currentPatientLabel);
+      const report = buildReportViewModel(baseReport, range, currentPatientLabel);
       this.setData({
         hasLoaded: true,
+        loadError: '',
         loading: false,
         report,
         insights: this.buildInsights(report),
         currentPatientLabel,
       });
     } catch (error) {
-      if (!this.data.hasLoaded) {
+      if (version !== this._reportVersion) return;
+      this.clearPatientData(patientContextStore.state.currentPatientId);
+      if (!silent || !this.data.hasLoaded) {
         this.setData({
           loading: false,
           loadError: (error && error.message) || '加载睡眠报告失败',

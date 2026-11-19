@@ -1174,6 +1174,13 @@ export const initDB = async () => {
   try {
     await query(`ALTER TABLE orders ADD COLUMN wechat_transaction_id VARCHAR(64) DEFAULT NULL AFTER appointment_id`);
   } catch (err) {}
+  await query(`CREATE TABLE IF NOT EXISTS order_wechat_payment_claims (
+    transaction_id VARCHAR(64) PRIMARY KEY
+  ) ENGINE=InnoDB`);
+  const transactionIndex = await query("SHOW INDEX FROM orders WHERE Key_name = 'idx_orders_wechat_transaction'");
+  if (!transactionIndex.length) {
+    await query('CREATE INDEX idx_orders_wechat_transaction ON orders (wechat_transaction_id)');
+  }
   try {
     await query(`ALTER TABLE orders ADD COLUMN wechat_prepay_id VARCHAR(128) DEFAULT NULL AFTER wechat_transaction_id`);
   } catch (err) {}
@@ -1242,6 +1249,7 @@ export const initDB = async () => {
   `);
 
   for (const [table, column, definition] of [
+    ['appointment_charges', 'prepay_lease_until', 'DATETIME(6) DEFAULT NULL'],
     ['appointment_charges', 'collected_by_admin_id', 'BIGINT UNSIGNED DEFAULT NULL'],
     ['appointment_charges', 'collected_by_name', 'VARCHAR(100) DEFAULT NULL'],
     ['appointment_charges', 'collection_source', 'VARCHAR(24) DEFAULT NULL'],

@@ -138,7 +138,8 @@ async function main() {
 
   await check('H07 用户关闭取消弹窗时不发送取消请求', async o => {
     let calls = 0;
-    const h = loadPage('booking/index.js', create(), { ...basics, cancelAppointment: async () => { calls++; } });
+    const h = loadPage('booking/index.js', create(), { ...basics, getAppointments: async () => [record], cancelAppointment: async () => { calls++; } });
+    await h.page.loadPage();
     await h.page.cancelAppointment({ detail: record });
     assert.equal(h.modals.length, 1);
     await h.modals[0].success({ confirm: false });

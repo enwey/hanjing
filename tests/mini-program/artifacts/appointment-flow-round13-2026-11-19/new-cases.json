@@ -1,0 +1,178 @@
+[
+  {
+    "id": "M01-timeout-recovery-detail",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:charge-a"
+      ],
+      "firstToast": "查单超时",
+      "afterRestart": [
+        "query:charge-a",
+        "query:charge-a",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "查单超时",
+        "支付已提交，请稍后刷新"
+      ]
+    }
+  },
+  {
+    "id": "M02-processing-recovery-detail",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:charge-a"
+      ],
+      "firstToast": "微信订单当前不可支付，请稍后核对预约状态",
+      "afterRestart": [
+        "query:charge-a",
+        "query:charge-a",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "微信订单当前不可支付，请稍后核对预约状态",
+        "支付已提交，请稍后刷新"
+      ]
+    }
+  },
+  {
+    "id": "M03-legacy-paid-detail",
+    "passed": false,
+    "observed": {
+      "firstRetry": [
+        "query:charge-a",
+        "build",
+        "wechat",
+        "query:charge-a"
+      ],
+      "firstToast": "不存在",
+      "afterRestart": [
+        "query:charge-a",
+        "build",
+        "wechat",
+        "query:charge-a"
+      ],
+      "status": "pending_payment",
+      "toasts": [
+        "不存在"
+      ]
+    },
+    "error": "重启后再次拉起微信支付"
+  },
+  {
+    "id": "M04-closed-order-detail",
+    "passed": false,
+    "observed": {
+      "firstRetry": [
+        "query:charge-a"
+      ],
+      "firstToast": "微信订单当前不可支付，请稍后核对预约状态",
+      "afterRestart": [
+        "query:charge-a",
+        "query:charge-a"
+      ],
+      "status": "pending_payment",
+      "toasts": [
+        "微信订单当前不可支付，请稍后核对预约状态",
+        "微信订单当前不可支付，请稍后核对预约状态"
+      ]
+    },
+    "error": "两次重试都只得到同一结论，无法恢复支付"
+  },
+  {
+    "id": "M01-timeout-recovery-list",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:charge-a"
+      ],
+      "firstToast": "查单超时",
+      "afterRestart": [
+        "query:charge-a",
+        "query:charge-a",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "查单超时",
+        "支付成功"
+      ]
+    }
+  },
+  {
+    "id": "M02-processing-recovery-list",
+    "passed": true,
+    "observed": {
+      "firstRetry": [
+        "query:charge-a"
+      ],
+      "firstToast": "微信订单当前不可支付，请稍后核对预约状态",
+      "afterRestart": [
+        "query:charge-a",
+        "query:charge-a",
+        "settle"
+      ],
+      "status": "pending",
+      "toasts": [
+        "微信订单当前不可支付，请稍后核对预约状态",
+        "支付成功"
+      ]
+    }
+  },
+  {
+    "id": "M03-legacy-paid-list",
+    "passed": false,
+    "observed": {
+      "firstRetry": [
+        "query:charge-a",
+        "build",
+        "wechat",
+        "query:charge-a"
+      ],
+      "firstToast": "不存在",
+      "afterRestart": [
+        "query:charge-a",
+        "build",
+        "wechat",
+        "query:charge-a"
+      ],
+      "status": "pending_payment",
+      "toasts": [
+        "不存在"
+      ]
+    },
+    "error": "重启后再次拉起微信支付"
+  },
+  {
+    "id": "M04-closed-order-list",
+    "passed": false,
+    "observed": {
+      "firstRetry": [
+        "query:charge-a"
+      ],
+      "firstToast": "微信订单当前不可支付，请稍后核对预约状态",
+      "afterRestart": [
+        "query:charge-a",
+        "query:charge-a"
+      ],
+      "status": "pending_payment",
+      "toasts": [
+        "微信订单当前不可支付，请稍后核对预约状态",
+        "微信订单当前不可支付，请稍后核对预约状态"
+      ]
+    },
+    "error": "两次重试都只得到同一结论，无法恢复支付"
+  },
+  {
+    "id": "M05-late-store-response-does-not-overwrite-new-result",
+    "passed": true,
+    "observed": {
+      "id": "b",
+      "storeName": "新门店"
+    }
+  }
+]

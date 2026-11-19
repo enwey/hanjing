@@ -4,6 +4,7 @@ const MAX_TEMPLATE_IDS_PER_REQUEST = 3;
 const SCENE_EVENTS = {
   appointment: ['visit_reminder'],
   withdraw: ['withdraw_result', 'withdraw_paid'],
+  withdrawPaid: ['withdraw_paid'],
   order: ['order_shipped'],
   distribution: ['promoter_activated'],
 };
@@ -11,6 +12,7 @@ const SCENE_EVENTS = {
 let cachedSettings = null;
 let settingsRequest = null;
 const requestedScenesInSession = {};
+const activeUpdateRequests = new Set();
 
 function unwrapObject(response) {
   const payload = response && response.data ? response.data : response || {};
@@ -59,6 +61,7 @@ async function getSubscribeTemplateIds(scene) {
 async function requestSubscribe(options) {
   const force = options && options.force;
   const scene = options && options.scene;
+  const fromTap = options && options.fromTap;
   const sceneKey = scene || 'default';
   if (!force && requestedScenesInSession[sceneKey]) {
     return;
@@ -69,6 +72,10 @@ async function requestSubscribe(options) {
 
   // Use prefetched templates during the tap, before any network wait.
   let templateIds = pickTemplateIds(cachedSettings || {}, scene);
+  if (!templateIds.length && fromTap) {
+    void refreshSubscribeSettings();
+    return;
+  }
   if (!templateIds.length) templateIds = await getSubscribeTemplateIds(scene);
   if (!templateIds.length) {
     return;
@@ -98,8 +105,21 @@ module.exports = {
   getSubscribeTemplateIds,
   refreshSubscribeSettings,
   requestSubscribe,
+  async subscribeToUpdates(scene, isCurrent) {
+    if (!isCurrent() || activeUpdateRequests.has(scene)) return;
+    activeUpdateRequests.add(scene);
+    try {
+      const result = await requestSubscribe({ force: true, scene, fromTap: true });
+      if (!isCurrent()) return;
+      const accepted = Object.values(result || {}).includes('accept');
+      wx.showToast({ title: accepted ? '已订阅通知' : '未获得订阅授权，可稍后重试', icon: accepted ? 'success' : 'none' });
+    } finally {
+      activeUpdateRequests.delete(scene);
+    }
+  },
   async subscribeToVisitReminder(appointmentId, isCurrent) {
-    const result = await requestSubscribe({ force: true, scene: 'appointment' });
+    if (!isCurrent()) return false;
+    const result = await requestSubscribe({ force: true, scene: 'appointment', fromTap: true });
     const templateId = Object.keys(result || {}).find(key => result[key] === 'accept');
     if (!templateId || !isCurrent()) return false;
     await recordVisitReminderAuthorization(appointmentId, templateId);

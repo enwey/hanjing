@@ -1,0 +1,246 @@
+[
+  {
+    "id": "L01-write-failed-list-list",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay"
+      ],
+      "toasts": [
+        "支付成功"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L01-write-failed-detail-detail",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay"
+      ],
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L01-write-failed-list-detail",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay"
+      ],
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L01-write-failed-detail-list",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay"
+      ],
+      "toasts": [
+        "支付成功"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L02-marker-persists-list-detail",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": true,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "confirm"
+      ],
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L03-server-synced-list-detail",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [],
+      "toasts": [],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L04-marker-read-fails-list-detail",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": true,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay"
+      ],
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L05-prepay-rejected-list-detail",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay",
+        "confirm"
+      ],
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L02-marker-persists-detail-list",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": true,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "confirm"
+      ],
+      "toasts": [
+        "支付成功"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L03-server-synced-detail-list",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [],
+      "toasts": [],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L04-marker-read-fails-detail-list",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": true,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay"
+      ],
+      "toasts": [
+        "支付成功"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L05-prepay-rejected-detail-list",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay",
+        "confirm"
+      ],
+      "toasts": [
+        "支付成功"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L06-result-waits-for-store-directory",
+    "passed": true,
+    "observed": {
+      "visibleBefore": true,
+      "loadingBefore": false,
+      "visibleAfter": true,
+      "storeName": "甲门店"
+    }
+  }
+]

@@ -1,0 +1,155 @@
+TAP version 13
+# (node:6096) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FLOW-21 rejects PNG signature only without caching
+ok 1 - FLOW-21 rejects PNG signature only without caching
+  ---
+  duration_ms: 24.1757
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG missing IEND without caching
+ok 2 - FLOW-21 rejects PNG missing IEND without caching
+  ---
+  duration_ms: 1.3962
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG interrupted inside IDAT without caching
+ok 3 - FLOW-21 rejects PNG interrupted inside IDAT without caching
+  ---
+  duration_ms: 1.178
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects JPEG signature only without caching
+ok 4 - FLOW-21 rejects JPEG signature only without caching
+  ---
+  duration_ms: 0.5372
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects JPEG without frame and scan without caching
+ok 5 - FLOW-21 rejects JPEG without frame and scan without caching
+  ---
+  duration_ms: 0.6325
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG with undecodable IDAT without caching
+not ok 6 - FLOW-21 rejects PNG with undecodable IDAT without caching
+  ---
+  duration_ms: 3.1629
+  type: 'test'
+  location: 'D:\\WorkSpace\\Games\\hanjing\\tests\\mini-program\\backend-promoter-independent-regression-2026-11-19.test.mjs:36:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+      {
+    +   code: undefined,
+    +   status: 'fulfilled',
+    +   writes: 1
+    -   code: 503,
+    -   status: 'rejected',
+    -   writes: 0
+      }
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    status: 'rejected'
+    code: 503
+    writes: 0
+  actual:
+    status: 'fulfilled'
+    writes: 1
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/WorkSpace/Games/hanjing/tests/mini-program/backend-promoter-independent-regression-2026-11-19.test.mjs:39:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: FLOW-21 refreshes old truncated PNG after upstream recovery
+ok 7 - FLOW-21 refreshes old truncated PNG after upstream recovery
+  ---
+  duration_ms: 1.5183
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes old truncated JPEG after upstream recovery
+ok 8 - FLOW-21 refreshes old truncated JPEG after upstream recovery
+  ---
+  duration_ms: 1.76
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes valid cache from a different app after upstream recovery
+ok 9 - FLOW-21 refreshes valid cache from a different app after upstream recovery
+  ---
+  duration_ms: 0.8778
+  type: 'test'
+  ...
+# Subtest: FLOW-18 original unequal remainders
+ok 10 - FLOW-18 original unequal remainders
+  ---
+  duration_ms: 1.9951
+  type: 'test'
+  ...
+# Subtest: FLOW-18 large equal remainders favor earlier line
+ok 11 - FLOW-18 large equal remainders favor earlier line
+  ---
+  duration_ms: 0.3398
+  type: 'test'
+  ...
+# Subtest: FLOW-18 quantity and fractional rate
+ok 12 - FLOW-18 quantity and fractional rate
+  ---
+  duration_ms: 0.3121
+  type: 'test'
+  ...
+# Subtest: FLOW-18 regular-size mixed order
+ok 13 - FLOW-18 regular-size mixed order
+  ---
+  duration_ms: 0.2711
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes a cache with undecodable PNG data
+not ok 14 - FLOW-21 refreshes a cache with undecodable PNG data
+  ---
+  duration_ms: 0.9864
+  type: 'test'
+  location: 'D:\\WorkSpace\\Games\\hanjing\\tests\\mini-program\\backend-promoter-independent-regression-2026-11-19.test.mjs:90:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+      {
+    +   fetches: 0,
+    +   image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVQAAAAAAAAAAAAAAEK+vGgAAAAASUVORK5CYII=',
+    +   writes: 0
+    -   fetches: 1,
+    -   image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNg+A8AAQIBAEK+vGgAAAAASUVORK5CYII=',
+    -   writes: 1
+      }
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    fetches: 1
+    writes: 1
+    image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNg+A8AAQIBAEK+vGgAAAAASUVORK5CYII='
+  actual:
+    fetches: 0
+    writes: 0
+    image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVQAAAAAAAAAAAAAAEK+vGgAAAAASUVORK5CYII='
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///D:/WorkSpace/Games/hanjing/tests/mini-program/backend-promoter-independent-regression-2026-11-19.test.mjs:93:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 12
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 384.3086

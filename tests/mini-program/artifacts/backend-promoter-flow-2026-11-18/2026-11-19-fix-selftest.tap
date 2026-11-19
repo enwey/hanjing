@@ -1,0 +1,295 @@
+TAP version 13
+# ◇ injected env (8) from hanjing-clinic-backend\\.env // tip: ⌁ auth for agents [www.vestauth.com]
+# Subtest: appointment rejects wrong length before querying the database
+ok 1 - appointment rejects wrong length before querying the database
+  ---
+  duration_ms: 2.0496
+  type: 'test'
+  ...
+# Subtest: appointment rejects invalid characters before querying the database
+ok 2 - appointment rejects invalid characters before querying the database
+  ---
+  duration_ms: 0.2834
+  type: 'test'
+  ...
+# Subtest: appointment rejects non-string before querying the database
+ok 3 - appointment rejects non-string before querying the database
+  ---
+  duration_ms: 0.1369
+  type: 'test'
+  ...
+# Subtest: appointment rejects whitespace only before querying the database
+ok 4 - appointment rejects whitespace only before querying the database
+  ---
+  duration_ms: 0.1318
+  type: 'test'
+  ...
+# Subtest: appointment rejects missing active source and never attempts to write
+ok 5 - appointment rejects missing active source and never attempts to write
+  ---
+  duration_ms: 0.8298
+  type: 'test'
+  ...
+# Subtest: appointment writes active source and normalized code
+ok 6 - appointment writes active source and normalized code
+  ---
+  duration_ms: 0.2763
+  type: 'test'
+  ...
+# Subtest: missing order produces no commission writes
+ok 7 - missing order produces no commission writes
+  ---
+  duration_ms: 0.7956
+  type: 'test'
+  ...
+# Subtest: unpaid produces no commission writes
+ok 8 - unpaid produces no commission writes
+  ---
+  duration_ms: 0.1372
+  type: 'test'
+  ...
+# Subtest: zero payment produces no commission writes
+ok 9 - zero payment produces no commission writes
+  ---
+  duration_ms: 0.3856
+  type: 'test'
+  ...
+# Subtest: already processed produces no commission writes
+ok 10 - already processed produces no commission writes
+  ---
+  duration_ms: 0.4938
+  type: 'test'
+  ...
+# Subtest: feature disabled records processing without referral or ledger writes
+ok 11 - feature disabled records processing without referral or ledger writes
+  ---
+  duration_ms: 0.573
+  type: 'test'
+  ...
+# Subtest: ineligible item records processing without referral or ledger writes
+ok 12 - ineligible item records processing without referral or ledger writes
+  ---
+  duration_ms: 0.1427
+  type: 'test'
+  ...
+# Subtest: inactive referrer records processing without referral or ledger writes
+ok 13 - inactive referrer records processing without referral or ledger writes
+  ---
+  duration_ms: 0.6595
+  type: 'test'
+  ...
+# Subtest: appointment already converted records processing without referral or ledger writes
+ok 14 - appointment already converted records processing without referral or ledger writes
+  ---
+  duration_ms: 0.4745
+  type: 'test'
+  ...
+# Subtest: missing settings stops processing before any write
+ok 15 - missing settings stops processing before any write
+  ---
+  duration_ms: 0.4272
+  type: 'test'
+  ...
+# Subtest: invalid setting stops processing before any write
+ok 16 - invalid setting stops processing before any write
+  ---
+  duration_ms: 0.3139
+  type: 'test'
+  ...
+# Subtest: X creates one relationship and one pending ledger entry
+ok 17 - X creates one relationship and one pending ledger entry
+  ---
+  duration_ms: 0.7503
+  type: 'test'
+  ...
+# Subtest: Y preserves existing relationship and records the Y amount
+ok 18 - Y preserves existing relationship and records the Y amount
+  ---
+  duration_ms: 0.3994
+  type: 'test'
+  ...
+# Subtest: ledger write failure propagates before marking order processed
+ok 19 - ledger write failure propagates before marking order processed
+  ---
+  duration_ms: 0.7074
+  type: 'test'
+  ...
+# Subtest: large mixed order allocates cents by exact integer remainders (FLOW-18)
+ok 20 - large mixed order allocates cents by exact integer remainders (FLOW-18)
+  ---
+  duration_ms: 0.5885
+  type: 'test'
+  ...
+# (node:15376) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: missing or disabled promotion QR is rejected before upstream call
+ok 21 - missing or disabled promotion QR is rejected before upstream call
+  ---
+  duration_ms: 3.4095
+  type: 'test'
+  ...
+# Subtest: QR HTTP failure does not cache and can be retried
+ok 22 - QR HTTP failure does not cache and can be retried
+  ---
+  duration_ms: 23.9265
+  type: 'test'
+  ...
+# Subtest: QR HTTP 200 with WeChat error JSON does not cache and can be retried
+ok 23 - QR HTTP 200 with WeChat error JSON does not cache and can be retried
+  ---
+  duration_ms: 1.3243
+  type: 'test'
+  ...
+# Subtest: QR empty response does not cache and can be retried
+ok 24 - QR empty response does not cache and can be retried
+  ---
+  duration_ms: 0.8478
+  type: 'test'
+  ...
+# Subtest: QR connection failure does not cache and can be retried
+ok 25 - QR connection failure does not cache and can be retried
+  ---
+  duration_ms: 0.7992
+  type: 'test'
+  ...
+# Subtest: QR rejects and never caches truncated PNG
+ok 26 - QR rejects and never caches truncated PNG
+  ---
+  duration_ms: 0.8841
+  type: 'test'
+  ...
+# Subtest: QR rejects and never caches truncated JPEG
+ok 27 - QR rejects and never caches truncated JPEG
+  ---
+  duration_ms: 1.1577
+  type: 'test'
+  ...
+# Subtest: payment callback signature valid
+ok 28 - payment callback signature valid
+  ---
+  duration_ms: 4.5435
+  type: 'test'
+  ...
+# Subtest: payment callback signature tampered
+ok 29 - payment callback signature tampered
+  ---
+  duration_ms: 1.5783
+  type: 'test'
+  ...
+# Subtest: payment callback signature stale
+ok 30 - payment callback signature stale
+  ---
+  duration_ms: 1.5086
+  type: 'test'
+  ...
+# Subtest: payment callback signature future
+ok 31 - payment callback signature future
+  ---
+  duration_ms: 1.0884
+  type: 'test'
+  ...
+# Subtest: payment callback signature missing signature
+ok 32 - payment callback signature missing signature
+  ---
+  duration_ms: 0.3608
+  type: 'test'
+  ...
+# Subtest: refund processing leaves the ledger untouched
+ok 33 - refund processing leaves the ledger untouched
+  ---
+  duration_ms: 0.3243
+  type: 'test'
+  ...
+# Subtest: refund missing success time leaves the ledger untouched
+ok 34 - refund missing success time leaves the ledger untouched
+  ---
+  duration_ms: 0.2204
+  type: 'test'
+  ...
+# Subtest: refund unknown refund leaves the ledger untouched
+ok 35 - refund unknown refund leaves the ledger untouched
+  ---
+  duration_ms: 0.4598
+  type: 'test'
+  ...
+# Subtest: refund wrong trade leaves the ledger untouched
+ok 36 - refund wrong trade leaves the ledger untouched
+  ---
+  duration_ms: 0.3143
+  type: 'test'
+  ...
+# Subtest: refund wrong currency leaves the ledger untouched
+ok 37 - refund wrong currency leaves the ledger untouched
+  ---
+  duration_ms: 0.1331
+  type: 'test'
+  ...
+# Subtest: refund partial amount leaves the ledger untouched
+ok 38 - refund partial amount leaves the ledger untouched
+  ---
+  duration_ms: 0.1903
+  type: 'test'
+  ...
+# Subtest: refund incorrect original total leaves the ledger untouched
+ok 39 - refund incorrect original total leaves the ledger untouched
+  ---
+  duration_ms: 0.1618
+  type: 'test'
+  ...
+# Subtest: refund missing reference leaves the ledger untouched
+ok 40 - refund missing reference leaves the ledger untouched
+  ---
+  duration_ms: 0.1872
+  type: 'test'
+  ...
+# Subtest: refund wrong order state leaves the ledger untouched
+ok 41 - refund wrong order state leaves the ledger untouched
+  ---
+  duration_ms: 0.1907
+  type: 'test'
+  ...
+# Subtest: refund replay leaves the ledger untouched
+ok 42 - refund replay leaves the ledger untouched
+  ---
+  duration_ms: 0.1069
+  type: 'test'
+  ...
+# Subtest: settlement credits only rows that successfully transition from pending
+ok 43 - settlement credits only rows that successfully transition from pending
+  ---
+  duration_ms: 0.9822
+  type: 'test'
+  ...
+# Subtest: full refund reverses a pending commission exactly once in the module
+ok 44 - full refund reverses a pending commission exactly once in the module
+  ---
+  duration_ms: 0.8979
+  type: 'test'
+  ...
+# Subtest: full refund reverses a settled commission exactly once in the module
+ok 45 - full refund reverses a settled commission exactly once in the module
+  ---
+  duration_ms: 0.3457
+  type: 'test'
+  ...
+# Subtest: invalid PNG cache (8 bytes) is replaced and the valid replacement is reused
+ok 46 - invalid PNG cache (8 bytes) is replaced and the valid replacement is reused
+  ---
+  duration_ms: 0.9219
+  type: 'test'
+  ...
+# Subtest: invalid PNG cache (56 bytes) is replaced and the valid replacement is reused
+ok 47 - invalid PNG cache (56 bytes) is replaced and the valid replacement is reused
+  ---
+  duration_ms: 0.5762
+  type: 'test'
+  ...
+1..47
+# tests 47
+# suites 0
+# pass 47
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 595.7688

@@ -1,4 +1,6 @@
 const api = require('../../../api/index');
+const subscribe = require('../../../common/utils/subscribe');
+const sessionStore = require('../../../stores/session-store');
 const { formatChinaDate } = require('../../../common/utils/date-time');
 
 const STATUS_LABEL_MAP = {
@@ -35,16 +37,33 @@ Page({
   },
 
   async onShow() {
+    subscribe.refreshSubscribeSettings();
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onUnload() {
+    this._unloaded = true;
+  },
+
+  subscribeWithdrawUpdates() {
+    const generation = sessionStore.getLoginGeneration();
+    if (this._unloaded || generation !== this.recordsGeneration || !this.data.withdrawSubscribeScene) return;
+    return subscribe.subscribeToUpdates(this.data.withdrawSubscribeScene, () => !this._unloaded &&
+      generation === sessionStore.getLoginGeneration());
+  },
+
   async loadPage(options = {}) {
+    const generation = sessionStore.getLoginGeneration();
+    if (this.recordsGeneration !== generation) this.setData({ records: [], withdrawSubscribeScene: '' });
+    this.recordsGeneration = generation;
+    const isCurrent = () => !this._unloaded && generation === sessionStore.getLoginGeneration();
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
     }
     try {
       const response = await api.getWithdrawRecords();
+      if (!isCurrent()) return;
       const records = unwrapList(response).map((record) => {
         const accountInfo = record.accountInfo || {};
         const accountLabel = accountInfo.label || (
@@ -58,7 +77,7 @@ Page({
           actualAmountValue: Number(record.actualAmount ?? (Number(record.amount) - Number(record.fee || 0))),
           amountLabel: '¥' + (Number(record.amount || 0) / 100).toFixed(2),
           accountLabel,
-          status: record.status || 'pending',
+          status: record.status || '',
           statusLabel: STATUS_LABEL_MAP[record.status] || '状态待确认',
           createdDate: formatChinaDate(record.createdAt || ''),
         };
@@ -71,6 +90,8 @@ Page({
         hasLoaded: true,
         loading: false,
         records,
+        withdrawSubscribeScene: records.some(record => ['pending', 'processing'].includes(record.status)) ? 'withdraw' :
+          records.some(record => record.status === 'approved') ? 'withdrawPaid' : '',
         summary: {
           totalAmountLabel: '¥' + (totalAmount / 100).toFixed(2),
           completedCount: String(completedCount),
@@ -78,6 +99,7 @@ Page({
         },
       });
     } catch (error) {
+      if (!isCurrent()) return;
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,

@@ -1,0 +1,141 @@
+[
+  {
+    "mode": "both-seen-pending",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": 0,
+          "message": "支付同步成功"
+        }
+      }
+    ],
+    "status": "pending",
+    "records": 1,
+    "legacyOrders": 1,
+    "settlements": 1,
+    "notices": 1,
+    "passed": true
+  },
+  {
+    "mode": "callback-between-reads",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": 0,
+          "message": "支付同步成功"
+        }
+      }
+    ],
+    "status": "pending",
+    "records": 1,
+    "legacyOrders": 1,
+    "settlements": 1,
+    "notices": 1,
+    "passed": true
+  },
+  {
+    "mode": "callback-already-committed",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": 0,
+          "message": "预约支付状态已同步"
+        }
+      }
+    ],
+    "status": "pending",
+    "records": 1,
+    "legacyOrders": 1,
+    "settlements": 1,
+    "notices": 1,
+    "passed": true
+  },
+  {
+    "mode": "confirm-first",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "code": 0,
+          "message": "支付同步成功"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      }
+    ],
+    "status": "pending",
+    "records": 1,
+    "legacyOrders": 1,
+    "settlements": 1,
+    "notices": 1,
+    "passed": true
+  },
+  {
+    "mode": "repeat-confirm-and-callback",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "code": 0,
+          "message": "支付同步成功"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": "SUCCESS",
+          "message": "success"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "code": 0,
+          "message": "支付同步成功"
+        }
+      }
+    ],
+    "status": "pending",
+    "records": 1,
+    "legacyOrders": 1,
+    "settlements": 1,
+    "notices": 1,
+    "passed": true
+  }
+]

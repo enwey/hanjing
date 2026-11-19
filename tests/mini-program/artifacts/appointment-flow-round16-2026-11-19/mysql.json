@@ -1,0 +1,62 @@
+{
+  "closed": [
+    {
+      "charge_no": "charge-a",
+      "status": "cancelled",
+      "leased": 0
+    },
+    {
+      "charge_no": "73eaa4a59044de13c4348853",
+      "status": "pending",
+      "leased": 1
+    }
+  ],
+  "expired": [
+    {
+      "charge_no": "charge-a",
+      "status": "cancelled",
+      "leased": 0
+    },
+    {
+      "charge_no": "73eaa4a59044de13c4348853",
+      "status": "pending",
+      "leased": 1
+    }
+  ],
+  "calls": {
+    "queries": [
+      "legacy-a",
+      "legacy-a",
+      "charge-a",
+      "charge-a",
+      "73eaa4a59044de13c4348853",
+      "73eaa4a59044de13c4348853",
+      "legacy-a",
+      "legacy-a",
+      "73eaa4a59044de13c4348853",
+      "73eaa4a59044de13c4348853",
+      "legacy-a",
+      "legacy-a",
+      "73eaa4a59044de13c4348853",
+      "73eaa4a59044de13c4348853"
+    ],
+    "created": [],
+    "retired": [],
+    "builds": [
+      "73eaa4a59044de13c4348853",
+      "73eaa4a59044de13c4348853"
+    ],
+    "settled": 0,
+    "native": [
+      {
+        "kind": "list",
+        "package": "prepay_id=73eaa4a59044de13c4348853"
+      },
+      {
+        "kind": "detail",
+        "package": "prepay_id=73eaa4a59044de13c4348853"
+      }
+    ]
+  },
+  "version": "8.0.46"
+}

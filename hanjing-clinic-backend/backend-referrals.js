@@ -45,13 +45,21 @@ export async function createReferralCommissions(conn, order, userId) {
     await conn.execute('UPDATE orders SET distribution_processed=1 WHERE id=?',[order.id]);
     return;
   }
-  const gross=items.reduce((s,i)=>s+Number(i.price)*Number(i.quantity),0);
-  const paid=Math.min(Number(saved.pay_amount),gross);
-  // Integer cents, deterministic largest-remainder allocation across all lines.
-  const bases=items.map(i=>gross ? Math.floor(paid*Number(i.price)*Number(i.quantity)/gross) : 0);
-  let remainder=paid-bases.reduce((s,n)=>s+n,0);
-  const rank=items.map((i,k)=>({k,r:gross ? (paid*Number(i.price)*Number(i.quantity))%gross : 0})).sort((a,b)=>b.r-a.r||a.k-b.k);
-  for(const {k} of rank) { if(remainder<=0)break; bases[k]++;remainder--; }
+  const lineTotals = items.map(item => BigInt(item.price) * BigInt(item.quantity ?? 0));
+  const gross = lineTotals.reduce((sum, total) => sum + total, 0n);
+  const payAmount = BigInt(saved.pay_amount);
+  const paid = payAmount < gross ? payAmount : gross;
+  // Keep weighted amounts exact before assigning the remaining cents by line order.
+  const weights = lineTotals.map(total => paid * total);
+  const bases = weights.map(weight => gross ? weight / gross : 0n);
+  let remainder = paid - bases.reduce((sum, base) => sum + base, 0n);
+  const rank = weights.map((weight, index) => ({index, remainder: gross ? weight % gross : 0n}));
+  rank.sort((a, b) => a.remainder === b.remainder ? a.index - b.index : a.remainder > b.remainder ? -1 : 1);
+  for (const {index} of rank) {
+    if (remainder <= 0n) break;
+    bases[index]++;
+    remainder--;
+  }
   const [[buyer]]=await conn.execute('SELECT nickname FROM users WHERE id=?',[userId]);
   const [[referrer]]=await conn.execute("SELECT * FROM distributors WHERE id=? AND source_type='backend' AND status='active'",[saved.referral_promoter_id || 0]);
   let mode=null,first=direct;
@@ -82,11 +90,11 @@ export async function createReferralCommissions(conn, order, userId) {
   const grants=new Map();
   function grant(p,level,kind,index,rate) {
     if(!p||rate<=0||bases[index]<=0)return;
-    const amount=Math.floor(bases[index]*Math.round(rate*100)/10000);
+    const amount=Number(bases[index]*BigInt(Math.round(rate*100))/10000n);
     if(!amount)return;
     const key=p.id+':'+level;
     if(!grants.has(key))grants.set(key,{p,level,kind,amount:0,lines:[]});
-    const g=grants.get(key);g.amount+=amount;g.lines.push({itemId:items[index].id,paidAmount:bases[index],rate,amount});
+    const g=grants.get(key);g.amount+=amount;g.lines.push({itemId:items[index].id,paidAmount:Number(bases[index]),rate,amount});
   }
   items.forEach((item,k)=>{
     const isReferral=!!mode && Number(item.backend_referral_enabled_snapshot)===1;
@@ -101,7 +109,7 @@ export async function createReferralCommissions(conn, order, userId) {
     const [[existing]]=await conn.execute('SELECT id FROM distribution_orders WHERE order_id=? AND distributor_id=? AND commission_level=?',[order.id,g.p.id,g.level]);
     if(existing)continue;
     await conn.execute(`INSERT INTO distribution_orders(order_id,distributor_id,buyer_name,order_amount,commission_amount,commission_level,status,commission_kind,calculation_snapshot)
-      VALUES(?,?,?,?,?,?,'pending',?,?)`,[order.id,g.p.id,buyer?.nickname||'微信用户',paid,g.amount,g.level,g.kind,JSON.stringify(g.lines)]);
+      VALUES(?,?,?,?,?,?,'pending',?,?)`,[order.id,g.p.id,buyer?.nickname||'微信用户',Number(paid),g.amount,g.level,g.kind,JSON.stringify(g.lines)]);
     await conn.execute('UPDATE distributors SET total_commission=total_commission+? WHERE id=?',[g.amount,g.p.id]);
   }
   for (const id of new Set([...grants.values()].map(g=>g.p.id))) {

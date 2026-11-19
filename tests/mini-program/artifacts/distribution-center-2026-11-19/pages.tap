@@ -1,0 +1,88 @@
+TAP version 13
+# Subtest: orders：较早请求晚到不能覆盖新数据
+ok 1 - orders：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 7.5745
+  type: 'test'
+  ...
+# Subtest: commission：较早请求晚到不能覆盖新数据
+not ok 2 - commission：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 3.7484
+  type: 'test'
+  location: 'D:\\WorkSpace\\Games\\hanjing\\tests\\mini-program\\distribution-center-2026-11-19.test.cjs:17:2'
+  failureType: 'testCodeFailure'
+  error: |-
+    旧响应覆盖新数据
+
+    'old' !== 'new'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'new'
+  actual: 'old'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (D:\WorkSpace\Games\hanjing\tests\mini-program\distribution-center-2026-11-19.test.cjs:24:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: team：较早请求晚到不能覆盖新数据
+not ok 3 - team：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 1.9458
+  type: 'test'
+  location: 'D:\\WorkSpace\\Games\\hanjing\\tests\\mini-program\\distribution-center-2026-11-19.test.cjs:17:2'
+  failureType: 'testCodeFailure'
+  error: |-
+    旧响应覆盖新数据
+
+    'old' !== 'new'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'new'
+  actual: 'old'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (D:\WorkSpace\Games\hanjing\tests\mini-program\distribution-center-2026-11-19.test.cjs:24:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: products：较早请求晚到不能覆盖新数据
+not ok 4 - products：较早请求晚到不能覆盖新数据
+  ---
+  duration_ms: 1.8211
+  type: 'test'
+  location: 'D:\\WorkSpace\\Games\\hanjing\\tests\\mini-program\\distribution-center-2026-11-19.test.cjs:17:2'
+  failureType: 'testCodeFailure'
+  error: |-
+    旧响应覆盖新数据
+
+    'old' !== 'new'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'new'
+  actual: 'old'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (D:\WorkSpace\Games\hanjing\tests\mini-program\distribution-center-2026-11-19.test.cjs:24:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: 提现：超额和三位小数拦截；合法金额连续提交只发一次
+ok 5 - 提现：超额和三位小数拦截；合法金额连续提交只发一次
+  ---
+  duration_ms: 2.5599
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 2
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 161.5745

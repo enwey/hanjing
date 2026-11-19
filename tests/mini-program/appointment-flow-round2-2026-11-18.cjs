@@ -72,9 +72,9 @@ function detail(h,api={}){
   });
   for(const page of ['booking/index.js','detail.js'])await check('B07 取消弹窗跨过截止后确认 '+page,async o=>{
     now=Date.parse('2026-11-20T06:59:00+08:00');let calls=0;
-    const api={cancelAppointment:async()=>{calls++;}};
+    const api={getBookingSettings:async()=>({cancelLimitHours:2}), getAppointments:async()=>[record], cancelAppointment:async()=>{calls++;}};
     const s=page==='detail.js'?detail(create(),api):loadPage(page,create(),api);
-    if(page==='detail.js')await s.page.loadPage();
+    await s.page.loadPage();
     const pending=page==='detail.js'?s.page.cancelAppointment():s.page.cancelAppointment({detail:record});
     assert.equal(s.modals.length,1);
     now=Date.parse('2026-11-20T07:01:00+08:00');

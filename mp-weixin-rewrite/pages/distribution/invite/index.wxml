@@ -21,6 +21,7 @@
         </view>
       </view>
 
+      <button wx:if="{{activationSubscribeSource && inviteCode && !isDistributor}}" class="invite-copy" bindtap="subscribePromotionActivation">{{activationSubscribeSource === 'share' ? '已分享，订阅推广资格生效通知' : '订阅推广资格生效通知'}}</button>
     </view>
     <view class="invite-guide">
       <view class="invite-guide__header"><text>邀请流程</text></view>
@@ -43,7 +44,7 @@
   </view>
   <view class="invite-actions">
     <button class="invite-button invite-button--save" bindtap="handleSavePoster" loading="{{isSavingPoster}}" disabled="{{isSavingPoster || !inviteCode}}">{{isSavingPoster ? '生成中' : '保存海报'}}</button>
-    <button class="invite-button invite-button--share" open-type="share" bindtap="handleShareInvite" disabled="{{!inviteCode || !shareImagePath}}">邀请好友一起好眠</button>
+    <button class="invite-button invite-button--share" open-type="share" disabled="{{!inviteCode || !shareImagePath}}">邀请好友一起好眠</button>
   </view>
   <canvas id="distributionInvitePoster" canvas-id="distributionInvitePoster" type="2d" class="poster-canvas" style="width: {{posterWidth}}px; height: {{posterHeight}}px;" disable-scroll="{{true}}"></canvas>
 </view>

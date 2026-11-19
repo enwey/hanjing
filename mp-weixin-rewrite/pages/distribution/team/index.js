@@ -36,7 +36,12 @@ Page({
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  onUnload() {
+    this._loadRequestId = (this._loadRequestId || 0) + 1;
+  },
+
   async loadPage(options = {}) {
+    const requestId = this._loadRequestId = (this._loadRequestId || 0) + 1;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
@@ -46,6 +51,7 @@ Page({
         api.getTeamMembers(),
         api.getDistributorInfo(),
       ]);
+      if (requestId !== this._loadRequestId) return;
       const members = unwrapList(membersResponse).map((member) => ({
         id: String(member.id || ''),
         avatarText: (member.nickname || member.name || LEVEL_LABEL_MAP[member.level] || '成').slice(0, 1),
@@ -71,6 +77,7 @@ Page({
         members,
       });
     } catch (error) {
+      if (requestId !== this._loadRequestId) return;
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,

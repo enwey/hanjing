@@ -1,0 +1,111 @@
+[
+  {
+    "id": "C01 医生详情按北京时间查询当天排班",
+    "passed": true,
+    "observed": {
+      "startDate": "2026-11-18",
+      "canBook": true,
+      "navigation": [
+        "/pages/appointment/store-select?doctorId=d"
+      ]
+    }
+  },
+  {
+    "id": "C02 医生详情排班故障可区别于无排班 指定门店",
+    "passed": true,
+    "observed": {
+      "doctorLoaded": true,
+      "rows": 0,
+      "canBook": false,
+      "error": "排班加载失败，请重试",
+      "toasts": [],
+      "retryRecovered": true
+    }
+  },
+  {
+    "id": "C02 医生详情排班故障可区别于无排班 全部门店",
+    "passed": true,
+    "observed": {
+      "doctorLoaded": true,
+      "rows": 0,
+      "canBook": false,
+      "error": "排班加载失败，请重试",
+      "toasts": [],
+      "retryRecovered": true
+    }
+  },
+  {
+    "id": "C03 医生资料故障显示错误并可重试",
+    "passed": true,
+    "observed": {
+      "error": "医生资料加载失败，请重试",
+      "toasts": [],
+      "retry": "function",
+      "retryRecovered": true
+    }
+  },
+  {
+    "id": "C04 医生后来返回的旧排班不能盖掉新排班",
+    "passed": true,
+    "observed": {
+      "calls": 3,
+      "canBook": false
+    }
+  },
+  {
+    "id": "C05 医生确实无排班时阻止预约",
+    "passed": true,
+    "observed": {
+      "doctorLoaded": true,
+      "navigation": []
+    }
+  },
+  {
+    "id": "C06 医生详情带门店进入时段页",
+    "passed": true,
+    "observed": {
+      "navigation": [
+        "/pages/appointment/time-select?doctorId=d&storeId=s"
+      ]
+    }
+  },
+  {
+    "id": "C07 时段故障后重新加载，恢复可点选",
+    "passed": true,
+    "observed": {
+      "calls": 2,
+      "navigation": [
+        "/pages/appointment/confirm?doctorId=d&storeId=s"
+      ],
+      "draftDate": "2026-11-18"
+    }
+  },
+  {
+    "id": "C08 改约所选日期失效后回退到原预约日",
+    "passed": true,
+    "observed": {
+      "date": "2026-11-20"
+    }
+  },
+  {
+    "id": "C09 已完成预约连续点击只发一次评价",
+    "passed": true,
+    "observed": {
+      "calls": 1,
+      "toasts": [
+        "评价已提交"
+      ]
+    }
+  },
+  {
+    "id": "C10 评价失败后可以重试",
+    "passed": true,
+    "observed": {
+      "calls": 2,
+      "toasts": [
+        "评价请求超时",
+        "评价已提交"
+      ]
+    }
+  }
+]

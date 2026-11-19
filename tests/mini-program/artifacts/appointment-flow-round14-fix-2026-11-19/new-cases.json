@@ -1,0 +1,146 @@
+[
+  {
+    "id": "N01-concurrent-closed-charge-count",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "charge-a",
+        "charge-2"
+      ],
+      "created": [
+        "charge-2"
+      ],
+      "retired": [
+        "charge-a"
+      ],
+      "builds": [
+        "charge-2"
+      ],
+      "settled": 0,
+      "native": [
+        {
+          "kind": "list",
+          "package": "prepay_id=charge-2"
+        }
+      ],
+      "status": "pending_payment",
+      "nativeCount": 1
+    }
+  },
+  {
+    "id": "N02-concurrent-closed-double-launch",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a",
+        "charge-a",
+        "charge-2"
+      ],
+      "created": [
+        "charge-2"
+      ],
+      "retired": [
+        "charge-a"
+      ],
+      "builds": [
+        "charge-2"
+      ],
+      "settled": 0,
+      "native": [
+        {
+          "kind": "list",
+          "package": "prepay_id=charge-2"
+        }
+      ],
+      "status": "pending_payment",
+      "nativeCount": 1
+    }
+  },
+  {
+    "id": "N03-restart-legacy-only",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a"
+      ],
+      "created": [],
+      "retired": [],
+      "builds": [],
+      "settled": 1,
+      "native": [],
+      "status": "pending",
+      "nativeCount": 0
+    }
+  },
+  {
+    "id": "N03-restart-legacy-with-charge",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "legacy-a"
+      ],
+      "created": [],
+      "retired": [],
+      "builds": [],
+      "settled": 1,
+      "native": [],
+      "status": "pending",
+      "nativeCount": 0
+    }
+  },
+  {
+    "id": "N04-legacy-confirm-with-new-pending-charge",
+    "passed": true,
+    "observed": {
+      "queries": [
+        "charge-a",
+        "legacy-a"
+      ],
+      "created": [],
+      "retired": [],
+      "builds": [],
+      "settled": 1,
+      "native": [],
+      "status": "pending"
+    }
+  },
+  {
+    "id": "N05-legacy-closed-number-mismatch",
+    "passed": true,
+    "observed": {
+      "error": "支付单号不一致",
+      "queries": [
+        "legacy-a"
+      ],
+      "created": [],
+      "retired": [],
+      "builds": [],
+      "settled": 0,
+      "native": []
+    }
+  },
+  {
+    "id": "N06-backend-overlapping-prepay",
+    "passed": true,
+    "observed": {
+      "rejected": 409,
+      "queries": [
+        "legacy-a",
+        "charge-a",
+        "charge-2"
+      ],
+      "created": [
+        "charge-2"
+      ],
+      "retired": [
+        "charge-a"
+      ],
+      "builds": [
+        "charge-2"
+      ],
+      "settled": 0,
+      "native": []
+    }
+  }
+]

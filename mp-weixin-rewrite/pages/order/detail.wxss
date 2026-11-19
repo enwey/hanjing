@@ -157,6 +157,10 @@
   color: #1f2937;
 }
 
+.info-row__value--order-no {
+  word-break: break-all;
+}
+
 .amount-row__value--discount {
   color: #1a9d5c;
 }

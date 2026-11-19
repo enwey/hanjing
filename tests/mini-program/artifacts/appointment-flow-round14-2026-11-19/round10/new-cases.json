@@ -1,0 +1,109 @@
+[
+  {
+    "id": "J01-list-cancel-cancelled",
+    "passed": true,
+    "observed": {
+      "latestStatus": "cancelled",
+      "latestDate": "2099-01-01",
+      "calls": 0,
+      "toasts": [
+        "当前预约状态不支持取消"
+      ]
+    }
+  },
+  {
+    "id": "J01-list-cancel-pending",
+    "passed": true,
+    "observed": {
+      "latestStatus": "pending",
+      "latestDate": "2000-01-01",
+      "calls": 0,
+      "toasts": [
+        "距离预约时间已不足2小时，不支持取消预约"
+      ]
+    }
+  },
+  {
+    "id": "J02-pay-retry-booking/index.js",
+    "passed": true,
+    "observed": {
+      "prepay": 1,
+      "native": 1,
+      "confirm": 2,
+      "toasts": [
+        "同步超时",
+        "同步超时"
+      ]
+    }
+  },
+  {
+    "id": "J02-pay-retry-detail.js",
+    "passed": true,
+    "observed": {
+      "prepay": 1,
+      "native": 1,
+      "confirm": 2,
+      "toasts": [
+        "同步超时",
+        "同步超时"
+      ]
+    }
+  },
+  {
+    "id": "J03-manual-refresh-loses-visible-records",
+    "passed": true,
+    "observed": {
+      "before": 1,
+      "after": 1,
+      "error": "",
+      "toasts": [
+        "预约列表刷新失败，请下拉重试"
+      ]
+    }
+  },
+  {
+    "id": "J04-list-waits-for-store-catalog",
+    "passed": true,
+    "observed": {
+      "appointmentCallsBeforeStoreFailure": 1,
+      "loadingBeforeStoreFailure": false,
+      "recordsAfterFailure": 1
+    }
+  },
+  {
+    "id": "J05-list-refresh-recovers",
+    "passed": true,
+    "observed": {
+      "firstError": "预约列表超时",
+      "count": 1,
+      "error": ""
+    }
+  },
+  {
+    "id": "J06-list-cancel-still-allowed-after-unchanged-refresh",
+    "passed": true,
+    "observed": {
+      "calls": 1
+    }
+  },
+  {
+    "id": "J02-cross-entry-list",
+    "passed": true,
+    "observed": {
+      "prepay": 1,
+      "native": 1,
+      "confirm": 2,
+      "status": "pending"
+    }
+  },
+  {
+    "id": "J02-cross-entry-detail",
+    "passed": true,
+    "observed": {
+      "prepay": 1,
+      "native": 1,
+      "confirm": 2,
+      "status": "pending"
+    }
+  }
+]

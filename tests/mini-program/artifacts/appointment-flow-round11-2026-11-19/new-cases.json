@@ -1,0 +1,99 @@
+[
+  {
+    "id": "K01-cancel-before-settings",
+    "passed": false,
+    "observed": {
+      "cutoffBefore": 2,
+      "modals": 1,
+      "calls": 1,
+      "cutoffAfter": 4,
+      "toasts": [
+        "超过4小时取消截止"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\n1 !== 0\n"
+  },
+  {
+    "id": "K02-refresh-drops-catalog-labels",
+    "passed": false,
+    "observed": {
+      "before": [
+        "甲门店",
+        "甲医生"
+      ],
+      "after": [
+        "",
+        ""
+      ]
+    },
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   '',\n+   ''\n-   '甲门店',\n-   '甲医生'\n  ]\n"
+  },
+  {
+    "id": "K03-result-waits-for-settings",
+    "passed": false,
+    "observed": {
+      "visibleBeforeSettings": false,
+      "loading": true,
+      "visibleAfterSettings": true
+    },
+    "error": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  },
+  {
+    "id": "K04-reminded-result",
+    "passed": false,
+    "observed": {
+      "visible": false,
+      "error": "预约状态待确认，请查看预约记录",
+      "retry": false
+    },
+    "error": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  },
+  {
+    "id": "K05-payment-receipt-write-fails-list",
+    "passed": false,
+    "observed": {
+      "confirmAfterFirst": 0,
+      "prepay": 2,
+      "native": 2,
+      "confirm": 1,
+      "toasts": [
+        "本地存储写入失败",
+        "同步超时"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\n0 !== 1\n"
+  },
+  {
+    "id": "K05-payment-receipt-write-fails-detail",
+    "passed": false,
+    "observed": {
+      "confirmAfterFirst": 0,
+      "prepay": 2,
+      "native": 2,
+      "confirm": 1,
+      "toasts": [
+        "本地存储写入失败",
+        "同步超时"
+      ]
+    },
+    "error": "Expected values to be strictly equal:\n\n0 !== 1\n"
+  },
+  {
+    "id": "K06-settings-arrive-before-cancel-confirm",
+    "passed": true,
+    "observed": {
+      "calls": 0,
+      "toasts": [
+        "距离预约时间已不足4小时，不支持取消预约"
+      ]
+    }
+  },
+  {
+    "id": "K07-late-catalog-enriches-list",
+    "passed": true,
+    "observed": {
+      "count": 1,
+      "store": "甲门店"
+    }
+  }
+]

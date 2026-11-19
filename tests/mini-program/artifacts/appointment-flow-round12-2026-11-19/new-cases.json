@@ -1,0 +1,265 @@
+[
+  {
+    "id": "L01-write-failed-list-list",
+    "passed": false,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "toasts": [
+        "支付成功"
+      ],
+      "statusAfter": "pending"
+    },
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'prepay',\n+   'wechat',\n    'confirm'\n  ]\n"
+  },
+  {
+    "id": "L01-write-failed-detail-detail",
+    "passed": false,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ],
+      "statusAfter": "pending"
+    },
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'prepay',\n+   'wechat',\n    'confirm'\n  ]\n"
+  },
+  {
+    "id": "L01-write-failed-list-detail",
+    "passed": false,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ],
+      "statusAfter": "pending"
+    },
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'prepay',\n+   'wechat',\n    'confirm'\n  ]\n"
+  },
+  {
+    "id": "L01-write-failed-detail-list",
+    "passed": false,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "toasts": [
+        "支付成功"
+      ],
+      "statusAfter": "pending"
+    },
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'prepay',\n+   'wechat',\n    'confirm'\n  ]\n"
+  },
+  {
+    "id": "L02-marker-persists-list-detail",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": true,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "confirm"
+      ],
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L03-server-synced-list-detail",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [],
+      "toasts": [],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L04-marker-read-fails-list-detail",
+    "passed": false,
+    "observed": {
+      "persistedBeforeRestart": true,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "toasts": [
+        "支付已提交，请稍后刷新"
+      ],
+      "statusAfter": "pending"
+    },
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'prepay',\n+   'wechat',\n    'confirm'\n  ]\n"
+  },
+  {
+    "id": "L05-prepay-rejected-list-detail",
+    "passed": false,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay"
+      ],
+      "toasts": [
+        "微信订单已支付"
+      ],
+      "statusAfter": "pending_payment"
+    },
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'prepay'\n-   'confirm'\n  ]\n"
+  },
+  {
+    "id": "L02-marker-persists-detail-list",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": true,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "confirm"
+      ],
+      "toasts": [
+        "支付成功"
+      ],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L03-server-synced-detail-list",
+    "passed": true,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [],
+      "toasts": [],
+      "statusAfter": "pending"
+    }
+  },
+  {
+    "id": "L04-marker-read-fails-detail-list",
+    "passed": false,
+    "observed": {
+      "persistedBeforeRestart": true,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "toasts": [
+        "支付成功"
+      ],
+      "statusAfter": "pending"
+    },
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'prepay',\n+   'wechat',\n    'confirm'\n  ]\n"
+  },
+  {
+    "id": "L05-prepay-rejected-detail-list",
+    "passed": false,
+    "observed": {
+      "persistedBeforeRestart": false,
+      "statusBeforeRetry": "pending_payment",
+      "before": [
+        "prepay",
+        "wechat",
+        "confirm"
+      ],
+      "after": [
+        "prepay"
+      ],
+      "toasts": [
+        "微信订单已支付"
+      ],
+      "statusAfter": "pending_payment"
+    },
+    "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'prepay'\n-   'confirm'\n  ]\n"
+  },
+  {
+    "id": "L06-result-waits-for-store-directory",
+    "passed": false,
+    "observed": {
+      "visibleBefore": false,
+      "loadingBefore": true,
+      "visibleAfter": true,
+      "storeName": "甲门店"
+    },
+    "error": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  }
+]

@@ -1,0 +1,128 @@
+TAP version 13
+# (node:6996) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: FLOW-21 rejects PNG signature only without caching
+ok 1 - FLOW-21 rejects PNG signature only without caching
+  ---
+  duration_ms: 27.1355
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG missing IEND without caching
+ok 2 - FLOW-21 rejects PNG missing IEND without caching
+  ---
+  duration_ms: 0.5251
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG interrupted inside IDAT without caching
+ok 3 - FLOW-21 rejects PNG interrupted inside IDAT without caching
+  ---
+  duration_ms: 0.5607
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects JPEG signature only without caching
+ok 4 - FLOW-21 rejects JPEG signature only without caching
+  ---
+  duration_ms: 0.4497
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects JPEG without frame and scan without caching
+ok 5 - FLOW-21 rejects JPEG without frame and scan without caching
+  ---
+  duration_ms: 1.4045
+  type: 'test'
+  ...
+# Subtest: FLOW-21 rejects PNG with undecodable IDAT without caching
+ok 6 - FLOW-21 rejects PNG with undecodable IDAT without caching
+  ---
+  duration_ms: 0.825
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes old truncated PNG after upstream recovery
+ok 7 - FLOW-21 refreshes old truncated PNG after upstream recovery
+  ---
+  duration_ms: 2.2569
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes old truncated JPEG after upstream recovery
+ok 8 - FLOW-21 refreshes old truncated JPEG after upstream recovery
+  ---
+  duration_ms: 3.568
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes valid cache from a different app after upstream recovery
+ok 9 - FLOW-21 refreshes valid cache from a different app after upstream recovery
+  ---
+  duration_ms: 1.5628
+  type: 'test'
+  ...
+# Subtest: FLOW-21 refreshes a cache with undecodable PNG data
+ok 10 - FLOW-21 refreshes a cache with undecodable PNG data
+  ---
+  duration_ms: 1.222
+  type: 'test'
+  ...
+# (node:18672) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: missing or disabled promotion QR is rejected before upstream call
+ok 11 - missing or disabled promotion QR is rejected before upstream call
+  ---
+  duration_ms: 3.107
+  type: 'test'
+  ...
+# Subtest: QR HTTP failure does not cache and can be retried
+ok 12 - QR HTTP failure does not cache and can be retried
+  ---
+  duration_ms: 26.9641
+  type: 'test'
+  ...
+# Subtest: QR HTTP 200 with WeChat error JSON does not cache and can be retried
+ok 13 - QR HTTP 200 with WeChat error JSON does not cache and can be retried
+  ---
+  duration_ms: 1.7044
+  type: 'test'
+  ...
+# Subtest: QR empty response does not cache and can be retried
+ok 14 - QR empty response does not cache and can be retried
+  ---
+  duration_ms: 1.1705
+  type: 'test'
+  ...
+# Subtest: QR connection failure does not cache and can be retried
+ok 15 - QR connection failure does not cache and can be retried
+  ---
+  duration_ms: 1.2259
+  type: 'test'
+  ...
+# Subtest: QR rejects and never caches truncated PNG
+ok 16 - QR rejects and never caches truncated PNG
+  ---
+  duration_ms: 1.1896
+  type: 'test'
+  ...
+# Subtest: QR rejects and never caches truncated JPEG
+ok 17 - QR rejects and never caches truncated JPEG
+  ---
+  duration_ms: 1.2205
+  type: 'test'
+  ...
+# Subtest: invalid PNG cache (8 bytes) is replaced and the valid replacement is reused
+ok 18 - invalid PNG cache (8 bytes) is replaced and the valid replacement is reused
+  ---
+  duration_ms: 1.4262
+  type: 'test'
+  ...
+# Subtest: invalid PNG cache (56 bytes) is replaced and the valid replacement is reused
+ok 19 - invalid PNG cache (56 bytes) is replaced and the valid replacement is reused
+  ---
+  duration_ms: 1.1955
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 587.1655

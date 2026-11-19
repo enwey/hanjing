@@ -128,7 +128,8 @@ async function main() {
   await check('D05 取消弹窗等待中退出后不发请求', async observed => {
     let calls = 0;
     const session = create();
-    const h = loadPage('booking/index.js', session, { ...basics, cancelAppointment: async () => { calls++; } });
+    const h = loadPage('booking/index.js', session, { ...basics, getAppointments: async () => [record], cancelAppointment: async () => { calls++; } });
+    await h.page.loadPage();
     await h.page.cancelAppointment({ detail: record });
     assert.equal(h.modals.length, 1);
     session.store.logout();

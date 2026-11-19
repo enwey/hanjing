@@ -1,0 +1,87 @@
+[
+  {
+    "id": "G01 详情首次超时恢复网络后可原页重试",
+    "passed": true,
+    "observed": {
+      "calls": 1,
+      "retry": true,
+      "loaded": false,
+      "recovered": true
+    }
+  },
+  {
+    "id": "G02 已显示的详情刷新失败时用户收到提示",
+    "passed": true,
+    "observed": {
+      "calls": 2,
+      "retained": true,
+      "error": "详情刷新超时",
+      "toasts": [
+        "预约详情刷新失败"
+      ],
+      "errorBelowExclusiveBranch": true
+    }
+  },
+  {
+    "id": "G03 设置短暂超时应保留已知的取消时限 detail.js",
+    "passed": true,
+    "observed": {
+      "firstLimit": 4,
+      "refreshedLimit": 4,
+      "modals": 0,
+      "toasts": [
+        "已超过取消截止时间（就诊前4小时）"
+      ]
+    }
+  },
+  {
+    "id": "G03 设置短暂超时应保留已知的取消时限 booking/index.js",
+    "passed": true,
+    "observed": {
+      "firstLimit": 4,
+      "refreshedLimit": 4,
+      "modals": 0,
+      "toasts": [
+        "取消规则暂未加载，请下拉刷新后重试"
+      ]
+    }
+  },
+  {
+    "id": "G04 从列表发起支付应尊重收费单不可支付状态",
+    "passed": true,
+    "observed": {
+      "calls": 0,
+      "toasts": [
+        "当前收费单不可支付"
+      ]
+    }
+  },
+  {
+    "id": "G05 时段页刷新失败有提示并可重新加载",
+    "passed": true,
+    "observed": {
+      "calls": 3,
+      "date": "2026-11-20",
+      "sections": 1
+    }
+  },
+  {
+    "id": "G06 确认页复用既有预约时不发起支付",
+    "passed": true,
+    "observed": {
+      "calls": 0,
+      "modals": 0,
+      "navigation": [
+        "/pages/appointment/booking/index?tab=mine"
+      ]
+    }
+  },
+  {
+    "id": "G07 已退款结果明确提示且不进入重试流程",
+    "passed": true,
+    "observed": {
+      "error": "该预约已退款",
+      "retry": false
+    }
+  }
+]

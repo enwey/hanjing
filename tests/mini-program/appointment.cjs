@@ -6,9 +6,11 @@ async function test(name,fn){try{await fn();results.push({name,status:'PASS'});}
 function page(file,api={}){
   let p,loggedIn=true,generation=0;const storage=new Map(),toasts=[],modals=[],nav=[],timers=[];let draft={doctorId:1,storeId:1,scheduleId:1,appointmentDate:'2099-01-01',timeSlot:{label:'09:00-09:30'}};
   const draftStore={getDraft:()=>draft,setDraft:v=>draft=v,clearDraft:()=>draft=null};
-  const wx={getStorageSync:k=>storage.get(k),removeStorageSync:k=>storage.delete(k),showToast:o=>toasts.push(o.title),showModal:o=>modals.push(o),showLoading(){},hideLoading(){},navigateTo:o=>nav.push(o.url),reLaunch:o=>nav.push(o.url)};
-  const deps={};
+  const wx={getStorageSync:k=>storage.get(k),setStorageSync:(k,v)=>storage.set(k,v),removeStorageSync:k=>storage.delete(k),showToast:o=>toasts.push(o.title),showModal:o=>modals.push(o),showLoading(){},hideLoading(){},navigateTo:o=>nav.push(o.url),reLaunch:o=>nav.push(o.url)};
+  const deps={}, receiptModule={exports:{}};
+  vm.runInNewContext(fs.readFileSync(path.join(root,'common/utils/appointment-payment-receipt.js'),'utf8'),{module:receiptModule,wx});
   const ctx=vm.createContext({Page:o=>p=o,wx,console:{error(){}},setTimeout:fn=>timers.push(fn),require:s=>{
+    if(s.includes('appointment-payment-receipt'))return receiptModule.exports;
     if(s.includes('appointment-time'))return require(path.join(root,'common/utils/appointment-time.js'));
     if(s.includes('api/index'))return api;
     if(s.includes('appointment-draft'))return draftStore;

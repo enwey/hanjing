@@ -12,8 +12,13 @@ const patientContextStore = {
 
   async refresh() {
     const generation = contextGeneration;
-    const context = await patientContextService.loadPatientContext(this.state.currentPatientId);
-    if (generation !== contextGeneration) throw new Error('账号已切换，请重新加载成员');
+    let patientId;
+    let context;
+    do {
+      patientId = this.state.currentPatientId;
+      context = await patientContextService.loadPatientContext(patientId);
+      if (generation !== contextGeneration) throw new Error('账号已切换，请重新加载成员');
+    } while (patientId !== this.state.currentPatientId);
     this.state.members = context.members;
     this.state.currentMember = context.currentMember;
     this.setCurrentPatientId(context.currentPatientId);

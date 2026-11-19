@@ -43,18 +43,33 @@ Page({
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
+  clearPatientData(patientId) {
+    if (this._loadedPatientId === patientId) return;
+    this.setData({
+      hasLoaded: false, loading: true, loadError: '',
+      hasRealTreatmentRecord: false, deviceModel: '', adjustmentValue: '', nextAdjustDate: '', timelineItems: [],
+    });
+  },
+
   async loadPage(options = {}) {
-    const silent = !!options.silent;
+    const version = this._loadVersion = (this._loadVersion || 0) + 1;
+    this.clearPatientData(patientContextStore.state.currentPatientId);
+    const silent = !!options.silent && this.data.hasLoaded;
     if (!silent) {
       this.setData({ loading: true, loadError: '' });
     }
     try {
       const context = await patientContextStore.refresh();
+      if (version !== this._loadVersion) return;
+      const patientId = context.currentPatientId;
+      this.clearPatientData(patientId);
       const params = context.currentPatientId ? { patientId: context.currentPatientId, _t: Date.now() } : { _t: Date.now() };
       const [timelineResponse, treatmentRecordResponse] = await Promise.all([
         api.getTimeline(params),
         api.getTreatmentRecord(params),
       ]);
+      if (version !== this._loadVersion || patientId !== (patientContextStore.state.currentPatientId)) return;
+      this._loadedPatientId = patientId;
       const timelineItems = unwrapList(timelineResponse).map((item, index, list) => ({
         id: String(item.id || index),
         dateLabel: String(item.date || '').slice(5),
@@ -69,6 +84,7 @@ Page({
 
       this.setData({
         hasLoaded: true,
+        loadError: '',
         loading: false,
         hasRealTreatmentRecord: Boolean(treatmentRecord && treatmentRecord.isRealTreatmentRecord),
         deviceModel: treatmentRecord ? treatmentRecord.deviceModel || '' : '',
@@ -77,6 +93,8 @@ Page({
         timelineItems,
       });
     } catch (error) {
+      if (version !== this._loadVersion) return;
+      this.clearPatientData(patientContextStore.state.currentPatientId);
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
