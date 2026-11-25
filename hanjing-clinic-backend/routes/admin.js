@@ -5101,7 +5101,8 @@ app.post('/api/admin/orders/:id/ship', authenticateToken, async (req, res) => {
           status: '已发货',
           productName: item?.product_name || '商城商品',
           amount: `¥${(Number(order.pay_amount || 0) / 100).toFixed(2)}`,
-          remark: `${carrier} ${trackingNo}`
+          remark: `${carrier} ${trackingNo}`,
+          carrier, trackingNo, shippedAt: formatShanghaiDateTime(new Date())
         }
       });
     })().catch(error => console.warn('[Wechat Subscribe] Order shipped notification failed:', error.message || error)));
@@ -5810,7 +5811,7 @@ app.put('/api/admin/distribution/withdraws/:id/status', authenticateToken, async
       payload: {
         amount: `¥${(Number(record.amount || 0) / 100).toFixed(2)}`,
         status: approve ? '审核通过' : '已驳回',
-        time: formatShanghaiDateTime(new Date()),
+        time: record.created_at ? formatShanghaiDateTime(new Date(record.created_at)) : '',
         remark: remark || (approve ? approvalMessage : '金额已退回余额')
       }
     }));
@@ -5851,7 +5852,7 @@ app.put('/api/admin/distribution/withdraws/:id/paid', authenticateToken, async (
       payload: {
         amount: `¥${(Number(record.actual_amount || 0) / 100).toFixed(2)}`,
         status: '已到账',
-        time: formatShanghaiDateTime(new Date()),
+        time: record.created_at ? formatShanghaiDateTime(new Date(record.created_at)) : '',
         remark: `转账流水：${String(req.body.reference || '').trim()}`
       }
     }));
@@ -7166,7 +7167,7 @@ app.post('/api/admin/patients/:id/bind-promoter', authenticateToken, async (req,
         event: 'promoter_activated',
         businessId: `promoter_activated:${bindResult.activatedUserId}`,
         page: 'pages/distribution/center/index',
-        payload: { title: '推广资格已生效', remark: '首位邀请用户已绑定，可开始获得推广收益' }
+        payload: { title: '推广资格已生效', remark: '首位邀请用户已绑定，可开始获得推广收益', activatedAt: formatShanghaiDateTime(new Date()) }
       }));
     }
     await logAdminAction(req.user.id, 'bind_patient_promoter', 'patient', id, { promoter_user_id })

@@ -3,6 +3,34 @@ import assert from 'node:assert/strict';
 import { WECHAT_NOTIFICATION_EVENTS, validateNotificationConfig, defaultNotificationMapping, normalizeNotificationPage } from '../wechat-notification-config.js';
 import { buildTemplateData } from '../wechatSubscribe.js';
 
+test('selected shipment and activation templates map independent values', () => {
+  for (const [event, mapping, payload, expected] of [
+    ['order_shipped', { character_string3: 'character_string7', thing5: 'thing6', character_string1: 'character_string6', time2: 'time7' },
+      { trackingNo: 'SF123456', carrier: '顺丰', orderNo: 'ORDER123', shippedAt: '2026-11-25 12:30:00' }, ['SF123456', '顺丰', 'ORDER123', '2026-11-25 12:30:00']],
+    ['promoter_activated', { thing4: 'thing3', time2: 'time3', thing5: 'thing2' },
+      { promoterName: '李四', activatedAt: '2026-11-25 12:30:00', remark: '资格已生效' }, ['李四', '2026-11-25 12:30:00', '资格已生效']]
+  ]) {
+    validateNotificationConfig(event, { enabled: true, templateId: 'valid_template_id', mapping });
+    const data = buildTemplateData(event, payload);
+    assert.deepEqual(Object.values(mapping).map(source => data[source].value), expected);
+  }
+  for (const [event, count] of [['order_shipped', 5], ['promoter_activated', 2]]) {
+    assert.equal(Object.keys(defaultNotificationMapping(WECHAT_NOTIFICATION_EVENTS.find(item => item.event === event))).length, count);
+  }
+});
+
+test('withdraw review supports both date and time template fields without changing legacy defaults', () => {
+  const definition = WECHAT_NOTIFICATION_EVENTS.find(item => item.event === 'withdraw_result');
+  const mapping = { amount9: 'amount1', phrase8: 'phrase3', date2: 'date6', thing3: 'thing5' };
+  validateNotificationConfig('withdraw_result', { enabled: true, templateId: 'valid_template_id', mapping });
+  const data = buildTemplateData('withdraw_result', { amount: '¥10.00', status: '审核通过', time: '2026-11-25 10:30:00', remark: '等待打款' });
+  assert.deepEqual(Object.fromEntries(Object.entries(mapping).map(([target, source]) => [target, data[source].value])), {
+    amount9: '¥10.00', phrase8: '审核通过', date2: '2026-11-25 10:30:00', thing3: '等待打款'
+  });
+  assert.equal(data.time6.value, data.date6.value);
+  assert.deepEqual(Object.keys(defaultNotificationMapping(definition)), ['amount1', 'phrase3', 'time6', 'thing5']);
+});
+
 test('visit reminder supplies patient, time, doctor, clinic and reminder independently', () => {
   const definition = WECHAT_NOTIFICATION_EVENTS.find(item => item.event === 'visit_reminder');
   const mapping = { name8: 'name1', time2: 'time3', name3: 'name2', thing4: 'thing71', thing5: 'thing72' };

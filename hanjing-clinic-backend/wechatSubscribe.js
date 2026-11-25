@@ -74,7 +74,10 @@ export function buildTemplateData(event, payload = {}) {
       phrase2: phrase(payload.status || payload.statusText || '通知'),
       thing1: thing(payload.productName || payload.remark || payload.storeName || '订单服务'),
       amount40: amount(payload.amount || ''),
-      thing5: thing(payload.remark || '请查看订单详情')
+      thing5: thing(payload.remark || '请查看订单详情'),
+      character_string7: character(payload.trackingNo || ''),
+      thing6: thing(payload.carrier || ''),
+      time7: date(payload.shippedAt || '')
     };
   }
 
@@ -83,7 +86,8 @@ export function buildTemplateData(event, payload = {}) {
       amount1: amount(payload.amount || ''),
       phrase3: phrase(payload.status || payload.statusText || '通知'),
       time6: date(payload.time || ''),
-      thing5: thing(payload.remark || '请查看提现记录')
+      thing5: thing(payload.remark || '请查看提现记录'),
+      date6: date(payload.time || '')
     };
   }
 
@@ -98,7 +102,9 @@ export function buildTemplateData(event, payload = {}) {
 
   return {
     thing1: thing(payload.title || '服务通知'),
-    thing2: thing(payload.remark || payload.content || '')
+    thing2: thing(payload.remark || payload.content || ''),
+    thing3: thing(payload.promoterName || ''),
+    time3: date(payload.activatedAt || '')
   };
 }
 
@@ -239,7 +245,7 @@ export async function sendWechatSubscribeMessage({ userId, event, businessId = '
       return { skipped: true, reason: 'disabled' };
     }
 
-    const user = await get(`SELECT id, openid FROM users WHERE id = ?`, [userId]);
+    const user = await get(`SELECT id, openid, nickname FROM users WHERE id = ?`, [userId]);
     const templateId = config ? config.templateId : await getTemplateId(event);
     if (!user?.openid || String(user.openid).startsWith('manual_')) {
       if (logSkips) {
@@ -262,10 +268,10 @@ export async function sendWechatSubscribeMessage({ userId, event, businessId = '
       authorizationId = latest?.id;
     }
 
-    const defaultData = buildTemplateData(event, payload);
+    const defaultData = buildTemplateData(event, event === 'promoter_activated' ? { ...payload, promoterName: payload.promoterName || user.nickname } : payload);
     const data = config?.mapping
       ? Object.fromEntries(Object.entries(config.mapping).map(([target, source]) => [target, defaultData[source]]))
-      : event === visitReminderEvent
+      : ['visit_reminder', 'withdraw_result', 'order_shipped', 'promoter_activated'].includes(event)
         ? Object.fromEntries(Object.keys(defaultNotificationMapping(WECHAT_NOTIFICATION_EVENTS.find(item => item.event === event))).map(key => [key, defaultData[key]]))
         : defaultData;
     const body = JSON.stringify({

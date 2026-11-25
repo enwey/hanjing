@@ -1,8 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { get, query, transaction } from './db.js';
-import { decryptPII, encryptPII } from './helpers.js';
+import { decryptPII, encryptPII, formatShanghaiDateTime } from './helpers.js';
 import { writeNotification } from './notification-center.js';
 import { getWechatTransferGateway } from './wechatPay.js';
+import { sendWechatSubscribeMessage } from './wechatSubscribe.js';
 
 export const authorizationCallbackPath = '/api/v1/pay/wechat-withdraw-authorization-callback';
 export const realNameThreshold = 200000;
@@ -224,7 +225,7 @@ export async function storeWechatWithdrawal(conn, id, userId, details) {
 }
 
 async function finishTransfer(row, state, reference, reason) {
-  await transaction(async conn => {
+  const completed = await transaction(async conn => {
     const [[record]] = await conn.execute('SELECT * FROM withdraw_records WHERE id=? FOR UPDATE', [row.withdraw_id]);
     if (record?.status !== 'approved') return;
     const [[claim]] = await conn.execute('SELECT claim_token FROM wechat_withdraw_transfers WHERE withdraw_id=? FOR UPDATE', [row.withdraw_id]);
@@ -247,7 +248,16 @@ async function finishTransfer(row, state, reference, reason) {
       content: paid ? `¥${amount} 已转入微信零钱。` : `¥${amount} 已退回可提现余额。`,
       type: 'promo', businessType: 'withdraw', businessId: record.id, onceKey: 'wechat-payout-result'
     });
+    return paid ? record : null;
   });
+  if (completed) {
+    await sendWechatSubscribeMessage({
+      userId: completed.user_id, event: 'withdraw_paid', businessId: `withdraw_paid:${completed.id}`,
+      page: 'pages/distribution/withdraw-records/index',
+      payload: { amount: `¥${(Number(completed.actual_amount) / 100).toFixed(2)}`, status: '已到账',
+        time: completed.created_at ? formatShanghaiDateTime(new Date(completed.created_at)) : '', remark: '微信零钱已到账' }
+    }).catch(error => console.warn('[Wechat Subscribe] Withdrawal notification failed:', error.message || error));
+  }
 }
 
 function validateTransfer(config, row, result, inquiry) {

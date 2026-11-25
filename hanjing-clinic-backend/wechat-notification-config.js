@@ -5,10 +5,10 @@ const appointmentFields = { name1: '就诊人', date3: '预约时间', thing69: 
 // "connected" describes existing call sites, not guaranteed delivery or authorization.
 export const WECHAT_NOTIFICATION_EVENTS = [
   ['visit_reminder', '就诊提醒', '就诊', true, '预约开始前一小时内，由定时任务检查', appointmentFields],
-  ['withdraw_result', '提现审核结果', '推广', true, '提现审核完成后', withdrawFields],
+  ['withdraw_result', '提现审核结果', '推广', true, '提现审核完成后', { ...withdrawFields, date6: '提现申请时间（日期）' }],
   ['withdraw_paid', '提现到账', '推广', true, '实际打款确认后', withdrawFields],
-  ['order_shipped', '发货通知', '订单', true, '实际填写物流并发货后', orderFields],
-  ['promoter_activated', '推广资格生效', '推广', true, '首次邀请关系绑定且推广资格生效后', { thing1: '标题', thing2: '备注' }],
+  ['order_shipped', '发货通知', '订单', true, '实际填写物流并发货后', { ...orderFields, character_string7: '快递单号', thing6: '快递公司', time7: '发货时间' }],
+  ['promoter_activated', '推广资格生效', '推广', true, '首次邀请关系绑定且推广资格生效后', { thing1: '标题', thing2: '备注', thing3: '推荐人', time3: '成功时间' }],
 ].map(([event, title, group, connected, trigger, fields]) => ({ event, title, group, connected, trigger, fields }));
 
 export const notificationConfigKey = event => `wechat_notification_${event}`;
@@ -41,6 +41,7 @@ export function validateNotificationConfig(event, input) {
 
 export function defaultNotificationMapping(definition) {
   const fields = Object.keys(definition.fields);
-  const defaults = definition.event === 'visit_reminder' ? fields.slice(0, 5) : fields;
+  const oldFieldCounts = { visit_reminder: 5, withdraw_result: 4, order_shipped: 5, promoter_activated: 2 };
+  const defaults = oldFieldCounts[definition.event] ? fields.slice(0, oldFieldCounts[definition.event]) : fields;
   return Object.fromEntries(defaults.map(key => [key, key]));
 }

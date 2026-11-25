@@ -7205,7 +7205,7 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
         event: 'promoter_activated',
         businessId: `promoter_activated:${result.activatedUserId}`,
         page: 'pages/distribution/center/index',
-        payload: { title: '推广资格已生效', remark: '首位邀请用户已绑定，可开始获得推广收益' }
+        payload: { title: '推广资格已生效', remark: '首位邀请用户已绑定，可开始获得推广收益', activatedAt: formatShanghaiDateTime(new Date()) }
       }));
     }
   } catch (error) {
