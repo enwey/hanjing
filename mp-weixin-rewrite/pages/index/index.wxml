@@ -1,4 +1,4 @@
-<view class="page">
+<scroll-view class="page" scroll-y="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
   <view class="hero">
     <hj-navbar title="" textColor="#FFFFFF" backgroundColor="transparent" transparent="{{true}}" sticky="{{false}}" />
     <view class="hero-navbar-spacer"></view>
@@ -84,5 +84,5 @@
   </view>
 
   <view class="safe-bottom" />
-  <hj-privacy-popup id="privacyPopup" />
-</view>
+</scroll-view>
+<hj-privacy-popup id="privacyPopup" />

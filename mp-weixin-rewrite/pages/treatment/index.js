@@ -19,7 +19,6 @@ const TREATMENT_ENTRIES = [
   { key: 'timeline', title: '治疗时间线', description: '就诊全记录', icon: '/static/icons/timeline.svg', iconClass: 'menu-icon--timeline', url: '/pages/treatment/timeline/index' },
   { key: 'advice', title: '医嘱建议', description: '医生指导方案', icon: '/static/icons/advice.svg', iconClass: 'menu-icon--advice', url: '/pages/treatment/doctor-advice/index' },
   { key: 'adjust', title: '设备调整', description: '参数与调整记录', icon: '/static/icons/adjust.svg', iconClass: 'menu-icon--adjust', url: '/pages/treatment/adjust-detail/index' },
-  { key: 'community', title: '医患社区', description: '交流经验与心得', icon: '/static/icons/community.svg', iconClass: 'menu-icon--community', url: '/pages/community/index' },
 ];
 
 const PAIN_LOCATION_OPTIONS = [
@@ -533,10 +532,6 @@ Page({
 
   goAdjustDetail() {
     navigation.openPage('/pages/treatment/adjust-detail/index');
-  },
-
-  goCommunity() {
-    navigation.openPage('/pages/community/index');
   },
 
   goLogin() {

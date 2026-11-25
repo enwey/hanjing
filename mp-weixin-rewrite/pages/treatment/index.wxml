@@ -70,7 +70,6 @@
         <view class="menu-item data-v-8badcb8c" bindtap="goTimeline"><image class="menu-icon menu-icon--timeline data-v-8badcb8c" src="/static/icons/timeline.svg" /><text class="menu-title data-v-8badcb8c">治疗时间线</text><text class="menu-desc data-v-8badcb8c">就诊全记录</text></view>
         <view class="menu-item data-v-8badcb8c" bindtap="goDoctorAdvice"><image class="menu-icon menu-icon--advice data-v-8badcb8c" src="/static/icons/advice.svg" /><text class="menu-title data-v-8badcb8c">医嘱建议</text><text class="menu-desc data-v-8badcb8c">医生指导方案</text></view>
         <view class="menu-item data-v-8badcb8c" bindtap="goAdjustDetail"><image class="menu-icon menu-icon--adjust data-v-8badcb8c" src="/static/icons/adjust.svg" /><text class="menu-title data-v-8badcb8c">设备调整</text><text class="menu-desc data-v-8badcb8c">参数与调整记录</text></view>
-        <view class="menu-item data-v-8badcb8c" bindtap="goCommunity"><image class="menu-icon menu-icon--community data-v-8badcb8c" src="/static/icons/community.svg" /><text class="menu-title data-v-8badcb8c">医患社区</text><text class="menu-desc data-v-8badcb8c">交流经验与心得</text></view>
       </view>
       <view class="section-header data-v-8badcb8c" style="margin-top: 20px">
         <text class="section-title data-v-8badcb8c">治疗动态</text>
