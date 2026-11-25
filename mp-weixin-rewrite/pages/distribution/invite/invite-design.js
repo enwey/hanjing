@@ -13,8 +13,8 @@ function rounded(ctx, x, y, w, h, r) {
   ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
 }
 function drawInviteDesign(ctx, { logo, artwork, qr, code = '' }) {
-  const text = (value, x, y, size, color, weight = 400) => {
-    ctx.setFillStyle(color); ctx.setFontSize(size, weight); ctx.fillText(value, x, y);
+  const text = (value, x, y, size, color, weight = 400, family = 'sans-serif') => {
+    ctx.setFillStyle(color); ctx.setFontSize(size, weight, family); ctx.fillText(value, x, y);
   };
   const logoAt = (x, y, size) => {
     ctx.save(); rounded(ctx, x, y, size, size, size * .24); ctx.clip();
@@ -23,9 +23,9 @@ function drawInviteDesign(ctx, { logo, artwork, qr, code = '' }) {
   // Match the page hero's 702:830 ratio and aspectFill crop.
   ctx.setFillStyle('#dcece5'); ctx.fillRect(0, 0, 900, 1064);
   ctx.drawImage(artwork, 0, -31, 900, 1126);
-  logoAt(41, 41, 77); text('兴康明', 136, 96, 36, '#2a52d4', 600);
-  text(copy.title, 41, 237, 90, '#2a52d4', 700);
-  text(copy.subtitle, 41, 320, 44, '#2a52d4', 500);
+  logoAt(41, 41, 77); text('兴康明', 136, 96, 36, '#355e55', 600);
+  text(copy.title, 41, 237, 90, '#234f47', 600, '"Songti SC", "STSong", serif');
+  text(copy.subtitle, 41, 320, 41, '#466d63');
   if (qr) {
     ctx.setFillStyle('#ffffff'); rounded(ctx, 652, 816, 216, 216, 20); ctx.fill();
     ctx.drawImage(qr, 668, 832, 184, 184);

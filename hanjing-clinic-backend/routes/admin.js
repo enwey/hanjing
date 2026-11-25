@@ -7667,7 +7667,7 @@ app.get('/api/admin/settings', authenticateToken, async (req, res) => {
       let val = row.key_value;
       if (val === 'true') val = true;
       else if (val === 'false') val = false;
-      else if (['booking_advance_days', 'booking_interval', 'deposit_amount', 'commission1', 'commission2', 'distribution_settle_days', 'min_withdraw', 'withdraw_fee_rate'].includes(row.key_name) && String(val).trim() !== '' && Number.isFinite(Number(val))) val = Number(val);
+      else if (['booking_advance_days', 'booking_interval', 'deposit_amount', 'commission1', 'commission2', 'distribution_settle_days', 'min_withdraw', 'bank_min_withdraw', 'withdraw_fee_rate'].includes(row.key_name) && String(val).trim() !== '' && Number.isFinite(Number(val))) val = Number(val);
       settings[row.key_name] = val;
     });
     res.json({ code: 200, data: settings, configured });
@@ -7857,7 +7857,7 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
         if (key === 'auto_approve_withdraw' && val !== false && val !== 'false') {
           throw Object.assign(new Error('自动提现尚未接入，必须人工审核和真实打款'), { statusCode: 400 });
         }
-        if (['distribution_settle_days', 'min_withdraw', 'withdraw_fee_rate', 'commission1', 'commission2', 'deposit_amount', 'booking_interval'].includes(key) && (typeof val === 'boolean' || String(val).trim() === '')) {
+        if (['distribution_settle_days', 'min_withdraw', 'bank_min_withdraw', 'withdraw_fee_rate', 'commission1', 'commission2', 'deposit_amount', 'booking_interval'].includes(key) && (typeof val === 'boolean' || String(val).trim() === '')) {
           throw Object.assign(new Error('财务及预约数值必须明确填写'), { statusCode: 400 });
         }
         let strVal = String(val);
@@ -7873,13 +7873,14 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
             throw err;
           }
           strVal = String(days);
-        } else if (key === 'min_withdraw') {
+        } else if (key === 'min_withdraw' || key === 'bank_min_withdraw') {
           const minWithdraw = Number(val);
           if (!Number.isFinite(minWithdraw) || minWithdraw <= 0 || minWithdraw > 1000000) {
             const err = new Error('最低提现金额必须大于0且不超过1000000');
             err.statusCode = 400;
             throw err;
           }
+          if (key === 'bank_min_withdraw' && (!Number.isSafeInteger(Math.round(minWithdraw * 100)) || Math.abs(minWithdraw * 100 - Math.round(minWithdraw * 100)) > 1e-7)) throw Object.assign(new Error('银行卡最低提现金额最多保留两位小数'), { statusCode: 400 });
           strVal = String(minWithdraw);
         } else if (key === 'withdraw_fee_rate') {
           const feeRate = Number(val);

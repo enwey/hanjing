@@ -20,8 +20,6 @@
           <button class="invite-copy" bindtap="handleCopyInviteCode" disabled="{{!inviteCode}}">复制邀请码</button>
         </view>
       </view>
-
-      <button wx:if="{{activationSubscribeSource && inviteCode && !isDistributor}}" class="invite-copy" bindtap="subscribePromotionActivation">{{activationSubscribeSource === 'share' ? '已分享，订阅推广资格生效通知' : '订阅推广资格生效通知'}}</button>
     </view>
     <view class="invite-guide">
       <view class="invite-guide__header"><text>邀请流程</text></view>

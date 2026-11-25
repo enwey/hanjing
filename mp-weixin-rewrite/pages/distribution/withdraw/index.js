@@ -56,7 +56,7 @@ Page({
       const withdrawFeeRate = Number(rawRate);
       if (rawRate == null || !Number.isFinite(withdrawFeeRate) || withdrawFeeRate < 0 || withdrawFeeRate >= 1
         || info.minWithdrawAmount == null || !Number.isSafeInteger(Number(info.minWithdrawAmount))
-        || Number(info.minWithdrawAmount) < 0 || !Number.isSafeInteger(Number(info.availableCommission))) {
+        || Number(info.minWithdrawAmount) < 0 || (info.bankMinWithdrawAmount != null && (!Number.isSafeInteger(Number(info.bankMinWithdrawAmount)) || Number(info.bankMinWithdrawAmount) <= 0)) || !Number.isSafeInteger(Number(info.availableCommission))) {
         throw new Error('提现配置不完整，暂时无法申请');
       }
 
@@ -67,7 +67,7 @@ Page({
         availableCommissionLabel: formatYuan(info.availableCommission),
         totalCommissionLabel: formatYuan(info.totalCommission),
         withdrawnAmountLabel: formatYuan(info.withdrawnAmount),
-        minWithdrawAmount: Number(info.minWithdrawAmount) / 100,
+        minWithdrawAmount: Number(info.bankMinWithdrawAmount ?? info.minWithdrawAmount) / 100,
         withdrawFeeRate,
         withdrawFeeRatePercentLabel: String(withdrawFeeRate * 100),
       });

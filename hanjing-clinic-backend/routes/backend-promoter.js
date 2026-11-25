@@ -254,7 +254,7 @@ app.get('/api/promoter/withdraws',async(req,res)=>{const rows=await query('SELEC
 app.post('/api/promoter/withdraws',async(req,res)=>{
   const config=await getDistributionFeatureConfig(),amount=Number(req.body.amount),account=String(req.body.account||'').trim();
   const bankName=String(req.body.bankName||'').trim(),accountName=String(req.body.accountName||'').trim();
-  if(!config.enableDistribution||!Number.isSafeInteger(amount)||amount<config.minWithdrawAmount||!/^\d{10,30}$/.test(account)||!bankName||bankName.length>100||!accountName||accountName.length>100)return res.status(400).json({code:400,message:'请检查提现金额、银行、户名和银行账号'});
+  if(!config.enableDistribution||!Number.isSafeInteger(amount)||amount<config.bankMinWithdrawAmount||!/^\d{10,30}$/.test(account)||!bankName||bankName.length>100||!accountName||accountName.length>100)return res.status(400).json({code:400,message:'请检查提现金额、银行、户名和银行账号'});
   await settleCommissions(null,req.user.promoter_id);
   await transaction(async conn=>{
     const [[row]]=await conn.execute('SELECT * FROM distributors WHERE id=? FOR UPDATE',[req.user.promoter_id]);

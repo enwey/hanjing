@@ -1347,6 +1347,7 @@ async function getDistributionSummary(userId, req = null) {
     inviteQrReason,
     settleDays: featureConfig.settleDays,
     minWithdrawAmount: featureConfig.minWithdrawAmount,
+    bankMinWithdrawAmount: featureConfig.bankMinWithdrawAmount,
     withdrawFeeRates: featureConfig.withdrawFeeRates
   };
 }
@@ -7504,6 +7505,7 @@ app.get('/api/v1/distribution/rules', async (req, res, next) => {
       withdrawRules: [
         `最低提现金额：¥${(featureConfig.minWithdrawAmount / 100).toFixed(2)}`,
         '微信零钱：暂未开通',
+        `银行卡最低提现金额：¥${(featureConfig.bankMinWithdrawAmount / 100).toFixed(2)}`,
         `银行卡：手续费 ${Number((featureConfig.withdrawFeeRates.bank * 100).toFixed(4))}%，最低 1 元；审核通过后等待实际打款`
       ]
     }
@@ -7531,8 +7533,9 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
     if (!['wechat', 'bank'].includes(method)) {
       return res.status(400).json({ code: 400, message: '提现方式不支持' });
     }
-    if (withdrawAmount < featureConfig.minWithdrawAmount) {
-      return res.status(400).json({ code: 400, message: `最低提现金额为${(featureConfig.minWithdrawAmount / 100).toFixed(2)}元` });
+    const minAmount = method === 'bank' ? featureConfig.bankMinWithdrawAmount : featureConfig.minWithdrawAmount;
+    if (withdrawAmount < minAmount) {
+      return res.status(400).json({ code: 400, message: `最低提现金额为${(minAmount / 100).toFixed(2)}元` });
     }
 
     if (method === 'bank') {

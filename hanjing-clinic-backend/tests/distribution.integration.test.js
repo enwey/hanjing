@@ -65,7 +65,7 @@ test('distribution uses actual records and atomic accounting', async (t) => {
     await admin.query("INSERT INTO distribution_orders(order_id,distributor_id,buyer_name,order_amount,commission_amount,commission_level,status,lock_until) VALUES(1,1,'Test',200000,20000,1,'pending',DATE_SUB(NOW(),INTERVAL 1 DAY))");
     const wxToken = jwt.sign({ id: 1, openid: 'test_fixture_1' }, helpers.JWT_SECRET);
     const promoterToken = jwt.sign({ user_id: 1, promoter_id: 1, scope: 'promoter' }, helpers.JWT_SECRET);
-    const adminToken = jwt.sign({ id: 1, role: 'super_admin' }, helpers.JWT_SECRET);
+    const adminToken = jwt.sign({ id: 1, role: 'super_admin', token_version: 0 }, helpers.JWT_SECRET);
     await admin.query("INSERT INTO roles(id,name,code,status) VALUES(1,'Test admin','super_admin','active'),(2,'Test staff','receptionist','active')");
     await admin.query("INSERT INTO admin_users(id,username,password_hash,name,role_id,status) VALUES(1,'test-admin','unused','Admin',1,'online'),(2,'test-staff','unused','Staff',2,'online')");
     const bank = { amount: 15000, method: 'bank', bankInfo: { bankName: 'Test Bank', accountName: 'Test', accountNo: '1234567890123456' } };
@@ -75,6 +75,19 @@ test('distribution uses actual records and atomic accounting', async (t) => {
       assert.equal(amounts.reduce((a,b) => a+b,0), 20000);
       const [[row]] = await admin.query('SELECT available_commission FROM distributors WHERE id=1');
       assert.equal(row.available_commission, 20000);
+    });
+    await t.test('bank minimum follows settings and keeps the general minimum as a floor', async () => {
+      assert.equal((await ledger.getDistributionFeatureConfig()).bankMinWithdrawAmount, 100);
+      assert.equal((await api('/api/admin/settings', adminToken, { bank_min_withdraw: 50 })).status, 200);
+      const rules = await api('/api/v1/distribution/rules', wxToken);
+      assert.ok(rules.data.data.withdrawRules.includes('银行卡最低提现金额：¥50.00'));
+      const rejected = await api('/api/v1/distribution/withdraw', wxToken, { ...bank, amount: 4999 });
+      assert.equal(rejected.status, 400);
+      assert.match(rejected.data.message, /50\.00/);
+      assert.equal((await api('/api/admin/settings', adminToken, { bank_min_withdraw: 0 })).status, 400);
+      assert.equal((await api('/api/admin/settings', adminToken, { bank_min_withdraw: 0.5 })).status, 200);
+      assert.equal((await ledger.getDistributionFeatureConfig()).bankMinWithdrawAmount, 100);
+      await admin.query("DELETE FROM system_settings WHERE key_name='bank_min_withdraw'");
     });
     await t.test('parallel withdrawals cannot overdraw', async () => {
       const responses = await Promise.all([api('/api/v1/distribution/withdraw', wxToken, bank), api('/api/v1/distribution/withdraw', wxToken, bank)]);

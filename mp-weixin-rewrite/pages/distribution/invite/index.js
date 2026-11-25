@@ -13,8 +13,9 @@ const POSTER_EXPORT_SCALE = 2;
 function createPosterContextAdapter(context) {
   let fontSize = 16;
   let fontWeight = 400;
+  let fontFamily = 'sans-serif';
   const applyFont = () => {
-    context.font = `${fontWeight} ${fontSize}px sans-serif`;
+    context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
     context.textBaseline = 'alphabetic';
   };
   applyFont();
@@ -38,7 +39,7 @@ function createPosterContextAdapter(context) {
     createLinearGradient: (x0, y0, x1, y1) => context.createLinearGradient(x0, y0, x1, y1),
     setTransform: (a, b, c, d, e, f) => context.setTransform(a, b, c, d, e, f),
     setFillStyle: (value) => { context.fillStyle = value; },
-    setFontSize: (value, weight = 400) => { fontSize = value; fontWeight = weight; applyFont(); },
+    setFontSize: (value, weight = 400, family = 'sans-serif') => { fontSize = value; fontWeight = weight; fontFamily = family; applyFont(); },
   };
 }
 

@@ -35,6 +35,12 @@ test('提现：超额和三位小数拦截；合法金额连续提交只发一�
  assert.equal(calls.length,1);assert.equal(calls[0][0],2000);assert.equal(p.data.actualAmountLabel,'¥19.00');
  finish();await first;
 });
+test('提现：使用银行卡最低提现金额限制输入',async()=>{
+ const p=page('withdraw',{getDistributorInfo:async()=>({availableCommission:10000,minWithdrawAmount:1000,bankMinWithdrawAmount:5000,withdrawFeeRates:{bank:0.02}})});
+ await p.loadPage();Object.assign(p.data,{bankName:'测试银行',bankAccountName:'测试',bankAccountNo:'123',withdrawAmountInput:'49.99'});p.refreshAmountSummary();
+ assert.equal(p.data.minWithdrawAmount,50);assert.equal(p.data.isSubmitEnabled,false);
+ p.data.withdrawAmountInput='50.00';p.refreshAmountSummary();assert.ok(p.data.isSubmitEnabled);
+});
 for(const [name,method,key,extra] of [
  ['commission','getDistributionCommissions','commissions',{getDistributionCommissionStats:async()=>({})}],
  ['team','getTeamMembers','members',{getDistributorInfo:async()=>({})}],
