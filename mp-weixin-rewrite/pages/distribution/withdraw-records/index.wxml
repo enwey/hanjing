@@ -23,7 +23,7 @@
             <text class="record-card__meta">{{item.accountLabel}}</text>
           </view>
           <view class="record-card__right">
-            <text class="record-card__status record-card__status--{{item.status}}">{{item.statusLabel}}</text>
+            <text class="record-card__status record-card__status--{{item.statusStyle}}">{{item.statusLabel}}</text>
             <text class="record-card__date">{{item.createdDate}}</text>
           </view>
         </view>

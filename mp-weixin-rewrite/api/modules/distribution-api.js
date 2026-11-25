@@ -55,8 +55,28 @@ function getTeamMembers() {
   return request({ url: '/distribution/team', method: 'GET', failMessage: '加载团队成员失败' });
 }
 
-function applyWithdraw(amount, method, bankInfo) {
-  return request({ url: '/distribution/withdraw', method: 'POST', data: { amount, method, bankInfo }, failMessage: '申请提现失败' });
+function getWechatWithdrawAuthorization(prepare = false) {
+  return request({
+    url: '/distribution/withdraw-wechat-authorization',
+    method: prepare ? 'POST' : 'GET',
+    failMessage: '查询微信收款授权失败'
+  });
+}
+
+function applyWithdraw(amount, method, bankInfo, bankCardId, wechatDetails) {
+  return request({ url: '/distribution/withdraw', method: 'POST', data: { amount, method, bankInfo, bankCardId, ...wechatDetails }, failMessage: '申请提现失败' });
+}
+
+function getWithdrawBankCards() {
+  return request({ url: '/distribution/withdraw-bank-cards', method: 'GET', failMessage: '加载历史银行卡失败' });
+}
+
+function updateWithdrawBankCard(id, bankInfo) {
+  return request({ url: '/distribution/withdraw-bank-cards/' + encodeURIComponent(id), method: 'PUT', data: bankInfo, failMessage: '保存银行卡失败' });
+}
+
+function deleteWithdrawBankCard(id) {
+  return request({ url: '/distribution/withdraw-bank-cards/' + encodeURIComponent(id), method: 'DELETE', failMessage: '删除银行卡失败' });
 }
 
 function getWithdrawRecords() {
@@ -75,5 +95,9 @@ module.exports = {
   getDistributionCommissionStats,
   getTeamMembers,
   applyWithdraw,
+  getWechatWithdrawAuthorization,
+  getWithdrawBankCards,
+  updateWithdrawBankCard,
+  deleteWithdrawBankCard,
   getWithdrawRecords
 };

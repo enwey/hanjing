@@ -72,6 +72,7 @@ function executeWxRequest(options, token) {
         timeout: options.timeout || 10000,
         success(response) {
           response.data = normalizeAssets(response.data, currentBaseUrl);
+          if (options.transformResponse) response.data = options.transformResponse(response.data, currentBaseUrl);
           resolvedApiBaseUrl = currentBaseUrl;
           if (response.statusCode < 200 || response.statusCode >= 300) {
             miniLog.report({

@@ -1,3 +1,6 @@
+import {
+  getWechatAuthorization, getWechatWithdrawalConfig, prepareWechatWithdrawal, storeWechatWithdrawal
+} from '../wechat-withdrawals.js';
 import { resolveImPatient, validateImText } from '../im-access.js';
 import { recordCommunityLike } from '../community-notifications.js';
 import { writeNotification, notifyBusiness, runAndNotify, installNotificationRoutes } from '../notification-center.js';
@@ -18,6 +21,10 @@ import express from 'express';
 import { createAsyncRouter } from '../async-router.js';
 import jwt from 'jsonwebtoken';
 import { businessError, publicWithdrawAccount, readCommissionLedger } from '../distribution-ledger.js';
+import {
+  bankWithdrawalSnapshot, lockBankCard, mergeWithdrawBankCards, presentBankCard,
+  storeSubmittedBankCard, validateBankCard
+} from '../withdraw-bank-cards.js';
 import { assertFutureAppointmentTime, lockAppointmentChange, RESCHEDULABLE_STATUSES, assertAppointmentFeesPaid, orderCoversAppointmentFees, settlePaidAppointmentOrder } from '../appointment-workflow.js';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -687,13 +694,20 @@ async function mergeUserAccountIntoExistingUser(sourceUserId, targetUserId, { op
   }
 
   return transaction(async (conn) => {
-    const [[sourceUser]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [sourceUserId]);
+    await conn.execute('SELECT id FROM distributors WHERE user_id=? FOR UPDATE', [sourceUserId]);
+    const [[sourceUser]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1 FOR UPDATE`, [sourceUserId]);
     const [[targetUser]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [targetUserId]);
     if (!sourceUser || !targetUser) {
       const err = new Error('待合并账号不存在');
       err.statusCode = 404;
       throw err;
     }
+
+    const [[payout]] = await conn.execute(
+      `SELECT t.withdraw_id FROM wechat_withdraw_transfers t JOIN withdraw_records w ON w.id=t.withdraw_id
+       WHERE w.user_id=? AND w.status IN ('pending','approved') LIMIT 1`, [sourceUserId]
+    );
+    if (payout) throw businessError('账号还有一笔微信零钱提现正在处理，请在提现结束后再合并账号', 409);
 
     if (openid && sourceUser.openid === openid) {
       const releasedOpenid = `merged_${sourceUserId}_${Date.now()}`;
@@ -761,6 +775,8 @@ async function mergeUserAccountIntoExistingUser(sourceUserId, targetUserId, { op
     await conn.execute(`UPDATE device_feedback SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
     await conn.execute(`UPDATE points_logs SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
     await conn.execute(`UPDATE withdraw_records SET user_id = ? WHERE user_id = ?`, [targetUserId, sourceUserId]);
+    await mergeWithdrawBankCards(conn, sourceUserId, targetUserId);
+    await conn.execute('UPDATE wechat_withdraw_authorizations SET user_id=? WHERE user_id=?', [targetUserId, sourceUserId]);
 
     await conn.execute(
       `UPDATE users
@@ -1248,7 +1264,9 @@ async function ensureDistributionInviteQrUrl(distributor, req) {
 
 async function getDistributionWithdrawRecordList(userId) {
   const list = await query(
-    `SELECT * FROM withdraw_records WHERE user_id = ? ORDER BY created_at DESC`,
+    `SELECT w.*, t.state AS wechat_payout_state FROM withdraw_records w
+     LEFT JOIN wechat_withdraw_transfers t ON t.withdraw_id=w.id
+     WHERE w.user_id = ? ORDER BY w.created_at DESC, w.id DESC`,
     [userId]
   );
   return list.map(item => ({
@@ -1258,6 +1276,7 @@ async function getDistributionWithdrawRecordList(userId) {
     actualAmount: item.actual_amount,
     accountInfo: publicWithdrawAccount(item.account_info),
     status: item.status,
+    wechatPayoutState: item.wechat_payout_state || undefined,
     createdAt: item.created_at,
     completedAt: item.completed_at
   }));
@@ -1328,6 +1347,7 @@ async function getDistributionSummary(userId, req = null) {
     if (activation.changes) distributor.status = 'active';
   }
 
+  const wechatWithdraw = featureConfig.enableDistribution ? await getWechatWithdrawalConfig() : null;
   return {
     isDistributor: distributor.status === 'active' && directTeamCount > 0,
     memberLevel,
@@ -1347,8 +1367,9 @@ async function getDistributionSummary(userId, req = null) {
     inviteQrReason,
     settleDays: featureConfig.settleDays,
     minWithdrawAmount: featureConfig.minWithdrawAmount,
-    bankMinWithdrawAmount: featureConfig.bankMinWithdrawAmount,
-    withdrawFeeRates: featureConfig.withdrawFeeRates
+    withdrawFeeRates: featureConfig.withdrawFeeRates,
+    wechatWithdrawEnabled: Boolean(wechatWithdraw),
+    ...(wechatWithdraw ? { wechatWithdrawMin: wechatWithdraw.minAmount, wechatWithdrawMax: wechatWithdraw.maxAmount } : {})
   };
 }
 
@@ -2603,6 +2624,40 @@ app.get('/api/v1/community/categories', async (req, res) => {
 });
 
 // GET /api/v1/community/posts
+app.get('/api/v1/community/my-activity', authenticateWxToken, async (req, res) => {
+  const type = String(req.query.type || 'posts');
+  const page = Number(req.query.page || 1);
+  if (!['posts', 'comments', 'favorites'].includes(type) || !Number.isSafeInteger(page) || page < 1 || page > 10000) {
+    return res.status(400).json({ code: 400, message: '请求参数无效' });
+  }
+  const limit = 20;
+  const queries = {
+    posts: `SELECT p.id AS record_id, p.id AS post_id, p.title, p.summary, p.content, COALESCE(p.publish_at,p.created_at) AS activity_at
+      FROM community_posts p WHERE p.user_id=? AND p.status='approved'
+      ORDER BY p.created_at DESC, p.id DESC LIMIT ? OFFSET ?`,
+    comments: `SELECT c.id AS record_id, p.id AS post_id, p.title, c.id AS comment_id, c.content AS comment_content, c.created_at AS activity_at
+      FROM post_comments c JOIN community_posts p ON p.id=c.post_id
+      WHERE c.user_id=? AND c.status='approved' AND p.status='approved'
+      ORDER BY c.created_at DESC, c.id DESC LIMIT ? OFFSET ?`,
+    favorites: `SELECT f.id AS record_id, p.id AS post_id, p.title, p.summary, p.content, f.created_at AS activity_at
+      FROM community_post_favorites f JOIN community_posts p ON p.id=f.post_id
+      WHERE f.user_id=? AND p.status='approved'
+      ORDER BY f.created_at DESC, f.id DESC LIMIT ? OFFSET ?`,
+  };
+  try {
+    const rows = await query(queries[type], [req.user.id, limit + 1, (page - 1) * limit]);
+    res.json({ code: 0, data: { list: rows.slice(0, limit).map(row => ({
+      recordId: String(row.record_id), postId: String(row.post_id), title: row.title || '',
+      summary: type === 'comments' ? '' : String(row.summary || row.content || '').replace(/<[^>]*>/g, '').slice(0, 140),
+      commentId: row.comment_id ? String(row.comment_id) : '', commentContent: row.comment_content || '',
+      createdAt: row.activity_at,
+    })), hasMore: rows.length > limit } });
+  } catch (error) {
+    console.error('Get community activity error:', error);
+    res.status(500).json({ code: 500, message: '加载社区记录失败' });
+  }
+});
+
 app.get('/api/v1/community/posts', async (req, res) => {
   try {
     const currentUser = getOptionalWxUser(req);
@@ -2635,6 +2690,7 @@ app.get('/api/v1/community/posts', async (req, res) => {
     const formatted = list.map(p => ({
       id: p.id,
       ...communityPublisher(p),
+      hasRelatedDoctor: Boolean(String(p.related_doctor_name || '').trim()),
       title: p.title,
       summary: p.summary || '',
       content: p.content,
@@ -7493,18 +7549,17 @@ app.get('/api/v1/distribution/rules', async (req, res, next) => {
     message: 'success',
     data: {
       enabled: featureConfig.enableDistribution,
-      qualificationText: '进入分销中心后系统会生成专属推广身份和邀请码；成功绑定至少 1 个一级下级后，才会成为正式分销员并获得佣金资格。',
+      qualificationText: '在分销中心打开邀请好友页面，即可获取你的专属邀请码。将邀请码分享给好友，成功绑定至少 1 位下级好友后，即可成为正式分销员，开启佣金收益资格。',
       levels: [],
       commissionRules: [
-        '仅对商品单独配置了推广佣金比例的商品计算分佣，未配置佣金比例的商品不参与分佣。',
-        '一级佣金按商品配置的一级佣金比例计算给直属上级，二级佣金按商品配置的二级佣金比例计算给上上级，不按推广员等级追加比例。',
-        `佣金在订单完成后进入冻结期，满 ${featureConfig.settleDays} 天后自动转为可提现余额。`,
-        '订单退款或撤单后，对应佣金会自动撤销；已结算部分会从可提现余额中冲抵。'
+        '只有标注支持推广佣金的商品才会产生收益，其余商品不参与分佣。',
+        '收益分为两级：好友下单，你拿一级佣金；好友的下级下单，你拿二级佣金。佣金比例以该商品预设比例为准，不会随分销等级额外上浮。',
+        `订单确认完成后，佣金会先进入冻结保护期，等待 ${featureConfig.settleDays} 天，到期自动变为可提现余额。`,
+        '如果订单发生退款、撤单，这笔订单对应的佣金会直接取消；已经结算到余额里的佣金，也会从可提现余额中扣除。'
       ],
       promotionWays: [
-        '分享小程序首页、商品页或邀请页给微信好友/微信群。',
-        '好友通过您的邀请码或分享路径首次进入并完成绑定后，后续成交会计入您的推广关系。',
-        '可使用邀请页中的专属海报和邀请码进行推广。'
+        '分享你的专属邀请页面到微信好友或微信群，好友通过你分享的邀请链接首次进入兴康明小程序并完成绑定，后续其订单都会归属到你的推广关系中，持续产生收益。',
+        '保存邀请好友页面自带的专属推广海报，发给别人扫码绑定。'
       ],
       notices: [
         '禁止虚假宣传、夸大疗效或承诺治疗结果。',
@@ -7512,10 +7567,10 @@ app.get('/api/v1/distribution/rules', async (req, res, next) => {
         '违规推广将冻结佣金并取消推广资格。'
       ],
       withdrawRules: [
-        `最低提现金额：¥${(featureConfig.minWithdrawAmount / 100).toFixed(2)}`,
-        '微信零钱：暂未开通',
-        `银行卡最低提现金额：¥${(featureConfig.bankMinWithdrawAmount / 100).toFixed(2)}`,
-        `银行卡：手续费 ${Number((featureConfig.withdrawFeeRates.bank * 100).toFixed(4))}%，最低 1 元；审核通过后等待实际打款`
+        `提现门槛：满 ${Number((featureConfig.minWithdrawAmount / 100).toFixed(2))} 元即可申请提现；`,
+        '提现渠道：仅支持银行卡提现，微信零钱通道暂未开放；',
+        `手续费：提现收取 ${Number((featureConfig.withdrawFeeRates.bank * 100).toFixed(4))}% 手续费，手续费最低 1 元；`,
+        '申请后需等待审核，审核通过会安排打款。'
       ]
     }
   });
@@ -7524,14 +7579,64 @@ app.get('/api/v1/distribution/rules', async (req, res, next) => {
   }
 });
 
+app.get('/api/v1/distribution/withdraw-bank-cards', authenticateWxToken, async (req, res) => {
+  const cards = await query(
+    `SELECT CAST(id AS CHAR) AS id, bank_name, account_name, last_four, account_no_encrypted IS NOT NULL AS has_account_no
+     FROM withdraw_bank_cards WHERE user_id = ? ORDER BY last_withdraw_id DESC, id DESC`,
+    [req.user.id]
+  );
+  res.set('Cache-Control', 'no-store').json({ code: 0, data: { list: cards.map(presentBankCard) } });
+});
+
+app.put('/api/v1/distribution/withdraw-bank-cards/:id', authenticateWxToken, async (req, res) => {
+  try {
+    const card = await transaction(async (conn) => {
+      const existing = await lockBankCard(conn, req.user.id, req.params.id);
+      const updated = validateBankCard(req.body, existing);
+      await conn.execute(
+        `UPDATE withdraw_bank_cards SET bank_name = ?, account_name = ?, account_no_encrypted = ?, last_four = ?
+         WHERE user_id = ? AND id = ?`,
+        [updated.bank_name, updated.account_name, updated.account_no_encrypted, updated.last_four, req.user.id, existing.id]
+      );
+      return presentBankCard({ id: existing.id, ...updated });
+    });
+    res.set('Cache-Control', 'no-store').json({ code: 0, data: card });
+  } catch (error) {
+    if (error.code !== 'ER_DUP_ENTRY') throw error;
+    throw businessError('该银行卡已在历史列表中', 409);
+  }
+});
+
+app.delete('/api/v1/distribution/withdraw-bank-cards/:id', authenticateWxToken, async (req, res) => {
+  await transaction(async (conn) => {
+    const card = await lockBankCard(conn, req.user.id, req.params.id);
+    await conn.execute('DELETE FROM withdraw_bank_cards WHERE user_id = ? AND id = ?', [req.user.id, card.id]);
+  });
+  res.json({ code: 0, data: {} });
+});
+
+async function wechatAuthorizationHandler(req, res) {
+  const feature = await getDistributionFeatureConfig();
+  if (!feature.enableDistribution) throw businessError('分销功能已停用', 403);
+  const distributor = await get("SELECT id FROM distributors WHERE user_id=? AND status='active'", [req.user.id]);
+  if (!distributor) throw businessError('推广员账号未启用', 403);
+  const data = await getWechatAuthorization(req.user.id, req.method === 'POST');
+  const { authorizationNumber, ...publicData } = data;
+  res.set('Cache-Control', 'no-store').json({ code: 0, data: publicData });
+}
+
+app.get('/api/v1/distribution/withdraw-wechat-authorization', authenticateWxToken, wechatAuthorizationHandler);
+app.post('/api/v1/distribution/withdraw-wechat-authorization', authenticateWxToken, wechatAuthorizationHandler);
+
 app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) => {
-  const { amount, method = 'wechat', bankInfo } = req.body;
+  const { amount, method = 'wechat', bankInfo, bankCardId } = req.body;
   const withdrawAmount = Number(amount);
-  if (!Number.isSafeInteger(withdrawAmount) || withdrawAmount <= 0) {
+  if (!Number.isSafeInteger(withdrawAmount) || withdrawAmount <= 0 || withdrawAmount > 2147483647) {
     return res.status(400).json({ code: 400, message: '提现金额无效' });
   }
-  if (method === 'wechat') {
-    return res.status(503).json({ code: 503, message: '微信零钱转账尚未接入，请选择银行卡提现' });
+  const isWechat = method === 'wechat';
+  if (isWechat && process.env.WECHAT_WITHDRAW_ENABLED !== 'true') {
+    return res.status(503).json({ code: 503, message: '微信零钱提现暂不可用，请选择银行卡' });
   }
   try {
     const featureConfig = await getDistributionFeatureConfig();
@@ -7542,22 +7647,12 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
     if (!['wechat', 'bank'].includes(method)) {
       return res.status(400).json({ code: 400, message: '提现方式不支持' });
     }
-    const minAmount = method === 'bank' ? featureConfig.bankMinWithdrawAmount : featureConfig.minWithdrawAmount;
+    const minAmount = featureConfig.minWithdrawAmount;
     if (withdrawAmount < minAmount) {
       return res.status(400).json({ code: 400, message: `最低提现金额为${(minAmount / 100).toFixed(2)}元` });
     }
 
-    if (method === 'bank') {
-      const bankName = String(bankInfo?.bankName || '').trim();
-      const accountName = String(bankInfo?.accountName || '').trim();
-      const accountNo = String(bankInfo?.accountNo || '').trim();
-      if (!bankName || !accountName || !accountNo) {
-        return res.status(400).json({ code: 400, message: '请填写完整的银行卡信息' });
-      }
-      if (!/^\d{8,34}$/.test(accountNo) || bankName.length > 100 || accountName.length > 100) {
-        return res.status(400).json({ code: 400, message: '银行卡信息格式无效' });
-      }
-    }
+    const newCard = !isWechat && bankCardId == null ? validateBankCard(bankInfo) : null;
 
     const bankFeeRate = Number(featureConfig.withdrawFeeRates?.bank || 0);
     const fee = method === 'bank' ? Math.max(Math.round(withdrawAmount * bankFeeRate), 100) : 0;
@@ -7565,22 +7660,22 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
     if (actualAmount <= 0) {
       return res.status(400).json({ code: 400, message: '提现金额不足以支付手续费' });
     }
-    const accountInfo = method === 'bank'
-      ? JSON.stringify({
-          method,
-          bankName: String(bankInfo.bankName).trim(),
-          accountName: String(bankInfo.accountName).trim(),
-          accountNoEncrypted: encryptPII(String(bankInfo.accountNo).trim()),
-          accountNo: '********' + String(bankInfo.accountNo).trim().slice(-4)
-        })
-      : JSON.stringify({ method, label: '微信零钱' });
-
-    const recordId = await transaction(async (conn) => {
+    const wechat = isWechat ? await prepareWechatWithdrawal(req.user.id, withdrawAmount, req.body) : null;
+    if (!wechat?.existing) await transaction(async (conn) => {
       const [distributors] = await conn.execute(
         `SELECT id, available_commission, status FROM distributors WHERE user_id = ? FOR UPDATE`,
         [req.user.id]
       );
       const dist = distributors[0];
+      if (wechat && dist) {
+        const [[existing]] = await conn.execute(`SELECT w.amount FROM wechat_withdraw_transfers t
+          JOIN withdraw_records w ON w.id=t.withdraw_id WHERE t.user_id=? AND t.request_id=?`,
+          [req.user.id, wechat.requestId]);
+        if (existing) {
+          if (Number(existing.amount) !== withdrawAmount) throw businessError('该请求编号已用于另一笔提现', 409);
+          return;
+        }
+      }
       if (!dist) {
         const error = new Error('您不是推广员');
         error.statusCode = 400;
@@ -7599,17 +7694,20 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
         throw Object.assign(new Error('佣金账务不一致，请联系运营核对后再提现'), { statusCode: 409 });
       }
 
+      const card = isWechat ? null : newCard || await lockBankCard(conn, req.user.id, bankCardId);
+      const accountInfo = isWechat ? JSON.stringify({ method: 'wechat', label: '微信零钱' }) : bankWithdrawalSnapshot(card);
       const [result] = await conn.execute(
-        `INSERT INTO withdraw_records (user_id, amount, fee, actual_amount, status, account_info)
-         VALUES (?, ?, ?, ?, 'pending', ?)`,
-        [req.user.id, withdrawAmount, fee, actualAmount, accountInfo]
+        `INSERT INTO withdraw_records (user_id, distributor_id, amount, fee, actual_amount, status, account_info)
+         VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
+        [req.user.id, isWechat ? dist.id : null, withdrawAmount, fee, actualAmount, accountInfo]
       );
       await conn.execute(
         `UPDATE distributors SET available_commission = available_commission - ? WHERE id = ?`,
         [withdrawAmount, dist.id]
       );
+      if (wechat) await storeWechatWithdrawal(conn, result.insertId, req.user.id, wechat);
+      else await storeSubmittedBankCard(conn, req.user.id, card, result.insertId);
       await notifyBusiness(conn, 'withdraw', result.insertId, 'submitted');
-      return result.insertId;
     });
 
 
@@ -7619,7 +7717,7 @@ app.post('/api/v1/distribution/withdraw', authenticateWxToken, async (req, res) 
       data: { amount: withdrawAmount, fee, actualAmount, method }
     });
   } catch (error) {
-    console.error('Distribution withdraw error:', error);
+    if (!error.statusCode) console.error('Distribution withdraw error:', error.code || error.name);
     const statusCode = Number(error.statusCode || 500);
     res.status(statusCode).json({ code: statusCode, message: statusCode === 500 ? '申请失败' : error.message });
   }

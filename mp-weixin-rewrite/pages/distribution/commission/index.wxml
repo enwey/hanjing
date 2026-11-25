@@ -26,7 +26,7 @@
       </view>
     </view>
 
-    <scroll-view scroll-x class="commission-tabs" enhanced="{{true}}" show-scrollbar="{{false}}">
+    <view class="commission-tabs">
       <text
         wx:for="{{tabList}}"
         wx:key="key"
@@ -34,7 +34,7 @@
         data-tab-key="{{item.key}}"
         bindtap="handleTabTap"
       >{{item.label}}</text>
-    </scroll-view>
+    </view>
 
     <view class="page-section commission-list-wrap" wx:if="{{visibleCommissions.length}}">
       <view class="commission-list">
@@ -55,8 +55,8 @@
         </view>
       </view>
     </view>
-    <view class="page-section state-card" wx:else>
-      <text class="state-title">暂无佣金记录</text>
+    <view class="distribution-empty" wx:else>
+      <hj-empty title="暂无佣金记录" icon="/static/icons/report.svg" />
     </view>
   </block>
 </view>

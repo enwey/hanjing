@@ -6,28 +6,30 @@
   <view wx:elif="{{submittedForReview}}" class="publish-state"><text class="publish-state__title">已提交审核</text><text>审核结果会通过消息通知告知你。</text></view>
   <view wx:else class="publish-form">
     <view wx:if="{{rejectReason}}" class="publish-review-note"><text class="publish-state__title">修改说明</text><text>{{rejectReason}}</text></view>
-    <view class="publish-field">
-      <text class="publish-field__label">分类</text>
-      <view class="publish-category-list">
-        <view wx:for="{{categoryOptions}}" wx:key="*this" class="publish-chip {{selectedCategory === item ? 'publish-chip--active' : ''}}" data-category="{{item}}" bindtap="chooseCategory">{{item}}</view>
+    <view class="publish-editor">
+      <view class="publish-field publish-field--title">
+        <text class="publish-field__label">标题</text>
+        <input class="publish-field__input" placeholder="简洁描述你的问题或分享" placeholder-class="publish-placeholder" maxlength="40" value="{{title}}" bindinput="handleTitleInput" />
+      </view>
+      <view class="publish-field publish-field--content">
+        <text class="publish-field__label">内容</text>
+        <textarea class="publish-field__textarea" placeholder="详细描述你的情况、问题或分享经验..." placeholder-class="publish-placeholder" maxlength="1000" value="{{content}}" bindinput="handleContentInput"></textarea>
+        <text class="publish-field__count">{{content.length}}/1000</text>
       </view>
     </view>
 
-    <view class="publish-field">
-      <text class="publish-field__label">标题</text>
-      <input class="publish-field__input" placeholder="简洁描述你的问题或分享" maxlength="40" value="{{title}}" bindinput="handleTitleInput" />
-    </view>
-
-    <view class="publish-field">
-      <text class="publish-field__label">内容</text>
-      <textarea class="publish-field__textarea" placeholder="详细描述你的情况、问题或分享经验..." maxlength="1000" value="{{content}}" bindinput="handleContentInput"></textarea>
-      <text class="publish-field__count">{{content.length}}/1000</text>
-    </view>
-
-    <view class="publish-field">
-      <text class="publish-field__label">标签（最多3个）</text>
-      <view class="publish-tag-list">
-        <view wx:for="{{tagOptions}}" wx:key="*this" class="publish-chip {{selectedTagMap[item] ? 'publish-chip--active' : ''}}" data-tag="{{item}}" bindtap="toggleTag">{{item}}</view>
+    <view class="publish-options">
+      <view class="publish-field">
+        <text class="publish-field__label">分类</text>
+        <view class="publish-category-list">
+          <view wx:for="{{categoryOptions}}" wx:key="*this" class="publish-chip {{selectedCategory === item ? 'publish-chip--active' : ''}}" data-category="{{item}}" bindtap="chooseCategory">{{item}}</view>
+        </view>
+      </view>
+      <view class="publish-field">
+        <text class="publish-field__label">标签（最多3个）</text>
+        <view class="publish-tag-list">
+          <view wx:for="{{tagOptions}}" wx:key="*this" class="publish-chip {{selectedTagMap[item] ? 'publish-chip--active' : ''}}" data-tag="{{item}}" bindtap="toggleTag">{{item}}</view>
+        </view>
       </view>
     </view>
   </view>

@@ -86,11 +86,15 @@ Page({
 
   onLoad() {
     try {
-      const windowInfo = wx.getWindowInfo();
-      const statusBarHeight = windowInfo.statusBarHeight || 44;
-      this.setData({ navbarHeight: statusBarHeight + 44 });
+      const windowInfo = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      const statusBarHeight = windowInfo.statusBarHeight || 20;
+      const capsule = wx.getMenuButtonBoundingClientRect?.();
+      const headerHeight = capsule?.top && capsule.height
+        ? (capsule.top - statusBarHeight) * 2 + capsule.height
+        : 44;
+      this.setData({ navbarHeight: statusBarHeight + headerHeight });
     } catch (error) {
-      console.error(error);
+      this.setData({ navbarHeight: 64 });
     }
   },
 

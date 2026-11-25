@@ -23,6 +23,7 @@ const MENU_GROUPS = [
   {
     title: '其他',
     items: [
+      { key: 'community', label: '我的社区', icon: '/static/icons/community.svg', url: '/pages/community/my-activity/index' },
       { key: 'service', label: '在线客服', icon: '/static/icons/chat.svg', url: '/pages/profile/online-service/index' },
       { key: 'notifications', label: '消息通知', icon: '/static/icons/bell.svg', url: '/pages/profile/notifications/index' },
       { key: 'settings', label: '设置', icon: '/static/icons/settings-gear.svg', url: '/pages/profile/settings/index' },

@@ -1,5 +1,8 @@
 const { request } = require('../request');
 
+function getMyCommunityActivity(type, page) {
+  return request({ url: '/community/my-activity', method: 'GET', data: { type, page }, failMessage: '加载社区记录失败' });
+}
 function getCommunityPosts() {
   return request({ url: '/community/posts', method: 'GET', failMessage: '加载社区帖子失败' });
 }
@@ -40,6 +43,7 @@ function reportCommunityPost(postId, reason) {
 }
 
 module.exports = {
+  getMyCommunityActivity,
   getCommunityPosts,
   getCommunityPostDetail,
   createCommunityPost,

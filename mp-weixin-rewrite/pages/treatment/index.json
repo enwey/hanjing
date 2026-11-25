@@ -1,5 +1,4 @@
 {
   "navigationBarTitleText": "治疗追踪",
-  "navigationStyle": "custom",
-  "enablePullDownRefresh": true
+  "navigationStyle": "custom"
 }

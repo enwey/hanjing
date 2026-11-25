@@ -5758,8 +5758,10 @@ app.get('/api/admin/distribution/withdraws', authenticateToken, async (req, res)
   try {
     const scope=withdrawalReadScope(req.user,'w');
     const list = await query(
-      `SELECT w.*, COALESCE(d.nickname,u.nickname) AS nickname, COALESCE(d.contact_phone,u.phone) AS phone, d.nickname as promoter_name
+      `SELECT w.*, t.state AS wechat_payout_state, t.out_bill_no AS wechat_out_bill_no,
+              t.last_error AS wechat_last_error, COALESCE(d.nickname,u.nickname) AS nickname, COALESCE(d.contact_phone,u.phone) AS phone, d.nickname as promoter_name
        FROM withdraw_records w
+       LEFT JOIN wechat_withdraw_transfers t ON t.withdraw_id=w.id
        LEFT JOIN users u ON w.user_id = u.id
        LEFT JOIN distributors d ON d.id=w.distributor_id OR (w.distributor_id IS NULL AND u.id = d.user_id)
        WHERE ${scope.sql} ORDER BY w.created_at DESC`,scope.params
@@ -5794,8 +5796,12 @@ app.put('/api/admin/distribution/withdraws/:id/status', authenticateToken, async
   if (!approve && !remark) return res.status(400).json({ code: 400, message: '请填写驳回原因' });
   try {
     const { reviewWithdrawal } = await import('../distribution-ledger.js');
-    const record = await reviewWithdrawal(req.params.id, approve, remark);
-    res.json({ code: 200, message: approve ? '审核通过，等待实际打款' : '已驳回并退回余额' });
+    const record = await reviewWithdrawal(req.params.id, approve, remark, {
+      canPay: hasAdminPermission(req.user, ['withdraw:paid']),
+      scope: withdrawalReadScope(req.user, 'w')
+    });
+    const approvalMessage = record.wechatPayout ? '审核通过，等待微信零钱自动打款' : '审核通过，等待实际打款';
+    res.json({ code: 200, message: approve ? approvalMessage : '已驳回并退回余额' });
     setImmediate(() => sendWechatSubscribeMessage({
       userId: record.user_id,
       event: 'withdraw_result',
@@ -5805,7 +5811,7 @@ app.put('/api/admin/distribution/withdraws/:id/status', authenticateToken, async
         amount: `¥${(Number(record.amount || 0) / 100).toFixed(2)}`,
         status: approve ? '审核通过' : '已驳回',
         time: formatShanghaiDateTime(new Date()),
-        remark: remark || (approve ? '等待实际打款' : '金额已退回余额')
+        remark: remark || (approve ? approvalMessage : '金额已退回余额')
       }
     }));
     await logAdminAction(req.user.id, approve ? 'approve_withdraw' : 'reject_withdraw', 'withdraw', req.params.id, { remark })
@@ -7667,7 +7673,7 @@ app.get('/api/admin/settings', authenticateToken, async (req, res) => {
       let val = row.key_value;
       if (val === 'true') val = true;
       else if (val === 'false') val = false;
-      else if (['booking_advance_days', 'booking_interval', 'deposit_amount', 'commission1', 'commission2', 'distribution_settle_days', 'min_withdraw', 'bank_min_withdraw', 'withdraw_fee_rate'].includes(row.key_name) && String(val).trim() !== '' && Number.isFinite(Number(val))) val = Number(val);
+      else if (['booking_advance_days', 'booking_interval', 'deposit_amount', 'commission1', 'commission2', 'distribution_settle_days', 'min_withdraw', 'withdraw_fee_rate'].includes(row.key_name) && String(val).trim() !== '' && Number.isFinite(Number(val))) val = Number(val);
       settings[row.key_name] = val;
     });
     res.json({ code: 200, data: settings, configured });
@@ -7857,7 +7863,7 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
         if (key === 'auto_approve_withdraw' && val !== false && val !== 'false') {
           throw Object.assign(new Error('自动提现尚未接入，必须人工审核和真实打款'), { statusCode: 400 });
         }
-        if (['distribution_settle_days', 'min_withdraw', 'bank_min_withdraw', 'withdraw_fee_rate', 'commission1', 'commission2', 'deposit_amount', 'booking_interval'].includes(key) && (typeof val === 'boolean' || String(val).trim() === '')) {
+        if (['distribution_settle_days', 'min_withdraw', 'withdraw_fee_rate', 'commission1', 'commission2', 'deposit_amount', 'booking_interval'].includes(key) && (typeof val === 'boolean' || String(val).trim() === '')) {
           throw Object.assign(new Error('财务及预约数值必须明确填写'), { statusCode: 400 });
         }
         let strVal = String(val);
@@ -7873,14 +7879,13 @@ app.post('/api/admin/settings', authenticateToken, async (req, res) => {
             throw err;
           }
           strVal = String(days);
-        } else if (key === 'min_withdraw' || key === 'bank_min_withdraw') {
+        } else if (key === 'min_withdraw') {
           const minWithdraw = Number(val);
           if (!Number.isFinite(minWithdraw) || minWithdraw <= 0 || minWithdraw > 1000000) {
             const err = new Error('最低提现金额必须大于0且不超过1000000');
             err.statusCode = 400;
             throw err;
           }
-          if (key === 'bank_min_withdraw' && (!Number.isSafeInteger(Math.round(minWithdraw * 100)) || Math.abs(minWithdraw * 100 - Math.round(minWithdraw * 100)) > 1e-7)) throw Object.assign(new Error('银行卡最低提现金额最多保留两位小数'), { statusCode: 400 });
           strVal = String(minWithdraw);
         } else if (key === 'withdraw_fee_rate') {
           const feeRate = Number(val);

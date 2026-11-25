@@ -17,7 +17,7 @@ function unwrapList(response) {
 }
 
 function isExpertPost(post) {
-  return post.role === 'doctor' || post.role === 'expert';
+  return post.role === 'doctor' || post.role === 'expert' || post.hasRelatedDoctor === true;
 }
 
 function getCategoryClass(name) {
@@ -102,6 +102,7 @@ function normalizePost(post) {
     avatarBg: getAvatarColor(author || '友'),
     author,
     role,
+    hasRelatedDoctor: post.hasRelatedDoctor === true,
     isOfficial: role === 'admin',
     roleLabel: post.roleLabel || (role === 'doctor' ? '专家医生' : role === 'expert' ? '睡眠专家' : '鼾友'),
     roleClass: 'role--' + role,

@@ -80,30 +80,41 @@
 .input-wrap {
   display: flex;
   align-items: center;
-  padding: 16rpx 20rpx;
-  border-radius: 12rpx;
+  height: 96rpx;
+  box-sizing: border-box;
+  padding: 0 24rpx;
+  border: 1rpx solid rgba(59, 107, 245, 0.08);
+  border-radius: 18rpx;
   background: #f9fafb;
 }
 
 .amount-prefix {
   margin-right: 12rpx;
-  font-size: 36rpx;
+  flex-shrink: 0;
+  font-size: 28rpx;
   font-weight: 700;
   color: #f5a623;
 }
 
-.amount-input {
+.withdraw-input {
   flex: 1;
   min-width: 0;
-  font-size: 36rpx;
+  height: 100%;
+  font-size: 28rpx;
   color: #1f2937;
 }
 
-.bank-input {
-  flex: 1;
-  min-width: 0;
+.withdraw-input__placeholder {
   font-size: 28rpx;
-  color: #1f2937;
+  color: #6b7280;
+}
+
+.amount-error {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #b91c1c;
 }
 
 .method-row {
@@ -120,6 +131,10 @@
   border-radius: 12rpx;
 }
 
+.method-card--disabled {
+  background: #f3f4f6;
+}
+
 .method-card--active {
   border-color: #f5a623;
   background: #fff9e6;
@@ -129,6 +144,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 48rpx;
   height: 48rpx;
   margin-right: 12rpx;
@@ -137,17 +153,21 @@
 }
 
 .method-card--active .method-card__icon-wrap {
-  background: #f5a623;
+  background: #fde7b4;
 }
 
 .method-card__icon {
-  width: 26rpx;
-  height: 26rpx;
+  width: 30rpx;
+  height: 30rpx;
 }
 
 .method-card__label {
   font-size: 26rpx;
   color: #4b5563;
+}
+
+.method-card--disabled .method-card__label {
+  color: #6b7280;
 }
 
 .tip-box {
@@ -162,6 +182,105 @@
   font-size: 22rpx;
   line-height: 1.6;
   color: #92400e;
+}
+
+.saved-cards {
+  margin-bottom: 24rpx;
+}
+
+.saved-cards__header,
+.saved-card,
+.saved-card__title,
+.saved-card__actions,
+.bank-edit-actions {
+  display: flex;
+  align-items: center;
+}
+
+.saved-cards__header,
+.saved-card {
+  justify-content: space-between;
+}
+
+.saved-cards__header .form-label {
+  margin-bottom: 0;
+}
+
+.saved-card {
+  gap: 12rpx;
+  margin-top: 12rpx;
+  border: 2rpx solid #e5e7eb;
+  border-radius: 18rpx;
+}
+
+.saved-card--selected {
+  border-color: #f5a623;
+  background: #fff9e6;
+}
+
+.saved-card__details {
+  flex: 1;
+  min-width: 0;
+  padding: 16rpx 0 16rpx 20rpx;
+}
+
+.saved-card__title {
+  gap: 12rpx;
+}
+
+.saved-card__bank {
+  min-width: 0;
+  font-size: 28rpx;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.saved-card__selected {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  color: #92400e;
+}
+
+.saved-card__meta {
+  display: block;
+  font-size: 24rpx;
+  color: #6b7280;
+  overflow-wrap: anywhere;
+}
+
+.saved-card__actions {
+  flex-shrink: 0;
+  padding-right: 8rpx;
+}
+
+.card-action {
+  margin: 0;
+  padding: 12rpx 16rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  color: #2a52d4;
+}
+
+.card-action[disabled] {
+  color: #6b7280;
+  background: transparent;
+}
+
+.bank-form-title {
+  font-weight: 600;
+}
+
+.bank-edit-actions {
+  justify-content: flex-end;
+  gap: 16rpx;
+}
+
+.card-action--save {
+  padding-right: 32rpx;
+  padding-left: 32rpx;
+  border-radius: 12rpx;
+  color: #ffffff;
+  background: #3b6bf5;
 }
 
 .submit-button {
@@ -198,4 +317,33 @@
   width: 28rpx;
   height: 28rpx;
   flex-shrink: 0;
+}
+
+.wechat-auth {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 24rpx;
+  border-radius: 12rpx;
+  background: #f3f8f6;
+}
+
+.wechat-auth__text {
+  color: #475569;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.wechat-auth .card-action {
+  flex: 0 0 auto;
+  min-height: 72rpx;
+  border-radius: 10rpx;
+  color: #176343;
+  background: #e2f4ea;
+}
+
+.wechat-auth .card-action::after {
+  border: 0;
 }

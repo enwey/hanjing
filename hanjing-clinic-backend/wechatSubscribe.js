@@ -52,14 +52,19 @@ function character(value) {
   return { value: truncateValue(value, 32) || '-' };
 }
 
-function buildTemplateData(event, payload = {}) {
+export function buildTemplateData(event, payload = {}) {
   if (event === 'visit_reminder') {
     return {
       name1: name(payload.patientName || payload.storeName || '兴康明'),
       date3: date(payload.appointmentTime || payload.dateTime || payload.date || ''),
       thing69: thing(payload.doctorName || payload.storeName || '门诊服务'),
       phrase14: phrase(payload.status || payload.statusText || '提醒'),
-      character_string15: character(payload.appointmentNo || payload.remark || '请按时到诊')
+      character_string15: character(payload.appointmentNo || payload.remark || '请按时到诊'),
+      name2: name(payload.doctorName || '待安排'),
+      thing70: thing(payload.doctorName || '待安排'),
+      thing71: thing(payload.storeName || '兴康明诊所'),
+      thing72: thing(payload.remark || '请按预约时间到诊'),
+      time3: date(payload.appointmentTime || payload.dateTime || payload.date || '')
     };
   }
 
@@ -260,7 +265,9 @@ export async function sendWechatSubscribeMessage({ userId, event, businessId = '
     const defaultData = buildTemplateData(event, payload);
     const data = config?.mapping
       ? Object.fromEntries(Object.entries(config.mapping).map(([target, source]) => [target, defaultData[source]]))
-      : defaultData;
+      : event === visitReminderEvent
+        ? Object.fromEntries(Object.keys(defaultNotificationMapping(WECHAT_NOTIFICATION_EVENTS.find(item => item.event === event))).map(key => [key, defaultData[key]]))
+        : defaultData;
     const body = JSON.stringify({
       touser: user.openid,
       template_id: templateId,

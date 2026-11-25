@@ -65,7 +65,7 @@
       <text class="distribution-section__title">分销规则与说明</text>
     </view>
     <view class="distribution-rule-card">
-      <text class="distribution-rule-card__title">开通条件</text>
+      <text class="distribution-rule-card__title">如何成为分销员</text>
       <text wx:if="{{qualificationText}}" class="distribution-rule-card__desc">{{qualificationText}}</text>
       <text wx:else class="distribution-rule-card__desc">当前暂无分销开通说明</text>
     </view>
@@ -79,7 +79,7 @@
     </view>
 
     <view class="distribution-rule-card" wx:if="{{promotionWays.length}}">
-      <text class="distribution-rule-card__title">推广方式</text>
+      <text class="distribution-rule-card__title">如何推广拉新</text>
       <view wx:for="{{promotionWays}}" wx:key="index" class="distribution-rule-item">
         <text class="distribution-rule-item__index">{{index + 1}}</text>
         <text class="distribution-rule-item__text">{{item}}</text>
@@ -87,7 +87,7 @@
     </view>
 
     <view class="distribution-rule-card" wx:if="{{withdrawRules.length}}">
-      <text class="distribution-rule-card__title">提现规则</text>
+      <text class="distribution-rule-card__title">佣金提现说明</text>
       <view wx:for="{{withdrawRules}}" wx:key="index" class="distribution-rule-item">
         <text class="distribution-rule-item__index">{{index + 1}}</text>
         <text class="distribution-rule-item__text">{{item}}</text>

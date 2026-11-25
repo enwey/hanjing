@@ -1,18 +1,63 @@
 <view class="container community-detail-page">
-  <hj-navbar title="帖子详情" showBack="{{true}}" />
+  <hj-navbar id="post-detail-navbar" title="帖子详情" showBack="{{true}}" />
 
-  <view wx:if="{{loading}}" class="page-section state-card">
-    <text class="state-title">正在加载帖子详情...</text>
-    <text class="state-desc">请稍候，社区内容正在同步。</text>
+  <view wx:if="{{loading}}" class="community-detail-content detail-loading" aria-label="正在加载帖子详情">
+    <view class="post-card" aria-hidden="{{true}}">
+      <view class="post-header">
+        <view class="post-avatar detail-loading__block"></view>
+        <view class="post-author">
+          <view class="detail-loading__block detail-loading__author"></view>
+          <view class="detail-loading__block detail-loading__meta"></view>
+        </view>
+      </view>
+      <view class="detail-loading__block detail-loading__title"></view>
+      <view class="detail-loading__body">
+        <view class="detail-loading__block detail-loading__line"></view>
+        <view class="detail-loading__block detail-loading__line detail-loading__line--medium"></view>
+        <view class="detail-loading__block detail-loading__line detail-loading__line--short"></view>
+      </view>
+      <view class="post-tags">
+        <view class="detail-loading__block detail-loading__tag"></view>
+        <view class="detail-loading__block detail-loading__tag"></view>
+      </view>
+      <view class="post-actions">
+        <view wx:for="{{[1, 2, 3, 4]}}" wx:key="*this" class="detail-loading__action">
+          <view class="detail-loading__block detail-loading__action-mark"></view>
+        </view>
+      </view>
+    </view>
+    <view class="comment-section" aria-hidden="{{true}}">
+      <view class="comment-section__header">
+        <view class="detail-loading__block detail-loading__section-title"></view>
+      </view>
+      <view wx:for="{{[1, 2]}}" wx:key="*this" class="comment-item detail-loading__comment">
+        <view class="comment-item__avatar detail-loading__block"></view>
+        <view class="comment-item__main">
+          <view class="detail-loading__block detail-loading__author"></view>
+          <view class="detail-loading__block detail-loading__line detail-loading__line--medium"></view>
+          <view class="detail-loading__block detail-loading__line detail-loading__line--short"></view>
+          <view class="detail-loading__block detail-loading__comment-action"></view>
+        </view>
+      </view>
+    </view>
+    <view class="comment-bar detail-loading__footer" aria-hidden="{{true}}">
+      <view class="comment-bar__row">
+        <view class="comment-bar__avatar detail-loading__block"></view>
+        <view class="detail-loading__block detail-loading__field"></view>
+        <view class="detail-loading__block detail-loading__switch"></view>
+      </view>
+    </view>
   </view>
 
-  <view wx:elif="{{loadError}}" class="page-section state-card state-card--error">
-    <text class="state-title">加载失败</text>
-    <text class="state-desc">{{loadError}}</text>
-    <view class="state-button" bindtap="retryLoad">重新加载</view>
+  <view wx:elif="{{loadError}}" class="community-detail-content">
+    <view class="post-card state-card">
+      <text class="state-title">加载失败</text>
+      <text class="state-desc">{{loadError}}</text>
+      <button wx:if="{{postId}}" class="state-button" bindtap="retryLoad">重新加载</button>
+    </view>
   </view>
 
-  <view wx:elif="{{postDetail}}" class="community-detail-content">
+  <view wx:elif="{{postDetail}}" class="community-detail-content" bindtap="dismissCommentInput">
     <view class="post-card">
       <view class="post-header">
         <view class="post-avatar">
@@ -30,42 +75,46 @@
           </view>
           <text class="post-author__time">{{postDetail.displayTime}}</text>
         </view>
-        <view class="post-report" bindtap="reportPost">
+        <button class="post-report" bindtap="reportPost">
           <image class="post-report__icon" src="/static/icons/alert.svg" mode="aspectFit"></image>
           <text class="post-report__text">举报</text>
-        </view>
+        </button>
       </view>
 
       <text class="post-title">{{postDetail.title}}</text>
       <rich-text class="post-rich-content" nodes="{{postDetail.richContent}}"></rich-text>
       <image wx:if="{{postDetail.coverUrl}}" class="post-cover" src="{{postDetail.coverUrl}}" mode="aspectFill"></image>
 
-      <view class="post-tags">
+      <view wx:if="{{postDetail.category || postDetail.labels.length}}" class="post-tags">
         <text wx:if="{{postDetail.category}}" class="post-category {{postDetail.categoryClass}}">{{postDetail.category}}</text>
         <text wx:for="{{postDetail.labels}}" wx:key="*this" class="post-tag">{{item}}</text>
       </view>
 
       <view class="post-actions">
-        <view class="post-action" bindtap="handlePostLike">
-          <image class="post-action__icon {{postDetail.isLiked ? 'post-action__icon--liked' : ''}}" src="{{postDetail.isLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg'}}" mode="aspectFit"></image>
+        <button class="post-action {{postDetail.isLiked ? 'post-action--liked' : ''}}"
+          aria-label="{{(postDetail.isLiked ? '取消点赞，' : '点赞，') + postDetail.likes}}"
+          bindtap="handlePostLike">
+          <image class="post-action__icon" src="{{postDetail.isLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg'}}" mode="aspectFit" />
           <text class="post-action__count">{{postDetail.likes}}</text>
-        </view>
-        <view class="post-action post-action--passive">
-          <image class="post-action__icon" src="/static/icons/chat.svg" mode="aspectFit"></image>
+        </button>
+        <button class="post-action" catchtap="jumpToComments" aria-label="{{'查看评论，' + postDetail.commentsCount + ' 条'}}">
+          <image class="post-action__icon" src="/static/icons/community-comment.svg" mode="aspectFit" />
           <text class="post-action__count">{{postDetail.commentsCount}}</text>
-        </view>
-        <view class="post-action" bindtap="handlePostFavorite">
-          <image class="post-action__icon {{postDetail.isFavorited ? 'post-action__icon--liked' : 'post-action__icon--muted'}}" src="/static/icons/star-filled.svg" mode="aspectFit"></image>
+        </button>
+        <button class="post-action {{postDetail.isFavorited ? 'post-action--favorited' : ''}}"
+          aria-label="{{(postDetail.isFavorited ? '取消收藏，' : '收藏，') + postDetail.favoritesCount}}"
+          bindtap="handlePostFavorite">
+          <image class="post-action__icon" src="{{postDetail.isFavorited ? '/static/icons/star-filled.svg' : '/static/icons/community-favorite.svg'}}" mode="aspectFit" />
           <text class="post-action__count">{{postDetail.favoritesCount}}</text>
-        </view>
-        <button class="post-action post-action--share" open-type="share">
-          <image class="post-action__icon" src="/static/icons/paper-plane.svg" mode="aspectFit"></image>
+        </button>
+        <button class="post-action" open-type="share" aria-label="{{'分享，' + postDetail.sharesCount}}">
+          <image class="post-action__icon" src="/static/icons/paper-plane.svg" mode="aspectFit" />
           <text class="post-action__count">{{postDetail.sharesCount}}</text>
         </button>
       </view>
     </view>
 
-    <view class="comment-section">
+    <view id="post-comments" class="comment-section">
       <view class="comment-section__header">
         <text class="comment-section__title">全部评论</text>
         <text class="comment-section__total">{{postDetail.commentsCount}} 条</text>
@@ -73,24 +122,30 @@
 
       <view wx:if="{{commentsList.length}}" class="comment-list">
         <view wx:for="{{commentsList}}" wx:key="id" id="comment-{{item.id}}" class="comment-item {{highlightCommentId === item.id ? 'comment-item--highlight' : ''}}">
-          <view class="comment-item__header">
-            <view class="comment-item__avatar">
-              <image class="comment-item__avatar-placeholder" src="/static/images/brand-logo-v20261105.png" mode="aspectFill"></image>
-              <image wx:if="{{item.avatar}}" class="comment-item__avatar-image {{item.avatarLoaded ? 'comment-item__avatar-image--loaded' : ''}}" src="{{item.avatar}}" mode="aspectFill" data-comment-id="{{item.id}}" bindload="handleCommentAvatarLoad" binderror="handleCommentAvatarError"></image>
-            </view>
-            <view class="comment-item__info">
+          <view class="comment-item__avatar">
+            <image class="comment-item__avatar-placeholder" src="/static/images/brand-logo-v20261105.png" mode="aspectFill" />
+            <image wx:if="{{item.avatar}}" class="comment-item__avatar-image {{item.avatarLoaded ? 'comment-item__avatar-image--loaded' : ''}}" src="{{item.avatar}}" mode="aspectFill" data-comment-id="{{item.id}}" bindload="handleCommentAvatarLoad" binderror="handleCommentAvatarError" />
+          </view>
+          <view class="comment-item__main">
+            <view class="comment-item__header">
               <text class="comment-item__author">{{item.author}}</text>
               <text class="comment-item__time">{{item.displayTime}}</text>
             </view>
-          </view>
-          <text wx:if="{{item.parentAuthor}}" class="comment-item__reply-prefix">回复 {{item.parentAuthor}}：</text>
-          <text class="comment-item__content">{{item.content}}</text>
-          <view class="comment-item__actions">
-            <view class="comment-item__action" bindtap="handleCommentLike" data-comment-id="{{item.id}}">
-              <image class="comment-item__action-icon {{item.isLiked ? 'comment-item__action-icon--liked' : ''}}" src="{{item.isLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg'}}" mode="aspectFit"></image>
-              <text class="comment-item__action-count">{{item.likes}}</text>
+            <view class="comment-item__content">
+              <text wx:if="{{item.parentAuthor}}" class="comment-item__reply-prefix">回复 {{item.parentAuthor}}：</text><text>{{item.content}}</text>
             </view>
-            <text class="comment-item__reply-link" bindtap="handleReply" data-comment-id="{{item.id}}">回复</text>
+            <view class="comment-item__actions">
+              <button class="comment-item__action {{item.isLiked ? 'comment-item__action--liked' : ''}}"
+                bindtap="handleCommentLike" data-comment-id="{{item.id}}"
+                aria-label="{{(item.isLiked ? '取消点赞，' : '点赞，') + item.likes}}">
+                <image class="comment-item__action-icon" src="{{item.isLiked ? '/static/icons/heart-active.svg' : '/static/icons/heart.svg'}}" mode="aspectFit" />
+                <text>{{item.likes}}</text>
+              </button>
+              <button class="comment-item__action comment-item__reply-link" catchtap="handleReply" data-comment-id="{{item.id}}">
+                <image class="comment-item__action-icon" src="/static/icons/community-comment.svg" mode="aspectFit" />
+                <text>回复</text>
+              </button>
+            </view>
           </view>
         </view>
       </view>
@@ -101,53 +156,66 @@
       </view>
     </view>
 
-    <view class="community-detail-content__safe-space"></view>
+    <view class="community-detail-content__safe-space"
+      style="height: calc({{32 + (replyTarget ? 8 : 0)}}rpx + max({{36 + commentLines * 44}}rpx, 44px) + {{replyTarget ? 44 : 0}}px + {{keyboardHeight}}px + {{keyboardHeight ? '0px' : 'env(safe-area-inset-bottom, 0px)'}} + {{!keyboardHeight && (composerMode === 'emoji' || keepEmojiPanel) ? 'min(' + emojiPanelHeight + 'px, 48vh)' : '0px'}});"></view>
   </view>
 
-  <view wx:if="{{postDetail}}" class="comment-bar">
-    <view class="comment-bar__row {{composerExpanded ? 'comment-bar__row--expanded' : ''}}">
+  <view wx:if="{{postDetail && !loading && !loadError}}" class="comment-bar {{keyboardHeight ? 'comment-bar--keyboard' : ''}}" style="bottom: {{keyboardHeight}}px;">
+    <view wx:if="{{replyTarget}}" class="comment-bar__reply">
+      <text class="comment-bar__reply-name">回复 {{replyTarget.author || '该评论'}}</text>
+      <button class="comment-bar__close" bindtap="clearReplyTarget" disabled="{{isSubmitting}}" aria-label="取消回复">×</button>
+    </view>
+    <view class="comment-bar__row">
       <view class="comment-bar__avatar">
         <image class="comment-bar__avatar-placeholder" src="/static/images/brand-logo-v20261105.png" mode="aspectFill"></image>
         <image wx:if="{{currentUserAvatar.avatar}}" class="comment-bar__avatar-image {{currentUserAvatar.avatarLoaded ? 'comment-bar__avatar-image--loaded' : ''}}" src="{{currentUserAvatar.avatar}}" mode="aspectFill" bindload="handleCurrentUserAvatarLoad" binderror="handleCurrentUserAvatarError"></image>
       </view>
-      <view class="comment-bar__field {{composerExpanded ? 'comment-bar__field--expanded' : ''}}" bindtap="openComposer">
-        <input
-          wx:if="{{!composerExpanded}}"
-          class="comment-bar__input-inline"
-          placeholder="{{replyTarget ? '回复 @' + replyTarget.author : '理性发言，友善互动'}}"
-          confirm-type="send"
-          focus="{{composerFocus}}"
-          value="{{commentInput}}"
-          bindfocus="handleComposerFocus"
-          bindblur="handleComposerBlur"
-          bindinput="handleCommentInput"
-          bindconfirm="submitComment"
-        />
+      <view class="comment-bar__field" bindtap="focusComposer">
         <textarea
-          wx:else
-          class="comment-bar__textarea comment-bar__textarea--expanded"
-          placeholder="{{replyTarget ? '回复 @' + replyTarget.author : '理性发言，友善互动'}}"
-          maxlength="500"
-          auto-height="{{true}}"
+          id="comment-composer"
+          class="comment-bar__textarea"
+          style="height: {{commentLines * 44}}rpx;"
+          placeholder="理性发言，友善互动"
+          placeholder-class="comment-bar__placeholder"
+          maxlength="{{commentLimit}}"
           fixed="{{true}}"
-          cursor-spacing="16"
+          adjust-position="{{false}}"
+          disable-default-padding="{{true}}"
           show-confirm-bar="{{false}}"
+          confirm-type="send"
+          confirm-hold="{{true}}"
           hold-keyboard="{{true}}"
           focus="{{composerFocus}}"
+          cursor="{{commentCursor}}"
           value="{{commentInput}}"
+          disabled="{{isSubmitting}}"
           bindfocus="handleComposerFocus"
           bindblur="handleComposerBlur"
           bindinput="handleCommentInput"
           bindconfirm="submitComment"
+          bindlinechange="handleCommentLineChange"
+          bindkeyboardheightchange="handleKeyboardHeight"
         />
-        <view wx:if="{{composerExpanded}}" class="comment-bar__tools">
-          <view class="comment-bar__tool">☺</view>
-          <view class="comment-bar__send {{!canSubmitComment ? 'comment-bar__send--disabled' : ''}}" bindtap="submitComment">{{isSubmitting ? '发布中' : '发布'}}</view>
+      </view>
+      <button class="comment-bar__emoji-toggle {{composerMode === 'emoji' ? 'comment-bar__emoji-toggle--active' : ''}}"
+        aria-label="{{composerMode === 'emoji' ? '切换到键盘' : '打开表情'}}"
+        disabled="{{isSubmitting || (composerMode === 'emoji' && keyboardHeight > 0)}}"
+        bindtap="toggleCommentEmoji">
+        <image class="comment-bar__toggle-icon"
+          src="{{composerMode === 'emoji' ? '/static/icons/comment-keyboard.svg' : '/static/icons/comment-emoji.svg'}}" mode="aspectFit" />
+      </button>
+    </view>
+    <view wx:if="{{!keyboardHeight && (composerMode === 'emoji' || keepEmojiPanel)}}"
+      class="comment-emoji-panel" style="height: {{emojiPanelHeight}}px;">
+      <scroll-view class="comment-emoji-panel__scroll" scroll-y="{{true}}">
+        <view class="comment-emoji-panel__grid">
+          <button wx:for="{{commentEmojis}}" wx:key="*this" class="comment-emoji-panel__emoji"
+            data-emoji="{{item}}" aria-label="{{item}}" disabled="{{isSubmitting || composerMode !== 'emoji'}}" bindtap="insertCommentEmoji">{{item}}</button>
         </view>
-        <block wx:else>
-          <view wx:if="{{canSubmitComment || isSubmitting}}" class="comment-bar__send {{!canSubmitComment ? 'comment-bar__send--disabled' : ''}}" bindtap="submitComment">{{isSubmitting ? '发送中' : '发送'}}</view>
-          <view wx:else class="comment-bar__emoji">🙂</view>
-        </block>
+      </scroll-view>
+      <view class="comment-emoji-panel__actions">
+        <button class="comment-emoji-panel__delete" aria-label="删除光标前一个字符"
+          disabled="{{!commentInput || isSubmitting || composerMode !== 'emoji'}}" bindtap="deleteCommentCharacter">⌫</button>
       </view>
     </view>
   </view>

@@ -332,14 +332,15 @@ async function requestWechatPayV2Xml(urlPath, params) {
   };
 }
 
-async function requestWechatPay(method, urlPath, data) {
-  const config = await getWechatPayConfig();
+async function requestWechatPay(method, urlPath, data, transferConfig, headers = {}) {
+  const config = transferConfig || await getWechatPayConfig();
   const body = data ? JSON.stringify(data) : '';
   const auth = buildWechatPayAuthorization(method, urlPath, body, config);
   const response = await fetch(`${WECHAT_PAY_HOST}${urlPath}`, {
     signal: AbortSignal.timeout(10000),
     method,
     headers: {
+      ...headers,
       Authorization: auth.authorization,
       Accept: 'application/json',
       'Content-Type': 'application/json'
@@ -355,7 +356,7 @@ async function requestWechatPay(method, urlPath, data) {
     err.data = result;
     throw err;
   }
-  if (!await verifyWechatPayCallback({ get: name => response.headers.get(name) }, responseBody)) {
+  if (!await verifyWechatPayCallback({ get: name => response.headers.get(name) }, responseBody, transferConfig)) {
     throw Object.assign(new Error('微信支付应答验签失败，结果未确认'), { statusCode: 502 });
   }
   return result;
@@ -512,8 +513,8 @@ export async function queryWechatRefund(outRefundNo) {
   return requestWechatPay('GET', `/v3/refund/domestic/refunds/${encodeURIComponent(outRefundNo)}`);
 }
 
-export async function decryptWechatPayResource(resource) {
-  const config = await getWechatPayConfig();
+export async function decryptWechatPayResource(resource, transferConfig) {
+  const config = transferConfig || await getWechatPayConfig();
   const decipher = crypto.createDecipheriv(
     'aes-256-gcm',
     Buffer.from(config.apiV3Key, 'utf8'),
@@ -527,8 +528,9 @@ export async function decryptWechatPayResource(resource) {
   return JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8'));
 }
 
-export async function verifyWechatPayCallback(req, rawBody) {
-  const config = await readPayConfig();
+export async function verifyWechatPayCallback(req, rawBody, transferConfig) {
+  const config = transferConfig || await readPayConfig();
+  if (transferConfig && req.get('Wechatpay-Serial') !== config.platformSerial) return false;
   if (!config.platformCert) {
     return false;
   }
@@ -546,4 +548,40 @@ export async function verifyWechatPayCallback(req, rawBody) {
     config.platformCert,
     Buffer.from(signature, 'base64')
   );
+}
+
+export async function getWechatTransferGateway() {
+  const config = await readPayConfig();
+  if (!config.appId || !config.mchId || !config.serialNo || !config.privateKey
+    || !config.platformCert || Buffer.byteLength(config.apiV3Key) !== 32) return null;
+  try {
+    if (crypto.createPrivateKey(config.privateKey).asymmetricKeyType !== 'rsa'
+      || crypto.createPublicKey(config.platformCert).asymmetricKeyType !== 'rsa') return null;
+    config.platformSerial = config.platformCert.includes('BEGIN CERTIFICATE')
+      ? new crypto.X509Certificate(config.platformCert).serialNumber
+      : process.env.WECHAT_PAY_PLATFORM_PUBLIC_KEY_ID;
+    if (!config.platformSerial) return null;
+  } catch {
+    return null;
+  }
+  return {
+    appId: config.appId,
+    mchId: config.mchId,
+    request(method, path, payload, realName) {
+      const headers = { 'Wechatpay-Serial': config.platformSerial };
+      if (!realName) return requestWechatPay(method, path, payload, config, headers);
+      const userName = crypto.publicEncrypt({
+        key: config.platformCert,
+        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+        oaepHash: 'sha1'
+      }, Buffer.from(realName, 'utf8')).toString('base64');
+      return requestWechatPay(method, path, { ...payload, user_name: userName }, config, headers);
+    },
+    async readNotification(req) {
+      if (!Buffer.isBuffer(req.body) || !await verifyWechatPayCallback(req, req.body.toString('utf8'), config)) return null;
+      const event = JSON.parse(req.body.toString('utf8'));
+      if (event.resource?.algorithm !== 'AEAD_AES_256_GCM') return null;
+      return { type: event.event_type, data: await decryptWechatPayResource(event.resource, config) };
+    }
+  };
 }

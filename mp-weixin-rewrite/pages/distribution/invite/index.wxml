@@ -26,7 +26,8 @@
       <view class="invite-steps">
         <view><text class="invite-step-number">1</text><text class="invite-step-title">分享邀请</text><text class="invite-step-desc">发送好友或分享海报</text></view>
         <view><text class="invite-step-number">2</text><text class="invite-step-title">好友加入</text><text class="invite-step-desc">完成邀请绑定</text></view>
-        <view><text class="invite-step-number">3</text><text class="invite-step-title">获得奖励</text><text class="invite-step-desc">按推广规则结算</text></view>
+        <view><text class="invite-step-number">3</text><text class="invite-step-title">好友下单</text><text class="invite-step-desc">购买推广商品并支付</text></view>
+        <view><text class="invite-step-number">4</text><text class="invite-step-title">获得佣金</text><text class="invite-step-desc">按推广规则结算</text></view>
       </view>
     </view>
     <view class="invite-rules">
@@ -34,9 +35,15 @@
       <text wx:if="{{rulesLoading && !ruleSections.length}}" class="invite-rules__status">加载中</text>
       <button wx:elif="{{rulesError}}" class="invite-rules__retry" bindtap="loadInviteRules">规则加载失败，点击重试</button>
       <text wx:elif="{{!ruleSections.length}}" class="invite-rules__status">暂无邀请规则</text>
-      <view wx:for="{{ruleSections}}" wx:for-item="section" wx:key="title" class="invite-rules__section">
+      <view wx:for="{{ruleSections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="title" class="invite-rules__section">
         <text class="invite-rules__heading">{{section.title}}</text>
-        <text wx:for="{{section.items}}" wx:for-item="rule" wx:key="*this" class="invite-rules__item">{{rule}}</text>
+        <block wx:for="{{section.items}}" wx:for-item="rule" wx:for-index="ruleIndex" wx:key="*this">
+          <text wx:if="{{sectionIndex === 0}}" class="invite-rules__desc">{{rule}}</text>
+          <view wx:else class="invite-rules__item">
+            <text class="invite-rules__index">{{ruleIndex + 1}}</text>
+            <text class="invite-rules__text">{{rule}}</text>
+          </view>
+        </block>
       </view>
     </view>
   </view>

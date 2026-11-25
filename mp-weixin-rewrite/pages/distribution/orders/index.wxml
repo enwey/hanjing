@@ -22,8 +22,8 @@
       <text class="state-text">{{loadError}}</text>
     </view>
 
-    <view class="state-card" wx:elif="{{!visibleOrders.length}}">
-      <hj-empty title="暂无推广订单" icon="/static/icons/paper-plane.svg" />
+    <view class="distribution-empty" wx:elif="{{!visibleOrders.length}}">
+      <hj-empty title="暂无推广订单" icon="/static/icons/report.svg" />
     </view>
 
     <view wx:else class="distribution-order-list">

@@ -1,0 +1,16 @@
+.activity-page { min-height: 100vh; background: #f5f6f8; }
+.activity-content { padding: 24rpx 24rpx calc(40rpx + env(safe-area-inset-bottom, 0px)); }
+.activity-tabs { display: flex; padding: 8rpx; border-radius: 20rpx; background: #fff; }
+.activity-tab { flex: 1; min-width: 0; padding: 16rpx 0; border-radius: 16rpx; text-align: center; color: #6b7280; font-size: 26rpx; line-height: 1.5; }
+.activity-tab--active { background: #3b6bf5; color: #fff; font-weight: 600; }
+.activity-state, .activity-empty { min-height: 55vh; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #6b7280; font-size: 28rpx; text-align: center; }
+.activity-retry { margin-top: 24rpx; padding: 0 32rpx; border-radius: 16rpx; background: #eef4ff; color: #3b6bf5; font-size: 26rpx; line-height: 2.8; }
+.activity-retry::after { border: 0; }
+.activity-list { padding-top: 20rpx; }
+.activity-card { padding: 28rpx; margin-bottom: 16rpx; border-radius: 24rpx; background: #fff; }
+.activity-title, .activity-comment { display: block; color: #1f2937; font-size: 30rpx; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; }
+.activity-title--secondary { margin-top: 12rpx; color: #6b7280; font-size: 25rpx; font-weight: 400; }
+.activity-comment { font-size: 28rpx; font-weight: 500; }
+.activity-summary { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; margin-top: 10rpx; color: #6b7280; font-size: 26rpx; line-height: 1.65; overflow-wrap: anywhere; }
+.activity-time { display: block; margin-top: 16rpx; color: #9ca3af; font-size: 24rpx; line-height: 1.5; }
+.activity-more { padding: 24rpx; text-align: center; color: #6b7280; font-size: 25rpx; }

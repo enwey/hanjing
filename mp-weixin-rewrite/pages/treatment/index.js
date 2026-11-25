@@ -435,6 +435,7 @@ Page({
       const timeline = unwrapList(timelineRes);
       const hasTreatmentRecord = !!treatmentRecord;
       const hasRealTreatmentRecord = !!(treatmentRecord && treatmentRecord.isRealTreatmentRecord);
+      const doctorName = typeof treatmentRecord?.doctorName === 'string' ? treatmentRecord.doctorName.trim() : '';
       const heroCompliance = Number(summary.weekCompliance != null ? summary.weekCompliance : summary.compliance || 0);
 
       patientContextStore.setCurrentPatientId(this.selectedPatientId);
@@ -452,7 +453,7 @@ Page({
         hasRealTreatmentRecord,
         heroBadgeText: hasTreatmentRecord ? '治疗中' : '未开始',
         heroDeviceText: (treatmentRecord && treatmentRecord.deviceModel) || '暂无治疗记录',
-        heroDoctorText: hasTreatmentRecord ? `主治：${(treatmentRecord && treatmentRecord.doctorName) || '--'} 医生` : '完成初诊适配后将在此展示',
+        heroDoctorText: doctorName && doctorName !== '--' ? `主治：${doctorName} 医生` : '',
         heroStartText: hasTreatmentRecord ? `初配日期：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '初配日期：--',
         treatmentStatusLabel: hasTreatmentRecord ? '治疗中' : '未开始',
         heroSubText: hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无诊疗记录',

@@ -1,3 +1,4 @@
+import { authorizationCallbackPath, processWechatWithdrawals, receiveWechatAuthorization } from './wechat-withdrawals.js';
 import { processInAppReminders, processNotificationOutbox } from './notification-center.js';
 import { getPublicOrigin, normalizeAssetResponses } from './public-urls.js';
 import express from 'express';
@@ -25,6 +26,7 @@ app.use('/api/', createRateLimiter());
 app.use('/api/v1/appointments/pay-callback', express.raw({ type: 'application/json' }));
 app.use('/api/v1/orders/pay-callback', express.raw({ type: 'application/json' }));
 app.use('/api/v1/pay/refund-callback', express.raw({ type: 'application/json' }));
+app.use(authorizationCallbackPath, express.raw({ type: 'application/json', limit: '16kb' }));
 app.use(express.json({ limit: '10mb' }));
 
 const writeAccessLog = createRotatingLog(`./logs/requests-${process.pid}.log`);
@@ -60,6 +62,8 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+app.post(authorizationCallbackPath, receiveWechatAuthorization);
 
 import { initWebSocket } from './im-socket.js';
 
@@ -137,6 +141,7 @@ const startServer = async () => {
         try { await processVisitReminders(); } catch(error) { console.error('Wechat visit reminders failed:', error.message); }
         try { await processInAppReminders(); } catch(error) { console.error('In-app notification reminders failed:', error.message); }
         try { await processNotificationOutbox(); } catch(error) { console.error('In-app notification delivery retry failed:', error.message); }
+        try { await processWechatWithdrawals(); } catch (error) { console.error('Wechat withdrawal job failed:', error.code || error.name); }
         jobRunning = false;
       }
     }, 60000);

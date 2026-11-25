@@ -3,6 +3,15 @@ const subscribe = require('../../../common/utils/subscribe');
 const sessionStore = require('../../../stores/session-store');
 const { formatChinaDate } = require('../../../common/utils/date-time');
 
+const WECHAT_PAYOUT_LABELS = {
+  queued: '等待打款',
+  processing: '打款中',
+  reconcile: '到账确认中',
+  SUCCESS: '已到账',
+  FAIL: '打款失败，已退回余额',
+  CANCELLED: '打款关闭，已退回余额',
+};
+
 const STATUS_LABEL_MAP = {
   pending: '待审核',
   processing: '处理中',
@@ -78,7 +87,9 @@ Page({
           amountLabel: '¥' + (Number(record.amount || 0) / 100).toFixed(2),
           accountLabel,
           status: record.status || '',
-          statusLabel: STATUS_LABEL_MAP[record.status] || '状态待确认',
+          statusStyle: record.wechatPayoutState && record.status === 'approved' ? 'processing'
+            : record.wechatPayoutState === 'SUCCESS' ? 'success' : record.status,
+          statusLabel: WECHAT_PAYOUT_LABELS[record.wechatPayoutState] || STATUS_LABEL_MAP[record.status] || '状态待确认',
           createdDate: formatChinaDate(record.createdAt || ''),
         };
       });

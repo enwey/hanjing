@@ -7,24 +7,22 @@ export function businessError(message, statusCode = 400) {
 
 export async function getDistributionFeatureConfig(conn = null) {
   const sql = `SELECT key_name, key_value FROM system_settings
-    WHERE key_name IN ('distribution_settle_days','enable_distribution','min_withdraw','bank_min_withdraw','withdraw_fee_rate')`;
+    WHERE key_name IN ('distribution_settle_days','enable_distribution','min_withdraw','withdraw_fee_rate')`;
   const rows = conn ? (await conn.execute(sql))[0] : await query(sql);
   const values = Object.fromEntries(rows.map(row => [row.key_name, row.key_value]));
-  if (['distribution_settle_days', 'enable_distribution', 'min_withdraw', 'withdraw_fee_rate'].some(key => values[key] == null || String(values[key]).trim() === '') || (values.bank_min_withdraw != null && String(values.bank_min_withdraw).trim() === '')) {
+  if (['distribution_settle_days', 'enable_distribution', 'min_withdraw', 'withdraw_fee_rate'].some(key => values[key] == null || String(values[key]).trim() === '')) {
     throw businessError('请先配置结算天数、分销开关、最低提现金额和手续费率', 503);
   }
   const settleDays = Number(values.distribution_settle_days);
   const minWithdrawAmount = Math.round(Number(values.min_withdraw) * 100);
-  const bankMinWithdrawAmount = values.bank_min_withdraw == null ? minWithdrawAmount : Math.round(Number(values.bank_min_withdraw) * 100);
   const rate = Number(values.withdraw_fee_rate);
   if (!Number.isSafeInteger(settleDays) || settleDays < 0 ||
       !Number.isSafeInteger(minWithdrawAmount) || minWithdrawAmount <= 0 ||
-      !Number.isSafeInteger(bankMinWithdrawAmount) || bankMinWithdrawAmount <= 0 ||
       !Number.isFinite(rate) || rate < 0 || rate >= 100 ||
       !['true', 'false'].includes(String(values.enable_distribution))) {
     throw businessError('分销财务配置无效，请联系运营人员', 503);
   }
-  return { settleDays, minWithdrawAmount, bankMinWithdrawAmount: Math.max(minWithdrawAmount, bankMinWithdrawAmount), enableDistribution: String(values.enable_distribution) === 'true',
+  return { settleDays, minWithdrawAmount, enableDistribution: String(values.enable_distribution) === 'true',
     withdrawFeeRates: { wechat: 0, bank: rate / 100 }, eligibleLevels: ['gold', 'diamond'] };
 }
 
@@ -98,10 +96,27 @@ export async function settleCommissions(userId = null, distributorId = null) {
   return settled;
 }
 
-export async function reviewWithdrawal(id, approve, remark) {
+export async function reviewWithdrawal(id, approve, remark, wechatReview = {}) {
   return transaction(async (conn) => {
     const [[record]] = await conn.execute('SELECT * FROM withdraw_records WHERE id = ? FOR UPDATE', [id]);
     if (!record || record.status !== 'pending') throw businessError('提现记录不存在或已审核', 409);
+    const [[transfer]] = await conn.execute(
+      'SELECT state FROM wechat_withdraw_transfers WHERE withdraw_id=? FOR UPDATE', [id]
+    );
+    if (transfer) {
+      if (wechatReview.scope) {
+        const { sql, params } = wechatReview.scope;
+        const [[visible]] = await conn.execute(`SELECT w.id FROM withdraw_records w WHERE w.id=? AND ${sql}`, [id, ...params]);
+        if (!visible) throw businessError('提现记录不存在', 404);
+      }
+      if (approve && !wechatReview.canPay) throw businessError('审核微信零钱提现需要打款权限', 403);
+      if (transfer.state !== 'awaiting_review') throw businessError('提现记录已处理', 409);
+      if (approve) {
+        await conn.execute("UPDATE wechat_withdraw_transfers SET state='queued', next_attempt_at=NOW(3) WHERE withdraw_id=?", [id]);
+      } else {
+        await conn.execute("UPDATE wechat_withdraw_transfers SET state='rejected', real_name_encrypted=NULL WHERE withdraw_id=?", [id]);
+      }
+    }
     await conn.execute(
       `UPDATE withdraw_records SET status = ?, remark = ?, reviewed_at = CURRENT_TIMESTAMP,
        completed_at = NULL WHERE id = ?`, [approve ? 'approved' : 'failed', remark, id]
@@ -109,8 +124,8 @@ export async function reviewWithdrawal(id, approve, remark) {
     if (!approve) {
       await conn.execute(`UPDATE distributors SET available_commission = available_commission + ? WHERE ${record.distributor_id?'id':'user_id'} = ?`, [record.amount, record.distributor_id||record.user_id]);
     }
-    if(record.user_id) await writeNotification(conn, {userId:record.user_id, title:approve ? '提现审核通过' : '提现申请已驳回', content:approve ? '提现审核通过，等待实际打款。' : `提现已驳回，¥${(record.amount / 100).toFixed(2)} 已退回余额。${remark}`, type:"promo", businessType:"withdraw", businessId:record.id});
-    return record;
+    if(record.user_id) await writeNotification(conn, {userId:record.user_id, title:approve ? '提现审核通过' : '提现申请已驳回', content:approve ? (transfer ? '提现审核通过，系统将转入微信零钱。' : '提现审核通过，等待实际打款。') : `提现已驳回，¥${(record.amount / 100).toFixed(2)} 已退回余额。${remark}`, type:"promo", businessType:"withdraw", businessId:record.id});
+    return { ...record, wechatPayout: Boolean(transfer) };
   });
 }
 
@@ -122,7 +137,7 @@ export async function confirmWithdrawalPaid(id, reference) {
     if (!record || record.status !== 'approved') throw businessError('只有审核通过且尚未打款的记录可以确认', 409);
     let account;
     try { account = JSON.parse(record.account_info); } catch {}
-    if (account?.method !== 'bank') throw businessError('自动转账尚未接入，此处仅可登记实际完成的银行转账', 503);
+    if (account?.method !== 'bank') throw businessError('此处仅可登记实际完成的银行转账', 503);
     await conn.execute(
       "UPDATE withdraw_records SET status = 'paid', payout_reference = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?",
       [receipt, id]

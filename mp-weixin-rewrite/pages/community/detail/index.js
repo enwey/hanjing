@@ -3,6 +3,34 @@ const api = require('../../../api/index');
 const { formatChinaDateTime } = require('../../../common/utils/date-time');
 const { articleRichText } = require('../utils/article-rich-text');
 
+const COMMENT_LIMIT = 500;
+const COMMENT_EMOJIS = [
+  '😀', '😄', '😂', '😊', '😍', '🥰', '😘', '😎',
+  '🤔', '😅', '🥹', '😢', '😭', '😴', '😮', '🙈',
+  '👍', '👏', '🙌', '🙏', '💪', '👌', '✌️', '🤝',
+  '❤️', '💙', '✨', '🌟', '🎉', '🌹', '🌙', '☀️',
+];
+
+const graphemeSegmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
+  ? new Intl.Segmenter('zh', { granularity: 'grapheme' })
+  : null;
+
+function getCommentCursor(value, cursor) {
+  if (!Number.isInteger(cursor) || cursor < 0 || cursor >= value.length) return value.length;
+  if (graphemeSegmenter) return graphemeSegmenter.segment(value).containing(cursor).index;
+  // A cursor from a native editor normally points between characters.
+  const code = value.charCodeAt(cursor);
+  return code >= 0xdc00 && code <= 0xdfff ? Math.max(0, cursor - 1) : cursor;
+}
+
+function previousCommentCharacter(value, cursor) {
+  if (graphemeSegmenter) return graphemeSegmenter.segment(value).containing(cursor - 1).index;
+  const before = value.slice(0, cursor);
+  const emoji = COMMENT_EMOJIS.find(item => before.endsWith(item));
+  if (emoji) return cursor - emoji.length;
+  return cursor - Array.from(before).pop().length;
+}
+
 function getCategoryClass(name) {
   if (['阻鼾器配戴', '睡眠科普', '科普问答', '专家'].includes(name)) return 'tag-theme--blue';
   if (['打鼾治疗', '治疗分享', '经验交流'].includes(name)) return 'tag-theme--green';
@@ -100,23 +128,22 @@ Page({
   data: {
     postId: '',
     loading: true,
-    hasLoaded: false,
     loadError: '',
     postDetail: null,
     commentsList: [],
     commentInput: '',
     isSubmitting: false,
     replyTarget: null,
-    canSubmitComment: false,
     currentUserAvatar: normalizeCurrentUserAvatar(null),
-    composerExpanded: false,
+    commentEmojis: COMMENT_EMOJIS,
+    commentLimit: COMMENT_LIMIT,
+    commentLines: 1,
+    composerMode: 'idle',
     composerFocus: false,
-  },
-
-  refreshCommentSubmitState() {
-    this.setData({
-      canSubmitComment: Boolean(String(this.data.commentInput || '').trim() && !this.data.isSubmitting),
-    });
+    commentCursor: -1,
+    keyboardHeight: 0,
+    emojiPanelHeight: 248,
+    keepEmojiPanel: false,
   },
 
   onLoad(options) {
@@ -131,54 +158,74 @@ Page({
       return;
     }
     this.setData({ postId });
-    await this.loadPostDetail(postId, { silent: this.data.hasLoaded });
+    await this.loadPostDetail(postId, { silent: true });
   },
 
-  async loadPostDetail(postId, options = {}) {
+  async loadPostDetail(postId, { silent = false } = {}) {
     const requestId = this._detailRequestId = (this._detailRequestId || 0) + 1;
     const commentRevision = this._commentRevision || 0;
-    const silent = !!options.silent;
-    if (!silent) {
-      this.setData({ loading: true, loadError: '' });
-    }
+    const keepContent = silent && this.data.postDetail?.id === String(postId);
+    if (!keepContent) this.setData({ loading: true, loadError: '' });
+
     try {
-      const [response, profileResponse] = await Promise.all([
-        api.getCommunityPostDetail(postId),
-        api.getUserProfile().catch(() => null),
-      ]);
-      const payload = (response && response.data) || response || null;
+      const response = await api.getCommunityPostDetail(postId);
       if (requestId !== this._detailRequestId) return;
-      const profile = (profileResponse && profileResponse.data) || profileResponse || null;
-      const postDetail = normalizePostDetail(payload || {});
-      if (commentRevision !== (this._commentRevision || 0)) {
-        postDetail.comments = this.data.commentsList;
-        postDetail.commentsCount = this.data.postDetail.commentsCount;
+
+      const postDetail = normalizePostDetail((response && response.data) || response || {});
+      const previousPost = this.data.postDetail;
+      if (previousPost?.id === postDetail.id) {
+        postDetail.avatarLoaded = previousPost.avatarLoaded && previousPost.avatar === postDetail.avatar;
+        if (commentRevision !== (this._commentRevision || 0)) {
+          postDetail.comments = this.data.commentsList;
+          postDetail.commentsCount = previousPost.commentsCount;
+        } else {
+          const loadedAvatars = new Map(
+            this.data.commentsList.filter(item => item.avatarLoaded).map(item => [item.id, item.avatar])
+          );
+          for (const item of postDetail.comments) {
+            item.avatarLoaded = Boolean(item.avatar && loadedAvatars.get(item.id) === item.avatar);
+          }
+        }
       }
       this.setData({
-        hasLoaded: true,
         loading: false,
         loadError: '',
         postDetail,
         commentsList: postDetail.comments,
-        currentUserAvatar: normalizeCurrentUserAvatar(profile),
       }, () => this.focusNotificationComment());
+      this.loadComposerAvatar(requestId);
     } catch (error) {
       if (requestId !== this._detailRequestId) return;
-      if (!this.data.hasLoaded || [401, 403, 404].includes(Number(error && (error.statusCode || error.status || error.code)))) {
-        this.setData({
-          loading: false,
-          loadError: (error && error.message) || '加载帖子详情失败，请稍后重试',
-          postDetail: null,
-          commentsList: [],
-        });
+      const status = Number(error?.statusCode || error?.status || error?.code);
+      const message = error?.message || '加载帖子详情失败，请稍后重试';
+      if (!keepContent || [401, 403, 404].includes(status)) {
+        this.setData({ loading: false, loadError: message, postDetail: null, commentsList: [] });
         return;
       }
-      this.setData({ loading: false });
-      wx.showToast({ title: (error && error.message) || '加载帖子详情失败，请稍后重试', icon: 'none' });
+      if (this.data.loading) this.setData({ loading: false });
+      wx.showToast({ title: message, icon: 'none' });
     }
   },
 
+  async loadComposerAvatar(requestId) {
+    try {
+      const response = await api.getUserProfile();
+      if (requestId !== this._detailRequestId) return;
+      const profile = (response && response.data) || response || null;
+      const currentUserAvatar = normalizeCurrentUserAvatar(profile);
+      if (currentUserAvatar.avatar === this.data.currentUserAvatar.avatar) return;
+      this.setData({ currentUserAvatar });
+    } catch (error) {
+      // The reply bar already has a fallback avatar.
+    }
+  },
+
+  onHide() {
+    this.setData({ composerMode: 'idle', composerFocus: false, keyboardHeight: 0, keepEmojiPanel: false });
+  },
+
   onUnload() {
+    this._unloaded = true;
     this._detailRequestId = (this._detailRequestId || 0) + 1;
   },
 
@@ -309,81 +356,164 @@ Page({
     }
   },
 
+  jumpToComments() {
+    this.dismissCommentInput();
+    const navbarHeight = this.selectComponent('#post-detail-navbar')?.data?.totalHeight || 64;
+    wx.pageScrollTo({ selector: '#post-comments', offsetTop: -navbarHeight - 8, duration: 200 });
+  },
+
   handleReply(event) {
-    const commentId = event.currentTarget.dataset.commentId;
-    const comment = this.data.commentsList.find((item) => item.id === commentId) || null;
-    this.setData({
-      replyTarget: comment,
-      composerExpanded: true,
-      composerFocus: true,
-    });
+    if (this.data.isSubmitting) return;
+    const id = String(event.currentTarget.dataset.commentId);
+    const comment = this.data.commentsList.find(item => item.id === id);
+    if (!comment) return;
+    this.setData({ replyTarget: { id, author: comment.author } }, () => this.focusComposer());
   },
 
   clearReplyTarget() {
-    this.setData({ replyTarget: null, commentInput: '', composerExpanded: false, composerFocus: false });
-    this.refreshCommentSubmitState();
+    if (!this.data.isSubmitting) this.setData({ replyTarget: null });
   },
 
   handleCommentInput(event) {
-    this.setData({ commentInput: event.detail.value || '' });
-    this.refreshCommentSubmitState();
+    const { value = '', cursor } = event.detail;
+    this._commentCursor = getCommentCursor(value, cursor);
+    this.setData({ commentInput: value });
   },
 
-  openComposer() {
-    this.setData({ composerExpanded: true, composerFocus: true });
+  handleCommentLineChange(event) {
+    const commentLines = Math.max(1, Math.min(4, Number(event.detail.lineCount) || 1));
+    if (commentLines !== this.data.commentLines) this.setData({ commentLines });
   },
 
-  handleComposerFocus() {
-    this.setData({ composerExpanded: true, composerFocus: true });
+  focusComposer(event) {
+    // Native textarea taps set the caret themselves. The surrounding padding also opens it.
+    if (event?.target?.id === 'comment-composer') return;
+    const { composerMode, keyboardHeight, keepEmojiPanel, commentInput } = this.data;
+    if (this.data.isSubmitting || this.data.composerFocus) return;
+    this.setData({
+      composerMode: 'keyboard',
+      composerFocus: true,
+      commentCursor: getCommentCursor(commentInput, this._commentCursor),
+      keepEmojiPanel: keyboardHeight === 0 && (composerMode === 'emoji' || keepEmojiPanel),
+    });
   },
 
-  handleComposerBlur() {
-    this.setData({ composerFocus: false });
-    if (String(this.data.commentInput || '').trim()) {
+  handleComposerFocus(event) {
+    if (this.data.isSubmitting) return;
+    const keepEmojiPanel = this.data.composerMode === 'emoji' || this.data.keepEmojiPanel;
+    this.setData({ composerMode: 'keyboard', composerFocus: true, keepEmojiPanel });
+    if (Number(event.detail.height) > 0) this.handleKeyboardHeight(event);
+  },
+
+  handleComposerBlur(event) {
+    const { value, cursor } = event.detail;
+    if (value === this.data.commentInput && Number.isInteger(cursor) && cursor >= 0) {
+      this._commentCursor = getCommentCursor(value, cursor);
+    }
+    if (this.data.composerMode === 'emoji') return;
+    this.setData({ composerMode: 'idle', composerFocus: false, keepEmojiPanel: false });
+  },
+
+  handleKeyboardHeight(event) {
+    const keyboardHeight = Math.max(0, Number(event.detail.height) || 0);
+    const { composerMode, keyboardHeight: oldHeight } = this.data;
+    if (keyboardHeight > 0) {
+      this.setData({ keyboardHeight, emojiPanelHeight: keyboardHeight, keepEmojiPanel: false });
+    } else {
+      const closedKeyboard = oldHeight > 0 && composerMode === 'keyboard';
+      this.setData(closedKeyboard
+        ? { keyboardHeight: 0, composerMode: 'idle', composerFocus: false, keepEmojiPanel: false }
+        : { keyboardHeight: 0 });
+    }
+  },
+
+  toggleCommentEmoji() {
+    if (this.data.isSubmitting) return;
+    if (this.data.composerMode === 'emoji') {
+      this.focusComposer();
       return;
     }
-    setTimeout(() => {
-      if (!this.data.composerFocus && !String(this.data.commentInput || '').trim()) {
-        this.setData({
-          composerExpanded: false,
-          replyTarget: null,
-        });
-      }
-    }, 120);
+    const { composerFocus, keyboardHeight } = this.data;
+    this.setData({ composerMode: 'emoji', composerFocus: false, keepEmojiPanel: false });
+    if (composerFocus || keyboardHeight) wx.hideKeyboard();
   },
 
-  async submitComment() {
-    if (!String(this.data.commentInput || '').trim() || this.data.isSubmitting) {
+  dismissCommentInput() {
+    const { composerMode, composerFocus, keyboardHeight } = this.data;
+    if (composerMode === 'idle') return;
+    this.setData({ composerMode: 'idle', composerFocus: false, keepEmojiPanel: false });
+    if (composerFocus || keyboardHeight) wx.hideKeyboard();
+  },
+
+  insertCommentEmoji(event) {
+    const emoji = event.currentTarget.dataset.emoji;
+    const { commentInput, composerMode, isSubmitting } = this.data;
+    if (composerMode !== 'emoji' || isSubmitting || !COMMENT_EMOJIS.includes(emoji)) return;
+    if (commentInput.length + emoji.length > COMMENT_LIMIT) {
+      wx.showToast({ title: '评论最多 500 字', icon: 'none' });
+      return;
+    }
+    const cursor = getCommentCursor(commentInput, this._commentCursor);
+    this._commentCursor = cursor + emoji.length;
+    this.setData({ commentInput: commentInput.slice(0, cursor) + emoji + commentInput.slice(cursor) });
+  },
+
+  deleteCommentCharacter() {
+    const { commentInput, composerMode, isSubmitting } = this.data;
+    const cursor = getCommentCursor(commentInput, this._commentCursor);
+    if (composerMode !== 'emoji' || isSubmitting || cursor === 0) return;
+    const start = previousCommentCharacter(commentInput, cursor);
+    this._commentCursor = start;
+    this.setData({ commentInput: commentInput.slice(0, start) + commentInput.slice(cursor) });
+  },
+
+  async submitComment(event) {
+    if (this.data.isSubmitting) return;
+    const confirmedValue = event?.detail?.value;
+    const draft = typeof confirmedValue === 'string' ? confirmedValue : this.data.commentInput;
+    if (draft !== this.data.commentInput) {
+      this._commentCursor = draft.length;
+      this.setData({ commentInput: draft });
+    }
+    const content = draft.trim();
+    if (!content) return;
+    if (content.length > COMMENT_LIMIT) {
+      wx.showToast({ title: '评论最多 500 字', icon: 'none' });
       return;
     }
     this.setData({ isSubmitting: true });
-    this.refreshCommentSubmitState();
     try {
       const response = await api.commentCommunityPost(
         this.data.postId,
-        this.data.commentInput.trim(),
+        content,
         this.data.replyTarget ? this.data.replyTarget.id : null,
       );
+      if (this._unloaded) return;
       const createdComment = normalizeComment((response && response.data) || response || {});
       this._commentRevision = (this._commentRevision || 0) + 1;
       const commentsList = [createdComment].concat(this.data.commentsList);
+      this._commentCursor = 0;
       this.setData({
         commentsList,
         commentInput: '',
+        commentLines: 1,
+        commentCursor: -1,
         isSubmitting: false,
         replyTarget: null,
-        composerExpanded: false,
+        composerMode: 'idle',
         composerFocus: false,
+        keyboardHeight: 0,
+        keepEmojiPanel: false,
         postDetail: Object.assign({}, this.data.postDetail, {
           commentsCount: Number((this.data.postDetail && this.data.postDetail.commentsCount) || 0) + 1,
         }),
       });
+      wx.hideKeyboard?.();
       wx.showToast({ title: '评论成功', icon: 'success' });
-      this.refreshCommentSubmitState();
     } catch (error) {
+      if (this._unloaded) return;
       this.setData({ isSubmitting: false });
-      this.refreshCommentSubmitState();
-      wx.showToast({ title: '评论失败，请稍后重试', icon: 'none' });
+      wx.showToast({ title: error?.message || '评论失败，请稍后重试', icon: 'none' });
     }
   },
 
@@ -406,9 +536,7 @@ Page({
   },
 
   retryLoad() {
-    if (this.data.postId) {
-      this.loadPostDetail(this.data.postId, { silent: false });
-    }
+    if (this.data.postId) return this.loadPostDetail(this.data.postId);
   },
 
   onShareAppMessage() {

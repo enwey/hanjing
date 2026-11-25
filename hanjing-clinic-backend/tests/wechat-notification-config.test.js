@@ -1,6 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { WECHAT_NOTIFICATION_EVENTS, validateNotificationConfig, defaultNotificationMapping, normalizeNotificationPage } from '../wechat-notification-config.js';
+import { buildTemplateData } from '../wechatSubscribe.js';
+
+test('visit reminder supplies patient, time, doctor, clinic and reminder independently', () => {
+  const definition = WECHAT_NOTIFICATION_EVENTS.find(item => item.event === 'visit_reminder');
+  const mapping = { name8: 'name1', time2: 'time3', name3: 'name2', thing4: 'thing71', thing5: 'thing72' };
+  validateNotificationConfig('visit_reminder', { enabled: true, templateId: 'valid_template_id', mapping });
+  const data = buildTemplateData('visit_reminder', { patientName: '张三', appointmentTime: '2026-11-25 15:30', doctorName: '李医生', storeName: '兴康明诊所' });
+  assert.deepEqual(Object.fromEntries(Object.entries(mapping).map(([target, source]) => [target, data[source].value])), {
+    name8: '张三', time2: '2026-11-25 15:30', name3: '李医生', thing4: '兴康明诊所', thing5: '请按预约时间到诊'
+  });
+  assert.deepEqual(Object.keys(defaultNotificationMapping(definition)), ['name1', 'date3', 'thing69', 'phrase14', 'character_string15']);
+});
 
 test('notification deep links use registered mini-program detail pages', () => {
   assert.equal(normalizeNotificationPage('pages/order/detail/index?id=12'), 'pages/order/detail?id=12');

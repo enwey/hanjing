@@ -23,6 +23,10 @@ interface WithdrawApply {
   time: string;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
   reason?: string;
+  wechatPayoutState?: string;
+  wechatBillNo?: string;
+  wechatReference?: string;
+  wechatLastError?: string;
 }
 
 const currentPage = ref(1)
@@ -57,6 +61,10 @@ async function fetchWithdraws() {
         account: account.accountNo || account.label || '',
         time: item.created_at,
         status: item.status,
+        wechatPayoutState: item.wechat_payout_state,
+        wechatBillNo: item.wechat_out_bill_no,
+        wechatReference: item.payout_reference,
+        wechatLastError: item.wechat_last_error,
         reason: item.remark
       })})
     }
@@ -152,10 +160,24 @@ const paginatedRecords = computed(() => {
   return filtered.slice(start, end)
 })
 
+function canApprove(record: WithdrawApply) {
+  return record.status === 'pending' && (!record.wechatPayoutState || hasPermission('withdraw:paid'))
+}
+
+function payoutLabel(record: WithdrawApply) {
+  if (record.wechatPayoutState === 'reconcile') return '待核对'
+  if (record.wechatPayoutState === 'processing') return '打款中'
+  if (record.wechatPayoutState === 'queued') return '等待自动打款'
+  if (record.wechatPayoutState === 'FAIL') return '打款失败，已退回'
+  if (record.wechatPayoutState === 'CANCELLED') return '打款已关闭，已退回'
+  if (record.wechatPayoutState === 'SUCCESS') return '已到账'
+  return ''
+}
+
 /* ---- Selection logic ---- */
 const isAllSelected = computed(() => {
   const visiblePendingIds = paginatedRecords.value
-    .filter(r => r.status === 'pending')
+    .filter(canApprove)
     .map(r => r.id)
   if (visiblePendingIds.length === 0) return false
   return visiblePendingIds.every(id => selectedRowKeys.value.includes(id))
@@ -163,7 +185,7 @@ const isAllSelected = computed(() => {
 
 function toggleSelectAll() {
   const visiblePendingIds = paginatedRecords.value
-    .filter(r => r.status === 'pending')
+    .filter(canApprove)
     .map(r => r.id)
 
   if (isAllSelected.value) {
@@ -202,11 +224,11 @@ function openApprove(record: WithdrawApply) {
 }
 
 async function confirmApprove() {
-  if (selectedRecord.value) {
+  if (selectedRecord.value && canApprove(selectedRecord.value)) {
     try {
       await request.put(`/api/admin/distribution/withdraws/${selectedRecord.value.id}/status`, {
         status: 'approved',
-        remark: '审核通过，等待实际银行转账'
+        remark: selectedRecord.value.wechatPayoutState ? '审核通过，等待微信零钱自动打款' : '审核通过，等待实际银行转账'
       })
       selectedRecord.value.status = 'approved'
       MessagePlugin.success(`申请单 ${selectedRecord.value.no} 已审核通过，等待实际打款`)
@@ -253,11 +275,11 @@ async function handleBatchApprove() {
   let approvedCount = 0
   for (const key of selectedRowKeys.value) {
     const record = records.value.find(r => r.id === key)
-    if (record && record.status === 'pending') {
+    if (record && canApprove(record)) {
       try {
         await request.put(`/api/admin/distribution/withdraws/${record.id}/status`, {
           status: 'approved',
-          remark: '批量审核通过，等待实际银行转账'
+          remark: record.wechatPayoutState ? '批量审核通过，等待微信零钱自动打款' : '批量审核通过，等待实际银行转账'
         })
         record.status = 'approved'
         approvedCount++
@@ -306,7 +328,7 @@ function handleExport() {
     escapeCsv(row.method === 'wechat' ? '微信支付' : '银行卡'),
     escapeCsv(row.account),
     escapeCsv(row.time),
-    escapeCsv(row.status === 'paid' ? '已打款' : row.status === 'approved' ? '待打款' : row.status === 'rejected' ? '已驳回' : '待审核'),
+    escapeCsv(payoutLabel(row) || (row.status === 'paid' ? '已打款' : row.status === 'approved' ? '待打款' : row.status === 'rejected' ? '已驳回' : '待审核')),
     escapeCsv(row.reason || '—')
   ])
 
@@ -355,9 +377,10 @@ function formatAccount(row: WithdrawApply) {
 }
 
 const operationColumnWidth = computed(() => {
-  if (paginatedRecords.value.length === 0) return '80px'
-  const hasPending = paginatedRecords.value.some(r => r.status === 'pending')
-  return hasPending ? '140px' : '80px'
+  const needsSpace = paginatedRecords.value.some(row =>
+    row.status === 'pending' || row.status === 'approved' || Boolean(payoutLabel(row))
+  )
+  return needsSpace ? '160px' : '80px'
 })
 
 watch(operationColumnWidth, () => {
@@ -476,7 +499,7 @@ watch(operationColumnWidth, () => {
               <th style="width: 50px; text-align: center;">
                 <input
                   type="checkbox"
-                  :checked="selectedRowKeys.length === paginatedRecords.filter(r => r.status === 'pending').length && selectedRowKeys.length > 0"
+                  :checked="isAllSelected"
                   @change="toggleSelectAll"
                 >
               </th>
@@ -497,7 +520,7 @@ watch(operationColumnWidth, () => {
                   type="checkbox"
                   :checked="selectedRowKeys.includes(row.id)"
                   @change="toggleSelect(row.id)"
-                  :disabled="row.status !== 'pending'"
+                  :disabled="!canApprove(row)"
                 >
               </td>
               <td class="id">{{ row.no }}</td>
@@ -525,12 +548,17 @@ watch(operationColumnWidth, () => {
               <td style="text-align: right;">
                 <div class="actions" style="justify-content: flex-end;">
                   <template v-if="row.status === 'pending'">
-                    <button v-permission="'withdraw:audit'" class="btn btn-xs btn-success" @click="openApprove(row)">通过</button>
+                    <button v-if="canApprove(row)" v-permission="'withdraw:audit'" class="btn btn-xs btn-success" @click="openApprove(row)">通过</button>
                     <button v-permission="'withdraw:audit'" class="btn btn-xs btn-danger" @click="openReject(row)">拒绝</button>
                   </template>
-                  <template v-else-if="row.status === 'approved'">
+                  <template v-else-if="payoutLabel(row)">
+                    <t-tooltip :content="[row.wechatBillNo, row.wechatReference, row.wechatLastError].filter(Boolean).join(' · ')">
+                      <span class="status-tag" :class="row.status === 'paid' ? 'green' : row.status === 'rejected' ? 'red' : 'gray'">{{ payoutLabel(row) }}</span>
+                    </t-tooltip>
+                  </template>
+                  <template v-else-if="row.status === 'approved' && row.method === 'bank'">
                     <button v-permission="'withdraw:account'" class="btn btn-xs btn-outline" @click="openAccount(row)">收款账户</button>
-                  <button v-permission="'withdraw:paid'" class="btn btn-xs btn-outline" @click="openPaid(row)">登记打款</button>
+                    <button v-permission="'withdraw:paid'" class="btn btn-xs btn-outline" @click="openPaid(row)">登记打款</button>
                   </template>
                   <template v-else-if="row.status === 'paid'">
                     <span class="status-tag green">已打款</span>
@@ -569,7 +597,7 @@ watch(operationColumnWidth, () => {
       @confirm="confirmApprove"
     >
       <div v-if="selectedRecord" style="padding: 8px 0;">
-        <p style="margin-bottom: 12px; font-size: 14px; color: #4B5563;">审核通过后等待银行转账，实际打款完成后请登记转账流水号。</p>
+        <p style="margin-bottom: 12px; font-size: 14px; color: #4B5563;">{{ selectedRecord.wechatPayoutState ? '审核通过后，系统将自动转账至用户已授权的微信零钱。' : '审核通过后等待银行转账，实际打款完成后请登记转账流水号。' }}</p>
         <t-descriptions bordered size="small" :column="1">
           <t-descriptions-item label="单号">{{ selectedRecord.no }}</t-descriptions-item>
           <t-descriptions-item label="推广员">{{ selectedRecord.name }} ({{ selectedRecord.level }})</t-descriptions-item>
@@ -784,6 +812,7 @@ watch(operationColumnWidth, () => {
 /* Rounded Status tags with indicator dots */
 .status-tag {
   display: inline-flex;
+  white-space: nowrap;
   align-items: center;
   gap: 6px;
   padding: 3px 10px;

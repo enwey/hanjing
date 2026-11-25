@@ -26,49 +26,92 @@
         <view class="input-wrap">
           <text class="amount-prefix">¥</text>
           <input
-            class="amount-input"
+            class="withdraw-input"
+            placeholder-class="withdraw-input__placeholder"
             type="digit"
             placeholder="请输入提现金额"
             value="{{withdrawAmountInput}}"
             bindinput="handleAmountInput"
+            disabled="{{isSubmitting}}"
           />
         </view>
+        <text wx:if="{{amountError}}" class="amount-error">{{amountError}}</text>
       </view>
 
       <view class="form-item">
         <text class="form-label">到账方式</text>
         <view class="method-row">
-          <view class="method-card">
+          <view class="method-card {{!wechatEnabled ? 'method-card--disabled' : (withdrawMethod === 'wechat' ? 'method-card--active' : '')}}"
+            aria-disabled="{{!wechatEnabled}}" data-method="wechat" bindtap="chooseMethod">
             <view class="method-card__icon-wrap">
-              <image src="/static/icons/chat.svg" mode="aspectFit" class="method-card__icon" />
+              <image src="{{wechatEnabled ? '/static/icons/wechat-pay.svg' : '/static/icons/wechat-pay-disabled.svg'}}" mode="aspectFit" class="method-card__icon" />
             </view>
-            <text class="method-card__label">微信零钱（未开通）</text>
+            <text class="method-card__label">微信零钱</text>
           </view>
           <view class="method-card {{withdrawMethod === 'bank' ? 'method-card--active' : ''}}" data-method="bank" bindtap="chooseMethod">
             <view class="method-card__icon-wrap">
-              <image src="/static/icons/price.svg" mode="aspectFit" class="method-card__icon" />
+              <image src="/static/icons/bank-card.svg" mode="aspectFit" class="method-card__icon" />
             </view>
             <text class="method-card__label">银行卡</text>
           </view>
         </view>
       </view>
 
+      <view wx:if="{{withdrawMethod === 'wechat' && !wechatAuthorized}}" class="wechat-auth">
+        <text class="wechat-auth__text">授权后，审核通过的提现将自动到账。</text>
+        <button class="card-action" bindtap="authorizeWechat" disabled="{{checkingAuthorization}}" loading="{{checkingAuthorization}}">授权收款</button>
+      </view>
+
+      <view wx:if="{{needsWechatName}}" class="form-item">
+        <text class="form-label">微信支付实名姓名</text>
+        <view class="input-wrap">
+          <input class="withdraw-input" placeholder-class="withdraw-input__placeholder"
+            placeholder="请输入微信支付实名姓名" value="{{wechatRealName}}" bindinput="handleWechatNameInput"
+            maxlength="50" disabled="{{isSubmitting}}" />
+        </view>
+      </view>
+
       <view class="tip-box">
-        <text class="tip-box__text">最低提现金额 {{minWithdrawAmount}} 元，银行卡手续费 {{withdrawFeeRatePercentLabel}}%（最低 1 元）</text>
+        <text wx:if="{{withdrawMethod === 'bank'}}" class="tip-box__text">最低提现金额 {{minWithdrawAmount}} 元，银行卡手续费 {{withdrawFeeRatePercentLabel}}%（最低 1 元）</text>
+        <text wx:else class="tip-box__text">最低提现金额 {{wechatMinYuan}} 元，单笔最高 {{wechatMaxYuan}} 元</text>
         <text class="tip-box__text">手续费：{{serviceFeeLabel}}</text>
         <text class="tip-box__text">预计到账：{{actualAmountLabel}}</text>
       </view>
 
-      <block wx:if="{{withdrawMethod === 'bank'}}">
+      <view wx:if="{{withdrawMethod === 'bank' && bankCards.length}}" class="saved-cards">
+        <view class="saved-cards__header">
+          <text class="form-label">历史银行卡</text>
+          <button wx:if="{{selectedCardId && !editingCard}}" class="card-action" bindtap="enterNewCard" disabled="{{isSubmitting || isUpdatingCards}}">使用新卡</button>
+        </view>
+        <view wx:for="{{bankCards}}" wx:key="id" class="saved-card {{selectedCardId === item.id ? 'saved-card--selected' : ''}}">
+          <view class="saved-card__details" data-id="{{item.id}}" bindtap="selectSavedCard">
+            <view class="saved-card__title">
+              <text class="saved-card__bank">{{item.bankName || '银行卡'}}</text>
+              <text wx:if="{{selectedCardId === item.id}}" class="saved-card__selected">已选</text>
+            </view>
+            <text class="saved-card__meta">{{item.accountName ? item.accountName + ' · ' : ''}}{{item.maskedAccountNo}}</text>
+            <text wx:if="{{item.needsAccountNo && item.maskedAccountNo !== '卡号待补全'}}" class="saved-card__meta">卡号待补全</text>
+          </view>
+          <view class="saved-card__actions">
+            <button class="card-action" data-id="{{item.id}}" bindtap="editSavedCard" disabled="{{isSubmitting || isUpdatingCards || editingCard}}">编辑</button>
+            <button class="card-action" data-id="{{item.id}}" bindtap="confirmDeleteCard" disabled="{{isSubmitting || isUpdatingCards || editingCard}}">删除</button>
+          </view>
+        </view>
+      </view>
+
+      <block wx:if="{{withdrawMethod === 'bank' && (!selectedCardId || editingCard)}}">
+        <text wx:if="{{editingCard || bankCards.length}}" class="form-label bank-form-title">{{editingCard ? '编辑银行卡' : '新银行卡'}}</text>
         <view class="form-item">
           <text class="form-label">开户银行</text>
           <view class="input-wrap">
             <input
-              class="bank-input"
+              class="withdraw-input"
+              placeholder-class="withdraw-input__placeholder"
               placeholder="请输入开户银行"
               data-field="bankName"
               value="{{bankName}}"
               bindinput="handleBankInput"
+              disabled="{{isSubmitting || isUpdatingCards}}"
             />
           </view>
         </view>
@@ -76,11 +119,13 @@
           <text class="form-label">开户姓名</text>
           <view class="input-wrap">
             <input
-              class="bank-input"
+              class="withdraw-input"
+              placeholder-class="withdraw-input__placeholder"
               placeholder="请输入开户姓名"
               data-field="bankAccountName"
               value="{{bankAccountName}}"
               bindinput="handleBankInput"
+              disabled="{{isSubmitting || isUpdatingCards}}"
             />
           </view>
         </view>
@@ -88,19 +133,25 @@
           <text class="form-label">银行卡号</text>
           <view class="input-wrap">
             <input
-              class="bank-input"
+              class="withdraw-input"
+              placeholder-class="withdraw-input__placeholder"
               type="number"
-              placeholder="请输入银行卡号"
+              placeholder="{{editingCard && !editingCard.needsAccountNo ? '留空则保留原卡号' : '请输入银行卡号'}}"
               data-field="bankAccountNo"
               value="{{bankAccountNo}}"
               bindinput="handleBankInput"
+              disabled="{{isSubmitting || isUpdatingCards}}"
             />
           </view>
+        </view>
+        <view wx:if="{{editingCard}}" class="bank-edit-actions">
+          <button class="card-action" bindtap="cancelCardEdit" disabled="{{isUpdatingCards}}">取消</button>
+          <button class="card-action card-action--save" bindtap="saveCardEdit" loading="{{isUpdatingCards}}" disabled="{{isUpdatingCards}}">保存</button>
         </view>
       </block>
     </view>
 
-    <view class="submit-button {{!isSubmitEnabled ? 'submit-button--disabled' : ''}}" bindtap="submitWithdraw">确认提现</view>
+    <view wx:if="{{!editingCard}}" class="submit-button {{!isSubmitEnabled ? 'submit-button--disabled' : ''}}" bindtap="submitWithdraw">确认提现</view>
 
     <view class="records-entry" bindtap="openWithdrawRecords">
       <text class="records-entry__text">查看提现记录</text>

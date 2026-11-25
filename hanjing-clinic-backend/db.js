@@ -2476,6 +2476,12 @@ export const initDB = async () => {
   await initBackendPromoterSchema(query);
   await query('SET FOREIGN_KEY_CHECKS = 1;');
 
+  const { initWithdrawBankCards, backfillWithdrawBankCards } = await import('./withdraw-bank-cards.js');
+  await initWithdrawBankCards(query);
+  await backfillWithdrawBankCards(query, transaction);
+  const { initWechatWithdrawals } = await import('./wechat-withdrawals.js');
+  await initWechatWithdrawals(query);
+
   await migrateAdminPermissions(query, transaction);
   const { repairDoubleEncryptedPatientPhones } = await import('./patient-phone-repair.js');
   await repairDoubleEncryptedPatientPhones(query, run);

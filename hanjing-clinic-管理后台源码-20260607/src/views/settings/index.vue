@@ -27,7 +27,6 @@ const cancelLimitOptions = [
 // 2. 分销设置
 const distributionSettleDays = ref<number | null>(null)
 const minWithdraw = ref<number | null>(null)
-const bankMinWithdraw = ref<number | null>(null)
 const withdrawFeeRate = ref<number | null>(null)
 const enableDistribution = ref(false)
 const autoApproveWithdraw = ref(false)
@@ -62,7 +61,6 @@ async function loadSettings() {
 
       distributionSettleDays.value = data.distribution_settle_days ?? null
       minWithdraw.value = data.min_withdraw ?? null
-      bankMinWithdraw.value = data.bank_min_withdraw ?? data.min_withdraw ?? null
       withdrawFeeRate.value = data.withdraw_fee_rate ?? null
       enableDistribution.value = data.enable_distribution ?? false
       autoApproveWithdraw.value = false
@@ -88,7 +86,7 @@ onMounted(loadSettings)
 
 async function handleSaveAll() {
   if (!settingsLoaded.value || saving.value) return
-  if (enableDistribution.value && [distributionSettleDays.value, minWithdraw.value, bankMinWithdraw.value, withdrawFeeRate.value].some(value => value === null)) {
+  if (enableDistribution.value && [distributionSettleDays.value, minWithdraw.value, withdrawFeeRate.value].some(value => value === null)) {
     MessagePlugin.warning('请先完整填写分销财务配置')
     return
   }
@@ -104,7 +102,6 @@ async function handleSaveAll() {
 
       distribution_settle_days: distributionSettleDays.value,
       min_withdraw: minWithdraw.value,
-      bank_min_withdraw: bankMinWithdraw.value,
       withdraw_fee_rate: withdrawFeeRate.value,
       enable_distribution: enableDistribution.value,
       auto_approve_withdraw: autoApproveWithdraw.value,
@@ -218,13 +215,6 @@ function handleReset() {
               <div class="input-group">
                 <span class="input-prefix">¥</span>
                 <input type="number" class="form-control-inner" v-model.number="minWithdraw" min="10">
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">银行卡最低提现金额</label>
-              <div class="input-group">
-                <span class="input-prefix">¥</span>
-                <input type="number" class="form-control-inner" v-model.number="bankMinWithdraw" min="0.01" max="1000000" step="0.01">
               </div>
             </div>
             <div class="form-group">

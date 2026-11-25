@@ -26,8 +26,8 @@
       </view>
     </view>
 
-    <view class="page-section state-card" wx:if="{{!members.length}}">
-      <text class="state-title">暂无团队成员</text>
+    <view class="distribution-empty" wx:if="{{!members.length}}">
+      <hj-empty title="暂无团队成员" icon="/static/icons/community.svg" />
     </view>
 
     <view class="page-section team-list-wrap" wx:else>

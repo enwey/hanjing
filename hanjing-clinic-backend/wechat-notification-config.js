@@ -1,6 +1,6 @@
 const orderFields = { character_string6: '订单编号', phrase2: '订单状态', thing1: '商品或服务', amount40: '金额', thing5: '备注' };
 const withdrawFields = { amount1: '金额', phrase3: '状态', time6: '时间', thing5: '备注' };
-const appointmentFields = { name1: '就诊人', date3: '预约时间', thing69: '医生或门店', phrase14: '预约状态', character_string15: '预约编号' };
+const appointmentFields = { name1: '就诊人', date3: '预约时间', thing69: '医生或门店', phrase14: '预约状态', character_string15: '预约编号', name2: '预约医生（姓名）', thing70: '预约医生（文本）', thing71: '预约院区', thing72: '温馨提示', time3: '预约时间（时间）' };
 
 // "connected" describes existing call sites, not guaranteed delivery or authorization.
 export const WECHAT_NOTIFICATION_EVENTS = [
@@ -40,5 +40,7 @@ export function validateNotificationConfig(event, input) {
 }
 
 export function defaultNotificationMapping(definition) {
-  return Object.fromEntries(Object.keys(definition.fields).map(key => [key, key]));
+  const fields = Object.keys(definition.fields);
+  const defaults = definition.event === 'visit_reminder' ? fields.slice(0, 5) : fields;
+  return Object.fromEntries(defaults.map(key => [key, key]));
 }

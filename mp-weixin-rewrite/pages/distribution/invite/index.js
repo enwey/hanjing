@@ -117,10 +117,10 @@ Page({
       const response = await api.getDistributionRules();
       const payload = normalizeDistributionRules(response);
       const ruleSections = [
-        { title: '开通条件', items: [payload.qualificationText || '当前暂无分销开通说明'] },
+        { title: '如何成为分销员', items: [payload.qualificationText || '当前暂无分销开通说明'] },
         { title: '佣金规则', items: payload.commissionRules },
-        { title: '推广方式', items: payload.promotionWays },
-        { title: '提现规则', items: payload.withdrawRules },
+        { title: '如何推广拉新', items: payload.promotionWays },
+        { title: '佣金提现说明', items: payload.withdrawRules },
       ].filter(section => Array.isArray(section.items) && section.items.length);
       this.setData({ ruleSections, rulesLoading: false });
     } catch (error) {

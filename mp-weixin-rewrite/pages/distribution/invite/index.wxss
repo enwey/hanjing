@@ -33,12 +33,16 @@
 .invite-step-title { display:block; font-size:25rpx; line-height:1.5; }
 .invite-step-desc { display:block; margin-top:8rpx; font-size:20rpx; color:#6b7280; line-height:1.6; }
 .invite-brand image { width:60rpx; height:60rpx; flex-shrink:0; border-radius:16rpx; background:#fff; }
-.invite-rules { margin-top:24rpx; padding:28rpx; border-radius:24rpx; background:#fff; }
-.invite-rules__title { display:block; font-size:28rpx; font-weight:600; }
-.invite-rules__section { margin-top:24rpx; }
-.invite-rules__heading { display:block; margin-bottom:10rpx; font-size:25rpx; font-weight:500; color:#374151; }
-.invite-rules__item,.invite-rules__status { display:block; font-size:24rpx; line-height:1.8; color:#6b7280; overflow-wrap:anywhere; }
-.invite-rules__item + .invite-rules__item { margin-top:8rpx; }
+.invite-rules { margin-top:24rpx; padding:24rpx; border-radius:16rpx; background:#fff; }
+.invite-rules__title { display:block; margin-bottom:20rpx; font-size:30rpx; font-weight:600; color:#1f2937; }
+.invite-rules__section { padding:24rpx; border-radius:16rpx; background:#fff; }
+.invite-rules__section + .invite-rules__section { margin-top:20rpx; }
+.invite-rules__heading { display:block; margin-bottom:16rpx; font-size:30rpx; font-weight:600; color:#1f2937; }
+.invite-rules__desc { display:block; font-size:26rpx; line-height:1.8; color:#4b5563; }
+.invite-rules__item { display:flex; align-items:flex-start; padding:14rpx 0; }
+.invite-rules__index { width:40rpx; height:40rpx; border-radius:20rpx; background:#eef4ff; color:#3b6bf5; font-size:22rpx; font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:16rpx; }
+.invite-rules__text { flex:1; font-size:26rpx; line-height:1.8; color:#4b5563; }
+.invite-rules__status { display:block; font-size:24rpx; line-height:1.8; color:#6b7280; overflow-wrap:anywhere; }
 .invite-rules__status { margin-top:16rpx; }
 .invite-rules__retry { margin:16rpx 0 0; padding:0; text-align:left; font-size:24rpx; line-height:1.8; color:#3b6bf5; background:transparent; }
 .invite-rules__retry::after { border:0; }

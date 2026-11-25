@@ -35,6 +35,14 @@ test('无设备治疗记录时首页显示未开始', async () => {
   assert.equal(page.data.heroBadgeText, '未开始');
 });
 
+test('首页仅在存在主治医生姓名时显示主治信息', async () => {
+  for (const [doctorName, expected] of [['张三', '主治：张三 医生'], ['', ''], ['   ', ''], ['--', ''], [null, '']]) {
+    const { page } = load('', { getTreatmentRecord: () => ({ ...record, doctorName }) });
+    await page.loadPage();
+    assert.equal(page.data.heroDoctorText, expected);
+  }
+});
+
 for (const name of ['', 'calendar', 'sleep-trend', 'sleep-report', 'timeline', 'doctor-advice', 'adjust-detail']) {
   const fail = () => { throw new Error('模拟接口故障'); };
   test(`${name || '首页'} 首次加载失败显示错误`, async () => {
