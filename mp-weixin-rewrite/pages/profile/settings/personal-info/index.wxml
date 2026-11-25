@@ -11,7 +11,6 @@
             class="avatar-picker data-v-acab1652"
             open-type="chooseAvatar"
             bindchooseavatar="handleChooseAvatar"
-            loading="{{avatarUploading}}"
           >
             <view class="avatar data-v-acab1652">
               <image class="avatar-placeholder data-v-acab1652" src="/static/images/brand-logo-v20261105.png" mode="aspectFill" />

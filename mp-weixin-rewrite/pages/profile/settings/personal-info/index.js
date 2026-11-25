@@ -18,6 +18,11 @@ function getFileExt(path) {
   return ['jpg', 'jpeg', 'png', 'gif'].includes(ext) ? ext : 'jpg';
 }
 
+function getAvatarStoragePath(url) {
+  const match = url.match(/^(?:https?:\/\/[^/?#]+)?(\/uploads\/medical-attachments\/[a-z0-9_.-]+\.(?:jpe?g|png|gif))(?:[?#].*)?$/i);
+  return match ? match[1] : url;
+}
+
 Page({
   data: {
     loading: true,
@@ -42,7 +47,6 @@ Page({
     birthdayDisplayText: '未设置',
     maleChipClass: 'chip data-v-acab1652',
     femaleChipClass: 'chip data-v-acab1652',
-    avatarUploading: false,
   },
 
   onLoad(options = {}) {
@@ -74,6 +78,7 @@ Page({
         hasLoaded: true,
         loading: false,
         profile,
+        avatarUrl: this.data.pendingAvatarPath || profile.avatar || profile.avatarUrl || profile.avatar_url || '',
         editing: this.data.editing || this.data.profileSetupMode,
         nickname: resolveDisplayNickname(profile.nickname),
         nicknameCursor: String(resolveDisplayNickname(profile.nickname) || '').length,
@@ -188,35 +193,33 @@ Page({
       return;
     }
     try {
-      this.setData({ avatarUploading: Boolean(pendingAvatarPath) });
       if (pendingAvatarPath) {
         wx.showLoading({ title: '保存资料中...' });
       }
-      let avatar = (this.data.profile && this.data.profile.avatar) || '';
+      let avatar;
       if (pendingAvatarPath) {
         const uploadResponse = await api.uploadLocalFile(pendingAvatarPath, getFileExt(pendingAvatarPath));
         const uploadData = (uploadResponse && uploadResponse.data) || uploadResponse || {};
-        if (!uploadData.url) {
+        if (typeof uploadData.url !== 'string' || !uploadData.url) {
           throw new Error('上传文件失败');
         }
-        avatar = uploadData.url;
+        avatar = getAvatarStoragePath(uploadData.url);
       }
       const response = await api.updateUserProfile({
         nickname,
         gender: this.data.gender,
         birthday: this.data.birthday,
         idCard,
-        avatar,
+        ...(avatar ? { avatar } : {}),
       });
       const profile = (response && response.data) || response || {};
       sessionStore.state.profile = profile;
       wx.hideLoading();
       wx.showToast({ title: '保存成功', icon: 'success' });
-      this.setData({ profileSetupMode: false, editing: false, pendingAvatarPath: '', avatarUploading: false });
-      await this.loadProfile();
+      this.setData({ profileSetupMode: false, editing: false, pendingAvatarPath: '' });
+      await this.loadProfile({ silent: true });
     } catch (error) {
       wx.hideLoading();
-      this.setData({ avatarUploading: false });
       wx.showToast({ title: (error && error.message) || '保存失败', icon: 'none' });
     }
   },

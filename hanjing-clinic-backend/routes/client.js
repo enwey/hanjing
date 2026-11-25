@@ -1753,11 +1753,20 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
   if (genderClean !== null && ![0, 1, 2].includes(genderClean)) return res.status(400).json({ code: 400, message: '请选择有效性别' });
   if (birthdayClean && !normalizeFamilyBirthday(birthdayClean)) return res.status(400).json({ code: 400, message: '出生日期无效' });
   const ageClean = age !== undefined ? age : calculateAgeFromBirthday(birthdayClean);
-  const avatarClean = avatar || avatarUrl ? escapeHtml(String(avatar || avatarUrl).trim()) : null;
+  const avatarValue = avatar || avatarUrl ? String(avatar || avatarUrl).trim() : null;
+  // Private upload responses are signed for display. Persist the path so it can be signed again on read.
+  const privateAvatarPath = privateUploadPath(avatarValue);
+  const avatarClean = privateAvatarPath || escapeHtml(avatarValue);
+  if (avatarClean && !/^.{0,255}$/su.test(avatarClean)) {
+    return res.status(400).json({ code: 400, message: '头像地址过长' });
+  }
   if (idCard && !/^\d{17}[\dXx]$/.test(String(idCard))) {
     return res.status(400).json({ code: 400, message: '身份证格式不正确' });
   }
   try {
+    if (privateAvatarPath && !await canReadPrivateUpload(privateAvatarPath, req.user)) {
+      return res.status(403).json({ code: 403, message: '无权使用此头像' });
+    }
     await transaction(async (conn) => {
       await conn.execute(
         `UPDATE users
