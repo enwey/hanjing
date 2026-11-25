@@ -1,3 +1,4 @@
+const subscribe = require('../../../common/utils/subscribe');
 const api = require('../../../api/index');
 const sessionStore = require('../../../stores/session-store');
 
@@ -46,6 +47,7 @@ Page({
   },
 
   async onShow() {
+    if (wx.requestSubscribeMessage) void subscribe.refreshSubscribeSettings();
     if ((this.data.isSubmitting || this.data.isUpdatingCards || this.data.checkingAuthorization)
       && this._sessionGeneration === sessionStore.getLoginGeneration()) return;
     await this.loadPage();
@@ -393,6 +395,8 @@ Page({
     const generation = sessionStore.getLoginGeneration();
     const { withdrawAmountInput, withdrawMethod, selectedCardId } = this.data;
     this.setData({ isSubmitting: true, isSubmitEnabled: false });
+    const authorization = wx.requestSubscribeMessage
+      ? subscribe.requestSubscribe({ force: true, scene: 'withdraw', fromTap: true }) : null;
     try {
       const amount = Math.round(Number(withdrawAmountInput) * 100);
       if (withdrawMethod === 'wechat') {
@@ -408,6 +412,7 @@ Page({
           amount, withdrawMethod, selectedCardId ? null : this.readBankFields(), selectedCardId || undefined,
         );
       }
+      if (authorization) await authorization;
       if (!this.isCurrentSession(generation)) return;
       wx.showToast({ title: '提现申请已提交', icon: 'success' });
       this._wechatRequest = null;

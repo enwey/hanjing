@@ -32,7 +32,7 @@ const STATUS_LABEL_MAP = {
   confirmed: '已确认',
 };
 
-function requestWxPay(payParams) {
+function requestWxPay(payParams, onPaid) {
   return new Promise((resolve, reject) => {
     wx.requestPayment({
       timeStamp: payParams.timeStamp,
@@ -40,7 +40,7 @@ function requestWxPay(payParams) {
       package: payParams.package,
       signType: payParams.signType,
       paySign: payParams.paySign,
-      success: resolve,
+      success: () => resolve(onPaid()),
       fail: reject,
     });
   });
@@ -127,7 +127,6 @@ Page({
       orderNo: order.orderNo || '',
       createdAtText: order.createdAt ? formatChinaDateTime(order.createdAt, false) : '',
       payAtText: order.payAt ? formatChinaDateTime(order.payAt, false) : '',
-      canSubscribeShipment: order.status === 'shipping',
       payMethod: order.payMethod || '',
       payMethodLabel: ({ wechat: '小程序微信支付', wechat_native: '门店微信扫码', wechat_micropay: '门店付款码支付', cash: '现金', bank: '银行转账' })[order.payMethod] || order.payMethod || '',
       shippingAddress,
@@ -165,7 +164,6 @@ Page({
     return {
       ...order,
       status,
-      canSubscribeShipment: status === 'shipping',
       statusLabel: STATUS_LABEL_MAP[status],
       steps: ORDER_STATUS_STEPS[status],
       actionFlags: { canPay: false, canCancel: false, canConfirmReceipt: false, canRefund: false },
@@ -367,14 +365,6 @@ Page({
     }
   },
 
-  subscribeShipment() {
-    const generation = this.syncOrderDetailSession();
-    const order = this.data.order;
-    if (!order?.canSubscribeShipment || this._unloaded) return;
-    return subscribe.subscribeToUpdates('order', () => !this._unloaded &&
-      generation === sessionStore.getLoginGeneration() && this.data.order?.id === order.id);
-  },
-
   async onPayOrder() {
     const generation = this.syncOrderDetailSession();
     const order = this.data.order;
@@ -396,7 +386,12 @@ Page({
       assertCurrentSession();
       const payParams = (payResponse && payResponse.data) || payResponse || {};
       wx.hideLoading();
-      await requestWxPay(payParams);
+      await requestWxPay(payParams, () => {
+        if (wx.requestSubscribeMessage && isCurrentOrder() &&
+            !['pickup', 'pickup_pending', 'offline'].includes(order.shippingAddress?.deliveryMethod)) {
+          return subscribe.requestSubscribe({ force: true, scene: 'order', fromTap: true });
+        }
+      });
       if (this._unloaded) return;
       assertCurrentSession();
       wx.showLoading({ title: '同步订单状态...' });

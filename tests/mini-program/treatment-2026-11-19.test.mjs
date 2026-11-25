@@ -35,6 +35,37 @@ test('无设备治疗记录时首页显示未开始', async () => {
   assert.equal(page.data.heroBadgeText, '未开始');
 });
 
+test('未绑定设备也能在打卡后显示依从率，重新进入仍保留', async () => {
+  let saved = false;
+  const { page, calls, toasts } = load('', {
+    getTreatmentRecord: () => null,
+    getWearingRecords: () => saved ? [{ date: '2026-11-19', wearDuration: 7 }] : [],
+    getWearingSummary: () => saved ? { weekCompliance: 14, compliance: 3 } : { weekCompliance: 0 },
+    submitWearingCheckin: () => { saved = true; },
+  });
+  await page.loadPage();
+  assert.equal(page.data.heroProgressText, '依从率 --');
+  await page.submitCheckin();
+  assert.equal(toasts.at(-1).title, '打卡成功');
+  assert.equal(page.data.heroProgressText, '依从率 14%');
+  assert.equal(page.data.progressWidth, '14%');
+  assert.equal(page.data.hasTreatmentRecord, false);
+  assert.equal(calls.filter(({ key }) => key === 'getWearingSummary').at(-1).params.patientId, 'A');
+  await page.loadPage();
+  assert.equal(page.data.heroProgressText, '依从率 14%');
+});
+
+test('已有打卡但佩戴统计为零时显示 0%', async () => {
+  const { page } = load('', {
+    getTreatmentRecord: () => null,
+    getWearingRecords: () => [{ date: '2026-11-19', wearDuration: 0 }],
+    getWearingSummary: () => ({ weekCompliance: 0, compliance: 3 }),
+  });
+  await page.loadPage();
+  assert.equal(page.data.heroProgressText, '依从率 0%');
+  assert.equal(page.data.progressWidth, '0%');
+});
+
 test('首页仅在存在主治医生姓名时显示主治信息', async () => {
   for (const [doctorName, expected] of [['张三', '主治：张三 医生'], ['', ''], ['   ', ''], ['--', ''], [null, '']]) {
     const { page } = load('', { getTreatmentRecord: () => ({ ...record, doctorName }) });

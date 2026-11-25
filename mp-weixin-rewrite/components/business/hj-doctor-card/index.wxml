@@ -33,7 +33,7 @@
       <view class="doctor-rating">
         <image class="doctor-rating-star" src="/static/icons/star-filled.svg" />
         <text class="doctor-rating-value">{{ratingText}}</text>
-        <text class="doctor-rating-count">({{reviewCountText}}评)</text>
+        <text wx:if="{{reviewCountText}}" class="doctor-rating-count">({{reviewCountText}}评)</text>
       </view>
       <text class="doctor-consult">已接诊 {{consultCountText}}+</text>
     </view>

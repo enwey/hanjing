@@ -1,6 +1,7 @@
 const sessionStore = require('../../stores/session-store');
 const miniLog = require('../../common/utils/mini-log');
 const envConfig = require('../../common/config/env');
+const { openFromHome } = require('../../common/utils/stack-navigation');
 
 const LOGIN_DIAGNOSTIC_VERSION = 'login-diagnostics-20260812-1';
 
@@ -254,7 +255,7 @@ Page({
             wx.switchTab({ url: target.url });
             return;
           }
-          wx.reLaunch({ url: target.url });
+          openFromHome(target.url);
         },
       });
       return;
@@ -264,7 +265,7 @@ Page({
       wx.switchTab({ url: target.url });
       return;
     }
-    wx.reLaunch({ url: target.url });
+    openFromHome(target.url);
   },
 
   onLoginTap() {
@@ -331,15 +332,14 @@ Page({
     if (this._unloaded) return;
     const target = resolveAfterLogin(this.data.redirectUrl);
     const fail = () => {
-      if (this._unloaded) return;
-      this.setData({ submitting: false });
+      if (!this._unloaded) this.setData({ submitting: false });
       wx.showToast({ title: '页面跳转失败，请重试', icon: 'none' });
     };
     if (target.type === 'tab') {
       wx.switchTab({ url: target.url, fail });
       return;
     }
-    wx.reLaunch({ url: target.url, fail });
+    openFromHome(target.url, fail);
   },
 
   async completeLogin(options) {

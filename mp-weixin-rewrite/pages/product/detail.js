@@ -1,6 +1,7 @@
 const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
 const navigation = require('../../common/utils/navigation');
+const subscribe = require('../../common/utils/subscribe');
 const { isPaymentTimeout, reconcileOrderPayment } = require('../../common/utils/order-payment');
 
 const activeCheckoutRequests = new Set();
@@ -63,7 +64,7 @@ function parseMarkdownToHtml(markdown) {
     .join('\n');
 }
 
-function requestWxPay(payParams) {
+function requestWxPay(payParams, onPaid) {
   return new Promise((resolve, reject) => {
     wx.requestPayment({
       timeStamp: payParams.timeStamp,
@@ -71,7 +72,7 @@ function requestWxPay(payParams) {
       package: payParams.package,
       signType: payParams.signType,
       paySign: payParams.paySign,
-      success: resolve,
+      success: () => resolve(onPaid()),
       fail: reject,
     });
   });
@@ -163,6 +164,7 @@ Page({
 
   onShow() {
     this.syncCheckoutSession();
+    if (wx.requestSubscribeMessage) void subscribe.refreshSubscribeSettings();
     if (!this.productId || (!this.data.hasLoaded && !this.data.loadError)) {
       return;
     }
@@ -575,9 +577,37 @@ Page({
           this._checkoutOrder = { id: savedCheckout.id, fingerprint: savedCheckout.fingerprint, revision };
         }
       }
+      if (wx.requestSubscribeMessage && !this._checkoutOrder && !savedCheckout && checkoutAmount === 0) {
+        await subscribe.requestSubscribe({ force: true, scene: 'order', fromTap: true });
+        if (!isCurrent()) return;
+        // Another checkout may have started while the native prompt was open.
+        if (wx.getStorageSync(checkoutKey)) {
+          wx.navigateTo({ url: '/pages/order/index' });
+          return;
+        }
+      }
       wx.showLoading({ title: '发起支付...' });
       if (this._checkoutOrder) {
-        const response = await api.getOrderDetail(this._checkoutOrder.id);
+        let response;
+        const checkedOrderId = String(this._checkoutOrder.id);
+        try {
+          response = await api.getOrderDetail(checkedOrderId);
+        } catch (error) {
+          if (Number(error?.statusCode) !== 404 || error?.message !== '订单未找到' || !isCurrent()) throw error;
+          const currentCheckout = wx.getStorageSync(checkoutKey);
+          if ((currentCheckout && String(currentCheckout.id || '') !== checkedOrderId) || activeCheckoutRequests.has(checkoutKey)) {
+            wx.hideLoading();
+            wx.showToast({ title: '下单状态已变化，请查看订单列表', icon: 'none' });
+            wx.navigateTo({ url: '/pages/order/index' });
+            return;
+          }
+          if (currentCheckout) wx.removeStorageSync(checkoutKey);
+          this._checkoutOrder = null;
+          this._checkoutUncertain = false;
+          wx.hideLoading();
+          wx.showToast({ title: '原订单未找到，请核对后重新下单', icon: 'none', duration: 3000 });
+          return;
+        }
         if (this._unloaded) return;
         const existing = (response && response.data) || response || {};
         existingPayAmount = Number(existing.payAmount);
@@ -683,7 +713,8 @@ Page({
         this.openOrderForPriceReview(orderId);
         return;
       }
-      await requestWxPay(payParams);
+      await requestWxPay(payParams, () => wx.requestSubscribeMessage && isCurrent()
+        ? subscribe.requestSubscribe({ force: true, scene: 'order', fromTap: true }) : undefined);
       if (this._unloaded) return;
       if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
       wx.showLoading({ title: '同步订单状态...' });

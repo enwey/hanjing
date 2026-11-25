@@ -43,6 +43,29 @@ function doctorDetail(api, storeId = 's') {
 }
 
 async function main() {
+  await check('医生详情评分及评论数独立展示', async () => {
+    let review = { rating: '4.7', reviewCount: '12' };
+    const h = doctorDetail({
+      getDoctors: async () => [{ ...doctor, ...review }],
+      getSchedules: async () => [dailySchedule],
+    });
+    await h.page.loadPage();
+    assert.equal(h.page.data.ratingLabel, '4.7');
+    assert.equal(h.page.data.reviewCountLabel, '12');
+    review = { rating: 0, reviewCount: '0' };
+    await h.page.loadPage();
+    assert.equal(h.page.data.ratingLabel, '5.0');
+    assert.equal(h.page.data.reviewCountLabel, '');
+    review = { reviewCount: 2 };
+    await h.page.loadPage();
+    assert.equal(h.page.data.ratingLabel, '5.0');
+    assert.equal(h.page.data.reviewCountLabel, '2');
+    assert.equal(h.page.data.hasFutureSchedules, true);
+    const wxml = fs.readFileSync(path.join(__dirname, '../../mp-weixin-rewrite/pages/appointment/doctor-detail.wxml'), 'utf8');
+    assert.match(wxml, /class="unit">分</);
+    assert.match(wxml, /wx:if="{{reviewCountLabel}}" class="review-count"/);
+  });
+
   await check('C01 医生详情按北京时间查询当天排班', async observed => {
     const h = doctorDetail({ getSchedules: async ({ startDate }) => {
       observed.startDate = startDate;

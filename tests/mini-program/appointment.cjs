@@ -15,6 +15,7 @@ function page(file,api={}){
     if(s.includes('api/index'))return api;
     if(s.includes('appointment-draft'))return draftStore;
     if(s.includes('session-store'))return {isLoggedIn:()=>loggedIn,getAccessToken:()=>loggedIn?'test':'',getLoginGeneration:()=>generation};
+    if(s.includes('stack-navigation'))return {openFromHome:url=>nav.push(url)};
     if(s.includes('subscribe'))return {requestSubscribe:async()=>{},refreshSubscribeSettings:async()=>{},subscribeToVisitReminder:async()=>false};
     if(s.includes('navigation'))return {openPage:url=>nav.push(url)};
     return deps;

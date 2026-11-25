@@ -110,7 +110,8 @@ Page({
     heroTags: [],
     experienceNumber: '0',
     consultCountLabel: '0',
-    ratingLabel: '0',
+    ratingLabel: '5.0',
+    reviewCountLabel: '',
     introText: '暂无医生简介',
     expertiseTags: [],
     scheduleRows: [],
@@ -177,6 +178,8 @@ Page({
       doctor && doctor.title ? doctor.title : '',
       doctor && doctor.specialty ? doctor.specialty : '',
     ].filter(Boolean);
+    const rating = Number(doctor.rating);
+    const reviewCount = Number(doctor.reviewCount);
 
     this.setData({
       loading: false,
@@ -193,7 +196,8 @@ Page({
       heroTags,
       experienceNumber: String((doctor && doctor.experience) || 0),
       consultCountLabel: String((doctor && doctor.consultCount) || 0),
-      ratingLabel: String(Math.round(Number((doctor && doctor.rating) || 0) * 20)),
+      ratingLabel: Number.isFinite(rating) && rating > 0 ? rating.toFixed(1) : '5.0',
+      reviewCountLabel: Number.isSafeInteger(reviewCount) && reviewCount > 0 ? String(reviewCount) : '',
       introText: (doctor && (doctor.intro || doctor.introduction)) || '暂无医生简介',
       expertiseTags,
       scheduleRows: buildScheduleRows(schedules, now),

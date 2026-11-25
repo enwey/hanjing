@@ -4,10 +4,11 @@ const results = [];
 const gate = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return {promise, resolve}; };
 async function test(name, fn) { try { await fn(); results.push({name, status:'PASS'}); } catch(e) { results.push({name, status:'FAIL', actual:e.message}); } }
 const activeCheckoutByStorage = new WeakMap();
-function harness(file, api, storage = new Map(), requestSubscribe = async () => {}) {
+function harness(file, api, storage = new Map(), requestSubscribe) {
   let p; const payments = [], toasts = [], routes = [];
   const wx = {getStorageSync:k=>storage.get(k), setStorageSync:(k,v)=>storage.set(k,v), removeStorageSync:k=>storage.delete(k),
-    showLoading(){}, hideLoading(){}, showToast:o=>toasts.push(o.title), navigateTo:o=>routes.push(o.url), requestPayment:o=>payments.push(o)};
+    showLoading(){}, hideLoading(){}, showToast:o=>toasts.push(o.title), navigateTo:o=>routes.push(o.url), requestPayment:o=>payments.push(o),
+    ...(requestSubscribe ? { requestSubscribeMessage() {} } : {})};
   const ctx = {wx, module:{exports:{}}, require:()=>({}), console:{error(){}}};
   vm.runInNewContext(fs.readFileSync(path.join(root,'stores/session-store.js'),'utf8'),ctx);
   const store = ctx.module.exports; store.setAccessToken('fixture-original');
@@ -21,6 +22,22 @@ function harness(file, api, storage = new Map(), requestSubscribe = async () => 
 function checkout(api, storage, requestSubscribe) { const h=harness('product/detail.js',api,storage,requestSubscribe); Object.assign(h.p.data,{product:{id:1},quantity:1,contactName:'fixture',phone:'13800138001',detailAddress:'fixture'}); return h; }
 async function until(fn) { for(let i=0;i<30&&!fn();i++) await Promise.resolve(); assert.ok(fn(),'expected phase not reached'); }
 (async()=>{
+  await test('邮寄商品成功支付时自动请求发货通知，拒绝仍同步支付',async()=>{
+    const calls=[];
+    const h=checkout({
+      createOrder: async()=>({data:{id:9,payAmount:1500}}),
+      payOrder: async()=>({data:{payAmount:1500}}),
+      confirmOrderPayment: async()=>{calls.push('paid');},
+    },new Map(),async options=>{calls.push(options.scene);return {shipment:'reject'};});
+    h.p.getTotalPayAmount=()=>1500;
+    const submitting=h.p.submitOrder();
+    await until(()=>h.payments.length===1);
+    assert.deepEqual(calls,[]);
+    h.payments[0].success();
+    assert.deepEqual(calls,['order']);
+    await submitting;
+    assert.deepEqual(calls,['order','paid']);
+  });
   await test('MALL-1118-01 two checkouts waiting on subscription cannot both create',async()=>{
     const storage=new Map(), firstSubscription=gate(), secondSubscription=gate(), creation=gate();
     let creates=0;

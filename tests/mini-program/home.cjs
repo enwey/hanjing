@@ -8,14 +8,43 @@ function setup(overrides={},logged=false){
  const session={isLoggedIn:()=>logged},navBox={module:{exports:{}},wx,getCurrentPages:()=>[{route:'pages/index/index'}],require:()=>session};
  vm.runInNewContext(read('common/utils/navigation.js'),navBox);
  const imgBox={module:{exports:{}},require:()=>({apiBaseUrl:'http://127.0.0.1:5005/api/v1'})};vm.runInNewContext(read('common/utils/image-url.js'),imgBox);
- const api={getHomeStats:async()=>({data:{totalPatients:1234,satisfactionRate:95,storeCount:2}}),getDoctors:async()=>({data:[{id:1,name:'fixture',rating:4.8}]}),getStores:async()=>({data:[{id:1,name:'fixture',status:'open',isOpen:true}]}),...overrides};
+ const api={getHomeStats:async()=>({data:{totalPatients:1234,satisfactionRate:95,storeCount:2}}),getDoctors:async()=>({data:[{id:1,name:'fixture',rating:4.8,reviewCount:10}]}),getStores:async()=>({data:[{id:1,name:'fixture',status:'open',isOpen:true}]}),...overrides};
  vm.runInNewContext(read('pages/index/index.js'),{Page:o=>p=o,wx,require:s=>s.includes('api/index')?api:s.includes('session-store')?session:s.includes('image-url')?imgBox.module.exports:navBox.module.exports});
  p.data=JSON.parse(JSON.stringify(p.data));p.setData=o=>{writes.push(o);Object.assign(p.data,o)};return {p,calls,toasts,writes};
 }
 (async()=>{
- await test('initial placeholders',()=>{const {p}=setup();assert.equal(p.data.patientCountLabel,'--');assert.equal(p.data.loading,true);});
+ await test('initial placeholders',()=>{const {p}=setup();assert.equal(p.data.patientCountLabel,'--');assert.equal(p.data.satisfactionRateLabel,'98%');assert.equal(p.data.loading,true);});
  await test('stats and lists normal load',async()=>{const {p}=setup();await p.onShow();assert.equal(p.data.patientCountLabel,'1,234');assert.equal(p.data.satisfactionRateLabel,'95%');assert.equal(p.data.stores.length,1);assert.equal(p.data.recommendedDoctors.length,1);assert.equal(p.data.loading,false);});
- await test('null satisfaction remains unknown',async()=>{const {p}=setup({getHomeStats:async()=>({data:{satisfactionRate:null}})});await p.loadPage();assert.equal(p.data.satisfactionRateLabel,'--');});
+ await test('null satisfaction falls back even with enough reviews',async()=>{const {p}=setup({getHomeStats:async()=>({data:{satisfactionRate:null}})});await p.loadPage();assert.equal(p.data.satisfactionRateLabel,'98%');});
+ await test('satisfaction switches at ten reviews across the full doctor list',async()=>{
+  let lastCount=3;
+  const {p}=setup({getDoctors:async()=>({data:[{reviewCount:2},{reviewCount:'2'},{reviewCount:2},{reviewCount:lastCount}]})});
+  await p.loadPage();assert.equal(p.data.satisfactionRateLabel,'98%');
+  lastCount=4;await p.loadPage();assert.equal(p.data.satisfactionRateLabel,'95%');
+  assert.equal(p.data.recommendedDoctors.length,3);
+ });
+ await test('missing review counts leave satisfaction at the default',async()=>{
+  const {p}=setup({getDoctors:async()=>({data:[{rating:4.8},{reviewCount:-1}]})});
+  await p.loadPage();assert.equal(p.data.satisfactionRateLabel,'98%');
+ });
+ await test('doctor rating and comment count display independently',()=>{
+  let card;
+  vm.runInNewContext(read('components/business/hj-doctor-card/index.js'),{
+   Component:definition=>card=definition,require:()=>({normalizeImageUrl:()=>''}),
+  });
+  const state={data:{...card.data},setData(values){Object.assign(this.data,values);}};
+  const sync=record=>card.observers.doctor.call(state,record);
+  sync({rating:'4.7',reviewCount:'3'});
+  assert.equal(state.data.ratingText,'4.7');
+  assert.equal(state.data.reviewCountText,'3');
+  sync({rating:'0.0',reviewCount:'0'});
+  assert.equal(state.data.ratingText,'5.0');
+  assert.equal(state.data.reviewCountText,'');
+  sync({reviewCount:2});
+  assert.equal(state.data.ratingText,'5.0');
+  assert.equal(state.data.reviewCountText,'2');
+  assert.match(read('components/business/hj-doctor-card/index.wxml'),/wx:if="{{reviewCountText}}" class="doctor-rating-count"/);
+ });
  await test('zero statistics are not treated as missing',async()=>{const {p}=setup({getHomeStats:async()=>({data:{totalPatients:0,satisfactionRate:0,storeCount:0}})});await p.loadPage();assert.equal(p.data.patientCountLabel,'0');assert.equal(p.data.satisfactionRateLabel,'0%');});
  for(const shape of ['array','list','items'])await test('doctor list shape '+shape,async()=>{const list=Array.from({length:5},(_,i)=>({id:i+1,name:'fixture'}));const {p}=setup({getDoctors:async()=>({data:shape==='array'?list:{[shape]:list}})});await p.loadPage();assert.equal(p.data.recommendedDoctors.length,3);});
  await test('all API failures produce visible error',async()=>{const fail=async()=>{throw Error('offline')};const {p}=setup({getHomeStats:fail,getDoctors:fail,getStores:fail});await p.loadPage();assert.equal(p.data.loadError,'加载首页失败');assert.equal(p.data.loading,false);});

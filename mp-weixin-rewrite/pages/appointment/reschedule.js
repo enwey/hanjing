@@ -1,5 +1,6 @@
 const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
+const subscribe = require('../../common/utils/subscribe');
 const { parseAppointmentTimestamp, RESCHEDULE_LIMIT_HOURS } = require('../../common/utils/appointment-time');
 
 const RESCHEDULABLE_STATUSES = ['pending_payment', 'pending', 'confirmed'];
@@ -60,12 +61,14 @@ Page({
     selectedTimeSlotLabel: '',
     submitting: false,
     rescheduleCompleted: false,
+    canRequestVisitReminder: false,
     loading: true,
     loadError: '',
     canRetryLoad: false,
   },
 
   onLoad(options) {
+    if (wx.requestSubscribeMessage) void subscribe.refreshSubscribeSettings();
     this.options = options || {};
     this.hasLoaded = false;
     this.loadPage({ silent: false });
@@ -102,7 +105,7 @@ Page({
       this.ownerGeneration = generation;
       this.rescheduleFlight = null;
       this.clearScheduleSelection();
-      this.setData({ selectedDate: '', scheduleDates: [], submitting: false, rescheduleCompleted: false });
+      this.setData({ selectedDate: '', scheduleDates: [], submitting: false, rescheduleCompleted: false, canRequestVisitReminder: false });
     }
     if (this.data.submitting || this.data.rescheduleCompleted) return;
     const requestId = this.pageRequestId = (this.pageRequestId || 0) + 1;
@@ -149,6 +152,7 @@ Page({
         storeId,
         scheduleDates,
         selectedDate,
+        canRequestVisitReminder: appointment.canSubscribeVisitReminder === true,
       });
       if (selectedDate) {
         await this.loadSchedulesForDate(selectedDate, { silent });
@@ -313,6 +317,8 @@ Page({
       return;
     }
     this.setData({ submitting: true });
+    const authorization = wx.requestSubscribeMessage && this.data.canRequestVisitReminder
+      ? subscribe.requestVisitReminderAuthorization() : null;
     try {
       await api.rescheduleAppointment(appointmentId, {
         scheduleId: selectedSchedule.id,
@@ -321,6 +327,8 @@ Page({
       });
       if (!isCurrent()) return;
       this.setData({ rescheduleCompleted: true });
+      if (authorization) await subscribe.recordAcceptedVisitReminder(appointmentId, await authorization, isCurrent);
+      if (!isCurrent()) return;
       wx.showToast({ title: '改约成功', icon: 'success' });
       this.returnTimer = setTimeout(() => {
         if (!isCurrent() || !this.data.rescheduleCompleted) return;

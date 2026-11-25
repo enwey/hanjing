@@ -35,6 +35,7 @@ function loadPage(file, h, api, options = {}) {
       p.includes('api/index') ? api : p.includes('session-store') ? h.store : p.includes('appointment-draft') ? draftStore :
       p.includes('subscribe') ? { requestSubscribe: async () => {}, refreshSubscribeSettings: async () => {}, subscribeToVisitReminder: async () => {} } :
       p.includes('image-url') ? { normalizeImageUrl: x => x || '', getStoreCoverUrl: () => '' } :
+      p.includes('stack-navigation') ? { openFromHome: url => nav.push(url) } :
       p.includes('navigation') ? { openPage: url => nav.push(url) } : {},
     Page: p => { page=p; p.data=structuredClone(p.data); p.setData=d=>Object.assign(p.data,d); }, wx,
     console: { error() {}, log() {}, warn() {} }, setTimeout: f => timers.push(f), clearTimeout() {},

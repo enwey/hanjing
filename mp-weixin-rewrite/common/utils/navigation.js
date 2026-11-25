@@ -1,4 +1,5 @@
 const sessionStore = require('../../stores/session-store');
+const { openFromHome } = require('./stack-navigation');
 
 const PUBLIC_PAGES = [
   '/pages/index/index',
@@ -49,7 +50,7 @@ function relaunchLogin(redirectUrl = '', backUrl = '') {
   if (backUrl) {
     url = '/pages/auth/login?redirect=' + encodeURIComponent(String(redirectUrl || '')) + '&back=' + encodeURIComponent(String(backUrl || ''));
   }
-  wx.reLaunch({ url });
+  openFromHome(url);
 }
 
 function canVisitWithoutLogin(url) {

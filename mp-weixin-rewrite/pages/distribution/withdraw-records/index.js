@@ -1,5 +1,4 @@
 const api = require('../../../api/index');
-const subscribe = require('../../../common/utils/subscribe');
 const sessionStore = require('../../../stores/session-store');
 const { formatChinaDate } = require('../../../common/utils/date-time');
 
@@ -46,7 +45,6 @@ Page({
   },
 
   async onShow() {
-    subscribe.refreshSubscribeSettings();
     await this.loadPage({ silent: this.data.hasLoaded });
   },
 
@@ -54,16 +52,9 @@ Page({
     this._unloaded = true;
   },
 
-  subscribeWithdrawUpdates() {
-    const generation = sessionStore.getLoginGeneration();
-    if (this._unloaded || generation !== this.recordsGeneration || !this.data.withdrawSubscribeScene) return;
-    return subscribe.subscribeToUpdates(this.data.withdrawSubscribeScene, () => !this._unloaded &&
-      generation === sessionStore.getLoginGeneration());
-  },
-
   async loadPage(options = {}) {
     const generation = sessionStore.getLoginGeneration();
-    if (this.recordsGeneration !== generation) this.setData({ records: [], withdrawSubscribeScene: '' });
+    if (this.recordsGeneration !== generation) this.setData({ records: [] });
     this.recordsGeneration = generation;
     const isCurrent = () => !this._unloaded && generation === sessionStore.getLoginGeneration();
     const silent = !!options.silent;
@@ -101,8 +92,6 @@ Page({
         hasLoaded: true,
         loading: false,
         records,
-        withdrawSubscribeScene: records.some(record => ['pending', 'processing'].includes(record.status)) ? 'withdraw' :
-          records.some(record => record.status === 'approved') ? 'withdrawPaid' : '',
         summary: {
           totalAmountLabel: '¥' + (totalAmount / 100).toFixed(2),
           completedCount: String(completedCount),

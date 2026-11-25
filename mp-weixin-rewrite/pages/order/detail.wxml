@@ -80,8 +80,7 @@
         </view>
       </view>
 
-      <view wx:if="{{order.actionFlags.canCancel || order.actionFlags.canPay || order.actionFlags.canConfirmReceipt || order.actionFlags.canRefund || order.canSubscribeShipment}}" class="action-footer">
-        <button wx:if="{{order.canSubscribeShipment}}" class="action-button action-button--ghost" bindtap="subscribeShipment">订阅发货通知</button>
+      <view wx:if="{{order.actionFlags.canCancel || order.actionFlags.canPay || order.actionFlags.canConfirmReceipt || order.actionFlags.canRefund}}" class="action-footer">
         <button wx:if="{{order.actionFlags.canCancel}}" bindtap="onCancelOrder" class="action-button action-button--ghost">取消订单</button>
         <button wx:if="{{order.actionFlags.canPay}}" bindtap="onPayOrder" class="action-button action-button--primary">立即支付</button>
         <button wx:if="{{order.actionFlags.canConfirmReceipt}}" bindtap="onConfirmReceipt" class="action-button action-button--primary">确认收货</button>

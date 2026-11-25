@@ -2,6 +2,9 @@ const api = require('../../api/index');
 const { normalizeImageUrl } = require('../../common/utils/image-url');
 const sessionStore = require('../../stores/session-store');
 
+const DEFAULT_SATISFACTION_RATE_LABEL = '98%';
+const MIN_SATISFACTION_REVIEWS = 10;
+
 function formatIntegerWithCommas(value) {
   const text = String(Math.max(0, parseInt(value, 10) || 0));
   return text.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -93,7 +96,7 @@ Page({
     doctorsLoadFailed: false,
     storesLoadFailed: false,
     patientCountLabel: '--',
-    satisfactionRateLabel: '--',
+    satisfactionRateLabel: DEFAULT_SATISFACTION_RATE_LABEL,
     storeCountLabel: '--',
     recommendedDoctors: [],
     stores: [],
@@ -148,16 +151,25 @@ Page({
       const statsSource = statsResult.status === 'fulfilled'
         ? ((statsResult.value && statsResult.value.data) || statsResult.value || {})
         : {};
-      const recommendedDoctors = statsResult.status === 'rejected' && doctorsResult.status === 'rejected'
-        ? []
-        : unwrapList(doctorsResult.status === 'fulfilled' ? doctorsResult.value : null)
-            .map(normalizeDoctor)
-            .slice(0, 3);
+      const doctorList = unwrapList(doctorsResult.status === 'fulfilled' ? doctorsResult.value : null);
+      const recommendedDoctors = doctorList.slice(0, 3).map(normalizeDoctor);
+      // Home statistics report the rate only. Count all eligible doctors before limiting the display to three.
+      const reviewCount = doctorList.reduce((total, doctor) => {
+        const count = Number(doctor?.reviewCount);
+        return Number.isSafeInteger(count) && count > 0 ? total + count : total;
+      }, 0);
       const stores = unwrapList(storesResult.status === 'fulfilled' ? storesResult.value : null)
         .map((store) => normalizeStore(store, location));
 
       const totalPatients = Number(statsSource.totalPatients || 0);
-      const satisfactionRate = Number(statsSource.satisfactionRate || 0);
+      const rawSatisfactionRate = statsSource.satisfactionRate;
+      const satisfactionRate = Number(rawSatisfactionRate);
+      const hasSatisfactionRate = typeof rawSatisfactionRate === 'number'
+        || (typeof rawSatisfactionRate === 'string' && rawSatisfactionRate.trim() !== '');
+      const satisfactionRateLabel = reviewCount >= MIN_SATISFACTION_REVIEWS && hasSatisfactionRate
+        && Number.isFinite(satisfactionRate) && satisfactionRate >= 0 && satisfactionRate <= 100
+        ? String(satisfactionRate) + '%'
+        : DEFAULT_SATISFACTION_RATE_LABEL;
       const storeCount = Number(statsSource.storeCount || 0);
       const allFailed =
         statsResult.status === 'rejected' &&
@@ -175,7 +187,7 @@ Page({
         storesLoadFailed: storesResult.status === 'rejected',
         loadError: allFailed ? '加载首页失败' : (failedSections.length ? failedSections.join('、') + '加载失败，请稍后重试' : ''),
         patientCountLabel: statsSource.totalPatients != null && Number.isFinite(totalPatients) ? formatIntegerWithCommas(totalPatients) : '--',
-        satisfactionRateLabel: statsSource.satisfactionRate != null && Number.isFinite(satisfactionRate) ? String(satisfactionRate) + '%' : '--',
+        satisfactionRateLabel,
         storeCountLabel: statsSource.storeCount != null && Number.isFinite(storeCount) ? String(storeCount) : '--',
         recommendedDoctors,
         stores,

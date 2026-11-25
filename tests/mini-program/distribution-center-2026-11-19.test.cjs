@@ -1,11 +1,11 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const root=path.join(__dirname,'../../mp-weixin-rewrite/pages/distribution');
-function page(name,api,wxOverrides={}){
+function page(name,api,wxOverrides={},subscribeOverrides={}){
   const file=path.join(root,name,'index.js');let p;const toasts=[];
   if (name === 'withdraw') api = { getWithdrawBankCards: async () => ({ list: [] }), ...api };
   vm.runInNewContext(fs.readFileSync(file,'utf8'),{Page:x=>{p=x;x.setData=(v,cb)=>{Object.assign(x.data,v);cb?.();};},
-    require:id=>id.includes('navigation')?{}:id.includes('session-store')?{getAccessToken:()=> 'fixture', getLoginGeneration:()=>1}:id.includes('api/index')?api:require(path.resolve(path.dirname(file),id+'.js')),
+    require:id=>id.endsWith('/subscribe')?subscribeOverrides:id.includes('navigation')?{}:id.includes('session-store')?{getAccessToken:()=> 'fixture', getLoginGeneration:()=>1}:id.includes('api/index')?api:require(path.resolve(path.dirname(file),id+'.js')),
     wx:{showToast(v){toasts.push(v.title);}, ...wxOverrides},console});
   p.toasts=toasts;return p;
 }
@@ -285,4 +285,20 @@ test('微信零钱提现网络异常重试沿用同一请求号', async () => {
   await p.submitWithdraw();
   assert.equal(keys.length, 2);
   assert.equal(keys[0], keys[1]);
+});
+
+test('提现：确认点击直接申请订阅，拒绝后仍可提交', async () => {
+  const actions = [];
+  const p = page('withdraw', {
+    getDistributorInfo: async () => ({ availableCommission: 5000, minWithdrawAmount: 100, withdrawFeeRates: { bank: 0.02 } }),
+    applyWithdraw: async () => actions.push('withdraw'),
+  }, { requestSubscribeMessage() {} }, {
+    requestSubscribe: async options => { actions.push('prompt:' + options.scene); return { result: 'reject' }; },
+  });
+  await p.loadPage();
+  Object.assign(p.data, { withdrawAmountInput: '20', bankName: '测试银行', bankAccountName: '测试', bankAccountNo: '12345678' });
+  const saving = p.submitWithdraw();
+  assert.deepEqual(actions, ['prompt:withdraw', 'withdraw'], '授权和业务都从同一个点击触发');
+  await saving;
+  assert.ok(p.toasts.includes('提现申请已提交'));
 });

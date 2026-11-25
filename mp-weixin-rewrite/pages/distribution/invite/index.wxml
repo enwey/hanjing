@@ -49,7 +49,7 @@
   </view>
   <view class="invite-actions">
     <button class="invite-button invite-button--save" bindtap="handleSavePoster" loading="{{isSavingPoster}}" disabled="{{isSavingPoster || !inviteCode}}">{{isSavingPoster ? '生成中' : '保存海报'}}</button>
-    <button class="invite-button invite-button--share" open-type="share" disabled="{{!inviteCode || !shareImagePath}}">邀请好友一起好眠</button>
+    <button class="invite-button invite-button--share" open-type="share" bindtap="requestPromotionReminder" disabled="{{!inviteCode || !shareImagePath}}">邀请好友一起好眠</button>
   </view>
   <canvas id="distributionInvitePoster" canvas-id="distributionInvitePoster" type="2d" class="poster-canvas" style="width: {{posterWidth}}px; height: {{posterHeight}}px;" disable-scroll="{{true}}"></canvas>
 </view>

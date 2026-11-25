@@ -1,5 +1,6 @@
 const api = require('../../../api/index');
 const { normalizeImageUrl } = require('../../../common/utils/image-url');
+const sessionStore = require('../../../stores/session-store');
 
 const RELATION_LABELS = {
   spouse: '配偶',
@@ -86,6 +87,15 @@ Page({
     loading: true,
     hasLoaded: false,
     members: [],
+    selectionMode: false,
+    selectedId: '',
+  },
+
+  onLoad(options = {}) {
+    this.selectionGeneration = sessionStore.getLoginGeneration();
+    this.selectionStoreId = String(options.storeId || '');
+    this.selectionStoreName = String(options.storeName || '');
+    this.setData({ selectionMode: options.source === 'appointment', selectedId: String(options.selectedId || '') });
   },
 
   onShow() {
@@ -119,14 +129,47 @@ Page({
   },
 
   goAddMember() {
+    const params = this.data.selectionMode ? [
+      'source=appointment',
+      this.selectionStoreId ? 'storeId=' + encodeURIComponent(this.selectionStoreId) : '',
+      this.selectionStoreName ? 'storeName=' + encodeURIComponent(this.selectionStoreName) : '',
+    ].filter(Boolean).join('&') : '';
     wx.navigateTo({
-      url: '/pages/profile/family-members/add-member/index',
+      url: '/pages/profile/family-members/add-member/index' + (params ? '?' + params : ''),
     });
+  },
+
+  selectCreatedPatient(id) {
+    if (!this.data.selectionMode || this.selectionGeneration !== sessionStore.getLoginGeneration()) return;
+    this.setData({ selectedId: String(id) });
+    const pages = getCurrentPages();
+    const confirmPage = pages[pages.length - 3];
+    if (confirmPage && typeof confirmPage.selectCreatedPatient === 'function') confirmPage.selectCreatedPatient(id);
   },
 
   goMemberDetail(event) {
     const memberId = String(event.currentTarget.dataset.id || '');
     if (!memberId) {
+      return;
+    }
+    if (this.data.selectionMode) {
+      if (this.selectionGeneration !== sessionStore.getLoginGeneration()) {
+        wx.showToast({ title: '登录状态已变更，请重新选择就诊人', icon: 'none' });
+        return;
+      }
+      const member = this.data.members.find(item => item.id === memberId);
+      if (!member) return;
+      const choose = () => {
+        if (this.selectionGeneration !== sessionStore.getLoginGeneration()) return;
+        const pages = getCurrentPages();
+        const confirmPage = pages[pages.length - 2];
+        if (!confirmPage || typeof confirmPage.selectCreatedPatient !== 'function') return;
+        confirmPage.selectCreatedPatient(memberId);
+        wx.navigateBack();
+      };
+      if (member.ageLabel && Number(member.ageLabel) < 18) {
+        wx.showModal({ title: '儿童就诊提示', content: '本门诊定制式下颌前移防鼾器（牙套）仅适用于18岁以上发育成熟的成人。18岁以下儿童打鼾通常由扁桃体或腺样体肥大引起，建议优先预约小儿耳鼻喉科进行排查诊治。是否继续？', confirmText: '继续预约', cancelText: '取消', success: result => { if (result.confirm) choose(); } });
+      } else choose();
       return;
     }
     wx.navigateTo({

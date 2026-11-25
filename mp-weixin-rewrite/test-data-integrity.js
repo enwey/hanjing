@@ -212,14 +212,14 @@ test('appointment success page rejects unpaid and cancelled bookings', async () 
   assert.equal(page.data.loadError, '');
 });
 
-test('home uses actual zeros and unknown placeholders', async () => {
+test('home uses actual zeros, default satisfaction and unknown placeholders', async () => {
   let stats = { totalPatients: 0, satisfactionRate: null, storeCount: 0 };
   const { page } = load('pages/index/index.js', { '../../api/index': {
     getHomeStats: async () => stats, getDoctors: async () => [], getStores: async () => [],
   } });
   await page.loadPage();
   assert.equal(page.data.patientCountLabel, '0');
-  assert.equal(page.data.satisfactionRateLabel, '--');
+  assert.equal(page.data.satisfactionRateLabel, '98%');
   assert.equal(page.data.storeCountLabel, '0');
   stats = {};
   await page.loadPage();

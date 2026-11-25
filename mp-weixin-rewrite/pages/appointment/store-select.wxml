@@ -12,7 +12,9 @@
       <text>{{loadError}}</text>
       <button bindtap="loadPage">重试</button>
     </view>
-    <view wx:elif="{{!stores.length}}"><text>暂无可预约门店</text></view>
+    <view wx:elif="{{!stores.length}}" class="store-empty">
+      <hj-empty title="暂无可预约门店" icon="/static/icons/store.svg" />
+    </view>
 
     <hj-store-card
       wx:for="{{stores}}"

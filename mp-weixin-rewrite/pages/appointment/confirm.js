@@ -2,6 +2,8 @@ const paymentReceipt = require('../../common/utils/appointment-payment-receipt')
 const api = require('../../api/index');
 const appointmentDraftStore = require('../../stores/appointment-draft-store');
 const sessionStore = require('../../stores/session-store');
+const { openFromHome } = require('../../common/utils/stack-navigation');
+const subscribe = require('../../common/utils/subscribe');
 
 const RELATION_LABEL_MAP = {
   self: '本人',
@@ -38,7 +40,7 @@ function unwrapObject(response) {
   return payload.data || payload;
 }
 
-function requestWxPay(payParams) {
+function requestWxPay(payParams, onPaid) {
   return new Promise((resolve, reject) => {
     wx.requestPayment({
       timeStamp: payParams.timeStamp,
@@ -46,7 +48,7 @@ function requestWxPay(payParams) {
       package: payParams.package,
       signType: payParams.signType,
       paySign: payParams.paySign,
-      success: resolve,
+      success: () => resolve(onPaid()),
       fail: reject,
     });
   });
@@ -82,7 +84,7 @@ Page({
     requireDeposit: false,
     depositAmountYuan: '¥0.00',
     cancelLimitText: '就诊前2小时',
-    subscribeTemplateIds: [],
+    visitReminderTemplateId: '',
     assessmentLabel: '',
     buttonText: '确认预约',
     memberOptions: [],
@@ -129,7 +131,7 @@ Page({
         selectedMemberName: '请选择就诊人', symptomDesc: '', assessmentLabel: '',
         storeName: '', doctorName: '', consultFeeAmount: 0, consultFeeLabel: '¥0.00',
         showConsultFee: false, requireDeposit: false, depositAmountYuan: '¥0.00',
-        subscribeTemplateIds: [], buttonText: '确认预约', isSubmitting: false,
+        visitReminderTemplateId: '', buttonText: '确认预约', isSubmitting: false,
       });
     }
     if (this.createdAppointmentId) return;
@@ -211,7 +213,7 @@ Page({
         requireDeposit,
         depositAmountYuan: '¥' + (depositAmount / 100).toFixed(2),
         cancelLimitText: bookingSettings.cancelLimit || '就诊前2小时',
-        subscribeTemplateIds: bookingSettings.subscribeTemplateIds || [],
+        visitReminderTemplateId: String(bookingSettings.subscribeTemplateMap?.visit_reminder || '').trim(),
         assessmentLabel: pendingAssessment ? pendingAssessment.label || '' : '',
         buttonText,
         memberOptions,
@@ -286,15 +288,18 @@ Page({
     });
   },
 
-  goAddMember() {
+  goSelectMember() {
+    if (this.data.isSubmitting) return;
     const draft = this.data.draft || {};
+    const selected = this.data.memberList[this.data.memberIndex];
     const query = [
       'source=appointment',
+      selected ? 'selectedId=' + encodeURIComponent(String(selected.id)) : '',
       draft.storeId ? 'storeId=' + encodeURIComponent(String(draft.storeId)) : '',
       this.data.storeName ? 'storeName=' + encodeURIComponent(this.data.storeName) : '',
     ].filter(Boolean).join('&');
     wx.navigateTo({
-      url: '/pages/profile/family-members/add-member/index' + (query ? '?' + query : ''),
+      url: '/pages/profile/family-members/index' + (query ? '?' + query : ''),
     });
   },
 
@@ -327,6 +332,16 @@ Page({
     const assessment = this.pendingAssessment;
     const generation = sessionStore.getLoginGeneration();
     const isCurrent = () => !this._unloaded && generation === sessionStore.getLoginGeneration() && sessionStore.isLoggedIn();
+    const templateId = this.data.visitReminderTemplateId;
+    const requestReminder = () => templateId && isCurrent() ? subscribe.requestVisitReminderAuthorization(templateId) : null;
+    const saveReminder = async (appointmentId, acceptedTemplateId) => {
+      if (!acceptedTemplateId || !isCurrent()) return;
+      try {
+        await api.recordVisitReminderAuthorization(appointmentId, acceptedTemplateId);
+      } catch (error) {
+        console.warn('就诊提醒授权保存失败', error?.statusCode);
+      }
+    };
     this.setData({ isSubmitting: true });
 
     let creating = false;
@@ -338,6 +353,10 @@ Page({
         wx.showToast({ title: '预约信息已变更，请核对后重新提交', icon: 'none' });
         return;
       }
+      // Invoke the native prompt during the tap on free bookings. Write consent only after creation succeeds.
+      const tapAuthorization = !this.data.requireDeposit && Number(this.data.consultFeeAmount) <= 0
+        ? requestReminder()
+        : null;
       creating = true;
       const createResponse = await api.createAppointment({
         patientId: selectedMember.id,
@@ -363,7 +382,7 @@ Page({
       this.setData({ draft: null });
       if (appointment.reused) {
         wx.showToast({ title: '该时段已有预约，请在预约记录中查看', icon: 'none' });
-        wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
+        openFromHome('/pages/appointment/booking/index?tab=mine');
         return;
       }
       const appointmentStatus = appointment.status;
@@ -383,6 +402,8 @@ Page({
         }
         const totalPayYuan = ((depositAmount + consultFeeAmount) / 100).toFixed(2);
 
+        if (tapAuthorization) await tapAuthorization;
+        if (!isCurrent()) return;
         wx.showModal({
           title: '确认支付',
           content: '预约就诊需要支付 ¥' + totalPayYuan + feeDescription + '，是否确认支付？',
@@ -396,6 +417,7 @@ Page({
               try {
                 wx.showLoading({ title: '发起支付...' });
                 let alreadyPaid = false;
+                let acceptedTemplateId = tapAuthorization ? await tapAuthorization : '';
                 if (!paymentReceipt.hasSubmitted(appointmentId)) {
                   const payResponse = await paymentReceipt.preparePayment(api, appointmentId, isCurrent);
                   if (!isCurrent()) { wx.hideLoading(); return; }
@@ -403,8 +425,11 @@ Page({
                   wx.hideLoading();
                   alreadyPaid = payParams.alreadyPaid === true;
                   if (!alreadyPaid) {
-                    await requestWxPay(payParams);
-                    paymentReceipt.markSubmitted(appointmentId);
+                    const paidAuthorization = await requestWxPay(payParams, () => {
+                      paymentReceipt.markSubmitted(appointmentId);
+                      return tapAuthorization ? null : requestReminder();
+                    });
+                    acceptedTemplateId = acceptedTemplateId || paidAuthorization;
                   }
                 }
                 if (!isCurrent()) return;
@@ -413,10 +438,12 @@ Page({
                 if (!alreadyPaid) await syncPaidAppointment(appointmentId);
                 wx.hideLoading();
                 if (!isCurrent()) return;
+                await saveReminder(appointmentId, acceptedTemplateId);
+                if (!isCurrent()) return;
                 wx.showToast({ title: '支付已提交', icon: 'success' });
                 appointmentDraftStore.clearDraft();
                 wx.removeStorageSync('pending_appointment_assessment');
-                wx.reLaunch({ url: '/pages/appointment/success?id=' + appointmentId });
+                openFromHome('/pages/appointment/success?id=' + appointmentId);
               } catch (error) {
                 wx.hideLoading();
                 if (!isCurrent()) return;
@@ -426,7 +453,7 @@ Page({
                 });
                 setTimeout(() => {
                   if (!isCurrent()) return;
-                  wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
+                  openFromHome('/pages/appointment/booking/index?tab=mine');
                 }, 1000);
               } finally {
                 releasePayment();
@@ -443,22 +470,26 @@ Page({
               }
               setTimeout(() => {
                 if (!isCurrent()) return;
-                wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
+                openFromHome('/pages/appointment/booking/index?tab=mine');
               }, 1000);
             }
           },
           fail: () => {
             if (!isCurrent()) return;
             wx.showToast({ title: '预约已创建，请在预约记录中继续处理', icon: 'none' });
-            wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
+            openFromHome('/pages/appointment/booking/index?tab=mine');
           },
         });
         return;
       }
 
+      if (tapAuthorization && ['pending', 'confirmed'].includes(appointmentStatus)) {
+        await saveReminder(appointmentId, await tapAuthorization);
+        if (!isCurrent()) return;
+      }
       appointmentDraftStore.clearDraft();
       wx.removeStorageSync('pending_appointment_assessment');
-      wx.reLaunch({ url: '/pages/appointment/success?id=' + appointmentId });
+      openFromHome('/pages/appointment/success?id=' + appointmentId);
     } catch (error) {
       if (!isCurrent()) return;
       const status = Number(error && error.statusCode);
@@ -472,7 +503,7 @@ Page({
           console.error('保存待确认预约草稿失败', storageError);
         }
         wx.showToast({ title: '预约结果待确认，请核对预约记录', icon: 'none' });
-        wx.reLaunch({ url: '/pages/appointment/booking/index?tab=mine' });
+        openFromHome('/pages/appointment/booking/index?tab=mine');
         return;
       }
       wx.showToast({

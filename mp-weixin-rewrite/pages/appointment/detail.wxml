@@ -301,8 +301,6 @@
       <text wx:if="{{appointmentCharge.chargeNo}}">收费单号 {{appointmentCharge.chargeNo}}</text>
       <text wx:if="{{appointmentCharge.refundedAmount}}">已退款 {{appointmentCharge.refundedAmount}}</text>
     </view>
-    <button wx:if="{{canSubscribeVisitReminder}}" class="footer-btn btn-ghost visit-reminder-button"
-      bindtap="subscribeVisitReminder" loading="{{subscribingVisitReminder}}" disabled="{{subscribingVisitReminder}}">订阅就诊提醒</button>
 
     <view wx:if="{{canPay || showRescheduleCancelFooter}}" class="action-footer">
       <button wx:if="{{canPay}}" class="footer-btn btn-primary-full" hover-class="footer-btn-hover" bindtap="payDeposit">立即支付</button>

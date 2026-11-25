@@ -13,7 +13,7 @@ Component({
     specialtyText: '',
     experienceText: '',
     expertiseList: [],
-    ratingText: '',
+    ratingText: '5.0',
     reviewCountText: '',
     consultCountText: '',
   },
@@ -21,6 +21,8 @@ Component({
     doctor: function syncDoctor(doctor) {
       const record = doctor || {};
       const name = record.name || '';
+      const rating = Number(record.rating);
+      const reviewCount = Number(record.reviewCount);
       const avatarUrl = normalizeImageUrl(record.avatarUrl || record.avatar || record.avatar_url || record.doctorAvatar || record.doctor_avatar);
       const shouldKeepLoaded = avatarUrl && avatarUrl === this.data.avatarUrl && this.data.avatarLoaded;
       this.setData({
@@ -31,8 +33,8 @@ Component({
         specialtyText: record.specialty || '',
         experienceText: String(record.experience || 0),
         expertiseList: Array.isArray(record.expertise) ? record.expertise.slice(0, 5) : [],
-        ratingText: String(record.rating || '0'),
-        reviewCountText: String(record.reviewCount || 0),
+        ratingText: Number.isFinite(rating) && rating > 0 ? String(record.rating) : '5.0',
+        reviewCountText: Number.isSafeInteger(reviewCount) && reviewCount > 0 ? String(reviewCount) : '',
         consultCountText: String(record.consultCount || 0),
       });
     },

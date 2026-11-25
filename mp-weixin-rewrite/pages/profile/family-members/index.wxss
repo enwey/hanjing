@@ -78,6 +78,15 @@
   align-items: center;
   box-shadow: var(--card-shadow);
 }
+.member-card--selected.data-v-30acdad2 {
+  box-shadow: inset 0 0 0 1px #3b6bf5;
+}
+.member-selected {
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: #3b6bf5;
+  font-size: 13px;
+}
 .member-avatar.data-v-30acdad2 {
   width: 48px;
   height: 48px;

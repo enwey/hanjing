@@ -52,9 +52,11 @@
       <view class="doc-stat">
         <view class="val">
           <text>{{ratingLabel}}</text>
-          <text class="unit">%</text>
+          <text class="unit">分</text>
         </view>
-        <view class="lab">好评率</view>
+        <view class="lab">
+          <text>医生评分</text><text wx:if="{{reviewCountLabel}}" class="review-count">({{reviewCountLabel}}评)</text>
+        </view>
       </view>
     </view>
 

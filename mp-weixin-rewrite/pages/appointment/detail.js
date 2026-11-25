@@ -56,7 +56,7 @@ function hasPreExamData(preExam) {
   });
 }
 
-function requestWxPay(payParams) {
+function requestWxPay(payParams, onPaid) {
   return new Promise((resolve, reject) => {
     wx.requestPayment({
       timeStamp: payParams.timeStamp,
@@ -64,7 +64,7 @@ function requestWxPay(payParams) {
       package: payParams.package,
       signType: payParams.signType,
       paySign: payParams.paySign,
-      success: resolve,
+      success: () => resolve(onPaid()),
       fail: reject,
     });
   });
@@ -136,6 +136,7 @@ Page({
     ratingStars: [1, 2, 3, 4, 5],
     medicalRecord: null,
     treatmentRecord: null,
+    canRequestVisitReminderOnPayment: false,
   },
 
   onLoad(options) {
@@ -165,8 +166,7 @@ Page({
 
   clearPrivateDetail() {
     this.setData({ appointmentLoaded: false, canRetryLoad: false, patientName: '', assessmentInfo: null,
-      preExam: null, medicalRecord: null, treatmentRecord: null, evaluation: null,
-      canSubscribeVisitReminder: false });
+      preExam: null, medicalRecord: null, treatmentRecord: null, evaluation: null, canRequestVisitReminderOnPayment: false });
   },
 
   async loadPage(options) {
@@ -279,10 +279,7 @@ Page({
         canCancel,
         appointmentCharge: chargeDisplay(appointment.appointmentCharge),
         canPay: appointment.status === 'pending_payment' && appointment.appointmentCharge?.canPay !== false,
-        canSubscribeVisitReminder: Boolean(appointment.canSubscribeVisitReminder &&
-          bookingSettings.subscribeTemplateMap?.visit_reminder &&
-          ['pending', 'confirmed'].includes(appointment.status) &&
-          appointmentTimestamp > Date.now()),
+        canRequestVisitReminderOnPayment: appointment.canSubscribeVisitReminder === true,
         canCancelOrReschedule,
         canReschedule,
         showLimitNotice:
@@ -348,24 +345,6 @@ Page({
     });
   },
 
-  async subscribeVisitReminder() {
-    if (!this.data.canSubscribeVisitReminder || this.data.subscribingVisitReminder) return;
-    const generation = sessionStore.getLoginGeneration();
-    const isCurrent = () => !this._unloaded && generation === sessionStore.getLoginGeneration();
-    this.setData({ subscribingVisitReminder: true });
-    try {
-      const accepted = await subscribe.subscribeToVisitReminder(this.data.appointmentId, isCurrent);
-      if (isCurrent()) wx.showToast({
-        title: accepted ? '已订阅就诊提醒' : '未获得就诊提醒授权',
-        icon: accepted ? 'success' : 'none',
-      });
-    } catch (error) {
-      if (isCurrent()) wx.showToast({ title: error.message || '订阅结果保存失败', icon: 'none' });
-    } finally {
-      if (!this._unloaded) this.setData({ subscribingVisitReminder: false });
-    }
-  },
-
   async payDeposit() {
     if (!this.data.canPay) return;
     const generation = sessionStore.getLoginGeneration();
@@ -400,6 +379,7 @@ Page({
     wx.showLoading({ title: '发起支付...' });
     try {
       let alreadyPaid = false;
+      let acceptedTemplateId;
       if (!paymentReceipt.hasSubmitted(appointmentId)) {
         const payResponse = await paymentReceipt.preparePayment(api, appointmentId, isCurrent);
         if (!isCurrent()) return;
@@ -407,8 +387,12 @@ Page({
         wx.hideLoading();
         alreadyPaid = payParams.alreadyPaid === true;
         if (!alreadyPaid) {
-          await requestWxPay(payParams);
-          paymentReceipt.markSubmitted(appointmentId);
+          acceptedTemplateId = await requestWxPay(payParams, () => {
+            paymentReceipt.markSubmitted(appointmentId);
+            if (wx.requestSubscribeMessage && isCurrent() && this.data.canRequestVisitReminderOnPayment) {
+              return subscribe.requestVisitReminderAuthorization();
+            }
+          });
         }
       }
       if (!isCurrent()) return;
@@ -417,6 +401,8 @@ Page({
       if (!alreadyPaid) await syncPaidAppointment(appointmentId);
       if (!isCurrent()) return;
       wx.hideLoading();
+      if (acceptedTemplateId) await subscribe.recordAcceptedVisitReminder(appointmentId, acceptedTemplateId, isCurrent);
+      if (!isCurrent()) return;
       wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });
       await this.loadPage();
     } catch (error) {

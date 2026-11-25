@@ -519,11 +519,6 @@
   font-weight: 600;
 }
 
-.visit-reminder-button {
-  width: 100%;
-  margin: 0 0 24rpx;
-}
-
 .footer-btn::after {
   border: none;
 }

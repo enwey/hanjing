@@ -51,6 +51,17 @@ function unwrapList(response) {
   return [];
 }
 
+function buildHeroProgress(summary, hasTreatmentRecord, wearingRecords) {
+  const rawCompliance = summary.weekCompliance ?? summary.compliance;
+  const compliance = Number(rawCompliance);
+  const hasCompliance = (hasTreatmentRecord || wearingRecords.length > 0)
+    && rawCompliance != null && rawCompliance !== '' && Number.isFinite(compliance);
+  return {
+    heroProgressText: hasCompliance ? `依从率 ${compliance}%` : '依从率 --',
+    progressWidth: hasCompliance ? `${compliance}%` : '0%',
+  };
+}
+
 function getRelationLabel(relation) {
   return RELATION_LABEL_MAP[relation] || relation || '成员';
 }
@@ -370,7 +381,7 @@ Page({
   },
 
   onHide() {
-    if (this.data.checkinVisible || this.data.pageStyle !== 'overflow: visible;') {
+    if (this.data.checkinVisible || this.data.pageStyle !== 'overflow: visible; background-color: #f3f4f6;') {
       this.setData({ checkinVisible: false, pageStyle: 'overflow: visible; background-color: #f3f4f6;' });
     }
   },
@@ -435,7 +446,6 @@ Page({
       const hasTreatmentRecord = !!treatmentRecord;
       const hasRealTreatmentRecord = !!(treatmentRecord && treatmentRecord.isRealTreatmentRecord);
       const doctorName = typeof treatmentRecord?.doctorName === 'string' ? treatmentRecord.doctorName.trim() : '';
-      const heroCompliance = Number(summary.weekCompliance != null ? summary.weekCompliance : summary.compliance || 0);
 
       patientContextStore.setCurrentPatientId(this.selectedPatientId);
       this.members = members;
@@ -458,8 +468,7 @@ Page({
         heroSubText: hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无诊疗记录',
         treatmentDeviceLabel: (treatmentRecord && treatmentRecord.deviceModel) || '暂无治疗记录',
         treatmentDoctorLabel: hasTreatmentRecord ? `主治：${(treatmentRecord && treatmentRecord.doctorName) || '--'} 医生` : '完成初诊适配后将在此展示',
-        heroProgressText: hasTreatmentRecord ? `依从率 ${heroCompliance}%` : '依从率 --',
-        progressWidth: `${heroCompliance}%`,
+        ...buildHeroProgress(summary, hasTreatmentRecord, wearingRecords),
         treatmentStartLabel: hasTreatmentRecord ? `初配日期：${formatChinaDate((treatmentRecord && treatmentRecord.createdAt) || '') || '--'}` : '初配日期：--',
         k: String(summary.weekWorn || 0),
         l: String(Number(summary.weekAvg || 0)),
@@ -498,7 +507,7 @@ Page({
       return;
     }
     this.selectedPatientId = String(member.id);
-    this.setData({ checkinVisible: false, pageStyle: 'overflow: visible;' });
+    this.setData({ checkinVisible: false, pageStyle: 'overflow: visible; background-color: #f3f4f6;' });
     await this.loadPage();
   },
 
@@ -550,7 +559,7 @@ Page({
       .filter((option) => selectedPainLocationKeys.indexOf(option.key) >= 0)
       .map((option) => option.label);
     this.setData({
-      pageStyle: 'overflow: hidden; height: 100vh;',
+      pageStyle: 'overflow: hidden; height: 100vh; background-color: #f3f4f6;',
       checkinVisible: true,
       checkinDateLabel: getTodayDateLabel(),
       selectedWearDuration: todayRecord && todayRecord.wearDuration > 0 ? todayRecord.wearDuration : 7,
@@ -566,7 +575,7 @@ Page({
   },
 
   closeCheckinModal() {
-    this.setData({ checkinVisible: false, pageStyle: 'overflow: visible;' });
+    this.setData({ checkinVisible: false, pageStyle: 'overflow: visible; background-color: #f3f4f6;' });
   },
 
   scrollSelectedDurationToCenter(selectedDuration) {
@@ -715,11 +724,10 @@ Page({
         note: item.note || '',
       }));
       const summary = unwrapObject(summaryRes) || {};
-      const heroCompliance = Number(summary.weekCompliance != null ? summary.weekCompliance : summary.compliance || 0);
 
       this.setData({
         checkinVisible: false,
-        pageStyle: 'overflow: visible;',
+        pageStyle: 'overflow: visible; background-color: #f3f4f6;',
         isSubmittingCheckin: false,
         recentDays: buildRecentDays(this.wearingRecords),
         k: String(summary.weekWorn || 0),
@@ -733,8 +741,7 @@ Page({
           { key: 'streak', label: '连续天数', value: `${summary.streak || 0}天` },
         ],
         heroSubText: this.data.hasTreatmentRecord ? `已佩戴 ${summary.streak || 0} 天` : '暂无诊疗记录',
-        heroProgressText: this.data.hasTreatmentRecord ? `依从率 ${heroCompliance}%` : '依从率 --',
-        progressWidth: `${heroCompliance}%`,
+        ...buildHeroProgress(summary, this.data.hasTreatmentRecord, this.wearingRecords),
       });
       wx.showToast({ title: '打卡成功', icon: 'success' });
     } catch (error) {

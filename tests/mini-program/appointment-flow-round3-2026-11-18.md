@@ -51,3 +51,10 @@
 实际执行小程序页面逻辑，使用模拟预约接口、微信接口和固定时钟。微信真机、真实交易及数据库写入未验证。业务代码未修改。
 
 [新增测试脚本](appointment-flow-round3-2026-11-18.cjs) · [新增结果](artifacts/appointment-flow-round3-2026-11-18/new-cases.json) · [日期与确认专项](artifacts/appointment-flow-round3-2026-11-18/round2/results.json) · [流程矩阵](artifacts/appointment-flow-round3-2026-11-18/matrix/results.json) · [基础用例](artifacts/appointment-flow-round3-2026-11-18/appointment.json) · [回归用例](artifacts/appointment-flow-round3-2026-11-18/appointment-regression.json)
+
+## 2026-11-25 医生详情评分展示
+
+- 状态：修复中。范围为医生详情页的评分和评论数展示。
+- 实现状态：待回归。医生详情把原来由评分换算的好评率改为五分制评分，评分缺失时显示 5.0 分，评论数大于 0 时显示括号。沿用现有医生数据。
+- 开发自测：预约第三轮脚本 12/12，新增用例覆盖真实评分与评论数、无评分与零评论、评分缺失但已有评论，并确认排班状态仍可用。微信 wcc、wcsc、WXML 标签配对、JavaScript 语法和差异检查通过。
+- 视觉自测：使用实际统计区模板和样式，在 Chromium 的 320px、375px 宽度核对有评论及无评论的显示，三列标签均保持单行，无横向溢出。微信模拟器、真机和独立回归待验证。

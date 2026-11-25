@@ -22,7 +22,7 @@ function harness(opts = {}) {
     login: o => opts.wxLogin ? opts.wxLogin(o) : queueMicrotask(() => opts.wxFail ? o.fail({errMsg:'fixture failure'}) : o.success(opts.wxResult || {code:'fixture-code'})),
     showLoading: () => { loading = true; }, hideLoading: () => { loading = false; hideCount++; },
     showToast: o => toasts.push(o.title), showModal: o => modals.push(o),
-    switchTab: o => {nav.push(['tab', o.url]); if(opts.navFail) o.fail();},
+    switchTab: o => {nav.push(['tab', o.url]); if(opts.navFail) o.fail(); else if(o.success) o.success();},
     reLaunch: o => {nav.push(['relaunch', o.url]); if(opts.navFail) o.fail();},
     navigateTo: o => nav.push(['to',o.url]), navigateBack: o => {nav.push(['back',o.delta]); if(opts.backFail) o.fail();},
     request: o => { calls.push(o); queueMicrotask(async () => {
@@ -47,8 +47,10 @@ function harness(opts = {}) {
   auth = load('api/modules/auth-api.js', () => request);
   const api = {wxLogin:auth.wxLogin, getUserProfile: () => request.request({url:'/user/profile'}), bindDistribution: () => request.request({url:'/distribution/bind'})};
   const patientContext = load('stores/patient-context-store.js', () => ({loadPatientContext:opts.patientContext || (async()=>({members:[],currentMember:null,currentPatientId:''}))}));
-  store = load('stores/session-store.js', p => p.includes('patient-context-store') ? patientContext : p.includes('mini-log') ? log : p.includes('auth-api') ? auth : api);
-  load('pages/auth/login.js', p => p.includes('session-store') ? store : p.includes('mini-log') ? log : env);
+  const referral = load('common/utils/backend-referral.js', () => ({}));
+  store = load('stores/session-store.js', p => p.includes('patient-context-store') ? patientContext : p.includes('backend-referral') ? referral : p.includes('mini-log') ? log : p.includes('auth-api') ? auth : api);
+  const stackNavigation = load('common/utils/stack-navigation.js', () => ({}));
+  load('pages/auth/login.js', p => p.includes('session-store') ? store : p.includes('mini-log') ? log : p.includes('stack-navigation') ? stackNavigation : env);
   page.onLoad(opts.query || {});
   return {page,store,request,storage,calls,toasts,modals,nav,timers,patientContext, get loading(){return loading;},get hideCount(){return hideCount;},externalLoading:()=>{loading=true;},
     authCalls: () => calls.filter(c=>c.url.includes('/auth/')),
@@ -88,14 +90,15 @@ for(const mode of ['password','wechat']) {
 test('WX cancelled authorization does not authenticate',async()=>{const h=harness();h.ready();await h.page.onGetPhoneNumber({detail:{errMsg:'getPhoneNumber:fail user deny'}});assert.equal(h.authCalls().length,0);assert.equal(h.page.data.submitting,false);});
 test('WX wx.login failure releases submission lock',async()=>{const h=harness({wxFail:true});h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});assert.equal(h.authCalls().length,0);assert.equal(h.modals.length,1);assert.equal(h.page.data.submitting,false);});
 test('WX error text is limited to 120 characters',async()=>{const h=harness();await h.page.onLoginOpenTypeError({detail:{errMsg:'x'.repeat(300)}});assert.equal(h.modals[0].content.length,120);});
-for(const [redirect,type,url] of [['','tab','/pages/profile/index'],['https://example.invalid','tab','/pages/profile/index'],['/pages/product/index?a=1','tab','/pages/product/index'],['/pages/auth/privacy/index?a=1','relaunch','/pages/auth/privacy/index?a=1']]) test(`NAV redirect ${redirect||'default'}`,()=>{const h=harness({query:{redirect:encodeURIComponent(redirect)}});h.page.navigateAfterLogin();assert.deepEqual(h.nav,[[type,url]]);});
+for(const [redirect,type,url] of [['','tab','/pages/profile/index'],['https://example.invalid','tab','/pages/profile/index'],['/pages/product/index?a=1','tab','/pages/product/index'],['/pages/auth/privacy/index?a=1','to','/pages/auth/privacy/index?a=1']]) test(`NAV redirect ${redirect||'default'}`,()=>{const h=harness({query:{redirect:encodeURIComponent(redirect)}});h.page.navigateAfterLogin();assert.deepEqual(h.nav,type==='to'?[['tab','/pages/index/index'],[type,url]]:[[type,url]]);});
 test('NAV return uses stack',()=>{const h=harness({pages:[{},{}]});h.page.handleBack();assert.deepEqual(h.nav,[['back',1]]);});
 test('NAV return stack failure uses home fallback',()=>{const h=harness({pages:[{},{}],backFail:true});h.page.handleBack();assert.deepEqual(h.nav,[['back',1],['tab','/pages/index/index']]);});
-test('NAV explicit return query preserved',()=>{const h=harness({query:{back:encodeURIComponent('/pages/auth/privacy/index?a=1')}});h.page.handleBack();assert.deepEqual(h.nav,[['relaunch','/pages/auth/privacy/index?a=1']]);});
+test('NAV explicit return query preserved',()=>{const h=harness({query:{back:encodeURIComponent('/pages/auth/privacy/index?a=1')}});h.page.handleBack();assert.deepEqual(h.nav,[['tab','/pages/index/index'],['to','/pages/auth/privacy/index?a=1']]);});
 test('NAV failure releases submission lock',()=>{const h=harness({navFail:true});h.page.data.submitting=true;h.page.navigateAfterLogin();assert.equal(h.page.data.submitting,false);assert.equal(h.toasts.length,1);});
 test('SESSION valid stored token restores authentication',()=>{const h=harness({storage:{access_token:token('a'),auth_mode:'password'}});assert.equal(h.store.isLoggedIn(),true);assert.equal(h.store.getAuthMode(),'password');});
 for (const status of ['bound','already_bound','ignored_self']) test(`INVITE ${status} removes pending invitation`,async()=>{const h=harness({storage:{pending_invite_code:'fixture-invite'},response:o=>o.url.endsWith('/distribution/bind')?{statusCode:200,data:{data:{status}}}:undefined});h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});assert.equal(h.storage.has('pending_invite_code'),false);assert.equal(h.store.isLoggedIn(),true);});
 test('INVITE transient failure retains invitation without failing login',async()=>{const h=harness({storage:{pending_invite_code:'fixture-invite'},response:o=>o.url.endsWith('/distribution/bind')?{network:true}:undefined});h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});assert.equal(h.storage.has('pending_invite_code'),true);assert.equal(h.store.isLoggedIn(),true);assert.equal(h.modals.length,0);});
+test('INVITE backend promotion code is not submitted as a distribution invite',async()=>{const code='BP'+'a'.repeat(24);const h=harness({storage:{pending_invite_code:code}});h.ready();await h.page.onGetPhoneNumber({detail:{code:'fixture'}});assert.equal(h.store.isLoggedIn(),true);assert.equal(h.storage.has('pending_invite_code'),false);assert.equal(h.calls.filter(c=>c.url.endsWith('/distribution/bind')).length,0);});
 test('SESSION expired token not authenticated',()=>{const expired=`e30.${Buffer.from('{"exp":1}').toString('base64url')}.sig`;const h=harness({storage:{access_token:expired}});assert.equal(h.store.isLoggedIn(),false);});
 test('SESSION invalid token format rejected',()=>{const h=harness({storage:{access_token:'invalid'}});assert.equal(h.store.isLoggedIn(),false);});
 test('SESSION logout isolates patient and preserves pending private caches',()=>{const h=harness({storage:{access_token:token('a'),auth_mode:'wechat',current_patient_id:'patient-a',last_local_snore_result:{},pending_snore_uploads:[],pending_appointment_assessment:{}}});h.store.logout();for(const key of ['access_token','auth_mode','current_patient_id','last_local_snore_result','pending_snore_uploads','pending_appointment_assessment'])assert.equal(h.storage.has(key),false);assert.equal(h.store.state.currentPatientId,'');assert.equal(h.storage.get('account_cache_archive')[0].owner,'a');});

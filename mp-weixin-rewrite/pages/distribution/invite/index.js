@@ -44,7 +44,7 @@ function createPosterContextAdapter(context) {
 }
 
 Page({
-  data: { shareImagePath: '', rulesLoading: true, rulesError: false, ruleSections: [], copy, isDistributor: false, inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: copy.shareTitle, isSavingPoster: false, activationSubscribeSource: '', hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
+  data: { shareImagePath: '', rulesLoading: true, rulesError: false, ruleSections: [], copy, isDistributor: false, inviteCode: '', inviteQrCode: '', sharePath: '/pages/index/index', shareTitle: copy.shareTitle, isSavingPoster: false, hasLoaded: false, posterWidth: POSTER_WIDTH, posterHeight: POSTER_HEIGHT },
   onReady() {
     this.canvasReady = true;
     if (this.data.inviteCode) this.prepareInviteImage().catch(() => {});
@@ -91,12 +91,10 @@ Page({
         if (!localQr) localQr = await this.resolvePosterQrImage(inviteInfo.inviteQrCode);
       }
       if (this._unloaded || generation !== sessionStore.getLoginGeneration()) return;
-      const sameInvite = this.inviteGeneration === generation && this.data.inviteCode === inviteInfo.inviteCode;
       this.inviteGeneration = generation;
       this.qrRemoteSource = inviteInfo.inviteQrCode || '';
       this.setData({
         isDistributor: inviteInfo.isDistributor,
-        activationSubscribeSource: sameInvite && !inviteInfo.isDistributor ? this.data.activationSubscribeSource : '',
         hasLoaded: true,
         inviteCode: inviteInfo.inviteCode,
         inviteQrCode: localQr,
@@ -152,6 +150,11 @@ Page({
       generation === this.inviteGeneration && inviteCode === this.data.inviteCode;
     if (!isCurrent()) return;
     this.setData({ isSavingPoster: true });
+    await this.requestPromotionReminder();
+    if (!isCurrent()) {
+      if (!this._unloaded) this.setData({ isSavingPoster: false });
+      return;
+    }
     wx.showLoading({ title: '生成海报中', mask: true });
     try {
       const posterImagePath = await this.prepareInviteImage();
@@ -159,7 +162,6 @@ Page({
       if (!isCurrent()) return;
       await this.savePosterImage(posterImagePath);
       if (!isCurrent()) return;
-      if (!this.data.isDistributor) this.setData({ activationSubscribeSource: 'saved' });
       wx.hideLoading();
       await this.showPosterSavedNotice();
     } catch (error) {
@@ -359,19 +361,20 @@ Page({
   onUnload() {
     this._unloaded = true;
   },
-  subscribePromotionActivation() {
+  requestPromotionReminder() {
     const generation = sessionStore.getLoginGeneration();
-    if (this._unloaded || generation !== this.inviteGeneration || !this.data.inviteCode || this.data.isDistributor ||
-        !this.data.activationSubscribeSource) return;
-    return subscribe.subscribeToUpdates('distribution', () => !this._unloaded &&
-      generation === sessionStore.getLoginGeneration());
+    if (!wx.requestSubscribeMessage || this._unloaded || generation !== this.inviteGeneration || !this.data.inviteCode || this.data.isDistributor) return;
+    if (this.promotionReminderGeneration === generation || this.promotionReminderFlight) return this.promotionReminderFlight;
+    this.promotionReminderFlight = subscribe.requestSubscribe({ force: true, scene: 'distribution', fromTap: true })
+      .then(result => {
+        if (result && !this._unloaded && generation === sessionStore.getLoginGeneration()) {
+          this.promotionReminderGeneration = generation;
+        }
+      })
+      .finally(() => { this.promotionReminderFlight = null; });
+    return this.promotionReminderFlight;
   },
   onShareAppMessage() {
-    // WeChat exposes the opening of the share flow. The user confirms completion by tapping the subscription button.
-    if (!this._unloaded && this.inviteGeneration === sessionStore.getLoginGeneration() &&
-        this.data.inviteCode && !this.data.isDistributor && !this.data.activationSubscribeSource) {
-      this.setData({ activationSubscribeSource: 'share' });
-    }
     return {
       title: copy.shareTitle,
       path: this.data.sharePath || '/pages/index/index',

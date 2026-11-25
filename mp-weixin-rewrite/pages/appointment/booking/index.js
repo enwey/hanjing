@@ -46,9 +46,9 @@ async function syncPaidAppointment(appointmentId) {
   await api.confirmAppointmentPayment(appointmentId);
 }
 
-function requestWxPay(params) {
+function requestWxPay(params, onPaid) {
   return new Promise((resolve, reject) => {
-    wx.requestPayment({ ...params, success: resolve, fail: reject });
+    wx.requestPayment({ ...params, success: () => resolve(onPaid()), fail: reject });
   });
 }
 
@@ -97,6 +97,7 @@ Page({
   },
 
   onShow() {
+    if (wx.requestSubscribeMessage) void subscribe.refreshSubscribeSettings();
     this.loadPage({ silent: this.data.hasLoaded });
   },
 
@@ -312,6 +313,7 @@ Page({
         if (!isCurrent()) return;
         wx.showLoading({ title: '拉起支付中...' });
         let alreadyPaid = false;
+        let acceptedTemplateId;
         if (!paymentReceipt.hasSubmitted(appointment.id)) {
           const paymentResponse = await paymentReceipt.preparePayment(api, appointment.id, isCurrent);
           if (!isCurrent()) return;
@@ -319,8 +321,10 @@ Page({
           wx.hideLoading();
           alreadyPaid = paymentResult.alreadyPaid === true;
           if (!alreadyPaid) {
-            await requestWxPay(paymentResult);
-            paymentReceipt.markSubmitted(appointment.id);
+            acceptedTemplateId = await requestWxPay(paymentResult, () => {
+              paymentReceipt.markSubmitted(appointment.id);
+              if (wx.requestSubscribeMessage && isCurrent()) return subscribe.requestVisitReminderAuthorization();
+            });
           }
         }
         if (!isCurrent()) return;
@@ -329,6 +333,8 @@ Page({
         if (!alreadyPaid) await syncPaidAppointment(appointment.id);
         if (!isCurrent()) return;
         wx.hideLoading();
+        if (acceptedTemplateId) await subscribe.recordAcceptedVisitReminder(appointment.id, acceptedTemplateId, isCurrent);
+        if (!isCurrent()) return;
         wx.showToast({ title: '支付成功', icon: 'success' });
         await this.loadPage({ silent: false });
       } catch (error) {

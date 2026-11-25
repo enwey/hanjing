@@ -16,7 +16,6 @@
 
   <view class="page-section withdraw-record-list-wrap" wx:else>
       <view class="record-list">
-        <button wx:if="{{withdrawSubscribeScene}}" bindtap="subscribeWithdrawUpdates">订阅提现进度通知</button>
         <view wx:for="{{records}}" wx:key="id" class="record-card">
           <view class="record-card__left">
             <text class="record-card__amount">-{{item.amountLabel}}</text>

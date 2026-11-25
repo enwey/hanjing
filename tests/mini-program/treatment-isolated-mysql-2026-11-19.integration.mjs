@@ -113,6 +113,17 @@ try {
       assert.equal(owned[0].pain_score,pain);
     });
   }
+  await check('home shows real weekly compliance after check-in without a bound device',async()=>{
+    await home.handleMemberChange({detail:{value:members.indexOf(a)}});
+    assert.equal(home.data.hasTreatmentRecord,false);
+    assert.equal(home.data.heroProgressText,'依从率 14%');
+    home.setData({selectedWearDuration:4,selectedPainScore:6,selectedComfort:4,checkinNote:'fixture-4'});
+    await home.submitCheckin();
+    const summary=await api.getWearingSummary({patientId:String(a.id)});
+    assert.equal(summary.weekCompliance,14);
+    assert.equal(home.data.heroProgressText,'依从率 14%');
+    assert.equal(home.data.progressWidth,'14%');
+  });
   const finalRows=await rows();
   const day=finalRows[0]?.day;
   for(const [member,hours,pain] of [[a,4,6],[b,9,1]]){
