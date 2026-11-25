@@ -7,7 +7,7 @@
     </view>
   </view>
 
-  <scroll-view class="community-scroll" scroll-y enhanced show-scrollbar="false">
+  <scroll-view class="community-scroll" scroll-y="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
     <view class="community-content">
       <view class="community-tabs-placeholder"></view>
 

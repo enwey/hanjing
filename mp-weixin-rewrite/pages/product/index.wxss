@@ -1,8 +1,13 @@
 .product-page {
-  min-height: 100vh;
+  height: 100vh;
   background: #f9fafb;
   display: flex;
   flex-direction: column;
+}
+
+.product-scroll {
+  flex: 1;
+  min-height: 0;
 }
 
 .page-content {

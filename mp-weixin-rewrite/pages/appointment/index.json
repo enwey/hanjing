@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "患者社区",
+  "disableScroll": true,
   "usingComponents": {
     "hj-navbar": "../../components/base/hj-navbar/index"
   }

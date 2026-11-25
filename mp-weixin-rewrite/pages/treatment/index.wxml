@@ -1,7 +1,7 @@
 <page-meta page-style="{{pageStyle}}"></page-meta>
 <view class="page data-v-8badcb8c">
   <hj-navbar title="治疗追踪" />
-  <scroll-view wx:if="{{!loading}}" class="page-scroll data-v-8badcb8c" scroll-y enhanced show-scrollbar="false">
+  <scroll-view wx:if="{{!loading}}" class="page-scroll data-v-8badcb8c" scroll-y="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
     <view class="page-content data-v-8badcb8c">
       <block wx:if="{{!isLoggedIn}}">
         <view class="guest-empty-wrap data-v-8badcb8c">

@@ -54,7 +54,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 34px);
 }
 .page.data-v-8badcb8c {
-  min-height: 100vh;
+  height: 100vh;
   background: #f3f4f6;
   display: flex;
   flex-direction: column;
