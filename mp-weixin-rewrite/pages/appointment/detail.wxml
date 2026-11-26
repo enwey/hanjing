@@ -295,7 +295,7 @@
       </view>
     </view>
 
-    <view wx:if="{{appointmentCharge}}" class="appointment-charge-summary">
+    <view wx:if="{{false}}" class="appointment-charge-summary">
       <text>预约收费</text>
       <text>{{appointmentCharge.status}} · {{appointmentCharge.amount}}</text>
       <text wx:if="{{appointmentCharge.chargeNo}}">收费单号 {{appointmentCharge.chargeNo}}</text>
