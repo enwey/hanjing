@@ -2,7 +2,7 @@ const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
 const { formatChinaDateTime } = require('../../common/utils/date-time');
 const subscribe = require('../../common/utils/subscribe');
-const { isPaymentTimeout, reconcileOrderPayment } = require('../../common/utils/order-payment');
+const { isPaymentTimeout, prepareOrderPayment, reconcileOrderPayment } = require('../../common/utils/order-payment');
 
 const ORDER_STATUS_STEPS = {
   pending: [{ label: '待付款', done: true }, { label: '待取货', done: false }, { label: '已发货', done: false }, { label: '已完成', done: false }],
@@ -292,7 +292,9 @@ Page({
       const keepLogistics = hasLogistics && displayed?.id === order.id &&
         displayed.shippingAddress?.tracking_number === order.shippingAddress.tracking_number;
       const displayedId = this._displayedOrderRequestId = (this._displayedOrderRequestId || 0) + 1;
-      if (order.status !== 'pending' && this.data.paymentPending) this.setPaymentPending(false);
+      if (this.data.paymentPending && (order.payAtText || !['pending', 'cancelled'].includes(order.status))) {
+        this.setPaymentPending(false);
+      }
       this.setData({
         loading: false,
         loadError: '',
@@ -384,6 +386,7 @@ Page({
       if (!choice || !isCurrent() || !this.data.order.actionFlags[flag]) return;
       await submit(order.id, choice);
       if (!isCurrent()) return;
+      if (flag === 'canCancel' && this.data.paymentPending) this.setPaymentPending(false);
       if (this.data.order.actionFlags[flag]) {
         this.confirmedOrderAction = { id: order.id, flag, status };
         this.setData({ order: this.withOrderActionStatus(this.data.order, status) });
@@ -431,11 +434,20 @@ Page({
       if (this._unloaded) return;
       assertCurrentSession();
       wx.showLoading({ title: '发起支付...' });
-      const payResponse = await api.payOrder(order.id, { acceptPaidStatus: true });
+      const { response: payResponse, resolution } = await prepareOrderPayment(
+        api, order.id, { acceptPaidStatus: true }, isCurrentOrder, latest => latest?.status === 'pending'
+      );
       if (this._unloaded) return;
       assertCurrentSession();
-      const payParams = (payResponse && payResponse.data) || payResponse || {};
       wx.hideLoading();
+      if (resolution) {
+        if (!isCurrentOrder()) return;
+        if (resolution.confirmed || resolution.order?.payAt) this.showConfirmedPayment(order);
+        else this.setPaymentPending(!resolution.closed && !resolution.unpaid);
+        await this.loadOrder(order.id, { silent: true, isCurrent, rawOrder: resolution.closed ? undefined : resolution.order });
+        return;
+      }
+      const payParams = (payResponse && payResponse.data) || payResponse || {};
       if (payParams.alreadyPaid) {
         if (isCurrentOrder()) {
           this.showConfirmedPayment(order);
@@ -477,7 +489,7 @@ Page({
         wx.showLoading({ title: '核对支付状态...' });
         const loadBeforeReconciliation = this._loadRequestId;
         const canApplyReconciliation = () => isCurrentOrder() && this.data.order.status === 'pending';
-        const { order: latest, confirmed, unpaid, unavailable } = await reconcileOrderPayment(api, order.id, canApplyReconciliation)
+        const { order: latest, confirmed, closed, unpaid, unavailable } = await reconcileOrderPayment(api, order.id, canApplyReconciliation)
           .catch(error => ({ unavailable: error }));
         if (unavailable && canApplyReconciliation() && this._loadRequestId === loadBeforeReconciliation) {
           wx.hideLoading();
@@ -489,6 +501,12 @@ Page({
           return;
         }
         if (confirmed) this.showConfirmedPayment(order);
+        if (closed) {
+          this.setPaymentPending(false);
+          wx.hideLoading();
+          await this.loadOrder(order.id, { silent: true, isCurrent });
+          return;
+        }
         if (unpaid) {
           this.setPaymentPending(false);
           wx.hideLoading();
@@ -534,11 +552,11 @@ Page({
     if (!isCurrent()) return;
     this.setData({ checkingPayment: true });
     try {
-      const { order: latest, confirmed, unpaid } = await reconcileOrderPayment(api, order.id, isCurrent);
+      const { order: latest, confirmed, closed, unpaid } = await reconcileOrderPayment(api, order.id, isCurrent);
       if (!isCurrent()) return;
       if (confirmed) this.showConfirmedPayment(order);
-      if (unpaid) this.setPaymentPending(false);
-      await this.loadOrder(order.id, { silent: true, rawOrder: latest, isCurrent });
+      if (closed || unpaid) this.setPaymentPending(false);
+      await this.loadOrder(order.id, { silent: true, rawOrder: closed ? undefined : latest, isCurrent });
     } catch (error) {
       if (isCurrent()) await this.loadOrder(order.id, { silent: true, isCurrent });
     } finally {

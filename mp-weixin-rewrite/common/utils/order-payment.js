@@ -3,6 +3,12 @@ function isPaymentTimeout(error) {
     /timeout|超时/i.test(String(error?.errMsg || error?.message || ''));
 }
 
+function needsOrderStateRefresh(error) {
+  const reason = error?.data?.reason;
+  return reason === 'ORDER_STATE_CHANGED' || reason === 'ORDER_PAYMENT_CLOSED' ||
+    ['订单状态已变更', '订单非待支付状态'].includes(error?.message);
+}
+
 async function reconcileOrderPayment(api, orderId, isCurrent) {
   async function readOrder() {
     try {
@@ -16,11 +22,12 @@ async function reconcileOrderPayment(api, orderId, isCurrent) {
 
   if (!isCurrent()) return {};
   const order = await readOrder();
-  if (!isCurrent() || (order?.status && order.status !== 'pending')) return { order };
+  if (!isCurrent() || (order?.status && !['pending', 'cancelled'].includes(order.status))) return { order };
 
   try {
     await api.confirmOrderPayment(orderId);
   } catch (error) {
+    if (error?.data?.reason === 'ORDER_PAYMENT_CLOSED') return { order, closed: true };
     if (error?.data?.reason === 'ORDER_PAYMENT_UNPAID') return { order, unpaid: true };
     // The confirmation may still commit even if the response was lost.
     if (!isPaymentTimeout(error)) return { order };
@@ -29,4 +36,22 @@ async function reconcileOrderPayment(api, orderId, isCurrent) {
   return { confirmed: true, order: isCurrent() ? await readOrder() : null };
 }
 
-module.exports = { isPaymentTimeout, reconcileOrderPayment };
+async function prepareOrderPayment(api, orderId, options, isCurrent, canRetry) {
+  const pay = () => api.payOrder(orderId, options);
+  try {
+    return { response: await pay() };
+  } catch (error) {
+    if (!needsOrderStateRefresh(error)) throw error;
+  }
+  const reconcile = () => reconcileOrderPayment(api, orderId, isCurrent).catch(() => ({}));
+  const resolution = await reconcile();
+  if (!isCurrent() || !resolution.unpaid || !canRetry(resolution.order)) return { resolution };
+  try {
+    return { response: await pay() };
+  } catch (error) {
+    if (!needsOrderStateRefresh(error)) throw error;
+    return { resolution: await reconcile() };
+  }
+}
+
+module.exports = { isPaymentTimeout, needsOrderStateRefresh, prepareOrderPayment, reconcileOrderPayment };

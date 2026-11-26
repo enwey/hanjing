@@ -47,7 +47,7 @@
     </view>
 
     <view class="bottom-fixed-bar">
-      <button class="bar-primary-btn" bindtap="handlePrimaryPay">立即购买</button>
+      <button class="bar-primary-btn" bindtap="openCheckout">立即购买</button>
     </view>
 
     <view wx:if="{{showCheckout}}" class="checkout-overlay" bindtap="closeCheckout">

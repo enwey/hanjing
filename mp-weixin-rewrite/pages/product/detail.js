@@ -2,24 +2,18 @@ const api = require('../../api/index');
 const sessionStore = require('../../stores/session-store');
 const navigation = require('../../common/utils/navigation');
 const subscribe = require('../../common/utils/subscribe');
-const { isPaymentTimeout, reconcileOrderPayment } = require('../../common/utils/order-payment');
+const { isPaymentTimeout, prepareOrderPayment, reconcileOrderPayment } = require('../../common/utils/order-payment');
 
-const activeCheckoutRequests = new Set();
-
-function matchesOrderCheckout(order, input) {
-  const item = Array.isArray(order.items) && order.items.length === 1 && order.items[0];
-  if (!item || String(item.productId) !== input.items[0].productId || Number(item.quantity) !== input.items[0].quantity) return false;
-  const address = order.shippingAddress;
-  return address?.deliveryMethod === input.shippingAddress.deliveryMethod &&
-    ['contactName', 'phone', 'detailAddress'].every(
-      key => String(address[key] ?? '').trim() === String(input.shippingAddress[key] ?? '').trim()
-    );
-}
-
-function checkoutStorageKey(productId) {
-  const profile = sessionStore.state && sessionStore.state.profile;
-  const owner = (profile && profile.id) || wx.getStorageSync('account_cache_owner') || 'unresolved';
-  return 'product_checkout_v1:' + encodeURIComponent(String(owner)) + ':' + encodeURIComponent(String(productId));
+function checkoutInput(data) {
+  return {
+    items: [{ productId: String(data.product.id), quantity: data.quantity }],
+    shippingAddress: {
+      contactName: data.contactName,
+      phone: data.phone,
+      detailAddress: data.detailAddress,
+      deliveryMethod: 'online',
+    },
+  };
 }
 
 const CATEGORY_COLORS = {
@@ -299,32 +293,18 @@ Page({
   },
 
   refreshCheckoutView() {
-    this.setData({
-      totalPayAmountText: this.formatPriceYuan(this.getTotalPayAmount()),
-    });
+    this.setData({ totalPayAmountText: this.formatPriceYuan(this.getTotalPayAmount()) });
   },
 
-  async openCheckout() {
+  openCheckout() {
     this.syncCheckoutSession();
     if (!this.data.product) return;
     if (!sessionStore.isLoggedIn()) {
       navigation.openLogin('/pages/product/detail?id=' + encodeURIComponent(String(this.productId || '')));
       return;
     }
+    this.refreshCheckoutView();
     this.setData({ showCheckout: true });
-  },
-
-  async handlePrimaryPay() {
-    if (!this.data.product) return;
-    if (!sessionStore.isLoggedIn()) {
-      navigation.openLogin('/pages/product/detail?id=' + encodeURIComponent(String(this.productId || '')));
-      return;
-    }
-    if (this.validateAddress(true)) {
-      await this.submitOrder();
-      return;
-    }
-    await this.openCheckout();
   },
 
   closeCheckout() {
@@ -352,18 +332,6 @@ Page({
     wx.navigateTo({ url: '/pages/order/detail?id=' + encodeURIComponent(orderId) + '&notice=' + notice });
   },
 
-  openOrderListAfterNotice(content, isCurrent) {
-    wx.showModal({
-      title: '请核对订单',
-      content,
-      showCancel: false,
-      confirmText: '查看订单',
-      success: ({ confirm }) => {
-        if (confirm && isCurrent()) wx.navigateTo({ url: '/pages/order/index' });
-      },
-    });
-  },
-
   noop() {},
 
   async onCheckoutSubmitTap() {
@@ -388,14 +356,12 @@ Page({
       contactName: result.userName || '',
       phone: result.telNumber || '',
       detailAddress: normalizeAddressText(result),
-    });
+    }, () => this.refreshCheckoutView());
   },
 
   syncCheckoutSession() {
     const generation = sessionStore.getLoginGeneration();
     if (this.checkoutGeneration !== undefined && this.checkoutGeneration !== generation) {
-      this._checkoutOrder = null;
-      this._checkoutUncertain = false;
       this._priceReview = null;
       this.setData({ contactName: '', phone: '', detailAddress: '', showCheckout: false, priceReview: null });
     }
@@ -544,9 +510,9 @@ Page({
     }
   },
 
-  onInputName(event) { this.syncCheckoutSession(); this.setData({ contactName: event.detail.value || '' }); },
-  onInputPhone(event) { this.syncCheckoutSession(); this.setData({ phone: event.detail.value || '' }); },
-  onInputDetail(event) { this.syncCheckoutSession(); this.setData({ detailAddress: event.detail.value || '' }); },
+  onInputName(event) { this.syncCheckoutSession(); this.setData({ contactName: event.detail.value || '' }, () => this.refreshCheckoutView()); },
+  onInputPhone(event) { this.syncCheckoutSession(); this.setData({ phone: event.detail.value || '' }, () => this.refreshCheckoutView()); },
+  onInputDetail(event) { this.syncCheckoutSession(); this.setData({ detailAddress: event.detail.value || '' }, () => this.refreshCheckoutView()); },
 
   validateAddress(silent) {
     this.syncCheckoutSession();
@@ -565,8 +531,14 @@ Page({
     return true;
   },
 
+  showCheckoutPaymentResult(orderId, { order, confirmed, closed, unpaid }) {
+    if (closed || unpaid) return;
+    this.closeCheckout();
+    this.openOrderDetail(orderId, confirmed || order?.payAt ? 'paymentSubmitted' : 'paymentPending');
+  },
+
   async submitOrder(approvedPrice) {
-    if (this._unloaded || this.data.isSubmitting || this._priceReview || !this.data.product) return;
+    if (this._unloaded || !this.data.showCheckout || this.data.isSubmitting || this._priceReview || !this.data.product) return;
     if (!Number.isSafeInteger(this.data.quantity) || this.data.quantity < 1 || this.data.quantity > 99) {
       wx.showToast({ title: '购买数量应为1至99的整数', icon: 'none' });
       return;
@@ -574,183 +546,57 @@ Page({
     if (!this.validateAddress(false)) return;
     const revision = sessionStore.getLoginGeneration();
     const isCurrent = () => !this._unloaded && sessionStore.getLoginGeneration() === revision;
-    const checkoutAmount = this.getTotalPayAmount();
-    let createdPayAmount = null;
-    let checkoutKey;
-    let walletOpened = false;
-    let paymentOrderId;
-    const orderInput = {
-      items: [{ productId: String(this.data.product.id), quantity: this.data.quantity }],
-      shippingAddress: {
-        contactName: this.data.contactName,
-        phone: this.data.phone,
-        detailAddress: this.data.detailAddress,
-        deliveryMethod: 'online',
-      },
-    };
+    const orderInput = checkoutInput(this.data);
     const fingerprint = JSON.stringify(orderInput);
     const expectedPayAmount = approvedPrice?.revision === revision && approvedPrice.fingerprint === fingerprint
-      ? approvedPrice.amount : checkoutAmount;
-    if (this._checkoutOrder && this._checkoutOrder.revision !== revision) {
-      wx.showToast({ title: '登录状态已变化，请在订单列表确认原订单', icon: 'none' });
-      return;
-    }
+      ? approvedPrice.amount : this.getTotalPayAmount();
+    // A new user confirmation gets a new key. Transport retries of this request keep the same key.
+    const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    let paymentOrderId;
+    let walletOpened = false;
+    let loading = false;
+    const showLoading = title => {
+      loading = true;
+      wx.showLoading({ title, mask: true });
+    };
+    const hideLoading = () => {
+      if (!loading) return;
+      loading = false;
+      if (!this._unloaded) wx.hideLoading();
+    };
+
     this.setData({ isSubmitting: true });
     try {
-      checkoutKey = checkoutStorageKey(this.data.product.id);
-      if (this._unloaded) return;
-      if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
-      if (String(this.data.product?.id) !== orderInput.items[0].productId) return;
-
-      // Read the latest persisted attempt shared by all checkout pages.
-      const savedCheckout = wx.getStorageSync(checkoutKey);
-      // An earlier page may have resolved this attempt since our last submit.
-      // Re-read persisted state before deciding whether creation is still blocked.
-      this._checkoutUncertain = Boolean(savedCheckout && !savedCheckout.id);
-      if (!this._checkoutOrder && savedCheckout) {
-        if (!savedCheckout.id && (!savedCheckout.requestId || activeCheckoutRequests.has(checkoutKey))) {
-          this._checkoutUncertain = true;
-          this.openOrderListAfterNotice('下单结果待确认，请先查看订单列表', isCurrent);
-          return;
-        }
-        if (savedCheckout.id) {
-          this._checkoutOrder = { id: savedCheckout.id, revision };
-        }
-      }
-      if (wx.requestSubscribeMessage && !this._checkoutOrder && !savedCheckout && checkoutAmount === 0) {
+      if (wx.requestSubscribeMessage && expectedPayAmount === 0) {
         await subscribe.requestSubscribe({ force: true, scene: 'order', fromTap: true });
         if (!isCurrent()) return;
-        // Another checkout may have started while the native prompt was open.
-        if (wx.getStorageSync(checkoutKey)) {
-          wx.navigateTo({ url: '/pages/order/index' });
-          return;
-        }
       }
-      wx.showLoading({ title: '发起支付...' });
-      if (this._checkoutOrder) {
-        let response;
-        const checkedOrderId = String(this._checkoutOrder.id);
-        try {
-          response = await api.getOrderDetail(checkedOrderId);
-        } catch (error) {
-          if (Number(error?.statusCode) !== 404 || error?.message !== '订单未找到' || !isCurrent()) throw error;
-          const currentCheckout = wx.getStorageSync(checkoutKey);
-          if ((currentCheckout && String(currentCheckout.id || '') !== checkedOrderId) || activeCheckoutRequests.has(checkoutKey)) {
-            wx.hideLoading();
-            this.openOrderListAfterNotice('下单状态已变化，请查看订单列表', isCurrent);
-            return;
-          }
-          if (currentCheckout) wx.removeStorageSync(checkoutKey);
-          this._checkoutOrder = null;
-          this._checkoutUncertain = false;
-          wx.hideLoading();
-          wx.showToast({ title: '原订单未找到，请核对后重新下单', icon: 'none', duration: 3000 });
-          return;
-        }
-        if (this._unloaded) return;
-        const existing = (response && response.data) || response || {};
-        if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
-        const currentCheckout = wx.getStorageSync(checkoutKey);
-        const ownsCheckout = currentCheckout && String(currentCheckout.id) === String(this._checkoutOrder.id);
-        if (existing.status === 'cancelled') {
-          if (currentCheckout && !ownsCheckout) {
-            wx.hideLoading();
-            this.openOrderListAfterNotice('下单结果待确认，请先查看订单列表', isCurrent);
-            return;
-          }
-          if (ownsCheckout) wx.removeStorageSync(checkoutKey);
-          this._checkoutOrder = null;
-        } else if (existing.status !== 'pending' || !matchesOrderCheckout(existing, orderInput)) {
-          if (ownsCheckout && ['paid', 'processing', 'shipping', 'shipped', 'completed', 'refund_pending', 'refunding', 'refunded'].includes(existing.status)) {
-            wx.removeStorageSync(checkoutKey);
-          }
-          wx.hideLoading();
-          this.closeCheckout();
-          this.openOrderDetail(this._checkoutOrder.id, existing.payAt ? '' : 'reviewOrder');
-          return;
-        }
-      }
-      if (!this._checkoutOrder) {
-        if (String(this.data.product?.id) !== orderInput.items[0].productId) {
-          wx.hideLoading();
-          return;
-        }
-        // Persist before sending: failure to save must prevent the create request.
-        const requestId = savedCheckout?.requestId ||
-          `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-        wx.setStorageSync(checkoutKey, { requestId });
-        this._checkoutUncertain = true;
-        let createOrderResponse;
-        activeCheckoutRequests.add(checkoutKey);
-        try {
-          createOrderResponse = await api.createOrder({ ...orderInput, requestId, expectedPayAmount, resumePending: true });
-        } catch (error) {
-          // Only explicit rejection responses permit a new create attempt.
-          // Transport errors, timeouts and server failures remain uncertain.
-          if (error?.data?.reason === 'ORDER_AMOUNT_CHANGED') {
-            this._checkoutUncertain = false;
-            const current = wx.getStorageSync(checkoutKey);
-            if (current?.requestId === requestId) wx.removeStorageSync(checkoutKey);
-            throw error;
-          }
-          const statusCode = Number(error?.statusCode);
-          const inventoryConflict = statusCode === 409 && error?.data?.reason === 'ORDER_INVENTORY_CONFLICT';
-          if (!savedCheckout?.requestId && (inventoryConflict || [400, 401, 403, 404, 422].includes(statusCode))) {
-            wx.removeStorageSync(checkoutKey);
-            this._checkoutUncertain = false;
-          }
-          if (this._checkoutUncertain) {
-            wx.setStorageSync(checkoutKey, { requestId, retryable: true });
-            throw new Error('下单结果待确认，可重试核对原订单');
-          }
-          throw error;
-        } finally {
-          activeCheckoutRequests.delete(checkoutKey);
-        }
-        const createdOrder = (createOrderResponse && createOrderResponse.data) || createOrderResponse || {};
-        if (!createdOrder.id) {
-          wx.setStorageSync(checkoutKey, { requestId, retryable: true });
-          throw new Error('未取得订单编号，可重试核对原订单');
-        }
-        // Even after page unload, preserve a late successful response for recovery.
-        wx.setStorageSync(checkoutKey, { id: createdOrder.id });
-        if (!isCurrent()) return;
-        this._checkoutOrder = { id: createdOrder.id, revision };
-        createdPayAmount = Number(createdOrder.payAmount);
-        this._checkoutUncertain = false;
-        if (createdOrder.replayed) {
-          const response = await api.getOrderDetail(createdOrder.id);
-          if (!isCurrent()) return;
-          const existing = response?.data || response || {};
-          if (existing.status !== 'pending' || !matchesOrderCheckout(existing, orderInput)) {
-            wx.hideLoading();
-            this.closeCheckout();
-            this.openOrderDetail(createdOrder.id, existing.payAt ? '' : 'reviewOrder');
-            return;
-          }
-          createdPayAmount = Number(existing.payAmount);
-        }
-      }
-      if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
-      const orderId = this._checkoutOrder.id;
-      if (createdPayAmount === 0) {
-        wx.removeStorageSync(checkoutKey);
-        this._checkoutOrder = null;
-        wx.hideLoading();
-        if (this._unloaded) return;
-        this.setData({ showCheckout: false });
+      showLoading('发起支付...');
+      const createResponse = await api.createOrder({ ...orderInput, requestId, expectedPayAmount });
+      if (!isCurrent()) return;
+      const createdOrder = createResponse?.data || createResponse || {};
+      if (!createdOrder.id) throw new Error('未取得订单编号，请在订单列表核对');
+      const orderId = String(createdOrder.id);
+      if (Number(createdOrder.payAmount) === 0) {
+        hideLoading();
+        this.closeCheckout();
         this.openOrderDetail(orderId, 'orderSubmitted');
         return;
       }
+
       paymentOrderId = orderId;
-      const payResponse = await api.payOrder(orderId, { expectedPayAmount });
-      if (this._unloaded) return;
-      if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
-      const payParams = (payResponse && payResponse.data) || payResponse || {};
-      wx.hideLoading();
+      const { response, resolution } = await prepareOrderPayment(
+        api, orderId, { expectedPayAmount }, isCurrent, order => order?.status === 'pending'
+      );
+      if (!isCurrent()) return;
+      hideLoading();
+      if (resolution) {
+        this.showCheckoutPaymentResult(orderId, resolution);
+        return;
+      }
+      const payParams = response?.data || response || {};
       if (payParams.alreadyPaid) {
-        this.closeCheckout();
-        this.openOrderDetail(orderId, 'paymentSubmitted');
+        this.showCheckoutPaymentResult(orderId, { confirmed: true });
         return;
       }
       const actualPayAmount = Number(payParams.payAmount);
@@ -759,64 +605,40 @@ Page({
         this.showCheckoutPriceReview(expectedPayAmount, actualPayAmount, fingerprint, revision);
         return;
       }
+
       walletOpened = true;
       await requestWxPay(payParams, () => {
         if (wx.requestSubscribeMessage && isCurrent()) {
           return subscribe.requestSubscribe({ force: true, scene: 'order', fromTap: true });
         }
       });
-      if (this._unloaded) return;
-      if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
-      wx.showLoading({ title: '同步订单状态...' });
+      if (!isCurrent()) return;
+      showLoading('同步订单状态...');
       await syncPaidOrder(orderId);
-      if (this._unloaded) return;
-      if (sessionStore.getLoginGeneration() !== revision) throw new Error('登录状态已变化，请重新进入订单');
-      wx.hideLoading();
-      if (this._unloaded) return;
-      this.setData({ showCheckout: false });
-      this.openOrderDetail(orderId, 'paymentSubmitted');
+      if (!isCurrent()) return;
+      hideLoading();
+      this.showCheckoutPaymentResult(orderId, { confirmed: true });
     } catch (error) {
-      if (this._unloaded) return;
+      if (!isCurrent()) return;
       const reason = error?.data?.reason;
       const changedAmount = error?.data?.data?.payAmount;
-      if (reason === 'ORDER_AMOUNT_CHANGED' && Number.isSafeInteger(changedAmount) && changedAmount >= 0 && isCurrent()) {
-        wx.hideLoading();
+      if (reason === 'ORDER_AMOUNT_CHANGED' && Number.isSafeInteger(changedAmount) && changedAmount >= 0) {
+        hideLoading();
         this.showCheckoutPriceReview(expectedPayAmount, changedAmount, fingerprint, revision);
         return;
       }
-      const needsConfirmation = paymentOrderId && isCurrent() &&
-        (walletOpened || isPaymentTimeout(error) || reason === 'ORDER_PAYMENT_PENDING');
-      if (needsConfirmation) {
-        wx.showLoading({ title: '核对支付状态...' });
-        const { order, confirmed, unpaid } = await reconcileOrderPayment(api, paymentOrderId, isCurrent).catch(() => ({}));
-        if (!isCurrent()) {
-          if (!this._unloaded) wx.hideLoading();
-          return;
-        }
-        wx.hideLoading();
-        if (unpaid) {
-          wx.showToast({ title: '订单尚未支付，可继续支付', icon: 'none', duration: 3500 });
-          return;
-        }
-        this.closeCheckout();
-        let notice = 'paymentPending';
-        if (confirmed) notice = 'paymentSubmitted';
-        else if (order?.status && order.status !== 'pending') notice = order.status === 'cancelled' ? '' : 'paymentSubmitted';
-        this.openOrderDetail(paymentOrderId, notice);
+      if (paymentOrderId && (walletOpened || isPaymentTimeout(error) || reason === 'ORDER_PAYMENT_PENDING')) {
+        showLoading('核对支付状态...');
+        const resolution = await reconcileOrderPayment(api, paymentOrderId, isCurrent).catch(() => ({}));
+        if (!isCurrent()) return;
+        hideLoading();
+        this.showCheckoutPaymentResult(paymentOrderId, resolution);
         return;
       }
-      wx.hideLoading();
-      if (reason === 'ORDER_PAYMENT_CLOSED' && paymentOrderId && isCurrent()) {
-        this.closeCheckout();
-        this.openOrderDetail(paymentOrderId, 'reviewOrder');
-        return;
-      }
-      wx.showToast({
-        title: getPaymentErrorMessage(error, '支付未完成'),
-        icon: 'none',
-        duration: 3500,
-      });
+      hideLoading();
+      wx.showToast({ title: getPaymentErrorMessage(error, '支付未完成'), icon: 'none', duration: 3500 });
     } finally {
+      hideLoading();
       if (!this._unloaded) this.setData({ isSubmitting: false });
     }
   },
