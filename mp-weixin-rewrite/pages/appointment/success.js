@@ -53,6 +53,12 @@ Page({
     this.loadPage({ silent: false });
   },
 
+  onReady() {
+    if (this.options.paymentSubmitted === '1') {
+      wx.showToast({ title: '支付已提交', icon: 'success', duration: 2000 });
+    }
+  },
+
   async onShow() {
     if (!this.hasLoaded) {
       return;

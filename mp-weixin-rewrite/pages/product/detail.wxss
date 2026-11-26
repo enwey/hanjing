@@ -358,6 +358,10 @@
   height: 236rpx;
 }
 
+.checkout-scroll-spacer--review {
+  height: 300rpx;
+}
+
 .checkout-fixed-bar {
   position: absolute;
   left: 0;
@@ -400,4 +404,45 @@
   height: 80rpx;
   font-size: 30rpx;
   box-shadow: 0 8rpx 24rpx rgba(59, 107, 245, 0.18);
+}
+
+.checkout-price-review {
+  display: block;
+  color: #1f2937;
+}
+
+.checkout-price-review__title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.checkout-price-review__amounts,
+.checkout-price-review__actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+.checkout-price-review__amounts {
+  flex-wrap: wrap;
+  font-size: 28rpx;
+  color: #4b5563;
+}
+
+.checkout-price-review__actions button {
+  flex: 1;
+  margin: 0;
+  font-size: 28rpx;
+  border-radius: 16rpx;
+}
+
+.checkout-price-review__cancel {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.checkout-price-review__confirm {
+  background: #3b6bf5;
+  color: #ffffff;
 }

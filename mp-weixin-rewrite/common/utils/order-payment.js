@@ -21,6 +21,7 @@ async function reconcileOrderPayment(api, orderId, isCurrent) {
   try {
     await api.confirmOrderPayment(orderId);
   } catch (error) {
+    if (error?.data?.reason === 'ORDER_PAYMENT_UNPAID') return { order, unpaid: true };
     // The confirmation may still commit even if the response was lost.
     if (!isPaymentTimeout(error)) return { order };
     return { order: isCurrent() ? await readOrder() : null };

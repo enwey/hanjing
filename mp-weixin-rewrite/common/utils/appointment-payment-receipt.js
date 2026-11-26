@@ -35,4 +35,31 @@ async function preparePayment(api, appointmentId, isCurrent) {
   }
 }
 
-module.exports = { acquire, hasSubmitted, markSubmitted, preparePayment };
+async function requestPayment(api, appointmentId, payParams, onPaid) {
+  try {
+    return await new Promise((resolve, reject) => {
+      wx.requestPayment({
+        timeStamp: payParams.timeStamp,
+        nonceStr: payParams.nonceStr,
+        package: payParams.package,
+        signType: payParams.signType,
+        paySign: payParams.paySign,
+        success: async () => {
+          try {
+            resolve(await onPaid());
+          } catch (error) {
+            reject(error);
+          }
+        },
+        fail: reject,
+      });
+    });
+  } catch (error) {
+    if (error?.errMsg === 'requestPayment:fail cancel' && payParams.paymentAttemptToken) {
+      await api.releaseAppointmentPayment(appointmentId, payParams.paymentAttemptToken);
+    }
+    throw error;
+  }
+}
+
+module.exports = { acquire, hasSubmitted, markSubmitted, preparePayment, requestPayment };

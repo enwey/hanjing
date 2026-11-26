@@ -56,20 +56,6 @@ function hasPreExamData(preExam) {
   });
 }
 
-function requestWxPay(payParams, onPaid) {
-  return new Promise((resolve, reject) => {
-    wx.requestPayment({
-      timeStamp: payParams.timeStamp,
-      nonceStr: payParams.nonceStr,
-      package: payParams.package,
-      signType: payParams.signType,
-      paySign: payParams.paySign,
-      success: () => resolve(onPaid()),
-      fail: reject,
-    });
-  });
-}
-
 function getPaymentErrorMessage(error, canceledText) {
   if (error && error.errMsg) {
     return canceledText;
@@ -376,6 +362,7 @@ Page({
     const isCurrent = options.isCurrent || (() => !this._unloaded &&
       generation === sessionStore.getLoginGeneration() && sessionStore.isLoggedIn());
     if (!isCurrent()) return;
+    let feedback;
     wx.showLoading({ title: '发起支付...' });
     try {
       let alreadyPaid = false;
@@ -387,7 +374,7 @@ Page({
         wx.hideLoading();
         alreadyPaid = payParams.alreadyPaid === true;
         if (!alreadyPaid) {
-          acceptedTemplateId = await requestWxPay(payParams, () => {
+          acceptedTemplateId = await paymentReceipt.requestPayment(api, appointmentId, payParams, () => {
             paymentReceipt.markSubmitted(appointmentId);
             if (wx.requestSubscribeMessage && isCurrent() && this.data.canRequestVisitReminderOnPayment) {
               return subscribe.requestVisitReminderAuthorization();
@@ -403,18 +390,16 @@ Page({
       wx.hideLoading();
       if (acceptedTemplateId) await subscribe.recordAcceptedVisitReminder(appointmentId, acceptedTemplateId, isCurrent);
       if (!isCurrent()) return;
-      wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });
       await this.loadPage();
+      feedback = { title: '支付已提交', icon: 'success', duration: 2000 };
     } catch (error) {
       if (!isCurrent()) return;
-      wx.showToast({
-        title: getPaymentErrorMessage(error, '支付未完成'),
-        icon: 'none',
-      });
+      feedback = { title: getPaymentErrorMessage(error, '支付未完成'), icon: 'none', duration: 3500 };
     } finally {
       // A replacement payment owns its own loading state.
       if (!this.paymentFlight || this.paymentFlight.generation === generation) wx.hideLoading();
     }
+    if (feedback && isCurrent()) wx.showToast(feedback);
   },
 
   async cancelAppointment() {

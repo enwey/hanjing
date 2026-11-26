@@ -25,6 +25,20 @@
   background: linear-gradient(135deg, #3b6bf5, #1a3580);
 }
 
+.checkout-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+  color: #374151;
+}
+
+.checkout-notice button {
+  margin: 0;
+}
+
 .status-card__label {
   display: block;
   margin-bottom: 40rpx;

@@ -31,6 +31,14 @@ function payAppointmentDeposit(appointmentId) {
   return request({ url: '/appointments/' + appointmentId + '/pay', method: 'POST', failMessage: '支付预约定金失败' });
 }
 
+function releaseAppointmentPayment(appointmentId, paymentAttemptToken) {
+  return request({
+    url: '/appointments/' + encodeURIComponent(appointmentId) + '/release-pay',
+    method: 'POST',
+    data: { paymentAttemptToken },
+  });
+}
+
 function confirmAppointmentPayment(appointmentId) {
   return request({ url: '/appointments/' + appointmentId + '/confirm-pay', method: 'POST', failMessage: '确认预约支付失败' });
 }
@@ -59,6 +67,7 @@ module.exports = {
   cancelAppointment,
   rescheduleAppointment,
   payAppointmentDeposit,
+  releaseAppointmentPayment,
   confirmAppointmentPayment,
   submitAppointmentEvaluation,
   getBookingSettings,

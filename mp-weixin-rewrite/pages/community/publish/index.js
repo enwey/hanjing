@@ -137,10 +137,11 @@ Page({
       }
       const createdPost = (response && response.data) || response || {};
       this.setData({ publishedPostId: String(createdPost.id) });
-      wx.showToast({ title: '发布成功', icon: 'success' });
+      wx.showToast({ title: '发布成功', icon: 'success', duration: 2000 });
       setTimeout(() => {
-        this.openPublishedPost();
-      }, 400);
+        const pages = getCurrentPages();
+        if (pages[pages.length - 1] === this) this.openPublishedPost();
+      }, 2000);
     } catch (error) {
       this.setData({ isSubmitting: false });
       this.refreshFormState();

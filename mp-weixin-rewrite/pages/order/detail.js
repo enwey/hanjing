@@ -78,6 +78,9 @@ Page({
     order: null,
     logisticsList: [],
     logisticsMessage: '',
+    checkoutNotice: '',
+    paymentPending: false,
+    checkingPayment: false,
   },
 
   onLoad(options) {
@@ -88,8 +91,48 @@ Page({
       return;
     }
     this.orderId = String(orderId);
+    const notice = options.notice;
+    try {
+      const owner = sessionStore.state.profile?.id || wx.getStorageSync('account_cache_owner');
+      if (owner) {
+        this.paymentPendingKey = 'order_payment_pending:' + encodeURIComponent(owner) + ':' + encodeURIComponent(this.orderId);
+        this.setData({ paymentPending: wx.getStorageSync(this.paymentPendingKey) === true });
+      }
+    } catch (_) {
+      // The navigation notice still works without local storage.
+    }
+    if (notice === 'paymentSubmitted' || notice === 'orderSubmitted') {
+      this.checkoutSuccess = notice === 'paymentSubmitted' ? '支付已提交' : '订单已提交';
+      this.setPaymentPending(false);
+    } else if (notice === 'paymentPending') {
+      this.setPaymentPending(true);
+    } else if (notice === 'priceChanged' || notice === 'reviewOrder') {
+      this.setData({
+        checkoutNotice: notice === 'priceChanged'
+          ? '金额已变化，请核对下方实付款金额后再支付。'
+          : '请在原订单中确认状态或取消订单。',
+      });
+    }
     this.hasLoaded = false;
     this.loadOrder(this.orderId, { silent: false });
+  },
+
+  setPaymentPending(pending) {
+    this.setData({ paymentPending: pending });
+    try {
+      if (this.paymentPendingKey) {
+        if (pending) wx.setStorageSync(this.paymentPendingKey, true);
+        else wx.removeStorageSync(this.paymentPendingKey);
+      }
+    } catch (_) {
+      // Keep the notice visible on the current page if local storage is unavailable.
+    }
+  },
+
+  onReady() {
+    if (!this.checkoutSuccess) return;
+    wx.showToast({ title: this.checkoutSuccess, icon: 'success', duration: 2000 });
+    this.checkoutSuccess = '';
   },
 
   onShow() {
@@ -142,6 +185,7 @@ Page({
 
   showConfirmedPayment(order) {
     this.confirmedPaymentOrder = { id: order.id, generation: sessionStore.getLoginGeneration() };
+    this.setPaymentPending(false);
     const displayedOrder = this.data.order;
     if (displayedOrder?.id === order.id) {
       this.setData({ order: this.withConfirmedPayment(displayedOrder) });
@@ -177,9 +221,12 @@ Page({
       this.lastPaidOrder = null;
       this.confirmedOrderAction = null;
       this.refundRejection = null;
+      this.checkoutSuccess = '';
+      this.paymentPendingKey = '';
       this.hasLoaded = false;
       this._needsReload = true;
-      this.setData({ loading: false, loadError: '', order: null, logisticsList: [], logisticsMessage: '' });
+      this.setData({ loading: false, loadError: '', order: null, logisticsList: [], logisticsMessage: '',
+        checkoutNotice: '', paymentPending: false, checkingPayment: false });
     }
     this.orderDetailGeneration = generation;
     return generation;
@@ -245,6 +292,7 @@ Page({
       const keepLogistics = hasLogistics && displayed?.id === order.id &&
         displayed.shippingAddress?.tracking_number === order.shippingAddress.tracking_number;
       const displayedId = this._displayedOrderRequestId = (this._displayedOrderRequestId || 0) + 1;
+      if (order.status !== 'pending' && this.data.paymentPending) this.setPaymentPending(false);
       this.setData({
         loading: false,
         loadError: '',
@@ -368,7 +416,8 @@ Page({
   async onPayOrder() {
     const generation = this.syncOrderDetailSession();
     const order = this.data.order;
-    if (this._unloaded || !order || !order.actionFlags.canPay || this.paymentInProgress || this.orderActionInProgress) return;
+    if (this._unloaded || !order || !order.actionFlags.canPay || this.data.paymentPending || this.data.checkingPayment ||
+        this.paymentInProgress || this.orderActionInProgress) return;
     const isCurrent = () => !this._unloaded && this.syncOrderDetailSession() === generation;
     const assertCurrentSession = () => {
       if (!isCurrent()) {
@@ -376,16 +425,25 @@ Page({
       }
     };
     const isCurrentOrder = () => isCurrent() && this.data.order?.id === order.id;
+    let walletOpened = false;
     this.paymentInProgress = true;
     try {
       if (this._unloaded) return;
       assertCurrentSession();
       wx.showLoading({ title: '发起支付...' });
-      const payResponse = await api.payOrder(order.id);
+      const payResponse = await api.payOrder(order.id, { acceptPaidStatus: true });
       if (this._unloaded) return;
       assertCurrentSession();
       const payParams = (payResponse && payResponse.data) || payResponse || {};
       wx.hideLoading();
+      if (payParams.alreadyPaid) {
+        if (isCurrentOrder()) {
+          this.showConfirmedPayment(order);
+          await this.loadOrder(order.id, { silent: true, isCurrent });
+        }
+        return;
+      }
+      walletOpened = true;
       await requestWxPay(payParams, () => {
         if (wx.requestSubscribeMessage && isCurrentOrder() &&
             !['pickup', 'pickup_pending', 'offline'].includes(order.shippingAddress?.deliveryMethod)) {
@@ -404,20 +462,22 @@ Page({
       }
       this.showConfirmedPayment(order);
       wx.hideLoading();
-      wx.showToast({ title: '支付已提交，请稍后刷新', icon: 'success' });
+      wx.showToast({ title: '支付已提交', icon: 'success', duration: 2000 });
       await this.loadOrder(order.id, { silent: true, isCurrent });
     } catch (error) {
       if (this._unloaded) return;
-      const timedOut = isCurrent() && isPaymentTimeout(error);
-      if (timedOut) {
+      const needsConfirmation = isCurrent() &&
+        (walletOpened || isPaymentTimeout(error) || error?.data?.reason === 'ORDER_PAYMENT_PENDING');
+      if (needsConfirmation) {
         if (!isCurrentOrder() || this.data.order.status !== 'pending') {
           wx.hideLoading();
           return;
         }
+        this.setPaymentPending(true);
         wx.showLoading({ title: '核对支付状态...' });
         const loadBeforeReconciliation = this._loadRequestId;
         const canApplyReconciliation = () => isCurrentOrder() && this.data.order.status === 'pending';
-        const { order: latest, confirmed, unavailable } = await reconcileOrderPayment(api, order.id, canApplyReconciliation)
+        const { order: latest, confirmed, unpaid, unavailable } = await reconcileOrderPayment(api, order.id, canApplyReconciliation)
           .catch(error => ({ unavailable: error }));
         if (unavailable && canApplyReconciliation() && this._loadRequestId === loadBeforeReconciliation) {
           wx.hideLoading();
@@ -429,6 +489,12 @@ Page({
           return;
         }
         if (confirmed) this.showConfirmedPayment(order);
+        if (unpaid) {
+          this.setPaymentPending(false);
+          wx.hideLoading();
+          wx.showToast({ title: '订单尚未支付，可继续支付', icon: 'none', duration: 3500 });
+          return;
+        }
         // A pending result adds no state and must not invalidate a detail refresh.
         if (latest?.status && latest.status !== 'pending') {
           await this.loadOrder(order.id, { silent: true, rawOrder: latest, isCurrent });
@@ -439,7 +505,7 @@ Page({
           return;
         }
       }
-      if (!timedOut && isCurrentOrder() && shouldRefreshOrderAfterRejection(error)) {
+      if (!needsConfirmation && isCurrentOrder() && shouldRefreshOrderAfterRejection(error)) {
         await this.loadOrder(order.id, { silent: true, quiet: true, isCurrent });
         if (!isCurrent()) {
           if (!this._unloaded) wx.hideLoading();
@@ -447,12 +513,36 @@ Page({
         }
       }
       wx.hideLoading();
+      if (needsConfirmation) return;
       wx.showToast({
-        title: timedOut ? '支付结果待确认，请刷新订单' : getPaymentErrorMessage(error, '支付未完成'),
+        title: getPaymentErrorMessage(error, '支付未完成'),
         icon: 'none',
+        duration: 3500,
       });
     } finally {
       this.paymentInProgress = false;
+    }
+  },
+
+  async checkPendingPayment() {
+    const order = this.data.order;
+    if (!order || !this.data.paymentPending || this.data.checkingPayment ||
+        this.paymentInProgress || this.orderActionInProgress) return;
+    const generation = this.syncOrderDetailSession();
+    const isCurrent = () => !this._unloaded && generation === this.syncOrderDetailSession() &&
+      this.data.order?.id === order.id;
+    if (!isCurrent()) return;
+    this.setData({ checkingPayment: true });
+    try {
+      const { order: latest, confirmed, unpaid } = await reconcileOrderPayment(api, order.id, isCurrent);
+      if (!isCurrent()) return;
+      if (confirmed) this.showConfirmedPayment(order);
+      if (unpaid) this.setPaymentPending(false);
+      await this.loadOrder(order.id, { silent: true, rawOrder: latest, isCurrent });
+    } catch (error) {
+      if (isCurrent()) await this.loadOrder(order.id, { silent: true, isCurrent });
+    } finally {
+      if (!this._unloaded && generation === this.syncOrderDetailSession()) this.setData({ checkingPayment: false });
     }
   },
 

@@ -107,10 +107,22 @@
             </view>
           </view>
 
-          <view class="checkout-scroll-spacer"></view>
+          <view class="checkout-scroll-spacer {{priceReview ? 'checkout-scroll-spacer--review' : ''}}"></view>
         </scroll-view>
 
-        <view class="checkout-fixed-bar" catchtap="noop">
+        <view wx:if="{{priceReview}}" class="checkout-fixed-bar checkout-price-review" catchtap="noop">
+          <text class="checkout-price-review__title">实付款金额已变化</text>
+          <view class="checkout-price-review__amounts">
+            <text>原金额 {{priceReview.previous}}</text>
+            <text>新金额 {{priceReview.current}}</text>
+          </view>
+          <view class="checkout-price-review__actions">
+            <button class="checkout-price-review__cancel" bindtap="closeCheckout">取消</button>
+            <button class="checkout-price-review__confirm" bindtap="confirmCheckoutPrice">按新金额支付</button>
+          </view>
+        </view>
+
+        <view wx:else class="checkout-fixed-bar" catchtap="noop">
           <view class="checkout-total">
             <text class="checkout-total-label">实付款</text>
             <text class="checkout-total-val">{{totalPayAmountText}}</text>

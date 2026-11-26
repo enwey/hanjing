@@ -12,8 +12,8 @@ function createOrder(data) {
   return request({ url: '/orders', method: 'POST', data, failMessage: '创建订单失败' });
 }
 
-function payOrder(orderId) {
-  return request({ url: '/orders/' + orderId + '/pay', method: 'POST', failMessage: '发起订单支付失败' });
+function payOrder(orderId, data) {
+  return request({ url: '/orders/' + orderId + '/pay', method: 'POST', data, failMessage: '发起订单支付失败' });
 }
 
 function confirmOrderPayment(orderId) {

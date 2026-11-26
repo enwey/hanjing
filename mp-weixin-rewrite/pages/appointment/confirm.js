@@ -40,20 +40,6 @@ function unwrapObject(response) {
   return payload.data || payload;
 }
 
-function requestWxPay(payParams, onPaid) {
-  return new Promise((resolve, reject) => {
-    wx.requestPayment({
-      timeStamp: payParams.timeStamp,
-      nonceStr: payParams.nonceStr,
-      package: payParams.package,
-      signType: payParams.signType,
-      paySign: payParams.paySign,
-      success: () => resolve(onPaid()),
-      fail: reject,
-    });
-  });
-}
-
 function getPaymentErrorMessage(error, canceledText) {
   if (error && error.errMsg) {
     return canceledText;
@@ -67,6 +53,18 @@ function getPaymentErrorMessage(error, canceledText) {
 async function syncPaidAppointment(appointmentId) {
   if (!appointmentId) return;
   await api.confirmAppointmentPayment(appointmentId);
+}
+
+function openAppointmentsAfterNotice(content, isCurrent) {
+  wx.showModal({
+    title: '请核对预约',
+    content,
+    confirmText: '查看预约',
+    showCancel: false,
+    success: ({ confirm }) => {
+      if (confirm && isCurrent()) openFromHome('/pages/appointment/booking/index?tab=mine');
+    },
+  });
 }
 
 Page({
@@ -381,8 +379,7 @@ Page({
       appointmentDraftStore.clearDraft();
       this.setData({ draft: null });
       if (appointment.reused) {
-        wx.showToast({ title: '该时段已有预约，请在预约记录中查看', icon: 'none' });
-        openFromHome('/pages/appointment/booking/index?tab=mine');
+        openAppointmentsAfterNotice('该时段已有预约，请在预约记录中查看', isCurrent);
         return;
       }
       const appointmentStatus = appointment.status;
@@ -425,7 +422,7 @@ Page({
                   wx.hideLoading();
                   alreadyPaid = payParams.alreadyPaid === true;
                   if (!alreadyPaid) {
-                    const paidAuthorization = await requestWxPay(payParams, () => {
+                    const paidAuthorization = await paymentReceipt.requestPayment(api, appointmentId, payParams, () => {
                       paymentReceipt.markSubmitted(appointmentId);
                       return tapAuthorization ? null : requestReminder();
                     });
@@ -440,21 +437,13 @@ Page({
                 if (!isCurrent()) return;
                 await saveReminder(appointmentId, acceptedTemplateId);
                 if (!isCurrent()) return;
-                wx.showToast({ title: '支付已提交', icon: 'success' });
                 appointmentDraftStore.clearDraft();
                 wx.removeStorageSync('pending_appointment_assessment');
-                openFromHome('/pages/appointment/success?id=' + appointmentId);
+                openFromHome('/pages/appointment/success?id=' + appointmentId + '&paymentSubmitted=1');
               } catch (error) {
                 wx.hideLoading();
                 if (!isCurrent()) return;
-                wx.showToast({
-                  title: getPaymentErrorMessage(error, '支付未完成'),
-                  icon: 'none',
-                });
-                setTimeout(() => {
-                  if (!isCurrent()) return;
-                  openFromHome('/pages/appointment/booking/index?tab=mine');
-                }, 1000);
+                openAppointmentsAfterNotice(getPaymentErrorMessage(error, '支付未完成'), isCurrent);
               } finally {
                 releasePayment();
               }
@@ -462,22 +451,22 @@ Page({
               try {
                 await api.cancelAppointment(appointmentId, '支付窗口取消');
                 if (!isCurrent()) return;
-                wx.showToast({ title: '已取消预约', icon: 'none' });
+                wx.showToast({ title: '已取消预约', icon: 'success', duration: 2000 });
               } catch (error) {
                 if (!isCurrent()) return;
                 console.error('取消未支付预约失败', error);
-                wx.showToast({ title: '取消未成功，请在预约记录中确认', icon: 'none' });
+                openAppointmentsAfterNotice('取消未成功，请在预约记录中确认', isCurrent);
+                return;
               }
               setTimeout(() => {
                 if (!isCurrent()) return;
                 openFromHome('/pages/appointment/booking/index?tab=mine');
-              }, 1000);
+              }, 2000);
             }
           },
           fail: () => {
             if (!isCurrent()) return;
-            wx.showToast({ title: '预约已创建，请在预约记录中继续处理', icon: 'none' });
-            openFromHome('/pages/appointment/booking/index?tab=mine');
+            openAppointmentsAfterNotice('预约已创建，请在预约记录中继续处理', isCurrent);
           },
         });
         return;
@@ -502,8 +491,7 @@ Page({
         } catch (storageError) {
           console.error('保存待确认预约草稿失败', storageError);
         }
-        wx.showToast({ title: '预约结果待确认，请核对预约记录', icon: 'none' });
-        openFromHome('/pages/appointment/booking/index?tab=mine');
+        openAppointmentsAfterNotice('预约结果待确认，请核对预约记录', isCurrent);
         return;
       }
       wx.showToast({

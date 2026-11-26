@@ -42,10 +42,10 @@ Page({
         sessionStore.logout();
         wx.removeStorageSync('selected_treatment_patient_id');
         wx.removeStorageSync('selected_medical_record_patient_id');
-        wx.showToast({ title: '已退出登录', icon: 'success' });
+        wx.showToast({ title: '已退出登录', icon: 'success', duration: 2000 });
         setTimeout(() => {
           navigation.relaunchLogin('/pages/profile/index');
-        }, 300);
+        }, 2000);
       },
     });
   },

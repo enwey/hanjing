@@ -17,6 +17,14 @@
         </view>
       </view>
 
+      <view wx:if="{{checkoutNotice || paymentPending}}" class="section-card checkout-notice">
+        <text wx:if="{{checkoutNotice}}">{{checkoutNotice}}</text>
+        <block wx:if="{{paymentPending}}">
+          <text>支付结果待确认。请先核对支付状态，避免重复付款。</text>
+          <button size="mini" bindtap="checkPendingPayment" loading="{{checkingPayment}}" disabled="{{checkingPayment}}">核对支付状态</button>
+        </block>
+      </view>
+
       <view class="section-card">
         <text class="section-title">商品信息</text>
         <view wx:for="{{order.items}}" wx:key="productId" class="order-item-row">
@@ -82,7 +90,7 @@
 
       <view wx:if="{{order.actionFlags.canCancel || order.actionFlags.canPay || order.actionFlags.canConfirmReceipt || order.actionFlags.canRefund}}" class="action-footer">
         <button wx:if="{{order.actionFlags.canCancel}}" bindtap="onCancelOrder" class="action-button action-button--ghost">取消订单</button>
-        <button wx:if="{{order.actionFlags.canPay}}" bindtap="onPayOrder" class="action-button action-button--primary">立即支付</button>
+        <button wx:if="{{order.actionFlags.canPay && !paymentPending}}" disabled="{{checkingPayment}}" bindtap="onPayOrder" class="action-button action-button--primary">立即支付</button>
         <button wx:if="{{order.actionFlags.canConfirmReceipt}}" bindtap="onConfirmReceipt" class="action-button action-button--primary">确认收货</button>
         <button wx:if="{{order.actionFlags.canRefund}}" bindtap="onApplyRefund" class="action-button action-button--ghost">申请退款</button>
       </view>

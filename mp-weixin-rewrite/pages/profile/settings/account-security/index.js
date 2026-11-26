@@ -101,17 +101,17 @@ Page({
     try {
       wx.showLoading({ title: '换绑中...' });
       const response = await api.changePhone('', '', detail.code);
+      wx.hideLoading();
       if (response && response.code === 0) {
-        wx.showToast({ title: '手机换绑成功', icon: 'success' });
+        wx.showToast({ title: '手机换绑成功', icon: 'success', duration: 2000 });
         this.setData({ showPhoneModal: false });
-        await this.fetchInfo();
+        await this.fetchInfo({ silent: true });
         return;
       }
-      wx.showToast({ title: (response && response.message) || '修改失败', icon: 'none' });
+      wx.showToast({ title: (response && response.message) || '修改失败', icon: 'none', duration: 3500 });
     } catch (error) {
-      wx.showToast({ title: (error && error.message) || '换绑失败，请重试', icon: 'none' });
-    } finally {
       wx.hideLoading();
+      wx.showToast({ title: (error && error.message) || '换绑失败，请重试', icon: 'none', duration: 3500 });
     }
   },
 
@@ -130,17 +130,17 @@ Page({
     try {
       wx.showLoading({ title: '认证中...' });
       const response = await api.verifyRealName(realName, idCard);
+      wx.hideLoading();
       if (response && response.code === 0) {
-        wx.showToast({ title: '实名认证成功', icon: 'success' });
+        wx.showToast({ title: '实名认证成功', icon: 'success', duration: 2000 });
         this.setData({ showRealnameModal: false });
-        await this.fetchInfo();
+        await this.fetchInfo({ silent: true });
       } else {
-        wx.showToast({ title: (response && response.message) || '认证失败', icon: 'none' });
+        wx.showToast({ title: (response && response.message) || '认证失败', icon: 'none', duration: 3500 });
       }
     } catch (error) {
-      wx.showToast({ title: '操作失败，请重试', icon: 'none' });
-    } finally {
       wx.hideLoading();
+      wx.showToast({ title: '操作失败，请重试', icon: 'none', duration: 3500 });
     }
   },
 
@@ -174,6 +174,7 @@ Page({
     try {
       wx.showLoading({ title: hasPassword ? '修改中...' : '设置中...' });
       const response = await api.updateUserPassword(oldPassword, newPassword, confirmPassword);
+      wx.hideLoading();
       if (response && response.code === 0) {
         this.setData({ showPasswordModal: false });
         await this.fetchInfo({ silent: true });
@@ -187,11 +188,10 @@ Page({
         });
         return;
       }
-      wx.showToast({ title: (response && response.message) || '设置失败', icon: 'none' });
+      wx.showToast({ title: (response && response.message) || '设置失败', icon: 'none', duration: 3500 });
     } catch (error) {
-      wx.showToast({ title: (error && error.message) || '设置失败，请重试', icon: 'none' });
-    } finally {
       wx.hideLoading();
+      wx.showToast({ title: (error && error.message) || '设置失败，请重试', icon: 'none', duration: 3500 });
     }
   },
 });

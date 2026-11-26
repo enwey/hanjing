@@ -46,12 +46,6 @@ async function syncPaidAppointment(appointmentId) {
   await api.confirmAppointmentPayment(appointmentId);
 }
 
-function requestWxPay(params, onPaid) {
-  return new Promise((resolve, reject) => {
-    wx.requestPayment({ ...params, success: () => resolve(onPaid()), fail: reject });
-  });
-}
-
 function normalizeAppointment(appointment, stores, doctors) {
   const store = stores.find((item) => String(item.id) === String(appointment.storeId || appointment.store_id)) || null;
   const doctor = doctors.find((item) => String(item.id) === String(appointment.doctorId || appointment.doctor_id)) || null;
@@ -309,6 +303,7 @@ Page({
       this.appointmentPaymentInProgress = true;
       const isCurrent = () => !this._unloaded && this.paymentFlight === flight &&
         generation === sessionStore.getLoginGeneration() && sessionStore.isLoggedIn();
+      let feedback;
       try {
         if (!isCurrent()) return;
         wx.showLoading({ title: '拉起支付中...' });
@@ -321,7 +316,7 @@ Page({
           wx.hideLoading();
           alreadyPaid = paymentResult.alreadyPaid === true;
           if (!alreadyPaid) {
-            acceptedTemplateId = await requestWxPay(paymentResult, () => {
+            acceptedTemplateId = await paymentReceipt.requestPayment(api, appointment.id, paymentResult, () => {
               paymentReceipt.markSubmitted(appointment.id);
               if (wx.requestSubscribeMessage && isCurrent()) return subscribe.requestVisitReminderAuthorization();
             });
@@ -335,18 +330,18 @@ Page({
         wx.hideLoading();
         if (acceptedTemplateId) await subscribe.recordAcceptedVisitReminder(appointment.id, acceptedTemplateId, isCurrent);
         if (!isCurrent()) return;
-        wx.showToast({ title: '支付成功', icon: 'success' });
         await this.loadPage({ silent: false });
+        feedback = { title: '支付成功', icon: 'success', duration: 2000 };
       } catch (error) {
-        if (isCurrent()) {
-          wx.showToast({ title: getPaymentErrorMessage(error, '支付未完成'), icon: 'none' });
-        }
+        feedback = { title: getPaymentErrorMessage(error, '支付未完成'), icon: 'none', duration: 3500 };
       } finally {
         releasePayment();
         if (this.paymentFlight === flight) {
+          const canShowFeedback = isCurrent();
           wx.hideLoading();
           this.paymentFlight = null;
           this.appointmentPaymentInProgress = false;
+          if (feedback && canShowFeedback) wx.showToast(feedback);
         }
       }
       return;

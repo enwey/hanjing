@@ -1250,6 +1250,7 @@ export const initDB = async () => {
 
   for (const [table, column, definition] of [
     ['appointment_charges', 'prepay_lease_until', 'DATETIME(6) DEFAULT NULL'],
+    ['appointment_charges', 'prepay_attempt_token', 'CHAR(36) DEFAULT NULL'],
     ['appointment_charges', 'collected_by_admin_id', 'BIGINT UNSIGNED DEFAULT NULL'],
     ['appointment_charges', 'collected_by_name', 'VARCHAR(100) DEFAULT NULL'],
     ['appointment_charges', 'collection_source', 'VARCHAR(24) DEFAULT NULL'],

@@ -291,14 +291,15 @@ Page({
       let response;
       if (this.data.isEdit) {
         response = await api.updateFamilyMember(this.memberId, payload);
-        wx.showToast({ title: '保存成功', icon: 'success' });
+        wx.showToast({ title: '保存成功', icon: 'success', duration: 2000 });
       } else {
         response = await api.addFamilyMember(payload);
-        wx.showToast({ title: '新增成功', icon: 'success' });
+        wx.showToast({ title: '新增成功', icon: 'success', duration: 2000 });
       }
       const savedMember = unwrapObject(response);
       setTimeout(() => {
         const pages = getCurrentPages();
+        if (pages[pages.length - 1] !== this) return;
         const prevPage = pages[pages.length - 2];
         if (this.data.returnToAppointment && savedMember && savedMember.id
           && prevPage && typeof prevPage.selectCreatedPatient === 'function') {
@@ -306,7 +307,7 @@ Page({
         }
         if (prevPage && typeof prevPage.fetchFamilyMembers === 'function') prevPage.fetchFamilyMembers();
         wx.navigateBack();
-      }, 800);
+      }, 2000);
     } catch (error) {
       wx.showToast({ title: (error && error.message) || '提交失败', icon: 'none' });
       this.setData({ isSubmitting: false });
@@ -319,17 +320,20 @@ Page({
       title: '确认解除关联',
       content: '确定要解除与该就诊人的关联吗？解除后不会删除对方的独立档案。',
       success: async (result) => {
-        if (!result.confirm) return;
+        if (!result.confirm || this.data.isSubmitting) return;
+        this.setData({ isSubmitting: true });
         try {
           await api.deleteFamilyMember(this.memberId);
-          wx.showToast({ title: '已解除关联', icon: 'success' });
+          wx.showToast({ title: '已解除关联', icon: 'success', duration: 2000 });
           setTimeout(() => {
             const pages = getCurrentPages();
+            if (pages[pages.length - 1] !== this) return;
             const prevPage = pages[pages.length - 2];
             if (prevPage && typeof prevPage.fetchFamilyMembers === 'function') prevPage.fetchFamilyMembers();
             wx.navigateBack();
-          }, 800);
+          }, 2000);
         } catch (error) {
+          this.setData({ isSubmitting: false });
           wx.showToast({ title: (error && error.message) || '解除失败', icon: 'none' });
         }
       },
