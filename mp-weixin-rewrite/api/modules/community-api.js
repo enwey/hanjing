@@ -1,5 +1,20 @@
 const { request } = require('../request');
 
+async function submitCommunityContent(options) {
+  try {
+    return await request(options);
+  } catch (error) {
+    const code = error?.data?.code;
+    if (code === 'CONTENT_REJECTED') {
+      throw new Error('发布内容包含违规信息，请修改后重试');
+    }
+    if (code === 'CONTENT_CHECK_UNAVAILABLE') {
+      throw new Error('暂时无法发布，请稍后重试');
+    }
+    throw error;
+  }
+}
+
 function getMyCommunityActivity(type, page) {
   return request({ url: '/community/my-activity', method: 'GET', data: { type, page }, failMessage: '加载社区记录失败' });
 }
@@ -12,10 +27,10 @@ function getCommunityPostDetail(postId) {
 }
 
 function getCommunityPostForEdit(id) { return request({url:'/community/posts/'+id+'/edit',method:'GET',failMessage:'加载待修改帖子失败'}); }
-function updateCommunityPost(id,data) { return request({url:'/community/posts/'+id+'/edit',method:'PUT',data,failMessage:'提交审核失败'}); }
+function updateCommunityPost(id,data) { return submitCommunityContent({url:'/community/posts/'+id+'/edit',method:'PUT',data,failMessage:'提交审核失败'}); }
 
 function createCommunityPost(data) {
-  return request({ url: '/community/posts', method: 'POST', data, failMessage: '发布帖子失败' });
+  return submitCommunityContent({ url: '/community/posts', method: 'POST', data, failMessage: '发布帖子失败' });
 }
 
 function likeCommunityPost(postId, isLiked) {
@@ -35,7 +50,7 @@ function likeCommunityComment(commentId, isLiked) {
 }
 
 function commentCommunityPost(postId, content, parentId) {
-  return request({ url: '/community/posts/' + postId + '/comment', method: 'POST', data: { content, parentId: parentId || null }, failMessage: '发表评论失败' });
+  return submitCommunityContent({ url: '/community/posts/' + postId + '/comment', method: 'POST', data: { content, parentId: parentId || null }, failMessage: '发表评论失败' });
 }
 
 function reportCommunityPost(postId, reason) {

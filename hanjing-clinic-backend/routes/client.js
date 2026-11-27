@@ -62,6 +62,7 @@ import {
   verifyWechatPayCallback
 } from '../wechatPay.js';
 import { getWechatMiniAccessToken, isWechatAccessTokenInvalid } from '../wechatMiniToken.js';
+import { checkWechatText, rejectUncheckedContent } from '../wechatContentSecurity.js';
 
 const app = createAsyncRouter();
 app.use(signPrivateUploadResponses);
@@ -2910,9 +2911,6 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
   const summaryClean = buildCommunityPostSummary(contentClean);
 
   try {
-    if (checkSensitiveWords(title) || checkSensitiveWords(content)) {
-      return res.status(400).json({ code: 400, message: '您的内容中包含违规字眼（广告/疗效等），已被系统拦截' });
-    }
     const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
     if (!user) return res.status(401).json({ code: 401, message: '未授权或登录过期' });
     let role = 'patient';
@@ -2923,6 +2921,8 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
     if (role === 'patient' && tags?.some(tag => tag.trim() === '专家')) {
       return res.status(400).json({ code: 400, message: '普通用户不能使用专家分类' });
     }
+
+    if (await rejectUncheckedCommunityPost(res, user.openid, title, content, tags)) return;
 
     const status = 'approved';
 
@@ -2975,8 +2975,14 @@ app.put('/api/v1/community/posts/:id/edit', authenticateWxToken, async (req,res)
   if (Object.keys(req.body || {}).some(key=>!['title','content','tags'].includes(key))) return res.status(400).json({code:400,message:'包含不允许修改的字段'});
   if (typeof title!=='string' || typeof content!=='string' || !title.trim() || !content.trim() || title.length>40 || content.length>1000) return res.status(400).json({code:400,message:'标题和内容不能为空，标题最多40字，内容最多1000字'});
   if (tags!==undefined && (!Array.isArray(tags)||tags.length>4||tags.some(tag=>typeof tag!=='string'||!tag.trim()||tag.length>30))) return res.status(400).json({code:400,message:'分类或标签无效'});
-  if (checkSensitiveWords(title)||checkSensitiveWords(content)) return res.status(400).json({code:400,message:'内容包含不适合发布的信息，请修改后提交'});
   try {
+    const post = await get('SELECT user_role, status FROM community_posts WHERE id=? AND user_id=?', [req.params.id, req.user.id]);
+    if (!post || post.user_role === 'admin') throw businessError('帖子不存在或不可编辑', 404);
+    if (!EDITABLE_COMMUNITY_STATUSES.has(post.status)) throw businessError('已公开的帖子不能在此修改', 409);
+    if (post.user_role === 'patient' && tags?.some(tag => tag.trim() === '专家')) throw businessError('普通用户不能使用专家分类', 400);
+    const user = await get('SELECT openid FROM users WHERE id=?', [req.user.id]);
+    if (await rejectUncheckedCommunityPost(res, user?.openid, title, content, tags)) return;
+
     await transaction(async conn=>{
       const [[post]]=await conn.execute('SELECT * FROM community_posts WHERE id=? AND user_id=? FOR UPDATE',[req.params.id,req.user.id]);
       if (!post || post.user_role==='admin') throw businessError('帖子不存在或不可编辑',404);
@@ -3137,6 +3143,12 @@ app.post('/api/v1/community/comments/:id/like', authenticateWxToken, async (req,
   }
 });
 
+async function rejectUncheckedCommunityPost(res, openid, title, content, tags = []) {
+  const text = [content, ...tags].map(value => value.trim()).join('\n');
+  const decision = await checkWechatText({ openid, scene: 3, title: title.trim(), content: text });
+  return rejectUncheckedContent(res, decision === 'pass' && (checkSensitiveWords(title) || checkSensitiveWords(text)) ? 'blocked' : decision);
+}
+
 // POST /api/v1/community/posts/:id/comment
 app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
@@ -3148,9 +3160,6 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
   const contentClean = escapeHtml(content.trim());
 
   try {
-    if (checkSensitiveWords(content)) {
-      return res.status(400).json({ code: 400, message: '评论中包含敏感或违规内容，已被系统拦截' });
-    }
     const post = await get(
       `SELECT id, user_id, title FROM community_posts WHERE id = ? AND status = 'approved'`,
       [postId]
@@ -3172,6 +3181,9 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
       }
     }
     const user = await get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
+    const decision = await checkWechatText({ openid: user?.openid, scene: 2, content: content.trim() });
+    if (rejectUncheckedContent(res, decision === 'pass' && checkSensitiveWords(content) ? 'blocked' : decision)) return;
+
     const result = await transaction(async conn => {
     const [inserted] = await conn.execute(
       `INSERT INTO post_comments (post_id, user_id, parent_id, content, likes_count, status)
