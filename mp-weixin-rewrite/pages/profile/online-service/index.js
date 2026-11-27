@@ -288,42 +288,35 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
+      sizeType: ['compressed'],
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
         const ext = tempFilePath.split('.').pop() || 'jpg';
         wx.showLoading({ title: '上传中...' });
-        const fs = wx.getFileSystemManager();
-        fs.readFile({
-          filePath: tempFilePath,
-          success: async (readRes) => {
-            try {
-              const uploadRes = await api.uploadFile(readRes.data, ext);
-              if (uploadRes && uploadRes.code === 0 && uploadRes.data && uploadRes.data.url) {
-                const message = {
-                  id: String(Date.now()),
-                  from: 'user',
-                  text: '[image]' + uploadRes.data.url,
-                  time: new Date().toTimeString().slice(0, 5),
-                  status: 'sending',
-                };
-                const messages = this.getMutableMessages();
-                messages.push(message);
-                this.setMessages(messages);
-                this.sendMsgWithRetry(message);
-              } else {
-                wx.showToast({ title: '上传图片失败', icon: 'none' });
-              }
-            } catch (error) {
-              wx.showToast({ title: '上传图片失败，请重试', icon: 'none' });
-            } finally {
-              wx.hideLoading();
+        api.uploadLocalFile(tempFilePath, ext)
+          .then((uploadRes) => {
+            if (uploadRes && uploadRes.code === 0 && uploadRes.data && uploadRes.data.url) {
+              const message = {
+                id: String(Date.now()),
+                from: 'user',
+                text: '[image]' + uploadRes.data.url,
+                time: new Date().toTimeString().slice(0, 5),
+                status: 'sending',
+              };
+              const messages = this.getMutableMessages();
+              messages.push(message);
+              this.setMessages(messages);
+              this.sendMsgWithRetry(message);
+            } else {
+              wx.showToast({ title: (uploadRes && uploadRes.message) || '上传图片失败', icon: 'none' });
             }
-          },
-          fail: () => {
+          })
+          .catch((error) => {
+            wx.showToast({ title: (error && error.message) || '上传图片失败，请重试', icon: 'none' });
+          })
+          .finally(() => {
             wx.hideLoading();
-            wx.showToast({ title: '读取文件失败', icon: 'none' });
-          },
-        });
+          });
       },
     });
   },

@@ -318,4 +318,5 @@
     <text class="state-description">{{loadError}}</text>
     <button wx:if="{{canRetryLoad}}" class="state-retry-btn" bindtap="retryLoad">重试</button>
   </view>
+  <hj-privacy-popup id="privacyPopup" />
 </view>

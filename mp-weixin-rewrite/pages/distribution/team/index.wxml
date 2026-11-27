@@ -1,8 +1,8 @@
 <view class="container distribution-team-page">
-  <hj-navbar title="团队成员" showBack="{{true}}" />
+  <hj-navbar title="推荐好友" showBack="{{true}}" />
 
   <view class="page-section state-card" wx:if="{{loading}}">
-    <text class="page-description">正在加载团队成员...</text>
+    <text class="page-description">正在加载推荐记录...</text>
   </view>
 
   <view class="page-section state-card" wx:elif="{{loadError}}">
@@ -14,20 +14,20 @@
     <view class="page-section stats-bar">
       <view class="stats-item">
         <text class="stats-item__value">{{teamCount}}</text>
-        <text class="stats-item__label">一级成员</text>
+        <text class="stats-item__label">直接推荐</text>
       </view>
       <view class="stats-item">
         <text class="stats-item__value">{{level2Count}}</text>
-        <text class="stats-item__label">二级成员</text>
+        <text class="stats-item__label">间接推荐</text>
       </view>
       <view class="stats-item">
         <text class="stats-item__value">{{totalSalesLabel}}</text>
-        <text class="stats-item__label">团队销售额</text>
+        <text class="stats-item__label">累计推广额</text>
       </view>
     </view>
 
     <view class="distribution-empty" wx:if="{{!members.length}}">
-      <hj-empty title="暂无团队成员" icon="/static/icons/community.svg" />
+      <hj-empty title="暂无推荐好友" icon="/static/icons/community.svg" />
     </view>
 
     <view class="page-section team-list-wrap" wx:else>

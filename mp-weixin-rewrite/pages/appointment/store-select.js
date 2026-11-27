@@ -78,6 +78,7 @@ Page({
   data: {
     stores: [],
     doctorId: '',
+    hasLocation: false,
   },
 
   onLoad(options) {
@@ -132,8 +133,8 @@ Page({
     const doctorId = readString((this.options && (this.options.doctorId || this.options.doctorid)) || '');
     const todayString = getBeijingDate(Date.now());
 
-    const [location, storesResponse, doctorsResponse] = await Promise.all([
-      this.getLocation(),
+    const location = this._location || null;
+    const [storesResponse, doctorsResponse] = await Promise.all([
       api.getStores(),
       api.getDoctors(),
     ]);
@@ -230,6 +231,23 @@ Page({
     this.hasLoaded = true;
   },
 
+  async requestLocationSort() {
+    const location = await this.getLocation();
+    if (!location) {
+      wx.showToast({ title: '未获取到定位信息，请在设置中开启位置权限', icon: 'none' });
+      return;
+    }
+    this._location = location;
+    const sorted = (this.data.stores || [])
+      .map((store) => normalizeStore(store, location))
+      .sort((leftStore, rightStore) => {
+        if (!Number.isFinite(leftStore._distanceValue)) return 1;
+        if (!Number.isFinite(rightStore._distanceValue)) return -1;
+        return leftStore._distanceValue - rightStore._distanceValue;
+      });
+    this.setData({ stores: sorted, hasLocation: true });
+  },
+
   handleStoreTap(event) {
     const store = event.detail || {};
     if (!store.id) {
@@ -237,7 +255,7 @@ Page({
     }
     if (store.status === 'prepare') {
       wx.showToast({
-        title: '该门店正在筹建中，暂未开放预约，敬请期待！',
+        title: '该门店暂未开通线上预约，请选择其他门店',
         icon: 'none',
         duration: 2000,
       });

@@ -75,10 +75,15 @@
           </view>
           <text class="post-author__time">{{postDetail.displayTime}}</text>
         </view>
-        <button class="post-report" bindtap="reportPost">
-          <image class="post-report__icon" src="/static/icons/alert.svg" mode="aspectFit"></image>
-          <text class="post-report__text">举报</text>
-        </button>
+        <view class="post-header__actions">
+          <button wx:if="{{postDetail.isAuthor}}" class="post-delete" catchtap="deletePost">
+            <text class="post-delete__text">删除</text>
+          </button>
+          <button class="post-report" bindtap="reportPost">
+            <image class="post-report__icon" src="/static/icons/alert.svg" mode="aspectFit"></image>
+            <text class="post-report__text">举报</text>
+          </button>
+        </view>
       </view>
 
       <text class="post-title">{{postDetail.title}}</text>
@@ -121,20 +126,20 @@
       </view>
 
       <view wx:if="{{commentsList.length}}" class="comment-list">
-        <view wx:for="{{commentsList}}" wx:key="id" id="comment-{{item.id}}" class="comment-item {{highlightCommentId === item.id ? 'comment-item--highlight' : ''}}">
+        <view wx:for="{{commentsList}}" wx:key="id" id="comment-{{item.id}}" class="comment-item {{highlightCommentId === item.id ? 'comment-item--highlight' : ''}} {{item.isDeleted ? 'comment-item--deleted' : ''}}">
           <view class="comment-item__avatar">
             <image class="comment-item__avatar-placeholder" src="/static/images/brand-logo-v20261105.png" mode="aspectFill" />
-            <image wx:if="{{item.avatar}}" class="comment-item__avatar-image {{item.avatarLoaded ? 'comment-item__avatar-image--loaded' : ''}}" src="{{item.avatar}}" mode="aspectFill" data-comment-id="{{item.id}}" bindload="handleCommentAvatarLoad" binderror="handleCommentAvatarError" />
+            <image wx:if="{{!item.isDeleted && item.avatar}}" class="comment-item__avatar-image {{item.avatarLoaded ? 'comment-item__avatar-image--loaded' : ''}}" src="{{item.avatar}}" mode="aspectFill" data-comment-id="{{item.id}}" bindload="handleCommentAvatarLoad" binderror="handleCommentAvatarError" />
           </view>
           <view class="comment-item__main">
             <view class="comment-item__header">
-              <text class="comment-item__author">{{item.author}}</text>
+              <text class="comment-item__author">{{item.isDeleted ? '系统提示' : item.author}}</text>
               <text class="comment-item__time">{{item.displayTime}}</text>
             </view>
-            <view class="comment-item__content">
+            <view class="comment-item__content {{item.isDeleted ? 'comment-item__content--deleted' : ''}}">
               <text wx:if="{{item.parentAuthor}}" class="comment-item__reply-prefix">回复 {{item.parentAuthor}}：</text><text>{{item.content}}</text>
             </view>
-            <view class="comment-item__actions">
+            <view wx:if="{{!item.isDeleted}}" class="comment-item__actions">
               <button class="comment-item__action {{item.isLiked ? 'comment-item__action--liked' : ''}}"
                 bindtap="handleCommentLike" data-comment-id="{{item.id}}"
                 aria-label="{{(item.isLiked ? '取消点赞，' : '点赞，') + item.likes}}">
@@ -144,6 +149,12 @@
               <button class="comment-item__action comment-item__reply-link" catchtap="handleReply" data-comment-id="{{item.id}}">
                 <image class="comment-item__action-icon" src="/static/icons/community-comment.svg" mode="aspectFit" />
                 <text>回复</text>
+              </button>
+              <button wx:if="{{item.isAuthor}}" class="comment-item__action comment-item__delete-link" catchtap="deleteComment" data-comment-id="{{item.id}}">
+                <text>删除</text>
+              </button>
+              <button wx:else class="comment-item__action comment-item__report-link" catchtap="reportComment" data-comment-id="{{item.id}}">
+                <text>举报</text>
               </button>
             </view>
           </view>

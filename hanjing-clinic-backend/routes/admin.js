@@ -57,7 +57,8 @@ import {
   formatShanghaiDate,
   formatShanghaiDateTime,
   decryptPII,
-  encryptPII
+  encryptPII,
+  escapeHtml
 } from '../helpers.js';
 import { getWechatNotificationSettings, sendWechatSubscribeMessage } from '../wechatSubscribe.js';
 import { notificationConfigKey, validateNotificationConfig, WECHAT_NOTIFICATION_EVENTS } from '../wechat-notification-config.js';
@@ -6239,6 +6240,7 @@ app.get('/api/admin/content/articles', authenticateToken, async (req, res) => {
               CASE WHEN p.user_role='admin' THEN '兴康明诊所' ELSE u.nickname END AS nickname, u.phone
        FROM community_posts p
        LEFT JOIN users u ON p.user_id = u.id
+       WHERE p.status <> 'deleted'
        ORDER BY p.is_top DESC, p.sort_weight DESC, COALESCE(p.publish_at, p.created_at) DESC, p.id DESC
        LIMIT 500`
     );
@@ -6453,18 +6455,170 @@ app.delete('/api/admin/content/articles/:id', authenticateToken, async (req, res
   const { id } = req.params;
   try {
     await transaction(async conn => {
-      const [[post]] = await conn.execute('SELECT id,title,user_id,user_role FROM community_posts WHERE id=? FOR UPDATE',[id]);
-      if (!post) return;
+      const [[post]] = await conn.execute('SELECT id,title,user_id,user_role,status FROM community_posts WHERE id=? FOR UPDATE',[id]);
+      if (!post || post.status === 'deleted') return;
+      const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0,500) : '';
       if (post.user_id && post.user_role !== 'admin') {
-        const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0,500) : '';
         await writeNotification(conn,{userId:post.user_id,type:'community',businessType:'post',businessId:post.id,event:'moderation_removed',onceKey:String(post.id),title:'帖子已移除',content:`《${post.title}》已由平台移除。${reason ? '原因：'+reason+'。' : '如需了解详情，请联系客服。'}`});
       }
-      await conn.execute('DELETE FROM community_posts WHERE id=?',[id]);
+      await conn.execute(
+        "UPDATE community_posts SET status='deleted',is_top=0,delete_reason=?,deleted_by='admin',deleted_at=NOW() WHERE id=?",
+        [reason || '内容不符合社区规范，已由平台移除', id]
+      );
     });
     await logAdminAction(req.user.id, 'delete_article', 'community_post', id, {});
     res.json({ code: 200, message: '删除内容成功' });
   } catch (error) {
     res.status(500).json({ code: 500, message: '删除内容失败' });
+  }
+});
+
+const decodeCommentText = value => String(value || '')
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"')
+  .replace(/&#0?39;|&apos;/g, "'")
+  .replace(/&amp;/g, '&');
+
+// Article Comments (文章评论管理)
+app.get('/api/admin/content/articles/:id/comments', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const post = await get("SELECT id, title FROM community_posts WHERE id = ? AND status <> 'deleted'", [id]);
+    if (!post) {
+      return res.status(404).json({ code: 404, message: '文章不存在' });
+    }
+    const rows = await query(
+      `SELECT c.id, c.post_id, c.user_id, c.parent_id, c.content, c.likes_count, c.status,
+              c.delete_reason, c.deleted_by, c.created_at,
+              u.nickname AS author_name, u.phone AS author_phone,
+              parent_author.nickname AS parent_author_name
+       FROM post_comments c
+       LEFT JOIN users u ON u.id = c.user_id
+       LEFT JOIN post_comments parent ON parent.id = c.parent_id
+       LEFT JOIN users parent_author ON parent_author.id = parent.user_id
+       WHERE c.post_id = ?
+       ORDER BY c.created_at DESC, c.id DESC`,
+      [id]
+    );
+    const list = rows.map(row => ({
+      id: row.id,
+      post_id: row.post_id,
+      user_id: row.user_id,
+      parent_id: row.parent_id || null,
+      author_name: row.author_name || '用户',
+      author_phone: row.author_phone ? maskPhone(decryptPII(row.author_phone)) : '',
+      parent_author_name: row.parent_author_name || '',
+      content: decodeCommentText(row.content),
+      likes_count: Number(row.likes_count || 0),
+      status: row.status || 'approved',
+      delete_reason: row.delete_reason || '',
+      deleted_by: row.deleted_by || '',
+      created_at: row.created_at
+    }));
+    res.json({
+      code: 200,
+      data: {
+        article: { id: post.id, title: post.title },
+        list
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '获取评论列表失败' });
+  }
+});
+
+app.put('/api/admin/content/comments/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const hasContent = Object.prototype.hasOwnProperty.call(req.body || {}, 'content');
+  const hasStatus = Object.prototype.hasOwnProperty.call(req.body || {}, 'status');
+  if (!hasContent && !hasStatus) {
+    return res.status(400).json({ code: 400, message: '请提供需要修改的评论内容或状态' });
+  }
+  const rawContent = hasContent ? req.body.content : undefined;
+  if (hasContent && (typeof rawContent !== 'string' || !rawContent.trim() || rawContent.trim().length > 1000)) {
+    return res.status(400).json({ code: 400, message: '评论内容不能为空且最多1000字' });
+  }
+  const requestedStatus = hasStatus ? req.body.status : undefined;
+  if (hasStatus && !['approved', 'pending', 'rejected'].includes(requestedStatus)) {
+    return res.status(400).json({ code: 400, message: '评论状态不合法' });
+  }
+
+  try {
+    const updated = await transaction(async conn => {
+      const [[comment]] = await conn.execute('SELECT id, post_id, content, status FROM post_comments WHERE id = ? FOR UPDATE', [id]);
+      if (!comment) return null;
+      const nextContent = hasContent ? escapeHtml(rawContent.trim()) : comment.content;
+      const nextStatus = hasStatus ? requestedStatus : comment.status;
+      await conn.execute(
+        `UPDATE post_comments
+         SET content = ?, status = ?,
+             delete_reason = CASE WHEN ? <> 'deleted' THEN NULL ELSE delete_reason END,
+             deleted_by = CASE WHEN ? <> 'deleted' THEN NULL ELSE deleted_by END,
+             deleted_at = CASE WHEN ? <> 'deleted' THEN NULL ELSE deleted_at END
+         WHERE id = ?`,
+        [nextContent, nextStatus, nextStatus, nextStatus, nextStatus, comment.id]
+      );
+      if (comment.status !== nextStatus) {
+        if (comment.status !== 'approved' && nextStatus === 'approved') {
+          await conn.execute('UPDATE community_posts SET comments_count = comments_count + 1 WHERE id = ?', [comment.post_id]);
+        } else if (comment.status === 'approved' && nextStatus !== 'approved') {
+          await conn.execute('UPDATE community_posts SET comments_count = GREATEST(0, comments_count - 1) WHERE id = ?', [comment.post_id]);
+        }
+      }
+      return { id: comment.id, post_id: comment.post_id, content: decodeCommentText(nextContent), status: nextStatus };
+    });
+    if (!updated) {
+      return res.status(404).json({ code: 404, message: '评论不存在' });
+    }
+    await logAdminAction(req.user.id, 'update_comment', 'post_comment', id, { status: updated.status });
+    res.json({ code: 200, message: '更新评论成功', data: updated });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '更新评论失败' });
+  }
+});
+
+app.delete('/api/admin/content/comments/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deleted = await transaction(async conn => {
+      const [[comment]] = await conn.execute(
+        `SELECT c.id, c.post_id, c.user_id, c.status, p.title AS post_title
+         FROM post_comments c
+         LEFT JOIN community_posts p ON p.id = c.post_id
+         WHERE c.id = ? FOR UPDATE`,
+        [id]
+      );
+      if (!comment || comment.status === 'deleted') return null;
+      const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 500) : '';
+      await conn.execute(
+        "UPDATE post_comments SET status = 'deleted', delete_reason = ?, deleted_by = 'admin', deleted_at = NOW() WHERE id = ?",
+        [reason || '评论不符合社区规范，已由平台移除', comment.id]
+      );
+      if (comment.status === 'approved') {
+        await conn.execute('UPDATE community_posts SET comments_count = GREATEST(0, comments_count - 1) WHERE id = ?', [comment.post_id]);
+      }
+      if (comment.user_id) {
+        await writeNotification(conn, {
+          userId: comment.user_id,
+          type: 'community',
+          businessType: 'post',
+          businessId: comment.post_id,
+          event: 'comment_removed',
+          onceKey: `comment:${comment.id}`,
+          title: '评论已移除',
+          content: `你在《${comment.post_title || '社区帖子'}》中的评论已由平台移除。${reason ? '原因：' + reason + '。' : '如需了解详情，请联系客服。'}`
+        });
+      }
+      return { id: comment.id, post_id: comment.post_id };
+    });
+    if (!deleted) {
+      return res.status(404).json({ code: 404, message: '评论不存在' });
+    }
+    await logAdminAction(req.user.id, 'delete_comment', 'post_comment', id, {});
+    res.json({ code: 200, message: '删除评论成功', data: deleted });
+  } catch (error) {
+    res.status(500).json({ code: 500, message: '删除评论失败' });
   }
 });
 

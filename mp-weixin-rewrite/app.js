@@ -167,21 +167,12 @@ App({
             return;
           }
         }
-        wx.showModal({
-          title: '隐私保护指引提示',
-          content: '为了向您提供就近门店选择、挂号预约，以及睡眠鼾声录制与评估服务，我们需要在必要时申请您的地理位置与麦克风录音权限。请阅读并同意《隐私保护指引》后继续使用。',
-          cancelText: '拒绝',
-          confirmText: '同意并授权',
-          success(result) {
-            if (result.confirm) {
-              resolve({ event: 'agree', buttonId: 'agree-btn' });
-            } else {
-              resolve({ event: 'disagree' });
-            }
-          },
-          fail() {
-            resolve({ event: 'disagree' });
-          },
+        wx.globalPrivacyResolve = null;
+        resolve({ event: 'disagree' });
+        wx.showToast({
+          title: '请先同意隐私保护指引后再使用该功能',
+          icon: 'none',
+          duration: 2000,
         });
       });
     }

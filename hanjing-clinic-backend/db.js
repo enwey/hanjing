@@ -1654,6 +1654,13 @@ export const initDB = async () => {
   } catch (err) {
     // Ignore error if column already exists
   }
+  for (const colSql of [
+    `ALTER TABLE community_posts ADD COLUMN delete_reason VARCHAR(500) NULL`,
+    `ALTER TABLE community_posts ADD COLUMN deleted_by VARCHAR(20) NULL`,
+    `ALTER TABLE community_posts ADD COLUMN deleted_at DATETIME NULL`
+  ]) {
+    try { await query(colSql); } catch (err) {}
+  }
 
   // 29. post_comments
   await query(`
@@ -1665,11 +1672,21 @@ export const initDB = async () => {
       content TEXT NOT NULL,
       likes_count INT DEFAULT 0,
       status VARCHAR(30) DEFAULT 'approved',
+      delete_reason VARCHAR(500) NULL,
+      deleted_by VARCHAR(20) NULL,
+      deleted_at DATETIME NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+  for (const colSql of [
+    `ALTER TABLE post_comments ADD COLUMN delete_reason VARCHAR(500) NULL`,
+    `ALTER TABLE post_comments ADD COLUMN deleted_by VARCHAR(20) NULL`,
+    `ALTER TABLE post_comments ADD COLUMN deleted_at DATETIME NULL`
+  ]) {
+    try { await query(colSql); } catch (err) {}
+  }
 
   await query(`
     CREATE TABLE IF NOT EXISTS community_post_likes (
@@ -1725,6 +1742,7 @@ export const initDB = async () => {
     CREATE TABLE IF NOT EXISTS community_reports (
       id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
       post_id BIGINT UNSIGNED NOT NULL,
+      comment_id BIGINT UNSIGNED NULL,
       user_id BIGINT UNSIGNED NOT NULL,
       reason VARCHAR(100) NOT NULL,
       status VARCHAR(30) DEFAULT 'pending',

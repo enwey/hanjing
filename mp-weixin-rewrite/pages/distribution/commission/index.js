@@ -46,7 +46,7 @@ function normalizeCommission(commission) {
     productName: commission.productName || '',
     buyerName: commission.buyerName || '',
     dateLabel: formatChinaDate(createdAt),
-    commissionLevelLabel: Number(commission.commissionLevel || 1) === 2 ? '二级佣金' : '一级佣金',
+    commissionLevelLabel: Number(commission.commissionLevel || 1) === 2 ? '协作推广奖励' : '直接推广奖励',
     commissionAmount: amount,
     commissionAmountLabel: '+' + (amount / 100).toFixed(2),
     status: commission.status || '',

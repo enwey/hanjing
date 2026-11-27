@@ -90,6 +90,7 @@ export function requiredAdminPermissions(method, route, context = {}) {
   if (/^content\/banners/.test(path)) return crud('banner');
   if (/^content\/live-rooms/.test(path)) return /sync-wechat$/.test(path) ? ['live:sync'] : crud('live');
   if (path === 'content/article-authors') return ['content:add','content:edit'];
+  if (/^content\/(?:articles\/[^/]+\/comments|comments)(?:\/|$)/.test(path)) return crud('content');
   if (/^content\/(articles|qa)/.test(path)) {
     if (has('status') && ['approved','rejected'].includes(body.status)) return all('content:audit', ...(method === 'POST' ? ['content:add'] : Object.keys(body).some(k => !['status','reject_reason'].includes(k)) ? ['content:edit'] : []));
     return crud('content');

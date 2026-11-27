@@ -184,7 +184,7 @@ Page({
           if (!url) throw new Error('头像上传结果无效');
           this.setData({ avatarUrl: url, avatarPreviewUrl: normalizeImageUrl(url) });
         } catch (error) {
-          wx.showToast({ title: '头像上传失败，可稍后重试', icon: 'none' });
+          wx.showToast({ title: (error && error.message) || '头像上传失败，可稍后重试', icon: 'none' });
         } finally {
           wx.hideLoading();
           this.setData({ isUploading: false });

@@ -25,6 +25,13 @@
             <image class="info-arrow data-v-ecc58349" src="/static/icons/chevron-right.svg" mode="aspectFit"></image>
           </view>
         </view>
+        <view class="info-row data-v-ecc58349" bindtap="openCancelAccountModal">
+          <text class="info-label data-v-ecc58349">账号注销</text>
+          <view class="info-action data-v-ecc58349">
+            <text class="info-val data-v-ecc58349" style="color: #6B7280;">申请注销</text>
+            <image class="info-arrow data-v-ecc58349" src="/static/icons/chevron-right.svg" mode="aspectFit"></image>
+          </view>
+        </view>
       </view>
     </block>
 
@@ -75,7 +82,7 @@
       <view class="modal-card modal-card--password data-v-ecc58349" catchtap="noop">
         <view class="modal-header modal-header--password data-v-ecc58349">
           <text class="password-header-title data-v-ecc58349">{{info.hasPassword ? '修改登录密码' : '设置登录密码'}}</text>
-          <text class="password-header-desc data-v-ecc58349">用于后续通过绑定手机号登录推广后台</text>
+          <text class="password-header-desc data-v-ecc58349">设置后可用于账号密码安全验证与登录管理</text>
         </view>
         <view class="modal-body modal-body--password data-v-ecc58349">
           <view wx:if="{{info.hasPassword}}" class="password-input-group data-v-ecc58349">
@@ -99,4 +106,5 @@
     </view>
     <view class="safe-bottom data-v-ecc58349" />
   </view>
+  <hj-privacy-popup id="privacyPopup" />
 </view>

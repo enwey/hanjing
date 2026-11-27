@@ -5,7 +5,16 @@ Component({
 
   pageLifetimes: {
     show() {
-      this.checkPrivacy();
+      // Do not open the privacy dialog preemptively on page entry;
+      // only sync-close a stale dialog if authorization is no longer needed.
+      if (!this.data.showPrivacy || !wx.getPrivacySetting) return;
+      wx.getPrivacySetting({
+        success: (result) => {
+          if (!result.needAuthorization) {
+            this.setData({ showPrivacy: false });
+          }
+        },
+      });
     },
   },
 

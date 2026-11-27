@@ -4,7 +4,7 @@ import { logAdminAction } from './helpers.js';
 
 export async function initCommunityNotifications(q) {
   for (const [table, additions] of Object.entries({
-    community_reports: { result_text: 'VARCHAR(1000) NULL', handled_by: 'BIGINT UNSIGNED NULL', handled_at: 'DATETIME NULL' },
+    community_reports: { comment_id: 'BIGINT UNSIGNED NULL', result_text: 'VARCHAR(1000) NULL', handled_by: 'BIGINT UNSIGNED NULL', handled_at: 'DATETIME NULL' },
     community_posts: { reject_reason: 'VARCHAR(500) NULL' }
   })) {
     const columns = await q(`SHOW COLUMNS FROM ${table}`);
@@ -45,8 +45,8 @@ export function installCommunityReportRoutes(app, authenticateToken) {
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
     const where = status === 'all' ? '1=1' : 'r.status=?';
     const params = status === 'all' ? [] : [status];
-    const rows = await query(`SELECT r.id,r.post_id,r.reason,r.status,r.result_text,r.created_at,r.handled_at,p.title
-      FROM community_reports r JOIN community_posts p ON p.id=r.post_id WHERE ${where}
+    const rows = await query(`SELECT r.id,r.post_id,r.comment_id,r.reason,r.status,r.result_text,r.created_at,r.handled_at,p.title,c.content AS comment_content
+      FROM community_reports r JOIN community_posts p ON p.id=r.post_id LEFT JOIN post_comments c ON c.id=r.comment_id WHERE ${where}
       ORDER BY r.id DESC LIMIT ${Math.floor(limit)} OFFSET ${Math.floor((page - 1) * limit)}`, params);
     const [count] = await query(`SELECT COUNT(*) total FROM community_reports r WHERE ${where}`, params);
     res.json({ code: 200, data: { list: rows, total: Number(count.total) } });

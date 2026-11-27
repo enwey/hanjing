@@ -1,5 +1,7 @@
 # 管理后台测试
 
+- 2026-11-27 [文章评论查看、编辑与删除](article-comments-2026-11-27.test.mjs)：待回归；管理端新增 `GET /api/admin/content/articles/:id/comments`、`PUT/DELETE /api/admin/content/comments/:id` 及文章列表评论管理弹窗（支持查看、编辑、删评、已删除状态筛选与删除原因展示，以及举报对象标注）。开发自测后台 `vue-tsc --noEmit && vite build` 构建通过，`article-comments-2026-11-27.test.mjs` 2/2 通过（Mock 权限与事务）；未重启部署或连接真实 MySQL 验证。
+
 - [售后微调复查闭环](after-sales-adjustment-2026-11-07.md)：待回归；16项隔离HTTP、5项组件预览、类型检查与构建通过，后端已重启。
 
 - 2026-11-07 [交付简化与售后衔接](delivery-simplified-2026-11-07.md)：待回归；9项实际HTTP开发自测、4项组件预览及Excel文件解析通过，本地后端已重启。

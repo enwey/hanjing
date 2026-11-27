@@ -21,8 +21,26 @@
 }
 
 .section-hint {
+  display: block;
+  margin-top: 4rpx;
   font-size: 26rpx;
   color: #9ca3af;
+}
+
+.location-sort-btn {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0 24rpx;
+  height: 60rpx;
+  line-height: 60rpx;
+  font-size: 24rpx;
+  color: #3b6bf5;
+  background: #eef4ff;
+  border-radius: 9999rpx;
+}
+
+.location-sort-btn::after {
+  border: none;
 }
 
 .store-empty {

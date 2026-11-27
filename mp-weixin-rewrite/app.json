@@ -68,13 +68,6 @@
       ]
     },
     {
-      "root": "pages/live",
-      "pages": [
-        "list/index",
-        "playback/index"
-      ]
-    },
-    {
       "root": "pages/community",
       "pages": [
         "index",

@@ -23,4 +23,5 @@
     <input class="chat-input data-v-72504f8b" placeholder="输入您的问题..." bindconfirm="sendMessage" value="{{inputText}}" bindinput="handleInput" />
     <view class="btn-send data-v-72504f8b" bindtap="sendMessage"><text class="data-v-72504f8b">发送</text></view>
   </view>
+  <hj-privacy-popup id="privacyPopup" />
 </view>

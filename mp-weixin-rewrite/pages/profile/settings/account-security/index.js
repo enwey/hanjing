@@ -80,6 +80,19 @@ Page({
     this.setData({ showPasswordModal: false });
   },
 
+  openCancelAccountModal() {
+    wx.showModal({
+      title: '申请注销账号',
+      content: '注销账号将清除或匿名化处理您的注册及关联信息（依法需保留的诊疗和交易记录除外）。如需注销，请联系在线客服核验身份后办理。',
+      confirmText: '联系客服',
+      cancelText: '取消',
+      success: (res) => {
+        if (!res.confirm) return;
+        wx.navigateTo({ url: '/pages/profile/online-service/index' });
+      },
+    });
+  },
+
   handleOldPasswordInput(event) {
     this.setData({ inputOldPassword: event.detail.value || '' });
   },
@@ -181,8 +194,8 @@ Page({
         wx.showModal({
           title: hasPassword ? '密码修改成功' : '密码设置成功',
           content: hasPassword
-            ? '新密码已生效，后续可使用绑定手机号和新密码登录推广后台。'
-            : '登录密码已设置完成，后续可使用绑定手机号和该密码登录推广后台。',
+            ? '新密码已生效，后续可使用绑定手机号和新密码进行安全验证与登录管理。'
+            : '登录密码已设置完成，后续可使用绑定手机号和该密码进行安全验证与登录管理。',
           showCancel: false,
           confirmText: '我知道了',
         });

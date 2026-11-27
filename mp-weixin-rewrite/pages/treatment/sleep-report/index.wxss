@@ -383,3 +383,17 @@
 .empty-report-btn.data-v-72813ef9::after {
   border: none;
 }
+
+.medical-disclaimer.data-v-72813ef9 {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f1f5f9;
+}
+
+.medical-disclaimer__text.data-v-72813ef9 {
+  display: block;
+  font-size: 12px;
+  line-height: 18px;
+  color: #6b7280;
+}

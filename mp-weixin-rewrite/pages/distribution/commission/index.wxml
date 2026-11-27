@@ -46,7 +46,7 @@
           <view class="commission-card__body">
             <text class="commission-card__title">{{item.productName}}</text>
             <text class="commission-card__meta">{{item.buyerName}} | {{item.dateLabel}}</text>
-            <text wx:if="{{item.commissionLevelLabel === '二级佣金'}}" class="commission-card__level">二级佣金</text>
+            <text wx:if="{{item.commissionLevelLabel === '协作推广奖励'}}" class="commission-card__level">协作推广奖励</text>
           </view>
           <view class="commission-card__aside">
             <text class="commission-card__amount">{{item.commissionAmountLabel}}</text>

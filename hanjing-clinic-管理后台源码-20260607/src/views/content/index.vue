@@ -190,6 +190,120 @@ async function handleDelete(id: string) {
   }
 }
 
+interface ArticleComment {
+  id: string;
+  post_id: string;
+  author_name: string;
+  author_phone: string;
+  parent_author_name: string;
+  content: string;
+  likes_count: number;
+  status: string;
+  delete_reason: string;
+  deleted_by: string;
+  created_at: string;
+}
+
+const commentsVisible = ref(false)
+const commentsLoading = ref(false)
+const commentsArticle = ref<{ id: string; title: string } | null>(null)
+const commentsList = ref<ArticleComment[]>([])
+const commentStatusFilter = ref('all')
+const commentSearchKeyword = ref('')
+const commentEditVisible = ref(false)
+const commentEditBusy = ref(false)
+const editingCommentId = ref('')
+const editingCommentContent = ref('')
+const editingCommentStatus = ref('approved')
+
+const filteredComments = computed(() => {
+  let list = commentsList.value
+  if (commentStatusFilter.value !== 'all') {
+    list = list.filter(item => item.status === commentStatusFilter.value)
+  }
+  const kw = commentSearchKeyword.value.trim().toLowerCase()
+  if (kw) {
+    list = list.filter(item =>
+      item.content.toLowerCase().includes(kw) ||
+      item.author_name.toLowerCase().includes(kw) ||
+      item.author_phone.toLowerCase().includes(kw)
+    )
+  }
+  return list
+})
+
+function syncPostCommentCount() {
+  if (!commentsArticle.value) return
+  const approvedCount = commentsList.value.filter(item => item.status === 'approved').length
+  const post = posts.value.find(p => p.id === commentsArticle.value!.id)
+  if (post) post.comments = approvedCount
+}
+
+async function fetchArticleComments(articleId: string) {
+  commentsLoading.value = true
+  try {
+    const res: any = await request.get(`/api/admin/content/articles/${articleId}/comments`)
+    const payload = res.data || {}
+    commentsList.value = (payload.list || []).map((row: any) => ({
+      id: String(row.id),
+      post_id: String(row.post_id),
+      author_name: row.author_name || '用户',
+      author_phone: row.author_phone || '',
+      parent_author_name: row.parent_author_name || '',
+      content: row.content || '',
+      likes_count: Number(row.likes_count || 0),
+      status: row.status || 'approved',
+      delete_reason: row.delete_reason || '',
+      deleted_by: row.deleted_by || '',
+      created_at: row.created_at || ''
+    }))
+    syncPostCommentCount()
+  } catch (error) {
+    MessagePlugin.error('加载评论列表失败')
+  } finally {
+    commentsLoading.value = false
+  }
+}
+
+function openComments(post: Post) {
+  commentsArticle.value = { id: post.id, title: post.title }
+  commentStatusFilter.value = 'all'
+  commentSearchKeyword.value = ''
+  commentsVisible.value = true
+  fetchArticleComments(post.id)
+}
+
+function openEditComment(row: ArticleComment) {
+  editingCommentId.value = row.id
+  editingCommentContent.value = row.content
+  editingCommentStatus.value = row.status || 'approved'
+  commentEditVisible.value = true
+}
+
+async function confirmEditComment() {
+  const content = editingCommentContent.value.trim()
+  if (!content) return MessagePlugin.warning('评论内容不能为空')
+  if (commentEditBusy.value) return
+  commentEditBusy.value = true
+  try {
+    await request.put(`/api/admin/content/comments/${editingCommentId.value}`, {
+      content,
+      status: editingCommentStatus.value
+    })
+    commentEditVisible.value = false
+    MessagePlugin.success('评论已更新')
+    if (commentsArticle.value) await fetchArticleComments(commentsArticle.value.id)
+  } finally {
+    commentEditBusy.value = false
+  }
+}
+
+async function deleteArticleComment(row: ArticleComment) {
+  await request.delete(`/api/admin/content/comments/${row.id}`)
+  MessagePlugin.success('评论已删除')
+  if (commentsArticle.value) await fetchArticleComments(commentsArticle.value.id)
+}
+
 const stats = computed(() => ({
   total: posts.value.length,
   draft: posts.value.filter(p => p.status === 'draft').length,
@@ -223,7 +337,7 @@ onMounted(() => {
 const operationColumnWidth = computed(() => {
   if (paginatedPosts.value.length === 0) return '80px'
   const hasPending = paginatedPosts.value.some(p => p.status === 'pending')
-  return hasPending ? '340px' : '220px'
+  return hasPending ? '410px' : '290px'
 })
 
 watch(operationColumnWidth, () => {
@@ -376,7 +490,14 @@ watch(operationColumnWidth, () => {
               </td>
               <td style="font-weight: 600;">{{ post.views.toLocaleString() }}</td>
               <td style="font-weight: 600;">{{ post.likes }}</td>
-              <td style="font-weight: 600;">{{ post.comments }}</td>
+              <td style="font-weight: 600;">
+                <span
+                  v-if="hasPermission('content:view')"
+                  class="comment-count-link"
+                  @click="openComments(post)"
+                >{{ post.comments }}</span>
+                <span v-else>{{ post.comments }}</span>
+              </td>
               <td style="font-size: 12px; color: #9CA3AF;">{{ post.createTime }}</td>
               <td>
                 <span class="status-tag gray" v-if="post.status === 'draft'">草稿</span>
@@ -388,6 +509,7 @@ watch(operationColumnWidth, () => {
                 <div style="display: flex; gap: 6px; justify-content: flex-end;">
                   <button v-permission="'content:audit'" class="btn btn-xs btn-success" @click="approve(post.id)" v-if="post.status === 'pending'">通过</button>
                   <button v-permission="'content:audit'" class="btn btn-xs btn-danger" @click="reject(post.id)" v-if="post.status === 'pending'">拒绝</button>
+                  <button v-permission="'content:view'" class="btn btn-xs btn-outline" @click="openComments(post)">评论</button>
                   <button v-permission="'content:edit'" class="btn btn-xs btn-outline" @click="router.push('/content/edit/' + post.id)">编辑</button>
                   <button v-permission="'content:edit'" class="btn btn-xs btn-outline" @click="toggleTop(post.id)">{{ post.isTop ? '取消置顶' : '置顶' }}</button>
                   <button v-permission="'content:delete'" class="btn btn-xs btn-danger" style="background: #FEF2F2; color: #EF4444; border: 1px solid #FEE2E2;" @click="handleDelete(post.id)">删除</button>
@@ -415,9 +537,13 @@ watch(operationColumnWidth, () => {
     <t-dialog v-model:visible="rejectionVisible" header="拒绝发布" width="480px" :confirm-btn="{ content: '确认拒绝', loading: moderationBusy }" @confirm="confirmReject">
       <t-form label-align="top"><t-form-item label="拒绝原因"><t-textarea v-model="rejectionReason" :maxlength="500" placeholder="请说明需要修改的内容，作者将收到此原因" /></t-form-item></t-form>
     </t-dialog>
-    <t-dialog v-model:visible="reportsVisible" header="举报处理" width="min(900px, 94vw)" :footer="false">
+    <t-dialog v-model:visible="reportsVisible" header="举报处理" width="min(960px, 94vw)" :footer="false">
       <div class="report-filter"><t-radio-group v-model="reportStatus" variant="default-filled" @change="reportPage = 1; fetchReports()"><t-radio-button value="pending">待处理</t-radio-button><t-radio-button value="all">全部</t-radio-button></t-radio-group></div>
-      <t-table :data="reports" :loading="reportsLoading" row-key="id" :columns="[{colKey:'title',title:'文章',ellipsis:true},{colKey:'reason',title:'举报原因',width:150},{colKey:'result_text',title:'处理说明',ellipsis:true},{colKey:'status',title:'状态',width:100},{colKey:'operation',title:'操作',width:80}]">
+      <t-table :data="reports" :loading="reportsLoading" row-key="id" :columns="[{colKey:'title',title:'举报对象',ellipsis:true},{colKey:'reason',title:'举报原因',width:140},{colKey:'result_text',title:'处理说明',ellipsis:true},{colKey:'status',title:'状态',width:100},{colKey:'operation',title:'操作',width:80}]">
+        <template #title="{ row }">
+          <div>{{ row.title }}</div>
+          <div v-if="row.comment_id" style="font-size: 12px; color: #6B7280; margin-top: 2px;">【评论】{{ row.comment_content || '（评论已删除）' }}</div>
+        </template>
         <template #status="{ row }">{{ ({pending:'待处理',resolved:'已处理',dismissed:'不予采纳'} as Record<string,string>)[row.status] || row.status }}</template>
         <template #operation="{ row }"><t-button v-if="row.status === 'pending'" v-permission="'content:audit'" size="small" variant="text" @click="handleReport(row)">处理</t-button><span v-else>—</span></template>
       </t-table>
@@ -426,12 +552,83 @@ watch(operationColumnWidth, () => {
     <t-dialog :visible="!!selectedReport" header="处理举报" width="480px" :confirm-btn="{ content: '确认处理', loading: moderationBusy }" @close="selectedReport = null" @cancel="selectedReport = null" @confirm="confirmReport">
       <t-form label-align="top"><t-form-item label="处理结果"><t-radio-group v-model="reportResult"><t-radio value="resolved">已核实并处理</t-radio><t-radio value="dismissed">不予采纳</t-radio></t-radio-group></t-form-item><t-form-item label="处理说明"><t-textarea v-model="reportExplanation" :maxlength="1000" placeholder="说明核实结论和已采取的处理措施，请勿包含他人隐私" /></t-form-item></t-form>
     </t-dialog>
+    <t-dialog v-model:visible="commentsVisible" :header="commentsArticle ? `文章评论：${commentsArticle.title}` : '文章评论'" width="min(980px, 94vw)" :footer="false">
+      <div class="comment-toolbar">
+        <t-radio-group v-model="commentStatusFilter" variant="default-filled">
+          <t-radio-button value="all">全部 ({{ commentsList.length }})</t-radio-button>
+          <t-radio-button value="approved">已通过</t-radio-button>
+          <t-radio-button value="pending">待审核</t-radio-button>
+          <t-radio-button value="rejected">已隐藏</t-radio-button>
+          <t-radio-button value="deleted">已删除</t-radio-button>
+        </t-radio-group>
+        <input type="text" v-model="commentSearchKeyword" class="filter-input" placeholder="搜索评论内容/评论人" style="width: 220px;" />
+      </div>
+      <t-table
+        :data="filteredComments"
+        :loading="commentsLoading"
+        row-key="id"
+        empty="该文章暂无匹配评论"
+        :columns="[
+          { colKey: 'content', title: '评论内容', minWidth: 260 },
+          { colKey: 'author_name', title: '评论人', width: 140 },
+          { colKey: 'likes_count', title: '点赞', width: 70 },
+          { colKey: 'status', title: '状态', width: 90 },
+          { colKey: 'created_at', title: '评论时间', width: 150 },
+          { colKey: 'operation', title: '操作', width: 130 }
+        ]"
+      >
+        <template #content="{ row }">
+          <div style="white-space: pre-wrap; word-break: break-word;">
+            <span v-if="row.parent_author_name" style="color: #3B6BF5; font-weight: 500;">回复 {{ row.parent_author_name }}：</span>
+            <span>{{ row.content }}</span>
+          </div>
+          <div v-if="row.status === 'deleted'" style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">
+            {{ row.deleted_by === 'author' ? '作者已删除' : '平台已移除' }}{{ row.delete_reason ? `：${row.delete_reason}` : '' }}
+          </div>
+        </template>
+        <template #author_name="{ row }">
+          <div>{{ row.author_name }}</div>
+          <div v-if="row.author_phone" style="font-size: 11px; color: #9CA3AF;">{{ row.author_phone }}</div>
+        </template>
+        <template #status="{ row }">
+          <span class="status-tag green" v-if="row.status === 'approved'">已通过</span>
+          <span class="status-tag gold" v-else-if="row.status === 'pending'">待审核</span>
+          <span class="status-tag gray" v-else-if="row.status === 'deleted'">已删除</span>
+          <span class="status-tag red" v-else>已隐藏</span>
+        </template>
+        <template #created_at="{ row }">{{ formatTime(row.created_at) }}</template>
+        <template #operation="{ row }">
+          <div style="display: flex; gap: 6px;">
+            <button v-permission="'content:edit'" class="btn btn-xs btn-outline" @click="openEditComment(row)">编辑</button>
+            <t-popconfirm v-if="row.status !== 'deleted'" v-permission="'content:delete'" content="删除后该评论有子回复时将显示为已删除占位，子回复仍正常展示，确定删除吗？" @confirm="deleteArticleComment(row)">
+              <button class="btn btn-xs btn-danger">删除</button>
+            </t-popconfirm>
+          </div>
+        </template>
+      </t-table>
+    </t-dialog>
+    <t-dialog v-model:visible="commentEditVisible" header="编辑评论" width="520px" :confirm-btn="{ content: '保存修改', loading: commentEditBusy }" @confirm="confirmEditComment">
+      <t-form label-align="top">
+        <t-form-item label="评论内容">
+          <t-textarea v-model="editingCommentContent" :maxlength="1000" :autosize="{ minRows: 3, maxRows: 8 }" placeholder="请输入评论内容" />
+        </t-form-item>
+        <t-form-item label="展示状态">
+          <t-radio-group v-model="editingCommentStatus">
+            <t-radio value="approved">已通过（公开展示）</t-radio>
+            <t-radio value="pending">待审核</t-radio>
+            <t-radio value="rejected">已隐藏</t-radio>
+          </t-radio-group>
+        </t-form-item>
+      </t-form>
+    </t-dialog>
   </div>
 </template>
 
 <style scoped>
 .content-header-actions { display:flex;gap:12px;align-items:center; }
 .report-filter { margin-bottom:16px; }
+.comment-toolbar { display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap; }
+.comment-count-link { color:#3B6BF5;cursor:pointer;text-decoration:underline;text-underline-offset:3px; }
 :deep(.t-pagination) { margin-top:16px; }
 /* Panels */
 .panel {

@@ -17,7 +17,7 @@ const MENU_GROUPS = [
     items: [
       { key: 'benefits', label: '会员权益', icon: '/static/icons/fee.svg', url: '/pages/profile/member-benefits/index' },
       { key: 'orders', label: '我的订单', icon: '/static/icons/report.svg', url: '/pages/order/index' },
-      { key: 'distribution', label: '分销中心', icon: '/static/icons/distribution.svg', url: '/pages/distribution/center/index' },
+      { key: 'distribution', label: '推广中心', icon: '/static/icons/distribution.svg', url: '/pages/distribution/center/index' },
     ],
   },
   {
@@ -169,6 +169,17 @@ Page({
     }
 
     if (!isLoggedIn) {
+      let distributionEnabled = true;
+      if (typeof api.getDistributionRules === 'function') {
+        const rulesResp = await api.getDistributionRules().catch(() => null);
+        if (!isCurrentLoad()) return;
+        const rulesPayload = rulesResp && rulesResp.data ? rulesResp.data : rulesResp || null;
+        if (rulesPayload) distributionEnabled = rulesPayload.enabled !== false;
+      }
+      const guestMenus = MENU_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => item.key !== 'distribution' || distributionEnabled),
+      }));
       this.setData({
         hasLoaded: true,
         showProfileSetupCard: false,
@@ -179,17 +190,19 @@ Page({
         memberLevelLabel: '未登录',
         notificationsUnreadCount: 0,
         serviceUnreadCount: 0,
+        menuGroups: guestMenus,
       });
       return;
     }
 
     try {
-      const [profile, memberInfoResponse, memberLevelsResponse, notificationsResponse, serviceUnreadResponse] = await Promise.all([
+      const [profile, memberInfoResponse, memberLevelsResponse, notificationsResponse, serviceUnreadResponse, distributionRulesResponse] = await Promise.all([
         sessionStore.fetchProfile(),
         api.getMemberInfo().catch(() => null),
         api.getMemberLevels().catch(() => null),
         api.getNotifications().catch(() => null),
         api.getImUnreadCount().catch(() => null),
+        typeof api.getDistributionRules === 'function' ? api.getDistributionRules().catch(() => null) : Promise.resolve(null),
       ]);
       if (!isCurrentLoad() || !sessionStore.isLoggedIn()) return;
       const nickname = resolveDisplayNickname(profile);
@@ -210,15 +223,20 @@ Page({
       const servicePayload =
         serviceUnreadResponse && serviceUnreadResponse.data ? serviceUnreadResponse.data : serviceUnreadResponse || {};
       const serviceUnreadCount = Number(servicePayload.unread || 0);
+      const distributionRulesPayload =
+        distributionRulesResponse && distributionRulesResponse.data ? distributionRulesResponse.data : distributionRulesResponse || null;
+      const distributionEnabled = distributionRulesPayload ? distributionRulesPayload.enabled !== false : true;
       const currentLevel = memberInfo && (memberInfo.currentLevel || memberInfo.memberLevel || memberInfo.level || '');
       const menuGroups = MENU_GROUPS.map((group) => ({
         ...group,
-        items: group.items.map((item) => {
-          if (item.key !== 'service') return item;
-          return Object.assign({}, item, {
-            label: isPremiumServiceLevel(currentLevel) ? '专属客服' : '在线客服',
-          });
-        }),
+        items: group.items
+          .filter((item) => item.key !== 'distribution' || distributionEnabled)
+          .map((item) => {
+            if (item.key !== 'service') return item;
+            return Object.assign({}, item, {
+              label: isPremiumServiceLevel(currentLevel) ? '专属客服' : '在线客服',
+            });
+          }),
       }));
 
       this.setData({
