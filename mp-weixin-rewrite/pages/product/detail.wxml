@@ -137,4 +137,5 @@
   <view wx:elif="{{loadError}}" class="loading-wrap">
     <text>{{loadError}}</text>
   </view>
+  <hj-privacy-popup id="privacyPopup" />
 </view>

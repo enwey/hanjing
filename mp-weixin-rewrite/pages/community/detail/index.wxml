@@ -145,6 +145,9 @@
                 <image class="comment-item__action-icon" src="/static/icons/community-comment.svg" mode="aspectFit" />
                 <text>回复</text>
               </button>
+              <button class="comment-item__action" catchtap="reportPost" data-comment-id="{{item.id}}">
+                <text>举报</text>
+              </button>
             </view>
           </view>
         </view>

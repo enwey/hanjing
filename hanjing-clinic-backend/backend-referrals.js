@@ -82,11 +82,6 @@ export async function createReferralCommissions(conn, order, userId) {
     return p;
   };
   const l1=await resolve(first);
-  let l2=null;
-  if(first?.parent_user_id) {
-    const [[upper]]=await conn.execute('SELECT * FROM distribution_relationships WHERE child_user_id=? AND level=1',[first.parent_user_id]);
-    l2=await resolve(upper);
-  }
   const grants=new Map();
   function grant(p,level,kind,index,rate) {
     if(!p||rate<=0||bases[index]<=0)return;
@@ -101,7 +96,6 @@ export async function createReferralCommissions(conn, order, userId) {
     if(isReferral) grant(referrer,mode==='new'?3:4,mode==='new'?'referral_new':'referral_existing',k,Number(mode==='new'?item.backend_rate_x_snapshot:item.backend_rate_y_snapshot));
     if(Number(item.is_distribution_snapshot)===1) {
       if(!(isReferral&&mode==='new'&&l1?.id===referrer.id))grant(l1,1,'tier',k,Number(item.commission_rate_level1_snapshot ?? item.commission_rate_snapshot));
-      grant(l2,2,'tier',k,Number(item.commission_rate_level2_snapshot));
     }
   });
   if([...grants.values()].reduce((sum,g)=>sum+g.amount,0)>paid)throw businessError('订单佣金配置超过实付金额',409);

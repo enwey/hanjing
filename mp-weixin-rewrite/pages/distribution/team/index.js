@@ -27,7 +27,6 @@ Page({
     hasLoaded: false,
     loadError: '',
     teamCount: 0,
-    level2Count: 0,
     totalSalesLabel: '0.0w',
     members: [],
   },
@@ -72,7 +71,6 @@ Page({
         hasLoaded: true,
         loading: false,
         teamCount: Number(info.teamCount || 0),
-        level2Count: Number(info.teamLevel2Count || 0),
         totalSalesLabel: formatWanAmountLabel(totalSalesAmount),
         members,
       });

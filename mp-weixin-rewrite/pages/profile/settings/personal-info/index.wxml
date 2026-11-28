@@ -70,3 +70,5 @@
     <view class="safe-bottom data-v-acab1652" />
   </view>
 </view>
+
+<hj-privacy-popup id="privacyPopup" />

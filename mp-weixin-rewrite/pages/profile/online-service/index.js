@@ -1,5 +1,6 @@
 const requestModule = require('../../../api/request');
 const { request } = requestModule;
+const { normalizeAssetUrl } = require('../../../common/config/asset-url');
 const api = require('../../../api/index');
 const sessionStore = require('../../../stores/session-store');
 
@@ -35,9 +36,24 @@ Page({
     accessError: '',
   },
 
-  onLoad(options) { this._patientId=options.patientId || ''; },
+  onLoad(options = {}) {
+    this._accountGeneration = sessionStore.getLoginGeneration();
+    this._patientId = options.patientId || '';
+    if (options.topic === 'privacy-rights') {
+      this.setData({ inputText: '我想申请账号注销或删除个人资料，请告知身份核验和处理流程。' });
+    }
+  },
+
+  isCurrentAccount() {
+    return !this._unloaded && this._accountGeneration === sessionStore.getLoginGeneration();
+  },
 
   async onShow() {
+    if (!this.isCurrentAccount()) {
+      this.denyConversation();
+      this.setData({ inputText: '', conversationLabel: '' });
+      return;
+    }
     this._visible=true;
     this.loadServiceIdentity();
     if(await this.fetchHistory() && this._visible)this.connectSocket();
@@ -50,6 +66,7 @@ Page({
   },
 
   onUnload() {
+    this._unloaded = true;
     this._visible=false;
     this.disconnectSocket();
     this.stopPolling();
@@ -58,6 +75,7 @@ Page({
   async loadServiceIdentity() {
     try {
       const memberInfoResponse = await api.getMemberInfo().catch(() => null);
+      if (!this.isCurrentAccount()) return;
       const memberInfo = memberInfoResponse && memberInfoResponse.code === 0
         ? memberInfoResponse.data
         : (memberInfoResponse && memberInfoResponse.data) || memberInfoResponse || {};
@@ -74,7 +92,7 @@ Page({
       const rawText = String(item.text || '');
       let displayUrl = rawText.startsWith('[image]') ? rawText.slice(7) : rawText;
       if (displayUrl && !displayUrl.startsWith('http') && displayUrl.startsWith('/uploads')) {
-        displayUrl = requestModule.apiBaseUrl + displayUrl;
+        displayUrl = requestModule.apiBaseUrl.replace(/\/api\/v1\/?$/, '') + displayUrl;
       }
       return {
         id: String(item.id || ''),
@@ -85,8 +103,9 @@ Page({
         time: item.time || '',
         sending: item.status === 'sending',
         failed: item.status === 'fail',
-        isImg: rawText.startsWith('[image]') || rawText.startsWith('/uploads/') || rawText.startsWith('http'),
-        displayUrl,
+        awaitingHistory: Boolean(item.awaitingHistory),
+        isImg: rawText.startsWith('[image]'),
+        displayUrl: normalizeAssetUrl(displayUrl, requestModule.apiBaseUrl),
       };
     });
     const last = normalized[normalized.length - 1];
@@ -103,24 +122,33 @@ Page({
       text: item.text,
       time: item.time,
       status: item.failed ? 'fail' : (item.sending ? 'sending' : 'success'),
+      awaitingHistory: item.awaitingHistory,
     }));
   },
 
   async fetchHistory() {
+    if (!this.isCurrentAccount()) return false;
+    const revision = this._historyRevision = (this._historyRevision || 0) + 1;
     try {
       const res = await request({ url: '/im/messages',data:this._patientId?{patientId:this._patientId}:{} });
+      if (!this.isCurrentAccount() || revision !== this._historyRevision) return false;
       if (res && res.code === 0 && Array.isArray(res.data)) {
         this.setData({ hasLoaded: true,accessError:'',conversationLabel:res.conversation ? '就诊人：'+res.conversation.patientName : '' });
-        this.setMessages(res.data.map((item) => ({
+        const history = res.data.map((item) => ({
           id: String(item.id),
           from: item.sender === 'doctor' ? 'assistant' : 'user',
           text: item.text,
           time: item.time,
           status: 'success',
-        })));
+        }));
+        const confirmed = new Set(history.map(item => item.id));
+        const unsynced = this.getMutableMessages().filter(item => !confirmed.has(item.id)
+          && (item.status === 'sending' || item.status === 'fail' || item.awaitingHistory));
+        this.setMessages(history.concat(unsynced));
         return true;
       }
     } catch (error) {
+      if (!this.isCurrentAccount() || revision !== this._historyRevision) return false;
       console.error('fetchHistory error:', error);
       if([401,403,404].includes(Number(error.statusCode || error.status || error.code)))this.denyConversation();
     }
@@ -128,11 +156,13 @@ Page({
   },
 
   denyConversation() {
+    this._historyRevision = (this._historyRevision || 0) + 1;
     this.setData({messages:[],accessError:'该会话已不存在或您无权访问'});
     this.stopPolling();this.disconnectSocket();
   },
 
   connectSocket() {
+    if (!this.isCurrentAccount()) return;
     const token = sessionStore.getAccessToken();
     if (!token || this.data.accessError || this.socketTask) return;
     const wsUrl = requestModule.apiBaseUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/im/ws?token=' + encodeURIComponent(token)+(this._patientId?'&patientId='+encodeURIComponent(this._patientId):'');
@@ -149,6 +179,7 @@ Page({
     this.socketTask.onMessage((res) => {
       if(this.socketTask!==task)return;
       try {
+        if (!this.isCurrentAccount()) return;
         const data = JSON.parse(res.data);
         if (data.type === 'pong') return;
         if(data.type==='error'){wx.showToast({title:data.message || '发送失败',icon:'none'});return;}
@@ -158,6 +189,7 @@ Page({
           const found = messages.find((item) => item.text === data.text && item.status === 'sending');
           if (found) {
             found.id = String(data.id);
+            found.awaitingHistory = true;
             found.status = 'success';
             found.time = data.time;
           }
@@ -220,18 +252,28 @@ Page({
   },
 
   async sendViaHttp(message) {
+    if (!this.isCurrentAccount() || this.data.accessError) return;
     try {
       const response = await request({
         url: '/im/send',
         method: 'POST',
         data: { text: message.text,...(this._patientId?{patientId:this._patientId}:{}) },
       });
+      if (!this.isCurrentAccount() || this.data.accessError) return;
       message.status = response && response.code === 0 ? 'success' : 'fail';
-      this.setMessages(this.getMutableMessages().map((item) => String(item.id) === String(message.id) ? message : item));
+      const serverId = message.status === 'success' && response.data?.id ? String(response.data.id) : '';
+      const messages = this.getMutableMessages();
+      const confirmed = serverId && messages.some(item => item.id === serverId && !item.awaitingHistory);
+      this.setMessages(messages.flatMap(item => {
+        if (item.id !== message.id) return [item];
+        if (confirmed) return [];
+        return [{ ...message, id: serverId || message.id, awaitingHistory: Boolean(serverId) }];
+      }));
       if (message.status === 'success') {
         setTimeout(() => this.fetchHistory(), 1600);
       }
     } catch (error) {
+      if (!this.isCurrentAccount() || this.data.accessError) return;
       if([401,403,404].includes(Number(error.statusCode || error.status || error.code))){this.denyConversation();return;}
       message.status = 'fail';
       this.setMessages(this.getMutableMessages().map((item) => String(item.id) === String(message.id) ? message : item));
@@ -239,6 +281,7 @@ Page({
   },
 
   sendMsgWithRetry(message) {
+    if (!this.isCurrentAccount() || this.data.accessError) return;
     message.status = 'sending';
     const messages = this.getMutableMessages();
     const index = messages.findIndex((item) => String(item.id) === String(message.id));
@@ -247,23 +290,30 @@ Page({
       this.setMessages(messages);
     }
 
-    if (this.isSocketConnected && this.socketTask) {
+    // A protected image needs its own HTTP response to mark the exact message failed.
+    if (!message.text.startsWith('[image]') && this.isSocketConnected && this.socketTask) {
       this.socketTask.send({
         data: JSON.stringify({ text: message.text }),
         fail: () => this.sendViaHttp(message),
       });
       return;
     }
-    this.sendViaHttp(message);
+    return this.sendViaHttp(message);
+  },
+
+  nextLocalMessageId() {
+    this._localMessageSequence = (this._localMessageSequence || 0) + 1;
+    return 'local-' + this._localMessageSequence;
   },
 
   sendMessage() {
+    if (!this.isCurrentAccount()) return;
     if(this.data.accessError){wx.showToast({title:this.data.accessError,icon:'none'});return;}
     const text = String(this.data.inputText || '').trim();
     if (!text) return;
     const messages = this.getMutableMessages();
     const message = {
-      id: String(Date.now()),
+      id: this.nextLocalMessageId(),
       from: 'user',
       text,
       time: new Date().toTimeString().slice(0, 5),
@@ -278,18 +328,33 @@ Page({
   retrySendMessage(event) {
     const id = String(event.currentTarget.dataset.id || '');
     const message = this.getMutableMessages().find((item) => String(item.id) === id);
-    if (message) {
-      this.sendMsgWithRetry(message);
-    }
+    if (message) return this.sendMsgWithRetry(message);
   },
 
   onUploadImage() {
-    if(this.data.accessError){wx.showToast({title:this.data.accessError,icon:'none'});return;}
+    if (!this.isCurrentAccount()) return;
+    if (this.data.accessError) {
+      wx.showToast({ title: this.data.accessError, icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: '发送咨询图片',
+      content: '图片会发送至诊所客服，用于处理本次咨询。请先遮盖与咨询无关的身份证号码、病历及其他个人信息。',
+      confirmText: '选择图片',
+      success: ({ confirm }) => {
+        if (confirm) this.chooseConsultationImage();
+      },
+    });
+  },
+
+  chooseConsultationImage() {
+    if (!this.isCurrentAccount() || this.data.accessError) return;
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
       success: (res) => {
-        const tempFilePath = res.tempFiles[0].tempFilePath;
+        const tempFilePath = res.tempFiles?.[0]?.tempFilePath;
+        if (!tempFilePath || !this.isCurrentAccount() || this.data.accessError) return;
         const ext = tempFilePath.split('.').pop() || 'jpg';
         wx.showLoading({ title: '上传中...' });
         const fs = wx.getFileSystemManager();
@@ -297,10 +362,12 @@ Page({
           filePath: tempFilePath,
           success: async (readRes) => {
             try {
+              if (!this.isCurrentAccount() || this.data.accessError) return;
               const uploadRes = await api.uploadFile(readRes.data, ext);
+              if (!this.isCurrentAccount() || this.data.accessError) return;
               if (uploadRes && uploadRes.code === 0 && uploadRes.data && uploadRes.data.url) {
                 const message = {
-                  id: String(Date.now()),
+                  id: this.nextLocalMessageId(),
                   from: 'user',
                   text: '[image]' + uploadRes.data.url,
                   time: new Date().toTimeString().slice(0, 5),
@@ -314,14 +381,14 @@ Page({
                 wx.showToast({ title: '上传图片失败', icon: 'none' });
               }
             } catch (error) {
-              wx.showToast({ title: '上传图片失败，请重试', icon: 'none' });
+              if (this.isCurrentAccount()) wx.showToast({ title: '上传图片失败，请重试', icon: 'none' });
             } finally {
               wx.hideLoading();
             }
           },
           fail: () => {
             wx.hideLoading();
-            wx.showToast({ title: '读取文件失败', icon: 'none' });
+            if (this.isCurrentAccount()) wx.showToast({ title: '读取文件失败', icon: 'none' });
           },
         });
       },

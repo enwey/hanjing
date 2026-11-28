@@ -1,55 +1,6 @@
-<view class="invite-page">
-  <hj-navbar title="邀请好友" showBack="{{true}}" />
+<view class="page">
+  <hj-navbar title="推广服务" showBack="{{true}}" />
   <view class="invite-content">
-    <view class="invite-hero">
-      <image class="invite-art" src="/static/images/invite-sleep-letter.jpg" mode="aspectFill" />
-      <view class="invite-brand"><image src="/static/images/brand-logo-v20261105.png" mode="aspectFit" /><text>兴康明</text></view>
-      <text class="invite-title">{{copy.title}}</text>
-      <text class="invite-subtitle">{{copy.subtitle}}</text>
-
-    </view>
-    <view class="invite-card">
-      <view class="invite-entry">
-        <view class="invite-qr">
-          <image wx:if="{{inviteQrCode}}" class="invite-qr__image" src="{{inviteQrCode}}" mode="aspectFit" binderror="handleQrError" show-menu-by-longpress="{{true}}" />
-          <view wx:else class="invite-qr__fallback"><image src="/static/images/brand-logo-v20261105.png" mode="aspectFit" /><text>{{hasLoaded ? '使用邀请码加入' : '加载中'}}</text></view>
-        </view>
-        <view class="invite-details">
-          <text class="invite-code-label">专属邀请码</text>
-          <text class="invite-code" selectable="{{true}}">{{inviteCode || '—'}}</text>
-          <button class="invite-copy" bindtap="handleCopyInviteCode" disabled="{{!inviteCode}}">复制邀请码</button>
-        </view>
-      </view>
-    </view>
-    <view class="invite-guide">
-      <view class="invite-guide__header"><text>邀请流程</text></view>
-      <view class="invite-steps">
-        <view><text class="invite-step-number">1</text><text class="invite-step-title">分享邀请</text><text class="invite-step-desc">发送好友或分享海报</text></view>
-        <view><text class="invite-step-number">2</text><text class="invite-step-title">好友加入</text><text class="invite-step-desc">完成邀请绑定</text></view>
-        <view><text class="invite-step-number">3</text><text class="invite-step-title">好友下单</text><text class="invite-step-desc">购买推广商品并支付</text></view>
-        <view><text class="invite-step-number">4</text><text class="invite-step-title">获得佣金</text><text class="invite-step-desc">按推广规则结算</text></view>
-      </view>
-    </view>
-    <view class="invite-rules">
-      <text class="invite-rules__title">邀请规则</text>
-      <text wx:if="{{rulesLoading && !ruleSections.length}}" class="invite-rules__status">加载中</text>
-      <button wx:elif="{{rulesError}}" class="invite-rules__retry" bindtap="loadInviteRules">规则加载失败，点击重试</button>
-      <text wx:elif="{{!ruleSections.length}}" class="invite-rules__status">暂无邀请规则</text>
-      <view wx:for="{{ruleSections}}" wx:for-item="section" wx:for-index="sectionIndex" wx:key="title" class="invite-rules__section">
-        <text class="invite-rules__heading">{{section.title}}</text>
-        <block wx:for="{{section.items}}" wx:for-item="rule" wx:for-index="ruleIndex" wx:key="*this">
-          <text wx:if="{{sectionIndex === 0}}" class="invite-rules__desc">{{rule}}</text>
-          <view wx:else class="invite-rules__item">
-            <text class="invite-rules__index">{{ruleIndex + 1}}</text>
-            <text class="invite-rules__text">{{rule}}</text>
-          </view>
-        </block>
-      </view>
-    </view>
+    <text>推广资格和历史结算请向诊所客服查询。</text>
   </view>
-  <view class="invite-actions">
-    <button class="invite-button invite-button--save" bindtap="handleSavePoster" loading="{{isSavingPoster}}" disabled="{{isSavingPoster || !inviteCode}}">{{isSavingPoster ? '生成中' : '保存海报'}}</button>
-    <button class="invite-button invite-button--share" open-type="share" bindtap="requestPromotionReminder" disabled="{{!inviteCode || !shareImagePath}}">邀请好友一起好眠</button>
-  </view>
-  <canvas id="distributionInvitePoster" canvas-id="distributionInvitePoster" type="2d" class="poster-canvas" style="width: {{posterWidth}}px; height: {{posterHeight}}px;" disable-scroll="{{true}}"></canvas>
 </view>

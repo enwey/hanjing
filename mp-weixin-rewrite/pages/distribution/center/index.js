@@ -13,7 +13,6 @@ const ACTION_ENTRIES = [
   { icon: '/static/icons/fee.svg', label: '提现', url: '/pages/distribution/withdraw/index' },
   { icon: '/static/icons/price.svg', label: '佣金明细', url: '/pages/distribution/commission/index' },
   { icon: '/static/icons/community.svg', label: '团队成员', url: '/pages/distribution/team/index' },
-  { icon: '/static/icons/paper-plane.svg', label: '邀请好友', url: '/pages/distribution/invite/index' },
 ];
 
 function unwrapList(response) {

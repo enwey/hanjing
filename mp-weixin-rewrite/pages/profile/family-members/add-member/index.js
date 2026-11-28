@@ -1,4 +1,6 @@
 const api = require('../../../../api/index');
+const sessionStore = require('../../../../stores/session-store');
+const confirmSensitiveData = require('../../../../common/utils/confirm-sensitive-data');
 const { normalizeImageUrl } = require('../../../../common/utils/image-url');
 
 const RELATION_OPTIONS = [
@@ -87,7 +89,12 @@ Page({
     genderOptions: GENDER_OPTIONS,
   },
 
+  isCurrentAccount() {
+    return this._accountGeneration === sessionStore.getLoginGeneration();
+  },
+
   async onLoad(options) {
+    this._accountGeneration = sessionStore.getLoginGeneration();
     this.memberId = options && options.id ? String(options.id) : '';
     const source = options && options.source ? String(options.source) : '';
     const storeId = options && options.storeId ? String(options.storeId) : '';
@@ -132,8 +139,10 @@ Page({
   },
 
   async loadMemberDetails(id) {
+    if (!this.isCurrentAccount()) return;
     try {
       const response = await api.getFamilyMemberDetail(id);
+      if (!this.isCurrentAccount()) return;
       const data = unwrapObject(response);
       const isSelf = data.relation === 'self';
       const birthday = data.birthday ? String(data.birthday).slice(0, 10) : '';
@@ -161,24 +170,25 @@ Page({
       });
       await this.loadStores(storeId);
     } catch (error) {
-      wx.showToast({ title: (error && error.message) || '加载详情失败', icon: 'none' });
+      if (this.isCurrentAccount()) wx.showToast({ title: (error && error.message) || '加载详情失败', icon: 'none' });
     }
   },
 
   chooseAvatar() {
-    if (this.data.isSelf || this.data.isUploading || this.data.isSubmitting) return;
+    if (!this.isCurrentAccount() || this.data.isSelf || this.data.isUploading || this.data.isSubmitting) return;
     wx.chooseImage({
       count: 1,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (result) => {
         const filePath = result.tempFilePaths && result.tempFilePaths[0];
-        if (!filePath) return;
+        if (!filePath || !this.isCurrentAccount()) return;
         this.setData({ isUploading: true });
         try {
           wx.showLoading({ title: '上传中...' });
           const extMatch = filePath.match(/\.([a-zA-Z0-9]+)$/);
           const uploadResponse = await api.uploadLocalFile(filePath, extMatch ? extMatch[1] : 'jpg');
+          if (!this.isCurrentAccount()) return;
           const uploadData = unwrapObject(uploadResponse);
           const url = uploadData.url || uploadData.fileUrl || uploadData.path || '';
           if (!url) throw new Error('头像上传结果无效');
@@ -278,7 +288,7 @@ Page({
   },
 
   async submitAddMember() {
-    if (this.data.isSubmitting || this.data.isUploading) return;
+    if (!this.isCurrentAccount() || this.data.isSubmitting || this.data.isUploading) return;
     const payload = this.buildPayload();
     const validationMessage = this.validatePayload(payload);
     if (validationMessage) {
@@ -288,18 +298,26 @@ Page({
 
     this.setData({ isSubmitting: true });
     try {
+      const confirmed = await confirmSensitiveData(
+        '同意处理就诊人资料',
+        '诊所使用您提交的资料建立就诊档案、核验身份和提供预约。填写他人资料前，请确认已获得其授权；未满十四周岁请由监护人同意。'
+      );
+      if (!confirmed || !this.isCurrentAccount() || getCurrentPages().slice(-1)[0] !== this) {
+        this.setData({ isSubmitting: false });
+        return;
+      }
       let response;
       if (this.data.isEdit) {
         response = await api.updateFamilyMember(this.memberId, payload);
-        wx.showToast({ title: '保存成功', icon: 'success', duration: 2000 });
       } else {
         response = await api.addFamilyMember(payload);
-        wx.showToast({ title: '新增成功', icon: 'success', duration: 2000 });
       }
+      if (!this.isCurrentAccount()) return;
+      wx.showToast({ title: this.data.isEdit ? '保存成功' : '新增成功', icon: 'success', duration: 2000 });
       const savedMember = unwrapObject(response);
       setTimeout(() => {
         const pages = getCurrentPages();
-        if (pages[pages.length - 1] !== this) return;
+        if (!this.isCurrentAccount() || pages[pages.length - 1] !== this) return;
         const prevPage = pages[pages.length - 2];
         if (this.data.returnToAppointment && savedMember && savedMember.id
           && prevPage && typeof prevPage.selectCreatedPatient === 'function') {
@@ -309,7 +327,7 @@ Page({
         wx.navigateBack();
       }, 2000);
     } catch (error) {
-      wx.showToast({ title: (error && error.message) || '提交失败', icon: 'none' });
+      if (this.isCurrentAccount()) wx.showToast({ title: (error && error.message) || '提交失败', icon: 'none' });
       this.setData({ isSubmitting: false });
     }
   },

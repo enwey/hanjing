@@ -53,8 +53,8 @@ function commentCommunityPost(postId, content, parentId) {
   return submitCommunityContent({ url: '/community/posts/' + postId + '/comment', method: 'POST', data: { content, parentId: parentId || null }, failMessage: '发表评论失败' });
 }
 
-function reportCommunityPost(postId, reason) {
-  return request({ url: '/community/posts/' + postId + '/report', method: 'POST', data: { reason }, failMessage: '举报帖子失败' });
+function reportCommunityPost(postId, reason, commentId) {
+  return request({ url: '/community/posts/' + postId + '/report', method: 'POST', data: { reason, ...(commentId ? { commentId } : {}) }, failMessage: '举报失败' });
 }
 
 module.exports = {

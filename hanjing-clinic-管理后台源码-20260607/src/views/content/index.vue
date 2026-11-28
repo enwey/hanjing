@@ -149,6 +149,7 @@ const reportStatus = ref('pending')
 const selectedReport = ref<any>(null)
 const reportResult = ref('resolved')
 const reportExplanation = ref('')
+const hideReportedComment = ref(false)
 async function fetchReports() {
   if (!hasPermission('content:audit')) return
   reportsLoading.value = true
@@ -159,13 +160,13 @@ async function fetchReports() {
   } finally { reportsLoading.value = false }
 }
 function openReports() { reportsVisible.value = true; reportPage.value = 1; fetchReports() }
-function handleReport(row: any) { selectedReport.value = row; reportResult.value = 'resolved'; reportExplanation.value = '' }
+function handleReport(row: any) { selectedReport.value = row; reportResult.value = 'resolved'; reportExplanation.value = ''; hideReportedComment.value = false }
 async function confirmReport() {
   if (!reportExplanation.value.trim()) return MessagePlugin.warning('请填写可以告知举报人的处理说明')
   if (moderationBusy.value) return
   moderationBusy.value = true
   try {
-    await request.put(`/api/admin/content/reports/${selectedReport.value.id}`, { status: reportResult.value, result_text: reportExplanation.value.trim() })
+    await request.put(`/api/admin/content/reports/${selectedReport.value.id}`, { status: reportResult.value, result_text: reportExplanation.value.trim(), hide_comment: reportResult.value === 'resolved' && hideReportedComment.value })
     selectedReport.value = null
     await fetchReports()
     MessagePlugin.success('处理结果已通知举报人')
@@ -424,6 +425,8 @@ watch(operationColumnWidth, () => {
       <t-pagination v-model="reportPage" :total="reportTotal" :page-size="10" :show-page-size="false" @current-change="fetchReports" />
     </t-dialog>
     <t-dialog :visible="!!selectedReport" header="处理举报" width="480px" :confirm-btn="{ content: '确认处理', loading: moderationBusy }" @close="selectedReport = null" @cancel="selectedReport = null" @confirm="confirmReport">
+      <p v-if="selectedReport?.comment_id">评论 #{{ selectedReport.comment_id }} · {{ selectedReport.comment_content || '内容已不可查看' }}</p>
+      <t-checkbox v-if="selectedReport?.comment_id && reportResult === 'resolved'" v-model="hideReportedComment">下架这条评论</t-checkbox>
       <t-form label-align="top"><t-form-item label="处理结果"><t-radio-group v-model="reportResult"><t-radio value="resolved">已核实并处理</t-radio><t-radio value="dismissed">不予采纳</t-radio></t-radio-group></t-form-item><t-form-item label="处理说明"><t-textarea v-model="reportExplanation" :maxlength="1000" placeholder="说明核实结论和已采取的处理措施，请勿包含他人隐私" /></t-form-item></t-form>
     </t-dialog>
   </div>

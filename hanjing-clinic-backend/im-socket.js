@@ -58,14 +58,14 @@ export function initWebSocket(server) {
    try {
     const data=JSON.parse(message);
     if(data.type==='ping'){await validateSocket(ws);ws.send(JSON.stringify({type:'pong'}));return;}
-    const text=validateImText(data.text);
+    const text=await validateImText(data.text, ws.userId);
     const result=await transaction(async conn=>{
      const patient=await validateSocket(ws,conn);
      if(Number(patient.id)!==ws.patientId)throw Object.assign(new Error('会话权限已失效'),{statusCode:404});
      const [inserted]=await conn.execute("INSERT INTO im_messages(patient_id,sender,sender_name,text,is_read) VALUES(?,'patient',?,?,0)",[patient.id,patient.name,text]);
      return inserted;
     });
-    if(ws.readyState===1)ws.send(JSON.stringify({type:'ack',id:String(result.insertId),text,time:new Date().toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',hour12:false})}));
+    if(ws.readyState===1)ws.send(JSON.stringify({type:'ack',id:String(result.insertId),text:data.text.trim(),time:new Date().toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',hour12:false})}));
    }catch(error){
     if(error.statusCode===400 || error instanceof SyntaxError){if(ws.readyState===1)ws.send(JSON.stringify({type:'error',message:'消息格式错误，请检查后重试'}));}
     else {removeSocket(ws);ws.close(1008,'会话权限已失效');}

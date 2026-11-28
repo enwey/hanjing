@@ -19,7 +19,6 @@ interface Product {
   sales: number
   isDistribution: boolean
   commission1: number
-  commission2: number
   status: string
 }
 
@@ -117,7 +116,6 @@ function mapProduct(row: any): Product {
     sales: Number(row.sales_count || 0),
     isDistribution: Number(row.is_distribution || 0) === 1,
     commission1: Number(row.commission_rate_level1 || row.commission_rate || 0),
-    commission2: Number(row.commission_rate_level2 || 0),
     status: row.status || 'off'
   }
 }
@@ -254,7 +252,6 @@ onMounted(fetchProducts)
               <th>价格</th>
               <th>库存</th>
               <th>一级佣金</th>
-              <th>二级佣金</th>
               <th>销量</th>
               <th>商城状态</th>
               <th>分销状态</th>
@@ -290,12 +287,6 @@ onMounted(fetchProducts)
               <td :style="{ color: product.isDistribution ? '#F5A623' : '#9CA3AF', fontWeight: '600' }">
                 <span v-if="product.isDistribution">
                   {{ product.commission1 }}% (¥{{ ((product.price * product.commission1) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }) }})
-                </span>
-                <span v-else>—</span>
-              </td>
-              <td :style="{ color: product.isDistribution ? '#F5A623' : '#9CA3AF', fontWeight: '600' }">
-                <span v-if="product.isDistribution">
-                  {{ product.commission2 }}% (¥{{ ((product.price * product.commission2) / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }) }})
                 </span>
                 <span v-else>—</span>
               </td>

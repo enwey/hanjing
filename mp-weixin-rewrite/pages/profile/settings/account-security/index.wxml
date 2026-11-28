@@ -100,3 +100,5 @@
     <view class="safe-bottom data-v-ecc58349" />
   </view>
 </view>
+
+<hj-privacy-popup id="privacyPopup" />

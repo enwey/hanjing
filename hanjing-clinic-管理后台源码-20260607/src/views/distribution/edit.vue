@@ -20,7 +20,6 @@ interface Product {
   stock: number;
   isDistribution: boolean;
   commission1: number; // percent
-  commission2: number; // percent
   backendReferralEnabled: boolean;
   backendRateX: number;
   backendRateY: number;
@@ -59,7 +58,6 @@ const formData = ref<Partial<Product>>({
   stock: 0,
   isDistribution: false,
   commission1: 15,
-  commission2: 5,
   backendReferralEnabled: false, backendRateX: 0, backendRateY: 0,
   status: 'on'
 })
@@ -178,7 +176,6 @@ function toPayload(prod: Partial<Product>) {
     is_distribution: prod.isDistribution ? 1 : 0,
     commission_rate: Number(prod.commission1 || 0),
     commission_rate_level1: Number(prod.commission1 || 0),
-    commission_rate_level2: Number(prod.commission2 || 0),
     backend_referral_enabled: prod.backendReferralEnabled ? 1 : 0,
     backend_rate_x: Number(prod.backendRateX || 0), backend_rate_y: Number(prod.backendRateY || 0),
     status: prod.status || 'off',
@@ -246,7 +243,6 @@ onMounted(async () => {
           stock: Number(row.stock || 0),
           isDistribution: !!row.is_distribution,
           commission1: Number(row.commission_rate_level1 || row.commission_rate || 0),
-          commission2: Number(row.commission_rate_level2 || 0),
           backendReferralEnabled: !!row.backend_referral_enabled, backendRateX:Number(row.backend_rate_x||0), backendRateY:Number(row.backend_rate_y||0),
           status: row.status || 'off'
         }
@@ -268,7 +264,6 @@ onMounted(async () => {
       stock: 0,
       isDistribution: false,
       commission1: 15,
-      commission2: 5,
       backendReferralEnabled: false, backendRateX: 0, backendRateY: 0,
       status: 'on'
     }
@@ -448,14 +443,10 @@ onMounted(async () => {
                   <label class="form-label">一级推广佣金比例 (%)</label>
                   <input type="number" class="form-control" v-model.number="formData.commission1" min="1" max="100" placeholder="如 15">
                 </div>
-                <div class="form-group">
-                  <label class="form-label">二级推广佣金比例 (%)</label>
-                  <input type="number" class="form-control" v-model.number="formData.commission2" min="1" max="100" placeholder="如 5">
-                </div>
                 <div class="form-help">开启分销后，分销员推广售出该商品，将按以上设定的百分比获得提成返佣。</div>
               </div>
               <div v-else style="color: #9CA3AF; font-size: 13px; text-align: center; padding: 12px 0;">
-                开启分销推广后，可以具体设置一级与二级推广的分销返利佣金比例。
+                开启分销推广后，可以设置直接推广佣金比例。
               </div>
             </div>
           </div>

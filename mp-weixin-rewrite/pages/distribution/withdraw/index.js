@@ -1,4 +1,5 @@
 const subscribe = require('../../../common/utils/subscribe');
+const confirmSensitiveData = require('../../../common/utils/confirm-sensitive-data');
 const api = require('../../../api/index');
 const sessionStore = require('../../../stores/session-store');
 
@@ -324,6 +325,10 @@ Page({
     const generation = sessionStore.getLoginGeneration();
     this.setData({ isUpdatingCards: true, isSubmitEnabled: false });
     try {
+      const confirmed = await confirmSensitiveData(
+        '同意使用银行卡资料', '诊所使用银行卡资料核验收款账户并处理提现。请确认收款账户是您有权使用的账户。'
+      );
+      if (!confirmed || !this.isCurrentSession(generation)) return;
       const card = unwrapObject(await api.updateWithdrawBankCard(editingCard.id, bankInfo));
       if (!this.isCurrentSession(generation)) return;
       this.setData({
@@ -395,9 +400,13 @@ Page({
     const generation = sessionStore.getLoginGeneration();
     const { withdrawAmountInput, withdrawMethod, selectedCardId } = this.data;
     this.setData({ isSubmitting: true, isSubmitEnabled: false });
-    const authorization = wx.requestSubscribeMessage
-      ? subscribe.requestSubscribe({ force: true, scene: 'withdraw', fromTap: true }) : null;
     try {
+      const confirmed = await confirmSensitiveData(
+        '同意使用收款账户资料', '诊所使用本次选定的银行或微信收款账户处理提现、核验与对账。取消后不会提交申请。'
+      );
+      if (!confirmed || !this.isCurrentSession(generation)) return;
+      const authorization = wx.requestSubscribeMessage
+        ? subscribe.requestSubscribe({ force: true, scene: 'withdraw', fromTap: true }) : null;
       const amount = Math.round(Number(withdrawAmountInput) * 100);
       if (withdrawMethod === 'wechat') {
         if (this._wechatRequest?.amount !== amount) {

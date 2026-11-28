@@ -4,7 +4,8 @@ import { logAdminAction } from './helpers.js';
 
 export async function initCommunityNotifications(q) {
   for (const [table, additions] of Object.entries({
-    community_reports: { result_text: 'VARCHAR(1000) NULL', handled_by: 'BIGINT UNSIGNED NULL', handled_at: 'DATETIME NULL' },
+    users: { community_nickname: 'VARCHAR(255) NULL' },
+    community_reports: { comment_id: 'BIGINT UNSIGNED NULL', result_text: 'VARCHAR(1000) NULL', handled_by: 'BIGINT UNSIGNED NULL', handled_at: 'DATETIME NULL' },
     community_posts: { reject_reason: 'VARCHAR(500) NULL' }
   })) {
     const columns = await q(`SHOW COLUMNS FROM ${table}`);
@@ -45,25 +46,30 @@ export function installCommunityReportRoutes(app, authenticateToken) {
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
     const where = status === 'all' ? '1=1' : 'r.status=?';
     const params = status === 'all' ? [] : [status];
-    const rows = await query(`SELECT r.id,r.post_id,r.reason,r.status,r.result_text,r.created_at,r.handled_at,p.title
-      FROM community_reports r JOIN community_posts p ON p.id=r.post_id WHERE ${where}
+    const rows = await query(`SELECT r.id,r.post_id,r.comment_id,r.reason,r.status,r.result_text,r.created_at,r.handled_at,p.title,c.content AS comment_content
+      FROM community_reports r JOIN community_posts p ON p.id=r.post_id LEFT JOIN post_comments c ON c.id=r.comment_id WHERE ${where}
       ORDER BY r.id DESC LIMIT ${Math.floor(limit)} OFFSET ${Math.floor((page - 1) * limit)}`, params);
     const [count] = await query(`SELECT COUNT(*) total FROM community_reports r WHERE ${where}`, params);
     res.json({ code: 200, data: { list: rows, total: Number(count.total) } });
   });
   app.put('/api/admin/content/reports/:id', authenticateToken, async (req, res) => {
-    const { status, result_text: resultText } = req.body;
+    const { status, result_text: resultText, hide_comment: hideComment = false } = req.body;
     const result = typeof resultText === 'string' ? resultText.trim() : '';
     if (!['resolved', 'dismissed'].includes(status) || !result || result.length > 1000) return res.status(400).json({ code: 400, message: '请选择处理结果并填写处理说明（最多1000字）' });
     try {
       await transaction(async conn => {
         const [[report]] = await conn.execute('SELECT * FROM community_reports WHERE id=? FOR UPDATE', [req.params.id]);
         if (!report) throw Object.assign(new Error('举报不存在'), { statusCode: 404 });
+        if (hideComment === true) {
+          if (status !== 'resolved' || !report.comment_id) throw Object.assign(new Error('只能下架已受理的举报评论'), { statusCode: 400 });
+          const [change] = await conn.execute("UPDATE post_comments SET status='hidden' WHERE id=? AND post_id=? AND status='approved'", [report.comment_id, report.post_id]);
+          if (change.affectedRows) await conn.execute('UPDATE community_posts SET comments_count=GREATEST(0,comments_count-1) WHERE id=?', [report.post_id]);
+        }
         if (report.status === status && report.result_text === result) return;
         await conn.execute('UPDATE community_reports SET status=?,result_text=?,handled_by=?,handled_at=NOW() WHERE id=?', [status, result, req.user.id, report.id]);
         await notifyBusiness(conn, 'report', report.id, 'processed', { revision: `${status}:${result}` });
       });
-      await logAdminAction(req.user.id, 'resolve_community_report', 'community_report', req.params.id, { status, result_text: result });
+      await logAdminAction(req.user.id, 'resolve_community_report', 'community_report', req.params.id, { status, result_text: result, hide_comment: hideComment === true });
       res.json({ code: 200, message: '处理结果已通知举报人' });
     } catch (error) { res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.statusCode ? error.message : '处理失败，请重试' }); }
   });

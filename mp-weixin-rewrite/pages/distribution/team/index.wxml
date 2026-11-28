@@ -14,11 +14,7 @@
     <view class="page-section stats-bar">
       <view class="stats-item">
         <text class="stats-item__value">{{teamCount}}</text>
-        <text class="stats-item__label">一级成员</text>
-      </view>
-      <view class="stats-item">
-        <text class="stats-item__value">{{level2Count}}</text>
-        <text class="stats-item__label">二级成员</text>
+        <text class="stats-item__label">直接成员</text>
       </view>
       <view class="stats-item">
         <text class="stats-item__value">{{totalSalesLabel}}</text>

@@ -31,6 +31,21 @@ export async function canReadPrivateUpload(path, user) {
       ? 'SELECT id AS store_id FROM stores'
       : 'SELECT store_id FROM admin_user_stores WHERE admin_user_id=?',
     Number(admin.all_stores) === 1 ? [] : [admin.id])).map(row => Number(row.store_id));
+    const attachment = await get('SELECT user_id FROM private_uploads WHERE file_path=?', [path]);
+    if (attachment?.user_id) {
+      const chatPermission = admin.role === 'super_admin' || await get(
+        "SELECT 1 FROM permissions WHERE role_id=? AND permission_resource='patient:view' LIMIT 1", [admin.role_id]
+      );
+      if (chatPermission) {
+        const linked = await query(
+          "SELECT DISTINCT m.patient_id FROM im_messages m JOIN patients p ON p.id=m.patient_id WHERE p.user_id=? AND m.sender='patient' AND (m.text=? OR LEFT(m.text, CHAR_LENGTH(?))=?)",
+          [attachment.user_id, '[image]' + path, '[image]' + path + '?', '[image]' + path + '?']
+        );
+        for (const item of linked) {
+          if (await verifyPatientAccess(item.patient_id, admin)) return true;
+        }
+      }
+    }
     if (admin.role !== 'super_admin') {
       const allowed = await get("SELECT 1 FROM permissions WHERE role_id=? AND permission_resource IN ('medical_record:view','medical_record:edit') LIMIT 1", [admin.role_id]);
       if (!allowed) return false;
@@ -78,13 +93,15 @@ export function signPrivateUploadResponses(req, res, next) {
     const user = req.user;
     const sign = value => {
       if (typeof value === 'string') {
-        const path = privateUploadPath(value);
+        const prefix = value.startsWith('[image]') ? '[image]' : '';
+        const assetValue = value.slice(prefix.length);
+        const path = privateUploadPath(assetValue);
         if (!path || !user?.id) return value;
         const claims = { scope: 'asset', path, id: user.id };
         if (user.openid) claims.openid = user.openid;
         else if (user.role) claims.role = user.role;
         else return value;
-        const unsigned = value.split('?')[0];
+        const unsigned = prefix ? prefix + path : assetValue.split('?')[0];
         return unsigned + '?asset_token=' + jwt.sign(claims, JWT_SECRET, { expiresIn: '15m' });
       }
       if (Array.isArray(value)) return value.map(sign);

@@ -1,4 +1,5 @@
 const api = require('../../../../api/index');
+const confirmSensitiveData = require('../../../../common/utils/confirm-sensitive-data');
 const sessionStore = require('../../../../stores/session-store');
 const { normalizeImageUrl } = require('../../../../common/utils/image-url');
 
@@ -50,6 +51,7 @@ Page({
   },
 
   onLoad(options = {}) {
+    this._accountGeneration = sessionStore.getLoginGeneration();
     const today = new Date();
     const maxBirthday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const profileSetupMode = String(options.fromLogin || '') === '1';
@@ -61,17 +63,23 @@ Page({
     });
   },
 
+  isCurrentAccount() {
+    return this._accountGeneration === sessionStore.getLoginGeneration();
+  },
+
   onShow() {
     this.loadProfile({ silent: this.data.hasLoaded });
   },
 
   async loadProfile(options = {}) {
+    if (!this.isCurrentAccount()) return;
     const silent = !!options.silent;
     if (!silent) {
       this.setData({ loading: true });
     }
     try {
       const response = await api.getUserProfile();
+      if (!this.isCurrentAccount()) return;
       const profile = (response && response.data) || response || {};
       sessionStore.state.profile = profile;
       this.applyProfileData({
@@ -88,6 +96,7 @@ Page({
         idCardCursor: String(profile.idCard || profile.id_card || '').length,
       });
     } catch (error) {
+      if (!this.isCurrentAccount()) return;
       this.setData({ loading: false });
       wx.showToast({ title: (error && error.message) || '加载失败', icon: 'none' });
     }
@@ -181,6 +190,7 @@ Page({
   },
 
   async saveProfile() {
+    if (!this.isCurrentAccount()) return;
     const nickname = String(this.data.nickname || '').trim();
     const idCard = String(this.data.idCard || '').trim();
     const pendingAvatarPath = String(this.data.pendingAvatarPath || '').trim();
@@ -192,6 +202,13 @@ Page({
       wx.showToast({ title: '身份证号格式不正确', icon: 'none' });
       return;
     }
+    if (idCard) {
+      const confirmed = await confirmSensitiveData(
+        '同意使用身份证号码',
+        '诊所使用您填写的身份证号码核验身份及关联就诊档案。您可以返回并清空本次输入。'
+      );
+      if (!confirmed || !this.isCurrentAccount() || getCurrentPages().slice(-1)[0] !== this) return;
+    }
     try {
       if (pendingAvatarPath) {
         wx.showLoading({ title: '保存资料中...' });
@@ -199,6 +216,10 @@ Page({
       let avatar;
       if (pendingAvatarPath) {
         const uploadResponse = await api.uploadLocalFile(pendingAvatarPath, getFileExt(pendingAvatarPath));
+        if (!this.isCurrentAccount()) {
+          wx.hideLoading();
+          return;
+        }
         const uploadData = (uploadResponse && uploadResponse.data) || uploadResponse || {};
         if (typeof uploadData.url !== 'string' || !uploadData.url) {
           throw new Error('上传文件失败');
@@ -212,6 +233,10 @@ Page({
         idCard,
         ...(avatar ? { avatar } : {}),
       });
+      if (!this.isCurrentAccount()) {
+        wx.hideLoading();
+        return;
+      }
       const profile = (response && response.data) || response || {};
       sessionStore.state.profile = profile;
       wx.hideLoading();
@@ -220,7 +245,7 @@ Page({
       await this.loadProfile({ silent: true });
     } catch (error) {
       wx.hideLoading();
-      wx.showToast({ title: (error && error.message) || '保存失败', icon: 'none' });
+      if (this.isCurrentAccount()) wx.showToast({ title: (error && error.message) || '保存失败', icon: 'none' });
     }
   },
 });

@@ -83,16 +83,16 @@ test('operations launch fixes preserve scope, payment, stock and fulfillment inv
       assert.equal((await db.get('SELECT stock FROM products WHERE id=2')).stock,0);
       assert.equal((await db.get('SELECT COUNT(*) n FROM orders')).n,1);
     });
-    await t.test('cash commissions use configured L1/L2 rates and zero stays zero',async()=>{
+    await t.test('cash commissions only use the direct rate and zero stays zero',async()=>{
       const r=await api('/orders',bill);assert.equal(r.status,200,JSON.stringify(r.body));
-      assert.deepEqual((await db.query('SELECT commission_level,commission_amount FROM distribution_orders WHERE order_id=? ORDER BY commission_level',[r.body.data.order_id])).map(x=>[x.commission_level,x.commission_amount]),[[1,1000],[2,300]]);
+      assert.deepEqual((await db.query('SELECT commission_level,commission_amount FROM distribution_orders WHERE order_id=? ORDER BY commission_level',[r.body.data.order_id])).map(x=>[x.commission_level,x.commission_amount]),[[1,1000]]);
       const zero=await api('/orders',{...bill,items:[{product_id:3,quantity:1,price:1000}],pay_amount:1000});
       assert.equal(zero.status,200);assert.equal((await db.get('SELECT COUNT(*) n FROM distribution_orders WHERE order_id=?',[zero.body.data.order_id])).n,0);
     });
     await t.test('discounts reduce commission proportionally; free orders earn none',async()=>{
       const partial=await api('/orders',{...bill,discount_amount:5000,pay_amount:5000});
       assert.equal(partial.status,200);
-      assert.deepEqual((await db.query('SELECT commission_amount FROM distribution_orders WHERE order_id=? ORDER BY commission_level',[partial.body.data.order_id])).map(x=>x.commission_amount),[500,150]);
+      assert.deepEqual((await db.query('SELECT commission_amount FROM distribution_orders WHERE order_id=? ORDER BY commission_level',[partial.body.data.order_id])).map(x=>x.commission_amount),[500]);
       const free=await api('/orders',{...bill,discount_amount:10000,pay_amount:0});
       assert.equal(free.status,200);
       assert.equal((await db.get('SELECT COUNT(*) n FROM distribution_orders WHERE order_id=?',[free.body.data.order_id])).n,0);

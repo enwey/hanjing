@@ -16,6 +16,13 @@ Page({
             url: '/pages/profile/settings/personal-info/index',
           },
           {
+            key: 'privacy',
+            icon: '/static/icons/lock-settings.svg',
+            label: '隐私与账号注销',
+            desc: '查看隐私政策、联系诊所申请注销或删除资料',
+            url: '/pages/auth/privacy/index',
+          },
+          {
             key: 'security',
             icon: '/static/icons/lock-settings.svg',
             label: '账号安全',

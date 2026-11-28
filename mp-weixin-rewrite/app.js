@@ -157,32 +157,14 @@ App({
     }
     if (wx.onNeedPrivacyAuthorization) {
       wx.onNeedPrivacyAuthorization((resolve) => {
-        wx.globalPrivacyResolve = resolve;
         const pages = getCurrentPages();
-        const currentPage = pages[pages.length - 1];
-        if (currentPage) {
-          const popup = currentPage.selectComponent ? currentPage.selectComponent('#privacyPopup') : null;
-          if (popup) {
-            popup.setData({ showPrivacy: true });
-            return;
-          }
+        const page = pages[pages.length - 1];
+        const popup = page?.selectComponent?.('#privacyPopup');
+        if (popup) {
+          popup.requestAuthorization(resolve);
+        } else {
+          resolve({ event: 'disagree' });
         }
-        wx.showModal({
-          title: '隐私保护指引提示',
-          content: '为了向您提供就近门店选择、挂号预约，以及睡眠鼾声录制与评估服务，我们需要在必要时申请您的地理位置与麦克风录音权限。请阅读并同意《隐私保护指引》后继续使用。',
-          cancelText: '拒绝',
-          confirmText: '同意并授权',
-          success(result) {
-            if (result.confirm) {
-              resolve({ event: 'agree', buttonId: 'agree-btn' });
-            } else {
-              resolve({ event: 'disagree' });
-            }
-          },
-          fail() {
-            resolve({ event: 'disagree' });
-          },
-        });
       });
     }
   },

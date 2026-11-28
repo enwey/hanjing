@@ -24,3 +24,5 @@
     <view class="btn-send data-v-72504f8b" bindtap="sendMessage"><text class="data-v-72504f8b">发送</text></view>
   </view>
 </view>
+
+<hj-privacy-popup id="privacyPopup" />

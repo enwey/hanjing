@@ -210,7 +210,7 @@ export async function resolveNotificationTarget(userId, notification) {
     path=row && ['approved','published'].includes(row.status)?`/pages/community/detail/index?id=${id}`:row && Number(row.user_id)===Number(userId) && row.user_role!=='admin' && ['draft','pending','rejected'].includes(row.status)?`/pages/community/publish/index?editId=${id}`:null;
     const metadata=parseJson(notification.metadata)||{};
     if(path && path.startsWith('/pages/community/detail/') && metadata.commentId) {
-      const comment=await get('SELECT id FROM post_comments WHERE id=? AND post_id=?',[metadata.commentId,id]);
+      const comment=await get("SELECT id FROM post_comments WHERE id=? AND post_id=? AND status='approved'",[metadata.commentId,id]);
       if(comment)path+='&commentId='+encodeURIComponent(comment.id);
     }
   }

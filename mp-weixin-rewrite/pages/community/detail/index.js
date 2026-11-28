@@ -517,14 +517,15 @@ Page({
     }
   },
 
-  reportPost() {
+  reportPost(event) {
+    const commentId = event?.currentTarget?.dataset?.commentId;
     const reasons = ['垃圾广告', '违规言论', '侮辱谩骂', '涉嫌欺诈', '其他原因'];
     wx.showActionSheet({
       itemList: reasons,
       success: async (result) => {
         wx.showLoading({ title: '提交举报...' });
         try {
-          await api.reportCommunityPost(this.data.postId, reasons[result.tapIndex] || '其他原因');
+          await api.reportCommunityPost(this.data.postId, reasons[result.tapIndex] || '其他原因', commentId);
           wx.hideLoading();
           wx.showToast({ title: '举报成功，感谢您的反馈', icon: 'success' });
         } catch (error) {

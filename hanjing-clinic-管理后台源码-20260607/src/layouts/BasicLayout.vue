@@ -353,6 +353,12 @@ async function selectChatUser(userId: number) {
   if (user) user.unread = 0
 }
 
+function consultationImageUrl(message: string) {
+  if (!/^\[image\]\/uploads\/medical-attachments\//.test(message)) return ''
+  const apiOrigin = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_BASE_URL || '')
+  return apiOrigin.replace(/\/$/, '') + message.slice(7)
+}
+
 async function fetchChatMessages() {
   if (!hasPermission('patient:view')) return
   if (!selectedUserId.value) return
@@ -948,7 +954,8 @@ onUnmounted(() => {
                 {{ msg.sender === 'patient' ? '患' : '医' }}
               </div>
               <div class="chat-bubble">
-                {{ msg.text }}
+                <img v-if="consultationImageUrl(msg.text)" :src="consultationImageUrl(msg.text)" alt="咨询图片" style="max-width: 100%; max-height: 240px;" />
+                <span v-else>{{ msg.text }}</span>
               </div>
             </div>
           </div>

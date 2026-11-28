@@ -4,8 +4,6 @@ import {
 import { resolveImPatient, validateImText } from '../im-access.js';
 import { recordCommunityLike } from '../community-notifications.js';
 import { writeNotification, notifyBusiness, runAndNotify, installNotificationRoutes } from '../notification-center.js';
-import { toAbsoluteAssetUrl } from '../public-urls.js';
-import { createInviteQrCache } from '../distribution-invite-qr.js';
 import { publicAvatar } from '../brand-avatar.js';
 import { recordReschedule } from '../appointment-reschedule-history.js';
 import { nextAppointmentNumber } from '../appointment-number.js';
@@ -1253,16 +1251,6 @@ async function ensureDistributor(userId, conn = null) {
   return get(`SELECT * FROM distributors WHERE user_id = ?`, [userId]);
 }
 
-const getCachedDistributionQr = createInviteQrCache({
-  getToken: getWechatMiniAccessToken,
-  saveUrl: (url, id) => run('UPDATE distributors SET invite_qr_url = ? WHERE id = ?', [url, id])
-});
-
-async function ensureDistributionInviteQrUrl(distributor, req) {
-  const result = await getCachedDistributionQr(distributor);
-  return { ...result, url: result.url ? toAbsoluteAssetUrl(req, result.url) : '' };
-}
-
 async function getDistributionWithdrawRecordList(userId) {
   const list = await query(
     `SELECT w.*, t.state AS wechat_payout_state FROM withdraw_records w
@@ -1310,7 +1298,7 @@ async function settleEligibleDistributionCommissions(userId) {
   return settleCommissions(userId);
 }
 
-async function getDistributionSummary(userId, req = null) {
+async function getDistributionSummary(userId) {
   await settleEligibleDistributionCommissions(userId);
   const featureConfig = await getDistributionFeatureConfig();
   const membership = await getCurrentUserMembership(userId);
@@ -1320,13 +1308,8 @@ async function getDistributionSummary(userId, req = null) {
     throw new Error('生成分销身份失败');
   }
 
-  const inviteQrResult = await ensureDistributionInviteQrUrl(distributor, req);
-  const inviteQrCode = inviteQrResult.url || '';
-  const inviteQrReason = inviteQrResult.reason || '';
-
-  const [lv1, lv2, orderStats, pendingStats] = await Promise.all([
+  const [lv1, orderStats, pendingStats] = await Promise.all([
     get(`SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 1`, [userId]),
-    get(`SELECT COUNT(*) as count FROM distribution_relationships WHERE parent_user_id = ? AND level = 2`, [userId]),
     get(
       `SELECT COUNT(DISTINCT order_id) as total_orders, COALESCE(SUM(order_amount), 0) as total_sales
        FROM distribution_orders
@@ -1342,7 +1325,6 @@ async function getDistributionSummary(userId, req = null) {
   ]);
 
   const directTeamCount = Number(lv1?.count || 0);
-  const secondTeamCount = Number(lv2?.count || 0);
   if (directTeamCount > 0 && distributor.status === 'pending') {
     const activation = await runAndNotify(`UPDATE distributors SET status = 'active' WHERE id = ? AND status = 'pending'`, [distributor.id], 'promoter',distributor.id,'status');
     if (activation.changes) distributor.status = 'active';
@@ -1353,8 +1335,7 @@ async function getDistributionSummary(userId, req = null) {
     isDistributor: distributor.status === 'active' && directTeamCount > 0,
     memberLevel,
     teamCount: directTeamCount,
-    teamLevel2Count: secondTeamCount,
-    totalInvites: directTeamCount + secondTeamCount,
+    totalInvites: directTeamCount,
     totalOrders: Number(orderStats?.total_orders || 0),
     totalSales: Number(orderStats?.total_sales || 0),
     availableCommission: Number(distributor.available_commission || 0),
@@ -1363,9 +1344,6 @@ async function getDistributionSummary(userId, req = null) {
     frozenCommission: Number(pendingStats?.frozen_commission || 0),
     level: distributor.level,
     levelLabel: getDistributorLevelLabel(distributor.level),
-    inviteCode: distributor.invite_code,
-    inviteQrCode,
-    inviteQrReason,
     settleDays: featureConfig.settleDays,
     minWithdrawAmount: featureConfig.minWithdrawAmount,
     withdrawFeeRates: featureConfig.withdrawFeeRates,
@@ -1789,14 +1767,26 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
     if (privateAvatarPath && !await canReadPrivateUpload(privateAvatarPath, req.user)) {
       return res.status(403).json({ code: 403, message: '无权使用此头像' });
     }
+    let changedNickname = null;
+    if (nicknameClean) {
+      const user = await get('SELECT openid, nickname, community_nickname FROM users WHERE id=?', [req.user.id]);
+      if (nicknameClean !== user?.nickname) {
+        if (nicknameClean !== user?.community_nickname) {
+          const decision = await checkWechatText({ openid: user?.openid, scene: 1, content: String(nickname).trim() });
+          if (rejectUncheckedContent(res, decision)) return;
+        }
+        changedNickname = nicknameClean;
+      }
+    }
     await transaction(async (conn) => {
       await conn.execute(
         `UPDATE users
          SET nickname = COALESCE(?, nickname),
+             community_nickname = COALESCE(?, community_nickname),
              birthday = COALESCE(?, birthday),
              avatar_url = COALESCE(?, avatar_url)
          WHERE id = ?`,
-        [nicknameClean, birthdayClean, avatarClean, req.user.id]
+        [changedNickname, changedNickname, birthdayClean, avatarClean, req.user.id]
       );
 
       const [[currentUser]] = await conn.execute(`SELECT * FROM users WHERE id = ? LIMIT 1`, [req.user.id]);
@@ -2663,7 +2653,7 @@ app.get('/api/v1/community/posts', async (req, res) => {
   try {
     const currentUser = getOptionalWxUser(req);
     const list = await query(
-      `SELECT p.*, u.nickname as author_name, u.avatar_url as author_avatar,
+      `SELECT p.*, u.community_nickname as author_name,
               COALESCE(comment_stats.approved_comments_count, 0) AS approved_comments_count,
               COALESCE(p.publish_at, p.created_at) AS published_at
        FROM community_posts p
@@ -2733,7 +2723,7 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
   try {
     const currentUser = getOptionalWxUser(req);
     const post = await get(
-      `SELECT p.*, u.nickname as author_name, u.avatar_url as author_avatar,
+      `SELECT p.*, u.community_nickname as author_name,
               COALESCE(comment_stats.approved_comments_count, 0) AS approved_comments_count,
               COALESCE(p.publish_at, p.created_at) AS published_at
        FROM community_posts p
@@ -2765,12 +2755,12 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
     }
 
     const comments = await query(
-      `SELECT c.*, u.nickname as author_name, u.avatar_url as author_avatar,
+      `SELECT c.*, u.community_nickname as author_name,
               parent.user_id AS parent_user_id,
-              parent_author.nickname AS parent_author_name
+              CASE WHEN parent.id IS NOT NULL THEN COALESCE(parent_author.community_nickname, '社区用户') END AS parent_author_name
        FROM post_comments c
        LEFT JOIN users u ON c.user_id = u.id
-       LEFT JOIN post_comments parent ON parent.id = c.parent_id
+       LEFT JOIN post_comments parent ON parent.id = c.parent_id AND parent.status = 'approved'
        LEFT JOIN users parent_author ON parent_author.id = parent.user_id
        WHERE c.post_id = ? AND c.status = 'approved'
        ORDER BY c.created_at ASC`,
@@ -2803,8 +2793,8 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
 
     const formattedComments = comments.map(c => ({
       id: c.id,
-      author: c.author_name || '',
-      avatar: publicAvatar(c.author_avatar),
+      author: c.author_name || '社区用户',
+      avatar: '',
       content: c.content,
       likes: c.likes_count,
       createdAt: c.created_at,
@@ -2853,7 +2843,11 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
 // POST /api/v1/community/posts/:id/report
 app.post('/api/v1/community/posts/:id/report', authenticateWxToken, async (req, res) => {
   const postId = req.params.id;
-  const rawReason = req.body.reason;
+  const rawReason = req.body?.reason;
+  const commentId = req.body?.commentId ?? null;
+  if (commentId !== null && !/^[1-9]\d{0,19}$/.test(String(commentId))) {
+    return res.status(400).json({ code: 400, message: '评论编号无效' });
+  }
   if (typeof rawReason !== 'string' || !rawReason.trim() || rawReason.length > 100) {
     return res.status(400).json({ code: 400, message: '请选择举报原因' });
   }
@@ -2862,18 +2856,23 @@ app.post('/api/v1/community/posts/:id/report', authenticateWxToken, async (req, 
 
   try {
     const outcome = await transaction(async conn => {
-      const [[post]] = await conn.execute('SELECT id FROM community_posts WHERE id = ? FOR UPDATE', [postId]);
+      const [[post]] = await conn.execute("SELECT id FROM community_posts WHERE id = ? AND status = 'approved' FOR UPDATE", [postId]);
       if (!post) return 'missing';
+      if (commentId !== null) {
+        const [[comment]] = await conn.execute("SELECT id FROM post_comments WHERE id=? AND post_id=? AND status='approved'", [commentId, postId]);
+        if (!comment) return 'comment_missing';
+      }
       const [[existing]] = await conn.execute(
-        "SELECT id FROM community_reports WHERE post_id = ? AND user_id = ? AND status = 'pending' FOR UPDATE",
-        [postId, req.user.id]
+        "SELECT id FROM community_reports WHERE post_id = ? AND user_id = ? AND comment_id <=> ? AND status = 'pending' FOR UPDATE",
+        [postId, req.user.id, commentId]
       );
       if (existing) return 'existing';
-      const [reportResult] = await conn.execute("INSERT INTO community_reports (post_id, user_id, reason, status) VALUES (?, ?, ?, 'pending')", [postId, req.user.id, reason]);
+      const [reportResult] = await conn.execute("INSERT INTO community_reports (post_id, user_id, comment_id, reason, status) VALUES (?, ?, ?, ?, 'pending')", [postId, req.user.id, commentId, reason]);
       await notifyBusiness(conn, 'report', reportResult.insertId, 'submitted');
       return 'created';
     });
     if (outcome === 'missing') return res.status(404).json({ code: 404, message: '帖子不存在' });
+    if (outcome === 'comment_missing') return res.status(404).json({ code: 404, message: '评论不存在' });
     res.json({ code: 0, message: outcome === 'existing' ? '您已提交过举报，平台会尽快处理' : '举报已提交' });
   } catch (error) {
     console.error('reportCommunityPost error:', error);
@@ -2937,8 +2936,8 @@ app.post('/api/v1/community/posts', authenticateWxToken, async (req, res) => {
       message: 'success',
       data: {
         id: result.id,
-        author: user.nickname || '',
-        avatar: publicAvatar(user.avatar_url),
+        author: user.community_nickname || '社区用户',
+        avatar: '',
         role,
         roleLabel: role === 'doctor' ? '专家医生' : '鼾友',
         title: titleClean,
@@ -3170,7 +3169,7 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
     let parentComment = null;
     if (parentId) {
       parentComment = await get(
-        `SELECT c.id, c.user_id, c.post_id, u.nickname AS author_name
+        `SELECT c.id, c.user_id, c.post_id, COALESCE(u.community_nickname, '社区用户') AS author_name
          FROM post_comments c
          LEFT JOIN users u ON u.id = c.user_id
          WHERE c.id = ? AND c.status = 'approved'`,
@@ -3196,7 +3195,7 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
       [postId]
     );
 
-    const actorName = user.nickname || '有用户';
+    const actorName = user.community_nickname || '社区用户';
     if (parentComment && parentComment.user_id && Number(parentComment.user_id) !== Number(req.user.id)) {
       await writeNotification(conn, {userId:parentComment.user_id, title:'社区新回复', content:`${actorName} 回复了你在《${post.title}》中的评论`, type:"community", businessType:"post", businessId:postId, onceKey:String(inserted.insertId), metadata:{commentId:String(inserted.insertId)}});
     }
@@ -3212,8 +3211,8 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
       message: 'success',
       data: {
         id: result.id,
-        author: user.nickname || '',
-        avatar: publicAvatar(user.avatar_url),
+        author: user.community_nickname || '社区用户',
+        avatar: '',
         content: contentClean,
         likes: 0,
         createdAt: new Date().toISOString(),
@@ -7366,7 +7365,7 @@ app.post('/api/v1/distribution/bind', authenticateWxToken, async (req, res) => {
 // 21b. WeChat Client Distribution (分销管理)
 app.get('/api/v1/distribution/info', authenticateWxToken, async (req, res) => {
   try {
-    const summary = await getDistributionSummary(req.user.id, req);
+    const summary = await getDistributionSummary(req.user.id);
     res.json({ code: 0, data: summary });
   } catch (error) {
     console.error('Get distribution info error:', error);
@@ -7377,8 +7376,8 @@ app.get('/api/v1/distribution/info', authenticateWxToken, async (req, res) => {
 app.post('/api/v1/distribution/open', authenticateWxToken, async (req, res) => {
   try {
     await ensureDistributor(req.user.id);
-    const latestSummary = await getDistributionSummary(req.user.id, req);
-    res.json({ code: 0, message: '推广身份已生成，绑定首个下级后成为正式分销员', data: latestSummary });
+    const latestSummary = await getDistributionSummary(req.user.id);
+    res.json({ code: 0, message: '推广资料已建立，请联系诊所确认推广资格', data: latestSummary });
   } catch (error) {
     console.error('Open distribution error:', error);
     res.status(error.statusCode || 500).json({ code: error.statusCode || 500, message: error.message || '开通分销失败' });
@@ -7387,7 +7386,7 @@ app.post('/api/v1/distribution/open', authenticateWxToken, async (req, res) => {
 
 app.get('/api/v1/distribution/commission-stats', authenticateWxToken, async (req, res) => {
   try {
-    const summary = await getDistributionSummary(req.user.id, req);
+    const summary = await getDistributionSummary(req.user.id);
     res.json({
       code: 0,
       message: 'success',
@@ -7405,25 +7404,8 @@ app.get('/api/v1/distribution/commission-stats', authenticateWxToken, async (req
   }
 });
 
-app.get('/api/v1/distribution/invite-info', authenticateWxToken, async (req, res) => {
-  try {
-    const summary = await getDistributionSummary(req.user.id, req);
-    res.json({
-      code: 0,
-      message: 'success',
-      data: {
-        isDistributor: summary.isDistributor,
-        inviteCode: summary.inviteCode,
-        inviteQrCode: summary.inviteQrCode,
-        inviteQrReason: summary.inviteQrReason || '',
-        sharePath: `/pages/index/index?inviteCode=${summary.inviteCode}`,
-        shareTitle: '邀请你体验兴康明诊所，扫码下单可享专业睡眠健康服务'
-      }
-    });
-  } catch (error) {
-    console.error('Get distribution invite info error:', error);
-    res.status(500).json({ code: 500, message: '获取邀请信息失败' });
-  }
+app.get('/api/v1/distribution/invite-info', authenticateWxToken, (_req, res) => {
+  res.status(410).json({ code: 410, message: '小程序推广分享已停用' });
 });
 
 app.get('/api/v1/distribution/team', authenticateWxToken, async (req, res) => {
@@ -7438,7 +7420,7 @@ app.get('/api/v1/distribution/team', authenticateWxToken, async (req, res) => {
        FROM distribution_relationships r
        JOIN users u ON r.child_user_id = u.id
        LEFT JOIN distributors d ON u.id = d.user_id
-       WHERE r.parent_user_id = ?`,
+       WHERE r.parent_user_id = ? AND r.level = 1`,
       [parentUserId]
     );
 
@@ -7668,7 +7650,7 @@ app.get('/api/v1/distribution/products', async (req, res) => {
           originalPrice: p.original_price,
           commissionRate: p.commission_rate_level1 ?? p.commission_rate,
           commissionRateLevel1: p.commission_rate_level1 ?? p.commission_rate,
-          commissionRateLevel2: p.commission_rate_level2 || 0,
+          commissionRateLevel2: 0,
           commission: Math.round(p.price * ((p.commission_rate_level1 ?? p.commission_rate ?? 0) / 100)),
           sales: p.sales_count
         })),
@@ -7688,18 +7670,15 @@ app.get('/api/v1/distribution/rules', async (req, res, next) => {
     message: 'success',
     data: {
       enabled: featureConfig.enableDistribution,
-      qualificationText: '在分销中心打开邀请好友页面，即可获取你的专属邀请码。将邀请码分享给好友，成功绑定至少 1 位下级好友后，即可成为正式分销员，开启佣金收益资格。',
+      qualificationText: '推广资格及结算规则请向诊所客服查询。',
       levels: [],
       commissionRules: [
         '只有标注支持推广佣金的商品才会产生收益，其余商品不参与分佣。',
-        '收益分为两级：好友下单，你拿一级佣金；好友的下级下单，你拿二级佣金。佣金比例以该商品预设比例为准，不会随分销等级额外上浮。',
+        '符合条件的直接推广订单按商品预设比例结算。',
         `订单确认完成后，佣金会先进入冻结保护期，等待 ${featureConfig.settleDays} 天，到期自动变为可提现余额。`,
         '如果订单发生退款、撤单，这笔订单对应的佣金会直接取消；已经结算到余额里的佣金，也会从可提现余额中扣除。'
       ],
-      promotionWays: [
-        '分享你的专属邀请页面到微信好友或微信群，好友通过你分享的邀请链接首次进入兴康明小程序并完成绑定，后续其订单都会归属到你的推广关系中，持续产生收益。',
-        '保存邀请好友页面自带的专属推广海报，发给别人扫码绑定。'
-      ],
+      promotionWays: [],
       notices: [
         '禁止虚假宣传、夸大疗效或承诺治疗结果。',
         '禁止诱导用户进行不必要的消费。',
@@ -7945,7 +7924,7 @@ app.get('/api/v1/im/unread-count', authenticateWxToken, async (req,res)=>{
 });
 app.post('/api/v1/im/send', authenticateWxToken, async(req,res)=>{
   try {
-    const text=validateImText(req.body.text);
+    const text=await validateImText(req.body?.text, req.user.id);
     const id=await transaction(async conn=>{
       const patient=await resolveImPatient(req.user.id,req.body.patientId,conn);
       const [message]=await conn.execute("INSERT INTO im_messages(patient_id,sender,sender_name,text,is_read) VALUES(?,'patient',?,?,0)",[patient.id,patient.name,text]);

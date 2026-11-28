@@ -1,4 +1,5 @@
 const api = require('../../../api/index');
+const confirmSensitiveData = require('../../../common/utils/confirm-sensitive-data');
 const sessionStore = require('../../../stores/session-store');
 
 const RELATION_LABEL_MAP = {
@@ -561,6 +562,14 @@ Page({
     if (!this.data.selectedMemberId || !this.data.memberList.some(member => String(member.id) === this.data.selectedMemberId)) {
       this._starting = null;
       wx.showToast({ title: '请先加载或建立就诊人，再开始录音', icon: 'none' });
+      return;
+    }
+    const consent = await confirmSensitiveData(
+      '同意处理鼾声分析数据',
+      '本次录音在设备上分析。生成报告时会向诊所提交分析结果、时长及所选就诊人信息，用于保存和查看报告。您可取消并继续使用其他功能。'
+    );
+    if (!consent || !current()) {
+      if (this._starting === attempt) this._starting = null;
       return;
     }
     wx.authorize({

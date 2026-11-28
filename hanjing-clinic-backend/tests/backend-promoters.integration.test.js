@@ -101,11 +101,11 @@ test('independent backend promoters and paid referral accounting', async t => {
       assert.equal((await rows("SELECT COUNT(*) n FROM orders WHERE user_id=6 AND referral_mode='new'"))[0].n,1);
       assert.ok(validateProduct({name:'a',price:100,stock:1,backend_referral_enabled:1,backend_rate_y:90,commission_rate_level1:20}));
     });
-    await t.test('backend parent receives second tier through mini promoter descendants',async()=>{
+    await t.test('backend parent earns no second tier through mini promoter descendants',async()=>{
       await admin.query('INSERT INTO distribution_relationships(parent_distributor_id,child_user_id,level) VALUES(3,2,1)');
       const o=await order(3,2);await pay(o);
       const list=await rows('SELECT * FROM distribution_orders WHERE order_id='+o.id+' ORDER BY commission_level');
-      assert.deepEqual(list.map(r=>[r.distributor_id,r.commission_amount]),[[2,1000],[3,500]]);
+      assert.deepEqual(list.map(r=>[r.distributor_id,r.commission_amount]),[[2,1000]]);
     });
     await t.test('full refund reverses X and leaves relationship intact',async()=>{
       const {registerOfflineRefund}=await import('../refunds.js');

@@ -3,42 +3,34 @@ Component({
     showPrivacy: false,
   },
 
-  pageLifetimes: {
-    show() {
-      this.checkPrivacy();
+  lifetimes: {
+    detached() {
+      this.finishAuthorization({ event: 'disagree' });
     },
   },
 
   methods: {
-    checkPrivacy() {
-      if (!wx.getPrivacySetting) {
-        return;
-      }
-      wx.getPrivacySetting({
-        success: (result) => {
-          this.setData({
-            showPrivacy: Boolean(result.needAuthorization),
-          });
-        },
-      });
+    requestAuthorization(resolve) {
+      this._pendingPrivacy = (this._pendingPrivacy || []).concat(resolve);
+      this.setData({ showPrivacy: true });
+    },
+
+    finishAuthorization(result) {
+      const pending = this._pendingPrivacy || [];
+      this._pendingPrivacy = [];
+      pending.forEach(resolve => resolve(result));
     },
 
     handleAgree() {
       this.setData({ showPrivacy: false });
       this.triggerEvent('agree');
-      if (wx.globalPrivacyResolve) {
-        wx.globalPrivacyResolve({ event: 'agree', buttonId: 'agree-btn' });
-        wx.globalPrivacyResolve = null;
-      }
+      this.finishAuthorization({ event: 'agree', buttonId: 'agree-btn' });
     },
 
     handleDisagree() {
       this.setData({ showPrivacy: false });
       this.triggerEvent('disagree');
-      if (wx.globalPrivacyResolve) {
-        wx.globalPrivacyResolve({ event: 'disagree' });
-        wx.globalPrivacyResolve = null;
-      }
+      this.finishAuthorization({ event: 'disagree' });
       wx.showToast({
         title: '不同意隐私协议将无法正常使用部分功能',
         icon: 'none',
