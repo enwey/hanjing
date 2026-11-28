@@ -69,6 +69,5 @@
     </block>
     <view class="safe-bottom data-v-acab1652" />
   </view>
+  <hj-privacy-popup id="privacyPopup" />
 </view>
-
-<hj-privacy-popup id="privacyPopup" />

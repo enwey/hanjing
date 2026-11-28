@@ -76,6 +76,8 @@ function normalizeComment(comment) {
     parentId: comment.parentId || null,
     parentAuthor: comment.parentAuthor || '',
     isLiked: Boolean(comment.isLiked),
+    isAuthor: Boolean(comment.isAuthor),
+    isDeleted: Boolean(comment.isDeleted),
   };
 }
 
@@ -92,6 +94,7 @@ function normalizePostDetail(detail) {
     avatarBg: getAvatarColor(author || '友'),
     role,
     isOfficial: role === 'admin',
+    isAuthor: Boolean(detail.isAuthor),
     roleLabel: detail.roleLabel || (role === 'doctor' ? '专家医生' : role === 'expert' ? '睡眠专家' : '鼾友'),
     roleClass: 'role--' + role,
     title: detail.title || '',
@@ -517,20 +520,108 @@ Page({
     }
   },
 
-  reportPost(event) {
-    const commentId = event?.currentTarget?.dataset?.commentId;
+  submitReportReason(submitFn) {
     const reasons = ['垃圾广告', '违规言论', '侮辱谩骂', '涉嫌欺诈', '其他原因'];
     wx.showActionSheet({
       itemList: reasons,
       success: async (result) => {
+        const reason = reasons[result.tapIndex] || '其他原因';
         wx.showLoading({ title: '提交举报...' });
         try {
-          await api.reportCommunityPost(this.data.postId, reasons[result.tapIndex] || '其他原因', commentId);
+          const response = await submitFn(reason);
           wx.hideLoading();
-          wx.showToast({ title: '举报成功，感谢您的反馈', icon: 'success' });
+          wx.showToast({ title: (response && response.message) || '举报成功，感谢您的反馈', icon: 'success' });
         } catch (error) {
           wx.hideLoading();
-          wx.showToast({ title: '举报失败，请稍后重试', icon: 'none' });
+          wx.showToast({ title: (error && error.message) || '举报失败，请稍后重试', icon: 'none' });
+        }
+      },
+    });
+  },
+
+  reportPost() {
+    this.submitReportReason((reason) => api.reportCommunityPost(this.data.postId, reason));
+  },
+
+  reportComment(event) {
+    const commentId = String(event.currentTarget.dataset.commentId || '');
+    if (!commentId) return;
+    this.submitReportReason((reason) => api.reportCommunityComment(commentId, reason));
+  },
+
+  deletePost() {
+    const postId = this.data.postId;
+    if (!postId || !this.data.postDetail?.isAuthor) return;
+    wx.showModal({
+      title: '删除帖子',
+      content: '删除后无法恢复，确定删除这篇帖子吗？',
+      confirmColor: '#b91c1c',
+      success: async (result) => {
+        if (!result.confirm) return;
+        wx.showLoading({ title: '删除中...' });
+        try {
+          await api.deleteCommunityPost(postId);
+          wx.hideLoading();
+          wx.showToast({ title: '已删除', icon: 'success' });
+          setTimeout(() => {
+            wx.navigateBack({ delta: 1, fail: () => wx.switchTab({ url: '/pages/appointment/index' }) });
+          }, 800);
+        } catch (error) {
+          wx.hideLoading();
+          wx.showToast({ title: (error && error.message) || '删除失败，请稍后重试', icon: 'none' });
+        }
+      },
+    });
+  },
+
+  deleteComment(event) {
+    const commentId = String(event.currentTarget.dataset.commentId || '');
+    if (!commentId) return;
+    wx.showModal({
+      title: '删除评论',
+      content: '确定要删除这条评论吗？',
+      confirmColor: '#b91c1c',
+      success: async (result) => {
+        if (!result.confirm) return;
+        wx.showLoading({ title: '删除中...' });
+        try {
+          await api.deleteCommunityComment(commentId);
+          wx.hideLoading();
+          if (this._unloaded) return;
+          this._commentRevision = (this._commentRevision || 0) + 1;
+          const hasReplies = this.data.commentsList.some(item => String(item.parentId || '') === commentId);
+          const commentsList = hasReplies
+            ? this.data.commentsList.map(item => {
+              if (item.id === commentId) {
+                return Object.assign({}, item, {
+                  author: '',
+                  avatar: '',
+                  avatarLoaded: false,
+                  content: '该评论已删除',
+                  likes: 0,
+                  isLiked: false,
+                  isAuthor: false,
+                  isDeleted: true,
+                });
+              }
+              if (String(item.parentId || '') === commentId) {
+                return Object.assign({}, item, { parentAuthor: '已删除评论' });
+              }
+              return item;
+            })
+            : this.data.commentsList.filter(item => item.id !== commentId);
+          const replyTarget = this.data.replyTarget && this.data.replyTarget.id === commentId ? null : this.data.replyTarget;
+          this.setData({
+            commentsList,
+            replyTarget,
+            postDetail: Object.assign({}, this.data.postDetail, {
+              commentsCount: Math.max(0, Number((this.data.postDetail && this.data.postDetail.commentsCount) || 0) - 1),
+            }),
+          });
+          wx.showToast({ title: '已删除', icon: 'success' });
+        } catch (error) {
+          wx.hideLoading();
+          wx.showToast({ title: (error && error.message) || '删除失败，请稍后重试', icon: 'none' });
         }
       },
     });

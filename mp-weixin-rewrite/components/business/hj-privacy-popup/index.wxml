@@ -2,7 +2,7 @@
   <view class="privacy-container">
     <view class="privacy-title">用户隐私保护指引</view>
     <view class="privacy-content">
-      使用相关功能前，请阅读
+      感谢您选择兴康明诊所！为了向您提供预约挂号、线上商城收货、鼾声评估与客服咨询等服务，我们会在对应功能场景下按需申请您的手机号、位置信息、麦克风录音、相册/媒体、收货地址及头像昵称。我们会严格保护您的个人敏感健康数据。使用前请阅读并同意
       <text class="privacy-link" bindtap="openPrivacyContract">《兴康明小程序隐私保护指引》</text>。
     </view>
     <view class="privacy-actions">

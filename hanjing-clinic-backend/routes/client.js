@@ -60,7 +60,7 @@ import {
   verifyWechatPayCallback
 } from '../wechatPay.js';
 import { getWechatMiniAccessToken, isWechatAccessTokenInvalid } from '../wechatMiniToken.js';
-import { checkWechatText, rejectUncheckedContent } from '../wechatContentSecurity.js';
+import { checkWechatText, checkWechatImage, rejectUncheckedContent } from '../wechatContentSecurity.js';
 
 const app = createAsyncRouter();
 app.use(signPrivateUploadResponses);
@@ -1745,7 +1745,11 @@ app.get('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
 // 3. User Profile (PUT)
 app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
   const { nickname, gender, age, birthday, idCard, avatar, avatarUrl } = req.body;
-  const nicknameClean = nickname ? escapeHtml(nickname) : null;
+  if (nickname !== undefined && nickname !== null && typeof nickname !== 'string') {
+    return res.status(400).json({ code: 400, message: '昵称格式无效' });
+  }
+  const rawNickname = typeof nickname === 'string' ? nickname.trim() : '';
+  const nicknameClean = rawNickname ? escapeHtml(rawNickname) : null;
   const idCardClean = idCard ? escapeHtml(idCard).toUpperCase() : null;
   const idCardEnc = idCardClean ? encryptPII(idCardClean) : null;
   const birthdayClean = birthday === '' || !birthday ? null : birthday;
@@ -1756,7 +1760,7 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
   const avatarValue = avatar || avatarUrl ? String(avatar || avatarUrl).trim() : null;
   // Private upload responses are signed for display. Persist the path so it can be signed again on read.
   const privateAvatarPath = privateUploadPath(avatarValue);
-  const avatarClean = privateAvatarPath || escapeHtml(avatarValue);
+  const avatarClean = avatarValue ? (privateAvatarPath || escapeHtml(avatarValue)) : null;
   if (avatarClean && !/^.{0,255}$/su.test(avatarClean)) {
     return res.status(400).json({ code: 400, message: '头像地址过长' });
   }
@@ -1767,14 +1771,19 @@ app.put('/api/v1/user/profile', authenticateWxToken, async (req, res) => {
     if (privateAvatarPath && !await canReadPrivateUpload(privateAvatarPath, req.user)) {
       return res.status(403).json({ code: 403, message: '无权使用此头像' });
     }
+    if (avatarClean && !privateAvatarPath && !avatarClean.startsWith('/static/')) {
+      const currentAvatarUser = await get(`SELECT avatar_url FROM users WHERE id = ?`, [req.user.id]);
+      if (!currentAvatarUser || avatarClean !== currentAvatarUser.avatar_url) {
+        return res.status(403).json({ code: 403, message: '无权使用此头像' });
+      }
+    }
     let changedNickname = null;
     if (nicknameClean) {
       const user = await get('SELECT openid, nickname, community_nickname FROM users WHERE id=?', [req.user.id]);
-      if (nicknameClean !== user?.nickname) {
-        if (nicknameClean !== user?.community_nickname) {
-          const decision = await checkWechatText({ openid: user?.openid, scene: 1, content: String(nickname).trim() });
-          if (rejectUncheckedContent(res, decision)) return;
-        }
+      if (!user) return res.status(401).json({ code: 401, message: '未授权或登录过期' });
+      if (nicknameClean !== user.nickname) {
+        const decision = await checkWechatText({ openid: user.openid, scene: 1, content: rawNickname });
+        if (rejectUncheckedContent(res, decision === 'pass' && checkSensitiveWords(rawNickname) ? 'blocked' : decision)) return;
         changedNickname = nicknameClean;
       }
     }
@@ -2623,26 +2632,55 @@ app.get('/api/v1/community/my-activity', authenticateWxToken, async (req, res) =
   }
   const limit = 20;
   const queries = {
-    posts: `SELECT p.id AS record_id, p.id AS post_id, p.title, p.summary, p.content, COALESCE(p.publish_at,p.created_at) AS activity_at
-      FROM community_posts p WHERE p.user_id=? AND p.status='approved'
+    posts: `SELECT p.id AS record_id, p.id AS post_id, p.title, p.summary, p.content, p.status AS post_status,
+              p.delete_reason AS post_delete_reason, p.deleted_by AS post_deleted_by,
+              COALESCE(p.publish_at,p.created_at) AS activity_at
+      FROM community_posts p WHERE p.user_id=? AND p.status IN ('approved', 'deleted')
       ORDER BY p.created_at DESC, p.id DESC LIMIT ? OFFSET ?`,
-    comments: `SELECT c.id AS record_id, p.id AS post_id, p.title, c.id AS comment_id, c.content AS comment_content, c.created_at AS activity_at
+    comments: `SELECT c.id AS record_id, p.id AS post_id, p.title, p.status AS post_status,
+              c.id AS comment_id, c.content AS comment_content, c.status AS comment_status,
+              c.delete_reason AS comment_delete_reason, c.deleted_by AS comment_deleted_by,
+              c.created_at AS activity_at
       FROM post_comments c JOIN community_posts p ON p.id=c.post_id
-      WHERE c.user_id=? AND c.status='approved' AND p.status='approved'
+      WHERE c.user_id=? AND c.status IN ('approved', 'deleted') AND p.status IN ('approved', 'deleted')
       ORDER BY c.created_at DESC, c.id DESC LIMIT ? OFFSET ?`,
-    favorites: `SELECT f.id AS record_id, p.id AS post_id, p.title, p.summary, p.content, f.created_at AS activity_at
+    favorites: `SELECT f.id AS record_id, p.id AS post_id, p.title, p.summary, p.content, 'approved' AS post_status, f.created_at AS activity_at
       FROM community_post_favorites f JOIN community_posts p ON p.id=f.post_id
       WHERE f.user_id=? AND p.status='approved'
       ORDER BY f.created_at DESC, f.id DESC LIMIT ? OFFSET ?`,
   };
   try {
     const rows = await query(queries[type], [req.user.id, limit + 1, (page - 1) * limit]);
-    res.json({ code: 0, data: { list: rows.slice(0, limit).map(row => ({
-      recordId: String(row.record_id), postId: String(row.post_id), title: row.title || '',
-      summary: type === 'comments' ? '' : String(row.summary || row.content || '').replace(/<[^>]*>/g, '').slice(0, 140),
-      commentId: row.comment_id ? String(row.comment_id) : '', commentContent: row.comment_content || '',
-      createdAt: row.activity_at,
-    })), hasMore: rows.length > limit } });
+    res.json({ code: 0, data: { list: rows.slice(0, limit).map(row => {
+      const postDeleted = row.post_status === 'deleted';
+      const commentDeleted = row.comment_status === 'deleted';
+      const title = type === 'comments' && postDeleted
+        ? '原帖已删除'
+        : (row.title || '');
+      const summary = type === 'comments'
+        ? ''
+        : postDeleted
+          ? (row.post_deleted_by === 'admin'
+            ? ('该帖子已被平台移除' + (row.post_delete_reason ? '：' + row.post_delete_reason : ''))
+            : '该帖子已由你删除')
+          : String(row.summary || row.content || '').replace(/<[^>]*>/g, '').slice(0, 140);
+      const commentContent = commentDeleted
+        ? (row.comment_deleted_by === 'admin'
+          ? ('该评论已被平台移除' + (row.comment_delete_reason ? '：' + row.comment_delete_reason : ''))
+          : '该评论已由你删除')
+        : (row.comment_content || '');
+      return {
+        recordId: String(row.record_id),
+        postId: String(row.post_id),
+        title,
+        summary,
+        commentId: row.comment_id ? String(row.comment_id) : '',
+        commentContent,
+        postDeleted,
+        commentDeleted,
+        createdAt: row.activity_at,
+      };
+    }), hasMore: rows.length > limit } });
   } catch (error) {
     console.error('Get community activity error:', error);
     res.status(500).json({ code: 500, message: '加载社区记录失败' });
@@ -2739,7 +2777,8 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
     );
 
     if (!post) {
-      return res.status(404).json({ code: 404, message: '帖子不存在或未通过审核' });
+      const deletedPost = await get(`SELECT id FROM community_posts WHERE id = ? AND status = 'deleted'`, [postId]);
+      return res.status(404).json({ code: 404, message: deletedPost ? '该帖子已删除' : '帖子不存在或未通过审核' });
     }
 
     let viewsCount = Number(post.views_count || 0);
@@ -2762,10 +2801,28 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
        LEFT JOIN users u ON c.user_id = u.id
        LEFT JOIN post_comments parent ON parent.id = c.parent_id AND parent.status = 'approved'
        LEFT JOIN users parent_author ON parent_author.id = parent.user_id
-       WHERE c.post_id = ? AND c.status = 'approved'
+       WHERE c.post_id = ? AND c.status IN ('approved', 'deleted')
        ORDER BY c.created_at ASC`,
       [postId]
     );
+
+    const commentById = new Map(comments.map(item => [Number(item.id), item]));
+    const keepDeletedIds = new Set();
+    for (const item of comments) {
+      if (item.status !== 'approved') continue;
+      let parentId = item.parent_id ? Number(item.parent_id) : 0;
+      const seen = new Set([Number(item.id)]);
+      while (parentId && !seen.has(parentId)) {
+        seen.add(parentId);
+        const parentRow = commentById.get(parentId);
+        if (!parentRow) break;
+        if (parentRow.status === 'deleted') {
+          keepDeletedIds.add(parentId);
+        }
+        parentId = parentRow.parent_id ? Number(parentRow.parent_id) : 0;
+      }
+    }
+    const visibleComments = comments.filter(c => c.status === 'approved' || keepDeletedIds.has(Number(c.id)));
 
     let likedCommentIds = new Set();
     let isPostLiked = false;
@@ -2781,27 +2838,52 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
         [postId, currentUser.id]
       );
       isPostFavorited = !!postFavorite;
-      if (comments.length) {
-        const placeholders = buildSqlPlaceholders(comments);
+      const activeComments = visibleComments.filter(c => c.status === 'approved');
+      if (activeComments.length) {
+        const placeholders = buildSqlPlaceholders(activeComments);
         const likedRows = await query(
           `SELECT comment_id FROM post_comment_likes WHERE user_id = ? AND comment_id IN (${placeholders})`,
-          [currentUser.id, ...comments.map(item => item.id)]
+          [currentUser.id, ...activeComments.map(item => item.id)]
         );
         likedCommentIds = new Set(likedRows.map(row => Number(row.comment_id)));
       }
     }
 
-    const formattedComments = comments.map(c => ({
-      id: c.id,
-      author: c.author_name || '社区用户',
-      avatar: '',
-      content: c.content,
-      likes: c.likes_count,
-      createdAt: c.created_at,
-      parentId: c.parent_id || null,
-      parentAuthor: c.parent_author_name || '',
-      isLiked: likedCommentIds.has(Number(c.id))
-    }));
+    const formattedComments = visibleComments.map(c => {
+      const isDeleted = c.status === 'deleted';
+      const parentRow = c.parent_id ? commentById.get(Number(c.parent_id)) : null;
+      const parentAuthor = parentRow && parentRow.status === 'deleted'
+        ? '已删除评论'
+        : (c.parent_author_name || '');
+      if (isDeleted) {
+        return {
+          id: c.id,
+          author: '',
+          avatar: '',
+          content: c.deleted_by === 'admin' ? '该评论已因不符合规范被移除' : '该评论已删除',
+          likes: 0,
+          createdAt: c.created_at,
+          parentId: c.parent_id || null,
+          parentAuthor,
+          isLiked: false,
+          isAuthor: false,
+          isDeleted: true
+        };
+      }
+      return {
+        id: c.id,
+        author: c.author_name || '社区用户',
+        avatar: '',
+        content: c.content,
+        likes: c.likes_count,
+        createdAt: c.created_at,
+        parentId: c.parent_id || null,
+        parentAuthor,
+        isLiked: likedCommentIds.has(Number(c.id)),
+        isAuthor: Boolean(currentUser?.id && Number(c.user_id) === Number(currentUser.id)),
+        isDeleted: false
+      };
+    });
 
     res.json({
       code: 0,
@@ -2809,6 +2891,7 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
       data: {
         id: post.id,
         ...communityPublisher(post),
+        isAuthor: Boolean(currentUser?.id && Number(post.user_id) === Number(currentUser.id) && post.user_role !== 'admin'),
         title: post.title,
         content: post.content,
         coverUrl: post.cover_url || '',
@@ -2839,6 +2922,20 @@ app.get('/api/v1/community/posts/:id', async (req, res) => {
     res.status(500).json({ code: 500, message: '获取帖子详情失败' });
   }
 });
+
+function validateCommunityReportReason(req, res) {
+  const rawReason = req.body?.reason;
+  if (typeof rawReason !== 'string' || !rawReason.trim() || rawReason.length > 100) {
+    res.status(400).json({ code: 400, message: '请选择举报原因' });
+    return null;
+  }
+  const reason = escapeHtml(rawReason.trim());
+  if (reason.length > 100) {
+    res.status(400).json({ code: 400, message: '举报原因过长' });
+    return null;
+  }
+  return reason;
+}
 
 // POST /api/v1/community/posts/:id/report
 app.post('/api/v1/community/posts/:id/report', authenticateWxToken, async (req, res) => {
@@ -2877,6 +2974,83 @@ app.post('/api/v1/community/posts/:id/report', authenticateWxToken, async (req, 
   } catch (error) {
     console.error('reportCommunityPost error:', error);
     res.status(500).json({ code: 500, message: '提交举报失败' });
+  }
+});
+
+// POST /api/v1/community/comments/:id/report
+app.post('/api/v1/community/comments/:id/report', authenticateWxToken, async (req, res) => {
+  const commentId = req.params.id;
+  const reason = validateCommunityReportReason(req, res);
+  if (!reason) return;
+
+  try {
+    const outcome = await transaction(async conn => {
+      const [[comment]] = await conn.execute("SELECT id, post_id FROM post_comments WHERE id = ? AND status = 'approved' FOR UPDATE", [commentId]);
+      if (!comment) return 'missing';
+      const [[existing]] = await conn.execute(
+        "SELECT id FROM community_reports WHERE comment_id = ? AND user_id = ? AND status = 'pending' FOR UPDATE",
+        [commentId, req.user.id]
+      );
+      if (existing) return 'existing';
+      const [reportResult] = await conn.execute(
+        "INSERT INTO community_reports (post_id, comment_id, user_id, reason, status) VALUES (?, ?, ?, ?, 'pending')",
+        [comment.post_id, comment.id, req.user.id, reason]
+      );
+      await notifyBusiness(conn, 'report', reportResult.insertId, 'submitted');
+      return 'created';
+    });
+    if (outcome === 'missing') return res.status(404).json({ code: 404, message: '评论不存在' });
+    res.json({ code: 0, message: outcome === 'existing' ? '您已提交过举报，平台会尽快处理' : '举报已提交' });
+  } catch (error) {
+    console.error('reportCommunityComment error:', error);
+    res.status(500).json({ code: 500, message: '提交举报失败' });
+  }
+});
+
+// DELETE /api/v1/community/posts/:id
+app.delete('/api/v1/community/posts/:id', authenticateWxToken, async (req, res) => {
+  try {
+    const outcome = await transaction(async conn => {
+      const [[post]] = await conn.execute('SELECT id, user_id, user_role, status FROM community_posts WHERE id = ? FOR UPDATE', [req.params.id]);
+      if (!post || post.status === 'deleted') return 'missing';
+      if (post.user_role === 'admin' || Number(post.user_id) !== Number(req.user.id)) return 'forbidden';
+      await conn.execute(
+        "UPDATE community_posts SET status = 'deleted', is_top = 0, delete_reason = '作者已删除', deleted_by = 'author', deleted_at = NOW() WHERE id = ?",
+        [post.id]
+      );
+      return 'deleted';
+    });
+    if (outcome === 'missing') return res.status(404).json({ code: 404, message: '帖子不存在' });
+    if (outcome === 'forbidden') return res.status(403).json({ code: 403, message: '无权删除此帖子' });
+    res.json({ code: 0, message: '已删除' });
+  } catch (error) {
+    console.error('deleteCommunityPost error:', error);
+    res.status(500).json({ code: 500, message: '删除帖子失败' });
+  }
+});
+
+// DELETE /api/v1/community/comments/:id
+app.delete('/api/v1/community/comments/:id', authenticateWxToken, async (req, res) => {
+  try {
+    const outcome = await transaction(async conn => {
+      const [[comment]] = await conn.execute('SELECT id, post_id, user_id, status FROM post_comments WHERE id = ? FOR UPDATE', [req.params.id]);
+      if (!comment || comment.status === 'deleted') return 'missing';
+      if (Number(comment.user_id) !== Number(req.user.id)) return 'forbidden';
+      await conn.execute(
+        "UPDATE post_comments SET status = 'deleted', delete_reason = '作者已删除', deleted_by = 'author', deleted_at = NOW() WHERE id = ?",
+        [comment.id]
+      );
+      if (comment.status === 'approved') {
+        await conn.execute('UPDATE community_posts SET comments_count = GREATEST(0, comments_count - 1) WHERE id = ?', [comment.post_id]);
+      }
+      return 'deleted';
+    });
+    if (outcome === 'missing') return res.status(404).json({ code: 404, message: '评论不存在' });
+    if (outcome === 'forbidden') return res.status(403).json({ code: 403, message: '无权删除此评论' });
+    res.json({ code: 0, message: '已删除' });
+  } catch (error) {
+    console.error('deleteCommunityComment error:', error);
+    res.status(500).json({ code: 500, message: '删除评论失败' });
   }
 });
 
@@ -3218,7 +3392,8 @@ app.post('/api/v1/community/posts/:id/comment', authenticateWxToken, async (req,
         createdAt: new Date().toISOString(),
         parentId: parentComment ? parentComment.id : null,
         parentAuthor: parentComment ? (parentComment.author_name || '') : '',
-        isLiked: false
+        isLiked: false,
+        isAuthor: true
       }
     });
   } catch (error) {
@@ -5822,6 +5997,18 @@ app.post('/api/v1/user/upload', authenticateWxToken, express.raw({ type: () => t
       return res.status(400).json({ code: 400, message: '上传文件内容为空' });
     }
 
+    if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+      const imageDecision = await checkWechatImage({
+        buffer: fileBuffer,
+        filename: `upload.${ext}`,
+        ext,
+      });
+      if (imageDecision === 'too_large') {
+        return res.status(400).json({ code: 400, message: '图片大小不能超过 1MB，请压缩后重试' });
+      }
+      if (rejectUncheckedContent(res, imageDecision)) return;
+    }
+
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
     const uploadDir = './uploads/medical-attachments';
     if (!fs.existsSync(uploadDir)) {
@@ -7686,8 +7873,8 @@ app.get('/api/v1/distribution/rules', async (req, res, next) => {
       ],
       withdrawRules: [
         `提现门槛：满 ${Number((featureConfig.minWithdrawAmount / 100).toFixed(2))} 元即可申请提现；`,
-        '提现渠道：仅支持银行卡提现，微信零钱通道暂未开放；',
-        `手续费：提现收取 ${Number((featureConfig.withdrawFeeRates.bank * 100).toFixed(4))}% 手续费，手续费最低 1 元；`,
+        '提现渠道：支持微信零钱与银行卡提现；',
+        `手续费：银行卡提现收取 ${Number((featureConfig.withdrawFeeRates.bank * 100).toFixed(4))}% 手续费，手续费最低 1 元；`,
         '申请后需等待审核，审核通过会安排打款。'
       ]
     }

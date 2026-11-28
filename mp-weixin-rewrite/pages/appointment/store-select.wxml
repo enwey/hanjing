@@ -3,8 +3,11 @@
 
   <view class="page-content">
     <view class="section-header">
-      <text class="section-title">请选择就诊门店</text>
-      <text class="section-hint">共 {{stores.length}} 家门店</text>
+      <view>
+        <text class="section-title">请选择就诊门店</text>
+        <text class="section-hint">共 {{stores.length}} 家门店</text>
+      </view>
+      <button class="location-sort-btn" bindtap="requestLocationSort">{{hasLocation ? '已按距离排序' : '按距离排序'}}</button>
     </view>
 
     <view wx:if="{{loading}}"><text>正在加载门店...</text></view>
@@ -24,6 +27,5 @@
       bind:click="handleStoreTap"
     />
   </view>
+  <hj-privacy-popup id="privacyPopup" />
 </view>
-
-<hj-privacy-popup id="privacyPopup" />

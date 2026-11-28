@@ -261,7 +261,7 @@ Page({
     if (!store.id) return;
     if (store.status === 'prepare') {
       wx.showToast({
-        title: '该门店正在筹建中，暂未开放预约，敬请期待！',
+        title: '该门店暂未开通线上预约，请选择其他门店',
         icon: 'none',
         duration: 2000,
       });

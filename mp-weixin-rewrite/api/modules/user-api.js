@@ -42,13 +42,45 @@ function uploadFile(buffer, ext) {
   return request({ url: '/user/upload?ext=' + (ext || 'jpg'), method: 'POST', data: buffer, header: { 'content-type': 'application/octet-stream' }, failMessage: '上传文件失败' });
 }
 
-function uploadLocalFile(filePath, ext) {
+function compressImageIfNeeded(filePath, ext) {
+  const normalizedExt = String(ext || '').toLowerCase();
+  if (!['jpg', 'jpeg', 'png', 'gif'].includes(normalizedExt) || typeof wx === 'undefined' || typeof wx.compressImage !== 'function') {
+    return Promise.resolve({ filePath, ext: normalizedExt || 'jpg' });
+  }
+  const checkNeedCompress = () => new Promise((resolve) => {
+    const fs = typeof wx.getFileSystemManager === 'function' ? wx.getFileSystemManager() : null;
+    if (!fs || typeof fs.getFileInfo !== 'function') {
+      resolve(true);
+      return;
+    }
+    fs.getFileInfo({
+      filePath,
+      success: (info) => resolve(Number(info && info.size || 0) > 900 * 1024),
+      fail: () => resolve(true),
+    });
+  });
+  return checkNeedCompress().then((shouldCompress) => {
+    if (!shouldCompress) return { filePath, ext: normalizedExt || 'jpg' };
+    return new Promise((resolve) => {
+      wx.compressImage({
+        src: filePath,
+        quality: 75,
+        compressedWidth: 1080,
+        success: (res) => resolve({ filePath: (res && res.tempFilePath) || filePath, ext: 'jpg' }),
+        fail: () => resolve({ filePath, ext: normalizedExt || 'jpg' }),
+      });
+    });
+  });
+}
+
+async function uploadLocalFile(filePath, ext) {
   const sessionStore = require('../../stores/session-store');
   const accessToken = String(sessionStore.getAccessToken() || '').trim();
+  const prepared = await compressImageIfNeeded(filePath, ext);
   return new Promise((resolve, reject) => {
     wx.uploadFile({
-      url: requestModule.apiBaseUrl + '/user/upload?ext=' + encodeURIComponent(ext || 'jpg'),
-      filePath,
+      url: requestModule.apiBaseUrl + '/user/upload?ext=' + encodeURIComponent(prepared.ext || 'jpg'),
+      filePath: prepared.filePath,
       name: 'file',
       header: accessToken ? { Authorization: 'Bearer ' + accessToken } : {},
       success(result) {
@@ -62,10 +94,14 @@ function uploadLocalFile(filePath, ext) {
           resolve(payload);
           return;
         }
-        reject(new Error((payload && payload.message) || '上传文件失败'));
+        reject(requestModule.createRequestError(
+          (payload && payload.message) || '上传文件失败',
+          result.statusCode,
+          payload,
+        ));
       },
       fail(error) {
-        reject(new Error((error && error.errMsg) || '上传文件失败'));
+        reject(requestModule.createRequestError((error && error.errMsg) || '上传文件失败'));
       },
     });
   });

@@ -281,3 +281,17 @@
 .safe-bottom.data-v-1973d3c1 {
   height: calc(env(safe-area-inset-bottom, 34px) + 20px);
 }
+
+.medical-disclaimer.data-v-1973d3c1 {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f1f5f9;
+}
+
+.medical-disclaimer__text.data-v-1973d3c1 {
+  display: block;
+  font-size: 12px;
+  line-height: 18px;
+  color: #64748b;
+}

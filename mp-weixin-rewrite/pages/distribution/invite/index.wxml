@@ -3,4 +3,5 @@
   <view class="invite-content">
     <text>推广资格和历史结算请向诊所客服查询。</text>
   </view>
+  <hj-privacy-popup id="privacyPopup" />
 </view>

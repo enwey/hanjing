@@ -94,6 +94,5 @@
     </view>
     <view class="safe-bottom data-v-33d45858" style="{{isSelf ? 'height: 40rpx;' : ''}}" />
   </view>
+  <hj-privacy-popup id="privacyPopup" />
 </view>
-
-<hj-privacy-popup id="privacyPopup" />

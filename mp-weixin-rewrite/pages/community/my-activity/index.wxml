@@ -8,10 +8,10 @@
     <view wx:elif="{{loadError}}" class="activity-state"><text>{{loadError}}</text><button class="activity-retry" bindtap="retryLoad">重试</button></view>
     <view wx:elif="{{!items.length}}" class="activity-empty"><hj-empty title="{{emptyText}}" icon="/static/icons/community.svg" /></view>
     <view wx:else class="activity-list">
-      <view wx:for="{{items}}" wx:key="recordId" class="activity-card" data-post-id="{{item.postId}}" data-comment-id="{{item.commentId}}" bindtap="openItem">
-        <text wx:if="{{activeTab === 'comments'}}" class="activity-comment">{{item.commentContent}}</text>
-        <text class="activity-title {{activeTab === 'comments' ? 'activity-title--secondary' : ''}}">{{item.title}}</text>
-        <text wx:if="{{activeTab !== 'comments' && item.summary}}" class="activity-summary">{{item.summary}}</text>
+      <view wx:for="{{items}}" wx:key="recordId" class="activity-card" data-post-id="{{item.postId}}" data-comment-id="{{item.commentId}}" data-post-deleted="{{item.postDeleted}}" bindtap="openItem">
+        <text wx:if="{{activeTab === 'comments'}}" class="activity-comment {{item.commentDeleted ? 'activity-deleted-text' : ''}}">{{item.commentContent}}</text>
+        <text class="activity-title {{activeTab === 'comments' ? 'activity-title--secondary' : ''}} {{item.postDeleted ? 'activity-deleted-text' : ''}}">{{item.title}}</text>
+        <text wx:if="{{activeTab !== 'comments' && item.summary}}" class="activity-summary {{item.postDeleted ? 'activity-deleted-text' : ''}}">{{item.summary}}</text>
         <text class="activity-time">{{item.time}}</text>
       </view>
       <view wx:if="{{loadingMore}}" class="activity-more">加载中…</view>

@@ -32,7 +32,10 @@ Page({
       const items = (Array.isArray(data.list) ? data.list : []).map(item => ({
         recordId: String(item.recordId || ''), postId: String(item.postId || ''), commentId: String(item.commentId || ''),
         title: String(item.title || ''), summary: String(item.summary || ''),
-        commentContent: String(item.commentContent || ''), time: formatChinaDateTime(item.createdAt, false),
+        commentContent: String(item.commentContent || ''),
+        postDeleted: Boolean(item.postDeleted),
+        commentDeleted: Boolean(item.commentDeleted),
+        time: formatChinaDateTime(item.createdAt, false),
       }));
       this.setData({ items: append ? this.data.items.concat(items) : items, page, hasMore: !!data.hasMore, loading: false, loadingMore: false, loadError: '' });
     } catch (error) {
@@ -43,6 +46,10 @@ Page({
   },
   retryLoad() { this.loadPage(); },
   openItem(event) {
+    if (event.currentTarget.dataset.postDeleted) {
+      wx.showToast({ title: '原帖已删除，无法查看详情', icon: 'none' });
+      return;
+    }
     const postId = String(event.currentTarget.dataset.postId || '');
     const commentId = String(event.currentTarget.dataset.commentId || '');
     if (!/^\d+$/.test(postId)) return;

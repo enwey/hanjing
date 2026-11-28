@@ -52,6 +52,10 @@
       </view>
     </view>
 
+    <view class="medical-disclaimer">
+      <text class="medical-disclaimer__text">温馨提示：以上鼾声分析结果仅用于睡眠呼吸健康科普参考，不作为临床医疗诊断或治疗依据；如有不适请及时前往正规医疗机构就诊。</text>
+    </view>
+
     <view class="action-buttons">
       <view class="btn-primary" bindtap="goAppointment">立即预约门诊</view>
       <view class="btn-secondary" bindtap="goHome">返回睡眠评估</view>

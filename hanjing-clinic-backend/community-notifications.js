@@ -62,7 +62,7 @@ export function installCommunityReportRoutes(app, authenticateToken) {
         if (!report) throw Object.assign(new Error('举报不存在'), { statusCode: 404 });
         if (hideComment === true) {
           if (status !== 'resolved' || !report.comment_id) throw Object.assign(new Error('只能下架已受理的举报评论'), { statusCode: 400 });
-          const [change] = await conn.execute("UPDATE post_comments SET status='hidden' WHERE id=? AND post_id=? AND status='approved'", [report.comment_id, report.post_id]);
+          const [change] = await conn.execute("UPDATE post_comments SET status='deleted', deleted_by='admin', deleted_at=NOW(), delete_reason=? WHERE id=? AND post_id=? AND status='approved'", [Array.from(result).slice(0, 500).join(''), report.comment_id, report.post_id]);
           if (change.affectedRows) await conn.execute('UPDATE community_posts SET comments_count=GREATEST(0,comments_count-1) WHERE id=?', [report.post_id]);
         }
         if (report.status === status && report.result_text === result) return;

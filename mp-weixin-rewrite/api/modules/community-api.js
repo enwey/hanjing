@@ -57,6 +57,18 @@ function reportCommunityPost(postId, reason, commentId) {
   return request({ url: '/community/posts/' + postId + '/report', method: 'POST', data: { reason, ...(commentId ? { commentId } : {}) }, failMessage: '举报失败' });
 }
 
+function reportCommunityComment(commentId, reason) {
+  return request({ url: '/community/comments/' + commentId + '/report', method: 'POST', data: { reason }, failMessage: '举报评论失败' });
+}
+
+function deleteCommunityPost(postId) {
+  return request({ url: '/community/posts/' + postId, method: 'DELETE', failMessage: '删除帖子失败' });
+}
+
+function deleteCommunityComment(commentId) {
+  return request({ url: '/community/comments/' + commentId, method: 'DELETE', failMessage: '删除评论失败' });
+}
+
 module.exports = {
   getMyCommunityActivity,
   getCommunityPosts,
@@ -69,5 +81,8 @@ module.exports = {
   shareCommunityPost,
   likeCommunityComment,
   commentCommunityPost,
-  reportCommunityPost
+  reportCommunityPost,
+  reportCommunityComment,
+  deleteCommunityPost,
+  deleteCommunityComment
 };

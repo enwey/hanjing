@@ -164,6 +164,7 @@ App({
           popup.requestAuthorization(resolve);
         } else {
           resolve({ event: 'disagree' });
+          wx.showToast({ title: '请先同意隐私保护指引后再使用该功能', icon: 'none', duration: 2000 });
         }
       });
     }

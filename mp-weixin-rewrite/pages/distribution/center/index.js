@@ -114,13 +114,13 @@ Page({
       if (!this.data.hasLoaded) {
         this.setData({
           loading: false,
-          loadError: (error && error.message) || '加载分销数据失败',
+          loadError: (error && error.message) || '加载推广数据失败',
           recentOrders: [],
         });
       } else {
         this.setData({ loading: false });
       }
-      wx.showToast({ title: '加载分销数据失败', icon: 'none' });
+      wx.showToast({ title: '加载推广数据失败', icon: 'none' });
     }
   },
 

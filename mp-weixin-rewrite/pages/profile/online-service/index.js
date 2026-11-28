@@ -352,6 +352,7 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
+      sizeType: ['compressed'],
       success: (res) => {
         const tempFilePath = res.tempFiles?.[0]?.tempFilePath;
         if (!tempFilePath || !this.isCurrentAccount() || this.data.accessError) return;

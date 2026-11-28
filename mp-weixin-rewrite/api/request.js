@@ -6,7 +6,13 @@ let refreshFlight = null;
 let resolvedApiBaseUrl = envConfig.getApiBaseUrl();
 
 function createRequestError(message, statusCode, data) {
-  const error = new Error(message || '请求失败，请稍后重试');
+  const code = data && data.code;
+  const safeMessage = code === 'CONTENT_REJECTED'
+    ? '发布内容包含违规信息，请修改后重试'
+    : code === 'CONTENT_CHECK_UNAVAILABLE'
+      ? '暂时无法发布，请稍后重试'
+      : (message || '请求失败，请稍后重试');
+  const error = new Error(safeMessage);
   error.statusCode = statusCode;
   error.data = data;
   return error;

@@ -1,5 +1,5 @@
 <view class="container distribution-center-page">
-  <hj-navbar title="分销中心" showBack="{{true}}" />
+  <hj-navbar title="推广中心" showBack="{{true}}" />
 
   <view class="distribution-banner">
     <view class="distribution-banner__bg"></view>
@@ -62,12 +62,12 @@
 
   <view class="distribution-section">
     <view class="distribution-section__header">
-      <text class="distribution-section__title">分销规则与说明</text>
+      <text class="distribution-section__title">推广规则与说明</text>
     </view>
     <view class="distribution-rule-card">
-      <text class="distribution-rule-card__title">如何成为分销员</text>
+      <text class="distribution-rule-card__title">如何参与推广</text>
       <text wx:if="{{qualificationText}}" class="distribution-rule-card__desc">{{qualificationText}}</text>
-      <text wx:else class="distribution-rule-card__desc">当前暂无分销开通说明</text>
+      <text wx:else class="distribution-rule-card__desc">当前暂无推广参与说明</text>
     </view>
 
     <view class="distribution-rule-card" wx:if="{{commissionRules.length}}">
@@ -79,7 +79,7 @@
     </view>
 
     <view class="distribution-rule-card" wx:if="{{promotionWays.length}}">
-      <text class="distribution-rule-card__title">如何推广拉新</text>
+      <text class="distribution-rule-card__title">如何分享推广</text>
       <view wx:for="{{promotionWays}}" wx:key="index" class="distribution-rule-item">
         <text class="distribution-rule-item__index">{{index + 1}}</text>
         <text class="distribution-rule-item__text">{{item}}</text>

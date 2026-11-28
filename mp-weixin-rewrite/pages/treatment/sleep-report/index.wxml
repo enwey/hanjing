@@ -38,6 +38,9 @@
         <view class="peer-header data-v-72813ef9"><text class="peer-title data-v-72813ef9">{{item.title}}</text></view>
         <view class="peer-row data-v-72813ef9"><text class="peer-label data-v-72813ef9">{{item.text}}</text></view>
       </view>
+      <view class="medical-disclaimer data-v-72813ef9">
+        <text class="medical-disclaimer__text data-v-72813ef9">温馨提示：以上睡眠报告与数据分析仅用于日常佩戴追踪参考，不作为临床医疗诊断或治疗依据；如有不适请及时联系主治医生。</text>
+      </view>
     </block>
     <view wx:else class="empty-card data-v-72813ef9">
       <text class="empty-title data-v-72813ef9">暂无睡眠报告</text>

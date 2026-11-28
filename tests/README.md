@@ -1,5 +1,9 @@
 # 测试记录
 
+- 2026-11-27 管理后台新增文章评论查看、编辑、软删除与删除原因查看，状态为待回归。开发自测管理端 `vue-tsc --noEmit && vite build` 通过，`article-comments-2026-11-27.test.mjs` 2/2 通过（Mock 权限与数据库事务）；未部署重启或连接真实 MySQL 验证。[管理端记录](admin/README.md)
+
+- 2026-11-27 小程序提审合规与社区安全全项修复及软删除占位优化完成，状态为待回归。覆盖个人资料昵称内容安全检测、评论举报、帖子与评论软删除占位/个人记录保留、隐私弹窗全页面挂载与隐私政策/注销入口对齐、暂不打包 `pages/live`（保留源码）、分销文案一致化与开关控制、评估结果页免责提示及选店按需定位。开发自测 `community-content-security` 14/14、`community-composer` 9/9、`community-my-activity` 4/4（均为替身验证）、WXML 标签检查及 JS 语法通过；待部署后端并在真机及微信公众平台后台完成提审前核验。[记录](mini-program/community-content-security-2026-11-27.md)
+
 - 2026-11-19 提现页和分销首页余额覆盖独立回归 10/10，60 元超额申请未发送。[记录](mini-program/distribution-center-2026-11-19.md#余额覆盖独立回归)
 
 - 2026-11-19 [商城完整测试第十三轮](mini-program/mall-full-audit-round13-2026-11-19.md)，两项独立回归通过，商城模块 186/186。
