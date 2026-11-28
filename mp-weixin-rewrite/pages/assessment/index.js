@@ -59,7 +59,7 @@ function normalizeAssessmentRecord(record) {
   return {
     id: String(record.id || ''),
     type,
-    typeLabel: isEss ? 'ESS 嗜睡量表' : 'AI 鼾声分析',
+    typeLabel: isEss ? 'ESS 嗜睡量表' : '鼾声录音分析',
     levelLabel: isEss ? (ESS_LEVEL_LABEL_MAP[level] || '正常') : (SNORE_LEVEL_LABEL_MAP[level] || '正常'),
     levelColor: getRiskColor(level),
     dateLabel: formatChinaDateTime(record.createdAt || '', false),

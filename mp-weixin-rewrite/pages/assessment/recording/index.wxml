@@ -3,7 +3,7 @@
   <view class="star star-2 data-v-70350287"></view>
   <view class="star star-3 data-v-70350287"></view>
   <view class="star star-4 data-v-70350287"></view>
-  <hj-navbar title="AI鼾声分析" showBack="{{true}}" />
+  <hj-navbar title="鼾声录音分析" showBack="{{true}}" />
   <view wx:if="{{!isAnalyzing}}" class="page-content data-v-70350287">
     <picker wx:if="{{memberNames.length > 1}}" mode="selector" range="{{memberNames}}" value="{{memberIndex}}" bindchange="onMemberChange" disabled="{{disabledSelector}}" class="member-picker data-v-70350287">
       <view class="member-picker-content data-v-70350287">
@@ -19,8 +19,8 @@
     </picker>
     <view class="guide-card data-v-70350287">
       <text class="guide-emoji data-v-70350287">💤</text>
-      <text class="guide-title data-v-70350287">睡眠呼吸监测</text>
-      <text class="guide-desc data-v-70350287">本地AI离线解析 · 0音频上传保障隐私</text>
+      <text class="guide-title data-v-70350287">鼾声录音筛查</text>
+      <text class="guide-desc data-v-70350287">录音在手机上分析，原始录音不上传</text>
     </view>
     <view class="record-area data-v-70350287">
       <view class="waveform data-v-70350287">
@@ -52,7 +52,7 @@
       <text class="status-text data-v-70350287">{{statusText}}</text>
     </view>
     <view wx:if="{{isSubmitting && !isAnalyzing}}" class="actions data-v-70350287">
-      <view class="btn btn--primary data-v-70350287" bindtap="stopAndAnalyze">生成分析报告</view>
+      <view class="btn btn--primary data-v-70350287" bindtap="stopAndAnalyze">查看分析结果</view>
     </view>
     <view class="tips-card data-v-70350287">
       <text class="tips-title data-v-70350287">使用指引</text>
@@ -66,8 +66,8 @@
   <view wx:else class="analyzing-screen data-v-70350287">
     <view class="analyzing-card data-v-70350287">
       <view class="spinner data-v-70350287"></view>
-      <text class="analyzing-text data-v-70350287">正在分析...</text>
-      <text class="analyzing-hint data-v-70350287">约需 2 到 3 秒</text>
+      <text class="analyzing-text data-v-70350287">正在分析录音…</text>
+      <text class="analyzing-hint data-v-70350287">根据录音特征和预设规则计算</text>
     </view>
   </view>
   <hj-privacy-popup id="privacyPopup" />

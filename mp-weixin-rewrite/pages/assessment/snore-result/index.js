@@ -12,7 +12,7 @@ function getSnoreRiskInfo(riskLevel) {
       title: '低风险',
       color: '#1A9D5C',
       bgColor: '#D3F5E3',
-      desc: '您的鼾声测试结果良好，未检测到明显的睡眠呼吸暂停风险。',
+      desc: '本次录音的鼾声筛查评分处于较低范围。',
       advice: '建议保持健康生活习惯，定期关注睡眠质量。如家人反馈仍有明显鼾声，可 3 个月后复测。',
       tips: ['保持规律作息', '避免睡前饮酒', '侧卧睡眠', '控制体重'],
     },
@@ -20,7 +20,7 @@ function getSnoreRiskInfo(riskLevel) {
       title: '轻度风险',
       color: '#2563EB',
       bgColor: '#EFF6FF',
-      desc: '检测到一定鼾声特征，暂未达到明显中高风险，但建议继续观察夜间睡眠表现。',
+      desc: '本次录音有一定的鼾声特征，可继续观察夜间睡眠表现。',
       advice: '建议连续监测 2-3 晚，并关注白天嗜睡、晨起口干、夜间憋醒等情况。',
       tips: ['连续复测', '侧卧睡眠', '避免睡前饮酒', '记录家属反馈'],
     },
@@ -28,16 +28,16 @@ function getSnoreRiskInfo(riskLevel) {
       title: '中风险',
       color: '#F59E0B',
       bgColor: '#FFFBEB',
-      desc: '检测到中度鼾声和少量呼吸暂停事件，建议引起关注并及时进行专业评估。',
-      advice: '建议预约兴康明门诊进行面诊和睡眠监测，早期干预效果最佳。',
-      tips: ['尽快预约门诊', '监测睡眠姿势', '减少酒精和安眠药', '记录夜间醒来次数'],
+      desc: '本次录音的鼾声筛查评分处于中等范围，可结合实际睡眠情况咨询医生。',
+      advice: '可预约门诊，由医生结合症状判断是否需要进一步检查。',
+      tips: ['尽快预约门诊', '监测睡眠姿势', '记录睡前饮酒及用药情况', '记录夜间醒来次数'],
     },
     high: {
       title: '高风险',
       color: '#EF4444',
       bgColor: '#FEF2F2',
-      desc: '检测到重度鼾声和较多呼吸暂停事件，可能存在中度至重度睡眠呼吸暂停综合征。',
-      advice: '请尽快到兴康明门诊进行多导睡眠监测和上气道评估，及早治疗可避免并发症风险。',
+      desc: '本次录音的鼾声筛查评分较高，建议咨询医生了解是否需要进一步评估。',
+      advice: '建议预约门诊，由医生结合症状判断是否需要进一步检查。',
       tips: ['立即预约门诊', '避免长途驾驶', '告知家属观察', '记录日间嗜睡情况'],
     },
   };
@@ -151,10 +151,10 @@ Page({
         { iconPath: '/static/icons/microphone.svg', value: analysis.avgDecibel + ' dB', label: '平均分贝' },
         { iconPath: '/static/icons/trend.svg', value: analysis.peakDecibel + ' dB', label: '峰值分贝' },
         { iconPath: '/static/icons/moon.svg', value: analysis.snoreRate + '%', label: '鼾声占比' },
-        { iconPath: '/static/icons/warning.svg', value: analysis.apneaEvents + ' 次', label: '呼吸暂停' },
+        { iconPath: '/static/icons/warning.svg', value: analysis.apneaEvents + ' 次', label: '疑似停顿片段' },
       ] : [];
       const riskScore = calculateRiskScore(analysis);
-      riskInfo.desc = `本次录音分析提示${riskInfo.title}，记录到 ${apneaEvents} 次疑似呼吸暂停事件。结果仅供筛查参考。`;
+      riskInfo.desc = `本次录音分析提示${riskInfo.title}，按录音特征识别到 ${apneaEvents} 次疑似停顿。结果仅供筛查参考。`;
       this.setData({ hasLoaded: true, isLoading: false, loadError: '', reportDetail, riskInfo, statCards, riskScore });
     } catch (error) {
       if (!current()) return;
@@ -174,7 +174,7 @@ Page({
       wx.setStorageSync('pending_appointment_assessment', {
         type: 'snore',
         id: this.data.reportDetail.id,
-        label: 'AI鼾声分析',
+        label: '鼾声录音分析',
       });
     } else {
       // A local report has no server ID and must not inherit an earlier link.

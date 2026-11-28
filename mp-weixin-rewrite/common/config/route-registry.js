@@ -85,7 +85,7 @@ const routeRegistry = [
   },
   {
     "path": "pages/assessment/recording/index",
-    "title": "AI鼾声分析"
+    "title": "鼾声录音分析"
   },
   {
     "path": "pages/assessment/snore-result/index",

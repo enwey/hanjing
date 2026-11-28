@@ -20,7 +20,7 @@ function getEssLevelInfo(score) {
       level: '轻度嗜睡',
       color: 'linear-gradient(135deg, #3B82F6, #1D4ED8)',
       desc: '本次评估记录为轻度嗜睡，请结合自身情况关注睡眠质量。',
-      advice: '注意保持规律作息，避免熬夜。建议使用 APP 内的 AI 鼾声分析功能，了解夜间睡眠状况。',
+      advice: '注意保持规律作息，避免熬夜。也可使用小程序内的鼾声录音分析功能作为补充筛查。',
       adviceBg: '#eff6ff',
       adviceBorder: '#bfdbfe',
       adviceTitleColor: '#1e40af',

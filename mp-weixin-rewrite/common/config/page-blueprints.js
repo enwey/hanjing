@@ -175,8 +175,8 @@ const pageBlueprints = {
     ]
   },
   "pages/assessment/recording/index": {
-    "title": "AI鼾声分析",
-    "description": "此页负责录音、生成鼾声报告、亮度控制和异常录音校验。",
+    "title": "鼾声录音分析",
+    "description": "此页负责录音、查看鼾声报告、亮度控制和异常录音校验。",
     "bullets": [
       "录音不足 5 秒时要在生成前拦截",
       "生成过程需要中间态提示并直接进入结果页",
@@ -192,7 +192,7 @@ const pageBlueprints = {
   },
   "pages/assessment/snore-result/index": {
     "title": "鼾声分析报告",
-    "description": "此页展示 AI 鼾声分析结果、风险等级、建议和明细入口。",
+    "description": "此页展示 鼾声录音分析结果、风险等级、建议和明细入口。",
     "bullets": [
       "结果必须来自真实分析数据",
       "返回链路应回到睡眠评估页",

@@ -566,7 +566,7 @@ Page({
     }
     const consent = await confirmSensitiveData(
       '同意处理鼾声分析数据',
-      '本次录音在设备上分析。生成报告时会向诊所提交分析结果、时长及所选就诊人信息，用于保存和查看报告。您可取消并继续使用其他功能。'
+      '原始录音在本机分析，不上传。查看结果时会尝试同步分析结果、录音时长和所选就诊人标识，用于保存和查看报告。您可取消并继续使用其他功能。'
     );
     if (!consent || !current()) {
       if (this._starting === attempt) this._starting = null;
@@ -642,7 +642,7 @@ Page({
       isRecording: false,
       hasRecordingEnded: true,
       isSubmitting: true,
-      statusText: '录音已暂停，可生成分析报告',
+      statusText: '录音已暂停，可查看分析结果',
       audioLevels: new Array(16).fill(6),
       disabledSelector: true,
     });
@@ -670,7 +670,7 @@ Page({
       wx.showToast({ title: '录音时间过短，分析前请至少录制5秒', icon: 'none' });
       return;
     }
-    this.setData({ isAnalyzing: true, statusText: '正在分析...', disabledSelector: true });
+    this.setData({ isAnalyzing: true, statusText: '正在分析录音…', disabledSelector: true });
     this.ignoreNextStop = false;
     recorderManager.stop();
     this.restoreScreenBrightness();
@@ -729,7 +729,7 @@ Page({
     if (!current() || (this._generation !== undefined && this._generation !== generation)) { await this.onShow(); return; }
     this._submittingRecording = true;
     this.setData({ isRecording: false, hasRecordingEnded: false, isAnalyzing: true,
-      disabledSelector: true, statusText: '正在分析...' });
+      disabledSelector: true, statusText: '正在分析录音…' });
     this.clearTimers();
     this.restoreScreenBrightness();
     try {

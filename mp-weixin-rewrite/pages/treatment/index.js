@@ -15,7 +15,7 @@ const RELATION_LABEL_MAP = {
 
 const TREATMENT_ENTRIES = [
   { key: 'trend', title: '睡眠趋势', description: '佩戴与睡眠数据', icon: '/static/icons/trend.svg', iconClass: 'menu-icon--trend', url: '/pages/treatment/sleep-trend/index' },
-  { key: 'report', title: '睡眠报告', description: 'AI智能分析与建议', icon: '/static/icons/report.svg', iconClass: 'menu-icon--report', url: '/pages/treatment/sleep-report/index' },
+  { key: 'report', title: '睡眠报告', description: '佩戴记录与趋势', icon: '/static/icons/report.svg', iconClass: 'menu-icon--report', url: '/pages/treatment/sleep-report/index' },
   { key: 'timeline', title: '治疗时间线', description: '就诊全记录', icon: '/static/icons/timeline.svg', iconClass: 'menu-icon--timeline', url: '/pages/treatment/timeline/index' },
   { key: 'advice', title: '医嘱建议', description: '医生指导方案', icon: '/static/icons/advice.svg', iconClass: 'menu-icon--advice', url: '/pages/treatment/doctor-advice/index' },
   { key: 'adjust', title: '设备调整', description: '参数与调整记录', icon: '/static/icons/adjust.svg', iconClass: 'menu-icon--adjust', url: '/pages/treatment/adjust-detail/index' },

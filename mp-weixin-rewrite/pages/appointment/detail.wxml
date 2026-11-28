@@ -142,7 +142,7 @@
           <text class="row-value">{{assessmentInfo.ess.score}}分 · {{assessmentInfo.ess.riskLevel}}</text>
         </view>
         <view wx:if="{{assessmentInfo.snore}}" class="detail-row">
-          <text class="row-label">AI鼾声分析</text>
+          <text class="row-label">鼾声录音分析</text>
           <text class="row-value">{{assessmentInfo.snore.avgDecibel}}dB · {{assessmentInfo.snore.riskLevel}}</text>
         </view>
       </view>
